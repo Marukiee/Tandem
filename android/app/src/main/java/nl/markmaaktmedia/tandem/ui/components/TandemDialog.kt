@@ -186,7 +186,7 @@ fun TandemDialog(
  * paragraph out of a dialog with a fingertip is not a way to do that.
  */
 @Composable
-fun MarkErrorDialog(
+fun TandemErrorDialog(
     title: String,
     message: String,
     onDismiss: () -> Unit,
@@ -225,7 +225,7 @@ fun MarkErrorDialog(
 
 /** Confirmation for something that cannot be undone. */
 @Composable
-fun MarkConfirmDialog(
+fun TandemConfirmDialog(
     title: String,
     body: String,
     confirmLabel: String,

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Every paired device is published as a shortcut in this category, which is what
+         makes them appear by name in the system share sheet. -->
+    <share-target android:targetClass="nl.markmaaktmedia.tandem.share.ShareTargetActivity">
+        <data android:mimeType="*/*" />
+        <category android:name="nl.markmaaktmedia.tandem.category.SHARE" />
+    </share-target>
+</shortcuts>

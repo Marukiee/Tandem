@@ -110,3 +110,25 @@ ondertekend.
 
 - Fase 1 vragen stellen, fase 2 doorbouwen zonder tussentijds te stoppen.
 - Bij twijfel over een keuze: kies, bouw door, en zeg achteraf wat je koos.
+
+## Sleutels
+
+Alleen niet-geheime feiten. De geheimen zelf staan nooit in de repo of in een chat.
+
+- **Android-keystore** `~/keystores/tandem-release.jks`, alias `tandem`, RSA 4096, 100
+  jaar geldig. SHA-256 van het certificaat:
+  `67:6D:63:50:65:53:B7:00:66:96:E5:37:4C:09:72:36:4A:14:F3:71:8E:48:E7:76:4E:85:5B:91:23:F5:30:C2`
+- **Update-sleutel (Ed25519)** privé in `~/keystores/tandem-update-ed25519.secret`.
+  Publieke sleutel, ook in `macos/update-public-key.txt` en in de app:
+  `sbMlUsuXyctYz4zszEFtc7Uq6PmGKo+nuqh8+RMc6IU=`
+- **Mac-certificaat** `~/keystores/tandem-mac-signing.p12` (identiteit "Tandem Signing").
+  SHA-256 van het certificaat:
+  `7c198032e83795a12a49f6170dee20e4b9dffd76901aa642174b1f7d3d03bebf`
+- **Aanmaken** met `scripts/android-keystore.sh`, `swift scripts/gen-update-key.swift` en
+  `scripts/mac-signing.sh setup`. Alle drie doen niets als de sleutel al bestaat.
+- **GitHub-secrets** uploaden met `scripts/setup-secrets.sh` (alleen namen worden getoond).
+
+**Maak een back-up van `~/keystores`.** Zonder de Android-sleutel kan niemand nog
+bijwerken zonder eerst te verwijderen, zonder de update-sleutel accepteert geen
+geïnstalleerde Mac-app nog een update, en zonder het Mac-certificaat vragen alle
+rechten (Bluetooth, lokaal netwerk, toegankelijkheid) opnieuw om toestemming.

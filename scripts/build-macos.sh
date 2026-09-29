@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds Tandem.app. Usage: scripts/build-macos.sh [debug|release]
-# Set VERSION and BUILD to stamp a release; UPDATE_PUBLIC_KEY to embed the update key.
+# Set VERSION and BUILD to stamp a release. The update key comes from
+# macos/update-public-key.txt unless UPDATE_PUBLIC_KEY overrides it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -8,6 +9,9 @@ CONFIG="${1:-debug}"
 VERSION="${VERSION:-0.1.0}"
 BUILD="${BUILD:-1}"
 UPDATE_KEY="${UPDATE_PUBLIC_KEY:-}"
+[ -n "$UPDATE_KEY" ] || UPDATE_KEY="$(tr -d '[:space:]' <macos/update-public-key.txt 2>/dev/null || true)"
+# An app without the key installs updates without checking who signed them.
+[ "$CONFIG" != release ] || [ -n "$UPDATE_KEY" ] || { echo "no update public key for a release build"; exit 1; }
 DIST="macos/dist"
 APP="$DIST/Tandem.app"
 
