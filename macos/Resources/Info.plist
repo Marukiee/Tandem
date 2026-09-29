@@ -5,10 +5,10 @@
     <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleExecutable</key><string>Tandem</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
-    <key>CFBundleIdentifier</key><string>nl.markmaaktmedia.Tandem</string>
+    <key>CFBundleIdentifier</key><string>@BUNDLE_ID@</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-    <key>CFBundleName</key><string>Tandem</string>
-    <key>CFBundleDisplayName</key><string>Tandem</string>
+    <key>CFBundleName</key><string>@APP_NAME@</string>
+    <key>CFBundleDisplayName</key><string>@APP_NAME@</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>@VERSION@</string>
     <key>CFBundleVersion</key><string>@BUILD@</string>
@@ -42,7 +42,7 @@
         <dict>
             <key>NSMenuItem</key><dict><key>default</key><string>Send with Tandem</string></dict>
             <key>NSMessage</key><string>sendFiles</string>
-            <key>NSPortName</key><string>Tandem</string>
+            <key>NSPortName</key><string>@APP_NAME@</string>
             <key>NSSendFileTypes</key><array><string>public.item</string></array>
         </dict>
     </array>

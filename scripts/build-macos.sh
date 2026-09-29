@@ -14,6 +14,13 @@ UPDATE_KEY="${UPDATE_PUBLIC_KEY:-}"
 [ "$CONFIG" != release ] || [ -n "$UPDATE_KEY" ] || { echo "no update public key for a release build"; exit 1; }
 DIST="macos/dist"
 APP="$DIST/Tandem.app"
+# A debug build is a separate app: its own bundle id (so its own preferences and
+# permissions) and its own data folder, so testing never touches the installed Tandem.
+if [ "$CONFIG" = release ]; then
+  BUNDLE_ID="nl.markmaaktmedia.Tandem"; APP_NAME="Tandem"
+else
+  BUNDLE_ID="nl.markmaaktmedia.Tandem.dev"; APP_NAME="Tandem Dev"
+fi
 
 PROFILE=$([ "$CONFIG" = release ] && echo release || echo debug) ./scripts/build-core-macos.sh
 ( cd macos && swift build -c "$CONFIG" --arch arm64 2>&1 | grep -v "search path\|was built for newer" ; true )
@@ -24,6 +31,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Tandem"
 sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" -e "s|@UPDATE_KEY@|$UPDATE_KEY|" \
+  -e "s|@BUNDLE_ID@|$BUNDLE_ID|" -e "s|@APP_NAME@|$APP_NAME|" \
   macos/Resources/Info.plist >"$APP/Contents/Info.plist"
 
 # Icon

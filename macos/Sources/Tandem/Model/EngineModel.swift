@@ -167,8 +167,7 @@ final class EngineModel {
     }
 
     nonisolated static func supportDirectory() -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let directory = base.appendingPathComponent("Tandem", isDirectory: true)
+        let directory = AppIdentity.dataDirectory()
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
     }
