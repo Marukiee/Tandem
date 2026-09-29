@@ -58,6 +58,11 @@ final class Updater {
 
     /// `manual` is true for the button. An automatic check that fails says nothing.
     func check(manual: Bool = true) async {
+        // The dev build must never replace itself with a release.
+        guard !EngineModel.isDevBuild else {
+            state = .upToDate
+            return
+        }
         state = .checking
         do {
             var request = URLRequest(url: URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases/latest")!)

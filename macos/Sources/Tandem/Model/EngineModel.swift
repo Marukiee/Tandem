@@ -166,9 +166,20 @@ final class EngineModel {
         }
     }
 
+    /// The dev build (bundle id ending in .dev) keeps everything apart from the real app,
+    /// so testing never touches the real identity, pairings or preferences.
+    nonisolated static var isDevBuild: Bool {
+        Bundle.main.bundleIdentifier?.hasSuffix(".dev") == true
+    }
+
     nonisolated static func supportDirectory() -> URL {
+        if let custom = ProcessInfo.processInfo.environment["TANDEM_DATA_DIR"], !custom.isEmpty {
+            let directory = URL(fileURLWithPath: custom, isDirectory: true)
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            return directory
+        }
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let directory = base.appendingPathComponent("Tandem", isDirectory: true)
+        let directory = base.appendingPathComponent(isDevBuild ? "Tandem-Dev" : "Tandem", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
     }
