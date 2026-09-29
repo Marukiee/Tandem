@@ -138,6 +138,9 @@ struct View {
 pub struct Circle {
     all: BTreeMap<StatementId, Statement>,
     view: View,
+    /// The device whose self-vouching started this circle. Fixed the first time it is
+    /// known, so a foreign circle merged in later can never take over as the root.
+    root: Option<[u8; 32]>,
 }
 
 impl Circle {
@@ -309,11 +312,19 @@ impl Circle {
         let mut ordered: Vec<&Statement> = self.all.values().collect();
         ordered.sort_by_key(|s| (s.seq, s.id()));
 
+        if self.root.is_none() {
+            self.root = ordered
+                .iter()
+                .find(|s| matches!(&s.action, Action::Add { subject, .. } if *subject == s.author))
+                .map(|s| s.author);
+        }
+        let root = self.root;
+
         let mut view = View::default();
         // The statements depend on each other, so iterate until the answer stops
         // changing. The sets are tiny, so this costs nothing.
         for _ in 0..16 {
-            let next = derive(&ordered, &view.removed_at);
+            let next = derive(&ordered, &view.removed_at, root);
             let stable = next.removed_at == view.removed_at && next.admitted == view.admitted;
             view = next;
             if stable {
@@ -330,7 +341,7 @@ impl Circle {
 }
 
 /// One pass over the statements, given the removals known so far.
-fn derive(ordered: &[&Statement], known_removed: &BTreeMap<DeviceId, u64>) -> View {
+fn derive(ordered: &[&Statement], known_removed: &BTreeMap<DeviceId, u64>, root: Option<[u8; 32]>) -> View {
     let mut view = View::default();
 
     // A device may only author while it is admitted and before its own removal.
@@ -345,9 +356,9 @@ fn derive(ordered: &[&Statement], known_removed: &BTreeMap<DeviceId, u64>) -> Vi
             Action::Add { subject, name, platform } => {
                 let subject_id = DeviceId::from_public_key(subject);
                 if *subject == statement.author {
-                    // Only the very first self-vouch is a valid root. Any other
-                    // device creating its own circle is a different circle.
-                    if view.root.is_none() {
+                    // Only the root's own self-vouch counts. Any other device creating
+                    // its own circle is a different circle.
+                    if view.root.is_none() && root == Some(*subject) {
                         view.root = Some(*subject);
                         view.admitted.insert(
                             subject_id,
