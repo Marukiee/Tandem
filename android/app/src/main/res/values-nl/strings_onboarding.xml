@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Permission cards -->
+    <string name="perm_partly">Deels</string>
+    <string name="perm_phone_opt_calllog">het nummer van de beller</string>
+    <string name="perm_phone_opt_sms">weigeren met een bericht</string>
+    <string name="perm_phone_opt_dial">bellen vanaf je Mac</string>
+    <string name="perm_phone_missing">Gesprekken werken. Nog uit: %1$s.</string>
+    <string name="perm_phone_restricted">Android blokkeert de rechten voor de gespreksgeschiedenis en sms bij apps die niet uit de Play Store komen. Open de app-info, tik rechtsboven op de drie puntjes, kies Beperkte instellingen toestaan en probeer het dan opnieuw.</string>
+    <string name="perm_open_app_info">Open app-info</string>
+    <string name="perm_try_again">Probeer opnieuw</string>
+    <string name="perm_blocked">Android vraagt hier niet nog een keer naar. Zet het aan in de app-info.</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_page">Pagina %1$d van %2$d</string>
+
+    <!-- Pairing -->
+    <string name="pair_scan_hint">Richt de camera op de QR-code op je andere apparaat.</string>
+    <string name="pair_expired_body">Een code werkt maar vijf minuten.</string>
+    <string name="pair_err_title">Koppelen is niet gelukt</string>
+    <string name="pair_err_expired_title">Deze code is verlopen</string>
+    <string name="pair_err_expired_body">Vraag het andere apparaat om een nieuwe QR-code te tonen.</string>
+    <string name="pair_err_mismatch_title">Dit is niet de huidige code</string>
+    <string name="pair_err_mismatch_body">Het andere apparaat heeft een nieuwe code gemaakt. Vraag om een nieuwe QR-code en scan die.</string>
+    <string name="pair_err_not_showing_title">Daar staat geen code</string>
+    <string name="pair_err_not_showing_body">Open Tandem op het andere apparaat, kies Apparaat koppelen en toon de code. Scan die dan.</string>
+    <string name="pair_err_invalid_title">Dit is geen Tandem-code</string>
+    <string name="pair_err_invalid_body">Scan de QR-code die Tandem toont als je op een ander apparaat Apparaat koppelen kiest.</string>
+    <string name="pair_err_newer_title">Deze code komt van een nieuwere Tandem</string>
+    <string name="pair_err_newer_body">Werk Tandem op deze telefoon bij en scan de code opnieuw.</string>
+    <string name="pair_err_own_title">Dit is de code van deze telefoon</string>
+    <string name="pair_err_own_body">Scan in plaats daarvan de code op je andere apparaat.</string>
+    <string name="pair_err_no_answer_title">Het andere apparaat antwoordt niet</string>
+    <string name="pair_err_no_answer_body">Check of beide apparaten op hetzelfde netwerk zitten en Tandem op het andere geopend is, en probeer het opnieuw.</string>
+</resources>

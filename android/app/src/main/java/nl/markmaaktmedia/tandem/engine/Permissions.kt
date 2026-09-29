@@ -17,6 +17,8 @@ object Permissions {
     private fun granted(context: Context, permission: String) =
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
+    fun isGranted(context: Context, permission: String) = granted(context, permission)
+
     fun notifications(context: Context) = NotificationManagerCompat.from(context).areNotificationsEnabled()
 
     fun batteryUnrestricted(context: Context) =
@@ -28,15 +30,39 @@ object Permissions {
     fun notificationAccess(context: Context) =
         NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
 
-    val phonePermissions = arrayOf(
+    /** What showing a call on the other device cannot do without. */
+    val phoneEssential = arrayOf(
         Manifest.permission.READ_PHONE_STATE,
         Manifest.permission.ANSWER_PHONE_CALLS,
         Manifest.permission.READ_CONTACTS,
+    )
+
+    /**
+     * Extras that only add to calls: the caller's number, declining with a message and
+     * dialling from the Mac.
+     *
+     * READ_CALL_LOG and SEND_SMS are hard restricted on Android 13 and up for an app that
+     * was not installed from a store. The system dialog never grants them until the person
+     * has chosen "Allow restricted settings" in app info, so a missing one must not keep
+     * the whole phone card on Allow.
+     */
+    val phoneOptional = arrayOf(
+        Manifest.permission.READ_CALL_LOG,
+        Manifest.permission.SEND_SMS,
         Manifest.permission.CALL_PHONE,
+    )
+
+    val phoneRestricted = arrayOf(
+        Manifest.permission.READ_CALL_LOG,
         Manifest.permission.SEND_SMS,
     )
 
-    fun phone(context: Context) = phonePermissions.all { granted(context, it) }
+    val phonePermissions = phoneEssential + phoneOptional
+
+    /** True once calls can be mirrored. The extras are reported by [phoneOptionalMissing]. */
+    fun phone(context: Context) = phoneEssential.all { granted(context, it) }
+
+    fun phoneOptionalMissing(context: Context) = phoneOptional.filterNot { granted(context, it) }
 
     val bluetoothPermissions = arrayOf(
         Manifest.permission.BLUETOOTH_CONNECT,
@@ -60,10 +86,11 @@ object Permissions {
         runCatching { context.startActivity(intent) }
     }
 
+    /** The app info screen. Its three-dot menu is where "Allow restricted settings" lives. */
     fun openAppSettings(context: Context) {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+        runCatching { context.startActivity(intent) }
     }
 
     fun openInstallSettings(context: Context) {

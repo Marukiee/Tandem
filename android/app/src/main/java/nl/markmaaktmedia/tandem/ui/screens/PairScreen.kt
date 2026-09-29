@@ -1,32 +1,39 @@
 package nl.markmaaktmedia.tandem.ui.screens
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -62,16 +69,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -80,25 +88,66 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeoutOrNull
-import nl.markmaaktmedia.tandem.engine.EngineState
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.engine.EngineState
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.PillSpinner
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
 import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
-import nl.markmaaktmedia.tandem.ui.components.SegmentedPillRow
+import nl.markmaaktmedia.tandem.ui.components.TandemDialog
 import nl.markmaaktmedia.tandem.ui.components.TandemIconButton
+import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
+import nl.markmaaktmedia.tandem.ui.components.rememberPermissionRequests
+import nl.markmaaktmedia.tandem.ui.components.rememberPermissionStatus
 import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
+import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.SheetSquircle
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
+import uniffi.tandem_core.TandemException
 import java.util.concurrent.Executors
+import kotlin.math.abs
 
 private enum class PairMode { Scan, Show }
+
+/**
+ * Why a pairing attempt failed, in the words of the app rather than the core.
+ *
+ * The core reports plain English sentences, and the language of the app is not
+ * necessarily English, so the ones a person can act on are recognised here and shown
+ * from resources. Anything else keeps its raw text, which is better than hiding it.
+ */
+private sealed interface PairFailure {
+    /** [spent] codes never work again, so the camera must not offer them a second time. */
+    class Known(@param:StringRes val title: Int, @param:StringRes val body: Int, val refresh: Boolean, val spent: Boolean = true) : PairFailure
+    class Raw(val text: String) : PairFailure
+}
+
+private fun pairFailure(error: Throwable): PairFailure {
+    val raw = when (error) {
+        is TandemException.Pairing -> error.reason
+        is TandemException.Failed -> error.reason
+        else -> error.message ?: error.toString()
+    }
+    val text = raw.lowercase()
+    return when {
+        "has expired" in text -> PairFailure.Known(R.string.pair_err_expired_title, R.string.pair_err_expired_body, true)
+        "did not match" in text -> PairFailure.Known(R.string.pair_err_mismatch_title, R.string.pair_err_mismatch_body, true)
+        "not showing a pairing code" in text -> PairFailure.Known(R.string.pair_err_not_showing_title, R.string.pair_err_not_showing_body, true)
+        "not a tandem pairing code" in text || "pairing code is damaged" in text ->
+            PairFailure.Known(R.string.pair_err_invalid_title, R.string.pair_err_invalid_body, false)
+        "newer version" in text -> PairFailure.Known(R.string.pair_err_newer_title, R.string.pair_err_newer_body, false)
+        "from this device" in text -> PairFailure.Known(R.string.pair_err_own_title, R.string.pair_err_own_body, false)
+        // The other device might just have been busy, so the same code stays worth another go.
+        "did not answer" in text -> PairFailure.Known(R.string.pair_err_no_answer_title, R.string.pair_err_no_answer_body, false, spent = false)
+        else -> PairFailure.Raw(raw)
+    }
+}
 
 /** Pairing: scan another device's code, or show this device's own. */
 @Composable
@@ -109,13 +158,14 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit) {
 
     var mode by remember { mutableStateOf(PairMode.Scan) }
     var busy by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var failure by remember { mutableStateOf<PairFailure?>(null) }
     var joined by remember { mutableStateOf<String?>(null) }
+    val spent = remember { mutableSetOf<String>() }
 
     fun join(uri: String) {
         if (busy || joined != null) return
         busy = true
-        error = null
+        failure = null
         scope.launch {
             try {
                 // The engine starts a moment after the app does.
@@ -124,8 +174,12 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit) {
                 val id = engine.pairWithUri(uri)
                 host.refreshDevices()
                 joined = host.device(id)?.name ?: context.getString(R.string.pair_new_device)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                error = e.message ?: e.toString()
+                val reason = pairFailure(e)
+                if (reason is PairFailure.Known && reason.spent) spent += uri
+                failure = reason
             } finally {
                 busy = false
             }
@@ -152,7 +206,7 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit) {
             TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
             Spacer(Modifier.weight(1f))
         }
-        Text(stringResource(R.string.pair_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 4.dp))
+        Text(stringResource(R.string.pair_title), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(horizontal = 4.dp))
         Spacer(Modifier.height(16.dp))
 
         AnimatedContent(
@@ -165,57 +219,153 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit) {
                 PairedSuccess(done)
             } else {
                 Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    SegmentedPillRow(
-                        options = PairMode.entries,
-                        selected = mode,
-                        label = { if (it == PairMode.Scan) context.getString(R.string.pair_scan) else context.getString(R.string.pair_show) },
-                        onSelect = { mode = it },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    PairModeSwitch(mode, onSelect = { mode = it }, modifier = Modifier.fillMaxWidth())
                     Spacer(Modifier.height(20.dp))
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         AnimatedContent(
                             targetState = mode,
-                            transitionSpec = { fadeIn(TandemMotion.fadeSpec()) togetherWith fadeOut(TandemMotion.fadeSpec()) },
+                            transitionSpec = {
+                                val forward = targetState.ordinal > initialState.ordinal
+                                (fadeIn(TandemMotion.fadeSpec()) + slideInHorizontally(TandemMotion.spatial()) { if (forward) it / 6 else -it / 6 }) togetherWith
+                                    (fadeOut(TandemMotion.fadeSpec()) + slideOutHorizontally(TandemMotion.spatial()) { if (forward) -it / 6 else it / 6 })
+                            },
                             label = "pairMode",
                         ) { m ->
                             when (m) {
-                                PairMode.Scan -> ScanPanel(onCode = ::join, busy = busy)
+                                PairMode.Scan -> ScanPanel(
+                                    onCode = { code -> if (code !in spent) join(code) },
+                                    active = !busy && failure == null,
+                                    locked = busy,
+                                )
                                 PairMode.Show -> ShowPanel()
                             }
                         }
                     }
-                    if (busy) {
+                    AnimatedVisibility(
+                        visible = busy,
+                        enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
+                        exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
+                    ) {
                         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             PillSpinner(size = 22.dp)
                             Text(stringResource(R.string.pair_connecting), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    error?.let {
-                        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 12.dp))
+                    AnimatedVisibility(
+                        visible = mode == PairMode.Scan,
+                        enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
+                        exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
+                    ) {
+                        PasteRow(onSubmit = ::join)
                     }
-                    PasteRow(onSubmit = ::join)
                     Spacer(Modifier.height(12.dp))
+                }
+            }
+        }
+    }
+
+    failure?.let { shown ->
+        val dismiss = { failure = null }
+        when (shown) {
+            is PairFailure.Known -> TandemDialog(
+                title = stringResource(shown.title),
+                body = stringResource(shown.body),
+                icon = if (shown.refresh) TandemIcons.Refresh else TandemIcons.Info,
+                onDismiss = dismiss,
+                closeLabel = stringResource(R.string.action_close),
+                actions = { PrimaryPillButton(stringResource(R.string.generic_ok), dismiss) },
+            )
+            is PairFailure.Raw -> TandemDialog(
+                title = stringResource(R.string.pair_err_title),
+                body = shown.text,
+                icon = TandemIcons.Error,
+                iconTint = MaterialTheme.colorScheme.error,
+                onDismiss = dismiss,
+                closeLabel = stringResource(R.string.action_close),
+                actions = { PrimaryPillButton(stringResource(R.string.generic_ok), dismiss) },
+            )
+        }
+    }
+}
+
+/**
+ * Scan or show, as two halves of the same width with one pill travelling between them.
+ * Same stretch and squash as the navigation pill, so the two move like one object. The
+ * shared segmented row sizes each choice to its label, which is right for filters and
+ * wrong here, where two equal choices should look equal.
+ */
+@Composable
+private fun PairModeSwitch(mode: PairMode, onSelect: (PairMode) -> Unit, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    val target = mode.ordinal.toFloat()
+    val position = remember { Animatable(target) }
+    LaunchedEffect(target) { position.animateTo(target, TandemMotion.spatial()) }
+
+    Box(modifier.clip(PillShape).background(scheme.surfaceContainerHigh).padding(4.dp)) {
+        Box(
+            Modifier
+                .fillMaxWidth(0.5f)
+                .height(SwitchHeight)
+                .graphicsLayer {
+                    translationX = position.value * size.width
+                    val remaining = abs(target - position.value).coerceIn(0f, 1.5f)
+                    scaleX = 1f + remaining * 0.16f
+                    scaleY = 1f - remaining * 0.05f
+                }
+                .clip(PillShape)
+                .background(scheme.primary),
+        )
+        Row {
+            PairMode.entries.forEach { option ->
+                val selected = option == mode
+                val content by animateColorAsState(
+                    if (selected) scheme.onPrimary else scheme.onSurfaceVariant,
+                    TandemMotion.colourSpec(), label = "switchContent",
+                )
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .height(SwitchHeight)
+                        .clip(PillShape)
+                        .bouncyClickable { onSelect(option) },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                ) {
+                    Icon(if (option == PairMode.Scan) TandemIcons.QrScan else TandemIcons.QrShow, null, tint = content, modifier = Modifier.size(20.dp))
+                    Text(
+                        stringResource(if (option == PairMode.Scan) R.string.pair_scan else R.string.pair_show),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = content,
+                        maxLines = 1,
+                    )
                 }
             }
         }
     }
 }
 
+private val SwitchHeight = 46.dp
+
 @Composable
 private fun PairedSuccess(name: String) {
-    var shown by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { shown = true }
-    val scale by animateFloatAsState(if (shown) 1f else 0.3f, TandemMotion.bouncy(), label = "successScale")
+    val scale = remember { Animatable(0.3f) }
+    LaunchedEffect(Unit) { scale.animateTo(1f, TandemMotion.bouncy()) }
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Box(
-            Modifier.size((120 * scale).dp).clip(CircleShape).background(LocalTandemExtraColors.current.online.copy(alpha = 0.18f)),
+            Modifier
+                .size(120.dp)
+                .graphicsLayer {
+                    scaleX = scale.value
+                    scaleY = scale.value
+                }
+                .clip(CircleShape)
+                .background(LocalTandemExtraColors.current.online.copy(alpha = 0.18f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(TandemIcons.CheckCircleFilled, null, tint = LocalTandemExtraColors.current.online, modifier = Modifier.size((64 * scale).dp))
+            Icon(TandemIcons.CheckCircleFilled, null, tint = LocalTandemExtraColors.current.online, modifier = Modifier.size(64.dp))
         }
         Spacer(Modifier.height(20.dp))
-        Text(stringResource(R.string.pair_done, name), style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+        Text(stringResource(R.string.pair_done, name), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
         Spacer(Modifier.height(6.dp))
         Text(stringResource(R.string.pair_done_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
@@ -228,9 +378,12 @@ private fun PasteRow(onSubmit: (String) -> Unit) {
     val clipboard = LocalClipboardManager.current
     Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         SecondaryPillButton(stringResource(R.string.pair_have_link), { open = !open }, icon = TandemIcons.Link)
-        if (open) {
-            Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        AnimatedVisibility(
+            visible = open,
+            enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
+            exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
+        ) {
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
@@ -249,38 +402,60 @@ private fun PasteRow(onSubmit: (String) -> Unit) {
 // ---- Scanning ------------------------------------------------------------------
 
 @Composable
-private fun ScanPanel(onCode: (String) -> Unit, busy: Boolean) {
-    val context = LocalContext.current
-    var granted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
-    val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
+private fun ScanPanel(onCode: (String) -> Unit, active: Boolean, locked: Boolean) {
+    val status = rememberPermissionStatus()
+    val requests = rememberPermissionRequests(status)
 
-    if (!granted) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(24.dp)) {
-            Icon(TandemIcons.QrScan, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(48.dp))
-            Text(stringResource(R.string.pair_camera_why), textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            PrimaryPillButton(stringResource(R.string.action_allow), { request.launch(Manifest.permission.CAMERA) })
+    if (!status.camera) {
+        val blocked = status.isBlocked(android.Manifest.permission.CAMERA)
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.padding(24.dp)) {
+            Box(Modifier.size(84.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                Icon(TandemIcons.QrScan, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(38.dp))
+            }
+            Text(
+                stringResource(if (blocked) R.string.perm_blocked else R.string.pair_camera_why),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            PrimaryPillButton(
+                stringResource(if (blocked) R.string.perm_open_app_info else R.string.action_allow),
+                requests::camera,
+            )
         }
         return
     }
 
-    Box(
-        Modifier.fillMaxWidth().aspectRatio(1f).clip(SheetSquircle).background(Color.Black),
-        contentAlignment = Alignment.Center,
-    ) {
-        CameraPreview(onCode = onCode, active = !busy)
-        ViewfinderCorners()
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Box(
+            Modifier.weight(1f, fill = false).fillMaxWidth().aspectRatio(1f).clip(SheetSquircle).background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            CameraPreview(onCode = onCode, active = active)
+            ViewfinderCorners(locked)
+        }
+        Text(
+            stringResource(R.string.pair_scan_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
     }
 }
 
 @Composable
 private fun CameraPreview(onCode: (String) -> Unit, active: Boolean) {
-    val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current
     val executor = remember { Executors.newSingleThreadExecutor() }
     val scanner = remember {
         BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
     }
     var last by remember { mutableStateOf("") }
+    var streaming by remember { mutableStateOf(false) }
+    // The analyzer outlives recompositions, so it has to read the latest values, not the first.
+    val currentActive by androidx.compose.runtime.rememberUpdatedState(active)
+    val currentOnCode by androidx.compose.runtime.rememberUpdatedState(onCode)
 
     DisposableEffect(Unit) {
         onDispose {
@@ -293,6 +468,7 @@ private fun CameraPreview(onCode: (String) -> Unit, active: Boolean) {
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
             val view = PreviewView(ctx).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+            view.previewStreamState.observe(lifecycle) { streaming = it == PreviewView.StreamState.STREAMING }
             val providerFuture = ProcessCameraProvider.getInstance(ctx)
             providerFuture.addListener({
                 val provider = providerFuture.get()
@@ -307,9 +483,9 @@ private fun CameraPreview(onCode: (String) -> Unit, active: Boolean) {
                     scanner.process(InputImage.fromMediaImage(media, proxy.imageInfo.rotationDegrees))
                         .addOnSuccessListener { codes ->
                             codes.firstNotNullOfOrNull { it.rawValue }?.let { value ->
-                                if (active && value.startsWith("tandem://") && value != last) {
+                                if (currentActive && value.startsWith("tandem://") && value != last) {
                                     last = value
-                                    view.post { onCode(value) }
+                                    view.post { currentOnCode(value) }
                                 }
                             }
                         }
@@ -323,26 +499,45 @@ private fun CameraPreview(onCode: (String) -> Unit, active: Boolean) {
             view
         },
     )
+
+    // The frame is calm until the first picture arrives, instead of flashing black.
+    val cover by animateFloatAsState(if (streaming) 0f else 1f, TandemMotion.fadeSpec(), label = "cameraCover")
+    if (cover > 0.01f) {
+        Box(
+            Modifier.fillMaxSize().graphicsLayer { alpha = cover }.background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(TandemIcons.QrScan, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(44.dp))
+        }
+    }
 }
 
-/** Four corner brackets that breathe, so the camera reads as looking for something. */
+/**
+ * Four corner brackets that breathe while looking, then close in and turn green on a
+ * code, so the frame answers the moment something is found.
+ *
+ * White on purpose: they sit on a live camera picture, where no theme colour is
+ * guaranteed to contrast.
+ */
 @Composable
-private fun ViewfinderCorners() {
-    val color = Color.White.copy(alpha = 0.9f)
-    val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "viewfinder")
+private fun ViewfinderCorners(locked: Boolean) {
+    val found = LocalTandemExtraColors.current.online
+    val color by animateColorAsState(if (locked) found else Color.White.copy(alpha = 0.92f), TandemMotion.colourSpec(), label = "cornerColour")
+    val inset by animateDpAsState(if (locked) 58.dp else 34.dp, TandemMotion.springy(), label = "cornerInset")
+    val transition = rememberInfiniteTransition(label = "viewfinder")
     val pulse by transition.animateFloat(
         0.9f, 1f,
-        androidx.compose.animation.core.infiniteRepeatable(tween(1400), androidx.compose.animation.core.RepeatMode.Reverse),
+        infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Reverse),
         label = "pulse",
     )
-    Canvas(Modifier.fillMaxSize().padding(36.dp)) {
-        val arm = size.minDimension * 0.16f * pulse
-        val stroke = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
+    Canvas(Modifier.fillMaxSize().padding(inset)) {
+        val arm = size.minDimension * 0.16f * (if (locked) 1f else pulse)
+        val width = 6.dp.toPx()
         val w = size.width
         val h = size.height
         fun corner(x: Float, y: Float, dx: Float, dy: Float) {
-            drawLine(color, Offset(x, y), Offset(x + dx * arm, y), stroke.width, StrokeCap.Round)
-            drawLine(color, Offset(x, y), Offset(x, y + dy * arm), stroke.width, StrokeCap.Round)
+            drawLine(color, Offset(x, y), Offset(x + dx * arm, y), width, StrokeCap.Round)
+            drawLine(color, Offset(x, y), Offset(x, y + dy * arm), width, StrokeCap.Round)
         }
         corner(0f, 0f, 1f, 1f)
         corner(w, 0f, -1f, 1f)
@@ -383,28 +578,56 @@ private fun ShowPanel() {
     val ring by animateFloatAsState(remaining, tween(500, easing = LinearEasing), label = "ring")
     val primary = MaterialTheme.colorScheme.primary
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
+    // A QR code needs a light ground to scan, so it keeps one in both themes. The tile
+    // goes back to the theme the moment there is no code on it.
+    val tile by animateColorAsState(if (expired) MaterialTheme.colorScheme.surfaceContainerHigh else Color.White, TandemMotion.colourSpec(), label = "qrTile")
+    val bitmap = remember(uri) { uri?.let { qrBitmap(it) } }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Box(contentAlignment = Alignment.Center) {
-            Canvas(Modifier.size(300.dp)) {
-                val stroke = 8.dp.toPx()
-                drawArc(track, 0f, 360f, false, Offset(stroke / 2, stroke / 2), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke))
-                drawArc(primary, -90f, 360f * ring, false, Offset(stroke / 2, stroke / 2), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke, cap = StrokeCap.Round))
-            }
-            Box(Modifier.size(232.dp).clip(SheetSquircle).background(Color.White), contentAlignment = Alignment.Center) {
-                val bitmap = remember(uri) { uri?.let { qrBitmap(it) } }
-                when {
-                    expired -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(stringResource(R.string.pair_expired), color = Color.Black, style = MaterialTheme.typography.titleMedium)
-                        PrimaryPillButton(stringResource(R.string.pair_new_code), { round++ })
+    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        // Leaves room for the hint and the copy button, and never grows past what scans well.
+        val ringSize = minOf(maxWidth, maxHeight - 130.dp).coerceIn(200.dp, 300.dp)
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(contentAlignment = Alignment.Center) {
+                Canvas(Modifier.size(ringSize)) {
+                    val stroke = 8.dp.toPx()
+                    drawArc(track, 0f, 360f, false, Offset(stroke / 2, stroke / 2), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke))
+                    drawArc(primary, -90f, 360f * ring, false, Offset(stroke / 2, stroke / 2), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke, cap = StrokeCap.Round))
+                }
+                Box(Modifier.size(ringSize - 68.dp).clip(SheetSquircle).background(tile), contentAlignment = Alignment.Center) {
+                    AnimatedContent(
+                        targetState = when {
+                            expired -> 2
+                            bitmap != null -> 1
+                            else -> 0
+                        },
+                        transitionSpec = { (fadeIn(TandemMotion.fadeSpec()) + scaleIn(TandemMotion.springy(), 0.92f)) togetherWith fadeOut(TandemMotion.fadeSpec()) },
+                        contentAlignment = Alignment.Center,
+                        label = "qrState",
+                    ) { state ->
+                        when (state) {
+                            2 -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(16.dp)) {
+                                Text(stringResource(R.string.pair_expired), color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    stringResource(R.string.pair_expired_body),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    textAlign = TextAlign.Center,
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                PrimaryPillButton(stringResource(R.string.pair_new_code), {
+                                    uri = null
+                                    round++
+                                }, icon = TandemIcons.Refresh)
+                            }
+                            1 -> bitmap?.let { Image(it.asImageBitmap(), null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(14.dp)) }
+                            else -> PillSpinner(size = 40.dp, color = primary)
+                        }
                     }
-                    bitmap != null -> Image(bitmap.asImageBitmap(), null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(14.dp))
-                    else -> PillSpinner(size = 40.dp)
                 }
             }
+            Text(stringResource(R.string.pair_show_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            SecondaryPillButton(stringResource(R.string.pair_copy_link), { uri?.let { clipboard.setText(AnnotatedString(it)) } }, icon = TandemIcons.Copy)
         }
-        Text(stringResource(R.string.pair_show_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-        SecondaryPillButton(stringResource(R.string.pair_copy_link), { uri?.let { clipboard.setText(AnnotatedString(it)) } }, icon = TandemIcons.Copy)
     }
 }
 
