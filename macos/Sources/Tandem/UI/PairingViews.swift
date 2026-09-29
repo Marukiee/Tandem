@@ -61,6 +61,7 @@ struct PairingPanel: View {
                                 .onSubmit(joinWithPasted)
                             Button("Join", action: joinWithPasted)
                                 .buttonStyle(.glassProminent)
+                                .tint(Palette.indigo)
                                 .disabled(pasted.isEmpty || model.pairing.busy)
                         }
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -196,10 +197,12 @@ struct PairingSheet: View {
                 Button {
                     dismiss()
                 } label: {
-                    Image(systemName: "xmark").font(.callout.weight(.semibold)).padding(10)
+                    Image(systemName: "xmark").font(.callout.weight(.semibold)).frame(width: 14, height: 14)
                 }
-                .buttonStyle(.bouncy)
-                .glassEffect(.regular.interactive(), in: .circle)
+                .buttonStyle(.glass)
+                .buttonBorderShape(.circle)
+                .keyboardShortcut(.cancelAction)
+                .help("Close")
                 .padding(14)
             }
             .onDisappear { model.endPairing() }

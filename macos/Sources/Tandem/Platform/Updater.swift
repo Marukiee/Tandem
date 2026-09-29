@@ -51,7 +51,8 @@ final class Updater {
 
     /// On launch: check at most once a day.
     func checkIfDue() {
-        guard autoCheck else { return }
+        // A development build must never replace itself with a release.
+        guard autoCheck, !AppIdentity.isDevelopmentBuild else { return }
         if let last = lastChecked, Date().timeIntervalSince(last) < 24 * 3600 { return }
         Task { await check(manual: false) }
     }
@@ -109,7 +110,7 @@ final class Updater {
     }
 
     func install() async {
-        guard case let .available(release) = state else { return }
+        guard case let .available(release) = state, !AppIdentity.isDevelopmentBuild else { return }
         do {
             state = .downloading(release, 0)
             let zip = try await download(release)

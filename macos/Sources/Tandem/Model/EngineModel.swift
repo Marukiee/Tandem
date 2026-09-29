@@ -42,7 +42,7 @@ final class EngineModel {
     var devices: [TandemDevice] = []
     var transfers: [TransferItem] = []
     var pairing = PairingState()
-    var myName = Host.current().localizedName ?? "Mac"
+    var myName = EngineModel.savedName ?? Host.current().localizedName ?? "Mac"
     var myId = ""
     var ready = false
     var startError: String?
@@ -51,6 +51,14 @@ final class EngineModel {
     var hotspotStatus: HotspotStatus = .idle
     /// A short message shown as a toast at the bottom of the window.
     var toast: String?
+    /// A received file the person asked to move to the Trash, waiting for a yes.
+    var pendingTrash: TransferItem?
+
+    nonisolated static let nameKey = "deviceName"
+    /// The name the person chose in Settings. Without it the Mac's own name is used.
+    nonisolated static var savedName: String? {
+        UserDefaults.standard.string(forKey: nameKey).flatMap { $0.isEmpty ? nil : $0 }
+    }
 
     @ObservationIgnored private var engine: TandemEngine?
     @ObservationIgnored private var eventTask: Task<Void, Never>?
@@ -61,11 +69,18 @@ final class EngineModel {
     @ObservationIgnored private var statusTimer: Timer?
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     @ObservationIgnored let hotspot = HotspotCoordinator()
+    /// Where a sent file came from, by the name it travels under, so a finished
+    /// transfer can be opened later. The core reports no location for outgoing files.
+    @ObservationIgnored private var outgoingSources: [String: String] = [:]
 
     var isTransferring: Bool { transfers.contains { $0.state == .active } }
     /// True while this Mac's connection is a phone's personal hotspot.
     var networkUsesHotspot: Bool { network.usesCellularHotspot }
     var onlineCount: Int { devices.filter(\.online).count }
+    /// "2 of 3 connected", for the sidebar and the menu bar panel.
+    var connectionSummary: String {
+        String(localized: "\(onlineCount) of \(devices.count) connected")
+    }
 
     func device(_ id: String) -> TandemDevice? { devices.first { $0.id == id } }
 
@@ -75,6 +90,9 @@ final class EngineModel {
         guard engine == nil else { return }
         Notifier.shared.setUp()
         wireNotifier()
+        injector.onPermissionNeeded = { [weak self] in
+            self?.showToast(String(localized: "Allow Tandem to control this Mac in System Settings, under Accessibility"))
+        }
 
         let directory = Self.supportDirectory()
         let config = TandemConfig(
@@ -112,6 +130,7 @@ final class EngineModel {
     }
 
     func stop() async {
+        injector.releaseAll()
         clipboard?.stop()
         network.stop()
         statusTimer?.invalidate()
@@ -124,6 +143,11 @@ final class EngineModel {
         self.engine = engine
         myId = engine.id()
         myName = engine.name()
+        // A name chosen in Settings wins over whatever the engine kept.
+        if let saved = Self.savedName, saved != myName {
+            myName = saved
+            Task { try? await engine.renameSelf(name: saved) }
+        }
         ready = true
         refreshDevices()
 
@@ -167,8 +191,7 @@ final class EngineModel {
     }
 
     nonisolated static func supportDirectory() -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let directory = base.appendingPathComponent("Tandem", isDirectory: true)
+        let directory = AppIdentity.dataDirectory()
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         return directory
     }
@@ -194,6 +217,8 @@ final class EngineModel {
         case .devicesChanged, .connected, .disconnected, .circleChanged:
             refreshDevices()
             if case let .connected(id) = event { hotspot.deviceConnected(id) }
+            // A phone that drops while a button is held must not leave it held here.
+            if case let .disconnected(id) = event { injector.sourceDisconnected(id) }
 
         case let .paired(id):
             refreshDevices()
@@ -237,6 +262,7 @@ final class EngineModel {
             if let code = notification.otp, UserDefaults.standard.object(forKey: "copyCodes") as? Bool ?? true {
                 clipboard?.apply(code)
                 showToast(String(localized: "Code \(code) copied"))
+                Notifier.shared.postCodeCopied(code: code, deviceName: deviceName, key: notification.key)
             }
             Notifier.shared.postMirrored(device: from, deviceName: deviceName, notification: notification)
 
@@ -255,8 +281,8 @@ final class EngineModel {
                 }
             }
 
-        case let .input(_, input):
-            injector.handle(input)
+        case let .input(from, input):
+            injector.handle(input, from: from)
 
         case let .hotspot(from, message):
             hotspot.handle(from: from, message: message)
@@ -325,6 +351,64 @@ final class EngineModel {
         transfers.removeAll { $0.state != .active }
     }
 
+    // MARK: Acting on a transfer
+
+    /// Where the file of a transfer lives: where it was stored, or for a sent file
+    /// where it was sent from.
+    private func filePath(_ item: TransferItem) -> String? {
+        item.location ?? (item.incoming ? nil : outgoingSources[item.name])
+    }
+
+    /// Whether the file behind a transfer can be found on disk right now.
+    func canOpen(_ item: TransferItem) -> Bool {
+        guard item.state == .done, let path = filePath(item) else { return false }
+        return FileManager.default.fileExists(atPath: path)
+    }
+
+    func open(_ item: TransferItem) {
+        guard canOpen(item), let path = filePath(item) else {
+            if item.state == .done { showToast(String(localized: "The file is no longer there")) }
+            return
+        }
+        NSWorkspace.shared.open(URL(fileURLWithPath: path))
+    }
+
+    func reveal(_ item: TransferItem) {
+        guard canOpen(item), let path = filePath(item) else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+    }
+
+    func copyPath(_ item: TransferItem) {
+        guard let path = filePath(item) else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(path, forType: .string)
+        showToast(String(localized: "Path copied"))
+    }
+
+    /// Takes transfers off the list. A transfer that is still running stays.
+    func removeFromList(_ ids: Set<String>) {
+        transfers.removeAll { ids.contains($0.id) && $0.state != .active }
+    }
+
+    /// Asks for a yes before a received file is trashed. Only files that arrived here
+    /// qualify: a sent file is the person's own original.
+    func requestTrash(_ item: TransferItem) {
+        guard item.incoming, canOpen(item) else { return }
+        pendingTrash = item
+    }
+
+    func confirmTrash(_ item: TransferItem) {
+        pendingTrash = nil
+        guard item.incoming, let path = item.location else { return }
+        do {
+            try FileManager.default.trashItem(at: URL(fileURLWithPath: path), resultingItemURL: nil)
+            removeFromList([item.id])
+            showToast(String(localized: "Moved to the Trash"))
+        } catch {
+            showToast(String(localized: "Could not move the file to the Trash"))
+        }
+    }
+
     // MARK: Sending
 
     func send(urls: [URL], to ids: [String]) {
@@ -335,6 +419,7 @@ final class EngineModel {
                 for url in urls {
                     let prepared = try FileKind.prepareForSending(url)
                     let size = (try? prepared.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                    outgoingSources[prepared.lastPathComponent] = url.path
                     files.append(TandemOutgoingFile(
                         source: prepared.path,
                         name: prepared.lastPathComponent,
@@ -383,9 +468,19 @@ final class EngineModel {
         }
     }
 
+    /// Shows a name in the sidebar while it is still being typed, without telling the
+    /// engine or saving anything yet.
+    func previewName(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { myName = trimmed }
+    }
+
+    /// Saves the name and sends it on. Kept in UserDefaults because the engine would
+    /// otherwise start again from the Mac's own name on every launch.
     func rename(to name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        UserDefaults.standard.set(trimmed, forKey: Self.nameKey)
         myName = trimmed
         Task { try? await engine?.renameSelf(name: trimmed) }
     }
@@ -432,9 +527,30 @@ final class EngineModel {
                 pairing.joinedName = device(id)?.name ?? String(localized: "New device")
             } catch {
                 pairing.busy = false
-                pairing.error = error.localizedDescription
+                pairing.error = Self.pairingMessage(for: error)
             }
         }
+    }
+
+    /// The core reports why a join failed in plain but technical words. The three
+    /// that a person can act on get a friendly message, the rest is shown as it is.
+    nonisolated static func pairingMessage(for error: Error) -> String {
+        let raw: String
+        switch error as? TandemError {
+        case let .Pairing(reason)?, let .Failed(reason)?: raw = reason
+        default: raw = error.localizedDescription
+        }
+        let text = raw.lowercased()
+        if text.contains("the pairing code has expired") {
+            return String(localized: "This code has expired. Ask the other device to show a new QR code.")
+        }
+        if text.contains("the pairing code did not match") {
+            return String(localized: "This code does not match. Ask the other device to show a new QR code and scan that one.")
+        }
+        if text.contains("this device is not showing a pairing code") {
+            return String(localized: "The other device is not showing a pairing code. Choose Add device on it and try again.")
+        }
+        return raw
     }
 
     func handle(url: URL) {

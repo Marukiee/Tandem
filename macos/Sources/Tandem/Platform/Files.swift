@@ -50,20 +50,30 @@ final class MacFiles: TandemFiles, @unchecked Sendable {
     }
 }
 
-/// Where received files go. Chosen in Settings, `~/Downloads/Tandem` by default.
+/// Where received files go. Chosen in Settings, `~/Downloads` by default: a file that
+/// arrives should be where the person looks for downloads, not in a folder of its own.
 enum DownloadFolder {
     static let key = "downloadFolderPath"
+
+    static var defaultURL: URL {
+        FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")
+    }
+
+    static var isDefault: Bool { UserDefaults.standard.string(forKey: key)?.isEmpty ?? true }
 
     static var url: URL {
         get {
             if let path = UserDefaults.standard.string(forKey: key), !path.isEmpty {
                 return URL(fileURLWithPath: path)
             }
-            let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
-                ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")
-            return downloads.appendingPathComponent("Tandem")
+            return defaultURL
         }
         set { UserDefaults.standard.set(newValue.path, forKey: key) }
+    }
+
+    static func reset() {
+        UserDefaults.standard.removeObject(forKey: key)
     }
 }
 

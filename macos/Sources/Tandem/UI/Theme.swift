@@ -47,17 +47,167 @@ extension Animation {
 /// How far a pressed element shrinks. Small enough to feel, not to distract.
 let pressedScale: CGFloat = 0.96
 
-/// Shrinks a little while pressed and springs back, on everything tappable.
+/// Corner radii that nest. A shape inside another one gets the outer radius minus the
+/// gap between them, so the two curves stay parallel instead of looking pinched.
+enum Metrics {
+    static let card: CGFloat = 26
+    static let cardInset: CGFloat = 10
+
+    static func inner(_ outer: CGFloat, inset: CGFloat) -> CGFloat { max(4, outer - inset) }
+    static var cardInner: CGFloat { inner(card, inset: cardInset) }
+}
+
+// MARK: Surfaces
+
+/// The surface content sits on. Glass floats above the content (toolbar, controls, the
+/// toast), so the content itself gets a plain fill and never glass.
+struct Surface: ViewModifier {
+    var radius: CGFloat = Metrics.card
+    var tint: Color?
+
+    func body(content: Content) -> some View {
+        content.background {
+            let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+            shape
+                .fill(Color(nsColor: .controlBackgroundColor))
+                .overlay { if let tint { shape.fill(tint.opacity(0.10)) } }
+                .overlay { shape.strokeBorder(Color.primary.opacity(0.06), lineWidth: 1) }
+        }
+    }
+}
+
+extension View {
+    func surface(radius: CGFloat = Metrics.card, tint: Color? = nil) -> some View {
+        modifier(Surface(radius: radius, tint: tint))
+    }
+}
+
+// MARK: Hover
+
+/// A card or button that rises a little under the pointer. The spring is the same one
+/// used everywhere else. With Reduce Motion on, nothing moves and only the shadow
+/// changes.
+struct HoverLift: ViewModifier {
+    var scale: CGFloat = 1.015
+    var lift: CGFloat = 2
+    var enabled = true
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @LocalState private var hovering = false
+
+    func body(content: Content) -> some View {
+        let active = hovering && enabled
+        content
+            .scaleEffect(active && !reduceMotion ? scale : 1)
+            .offset(y: active && !reduceMotion ? -lift : 0)
+            .shadow(color: .black.opacity(active ? 0.10 : 0), radius: active ? 14 : 0, y: active ? 7 : 0)
+            .onHover { hovering = $0 }
+            .animation(reduceMotion ? .tandemFade : .tandemSpringy, value: active)
+    }
+}
+
+/// A soft highlight behind a row while the pointer is over it. Colour only, so a
+/// tween is right, and it stays put under Reduce Motion.
+struct HoverHighlight: ViewModifier {
+    var radius: CGFloat = 12
+    var tint: Color = .primary
+    var selected = false
+
+    @LocalState private var hovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(tint.opacity(selected ? 0.14 : (hovering ? 0.075 : 0)))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .onHover { hovering = $0 }
+            .animation(.tandemFade, value: hovering)
+            .animation(.tandemFade, value: selected)
+    }
+}
+
+/// Hands the hover state to a view that wants to react in more than one place, such
+/// as a row whose icon nudges while its background lights up.
+struct Hoverable<Content: View>: View {
+    @ViewBuilder var content: (Bool) -> Content
+    @LocalState private var hovering = false
+
+    var body: some View {
+        content(hovering).onHover { hovering = $0 }
+    }
+}
+
+extension View {
+    func hoverLift(scale: CGFloat = 1.015, lift: CGFloat = 2, enabled: Bool = true) -> some View {
+        modifier(HoverLift(scale: scale, lift: lift, enabled: enabled))
+    }
+
+    func hoverHighlight(radius: CGFloat = 12, tint: Color = .primary, selected: Bool = false) -> some View {
+        modifier(HoverHighlight(radius: radius, tint: tint, selected: selected))
+    }
+}
+
+// MARK: Button styles
+
+/// Shrinks a little while pressed and springs back, and swells a little under the
+/// pointer, on everything tappable that is not a system glass button.
 struct BouncyButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
+        BouncyButtonBody(configuration: configuration)
+    }
+}
+
+private struct BouncyButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @LocalState private var hovering = false
+
+    var body: some View {
         configuration.label
+            .scaleEffect(configuration.isPressed ? pressedScale : (hovering && isEnabled && !reduceMotion ? 1.06 : 1))
+            .onHover { hovering = $0 }
+            .animation(.tandemBouncy, value: configuration.isPressed)
+            .animation(.tandemSpringy, value: hovering)
+    }
+}
+
+/// A small round icon button: a faint disc appears under the pointer.
+struct IconButtonStyle: ButtonStyle {
+    var size: CGFloat = 28
+
+    func makeBody(configuration: Configuration) -> some View {
+        IconButtonBody(configuration: configuration, size: size)
+    }
+}
+
+private struct IconButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    let size: CGFloat
+    @Environment(\.isEnabled) private var isEnabled
+    @LocalState private var hovering = false
+
+    var body: some View {
+        configuration.label
+            .frame(width: size, height: size)
+            .background(Circle().fill(Color.primary.opacity(configuration.isPressed ? 0.16 : (hovering && isEnabled ? 0.09 : 0))))
+            .contentShape(Circle())
             .scaleEffect(configuration.isPressed ? pressedScale : 1)
+            .onHover { hovering = $0 }
+            .animation(.tandemFade, value: hovering)
             .animation(.tandemBouncy, value: configuration.isPressed)
     }
 }
 
 extension ButtonStyle where Self == BouncyButtonStyle {
     static var bouncy: BouncyButtonStyle { BouncyButtonStyle() }
+}
+
+extension ButtonStyle where Self == IconButtonStyle {
+    static var icon: IconButtonStyle { IconButtonStyle() }
+    static func icon(size: CGFloat) -> IconButtonStyle { IconButtonStyle(size: size) }
 }
 
 /// Formats a byte count the way a person reads it.

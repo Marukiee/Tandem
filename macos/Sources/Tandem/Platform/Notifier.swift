@@ -78,6 +78,17 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         )
     }
 
+    /// Says that a one-time code from a phone notification was found and put on the
+    /// clipboard, so it can be pasted without going back to the phone.
+    func postCodeCopied(code: String, deviceName: String, key: String) {
+        post(
+            id: "code.\(key)",
+            title: String(localized: "Code \(code) recognised and copied"),
+            body: String(localized: "From \(deviceName)"),
+            thread: "codes"
+        )
+    }
+
     func postCall(device: String, id: String, name: String?, number: String?, incoming: Bool) {
         let who = name ?? number ?? String(localized: "Unknown number")
         post(
