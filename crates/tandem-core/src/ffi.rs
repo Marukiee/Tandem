@@ -741,6 +741,24 @@ impl From<Event> for TandemEvent {
     }
 }
 
+// ---- Hotspot over Bluetooth ------------------------------------------------------
+
+/// The bytes a hotspot request signs. Both apps call this, so they cannot disagree.
+#[uniffi::export]
+pub fn tandem_hotspot_auth_message(challenge: Vec<u8>, device_id: String, action: u8, timestamp_ms: u64) -> Vec<u8> {
+    crate::hotspot::auth_message(&challenge, &device_id, action, timestamp_ms)
+}
+
+/// The rotating tag in a phone's Bluetooth advertisement for `hour` (Unix time in
+/// seconds divided by 3600). Empty when the id is not a valid device id.
+#[uniffi::export]
+pub fn tandem_ble_hint(device_id: String, hour: u64) -> Vec<u8> {
+    match DeviceId::parse(&device_id) {
+        Ok(id) => crate::hotspot::ble_hint(&id, hour).to_vec(),
+        Err(_) => Vec::new(),
+    }
+}
+
 // ---- Logging ----------------------------------------------------------------------
 
 static LOGGING: Once = Once::new();
@@ -875,6 +893,24 @@ impl TandemEngine {
     pub fn network_changed(&self) {
         let _guard = self.runtime.enter();
         self.engine.network_changed();
+    }
+
+    /// Signs with this device's identity key. Used for proofs that cannot travel over
+    /// QUIC, such as the Bluetooth hotspot request.
+    pub fn sign_message(&self, message: Vec<u8>) -> Vec<u8> {
+        self.engine.sign_message(&message)
+    }
+
+    /// True only when `id` is a current circle member and the signature is theirs.
+    pub fn verify_member(&self, id: String, message: Vec<u8>, signature: Vec<u8>) -> bool {
+        DeviceId::parse(&id).map(|id| self.engine.verify_member(&id, &message, &signature)).unwrap_or(false)
+    }
+
+    /// Where a circle member can be reached right now, as `ip:port`. Dials at once.
+    pub fn add_address(&self, id: String, addr: String) -> Result<(), TandemError> {
+        let _guard = self.runtime.enter();
+        let id = DeviceId::parse(&id)?;
+        self.engine.add_address(&id, &addr).map_err(Into::into)
     }
 
     pub fn create_pairing_offer(&self) -> Result<TandemPairingOffer, TandemError> {

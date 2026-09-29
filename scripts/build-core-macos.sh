@@ -11,7 +11,7 @@ FLAGS=(--target "$TARGET" -p tandem-core)
 [ "$PROFILE" = "release" ] && FLAGS+=(--release)
 
 cargo build "${FLAGS[@]}"
-OUT="target/$TARGET/$PROFILE"
+OUT="${CARGO_TARGET_DIR:-target}/$TARGET/$PROFILE"
 
 mkdir -p macos/Libs macos/Sources/tandem_coreFFI/include macos/Sources/TandemCore
 cp "$OUT/libtandem_core.a" macos/Libs/

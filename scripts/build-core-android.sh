@@ -16,8 +16,9 @@ cargo ndk "${FLAGS[@]}"
 
 # Bindings are generated from a host build of the same crate.
 cargo build -q -p tandem-core
-LIB="target/debug/libtandem_core.dylib"
-[ -f "$LIB" ] || LIB="target/debug/libtandem_core.so"
+HOST_OUT="${CARGO_TARGET_DIR:-target}/debug"
+LIB="$HOST_OUT/libtandem_core.dylib"
+[ -f "$LIB" ] || LIB="$HOST_OUT/libtandem_core.so"
 OUT="android/app/src/main/java"
 cargo run -q -p uniffi-bindgen --bin uniffi-bindgen -- generate \
   --library "$LIB" --language kotlin --no-format --out-dir "$OUT"

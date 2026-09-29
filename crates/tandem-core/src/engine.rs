@@ -357,6 +357,36 @@ impl Engine {
         self.inner.session_of(id).map(|s| s.conn.rtt().as_millis() as u32)
     }
 
+    /// Signs with this device's identity. For proofs that travel outside a QUIC
+    /// session, such as the Bluetooth hotspot request.
+    pub fn sign_message(&self, message: &[u8]) -> Vec<u8> {
+        self.inner.identity.sign(message).to_vec()
+    }
+
+    /// True only when `id` is a current member of the circle and `signature` is that
+    /// member's Ed25519 signature over `message`. A device that has itself been removed
+    /// from the circle vouches for nobody.
+    pub fn verify_member(&self, id: &DeviceId, message: &[u8], signature: &[u8]) -> bool {
+        let circle = self.inner.circle.read().unwrap();
+        if !circle.is_member(&self.inner.identity.public_key()) {
+            return false;
+        }
+        match circle.member(id) {
+            Some(member) => crate::identity::verify_signature(&member.public_key, message, signature),
+            None => false,
+        }
+    }
+
+    /// Tells the engine where a circle member can be reached right now (for example a
+    /// phone's hotspot gateway) and dials it without waiting for the retry backoff.
+    pub fn add_address(&self, id: &DeviceId, addr: &str) -> Result<()> {
+        let socket: SocketAddr = addr
+            .trim()
+            .parse()
+            .map_err(|_| Error::invalid("the address must look like ip:port"))?;
+        self.inner.add_address(id, socket)
+    }
+
     /// Sends the datagram (a pointer movement) unreliably and as fast as possible.
     pub fn send_datagram(&self, id: &DeviceId, data: bytes::Bytes) -> Result<()> {
         let session = self.inner.session_of(id).ok_or(Error::NotConnected)?;
@@ -588,6 +618,19 @@ impl Inner {
             }
             self.addrs_dirty.store(true, Ordering::Relaxed);
         }
+    }
+
+    pub fn add_address(self: &Arc<Self>, id: &DeviceId, addr: SocketAddr) -> Result<()> {
+        {
+            let mut peers = self.peers.lock().unwrap();
+            let peer = peers.get_mut(id).ok_or(Error::NotTrusted)?;
+            peer.addrs.learn(SocketAddr::new(addr.ip().to_canonical(), addr.port()), now_ms());
+            peer.next_dial = Instant::now();
+            peer.fail_count = 0;
+        }
+        self.addrs_dirty.store(true, Ordering::Relaxed);
+        self.poke.notify_one();
+        Ok(())
     }
 
     pub fn network_changed(self: &Arc<Self>) {
