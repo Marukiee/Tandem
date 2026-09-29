@@ -137,6 +137,7 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
                         // Switching language recreates the app, so ask before doing it.
                         onSelect = { if (it != currentLanguage) pendingLanguage = it },
                         modifier = Modifier.fillMaxWidth(),
+                        equalWidth = true,
                     )
                 }
             }
