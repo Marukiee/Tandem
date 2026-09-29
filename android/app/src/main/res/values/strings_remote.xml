@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_hint_three">Three fingers for Mission Control and Spaces</string>
+    <string name="remote_mouse_buttons">Mouse buttons</string>
+    <string name="remote_left">Left</string>
+    <string name="remote_right">Right</string>
+    <string name="remote_type_hint">Type to send to your Mac</string>
+    <string name="remote_media_mute">Mute</string>
+    <string name="remote_media_volume_down">Volume down</string>
+    <string name="remote_media_previous">Previous</string>
+    <string name="remote_media_play_pause">Play or pause</string>
+    <string name="remote_media_next">Next</string>
+    <string name="remote_media_volume_up">Volume up</string>
+    <string name="remote_mod_shift">Shift</string>
+    <string name="remote_mod_ctrl">Ctrl</string>
+    <string name="remote_mod_option">Option</string>
+    <string name="remote_mod_command">Cmd</string>
+    <string name="remote_key_esc">Esc</string>
+    <string name="remote_key_tab">Tab</string>
+    <string name="remote_key_up">Arrow up</string>
+    <string name="remote_key_down">Arrow down</string>
+    <string name="remote_key_left">Arrow left</string>
+    <string name="remote_key_right">Arrow right</string>
+    <string name="remote_key_delete">Delete</string>
+    <string name="remote_key_enter">Enter</string>
+</resources>

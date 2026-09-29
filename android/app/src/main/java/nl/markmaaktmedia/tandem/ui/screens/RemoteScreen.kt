@@ -1,276 +1,296 @@
 package nl.markmaaktmedia.tandem.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.PresenceDot
 import nl.markmaaktmedia.tandem.ui.components.TandemIconButton
-import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
+import nl.markmaaktmedia.tandem.ui.remote.KeyboardPanel
+import nl.markmaaktmedia.tandem.ui.remote.MacKeys
+import nl.markmaaktmedia.tandem.ui.remote.MediaControls
+import nl.markmaaktmedia.tandem.ui.remote.Mods
+import nl.markmaaktmedia.tandem.ui.remote.MouseButtons
+import nl.markmaaktmedia.tandem.ui.remote.PadFeedback
+import nl.markmaaktmedia.tandem.ui.remote.RemoteLink
+import nl.markmaaktmedia.tandem.ui.remote.SwipeDirection
+import nl.markmaaktmedia.tandem.ui.remote.TouchpadClassifier
+import nl.markmaaktmedia.tandem.ui.remote.TouchpadConfig
+import nl.markmaaktmedia.tandem.ui.remote.TouchpadOutput
+import nl.markmaaktmedia.tandem.ui.remote.touchpad
 import nl.markmaaktmedia.tandem.ui.theme.SheetSquircle
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
+import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import uniffi.tandem_core.TandemInput
-import uniffi.tandem_core.TandemMediaKey
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
-// macOS virtual key codes, which is what the Mac side expects in Key events.
-private const val KEY_RETURN = 36.toShort()
-private const val KEY_TAB = 48.toShort()
-private const val KEY_DELETE = 51.toShort()
-private const val KEY_ESCAPE = 53.toShort()
-private const val KEY_LEFT = 123.toShort()
-private const val KEY_RIGHT = 124.toShort()
-private const val KEY_DOWN = 125.toShort()
-private const val KEY_UP = 126.toShort()
+/** The gap between every block of the screen. */
+private val Gap = 12.dp
 
 /** Turns the phone into a trackpad, keyboard and media remote for another device. */
 @Composable
 fun RemoteScreen(id: String, onBack: () -> Unit) {
-    val context = LocalContext.current
-    val host = context.graph.host
+    val graph = LocalContext.current.graph
+    val host = graph.host
     val devices by host.devices.collectAsState()
     val device = devices.firstOrNull { it.id == id }
-    val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
 
-    var keyboard by remember { mutableStateOf(false) }
-
-    fun input(value: TandemInput) {
-        scope.launch { runCatching { host.engine?.sendInput(id, value) } }
+    val link = remember(id) { RemoteLink(host, id, graph.scope) }
+    DisposableEffect(link) {
+        link.start()
+        onDispose { link.release() }
     }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding().padding(horizontal = 16.dp)) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
-            Column(Modifier.weight(1f)) {
-                Text(device?.name ?: "", style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    PresenceDot(device?.online == true)
-                    Text(
-                        stringResource(if (device?.online == true) R.string.remote_ready else R.string.status_offline),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+    var keyboard by rememberSaveable { mutableStateOf(false) }
+    var mouseButtons by rememberSaveable { mutableStateOf(false) }
+    // The armed modifiers of the on-screen keyboard, spent by the next key or character.
+    var mods by remember { mutableIntStateOf(0) }
+
+    fun pressKey(code: Short) {
+        link.key(code, mods)
+        mods = 0
+    }
+
+    fun typeText(text: String) {
+        var armed = mods
+        mods = 0
+        val plain = StringBuilder()
+        fun flush() {
+            if (plain.isNotEmpty()) link.send(TandemInput.Text(plain.toString()))
+            plain.clear()
+        }
+        for (char in text) {
+            // Only the first character takes the armed keys, and only a character with a
+            // key of its own can: an accent or an emoji has nothing to press Cmd with.
+            if (armed != 0 || char == '\n') {
+                val stroke = MacKeys.strokeFor(char)
+                if (stroke != null) {
+                    flush()
+                    link.key(stroke.code, armed or stroke.mods)
+                    armed = 0
+                    continue
+                }
+                armed = 0
+            }
+            plain.append(char)
+        }
+        flush()
+    }
+
+    val slop = LocalViewConfiguration.current.touchSlop
+    val swipeDistance = with(LocalDensity.current) { 56.dp.toPx() }
+    val classifier = remember(link, haptics, slop, swipeDistance) {
+        TouchpadClassifier(
+            TouchpadConfig(slop = slop, swipeDistance = swipeDistance),
+            object : TouchpadOutput {
+                override fun pointer(dx: Int, dy: Int) = link.pointer(dx, dy)
+                override fun scroll(dx: Int, dy: Int) = link.scroll(dx, dy)
+                override fun click(button: Int, count: Int) = link.click(button, count)
+                override fun button(button: Int, down: Boolean) = link.hold(button, down)
+
+                // Three fingers up or down open Mission Control and App Exposé, left and
+                // right change space. The Mac maps all four to Ctrl plus an arrow.
+                override fun swipe(direction: SwipeDirection) = link.key(
+                    when (direction) {
+                        SwipeDirection.Up -> MacKeys.UP
+                        SwipeDirection.Down -> MacKeys.DOWN
+                        SwipeDirection.Left -> MacKeys.LEFT
+                        SwipeDirection.Right -> MacKeys.RIGHT
+                    },
+                    Mods.CTRL,
+                )
+
+                override fun feedback(kind: PadFeedback) {
+                    haptics.performHapticFeedback(
+                        when (kind) {
+                            PadFeedback.Click -> HapticFeedbackType.TextHandleMove
+                            PadFeedback.DragStart -> HapticFeedbackType.LongPress
+                            PadFeedback.Swipe -> HapticFeedbackType.GestureThresholdActivate
+                        },
                     )
                 }
-            }
-            TandemIconButton(
-                TandemIcons.Keyboard, stringResource(R.string.remote_keyboard),
-                { keyboard = !keyboard },
-                background = if (keyboard) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
-                tint = if (keyboard) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+            },
+        )
+    }
 
-        // The trackpad
+    // Closing the panel has to take the phone keyboard with it, or the keyboard stays up
+    // over a screen that no longer has anything to type into.
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(keyboard) {
+        if (!keyboard) {
+            keyboardController?.hide()
+            focusManager.clearFocus()
+        }
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(horizontal = 16.dp),
+    ) {
+        TopBar(
+            name = device?.name ?: "",
+            online = device?.online == true,
+            keyboardOn = keyboard,
+            mouseOn = mouseButtons,
+            onBack = onBack,
+            onKeyboard = { keyboard = !keyboard },
+            onMouse = { mouseButtons = !mouseButtons },
+        )
+
         Box(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .clip(SheetSquircle)
                 .background(MaterialTheme.colorScheme.surfaceContainer)
-                .touchpad(
-                    onMove = { dx, dy -> runCatching { host.engine?.sendPointer(id, dx.toShort(), dy.toShort()) } },
-                    onScroll = { dx, dy -> runCatching { host.engine?.sendScroll(id, dx.toShort(), dy.toShort()) } },
-                    onClick = { button, count -> haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); input(TandemInput.Click(button.toUByte(), count.toUByte())) },
-                    onButton = { down -> haptics.performHapticFeedback(HapticFeedbackType.LongPress); input(TandemInput.Button(0u, down)) },
-                ),
+                .touchpad(classifier),
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(TandemIcons.Touch, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(40.dp))
-                Text(stringResource(R.string.remote_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f))
+                Text(
+                    stringResource(R.string.remote_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+                Text(
+                    stringResource(R.string.remote_hint_three),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                )
             }
         }
 
-        AnimatedVisibility(keyboard, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-            KeyboardPanel(onText = { input(TandemInput.Text(it)) }, onKey = { input(TandemInput.Key(it.toUShort(), true, 0u)); input(TandemInput.Key(it.toUShort(), false, 0u)) })
+        // Each block that comes and goes brings its own gap with it, so the gap grows and
+        // shrinks with the block and nothing is left standing between two neighbours.
+        AnimatedVisibility(
+            visible = keyboard,
+            enter = fadeIn(TandemMotion.fadeSpec()) + expandVertically(TandemMotion.sizeSpring(), expandFrom = Alignment.Top),
+            exit = fadeOut(TandemMotion.fadeSpec()) + shrinkVertically(TandemMotion.sizeSpring(), shrinkTowards = Alignment.Top),
+        ) {
+            Column {
+                Spacer(Modifier.height(Gap))
+                KeyboardPanel(
+                    mods = mods,
+                    onToggleMod = { bit -> mods = mods xor bit },
+                    onText = ::typeText,
+                    onKey = ::pressKey,
+                )
+            }
         }
 
-        // Media
-        Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-            MediaButton(TandemIcons.VolumeOff) { input(TandemInput.Media(TandemMediaKey.MUTE)) }
-            MediaButton(TandemIcons.VolumeDown) { input(TandemInput.Media(TandemMediaKey.VOLUME_DOWN)) }
-            MediaButton(TandemIcons.Previous) { input(TandemInput.Media(TandemMediaKey.PREVIOUS)) }
-            MediaButton(TandemIcons.Play, primary = true) { input(TandemInput.Media(TandemMediaKey.PLAY_PAUSE)) }
-            MediaButton(TandemIcons.Next) { input(TandemInput.Media(TandemMediaKey.NEXT)) }
-            MediaButton(TandemIcons.VolumeUp) { input(TandemInput.Media(TandemMediaKey.VOLUME_UP)) }
+        Spacer(Modifier.height(Gap))
+        MediaControls(onKey = { link.send(TandemInput.Media(it)) })
+
+        AnimatedVisibility(
+            visible = mouseButtons,
+            enter = fadeIn(TandemMotion.fadeSpec()) + expandVertically(TandemMotion.sizeSpring(), expandFrom = Alignment.Top),
+            exit = fadeOut(TandemMotion.fadeSpec()) + shrinkVertically(TandemMotion.sizeSpring(), shrinkTowards = Alignment.Top),
+        ) {
+            Column {
+                Spacer(Modifier.height(Gap))
+                MouseButtons(onButton = link::hold)
+            }
         }
+        Spacer(Modifier.height(Gap))
     }
 }
 
 @Composable
-private fun MediaButton(icon: Painter, primary: Boolean = false, onClick: () -> Unit) {
-    Box(
-        Modifier.size(if (primary) 56.dp else 44.dp).clip(androidx.compose.foundation.shape.CircleShape)
-            .background(if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
-            .bouncyClickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+private fun TopBar(
+    name: String,
+    online: Boolean,
+    keyboardOn: Boolean,
+    mouseOn: Boolean,
+    onBack: () -> Unit,
+    onKeyboard: () -> Unit,
+    onMouse: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(icon, null, tint = if (primary) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(if (primary) 26.dp else 22.dp))
+        TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
+        Column(Modifier.weight(1f)) {
+            Text(name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // The dot sits in a 14dp box so its ring has room to breathe, which put the
+                // dot itself 3dp right of the name. Pulled back so the line starts where the
+                // name starts, with the box still taking its full width for the text.
+                PresenceDot(online, Modifier.offset(x = (-3).dp))
+                Text(
+                    stringResource(if (online) R.string.remote_ready else R.string.status_offline),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        TopBarToggle(TandemIcons.Keyboard, stringResource(R.string.remote_keyboard), keyboardOn, onKeyboard)
+        TopBarToggle(TandemIcons.Mouse, stringResource(R.string.remote_mouse_buttons), mouseOn, onMouse)
     }
 }
 
+/** An icon button that stays lit while what it shows is on. The colours fade, never snap. */
 @Composable
-private fun KeyboardPanel(onText: (String) -> Unit, onKey: (Short) -> Unit) {
-    val focus = remember { FocusRequester() }
-    var value by remember { mutableStateOf(TextFieldValue("")) }
-    LaunchedEffect(Unit) { focus.requestFocus() }
-
-    Column(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // What is typed goes straight across, so the field only ever holds the last few letters.
-        BasicTextField(
-            value = value,
-            onValueChange = { new ->
-                val old = value.text
-                when {
-                    new.text.length > old.length -> onText(new.text.substring(old.length))
-                    new.text.length < old.length -> repeat(old.length - new.text.length) { onKey(KEY_DELETE) }
-                }
-                value = if (new.text.length > 40) TextFieldValue("", TextRange(0)) else new
-            },
-            modifier = Modifier.fillMaxWidth().focusRequester(focus).clip(SheetSquircle).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(16.dp),
-            textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            KeyChip("Esc", Modifier.weight(1f)) { onKey(KEY_ESCAPE) }
-            KeyChip("Tab", Modifier.weight(1f)) { onKey(KEY_TAB) }
-            KeyChip("←", Modifier.weight(1f)) { onKey(KEY_LEFT) }
-            KeyChip("↓", Modifier.weight(1f)) { onKey(KEY_DOWN) }
-            KeyChip("↑", Modifier.weight(1f)) { onKey(KEY_UP) }
-            KeyChip("→", Modifier.weight(1f)) { onKey(KEY_RIGHT) }
-            KeyChip("⏎", Modifier.weight(1f)) { onKey(KEY_RETURN) }
-        }
-    }
-}
-
-@Composable
-private fun KeyChip(label: String, modifier: Modifier, onClick: () -> Unit) {
-    Box(
-        modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.secondaryContainer).bouncyClickable(onClick = onClick).padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
-    }
-}
-
-/**
- * The trackpad gestures.
- *
- * One finger moves the pointer, a tap clicks, two taps in a row double-click, a tap
- * with two fingers is a right click, two fingers moving scroll, and a press held
- * for a moment picks the pointer up so the next move drags.
- */
-private fun Modifier.touchpad(
-    onMove: (Int, Int) -> Unit,
-    onScroll: (Int, Int) -> Unit,
-    onClick: (button: Int, count: Int) -> Unit,
-    onButton: (down: Boolean) -> Unit,
-): Modifier = pointerInput(Unit) {
-    var lastTapEnd = 0L
-    awaitEachGesture {
-        val first = awaitFirstDown(requireUnconsumed = false)
-        val startTime = System.currentTimeMillis()
-        var moved = 0f
-        var fingers = 1
-        var maxFingers = 1
-        var dragging = false
-        var pendingX = 0f
-        var pendingY = 0f
-        var lastFlush = startTime
-
-        while (true) {
-            val event = awaitPointerEvent(PointerEventPass.Initial)
-            val pressed = event.changes.filter { it.pressed }
-            fingers = pressed.size
-            if (fingers > maxFingers) maxFingers = fingers
-            if (pressed.isEmpty()) break
-
-            // Average movement of the fingers on the pad.
-            val dx = pressed.sumOf { (it.position.x - it.previousPosition.x).toDouble() }.toFloat() / fingers
-            val dy = pressed.sumOf { (it.position.y - it.previousPosition.y).toDouble() }.toFloat() / fingers
-            moved += abs(dx) + abs(dy)
-            pendingX += dx
-            pendingY += dy
-            event.changes.forEach { it.consume() }
-
-            val now = System.currentTimeMillis()
-            if (!dragging && fingers == 1 && moved < 12f && now - startTime > 380) {
-                dragging = true
-                onButton(true)
-            }
-            // Batched to about 120 updates a second, so a fast swipe is not a flood.
-            if (now - lastFlush >= 8) {
-                val x = pendingX.roundToInt()
-                val y = pendingY.roundToInt()
-                if (x != 0 || y != 0) {
-                    if (fingers >= 2) onScroll(x, y) else onMove(x, y)
-                    pendingX -= x
-                    pendingY -= y
-                }
-                lastFlush = now
-            }
-        }
-        val end = System.currentTimeMillis()
-        val x = pendingX.roundToInt()
-        val y = pendingY.roundToInt()
-        if (x != 0 || y != 0) if (maxFingers >= 2) onScroll(x, y) else onMove(x, y)
-
-        if (dragging) {
-            onButton(false)
-        } else if (moved < 14f && end - startTime < 260) {
-            if (maxFingers >= 2) {
-                onClick(1, 1)
-            } else {
-                val double = end - lastTapEnd < 320
-                onClick(0, if (double) 2 else 1)
-                lastTapEnd = if (double) 0 else end
-            }
-        }
-        first.consume()
-    }
+private fun TopBarToggle(icon: Painter, description: String, on: Boolean, onClick: () -> Unit) {
+    val container by animateColorAsState(
+        if (on) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+        TandemMotion.colourSpec(), label = "toggleContainer",
+    )
+    val tint by animateColorAsState(
+        if (on) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        TandemMotion.colourSpec(), label = "toggleTint",
+    )
+    TandemIconButton(icon, description, onClick, background = container, tint = tint)
 }
