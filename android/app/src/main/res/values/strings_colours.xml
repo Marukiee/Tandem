@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Appearance: accent choices -->
+    <string name="colours_seed_wallpaper">Wallpaper</string>
+    <string name="colours_seed_indigo">Indigo</string>
+    <string name="colours_seed_ocean">Ocean</string>
+    <string name="colours_seed_forest">Forest</string>
+    <string name="colours_seed_amber">Amber</string>
+    <string name="colours_seed_rose">Rose</string>
+    <string name="colours_seed_plum">Plum</string>
+    <string name="colours_seed_slate">Slate</string>
+    <string name="colours_wallpaper_note">Follows your wallpaper, the same as the rest of your phone.</string>
+    <string name="colours_mono_note">Monochrome ignores the accent colour.</string>
+
+    <!-- Appearance: palette styles -->
+    <string name="colours_style_tonal_spot">Tonal Spot</string>
+    <string name="colours_style_vibrant">Vibrant</string>
+    <string name="colours_style_expressive">Expressive</string>
+    <string name="colours_style_fruit_salad">Fruit Salad</string>
+    <string name="colours_style_fidelity">Fidelity</string>
+    <string name="colours_style_monochrome">Monochrome</string>
+    <string name="colours_style_tonal_spot_desc">The Android default. Calm colours that stay close to the accent.</string>
+    <string name="colours_style_vibrant_desc">Stronger, more saturated colours.</string>
+    <string name="colours_style_expressive_desc">Playful. The other colours drift away from the accent.</string>
+    <string name="colours_style_fruit_salad_desc">A bold, mixed palette with the hue shifted.</string>
+    <string name="colours_style_fidelity_desc">Stays as true to the accent colour as it can.</string>
+    <string name="colours_style_monochrome_desc">No colour at all, only shades of grey.</string>
+</resources>

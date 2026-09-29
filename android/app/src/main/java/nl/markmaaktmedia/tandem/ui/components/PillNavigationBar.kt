@@ -1,8 +1,5 @@
 package nl.markmaaktmedia.tandem.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +8,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -23,22 +21,22 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
-import kotlin.math.abs
 
 class PillNavItem(
     val label: String,
@@ -54,10 +52,13 @@ class PillNavItem(
  * to whichever tab was tapped, which is what makes the bar read as one object rather
  * than four buttons that light up independently.
  *
- * The elastic part comes from the travel itself: the pill stretches along its
- * direction of movement in proportion to how far it still has to go, and settles back
- * to its resting width as it arrives. A hop to the neighbour barely deforms, a jump
- * across the bar visibly stretches, so the distance is legible rather than decorative.
+ * The pill is elastic, see [ElasticIndicator]: its two edges are separate springs, the
+ * one in the direction of travel is the stiffer, so it stretches out and gathers itself
+ * back at the destination. A hop to the neighbour barely deforms, a jump across the bar
+ * visibly stretches, so the distance is legible rather than decorative.
+ *
+ * Icon and label take their colour from how much of their slot the pill covers, so
+ * they change as the pill passes under them and not on a timer of their own.
  *
  * Icon and label are laid out as one centred block inside the full indicator height,
  * with the icon given a fixed box. Letting the label sit under a free standing icon
@@ -75,6 +76,9 @@ fun PillNavigationBar(
 ) {
     if (items.isEmpty()) return
 
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val density = LocalDensity.current
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
@@ -88,36 +92,23 @@ fun PillNavigationBar(
         // time made every slot narrower than its tab, and the error piled up on the
         // last one: the pill sat flush on the left and left a gap on the right.
         val slotWidth = maxWidth / items.size
-        val target = slotWidth * selectedIndex
+        val slotPx = with(density) { slotWidth.toPx() }
 
-        val position = remember { Animatable(target.value) }
-        LaunchedEffect(target, slotWidth) {
-            position.animateTo(target.value, animationSpec = TandemMotion.spatial())
+        // The indicator is drawn in physical pixels, so a right to left layout has to
+        // mirror the slots itself.
+        fun slotLeft(index: Int) = if (rtl) slotPx * (items.size - 1 - index) else slotPx * index
+
+        val target = remember(selectedIndex, slotPx, rtl, items.size) {
+            IndicatorTarget(selectedIndex, slotLeft(selectedIndex), slotLeft(selectedIndex) + slotPx)
         }
+        val indicator = rememberElasticIndicator(target)
 
-        // Distance still to travel, normalised against one slot. Feeds the stretch.
-        val remaining = abs(target.value - position.value) / slotWidth.value.coerceAtLeast(1f)
-        val stretch = 1f + (remaining.coerceIn(0f, 1.6f) * StretchFactor)
-        val squash = 1f - (remaining.coerceIn(0f, 1.6f) * SquashFactor)
-
-        Box(
-            modifier = Modifier
-                .offset(x = position.value.dp)
-                .width(slotWidth)
-                .fillMaxHeight()
-                .graphicsLayer {
-                    scaleX = stretch
-                    scaleY = squash
-                }
-                .clip(RoundedCornerShape(percent = 50))
-                .background(indicatorColor)
-        )
-
-        Row(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxSize().elasticIndicator(indicator, indicatorColor)) {
             items.forEachIndexed { index, item ->
                 PillNavTab(
                     item = item,
                     selected = index == selectedIndex,
+                    covered = indicator.coverage(slotLeft(index), slotLeft(index) + slotPx),
                     onSelect = { onSelect(index) },
                     modifier = Modifier.width(slotWidth),
                     selectedContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -132,6 +123,7 @@ fun PillNavigationBar(
 private fun PillNavTab(
     item: PillNavItem,
     selected: Boolean,
+    covered: Float,
     onSelect: () -> Unit,
     selectedContentColor: Color,
     unselectedContentColor: Color,
@@ -139,18 +131,10 @@ private fun PillNavTab(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
 
-    val contentColor by animateColorAsState(
-        targetValue = if (selected) selectedContentColor else unselectedContentColor,
-        animationSpec = TandemMotion.colourSpec(),
-        label = "navTabColour",
-    )
-    // The selected tab grows a touch, so the pill has something to be holding up
-    // rather than sitting behind.
-    val lift by animateFloatAsState(
-        targetValue = if (selected) 1f else 0f,
-        animationSpec = TandemMotion.springy(),
-        label = "navTabLift",
-    )
+    val contentColor = lerp(unselectedContentColor, selectedContentColor, covered)
+    // The covered tab grows a touch, so the pill has something to be holding up rather
+    // than sitting behind. Driven by the pill as well, so the two cannot drift apart.
+    val lift = covered
 
     Box(
         modifier = modifier
@@ -207,7 +191,3 @@ private val BarHeight: Dp = 66.dp
 private val Padding: Dp = 7.dp
 private val IconBox: Dp = 24.dp
 private val IconSize: Dp = 21.dp
-
-/** How much of a full slot of remaining travel turns into stretch, and into squash. */
-private const val StretchFactor = 0.14f
-private const val SquashFactor = 0.05f

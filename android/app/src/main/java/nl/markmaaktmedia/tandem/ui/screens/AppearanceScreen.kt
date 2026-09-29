@@ -1,16 +1,22 @@
 package nl.markmaaktmedia.tandem.ui.screens
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,39 +28,43 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
+import nl.markmaaktmedia.tandem.ui.appearance.LiveScreenPreview
+import nl.markmaaktmedia.tandem.ui.appearance.SeedPreviewTile
+import nl.markmaaktmedia.tandem.ui.appearance.StylePreviewCard
 import nl.markmaaktmedia.tandem.ui.components.ContentRow
 import nl.markmaaktmedia.tandem.ui.components.SectionHeader
 import nl.markmaaktmedia.tandem.ui.components.SegmentedPillRow
 import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
 import nl.markmaaktmedia.tandem.ui.components.SwitchRow
 import nl.markmaaktmedia.tandem.ui.components.TandemIconButton
-import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
-import nl.markmaaktmedia.tandem.ui.theme.Appearance
 import nl.markmaaktmedia.tandem.ui.theme.ColourSeed
+import nl.markmaaktmedia.tandem.ui.theme.LocalAppearance
 import nl.markmaaktmedia.tandem.ui.theme.PaletteStyle
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.ui.theme.ThemeMode
+import nl.markmaaktmedia.tandem.ui.theme.isDark
+import nl.markmaaktmedia.tandem.ui.theme.resolve
 
 @Composable
 fun AppearanceScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = context.graph.prefs
     val scope = rememberCoroutineScope()
-    val appearance by prefs.appearance.collectAsState(initial = Appearance())
+    // Read from the theme rather than collected again: what the theme is wearing is
+    // what the previews should be compared against.
+    val appearance = LocalAppearance.current
+    val dark = appearance.isDark()
 
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
@@ -65,6 +75,9 @@ fun AppearanceScreen(onBack: () -> Unit) {
         }
         Text(stringResource(R.string.settings_appearance), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
 
+        Spacer(Modifier.height(6.dp))
+        LiveScreenPreview()
+
         SectionHeader(stringResource(R.string.appearance_theme))
         SettingsGroup {
             ContentRow(0, 2, TandemIcons.DarkMode, stringResource(R.string.appearance_mode)) {
@@ -74,6 +87,7 @@ fun AppearanceScreen(onBack: () -> Unit) {
                     label = { context.getString(when (it) { ThemeMode.SYSTEM -> R.string.language_system; ThemeMode.LIGHT -> R.string.appearance_light; ThemeMode.DARK -> R.string.appearance_dark }) },
                     onSelect = { scope.launch { prefs.setThemeMode(it) } },
                     modifier = Modifier.fillMaxWidth(),
+                    equalWidth = true,
                 )
             }
             SwitchRow(1, 2, TandemIcons.DarkMode, stringResource(R.string.appearance_black), stringResource(R.string.appearance_black_sub), appearance.pureBlack, { scope.launch { prefs.setPureBlack(it) } })
@@ -81,47 +95,133 @@ fun AppearanceScreen(onBack: () -> Unit) {
 
         SectionHeader(stringResource(R.string.appearance_colour))
         SettingsGroup {
-            SwitchRow(0, 3, TandemIcons.Palette, stringResource(R.string.appearance_wallpaper), stringResource(R.string.appearance_wallpaper_sub), appearance.seed == ColourSeed.WALLPAPER, {
-                scope.launch { prefs.setSeed(if (it) ColourSeed.WALLPAPER else ColourSeed.INDIGO) }
-            })
-            ContentRow(1, 3, TandemIcons.Palette, stringResource(R.string.appearance_accent)) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ColourSeed.swatches.forEach { seed ->
-                        Swatch(seed, selected = appearance.seed == seed) { scope.launch { prefs.setSeed(seed) } }
+            ContentRow(0, 2, TandemIcons.Palette, stringResource(R.string.appearance_accent)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    // Wallpaper is one of the tiles, not a switch above them: it is a
+                    // choice between the same things, and a switch made the accent
+                    // tiles look usable while they were ignored.
+                    ColourSeed.entries.chunked(SeedColumns).forEach { rowSeeds ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            rowSeeds.forEach { seed ->
+                                SeedPreviewTile(
+                                    seed = seed.resolve(context),
+                                    style = appearance.style,
+                                    dark = dark,
+                                    pureBlack = appearance.pureBlack,
+                                    selected = appearance.seed == seed,
+                                    label = stringResource(seedLabel(seed)),
+                                    onClick = { scope.launch { prefs.setSeed(seed) } },
+                                    modifier = Modifier.weight(1f),
+                                    overlay = { scheme ->
+                                        if (seed == ColourSeed.WALLPAPER) {
+                                            Box(
+                                                Modifier
+                                                    .align(Alignment.TopStart)
+                                                    .padding(6.dp)
+                                                    .size(20.dp)
+                                                    .clip(CircleShape)
+                                                    .background(scheme.surface.copy(alpha = 0.9f)),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Icon(TandemIcons.Image, null, tint = scheme.onSurface, modifier = Modifier.size(12.dp))
+                                            }
+                                        }
+                                    },
+                                )
+                            }
+                        }
                     }
+                    Note(visible = appearance.seed == ColourSeed.WALLPAPER, text = stringResource(R.string.colours_wallpaper_note))
+                    Note(visible = appearance.style == PaletteStyle.MONOCHROME, text = stringResource(R.string.colours_mono_note))
                 }
             }
-            ContentRow(2, 3, TandemIcons.Palette, stringResource(R.string.appearance_style)) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PaletteStyle.entries.forEach { style ->
-                        StyleChip(style, appearance.style == style) { scope.launch { prefs.setStyle(style) } }
+            ContentRow(1, 2, TandemIcons.Palette, stringResource(R.string.appearance_style)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val seed = appearance.seed.resolve(context)
+                    PaletteStyle.entries.chunked(StyleColumns).forEach { rowStyles ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            rowStyles.forEach { style ->
+                                StylePreviewCard(
+                                    style = style,
+                                    seed = seed,
+                                    dark = dark,
+                                    pureBlack = appearance.pureBlack,
+                                    selected = appearance.style == style,
+                                    label = stringResource(styleLabel(style)),
+                                    onClick = { scope.launch { prefs.setStyle(style) } },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                    }
+                    AnimatedContent(
+                        targetState = appearance.style,
+                        transitionSpec = { fadeIn(TandemMotion.fadeSpec()) togetherWith fadeOut(TandemMotion.fadeSpec()) },
+                        label = "styleDescription",
+                    ) { style ->
+                        Text(
+                            text = stringResource(styleDescription(style)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                        )
                     }
                 }
             }
         }
+
+        Spacer(Modifier.height(24.dp))
     }
 }
 
+/** A line of explanation that folds away when it stops being true. */
 @Composable
-private fun Swatch(seed: ColourSeed, selected: Boolean, onClick: () -> Unit) {
-    val scale by animateFloatAsState(if (selected) 1.08f else 1f, TandemMotion.bouncy(), label = "swatch")
-    val ring by animateColorAsState(if (selected) MaterialTheme.colorScheme.onSurface else androidx.compose.ui.graphics.Color.Transparent, TandemMotion.colourSpec(), label = "swatchRing")
-    Box(
-        Modifier.size(46.dp).scale(scale).clip(CircleShape).background(seed.seed).border(3.dp, ring, CircleShape).bouncyClickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+private fun Note(visible: Boolean, text: String) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
+        exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
     ) {
-        if (selected) Icon(TandemIcons.Check, null, tint = androidx.compose.ui.graphics.Color.White, modifier = Modifier.size(22.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
     }
 }
 
-@Composable
-private fun StyleChip(style: PaletteStyle, selected: Boolean, onClick: () -> Unit) {
-    val container by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh, TandemMotion.colourSpec(), label = "chipContainer")
-    val content by animateColorAsState(if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, TandemMotion.colourSpec(), label = "chipContent")
-    Text(
-        text = style.name.lowercase().split('_').joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
-        style = MaterialTheme.typography.labelLarge,
-        color = content,
-        modifier = Modifier.clip(CircleShape).background(container).bouncyClickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp),
-    )
+private const val SeedColumns = 4
+private const val StyleColumns = 3
+
+@StringRes
+private fun seedLabel(seed: ColourSeed): Int = when (seed) {
+    ColourSeed.WALLPAPER -> R.string.colours_seed_wallpaper
+    ColourSeed.INDIGO -> R.string.colours_seed_indigo
+    ColourSeed.OCEAN -> R.string.colours_seed_ocean
+    ColourSeed.FOREST -> R.string.colours_seed_forest
+    ColourSeed.AMBER -> R.string.colours_seed_amber
+    ColourSeed.ROSE -> R.string.colours_seed_rose
+    ColourSeed.PLUM -> R.string.colours_seed_plum
+    ColourSeed.SLATE -> R.string.colours_seed_slate
+}
+
+@StringRes
+private fun styleLabel(style: PaletteStyle): Int = when (style) {
+    PaletteStyle.TONAL_SPOT -> R.string.colours_style_tonal_spot
+    PaletteStyle.VIBRANT -> R.string.colours_style_vibrant
+    PaletteStyle.EXPRESSIVE -> R.string.colours_style_expressive
+    PaletteStyle.FRUIT_SALAD -> R.string.colours_style_fruit_salad
+    PaletteStyle.FIDELITY -> R.string.colours_style_fidelity
+    PaletteStyle.MONOCHROME -> R.string.colours_style_monochrome
+}
+
+@StringRes
+private fun styleDescription(style: PaletteStyle): Int = when (style) {
+    PaletteStyle.TONAL_SPOT -> R.string.colours_style_tonal_spot_desc
+    PaletteStyle.VIBRANT -> R.string.colours_style_vibrant_desc
+    PaletteStyle.EXPRESSIVE -> R.string.colours_style_expressive_desc
+    PaletteStyle.FRUIT_SALAD -> R.string.colours_style_fruit_salad_desc
+    PaletteStyle.FIDELITY -> R.string.colours_style_fidelity_desc
+    PaletteStyle.MONOCHROME -> R.string.colours_style_monochrome_desc
 }

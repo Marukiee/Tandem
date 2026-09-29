@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Uiterlijk: accentkeuzes -->
+    <string name="colours_seed_wallpaper">Achtergrond</string>
+    <string name="colours_seed_indigo">Indigo</string>
+    <string name="colours_seed_ocean">Oceaan</string>
+    <string name="colours_seed_forest">Bos</string>
+    <string name="colours_seed_amber">Amber</string>
+    <string name="colours_seed_rose">Roze</string>
+    <string name="colours_seed_plum">Pruim</string>
+    <string name="colours_seed_slate">Leisteen</string>
+    <string name="colours_wallpaper_note">Volgt je achtergrond, net als de rest van je telefoon.</string>
+    <string name="colours_mono_note">Monochroom negeert de accentkleur.</string>
+
+    <!-- Uiterlijk: paletstijlen -->
+    <string name="colours_style_tonal_spot">Tonal Spot</string>
+    <string name="colours_style_vibrant">Levendig</string>
+    <string name="colours_style_expressive">Expressief</string>
+    <string name="colours_style_fruit_salad">Fruitsalade</string>
+    <string name="colours_style_fidelity">Getrouw</string>
+    <string name="colours_style_monochrome">Monochroom</string>
+    <string name="colours_style_tonal_spot_desc">De standaard van Android. Rustige kleuren die dicht bij het accent blijven.</string>
+    <string name="colours_style_vibrant_desc">Sterkere, meer verzadigde kleuren.</string>
+    <string name="colours_style_expressive_desc">Speels. De andere kleuren wijken af van het accent.</string>
+    <string name="colours_style_fruit_salad_desc">Een gedurfd, gemengd palet met een verschoven tint.</string>
+    <string name="colours_style_fidelity_desc">Blijft zo dicht mogelijk bij de accentkleur.</string>
+    <string name="colours_style_monochrome_desc">Helemaal geen kleur, alleen tinten grijs.</string>
+</resources>

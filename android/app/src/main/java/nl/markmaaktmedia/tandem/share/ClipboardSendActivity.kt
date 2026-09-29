@@ -43,7 +43,7 @@ import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.EngineState
 import nl.markmaaktmedia.tandem.engine.TandemService
 import nl.markmaaktmedia.tandem.graph
-import nl.markmaaktmedia.tandem.ui.theme.Appearance
+import nl.markmaaktmedia.tandem.ui.theme.collectAppearance
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.ui.theme.TandemTheme
@@ -95,7 +95,7 @@ class ClipboardSendActivity : ComponentActivity() {
 
     private fun showPicker(text: String) {
         setContent {
-            val appearance = graph.prefs.appearance.collectAsState(initial = Appearance()).value
+            val appearance = graph.prefs.appearance.collectAppearance()
             TandemTheme(appearance, applySystemBarStyle = false) {
                 val host = graph.host
                 val devices by host.devices.collectAsState()
