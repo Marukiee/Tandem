@@ -1,0 +1,261 @@
+name: Release
+
+# Push a tag like v1.2.3 and this builds, signs and publishes everything.
+# Run by hand from the Actions tab to try the build without publishing.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version tag to build, for example v0.1.0 (ignored when run from a tag)
+        type: string
+      publish:
+        description: Create the GitHub Release, not only build the files
+        type: boolean
+        default: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  meta:
+    name: Version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+      version: ${{ steps.v.outputs.version }}
+      code: ${{ steps.v.outputs.code }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - id: v
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+          if [ "$REF_TYPE" = tag ]; then tag="$REF_NAME"; else tag="$INPUT_TAG"; fi
+          re='^v([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9A-Za-z.-]+)?$'
+          [[ "$tag" =~ $re ]] || { echo "::error::'$tag' is not a version tag like v1.2.3"; exit 1; }
+          major=$((10#${BASH_REMATCH[1]})); minor=$((10#${BASH_REMATCH[2]})); patch=$((10#${BASH_REMATCH[3]}))
+          # Android needs a versionCode that only ever goes up. Two digits each for
+          # minor and patch keeps that true, so anything above 99 would break it.
+          if [ "$minor" -gt 99 ] || [ "$patch" -gt 99 ]; then
+            echo "::error::minor and patch must stay below 100 for the versionCode scheme"; exit 1
+          fi
+          publish=false
+          if [ "$REF_TYPE" = tag ] || [ "$INPUT_PUBLISH" = true ]; then publish=true; fi
+          {
+            echo "tag=$tag"
+            echo "version=${tag#v}"
+            echo "code=$((major * 10000 + minor * 100 + patch))"
+            echo "prerelease=$([[ "$tag" == *-* ]] && echo true || echo false)"
+            echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
+
+  android:
+    name: Android APK
+    needs: meta
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+      CODE: ${{ needs.meta.outputs.code }}
+      # Public fingerprint of the release key (see CLAUDE.md). Publishing an APK
+      # signed by anything else would strand every installed copy.
+      EXPECTED_SHA256: 676d63506553b7006696e5374c0972364a14f3718e48e7764e855b9123f530c2
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/android-toolchain
+
+      - name: Write the keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          [ -n "$KEYSTORE_B64" ] || { echo "::error::ANDROID_KEYSTORE_B64 is not set"; exit 1; }
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/keystore.jks
+          # storeFile is relative to the android folder, see app/build.gradle.kts.
+          {
+            echo "storeFile=keystore.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/keystore.properties
+
+      - name: Build the core and the bindings
+        run: ./scripts/build-core-android.sh
+
+      - name: Build the signed APK
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PversionName="$VERSION" -PversionCode="$CODE"
+
+      # Gradle falls back to the debug key when the keystore is missing, and the
+      # build still succeeds. This makes that a failure instead of a bad release.
+      - name: Check the signing key
+        run: |
+          set -euo pipefail
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk" | tee certs.txt
+          grep -q "SHA-256 digest: $EXPECTED_SHA256" certs.txt \
+            || { echo "::error::the APK is not signed with the Tandem release key"; exit 1; }
+
+      - name: Name the files
+        run: |
+          set -euo pipefail
+          mkdir dist
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          cp "$apk" "dist/Tandem-v$VERSION.apk"
+          cp "$apk" dist/Tandem.apk
+          (cd dist && sha256sum Tandem.apk > Tandem.apk.sha256)
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android
+          path: dist/*
+          if-no-files-found: error
+
+  macos:
+    name: Mac app
+    needs: meta
+    # Pinned instead of macos-latest: the app needs the macOS 26 SDK, and a moving
+    # label could change the toolchain under a release.
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+      BUILD: ${{ needs.meta.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Import the signing certificate
+        env:
+          MACOS_CERT_P12_B64: ${{ secrets.MACOS_CERT_P12_B64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: ./scripts/mac-signing.sh ci
+
+      - name: Build and sign the app
+        run: ./scripts/build-macos.sh release
+
+      - name: Check the bundle
+        run: |
+          set -euo pipefail
+          app=macos/dist/Tandem.app
+          plist="$app/Contents/Info.plist"
+          codesign --verify --deep --strict "$app"
+          [ "$(plutil -extract CFBundleShortVersionString raw "$plist")" = "$VERSION" ] \
+            || { echo "::error::the app has the wrong version"; exit 1; }
+          # The key in the app must be the one the signature is made for.
+          [ "$(plutil -extract TandemUpdatePublicKey raw "$plist")" = "$(tr -d '[:space:]' < macos/update-public-key.txt)" ] \
+            || { echo "::error::the app does not carry the update public key"; exit 1; }
+
+      # The zip is what the app downloads. The .sig is over these exact bytes, so
+      # nothing may touch the zip after it is signed.
+      - name: Zip and sign
+        env:
+          TANDEM_UPDATE_ED25519_SECRET: ${{ secrets.TANDEM_UPDATE_ED25519_SECRET }}
+        run: |
+          set -euo pipefail
+          mkdir dist
+          ditto -c -k --keepParent macos/dist/Tandem.app dist/Tandem-macOS.zip
+          (cd dist && shasum -a 256 Tandem-macOS.zip > Tandem-macOS.zip.sha256)
+          swift scripts/sign-update.swift dist/Tandem-macOS.zip > dist/Tandem-macOS.zip.sig
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: dist/*
+          if-no-files-found: error
+
+  linux:
+    name: tandemd (${{ matrix.arch }})
+    needs: meta
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Built on 22.04 so the binary runs on older distributions too (Debian 12,
+          # Raspberry Pi OS): it needs at least the glibc of the machine that built it.
+          # Each arch builds natively, so there is no cross toolchain to maintain.
+          - arch: x86_64
+            runner: ubuntu-22.04
+          - arch: aarch64
+            runner: ubuntu-22.04-arm
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo build --release --locked -p tandemd
+
+      - name: Package
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          name="tandemd-linux-$ARCH"
+          mkdir -p "dist/$name"
+          install -m 755 target/release/tandemd "dist/$name/tandemd"
+          cp packaging/tandemd.service packaging/README.md LICENSE "dist/$name/"
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+          rm -rf "dist/$name"
+          # Same file under a fixed name (for install links) and a versioned name.
+          cp "dist/$name.tar.gz" "dist/tandemd-v$VERSION-linux-$ARCH.tar.gz"
+          (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: GitHub Release
+    needs: [meta, android, macos, linux]
+    if: needs.meta.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List the files
+        run: ls -l dist
+
+      # The apps look for these names in releases/latest: Tandem.apk and
+      # Tandem.apk.sha256 on Android, Tandem-macOS.zip with .sha256 and .sig on the Mac.
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          make_latest: ${{ needs.meta.outputs.prerelease != 'true' }}
+          prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
+          fail_on_unmatched_files: true
+          files: dist/*

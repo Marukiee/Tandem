@@ -1,9 +1,12 @@
 # Tandem
 
+[![CI](https://img.shields.io/github/actions/workflow/status/Marukiee/Tandem/ci.yml?branch=main&label=CI)](https://github.com/Marukiee/Tandem/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Marukiee/Tandem?label=release)](https://github.com/Marukiee/Tandem/releases/latest)
 [![Licentie](https://img.shields.io/badge/licentie-AGPL--3.0-blue)](#licentie)
 [![Rust](https://img.shields.io/badge/core-Rust-DEA584?logo=rust&logoColor=white)](#hoe-het-werkt)
 [![Android](https://img.shields.io/badge/Android-12%2B-3DDC84?logo=android&logoColor=white)](#)
 [![macOS](https://img.shields.io/badge/macOS-26%2B-000000?logo=apple&logoColor=white)](#)
+[![Linux](https://img.shields.io/badge/Linux-tandemd-FCC624?logo=linux&logoColor=black)](packaging/README.md)
 
 Je telefoon en je computers als één geheel. Bestanden, klembord, meldingen en
 hotspot gaan direct tussen je eigen apparaten, versleuteld, zonder account en
@@ -33,6 +36,40 @@ ook met Linux blijft werken.
 - 🔁 **Bijwerken zonder verwijderen**. De app controleert zelf op updates en
   installeert ze over de vorige heen
 
+## Installeren
+
+Alles staat op de [releases-pagina](https://github.com/Marukiee/Tandem/releases/latest).
+Bij elk bestand staat een `.sha256` als je de download wilt controleren.
+
+### Android (12 of nieuwer)
+
+1. Download `Tandem.apk` op je telefoon.
+2. Open het bestand. Android vraagt eenmalig of de app waarmee je het opent (je browser
+   of bestanden-app) apps van onbekende bronnen mag installeren. Zet dat aan, ga terug
+   en tik op Installeren.
+
+Daarna hoef je niet meer naar GitHub. Tandem controleert zelf hooguit één keer per dag
+of er een nieuwe versie is en installeert die over de vorige heen, zonder verwijderen.
+Daarvoor vraagt de app één keer toestemming om apps te installeren.
+
+### Mac (macOS 26 of nieuwer, Apple Silicon)
+
+1. Download `Tandem-macOS.zip`, pak uit en sleep Tandem naar Programma's.
+2. Open Tandem. macOS weigert dat de eerste keer, omdat de app is ondertekend met een
+   zelfgemaakt certificaat en niet is genotariseerd door Apple. Ga naar Systeeminstellingen,
+   Privacy en beveiliging, scroll naar onder en klik bij Tandem op "Toch openen". Dat
+   hoef je maar één keer te doen.
+
+Updates installeren zichzelf. Omdat elke versie met hetzelfde certificaat is
+ondertekend, blijven je toestemmingen (Bluetooth, lokaal netwerk, meldingen,
+toegankelijkheid) staan.
+
+### Linux en de Hub
+
+`tandemd` draait als achtergronddienst op Linux. Installeren, koppelen en de systemd-dienst
+staan in [packaging/README.md](packaging/README.md). Een apparaat dat altijd aan staat,
+zoals een server op je tailnet, zet je op met de [Hub](hub/README.md).
+
 ## Hoe het werkt
 
 Eén Rust-core doet het netwerk, de versleuteling en de overdracht. Android, macOS
@@ -59,11 +96,14 @@ Meer in [docs/PROTOCOL.md](docs/PROTOCOL.md) en [docs/SECURITY.md](docs/SECURITY
 cargo test --workspace
 
 # de Android-app (JDK 21, Android SDK 36, NDK 28, cargo-ndk)
-./scripts/build-android.sh
+./scripts/build-core-android.sh
+(cd android && ./gradlew assembleDebug)
 
 # de Mac-app (Command Line Tools met Swift 6.4 is genoeg)
 ./scripts/build-macos.sh
 ```
+
+Een release maken staat in [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Licentie
 

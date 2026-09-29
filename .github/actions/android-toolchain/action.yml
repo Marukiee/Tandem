@@ -1,0 +1,55 @@
+name: Android toolchain
+description: JDK 21, Android SDK with NDK 28, Rust with the Android target, cargo-ndk and a Gradle cache.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: "21"
+
+    - uses: android-actions/setup-android@v4
+
+    # Explicit --sdk_root: hosted runners already ship an SDK, and the packages must
+    # land in the one Gradle and cargo-ndk will look in.
+    - name: Install SDK packages
+      shell: bash
+      run: |
+        sdkmanager --sdk_root="$ANDROID_HOME" --install \
+          "ndk;28.2.13676358" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+        # The runner image sets ANDROID_NDK_HOME to its own NDK, and
+        # build-core-android.sh only picks the newest one when it is unset.
+        echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
+
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: aarch64-linux-android
+
+    - uses: Swatinem/rust-cache@v2
+
+    # Its own directory, so the Rust cache never prunes it. Bump the number in the
+    # key to pick up a newer cargo-ndk.
+    - name: Restore cargo-ndk
+      id: cargo-ndk
+      uses: actions/cache@v6
+      with:
+        path: ~/.cargo-ndk
+        key: cargo-ndk-${{ runner.os }}-${{ runner.arch }}-1
+
+    - name: Install cargo-ndk
+      if: steps.cargo-ndk.outputs.cache-hit != 'true'
+      shell: bash
+      run: cargo install cargo-ndk --locked --root "$HOME/.cargo-ndk"
+
+    - name: Put cargo-ndk on the path
+      shell: bash
+      run: echo "$HOME/.cargo-ndk/bin" >> "$GITHUB_PATH"
+
+    - uses: actions/cache@v6
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: gradle-${{ runner.os }}-${{ hashFiles('android/gradle/libs.versions.toml', 'android/gradle/wrapper/gradle-wrapper.properties', 'android/**/*.gradle.kts') }}
+        restore-keys: gradle-${{ runner.os }}-

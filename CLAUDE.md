@@ -101,7 +101,8 @@ ondertekend.
 
 ## Releasen
 
-- Versie ophogen, alles groen, dan pas committen en taggen (`v*`).
+- Alles groen, dan pas taggen (`vX.Y.Z`). Het versienummer komt uit de tag, je hoogt
+  niets op. Zie `docs/RELEASING.md`.
 - **Nooit `git add -A` met half af werk in de map.** CI compileert wat er gecommit is.
 - Na het pushen van een tag: run afwachten met `gh run list --workflow=release.yml`
   en controleren dat de release er echt staat.

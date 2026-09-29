@@ -1,0 +1,15 @@
+# The image only needs the Rust workspace. Keeping the rest out of the build context
+# keeps the build fast and stops local artifacts from leaking into layers.
+.git
+target
+android
+macos
+docs
+scripts
+packaging
+.github
+*.jks
+*.p12
+*.password
+*.pem
+.env

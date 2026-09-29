@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace
+
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/android-toolchain
+
+      # A debug core: CI only needs to know it compiles, links and packs into the
+      # APK. The release build is the release workflow's job.
+      - name: Build the core and the bindings
+        run: ./scripts/build-core-android.sh
+        env:
+          PROFILE: debug
+
+      - name: Build and test the app
+        working-directory: android
+        run: ./gradlew assembleDebug testDebugUnitTest --no-daemon
+
+  macos:
+    name: macOS app
+    runs-on: macos-latest
+    timeout-minutes: 45
+    # The app targets macOS 26. If the hosted runner ever ships an SDK older than
+    # that, this job fails for reasons that say nothing about the code, so it must
+    # not turn the whole run red. The Rust job above still covers the core there.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build the core and the bindings
+        run: ./scripts/build-core-macos.sh
+        env:
+          PROFILE: debug
+
+      # Plain SwiftPM, no Xcode project. The Swift code avoids the @State macro
+      # (typealias LocalState) so it also builds where the SwiftUI macros plugin
+      # is missing.
+      - name: Build the app
+        working-directory: macos
+        run: swift build
