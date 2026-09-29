@@ -14,7 +14,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::circle::Statement;
 use crate::error::{Error, Result};
-use crate::ids::{Platform, bytes_array};
+use crate::ids::{DeviceId, Platform, bytes_array};
 
 pub const PROTOCOL_VERSION: u16 = 1;
 
@@ -63,12 +63,23 @@ pub enum Msg {
     Ring { on: bool },
     Input(InputMsg),
     Hotspot(HotspotMsg),
+    /// Addresses this device can now be reached at, sent when the network changes.
+    Candidates { addrs: Vec<String> },
+    /// Where other circle members were last reachable, so two devices that only ever
+    /// paired through a third one can still find each other.
+    Introduce { peers: Vec<PeerAddrs> },
     Ping { nonce: u64 },
     Pong { nonce: u64 },
     Bye { reason: String },
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PeerAddrs {
+    pub id: DeviceId,
+    pub addrs: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
