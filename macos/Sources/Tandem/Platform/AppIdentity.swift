@@ -10,6 +10,11 @@ enum AppIdentity {
         Bundle.main.bundleIdentifier?.hasSuffix(".dev") == true
     }
 
+    /// The name shown in the window, so a development build cannot be mistaken for the real one.
+    static var displayName: String {
+        isDevelopmentBuild ? "Tandem Dev" : "Tandem"
+    }
+
     /// The folder for this app's data. `TANDEM_DATA_DIR` overrides it for tests.
     static func dataDirectory() -> URL {
         if let override = ProcessInfo.processInfo.environment["TANDEM_DATA_DIR"], !override.isEmpty {

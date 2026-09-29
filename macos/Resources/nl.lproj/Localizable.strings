@@ -1,6 +1,10 @@
 /* Nederlandse vertaling van Tandem voor macOS. Sleutels zijn de Engelse teksten. */
 
 /* Koppelen */
+"This code has expired. Ask the other device to show a new QR code." = "Deze code is verlopen. Vraag het andere apparaat om een nieuwe QR-code te tonen.";
+"This code does not match. Ask the other device to show a new QR code and scan that one." = "Deze code klopt niet. Vraag het andere apparaat om een nieuwe QR-code te tonen en scan die.";
+"The other device is not showing a pairing code. Choose Add device on it and try again." = "Het andere apparaat toont geen koppelcode. Kies daar Apparaat toevoegen en probeer het opnieuw.";
+"Close" = "Sluit";
 "Pair a device" = "Apparaat koppelen";
 "Pair a device…" = "Apparaat koppelen…";
 "Open Tandem on the other device, choose Add device and scan this code." = "Open Tandem op het andere apparaat, kies Apparaat toevoegen en scan deze code.";
@@ -17,8 +21,12 @@
 "New device" = "Nieuw apparaat";
 
 /* Apparaten */
+"Connected" = "Verbonden";
+"%lld of %lld connected" = "%1$lld van %2$lld verbonden";
+"Shared" = "Gedeeld";
+"Files" = "Bestanden";
+"Tandem connects again as soon as this device can be reached." = "Tandem verbindt weer zodra dit apparaat bereikbaar is.";
 "Devices" = "Apparaten";
-"Transfers" = "Overdrachten";
 "Remove %@?" = "%@ verwijderen?";
 "Remove for good" = "Definitief verwijderen";
 "Cancel" = "Annuleer";
@@ -28,8 +36,6 @@
 "Remove this device" = "Dit apparaat verwijderen";
 "It leaves the circle everywhere" = "Het verdwijnt overal uit de circle";
 "It was added by a device that has since been removed" = "Het is toegevoegd door een apparaat dat inmiddels is verwijderd";
-"Online" = "Online";
-"Offline" = "Offline";
 "Local network" = "Lokaal netwerk";
 "Tailscale" = "Tailscale";
 "Internet" = "Internet";
@@ -50,6 +56,19 @@
 "Device" = "Apparaat";
 
 /* Acties */
+"Open" = "Open";
+"Open File Location" = "Open bestandslocatie";
+"Copy path" = "Kopieer pad";
+"Remove from List" = "Verwijder uit lijst";
+"Move File to Trash…" = "Verplaats bestand naar prullenmand…";
+"Move %@ to the Trash?" = "%@ naar de prullenmand verplaatsen?";
+"Move to Trash" = "Verplaats naar prullenmand";
+"The file is removed from this Mac. It stays on the device it came from." = "Het bestand verdwijnt van deze Mac. Op het apparaat waar het vandaan kwam blijft het staan.";
+"Moved to the Trash" = "Naar de prullenmand verplaatst";
+"Could not move the file to the Trash" = "Kon het bestand niet naar de prullenmand verplaatsen";
+"Path copied" = "Pad gekopieerd";
+"The file is no longer there" = "Het bestand is er niet meer";
+"Files you send and receive. Click one to open it, right click for more." = "Bestanden die je verstuurt en ontvangt. Klik om er een te openen, klik met rechts voor meer.";
 "Send files" = "Bestanden sturen";
 "Send clipboard" = "Klembord sturen";
 "Find phone" = "Zoek telefoon";
@@ -92,13 +111,12 @@
 "Stop" = "Stop";
 
 /* Menubalk */
+"More" = "Meer";
 "No devices yet" = "Nog geen apparaten";
 "Pair your phone to send files and share the clipboard." = "Koppel je telefoon om bestanden te sturen en het klembord te delen.";
 "Open Tandem" = "Open Tandem";
 "Settings…" = "Instellingen…";
 "Quit Tandem" = "Sluit Tandem af";
-"Nothing online" = "Niets online";
-"%lld online" = "%lld online";
 "All devices" = "Alle apparaten";
 "No device is online" = "Geen apparaat online";
 "Open Tandem on your phone and try again." = "Open Tandem op je telefoon en probeer het opnieuw.";
@@ -112,6 +130,7 @@
 "Tandem could not start" = "Tandem kon niet starten";
 
 /* Meldingen */
+"Code %@ recognised and copied" = "Code %@ herkend en gekopieerd";
 "Show in Finder" = "Toon in Finder";
 "Answer" = "Opnemen";
 "Decline" = "Weigeren";
@@ -141,6 +160,22 @@
 "Tandem needs these once to join the hotspot. They are stored privately on this Mac and never leave it." = "Tandem heeft deze eenmalig nodig om met de hotspot te verbinden. Ze worden privé op deze Mac bewaard en verlaten hem nooit.";
 
 /* Instellingen */
+"Behaviour" = "Gedrag";
+"Folder" = "Map";
+"Use Downloads" = "Gebruik Downloads";
+"Files that arrive go straight into this folder. By default that is your Downloads folder." = "Ontvangen bestanden komen direct in deze map. Standaard is dat je Downloads-map.";
+"You also get a notification when a code was copied." = "Je krijgt ook een melding als een code is gekopieerd.";
+"Remove…" = "Verwijder…";
+"Backup" = "Back-up";
+"Export settings" = "Instellingen exporteren";
+"Export…" = "Exporteer…";
+"Import settings" = "Instellingen importeren";
+"Import…" = "Importeer…";
+"Only preferences are saved. Your identity, your pairings and the hotspot password stay on this Mac." = "Alleen voorkeuren worden bewaard. Je identiteit, je koppelingen en het hotspotwachtwoord blijven op deze Mac.";
+"Your settings are saved without your identity, pairings or hotspot password." = "Je instellingen worden bewaard zonder je identiteit, koppelingen of hotspotwachtwoord.";
+"Settings exported" = "Instellingen geëxporteerd";
+"Settings imported (%lld)" = "Instellingen geïmporteerd (%lld)";
+"That file is not a Tandem settings backup." = "Dat bestand is geen Tandem-back-up van instellingen.";
 "General" = "Algemeen";
 "Access" = "Toegang";
 "Hotspot" = "Hotspot";

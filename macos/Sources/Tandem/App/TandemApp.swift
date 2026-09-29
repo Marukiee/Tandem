@@ -7,7 +7,7 @@ struct TandemApp: App {
     @LocalState private var model = EngineModel.shared
 
     var body: some Scene {
-        Window("Tandem", id: "main") {
+        Window(AppIdentity.displayName, id: "main") {
             MainWindow()
                 .environment(model)
                 .frame(minWidth: 900, minHeight: 600)

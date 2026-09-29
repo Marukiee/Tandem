@@ -3,31 +3,134 @@ import ServiceManagement
 import SwiftUI
 import TandemCore
 
-struct SettingsView: View {
-    var body: some View {
-        TabView {
-            GeneralSettings()
-                .tabItem { Label("General", systemImage: "gearshape") }
-            AccessSettings()
-                .tabItem { Label("Access", systemImage: "hand.raised") }
-            HotspotSettings()
-                .tabItem { Label("Hotspot", systemImage: "personalhotspot") }
-            UpdateSettings()
-                .tabItem { Label("Updates", systemImage: "arrow.down.circle") }
-            AboutSettings()
-                .tabItem { Label("About", systemImage: "info.circle") }
+/// The sections of the Settings window, in the order System Settings would list them.
+enum SettingsSection: String, CaseIterable, Identifiable {
+    case general, devices, access, hotspot, updates, about
+
+    var id: String { rawValue }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .general: "General"
+        case .devices: "Devices"
+        case .access: "Access"
+        case .hotspot: "Hotspot"
+        case .updates: "Updates"
+        case .about: "About"
         }
-        .frame(width: 560, height: 520)
+    }
+
+    var symbol: String {
+        switch self {
+        case .general: "gearshape.fill"
+        case .devices: "laptopcomputer.and.iphone"
+        case .access: "hand.raised.fill"
+        case .hotspot: "personalhotspot"
+        case .updates: "arrow.down.circle.fill"
+        case .about: "info.circle.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .general: .gray
+        case .devices: Palette.indigo
+        case .access: .blue
+        case .hotspot: .green
+        case .updates: .orange
+        case .about: Palette.roseDeep
+        }
     }
 }
+
+struct SettingsView: View {
+    @LocalState private var selection: SettingsSection? = DebugSupport.initialSettingsSection() ?? .general
+
+    var body: some View {
+        NavigationSplitView {
+            List(SettingsSection.allCases, selection: $selection) { section in
+                Label {
+                    Text(section.title)
+                } icon: {
+                    SettingsIcon(symbol: section.symbol, tint: section.tint)
+                }
+                .padding(.vertical, 2)
+            }
+            .navigationSplitViewColumnWidth(200)
+            .toolbar(removing: .sidebarToggle)
+        } detail: {
+            let section = selection ?? .general
+            detail(for: section)
+                .id(section)
+                .transition(.opacity)
+                .navigationTitle(section.title)
+        }
+        .animation(.tandemFade, value: selection)
+        .frame(width: 780, height: 560)
+    }
+
+    @ViewBuilder
+    private func detail(for section: SettingsSection) -> some View {
+        switch section {
+        case .general: GeneralSettings()
+        case .devices: DevicesSettings()
+        case .access: AccessSettings()
+        case .hotspot: HotspotSettings()
+        case .updates: UpdateSettings()
+        case .about: AboutSettings()
+        }
+    }
+}
+
+/// The small coloured square System Settings puts in front of each section.
+private struct SettingsIcon: View {
+    let symbol: String
+    let tint: Color
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 24, height: 24)
+            .background(tint.gradient, in: RoundedRectangle(cornerRadius: 6.5, style: .continuous))
+    }
+}
+
+/// A toggle with a line of explanation under it, as grouped forms show them.
+private struct DescribedToggle: View {
+    let title: LocalizedStringKey
+    let subtitle: LocalizedStringKey?
+    @Binding var isOn: Bool
+
+    init(_ title: LocalizedStringKey, subtitle: LocalizedStringKey? = nil, isOn: Binding<Bool>) {
+        self.title = title
+        self.subtitle = subtitle
+        _isOn = isOn
+    }
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                if let subtitle {
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+}
+
+// MARK: General
 
 private struct GeneralSettings: View {
     @Environment(EngineModel.self) private var model
     @LocalState private var name = ""
+    @FocusState private var nameFocused: Bool
     @LocalState private var startAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage("showInDock") private var showInDock = true
     @AppStorage("copyCodes") private var copyCodes = true
     @LocalState private var folder = DownloadFolder.url
+    @LocalState private var folderIsDefault = DownloadFolder.isDefault
     @LocalState private var confirmReset = false
     @LocalState private var language = LanguageSetting.current
     @LocalState private var needsRestart = false
@@ -36,9 +139,16 @@ private struct GeneralSettings: View {
         Form {
             Section {
                 TextField("Name of this Mac", text: $name)
-                    .onSubmit { model.rename(to: name) }
-                Text("This is how your other devices see it.").font(.caption).foregroundStyle(.secondary)
+                    .focused($nameFocused)
+                    .onSubmit(commitName)
+                    .onChange(of: name) { _, value in model.previewName(value) }
+                    .onChange(of: nameFocused) { _, focused in if !focused { commitName() } }
+            } header: {
+                Text("This Mac")
+            } footer: {
+                Text("This is how your other devices see it.")
             }
+
             Section {
                 Picker("Language", selection: $language) {
                     Text("Same as the system").tag("system")
@@ -50,15 +160,19 @@ private struct GeneralSettings: View {
                     needsRestart = true
                 }
                 if needsRestart {
-                    HStack {
-                        Text("Restart Tandem to change the language.").font(.caption).foregroundStyle(.secondary)
-                        Spacer()
-                        Button("Restart now") { model.relaunch() }.buttonStyle(.glassProminent).controlSize(.small)
+                    LabeledContent {
+                        Button("Restart now") { model.relaunch() }
+                            .buttonStyle(.glassProminent)
+                            .tint(Palette.indigo)
+                            .controlSize(.small)
+                    } label: {
+                        Text("Restart Tandem to change the language.").foregroundStyle(.secondary)
                     }
                     .transition(.opacity)
                 }
             }
-            Section {
+
+            Section("Behaviour") {
                 Toggle("Start at login", isOn: $startAtLogin)
                     .onChange(of: startAtLogin) { _, on in
                         do {
@@ -71,38 +185,183 @@ private struct GeneralSettings: View {
                     .onChange(of: showInDock) { _, on in
                         NSApp.setActivationPolicy(on ? .regular : .accessory)
                     }
-                Toggle("Copy codes from text messages to the clipboard", isOn: $copyCodes)
+                DescribedToggle(
+                    "Copy codes from text messages to the clipboard",
+                    subtitle: "You also get a notification when a code was copied.",
+                    isOn: $copyCodes
+                )
             }
-            Section("Received files") {
-                HStack {
-                    Text(folder.path).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Choose…") {
-                        let panel = NSOpenPanel()
-                        panel.canChooseDirectories = true
-                        panel.canChooseFiles = false
-                        panel.canCreateDirectories = true
-                        if panel.runModal() == .OK, let url = panel.url {
-                            DownloadFolder.url = url
-                            folder = url
+
+            Section {
+                LabeledContent("Folder") {
+                    Text(folder.path)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+                HStack(spacing: 8) {
+                    Spacer(minLength: 0)
+                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([folder]) }
+                    if !folderIsDefault {
+                        Button("Use Downloads") {
+                            DownloadFolder.reset()
+                            refreshFolder()
                         }
                     }
+                    Button("Choose…", action: chooseFolder)
                 }
+            } header: {
+                Text("Received files")
+            } footer: {
+                Text("Files that arrive go straight into this folder. By default that is your Downloads folder.")
             }
+
             Section {
-                Button("Reset Tandem…", role: .destructive) { confirmReset = true }
-                Text("Forgets this Mac's identity and all pairings. You can pair again afterwards.")
-                    .font(.caption).foregroundStyle(.secondary)
+                LabeledContent("Export settings") {
+                    Button("Export…") { SettingsBackup.export(model: model) }
+                }
+                LabeledContent("Import settings") {
+                    Button("Import…") {
+                        SettingsBackup.importFile(model: model)
+                        refreshFolder()
+                    }
+                }
+            } header: {
+                Text("Backup")
+            } footer: {
+                Text("Only preferences are saved. Your identity, your pairings and the hotspot password stay on this Mac.")
+            }
+
+            Section {
+                LabeledContent("Forgets this Mac's identity and all pairings. You can pair again afterwards.") {
+                    Button("Reset Tandem…", role: .destructive) { confirmReset = true }
+                }
             }
         }
         .formStyle(.grouped)
         .onAppear { name = model.myName }
+        .onDisappear(perform: commitName)
+        // Closing the window does not always end the focus, and the name must not be lost.
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in commitName() }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { _ in commitName() }
+        .onChange(of: model.myName) { _, value in
+            // A name that changed elsewhere, such as through an import.
+            if !nameFocused, value != name { name = value }
+        }
         .confirmationDialog("Reset Tandem?", isPresented: $confirmReset, titleVisibility: .visible) {
             Button("Reset and restart", role: .destructive) { model.resetEverything() }
             Button("Cancel", role: .cancel) {}
         }
+        .animation(.tandem, value: needsRestart)
+        .animation(.tandem, value: folderIsDefault)
+    }
+
+    private func commitName() {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            // An empty name is not a name: fall back to the last good one.
+            name = EngineModel.savedName ?? model.myName
+        } else if trimmed != EngineModel.savedName {
+            model.rename(to: trimmed)
+        }
+    }
+
+    private func chooseFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.directoryURL = folder
+        if panel.runModal() == .OK, let url = panel.url {
+            DownloadFolder.url = url
+            refreshFolder()
+        }
+    }
+
+    private func refreshFolder() {
+        folder = DownloadFolder.url
+        folderIsDefault = DownloadFolder.isDefault
     }
 }
+
+// MARK: Devices
+
+private struct DevicesSettings: View {
+    @Environment(EngineModel.self) private var model
+    @LocalState private var removing: TandemDevice?
+
+    var body: some View {
+        Form {
+            if model.devices.isEmpty {
+                Section {
+                    ContentUnavailableView(
+                        "No devices yet",
+                        systemImage: "iphone.slash",
+                        description: Text("Pair your phone to send files and share the clipboard.")
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            ForEach(model.devices, id: \.id) { device in
+                Section {
+                    LabeledContent {
+                        Text(device.connectionText)
+                            .foregroundStyle(device.connectionColor)
+                    } label: {
+                        HStack(spacing: 10) {
+                            DeviceGlyph(platform: device.platform, online: device.online, size: 30)
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text(device.name).font(.body.weight(.medium))
+                                Text(device.platform.label).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    DescribedToggle(
+                        "Sync clipboard",
+                        subtitle: "Text and links you copy show up on both devices",
+                        isOn: Binding(get: { device.clipboardEnabled }, set: { model.setSettings(device, clipboard: $0) })
+                    )
+                    DescribedToggle(
+                        "Show its notifications",
+                        subtitle: "Phone notifications appear here, and you can reply",
+                        isOn: Binding(get: { device.notificationsEnabled }, set: { model.setSettings(device, notifications: $0) })
+                    )
+                    DescribedToggle(
+                        "Accept files automatically",
+                        subtitle: "Turn off to be asked before something arrives",
+                        isOn: Binding(get: { device.autoAccept }, set: { model.setSettings(device, autoAccept: $0) })
+                    )
+                    LabeledContent {
+                        Button("Remove…", role: .destructive) { removing = device }
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Remove this device")
+                            Text(device.vouchedByRemoved ? "It was added by a device that has since been removed" : "It leaves the circle everywhere")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .animation(.tandem, value: model.devices.map(\.id))
+        .confirmationDialog(
+            "Remove \(removing?.name ?? "")?",
+            isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
+            titleVisibility: .visible,
+            presenting: removing
+        ) { device in
+            Button("Remove for good", role: .destructive) { model.remove(device.id) }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("It leaves the circle on every device and cannot come back without a new pairing.")
+        }
+    }
+}
+
+// MARK: Hotspot
 
 private struct HotspotSettings: View {
     @AppStorage(HotspotCoordinator.enabledKey) private var auto = false
@@ -114,24 +373,32 @@ private struct HotspotSettings: View {
         Form {
             Section {
                 Toggle("Use my phone's hotspot when this Mac has no connection", isOn: $auto)
-                HStack {
-                    Text("Wait before asking")
-                    Slider(value: $delay, in: 3 ... 30, step: 1)
-                    Text("\(Int(delay)) s").monospacedDigit().frame(width: 40, alignment: .trailing)
+                LabeledContent("Wait before asking") {
+                    HStack(spacing: 10) {
+                        Slider(value: $delay, in: 3 ... 30, step: 1)
+                            .frame(width: 180)
+                        Text("\(Int(delay)) s")
+                            .monospacedDigit()
+                            .frame(width: 40, alignment: .trailing)
+                    }
                 }
                 .disabled(!auto)
             }
-            Section("Your phone's hotspot") {
+            Section {
                 TextField("Network name", text: $ssid)
                 SecureField("Password", text: $password)
                     .onChange(of: password) { _, value in HotspotCredentials.save(password: value) }
+            } header: {
+                Text("Your phone's hotspot")
+            } footer: {
                 Text("Tandem needs these once to join the hotspot. They are stored privately on this Mac and never leave it.")
-                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
     }
 }
+
+// MARK: Updates
 
 private struct UpdateSettings: View {
     @LocalState private var updater = Updater.shared
@@ -148,10 +415,10 @@ private struct UpdateSettings: View {
             Section {
                 switch updater.state {
                 case .idle, .upToDate:
-                    HStack {
-                        Text(updater.state == .upToDate ? "You are up to date" : "").foregroundStyle(.secondary)
-                        Spacer()
+                    LabeledContent {
                         Button("Check now") { Task { await updater.check() } }
+                    } label: {
+                        Text(updater.state == .upToDate ? "You are up to date" : "").foregroundStyle(.secondary)
                     }
                 case .checking:
                     HStack(spacing: 10) { PillSpinner(size: 18); Text("Checking") }
@@ -164,6 +431,7 @@ private struct UpdateSettings: View {
                         }
                         Button("Update and restart") { Task { await updater.install() } }
                             .buttonStyle(.glassProminent)
+                            .tint(Palette.indigo)
                     }
                 case let .downloading(_, progress):
                     VStack(alignment: .leading, spacing: 8) {
@@ -173,10 +441,10 @@ private struct UpdateSettings: View {
                 case .installing:
                     HStack(spacing: 10) { PillSpinner(size: 18); Text("Installing") }
                 case let .failed(reason):
-                    HStack {
-                        Text(reason).foregroundStyle(Palette.urgent)
-                        Spacer()
+                    LabeledContent {
                         Button("Try again") { Task { await updater.check() } }
+                    } label: {
+                        Text(reason).foregroundStyle(Palette.urgent)
                     }
                 }
             }
@@ -186,22 +454,31 @@ private struct UpdateSettings: View {
     }
 }
 
+// MARK: About
+
 private struct AboutSettings: View {
     var body: some View {
-        VStack(spacing: 14) {
-            ZStack {
-                Capsule().fill(Palette.indigo.gradient).frame(width: 26, height: 64).rotationEffect(.degrees(30))
-                Capsule().fill(Palette.rose.gradient).frame(width: 26, height: 64).rotationEffect(.degrees(30)).offset(x: -30)
-            }
-            .frame(height: 90)
-            Text("Tandem").font(.title.weight(.bold))
-            Text("Version \(Bundle.main.appVersion)").foregroundStyle(.secondary)
+        VStack(spacing: 6) {
+            Spacer(minLength: 0)
+            PillMark(size: 104, style: .plate)
+                .padding(.bottom, 14)
+            Text(AppIdentity.displayName)
+                .font(.largeTitle.weight(.bold))
+            Text("Version \(Bundle.main.appVersion)")
+                .foregroundStyle(.secondary)
             Text("Your phone and computers as one. Open source under AGPL-3.0.")
-                .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 320)
+                .padding(.top, 10)
             Link("github.com/Marukiee/Tandem", destination: URL(string: "https://github.com/Marukiee/Tandem")!)
+                .padding(.top, 10)
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
+        .multilineTextAlignment(.center)
+        .padding(24)
     }
 }
 

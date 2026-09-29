@@ -1,12 +1,12 @@
 import SwiftUI
 import TandemCore
 
-// MARK: Glass
+// MARK: Cards and actions
 
-/// A floating glass card. Glass is for what floats above the content (cards, the
-/// action row, the toast), never for the content itself.
-struct GlassCard<Content: View>: View {
-    var radius: CGFloat = 28
+/// A card of content on a plain surface. Glass is for what floats above the content
+/// (the toolbar, controls, the toast), never for the content itself.
+struct Card<Content: View>: View {
+    var radius: CGFloat = Metrics.card
     var padding: CGFloat = 20
     var tint: Color? = nil
     @ViewBuilder var content: Content
@@ -14,11 +14,13 @@ struct GlassCard<Content: View>: View {
     var body: some View {
         content
             .padding(padding)
-            .glassEffect(tint.map { Glass.regular.tint($0.opacity(0.18)) } ?? .regular, in: .rect(cornerRadius: radius))
+            .surface(radius: radius, tint: tint)
     }
 }
 
-/// A capsule button on glass, used for the actions on a device.
+/// An action on a device. It is a system glass button, so it gets the standard
+/// pressed and hover behaviour for free, and it sits in a GlassEffectContainer with
+/// its neighbours.
 struct GlassActionButton: View {
     let title: LocalizedStringKey
     let symbol: String
@@ -26,29 +28,15 @@ struct GlassActionButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        let button = Button(action: action) {
             Label(title, systemImage: symbol)
                 .font(.callout.weight(.semibold))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
         }
-        .buttonStyle(.bouncy)
-        .modifier(GlassCapsule(prominent: prominent))
-    }
-}
-
-private struct GlassCapsule: ViewModifier {
-    let prominent: Bool
-
-    func body(content: Content) -> some View {
-        content
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .foregroundStyle(prominent ? Color.white : Color.primary)
-            .glassEffect(
-                prominent ? Glass.regular.tint(Palette.indigo).interactive() : Glass.regular.interactive(),
-                in: .capsule
-            )
+        if prominent {
+            button.buttonStyle(.glassProminent).tint(Palette.indigo).controlSize(.large)
+        } else {
+            button.buttonStyle(.glass).controlSize(.large)
+        }
     }
 }
 
@@ -96,43 +84,41 @@ extension TandemRoute {
     }
 }
 
+extension TandemDevice {
+    /// The one word that says whether the device can be reached right now.
+    var connectionText: LocalizedStringKey { online ? "Connected" : "Not connected" }
+    var connectionColor: Color { online ? .green : .secondary }
+}
+
+/// A device as a round glyph. A green ring draws around it while the device is
+/// connected, so the state reads before any text does. It is flat on purpose: it sits
+/// on the sidebar and on cards, which are already the layer under the glass.
 struct DeviceGlyph: View {
     let platform: TandemPlatform
     var online: Bool
     var size: CGFloat = 44
 
     var body: some View {
-        Image(systemName: platform.symbol)
-            .font(.system(size: size * 0.46, weight: .semibold))
-            .symbolRenderingMode(.hierarchical)
-            .foregroundStyle(online ? Palette.indigo : Color.secondary)
-            .frame(width: size, height: size)
-            .glassEffect(.regular, in: .circle)
-            .animation(.tandemFade, value: online)
-    }
-}
-
-/// A dot that breathes while the device is online.
-struct PresenceDot: View {
-    let online: Bool
-    @LocalState private var breathe = false
-
-    var body: some View {
-        Circle()
-            .fill(online ? Color.green : Color.secondary.opacity(0.5))
-            .frame(width: 8, height: 8)
-            .overlay {
-                if online {
-                    Circle()
-                        .stroke(Color.green.opacity(0.45), lineWidth: 2)
-                        .scaleEffect(breathe ? 2.1 : 1)
-                        .opacity(breathe ? 0 : 1)
-                }
-            }
-            .onAppear {
-                withAnimation(.easeOut(duration: 1.8).repeatForever(autoreverses: false)) { breathe = true }
-            }
-            .animation(.tandemFade, value: online)
+        let ring = max(1.6, size * 0.055)
+        ZStack {
+            Circle().fill(online ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07))
+            Image(systemName: platform.symbol)
+                .font(.system(size: size * 0.42, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(online ? Palette.indigo : Color.secondary)
+                .contentTransition(.symbolEffect(.replace))
+            Circle()
+                .stroke(Color.primary.opacity(0.08), lineWidth: ring)
+                .padding(ring / 2)
+            Circle()
+                .trim(from: 0, to: online ? 1 : 0)
+                .stroke(Color.green, style: StrokeStyle(lineWidth: ring, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .padding(ring / 2)
+        }
+        .frame(width: size, height: size)
+        .animation(.tandem, value: online)
+        .animation(.tandem, value: platform)
     }
 }
 
@@ -183,10 +169,11 @@ struct PillSpinner: View {
             let t = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: cycle) / cycle
             // Two eased turns, with a breath between them.
             let turn: Double = t < 0.42 ? ease(t / 0.42) : (t < 0.5 ? 1 : (t < 0.92 ? 1 + ease((t - 0.5) / 0.42) : 2))
+            // At rest it leans like the pills in the icon, and half a turn is the same shape.
             Capsule()
                 .fill(Palette.indigo.gradient)
                 .frame(width: size * 0.42, height: size)
-                .rotationEffect(.degrees(turn * 180 + 35))
+                .rotationEffect(.degrees(turn * 180 - PillArt.leanDegrees))
         }
         .frame(width: size, height: size)
     }
@@ -235,9 +222,12 @@ struct AmbientBackdrop: View {
 
 // MARK: Transfers
 
+/// What a transfer looks like. Interaction lives in `TransferEntry`.
 struct TransferRow: View {
     let item: TransferItem
     let peerName: String
+    var hovering = false
+    @Environment(EngineModel.self) private var model
 
     var body: some View {
         HStack(spacing: 12) {
@@ -249,6 +239,8 @@ struct TransferRow: View {
                     .contentTransition(.symbolEffect(.replace))
             }
             .frame(width: 34, height: 34)
+            .scaleEffect(hovering ? 1.06 : 1)
+            .animation(.tandemSpringy, value: hovering)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
@@ -275,18 +267,20 @@ struct TransferRow: View {
 
             Spacer(minLength: 0)
 
-            if item.state == .done, item.incoming, let location = item.location {
+            if hovering, model.canOpen(item) {
                 Button {
-                    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: location)])
+                    model.reveal(item)
                 } label: {
-                    Image(systemName: "magnifyingglass").font(.callout)
+                    Image(systemName: "folder").font(.callout)
                 }
-                .buttonStyle(.bouncy)
-                .help("Show in Finder")
+                .buttonStyle(.icon(size: 28))
+                .help("Open File Location")
+                .transition(.opacity.combined(with: .scale(scale: 0.8)))
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 7)
         .animation(.tandem, value: item.state)
+        .animation(.tandemSpringy, value: hovering)
     }
 
     private var symbol: String {
@@ -302,6 +296,68 @@ struct TransferRow: View {
         case .active: Palette.indigo
         case .done: .green
         case .failed: Palette.urgent
+        }
+    }
+}
+
+/// A transfer you can act on: a click opens the file, a right click offers the rest,
+/// and Delete takes it off the list while the row has the keyboard focus.
+struct TransferEntry: View {
+    @Environment(EngineModel.self) private var model
+    let item: TransferItem
+    let peerName: String
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        Hoverable { hovering in
+            TransferRow(item: item, peerName: peerName, hovering: hovering)
+        }
+        .padding(.horizontal, 10)
+        .hoverHighlight(radius: Metrics.cardInner, tint: focused ? Palette.indigo : .primary, selected: focused)
+        .onTapGesture {
+            focused = true
+            model.open(item)
+        }
+        .focusable()
+        .focused($focused)
+        .focusEffectDisabled()
+        .onDeleteCommand {
+            guard item.state != .active else { return }
+            withAnimation(.tandem) { model.removeFromList([item.id]) }
+        }
+        .onKeyPress(.return) {
+            model.open(item)
+            return .handled
+        }
+        .contextMenu { TransferMenu(item: item) }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .help(model.canOpen(item) ? Text("Open") : Text(""))
+    }
+}
+
+/// The right-click menu of a transfer.
+struct TransferMenu: View {
+    @Environment(EngineModel.self) private var model
+    let item: TransferItem
+
+    var body: some View {
+        let available = model.canOpen(item)
+        Button("Open") { model.open(item) }
+            .disabled(!available)
+        Button("Open File Location") { model.reveal(item) }
+            .disabled(!available)
+        Button("Copy path") { model.copyPath(item) }
+            .disabled(item.location == nil)
+        Divider()
+        Button("Remove from List") {
+            withAnimation(.tandem) { model.removeFromList([item.id]) }
+        }
+        .disabled(item.state == .active)
+        // Only what arrived on this Mac. A file that was sent is the person's own original.
+        if item.incoming {
+            Button("Move File to Trash…", role: .destructive) { model.requestTrash(item) }
+                .disabled(!available)
         }
     }
 }
@@ -324,6 +380,7 @@ struct ProgressCapsule: View {
 
 // MARK: Feedback
 
+/// The toast floats over the content, so it is glass.
 struct ToastView: View {
     let text: String
 
@@ -346,7 +403,7 @@ struct HelpTip: View {
         Button { shown.toggle() } label: {
             Image(systemName: "questionmark.circle").foregroundStyle(.secondary)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.bouncy)
         .popover(isPresented: $shown) {
             Text(text).font(.callout).padding(14).frame(width: 260, alignment: .leading)
         }
