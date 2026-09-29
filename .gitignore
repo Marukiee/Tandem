@@ -1,0 +1,36 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/.cxx/
+android/local.properties
+android/keystore.properties
+android/app/src/main/jniLibs/
+android/app/src/main/java/uniffi/
+*.jks
+*.keystore
+
+# macOS
+macos/.build/
+macos/dist/
+macos/Sources/TandemCore/Generated/
+*.p12
+.DS_Store
+
+# Generated bindings and build output
+/dist/
+/build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Secrets never go in the repo
+*.password
+*.pem
+.env
