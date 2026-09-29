@@ -57,8 +57,11 @@ pub trait TandemEventSink: Send + Sync {
 /// Keychain.
 #[uniffi::export(foreign)]
 pub trait TandemVault: Send + Sync {
-    fn load(&self) -> Option<Vec<u8>>;
-    fn save(&self, secret: Vec<u8>);
+    /// `None` only when nothing was stored yet. Throw when the store cannot be read, so
+    /// the engine stops instead of quietly making a new identity and orphaning every
+    /// pairing.
+    fn load(&self) -> Result<Option<Vec<u8>>, TandemError>;
+    fn save(&self, secret: Vec<u8>) -> Result<(), TandemError>;
 }
 
 /// Opening files to send and placing files that arrived.
@@ -75,12 +78,13 @@ struct VaultAdapter(Arc<dyn TandemVault>);
 
 impl SecretStore for VaultAdapter {
     fn load(&self) -> crate::Result<Option<Vec<u8>>> {
-        Ok(self.0.load())
+        self.0.load().map_err(|e| crate::Error::Crypto(format!("the key store could not be read: {e}")))
     }
 
     fn save(&self, secret: &[u8]) -> crate::Result<()> {
-        self.0.save(secret.to_vec());
-        Ok(())
+        self.0
+            .save(secret.to_vec())
+            .map_err(|e| crate::Error::Crypto(format!("the key store could not be written: {e}")))
     }
 }
 

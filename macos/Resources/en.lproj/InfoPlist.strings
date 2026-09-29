@@ -1,0 +1,3 @@
+"NSLocalNetworkUsageDescription" = "Tandem finds your other devices on your network to send files and share your clipboard.";
+"NSBluetoothAlwaysUsageDescription" = "Tandem uses Bluetooth to ask your phone to turn on its hotspot when this Mac has no connection.";
+"NSCameraUsageDescription" = "Tandem scans the pairing code shown on another device.";

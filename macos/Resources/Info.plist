@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleExecutable</key><string>Tandem</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
+    <key>CFBundleIdentifier</key><string>nl.markmaaktmedia.Tandem</string>
+    <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+    <key>CFBundleName</key><string>Tandem</string>
+    <key>CFBundleDisplayName</key><string>Tandem</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>@VERSION@</string>
+    <key>CFBundleVersion</key><string>@BUILD@</string>
+    <key>CFBundleLocalizations</key>
+    <array><string>en</string><string>nl</string></array>
+    <key>LSMinimumSystemVersion</key><string>26.0</string>
+    <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>NSHumanReadableCopyright</key><string>AGPL-3.0. Mark Maakt Media.</string>
+    <key>TandemUpdatePublicKey</key><string>@UPDATE_KEY@</string>
+
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Tandem finds your other devices on your network to send files and share your clipboard.</string>
+    <key>NSBonjourServices</key>
+    <array><string>_tandem._udp</string></array>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Tandem uses Bluetooth to ask your phone to turn on its hotspot when this Mac has no connection.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Tandem scans the pairing code shown on another device.</string>
+
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key><string>Tandem pairing</string>
+            <key>CFBundleURLSchemes</key><array><string>tandem</string></array>
+        </dict>
+    </array>
+
+    <key>NSServices</key>
+    <array>
+        <dict>
+            <key>NSMenuItem</key><dict><key>default</key><string>Send with Tandem</string></dict>
+            <key>NSMessage</key><string>sendFiles</string>
+            <key>NSPortName</key><string>Tandem</string>
+            <key>NSSendFileTypes</key><array><string>public.item</string></array>
+        </dict>
+    </array>
+</dict>
+</plist>

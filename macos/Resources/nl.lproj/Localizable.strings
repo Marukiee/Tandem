@@ -1,0 +1,217 @@
+/* Nederlandse vertaling van Tandem voor macOS. Sleutels zijn de Engelse teksten. */
+
+/* Koppelen */
+"Pair a device" = "Apparaat koppelen";
+"Pair a device…" = "Apparaat koppelen…";
+"Open Tandem on the other device, choose Add device and scan this code." = "Open Tandem op het andere apparaat, kies Apparaat toevoegen en scan deze code.";
+"Paste a pairing link" = "Plak een koppellink";
+"Join" = "Koppel";
+"Connecting" = "Verbinden";
+"Expired" = "Verlopen";
+"New code" = "Nieuwe code";
+"Paired with %@" = "Gekoppeld met %@";
+"They will now find each other on their own." = "Ze vinden elkaar nu vanzelf.";
+"Pairing link copied" = "Koppellink gekopieerd";
+"Copy link" = "Kopieer link";
+"I have a code" = "Ik heb een code";
+"New device" = "Nieuw apparaat";
+
+/* Apparaten */
+"Devices" = "Apparaten";
+"Transfers" = "Overdrachten";
+"Remove %@?" = "%@ verwijderen?";
+"Remove for good" = "Definitief verwijderen";
+"Cancel" = "Annuleer";
+"It leaves the circle on every device and cannot come back without a new pairing." = "Het verdwijnt op elk apparaat uit de circle en komt niet terug zonder opnieuw te koppelen.";
+"Recent" = "Recent";
+"Remove" = "Verwijder";
+"Remove this device" = "Dit apparaat verwijderen";
+"It leaves the circle everywhere" = "Het verdwijnt overal uit de circle";
+"It was added by a device that has since been removed" = "Het is toegevoegd door een apparaat dat inmiddels is verwijderd";
+"Online" = "Online";
+"Offline" = "Offline";
+"Local network" = "Lokaal netwerk";
+"Tailscale" = "Tailscale";
+"Internet" = "Internet";
+"%lld ms" = "%lld ms";
+"Do not disturb" = "Niet storen";
+"Hotspot on" = "Hotspot aan";
+"Wi-Fi" = "Wifi";
+"Mobile data" = "Mobiele data";
+"Mobile data (roaming)" = "Mobiele data (roaming)";
+"Ethernet" = "Ethernet";
+"No network" = "Geen netwerk";
+"Network" = "Netwerk";
+"Android" = "Android";
+"Mac" = "Mac";
+"Linux" = "Linux";
+"Windows" = "Windows";
+"iPhone" = "iPhone";
+"Device" = "Apparaat";
+
+/* Acties */
+"Send files" = "Bestanden sturen";
+"Send clipboard" = "Klembord sturen";
+"Find phone" = "Zoek telefoon";
+"Send" = "Stuur";
+"Send with Tandem" = "Stuur met Tandem";
+"Send files" = "Bestanden sturen";
+"Choose files to send to %@" = "Kies bestanden om naar %@ te sturen";
+"Your phone is ringing" = "Je telefoon gaat over";
+"That device is not connected right now" = "Dat apparaat is nu niet verbonden";
+"Drop files here" = "Sleep bestanden hierheen";
+"Let go to send" = "Loslaten om te sturen";
+"Folders are sent as a zip." = "Mappen worden als zip verstuurd.";
+"Show in Finder" = "Toon in Finder";
+"Failed" = "Mislukt";
+"%@ of %@  %@" = "%1$@ van %2$@  %3$@";
+"From %@" = "Van %@";
+"To %@" = "Naar %@";
+"Clear finished" = "Wis afgeronde";
+"Nothing yet" = "Nog niets";
+"Files you send and receive show up here." = "Bestanden die je verstuurt en ontvangt staan hier.";
+"Clipboard sent" = "Klembord verstuurd";
+"Not connected" = "Niet verbonden";
+"There is no text on the clipboard" = "Er staat geen tekst op het klembord";
+"%lld device(s) were offline and did not get it" = "%lld apparaat/apparaten waren offline en kregen het niet";
+
+/* Instellingen per apparaat */
+"Sync clipboard" = "Klembord synchroniseren";
+"Text and links you copy show up on both devices" = "Tekst en links die je kopieert staan op beide apparaten";
+"Show its notifications" = "Toon zijn meldingen";
+"Phone notifications appear here, and you can reply" = "Meldingen van je telefoon verschijnen hier en je kunt antwoorden";
+"Accept files automatically" = "Bestanden automatisch accepteren";
+"Turn off to be asked before something arrives" = "Zet uit om eerst gevraagd te worden voordat iets binnenkomt";
+"Use your phone as a trackpad" = "Gebruik je telefoon als trackpad";
+"Allow Tandem to control this Mac in System Settings, under Accessibility" = "Geef Tandem toestemming om deze Mac te bedienen in Systeeminstellingen, onder Toegankelijkheid";
+"Allow" = "Sta toe";
+"Use its hotspot when I have no connection" = "Gebruik zijn hotspot als ik geen verbinding heb";
+"Your phone turns its hotspot on and this Mac joins it" = "Je telefoon zet zijn hotspot aan en deze Mac maakt er verbinding mee";
+"Need it right now?" = "Nu nodig?";
+"Turn on hotspot" = "Hotspot aanzetten";
+"Stop" = "Stop";
+
+/* Menubalk */
+"No devices yet" = "Nog geen apparaten";
+"Pair your phone to send files and share the clipboard." = "Koppel je telefoon om bestanden te sturen en het klembord te delen.";
+"Open Tandem" = "Open Tandem";
+"Settings…" = "Instellingen…";
+"Quit Tandem" = "Sluit Tandem af";
+"Nothing online" = "Niets online";
+"%lld online" = "%lld online";
+"All devices" = "Alle apparaten";
+"No device is online" = "Geen apparaat online";
+"Open Tandem on your phone and try again." = "Open Tandem op je telefoon en probeer het opnieuw.";
+
+/* Venster */
+"This device was removed" = "Dit apparaat is verwijderd";
+"OK" = "OK";
+"Another device took this Mac out of your circle. To join again, reset Tandem in Settings and pair once more." = "Een ander apparaat heeft deze Mac uit je circle gehaald. Om weer mee te doen zet je Tandem terug in Instellingen en koppel je opnieuw.";
+"Starting" = "Starten";
+"Tandem finds your devices on your own network and over Tailscale. Nothing goes through a server." = "Tandem vindt je apparaten op je eigen netwerk en via Tailscale. Er gaat niets via een server.";
+"Tandem could not start" = "Tandem kon niet starten";
+
+/* Meldingen */
+"Show in Finder" = "Toon in Finder";
+"Answer" = "Opnemen";
+"Decline" = "Weigeren";
+"Received %@" = "%@ ontvangen";
+"From %@" = "Van %@";
+"Unknown number" = "Onbekend nummer";
+"Incoming call" = "Inkomend gesprek";
+"Calling" = "Bellen";
+"Missed call" = "Gemist gesprek";
+"Clipboard from %@" = "Klembord van %@";
+"Text from %@ is on your clipboard" = "Tekst van %@ staat op je klembord";
+"%@ wants to send %lld file(s)" = "%@ wil %lld bestand(en) sturen";
+"Code %@ copied" = "Code %@ gekopieerd";
+
+/* Hotspot */
+"Asking your phone" = "Je telefoon wordt gevraagd";
+"Your phone is turning on its hotspot" = "Je telefoon zet zijn hotspot aan";
+"Joining %@" = "Verbinden met %@";
+"Using the hotspot of %@" = "De hotspot van %@ wordt gebruikt";
+"Could not reach your phone" = "Kon je telefoon niet bereiken";
+"Use my phone's hotspot when this Mac has no connection" = "Gebruik de hotspot van mijn telefoon als deze Mac geen verbinding heeft";
+"Wait before asking" = "Wacht voordat je het vraagt";
+"%lld s" = "%lld s";
+"Your phone's hotspot" = "De hotspot van je telefoon";
+"Network name" = "Netwerknaam";
+"Password" = "Wachtwoord";
+"Tandem needs these once to join the hotspot. They are stored privately on this Mac and never leave it." = "Tandem heeft deze eenmalig nodig om met de hotspot te verbinden. Ze worden privé op deze Mac bewaard en verlaten hem nooit.";
+
+/* Instellingen */
+"General" = "Algemeen";
+"Access" = "Toegang";
+"Hotspot" = "Hotspot";
+"Updates" = "Updates";
+"About" = "Over";
+"Language" = "Taal";
+"Same as the system" = "Zoals het systeem";
+"Restart Tandem to change the language." = "Herstart Tandem om de taal te wijzigen.";
+"Restart now" = "Nu herstarten";
+"Name of this Mac" = "Naam van deze Mac";
+"This is how your other devices see it." = "Zo zien je andere apparaten hem.";
+"Start at login" = "Start bij inloggen";
+"Show in the Dock" = "Toon in het Dock";
+"Copy codes from text messages to the clipboard" = "Kopieer codes uit sms-berichten naar het klembord";
+"Received files" = "Ontvangen bestanden";
+"Choose…" = "Kies…";
+"Reset Tandem…" = "Tandem terugzetten…";
+"Forgets this Mac's identity and all pairings. You can pair again afterwards." = "Vergeet de identiteit van deze Mac en alle koppelingen. Daarna kun je opnieuw koppelen.";
+"Reset Tandem?" = "Tandem terugzetten?";
+"Reset and restart" = "Terugzetten en herstarten";
+
+/* Toegang */
+"Tandem only asks for what a feature needs, and each one is optional. Here you can see what is on, turn things on, and try them without a second device." = "Tandem vraagt alleen wat een functie nodig heeft, en alles is optioneel. Hier zie je wat aan staat, zet je dingen aan en kun je ze proberen zonder tweede apparaat.";
+"Notifications" = "Meldingen";
+"To show notifications from your phone, incoming calls and files that arrived." = "Om meldingen van je telefoon, inkomende gesprekken en ontvangen bestanden te tonen.";
+"Local network" = "Lokaal netwerk";
+"To find your other devices on your Wi-Fi. macOS asks the first time Tandem looks for them." = "Om je andere apparaten op je wifi te vinden. macOS vraagt het de eerste keer dat Tandem ze zoekt.";
+"Accessibility" = "Toegankelijkheid";
+"Only for using your phone as a trackpad, keyboard or media remote." = "Alleen om je telefoon als trackpad, toetsenbord of mediabediening te gebruiken.";
+"Bluetooth" = "Bluetooth";
+"Only to ask your phone for its hotspot when this Mac has no connection at all." = "Alleen om je telefoon om zijn hotspot te vragen als deze Mac helemaal geen verbinding heeft.";
+"Camera" = "Camera";
+"Only to scan a pairing code from another device." = "Alleen om een koppelcode van een ander apparaat te scannen.";
+"So your devices find this Mac after a restart. Optional." = "Zodat je apparaten deze Mac na een herstart vinden. Optioneel.";
+"Allowed" = "Toegestaan";
+"Not asked yet" = "Nog niet gevraagd";
+"Denied" = "Geweigerd";
+"Asked by macOS" = "Vraagt macOS zelf";
+"Open System Settings" = "Open Systeeminstellingen";
+"Test" = "Test";
+"Test notification" = "Testmelding";
+"If you can read this, notifications work." = "Als je dit kunt lezen, werken meldingen.";
+"A test notification was sent. Look at the top right of your screen." = "Er is een testmelding verstuurd. Kijk rechtsboven op je scherm.";
+"Working: %lld device(s) reachable." = "Werkt: %lld apparaat/apparaten bereikbaar.";
+"No device is reachable right now. If macOS never asked for permission, turn it on in System Settings." = "Er is nu geen apparaat bereikbaar. Als macOS nooit om toestemming vroeg, zet het dan aan in Systeeminstellingen.";
+"Working: Tandem may control this Mac." = "Werkt: Tandem mag deze Mac bedienen.";
+"Not allowed yet. Press Allow and turn Tandem on in the list." = "Nog niet toegestaan. Druk op Sta toe en zet Tandem aan in de lijst.";
+"Status" = "Status";
+"This Mac" = "Deze Mac";
+"Devices online" = "Apparaten online";
+"Received files go to" = "Ontvangen bestanden gaan naar";
+
+/* Updates */
+"Installed version" = "Geïnstalleerde versie";
+"Check for updates automatically" = "Automatisch op updates controleren";
+"Check now" = "Nu controleren";
+"You are up to date" = "Je bent bijgewerkt";
+"Checking" = "Controleren";
+"Version %@ is available" = "Versie %@ is beschikbaar";
+"Update and restart" = "Bijwerken en herstarten";
+"Downloading" = "Downloaden";
+"Installing" = "Installeren";
+"Try again" = "Probeer opnieuw";
+"Could not reach GitHub" = "Kon GitHub niet bereiken";
+"Could not read the releases from GitHub" = "Kon de releases van GitHub niet lezen";
+"This release has no Mac download" = "Deze release heeft geen Mac-download";
+"The download is damaged (checksum does not match)" = "De download is beschadigd (checksum klopt niet)";
+"The download is not signed by Tandem, so it was not installed" = "De download is niet door Tandem ondertekend en is dus niet geïnstalleerd";
+"The download could not be unpacked" = "De download kon niet worden uitgepakt";
+"The new version is signed by someone else, so it was not installed" = "De nieuwe versie is door iemand anders ondertekend en is dus niet geïnstalleerd";
+
+/* Over */
+"Version %@" = "Versie %@";
+"Your phone and computers as one. Open source under AGPL-3.0." = "Je telefoon en computers als één geheel. Open source onder AGPL-3.0.";

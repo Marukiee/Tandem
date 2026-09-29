@@ -17,8 +17,12 @@ kan meelezen of meeschrijven.
   versleutelde kanaal zelf. Wie meeluistert op het netwerk kan niet koppelen.
 - **Eenmalig en kortlevend**: een koppelcode werkt één keer en verloopt na vijf
   minuten. Na drie foute pogingen is hij weg.
-- **Privésleutels** staan in de beveiligde opslag van het toestel (Android Keystore,
-  Sleutelhanger op macOS) en verlaten het toestel nooit.
+- **Privésleutels** verlaten het toestel nooit. Op Android is de sleutel ingepakt met de
+  Android Keystore. Op macOS en Linux is het een bestand dat alleen jouw gebruiker kan
+  lezen (rechten 0600), zoals een SSH-sleutel. De Sleutelhanger van macOS koppelt items
+  aan de exacte app, en zonder Apple Developer ID betekent dat na elke update een
+  toestemmingsvraag. Een privébestand heeft dat probleem niet, en FileVault versleutelt
+  het op schijf.
 - **Geen tracking op het netwerk.** De mDNS-aankondiging wisselt elk uur en is alleen
   voor leden te herkennen.
 

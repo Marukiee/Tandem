@@ -17,7 +17,9 @@ android/app/src/main/java/uniffi/
 # macOS
 macos/.build/
 macos/dist/
-macos/Sources/TandemCore/Generated/
+macos/Libs/
+macos/Sources/TandemCore/tandem_core.swift
+macos/Sources/tandem_coreFFI/include/
 *.p12
 .DS_Store
 
