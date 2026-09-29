@@ -17,6 +17,7 @@ ciborium = "0.2.2"
 data-encoding = "2.11.1"
 futures-util = "0.3.34"
 if-addrs = "0.15.0"
+log = "0.4.34"
 mdns-sd = "0.21.4"
 quinn = { version = "0.11.12", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
 rcgen = { version = "0.14.10", default-features = false, features = ["ring", "pem", "crypto"] }
@@ -28,7 +29,7 @@ socket2 = "0.6.5"
 thiserror = "2.0.21"
 tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util", "net"] }
 tokio-util = "0.7.19"
-tracing = "0.1.44"
+tracing = { version = "0.1.44", features = ["log"] }
 uniffi = { version = "0.32.2", features = ["tokio"] }
 x509-parser = "0.18.1"
 
@@ -37,3 +38,9 @@ anyhow = "1.0.104"
 tempfile = "3.27.0"
 tokio = { version = "1.53.1", features = ["test-util"] }
 tracing-subscriber = "0.3.23"
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.15.1"
+
+[target.'cfg(target_vendor = "apple")'.dependencies]
+oslog = "0.2.0"

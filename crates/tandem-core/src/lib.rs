@@ -3,6 +3,7 @@ pub mod discovery;
 pub mod engine;
 pub mod error;
 pub mod events;
+pub mod ffi;
 pub mod identity;
 pub mod ids;
 pub mod net;
@@ -18,3 +19,5 @@ pub use engine::{DeviceInfo, Engine, EngineConfig};
 pub use error::{Error, Result};
 pub use events::Event;
 pub use ids::{DeviceId, Platform};
+
+uniffi::setup_scaffolding!("tandem_core");
