@@ -4,13 +4,11 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group android:pivotX="54" android:pivotY="54" android:rotation="32">
-        <path
-            android:fillColor="#FF000000"
-            android:fillAlpha="0.6"
-            android:pathData="M69.5,31.5a8.5,8.5 0,0 1,17 0v45a8.5,8.5 0,0 1,-17 0z" />
-        <path
-            android:fillColor="#FF000000"
-            android:pathData="M53.5,31.5a8.5,8.5 0,0 1,17 0v45a8.5,8.5 0,0 1,-17 0z" />
+    <!-- Themed icons use one tint, so the pills get a clear gap instead of overlapping. -->
+    <group android:pivotX="64.91" android:pivotY="54" android:rotation="-32">
+        <path android:fillColor="#FF000000" android:fillAlpha="0.6" android:pathData="M57.91,39.00a7.00,7.00 0 0 1 14.00,0v30.00a7.00,7.00 0 0 1 -14.00,0z" />
+    </group>
+    <group android:pivotX="43.09" android:pivotY="54" android:rotation="-32">
+        <path android:fillColor="#FF000000" android:pathData="M36.09,39.00a7.00,7.00 0 0 1 14.00,0v30.00a7.00,7.00 0 0 1 -14.00,0z" />
     </group>
 </vector>

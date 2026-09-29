@@ -57,8 +57,9 @@ fun MirrorAppsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val prefs = context.graph.prefs
     val scope = rememberCoroutineScope()
-    val all by prefs.mirrorAllApps.collectAsState(initial = false)
+    val all by prefs.mirrorAllApps.collectAsState(initial = true)
     val chosen by prefs.mirrorApps.collectAsState(initial = emptySet())
+    val excluded by prefs.mirrorExcluded.collectAsState(initial = emptySet())
     var query by remember { mutableStateOf("") }
 
     val apps by produceState<List<AppEntry>?>(null) {
@@ -93,11 +94,12 @@ fun MirrorAppsScreen(onBack: () -> Unit) {
             LazyColumn(contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 items(filtered, key = { it.packageName }) { app ->
                     val index = filtered.indexOf(app)
-                    GroupedRow(index, filtered.size, onClick = { scope.launch { prefs.setMirrorApp(app.packageName, app.packageName !in chosen) } }) {
+                    val on = if (all) app.packageName !in excluded else app.packageName in chosen
+                    GroupedRow(index, filtered.size, onClick = { scope.launch { prefs.setMirrorApp(app.packageName, !on) } }) {
                         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             AppIcon(app.packageName)
                             Text(app.label, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f), maxLines = 1)
-                            Switch(checked = all || app.packageName in chosen, onCheckedChange = null, enabled = !all)
+                            Switch(checked = on, onCheckedChange = null)
                         }
                     }
                 }

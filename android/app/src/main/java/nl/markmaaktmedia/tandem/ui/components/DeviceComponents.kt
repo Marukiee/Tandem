@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.TransferItem
+import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
@@ -67,7 +68,7 @@ fun platformIcon(platform: TandemPlatform): Painter = when (platform) {
 @Composable
 fun platformName(platform: TandemPlatform): String = when (platform) {
     TandemPlatform.ANDROID -> "Android"
-    TandemPlatform.MAC_OS -> "Mac"
+    TandemPlatform.MAC_OS -> "macOS"
     TandemPlatform.LINUX -> "Linux"
     TandemPlatform.WINDOWS -> "Windows"
     TandemPlatform.IOS -> "iPhone"
@@ -79,6 +80,43 @@ fun routeName(route: TandemRoute): String = when (route) {
     TandemRoute.LAN -> stringResource(R.string.route_lan)
     TandemRoute.TAILNET -> "Tailscale"
     TandemRoute.OTHER -> "Internet"
+}
+
+/**
+ * A big square-ish action: the icon above, the label under it. Tiles share a row in equal
+ * parts, so a long Dutch label wraps inside its own tile instead of pushing the others around.
+ */
+@Composable
+fun ActionTile(
+    icon: Painter,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    primary: Boolean = false,
+) {
+    val container = if (primary) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer
+    val content = if (primary) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    val badge = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer
+    val onBadge = if (primary) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+    Column(
+        modifier
+            .clip(CardSquircle)
+            .background(container)
+            .bouncyClickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(Modifier.size(44.dp).clip(CircleShape).background(badge), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = onBadge, modifier = Modifier.size(22.dp))
+        }
+        Text(
+            label, style = MaterialTheme.typography.labelLarge, color = content,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2,
+            // Two lines always take the same room, so tiles with a short label stay level.
+            minLines = 2,
+        )
+    }
 }
 
 /** The device as a round tonal badge. Filled with the accent while it is online. */

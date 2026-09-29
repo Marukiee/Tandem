@@ -5,7 +5,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import kotlinx.coroutines.launch
+import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
+import nl.markmaaktmedia.tandem.share.ScreenshotWatcher
 
 /** Buttons on notifications: accept or decline an offer, stop the ringing. */
 class ActionReceiver : BroadcastReceiver() {
@@ -22,15 +24,27 @@ class ActionReceiver : BroadcastReceiver() {
                 val targets = intent.getStringArrayExtra(EXTRA_TARGETS)?.toList().orEmpty()
                 if (uri != null) {
                     val pending = goAsync()
+                    val label = targets.singleOrNull()?.let { host.device(it)?.name }
+                        ?: context.getString(R.string.screenshot_n_devices, targets.size)
+                    // The notification stays and changes into a status line: tapping "Send" must
+                    // never look like nothing happened.
+                    ScreenshotWatcher.showStatus(context, context.getString(R.string.screenshot_sending, label), sending = true)
                     context.graph.scope.launch {
                         try {
-                            host.sendUris(listOf(uri), targets, uniffi.tandem_core.TandemShareOrigin.SCREENSHOT)
+                            val sent = host.sendUris(listOf(uri), targets, uniffi.tandem_core.TandemShareOrigin.SCREENSHOT)
+                            if (sent > 0) {
+                                ScreenshotWatcher.showStatus(context, context.getString(R.string.screenshot_sent, label))
+                            } else {
+                                ScreenshotWatcher.showStatus(context, context.getString(R.string.screenshot_failed), context.getString(R.string.screenshot_failed_text))
+                            }
+                        } catch (e: Exception) {
+                            ScreenshotWatcher.showStatus(context, context.getString(R.string.screenshot_failed), e.message)
                         } finally {
                             pending.finish()
                         }
                     }
                 }
-                context.getSystemService(NotificationManager::class.java).cancel(nl.markmaaktmedia.tandem.share.ScreenshotWatcher.SCREENSHOT_ID)
+                return
             }
         }
         context.getSystemService(NotificationManager::class.java).cancel(offer.hashCode())

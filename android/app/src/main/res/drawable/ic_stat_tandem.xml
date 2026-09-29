@@ -5,13 +5,10 @@
     android:viewportWidth="24"
     android:viewportHeight="24">
     <!-- The two pills from the launcher icon, as a status bar glyph. -->
-    <group android:pivotX="12" android:pivotY="12" android:rotation="32">
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:fillAlpha="0.65"
-            android:pathData="M14.6,3.5a2.1,2.1 0,0 1,4.2 0v12a2.1,2.1 0,0 1,-4.2 0z" />
-        <path
-            android:fillColor="#FFFFFFFF"
-            android:pathData="M10.4,3.5a2.1,2.1 0,0 1,4.2 0v12a2.1,2.1 0,0 1,-4.2 0z" />
+    <group android:pivotX="14.60" android:pivotY="12" android:rotation="-32">
+        <path android:fillColor="#FFFFFFFF" android:fillAlpha="0.65" android:pathData="M12.40,6.70a2.20,2.20 0 0 1 4.40,0v10.60a2.20,2.20 0 0 1 -4.40,0z" />
+    </group>
+    <group android:pivotX="9.40" android:pivotY="12" android:rotation="-32">
+        <path android:fillColor="#FFFFFFFF" android:pathData="M7.20,6.70a2.20,2.20 0 0 1 4.40,0v10.60a2.20,2.20 0 0 1 -4.40,0z" />
     </group>
 </vector>

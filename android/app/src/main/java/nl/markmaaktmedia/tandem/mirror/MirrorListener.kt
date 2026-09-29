@@ -70,8 +70,7 @@ class MirrorListener : NotificationListenerService() {
         // Ongoing things (music, navigation, downloads) are not worth a banner elsewhere.
         if (n.flags and Notification.FLAG_ONGOING_EVENT != 0 && n.category != Notification.CATEGORY_CALL) return false
         if (n.category == Notification.CATEGORY_TRANSPORT || n.category == Notification.CATEGORY_PROGRESS) return false
-        if (graph.prefs.mirrorAllApps.first()) return true
-        return sbn.packageName in graph.prefs.snapshotMirrorApps()
+        return graph.prefs.mirrors(sbn.packageName)
     }
 
     private fun convert(sbn: StatusBarNotification): TandemNotification? {

@@ -2,6 +2,9 @@ package nl.markmaaktmedia.tandem.ui.screens
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,7 +34,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import nl.markmaaktmedia.tandem.BuildConfig
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.Permissions
@@ -68,10 +74,40 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
     val updateState by graph.updater.state.collectAsState()
 
     var renaming by remember { mutableStateOf(false) }
+    var pendingLanguage by remember { mutableStateOf<String?>(null) }
     var confirmReset by remember { mutableStateOf(false) }
 
     val currentLanguage = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore(',').substringBefore('-').ifBlank { "system" }
     val languages = listOf("system", "en", "nl")
+
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val json = prefs.exportJson(currentLanguage)
+            val saved = withContext(Dispatchers.IO) {
+                runCatching { context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(json.toByteArray()) } }.isSuccess
+            }
+            Toast.makeText(context, if (saved) R.string.backup_saved else R.string.backup_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = withContext(Dispatchers.IO) {
+                runCatching { context.contentResolver.openInputStream(uri)!!.use { it.readBytes().decodeToString() } }.getOrNull()
+            }
+            val language = text?.let { prefs.importJson(it) }
+            when {
+                text == null -> Toast.makeText(context, R.string.backup_failed, Toast.LENGTH_SHORT).show()
+                language == null -> Toast.makeText(context, R.string.backup_invalid, Toast.LENGTH_SHORT).show()
+                else -> {
+                    prefs.deviceName.first()?.let { name -> runCatching { graph.host.engine?.renameSelf(name) } }
+                    Toast.makeText(context, R.string.backup_restored, Toast.LENGTH_SHORT).show()
+                    if (language != currentLanguage) pendingLanguage = language
+                }
+            }
+        }
+    }
 
     LazyColumn(
         modifier.fillMaxSize().statusBarsPadding(),
@@ -98,7 +134,8 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
                         options = languages,
                         selected = if (currentLanguage in languages) currentLanguage else "system",
                         label = { context.getString(when (it) { "en" -> R.string.language_en; "nl" -> R.string.language_nl; else -> R.string.language_system }) },
-                        onSelect = { AppCompatDelegate.setApplicationLocales(if (it == "system") LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(it)) },
+                        // Switching language recreates the app, so ask before doing it.
+                        onSelect = { if (it != currentLanguage) pendingLanguage = it },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -157,6 +194,14 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
         }
 
         item {
+            SectionHeader(stringResource(R.string.settings_backup))
+            SettingsGroup {
+                ActionRow(0, 2, TandemIcons.Upload, stringResource(R.string.backup_export), stringResource(R.string.backup_export_sub), { exportLauncher.launch("tandem-settings.json") })
+                ActionRow(1, 2, TandemIcons.Download, stringResource(R.string.backup_import), stringResource(R.string.backup_import_sub), { importLauncher.launch(arrayOf("*/*")) })
+            }
+        }
+
+        item {
             SectionHeader(stringResource(R.string.settings_about))
             SettingsGroup {
                 ActionRow(0, 2, TandemIcons.OpenInNew, "github.com/Marukiee/Tandem", stringResource(R.string.settings_license), {
@@ -188,6 +233,21 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
             content = {
                 OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true, keyboardOptions = KeyboardOptions.Default, shape = MaterialTheme.shapes.large)
             },
+        )
+    }
+
+    pendingLanguage?.let { language ->
+        TandemConfirmDialog(
+            title = stringResource(R.string.language_restart_title),
+            body = stringResource(R.string.language_restart_body),
+            confirmLabel = stringResource(R.string.language_restart_confirm),
+            cancelLabel = stringResource(R.string.language_restart_cancel),
+            destructive = false,
+            onConfirm = {
+                pendingLanguage = null
+                AppCompatDelegate.setApplicationLocales(if (language == "system") LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(language))
+            },
+            onDismiss = { pendingLanguage = null },
         )
     }
 

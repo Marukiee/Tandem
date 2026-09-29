@@ -42,6 +42,7 @@
     <application
         android:name=".TandemApp"
         android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -99,7 +100,7 @@
         <service
             android:name=".share.ClipboardTileService"
             android:exported="true"
-            android:icon="@drawable/ic_stat_tandem"
+            android:icon="@drawable/ic_tile_clipboard"
             android:label="@string/tile_label"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>

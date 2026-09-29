@@ -3,6 +3,7 @@ package nl.markmaaktmedia.tandem.engine
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
+import android.os.Environment
 import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.system.Os
@@ -45,12 +46,9 @@ class AndroidFiles(private val context: Context) : TandemFiles {
 
     override fun storeDownload(tempPath: String, name: String, mime: String): String {
         val temp = File(tempPath)
-        val (collection, folder) = when {
-            mime.startsWith("image/") -> MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) to "Pictures/Tandem"
-            mime.startsWith("video/") -> MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) to "Movies/Tandem"
-            mime.startsWith("audio/") -> MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) to "Music/Tandem"
-            else -> MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) to "Download/Tandem"
-        }
+        // Everything lands in the ordinary Downloads folder, where people look for it.
+        val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val folder = Environment.DIRECTORY_DOWNLOADS
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, mime.ifBlank { "application/octet-stream" })

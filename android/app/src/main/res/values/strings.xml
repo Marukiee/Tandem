@@ -24,7 +24,6 @@
     <string name="transfer_sending">Sending</string>
     <string name="received_title">Received %1$s</string>
     <string name="received_from">From %1$s</string>
-    <string name="offer_title">%1$s wants to send %2$d file(s)</string>
     <string name="find_title">Your phone is being called</string>
     <string name="find_text">Another device is looking for this phone</string>
     <string name="platform_other">Device</string>
@@ -34,7 +33,7 @@
     <string name="transfer_failed">Failed</string>
     <string name="action_open">Open</string>
     <string name="tab_devices">Devices</string>
-    <string name="tab_transfers">Transfers</string>
+    <string name="tab_transfers">Shared</string>
     <string name="tab_settings">Settings</string>
     <string name="engine_failed">Tandem could not start</string>
     <string name="devices_none">Nothing paired yet</string>
@@ -94,9 +93,9 @@
     <string name="setting_auto_accept_sub">Turn off to be asked before something arrives</string>
     <string name="warning_vouched">This device was added by a device that has since been removed. Check that you know it.</string>
     <string name="action_remove_device">Remove this device</string>
-    <string name="action_remove_device_sub">It leaves the circle everywhere</string>
+    <string name="action_remove_device_sub">It is removed from all your devices</string>
     <string name="remove_title">Remove %1$s?</string>
-    <string name="remove_body">It leaves the circle on every device and cannot come back without a new pairing.</string>
+    <string name="remove_body">It is removed on every device and only comes back if you pair it again.</string>
     <string name="remove_confirm">Remove for good</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_clear">Clear finished</string>
@@ -122,7 +121,7 @@
     <string name="settings_mirror">Send notifications to your devices</string>
     <string name="settings_mirror_sub">They show up on your Mac, where you can reply</string>
     <string name="settings_mirror_apps">Choose apps</string>
-    <string name="settings_mirror_apps_sub">Only these apps are sent</string>
+    <string name="settings_mirror_apps_sub">Decide which apps send notifications</string>
     <string name="settings_codes">Copy codes to the other clipboard</string>
     <string name="settings_codes_sub">A code from a text message lands on your Mac\'s clipboard</string>
     <string name="settings_calls">Show incoming calls</string>
@@ -182,10 +181,10 @@
     <string name="test_notification_text">If you can read this, notifications work.</string>
     <string name="test_remote_text">A test from your phone. If you see this on your Mac, mirroring works.</string>
     <string name="test_sent_local">A test notification was sent. Look at the top of your screen.</string>
-    <string name="test_sent_remote">Test sent to %1$d device(s). Look at your Mac.</string>
+    <string name="test_sent_remote">Test sent. Look at your Mac.</string>
     <string name="test_no_device">No device is online right now, so there is nothing to send the test to.</string>
     <string name="mirror_all">All apps</string>
-    <string name="mirror_all_sub">Send notifications from every app</string>
+    <string name="mirror_all_sub">Every app sends notifications, except the ones you turn off below</string>
     <string name="mirror_search">Search apps</string>
     <string name="mirror_loading">Loading apps</string>
     <string name="onb_title">Your devices, as one</string>
@@ -210,9 +209,7 @@
     <string name="share_send">Send</string>
     <string name="share_send_many">Send to %1$d</string>
     <string name="share_sending">Sending</string>
-    <string name="share_done">Sent to %1$d device(s)</string>
     <string name="action_close">Close</string>
-    <string name="share_summary_files">%1$d file(s)</string>
     <string name="share_summary_text">Text</string>
     <string name="share_summary_link">Link</string>
     <string name="share_summary_screenshot">Screenshot</string>
@@ -228,4 +225,35 @@
     <string name="tile_label">Send clipboard</string>
     <string name="settings_clip_tile">Add the Send clipboard tile</string>
     <string name="settings_clip_tile_sub">Android only lets an app read the clipboard while it is on screen. The tile in your quick settings sends it with one tap. A clipboard from your Mac lands on your phone by itself.</string>
+    <string name="screenshot_sending">Sending to %1$s…</string>
+    <string name="screenshot_sent">Sent to %1$s</string>
+    <string name="screenshot_failed">Could not send the screenshot</string>
+    <string name="screenshot_failed_text">Check that the device is online and try again.</string>
+    <string name="screenshot_n_devices">%1$d devices</string>
+    <plurals name="share_done_n">
+        <item quantity="one">Sent to %1$d device</item>
+        <item quantity="other">Sent to %1$d devices</item>
+    </plurals>
+    <plurals name="file_count">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <plurals name="offer_files">
+        <item quantity="one">%1$s wants to send %2$d file</item>
+        <item quantity="other">%1$s wants to send %2$d files</item>
+    </plurals>
+    <string name="section_with_device">With %1$s</string>
+    <string name="settings_backup">Backup</string>
+    <string name="backup_export">Save settings to a file</string>
+    <string name="backup_export_sub">Look, notifications and sharing options. Pairings and keys stay on this phone.</string>
+    <string name="backup_import">Restore settings from a file</string>
+    <string name="backup_import_sub">Loads a file that Tandem saved earlier</string>
+    <string name="backup_saved">Settings saved</string>
+    <string name="backup_restored">Settings restored</string>
+    <string name="backup_invalid">That is not a Tandem settings file</string>
+    <string name="backup_failed">Could not read or write the file</string>
+    <string name="language_restart_title">Restart needed</string>
+    <string name="language_restart_body">Tandem restarts to change the language. Your devices stay connected.</string>
+    <string name="language_restart_confirm">Restart</string>
+    <string name="language_restart_cancel">Not now</string>
 </resources>

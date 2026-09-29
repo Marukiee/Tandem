@@ -196,7 +196,7 @@ class TandemService : LifecycleService() {
             offer.hashCode(),
             NotificationCompat.Builder(this, Channels.INCOMING)
                 .setSmallIcon(R.drawable.ic_stat_tandem)
-                .setContentTitle(getString(R.string.offer_title, deviceName, count))
+                .setContentTitle(resources.getQuantityString(R.plurals.offer_files, count, deviceName, count))
                 .addAction(0, getString(R.string.action_accept), action(ActionReceiver.ACCEPT))
                 .addAction(0, getString(R.string.action_decline), action(ActionReceiver.DECLINE))
                 .setAutoCancel(true)

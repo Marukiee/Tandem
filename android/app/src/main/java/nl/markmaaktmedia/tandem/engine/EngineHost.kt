@@ -227,6 +227,11 @@ class EngineHost(
         }
     }
 
+    /** Takes one finished transfer off the list. The file itself stays where it is. */
+    fun removeTransfer(id: String) {
+        _transfers.update { list -> list.filterNot { it.id == id && it.state != TransferItem.State.Active } }
+    }
+
     fun clearFinishedTransfers() {
         _transfers.update { list -> list.filter { it.state == TransferItem.State.Active } }
     }

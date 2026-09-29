@@ -31,6 +31,7 @@ import nl.markmaaktmedia.tandem.engine.TransferItem
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.EmptyState
 import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
+import nl.markmaaktmedia.tandem.ui.components.SwipeToDelete
 import nl.markmaaktmedia.tandem.ui.components.TransferRow
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
@@ -67,14 +68,24 @@ fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier) {
             }
         }
         items(transfers, key = { it.id }) { item ->
-            Column(
-                Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).animateContentSize(),
+            // The swipe key is the transfer id, not the item, so progress updates do not reset a swipe.
+            SwipeToDelete(
+                item = item,
+                key = item.id,
+                onDelete = { host.removeTransfer(it.id) },
+                enabled = item.state != TransferItem.State.Active,
+                shape = CardSquircle,
+                modifier = Modifier.animateItem(),
             ) {
-                TransferRow(
-                    item = item,
-                    peerName = devices.firstOrNull { it.id == item.peer }?.name ?: "?",
-                    onOpen = item.location?.let { location -> { openLocation(context, location) } },
-                )
+                Column(
+                    Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).animateContentSize(),
+                ) {
+                    TransferRow(
+                        item = item,
+                        peerName = devices.firstOrNull { it.id == item.peer }?.name ?: "?",
+                        onOpen = item.location?.let { location -> { openLocation(context, location) } },
+                    )
+                }
             }
         }
     }

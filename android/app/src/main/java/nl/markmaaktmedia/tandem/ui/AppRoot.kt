@@ -1,6 +1,14 @@
 package nl.markmaaktmedia.tandem.ui
 
+import androidx.activity.BackEventCompat
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.CancellationException
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -83,39 +91,94 @@ private fun MainNavigation() {
             pairFlag.value = false
         }
     }
-    BackHandler(enabled = nav.stack.size > 1) { nav.pop() }
     BackHandler(enabled = nav.stack.size == 1 && nav.tab != 0) { nav.tab = 0 }
+
+    // Predictive back: while the finger drags, the screen shrinks and slides and the one
+    // below it shows through. Letting go past the threshold finishes the slide and then
+    // pops, without the usual route transition on top (the gesture already was the animation).
+    val backProgress = remember { Animatable(0f) }
+    var backEdge by remember { androidx.compose.runtime.mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
+    var committed by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    PredictiveBackHandler(enabled = nav.stack.size > 1) { events ->
+        try {
+            events.collect { event ->
+                backEdge = event.swipeEdge
+                backProgress.snapTo(event.progress)
+            }
+            committed = true
+            backProgress.animateTo(1f, tween(TandemMotion.DurationFast))
+            nav.pop()
+            backProgress.snapTo(0f)
+            committed = false
+        } catch (e: CancellationException) {
+            scope.launch { backProgress.animateTo(0f, TandemMotion.spatial()) }
+            throw e
+        }
+    }
 
     var lastSize by remember { androidx.compose.runtime.mutableIntStateOf(1) }
     val target = nav.top
+    val below = nav.stack.getOrNull(nav.stack.size - 2)
 
-    AnimatedContent(
-        targetState = target,
-        transitionSpec = {
-            val deeper = nav.stack.size >= lastSize
-            lastSize = nav.stack.size
-            if (deeper) {
-                (slideInHorizontally(TandemMotion.spatial()) { it / 4 } + fadeIn(tween(TandemMotion.DurationMedium))) togetherWith
-                    (slideOutHorizontally(TandemMotion.spatial()) { -it / 6 } + fadeOut(tween(TandemMotion.DurationFast)))
-            } else {
-                (slideInHorizontally(TandemMotion.spatial()) { -it / 6 } + fadeIn(tween(TandemMotion.DurationMedium))) togetherWith
-                    (slideOutHorizontally(TandemMotion.spatial()) { it / 4 } + fadeOut(tween(TandemMotion.DurationFast)))
-            }
-        },
-        label = "route",
-        modifier = Modifier.fillMaxSize(),
-    ) { route ->
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            when (route) {
-                Route.Home -> HomeTabs(nav)
-                is Route.Device -> DeviceDetailScreen(route.id, onBack = { nav.pop() }, onRemote = { nav.push(Route.Remote(it)) })
-                Route.Pair -> PairScreen(onBack = { nav.pop() }, onPaired = { nav.pop() })
-                is Route.Remote -> RemoteScreen(route.id, onBack = { nav.pop() })
-                Route.Access -> AccessScreen(onBack = { nav.pop() })
-                Route.MirrorApps -> MirrorAppsScreen(onBack = { nav.pop() })
-                Route.Appearance -> AppearanceScreen(onBack = { nav.pop() })
-            }
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        if (below != null && backProgress.value > 0f) {
+            Box(
+                Modifier.fillMaxSize().graphicsLayer {
+                    val p = backProgress.value
+                    val s = 0.94f + 0.06f * p
+                    scaleX = s
+                    scaleY = s
+                },
+            ) { RouteContent(below, nav) }
         }
+        AnimatedContent(
+            targetState = target,
+            transitionSpec = {
+                if (committed) {
+                    EnterTransition.None togetherWith ExitTransition.None
+                } else {
+                    val deeper = nav.stack.size >= lastSize
+                    lastSize = nav.stack.size
+                    if (deeper) {
+                        (slideInHorizontally(TandemMotion.spatial()) { it / 4 } + fadeIn(tween(TandemMotion.DurationMedium))) togetherWith
+                            (slideOutHorizontally(TandemMotion.spatial()) { -it / 6 } + fadeOut(tween(TandemMotion.DurationFast)))
+                    } else {
+                        (slideInHorizontally(TandemMotion.spatial()) { -it / 6 } + fadeIn(tween(TandemMotion.DurationMedium))) togetherWith
+                            (slideOutHorizontally(TandemMotion.spatial()) { it / 4 } + fadeOut(tween(TandemMotion.DurationFast)))
+                    }
+                }
+            },
+            label = "route",
+            modifier = Modifier.fillMaxSize().graphicsLayer {
+                val p = backProgress.value
+                if (p > 0f) {
+                    val s = 1f - 0.1f * p
+                    scaleX = s
+                    scaleY = s
+                    val direction = if (backEdge == BackEventCompat.EDGE_RIGHT) -1f else 1f
+                    translationX = direction * p * 48.dp.toPx()
+                    shape = RoundedCornerShape((28 * p).dp)
+                    clip = true
+                    alpha = 1f - 0.25f * p
+                }
+            },
+        ) { route ->
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
+        }
+    }
+}
+
+@Composable
+private fun RouteContent(route: Route, nav: Nav) {
+    when (route) {
+        Route.Home -> HomeTabs(nav)
+        is Route.Device -> DeviceDetailScreen(route.id, onBack = { nav.pop() }, onRemote = { nav.push(Route.Remote(it)) })
+        Route.Pair -> PairScreen(onBack = { nav.pop() }, onPaired = { nav.pop() })
+        is Route.Remote -> RemoteScreen(route.id, onBack = { nav.pop() })
+        Route.Access -> AccessScreen(onBack = { nav.pop() })
+        Route.MirrorApps -> MirrorAppsScreen(onBack = { nav.pop() })
+        Route.Appearance -> AppearanceScreen(onBack = { nav.pop() })
     }
 }
 

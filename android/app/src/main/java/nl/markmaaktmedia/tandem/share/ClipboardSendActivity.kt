@@ -83,7 +83,7 @@ class ClipboardSendActivity : ComponentActivity() {
                 val reached = if (online.isEmpty()) 0 else host.sendClipboard(online.map { it.id }, text)
                 Toast.makeText(
                     this@ClipboardSendActivity,
-                    if (reached > 0) getString(R.string.share_done, reached) else getString(R.string.share_none_online),
+                    if (reached > 0) resources.getQuantityString(R.plurals.share_done_n, reached, reached) else getString(R.string.share_none_online),
                     Toast.LENGTH_SHORT,
                 ).show()
                 finish()

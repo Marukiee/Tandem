@@ -131,5 +131,21 @@ class ScreenshotWatcher(
 
     companion object {
         const val SCREENSHOT_ID = 3
+
+        /**
+         * Turns the screenshot notification into a short status line (sending, sent, failed).
+         * Same id and onlyAlertOnce, so it replaces the offer without buzzing again.
+         */
+        fun showStatus(context: Context, title: String, text: String? = null, sending: Boolean = false) {
+            val builder = NotificationCompat.Builder(context, Channels.SCREENSHOT)
+                .setSmallIcon(R.drawable.ic_stat_tandem)
+                .setContentTitle(title)
+                .setOnlyAlertOnce(true)
+                .setAutoCancel(true)
+                .setTimeoutAfter(if (sending) 30_000 else 5_000)
+            text?.let { builder.setContentText(it) }
+            if (sending) builder.setProgress(0, 0, true)
+            context.getSystemService(NotificationManager::class.java).notify(SCREENSHOT_ID, builder.build())
+        }
     }
 }

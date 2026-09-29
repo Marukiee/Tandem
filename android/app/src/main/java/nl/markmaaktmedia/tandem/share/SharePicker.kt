@@ -154,7 +154,7 @@ fun SharePickerSheet(
                     Box(Modifier.size(64.dp).scale(scale).clip(CircleShape).background(LocalTandemExtraColors.current.online.copy(alpha = 0.18f)), contentAlignment = Alignment.Center) {
                         Icon(TandemIcons.CheckCircleFilled, null, tint = LocalTandemExtraColors.current.online, modifier = Modifier.size(38.dp))
                     }
-                    Text(stringResource(R.string.share_done, current.count), style = MaterialTheme.typography.titleMedium)
+                    Text(androidx.compose.ui.res.pluralStringResource(R.plurals.share_done_n, current.count, current.count), style = MaterialTheme.typography.titleMedium)
                 }
 
                 is SendPhase.Failed -> StatusBlock {

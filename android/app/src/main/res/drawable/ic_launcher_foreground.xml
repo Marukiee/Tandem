@@ -1,16 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Two pills, tilted, side by side like two riders. Kept inside the 66dp safe zone. -->
-    <group android:pivotX="54" android:pivotY="54" android:rotation="32">
-        <path
-            android:fillColor="#FFB0CB"
-            android:pathData="M69.5,31.5a8.5,8.5 0,0 1,17 0v45a8.5,8.5 0,0 1,-17 0z" />
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M53.5,31.5a8.5,8.5 0,0 1,17 0v45a8.5,8.5 0,0 1,-17 0z" />
+    <!-- Same art as the Mac icon: two pills leaning like a backslash, the light one in front.
+         Rotation is negative because Android rotates clockwise and the art leans left at the top.
+         Drawn around the pair's centre so it sits in the middle of the adaptive safe zone. -->
+    <group android:pivotX="61.41" android:pivotY="54" android:rotation="-32">
+        <path android:pathData="M53.33,39.77a8.07,8.07 0 0 1 16.15,0v28.45a8.07,8.07 0 0 1 -16.15,0z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:startX="54" android:startY="76.30" android:endX="54" android:endY="31.70" android:type="linear">
+                <item android:offset="0" android:color="#FFB0CB" />
+                <item android:offset="1" android:color="#E8779F" />
+            </gradient>
+        </aapt:attr>
+        </path>
+    </group>
+    <group android:pivotX="46.59" android:pivotY="54" android:rotation="-32">
+        <path android:pathData="M38.52,39.77a8.07,8.07 0 0 1 16.15,0v28.45a8.07,8.07 0 0 1 -16.15,0z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:startX="54" android:startY="76.30" android:endX="54" android:endY="31.70" android:type="linear">
+                <item android:offset="0" android:color="#FFFFFF" />
+                <item android:offset="1" android:color="#C9C8FA" />
+            </gradient>
+        </aapt:attr>
+        </path>
     </group>
 </vector>

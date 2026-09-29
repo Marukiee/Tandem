@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +39,8 @@ import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
+import nl.markmaaktmedia.tandem.ui.components.ActionTile
+import nl.markmaaktmedia.tandem.ui.components.platformName
 import nl.markmaaktmedia.tandem.ui.components.BatteryRing
 import nl.markmaaktmedia.tandem.ui.components.DeviceGlyph
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
@@ -104,7 +108,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(device.name, style = MaterialTheme.typography.headlineSmall, maxLines = 2)
                     Text(
-                        listOfNotNull(device.appVersion?.let { "Tandem $it" }, device.platform.name.lowercase().replaceFirstChar { it.uppercase() }).joinToString(" · "),
+                        listOfNotNull(device.appVersion?.let { "Tandem $it" }, platformName(device.platform)).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -137,18 +141,18 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
 
         // Actions
         if (device.online) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                PrimaryPillButton(stringResource(R.string.action_send_files), { picker.launch(arrayOf("*/*")) }, icon = TandemIcons.Upload)
-                SecondaryPillButton(stringResource(R.string.action_send_clipboard_long), {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                ActionTile(TandemIcons.Upload, stringResource(R.string.action_send_files), { picker.launch(arrayOf("*/*")) }, Modifier.weight(1f).fillMaxHeight(), primary = true)
+                ActionTile(TandemIcons.Paste, stringResource(R.string.action_send_clipboard_long), {
                     val text = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
                         .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
                     if (text.isNotEmpty()) scope.launch { host.sendClipboard(listOf(id), text) }
-                }, icon = TandemIcons.Paste)
+                }, Modifier.weight(1f).fillMaxHeight())
                 if (device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.LINUX || device.platform == TandemPlatform.WINDOWS) {
-                    SecondaryPillButton(stringResource(R.string.action_remote), { onRemote(id) }, icon = TandemIcons.Mouse)
+                    ActionTile(TandemIcons.Mouse, stringResource(R.string.action_remote), { onRemote(id) }, Modifier.weight(1f).fillMaxHeight())
                 }
                 if (device.platform == TandemPlatform.ANDROID) {
-                    SecondaryPillButton(stringResource(R.string.action_ring), { scope.launch { runCatching { host.engine?.ring(id, true) } } }, icon = TandemIcons.Ring)
+                    ActionTile(TandemIcons.Ring, stringResource(R.string.action_ring), { scope.launch { runCatching { host.engine?.ring(id, true) } } }, Modifier.weight(1f).fillMaxHeight())
                 }
             }
         }
@@ -166,7 +170,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             }
         }
 
-        SectionHeader(stringResource(R.string.section_this_device))
+        SectionHeader(stringResource(R.string.section_with_device, device.name))
         SettingsGroup {
             SwitchRow(0, 3, TandemIcons.Paste, stringResource(R.string.setting_clipboard), stringResource(R.string.setting_clipboard_sub), device.clipboardEnabled, { set(clipboard = it) })
             SwitchRow(1, 3, TandemIcons.Notifications, stringResource(R.string.setting_notifications_from), stringResource(R.string.setting_notifications_from_sub), device.notificationsEnabled, { set(notifications = it) })

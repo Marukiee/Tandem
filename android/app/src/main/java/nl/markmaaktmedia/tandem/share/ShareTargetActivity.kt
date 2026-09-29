@@ -131,7 +131,7 @@ class ShareTargetActivity : ComponentActivity() {
             // A device that just woke may need a moment to show as online.
             withTimeoutOrNull(3500) { graph.host.devices.first { list -> list.any { it.id in wanted && it.online } } }
             val reached = send(shared, wanted)
-            Toast.makeText(this@ShareTargetActivity, getString(R.string.share_done, reached), Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@ShareTargetActivity, resources.getQuantityString(R.plurals.share_done_n, reached, reached), Toast.LENGTH_SHORT).show()
             finish()
         }
     }
@@ -199,7 +199,7 @@ class ShareTargetActivity : ComponentActivity() {
     @Composable
     private fun summaryOf(shared: Shared): String = when {
         shared.origin == TandemShareOrigin.SCREENSHOT -> androidx.compose.ui.res.stringResource(R.string.share_summary_screenshot)
-        shared.uris.isNotEmpty() -> androidx.compose.ui.res.stringResource(R.string.share_summary_files, shared.uris.size)
+        shared.uris.isNotEmpty() -> androidx.compose.ui.res.pluralStringResource(R.plurals.file_count, shared.uris.size, shared.uris.size)
         shared.text?.startsWith("http") == true -> shared.text
         else -> androidx.compose.ui.res.stringResource(R.string.share_summary_text)
     }

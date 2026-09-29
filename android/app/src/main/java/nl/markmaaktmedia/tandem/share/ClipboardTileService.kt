@@ -17,7 +17,7 @@ class ClipboardTileService : TileService() {
             manager.requestAddTileService(
                 android.content.ComponentName(context, ClipboardTileService::class.java),
                 context.getString(nl.markmaaktmedia.tandem.R.string.tile_label),
-                android.graphics.drawable.Icon.createWithResource(context, nl.markmaaktmedia.tandem.R.drawable.ic_stat_tandem),
+                android.graphics.drawable.Icon.createWithResource(context, nl.markmaaktmedia.tandem.R.drawable.ic_tile_clipboard),
                 java.util.concurrent.Executors.newSingleThreadExecutor(),
             ) { }
         }
