@@ -4,3 +4,7 @@
 -keepclassmembers class * extends com.sun.jna.** { public *; }
 -dontwarn java.awt.*
 -dontwarn com.sun.jna.**
+
+# Shizuku starts this by class name in its own process, through the empty constructor.
+-keep class nl.markmaaktmedia.tandem.hotspot.HotspotUserService { <init>(); }
+-keep class rikka.shizuku.** { *; }

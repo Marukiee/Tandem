@@ -36,6 +36,8 @@ import nl.markmaaktmedia.tandem.BuildConfig
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.Permissions
 import nl.markmaaktmedia.tandem.graph
+import nl.markmaaktmedia.tandem.hotspot.HOTSPOT_EXTRA_ROWS
+import nl.markmaaktmedia.tandem.hotspot.HotspotSettingsRows
 import nl.markmaaktmedia.tandem.ui.Route
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
 import nl.markmaaktmedia.tandem.ui.components.ContentRow
@@ -126,7 +128,8 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
         item {
             SectionHeader(stringResource(R.string.settings_hotspot))
             SettingsGroup {
-                SwitchRow(0, 1, TandemIcons.Hotspot, stringResource(R.string.settings_hotspot_for_mac), stringResource(R.string.settings_hotspot_for_mac_sub), hotspot, { scope.launch { prefs.setHotspotForMac(it) } })
+                SwitchRow(0, 1 + HOTSPOT_EXTRA_ROWS, TandemIcons.Hotspot, stringResource(R.string.settings_hotspot_for_mac), stringResource(R.string.settings_hotspot_for_mac_sub), hotspot, { scope.launch { prefs.setHotspotForMac(it) } })
+                HotspotSettingsRows(1, 1 + HOTSPOT_EXTRA_ROWS)
             }
         }
 

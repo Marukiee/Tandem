@@ -15,8 +15,12 @@ zxing = "3.5.3"
 jna = "5.17.0"
 material = "1.13.0"
 junit = "4.13.2"
+shizuku = "13.1.5"
 
 [libraries]
+# Optional at run time: the hotspot falls back to a notification without the Shizuku app.
+shizuku-api = { group = "dev.rikka.shizuku", name = "api", version.ref = "shizuku" }
+shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }

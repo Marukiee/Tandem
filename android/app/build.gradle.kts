@@ -137,5 +137,9 @@ dependencies {
     // The Rust core is called through UniFFI, which uses JNA.
     implementation(variantOf(libs.jna) { artifactType("aar") })
 
+    // Lets the phone start its own hotspot when the Mac asks, if Shizuku is installed.
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
+
     testImplementation(libs.junit)
 }

@@ -19,6 +19,7 @@ import nl.markmaaktmedia.tandem.MainActivity
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.calls.CallMonitor
+import nl.markmaaktmedia.tandem.hotspot.HotspotModule
 import nl.markmaaktmedia.tandem.share.ClipboardSendActivity
 import nl.markmaaktmedia.tandem.share.ScreenshotWatcher
 import nl.markmaaktmedia.tandem.share.ShareShortcuts
@@ -35,6 +36,7 @@ class TandemService : LifecycleService() {
     private lateinit var status: StatusReporter
     private lateinit var screenshots: ScreenshotWatcher
     private lateinit var calls: CallMonitor
+    private lateinit var hotspot: HotspotModule
     private var multicast: WifiManager.MulticastLock? = null
     private var lastProgressPost = 0L
 
@@ -52,6 +54,7 @@ class TandemService : LifecycleService() {
         status = StatusReporter(this, host, graph.scope).also { it.start() }
         screenshots = ScreenshotWatcher(this, host, graph.prefs, graph.scope).also { it.start() }
         calls = CallMonitor(this, host, graph.prefs, graph.scope).also { it.start() }
+        hotspot = HotspotModule.get(this).also { it.start { status.resend() } }
 
         lifecycleScope.launch {
             host.devices.collectLatest { devices ->
@@ -74,6 +77,7 @@ class TandemService : LifecycleService() {
         status.stop()
         screenshots.stop()
         calls.stop()
+        hotspot.stop()
         multicast?.release()
         FindPhone.stop()
         super.onDestroy()
@@ -108,6 +112,7 @@ class TandemService : LifecycleService() {
 
             is TandemEvent.CallAction -> calls.handle(event)
             is TandemEvent.Dial -> calls.dial(event.number)
+            is TandemEvent.Hotspot -> hotspot.onEvent(event)
 
             is TandemEvent.Notification -> Unit
 

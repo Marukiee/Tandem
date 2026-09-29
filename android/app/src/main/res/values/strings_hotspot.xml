@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hotspot_channel_request">Hotspot requests</string>
+    <string name="hotspot_channel_request_desc">When your Mac asks for your hotspot and you have to turn it on yourself</string>
+    <string name="hotspot_request_title">Your Mac wants your hotspot</string>
+    <string name="hotspot_request_text">Tap to turn it on</string>
+    <string name="hotspot_in_use_title">Your Mac is using your hotspot</string>
+    <string name="hotspot_in_use_auto">It turns off by itself after 5 minutes without devices</string>
+    <string name="hotspot_in_use_manual">Turn it off yourself when you are done</string>
+    <string name="hotspot_in_use_clients">%1$d connected. It turns off by itself after 5 minutes without devices</string>
+
+    <string name="hotspot_method">Method</string>
+    <string name="hotspot_method_shizuku">Shizuku, turns on by itself</string>
+    <string name="hotspot_method_manual">Manual, you tap a notification</string>
+    <string name="hotspot_method_need_permission">Shizuku is running, tap to allow Tandem</string>
+    <string name="hotspot_method_denied">Shizuku refused Tandem, allow it in the Shizuku app</string>
+    <string name="hotspot_method_not_running">Manual. Shizuku is installed but not running, tap to open it</string>
+    <string name="hotspot_method_not_installed">Manual. Install Shizuku to turn it on by itself</string>
+    <string name="hotspot_method_too_old">Manual. Update Shizuku to version 11 or newer</string>
+
+    <string name="hotspot_test">Test the hotspot</string>
+    <string name="hotspot_test_sub">Turns it on for 20 seconds</string>
+    <string name="hotspot_test_busy">Testing</string>
+    <string name="hotspot_test_needs_pref">Turn on the switch above first</string>
+    <string name="hotspot_test_needs_bluetooth">Allow Bluetooth under Access, or your Mac cannot reach this phone</string>
+    <string name="hotspot_test_manual">Tap the notification to turn the hotspot on</string>
+    <string name="hotspot_test_ok">The hotspot came on</string>
+    <string name="hotspot_test_failed">The hotspot did not come on</string>
+    <string name="hotspot_test_battery">Refused, the battery is too low</string>
+    <string name="hotspot_test_roaming">Refused, you are roaming</string>
+
+    <string name="hotspot_roaming">Also while roaming</string>
+    <string name="hotspot_roaming_sub">Off by default, data abroad can be expensive</string>
+    <string name="hotspot_setup">Setup guide</string>
+    <string name="hotspot_setup_sub">Shizuku, Bluetooth and the Mac side, step by step</string>
+</resources>

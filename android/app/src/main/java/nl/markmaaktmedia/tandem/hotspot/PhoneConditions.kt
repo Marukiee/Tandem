@@ -1,0 +1,82 @@
+package nl.markmaaktmedia.tandem.hotspot
+
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.BatteryManager
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import java.net.Inet4Address
+import java.net.NetworkInterface
+
+private val Context.hotspotStore: DataStore<Preferences> by preferencesDataStore(name = "tandem_hotspot")
+
+/** Settings that belong to the hotspot feature alone, kept out of the shared prefs. */
+class HotspotPrefs(private val context: Context) {
+    private val roamingKey = booleanPreferencesKey("allow_roaming")
+
+    /** Off by default: a Mac can eat a lot of data, and abroad data is expensive. */
+    val allowRoaming: Flow<Boolean> = context.hotspotStore.data.map { it[roamingKey] ?: false }
+
+    suspend fun setAllowRoaming(value: Boolean) {
+        context.hotspotStore.edit { it[roamingKey] = value }
+    }
+}
+
+/** What the phone is doing right now, for deciding whether to say yes. */
+object PhoneConditions {
+    fun batteryPercent(context: Context): Int? {
+        val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return null
+        val level = battery.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = battery.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
+        return if (level >= 0 && scale > 0) level * 100 / scale else null
+    }
+
+    fun charging(context: Context): Boolean {
+        val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return false
+        return battery.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+    }
+
+    /** Roaming on the mobile connection the hotspot would share. */
+    fun roaming(context: Context): Boolean {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java)
+        val capabilities = connectivity.getNetworkCapabilities(connectivity.activeNetwork) ?: return false
+        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) &&
+            !capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
+    }
+}
+
+/**
+ * Tells whether the phone's own Wi-Fi hotspot is up, without any privilege: the access
+ * point shows up as a network interface of its own with a private address, next to
+ * (and not the same as) the interface the phone uses to join Wi-Fi.
+ */
+class HotspotDetector(private val context: Context) {
+    private val connectivity = context.getSystemService(ConnectivityManager::class.java)
+
+    fun isOn(): Boolean = accessPointInterface() != null
+
+    fun accessPointInterface(): String? {
+        @Suppress("DEPRECATION")
+        val joined = connectivity.allNetworks.mapNotNull { connectivity.getLinkProperties(it)?.interfaceName }.toSet()
+        val all = runCatching { NetworkInterface.getNetworkInterfaces()?.toList() }.getOrNull().orEmpty()
+        return all.firstOrNull { candidate ->
+            runCatching {
+                candidate.isUp && !candidate.isLoopback && AP_NAME.matches(candidate.name) && candidate.name !in joined &&
+                    candidate.inetAddresses.toList().any { it is Inet4Address && it.isSiteLocalAddress }
+            }.getOrDefault(false)
+        }?.name
+    }
+
+    companion object {
+        // ap0 on Pixels, swlan0 on Samsung, wlan1 and wlan2 on many others.
+        private val AP_NAME = Regex("^(ap|swlan|wlan|softap)\\d+$")
+    }
+}
