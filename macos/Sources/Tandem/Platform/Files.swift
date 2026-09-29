@@ -7,7 +7,7 @@ final class MacFiles: TandemFiles, @unchecked Sendable {
     func openRead(source: String) throws -> Int32 {
         let descriptor = open(source, O_RDONLY)
         guard descriptor >= 0 else {
-            throw TandemError.Failed(message: String(cString: strerror(errno)))
+            throw TandemError.Failed(reason: String(cString: strerror(errno)))
         }
         return descriptor
     }

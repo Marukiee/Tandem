@@ -23,14 +23,14 @@ use crate::transfer::OutgoingFile;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum TandemError {
-    #[error("{message}")]
-    Failed { message: String },
+    #[error("{reason}")]
+    Failed { reason: String },
     #[error("not connected to that device")]
     NotConnected,
     #[error("that device is not part of your circle")]
     NotTrusted,
-    #[error("{message}")]
-    Pairing { message: String },
+    #[error("{reason}")]
+    Pairing { reason: String },
 }
 
 impl From<crate::Error> for TandemError {
@@ -38,8 +38,8 @@ impl From<crate::Error> for TandemError {
         match err {
             crate::Error::NotConnected => TandemError::NotConnected,
             crate::Error::NotTrusted => TandemError::NotTrusted,
-            crate::Error::Pairing(message) => TandemError::Pairing { message },
-            other => TandemError::Failed { message: other.to_string() },
+            crate::Error::Pairing(reason) => TandemError::Pairing { reason },
+            other => TandemError::Failed { reason: other.to_string() },
         }
     }
 }
@@ -816,7 +816,7 @@ impl TandemEngine {
             .thread_name("tandem")
             .enable_all()
             .build()
-            .map_err(|e| TandemError::Failed { message: e.to_string() })?;
+            .map_err(|e| TandemError::Failed { reason: e.to_string() })?;
 
         let mut cfg = EngineConfig::new(&config.data_dir, &config.device_name);
         cfg.platform = config.platform.into();
@@ -1123,5 +1123,5 @@ impl TandemEngine {
 }
 
 fn join_error(e: tokio::task::JoinError) -> TandemError {
-    TandemError::Failed { message: format!("internal error: {e}") }
+    TandemError::Failed { reason: format!("internal error: {e}") }
 }

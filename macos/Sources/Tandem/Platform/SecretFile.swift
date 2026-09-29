@@ -41,7 +41,7 @@ final class FileVault: TandemVault, @unchecked Sendable {
         do {
             return try SecretFile.read(name)
         } catch {
-            throw TandemError.Failed(message: error.localizedDescription)
+            throw TandemError.Failed(reason: error.localizedDescription)
         }
     }
 
@@ -49,7 +49,7 @@ final class FileVault: TandemVault, @unchecked Sendable {
         do {
             try SecretFile.write(secret, to: name)
         } catch {
-            throw TandemError.Failed(message: error.localizedDescription)
+            throw TandemError.Failed(reason: error.localizedDescription)
         }
     }
 }
