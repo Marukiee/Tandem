@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Permission cards -->
+    <string name="perm_partly">Partly</string>
+    <string name="perm_phone_opt_calllog">the caller\'s number</string>
+    <string name="perm_phone_opt_sms">declining with a message</string>
+    <string name="perm_phone_opt_dial">calling from your Mac</string>
+    <string name="perm_phone_missing">Calls work. Still off: %1$s.</string>
+    <string name="perm_phone_restricted">Android blocks the call log and text permissions for apps that were not installed from the Play Store. Open app info, tap the three dots at the top right, choose Allow restricted settings, then try again.</string>
+    <string name="perm_open_app_info">Open app info</string>
+    <string name="perm_try_again">Try again</string>
+    <string name="perm_blocked">Android will not ask about this again. Turn it on in app info.</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_page">Page %1$d of %2$d</string>
+
+    <!-- Pairing -->
+    <string name="pair_scan_hint">Point the camera at the QR code on your other device.</string>
+    <string name="pair_expired_body">A code only works for five minutes.</string>
+    <string name="pair_err_title">Pairing did not work</string>
+    <string name="pair_err_expired_title">This code has expired</string>
+    <string name="pair_err_expired_body">Ask the other device to show a new QR code.</string>
+    <string name="pair_err_mismatch_title">That is not the current code</string>
+    <string name="pair_err_mismatch_body">The other device has moved on to a new code. Ask it to show a new QR code and scan that one.</string>
+    <string name="pair_err_not_showing_title">No code is showing there</string>
+    <string name="pair_err_not_showing_body">On the other device, open Tandem, choose Pair a device and show its code. Then scan it.</string>
+    <string name="pair_err_invalid_title">That is not a Tandem code</string>
+    <string name="pair_err_invalid_body">Scan the QR code Tandem shows when you choose Pair a device on another device.</string>
+    <string name="pair_err_newer_title">This code is from a newer Tandem</string>
+    <string name="pair_err_newer_body">Update Tandem on this phone, then scan it again.</string>
+    <string name="pair_err_own_title">That is the code of this phone</string>
+    <string name="pair_err_own_body">Scan the code on your other device instead.</string>
+    <string name="pair_err_no_answer_title">The other device did not answer</string>
+    <string name="pair_err_no_answer_body">Check that both devices are on the same network and that Tandem is open on the other one, then try again.</string>
+</resources>
