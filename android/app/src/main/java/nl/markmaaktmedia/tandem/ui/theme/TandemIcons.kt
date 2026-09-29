@@ -90,6 +90,17 @@ object TandemIcons {
     val VolumeDown: Painter @Composable get() = painterResource(R.drawable.sym_volume_down)
     val VolumeOff: Painter @Composable get() = painterResource(R.drawable.sym_volume_off)
 
+    // Keys of the remote keyboard. The arrows are the drawn ones, not the chevrons above,
+    // which read as "expand" rather than as a key.
+    val KeyUp: Painter @Composable get() = painterResource(R.drawable.sym_arrow_upward)
+    val KeyDown: Painter @Composable get() = painterResource(R.drawable.sym_arrow_downward)
+    val KeyLeft: Painter @Composable get() = painterResource(R.drawable.sym_arrow_back)
+    val KeyRight: Painter @Composable get() = painterResource(R.drawable.sym_arrow_forward)
+    val KeyShift: Painter @Composable get() = painterResource(R.drawable.sym_shift)
+    val KeyControl: Painter @Composable get() = painterResource(R.drawable.sym_keyboard_control_key)
+    val KeyOption: Painter @Composable get() = painterResource(R.drawable.sym_keyboard_option_key)
+    val KeyCommand: Painter @Composable get() = painterResource(R.drawable.sym_keyboard_command_key)
+
     // Settings
     val Notifications: Painter @Composable get() = painterResource(R.drawable.sym_notifications)
     val Palette: Painter @Composable get() = painterResource(R.drawable.sym_palette)

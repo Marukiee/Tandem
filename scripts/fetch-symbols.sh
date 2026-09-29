@@ -19,6 +19,8 @@ OUTLINE=(
   wifi_tethering lock_open history restart_alt person
 )
 FILLED=(devices swap_vert tune check_circle notifications_active)
+# The keys of the on-screen keyboard in the remote screen.
+KEYS=(arrow_downward arrow_forward keyboard_command_key keyboard_option_key keyboard_control_key shift)
 
 fetch() { # name, remote file, local name
   local url="$BASE/$1/materialsymbolsrounded/$2"
@@ -28,5 +30,6 @@ fetch() { # name, remote file, local name
   sed -i.bak -e 's|android:tint="[^"]*"||' -e 's|@android:color/white|#FF000000|g' "$DEST/$3.xml" && rm -f "$DEST/$3.xml.bak"
 }
 for name in "${OUTLINE[@]}"; do fetch "$name" "${name}_24px.xml" "sym_$name"; done
+for name in "${KEYS[@]}"; do fetch "$name" "${name}_24px.xml" "sym_$name"; done
 for name in "${FILLED[@]}"; do fetch "$name" "${name}_fill1_24px.xml" "sym_${name}_filled"; done
 echo "symbols: $(ls "$DEST"/sym_*.xml | wc -l) drawables"

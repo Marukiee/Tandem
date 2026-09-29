@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="remote_hint_three">Drie vingers voor Mission Control en Spaces</string>
+    <string name="remote_mouse_buttons">Muisknoppen</string>
+    <string name="remote_left">Links</string>
+    <string name="remote_right">Rechts</string>
+    <string name="remote_type_hint">Typ om naar je Mac te sturen</string>
+    <string name="remote_media_mute">Dempen</string>
+    <string name="remote_media_volume_down">Zachter</string>
+    <string name="remote_media_previous">Vorige</string>
+    <string name="remote_media_play_pause">Afspelen of pauzeren</string>
+    <string name="remote_media_next">Volgende</string>
+    <string name="remote_media_volume_up">Harder</string>
+    <string name="remote_mod_shift">Shift</string>
+    <string name="remote_mod_ctrl">Ctrl</string>
+    <string name="remote_mod_option">Option</string>
+    <string name="remote_mod_command">Cmd</string>
+    <string name="remote_key_esc">Esc</string>
+    <string name="remote_key_tab">Tab</string>
+    <string name="remote_key_up">Pijl omhoog</string>
+    <string name="remote_key_down">Pijl omlaag</string>
+    <string name="remote_key_left">Pijl links</string>
+    <string name="remote_key_right">Pijl rechts</string>
+    <string name="remote_key_delete">Wissen</string>
+    <string name="remote_key_enter">Enter</string>
+</resources>
