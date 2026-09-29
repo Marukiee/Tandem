@@ -74,6 +74,8 @@ fun AppRoot() {
 private fun MainNavigation() {
     val nav = remember { Nav() }
     val startAtPair by LocalContext.current.graph.startAtPair.collectAsState()
+    val pairLink by LocalContext.current.graph.pairLink.collectAsState()
+    LaunchedEffect(pairLink) { if (pairLink != null) nav.push(Route.Pair) }
     val pairFlag = LocalContext.current.graph.startAtPair
     LaunchedEffect(startAtPair) {
         if (startAtPair) {

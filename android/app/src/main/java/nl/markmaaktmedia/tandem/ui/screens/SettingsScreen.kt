@@ -64,7 +64,6 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
     val calls by prefs.callMirror.collectAsState(initial = true)
     val hotspot by prefs.hotspotForMac.collectAsState(initial = false)
     val autoUpdate by prefs.autoUpdateCheck.collectAsState(initial = true)
-    val backgroundClipboard by prefs.backgroundClipboard.collectAsState(initial = false)
     val copyCodes by prefs.copyCodes.collectAsState(initial = true)
     val updateState by graph.updater.state.collectAsState()
 
@@ -110,7 +109,7 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
             SectionHeader(stringResource(R.string.settings_sharing))
             SettingsGroup {
                 SwitchRow(0, 2, TandemIcons.Screenshot, stringResource(R.string.settings_screenshot), stringResource(R.string.settings_screenshot_sub), screenshot, { scope.launch { prefs.setScreenshotPrompt(it) } })
-                SwitchRow(1, 2, TandemIcons.Paste, stringResource(R.string.settings_bg_clipboard), stringResource(R.string.settings_bg_clipboard_sub), backgroundClipboard, { scope.launch { prefs.setBackgroundClipboard(it) } })
+                ActionRow(1, 2, TandemIcons.Paste, stringResource(R.string.settings_clip_tile), stringResource(R.string.settings_clip_tile_sub), { nl.markmaaktmedia.tandem.share.ClipboardTileService.requestAdd(context) })
             }
         }
 

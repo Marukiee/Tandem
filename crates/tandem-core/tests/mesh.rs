@@ -513,4 +513,10 @@ async fn the_circle_survives_a_restart() {
     let again = Engine::start(cfg, secrets, files).await.unwrap();
     assert_eq!(again.devices().len(), 1);
     assert_eq!(again.devices()[0].id, mac_id);
+
+    // It must also find its way back on its own, from the addresses it saved.
+    wait_until("phone reconnects after a restart", || {
+        again.devices().iter().any(|d| d.id == mac_id && d.online)
+    })
+    .await;
 }

@@ -127,8 +127,8 @@ private fun WelcomePage() {
         verticalArrangement = Arrangement.Center,
     ) {
         Box(Modifier.size(150.dp).scale(turn), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(58.dp, 130.dp).rotate(32f).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer).padding(0.dp).align(Alignment.CenterEnd))
-            Box(Modifier.size(58.dp, 130.dp).rotate(32f).clip(CircleShape).background(MaterialTheme.colorScheme.primary).align(Alignment.CenterStart))
+            Box(Modifier.size(58.dp, 130.dp).rotate(-32f).clip(CircleShape).background(MaterialTheme.colorScheme.tertiaryContainer).padding(0.dp).align(Alignment.CenterEnd))
+            Box(Modifier.size(58.dp, 130.dp).rotate(-32f).clip(CircleShape).background(MaterialTheme.colorScheme.primary).align(Alignment.CenterStart))
         }
         Spacer(Modifier.height(36.dp))
         Text(stringResource(R.string.onb_title), style = MaterialTheme.typography.displaySmall, textAlign = TextAlign.Center)

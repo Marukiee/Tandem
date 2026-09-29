@@ -226,4 +226,6 @@
     <string name="screenshot_to">To %1$s</string>
     <string name="screenshot_choose">Choose…</string>
     <string name="tile_label">Send clipboard</string>
+    <string name="settings_clip_tile">Add the Send clipboard tile</string>
+    <string name="settings_clip_tile_sub">Android only lets an app read the clipboard while it is on screen. The tile in your quick settings sends it with one tap. A clipboard from your Mac lands on your phone by itself.</string>
 </resources>

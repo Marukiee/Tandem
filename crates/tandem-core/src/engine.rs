@@ -180,8 +180,9 @@ impl Engine {
             last_announce_hour: AtomicU64::new(discovery::current_hour()),
         });
 
-        inner.load_addresses();
+        // The peers must exist before their saved addresses can be attached to them.
         inner.sync_peers();
+        inner.load_addresses();
         inner.clean_partials();
         info!(id = %inner.my_id, port = inner.port, "tandem engine started");
 

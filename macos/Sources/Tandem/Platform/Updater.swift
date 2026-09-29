@@ -53,10 +53,11 @@ final class Updater {
     func checkIfDue() {
         guard autoCheck else { return }
         if let last = lastChecked, Date().timeIntervalSince(last) < 24 * 3600 { return }
-        Task { await check() }
+        Task { await check(manual: false) }
     }
 
-    func check() async {
+    /// `manual` is true for the button. An automatic check that fails says nothing.
+    func check(manual: Bool = true) async {
         state = .checking
         do {
             var request = URLRequest(url: URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases/latest")!)
@@ -64,6 +65,13 @@ final class Updater {
             request.setValue("Tandem/\(currentVersion)", forHTTPHeaderField: "User-Agent")
             request.timeoutInterval = 20
             let (data, response) = try await URLSession.shared.data(for: request)
+            // 404 means nothing has been published yet, which is not a failure.
+            if (response as? HTTPURLResponse)?.statusCode == 404 {
+                lastChecked = Date()
+                UserDefaults.standard.set(lastChecked, forKey: "updateLastChecked")
+                state = .upToDate
+                return
+            }
             guard (response as? HTTPURLResponse)?.statusCode == 200,
                   let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let tag = json["tag_name"] as? String
@@ -95,7 +103,8 @@ final class Updater {
                 page: (json["html_url"] as? String).flatMap(URL.init(string:)) ?? URL(string: "https://github.com/\(owner)/\(repo)/releases")!
             ))
         } catch {
-            state = .failed(String(localized: "Could not reach GitHub"))
+            // A check nobody asked for stays quiet when it fails.
+            state = manual ? .failed(String(localized: "Could not reach GitHub")) : .idle
         }
     }
 

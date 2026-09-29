@@ -88,9 +88,15 @@ fun DeviceGlyph(
     online: Boolean,
     modifier: Modifier = Modifier,
     size: Dp = 52.dp,
+    /** For a glyph on a coloured tile, where the usual fill would disappear into it. */
+    onTile: Boolean = false,
 ) {
     val container by animateColorAsState(
-        if (online) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        when {
+            onTile && online -> MaterialTheme.colorScheme.surface
+            online -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surfaceContainerHighest
+        },
         TandemMotion.colourSpec(), label = "glyphContainer",
     )
     val content by animateColorAsState(

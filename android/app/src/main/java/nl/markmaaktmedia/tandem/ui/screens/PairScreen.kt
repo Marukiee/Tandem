@@ -47,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -80,6 +81,9 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import nl.markmaaktmedia.tandem.engine.EngineState
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
@@ -114,7 +118,10 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit) {
         error = null
         scope.launch {
             try {
-                val id = host.engine!!.pairWithUri(uri)
+                // The engine starts a moment after the app does.
+                withTimeoutOrNull(8000) { host.state.first { it == EngineState.Running } }
+                val engine = host.engine ?: throw IllegalStateException(context.getString(R.string.share_not_ready))
+                val id = engine.pairWithUri(uri)
                 host.refreshDevices()
                 joined = host.device(id)?.name ?: context.getString(R.string.pair_new_device)
             } catch (e: Exception) {
@@ -122,6 +129,14 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit) {
             } finally {
                 busy = false
             }
+        }
+    }
+
+    // A pairing link opened from outside the app (a tandem:// link) joins straight away.
+    LaunchedEffect(Unit) {
+        context.graph.pairLink.value?.let { link ->
+            context.graph.pairLink.value = null
+            join(link)
         }
     }
 
@@ -348,7 +363,8 @@ private fun ShowPanel() {
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     var round by remember { mutableStateOf(0) }
 
-    LaunchedEffect(round) {
+    val engineState by host.state.collectAsState()
+    LaunchedEffect(round, engineState) {
         runCatching { host.engine?.createPairingOffer() }.getOrNull()?.let {
             uri = it.uri
             expiresAt = it.expiresAtMs.toLong()

@@ -39,7 +39,6 @@ class TandemPrefs(private val context: Context) {
         val hotspotForMac = booleanPreferencesKey("hotspot_for_mac")
         val autoUpdateCheck = booleanPreferencesKey("auto_update_check")
         val lastUpdateCheck = longPreferencesKey("last_update_check")
-        val backgroundClipboard = booleanPreferencesKey("background_clipboard")
         val copyCodes = booleanPreferencesKey("copy_codes")
     }
 
@@ -62,7 +61,6 @@ class TandemPrefs(private val context: Context) {
     val hotspotForMac: Flow<Boolean> = data.map { it[Keys.hotspotForMac] ?: false }
     val autoUpdateCheck: Flow<Boolean> = data.map { it[Keys.autoUpdateCheck] ?: true }
     val lastUpdateCheck: Flow<Long> = data.map { it[Keys.lastUpdateCheck] ?: 0L }
-    val backgroundClipboard: Flow<Boolean> = data.map { it[Keys.backgroundClipboard] ?: false }
     val copyCodes: Flow<Boolean> = data.map { it[Keys.copyCodes] ?: true }
 
     suspend fun snapshotMirrorApps(): Set<String> = mirrorApps.first()
@@ -84,7 +82,6 @@ class TandemPrefs(private val context: Context) {
     suspend fun setHotspotForMac(value: Boolean) = set(Keys.hotspotForMac, value)
     suspend fun setAutoUpdateCheck(value: Boolean) = set(Keys.autoUpdateCheck, value)
     suspend fun setLastUpdateCheck(value: Long) = set(Keys.lastUpdateCheck, value)
-    suspend fun setBackgroundClipboard(value: Boolean) = set(Keys.backgroundClipboard, value)
     suspend fun setCopyCodes(value: Boolean) = set(Keys.copyCodes, value)
 
     suspend fun setMirrorApp(packageName: String, enabled: Boolean) {

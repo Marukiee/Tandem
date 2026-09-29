@@ -36,3 +36,4 @@ macos/Sources/tandem_coreFFI/include/
 *.password
 *.pem
 .env
+.claude/

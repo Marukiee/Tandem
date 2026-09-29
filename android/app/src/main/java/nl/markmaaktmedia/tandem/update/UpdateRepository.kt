@@ -56,15 +56,19 @@ class UpdateRepository(
         if (!prefs.autoUpdateCheck.first()) return
         val last = prefs.lastUpdateCheck.first()
         if (System.currentTimeMillis() - last < DAY_MS) return
-        check()
+        check(manual = false)
     }
 
-    suspend fun check(): ReleaseInfo? {
+    /**
+     * [manual] is true for the button. A check nobody asked for stays quiet when it
+     * fails, because an offline phone or a repo without releases is not news.
+     */
+    suspend fun check(manual: Boolean = true): ReleaseInfo? {
         _state.value = UpdateState.Checking
         val release = fetchLatest()
         prefs.setLastUpdateCheck(System.currentTimeMillis())
         if (release == null) {
-            _state.value = UpdateState.Failed(FAILED_REASON)
+            _state.value = if (manual && !noReleaseYet) UpdateState.Failed(FAILED_REASON) else if (noReleaseYet) UpdateState.UpToDate else UpdateState.Idle
             return null
         }
         return if (VersionComparator.isNewer(release.versionName, currentVersion)) {
@@ -80,7 +84,12 @@ class UpdateRepository(
         _state.value = UpdateState.Idle
     }
 
+    /** The feed answered 404: nothing has been published yet, which is not a failure. */
+    @Volatile
+    private var noReleaseYet = false
+
     private suspend fun fetchLatest(): ReleaseInfo? = withContext(Dispatchers.IO) {
+        noReleaseYet = false
         val request = Request.Builder()
             .url("https://api.github.com/repos/${BuildConfig.GITHUB_OWNER}/${BuildConfig.GITHUB_REPO}/releases/latest")
             .header("Accept", "application/vnd.github+json")
@@ -89,6 +98,7 @@ class UpdateRepository(
             .build()
         runCatching {
             client.newCall(request).execute().use { response ->
+                if (response.code == 404) noReleaseYet = true
                 if (!response.isSuccessful) return@use null
                 val root = JSONObject(response.body?.string().orEmpty())
                 val tag = root.optString("tag_name")

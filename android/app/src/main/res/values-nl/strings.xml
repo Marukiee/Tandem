@@ -223,4 +223,6 @@
     <string name="screenshot_to">Naar %1$s</string>
     <string name="screenshot_choose">Kies…</string>
     <string name="tile_label">Klembord sturen</string>
+    <string name="settings_clip_tile">Voeg de tegel Klembord sturen toe</string>
+    <string name="settings_clip_tile_sub">Android laat een app het klembord alleen lezen als hij in beeld is. De tegel in je snelle instellingen stuurt het met één tik. Een klembord van je Mac komt vanzelf op je telefoon.</string>
 </resources>
