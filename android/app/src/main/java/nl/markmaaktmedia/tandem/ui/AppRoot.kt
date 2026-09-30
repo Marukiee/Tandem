@@ -106,116 +106,64 @@ private fun MainNavigation() {
     }
     BackHandler(enabled = nav.stack.size == 1 && nav.tab != 0) { nav.tab = 0 }
 
-    // Predictive back: while the finger drags, the screen shrinks and slides and the one
-    // below it shows through. Letting go past the threshold finishes the slide and then
-    // pops, without the usual route transition on top (the gesture already was the animation).
-    val backProgress = remember { Animatable(0f) }
-    var backEdge by remember { androidx.compose.runtime.mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
-    var committed by remember { androidx.compose.runtime.mutableStateOf(false) }
-    // True from the moment the outgoing page has slid away until the page underneath has been
-    // composed for real. Hiding the layer keeps the gap to a couple of cheap frames.
-    var hideTop by remember { androidx.compose.runtime.mutableStateOf(false) }
-    // Read as a derived value: reading backProgress.value here would recompose this whole
-    // screen on every touch event of the gesture, which is what made it stutter.
-    val showBelow by remember { androidx.compose.runtime.derivedStateOf { backProgress.value > 0f } }
-    val scope = rememberCoroutineScope()
+    // One transition drives every page change, including the back gesture. While the finger
+    // drags, the transition is *seeked*: the page beneath is composed once, at the start, and
+    // the very same transition (the fade, the shrink, and the shared bounds that pull the page
+    // back into the card it came from) plays out under the finger and carries on when it lets
+    // go. Nothing is composed twice and nothing is swapped at the end, which is what made the
+    // earlier hand-made version stutter.
+    val seekable = remember { androidx.compose.animation.core.SeekableTransitionState(nav.top) }
+    LaunchedEffect(nav.top) {
+        if (seekable.targetState != nav.top) seekable.animateTo(nav.top)
+    }
+    val transition = androidx.compose.animation.core.rememberTransition(seekable, label = "route")
+
     PredictiveBackHandler(enabled = nav.stack.size > 1) { events ->
+        val target = nav.stack[nav.stack.size - 2]
         try {
-            events.collect { event ->
-                backEdge = event.swipeEdge
-                backProgress.snapTo(event.progress)
-            }
+            events.collect { event -> seekable.seekTo(event.progress, target) }
+            seekable.animateTo(target)
+            // Last, so the handler switching itself off cannot cut the animation short.
+            nav.pop()
         } catch (e: CancellationException) {
-            scope.launch { backProgress.animateTo(0f, TandemMotion.spatial()) }
+            withContext(NonCancellable) { seekable.snapTo(nav.top) }
             throw e
-        }
-        // The finish runs in this screen's own scope, not in the handler's: popping the last
-        // page switches the handler off, and that would cancel the finish halfway and leave
-        // the outgoing page hidden for good.
-        scope.launch {
-            committed = true
-            try {
-                backProgress.animateTo(1f, tween(TandemMotion.DurationFast))
-                // The page underneath is already on screen, so it can take over without a
-                // seam: hide the outgoing layer, let the real page compose behind the copy,
-                // then swap in one frame. The route transition is decided while the next frame
-                // is composed, so the "no transition" flag has to outlive the pop by a couple
-                // of frames.
-                hideTop = true
-                nav.pop()
-                withFrameNanos { }
-                withFrameNanos { }
-            } finally {
-                withContext(NonCancellable) {
-                    backProgress.snapTo(0f)
-                    hideTop = false
-                    committed = false
-                }
-            }
         }
     }
 
-    var lastSize by remember { androidx.compose.runtime.mutableIntStateOf(1) }
-    val target = nav.top
-    val below = nav.stack.getOrNull(nav.stack.size - 2)
-
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        if (below != null && showBelow) {
-            Box(
-                Modifier.fillMaxSize().graphicsLayer {
-                    val p = backProgress.value
-                    val s = 0.94f + 0.06f * p
-                    scaleX = s
-                    scaleY = s
-                },
-            ) { RouteContent(below, nav) }
-        }
         SharedTransitionLayout {
-        CompositionLocalProvider(LocalSharedScope provides this) {
-        AnimatedContent(
-            targetState = target,
-            transitionSpec = {
-                if (committed) {
-                    EnterTransition.None togetherWith ExitTransition.None
-                } else {
-                    val deeper = nav.stack.size >= lastSize
-                    lastSize = nav.stack.size
-                    // Pages open out of the item that was tapped (shared bounds), so the page
-                    // itself only fades and settles instead of sliding across the screen.
-                    if (deeper) {
-                        (fadeIn(tween(TandemMotion.DurationMedium)) + scaleIn(TandemMotion.spatial(), initialScale = 0.97f)) togetherWith
-                            fadeOut(tween(TandemMotion.DurationFast))
-                    } else {
-                        fadeIn(tween(TandemMotion.DurationMedium)) togetherWith
-                            (fadeOut(tween(TandemMotion.DurationFast)) + scaleOut(TandemMotion.spatial(), targetScale = 0.97f))
+            CompositionLocalProvider(LocalSharedScope provides this) {
+                transition.AnimatedContent(
+                    transitionSpec = {
+                        // Pages open out of the item that was tapped (shared bounds), so the page
+                        // itself only fades and settles instead of sliding across the screen.
+                        if (routeDepth(targetState) > routeDepth(initialState)) {
+                            (fadeIn(tween(TandemMotion.DurationMedium)) + scaleIn(TandemMotion.spatial(), initialScale = 0.97f)) togetherWith
+                                fadeOut(tween(TandemMotion.DurationFast))
+                        } else {
+                            (fadeIn(tween(TandemMotion.DurationMedium)) + scaleIn(TandemMotion.spatial(), initialScale = 0.96f)) togetherWith
+                                (fadeOut(tween(TandemMotion.DurationFast)) + scaleOut(TandemMotion.spatial(), targetScale = 0.92f))
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                ) { route ->
+                    CompositionLocalProvider(LocalRouteVisibility provides this) {
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
                     }
                 }
-            },
-            label = "route",
-            modifier = Modifier.fillMaxSize().graphicsLayer {
-                val p = backProgress.value
-                if (p > 0f) {
-                    val s = 1f - 0.1f * p
-                    scaleX = s
-                    scaleY = s
-                    val direction = if (backEdge == BackEventCompat.EDGE_RIGHT) -1f else 1f
-                    translationX = direction * p * 48.dp.toPx()
-                    shape = RoundedCornerShape((28 * p).dp)
-                    clip = true
-                }
-                // Not faded: an alpha below one forces the whole screen into an offscreen layer.
-                if (hideTop) alpha = 0f
-            },
-        ) { route ->
-            CompositionLocalProvider(LocalRouteVisibility provides this) {
-                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
             }
-        }
-        }
         }
         // Over every screen: an update is worth seeing wherever you are in the app.
         UpdateBanner(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp))
     }
+}
+
+/** How deep a page sits, so a transition knows whether it is opening or going back. */
+private fun routeDepth(route: Route): Int = when (route) {
+    Route.Home -> 0
+    is Route.Remote -> 2
+    else -> 1
 }
 
 @Composable

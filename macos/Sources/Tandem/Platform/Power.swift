@@ -21,7 +21,7 @@ enum PowerReader {
             let onAC = state == kIOPSACPowerValue
             return TandemBattery(
                 level: UInt8(min(100, max(0, capacity * 100 / maximum))),
-                charging: charging || onAC && capacity < maximum,
+                charging: charging || onAC,
                 powerSave: ProcessInfo.processInfo.isLowPowerModeEnabled
             )
         }

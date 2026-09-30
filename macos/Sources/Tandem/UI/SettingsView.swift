@@ -362,6 +362,7 @@ private struct HotspotSettings: View {
     @AppStorage("hotspotSSID") private var ssid = ""
     @LocalState private var password = HotspotCredentials.password() ?? ""
     @LocalState private var bluetooth = CBManager.authorization
+    @LocalState private var showSetup = false
 
     private var credentialsSet: Bool { !ssid.isEmpty && !password.isEmpty }
     private var bluetoothAllowed: Bool { bluetooth == .allowedAlways }
@@ -371,6 +372,16 @@ private struct HotspotSettings: View {
 
     var body: some View {
         Form {
+            Section {
+                LabeledContent {
+                    Button("Set up…") { showSetup = true }
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Guided setup")
+                        Text("Join your phone's hotspot once and Tandem takes over.").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
             Section {
                 Toggle("Use my phone's hotspot when this Mac has no connection", isOn: Binding(
                     get: { auto && ready },
@@ -426,6 +437,7 @@ private struct HotspotSettings: View {
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
             bluetooth = CBManager.authorization
         }
+        .sheet(isPresented: $showSetup) { HotspotSetupSheet() }
     }
 
     private var bluetoothDetail: LocalizedStringKey {
@@ -461,21 +473,6 @@ private struct Requirement: View {
             }
         }
         .animation(.tandem, value: done)
-    }
-}
-
-/// Asking for Bluetooth: the system dialog appears the first time a manager is created.
-private enum BluetoothPrompt {
-    private static var manager: CBCentralManager?
-
-    static func ask() {
-        manager = CBCentralManager(delegate: nil, queue: nil)
-    }
-
-    static func openSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth") {
-            NSWorkspace.shared.open(url)
-        }
     }
 }
 

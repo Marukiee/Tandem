@@ -51,6 +51,8 @@ final class EngineModel {
     var hotspotStatus: HotspotStatus = .idle
     /// A short message shown as a toast at the bottom of the window.
     var toast: String?
+    /// The icon a person picked for a device, by device id. A device without one uses its platform's.
+    var deviceIcons: [String: String] = UserDefaults.standard.dictionary(forKey: "deviceIcons") as? [String: String] ?? [:]
     /// A received file the person asked to move to the Trash, waiting for a yes.
     var pendingTrash: TransferItem?
 
@@ -620,6 +622,11 @@ final class EngineModel {
     // MARK: Helpers for other components
 
     var engineHandle: TandemEngine? { engine }
+
+    func setIcon(_ symbol: String?, for id: String) {
+        if let symbol { deviceIcons[id] = symbol } else { deviceIcons.removeValue(forKey: id) }
+        UserDefaults.standard.set(deviceIcons, forKey: "deviceIcons")
+    }
 
     func showToast(_ text: String) {
         toast = text

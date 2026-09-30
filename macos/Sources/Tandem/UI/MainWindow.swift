@@ -31,12 +31,6 @@ struct MainWindow: View {
             // The sidebar header already says Tandem. What the toolbar shows is the
             // device you are on, once its card has scrolled away.
             .toolbar(removing: .title)
-            // The logo stays in the corner all the time, on the blur of the scroll edge and
-            // without a glass capsule around it.
-            .toolbar {
-                ToolbarItem(placement: .navigation) { ToolbarLogo() }
-                    .sharedBackgroundVisibility(.hidden)
-            }
             .animation(.tandem, value: selection)
         }
         .background(HideWindowTitle())
@@ -162,24 +156,5 @@ private struct StartFailure: View {
             }
             .frame(width: 340)
         }
-    }
-}
-
-
-/// The app's pills in the top corner of the window. It settles in with a small spring when
-/// the window opens and swells a little under the pointer.
-private struct ToolbarLogo: View {
-    @LocalState private var appeared = false
-
-    var body: some View {
-        Hoverable { hovering in
-            PillMark(size: 26)
-                .scaleEffect(appeared ? (hovering ? 1.12 : 1) : 0.6)
-                .opacity(appeared ? 1 : 0)
-                .animation(.tandemSpringy, value: hovering)
-        }
-        .animation(.tandemBouncy, value: appeared)
-        .onAppear { appeared = true }
-        .padding(.horizontal, 4)
     }
 }

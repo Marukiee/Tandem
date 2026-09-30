@@ -95,15 +95,6 @@ struct MenuBarPanel: View {
     private var footer: some View {
         GlassEffectContainer(spacing: 10) {
             HStack(spacing: 8) {
-                SettingsLink {
-                    Image(systemName: "gearshape")
-                        .frame(width: 18, height: 18)
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .help("Settings…")
-                .simultaneousGesture(TapGesture().onEnded { NSApp.activate(ignoringOtherApps: true) })
-
                 Menu {
                     Button("Pair a device…") { openMain(pairing: true) }
                     Divider()
@@ -149,7 +140,7 @@ private struct MenuDeviceRow: View {
     var body: some View {
         Hoverable { hovering in
             HStack(spacing: 10) {
-                DeviceGlyph(platform: device.platform, online: device.online, size: 36, ring: true)
+                DeviceGlyph(platform: device.platform, online: device.online, size: 36, ring: true, deviceID: device.id)
                     .scaleEffect(hovering ? 1.06 : 1)
                     .animation(.tandemSpringy, value: hovering)
                 VStack(alignment: .leading, spacing: 1) {

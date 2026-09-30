@@ -29,7 +29,6 @@ struct DeviceDetail: View {
             .frame(maxWidth: .infinity)
         }
         .scrollPosition($position)
-        .scrollEdgeEffectStyle(.soft, for: .top)
         .animation(.tandem, value: device.id)
         .animation(.tandem, value: device.online)
         .onChange(of: device.id) {
@@ -53,7 +52,24 @@ struct DeviceDetail: View {
     private var header: some View {
         Card(radius: 32, padding: 22, tint: device.online ? Palette.indigo : nil) {
             HStack(spacing: 20) {
-                DeviceGlyph(platform: device.platform, online: device.online, size: 72)
+                Menu {
+                    ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
+                        Button {
+                            model.setIcon(choice.symbol, for: device.id)
+                        } label: {
+                            Label(choice.label, systemImage: choice.symbol)
+                        }
+                    }
+                    Divider()
+                    Button("Use the default icon") { model.setIcon(nil, for: device.id) }
+                } label: {
+                    DeviceGlyph(platform: device.platform, online: device.online, size: 80, deviceID: device.id)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .buttonStyle(.plain)
+                .fixedSize()
+                .help("Change the icon")
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(device.name)
@@ -376,6 +392,7 @@ struct HotspotCard: View {
     @AppStorage("autoHotspot") private var auto = false
     @AppStorage("hotspotSSID") private var ssid = ""
     @LocalState private var bluetooth = CBManager.authorization
+    @LocalState private var showSetup = false
 
     /// Grey until Bluetooth is allowed and the phone's network is filled in, so the switch
     /// never looks on while nothing can happen.
@@ -401,7 +418,7 @@ struct HotspotCard: View {
                             .font(.callout)
                             .foregroundStyle(.secondary)
                         Spacer()
-                        SettingsLink { Text("Set up") }
+                        Button("Set up") { showSetup = true }
                             .buttonStyle(.glass)
                     }
                     .padding(.horizontal, 14)
@@ -437,6 +454,7 @@ struct HotspotCard: View {
         }
         .animation(.tandem, value: model.hotspotStatus)
         .animation(.tandem, value: ready)
+        .sheet(isPresented: $showSetup) { HotspotSetupSheet() }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
             bluetooth = CBManager.authorization
         }

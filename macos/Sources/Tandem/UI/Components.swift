@@ -95,6 +95,7 @@ extension TandemDevice {
 /// say whether the device is there. Flat on purpose: it sits on the sidebar and on cards,
 /// which are already the layer under the glass.
 struct DeviceGlyph: View {
+    @Environment(EngineModel.self) private var model
     let platform: TandemPlatform
     var online: Bool
     var size: CGFloat = 44
@@ -102,13 +103,23 @@ struct DeviceGlyph: View {
     /// Drawn on the accent-coloured selection of a sidebar row, where the usual indigo
     /// and green would disappear into the blue.
     var onSelection = false
+    /// Just the symbol, larger, with no disc behind it (the big one on a device's page).
+    var plain = false
+    /// With an id the glyph follows the icon the person picked for that device.
+    var deviceID: String?
+
+    private var symbol: String {
+        deviceID.flatMap { model.deviceIcons[$0] } ?? platform.symbol
+    }
 
     var body: some View {
         let ringWidth = max(1.6, size * 0.055)
         ZStack {
-            Circle().fill(onSelection ? Color.white.opacity(0.24) : (online ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07)))
-            Image(systemName: platform.symbol)
-                .font(.system(size: size * 0.42, weight: .semibold))
+            if !plain {
+                Circle().fill(onSelection ? Color.white.opacity(0.24) : (online ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07)))
+            }
+            Image(systemName: symbol)
+                .font(.system(size: size * (plain ? 0.86 : (size > 60 ? 0.5 : 0.42)), weight: plain ? .regular : .semibold))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(onSelection ? Color.white : (online ? Palette.indigo : Color.secondary))
                 .contentTransition(.symbolEffect(.replace))
@@ -125,7 +136,34 @@ struct DeviceGlyph: View {
         }
         .frame(width: size, height: size)
         .animation(.tandem, value: online)
-        .animation(.tandem, value: platform)
+        .animation(.tandem, value: symbol)
+    }
+}
+
+/// The icons a device can be given, for the picker on its page.
+enum DeviceIconChoice: CaseIterable {
+    case phone, tablet, laptop, desktop, watch, tv
+
+    var symbol: String {
+        switch self {
+        case .phone: "candybarphone"
+        case .tablet: "ipad"
+        case .laptop: "laptopcomputer"
+        case .desktop: "desktopcomputer"
+        case .watch: "applewatch"
+        case .tv: "tv"
+        }
+    }
+
+    var label: LocalizedStringKey {
+        switch self {
+        case .phone: "Phone"
+        case .tablet: "Tablet"
+        case .laptop: "Laptop"
+        case .desktop: "Desktop"
+        case .watch: "Watch"
+        case .tv: "TV"
+        }
     }
 }
 

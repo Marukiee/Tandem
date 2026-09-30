@@ -308,3 +308,39 @@
 "Finish the hotspot setup in Settings first" = "Rond eerst de hotspot-instellingen af";
 "Bluetooth and the phone's network name and password are needed." = "Bluetooth en de netwerknaam en het wachtwoord van de telefoon zijn nodig.";
 "Set up" = "Instellen";
+
+/* Device icons */
+"Phone" = "Telefoon";
+"Tablet" = "Tablet";
+"Laptop" = "Laptop";
+"Desktop" = "Desktop";
+"Watch" = "Horloge";
+"TV" = "Tv";
+"Use the default icon" = "Standaard icoon gebruiken";
+"Change the icon" = "Icoon wijzigen";
+
+/* Hotspot setup */
+"Set up the hotspot" = "Hotspot instellen";
+"Step %lld of %lld" = "Stap %1$lld van %2$lld";
+"Join your phone's hotspot" = "Maak verbinding met de hotspot van je telefoon";
+"Turn on the hotspot on your phone, then choose it from the Wi-Fi menu on this Mac. You only do this once." = "Zet de hotspot op je telefoon aan en kies hem in het Wi-Fi-menu van deze Mac. Dit doe je maar één keer.";
+"Connected to %@" = "Verbonden met %@";
+"Waiting for a Wi-Fi network" = "Wachten op een Wi-Fi-netwerk";
+"Use this network" = "Gebruik dit netwerk";
+"Tandem remembers the name and password of the hotspot, privately on this Mac, so it can join again by itself." = "Tandem onthoudt de naam en het wachtwoord van de hotspot, privé op deze Mac, zodat hij zelf weer kan verbinden.";
+"Reading the password…" = "Wachtwoord lezen…";
+"Use %@" = "%@ gebruiken";
+"macOS did not hand over the password. Type it below." = "macOS gaf het wachtwoord niet vrij. Typ het hieronder.";
+"Allow Bluetooth" = "Bluetooth toestaan";
+"When this Mac has no internet it cannot reach your phone over the network, so it asks over Bluetooth to turn the hotspot on." = "Als deze Mac geen internet heeft bereikt hij je telefoon niet via het netwerk, dus vraagt hij via Bluetooth om de hotspot aan te zetten.";
+"Bluetooth is allowed" = "Bluetooth is toegestaan";
+"Bluetooth is not allowed yet" = "Bluetooth is nog niet toegestaan";
+"On your phone, open Tandem, Settings, Hotspot and turn on \"Let my Mac use my hotspot\"." = "Open Tandem op je telefoon, ga naar Instellingen, Hotspot en zet \"Laat mijn Mac mijn hotspot gebruiken\" aan.";
+"All set" = "Klaar";
+"From now on, when this Mac has no connection it asks your phone for its hotspot and joins it. You get a notification each time it does." = "Vanaf nu vraagt deze Mac zonder verbinding je telefoon om de hotspot en maakt hij verbinding. Je krijgt elke keer een melding.";
+"Back" = "Terug";
+"Next" = "Volgende";
+"Done" = "Klaar";
+"Guided setup" = "Begeleid instellen";
+"Set up…" = "Instellen…";
+"Join your phone's hotspot once and Tandem takes over." = "Maak één keer verbinding met de hotspot van je telefoon, de rest doet Tandem.";

@@ -125,8 +125,6 @@ private struct DevicesHeader: View {
                     .contentTransition(.numericText())
             }
         }
-        // The section header runs to the edge of the column; keep the count off it.
-        .padding(.trailing, 12)
         .animation(.tandem, value: model.onlineCount)
         .animation(.tandem, value: model.devices.count)
     }
@@ -138,7 +136,7 @@ private struct DeviceRow: View {
     var body: some View {
         Hoverable { hovering in
             HStack(spacing: 11) {
-                DeviceGlyph(platform: device.platform, online: device.online, size: 38)
+                DeviceGlyph(platform: device.platform, online: device.online, size: 38, deviceID: device.id)
                     .scaleEffect(hovering ? 1.07 : 1)
                     .animation(.tandemSpringy, value: hovering)
                 VStack(alignment: .leading, spacing: 2) {

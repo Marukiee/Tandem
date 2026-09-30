@@ -39,7 +39,6 @@ struct SharedView: View {
             .frame(maxWidth: .infinity)
             .animation(.tandem, value: model.transfers.map(\.id))
         }
-        .scrollEdgeEffectStyle(.soft, for: .top)
         .toolbar {
             if model.transfers.contains(where: { $0.state != .active }) {
                 ToolbarItem(placement: .primaryAction) {
