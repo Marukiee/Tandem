@@ -38,6 +38,7 @@ struct MenuBarPanel: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
+            UpdateBanner(compact: true)
             footer
         }
         .padding(14)

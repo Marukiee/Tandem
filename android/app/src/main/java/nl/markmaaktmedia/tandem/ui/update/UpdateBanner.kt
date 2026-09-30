@@ -7,12 +7,16 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -26,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
@@ -39,7 +44,11 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.update.UpdateState
 
-/** Shown on the devices screen only when there is something to say. */
+/**
+ * The bar at the top of the app, on every screen, only when there is something to do.
+ * Slim and floating, so it says "update" without taking the screen: one button does the
+ * whole job, and "Later" is remembered for that version.
+ */
 @Composable
 fun UpdateBanner(modifier: Modifier = Modifier) {
     val updater = LocalContext.current.graph.updater
@@ -60,40 +69,46 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
         exit = fadeOut(TandemMotion.fadeSpec()) + shrinkVertically(TandemMotion.sizeSpring()),
         modifier = modifier,
     ) {
-        Column(
-            Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.primaryContainer).padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Surface(
+            shape = CardSquircle,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            shadowElevation = 6.dp,
         ) {
-            when (val s = state) {
-                is UpdateState.Available -> {
-                    Text(stringResource(R.string.update_available, s.release.versionName), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    if (s.release.changelog.isNotBlank()) {
-                        Text(s.release.changelog.lineSequence().firstOrNull { it.isNotBlank() }.orEmpty(), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 2)
+            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                when (val s = state) {
+                    is UpdateState.Available -> {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Icon(TandemIcons.Update, contentDescription = null, modifier = Modifier.size(24.dp))
+                            Text(stringResource(R.string.update_available, s.release.versionName), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
+                            SecondaryPillButton(stringResource(R.string.update_later), { dismissed = s.release.versionName })
+                            PrimaryPillButton(stringResource(R.string.update_now), { scope.launch { updater.downloadAndInstall(s.release) } })
+                        }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PrimaryPillButton(stringResource(R.string.update_now), { scope.launch { updater.downloadAndInstall(s.release) } }, icon = TandemIcons.Update)
-                        SecondaryPillButton(stringResource(R.string.update_later), { dismissed = s.release.versionName })
+                    is UpdateState.Downloading -> {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            PillSpinner(size = 24.dp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Text(stringResource(R.string.update_downloading, (s.progress * 100).toInt()), style = MaterialTheme.typography.titleSmall)
+                        }
+                        Box(Modifier.fillMaxWidth().height(5.dp).clip(PillShape).background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f))) {
+                            Box(Modifier.fillMaxWidth(s.progress.coerceAtLeast(0.02f)).height(5.dp).clip(PillShape).background(MaterialTheme.colorScheme.onPrimaryContainer))
+                        }
                     }
-                }
-                is UpdateState.Downloading -> {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        PillSpinner(size = 28.dp, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text(stringResource(R.string.update_downloading, (s.progress * 100).toInt()), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    is UpdateState.ReadyToInstall -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(stringResource(R.string.update_ready), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                        PrimaryPillButton(stringResource(R.string.update_install), { scope.launch { updater.install(java.io.File(s.filePath)) } }, icon = TandemIcons.Update)
                     }
-                    androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(5.dp).clip(PillShape).background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f))) {
-                        androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth(s.progress.coerceAtLeast(0.02f)).height(5.dp).clip(PillShape).background(MaterialTheme.colorScheme.onPrimaryContainer))
+                    is UpdateState.Failed -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.update_failed), style = MaterialTheme.typography.titleSmall)
+                            Text(s.reason, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                        SecondaryPillButton(stringResource(R.string.update_retry), { scope.launch { updater.check() } }, icon = TandemIcons.Refresh)
                     }
+                    else -> Unit
                 }
-                is UpdateState.ReadyToInstall -> {
-                    Text(stringResource(R.string.update_ready), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    PrimaryPillButton(stringResource(R.string.update_install), { scope.launch { updater.install(java.io.File(s.filePath)) } }, icon = TandemIcons.Update)
-                }
-                is UpdateState.Failed -> {
-                    Text(stringResource(R.string.update_failed), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    Text(s.reason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                    SecondaryPillButton(stringResource(R.string.update_retry), { scope.launch { updater.check() } }, icon = TandemIcons.Refresh)
-                }
-                else -> Unit
             }
         }
     }

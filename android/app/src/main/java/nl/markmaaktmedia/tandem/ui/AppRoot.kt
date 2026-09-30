@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,6 +52,7 @@ import nl.markmaaktmedia.tandem.ui.screens.PairScreen
 import nl.markmaaktmedia.tandem.ui.screens.RemoteScreen
 import nl.markmaaktmedia.tandem.ui.screens.SettingsScreen
 import nl.markmaaktmedia.tandem.ui.screens.TransfersScreen
+import nl.markmaaktmedia.tandem.ui.update.UpdateBanner
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 
@@ -63,10 +65,12 @@ fun AppRoot() {
 
     // Once set up, the background service keeps the engine alive whatever the screens do.
     LaunchedEffect(onboarded) {
-        if (onboarded == true) {
-            TandemService.start(context)
-            graph.updater.checkIfDue()
-        }
+        if (onboarded == true) TandemService.start(context)
+    }
+    // Every time the app comes to the front, so a release from an hour ago is not missed
+    // just because the process has been alive for days.
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_START) {
+        if (onboarded == true) scope.launch { graph.updater.checkIfDue() }
     }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -166,6 +170,8 @@ private fun MainNavigation() {
         ) { route ->
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
         }
+        // Over every screen: an update is worth seeing wherever you are in the app.
+        UpdateBanner(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp))
     }
 }
 

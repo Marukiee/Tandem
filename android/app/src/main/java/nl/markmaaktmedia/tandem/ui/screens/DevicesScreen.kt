@@ -56,7 +56,6 @@ import nl.markmaaktmedia.tandem.ui.components.routeName
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
-import nl.markmaaktmedia.tandem.ui.update.UpdateBanner
 import uniffi.tandem_core.TandemDevice
 
 @Composable
@@ -103,7 +102,6 @@ fun DevicesScreen(
             }
         }
 
-        item(key = "update") { UpdateBanner() }
 
         (state as? EngineState.Failed)?.let { failed ->
             item(key = "failed") {

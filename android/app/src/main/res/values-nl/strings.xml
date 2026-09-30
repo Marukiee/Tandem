@@ -132,7 +132,7 @@
     <string name="settings_updates">Updates</string>
     <string name="settings_version">Geïnstalleerde versie</string>
     <string name="settings_auto_update">Automatisch op updates controleren</string>
-    <string name="settings_auto_update_sub">Hooguit één keer per dag, alleen als je de app opent</string>
+    <string name="settings_auto_update_sub">Om de paar uur, als je de app opent</string>
     <string name="settings_check_update">Nu controleren</string>
     <string name="settings_checking">Controleren</string>
     <string name="settings_up_to_date">Je bent bijgewerkt</string>

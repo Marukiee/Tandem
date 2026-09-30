@@ -27,6 +27,7 @@ struct MainWindow: View {
                     .ignoresSafeArea()
                 detail
             }
+            .safeAreaInset(edge: .top, spacing: 0) { UpdateBanner() }
             // The sidebar header already says Tandem. What the toolbar shows is the
             // device you are on, once its card has scrolled away.
             .toolbar(removing: .title)

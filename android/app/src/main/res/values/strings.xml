@@ -135,7 +135,7 @@
     <string name="settings_updates">Updates</string>
     <string name="settings_version">Installed version</string>
     <string name="settings_auto_update">Check for updates automatically</string>
-    <string name="settings_auto_update_sub">At most once a day, only when you open the app</string>
+    <string name="settings_auto_update_sub">Every few hours, when you open the app</string>
     <string name="settings_check_update">Check now</string>
     <string name="settings_checking">Checking</string>
     <string name="settings_up_to_date">You are up to date</string>

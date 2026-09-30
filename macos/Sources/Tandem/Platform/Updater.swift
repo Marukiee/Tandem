@@ -7,7 +7,7 @@ import SwiftUI
 
 /// Checks GitHub Releases for a newer version and installs it over the running app.
 ///
-/// The same approach as the Android apps: read the releases feed at most once a day,
+/// The same approach as the Android apps: read the releases feed every few hours,
 /// look for the asset under its fixed name, and only act when the person asks. The
 /// download is checked twice before anything is replaced: against the SHA-256 in the
 /// release, and against an Ed25519 signature whose public key is compiled into this
@@ -49,12 +49,22 @@ final class Updater {
 
     var currentVersion: String { Bundle.main.appVersion }
 
-    /// On launch: check at most once a day.
+    /// On launch and then hourly while the app runs: check at most every three hours. A
+    /// menu bar app can stay open for weeks, so a check at launch alone would miss releases.
     func checkIfDue() {
         // A development build must never replace itself with a release.
         guard autoCheck, !AppIdentity.isDevelopmentBuild else { return }
-        if let last = lastChecked, Date().timeIntervalSince(last) < 24 * 3600 { return }
+        if let last = lastChecked, Date().timeIntervalSince(last) < 3 * 3600 { return }
         Task { await check(manual: false) }
+    }
+
+    @ObservationIgnored private var timer: Timer?
+
+    func startPeriodicChecks() {
+        guard timer == nil else { return }
+        timer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { _ in
+            Task { @MainActor in Updater.shared.checkIfDue() }
+        }
     }
 
     /// `manual` is true for the button. An automatic check that fails says nothing.
@@ -99,7 +109,7 @@ final class Updater {
                 return (link, (entry["size"] as? Int64) ?? 0)
             }
             guard let (zip, size) = asset(assetName) else { throw UpdateError.noAsset }
-            state = .available(Release(
+            let found = Release(
                 version: version,
                 notes: (json["body"] as? String) ?? "",
                 zipURL: zip,
@@ -107,7 +117,17 @@ final class Updater {
                 sigURL: asset(assetName + ".sig")?.0,
                 size: size,
                 page: (json["html_url"] as? String).flatMap(URL.init(string:)) ?? URL(string: "https://github.com/\(owner)/\(repo)/releases")!
-            ))
+            )
+            state = .available(found)
+            // A menu bar app is often not in view, so say it once per version.
+            if !manual, UserDefaults.standard.string(forKey: "updateNotifiedVersion") != found.version {
+                UserDefaults.standard.set(found.version, forKey: "updateNotifiedVersion")
+                Notifier.shared.post(
+                    id: "update.\(found.version)",
+                    title: String(localized: "Tandem \(found.version) is available"),
+                    body: String(localized: "Open Tandem to update. It only takes a moment.")
+                )
+            }
         } catch {
             // A check nobody asked for stays quiet when it fails.
             state = manual ? .failed(String(localized: "Could not reach GitHub")) : .idle

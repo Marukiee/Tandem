@@ -274,3 +274,9 @@
 "Could not join the hotspot" = "Kon niet met de hotspot verbinden";
 "Joined the hotspot but got no connection" = "Met de hotspot verbonden, maar geen verbinding gekregen";
 "This Mac has no Wi-Fi" = "Deze Mac heeft geen wifi";
+
+/* Update banner */
+"Later" = "Later";
+"Downloading version %@" = "Versie %@ downloaden";
+"Tandem %@ is available" = "Tandem %@ is beschikbaar";
+"Open Tandem to update. It only takes a moment." = "Open Tandem om bij te werken. Het duurt maar even.";

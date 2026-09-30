@@ -40,6 +40,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DebugSupport.install()
             EngineModel.shared.start()
             Updater.shared.checkIfDue()
+            Updater.shared.startPeriodicChecks()
         }
     }
 

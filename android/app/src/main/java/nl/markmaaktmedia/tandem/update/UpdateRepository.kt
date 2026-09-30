@@ -55,7 +55,7 @@ class UpdateRepository(
     suspend fun checkIfDue() {
         if (!prefs.autoUpdateCheck.first()) return
         val last = prefs.lastUpdateCheck.first()
-        if (System.currentTimeMillis() - last < DAY_MS) return
+        if (System.currentTimeMillis() - last < CHECK_INTERVAL_MS) return
         check(manual = false)
     }
 
@@ -244,6 +244,7 @@ class UpdateRepository(
         const val TAG = "UpdateRepository"
         const val FAILED_REASON = "Could not reach GitHub"
         const val APK_NAME = "Tandem.apk"
-        const val DAY_MS = 24 * 3600 * 1000L
+        /** Often enough that a new release shows within hours, rare enough for GitHub's limits. */
+        const val CHECK_INTERVAL_MS = 3 * 3600 * 1000L
     }
 }
