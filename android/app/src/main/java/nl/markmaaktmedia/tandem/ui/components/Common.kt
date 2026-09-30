@@ -583,38 +583,35 @@ fun PrimaryPillButton(
     container: Color = MaterialTheme.colorScheme.primary,
     content: Color = MaterialTheme.colorScheme.onPrimary,
 ) {
+    // Blue when it can be pressed, grey when it cannot, and the change is a fade, not a switch.
+    val fill by androidx.compose.animation.animateColorAsState(
+        if (enabled) container else MaterialTheme.colorScheme.surfaceContainerHigh, TandemMotion.colourSpec(), label = "pillFill",
+    )
+    val ink by androidx.compose.animation.animateColorAsState(
+        if (enabled) content else MaterialTheme.colorScheme.onSurfaceVariant, TandemMotion.colourSpec(), label = "pillInk",
+    )
     Row(
         modifier = modifier
             .clip(PillShape)
-            .background(if (enabled) container else MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(fill)
             .bouncyClickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (icon != null) {
-            Icon(
-                painter = icon,
-                contentDescription = null,
-                tint = if (enabled) content else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
+            Icon(painter = icon, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
         }
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            color = if (enabled) content else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = ink,
             textAlign = TextAlign.Center,
             maxLines = 1,
             softWrap = false,
         )
         if (trailingIcon != null) {
-            Icon(
-                painter = trailingIcon,
-                contentDescription = null,
-                tint = if (enabled) content else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(18.dp),
-            )
+            Icon(painter = trailingIcon, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
         }
     }
 }

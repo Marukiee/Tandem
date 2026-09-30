@@ -27,10 +27,10 @@ object ShareShortcuts {
         val online = devices.filter { it.online }
         val shortcuts = mutableListOf<ShortcutInfoCompat>()
         if (online.size > 1) {
-            shortcuts += build(context, ALL, context.getString(R.string.share_all_devices), R.drawable.sym_devices, rank = 0)
+            shortcuts += build(context, ALL, context.getString(R.string.share_target_all), R.drawable.sym_devices, rank = 0)
         }
         online.forEachIndexed { index, device ->
-            shortcuts += build(context, DEVICE_PREFIX + device.id, device.name, iconFor(device.platform), rank = index + 1)
+            shortcuts += build(context, DEVICE_PREFIX + device.id, context.getString(R.string.share_target_to, device.name), iconFor(device.platform), rank = index + 1)
         }
         runCatching { ShortcutManagerCompat.setDynamicShortcuts(context, shortcuts.take(ShortcutManagerCompat.getMaxShortcutCountPerActivity(context))) }
     }

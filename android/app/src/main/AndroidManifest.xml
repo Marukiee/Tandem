@@ -67,6 +67,10 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="tandem" android:host="pair" />
             </intent-filter>
+            <!-- Android reads the share targets from the launcher activity, not from the
+                 activity that receives the share. On the wrong one the sheet never lists the
+                 devices by name. -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/share_targets" />
         </activity>
 
         <!-- Share to Tandem: files, images and text, from any app. -->
@@ -88,8 +92,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
             </intent-filter>
-            <meta-data android:name="android.service.chooser.chooser_target_service" android:value="androidx.sharetarget.ChooserTargetServiceCompat" />
-            <meta-data android:name="android.app.shortcuts" android:resource="@xml/share_targets" />
         </activity>
 
         <activity

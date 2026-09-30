@@ -288,4 +288,6 @@
     <string name="check_method_manual">Met de hand: jij tikt op een melding. Met Shizuku gaat het vanzelf.</string>
     <string name="check_mac">Een Mac die het vraagt</string>
     <string name="check_mac_missing">Koppel eerst je Mac</string>
+    <string name="share_target_to">Stuur naar %1$s</string>
+    <string name="share_target_all">Stuur naar alle apparaten</string>
 </resources>
