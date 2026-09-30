@@ -261,4 +261,7 @@
     <string name="tile_trackpad">Trackpad</string>
     <string name="tile_find">Find</string>
     <string name="dev_section">Developer</string>
+    <string name="update_download">Download</string>
+    <string name="update_on_version">You have version %1$s</string>
+    <string name="update_allow_install">Android will ask once to let Tandem install apps</string>
 </resources>

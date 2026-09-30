@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.Route
@@ -33,7 +34,9 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
  */
 @Composable
 fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
-    val updater = LocalContext.current.graph.updater
+    val graph = LocalContext.current.graph
+    val updater = graph.updater
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
@@ -58,7 +61,7 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
 
         SectionHeader(stringResource(R.string.dev_pieces))
         SettingsGroup {
-            ActionRow(0, 1, TandemIcons.Update, stringResource(R.string.dev_update), stringResource(R.string.dev_update_sub), { updater.showPreview() })
+            ActionRow(0, 1, TandemIcons.Update, stringResource(R.string.dev_update), stringResource(R.string.dev_update_sub), { scope.launch { graph.prefs.setDismissedUpdate(""); updater.showPreview() } })
         }
     }
 }

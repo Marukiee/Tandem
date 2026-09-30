@@ -20,7 +20,7 @@ import nl.markmaaktmedia.tandem.ui.theme.PaletteStyle
 import nl.markmaaktmedia.tandem.ui.theme.ThemeMode
 
 /** Set by the first run and the update timer, not by a person. */
-private val NotBackedUp = setOf("onboarded", "last_update_check")
+private val NotBackedUp = setOf("onboarded", "last_update_check", "dismissed_update")
 
 private val Context.store: DataStore<Preferences> by preferencesDataStore(name = "tandem")
 
@@ -44,6 +44,7 @@ class TandemPrefs(private val context: Context) {
         val callMirror = booleanPreferencesKey("call_mirror")
         val hotspotForMac = booleanPreferencesKey("hotspot_for_mac")
         val autoUpdateCheck = booleanPreferencesKey("auto_update_check")
+        val dismissedUpdate = stringPreferencesKey("dismissed_update")
         val lastUpdateCheck = longPreferencesKey("last_update_check")
         val copyCodes = booleanPreferencesKey("copy_codes")
     }
@@ -68,6 +69,7 @@ class TandemPrefs(private val context: Context) {
     val callMirror: Flow<Boolean> = data.map { it[Keys.callMirror] ?: true }
     val hotspotForMac: Flow<Boolean> = data.map { it[Keys.hotspotForMac] ?: false }
     val autoUpdateCheck: Flow<Boolean> = data.map { it[Keys.autoUpdateCheck] ?: true }
+    val dismissedUpdate: Flow<String?> = data.map { it[Keys.dismissedUpdate] }
     val lastUpdateCheck: Flow<Long> = data.map { it[Keys.lastUpdateCheck] ?: 0L }
     val copyCodes: Flow<Boolean> = data.map { it[Keys.copyCodes] ?: true }
 
@@ -136,6 +138,7 @@ class TandemPrefs(private val context: Context) {
     suspend fun setHotspotForMac(value: Boolean) = set(Keys.hotspotForMac, value)
     suspend fun setAutoUpdateCheck(value: Boolean) = set(Keys.autoUpdateCheck, value)
     suspend fun setLastUpdateCheck(value: Long) = set(Keys.lastUpdateCheck, value)
+    suspend fun setDismissedUpdate(value: String) = set(Keys.dismissedUpdate, value)
     suspend fun setCopyCodes(value: Boolean) = set(Keys.copyCodes, value)
 
     /** Turns one app on or off. Which list changes depends on whether "all apps" is on. */
