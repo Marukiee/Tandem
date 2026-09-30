@@ -361,3 +361,6 @@
 "Nobody tapped the notification on your phone in time. Tap it next time, or start Shizuku so the phone can do it by itself." = "Niemand tikte op tijd op de melding op je telefoon. Tik er de volgende keer op, of start Shizuku zodat de telefoon het zelf doet.";
 "Your phone could not turn on its hotspot. Tap the notification on your phone, or make sure Shizuku is running so it can start by itself." = "Je telefoon kon zijn hotspot niet aanzetten. Tik op de melding op je telefoon, of zorg dat Shizuku draait zodat hij zelf kan starten.";
 "Try again" = "Probeer opnieuw";
+
+"Bluetooth without a network" = "Bluetooth zonder netwerk";
+"Clipboard and notifications from your phone still arrive over Bluetooth when this Mac has no connection." = "Klembord en meldingen van je telefoon komen ook via Bluetooth aan als deze Mac geen verbinding heeft.";

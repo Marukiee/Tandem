@@ -73,6 +73,8 @@ final class EngineModel {
     @ObservationIgnored private var statusTimer: Timer?
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     @ObservationIgnored let hotspot = HotspotCoordinator()
+    @ObservationIgnored let bleMessenger = BleMessenger()
+    @ObservationIgnored private var bleWatch: Task<Void, Never>?
     /// Where a sent file came from, by the name it travels under, so a finished
     /// transfer can be opened later. The core reports no location for outgoing files.
     @ObservationIgnored private var outgoingSources: [String: String] = [:]
@@ -171,6 +173,7 @@ final class EngineModel {
         network.start()
 
         hotspot.attach(model: self)
+        startBleWatch()
         pushStatus()
         statusTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.pushStatus() }
@@ -626,6 +629,26 @@ final class EngineModel {
     // MARK: Helpers for other components
 
     var engineHandle: TandemEngine? { engine }
+
+    /// Keeps a Bluetooth link to the phone while it is out of reach over the network, so
+    /// clipboard and notifications still arrive. Two looks in a row must agree first, because a
+    /// phone that just dropped off Wi-Fi usually comes straight back.
+    private func startBleWatch() {
+        bleWatch?.cancel()
+        bleWatch = Task { @MainActor [weak self] in
+            var lastOffline: String?
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(3))
+                guard let self, let engine = self.engine else { continue }
+                let on = UserDefaults.standard.object(forKey: "bleMessages") as? Bool ?? true
+                let candidate = on
+                    ? self.devices.first(where: { $0.platform == .android && !$0.online && engine.bleReady(id: $0.id) })?.id
+                    : nil
+                self.bleMessenger.want(phoneId: candidate != nil && candidate == lastOffline ? candidate : nil, engine: engine)
+                lastOffline = candidate
+            }
+        }
+    }
 
     private func remember(_ notification: TandemNotification, from device: String, deviceName: String) {
         // Ongoing ones (music, navigation, downloads) come and go; they do not belong on a list.

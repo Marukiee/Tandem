@@ -109,6 +109,7 @@ private struct GeneralSettings: View {
     @LocalState private var startAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage("showInDock") private var showInDock = true
     @AppStorage("copyCodes") private var copyCodes = true
+    @AppStorage("bleMessages") private var bleMessages = true
     @AppStorage(ReceivedImages.copyKey) private var copyImages = true
     @AppStorage(ReceivedImages.pasteKey) private var pasteImages = false
     @LocalState private var folder = DownloadFolder.url
@@ -183,6 +184,11 @@ private struct GeneralSettings: View {
                     isOn: $pasteImages
                 )
                 .disabled(!copyImages)
+                DescribedToggle(
+                    "Bluetooth without a network",
+                    subtitle: "Clipboard and notifications from your phone still arrive over Bluetooth when this Mac has no connection.",
+                    isOn: $bleMessages
+                )
             }
 
             Section {
