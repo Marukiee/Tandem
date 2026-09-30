@@ -47,13 +47,38 @@ final class Updater {
     private let repo = "Tandem"
     private let assetName = "Tandem-macOS.zip"
 
-    var currentVersion: String { Bundle.main.appVersion }
+    /// `TANDEM_UPDATE_TEST_FROM` lets a development build pretend to be an older release,
+    /// so the whole update path can be exercised without touching the installed app.
+    private static let testFrom = ProcessInfo.processInfo.environment["TANDEM_UPDATE_TEST_FROM"]
+    private var mayUpdateThisBuild: Bool { !AppIdentity.isDevelopmentBuild || Self.testFrom != nil }
+
+    var currentVersion: String { Self.testFrom ?? Bundle.main.appVersion }
+
+    /// With `TANDEM_DEBUG_DIR` set, every step is written to `update.log`.
+    private func trace(_ message: String) {
+        guard let dir = ProcessInfo.processInfo.environment["TANDEM_DEBUG_DIR"] else { return }
+        let line = "\(Date().formatted(.iso8601)) \(message)\n"
+        let url = URL(fileURLWithPath: dir).appendingPathComponent("update.log")
+        if let handle = try? FileHandle(forWritingTo: url) {
+            handle.seekToEndOfFile(); handle.write(Data(line.utf8)); try? handle.close()
+        } else {
+            try? line.write(to: url, atomically: true, encoding: .utf8)
+        }
+    }
+
+    /// Test hook: check, then install the newest release, logging each step.
+    func runTestUpdate() async {
+        trace("test update from \(currentVersion)")
+        await check(manual: true)
+        trace("check finished: \(state)")
+        await install()
+    }
 
     /// On launch and then hourly while the app runs: check at most every three hours. A
     /// menu bar app can stay open for weeks, so a check at launch alone would miss releases.
     func checkIfDue() {
         // A development build must never replace itself with a release.
-        guard autoCheck, !AppIdentity.isDevelopmentBuild else { return }
+        guard autoCheck, mayUpdateThisBuild else { return }
         if let last = lastChecked, Date().timeIntervalSince(last) < 3 * 3600 { return }
         Task { await check(manual: false) }
     }
@@ -70,7 +95,7 @@ final class Updater {
     /// `manual` is true for the button. An automatic check that fails says nothing.
     func check(manual: Bool = true) async {
         // The dev build must never replace itself with a release.
-        guard !EngineModel.isDevBuild else {
+        guard mayUpdateThisBuild else {
             state = .upToDate
             return
         }
@@ -135,16 +160,28 @@ final class Updater {
     }
 
     func install() async {
-        guard case let .available(release) = state, !AppIdentity.isDevelopmentBuild else { return }
+        guard case let .available(release) = state, mayUpdateThisBuild else { return }
         do {
             state = .downloading(release, 0)
+            trace("download start")
             let zip = try await download(release)
+            trace("download done")
             state = .installing
             let staged = try await stage(zip: zip, release: release)
+            trace("staged \(staged.path)")
             try launchInstaller(newApp: staged)
+            trace("installer launched, quitting")
+            // Not NSApp.terminate: it waits for the quit handler, which needs the main actor,
+            // and this code is running on it. That deadlock left the spinner up for ever.
+            // Close the engine politely, but never wait for it longer than a few seconds.
+            Task.detached { try? await Task.sleep(for: .seconds(4)); exit(0) }
+            await EngineModel.shared.stop()
+            exit(0)
         } catch let error as UpdateError {
+            trace("failed: \(error.message)")
             state = .failed(error.message)
         } catch {
+            trace("failed: \(error.localizedDescription)")
             state = .failed(error.localizedDescription)
         }
     }
@@ -154,27 +191,14 @@ final class Updater {
     private func download(_ release: Release) async throws -> URL {
         let target = FileManager.default.temporaryDirectory.appendingPathComponent("Tandem-\(release.version).zip")
         try? FileManager.default.removeItem(at: target)
-        let (bytes, response) = try await URLSession.shared.bytes(from: release.zipURL)
-        let total = response.expectedContentLength > 0 ? response.expectedContentLength : release.size
-        FileManager.default.createFile(atPath: target.path, contents: nil)
-        let handle = try FileHandle(forWritingTo: target)
-        defer { try? handle.close() }
-        var buffer = Data()
-        var received: Int64 = 0
-        var lastReport = Date()
-        for try await byte in bytes {
-            buffer.append(byte)
-            if buffer.count >= 256 * 1024 {
-                try handle.write(contentsOf: buffer)
-                received += Int64(buffer.count)
-                buffer.removeAll(keepingCapacity: true)
-                if Date().timeIntervalSince(lastReport) > 0.1, total > 0 {
-                    lastReport = Date()
-                    state = .downloading(release, min(1, Double(received) / Double(total)))
-                }
+        // A download task moves data in big chunks. Walking the response byte by byte, as an
+        // earlier version did, took minutes for a few megabytes.
+        let loader = FileDownloader(expectedSize: release.size) { [weak self] fraction in
+            Task { @MainActor in
+                if case .downloading = self?.state { self?.state = .downloading(release, fraction) }
             }
         }
-        if !buffer.isEmpty { try handle.write(contentsOf: buffer) }
+        try await loader.download(release.zipURL, to: target)
         return target
     }
 
@@ -252,7 +276,7 @@ final class Updater {
         let current = Bundle.main.bundleURL
         let script = """
         #!/bin/sh
-        PID="$1"; OLD="$2"; NEW="$3"
+        PID="$1"; OLD="$2"; NEW="$3"; OPEN="$4"
         while kill -0 "$PID" 2>/dev/null; do sleep 0.2; done
         BACKUP="$OLD.previous"
         rm -rf "$BACKUP"
@@ -262,15 +286,17 @@ final class Updater {
         else
           mv "$BACKUP" "$OLD" 2>/dev/null
         fi
-        open "$OLD"
+        [ "$OPEN" = noopen ] || open "$OLD"
         """
         let scriptURL = FileManager.default.temporaryDirectory.appendingPathComponent("tandem-update.sh")
         try script.write(to: scriptURL, atomically: true, encoding: .utf8)
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = [scriptURL.path, String(ProcessInfo.processInfo.processIdentifier), current.path, newApp.path]
+        // The test hook swaps the app but does not start the new one, which would be the
+        // real Tandem running on the real data.
+        let open = Self.testFrom != nil ? "noopen" : "open"
+        process.arguments = [scriptURL.path, String(ProcessInfo.processInfo.processIdentifier), current.path, newApp.path, open]
         try process.run()
-        NSApp.terminate(nil)
     }
 }
 
@@ -325,5 +351,58 @@ enum VersionComparator {
         let text = normalise(raw)
         guard let dash = text.firstIndex(of: "-") else { return "" }
         return String(text[text.index(after: dash)...]).lowercased()
+    }
+}
+
+
+/// Downloads one file with progress. `URLSession.bytes` is convenient but far too slow for
+/// a multi-megabyte archive, and this reports how far along it is.
+private final class FileDownloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    private let expectedSize: Int64
+    private let progress: @Sendable (Double) -> Void
+    private var continuation: CheckedContinuation<Void, Error>?
+    private var target: URL?
+    private var moveError: Error?
+    private var lastReport = Date.distantPast
+
+    init(expectedSize: Int64, progress: @escaping @Sendable (Double) -> Void) {
+        self.expectedSize = expectedSize
+        self.progress = progress
+    }
+
+    func download(_ url: URL, to target: URL) async throws {
+        self.target = target
+        let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+        defer { session.finishTasksAndInvalidate() }
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            self.continuation = continuation
+            session.downloadTask(with: url).resume()
+        }
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64,
+                    totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        let total = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : expectedSize
+        guard total > 0, Date().timeIntervalSince(lastReport) > 0.1 else { return }
+        lastReport = Date()
+        progress(min(1, Double(totalBytesWritten) / Double(total)))
+    }
+
+    // The temporary file is deleted as soon as this returns, so it is moved here.
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        guard let target else { return }
+        do { try FileManager.default.moveItem(at: location, to: target) } catch { moveError = error }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        let result = error ?? moveError
+        if let http = task.response as? HTTPURLResponse, http.statusCode != 200, result == nil {
+            continuation?.resume(throwing: UpdateError.feed)
+        } else if let result {
+            continuation?.resume(throwing: result)
+        } else {
+            continuation?.resume()
+        }
+        continuation = nil
     }
 }

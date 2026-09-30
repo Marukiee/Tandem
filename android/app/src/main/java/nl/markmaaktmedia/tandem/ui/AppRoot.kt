@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -114,6 +115,12 @@ private fun MainNavigation() {
             backProgress.animateTo(1f, tween(TandemMotion.DurationFast))
             nav.pop()
             backProgress.snapTo(0f)
+            // The route transition is decided while the next frame is composed, so the
+            // "no transition" flag has to outlive the pop by a couple of frames. Cleared
+            // straight away, the previous page slid in again after the gesture had already
+            // slid this one out.
+            withFrameNanos { }
+            withFrameNanos { }
             committed = false
         } catch (e: CancellationException) {
             scope.launch { backProgress.animateTo(0f, TandemMotion.spatial()) }
