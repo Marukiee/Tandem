@@ -119,6 +119,8 @@ pub(crate) struct Inner {
     pub discovery: Mutex<Option<Discovery>>,
     pub accept_slots: Arc<Semaphore>,
     pub last_announce_hour: AtomicU64,
+    pub ble: Mutex<crate::ble::BleHub>,
+    pub ble_msg_id: std::sync::atomic::AtomicU8,
 }
 
 #[derive(Clone)]
@@ -178,6 +180,8 @@ impl Engine {
             discovery: Mutex::new(None),
             accept_slots: Arc::new(Semaphore::new(16)),
             last_announce_hour: AtomicU64::new(discovery::current_hour()),
+            ble: Mutex::new(Default::default()),
+            ble_msg_id: std::sync::atomic::AtomicU8::new(0),
         });
 
         // The peers must exist before their saved addresses can be attached to them.
@@ -319,6 +323,44 @@ impl Engine {
     /// Any control message, for the feature modules (notifications, calls, input).
     pub async fn send_msg(&self, targets: &[DeviceId], msg: Msg) -> Vec<DeviceId> {
         self.inner.send_many(targets, msg).await
+    }
+
+    /// Whether this device and `id` share a Bluetooth key yet. It is made the first time they
+    /// connect over the network, so a phone that has never met the Mac cannot use it.
+    pub fn ble_ready(&self, id: &DeviceId) -> bool {
+        self.inner.ble_has_key(id)
+    }
+
+    /// The first writes on a new Bluetooth link, which tell the other side who this is.
+    pub fn ble_hello(&self, id: &DeviceId, chunk: usize) -> Vec<Vec<u8>> {
+        self.inner.ble_hello(id, chunk)
+    }
+
+    /// The writes waiting to go to `id` over Bluetooth, each at most `chunk` bytes.
+    pub fn ble_take_outbox(&self, id: &DeviceId, chunk: usize) -> Vec<Vec<u8>> {
+        self.inner.ble_take(id, chunk)
+    }
+
+    /// One write that arrived over Bluetooth on the link named `link`. When it completes a
+    /// message from a device in the circle, the message is handled and that device is returned.
+    pub async fn ble_receive(&self, link: &str, chunk: &[u8]) -> Option<DeviceId> {
+        self.inner.ble_receive(link, chunk).await
+    }
+
+    /// Queues a message for `id` over Bluetooth, even if a network connection exists. False when
+    /// there is no link, no shared key, or the message is not one that may cross the air.
+    pub fn ble_send(&self, id: &DeviceId, msg: Msg) -> bool {
+        self.inner.ble_queue(id, msg)
+    }
+
+    /// The Bluetooth link to `id` went away.
+    pub fn ble_link_down(&self, id: &DeviceId) {
+        self.inner.ble_link_down(id);
+    }
+
+    /// The link named `link` closed: forget its half-received message.
+    pub fn ble_drop_link(&self, link: &str) {
+        self.inner.ble_drop_link(link);
     }
 
     /// Shows a pairing code (as a QR) that another device can scan to join the circle.
@@ -470,6 +512,9 @@ impl Inner {
         let mut reached = Vec::new();
         for id in targets {
             if self.send_to(id, msg.clone()).await.is_ok() {
+                reached.push(*id);
+            } else if self.ble_queue(id, msg.clone()) {
+                // No connection, but a Bluetooth link is up: it goes that way.
                 reached.push(*id);
             }
         }
@@ -898,7 +943,13 @@ impl Inner {
         }
         let targets: Vec<DeviceId> = {
             let settings = self.settings.read().unwrap();
-            self.connected_ids().into_iter().filter(|id| settings.for_device(id).clipboard).collect()
+            let mut ids = self.connected_ids();
+            for id in self.ble_linked_ids() {
+                if !ids.contains(&id) {
+                    ids.push(id);
+                }
+            }
+            ids.into_iter().filter(|id| settings.for_device(id).clipboard).collect()
         };
         self.send_clipboard(&targets, text, is_url).await;
     }

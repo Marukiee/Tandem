@@ -906,6 +906,50 @@ impl TandemEngine {
         DeviceId::parse(&id).map(|id| self.engine.verify_member(&id, &message, &signature)).unwrap_or(false)
     }
 
+    // ---- Bluetooth messages ------------------------------------------------------
+    //
+    // The app only moves writes: what to send comes out of `ble_take_outbox` and what
+    // arrives goes into `ble_receive`. Sealing, cutting into pieces and putting them back
+    // together all happen here.
+
+    /// True once this device and `id` share the key that seals Bluetooth frames. It is
+    /// made when they first connect over the network.
+    pub fn ble_ready(&self, id: String) -> bool {
+        DeviceId::parse(&id).map(|id| self.engine.ble_ready(&id)).unwrap_or(false)
+    }
+
+    /// The first writes to send on a new link, so the other end learns who this is.
+    pub fn ble_hello(&self, id: String, chunk_size: u32) -> Vec<Vec<u8>> {
+        DeviceId::parse(&id).map(|id| self.engine.ble_hello(&id, chunk_size as usize)).unwrap_or_default()
+    }
+
+    /// The writes waiting for `id`, each at most `chunk_size` bytes, oldest first. Empty
+    /// when nothing waits. Call it on a timer while a link is up.
+    pub fn ble_take_outbox(&self, id: String, chunk_size: u32) -> Vec<Vec<u8>> {
+        DeviceId::parse(&id).map(|id| self.engine.ble_take_outbox(&id, chunk_size as usize)).unwrap_or_default()
+    }
+
+    /// One write that arrived on the link `link` (any stable name for it, such as the
+    /// Bluetooth address). Returns the device id once a whole message from a circle member
+    /// has arrived and been handled, which also marks that device as reachable over this link.
+    pub async fn ble_receive(&self, link: String, chunk: Vec<u8>) -> Option<String> {
+        let engine = self.engine.clone();
+        let from = self.runtime.spawn(async move { engine.ble_receive(&link, &chunk).await }).await.ok()??;
+        Some(from.to_string())
+    }
+
+    /// The link to `id` closed.
+    pub fn ble_link_down(&self, id: String) {
+        if let Ok(id) = DeviceId::parse(&id) {
+            self.engine.ble_link_down(&id);
+        }
+    }
+
+    /// The link named `link` closed: forget what it had half delivered.
+    pub fn ble_drop_link(&self, link: String) {
+        self.engine.ble_drop_link(&link);
+    }
+
     /// Where a circle member can be reached right now, as `ip:port`. Dials at once.
     pub fn add_address(&self, id: String, addr: String) -> Result<(), TandemError> {
         let _guard = self.runtime.enter();

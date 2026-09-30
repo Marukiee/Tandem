@@ -635,3 +635,65 @@ async fn add_address_refuses_strangers_and_nonsense() {
     assert!(phone.engine.add_address(&mac.engine.id(), "192.168.43.1").is_err());
     assert!(phone.engine.add_address(&mac.engine.id(), "192.168.43.1:47820").is_ok());
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn bluetooth_frames_carry_a_clipboard_and_refuse_a_replay() {
+    use tandem_core::proto::{ClipboardMsg, Msg};
+
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+    // The key is made when they first connect over the network.
+    wait_until("both hold the Bluetooth key", || {
+        phone.engine.ble_ready(&mac.engine.id()) && mac.engine.ble_ready(&phone.engine.id())
+    })
+    .await;
+
+    // Each side says hello on the new link, which marks the link as that device's.
+    let link = "aa:bb";
+    for chunk in phone.engine.ble_hello(&mac.engine.id(), 40) {
+        mac.engine.ble_receive(link, &chunk).await;
+    }
+    for chunk in mac.engine.ble_hello(&phone.engine.id(), 40) {
+        phone.engine.ble_receive(link, &chunk).await;
+    }
+
+    let mut mac_events = mac.engine.subscribe();
+    let text = "over the air ".repeat(40);
+    let msg = Msg::Clipboard(ClipboardMsg { id: 1, ts: 1, text: text.clone(), is_url: false });
+    assert!(phone.engine.ble_send(&mac.engine.id(), msg));
+    let chunks = phone.engine.ble_take_outbox(&mac.engine.id(), 40);
+    assert!(chunks.len() > 5, "a message this size needs several writes");
+    let mut sender = None;
+    for chunk in &chunks {
+        sender = mac.engine.ble_receive(link, chunk).await.or(sender);
+    }
+    assert_eq!(sender, Some(phone.engine.id()));
+    let got = expect(&mut mac_events, "clipboard over Bluetooth", |e| match e {
+        Event::Clipboard { text, .. } => Some(text.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(got, text);
+
+    // The same writes again are a replay and do nothing.
+    let mut replayed = None;
+    for chunk in &chunks {
+        replayed = mac.engine.ble_receive(link, chunk).await.or(replayed);
+    }
+    assert_eq!(replayed, None);
+    let again = tokio::time::timeout(Duration::from_millis(500), async {
+        loop {
+            if let Ok(Event::Clipboard { .. }) = mac_events.recv().await {
+                return true;
+            }
+        }
+    })
+    .await
+    .is_ok();
+    assert!(!again, "a replayed frame was handled");
+
+    // A message that is not allowed over the air is refused before it is sealed.
+    assert!(!phone.engine.ble_send(&mac.engine.id(), Msg::Ring { on: true }));
+}

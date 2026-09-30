@@ -63,6 +63,12 @@ pub enum Msg {
     Ring { on: bool },
     Input(InputMsg),
     Hotspot(HotspotMsg),
+    /// The key two devices seal Bluetooth frames with. Made by the one with the lower id and
+    /// sent over the authenticated connection, never over the air.
+    BleKey {
+        #[serde(with = "bytes_array")]
+        key: [u8; 32],
+    },
     /// Addresses this device can now be reached at, sent when the network changes.
     Candidates { addrs: Vec<String> },
     /// Where other circle members were last reachable, so two devices that only ever

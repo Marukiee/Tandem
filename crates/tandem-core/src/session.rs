@@ -160,6 +160,7 @@ impl Inner {
         // Bring the other side up to date.
         let status = self.my_status.lock().unwrap().clone();
         let _ = session.tx.send(Msg::Status(status)).await;
+        self.ble_on_connected(id).await;
         let known = self.introductions(&id);
         if !known.is_empty() {
             let _ = session.tx.send(Msg::Introduce { peers: known }).await;
@@ -295,7 +296,7 @@ impl Inner {
         }
     }
 
-    async fn handle_msg(self: &Arc<Self>, id: DeviceId, msg: Msg) {
+    pub(crate) async fn handle_msg(self: &Arc<Self>, id: DeviceId, msg: Msg) {
         match msg {
             Msg::CircleSync { statements } => {
                 let before: std::collections::HashSet<StatementId> =
@@ -352,6 +353,7 @@ impl Inner {
             Msg::Ring { on } => self.emit(Event::Ring { from: id, on }),
             Msg::Input(input) => self.emit(Event::Input { from: id, input }),
             Msg::Hotspot(hotspot) => self.emit(Event::Hotspot { from: id, hotspot }),
+            Msg::BleKey { key } => self.ble_on_key(id, key),
             Msg::Candidates { addrs } => {
                 for text in addrs {
                     if let Ok(addr) = text.parse::<SocketAddr>() {

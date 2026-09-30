@@ -1,3 +1,4 @@
+pub mod ble;
 pub mod circle;
 pub mod discovery;
 pub mod engine;
