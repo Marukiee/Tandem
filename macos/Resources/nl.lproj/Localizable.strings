@@ -344,3 +344,15 @@
 "Guided setup" = "Begeleid instellen";
 "Set up…" = "Instellen…";
 "Join your phone's hotspot once and Tandem takes over." = "Maak één keer verbinding met de hotspot van je telefoon, de rest doet Tandem.";
+
+/* Notifications page */
+"Notifications" = "Meldingen";
+"What your phones showed. New ones also appear as notifications on this Mac." = "Wat je telefoons lieten zien. Nieuwe verschijnen ook als melding op deze Mac.";
+"No notifications yet" = "Nog geen meldingen";
+"When a phone shows a notification, it is listed here." = "Als een telefoon een melding toont, staat die hier.";
+"Clear all" = "Alles wissen";
+"Nothing yet" = "Nog niets";
+"%lld shared" = "%lld gedeeld";
+"%lld from your phones" = "%lld van je telefoons";
+"macOS only tells Tandem the name of your network if it may see your location. Your position is never read." = "macOS geeft Tandem de naam van je netwerk alleen als het je locatie mag zien. Je positie wordt nooit gelezen.";
+"I'll type it myself" = "Ik typ het zelf";

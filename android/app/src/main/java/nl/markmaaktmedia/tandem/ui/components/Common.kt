@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -417,7 +418,12 @@ fun <T> SwipeToDelete(
                         contentAlignment = if (toLeft) Alignment.CenterEnd else Alignment.CenterStart,
                     ) {
                         Row(
+                            // Measured at its full width whatever the panel is, and pinned to the
+                            // edge being uncovered: the icon at the edge shows first, the label
+                            // fills in behind it. Squeezed into the narrow panel instead, the row
+                            // lost its icon to the overflow and the label came first.
                             modifier = Modifier
+                                .wrapContentWidth(align = if (toLeft) Alignment.End else Alignment.Start, unbounded = true)
                                 .padding(horizontal = 18.dp)
                                 .graphicsLayer { alpha = (shown / revealFade).coerceIn(0f, 1f) },
                             verticalAlignment = Alignment.CenterVertically,

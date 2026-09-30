@@ -182,7 +182,7 @@ struct BatteryRing: View {
     /// 100 leaves a visible opening, and only a full battery closes the ring.
     private var arc: CGFloat {
         let level = CGFloat(battery.level) / 100
-        return battery.level >= 100 ? 1 : level * 0.92
+        return battery.level >= 100 ? 1 : level * 0.945
     }
 
     var body: some View {

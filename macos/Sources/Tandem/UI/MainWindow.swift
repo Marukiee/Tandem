@@ -96,7 +96,7 @@ struct MainWindow: View {
                 Text("Starting").foregroundStyle(.secondary)
             }
             .transition(.opacity)
-        } else if model.devices.isEmpty && selection != .shared {
+        } else if model.devices.isEmpty && selection != .shared && selection != .notifications {
             ScrollView { WelcomeView() }.transition(.page)
         } else {
             switch selection {
@@ -110,6 +110,8 @@ struct MainWindow: View {
                 }
             case .shared:
                 SharedView().transition(.page)
+            case .notifications:
+                NotificationsView().transition(.page)
             case nil:
                 Color.clear
             }

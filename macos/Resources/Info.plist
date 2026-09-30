@@ -26,6 +26,10 @@
     <array><string>_tandem._udp</string></array>
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>Tandem uses Bluetooth to ask your phone to turn on its hotspot when this Mac has no connection.</string>
+    <key>NSLocationUsageDescription</key>
+    <string>macOS only tells Tandem the name of your Wi-Fi network if it may see your location. Tandem uses the name to set up your phone's hotspot, and never your position.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>macOS only tells Tandem the name of your Wi-Fi network if it may see your location. Tandem uses the name to set up your phone's hotspot, and never your position.</string>
     <key>NSCameraUsageDescription</key>
     <string>Tandem scans the pairing code shown on another device.</string>
 

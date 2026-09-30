@@ -4,6 +4,7 @@ import TandemCore
 enum SidebarSelection: Hashable {
     case device(String)
     case shared
+    case notifications
 }
 
 /// Two clearly separate groups: the devices, with how many of them are reachable, and
@@ -19,7 +20,7 @@ struct Sidebar: View {
     @Binding var showPairing: Bool
 
     private var order: [SidebarSelection] {
-        model.devices.map { .device($0.id) } + [.shared]
+        model.devices.map { .device($0.id) } + [.shared, .notifications]
     }
 
     var body: some View {
@@ -47,6 +48,11 @@ struct Sidebar: View {
                     selection = .shared
                 } content: {
                     SharedRow()
+                }
+                SidebarButton(selected: selection == .notifications) {
+                    selection = .notifications
+                } content: {
+                    NotificationsRow()
                 }
             }
             .padding(.horizontal, 10)
@@ -137,8 +143,6 @@ private struct DeviceRow: View {
         Hoverable { hovering in
             HStack(spacing: 11) {
                 DeviceGlyph(platform: device.platform, online: device.online, size: 38, deviceID: device.id)
-                    .scaleEffect(hovering ? 1.07 : 1)
-                    .animation(.tandemSpringy, value: hovering)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(device.name).font(.callout.weight(.semibold)).lineLimit(1)
                     HStack(spacing: 4) {
@@ -170,35 +174,69 @@ private struct DeviceRow: View {
     }
 }
 
+/// A row of the second group, built like a device row so the two groups carry the same weight:
+/// a disc with a symbol, a title and a line under it.
+private struct SideRow: View {
+    let symbol: String
+    let title: LocalizedStringKey
+    let subtitle: String
+    var badge = 0
+    var pulse = false
+
+    var body: some View {
+        HStack(spacing: 11) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Palette.indigo)
+                .symbolEffect(.pulse, isActive: pulse)
+                .frame(width: 38, height: 38)
+                .background(Palette.indigo.opacity(0.14), in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.callout.weight(.semibold)).lineLimit(1)
+                Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            if badge > 0 {
+                Text("\(badge)")
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(Palette.indigo.opacity(0.18), in: Capsule())
+                    .contentTransition(.numericText(value: Double(badge)))
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .padding(.vertical, 3)
+        .animation(.tandem, value: badge)
+    }
+}
+
 private struct SharedRow: View {
     @Environment(EngineModel.self) private var model
 
     var body: some View {
         let active = model.transfers.filter { $0.state == .active }.count
-        Hoverable { hovering in
-            HStack(spacing: 8) {
-                Label {
-                    Text("Files")
-                } icon: {
-                    Image(systemName: "arrow.up.arrow.down.circle.fill")
-                        .foregroundStyle(Palette.indigo)
-                        .symbolEffect(.pulse, isActive: active > 0)
-                        .scaleEffect(hovering ? 1.12 : 1)
-                        .animation(.tandemSpringy, value: hovering)
-                }
-                Spacer(minLength: 0)
-                if active > 0 {
-                    Text("\(active)")
-                        .font(.caption.weight(.semibold).monospacedDigit())
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
-                        .background(Palette.indigo.opacity(0.18), in: Capsule())
-                        .contentTransition(.numericText(value: Double(active)))
-                        .transition(.scale.combined(with: .opacity))
-                }
-            }
-            .animation(.tandem, value: active)
-        }
+        let total = model.transfers.count
+        SideRow(
+            symbol: "arrow.up.arrow.down.circle.fill",
+            title: "Files",
+            subtitle: total == 0 ? String(localized: "Nothing yet") : String(localized: "\(total) shared"),
+            badge: active,
+            pulse: active > 0
+        )
+    }
+}
+
+private struct NotificationsRow: View {
+    @Environment(EngineModel.self) private var model
+
+    var body: some View {
+        let count = model.mirrored.count
+        SideRow(
+            symbol: "bell.fill",
+            title: "Notifications",
+            subtitle: count == 0 ? String(localized: "Nothing yet") : String(localized: "\(count) from your phones")
+        )
     }
 }
 

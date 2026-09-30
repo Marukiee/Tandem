@@ -1,5 +1,6 @@
 import AppKit
 import CoreBluetooth
+import CoreLocation
 import CoreWLAN
 import SwiftUI
 
@@ -13,6 +14,27 @@ enum BluetoothPrompt {
 
     static func openSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+}
+
+/// macOS hides the name of the Wi-Fi network from apps that may not see the location, so the
+/// setup asks for it once. The position itself is never read.
+enum LocationAccess {
+    private static var manager: CLLocationManager?
+
+    static var status: CLAuthorizationStatus { CLLocationManager().authorizationStatus }
+    static var allowed: Bool { status == .authorizedAlways || status == .authorized }
+
+    static func ask() {
+        let created = CLLocationManager()
+        manager = created
+        created.requestWhenInUseAuthorization()
+    }
+
+    static func openSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") {
             NSWorkspace.shared.open(url)
         }
     }
@@ -75,6 +97,8 @@ struct HotspotSetupSheet: View {
     @LocalState private var reading = false
     @LocalState private var readFailed = false
     @LocalState private var bluetooth = CBManager.authorization
+    @LocalState private var location = LocationAccess.status
+    @LocalState private var typeIt = false
 
     private let steps = 4
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -120,6 +144,7 @@ struct HotspotSetupSheet: View {
         .frame(width: 500, height: 380)
         .onReceive(timer) { _ in
             bluetooth = CBManager.authorization
+            location = LocationAccess.status
             if step == 0 { Task.detached { let name = CurrentWiFi.ssid(); await MainActor.run { current = name } } }
         }
         .onAppear { Task.detached { let name = CurrentWiFi.ssid(); await MainActor.run { current = name } } }
@@ -127,7 +152,7 @@ struct HotspotSetupSheet: View {
 
     private var canContinue: Bool {
         switch step {
-        case 0: current != nil
+        case 0: current != nil || typeIt
         case 1: !ssid.isEmpty && !password.isEmpty
         case 2: bluetooth == .allowedAlways
         default: true
@@ -153,6 +178,27 @@ struct HotspotSetupSheet: View {
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            if current == nil {
+                // Joined but not shown: macOS only names the network to apps that may see the location.
+                if !LocationAccess.allowed {
+                    Text("macOS only tells Tandem the name of your network if it may see your location. Your position is never read.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                    HStack {
+                        Button(location == .notDetermined ? "Allow" : "Open Settings") {
+                            if location == .notDetermined { LocationAccess.ask() } else { LocationAccess.openSettings() }
+                        }
+                        Button("I'll type it myself") { typeIt = true; withAnimation(.tandem) { step = 1 } }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Button("I'll type it myself") { typeIt = true; withAnimation(.tandem) { step = 1 } }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                }
+            }
         }
     }
 

@@ -51,6 +51,8 @@ final class EngineModel {
     var hotspotStatus: HotspotStatus = .idle
     /// A short message shown as a toast at the bottom of the window.
     var toast: String?
+    /// What your phones have shown as notifications, newest first.
+    var mirrored: [MirroredNotification] = []
     /// The icon a person picked for a device, by device id. A device without one uses its platform's.
     var deviceIcons: [String: String] = UserDefaults.standard.dictionary(forKey: "deviceIcons") as? [String: String] ?? [:]
     /// A received file the person asked to move to the Trash, waiting for a yes.
@@ -273,9 +275,11 @@ final class EngineModel {
                 Notifier.shared.postCodeCopied(code: code, deviceName: deviceName, key: notification.key)
             }
             Notifier.shared.postMirrored(device: from, deviceName: deviceName, notification: notification)
+            remember(notification, from: from, deviceName: deviceName)
 
         case let .notificationRemoved(from, key):
             Notifier.shared.remove(id: "mirror.\(from).\(key)")
+            mirrored.removeAll { $0.device == from && $0.key == key }
 
         case let .call(from, call):
             switch call.state {
@@ -623,6 +627,21 @@ final class EngineModel {
 
     var engineHandle: TandemEngine? { engine }
 
+    private func remember(_ notification: TandemNotification, from device: String, deviceName: String) {
+        // Ongoing ones (music, navigation, downloads) come and go; they do not belong on a list.
+        guard !notification.ongoing else { return }
+        let item = MirroredNotification(
+            device: device, deviceName: deviceName, key: notification.key,
+            appName: notification.appName, title: notification.title, text: notification.text,
+            date: notification.ts > 0 ? Date(timeIntervalSince1970: TimeInterval(notification.ts) / 1000) : Date()
+        )
+        mirrored.removeAll { $0.device == device && $0.key == notification.key }
+        mirrored.insert(item, at: 0)
+        if mirrored.count > 200 { mirrored.removeLast(mirrored.count - 200) }
+    }
+
+    func clearMirrored() { mirrored.removeAll() }
+
     func setIcon(_ symbol: String?, for id: String) {
         if let symbol { deviceIcons[id] = symbol } else { deviceIcons.removeValue(forKey: id) }
         UserDefaults.standard.set(deviceIcons, forKey: "deviceIcons")
@@ -655,4 +674,17 @@ extension Bundle {
     var appVersion: String {
         (infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.0.0"
     }
+}
+
+
+/// A notification a phone showed, kept for the Notifications page.
+struct MirroredNotification: Identifiable, Equatable {
+    var id: String { "\(device).\(key)" }
+    let device: String
+    let deviceName: String
+    let key: String
+    let appName: String
+    let title: String
+    let text: String
+    let date: Date
 }

@@ -9,5 +9,9 @@
          blocks it without this. -->
     <key>com.apple.security.device.bluetooth</key>
     <true/>
+    <!-- macOS only shows the name of the Wi-Fi network to apps with Location access. It is
+         used to fill in the phone's hotspot during setup, nothing else. -->
+    <key>com.apple.security.personal-information.location</key>
+    <true/>
 </dict>
 </plist>
