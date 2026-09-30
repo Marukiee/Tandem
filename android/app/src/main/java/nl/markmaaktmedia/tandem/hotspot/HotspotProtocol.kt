@@ -19,6 +19,12 @@ object HotspotProtocol {
     val STATE: UUID = UUID.fromString("6f2d7a13-8b1c-4e6f-a3d5-1c9e5b7f2a40")
 
     /** The standard descriptor a central writes to switch notifications on. */
+    /** Writes from the Mac: pieces of sealed clipboard and notification frames. */
+    val MSG_IN: UUID = UUID.fromString("6f2d7a14-8b1c-4e6f-a3d5-1c9e5b7f2a40")
+
+    /** Notifies the Mac of pieces of frames going the other way. */
+    val MSG_OUT: UUID = UUID.fromString("6f2d7a15-8b1c-4e6f-a3d5-1c9e5b7f2a40")
+
     val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
     const val VERSION = 1

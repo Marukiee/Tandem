@@ -20,6 +20,12 @@ import android.os.ParcelUuid
 import android.util.Log
 import uniffi.tandem_core.tandemBleHint
 
+/** Where the pieces of Bluetooth messages go, and who hears that a link closed. */
+interface BleMessageSink {
+    fun onWrite(link: String, chunk: ByteArray)
+    fun onLinkClosed(link: String)
+}
+
 /**
  * Makes this phone findable and answerable over Bluetooth Low Energy while it is set to
  * share its hotspot with the Mac. The Mac has no network to reach us on, so this is the
@@ -38,11 +44,17 @@ class BleHotspotServer(
     private val currentState: () -> Pair<BleState, Int?>,
     /** Called for a request that passed the signature check. */
     private val onRequest: (action: Int, deviceId: String) -> Unit,
+    /** Clipboard and notifications over Bluetooth, when there is no network. */
+    private val sink: BleMessageSink? = null,
 ) {
+    private class Out(val characteristic: BluetoothGattCharacteristic, val bytes: ByteArray, val isState: Boolean)
+
     private class Peer(val device: BluetoothDevice) {
         var subscribed = false
+        var messagesSubscribed = false
+        var mtu = 23
         var pendingWrite: ByteArray? = null
-        val outbox = ArrayDeque<ByteArray>()
+        val outbox = ArrayDeque<Out>()
         var sending = false
     }
 
@@ -51,6 +63,7 @@ class BleHotspotServer(
     private var server: BluetoothGattServer? = null
     private var advertiser: BluetoothLeAdvertiser? = null
     private var stateCharacteristic: BluetoothGattCharacteristic? = null
+    private var messageOut: BluetoothGattCharacteristic? = null
     private var advertising = false
     private var advertisedHour = -1L
 
@@ -88,6 +101,21 @@ class BleHotspotServer(
                 BluetoothGattDescriptor(HotspotProtocol.CCCD, BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE),
             )
             service.addCharacteristic(state)
+            if (sink != null) {
+                service.addCharacteristic(
+                    BluetoothGattCharacteristic(
+                        HotspotProtocol.MSG_IN,
+                        BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
+                        BluetoothGattCharacteristic.PERMISSION_WRITE,
+                    ),
+                )
+                val out = BluetoothGattCharacteristic(HotspotProtocol.MSG_OUT, BluetoothGattCharacteristic.PROPERTY_NOTIFY, 0)
+                out.addDescriptor(
+                    BluetoothGattDescriptor(HotspotProtocol.CCCD, BluetoothGattDescriptor.PERMISSION_READ or BluetoothGattDescriptor.PERMISSION_WRITE),
+                )
+                service.addCharacteristic(out)
+                messageOut = out
+            }
 
             server = opened
             stateCharacteristic = state
@@ -114,6 +142,7 @@ class BleHotspotServer(
         server = null
         advertiser = null
         stateCharacteristic = null
+        messageOut = null
         peers.clear()
         running = false
         advertisedHour = -1
@@ -138,7 +167,7 @@ class BleHotspotServer(
         val bytes = StateCodec.encode(state, clients)
         synchronized(lock) {
             if (!running) return
-            for (peer in peers.values) if (peer.subscribed) enqueueLocked(peer, bytes)
+            for (peer in peers.values) if (peer.subscribed) enqueueStateLocked(peer, bytes)
         }
     }
 
@@ -207,6 +236,7 @@ class BleHotspotServer(
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     peers.remove(device.address)
                     challenges.forget(device.address)
+                    sink?.onLinkClosed(device.address)
                     // Some phones stop advertising when a central connects.
                     if (!advertising) startAdvertisingLocked()
                 }
@@ -237,6 +267,11 @@ class BleHotspotServer(
             offset: Int,
             value: ByteArray?,
         ) {
+            if (characteristic.uuid == HotspotProtocol.MSG_IN && value != null && sink != null) {
+                if (responseNeeded) reply(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, null)
+                sink.onWrite(device.address, value)
+                return
+            }
             if (characteristic.uuid != HotspotProtocol.REQUEST || value == null) {
                 if (responseNeeded) reply(device, requestId, BluetoothGatt.GATT_WRITE_NOT_PERMITTED, offset, null)
                 return
@@ -285,8 +320,10 @@ class BleHotspotServer(
                 if (responseNeeded) reply(device, requestId, BluetoothGatt.GATT_WRITE_NOT_PERMITTED, offset, null)
                 return
             }
+            val on = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
             synchronized(lock) {
-                peers[device.address]?.subscribed = value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+                val peer = peers[device.address] ?: return@synchronized
+                if (descriptor.characteristic.uuid == HotspotProtocol.MSG_OUT) peer.messagesSubscribed = on else peer.subscribed = on
             }
             if (responseNeeded) reply(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
         }
@@ -295,6 +332,10 @@ class BleHotspotServer(
             val on = synchronized(lock) { peers[device.address]?.subscribed == true }
             val value = if (on) BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE else BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
             reply(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value)
+        }
+
+        override fun onMtuChanged(device: BluetoothDevice, mtu: Int) {
+            synchronized(lock) { peers[device.address]?.mtu = mtu }
         }
 
         override fun onNotificationSent(device: BluetoothDevice, status: Int) {
@@ -314,7 +355,7 @@ class BleHotspotServer(
                 // Also tell this Mac where things stand right now: if nothing changes
                 // (the hotspot was already on) no other state would ever be sent.
                 val (state, clients) = currentState()
-                synchronized(lock) { peers[device.address]?.let { enqueueLocked(it, StateCodec.encode(state, clients)) } }
+                synchronized(lock) { peers[device.address]?.let { enqueueStateLocked(it, StateCodec.encode(state, clients)) } }
             }
             AuthResult.Blocked -> {
                 if (responseNeeded) reply(device, requestId, HotspotProtocol.ATT_REFUSED, 0, null)
@@ -323,7 +364,7 @@ class BleHotspotServer(
             AuthResult.Malformed, AuthResult.NoChallenge, AuthResult.BadSignature -> {
                 if (responseNeeded) reply(device, requestId, HotspotProtocol.ATT_REFUSED, 0, null)
                 Log.i(TAG, "request refused: $result")
-                synchronized(lock) { peers[device.address]?.let { enqueueLocked(it, StateCodec.encode(BleState.RefusedAuth, null)) } }
+                synchronized(lock) { peers[device.address]?.let { enqueueStateLocked(it, StateCodec.encode(BleState.RefusedAuth, null)) } }
             }
         }
     }
@@ -335,24 +376,44 @@ class BleHotspotServer(
 
     // ---- Notifications, one at a time per central ------------------------------
 
-    private fun enqueueLocked(peer: Peer, bytes: ByteArray) {
+    private fun enqueueStateLocked(peer: Peer, bytes: ByteArray) {
+        val characteristic = stateCharacteristic ?: return
         // Only the latest state matters to a person watching a progress line.
-        while (peer.outbox.size >= 4) peer.outbox.removeFirst()
-        peer.outbox.addLast(bytes)
+        while (peer.outbox.count { it.isState } >= 4) peer.outbox.remove(peer.outbox.first { it.isState })
+        peer.outbox.addLast(Out(characteristic, bytes, isState = true))
         if (!peer.sending) sendNextLocked(peer)
     }
 
+    /** One piece of a message for the Mac on this link. False when it is not listening. */
+    fun sendMessage(link: String, bytes: ByteArray): Boolean {
+        synchronized(lock) {
+            val peer = peers[link] ?: return false
+            val characteristic = messageOut ?: return false
+            if (!peer.messagesSubscribed) return false
+            if (peer.outbox.size > MAX_QUEUED) return false
+            peer.outbox.addLast(Out(characteristic, bytes, isState = false))
+            if (!peer.sending) sendNextLocked(peer)
+            return true
+        }
+    }
+
+    /** How much fits in one write on this link: the negotiated packet size less its header. */
+    fun chunkSize(link: String): Int = synchronized(lock) { ((peers[link]?.mtu ?: 23) - 3).coerceIn(20, 180) }
+
+    /** True once the Mac on this link has switched on the message notifications. */
+    fun messagesReady(link: String): Boolean = synchronized(lock) { peers[link]?.messagesSubscribed == true }
+
     private fun sendNextLocked(peer: Peer) {
         val server = server ?: return
-        val characteristic = stateCharacteristic ?: return
         val next = peer.outbox.removeFirstOrNull() ?: return
+        val characteristic = next.characteristic
         peer.sending = true
         val started = try {
             if (Build.VERSION.SDK_INT >= 33) {
-                server.notifyCharacteristicChanged(peer.device, characteristic, false, next) == BluetoothGatt.GATT_SUCCESS
+                server.notifyCharacteristicChanged(peer.device, characteristic, false, next.bytes) == BluetoothGatt.GATT_SUCCESS
             } else {
                 @Suppress("DEPRECATION")
-                characteristic.value = next
+                characteristic.value = next.bytes
                 @Suppress("DEPRECATION")
                 server.notifyCharacteristicChanged(peer.device, characteristic, false)
             }
@@ -361,11 +422,16 @@ class BleHotspotServer(
             false
         }
         // No callback will come for a notification that never left.
-        if (!started) peer.sending = false
+        if (!started) {
+            peer.sending = false
+            // Try the next one rather than stalling the queue behind a failure.
+            if (peer.outbox.isNotEmpty()) sendNextLocked(peer)
+        }
     }
 
     companion object {
         private const val TAG = "BleHotspotServer"
         private const val MAX_REQUEST_BYTES = 256
+        private const val MAX_QUEUED = 300
     }
 }

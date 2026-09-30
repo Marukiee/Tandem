@@ -318,4 +318,6 @@
     <string name="update_reason_damaged">De download is beschadigd (de controlesom klopt niet)</string>
     <string name="update_reason_installer">De installatie kon niet worden afgerond</string>
     <string name="update_reason_cancelled">De installatie is geannuleerd</string>
+    <string name="settings_ble_messages">Bluetooth zonder netwerk</string>
+    <string name="settings_ble_messages_sub">Klembord en meldingen komen ook zonder wifi bij je Mac aan, via Bluetooth</string>
 </resources>

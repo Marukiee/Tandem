@@ -321,4 +321,6 @@
     <string name="update_reason_damaged">The download is damaged (the checksum does not match)</string>
     <string name="update_reason_installer">The installer could not finish</string>
     <string name="update_reason_cancelled">The installation was cancelled</string>
+    <string name="settings_ble_messages">Bluetooth without a network</string>
+    <string name="settings_ble_messages_sub">Clipboard and notifications still reach your Mac over Bluetooth when there is no Wi-Fi</string>
 </resources>

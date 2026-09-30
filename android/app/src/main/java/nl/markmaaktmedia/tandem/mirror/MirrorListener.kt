@@ -46,7 +46,8 @@ class MirrorListener : NotificationListenerService() {
         graph.scope.launch {
             if (!graph.prefs.mirrorNotifications.first()) return@launch
             if (!shouldMirror(sbn, graph)) return@launch
-            val targets = graph.host.devices.value.filter { it.online && it.notificationsEnabled }.map { it.id }
+            // Offline devices are included: with no connection the core sends over Bluetooth if a link is up.
+            val targets = graph.host.devices.value.filter { it.notificationsEnabled }.map { it.id }
             if (targets.isEmpty()) return@launch
             active[sbn.key] = sbn
             val notification = convert(sbn) ?: return@launch
@@ -58,7 +59,7 @@ class MirrorListener : NotificationListenerService() {
         val graph = applicationContext.graph
         if (active.remove(sbn.key) == null) return
         graph.scope.launch {
-            val targets = graph.host.devices.value.filter { it.online }.map { it.id }
+            val targets = graph.host.devices.value.map { it.id }
             if (targets.isNotEmpty()) runCatching { graph.host.engine?.removeNotification(targets, sbn.key) }
         }
     }

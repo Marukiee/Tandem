@@ -68,6 +68,8 @@ class HotspotModule private constructor(private val context: Context) {
     )
 
     private var server: BleHotspotServer? = null
+    val messenger = BleMessenger(scope) { graph.host.engine }
+    @Volatile private var messagesOn = true
     private val jobs = mutableListOf<Job>()
     private var started = false
 
@@ -97,6 +99,7 @@ class HotspotModule private constructor(private val context: Context) {
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_EXPORTED)
 
         jobs += scope.launch { graph.prefs.hotspotForMac.collectLatest { enabled = it; reconcile() } }
+        jobs += scope.launch { graph.prefs.bluetoothMessages.collectLatest { messagesOn = it; reconcile() } }
         jobs += scope.launch { prefs.allowRoaming.collectLatest { allowRoaming = it } }
         jobs += scope.launch { prefs.dataLimitMb.collectLatest { dataLimitMb = it } }
         jobs += scope.launch { graph.host.state.collectLatest { reconcile() } }
@@ -119,6 +122,7 @@ class HotspotModule private constructor(private val context: Context) {
         jobs.forEach { it.cancel() }
         jobs.clear()
         runCatching { context.unregisterReceiver(receiver) }
+        messenger.detach()
         server?.stop()
         controller.shutdown()
         shizuku.unregister()
@@ -171,8 +175,12 @@ class HotspotModule private constructor(private val context: Context) {
 
     // ---- Over Bluetooth --------------------------------------------------------
 
-    fun availability(): BleAvailability {
-        if (!enabled) return BleAvailability.PrefOff
+    /** For the hotspot: the switch has to be on as well. */
+    fun availability(): BleAvailability = if (!enabled) BleAvailability.PrefOff else serverAvailability()
+
+    /** The Bluetooth server serves the hotspot and the message link, so either reason keeps it up. */
+    private fun serverAvailability(): BleAvailability {
+        if (!enabled && !messagesOn) return BleAvailability.PrefOff
         if (!Permissions.bluetooth(context)) return BleAvailability.NoPermission
         val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter ?: return BleAvailability.Unsupported
         if (!adapter.isEnabled) return BleAvailability.BluetoothOff
@@ -185,7 +193,7 @@ class HotspotModule private constructor(private val context: Context) {
     @Synchronized
     fun reconcile() {
         if (!started) return
-        if (availability() == BleAvailability.Ready) {
+        if (serverAvailability() == BleAvailability.Ready) {
             val current = server ?: BleHotspotServer(
                 context = context,
                 auth = auth,
@@ -193,9 +201,11 @@ class HotspotModule private constructor(private val context: Context) {
                 myId = { graph.host.myId },
                 currentState = { controller.snapshot.value.let { it.bleState() to it.clients } },
                 onRequest = { action, _ -> controller.request(on = action == HotspotProtocol.ACTION_ON) },
+                sink = messenger,
             ).also { server = it }
-            if (!current.running && !current.start()) Log.w(TAG, "the Bluetooth server did not start")
+            if (!current.running && !current.start()) Log.w(TAG, "the Bluetooth server did not start") else messenger.attach(current)
         } else {
+            messenger.detach()
             server?.stop()
         }
     }

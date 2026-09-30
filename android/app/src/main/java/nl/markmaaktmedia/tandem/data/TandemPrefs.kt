@@ -50,6 +50,7 @@ class TandemPrefs(private val context: Context) {
         val remoteMedia = booleanPreferencesKey("remote_media")
         val remoteMouse = booleanPreferencesKey("remote_mouse")
         val deviceIcons = stringPreferencesKey("device_icons")
+        val bluetoothMessages = booleanPreferencesKey("bluetooth_messages")
     }
 
     val appearance: Flow<Appearance> = data.map { p ->
@@ -78,6 +79,9 @@ class TandemPrefs(private val context: Context) {
     /** Trackpad screen: the media buttons start off, the left and right buttons start on. */
     val remoteMedia: Flow<Boolean> = data.map { it[Keys.remoteMedia] ?: false }
     val remoteMouse: Flow<Boolean> = data.map { it[Keys.remoteMouse] ?: true }
+
+    /** Clipboard and notifications over Bluetooth when there is no network. On by default: it only listens. */
+    val bluetoothMessages: Flow<Boolean> = data.map { it[Keys.bluetoothMessages] ?: true }
 
     /** The icon a person picked for a device, by device id. A device without an entry keeps its platform's icon. */
     val deviceIcons: Flow<Map<String, String>> = data.map { p -> parseIcons(p[Keys.deviceIcons]) }
@@ -151,6 +155,8 @@ class TandemPrefs(private val context: Context) {
     suspend fun setCopyCodes(value: Boolean) = set(Keys.copyCodes, value)
     suspend fun setRemoteMedia(value: Boolean) = set(Keys.remoteMedia, value)
     suspend fun setRemoteMouse(value: Boolean) = set(Keys.remoteMouse, value)
+
+    suspend fun setBluetoothMessages(value: Boolean) = set(Keys.bluetoothMessages, value)
 
     /** [icon] null goes back to the platform's own icon. */
     suspend fun setDeviceIcon(deviceId: String, icon: String?) {
