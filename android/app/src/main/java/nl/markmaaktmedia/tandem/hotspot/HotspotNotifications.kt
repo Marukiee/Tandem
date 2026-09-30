@@ -51,13 +51,13 @@ class HotspotNotifications(private val context: Context) {
      * Shown for as long as a Mac asked for the hotspot and it is on. With Shizuku the
      * button turns it off; without, it can only take you to the switch.
      */
-    fun postInUse(automatic: Boolean, clients: Int?) {
+    fun postInUse(automatic: Boolean, clients: Int?, usedBytes: Long = 0L) {
         if (!Channels.canPost(context)) return
         val text = when {
             !automatic -> context.getString(R.string.hotspot_in_use_manual)
             clients != null && clients > 0 -> context.getString(R.string.hotspot_in_use_clients, clients)
             else -> context.getString(R.string.hotspot_in_use_auto)
-        }
+        } + if (usedBytes > 0) " · " + context.getString(R.string.hotspot_in_use_data, android.text.format.Formatter.formatShortFileSize(context, usedBytes)) else ""
         val stop = if (automatic) {
             PendingIntent.getBroadcast(
                 context, 0, Intent(context, HotspotActionReceiver::class.java).setAction(HotspotActionReceiver.STOP),
@@ -83,6 +83,21 @@ class HotspotNotifications(private val context: Context) {
 
     fun cancelInUse() = manager.cancel(IN_USE_ID)
 
+    /** The hotspot was switched off because the Mac used up what it was allowed. */
+    fun postLimitReached(limitMb: Long) {
+        if (!Channels.canPost(context)) return
+        manager.notify(
+            LIMIT_ID,
+            NotificationCompat.Builder(context, Channels.HOTSPOT)
+                .setSmallIcon(R.drawable.ic_stat_tandem)
+                .setContentTitle(context.getString(R.string.hotspot_limit_title))
+                .setContentText(context.getString(R.string.hotspot_limit_text, limitMb))
+                .setAutoCancel(true)
+                .setContentIntent(openSettings())
+                .build(),
+        )
+    }
+
     fun cancelAll() {
         cancelRequest()
         cancelInUse()
@@ -97,6 +112,7 @@ class HotspotNotifications(private val context: Context) {
         const val CHANNEL_REQUEST = "hotspot_request"
         private const val REQUEST_ID = 71
         private const val IN_USE_ID = 72
+        private const val LIMIT_ID = 73
         private const val REQUEST_TIMEOUT_MS = 3 * 60_000L
     }
 }

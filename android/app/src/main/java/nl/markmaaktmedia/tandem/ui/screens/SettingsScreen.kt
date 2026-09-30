@@ -43,6 +43,7 @@ import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.Permissions
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.hotspot.HOTSPOT_EXTRA_ROWS
+import nl.markmaaktmedia.tandem.hotspot.HotspotChecklistRows
 import nl.markmaaktmedia.tandem.hotspot.HotspotSettingsRows
 import nl.markmaaktmedia.tandem.ui.Route
 import nl.markmaaktmedia.tandem.ui.routeBounds
@@ -168,26 +169,23 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
         item {
             SectionHeader(stringResource(R.string.settings_hotspot))
             SettingsGroup {
+                HotspotChecklistRows()
+            }
+        }
+
+        item {
+            SettingsGroup {
                 // The switch stays grey until everything it needs is allowed, so it never looks
-                // on while nothing can happen. The row under it says what is missing.
+                // on while nothing can happen. The checklist above says what is missing.
                 val permissions = nl.markmaaktmedia.tandem.ui.components.rememberPermissionStatus()
-                val requests = nl.markmaaktmedia.tandem.ui.components.rememberPermissionRequests(permissions)
                 val ready = permissions.bluetooth && permissions.notifications
-                val rows = 1 + HOTSPOT_EXTRA_ROWS + if (ready) 0 else 1
+                val rows = 1 + HOTSPOT_EXTRA_ROWS
                 SwitchRow(
                     0, rows, TandemIcons.Hotspot, stringResource(R.string.settings_hotspot_for_mac),
                     stringResource(if (ready) R.string.settings_hotspot_for_mac_sub else R.string.hotspot_needs_permissions),
                     hotspot && ready, { scope.launch { prefs.setHotspotForMac(it) } }, enabled = ready,
                 )
-                if (!ready) {
-                    ActionRow(
-                        1, rows, TandemIcons.Bluetooth,
-                        stringResource(if (!permissions.bluetooth) R.string.hotspot_allow_bluetooth else R.string.hotspot_allow_notifications),
-                        stringResource(R.string.hotspot_allow_sub),
-                        onClick = { if (!permissions.bluetooth) requests.bluetooth() else requests.notifications() },
-                    )
-                }
-                HotspotSettingsRows(if (ready) 1 else 2, rows)
+                HotspotSettingsRows(1, rows)
             }
         }
 

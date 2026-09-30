@@ -10,6 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -23,7 +26,7 @@ import nl.markmaaktmedia.tandem.ui.components.SwitchRow
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 
 /** How many rows [HotspotSettingsRows] adds under the hotspot switch. */
-const val HOTSPOT_EXTRA_ROWS = 4
+const val HOTSPOT_EXTRA_ROWS = 5
 
 /**
  * The rows under the "Let my Mac use my hotspot" switch: the current method, a test,
@@ -117,12 +120,56 @@ fun ColumnScope.HotspotSettingsRows(first: Int, total: Int) {
         { scope.launch { module.prefs.setAllowRoaming(it) } },
     )
 
+    val limitMb by module.prefs.dataLimitMb.collectAsState(initial = 0L)
+    val totalBytes by module.prefs.dataUsedBytes.collectAsState(initial = 0L)
+    val sessionBytes by module.controller.sessionBytes.collectAsState()
+    var pickLimit by remember { mutableStateOf(false) }
+    val used = android.text.format.Formatter.formatShortFileSize(context, totalBytes + if (snapshot.on) sessionBytes else 0L)
     ActionRow(
-        first + 3, total, TandemIcons.OpenInNew, stringResource(R.string.hotspot_setup), stringResource(R.string.hotspot_setup_sub),
+        first + 3, total, TandemIcons.Cellular, stringResource(R.string.hotspot_data_limit),
+        stringResource(if (limitMb > 0) R.string.hotspot_data_limit_sub_on else R.string.hotspot_data_limit_sub_off, limitLabel(limitMb), used),
+        onClick = { pickLimit = true },
+    )
+    if (pickLimit) {
+        nl.markmaaktmedia.tandem.ui.components.TandemDialog(
+            title = stringResource(R.string.hotspot_data_limit),
+            body = stringResource(R.string.hotspot_data_limit_body, used),
+            onDismiss = { pickLimit = false },
+            icon = TandemIcons.Cellular,
+            actions = {
+                nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton(stringResource(R.string.hotspot_data_reset), { scope.launch { module.prefs.resetDataUsed() } })
+                nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton(stringResource(R.string.action_close), { pickLimit = false })
+            },
+            content = {
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                ) {
+                    LIMIT_CHOICES.forEach { mb ->
+                        val pick = { scope.launch { module.prefs.setDataLimitMb(mb) }; Unit }
+                        if (mb == limitMb) nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton(limitLabel(mb), pick)
+                        else nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton(limitLabel(mb), pick)
+                    }
+                }
+            },
+        )
+    }
+
+    ActionRow(
+        first + 4, total, TandemIcons.OpenInNew, stringResource(R.string.hotspot_setup), stringResource(R.string.hotspot_setup_sub),
         onClick = {
             context.startActivity(
                 Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Marukiee/Tandem/blob/main/docs/HOTSPOT.md")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
         },
     )
+}
+
+private val LIMIT_CHOICES = listOf(0L, 250L, 500L, 1024L, 2048L, 5120L)
+
+@Composable
+private fun limitLabel(mb: Long): String = when {
+    mb <= 0L -> stringResource(R.string.hotspot_data_none)
+    mb >= 1024L -> "${mb / 1024} GB"
+    else -> "$mb MB"
 }

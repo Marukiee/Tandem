@@ -11,6 +11,9 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -203,8 +206,18 @@ fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp 
                     fontWeight = FontWeight.Bold,
                 )
             }
-            if (battery.charging) {
-                Icon(TandemIcons.Bolt, null, tint = tint, modifier = Modifier.size(size * 0.2f))
+            // The bolt pops in and out when charging starts and stops, and breathes while it lasts.
+            androidx.compose.animation.AnimatedVisibility(
+                visible = battery.charging,
+                enter = androidx.compose.animation.scaleIn(TandemMotion.bouncy(), initialScale = 0.2f) + fadeIn(),
+                exit = androidx.compose.animation.scaleOut(TandemMotion.spatial(), targetScale = 0.2f) + fadeOut(),
+            ) {
+                val pulse by androidx.compose.animation.core.rememberInfiniteTransition(label = "boltPulse").animateFloat(
+                    initialValue = 0.55f, targetValue = 1f,
+                    animationSpec = androidx.compose.animation.core.infiniteRepeatable(tween(900), RepeatMode.Reverse),
+                    label = "boltAlpha",
+                )
+                Icon(TandemIcons.Bolt, null, tint = tint, modifier = Modifier.size(size * 0.2f).graphicsLayer { alpha = pulse })
             }
         }
     }
@@ -222,11 +235,17 @@ fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Icon(
-            if (battery.charging) TandemIcons.Bolt else TandemIcons.Battery, null,
-            modifier = Modifier.size(15.dp),
-            tint = if (low) LocalTandemExtraColors.current.onUrgentContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        AnimatedContent(
+            targetState = battery.charging,
+            transitionSpec = { (scaleIn(TandemMotion.bouncy(), initialScale = 0.3f) + fadeIn()) togetherWith (scaleOut(TandemMotion.spatial(), targetScale = 0.3f) + fadeOut()) },
+            label = "batteryIcon",
+        ) { charging ->
+            Icon(
+                if (charging) TandemIcons.Bolt else TandemIcons.Battery, null,
+                modifier = Modifier.size(15.dp),
+                tint = if (low) LocalTandemExtraColors.current.onUrgentContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Text(
             "${battery.level}%",
             style = MaterialTheme.typography.labelMedium,

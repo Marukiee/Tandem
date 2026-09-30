@@ -224,7 +224,7 @@
     <string name="screenshot_choose">Choose…</string>
     <string name="tile_label">Send clipboard</string>
     <string name="settings_clip_tile">Add the Send clipboard tile</string>
-    <string name="settings_clip_tile_sub">Android only lets an app read the clipboard while it is on screen. The tile in your quick settings sends it with one tap. A clipboard from your Mac lands on your phone by itself.</string>
+    <string name="settings_clip_tile_sub">Send your clipboard from quick settings in one tap</string>
     <string name="screenshot_sending">Sending to %1$s…</string>
     <string name="screenshot_sent">Sent to %1$s</string>
     <string name="screenshot_failed">Could not send the screenshot</string>
@@ -273,4 +273,22 @@
     <string name="hotspot_allow_bluetooth">Allow Bluetooth</string>
     <string name="hotspot_allow_notifications">Allow notifications</string>
     <string name="hotspot_allow_sub">Your Mac asks over Bluetooth, and you get a notification</string>
+    <string name="hotspot_data_limit">Data limit</string>
+    <string name="hotspot_data_limit_sub_off">No limit. Your Mac has used %2$s over the hotspot so far.</string>
+    <string name="hotspot_data_limit_sub_on">Off at %1$s per session. Used so far: %2$s.</string>
+    <string name="hotspot_data_limit_body">The hotspot switches itself off when your Mac has used this much in one session. Used so far: %1$s.</string>
+    <string name="hotspot_data_none">No limit</string>
+    <string name="hotspot_data_reset">Reset counter</string>
+    <string name="hotspot_in_use_data">%1$s used</string>
+    <string name="hotspot_limit_title">Hotspot switched off</string>
+    <string name="hotspot_limit_text">Your Mac reached the limit of %1$d MB.</string>
+    <string name="check_ok">In place</string>
+    <string name="check_bluetooth_missing">Needed so your Mac can ask over Bluetooth</string>
+    <string name="check_notifications_missing">Needed to show that your Mac uses the hotspot</string>
+    <string name="check_battery_missing">Allow it to keep running so it can hear your Mac</string>
+    <string name="check_method">How it turns on</string>
+    <string name="check_method_shizuku">Shizuku is allowed: the hotspot starts by itself</string>
+    <string name="check_method_manual">By hand: you tap a notification. Shizuku makes it automatic.</string>
+    <string name="check_mac">A Mac to ask you</string>
+    <string name="check_mac_missing">Pair your Mac first</string>
 </resources>

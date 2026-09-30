@@ -221,7 +221,7 @@
     <string name="screenshot_choose">Kies…</string>
     <string name="tile_label">Klembord sturen</string>
     <string name="settings_clip_tile">Voeg de tegel Klembord sturen toe</string>
-    <string name="settings_clip_tile_sub">Android laat een app het klembord alleen lezen als hij in beeld is. De tegel in je snelle instellingen stuurt het met één tik. Een klembord van je Mac komt vanzelf op je telefoon.</string>
+    <string name="settings_clip_tile_sub">Stuur je klembord met één tik vanuit snelle instellingen</string>
     <string name="screenshot_sending">Versturen naar %1$s…</string>
     <string name="screenshot_sent">Verstuurd naar %1$s</string>
     <string name="screenshot_failed">De screenshot kon niet worden verstuurd</string>
@@ -270,4 +270,22 @@
     <string name="hotspot_allow_bluetooth">Bluetooth toestaan</string>
     <string name="hotspot_allow_notifications">Meldingen toestaan</string>
     <string name="hotspot_allow_sub">Je Mac vraagt via Bluetooth en jij krijgt een melding</string>
+    <string name="hotspot_data_limit">Datalimiet</string>
+    <string name="hotspot_data_limit_sub_off">Geen limiet. Je Mac heeft tot nu toe %2$s via de hotspot gebruikt.</string>
+    <string name="hotspot_data_limit_sub_on">Uit bij %1$s per sessie. Tot nu toe gebruikt: %2$s.</string>
+    <string name="hotspot_data_limit_body">De hotspot zet zichzelf uit als je Mac zoveel heeft gebruikt in één sessie. Tot nu toe gebruikt: %1$s.</string>
+    <string name="hotspot_data_none">Geen limiet</string>
+    <string name="hotspot_data_reset">Teller resetten</string>
+    <string name="hotspot_in_use_data">%1$s gebruikt</string>
+    <string name="hotspot_limit_title">Hotspot uitgezet</string>
+    <string name="hotspot_limit_text">Je Mac heeft de limiet van %1$d MB bereikt.</string>
+    <string name="check_ok">In orde</string>
+    <string name="check_bluetooth_missing">Nodig zodat je Mac via Bluetooth kan vragen</string>
+    <string name="check_notifications_missing">Nodig om te laten zien dat je Mac de hotspot gebruikt</string>
+    <string name="check_battery_missing">Sta toe dat het blijft draaien om je Mac te horen</string>
+    <string name="check_method">Hoe hij aangaat</string>
+    <string name="check_method_shizuku">Shizuku is toegestaan: de hotspot start vanzelf</string>
+    <string name="check_method_manual">Met de hand: jij tikt op een melding. Met Shizuku gaat het vanzelf.</string>
+    <string name="check_mac">Een Mac die het vraagt</string>
+    <string name="check_mac_missing">Koppel eerst je Mac</string>
 </resources>

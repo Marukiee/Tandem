@@ -28,10 +28,39 @@ class HotspotPrefs(private val context: Context) {
     suspend fun setAllowRoaming(value: Boolean) {
         context.hotspotStore.edit { it[roamingKey] = value }
     }
+
+    private val limitKey = androidx.datastore.preferences.core.longPreferencesKey("data_limit_mb")
+    private val usedKey = androidx.datastore.preferences.core.longPreferencesKey("data_used_bytes")
+
+    /** Megabytes a Mac may use in one session before the hotspot switches itself off. 0 is no limit. */
+    val dataLimitMb: Flow<Long> = context.hotspotStore.data.map { it[limitKey] ?: 0L }
+    /** Everything the Mac has used over the hotspot, since it was last reset. */
+    val dataUsedBytes: Flow<Long> = context.hotspotStore.data.map { it[usedKey] ?: 0L }
+
+    suspend fun setDataLimitMb(value: Long) {
+        context.hotspotStore.edit { it[limitKey] = value }
+    }
+
+    suspend fun addDataUsed(bytes: Long) {
+        if (bytes <= 0) return
+        context.hotspotStore.edit { it[usedKey] = (it[usedKey] ?: 0L) + bytes }
+    }
+
+    suspend fun resetDataUsed() {
+        context.hotspotStore.edit { it[usedKey] = 0L }
+    }
 }
 
 /** What the phone is doing right now, for deciding whether to say yes. */
 object PhoneConditions {
+    /**
+     * Mobile data moved since the phone started, in bytes, both ways. The hotspot's traffic
+     * goes over the same connection, so the difference between two readings is what a Mac used
+     * in between (plus whatever the phone did itself, which is small next to a laptop).
+     */
+    fun mobileBytes(): Long = (android.net.TrafficStats.getMobileRxBytes() + android.net.TrafficStats.getMobileTxBytes())
+        .takeIf { it >= 0 } ?: 0L
+
     fun batteryPercent(context: Context): Int? {
         val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return null
         val level = battery.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)

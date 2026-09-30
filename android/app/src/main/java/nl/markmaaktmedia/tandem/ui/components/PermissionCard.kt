@@ -345,14 +345,15 @@ fun PermissionCard(
         // running on underneath it.
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             RowIcon(icon)
-            Column(Modifier.weight(1f)) {
-                Box(Modifier.heightIn(min = 44.dp), contentAlignment = Alignment.CenterStart) {
-                    Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-                }
+            // Title and small print are one block, level with the top of the icon. Centring the
+            // title on the icon pushed the two lines apart for no reason.
+            Column(Modifier.weight(1f).padding(top = 2.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                 Text(
                     why,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
             Box(Modifier.height(44.dp), contentAlignment = Alignment.Center) { PermissionPill(level, onGrant) }

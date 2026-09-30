@@ -1,6 +1,7 @@
 package nl.markmaaktmedia.tandem.ui.update
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,7 +92,7 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             shadowElevation = 6.dp,
         ) {
-            Column(Modifier.fillMaxWidth().padding(start = 18.dp, end = 10.dp, top = 12.dp, bottom = 12.dp)) {
+            Column(Modifier.fillMaxWidth().animateContentSize(TandemMotion.sizeSpring()).padding(start = 18.dp, end = 10.dp, top = 12.dp, bottom = 12.dp)) {
                 if (release != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(TandemIcons.Update, contentDescription = null, modifier = Modifier.size(22.dp))
@@ -113,10 +115,18 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                         )
                     }
                     val downloading = state as? UpdateState.Downloading
-                    if (downloading != null) {
+                    // The banner grows to make room for the bar, and closes again afterwards.
+                    AnimatedVisibility(
+                        visible = downloading != null,
+                        enter = fadeIn(TandemMotion.fadeSpec()) + expandVertically(TandemMotion.sizeSpring(), expandFrom = Alignment.Top),
+                        exit = fadeOut(TandemMotion.fadeSpec()) + shrinkVertically(TandemMotion.sizeSpring(), shrinkTowards = Alignment.Top),
+                    ) {
+                        val last = remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
+                        if (downloading != null) last.floatValue = downloading.progress
+                        val shown by androidx.compose.animation.core.animateFloatAsState(last.floatValue, TandemMotion.spatial(), label = "downloadProgress")
                         Column(Modifier.padding(top = 10.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LinearProgressIndicator(progress = { downloading.progress }, modifier = Modifier.fillMaxWidth().height(6.dp).clip(PillShape))
-                            Text(stringResource(R.string.update_downloading, (downloading.progress * 100).toInt()), style = MaterialTheme.typography.labelSmall)
+                            LinearProgressIndicator(progress = { shown }, modifier = Modifier.fillMaxWidth().height(6.dp).clip(PillShape))
+                            Text(stringResource(R.string.update_downloading, (last.floatValue * 100).toInt()), style = MaterialTheme.typography.labelSmall)
                         }
                     }
                 } else if (failed != null) {

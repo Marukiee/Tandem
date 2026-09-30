@@ -9,6 +9,7 @@ struct DeviceDetail: View {
     let device: TandemDevice
 
     @LocalState private var confirmRemoval = false
+    @LocalState private var showIcons = false
 
     @LocalState private var position = ScrollPosition(edge: .top)
 
@@ -52,24 +53,38 @@ struct DeviceDetail: View {
     private var header: some View {
         Card(radius: 32, padding: 22, tint: device.online ? Palette.indigo : nil) {
             HStack(spacing: 20) {
-                Menu {
-                    ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
-                        Button {
-                            model.setIcon(choice.symbol, for: device.id)
-                        } label: {
-                            Label(choice.label, systemImage: choice.symbol)
-                        }
-                    }
-                    Divider()
-                    Button("Use the default icon") { model.setIcon(nil, for: device.id) }
-                } label: {
+                Button { showIcons = true } label: {
                     DeviceGlyph(platform: device.platform, online: device.online, size: 80, deviceID: device.id)
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
                 .buttonStyle(.plain)
-                .fixedSize()
                 .help("Change the icon")
+                .popover(isPresented: $showIcons, arrowEdge: .bottom) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
+                            Button {
+                                model.setIcon(choice.symbol, for: device.id)
+                                showIcons = false
+                            } label: {
+                                Label(choice.label, systemImage: choice.symbol)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .hoverHighlight(radius: 8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Divider().padding(.vertical, 4)
+                        Button("Use the default icon") {
+                            model.setIcon(nil, for: device.id)
+                            showIcons = false
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                    }
+                    .padding(8)
+                    .frame(width: 210)
+                }
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(device.name)

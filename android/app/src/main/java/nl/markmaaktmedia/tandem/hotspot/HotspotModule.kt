@@ -39,6 +39,7 @@ class HotspotModule private constructor(private val context: Context) {
 
     @Volatile private var enabled = false
     @Volatile private var allowRoaming = false
+    @Volatile private var dataLimitMb = 0L
     private var onStatusChanged: () -> Unit = {}
 
     val controller = HotspotController(
@@ -51,6 +52,8 @@ class HotspotModule private constructor(private val context: Context) {
         allowRoaming = { allowRoaming },
         macConnected = { graph.host.devices.value.any { it.online && it.platform == TandemPlatform.MAC_OS } },
         onStatusChanged = { onStatusChanged() },
+        dataLimitMb = { dataLimitMb },
+        onDataUsed = { bytes -> scope.launch { prefs.addDataUsed(bytes) } },
     )
 
     private val challenges = ChallengeStore(
@@ -95,6 +98,7 @@ class HotspotModule private constructor(private val context: Context) {
 
         jobs += scope.launch { graph.prefs.hotspotForMac.collectLatest { enabled = it; reconcile() } }
         jobs += scope.launch { prefs.allowRoaming.collectLatest { allowRoaming = it } }
+        jobs += scope.launch { prefs.dataLimitMb.collectLatest { dataLimitMb = it } }
         jobs += scope.launch { graph.host.state.collectLatest { reconcile() } }
         jobs += scope.launch { controller.snapshot.collectLatest { publish(it) } }
         jobs += scope.launch {

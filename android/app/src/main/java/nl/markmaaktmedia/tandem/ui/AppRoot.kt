@@ -18,6 +18,8 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -132,32 +134,37 @@ private fun MainNavigation() {
     }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        SharedTransitionLayout {
-            CompositionLocalProvider(LocalSharedScope provides this) {
-                transition.AnimatedContent(
-                    transitionSpec = {
-                        // Pages open out of the item that was tapped (shared bounds), so the page
-                        // itself only fades and settles instead of sliding across the screen.
-                        if (routeDepth(targetState) > routeDepth(initialState)) {
-                            (fadeIn(tween(TandemMotion.DurationMedium)) + scaleIn(TandemMotion.spatial(), initialScale = 0.97f)) togetherWith
-                                fadeOut(tween(TandemMotion.DurationFast))
-                        } else {
-                            (fadeIn(tween(TandemMotion.DurationMedium)) + scaleIn(TandemMotion.spatial(), initialScale = 0.96f)) togetherWith
-                                (fadeOut(tween(TandemMotion.DurationFast)) + scaleOut(TandemMotion.spatial(), targetScale = 0.92f))
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                ) { route ->
-                    CompositionLocalProvider(LocalRouteVisibility provides this) {
-                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
-                    }
+        transition.AnimatedContent(
+            transitionSpec = {
+                // The Material shared axis that system apps use: the new page comes in from a
+                // third of the screen away and fades up, the old one slides a third the other
+                // way and shrinks a little behind it. Going back mirrors it, and the page that
+                // leaves goes all the way out. The same spec is what the back gesture seeks.
+                val forward = routeDepth(targetState) > routeDepth(initialState)
+                val ease = tween<Float>(SharedAxisMillis, easing = Emphasized)
+                val slide = tween<IntOffset>(SharedAxisMillis, easing = Emphasized)
+                if (forward) {
+                    (slideInHorizontally(slide) { it / 3 } + fadeIn(ease)) togetherWith
+                        (slideOutHorizontally(slide) { -it / 3 } + scaleOut(ease, targetScale = 0.92f))
+                } else {
+                    ((slideInHorizontally(slide) { -it / 3 } + fadeIn(ease)) togetherWith
+                        (slideOutHorizontally(tween(SharedAxisMillis, easing = Easing { f -> f * f * f })) { it } +
+                            scaleOut(ease, targetScale = 0.85f)))
+                        // The page going out stays on top of the one coming back.
+                        .apply { targetContentZIndex = -1f }
                 }
-            }
+            },
+            modifier = Modifier.fillMaxSize(),
+        ) { route ->
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
         }
         // Over every screen: an update is worth seeing wherever you are in the app.
         UpdateBanner(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp))
     }
 }
+
+private const val SharedAxisMillis = 350
+private val Emphasized = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 /** How deep a page sits, so a transition knows whether it is opening or going back. */
 private fun routeDepth(route: Route): Int = when (route) {

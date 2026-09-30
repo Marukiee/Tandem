@@ -66,6 +66,10 @@ class HotspotController(
     private val macConnected: () -> Boolean,
     /** The hotspot came on or went off: the status the other devices see must follow. */
     private val onStatusChanged: () -> Unit,
+    /** Megabytes a session may use, 0 for no limit. */
+    private val dataLimitMb: () -> Long = { 0L },
+    /** Called with the bytes a finished stretch of the session used, to add to the running total. */
+    private val onDataUsed: (Long) -> Unit = {},
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val _snapshot = MutableStateFlow(HotspotSnapshot())
@@ -76,6 +80,12 @@ class HotspotController(
     private var clearJob: Job? = null
     private var watching: Job? = null
     private val idle = IdleTracker()
+
+    private val _sessionBytes = MutableStateFlow(0L)
+    /** What the Mac has used since this hotspot session started. */
+    val sessionBytes: StateFlow<Long> = _sessionBytes.asStateFlow()
+    private var meterBase = -1L
+    private var meterCounted = 0L
 
     // Whether we started it, and whether a Mac asked. A hotspot the person switched on
     // for their own reasons is never turned off behind their back.
@@ -219,11 +229,22 @@ class HotspotController(
     }
 
     private fun finishOff() {
+        settleMeter()
         startedByUs = false
         askedFor = false
         idle.reset()
         notifications.cancelAll()
         publish(HotspotSnapshot(Phase.Off))
+    }
+
+    /** Adds what this stretch used to the running total and starts the next one from zero. */
+    private fun settleMeter() {
+        if (meterBase < 0) return
+        val used = (PhoneConditions.mobileBytes() - meterBase).coerceAtLeast(0L)
+        val fresh = used - meterCounted
+        if (fresh > 0) onDataUsed(fresh)
+        meterBase = -1L
+        meterCounted = 0L
     }
 
     private fun refuse(refusal: Refusal) {
@@ -254,12 +275,26 @@ class HotspotController(
     private fun watchOn() {
         if (watching?.isActive == true) return
         watching = scope.launch {
+            if (meterBase < 0) {
+                meterBase = PhoneConditions.mobileBytes()
+                meterCounted = 0L
+                _sessionBytes.value = 0L
+            }
             while (_snapshot.value.phase == Phase.On) {
+                val used = (PhoneConditions.mobileBytes() - meterBase).coerceAtLeast(0L)
+                _sessionBytes.value = used
+                val limit = dataLimitMb() * 1_048_576L
+                if (limit > 0 && used >= limit && (startedByUs || askedFor)) {
+                    Log.i(TAG, "data limit reached: $used of $limit bytes")
+                    notifications.postLimitReached(dataLimitMb())
+                    turnOff()
+                    return@launch
+                }
                 val automatic = shizuku.state.value == ShizukuState.Ready
                 val clients = if (automatic && startedByUs) shizuku.status().clients else null
                 _snapshot.update { if (it.phase == Phase.On) it.copy(clients = clients) else it }
 
-                if (askedFor) notifications.postInUse(automatic = automatic && startedByUs, clients = clients)
+                if (askedFor) notifications.postInUse(automatic = automatic && startedByUs, clients = clients, usedBytes = _sessionBytes.value)
 
                 if (startedByUs && automatic) {
                     val inUse = clients?.let { it > 0 } ?: macConnected()
@@ -269,7 +304,7 @@ class HotspotController(
                         return@launch
                     }
                 }
-                delay(WATCH_MS)
+                delay(if (dataLimitMb() > 0) WATCH_METERED_MS else WATCH_MS)
                 // The person may have switched it off by hand.
                 if (!isOn()) {
                     finishOff()
@@ -320,6 +355,7 @@ class HotspotController(
         private const val TAP_WAIT_MS = 3 * 60_000L
         private const val POLL_MS = 1_000L
         private const val WATCH_MS = 15_000L
+        private const val WATCH_METERED_MS = 5_000L
         private const val SETTLE_MS = 30_000L
     }
 }
