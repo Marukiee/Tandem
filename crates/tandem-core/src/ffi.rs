@@ -236,6 +236,8 @@ pub struct TandemStatus {
     pub dnd: Option<bool>,
     pub locked: Option<bool>,
     pub free_storage: Option<u64>,
+    pub asleep: Option<bool>,
+    pub wake_mac: Option<String>,
 }
 
 impl From<Status> for TandemStatus {
@@ -253,6 +255,8 @@ impl From<Status> for TandemStatus {
             dnd: s.dnd,
             locked: s.locked,
             free_storage: s.free_storage,
+            asleep: s.asleep,
+            wake_mac: s.wake_mac,
         }
     }
 }
@@ -272,6 +276,8 @@ impl From<TandemStatus> for Status {
             dnd: s.dnd,
             locked: s.locked,
             free_storage: s.free_storage,
+            asleep: s.asleep,
+            wake_mac: s.wake_mac,
         }
     }
 }
@@ -291,6 +297,8 @@ pub struct TandemDevice {
     pub clipboard_enabled: bool,
     pub auto_accept: bool,
     pub notifications_enabled: bool,
+    /// Reachable over Bluetooth right now, though not over the network.
+    pub ble: bool,
 }
 
 impl From<DeviceInfo> for TandemDevice {
@@ -309,6 +317,7 @@ impl From<DeviceInfo> for TandemDevice {
             clipboard_enabled: d.settings.clipboard,
             auto_accept: d.settings.auto_accept,
             notifications_enabled: d.settings.notifications,
+            ble: d.ble,
         }
     }
 }

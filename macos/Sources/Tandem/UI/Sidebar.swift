@@ -169,7 +169,7 @@ private struct DeviceRow: View {
         }
         .padding(.vertical, 3)
         // Not reachable: the whole row steps back, so the connected ones stand out.
-        .opacity(device.online ? 1 : 0.6)
+        .opacity(device.online || device.ble ? 1 : 0.6)
         .animation(.tandem, value: device.online)
     }
 }

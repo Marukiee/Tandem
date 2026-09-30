@@ -165,24 +165,25 @@ private struct MenuDeviceRow: View {
                     }
                     .hoverSwell(1.12)
                     .hoverGrey()
+                    .disabled(!device.online)
                     .help("Send files")
                     Button { model.sendClipboard(to: [device.id]) } label: {
                         Image(systemName: "doc.on.clipboard").frame(width: 14, height: 14)
                     }
                     .hoverSwell(1.12)
                     .hoverGrey()
+                    .disabled(!(device.online || device.ble))
                     .help("Send clipboard")
                 }
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
                 .controlSize(.regular)
-                .disabled(!device.online)
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .hoverHighlight(radius: 18, tint: targeted ? Palette.indigo : .primary, selected: targeted)
-        .opacity(device.online ? 1 : 0.6)
+        .opacity(device.online || device.ble ? 1 : 0.6)
         .scaleEffect(targeted ? 1.02 : 1)
         .animation(.tandemSpringy, value: targeted)
         .animation(.tandem, value: device.online)

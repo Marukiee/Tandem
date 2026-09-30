@@ -46,6 +46,8 @@ object TandemIcons {
     val Desktop: Painter @Composable get() = painterResource(R.drawable.sym_computer)
     val Windows: Painter @Composable get() = painterResource(R.drawable.sym_desktop_windows)
     val DesktopMac: Painter @Composable get() = painterResource(R.drawable.sym_desktop_mac)
+    val Sleep: Painter @Composable get() = painterResource(R.drawable.sym_bedtime)
+    val Power: Painter @Composable get() = painterResource(R.drawable.sym_power_settings_new)
     val Tablet: Painter @Composable get() = painterResource(R.drawable.sym_tablet_android)
     val Watch: Painter @Composable get() = painterResource(R.drawable.sym_watch)
     val Tv: Painter @Composable get() = painterResource(R.drawable.sym_tv)

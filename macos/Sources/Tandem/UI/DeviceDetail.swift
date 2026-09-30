@@ -94,10 +94,10 @@ struct DeviceDetail: View {
                         
                     HStack(spacing: 8) {
                         Chip(
-                            symbol: device.online ? "checkmark.circle.fill" : "circle.dashed",
-                            text: device.online ? "Connected" : "Not connected",
-                            tint: device.online ? .green : .secondary,
-                            strong: device.online
+                            symbol: device.online ? "checkmark.circle.fill" : (device.ble ? "dot.radiowaves.left.and.right" : "circle.dashed"),
+                            text: device.online ? "Connected" : (device.ble ? "Over Bluetooth" : "Not connected"),
+                            tint: device.online ? .green : (device.ble ? Palette.indigo : .secondary),
+                            strong: device.online || device.ble
                         )
                         if let route = device.route, device.online {
                             Chip(symbol: route.symbol, text: route.label)
@@ -173,9 +173,14 @@ struct DeviceDetail: View {
         GlassEffectContainer(spacing: 14) {
             HStack(spacing: 12) {
                 GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true) { pickFiles() }
+                    .disabled(!device.online)
+                    .opacity(device.online ? 1 : 0.5)
+                // Small enough for Bluetooth, so it works with no network as long as a link is up.
                 GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard") {
                     model.sendClipboard(to: [device.id])
                 }
+                .disabled(!(device.online || device.ble))
+                .opacity(device.online || device.ble ? 1 : 0.5)
                 if device.platform == .android {
                     let ringing = model.ringing.contains(device.id)
                     GlassActionButton(
@@ -186,13 +191,14 @@ struct DeviceDetail: View {
                         model.ring(device.id, on: !ringing)
                         model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
                     }
+                    .disabled(!device.online)
+                    .opacity(device.online ? 1 : 0.5)
                 }
                 Spacer(minLength: 0)
             }
         }
-        .disabled(!device.online)
-        .opacity(device.online ? 1 : 0.5)
         .animation(.tandemFade, value: device.online)
+        .animation(.tandemFade, value: device.ble)
     }
 
     private func pickFiles() {

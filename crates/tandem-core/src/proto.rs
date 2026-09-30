@@ -136,6 +136,14 @@ pub struct Status {
     pub locked: Option<bool>,
     #[serde(default)]
     pub free_storage: Option<u64>,
+    /// The device is about to sleep (or has just woken). Sent before it goes, so the others can
+    /// show "asleep" instead of "offline" and know a wake-up may work.
+    #[serde(default)]
+    pub asleep: Option<bool>,
+    /// The hardware address of a wired network port, for a Wake-on-LAN packet. Only a device
+    /// that has one reports it, and it only wakes the device while it is on that cable.
+    #[serde(default)]
+    pub wake_mac: Option<String>,
 }
 
 impl Status {
@@ -145,7 +153,7 @@ impl Status {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage);
+        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac);
     }
 }
 

@@ -368,6 +368,7 @@ impl Inner {
                 return None;
             }
         };
+        let new_link;
         let copy = {
             let mut hub = self.ble.lock().unwrap();
             let state = hub.state.get_mut(&from)?;
@@ -377,10 +378,13 @@ impl Inner {
             }
             state.rx_seq = seq;
             let copy = state.clone();
-            hub.links.insert(from);
+            new_link = hub.links.insert(from);
             copy
         };
         self.ble_save(&from, &copy);
+        if new_link {
+            self.emit(crate::events::Event::DevicesChanged);
+        }
         if !matches!(msg, Msg::Ping { .. }) {
             self.handle_msg(from, msg).await;
         }
@@ -388,9 +392,14 @@ impl Inner {
     }
 
     pub(crate) fn ble_link_down(&self, peer: &DeviceId) {
-        let mut hub = self.ble.lock().unwrap();
-        hub.links.remove(peer);
-        hub.outbox.remove(peer);
+        let was = {
+            let mut hub = self.ble.lock().unwrap();
+            hub.outbox.remove(peer);
+            hub.links.remove(peer)
+        };
+        if was {
+            self.emit(crate::events::Event::DevicesChanged);
+        }
     }
 
     pub(crate) fn ble_drop_link(&self, link: &str) {

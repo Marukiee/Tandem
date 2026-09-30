@@ -323,4 +323,10 @@
     <string name="update_reason_cancelled">The installation was cancelled</string>
     <string name="settings_ble_messages">Bluetooth without a network</string>
     <string name="settings_ble_messages_sub">Clipboard and notifications still reach your Mac over Bluetooth when there is no Wi-Fi</string>
+    <string name="status_bluetooth">Bluetooth</string>
+    <string name="status_asleep">Asleep</string>
+    <string name="action_wake">Wake up</string>
+    <string name="wake_sent">Wake signal sent. It only works for a Mac on a network cable that allows it, and can take a few seconds.</string>
+    <string name="wake_failed">Could not send the wake signal. Are you on the same network?</string>
+    <string name="wake_hint">Waking works only when the Mac is connected by a network cable and Wake for network access is on. A laptop with its lid closed usually does not wake.</string>
 </resources>

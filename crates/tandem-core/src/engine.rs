@@ -79,6 +79,8 @@ pub struct DeviceInfo {
     /// The device that vouched for this one has since been removed. Worth a look.
     pub vouched_by_removed: bool,
     pub settings: DeviceSettings,
+    /// A Bluetooth link to this device is up, whether or not there is a network connection.
+    pub ble: bool,
 }
 
 pub(crate) struct Peer {
@@ -565,6 +567,7 @@ impl Inner {
                 caps: hello.map(|h| h.caps.clone()).unwrap_or_default(),
                 vouched_by_removed: member.vouched_by_removed,
                 settings: settings.for_device(&member.id),
+                ble: self.ble_linked(&member.id),
             });
         }
         out.sort_by(|a, b| b.online.cmp(&a.online).then(a.name.cmp(&b.name)));

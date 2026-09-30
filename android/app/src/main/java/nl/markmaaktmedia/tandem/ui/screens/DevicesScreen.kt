@@ -145,6 +145,17 @@ fun DevicesScreen(
                         if (text.isNotEmpty()) host.sendClipboard(listOf(device.id), text)
                     }
                 },
+                onWake = {
+                    val mac = device.status.wakeMac ?: return@DeviceCard
+                    scope.launch {
+                        val sent = nl.markmaaktmedia.tandem.engine.WakeOnLan.send(context, mac)
+                        android.widget.Toast.makeText(
+                            context,
+                            context.getString(if (sent) R.string.wake_sent else R.string.wake_failed),
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                },
             )
         }
     }
@@ -157,7 +168,11 @@ fun DeviceCard(
     onSendFiles: () -> Unit,
     onSendClipboard: () -> Unit,
     modifier: Modifier = Modifier,
+    onWake: () -> Unit = {},
 ) {
+    // Asleep is only known from what the device said as it went, so it is a guess that it can be woken.
+    val asleep = !device.online && device.status.asleep == true
+    val canWake = asleep && device.status.wakeMac != null
     Column(
         modifier
             .fillMaxWidth()
@@ -181,7 +196,11 @@ fun DeviceCard(
                                 route?.let { routeName(it) },
                                 device.rttMs?.let { "$it ms" },
                             ).joinToString(" · ")
-                        } else stringResource(R.string.status_offline),
+                        } else when {
+                            device.ble -> stringResource(R.string.status_bluetooth)
+                            asleep -> stringResource(R.string.status_asleep)
+                            else -> stringResource(R.string.status_offline)
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -192,13 +211,14 @@ fun DeviceCard(
         }
 
         AnimatedVisibility(
-            visible = device.online,
+            visible = device.online || device.ble || canWake,
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically(),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                QuickAction(TandemIcons.Upload, stringResource(R.string.action_files), onSendFiles)
-                QuickAction(TandemIcons.Paste, stringResource(R.string.action_clipboard), onSendClipboard)
+                if (device.online) QuickAction(TandemIcons.Upload, stringResource(R.string.action_files), onSendFiles)
+                if (device.online || device.ble) QuickAction(TandemIcons.Paste, stringResource(R.string.action_clipboard), onSendClipboard)
+                if (canWake) QuickAction(TandemIcons.Power, stringResource(R.string.action_wake), onWake)
             }
         }
     }

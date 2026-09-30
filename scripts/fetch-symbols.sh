@@ -16,7 +16,7 @@ OUTLINE=(
   photo_camera play_arrow qr_code_2 qr_code_scanner question_mark refresh screenshot search send
   settings share shield signal_cellular_alt skip_next skip_previous smartphone swap_vert sync
   system_update tab touch_app tune upload vibration volume_down volume_off volume_up wifi
-  wifi_tethering lock_open history restart_alt person tablet_android watch tv desktop_mac
+  wifi_tethering lock_open history restart_alt person tablet_android watch tv desktop_mac bedtime power_settings_new
 )
 FILLED=(devices swap_vert tune check_circle notifications_active bolt)
 # The keys of the on-screen keyboard in the remote screen.

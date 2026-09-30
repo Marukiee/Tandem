@@ -86,8 +86,8 @@ extension TandemRoute {
 
 extension TandemDevice {
     /// The one word that says whether the device can be reached right now.
-    var connectionText: LocalizedStringKey { online ? "Connected" : "Not connected" }
-    var connectionColor: Color { online ? .green : .secondary }
+    var connectionText: LocalizedStringKey { online ? "Connected" : (ble ? "Over Bluetooth" : "Not connected") }
+    var connectionColor: Color { online ? .green : (ble ? Palette.indigo : .secondary) }
 }
 
 /// A device as a round glyph. Connected devices get the accent tint. The green ring is

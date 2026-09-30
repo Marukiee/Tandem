@@ -174,6 +174,7 @@ final class EngineModel {
 
         hotspot.attach(model: self)
         startBleWatch()
+        observeSleep()
         pushStatus()
         statusTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.pushStatus() }
@@ -593,7 +594,7 @@ final class EngineModel {
 
     func pushStatus() {
         guard let engine else { return }
-        var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil)
+        var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: false, wakeMac: WiredAddress.mac())
         status.battery = PowerReader.battery()
         status.network = TandemNetwork(
             kind: network.isOnline ? .wifi : .none,
@@ -629,6 +630,22 @@ final class EngineModel {
     // MARK: Helpers for other components
 
     var engineHandle: TandemEngine? { engine }
+
+    /// Says "asleep" just before the Mac goes to sleep, so the phone can show that and try to wake it,
+    /// and "awake" when it is back. Without the first, a sleeping Mac looks the same as one that is off.
+    private func observeSleep() {
+        let center = NSWorkspace.shared.notificationCenter
+        center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let engine = self?.engine else { return }
+                let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: true, wakeMac: WiredAddress.mac())
+                Task { await engine.updateStatus(status: status) }
+            }
+        }
+        center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.pushStatus() }
+        }
+    }
 
     /// Keeps a Bluetooth link to the phone while it is out of reach over the network, so
     /// clipboard and notifications still arrive. Two looks in a row must agree first, because a

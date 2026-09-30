@@ -77,6 +77,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
     val scope = rememberCoroutineScope()
     var confirmRemove by remember { mutableStateOf(false) }
     var choosingIcon by remember { mutableStateOf(false) }
+    val asleep = device?.let { !it.online && it.status.asleep == true } == true
     val pickedIcon = rememberPickedIcon(id)
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -138,8 +139,20 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatusChip(
-                    if (device.online) TandemIcons.Check else TandemIcons.Close,
-                    stringResource(if (device.online) R.string.status_online else R.string.status_offline),
+                    when {
+                        device.online -> TandemIcons.Check
+                        device.ble -> TandemIcons.Bluetooth
+                        asleep -> TandemIcons.Sleep
+                        else -> TandemIcons.Close
+                    },
+                    stringResource(
+                        when {
+                            device.online -> R.string.status_online
+                            device.ble -> R.string.status_bluetooth
+                            asleep -> R.string.status_asleep
+                            else -> R.string.status_offline
+                        },
+                    ),
                     tint = if (device.online) LocalTandemExtraColors.current.online else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 device.route?.takeIf { device.online }?.let { StatusChip(TandemIcons.Lan, routeName(it)) }
@@ -158,6 +171,37 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                 }
                 if (device.status.dnd == true) StatusChip(TandemIcons.Dnd, stringResource(R.string.status_dnd))
                 if (device.status.hotspot == true) StatusChip(TandemIcons.Hotspot, stringResource(R.string.status_hotspot_on), tint = MaterialTheme.colorScheme.primary)
+            }
+        }
+
+        // Without a network: the clipboard still goes over Bluetooth, and a sleeping device on a cable may be woken.
+        val wakeMac = device.status.wakeMac
+        if (!device.online && (device.ble || (asleep && wakeMac != null))) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (device.ble) {
+                    ActionTile(TandemIcons.Paste, stringResource(R.string.tile_clipboard), {
+                        val text = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                            .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+                        if (text.isNotEmpty()) scope.launch { host.sendClipboard(listOf(id), text) }
+                    }, Modifier.weight(1f).fillMaxHeight(), primary = true)
+                }
+                if (asleep && wakeMac != null) {
+                    ActionTile(TandemIcons.Power, stringResource(R.string.action_wake), {
+                        scope.launch {
+                            val sent = nl.markmaaktmedia.tandem.engine.WakeOnLan.send(context, wakeMac)
+                            android.widget.Toast.makeText(
+                                context, context.getString(if (sent) R.string.wake_sent else R.string.wake_failed), android.widget.Toast.LENGTH_LONG,
+                            ).show()
+                        }
+                    }, Modifier.weight(1f).fillMaxHeight())
+                }
+            }
+            if (asleep && wakeMac != null) {
+                Text(
+                    stringResource(R.string.wake_hint),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
             }
         }
 
