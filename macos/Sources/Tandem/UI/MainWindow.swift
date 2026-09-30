@@ -21,6 +21,10 @@ struct MainWindow: View {
     @Environment(EngineModel.self) private var model
     @LocalState private var selection: SidebarSelection?
     @LocalState private var showPairing = false
+    /// True for a moment after the page changes. A new scroll view draws its top edge effect
+    /// (a light band under the toolbar) before it knows where its content starts, which
+    /// shows as a white bar for a few frames. Hidden while the page settles.
+    @LocalState private var settling = false
 
     var body: some View {
         NavigationSplitView {
@@ -32,11 +36,16 @@ struct MainWindow: View {
                     .ignoresSafeArea()
                 detail
             }
+            .scrollEdgeEffectHidden(settling, for: .top)
             .safeAreaInset(edge: .top, spacing: 0) { UpdateBanner() }
             // The sidebar header already says Tandem. What the toolbar shows is the
             // device you are on, once its card has scrolled away.
             .toolbar(removing: .title)
             .animation(.tandem, value: selection)
+            .onChange(of: selection) {
+                settling = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { settling = false }
+            }
         }
         .background(HideWindowTitle())
         // A sheet or dialog covers the window; nothing behind it should react to the pointer.

@@ -141,6 +141,27 @@ struct HoverSwell: ViewModifier {
     }
 }
 
+/// A round glass button that turns grey under the pointer and stays grey. The system's own
+/// hover on glass flashes and fades back to white in a menu bar panel, so this holds it.
+/// Multiplied, so the white glass darkens and the icon on it stays as black as it was.
+struct HoverGrey: ViewModifier {
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                Circle()
+                    .fill(Color(white: 0.78))
+                    .blendMode(.multiply)
+                    .opacity(hovering && hoverEnabled ? 1 : 0)
+                    .allowsHitTesting(false)
+            }
+            .onHover { hovering = $0 }
+            .animation(.easeOut(duration: 0.12), value: hovering)
+    }
+}
+
 /// A soft highlight behind a row while the pointer is over it. Colour only, so a
 /// tween is right, and it stays put under Reduce Motion.
 struct HoverHighlight: ViewModifier {
@@ -179,6 +200,10 @@ struct Hoverable<Content: View>: View {
 extension View {
     func hoverLift(scale: CGFloat = 1.015, lift: CGFloat = 2, enabled: Bool = true) -> some View {
         modifier(HoverLift(scale: scale, lift: lift, enabled: enabled))
+    }
+
+    func hoverGrey() -> some View {
+        modifier(HoverGrey())
     }
 
     func hoverSwell(_ scale: CGFloat = 1.06) -> some View {

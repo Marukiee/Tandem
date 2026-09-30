@@ -49,6 +49,10 @@ final class HotspotCoordinator {
     private var hotspotGateway: String?
     /// The last answer that came over the normal connection, for the QUIC route.
     private var quicAnswer: HotspotBleState?
+    /// Set when the person lets the hotspot go, so the Mac still sitting on it for a few
+    /// seconds is not taken for a new connection.
+    private var ignoreNetworkUntil = Date.distantPast
+    private var watchTask: Task<Void, Never>?
     private let ble = BleHotspotClient()
     private let pathMonitor = NWPathMonitor()
 
@@ -68,6 +72,36 @@ final class HotspotCoordinator {
             Task { @MainActor in self?.pathChanged(wired: wired, satisfied: satisfied) }
         }
         pathMonitor.start(queue: DispatchQueue(label: "tandem.hotspot.path"))
+        watchTask?.cancel()
+        watchTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                await self?.syncWithCurrentNetwork()
+                try? await Task.sleep(for: .seconds(4))
+            }
+        }
+    }
+
+    /// The Mac may already be on the phone's hotspot, joined by hand or before Tandem started.
+    /// Without this the card offered to turn it on while it was in use.
+    private func syncWithCurrentNetwork() async {
+        guard let model, Date() >= ignoreNetworkUntil else { return }
+        let saved = UserDefaults.standard.string(forKey: Self.ssidKey) ?? ""
+        guard !saved.isEmpty else { return }
+        let current = await Task.detached { CurrentWiFi.ssid() }.value
+        switch model.hotspotStatus {
+        case .idle, .failed:
+            guard current == saved, let phone = model.devices.first(where: { $0.platform == .android }) else { return }
+            activeDevice = phone.id
+            model.hotspotStatus = .connected(phone.name)
+        case .connected:
+            // An unreadable name is not proof of leaving: only a different network is.
+            if let current, current != saved {
+                model.hotspotStatus = .idle
+                hotspotGateway = nil
+            }
+        default:
+            break
+        }
     }
 
     /// Called whenever the network changes. Waits a few seconds before acting, because
@@ -208,6 +242,7 @@ final class HotspotCoordinator {
         offlineTask?.cancel()
         model.hotspotStatus = .idle
         hotspotGateway = nil
+        ignoreNetworkUntil = Date().addingTimeInterval(25)
         let online = model.device(id)?.online == true
         runTask = Task { [weak self] in
             guard let self else { return }

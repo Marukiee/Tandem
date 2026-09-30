@@ -110,6 +110,7 @@ struct MenuBarPanel: View {
             .buttonBorderShape(.circle)
             .fixedSize()
             .hoverSwell()
+            .hoverGrey()
             .help("More")
 
             Spacer(minLength: 8)
@@ -163,11 +164,13 @@ private struct MenuDeviceRow: View {
                         Image(systemName: "paperplane.fill").frame(width: 14, height: 14)
                     }
                     .hoverSwell(1.12)
+                    .hoverGrey()
                     .help("Send files")
                     Button { model.sendClipboard(to: [device.id]) } label: {
                         Image(systemName: "doc.on.clipboard").frame(width: 14, height: 14)
                     }
                     .hoverSwell(1.12)
+                    .hoverGrey()
                     .help("Send clipboard")
                 }
                 .buttonStyle(.glass)
