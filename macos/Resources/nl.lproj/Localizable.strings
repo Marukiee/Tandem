@@ -284,3 +284,27 @@
 /* Find phone */
 "Stop ringing" = "Stop met overgaan";
 "Stopped ringing" = "Het overgaan is gestopt";
+
+/* Pictures from the phone */
+"Copy pictures from your phone to the clipboard" = "Plaatjes van je telefoon naar het klembord kopiëren";
+"A picture you send from your phone is ready to paste." = "Een plaatje dat je vanaf je telefoon stuurt kun je meteen plakken.";
+"Paste them straight away" = "Meteen plakken";
+"Where the cursor is when the picture arrives. Needs the Accessibility permission." = "Waar de cursor staat als het plaatje binnenkomt. Vraagt de toegankelijkheidsrechten.";
+"Picture copied and pasted" = "Plaatje gekopieerd en geplakt";
+"Picture copied to the clipboard" = "Plaatje naar het klembord gekopieerd";
+
+/* Hotspot requirements */
+"Finish the two steps below to turn this on." = "Rond de twee stappen hieronder af om dit aan te zetten.";
+"What it needs" = "Wat het nodig heeft";
+"Bluetooth" = "Bluetooth";
+"Allow" = "Toestaan";
+"Open Settings" = "Instellingen openen";
+"Tandem may use Bluetooth to ask your phone." = "Tandem mag Bluetooth gebruiken om je telefoon te vragen.";
+"Tandem has not asked yet." = "Tandem heeft het nog niet gevraagd.";
+"Bluetooth is off for Tandem in System Settings." = "Bluetooth staat voor Tandem uit in Systeeminstellingen.";
+"Your phone's hotspot" = "De hotspot van je telefoon";
+"Network name and password are saved." = "Netwerknaam en wachtwoord zijn opgeslagen.";
+"Fill in the network name and password below." = "Vul hieronder de netwerknaam en het wachtwoord in.";
+"Finish the hotspot setup in Settings first" = "Rond eerst de hotspot-instellingen af";
+"Bluetooth and the phone's network name and password are needed." = "Bluetooth en de netwerknaam en het wachtwoord van de telefoon zijn nodig.";
+"Set up" = "Instellen";

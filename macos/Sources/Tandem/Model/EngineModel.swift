@@ -350,6 +350,9 @@ final class EngineModel {
         if incoming, error == nil, let location {
             let from = device(peer)?.name ?? "?"
             Notifier.shared.postFileReceived(name: name, from: from, location: location)
+            if ReceivedImages.copy(URL(fileURLWithPath: location)) {
+                showToast(ReceivedImages.pasteEnabled ? String(localized: "Picture copied and pasted") : String(localized: "Picture copied to the clipboard"))
+            }
         }
     }
 

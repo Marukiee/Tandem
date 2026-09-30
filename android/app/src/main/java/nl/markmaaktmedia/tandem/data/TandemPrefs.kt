@@ -47,6 +47,8 @@ class TandemPrefs(private val context: Context) {
         val dismissedUpdate = stringPreferencesKey("dismissed_update")
         val lastUpdateCheck = longPreferencesKey("last_update_check")
         val copyCodes = booleanPreferencesKey("copy_codes")
+        val remoteMedia = booleanPreferencesKey("remote_media")
+        val remoteMouse = booleanPreferencesKey("remote_mouse")
     }
 
     val appearance: Flow<Appearance> = data.map { p ->
@@ -72,6 +74,9 @@ class TandemPrefs(private val context: Context) {
     val dismissedUpdate: Flow<String?> = data.map { it[Keys.dismissedUpdate] }
     val lastUpdateCheck: Flow<Long> = data.map { it[Keys.lastUpdateCheck] ?: 0L }
     val copyCodes: Flow<Boolean> = data.map { it[Keys.copyCodes] ?: true }
+    /** Trackpad screen: the media buttons start off, the left and right buttons start on. */
+    val remoteMedia: Flow<Boolean> = data.map { it[Keys.remoteMedia] ?: false }
+    val remoteMouse: Flow<Boolean> = data.map { it[Keys.remoteMouse] ?: true }
 
     /**
      * Every setting as JSON, for backup. Keys are read from the store itself so a new setting
@@ -140,6 +145,8 @@ class TandemPrefs(private val context: Context) {
     suspend fun setLastUpdateCheck(value: Long) = set(Keys.lastUpdateCheck, value)
     suspend fun setDismissedUpdate(value: String) = set(Keys.dismissedUpdate, value)
     suspend fun setCopyCodes(value: Boolean) = set(Keys.copyCodes, value)
+    suspend fun setRemoteMedia(value: Boolean) = set(Keys.remoteMedia, value)
+    suspend fun setRemoteMouse(value: Boolean) = set(Keys.remoteMouse, value)
 
     /** Turns one app on or off. Which list changes depends on whether "all apps" is on. */
     suspend fun setMirrorApp(packageName: String, enabled: Boolean) {

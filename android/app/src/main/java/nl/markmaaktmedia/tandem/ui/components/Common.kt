@@ -216,11 +216,13 @@ fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     trailing: @Composable (() -> Unit)? = null,
+    top: androidx.compose.ui.unit.Dp = 12.dp,
+    bottom: androidx.compose.ui.unit.Dp = 10.dp,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 10.dp),
+            .padding(start = 16.dp, end = 8.dp, top = top, bottom = bottom),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {

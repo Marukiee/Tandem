@@ -1,4 +1,5 @@
 import AppKit
+import CoreBluetooth
 import ServiceManagement
 import SwiftUI
 import TandemCore
@@ -108,6 +109,8 @@ private struct GeneralSettings: View {
     @LocalState private var startAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage("showInDock") private var showInDock = true
     @AppStorage("copyCodes") private var copyCodes = true
+    @AppStorage(ReceivedImages.copyKey) private var copyImages = true
+    @AppStorage(ReceivedImages.pasteKey) private var pasteImages = false
     @LocalState private var folder = DownloadFolder.url
     @LocalState private var folderIsDefault = DownloadFolder.isDefault
     @LocalState private var confirmReset = false
@@ -169,6 +172,17 @@ private struct GeneralSettings: View {
                     subtitle: "You also get a notification when a code was copied.",
                     isOn: $copyCodes
                 )
+                DescribedToggle(
+                    "Copy pictures from your phone to the clipboard",
+                    subtitle: "A picture you send from your phone is ready to paste.",
+                    isOn: $copyImages
+                )
+                DescribedToggle(
+                    "Paste them straight away",
+                    subtitle: "Where the cursor is when the picture arrives. Needs the Accessibility permission.",
+                    isOn: $pasteImages
+                )
+                .disabled(!copyImages)
             }
 
             Section {
@@ -347,11 +361,22 @@ private struct HotspotSettings: View {
     @AppStorage(HotspotCoordinator.delayKey) private var delay = 8.0
     @AppStorage("hotspotSSID") private var ssid = ""
     @LocalState private var password = HotspotCredentials.password() ?? ""
+    @LocalState private var bluetooth = CBManager.authorization
+
+    private var credentialsSet: Bool { !ssid.isEmpty && !password.isEmpty }
+    private var bluetoothAllowed: Bool { bluetooth == .allowedAlways }
+    /// The switch stays grey until everything it needs is in place, so it never looks on
+    /// while nothing can happen.
+    private var ready: Bool { credentialsSet && bluetoothAllowed }
 
     var body: some View {
         Form {
             Section {
-                Toggle("Use my phone's hotspot when this Mac has no connection", isOn: $auto)
+                Toggle("Use my phone's hotspot when this Mac has no connection", isOn: Binding(
+                    get: { auto && ready },
+                    set: { auto = $0 }
+                ))
+                .disabled(!ready)
                 LabeledContent("Wait before asking") {
                     HStack(spacing: 10) {
                         Slider(value: $delay, in: 3 ... 30, step: 1)
@@ -361,8 +386,32 @@ private struct HotspotSettings: View {
                             .frame(width: 40, alignment: .trailing)
                     }
                 }
-                .disabled(!auto)
+                .disabled(!(auto && ready))
+            } footer: {
+                if !ready {
+                    Text("Finish the two steps below to turn this on.")
+                }
             }
+
+            Section {
+                Requirement(
+                    done: bluetoothAllowed,
+                    title: "Bluetooth",
+                    detail: bluetoothDetail,
+                    buttonTitle: bluetoothAllowed ? nil : (bluetooth == .notDetermined ? "Allow" : "Open Settings")
+                ) {
+                    if bluetooth == .notDetermined { BluetoothPrompt.ask() } else { BluetoothPrompt.openSettings() }
+                }
+                Requirement(
+                    done: credentialsSet,
+                    title: "Your phone's hotspot",
+                    detail: credentialsSet ? "Network name and password are saved." : "Fill in the network name and password below.",
+                    buttonTitle: nil
+                ) {}
+            } header: {
+                Text("What it needs")
+            }
+
             Section {
                 TextField("Network name", text: $ssid)
                 SecureField("Password", text: $password)
@@ -374,6 +423,59 @@ private struct HotspotSettings: View {
             }
         }
         .formStyle(.grouped)
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+            bluetooth = CBManager.authorization
+        }
+    }
+
+    private var bluetoothDetail: LocalizedStringKey {
+        switch bluetooth {
+        case .allowedAlways: "Tandem may use Bluetooth to ask your phone."
+        case .notDetermined: "Tandem has not asked yet."
+        default: "Bluetooth is off for Tandem in System Settings."
+        }
+    }
+}
+
+/// One line of a checklist: a tick when done, what is missing when not, and a button to fix it.
+private struct Requirement: View {
+    let done: Bool
+    let title: LocalizedStringKey
+    let detail: LocalizedStringKey
+    let buttonTitle: LocalizedStringKey?
+    let action: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: done ? "checkmark.circle.fill" : "circle.dashed")
+                .font(.title3)
+                .foregroundStyle(done ? Color.green : Color.secondary)
+                .contentTransition(.symbolEffect(.replace))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            if let buttonTitle {
+                Button(buttonTitle, action: action)
+            }
+        }
+        .animation(.tandem, value: done)
+    }
+}
+
+/// Asking for Bluetooth: the system dialog appears the first time a manager is created.
+private enum BluetoothPrompt {
+    private static var manager: CBCentralManager?
+
+    static func ask() {
+        manager = CBCentralManager(delegate: nil, queue: nil)
+    }
+
+    static func openSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Bluetooth") {
+            NSWorkspace.shared.open(url)
+        }
     }
 }
 

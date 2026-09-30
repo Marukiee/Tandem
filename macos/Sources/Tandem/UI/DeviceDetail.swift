@@ -1,4 +1,5 @@
 import AppKit
+import CoreBluetooth
 import SwiftUI
 import TandemCore
 import UniformTypeIdentifiers
@@ -373,6 +374,14 @@ struct HotspotCard: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
     @AppStorage("autoHotspot") private var auto = false
+    @AppStorage("hotspotSSID") private var ssid = ""
+    @LocalState private var bluetooth = CBManager.authorization
+
+    /// Grey until Bluetooth is allowed and the phone's network is filled in, so the switch
+    /// never looks on while nothing can happen.
+    private var ready: Bool {
+        bluetooth == .allowedAlways && !ssid.isEmpty && (HotspotCredentials.password()?.isEmpty == false)
+    }
 
     var body: some View {
         Card(radius: Metrics.card, padding: 6) {
@@ -380,9 +389,23 @@ struct HotspotCard: View {
                 SettingRow(
                     symbol: "personalhotspot",
                     title: "Use its hotspot when I have no connection",
-                    subtitle: "Your phone turns its hotspot on and this Mac joins it"
+                    subtitle: ready ? "Your phone turns its hotspot on and this Mac joins it" : "Finish the hotspot setup in Settings first"
                 ) {
-                    Toggle("", isOn: $auto)
+                    Toggle("", isOn: Binding(get: { auto && ready }, set: { auto = $0 }))
+                        .disabled(!ready)
+                }
+                if !ready {
+                    Divider().opacity(0.4).padding(.horizontal, 14)
+                    HStack {
+                        Text("Bluetooth and the phone's network name and password are needed.")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        SettingsLink { Text("Set up") }
+                            .buttonStyle(.glass)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
                 }
                 if model.hotspotStatus != .idle {
                     Divider().opacity(0.4).padding(.horizontal, 14)
@@ -413,5 +436,9 @@ struct HotspotCard: View {
             }
         }
         .animation(.tandem, value: model.hotspotStatus)
+        .animation(.tandem, value: ready)
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+            bluetooth = CBManager.authorization
+        }
     }
 }

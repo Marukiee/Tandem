@@ -7,6 +7,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -87,7 +90,10 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
     }
 
     var keyboard by rememberSaveable { mutableStateOf(false) }
-    var mouseButtons by rememberSaveable { mutableStateOf(false) }
+    val prefs = graph.prefs
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val mouseButtons by prefs.remoteMouse.collectAsState(initial = true)
+    val mediaOn by prefs.remoteMedia.collectAsState(initial = false)
     // The armed modifiers of the on-screen keyboard, spent by the next key or character.
     var mods by remember { mutableIntStateOf(0) }
 
@@ -185,7 +191,9 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
             mouseOn = mouseButtons,
             onBack = onBack,
             onKeyboard = { keyboard = !keyboard },
-            onMouse = { mouseButtons = !mouseButtons },
+            onMouse = { scope.launch { prefs.setRemoteMouse(!mouseButtons) } },
+            mediaOn = mediaOn,
+            onMedia = { scope.launch { prefs.setRemoteMedia(!mediaOn) } },
         )
 
         Box(
@@ -230,8 +238,16 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
             }
         }
 
-        Spacer(Modifier.height(Gap))
-        MediaControls(onKey = { link.send(TandemInput.Media(it)) })
+        AnimatedVisibility(
+            visible = mediaOn,
+            enter = fadeIn(TandemMotion.fadeSpec()) + expandVertically(TandemMotion.sizeSpring(), expandFrom = Alignment.Top),
+            exit = fadeOut(TandemMotion.fadeSpec()) + shrinkVertically(TandemMotion.sizeSpring(), shrinkTowards = Alignment.Top),
+        ) {
+            Column {
+                Spacer(Modifier.height(Gap))
+                MediaControls(onKey = { link.send(TandemInput.Media(it)) })
+            }
+        }
 
         AnimatedVisibility(
             visible = mouseButtons,
@@ -253,9 +269,11 @@ private fun TopBar(
     online: Boolean,
     keyboardOn: Boolean,
     mouseOn: Boolean,
+    mediaOn: Boolean,
     onBack: () -> Unit,
     onKeyboard: () -> Unit,
     onMouse: () -> Unit,
+    onMedia: () -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -277,14 +295,34 @@ private fun TopBar(
                 )
             }
         }
-        TopBarToggle(TandemIcons.Keyboard, stringResource(R.string.remote_keyboard), keyboardOn, onKeyboard)
-        TopBarToggle(TandemIcons.Mouse, stringResource(R.string.remote_mouse_buttons), mouseOn, onMouse)
+        // One connected group: the ends are fully round, the corners that meet are tight, and
+        // a pressed button rounds off, like the connected button groups in Material 3 Expressive.
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            GroupToggle(TandemIcons.Keyboard, stringResource(R.string.remote_keyboard), keyboardOn, GroupEnd.Start, onKeyboard)
+            GroupToggle(TandemIcons.Mouse, stringResource(R.string.remote_mouse_buttons), mouseOn, GroupEnd.Middle, onMouse)
+            var menu by remember { mutableStateOf(false) }
+            Box {
+                GroupToggle(TandemIcons.More, stringResource(R.string.remote_more), menu, GroupEnd.End) { menu = true }
+                androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(stringResource(R.string.remote_media)) },
+                        leadingIcon = if (mediaOn) ({ Icon(TandemIcons.Check, null) }) else null,
+                        onClick = { onMedia(); menu = false },
+                    )
+                }
+            }
+        }
     }
 }
 
-/** An icon button that stays lit while what it shows is on. The colours fade, never snap. */
+private enum class GroupEnd { Start, Middle, End }
+
+private val GroupOuter = 22.dp
+private val GroupInner = 6.dp
+
+/** A toggle in a connected group. It stays lit while what it shows is on; the colours fade, never snap. */
 @Composable
-private fun TopBarToggle(icon: Painter, description: String, on: Boolean, onClick: () -> Unit) {
+private fun GroupToggle(icon: Painter, description: String, on: Boolean, position: GroupEnd, onClick: () -> Unit) {
     val container by animateColorAsState(
         if (on) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
         TandemMotion.colourSpec(), label = "toggleContainer",
@@ -293,5 +331,23 @@ private fun TopBarToggle(icon: Painter, description: String, on: Boolean, onClic
         if (on) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
         TandemMotion.colourSpec(), label = "toggleTint",
     )
-    TandemIconButton(icon, description, onClick, background = container, tint = tint)
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    // The tight corners open up while the finger is down, and spring back.
+    val inner by androidx.compose.animation.core.animateDpAsState(if (pressed) GroupOuter else GroupInner, TandemMotion.springy(), label = "innerCorner")
+    val shape = when (position) {
+        GroupEnd.Start -> androidx.compose.foundation.shape.RoundedCornerShape(GroupOuter, inner, inner, GroupOuter)
+        GroupEnd.Middle -> androidx.compose.foundation.shape.RoundedCornerShape(inner)
+        GroupEnd.End -> androidx.compose.foundation.shape.RoundedCornerShape(inner, GroupOuter, GroupOuter, inner)
+    }
+    Box(
+        Modifier
+            .size(width = 52.dp, height = 44.dp)
+            .clip(shape)
+            .background(container)
+            .clickable(interactionSource = source, indication = androidx.compose.material3.ripple(), role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(22.dp))
+    }
 }

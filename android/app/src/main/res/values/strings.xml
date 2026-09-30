@@ -266,4 +266,11 @@
     <string name="update_allow_install">Android will ask once to let Tandem install apps</string>
     <string name="update_banner_title">Update %1$s</string>
     <string name="swipe_delete">Remove</string>
+    <string name="remote_more">More</string>
+    <string name="remote_media">Media controls</string>
+    <string name="section_preferences">Preferences</string>
+    <string name="hotspot_needs_permissions">Allow Bluetooth and notifications first, then this can be turned on</string>
+    <string name="hotspot_allow_bluetooth">Allow Bluetooth</string>
+    <string name="hotspot_allow_notifications">Allow notifications</string>
+    <string name="hotspot_allow_sub">Your Mac asks over Bluetooth, and you get a notification</string>
 </resources>

@@ -95,7 +95,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
 
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
@@ -163,7 +163,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         // Recent transfers with this device
         val recent = transfers.filter { it.peer == id }.take(5)
         if (recent.isNotEmpty()) {
-            SectionHeader(stringResource(R.string.section_recent))
+            SectionHeader(stringResource(R.string.section_recent), top = 12.dp, bottom = 0.dp)
             SettingsGroup {
                 recent.forEach { item ->
                     Column(Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer)) {
@@ -173,7 +173,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             }
         }
 
-        SectionHeader(stringResource(R.string.section_with_device, device.name))
+        SectionHeader(stringResource(R.string.section_preferences), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
             SwitchRow(0, 3, TandemIcons.Paste, stringResource(R.string.setting_clipboard), stringResource(R.string.setting_clipboard_sub), device.clipboardEnabled, { set(clipboard = it) })
             SwitchRow(1, 3, TandemIcons.Notifications, stringResource(R.string.setting_notifications_from), stringResource(R.string.setting_notifications_from_sub), device.notificationsEnabled, { set(notifications = it) })
