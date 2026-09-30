@@ -74,12 +74,12 @@ cmd_ci() {
   # A self-made certificate is only offered to codesign once the machine trusts it for
   # code signing, and a fresh runner has never seen it. The signature itself does not change.
   local pem="$DIR/tandem-mac-signing.pem"
-  openssl pkcs12 -in "$P12" -clcerts -nokeys -passin "pass:$(password)" -out "$pem" 2>/dev/null
+  security find-certificate -c "$IDENTITY" -p "$KEYCHAIN" >"$pem"
   sudo security add-trusted-cert -d -r trustRoot -p codeSign -k /Library/Keychains/System.keychain "$pem" \
     || security add-trusted-cert -r trustRoot -p codeSign -k "$KEYCHAIN" "$pem" || true
   # codesign only looks in the keychains on the search list.
-  security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
-  security find-identity -p codesigning
+  security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"') || true
+  security find-identity -p codesigning || true
 }
 
 cmd_sign() {
