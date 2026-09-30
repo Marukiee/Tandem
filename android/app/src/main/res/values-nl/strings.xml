@@ -259,6 +259,8 @@
     <string name="tile_find">Zoek</string>
     <string name="dev_section">Ontwikkelaar</string>
     <string name="update_download">Download</string>
-    <string name="update_on_version">Je hebt versie %1$s</string>
+    <string name="update_on_version">Je hebt %1$s</string>
     <string name="update_allow_install">Android vraagt één keer of Tandem apps mag installeren</string>
+    <string name="update_banner_title">Update %1$s</string>
+    <string name="swipe_delete">Verwijder</string>
 </resources>

@@ -4,7 +4,6 @@ import SwiftUI
 /// offers the rest, and Delete takes the row off the list.
 struct SharedView: View {
     @Environment(EngineModel.self) private var model
-    @LocalState private var compact = false
 
     var body: some View {
         ScrollView {
@@ -12,7 +11,7 @@ struct SharedView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Shared")
                         .font(.largeTitle.weight(.bold))
-                        .titleHandoff(compact)
+                        
                     Text("Files you send and receive. Click one to open it, right click for more.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
@@ -40,14 +39,8 @@ struct SharedView: View {
             .frame(maxWidth: .infinity)
             .animation(.tandem, value: model.transfers.map(\.id))
         }
-        .trackCompactTitle($compact, after: 40)
+        .scrollEdgeEffectStyle(.soft, for: .top)
         .toolbar {
-            if compact {
-                ToolbarItem(placement: .navigation) {
-                    PillMark(size: 22).padding(.horizontal, 2)
-                }
-            }
-
             if model.transfers.contains(where: { $0.state != .active }) {
                 ToolbarItem(placement: .primaryAction) {
                     Button {

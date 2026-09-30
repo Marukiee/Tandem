@@ -81,8 +81,9 @@ fun ActionRow(
     onClick: () -> Unit,
     danger: Boolean = false,
     trailing: @Composable (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
-    GroupedRow(index, total, onClick = onClick) {
+    GroupedRow(index, total, modifier = modifier, onClick = onClick) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             RowIcon(
                 icon,

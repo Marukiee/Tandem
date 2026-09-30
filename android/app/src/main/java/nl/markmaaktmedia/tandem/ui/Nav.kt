@@ -38,3 +38,32 @@ class Nav {
         while (stack.size > 1 && top != route) stack.removeAt(stack.lastIndex)
     }
 }
+
+/**
+ * Keeps the back stack and the selected tab through a rotation or any other recreation of
+ * the activity. Without it turning the phone in the trackpad screen dropped you on the
+ * home screen.
+ */
+val NavSaver: androidx.compose.runtime.saveable.Saver<Nav, Any> = androidx.compose.runtime.saveable.listSaver<Nav, String>(
+    save = { nav -> listOf(nav.tab.toString()) + nav.stack.map(::routeKey) },
+    restore = { saved ->
+        Nav().also { nav ->
+            nav.tab = saved.firstOrNull()?.toIntOrNull() ?: 0
+            nav.stack.clear()
+            nav.stack.addAll(saved.drop(1).mapNotNull(::routeFromKey).ifEmpty { listOf(Route.Home) })
+        }
+    },
+)
+
+private fun routeFromKey(key: String): Route? = when {
+    key == "home" -> Route.Home
+    key.startsWith("device:") -> Route.Device(key.removePrefix("device:"))
+    key == "pair" -> Route.Pair
+    key.startsWith("remote:") -> Route.Remote(key.removePrefix("remote:"))
+    key == "access" -> Route.Access
+    key == "mirror" -> Route.MirrorApps
+    key == "appearance" -> Route.Appearance
+    key == "developer" -> Route.Developer
+    key == "onboarding-preview" -> Route.OnboardingPreview
+    else -> null
+}

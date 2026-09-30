@@ -8,8 +8,7 @@ struct DeviceDetail: View {
     let device: TandemDevice
 
     @LocalState private var confirmRemoval = false
-    /// True once the big name in the header card has scrolled away and the toolbar shows it.
-    @LocalState private var compact = false
+
     @LocalState private var position = ScrollPosition(edge: .top)
 
     var body: some View {
@@ -29,17 +28,11 @@ struct DeviceDetail: View {
             .frame(maxWidth: .infinity)
         }
         .scrollPosition($position)
-        .trackCompactTitle($compact)
+        .scrollEdgeEffectStyle(.soft, for: .top)
         .animation(.tandem, value: device.id)
         .animation(.tandem, value: device.online)
-        .toolbar {
-            if compact {
-                ToolbarItem(placement: .navigation) { toolbarTitle }
-            }
-        }
         .onChange(of: device.id) {
             confirmRemoval = false
-            compact = false
             position.scrollTo(edge: .top)
         }
         .confirmationDialog(
@@ -54,15 +47,6 @@ struct DeviceDetail: View {
         }
     }
 
-    // MARK: Toolbar
-
-    /// The device you are on, where the window title used to be. It arrives as the
-    /// name in the header card leaves.
-    private var toolbarTitle: some View {
-        PillMark(size: 22)
-            .padding(.horizontal, 2)
-    }
-
     // MARK: Header
 
     private var header: some View {
@@ -75,7 +59,7 @@ struct DeviceDetail: View {
                         .font(.title.weight(.bold))
                         .lineLimit(1)
                         .contentTransition(.opacity)
-                        .titleHandoff(compact)
+                        
                     HStack(spacing: 8) {
                         Chip(
                             symbol: device.online ? "checkmark.circle.fill" : "circle.dashed",

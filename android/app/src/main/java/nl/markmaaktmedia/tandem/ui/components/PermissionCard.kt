@@ -25,6 +25,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -219,7 +220,10 @@ class PermissionRequests internal constructor(
     fun phone() {
         val essential = Permissions.phoneEssential.filterNot { Permissions.isGranted(context, it) }
         when {
-            essential.isEmpty() -> phoneExtras()
+            // Restricted permissions never show a dialog on a sideloaded app. When asking changes
+            // nothing, the place to fix it is the app info screen, so go there instead of
+            // leaving a button that only animates.
+            essential.isEmpty() -> ask(Permissions.phoneOptional.toList()) { if (Permissions.phoneOptionalMissing(context).isNotEmpty()) openAppInfo() }
             status.isBlocked(essential) -> Permissions.openAppSettings(context)
             else -> ask(essential) { if (Permissions.phone(context)) phoneExtras() }
         }
@@ -337,21 +341,22 @@ fun PermissionCard(
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 16.dp),
     ) {
-        Row(
-            Modifier.fillMaxWidth().height(44.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
+        // The pill is a column of its own, so the small print wraps beside it instead of
+        // running on underneath it.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             RowIcon(icon)
-            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-            PermissionPill(level, onGrant)
+            Column(Modifier.weight(1f)) {
+                Box(Modifier.heightIn(min = 44.dp), contentAlignment = Alignment.CenterStart) {
+                    Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                }
+                Text(
+                    why,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Box(Modifier.height(44.dp), contentAlignment = Alignment.Center) { PermissionPill(level, onGrant) }
         }
-        Text(
-            why,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(start = IconColumn, top = 2.dp),
-        )
         AnimatedVisibility(
             visible = note != null,
             enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),

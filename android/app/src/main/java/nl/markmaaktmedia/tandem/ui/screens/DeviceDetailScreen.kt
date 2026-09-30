@@ -37,6 +37,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.ui.Route
+import nl.markmaaktmedia.tandem.ui.routeBounds
+import nl.markmaaktmedia.tandem.ui.routeKey
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
 import nl.markmaaktmedia.tandem.ui.components.ActionTile
@@ -149,7 +152,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                     if (text.isNotEmpty()) scope.launch { host.sendClipboard(listOf(id), text) }
                 }, Modifier.weight(1f).fillMaxHeight())
                 if (device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.LINUX || device.platform == TandemPlatform.WINDOWS) {
-                    ActionTile(TandemIcons.Mouse, stringResource(R.string.tile_trackpad), { onRemote(id) }, Modifier.weight(1f).fillMaxHeight())
+                    ActionTile(TandemIcons.Mouse, stringResource(R.string.tile_trackpad), { onRemote(id) }, Modifier.weight(1f).fillMaxHeight().routeBounds(routeKey(Route.Remote(id))))
                 }
                 if (device.platform == TandemPlatform.ANDROID) {
                     ActionTile(TandemIcons.Ring, stringResource(R.string.tile_find), { scope.launch { runCatching { host.engine?.ring(id, true) } } }, Modifier.weight(1f).fillMaxHeight())

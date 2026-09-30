@@ -4,6 +4,8 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,6 +67,16 @@ fun ColumnScope.HotspotSettingsRows(first: Int, total: Int) {
                 ShizukuState.Ready -> Unit
             }
         },
+        // Allowed: a check, so nobody thinks there is still something to press.
+        trailing = if (shizuku == ShizukuState.Ready) {
+            {
+                androidx.compose.material3.Icon(
+                    TandemIcons.Check, contentDescription = null,
+                    tint = nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors.current.online,
+                    modifier = androidx.compose.ui.Modifier.size(24.dp),
+                )
+            }
+        } else null,
     )
 
     val busy = snapshot.phase == Phase.Starting || snapshot.phase == Phase.NeedsTap

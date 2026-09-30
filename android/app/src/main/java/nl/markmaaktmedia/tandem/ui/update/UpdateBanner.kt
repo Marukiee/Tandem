@@ -33,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.BuildConfig
 import nl.markmaaktmedia.tandem.R
-import nl.markmaaktmedia.tandem.engine.Permissions
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.PillSpinner
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
@@ -76,6 +75,15 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
         exit = fadeOut(TandemMotion.fadeSpec()) + shrinkVertically(TandemMotion.sizeSpring()),
         modifier = modifier,
     ) {
+        val swipe = androidx.compose.material3.rememberSwipeToDismissBoxState(
+            confirmValueChange = { value ->
+                if (value != androidx.compose.material3.SwipeToDismissBoxValue.Settled && release != null) {
+                    scope.launch { graph.prefs.setDismissedUpdate(release.tag) }
+                    true
+                } else false
+            },
+        )
+        androidx.compose.material3.SwipeToDismissBox(state = swipe, backgroundContent = {}) {
         Surface(
             shape = CardSquircle,
             color = MaterialTheme.colorScheme.primaryContainer,
@@ -88,7 +96,7 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                         Icon(TandemIcons.Update, contentDescription = null, modifier = Modifier.size(22.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
-                                stringResource(R.string.update_available, release.versionName),
+                                stringResource(R.string.update_banner_title, release.versionName),
                                 style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis,
                             )
                             Text(stringResource(R.string.update_on_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodySmall)
@@ -111,14 +119,6 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                             Text(stringResource(R.string.update_downloading, (downloading.progress * 100).toInt()), style = MaterialTheme.typography.labelSmall)
                         }
                     }
-                    if (state is UpdateState.Available && !Permissions.installApps(context)) {
-                        Box(
-                            Modifier.padding(top = 8.dp, end = 8.dp).clip(PillShape)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(horizontal = 12.dp, vertical = 8.dp),
-                        ) {
-                            Text(stringResource(R.string.update_allow_install), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
-                        }
-                    }
                 } else if (failed != null) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Column(Modifier.weight(1f)) {
@@ -129,6 +129,7 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                     }
                 }
             }
+        }
         }
     }
 }

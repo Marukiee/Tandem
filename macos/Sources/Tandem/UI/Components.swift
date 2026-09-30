@@ -140,11 +140,18 @@ struct BatteryRing: View {
         return Palette.indigo
     }
 
+    /// A ring that is 97 percent full looks like a closed circle with a flaw. Anything below
+    /// 100 leaves a visible opening, and only a full battery closes the ring.
+    private var arc: CGFloat {
+        let level = CGFloat(battery.level) / 100
+        return battery.level >= 100 ? 1 : level * 0.92
+    }
+
     var body: some View {
         ZStack {
             Circle().stroke(Color.primary.opacity(0.08), lineWidth: size * 0.11)
             Circle()
-                .trim(from: 0, to: CGFloat(battery.level) / 100)
+                .trim(from: 0, to: arc)
                 .stroke(tint, style: StrokeStyle(lineWidth: size * 0.11, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.tandem, value: battery.level)

@@ -330,28 +330,28 @@ fun EmptyState(
 }
 
 /**
- * Swipe an item away, with the physics and the look MarkMySteps uses on its route
- * planner.
+ * Swipe an item aside to delete it, in either direction. Ported line by line from the route
+ * planner in MarkMySteps (its web version was itself ported from this Compose original), so
+ * the numbers are the same and so is the feel:
  *
- * Two separate panels rather than one card over a coloured strip. The row slides left
- * on its own rounded shape and the delete panel is its own rounded shape anchored to
- * the right edge, widening as the row leaves. That is what stops the red from running
- * underneath the card and looking like a background that was there all along.
+ * - tension: for the first 60dp of travel the row moves 20dp at most, so scrolling a list never
+ *   nudges rows sideways;
+ * - release: past that it springs (stiffness 200, damping 0.8) up to the finger, with a tick;
+ * - free: from there it follows through a stiff critically damped spring (10000, 1). It is a
+ *   spring rather than a straight copy of the finger on purpose: the row carries the finger's
+ *   velocity, so letting go continues the motion instead of stopping dead;
+ * - cancel: letting go short of the threshold (35 percent of the row) is an elastic settle back
+ *   (1500, 0.75) that starts from that velocity, which is where the bounce comes from;
+ * - commit: past the threshold the row is flung off (110 percent of its width, 260ms) in the
+ *   direction it was going while its height collapses in step, and the delete fires at the
+ *   start of the fling so the gap closes as the row glides away.
  *
- * The gesture has three stages:
+ * The reveal is its own rounded panel that grows out of the edge being uncovered. The icon
+ * hugs that edge, the label sits inward of it, and both fade in over the first 56dp.
  *
- * 1. Tension. The first 60dp of travel moves the row 20dp, so a stray horizontal
- *    nudge during a scroll goes nowhere and springs back.
- * 2. Coming loose. Past that the row springs up to the finger and then tracks it.
- * 3. Arming, past 35 percent of the width, with a haptic tick on the crossing in
- *    both directions.
- *
- * Letting go while armed flings the row off the edge, and the delete fires as the
- * fling starts so the gap closes in step with it. Letting go early settles back.
- *
- * [key] must be stable for the row, not the row's data. Keying the gesture state on a
- * data class meant any unrelated update to the item replaced the state mid swipe, and
- * the row snapped back to zero instead of springing.
+ * [key] must be stable for the row, not the row's data. Keying the gesture state on a data
+ * class meant any unrelated update to the item replaced the state mid swipe, and the row
+ * snapped back to zero instead of springing.
  */
 @Composable
 fun <T> SwipeToDelete(
@@ -360,9 +360,10 @@ fun <T> SwipeToDelete(
     onDelete: (T) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    label: String = stringResource(nl.markmaaktmedia.tandem.R.string.swipe_delete),
     shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.large,
-    background: Color = MaterialTheme.colorScheme.errorContainer,
-    iconTint: Color = MaterialTheme.colorScheme.onErrorContainer,
+    background: Color = MaterialTheme.colorScheme.error,
+    iconTint: Color = MaterialTheme.colorScheme.onError,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -379,8 +380,11 @@ fun <T> SwipeToDelete(
     val tensionTravel = with(density) { 60.dp.toPx() }
     val tensionMax = with(density) { 20.dp.toPx() }
     val revealFade = with(density) { 56.dp.toPx() }
-    // The two panels touch. A gap between them reads as two unrelated things.
-    val panelGap = with(density) { 1.dp.toPx() }
+
+    // dampingRatio 1 is critically damped, and below that it overshoots.
+    fun springTo(target: Float, stiffness: Float, damping: Float) {
+        scope.launch { offset.animateTo(target, spring(dampingRatio = damping, stiffness = stiffness)) }
+    }
 
     AnimatedVisibility(
         visible = !removed,
@@ -393,27 +397,39 @@ fun <T> SwipeToDelete(
                 .fillMaxWidth()
                 .onSizeChanged { widthPx = it.width.coerceAtLeast(1) },
         ) {
-            val shown = (-offset.value - panelGap).coerceAtLeast(0f)
-            Box(modifier = Modifier.matchParentSize(), contentAlignment = Alignment.CenterEnd) {
-                if (shown > 1f) {
+            val x = offset.value
+            val shown = kotlin.math.abs(x)
+            // Anchored to the edge being uncovered: swiping left uncovers the right edge.
+            val toLeft = x < 0f
+            if (shown > 1f) {
+                Box(
+                    modifier = Modifier.matchParentSize(),
+                    contentAlignment = if (toLeft) Alignment.CenterEnd else Alignment.CenterStart,
+                ) {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
                             .width(with(density) { shown.toDp() })
                             .clip(shape)
                             .background(background),
-                        contentAlignment = Alignment.Center,
+                        contentAlignment = if (toLeft) Alignment.CenterEnd else Alignment.CenterStart,
                     ) {
-                        Icon(
-                            painter = TandemIcons.Delete,
-                            contentDescription = null,
-                            tint = iconTint,
+                        Row(
                             modifier = Modifier
-                                .size(22.dp)
-                                .graphicsLayer {
-                                    alpha = ((shown + panelGap) / revealFade).coerceIn(0f, 1f)
-                                },
-                        )
+                                .padding(horizontal = 18.dp)
+                                .graphicsLayer { alpha = (shown / revealFade).coerceIn(0f, 1f) },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            val icon = @Composable {
+                                Icon(painter = TandemIcons.Delete, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+                            }
+                            val text = @Composable {
+                                Text(label, style = MaterialTheme.typography.labelLarge, color = iconTint, maxLines = 1, softWrap = false)
+                            }
+                            // The icon hugs the swiped edge, so the order flips with the side.
+                            if (toLeft) { text(); icon() } else { icon(); text() }
+                        }
                     }
                 }
             }
@@ -431,70 +447,54 @@ fun <T> SwipeToDelete(
                             },
                             onHorizontalDrag = { change, delta ->
                                 change.consume()
-                                // Leftwards only, and never past zero on the way back.
-                                accumulated = (accumulated + delta).coerceAtMost(0f)
-                                val travelled = -accumulated
+                                accumulated += delta
+                                val travelled = kotlin.math.abs(accumulated)
+                                val dir = kotlin.math.sign(accumulated)
+                                val commitPx = widthPx * CommitFraction
 
                                 if (!loose) {
                                     if (travelled < tensionTravel) {
-                                        scope.launch {
-                                            offset.snapTo(-tensionMax * (travelled / tensionTravel))
-                                        }
+                                        scope.launch { offset.snapTo(dir * tensionMax * (travelled / tensionTravel)) }
                                         return@detectHorizontalDragGestures
                                     }
+                                    // Comes loose: springs up to the finger instead of jumping to it.
                                     loose = true
                                     view.performHapticFeedback(GestureThresholdActivate)
-                                    scope.launch {
-                                        offset.animateTo(
-                                            accumulated,
-                                            spring(dampingRatio = 0.8f, stiffness = 200f),
-                                        )
-                                    }
+                                    springTo(accumulated, stiffness = 200f, damping = 0.8f)
                                     return@detectHorizontalDragGestures
                                 }
 
-                                val nowArmed = travelled > widthPx * CommitFraction
+                                val nowArmed = travelled > commitPx
                                 if (nowArmed != armed) {
                                     armed = nowArmed
-                                    view.performHapticFeedback(
-                                        if (nowArmed) GestureThresholdActivate
-                                        else GestureThresholdDeactivate
-                                    )
+                                    view.performHapticFeedback(if (nowArmed) GestureThresholdActivate else GestureThresholdDeactivate)
                                 }
-                                scope.launch { offset.snapTo(accumulated) }
+                                springTo(accumulated, stiffness = 10_000f, damping = 1f)
                             },
                             onDragEnd = {
-                                if (armed) {
+                                val commitPx = widthPx * CommitFraction
+                                if (loose && kotlin.math.abs(accumulated) > commitPx) {
                                     view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                                     removed = true
-                                    // Fired now, not after the fling, so the gap closes
-                                    // in step with the row gliding away.
+                                    // Fired now, not after the fling, so the gap closes in step
+                                    // with the row gliding away.
                                     onDelete(item)
                                     scope.launch {
                                         offset.animateTo(
-                                            -widthPx * 1.1f,
+                                            kotlin.math.sign(accumulated) * widthPx * 1.1f,
                                             tween(durationMillis = 260, easing = TandemMotion.Standard),
                                         )
                                     }
                                 } else {
-                                    scope.launch {
-                                        offset.animateTo(
-                                            0f,
-                                            spring(dampingRatio = 0.75f, stiffness = 1500f),
-                                        )
-                                    }
+                                    // Cancelled: an elastic settle back, from the velocity it had.
+                                    springTo(0f, stiffness = 1500f, damping = 0.75f)
                                 }
                                 loose = false
                                 armed = false
                                 accumulated = 0f
                             },
                             onDragCancel = {
-                                scope.launch {
-                                    offset.animateTo(
-                                        0f,
-                                        spring(dampingRatio = 0.75f, stiffness = 1500f),
-                                    )
-                                }
+                                springTo(0f, stiffness = 1500f, damping = 0.75f)
                                 loose = false
                                 armed = false
                                 accumulated = 0f

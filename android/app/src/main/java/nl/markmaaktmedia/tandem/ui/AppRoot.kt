@@ -4,11 +4,18 @@ import androidx.activity.BackEventCompat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -83,9 +90,10 @@ fun AppRoot() {
     }
 }
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 private fun MainNavigation() {
-    val nav = remember { Nav() }
+    val nav = androidx.compose.runtime.saveable.rememberSaveable(saver = NavSaver) { Nav() }
     val startAtPair by LocalContext.current.graph.startAtPair.collectAsState()
     val pairLink by LocalContext.current.graph.pairLink.collectAsState()
     LaunchedEffect(pairLink) { if (pairLink != null) nav.push(Route.Pair) }
@@ -104,6 +112,12 @@ private fun MainNavigation() {
     val backProgress = remember { Animatable(0f) }
     var backEdge by remember { androidx.compose.runtime.mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
     var committed by remember { androidx.compose.runtime.mutableStateOf(false) }
+    // True from the moment the outgoing page has slid away until the page underneath has been
+    // composed for real. Hiding the layer keeps the gap to a couple of cheap frames.
+    var hideTop by remember { androidx.compose.runtime.mutableStateOf(false) }
+    // Read as a derived value: reading backProgress.value here would recompose this whole
+    // screen on every touch event of the gesture, which is what made it stutter.
+    val showBelow by remember { androidx.compose.runtime.derivedStateOf { backProgress.value > 0f } }
     val scope = rememberCoroutineScope()
     PredictiveBackHandler(enabled = nav.stack.size > 1) { events ->
         try {
@@ -111,20 +125,33 @@ private fun MainNavigation() {
                 backEdge = event.swipeEdge
                 backProgress.snapTo(event.progress)
             }
-            committed = true
-            backProgress.animateTo(1f, tween(TandemMotion.DurationFast))
-            nav.pop()
-            backProgress.snapTo(0f)
-            // The route transition is decided while the next frame is composed, so the
-            // "no transition" flag has to outlive the pop by a couple of frames. Cleared
-            // straight away, the previous page slid in again after the gesture had already
-            // slid this one out.
-            withFrameNanos { }
-            withFrameNanos { }
-            committed = false
         } catch (e: CancellationException) {
             scope.launch { backProgress.animateTo(0f, TandemMotion.spatial()) }
             throw e
+        }
+        // The finish runs in this screen's own scope, not in the handler's: popping the last
+        // page switches the handler off, and that would cancel the finish halfway and leave
+        // the outgoing page hidden for good.
+        scope.launch {
+            committed = true
+            try {
+                backProgress.animateTo(1f, tween(TandemMotion.DurationFast))
+                // The page underneath is already on screen, so it can take over without a
+                // seam: hide the outgoing layer, let the real page compose behind the copy,
+                // then swap in one frame. The route transition is decided while the next frame
+                // is composed, so the "no transition" flag has to outlive the pop by a couple
+                // of frames.
+                hideTop = true
+                nav.pop()
+                withFrameNanos { }
+                withFrameNanos { }
+            } finally {
+                withContext(NonCancellable) {
+                    backProgress.snapTo(0f)
+                    hideTop = false
+                    committed = false
+                }
+            }
         }
     }
 
@@ -133,7 +160,7 @@ private fun MainNavigation() {
     val below = nav.stack.getOrNull(nav.stack.size - 2)
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        if (below != null && backProgress.value > 0f) {
+        if (below != null && showBelow) {
             Box(
                 Modifier.fillMaxSize().graphicsLayer {
                     val p = backProgress.value
@@ -143,6 +170,8 @@ private fun MainNavigation() {
                 },
             ) { RouteContent(below, nav) }
         }
+        SharedTransitionLayout {
+        CompositionLocalProvider(LocalSharedScope provides this) {
         AnimatedContent(
             targetState = target,
             transitionSpec = {
@@ -151,12 +180,14 @@ private fun MainNavigation() {
                 } else {
                     val deeper = nav.stack.size >= lastSize
                     lastSize = nav.stack.size
+                    // Pages open out of the item that was tapped (shared bounds), so the page
+                    // itself only fades and settles instead of sliding across the screen.
                     if (deeper) {
-                        (slideInHorizontally(TandemMotion.spatial()) { it / 4 } + fadeIn(tween(TandemMotion.DurationMedium))) togetherWith
-                            (slideOutHorizontally(TandemMotion.spatial()) { -it / 6 } + fadeOut(tween(TandemMotion.DurationFast)))
+                        (fadeIn(tween(TandemMotion.DurationMedium)) + scaleIn(TandemMotion.spatial(), initialScale = 0.97f)) togetherWith
+                            fadeOut(tween(TandemMotion.DurationFast))
                     } else {
-                        (slideInHorizontally(TandemMotion.spatial()) { -it / 6 } + fadeIn(tween(TandemMotion.DurationMedium))) togetherWith
-                            (slideOutHorizontally(TandemMotion.spatial()) { it / 4 } + fadeOut(tween(TandemMotion.DurationFast)))
+                        fadeIn(tween(TandemMotion.DurationMedium)) togetherWith
+                            (fadeOut(tween(TandemMotion.DurationFast)) + scaleOut(TandemMotion.spatial(), targetScale = 0.97f))
                     }
                 }
             },
@@ -171,11 +202,16 @@ private fun MainNavigation() {
                     translationX = direction * p * 48.dp.toPx()
                     shape = RoundedCornerShape((28 * p).dp)
                     clip = true
-                    alpha = 1f - 0.25f * p
                 }
+                // Not faded: an alpha below one forces the whole screen into an offscreen layer.
+                if (hideTop) alpha = 0f
             },
         ) { route ->
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
+            CompositionLocalProvider(LocalRouteVisibility provides this) {
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
+            }
+        }
+        }
         }
         // Over every screen: an update is worth seeing wherever you are in the app.
         UpdateBanner(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp))
@@ -184,6 +220,12 @@ private fun MainNavigation() {
 
 @Composable
 private fun RouteContent(route: Route, nav: Nav) {
+    // Every page except the home tabs is the far end of a shared transition from its item.
+    Box(if (route == Route.Home) Modifier else Modifier.routeBounds(routeKey(route))) { RouteBody(route, nav) }
+}
+
+@Composable
+private fun RouteBody(route: Route, nav: Nav) {
     when (route) {
         Route.Home -> HomeTabs(nav)
         is Route.Device -> DeviceDetailScreen(route.id, onBack = { nav.pop() }, onRemote = { nav.push(Route.Remote(it)) })

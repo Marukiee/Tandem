@@ -45,6 +45,8 @@ import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.hotspot.HOTSPOT_EXTRA_ROWS
 import nl.markmaaktmedia.tandem.hotspot.HotspotSettingsRows
 import nl.markmaaktmedia.tandem.ui.Route
+import nl.markmaaktmedia.tandem.ui.routeBounds
+import nl.markmaaktmedia.tandem.ui.routeKey
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
 import nl.markmaaktmedia.tandem.ui.components.ContentRow
 import nl.markmaaktmedia.tandem.ui.components.InfoRow
@@ -130,7 +132,7 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
         item {
             SectionHeader(stringResource(R.string.settings_look))
             SettingsGroup {
-                ActionRow(0, 2, TandemIcons.Palette, stringResource(R.string.settings_appearance), stringResource(R.string.settings_appearance_sub), { onOpen(Route.Appearance) })
+                ActionRow(0, 2, TandemIcons.Palette, stringResource(R.string.settings_appearance), stringResource(R.string.settings_appearance_sub), { onOpen(Route.Appearance) }, modifier = Modifier.routeBounds(routeKey(Route.Appearance)))
                 ContentRow(1, 2, TandemIcons.Language, stringResource(R.string.settings_language)) {
                     SegmentedPillRow(
                         options = languages,
@@ -157,7 +159,7 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
             SectionHeader(stringResource(R.string.settings_notifications))
             SettingsGroup {
                 SwitchRow(0, 4, TandemIcons.Notifications, stringResource(R.string.settings_mirror), stringResource(R.string.settings_mirror_sub), mirror, { scope.launch { prefs.setMirrorNotifications(it) } })
-                ActionRow(1, 4, TandemIcons.Devices, stringResource(R.string.settings_mirror_apps), stringResource(R.string.settings_mirror_apps_sub), { onOpen(Route.MirrorApps) })
+                ActionRow(1, 4, TandemIcons.Devices, stringResource(R.string.settings_mirror_apps), stringResource(R.string.settings_mirror_apps_sub), { onOpen(Route.MirrorApps) }, modifier = Modifier.routeBounds(routeKey(Route.MirrorApps)))
                 SwitchRow(2, 4, TandemIcons.Key, stringResource(R.string.settings_codes), stringResource(R.string.settings_codes_sub), copyCodes, { scope.launch { prefs.setCopyCodes(it) } })
                 SwitchRow(3, 4, TandemIcons.Call, stringResource(R.string.settings_calls), stringResource(R.string.settings_calls_sub), calls, { scope.launch { prefs.setCallMirror(it) } })
             }
@@ -174,7 +176,7 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
         item {
             SectionHeader(stringResource(R.string.settings_access))
             SettingsGroup {
-                ActionRow(0, 1, TandemIcons.Shield, stringResource(R.string.settings_access_row), stringResource(R.string.settings_access_sub), { onOpen(Route.Access) })
+                ActionRow(0, 1, TandemIcons.Shield, stringResource(R.string.settings_access_row), stringResource(R.string.settings_access_sub), { onOpen(Route.Access) }, modifier = Modifier.routeBounds(routeKey(Route.Access)))
             }
         }
 
@@ -208,7 +210,7 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
         item {
             SectionHeader(stringResource(R.string.dev_section))
             SettingsGroup {
-                ActionRow(0, 1, TandemIcons.Info, stringResource(R.string.dev_title), stringResource(R.string.dev_sub), { onOpen(Route.Developer) })
+                ActionRow(0, 1, TandemIcons.Info, stringResource(R.string.dev_title), stringResource(R.string.dev_sub), { onOpen(Route.Developer) }, modifier = Modifier.routeBounds(routeKey(Route.Developer)))
             }
         }
 

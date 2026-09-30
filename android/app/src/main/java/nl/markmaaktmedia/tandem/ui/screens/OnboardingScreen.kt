@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
@@ -333,29 +335,19 @@ private fun Chips(items: List<Pair<Painter, String>>, modifier: Modifier = Modif
 }
 
 /**
- * The launcher icon: two pills leaning like a backslash, a light one on the left and
- * a rose one on the right, as a pair centred on the tile.
- *
- * Both pills are drawn on the icon's own 108 unit grid and turned about the middle of
- * the pair, not each about itself, which is what keeps them a pair. They arrive apart
- * and turned further, and come together on a spring.
+ * The launcher icon itself: the same two layers the home screen draws, so the welcome page
+ * shows exactly what is on the phone (and what is on the Mac). The layers are 108 wide with
+ * 72 of them visible, so they are drawn at one and a half times the tile and cropped by it.
+ * The pills settle in on a spring.
  */
 @Composable
 private fun TandemMark(size: Dp) {
-    val scheme = MaterialTheme.colorScheme
     val enter = remember { Animatable(0f) }
     val fade = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         launch { fade.animateTo(1f, TandemMotion.fadeSpec()) }
         enter.animateTo(1f, TandemMotion.bouncy())
     }
-    // The launcher tile is a deep colour with a white and a rose pill on it. Each theme
-    // gets the roles that land on that: in the dark one the containers are the deep ones
-    // and the accent tertiary is the rose.
-    val dark = scheme.background.luminance() < 0.5f
-    val tile = if (dark) scheme.primaryContainer else scheme.primary
-    val light = if (dark) scheme.onPrimaryContainer else scheme.onPrimary
-    val rose = if (dark) scheme.tertiary else scheme.tertiaryContainer
     Box(
         Modifier
             .size(size)
@@ -365,22 +357,22 @@ private fun TandemMark(size: Dp) {
                 scaleY = s
                 alpha = fade.value
             }
-            .clip(SquircleShape(size * 0.3f))
-            .background(tile),
+            .clip(SquircleShape(size * 0.3f)),
+        contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.fillMaxSize()) {
-            val u = this.size.minDimension / 108f
-            val turn = enter.value
-            // Larger than the launcher grid draws it: a tile this size can carry a bolder pair.
-            scale(1.2f, pivot = center) {
-                rotate(degrees = -32f - (1f - turn) * 45f, pivot = center) {
-                    val spread = (1f - turn) * 16f * u
-                    val corner = CornerRadius(8.5f * u)
-                    drawRoundRect(rose, Offset(53.5f * u + spread, 23f * u), Size(17f * u, 62f * u), corner)
-                    drawRoundRect(light, Offset(37.5f * u - spread, 23f * u), Size(17f * u, 62f * u), corner)
-                }
-            }
-        }
+        androidx.compose.foundation.Image(
+            painterResource(R.drawable.ic_launcher_background), null,
+            Modifier.requiredSize(size * 1.5f),
+        )
+        androidx.compose.foundation.Image(
+            painterResource(R.drawable.ic_launcher_foreground), null,
+            Modifier.requiredSize(size * 1.5f).graphicsLayer {
+                rotationZ = -(1f - enter.value) * 40f
+                val pair = 0.85f + 0.15f * enter.value
+                scaleX = pair
+                scaleY = pair
+            },
+        )
     }
 }
 
@@ -392,7 +384,7 @@ private fun PermissionsPage(preview: Boolean = false) {
     val status = rememberPermissionStatus()
     val requests = rememberPermissionRequests(status)
     val background = MaterialTheme.colorScheme.background
-    val total = 6
+    val total = 8
     // In a preview the cards flip on and off by themselves, so the morph can be watched
     // without asking Android for anything.
     val demo = remember { mutableStateMapOf<Int, Boolean>() }
@@ -447,6 +439,17 @@ private fun PermissionsPage(preview: Boolean = false) {
                     granted = granted(5, status.camera), onGrant = grant(5, requests::camera),
                     note = blockedNote(!status.camera && status.isBlocked(Manifest.permission.CAMERA), requests),
                     index = 5, total = total, modifier = Modifier.staggeredEntry(7),
+                )
+                PermissionCard(
+                    TandemIcons.Bluetooth, stringResource(R.string.perm_bluetooth), stringResource(R.string.perm_bluetooth_why),
+                    granted = granted(6, status.bluetooth), onGrant = grant(6, requests::bluetooth),
+                    note = blockedNote(!status.bluetooth && status.isBlocked(Permissions.bluetoothPermissions.toList()), requests),
+                    index = 6, total = total, modifier = Modifier.staggeredEntry(8),
+                )
+                PermissionCard(
+                    TandemIcons.Update, stringResource(R.string.perm_install), stringResource(R.string.perm_install_why),
+                    granted = granted(7, status.installApps), onGrant = grant(7) { Permissions.openInstallSettings(context) },
+                    index = 7, total = total, modifier = Modifier.staggeredEntry(9),
                 )
             }
             Spacer(Modifier.height(28.dp))

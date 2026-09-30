@@ -42,6 +42,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.ui.Route
+import nl.markmaaktmedia.tandem.ui.routeBounds
+import nl.markmaaktmedia.tandem.ui.routeKey
 import nl.markmaaktmedia.tandem.engine.EngineState
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.BatteryBadge
@@ -130,6 +133,7 @@ fun DevicesScreen(
         items(devices, key = { it.id }) { device ->
             DeviceCard(
                 device = device,
+                modifier = Modifier.routeBounds(routeKey(Route.Device(device.id))),
                 onOpen = { onOpenDevice(device.id) },
                 onSendFiles = { pickerTarget = device.id; picker.launch(arrayOf("*/*")) },
                 onSendClipboard = {
