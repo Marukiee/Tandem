@@ -34,6 +34,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -154,6 +156,9 @@ fun ActionTile(
         )
     }
 }
+
+/** The system green the Mac uses for a charging battery. */
+private val ChargingGreen = Color(0xFF30D158)
 
 /** The device as a round tonal badge. Filled with the accent while it is online. */
 @Composable
@@ -281,7 +286,15 @@ fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp 
         TandemMotion.colourSpec(), label = "batteryTint",
     )
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
-    Box(modifier.size(size), contentAlignment = Alignment.Center) {
+    // The whole ring gives a small bounce when charging starts or stops, so the change is seen.
+    val bounce = remember { androidx.compose.animation.core.Animatable(1f) }
+    var firstFrame by remember { androidx.compose.runtime.mutableStateOf(true) }
+    androidx.compose.runtime.LaunchedEffect(battery.charging) {
+        if (firstFrame) { firstFrame = false; return@LaunchedEffect }
+        bounce.snapTo(0.88f)
+        bounce.animateTo(1f, TandemMotion.bouncy())
+    }
+    Box(modifier.size(size).graphicsLayer { scaleX = bounce.value; scaleY = bounce.value }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size)) {
             val stroke = size.toPx() * 0.11f
             val inset = stroke / 2
@@ -326,10 +339,11 @@ fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
     val low = battery.level.toInt() <= 15 && !battery.charging
     val extras = LocalTandemExtraColors.current
     val base = MaterialTheme.colorScheme.surfaceContainerHighest
-    // Green while charging, as the Mac's badge is; the fill is the green faded into the usual pill.
+    // The Mac's charging green, not the deeper one used for the online dot, which reads as olive in a pill.
+    val charging = ChargingGreen
     val container by animateColorAsState(
         when {
-            battery.charging -> androidx.compose.ui.graphics.lerp(base, extras.online, 0.22f)
+            battery.charging -> androidx.compose.ui.graphics.lerp(base, charging, 0.3f)
             low -> extras.urgentContainer
             else -> base
         },
@@ -337,7 +351,7 @@ fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
     )
     val content by animateColorAsState(
         when {
-            battery.charging -> extras.online
+            battery.charging -> charging
             low -> extras.onUrgentContainer
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },
