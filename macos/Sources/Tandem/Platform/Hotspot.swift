@@ -119,7 +119,7 @@ final class HotspotCoordinator {
             case .on:
                 await joinAndConnect(id: id, name: name, engine: engine)
             case .manual:
-                model.hotspotStatus = .failed(String(localized: "Nobody turned the hotspot on in time"))
+                model.hotspotStatus = .failed(String(localized: "Nobody tapped the notification on your phone in time. Tap it next time, or start Shizuku so the phone can do it by itself."))
             default:
                 model.hotspotStatus = .failed(Self.reason(for: answer))
             }
@@ -168,7 +168,7 @@ final class HotspotCoordinator {
         case .refusedBattery: String(localized: "Your phone's battery is too low to share its hotspot")
         case .refusedRoaming: String(localized: "Your phone is roaming, so it does not share its hotspot")
         case .disabled: String(localized: "Hotspot sharing is switched off on your phone")
-        default: String(localized: "Your phone could not turn on its hotspot")
+        default: String(localized: "Your phone could not turn on its hotspot. Tap the notification on your phone, or make sure Shizuku is running so it can start by itself.")
         }
     }
 

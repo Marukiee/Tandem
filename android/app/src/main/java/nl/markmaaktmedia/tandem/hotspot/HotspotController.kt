@@ -47,6 +47,15 @@ data class HotspotSnapshot(
 
 enum class HotspotMethod { Shizuku, Manual }
 
+/** What the last try to turn the hotspot on came to, so a person can see why it needed a tap. */
+data class HotspotAttempt(
+    val at: Long,
+    val viaShizuku: Boolean,
+    val ok: Boolean,
+    /** What Shizuku or the system said when it failed. Technical, and meant for reading out. */
+    val detail: String = "",
+)
+
 /**
  * Turns the phone's hotspot on and off when a Mac asks, and keeps track of it.
  *
@@ -80,6 +89,9 @@ class HotspotController(
     private var clearJob: Job? = null
     private var watching: Job? = null
     private val idle = IdleTracker()
+
+    private val _lastAttempt = MutableStateFlow<HotspotAttempt?>(null)
+    val lastAttempt: StateFlow<HotspotAttempt?> = _lastAttempt.asStateFlow()
 
     private val _sessionBytes = MutableStateFlow(0L)
     /** What the Mac has used since this hotspot session started. */
@@ -180,6 +192,7 @@ class HotspotController(
             return
         }
 
+        var shizukuFailure: String? = null
         if (method() == HotspotMethod.Shizuku) {
             publish(HotspotSnapshot(Phase.Starting))
             val result = shizuku.start()
@@ -187,27 +200,34 @@ class HotspotController(
                 startedByUs = true
                 if (waitFor(START_WAIT_MS) { isOn() }) {
                     idle.reset()
+                    _lastAttempt.value = HotspotAttempt(clock(), viaShizuku = true, ok = true)
                     publish(HotspotSnapshot(Phase.On))
                     watchOn()
                 } else {
                     startedByUs = false
+                    _lastAttempt.value = HotspotAttempt(clock(), viaShizuku = true, ok = false, detail = "the hotspot did not come up")
                     fail("the hotspot did not come up")
                 }
                 return
             }
             // Shizuku refused or died: the person can still do it by hand.
             Log.w(TAG, "Shizuku could not start the hotspot: ${result.message}")
+            shizukuFailure = result.message
+            _lastAttempt.value = HotspotAttempt(clock(), viaShizuku = true, ok = false, detail = result.message)
         }
 
         publish(HotspotSnapshot(Phase.NeedsTap))
-        notifications.postRequest()
+        notifications.postRequest(shizuku.state.value)
         val came = waitFor(TAP_WAIT_MS) { isOn() }
         notifications.cancelRequest()
         if (came) {
             idle.reset()
+            // A tap after Shizuku failed keeps the failure on record: that is what needs fixing.
+            if (shizukuFailure == null) _lastAttempt.value = HotspotAttempt(clock(), viaShizuku = false, ok = true)
             publish(HotspotSnapshot(Phase.On))
             watchOn()
         } else {
+            if (shizukuFailure == null) _lastAttempt.value = HotspotAttempt(clock(), viaShizuku = false, ok = false, detail = "nobody turned it on")
             askedFor = false
             publish(HotspotSnapshot(Phase.Off))
         }

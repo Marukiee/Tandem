@@ -26,7 +26,7 @@ class HotspotNotifications(private val context: Context) {
     }
 
     /** The phone cannot start the hotspot alone. Heads up, and one tap opens the switch. */
-    fun postRequest() {
+    fun postRequest(shizuku: ShizukuState = ShizukuState.NotInstalled) {
         if (!Channels.canPost(context)) return
         ensureRequestChannel()
         manager.notify(
@@ -34,7 +34,18 @@ class HotspotNotifications(private val context: Context) {
             NotificationCompat.Builder(context, CHANNEL_REQUEST)
                 .setSmallIcon(R.drawable.ic_stat_tandem)
                 .setContentTitle(context.getString(R.string.hotspot_request_title))
-                .setContentText(context.getString(R.string.hotspot_request_text))
+                .setContentText(
+                    context.getString(
+                        when (shizuku) {
+                            // Allowed and running, yet the hotspot did not start: say so.
+                            ShizukuState.Ready -> R.string.hotspot_request_shizuku_failed
+                            ShizukuState.NotInstalled, ShizukuState.TooOld -> R.string.hotspot_request_text
+                            // Installed but off, or waiting for permission: this is the one
+                            // people miss, so the notification names it.
+                            else -> R.string.hotspot_request_shizuku_off
+                        },
+                    ),
+                )
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setContentIntent(openSettings())

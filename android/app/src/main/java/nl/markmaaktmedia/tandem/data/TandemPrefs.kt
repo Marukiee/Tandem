@@ -49,6 +49,7 @@ class TandemPrefs(private val context: Context) {
         val copyCodes = booleanPreferencesKey("copy_codes")
         val remoteMedia = booleanPreferencesKey("remote_media")
         val remoteMouse = booleanPreferencesKey("remote_mouse")
+        val deviceIcons = stringPreferencesKey("device_icons")
     }
 
     val appearance: Flow<Appearance> = data.map { p ->
@@ -77,6 +78,9 @@ class TandemPrefs(private val context: Context) {
     /** Trackpad screen: the media buttons start off, the left and right buttons start on. */
     val remoteMedia: Flow<Boolean> = data.map { it[Keys.remoteMedia] ?: false }
     val remoteMouse: Flow<Boolean> = data.map { it[Keys.remoteMouse] ?: true }
+
+    /** The icon a person picked for a device, by device id. A device without an entry keeps its platform's icon. */
+    val deviceIcons: Flow<Map<String, String>> = data.map { p -> parseIcons(p[Keys.deviceIcons]) }
 
     /**
      * Every setting as JSON, for backup. Keys are read from the store itself so a new setting
@@ -147,6 +151,20 @@ class TandemPrefs(private val context: Context) {
     suspend fun setCopyCodes(value: Boolean) = set(Keys.copyCodes, value)
     suspend fun setRemoteMedia(value: Boolean) = set(Keys.remoteMedia, value)
     suspend fun setRemoteMouse(value: Boolean) = set(Keys.remoteMouse, value)
+
+    /** [icon] null goes back to the platform's own icon. */
+    suspend fun setDeviceIcon(deviceId: String, icon: String?) {
+        context.store.edit { p ->
+            val icons = parseIcons(p[Keys.deviceIcons]).toMutableMap()
+            if (icon == null) icons.remove(deviceId) else icons[deviceId] = icon
+            p[Keys.deviceIcons] = JSONObject(icons as Map<*, *>).toString()
+        }
+    }
+
+    private fun parseIcons(raw: String?): Map<String, String> {
+        val root = runCatching { JSONObject(raw ?: "{}") }.getOrNull() ?: return emptyMap()
+        return root.keys().asSequence().associateWith { root.optString(it) }.filterValues { it.isNotEmpty() }
+    }
 
     /** Turns one app on or off. Which list changes depends on whether "all apps" is on. */
     suspend fun setMirrorApp(packageName: String, enabled: Boolean) {

@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 
 /** What the installer reports back: a confirmation to show, a success, or a failure. */
@@ -16,9 +17,11 @@ class InstallResultReceiver : BroadcastReceiver() {
                 confirm?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)?.let { context.startActivity(it) }
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
+            PackageInstaller.STATUS_FAILURE_ABORTED ->
+                context.graph.updater.reportInstallFailure(context.getString(R.string.update_reason_cancelled))
             else -> {
                 val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE).orEmpty()
-                context.graph.updater.reportInstallFailure(message.ifBlank { "The installation did not finish" })
+                context.graph.updater.reportInstallFailure(message.ifBlank { context.getString(R.string.update_reason_installer) })
             }
         }
     }

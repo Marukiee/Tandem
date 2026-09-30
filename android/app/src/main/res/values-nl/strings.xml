@@ -113,7 +113,7 @@
     <string name="settings_screenshot">Screenshots aanbieden om te delen</string>
     <string name="settings_screenshot_sub">Na een screenshot kun je hem met één tik naar een apparaat sturen</string>
     <string name="settings_bg_clipboard">Klembord op de achtergrond synchroniseren</string>
-    <string name="settings_bg_clipboard_sub">Android laat een app het klembord alleen lezen als hij in beeld is. Gebruik de tegel Klembord sturen, of geef de geavanceerde toestemming op de Toegang-pagina.</string>
+    <string name="settings_bg_clipboard_sub">Android laat een app het klembord alleen lezen als hij in beeld is. Gebruik de tegel Klembord sturen, of geef de geavanceerde toestemming op de Rechten-pagina.</string>
     <string name="settings_notifications">Meldingen en gesprekken</string>
     <string name="settings_mirror">Meldingen doorsturen</string>
     <string name="settings_mirror_sub">Ze verschijnen op je Mac, waar je ook kunt antwoorden</string>
@@ -126,8 +126,8 @@
     <string name="settings_hotspot">Hotspot</string>
     <string name="settings_hotspot_for_mac">Laat mijn Mac mijn hotspot gebruiken</string>
     <string name="settings_hotspot_for_mac_sub">Als je Mac geen verbinding heeft kan hij deze telefoon vragen de hotspot aan te zetten</string>
-    <string name="settings_access">Toegang</string>
-    <string name="settings_access_row">Wat Tandem mag</string>
+    <string name="settings_access">Rechten</string>
+    <string name="settings_access_row">Rechten</string>
     <string name="settings_access_sub">Zie wat aan staat, zet dingen aan en probeer ze</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_version">Geïnstalleerde versie</string>
@@ -153,7 +153,7 @@
     <string name="appearance_wallpaper_sub">Material You, net als de rest van je telefoon</string>
     <string name="appearance_accent">Accent</string>
     <string name="appearance_style">Paletstijl</string>
-    <string name="access_title">Toegang</string>
+    <string name="access_title">Rechten</string>
     <string name="access_intro">Tandem vraagt alleen wat een functie nodig heeft, en alles is optioneel. Zet dingen hier aan en probeer ze zonder tweede apparaat.</string>
     <string name="access_allowed">Toegestaan</string>
     <string name="perm_notifications">Meldingen</string>
@@ -192,7 +192,7 @@
     <string name="onb_later">Later</string>
     <string name="onb_pair_now">Nu koppelen</string>
     <string name="onb_perm_title">Wat Tandem vraagt</string>
-    <string name="onb_perm_body">Alles is optioneel en je kunt het later wijzigen onder Instellingen, Toegang.</string>
+    <string name="onb_perm_body">Alles is optioneel en je kunt het later wijzigen onder Instellingen, Rechten.</string>
     <string name="onb_pair_title">Koppel je eerste apparaat</string>
     <string name="onb_pair_body">Open Tandem op je Mac, toon de koppelcode en scan hem met deze telefoon.</string>
     <string name="remote_ready">Klaar</string>
@@ -299,4 +299,23 @@
     <string name="hotspot_row_on">Aan voor je Mac</string>
     <string name="hotspot_row_off">Uit</string>
     <string name="hotspot_data_used">Tot nu toe gebruikt: %1$s</string>
+    <string name="hotspot_request_shizuku_failed">Shizuku kon hem nu niet starten. Tik om de hotspot zelf aan te zetten.</string>
+    <string name="hotspot_request_shizuku_off">Shizuku draait niet, dus tik om hem zelf aan te zetten. Start Shizuku, dan gaat dit vanzelf.</string>
+    <string name="icon_phone">Telefoon</string>
+    <string name="icon_tablet">Tablet</string>
+    <string name="icon_laptop">Laptop</string>
+    <string name="icon_desktop">Desktop</string>
+    <string name="icon_watch">Horloge</string>
+    <string name="icon_tv">TV</string>
+    <string name="icon_default">Standaardicoon</string>
+    <string name="icon_change">Icoon wijzigen</string>
+    <string name="update_needs_permission">Sta installeren vanuit Tandem toe en kom terug</string>
+    <string name="update_allow">Toestaan</string>
+    <string name="update_reason_unreachable">GitHub is niet bereikbaar</string>
+    <string name="update_reason_no_apk">Bij die versie zit geen appbestand</string>
+    <string name="update_reason_status">Het downloaden mislukte (status %1$d)</string>
+    <string name="update_reason_empty">De download was leeg</string>
+    <string name="update_reason_damaged">De download is beschadigd (de controlesom klopt niet)</string>
+    <string name="update_reason_installer">De installatie kon niet worden afgerond</string>
+    <string name="update_reason_cancelled">De installatie is geannuleerd</string>
 </resources>

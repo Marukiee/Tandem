@@ -22,10 +22,10 @@ struct DeviceDetail: View {
                 ZStack(alignment: .top) {
                     content
                         .id(device.id)
-                        .transition(.page)
+                        .transition(.rise)
                 }
             }
-            .padding(26)
+            .pagePadding()
             .frame(maxWidth: 760)
             .frame(maxWidth: .infinity)
         }
@@ -449,6 +449,10 @@ struct HotspotCard: View {
                         Spacer()
                         if case .connected = model.hotspotStatus {
                             Button("Stop") { model.hotspot.stop(device.id) }.buttonStyle(.glass)
+                        }
+                        // A failure leaves its message up, and the way to try again with it.
+                        if case .failed = model.hotspotStatus {
+                            Button("Try again") { model.hotspot.requestNow(device.id) }.buttonStyle(.glass)
                         }
                     }
                     .padding(.horizontal, 14)

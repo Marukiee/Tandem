@@ -9,7 +9,7 @@ daarover (`HotspotMsg::Request`, antwoord `HotspotMsg::State`).
 ## Installatie
 
 **Telefoon.** Zet in Tandem, Instellingen, Hotspot "Laat mijn Mac mijn hotspot
-gebruiken" aan en geef Bluetooth toe onder Toegang. Alleen dan adverteert de telefoon.
+gebruiken" aan en geef Bluetooth toe onder Rechten. Alleen dan adverteert de telefoon.
 
 **Mac.** Vul in Instellingen, Hotspot de naam en het wachtwoord van de hotspot van je
 telefoon in (eenmalig, het wachtwoord staat in een privebestand op de Mac) en zet "Gebruik

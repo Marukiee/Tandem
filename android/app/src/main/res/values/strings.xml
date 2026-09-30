@@ -116,7 +116,7 @@
     <string name="settings_screenshot">Offer to share screenshots</string>
     <string name="settings_screenshot_sub">After a screenshot, a notification lets you send it to a device in one tap</string>
     <string name="settings_bg_clipboard">Sync clipboard in the background</string>
-    <string name="settings_bg_clipboard_sub">Android only lets an app read the clipboard while it is on screen. Use the Send clipboard tile, or grant the advanced permission in the Access page.</string>
+    <string name="settings_bg_clipboard_sub">Android only lets an app read the clipboard while it is on screen. Use the Send clipboard tile, or grant the advanced permission on the Permissions page.</string>
     <string name="settings_notifications">Notifications and calls</string>
     <string name="settings_mirror">Send notifications to your devices</string>
     <string name="settings_mirror_sub">They show up on your Mac, where you can reply</string>
@@ -129,8 +129,8 @@
     <string name="settings_hotspot">Hotspot</string>
     <string name="settings_hotspot_for_mac">Let my Mac use my hotspot</string>
     <string name="settings_hotspot_for_mac_sub">When your Mac has no connection it can ask this phone to turn the hotspot on</string>
-    <string name="settings_access">Access</string>
-    <string name="settings_access_row">What Tandem may do</string>
+    <string name="settings_access">Permissions</string>
+    <string name="settings_access_row">Permissions</string>
     <string name="settings_access_sub">See what is on, turn things on and try them</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_version">Installed version</string>
@@ -156,7 +156,7 @@
     <string name="appearance_wallpaper_sub">Material You, the same as the rest of your phone</string>
     <string name="appearance_accent">Accent</string>
     <string name="appearance_style">Palette style</string>
-    <string name="access_title">Access</string>
+    <string name="access_title">Permissions</string>
     <string name="access_intro">Tandem only asks for what a feature needs, and everything is optional. Turn things on here and try them without a second device.</string>
     <string name="access_allowed">Allowed</string>
     <string name="perm_notifications">Notifications</string>
@@ -195,7 +195,7 @@
     <string name="onb_later">Later</string>
     <string name="onb_pair_now">Pair now</string>
     <string name="onb_perm_title">What Tandem asks</string>
-    <string name="onb_perm_body">Everything is optional and you can change it later under Settings, Access.</string>
+    <string name="onb_perm_body">Everything is optional and you can change it later under Settings, Permissions.</string>
     <string name="onb_pair_title">Pair your first device</string>
     <string name="onb_pair_body">Open Tandem on your Mac, show the pairing code and scan it with this phone.</string>
     <string name="remote_ready">Ready</string>
@@ -302,4 +302,23 @@
     <string name="hotspot_row_on">On for your Mac</string>
     <string name="hotspot_row_off">Off</string>
     <string name="hotspot_data_used">Used so far: %1$s</string>
+    <string name="hotspot_request_shizuku_failed">Shizuku could not start it this time. Tap to turn the hotspot on yourself.</string>
+    <string name="hotspot_request_shizuku_off">Shizuku is not running, so tap to turn it on yourself. Start Shizuku for this to happen by itself.</string>
+    <string name="icon_phone">Phone</string>
+    <string name="icon_tablet">Tablet</string>
+    <string name="icon_laptop">Laptop</string>
+    <string name="icon_desktop">Desktop</string>
+    <string name="icon_watch">Watch</string>
+    <string name="icon_tv">TV</string>
+    <string name="icon_default">Default icon</string>
+    <string name="icon_change">Change the icon</string>
+    <string name="update_needs_permission">Allow installing from Tandem, then come back</string>
+    <string name="update_allow">Allow</string>
+    <string name="update_reason_unreachable">Could not reach GitHub</string>
+    <string name="update_reason_no_apk">That release has no app file attached</string>
+    <string name="update_reason_status">The download failed (status %1$d)</string>
+    <string name="update_reason_empty">The download came back empty</string>
+    <string name="update_reason_damaged">The download is damaged (the checksum does not match)</string>
+    <string name="update_reason_installer">The installer could not finish</string>
+    <string name="update_reason_cancelled">The installation was cancelled</string>
 </resources>

@@ -356,3 +356,8 @@
 "%lld from your phones" = "%lld van je telefoons";
 "macOS only tells Tandem the name of your network if it may see your location. Your position is never read." = "macOS geeft Tandem de naam van je netwerk alleen als het je locatie mag zien. Je positie wordt nooit gelezen.";
 "I'll type it myself" = "Ik typ het zelf";
+
+/* Hotspot failures */
+"Nobody tapped the notification on your phone in time. Tap it next time, or start Shizuku so the phone can do it by itself." = "Niemand tikte op tijd op de melding op je telefoon. Tik er de volgende keer op, of start Shizuku zodat de telefoon het zelf doet.";
+"Your phone could not turn on its hotspot. Tap the notification on your phone, or make sure Shizuku is running so it can start by itself." = "Je telefoon kon zijn hotspot niet aanzetten. Tik op de melding op je telefoon, of zorg dat Shizuku draait zodat hij zelf kan starten.";
+"Try again" = "Probeer opnieuw";

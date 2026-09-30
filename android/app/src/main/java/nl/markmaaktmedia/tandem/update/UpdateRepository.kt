@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import nl.markmaaktmedia.tandem.BuildConfig
+import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.data.TandemPrefs
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -64,11 +65,18 @@ class UpdateRepository(
      * fails, because an offline phone or a repo without releases is not news.
      */
     suspend fun check(manual: Boolean = true): ReleaseInfo? {
+        // A check must not wipe a download or install that is under way.
+        when (val busy = _state.value) {
+            is UpdateState.Downloading, is UpdateState.Installing, is UpdateState.NeedsPermission ->
+                return null
+            is UpdateState.ReadyToInstall -> return busy.release
+            else -> Unit
+        }
         _state.value = UpdateState.Checking
         val release = fetchLatest()
         prefs.setLastUpdateCheck(System.currentTimeMillis())
         if (release == null) {
-            _state.value = if (manual && !noReleaseYet) UpdateState.Failed(FAILED_REASON) else if (noReleaseYet) UpdateState.UpToDate else UpdateState.Idle
+            _state.value = if (manual && !noReleaseYet) UpdateState.Failed(context.getString(R.string.update_reason_unreachable)) else if (noReleaseYet) UpdateState.UpToDate else UpdateState.Idle
             return null
         }
         return if (VersionComparator.isNewer(release.versionName, currentVersion)) {
@@ -147,8 +155,17 @@ class UpdateRepository(
         )
     }
 
-    /** Downloads, verifies and hands the APK to the installer. One tap for the person. */
+    /** The release the person is in the middle of installing, so a failure can offer to carry on. */
+    @Volatile private var current: ReleaseInfo? = null
+
+    /**
+     * Downloads, verifies and hands the APK to the installer. One tap for the person.
+     *
+     * The install switch is asked for first: it is a settings screen the person has to walk
+     * through, and it is better to send them there before a download than after it.
+     */
     suspend fun downloadAndInstall(release: ReleaseInfo) {
+        current = release
         if (release.tag == PREVIEW_TAG) {
             for (step in 0..20) {
                 _state.value = UpdateState.Downloading(release, step / 20f)
@@ -157,28 +174,53 @@ class UpdateRepository(
             _state.value = UpdateState.ReadyToInstall(release, PREVIEW_TAG)
             return
         }
+        if (!canRequestInstalls()) {
+            _state.value = UpdateState.NeedsPermission(release)
+            openInstallPermissionSettings()
+            return
+        }
         val file = download(release) ?: return
-        install(file)
+        install(release, file)
+    }
+
+    /** The person came back from the settings screen: carry on if the switch is on now. */
+    suspend fun resumeAfterPermission() {
+        val waiting = _state.value as? UpdateState.NeedsPermission ?: return
+        if (!canRequestInstalls()) return
+        val path = waiting.filePath
+        if (path != null && File(path).exists()) install(waiting.release, File(path)) else downloadAndInstall(waiting.release)
+    }
+
+    /** The banner's retry: carries on with the release that was in progress, or looks again. */
+    suspend fun retry() {
+        val release = (_state.value as? UpdateState.Failed)?.release ?: current
+        if (release != null) downloadAndInstall(release) else check()
     }
 
     private suspend fun download(release: ReleaseInfo): File? {
         val url = release.apkUrl ?: run {
-            _state.value = UpdateState.Failed("That release has no APK attached")
+            _state.value = UpdateState.Failed(context.getString(R.string.update_reason_no_apk), release)
             return null
+        }
+        val target = File(updatesDir(), "Tandem-${release.versionName}.apk")
+        // A finished download from an earlier try, say one the installer then cancelled, is reused.
+        if (release.apkSizeBytes > 0 && target.length() == release.apkSizeBytes) {
+            _state.value = UpdateState.ReadyToInstall(release, target.absolutePath)
+            return target
         }
         _state.value = UpdateState.Downloading(release, 0f)
         return withContext(Dispatchers.IO) {
-            val target = File(updatesDir(), "Tandem-${release.versionName}.apk")
             runCatching {
                 val digest = MessageDigest.getInstance("SHA-256")
                 client.newCall(Request.Builder().url(url).header("User-Agent", "Tandem").build()).execute().use { response ->
-                    if (!response.isSuccessful) error("Download failed with status ${response.code}")
-                    val body = response.body ?: error("Empty download")
+                    if (!response.isSuccessful) error(context.getString(R.string.update_reason_status, response.code))
+                    val body = response.body ?: error(context.getString(R.string.update_reason_empty))
                     val total = body.contentLength().takeIf { it > 0 } ?: release.apkSizeBytes
                     target.outputStream().use { output ->
                         body.byteStream().use { input ->
                             val buffer = ByteArray(64 * 1024)
                             var copied = 0L
+                            var lastPercent = -1
                             while (true) {
                                 currentCoroutineContext().ensureActive()
                                 val read = input.read(buffer)
@@ -186,7 +228,12 @@ class UpdateRepository(
                                 output.write(buffer, 0, read)
                                 digest.update(buffer, 0, read)
                                 copied += read
-                                if (total > 0) _state.value = UpdateState.Downloading(release, (copied.toFloat() / total).coerceIn(0f, 1f))
+                                // Only when the number changes, not for every 64 KB chunk.
+                                val percent = if (total > 0) (copied * 100 / total).toInt().coerceIn(0, 100) else -1
+                                if (percent != lastPercent && percent >= 0) {
+                                    lastPercent = percent
+                                    _state.value = UpdateState.Downloading(release, percent / 100f)
+                                }
                             }
                         }
                     }
@@ -195,14 +242,15 @@ class UpdateRepository(
                     val expected = client.newCall(Request.Builder().url(shaUrl).build()).execute().use { it.body?.string().orEmpty() }
                         .trim().split(Regex("\\s+")).firstOrNull()?.lowercase()
                     val actual = digest.digest().joinToString("") { "%02x".format(it) }
-                    check(expected == null || expected == actual) { "The download is damaged (checksum does not match)" }
+                    check(expected == null || expected == actual) { context.getString(R.string.update_reason_damaged) }
                 }
                 cleanUpOldDownloads(keepFileName = target.name)
                 _state.value = UpdateState.ReadyToInstall(release, target.absolutePath)
                 target
             }.getOrElse { error ->
                 target.delete()
-                _state.value = UpdateState.Failed(error.message ?: FAILED_REASON)
+                Log.w(TAG, "download failed", error)
+                _state.value = UpdateState.Failed(error.message ?: context.getString(R.string.update_reason_unreachable), release)
                 null
             }
         }
@@ -218,16 +266,18 @@ class UpdateRepository(
     }
 
     /** Installs through a PackageInstaller session, so progress and errors come back to us. */
-    suspend fun install(file: File) = withContext(Dispatchers.IO) {
+    suspend fun install(release: ReleaseInfo, file: File) = withContext(Dispatchers.IO) {
+        current = release
         if (file.path == PREVIEW_TAG) {
             _state.value = UpdateState.Idle
             return@withContext
         }
         if (!canRequestInstalls()) {
+            _state.value = UpdateState.NeedsPermission(release, file.absolutePath)
             openInstallPermissionSettings()
-            _state.value = UpdateState.Failed("Allow Tandem to install apps, then try again")
             return@withContext
         }
+        _state.value = UpdateState.Installing(release)
         runCatching {
             val installer = context.packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
@@ -248,12 +298,13 @@ class UpdateRepository(
             }
         }.onFailure { error ->
             Log.w(TAG, "install failed", error)
-            _state.value = UpdateState.Failed(error.message ?: "Could not start the installer")
+            _state.value = UpdateState.Failed(error.message ?: context.getString(R.string.update_reason_installer), release)
         }
     }
 
+    /** The installer said no, or the person backed out of its screen. */
     fun reportInstallFailure(reason: String) {
-        _state.value = UpdateState.Failed(reason)
+        _state.value = UpdateState.Failed(reason, current)
     }
 
     fun cleanUpOldDownloads(keepFileName: String? = null) {
@@ -264,7 +315,6 @@ class UpdateRepository(
 
     private companion object {
         const val TAG = "UpdateRepository"
-        const val FAILED_REASON = "Could not reach GitHub"
         const val APK_NAME = "Tandem.apk"
         private const val PREVIEW_TAG = "preview"
 

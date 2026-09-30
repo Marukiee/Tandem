@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.TransferItem
+import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.PillShape
@@ -60,12 +62,45 @@ import uniffi.tandem_core.TandemPlatform
 import uniffi.tandem_core.TandemRoute
 
 @Composable
-fun platformIcon(platform: TandemPlatform): Painter = when (platform) {
-    TandemPlatform.ANDROID, TandemPlatform.IOS -> TandemIcons.Phone
-    TandemPlatform.MAC_OS -> TandemIcons.Laptop
-    TandemPlatform.LINUX -> TandemIcons.Desktop
-    TandemPlatform.WINDOWS -> TandemIcons.Windows
-    TandemPlatform.OTHER -> TandemIcons.Desktop
+fun platformIcon(platform: TandemPlatform, picked: String? = null): Painter =
+    DeviceIconChoice.fromKey(picked)?.painter() ?: when (platform) {
+        TandemPlatform.ANDROID, TandemPlatform.IOS -> TandemIcons.Phone
+        TandemPlatform.MAC_OS -> TandemIcons.Laptop
+        TandemPlatform.LINUX -> TandemIcons.Desktop
+        TandemPlatform.WINDOWS -> TandemIcons.Windows
+        TandemPlatform.OTHER -> TandemIcons.Desktop
+    }
+
+/** The icons a device can be given, the same six as on the Mac. */
+enum class DeviceIconChoice(val key: String, val label: Int) {
+    Phone("phone", R.string.icon_phone),
+    Tablet("tablet", R.string.icon_tablet),
+    Laptop("laptop", R.string.icon_laptop),
+    Desktop("desktop", R.string.icon_desktop),
+    Watch("watch", R.string.icon_watch),
+    Tv("tv", R.string.icon_tv);
+
+    @Composable
+    fun painter(): Painter = when (this) {
+        Phone -> TandemIcons.Phone
+        Tablet -> TandemIcons.Tablet
+        Laptop -> TandemIcons.Laptop
+        Desktop -> TandemIcons.DesktopMac
+        Watch -> TandemIcons.Watch
+        Tv -> TandemIcons.Tv
+    }
+
+    companion object {
+        fun fromKey(key: String?): DeviceIconChoice? = entries.firstOrNull { it.key == key }
+    }
+}
+
+/** The icon picked for this device, or null for the platform's own. Follows changes as they are made. */
+@Composable
+fun rememberPickedIcon(deviceId: String?): String? {
+    if (deviceId == null) return null
+    val icons by LocalContext.current.graph.deviceIcons.collectAsState()
+    return icons[deviceId]
 }
 
 @Composable
@@ -129,7 +164,10 @@ fun DeviceGlyph(
     size: Dp = 52.dp,
     /** For a glyph on a coloured tile, where the usual fill would disappear into it. */
     onTile: Boolean = false,
+    /** With the id, the icon the person picked for this device is used. */
+    deviceId: String? = null,
 ) {
+    val picked = rememberPickedIcon(deviceId)
     val container by animateColorAsState(
         when {
             onTile && online -> MaterialTheme.colorScheme.surface
@@ -143,7 +181,66 @@ fun DeviceGlyph(
         TandemMotion.colourSpec(), label = "glyphContent",
     )
     Box(modifier.size(size).clip(CircleShape).background(container), contentAlignment = Alignment.Center) {
-        Icon(platformIcon(platform), contentDescription = null, tint = content, modifier = Modifier.size(size * 0.5f))
+        AnimatedContent(
+            targetState = picked,
+            transitionSpec = { (scaleIn(TandemMotion.bouncy(), initialScale = 0.5f) + fadeIn()) togetherWith (scaleOut(TandemMotion.spatial(), targetScale = 0.5f) + fadeOut()) },
+            label = "glyphIcon",
+        ) { choice ->
+            Icon(platformIcon(platform, choice), contentDescription = null, tint = content, modifier = Modifier.size(size * 0.5f))
+        }
+    }
+}
+
+/**
+ * The six icons a device can be given, and a way back to the platform's own. Opens under the
+ * device header when its icon is tapped, and the choice takes effect everywhere at once.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+fun DeviceIconPicker(
+    picked: String?,
+    onPick: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    androidx.compose.foundation.layout.FlowRow(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        for (choice in DeviceIconChoice.entries) {
+            val selected = choice.key == picked
+            val container by animateColorAsState(
+                if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                TandemMotion.colourSpec(), label = "iconChoiceFill",
+            )
+            val content by animateColorAsState(
+                if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                TandemMotion.colourSpec(), label = "iconChoiceInk",
+            )
+            Row(
+                Modifier
+                    .clip(PillShape)
+                    .background(container)
+                    .bouncyClickable(withHaptics = true, onClickLabel = stringResource(choice.label)) { onPick(choice.key) }
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(choice.painter(), null, tint = content, modifier = Modifier.size(18.dp))
+                Text(stringResource(choice.label), style = MaterialTheme.typography.labelLarge, color = content)
+            }
+        }
+        if (picked != null) {
+            Row(
+                Modifier
+                    .clip(PillShape)
+                    .bouncyClickable(withHaptics = true) { onPick(null) }
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.icon_default), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            }
+        }
     }
 }
 
@@ -217,7 +314,7 @@ fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp 
                     animationSpec = androidx.compose.animation.core.infiniteRepeatable(tween(900), RepeatMode.Reverse),
                     label = "boltAlpha",
                 )
-                Icon(TandemIcons.Bolt, null, tint = tint, modifier = Modifier.size(size * 0.2f).graphicsLayer { alpha = pulse })
+                Icon(TandemIcons.BoltFilled, null, tint = tint, modifier = Modifier.size(size * 0.2f).graphicsLayer { alpha = pulse })
             }
         }
     }
@@ -227,10 +324,29 @@ fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp 
 @Composable
 fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
     val low = battery.level.toInt() <= 15 && !battery.charging
+    val extras = LocalTandemExtraColors.current
+    val base = MaterialTheme.colorScheme.surfaceContainerHighest
+    // Green while charging, as the Mac's badge is; the fill is the green faded into the usual pill.
+    val container by animateColorAsState(
+        when {
+            battery.charging -> androidx.compose.ui.graphics.lerp(base, extras.online, 0.22f)
+            low -> extras.urgentContainer
+            else -> base
+        },
+        TandemMotion.colourSpec(), label = "batteryBadgeFill",
+    )
+    val content by animateColorAsState(
+        when {
+            battery.charging -> extras.online
+            low -> extras.onUrgentContainer
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        TandemMotion.colourSpec(), label = "batteryBadgeInk",
+    )
     Row(
         modifier
             .clip(PillShape)
-            .background(if (low) LocalTandemExtraColors.current.urgentContainer else MaterialTheme.colorScheme.surfaceContainerHighest)
+            .background(container)
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -243,14 +359,10 @@ fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
             Icon(
                 if (charging) TandemIcons.Bolt else TandemIcons.Battery, null,
                 modifier = Modifier.size(15.dp),
-                tint = if (low) LocalTandemExtraColors.current.onUrgentContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = content,
             )
         }
-        Text(
-            "${battery.level}%",
-            style = MaterialTheme.typography.labelMedium,
-            color = if (low) LocalTandemExtraColors.current.onUrgentContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Text("${battery.level}%", style = MaterialTheme.typography.labelMedium, color = content)
     }
 }
 

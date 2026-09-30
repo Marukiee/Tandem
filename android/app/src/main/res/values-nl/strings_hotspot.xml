@@ -22,7 +22,7 @@
     <string name="hotspot_test_sub">Zet hem 20 seconden aan</string>
     <string name="hotspot_test_busy">Bezig met testen</string>
     <string name="hotspot_test_needs_pref">Zet eerst de schakelaar hierboven aan</string>
-    <string name="hotspot_test_needs_bluetooth">Sta Bluetooth toe onder Toegang, anders kan je Mac deze telefoon niet bereiken</string>
+    <string name="hotspot_test_needs_bluetooth">Sta Bluetooth toe onder Rechten, anders kan je Mac deze telefoon niet bereiken</string>
     <string name="hotspot_test_manual">Tik op de melding om de hotspot aan te zetten</string>
     <string name="hotspot_test_ok">De hotspot ging aan</string>
     <string name="hotspot_test_failed">De hotspot ging niet aan</string>
@@ -33,4 +33,10 @@
     <string name="hotspot_roaming_sub">Standaard uit, data in het buitenland kan duur zijn</string>
     <string name="hotspot_setup">Installatiegids</string>
     <string name="hotspot_setup_sub">Shizuku, Bluetooth en de Mac-kant, stap voor stap</string>
+    <string name="hotspot_test_shizuku_failed">Shizuku kon hem niet aanzetten (%1$s). Tik op de melding om hem aan te zetten.</string>
+    <string name="hotspot_last_attempt">Laatste poging</string>
+    <string name="hotspot_attempt_auto_ok">%1$s, hij ging vanzelf aan</string>
+    <string name="hotspot_attempt_manual_ok">%1$s, je hebt hem zelf aangezet</string>
+    <string name="hotspot_attempt_shizuku_failed">%1$s, Shizuku kon hem niet aanzetten: %2$s</string>
+    <string name="hotspot_attempt_nobody">%1$s, niemand heeft hem aangezet</string>
 </resources>

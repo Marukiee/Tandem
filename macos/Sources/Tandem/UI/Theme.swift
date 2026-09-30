@@ -57,6 +57,14 @@ enum Metrics {
     static var cardInner: CGFloat { inner(card, inset: cardInset) }
 }
 
+extension View {
+    /// The space around a page. The toolbar already keeps the content clear of the window
+    /// edge, so the top only needs a little on top of that, or the gap reads as wasted.
+    func pagePadding() -> some View {
+        padding(.horizontal, 26).padding(.bottom, 26).padding(.top, 4)
+    }
+}
+
 // MARK: Surfaces
 
 /// The surface content sits on. Glass floats above the content (toolbar, controls, the

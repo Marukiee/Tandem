@@ -4,6 +4,10 @@ import android.app.Application
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.runBlocking
 import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.engine.EngineHost
 import nl.markmaaktmedia.tandem.update.UpdateRepository
@@ -14,6 +18,11 @@ class Graph(app: Application) {
     val prefs = TandemPrefs(app)
     val host = EngineHost(app, prefs, scope)
     val updater = UpdateRepository(app, prefs)
+
+    /** Picked device icons, hot from the first frame so a list does not flash the default ones. */
+    val deviceIcons: kotlinx.coroutines.flow.StateFlow<Map<String, String>> = prefs.deviceIcons.stateIn(
+        scope, SharingStarted.Eagerly, runBlocking { prefs.deviceIcons.first() },
+    )
 
     /** Set by the first-run flow so the home screen opens straight on pairing. */
     val startAtPair = kotlinx.coroutines.flow.MutableStateFlow(false)

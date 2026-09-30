@@ -16,11 +16,12 @@ struct MenuBarPanel: View {
             if model.devices.isEmpty {
                 empty
             } else {
-                GlassEffectContainer(spacing: 10) {
-                    VStack(spacing: 2) {
-                        ForEach(model.devices, id: \.id) { device in
-                            MenuDeviceRow(device: device)
-                        }
+                // No glass container here: the buttons in a row sit close together, and in a
+                // container glass that close blends into one blob and drags the icons off centre
+                // as soon as one of them swells under the pointer.
+                VStack(spacing: 2) {
+                    ForEach(model.devices, id: \.id) { device in
+                        MenuDeviceRow(device: device)
                     }
                 }
             }
@@ -93,34 +94,32 @@ struct MenuBarPanel: View {
     /// Settings and the extras on the left, the main action on the right, all the
     /// same height so the row reads as one line.
     private var footer: some View {
-        GlassEffectContainer(spacing: 10) {
-            HStack(spacing: 8) {
-                Menu {
-                    Button("Pair a device…") { openMain(pairing: true) }
-                    Divider()
-                    Button("Quit Tandem") { NSApp.terminate(nil) }
-                        .keyboardShortcut("q")
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .frame(width: 18, height: 18)
-                }
-                .menuStyle(.button)
-                .menuIndicator(.hidden)
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .fixedSize()
-                .hoverSwell()
-                .help("More")
-
-                Spacer(minLength: 8)
-
-                Button("Open Tandem") { openMain(pairing: false) }
-                    .buttonStyle(.glassProminent)
-                    .tint(Palette.indigo)
-                    .hoverSwell(1.04)
+        HStack(spacing: 8) {
+            Menu {
+                Button("Pair a device…") { openMain(pairing: true) }
+                Divider()
+                Button("Quit Tandem") { NSApp.terminate(nil) }
+                    .keyboardShortcut("q")
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .frame(width: 18, height: 18)
             }
-            .controlSize(.large)
+            .menuStyle(.button)
+            .menuIndicator(.hidden)
+            .buttonStyle(.glass)
+            .buttonBorderShape(.circle)
+            .fixedSize()
+            .hoverSwell()
+            .help("More")
+
+            Spacer(minLength: 8)
+
+            Button("Open Tandem") { openMain(pairing: false) }
+                .buttonStyle(.glassProminent)
+                .tint(Palette.indigo)
+                .hoverSwell(1.04)
         }
+        .controlSize(.large)
     }
 
     private func openMain(pairing: Bool) {

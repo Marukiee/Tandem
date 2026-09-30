@@ -22,7 +22,7 @@
     <string name="hotspot_test_sub">Turns it on for 20 seconds</string>
     <string name="hotspot_test_busy">Testing</string>
     <string name="hotspot_test_needs_pref">Turn on the switch above first</string>
-    <string name="hotspot_test_needs_bluetooth">Allow Bluetooth under Access, or your Mac cannot reach this phone</string>
+    <string name="hotspot_test_needs_bluetooth">Allow Bluetooth under Permissions, or your Mac cannot reach this phone</string>
     <string name="hotspot_test_manual">Tap the notification to turn the hotspot on</string>
     <string name="hotspot_test_ok">The hotspot came on</string>
     <string name="hotspot_test_failed">The hotspot did not come on</string>
@@ -33,4 +33,10 @@
     <string name="hotspot_roaming_sub">Off by default, data abroad can be expensive</string>
     <string name="hotspot_setup">Setup guide</string>
     <string name="hotspot_setup_sub">Shizuku, Bluetooth and the Mac side, step by step</string>
+    <string name="hotspot_test_shizuku_failed">Shizuku could not start it (%1$s). Tap the notification to turn it on.</string>
+    <string name="hotspot_last_attempt">Last attempt</string>
+    <string name="hotspot_attempt_auto_ok">%1$s, it turned on by itself</string>
+    <string name="hotspot_attempt_manual_ok">%1$s, you turned it on</string>
+    <string name="hotspot_attempt_shizuku_failed">%1$s, Shizuku could not start it: %2$s</string>
+    <string name="hotspot_attempt_nobody">%1$s, nobody turned it on</string>
 </resources>

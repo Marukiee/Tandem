@@ -203,6 +203,8 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
                         is UpdateState.UpToDate -> stringResource(R.string.settings_up_to_date)
                         is UpdateState.Available -> stringResource(R.string.update_available, (updateState as UpdateState.Available).release.versionName)
                         is UpdateState.Failed -> (updateState as UpdateState.Failed).reason
+                        is UpdateState.Downloading -> stringResource(R.string.update_downloading, ((updateState as UpdateState.Downloading).progress * 100).toInt())
+                        is UpdateState.NeedsPermission -> stringResource(R.string.update_needs_permission)
                         else -> null
                     },
                     { scope.launch { graph.updater.check() } },

@@ -3,8 +3,13 @@ import SwiftUI
 import TandemCore
 
 extension AnyTransition {
-    /// How a page arrives and leaves: a short fade with a slight rise, never a snap.
-    static var page: AnyTransition {
+    /// How a whole page arrives and leaves: a plain fade. The page is a scroll view under the
+    /// toolbar, and moving or scaling it while it fades uncovers the strip under the toolbar
+    /// for a few frames, which shows as a light bar along the top edge.
+    static var page: AnyTransition { .opacity }
+
+    /// What sits inside a page, where a slight rise is safe: a short fade with a small lift.
+    static var rise: AnyTransition {
         .asymmetric(
             insertion: .opacity.combined(with: .offset(y: 14)).combined(with: .scale(scale: 0.99)),
             removal: .opacity

@@ -189,7 +189,7 @@ private fun DeviceTile(device: TandemDevice, selected: Boolean, onClick: () -> U
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            DeviceGlyph(device.platform, device.online, size = 44.dp, onTile = selected)
+            DeviceGlyph(device.platform, device.online, size = 44.dp, onTile = selected, deviceId = device.id)
             Spacer(Modifier.weight(1f))
             androidx.compose.animation.AnimatedVisibility(visible = selected, enter = scaleIn(TandemMotion.springy()) + fadeIn(), exit = fadeOut()) {
                 Icon(TandemIcons.CheckCircleFilled, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))

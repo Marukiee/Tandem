@@ -21,7 +21,15 @@ sealed interface UpdateState {
     data class Available(val release: ReleaseInfo) : UpdateState
     data class Downloading(val release: ReleaseInfo, val progress: Float) : UpdateState
     data class ReadyToInstall(val release: ReleaseInfo, val filePath: String) : UpdateState
-    data class Failed(val reason: String) : UpdateState
+
+    /** The download is waiting for the "install unknown apps" switch; it carries on when the person comes back. */
+    data class NeedsPermission(val release: ReleaseInfo, val filePath: String? = null) : UpdateState
+
+    /** Handed to the installer, which is showing its own confirmation or working. */
+    data class Installing(val release: ReleaseInfo) : UpdateState
+
+    /** [release] is set when trying again can pick up where it stopped, without asking GitHub again. */
+    data class Failed(val reason: String, val release: ReleaseInfo? = null) : UpdateState
 }
 
 /**

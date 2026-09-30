@@ -32,7 +32,7 @@ struct NotificationsView: View {
                     }
                 }
             }
-            .padding(26)
+            .pagePadding()
             .frame(maxWidth: 760, alignment: .leading)
             .frame(maxWidth: .infinity)
             .animation(.tandem, value: model.mirrored.map(\.id))

@@ -3,6 +3,8 @@ package nl.markmaaktmedia.tandem.ui.screens
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -31,13 +34,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.roundToInt
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.hotspot.BleAvailability
@@ -74,6 +80,7 @@ fun HotspotScreen(onBack: () -> Unit) {
     val sessionBytes by module.controller.sessionBytes.collectAsState()
     val snapshot by module.controller.snapshot.collectAsState()
     val shizuku by module.shizuku.state.collectAsState()
+    val attempt by module.controller.lastAttempt.collectAsState()
     val permissions = rememberPermissionStatus()
     val ready = permissions.bluetooth && permissions.notifications
 
@@ -132,13 +139,19 @@ fun HotspotScreen(onBack: () -> Unit) {
                     module.controller.test()
                     scope.launch {
                         val result = withTimeoutOrNull(25_000) { module.controller.snapshot.first { it.phase != Phase.Starting } }
-                        val text = when (result?.phase) {
-                            Phase.On -> R.string.hotspot_test_ok
-                            Phase.NeedsTap -> R.string.hotspot_test_manual
-                            Phase.Refused -> if (result.refusal == Refusal.Battery) R.string.hotspot_test_battery else R.string.hotspot_test_roaming
-                            else -> R.string.hotspot_test_failed
+                        val failure = module.controller.lastAttempt.value?.takeIf { it.viaShizuku && !it.ok }
+                        val text = when {
+                            result?.phase == Phase.NeedsTap && failure != null -> context.getString(R.string.hotspot_test_shizuku_failed, failure.detail)
+                            else -> context.getString(
+                                when (result?.phase) {
+                                    Phase.On -> R.string.hotspot_test_ok
+                                    Phase.NeedsTap -> R.string.hotspot_test_manual
+                                    Phase.Refused -> if (result.refusal == Refusal.Battery) R.string.hotspot_test_battery else R.string.hotspot_test_roaming
+                                    else -> R.string.hotspot_test_failed
+                                },
+                            )
                         }
-                        Toast.makeText(context, context.getString(text), Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, text, Toast.LENGTH_LONG).show()
                     }
                 },
             )
@@ -164,8 +177,9 @@ fun HotspotScreen(onBack: () -> Unit) {
                 ShizukuState.NotInstalled -> R.string.hotspot_method_not_installed
                 ShizukuState.TooOld -> R.string.hotspot_method_too_old
             }
+            val rows = if (attempt != null) 3 else 2
             ActionRow(
-                0, 2, TandemIcons.Hotspot, stringResource(R.string.hotspot_method), stringResource(methodText),
+                0, rows, TandemIcons.Hotspot, stringResource(R.string.hotspot_method), stringResource(methodText),
                 onClick = {
                     when (shizuku) {
                         ShizukuState.NeedsPermission -> module.shizuku.requestPermission()
@@ -180,8 +194,24 @@ fun HotspotScreen(onBack: () -> Unit) {
                     { Icon(TandemIcons.Check, null, tint = LocalTandemExtraColors.current.online, modifier = Modifier.size(24.dp)) }
                 } else null,
             )
+            attempt?.let { last ->
+                val time = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(last.at))
+                ActionRow(
+                    1, rows, TandemIcons.Info, stringResource(R.string.hotspot_last_attempt),
+                    when {
+                        last.ok && last.viaShizuku -> stringResource(R.string.hotspot_attempt_auto_ok, time)
+                        last.ok -> stringResource(R.string.hotspot_attempt_manual_ok, time)
+                        last.viaShizuku -> stringResource(R.string.hotspot_attempt_shizuku_failed, time, last.detail)
+                        else -> stringResource(R.string.hotspot_attempt_nobody, time)
+                    },
+                    onClick = {},
+                    trailing = if (last.ok) {
+                        { Icon(TandemIcons.Check, null, tint = LocalTandemExtraColors.current.online, modifier = Modifier.size(24.dp)) }
+                    } else null,
+                )
+            }
             ActionRow(
-                1, 2, TandemIcons.OpenInNew, stringResource(R.string.hotspot_setup), stringResource(R.string.hotspot_setup_sub),
+                rows - 1, rows, TandemIcons.OpenInNew, stringResource(R.string.hotspot_setup), stringResource(R.string.hotspot_setup_sub),
                 onClick = {
                     context.startActivity(
                         Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Marukiee/Tandem/blob/main/docs/HOTSPOT.md")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -193,13 +223,33 @@ fun HotspotScreen(onBack: () -> Unit) {
     }
 }
 
-/** The limit is a slider over a few sensible steps; the number under it says what it means. */
+/**
+ * The limit is a slider over a few sensible steps. The thumb follows the finger freely and
+ * ticks as it passes each step, then settles on the nearest one with a spring, so it feels
+ * smooth to drag and still ends on a value that means something.
+ */
 @Composable
 private fun DataLimitCard(limitMb: Long, usedBytes: Long, onLimit: (Long) -> Unit, onReset: () -> Unit) {
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
     val saved = LIMITS_MB.indexOf(limitMb).coerceAtLeast(0)
-    var position by remember(saved) { mutableFloatStateOf(saved.toFloat()) }
-    val shown = LIMITS_MB[position.toInt().coerceIn(0, LIMITS_MB.lastIndex)]
+    val thumb = remember { Animatable(saved.toFloat()) }
+    var dragging by remember { mutableStateOf(false) }
+    var position by remember { mutableFloatStateOf(saved.toFloat()) }
+    var lastStep by remember { mutableIntStateOf(saved) }
+
+    // A change from outside (the limit was reset) moves the thumb, unless it is being dragged.
+    LaunchedEffect(saved) {
+        if (!dragging && thumb.value.roundToInt() != saved) {
+            thumb.animateTo(saved.toFloat(), spring(dampingRatio = 0.7f, stiffness = 380f))
+            lastStep = saved
+        }
+    }
+
+    val value = if (dragging) position else thumb.value
+    val step = value.roundToInt().coerceIn(0, LIMITS_MB.lastIndex)
+    val shown = LIMITS_MB[step]
     val used = android.text.format.Formatter.formatShortFileSize(context, usedBytes)
 
     Column(
@@ -218,11 +268,30 @@ private fun DataLimitCard(limitMb: Long, usedBytes: Long, onLimit: (Long) -> Uni
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Slider(
-            value = position,
-            onValueChange = { position = it },
-            onValueChangeFinished = { onLimit(shown) },
+            value = value,
+            onValueChange = { moved ->
+                if (!dragging) {
+                    dragging = true
+                    lastStep = moved.roundToInt()
+                }
+                position = moved
+                val now = moved.roundToInt().coerceIn(0, LIMITS_MB.lastIndex)
+                if (now != lastStep) {
+                    lastStep = now
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+                }
+            },
+            onValueChangeFinished = {
+                val target = position.roundToInt().coerceIn(0, LIMITS_MB.lastIndex)
+                onLimit(LIMITS_MB[target])
+                haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                scope.launch {
+                    thumb.snapTo(position)
+                    dragging = false
+                    thumb.animateTo(target.toFloat(), spring(dampingRatio = 0.7f, stiffness = 380f))
+                }
+            },
             valueRange = 0f..LIMITS_MB.lastIndex.toFloat(),
-            steps = LIMITS_MB.size - 2,
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.hotspot_data_none), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))

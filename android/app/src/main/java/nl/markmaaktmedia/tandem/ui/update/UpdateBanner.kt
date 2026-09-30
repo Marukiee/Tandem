@@ -65,10 +65,16 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
         is UpdateState.Available -> s.release
         is UpdateState.Downloading -> s.release
         is UpdateState.ReadyToInstall -> s.release
+        is UpdateState.NeedsPermission -> s.release
+        is UpdateState.Installing -> s.release
         else -> null
     }
     val failed = state as? UpdateState.Failed
     // A failure is shown until it is retried or the app is reopened; a release once dismissed stays hidden.
+    // Back from the "install unknown apps" screen with the switch on: carry on where it stopped.
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        scope.launch { updater.resumeAfterPermission() }
+    }
     val visible = failed != null || (release != null && release.tag != dismissed)
 
     AnimatedVisibility(
@@ -101,11 +107,16 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                                 stringResource(R.string.update_banner_title, release.versionName),
                                 style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis,
                             )
-                            Text(stringResource(R.string.update_on_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodySmall)
+                            Text(
+                                if (state is UpdateState.NeedsPermission) stringResource(R.string.update_needs_permission)
+                                else stringResource(R.string.update_on_version, BuildConfig.VERSION_NAME),
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         }
                         when (val s = state) {
-                            is UpdateState.Downloading -> PillSpinner(size = 24.dp, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                            is UpdateState.ReadyToInstall -> PrimaryPillButton(stringResource(R.string.update_install), { scope.launch { updater.install(java.io.File(s.filePath)) } })
+                            is UpdateState.Downloading, is UpdateState.Installing -> PillSpinner(size = 24.dp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            is UpdateState.ReadyToInstall -> PrimaryPillButton(stringResource(R.string.update_install), { scope.launch { updater.install(s.release, java.io.File(s.filePath)) } })
+                            is UpdateState.NeedsPermission -> PrimaryPillButton(stringResource(R.string.update_allow), { updater.openInstallPermissionSettings() })
                             else -> PrimaryPillButton(stringResource(R.string.update_download), { scope.launch { updater.downloadAndInstall(release) } })
                         }
                         TandemIconButton(
@@ -135,7 +146,7 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                             Text(stringResource(R.string.update_failed), style = MaterialTheme.typography.titleSmall)
                             Text(failed.reason, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
-                        SecondaryPillButton(stringResource(R.string.update_retry), { scope.launch { updater.check() } }, icon = TandemIcons.Refresh)
+                        SecondaryPillButton(stringResource(R.string.update_retry), { scope.launch { updater.retry() } }, icon = TandemIcons.Refresh)
                     }
                 }
             }

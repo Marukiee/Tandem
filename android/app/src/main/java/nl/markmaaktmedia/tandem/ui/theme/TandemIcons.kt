@@ -45,6 +45,10 @@ object TandemIcons {
     val Laptop: Painter @Composable get() = painterResource(R.drawable.sym_laptop_mac)
     val Desktop: Painter @Composable get() = painterResource(R.drawable.sym_computer)
     val Windows: Painter @Composable get() = painterResource(R.drawable.sym_desktop_windows)
+    val DesktopMac: Painter @Composable get() = painterResource(R.drawable.sym_desktop_mac)
+    val Tablet: Painter @Composable get() = painterResource(R.drawable.sym_tablet_android)
+    val Watch: Painter @Composable get() = painterResource(R.drawable.sym_watch)
+    val Tv: Painter @Composable get() = painterResource(R.drawable.sym_tv)
 
     // Actions
     val Send: Painter @Composable get() = painterResource(R.drawable.sym_send)
@@ -64,6 +68,7 @@ object TandemIcons {
     // Status
     val Battery: Painter @Composable get() = painterResource(R.drawable.sym_battery_full)
     val Bolt: Painter @Composable get() = painterResource(R.drawable.sym_bolt)
+    val BoltFilled: Painter @Composable get() = painterResource(R.drawable.sym_bolt_filled)
     val Wifi: Painter @Composable get() = painterResource(R.drawable.sym_wifi)
     val Cellular: Painter @Composable get() = painterResource(R.drawable.sym_signal_cellular_alt)
     val Hotspot: Painter @Composable get() = painterResource(R.drawable.sym_wifi_tethering)

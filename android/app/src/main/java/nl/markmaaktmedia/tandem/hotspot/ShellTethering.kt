@@ -1,6 +1,8 @@
 package nl.markmaaktmedia.tandem.hotspot
 
 import android.content.Context
+import android.content.ContextWrapper
+import android.os.IBinder
 import android.os.Looper
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.InvocationTargetException
@@ -9,6 +11,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.function.Supplier
 
 /**
  * Starts and stops Wi-Fi tethering through the system's TetheringManager.
@@ -159,10 +162,28 @@ internal class ShellTethering {
 
     private fun manager(): Any {
         manager?.let { return it }
-        val created = systemContext().getSystemService("tethering") ?: error("this device has no tethering service")
+        val base = systemContext()
+        // The tethering service checks that the calling package belongs to the calling uid.
+        // The system context calls itself "android", which is not the shell's package, so the
+        // manager is built by hand with the name the shell really has.
+        val created = shellManager(base) ?: base.getSystemService("tethering") ?: error("this device has no tethering service")
         manager = created
         return created
     }
+
+    private fun shellManager(base: Context): Any? = runCatching {
+        val wrapper = object : ContextWrapper(base) {
+            override fun getOpPackageName(): String = SHELL_PACKAGE
+            override fun getPackageName(): String = SHELL_PACKAGE
+            override fun getAttributionTag(): String? = null
+        }
+        val binder = Class.forName("android.os.ServiceManager")
+            .getMethod("getService", String::class.java).invoke(null, "tethering") as? IBinder
+            ?: return@runCatching null
+        Class.forName("android.net.TetheringManager")
+            .getConstructor(Context::class.java, Supplier::class.java)
+            .newInstance(wrapper, Supplier { binder })
+    }.getOrNull()
 
     private fun systemContext(): Context {
         // ActivityThread wants a main looper to exist. Shizuku's process already has one;
@@ -196,7 +217,9 @@ internal class ShellTethering {
     }
 
     companion object {
-        const val TETHERING_WIFI = 1
+        /** android.net.TetheringManager.TETHERING_WIFI. It is 0: 1 is USB, which is what this asked for at first. */
+        const val TETHERING_WIFI = 0
+        const val SHELL_PACKAGE = "com.android.shell"
         const val START_TIMEOUT_SECONDS = 15L
 
         // Ours, all below zero so they cannot clash with the system's error codes.
@@ -215,5 +238,23 @@ internal class ShellTethering {
                 "not allowed to change tethering (code $code)"
             else -> "tethering error $code"
         }
+    }
+}
+
+/**
+ * Lets the shell run the same code without Shizuku, for checking a device from a computer:
+ * `CLASSPATH=<apk> app_process / nl.markmaaktmedia.tandem.hotspot.ShellTetheringCli start|stop|status`.
+ */
+object ShellTetheringCli {
+    @JvmStatic
+    fun main(args: Array<String>) {
+        val tethering = ShellTethering()
+        when (args.firstOrNull()) {
+            "stop" -> tethering.stop().let { println("stop: ${it.code} ${it.message}") }
+            "status" -> tethering.status().let { println("clients=${it.clients} tethered=${it.tethered}") }
+            else -> tethering.start().let { println("start: ${it.code} ${it.message}") }
+        }
+        System.out.flush()
+        Runtime.getRuntime().halt(0)
     }
 }

@@ -10,7 +10,7 @@
     <string name="dev_pairing">Pairing screen</string>
     <string name="dev_pairing_sub">The real screen. Nothing pairs unless you scan a code.</string>
     <string name="dev_access">Permissions</string>
-    <string name="dev_access_sub">The real Access page with its status and test buttons</string>
+    <string name="dev_access_sub">The real Permissions page with its status and test buttons</string>
     <string name="dev_update">Update banner</string>
     <string name="dev_update_sub">Shows a fake update at the top. Update walks through downloading, nothing is installed.</string>
 </resources>

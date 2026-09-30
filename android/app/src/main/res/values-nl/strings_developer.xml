@@ -10,7 +10,7 @@
     <string name="dev_pairing">Koppelscherm</string>
     <string name="dev_pairing_sub">Het echte scherm. Er wordt niets gekoppeld tenzij je een code scant.</string>
     <string name="dev_access">Rechten</string>
-    <string name="dev_access_sub">De echte Toegang-pagina met status en testknoppen</string>
+    <string name="dev_access_sub">De echte Rechten-pagina met status en testknoppen</string>
     <string name="dev_update">Updatebalk</string>
     <string name="dev_update_sub">Toont bovenin een nep-update. Bijwerken loopt door het downloaden, er wordt niets geïnstalleerd.</string>
 </resources>
