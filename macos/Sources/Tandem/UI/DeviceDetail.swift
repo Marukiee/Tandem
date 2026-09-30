@@ -8,9 +8,8 @@ struct DeviceDetail: View {
     let device: TandemDevice
 
     @LocalState private var confirmRemoval = false
-    /// 0 while the big name in the header card is on screen, 1 once it has scrolled
-    /// into the toolbar's place.
-    @LocalState private var handoff: CGFloat = 0
+    /// True once the big name in the header card has scrolled away and the toolbar shows it.
+    @LocalState private var compact = false
     @LocalState private var position = ScrollPosition(edge: .top)
 
     var body: some View {
@@ -30,31 +29,17 @@ struct DeviceDetail: View {
             .frame(maxWidth: .infinity)
         }
         .scrollPosition($position)
-        .trackScrollHandoff($handoff)
+        .trackCompactTitle($compact)
         .animation(.tandem, value: device.id)
         .animation(.tandem, value: device.online)
         .toolbar {
-            ToolbarItem(placement: .navigation) {
-                toolbarTitle
-            }
-            .sharedBackgroundVisibility(.hidden)
-
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button { pickFiles() } label: {
-                    Label("Send files", systemImage: "paperplane")
-                }
-                .help("Send files")
-                .disabled(!device.online)
-                Button { model.sendClipboard(to: [device.id]) } label: {
-                    Label("Send clipboard", systemImage: "doc.on.clipboard")
-                }
-                .help("Send clipboard")
-                .disabled(!device.online)
+            if compact {
+                ToolbarItem(placement: .navigation) { toolbarTitle }
             }
         }
         .onChange(of: device.id) {
             confirmRemoval = false
-            handoff = 0
+            compact = false
             position.scrollTo(edge: .top)
         }
         .confirmationDialog(
@@ -74,23 +59,8 @@ struct DeviceDetail: View {
     /// The device you are on, where the window title used to be. It arrives as the
     /// name in the header card leaves.
     private var toolbarTitle: some View {
-        HandoffTitle(progress: handoff) {
-            HStack(spacing: 8) {
-                Image(systemName: device.platform.symbol)
-                    .foregroundStyle(device.online ? Palette.indigo : Color.secondary)
-                    .contentTransition(.symbolEffect(.replace))
-                Text(device.name)
-                    .font(.headline)
-                    .lineLimit(1)
-                    .contentTransition(.opacity)
-                Circle()
-                    .fill(device.online ? Color.green : Color.secondary.opacity(0.5))
-                    .frame(width: 7, height: 7)
-            }
-            .padding(.horizontal, 6)
-        }
-        .animation(.tandem, value: device.id)
-        .animation(.tandemFade, value: device.online)
+        PillMark(size: 22)
+            .padding(.horizontal, 2)
     }
 
     // MARK: Header
@@ -105,7 +75,7 @@ struct DeviceDetail: View {
                         .font(.title.weight(.bold))
                         .lineLimit(1)
                         .contentTransition(.opacity)
-                        .handoffSource(handoff)
+                        .titleHandoff(compact)
                     HStack(spacing: 8) {
                         Chip(
                             symbol: device.online ? "checkmark.circle.fill" : "circle.dashed",
@@ -192,9 +162,14 @@ struct DeviceDetail: View {
                     model.sendClipboard(to: [device.id])
                 }
                 if device.platform == .android {
-                    GlassActionButton(title: "Find phone", symbol: "bell.and.waves.left.and.right") {
-                        model.ring(device.id, on: true)
-                        model.showToast(String(localized: "Your phone is ringing"))
+                    let ringing = model.ringing.contains(device.id)
+                    GlassActionButton(
+                        title: ringing ? "Stop ringing" : "Find phone",
+                        symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right",
+                        prominent: ringing
+                    ) {
+                        model.ring(device.id, on: !ringing)
+                        model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
                     }
                 }
                 Spacer(minLength: 0)

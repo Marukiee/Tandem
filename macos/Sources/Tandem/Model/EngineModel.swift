@@ -461,7 +461,20 @@ final class EngineModel {
         Task { await engine.clipboardChanged(text: text, isUrl: isURL) }
     }
 
+    /// Phones that are ringing because of this Mac, so the button can turn into Stop. The
+    /// phone does not report back, so it also lets go of the state after a minute.
+    var ringing: Set<String> = []
+
     func ring(_ id: String, on: Bool) {
+        if on {
+            ringing.insert(id)
+            Task {
+                try? await Task.sleep(for: .seconds(60))
+                ringing.remove(id)
+            }
+        } else {
+            ringing.remove(id)
+        }
         Task { try? await engine?.ring(target: id, on: on) }
     }
 

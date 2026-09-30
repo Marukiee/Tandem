@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dev_title">Ontwikkelaarsopties</string>
+    <string name="dev_sub">Bekijk schermen zonder iets te veranderen</string>
+    <string name="dev_intro">Alle knoppen werken, maar er wordt niets opgeslagen en er wordt niets aan Android gevraagd.</string>
+    <string name="dev_screens">Schermen</string>
+    <string name="dev_pieces">Onderdelen</string>
+    <string name="dev_onboarding">Onboarding</string>
+    <string name="dev_onboarding_sub">De eerste keer opstarten. De rechtenkaarten gaan zelf aan en uit.</string>
+    <string name="dev_pairing">Koppelscherm</string>
+    <string name="dev_pairing_sub">Het echte scherm. Er wordt niets gekoppeld tenzij je een code scant.</string>
+    <string name="dev_access">Rechten</string>
+    <string name="dev_access_sub">De echte Toegang-pagina met status en testknoppen</string>
+    <string name="dev_update">Updatebalk</string>
+    <string name="dev_update_sub">Toont bovenin een nep-update. Bijwerken loopt door het downloaden, er wordt niets geïnstalleerd.</string>
+</resources>

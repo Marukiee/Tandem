@@ -192,6 +192,8 @@ private fun RouteContent(route: Route, nav: Nav) {
         Route.Access -> AccessScreen(onBack = { nav.pop() })
         Route.MirrorApps -> MirrorAppsScreen(onBack = { nav.pop() })
         Route.Appearance -> AppearanceScreen(onBack = { nav.pop() })
+        Route.Developer -> nl.markmaaktmedia.tandem.ui.screens.DeveloperScreen(onBack = { nav.pop() }, onOpen = { nav.push(it) })
+        Route.OnboardingPreview -> OnboardingScreen(onFinished = { nav.pop() }, preview = true)
     }
 }
 

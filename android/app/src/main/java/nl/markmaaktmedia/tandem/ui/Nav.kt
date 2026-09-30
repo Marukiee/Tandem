@@ -13,6 +13,8 @@ sealed interface Route {
     data object Access : Route
     data object MirrorApps : Route
     data object Appearance : Route
+    data object Developer : Route
+    data object OnboardingPreview : Route
 }
 
 /** A small back stack. The home screen is always at the bottom. */

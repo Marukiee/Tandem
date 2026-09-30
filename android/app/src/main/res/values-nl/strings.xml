@@ -253,4 +253,9 @@
     <string name="language_restart_body">Tandem start opnieuw op om de taal te wisselen. Je apparaten blijven verbonden.</string>
     <string name="language_restart_confirm">Herstarten</string>
     <string name="language_restart_cancel">Niet nu</string>
+    <string name="tile_files">Bestanden</string>
+    <string name="tile_clipboard">Klembord</string>
+    <string name="tile_trackpad">Trackpad</string>
+    <string name="tile_find">Zoek</string>
+    <string name="dev_section">Ontwikkelaar</string>
 </resources>

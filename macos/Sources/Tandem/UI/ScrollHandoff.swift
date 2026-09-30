@@ -1,56 +1,37 @@
 import AppKit
 import SwiftUI
 
-/// A page whose big title slides up into the toolbar as the page scrolls.
+/// A page whose big title moves into the toolbar once it has scrolled out of view.
 ///
-/// The page reports how far it has scrolled as a progress from 0 to 1. The title in
-/// the page fades out and drifts up with it, and the title in the toolbar fades in
-/// from below, so the two read as one thing changing places.
+/// One switch drives both ends, animated with the same spring, so the title in the page
+/// and the one in the toolbar read as a single thing changing places. The toolbar copy is
+/// a real toolbar item, which macOS draws on glass, so it stays readable over any content.
 extension View {
-    /// Keeps `progress` in step with the scroll offset of the scroll view around this.
-    func trackScrollHandoff(_ progress: Binding<CGFloat>, start: CGFloat = 36, distance: CGFloat = 46) -> some View {
-        onScrollGeometryChange(for: CGFloat.self) { geometry in
-            geometry.contentOffset.y + geometry.contentInsets.top
-        } action: { _, offset in
-            let raw = min(1, max(0, (offset - start) / distance))
-            // Smoothstep, so the handoff eases in and out instead of starting abruptly.
-            let eased = raw * raw * (3 - 2 * raw)
-            if abs(eased - progress.wrappedValue) > 0.004 { progress.wrappedValue = eased }
-        }
+    /// Sets `compact` when the scroll view around this has scrolled the page title away.
+    func trackCompactTitle(_ compact: Binding<Bool>, after threshold: CGFloat = 64) -> some View {
+        scrollEdgeEffectStyle(.soft, for: .top)
+            .onScrollGeometryChange(for: Bool.self) { geometry in
+                geometry.contentOffset.y + geometry.contentInsets.top > threshold
+            } action: { _, isCompact in
+                withAnimation(.bouncy(duration: 0.45, extraBounce: 0.04)) { compact.wrappedValue = isCompact }
+            }
     }
 
-    /// The title inside the page, leaving as the toolbar title arrives.
-    func handoffSource(_ progress: CGFloat) -> some View {
-        modifier(HandoffSource(progress: progress))
+    /// The title inside the page, leaving as the toolbar's copy arrives.
+    func titleHandoff(_ compact: Bool) -> some View {
+        modifier(TitleHandoff(compact: compact))
     }
 }
 
-private struct HandoffSource: ViewModifier {
-    let progress: CGFloat
+private struct TitleHandoff: ViewModifier {
+    let compact: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         content
-            .opacity(1 - min(1, progress * 1.5))
-            .offset(y: reduceMotion ? 0 : -progress * 10)
-            .blur(radius: reduceMotion ? 0 : progress * 2)
-    }
-}
-
-/// The title as it appears in the toolbar, where the window title used to be.
-struct HandoffTitle<Content: View>: View {
-    let progress: CGFloat
-    @ViewBuilder var content: Content
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        content
-            .opacity(progress)
-            .offset(y: reduceMotion ? 0 : (1 - progress) * 12)
-            .scaleEffect(reduceMotion ? 1 : 0.92 + 0.08 * progress, anchor: .leading)
-            .blur(radius: reduceMotion ? 0 : (1 - progress) * 3)
-            .allowsHitTesting(progress > 0.6)
-            .accessibilityHidden(progress < 0.3)
+            .opacity(compact ? 0 : 1)
+            .offset(y: reduceMotion || !compact ? 0 : -8)
+            .blur(radius: reduceMotion || !compact ? 0 : 5)
     }
 }
 

@@ -256,4 +256,9 @@
     <string name="language_restart_body">Tandem restarts to change the language. Your devices stay connected.</string>
     <string name="language_restart_confirm">Restart</string>
     <string name="language_restart_cancel">Not now</string>
+    <string name="tile_files">Files</string>
+    <string name="tile_clipboard">Clipboard</string>
+    <string name="tile_trackpad">Trackpad</string>
+    <string name="tile_find">Find</string>
+    <string name="dev_section">Developer</string>
 </resources>

@@ -206,6 +206,13 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
         }
 
         item {
+            SectionHeader(stringResource(R.string.dev_section))
+            SettingsGroup {
+                ActionRow(0, 1, TandemIcons.Info, stringResource(R.string.dev_title), stringResource(R.string.dev_sub), { onOpen(Route.Developer) })
+            }
+        }
+
+        item {
             SectionHeader(stringResource(R.string.settings_about))
             SettingsGroup {
                 ActionRow(0, 2, TandemIcons.OpenInNew, "github.com/Marukiee/Tandem", stringResource(R.string.settings_license), {

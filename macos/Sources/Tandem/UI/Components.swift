@@ -90,31 +90,38 @@ extension TandemDevice {
     var connectionColor: Color { online ? .green : .secondary }
 }
 
-/// A device as a round glyph. A green ring draws around it while the device is
-/// connected, so the state reads before any text does. It is flat on purpose: it sits
-/// on the sidebar and on cards, which are already the layer under the glass.
+/// A device as a round glyph. Connected devices get the accent tint. The green ring is
+/// only for the small glyph in the toolbar (`ring`), where there is no card around it to
+/// say whether the device is there. Flat on purpose: it sits on the sidebar and on cards,
+/// which are already the layer under the glass.
 struct DeviceGlyph: View {
     let platform: TandemPlatform
     var online: Bool
     var size: CGFloat = 44
+    var ring = false
+    /// Drawn on the accent-coloured selection of a sidebar row, where the usual indigo
+    /// and green would disappear into the blue.
+    var onSelection = false
 
     var body: some View {
-        let ring = max(1.6, size * 0.055)
+        let ringWidth = max(1.6, size * 0.055)
         ZStack {
-            Circle().fill(online ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07))
+            Circle().fill(onSelection ? Color.white.opacity(0.24) : (online ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07)))
             Image(systemName: platform.symbol)
                 .font(.system(size: size * 0.42, weight: .semibold))
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(online ? Palette.indigo : Color.secondary)
+                .foregroundStyle(onSelection ? Color.white : (online ? Palette.indigo : Color.secondary))
                 .contentTransition(.symbolEffect(.replace))
-            Circle()
-                .stroke(Color.primary.opacity(0.08), lineWidth: ring)
-                .padding(ring / 2)
-            Circle()
-                .trim(from: 0, to: online ? 1 : 0)
-                .stroke(Color.green, style: StrokeStyle(lineWidth: ring, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .padding(ring / 2)
+            if ring {
+                Circle()
+                    .stroke(Color.primary.opacity(0.08), lineWidth: ringWidth)
+                    .padding(ringWidth / 2)
+                Circle()
+                    .trim(from: 0, to: online ? 1 : 0)
+                    .stroke(Color.green, style: StrokeStyle(lineWidth: ringWidth, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .padding(ringWidth / 2)
+            }
         }
         .frame(width: size, height: size)
         .animation(.tandem, value: online)

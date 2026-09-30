@@ -280,3 +280,7 @@
 "Downloading version %@" = "Versie %@ downloaden";
 "Tandem %@ is available" = "Tandem %@ is beschikbaar";
 "Open Tandem to update. It only takes a moment." = "Open Tandem om bij te werken. Het duurt maar even.";
+
+/* Find phone */
+"Stop ringing" = "Stop met overgaan";
+"Stopped ringing" = "Het overgaan is gestopt";

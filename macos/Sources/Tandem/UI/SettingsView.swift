@@ -22,51 +22,44 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
-        case .general: "gearshape.fill"
+        case .general: "gearshape"
         case .devices: "laptopcomputer.and.iphone"
-        case .access: "hand.raised.fill"
+        case .access: "hand.raised"
         case .hotspot: "personalhotspot"
-        case .updates: "arrow.down.circle.fill"
-        case .about: "info.circle.fill"
+        case .updates: "arrow.down.circle"
+        case .about: "info.circle"
         }
     }
 
-    var tint: Color {
+    /// The window is as tall as the tab needs, like the system's own Settings windows.
+    var height: CGFloat {
         switch self {
-        case .general: .gray
-        case .devices: Palette.indigo
-        case .access: .blue
-        case .hotspot: .green
-        case .updates: .orange
-        case .about: Palette.roseDeep
+        case .general: 600
+        case .devices: 460
+        case .access: 460
+        case .hotspot: 470
+        case .updates: 330
+        case .about: 360
         }
     }
 }
 
+/// The Settings window as macOS draws it for every app: tabs with icons across the top of a
+/// window that resizes to the tab, and grouped forms underneath. Nothing here is custom
+/// chrome, so it gets the system's glass, spacing and keyboard behaviour for free.
 struct SettingsView: View {
-    @LocalState private var selection: SettingsSection? = DebugSupport.initialSettingsSection() ?? .general
+    @LocalState private var selection: SettingsSection = DebugSupport.initialSettingsSection() ?? .general
 
     var body: some View {
-        NavigationSplitView {
-            List(SettingsSection.allCases, selection: $selection) { section in
-                Label {
-                    Text(section.title)
-                } icon: {
-                    SettingsIcon(symbol: section.symbol, tint: section.tint)
-                }
-                .padding(.vertical, 2)
+        TabView(selection: $selection) {
+            ForEach(SettingsSection.allCases) { section in
+                detail(for: section)
+                    .tabItem { Label(section.title, systemImage: section.symbol) }
+                    .tag(section)
             }
-            .navigationSplitViewColumnWidth(200)
-            .toolbar(removing: .sidebarToggle)
-        } detail: {
-            let section = selection ?? .general
-            detail(for: section)
-                .id(section)
-                .transition(.opacity)
-                .navigationTitle(section.title)
         }
-        .animation(.tandemFade, value: selection)
-        .frame(width: 780, height: 560)
+        .scenePadding()
+        .frame(width: 560, height: selection.height)
     }
 
     @ViewBuilder
@@ -79,20 +72,6 @@ struct SettingsView: View {
         case .updates: UpdateSettings()
         case .about: AboutSettings()
         }
-    }
-}
-
-/// The small coloured square System Settings puts in front of each section.
-private struct SettingsIcon: View {
-    let symbol: String
-    let tint: Color
-
-    var body: some View {
-        Image(systemName: symbol)
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundStyle(.white)
-            .frame(width: 24, height: 24)
-            .background(tint.gradient, in: RoundedRectangle(cornerRadius: 6.5, style: .continuous))
     }
 }
 

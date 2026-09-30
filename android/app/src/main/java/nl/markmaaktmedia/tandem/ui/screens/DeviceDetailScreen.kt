@@ -142,17 +142,17 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         // Actions
         if (device.online) {
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ActionTile(TandemIcons.Upload, stringResource(R.string.action_send_files), { picker.launch(arrayOf("*/*")) }, Modifier.weight(1f).fillMaxHeight(), primary = true)
-                ActionTile(TandemIcons.Paste, stringResource(R.string.action_send_clipboard_long), {
+                ActionTile(TandemIcons.Upload, stringResource(R.string.tile_files), { picker.launch(arrayOf("*/*")) }, Modifier.weight(1f).fillMaxHeight(), primary = true)
+                ActionTile(TandemIcons.Paste, stringResource(R.string.tile_clipboard), {
                     val text = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
                         .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
                     if (text.isNotEmpty()) scope.launch { host.sendClipboard(listOf(id), text) }
                 }, Modifier.weight(1f).fillMaxHeight())
                 if (device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.LINUX || device.platform == TandemPlatform.WINDOWS) {
-                    ActionTile(TandemIcons.Mouse, stringResource(R.string.action_remote), { onRemote(id) }, Modifier.weight(1f).fillMaxHeight())
+                    ActionTile(TandemIcons.Mouse, stringResource(R.string.tile_trackpad), { onRemote(id) }, Modifier.weight(1f).fillMaxHeight())
                 }
                 if (device.platform == TandemPlatform.ANDROID) {
-                    ActionTile(TandemIcons.Ring, stringResource(R.string.action_ring), { scope.launch { runCatching { host.engine?.ring(id, true) } } }, Modifier.weight(1f).fillMaxHeight())
+                    ActionTile(TandemIcons.Ring, stringResource(R.string.tile_find), { scope.launch { runCatching { host.engine?.ring(id, true) } } }, Modifier.weight(1f).fillMaxHeight())
                 }
             }
         }

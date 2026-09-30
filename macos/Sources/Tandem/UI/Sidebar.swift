@@ -32,31 +32,7 @@ struct Sidebar: View {
             }
         }
         .listStyle(.sidebar)
-        .safeAreaInset(edge: .top, spacing: 0) { SidebarHeader() }
         .safeAreaInset(edge: .bottom, spacing: 0) { PairButton(showPairing: $showPairing) }
-    }
-}
-
-private struct SidebarHeader: View {
-    @Environment(EngineModel.self) private var model
-
-    var body: some View {
-        HStack(spacing: 10) {
-            PillMark(size: 32)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(AppIdentity.displayName).font(.title3.weight(.bold))
-                Text(model.myName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .contentTransition(.opacity)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 8)
-        .padding(.bottom, 6)
-        .animation(.tandemFade, value: model.myName)
     }
 }
 
@@ -84,11 +60,14 @@ private struct DevicesHeader: View {
 
 private struct DeviceRow: View {
     let device: TandemDevice
+    /// .increased while the row sits on the selection colour.
+    @Environment(\.backgroundProminence) private var prominence
+    private var selected: Bool { prominence == .increased }
 
     var body: some View {
         Hoverable { hovering in
             HStack(spacing: 11) {
-                DeviceGlyph(platform: device.platform, online: device.online, size: 38)
+                DeviceGlyph(platform: device.platform, online: device.online, size: 38, onSelection: selected)
                     .scaleEffect(hovering ? 1.07 : 1)
                     .animation(.tandemSpringy, value: hovering)
                 VStack(alignment: .leading, spacing: 2) {
@@ -96,7 +75,7 @@ private struct DeviceRow: View {
                     HStack(spacing: 4) {
                         Text(device.connectionText)
                             .font(.caption.weight(.medium))
-                            .foregroundStyle(device.connectionColor)
+                            .foregroundStyle(selected ? Color.white : device.connectionColor)
                         if device.online, let rtt = device.rttMs {
                             Text("· \(rtt) ms").font(.caption).foregroundStyle(.secondary)
                         }
@@ -106,7 +85,7 @@ private struct DeviceRow: View {
                 Spacer(minLength: 0)
                 if let battery = device.status.battery {
                     HStack(spacing: 2) {
-                        if battery.charging { Image(systemName: "bolt.fill").font(.caption2).foregroundStyle(.green) }
+                        if battery.charging { Image(systemName: "bolt.fill").font(.caption2).foregroundStyle(selected ? Color.white : Color.green) }
                         Text("\(battery.level)%")
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.secondary)
@@ -117,13 +96,14 @@ private struct DeviceRow: View {
         }
         .padding(.vertical, 3)
         // Not reachable: the whole row steps back, so the connected ones stand out.
-        .opacity(device.online ? 1 : 0.6)
+        .opacity(device.online || selected ? 1 : 0.6)
         .animation(.tandem, value: device.online)
     }
 }
 
 private struct SharedRow: View {
     @Environment(EngineModel.self) private var model
+    @Environment(\.backgroundProminence) private var prominence
 
     var body: some View {
         let active = model.transfers.filter { $0.state == .active }.count
@@ -132,7 +112,7 @@ private struct SharedRow: View {
                 Text("Files")
             } icon: {
                 Image(systemName: "arrow.up.arrow.down.circle.fill")
-                    .foregroundStyle(Palette.indigo)
+                    .foregroundStyle(prominence == .increased ? Color.white : Palette.indigo)
                     .symbolEffect(.pulse, isActive: active > 0)
                     .scaleEffect(hovering ? 1.12 : 1)
                     .animation(.tandemSpringy, value: hovering)

@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -96,7 +97,7 @@ private const val LastPage = PageCount - 1
  * that cannot be turned on later from Settings.
  */
 @Composable
-fun OnboardingScreen(onFinished: () -> Unit) {
+fun OnboardingScreen(onFinished: () -> Unit, preview: Boolean = false) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val pager = rememberPagerState { PageCount }
@@ -114,7 +115,7 @@ fun OnboardingScreen(onFinished: () -> Unit) {
             Box(Modifier.fillMaxSize().pageEffect(pager, index)) {
                 when (index) {
                     0 -> WelcomePage()
-                    1 -> PermissionsPage()
+                    1 -> PermissionsPage(preview)
                     else -> PairPage()
                 }
             }
@@ -162,7 +163,8 @@ fun OnboardingScreen(onFinished: () -> Unit) {
                     if (page < LastPage) {
                         goTo(page + 1)
                     } else {
-                        context.graph.startAtPair.value = true
+                        // A preview walks through the buttons but changes nothing.
+                        if (!preview) context.graph.startAtPair.value = true
                         onFinished()
                     }
                 },
@@ -385,12 +387,17 @@ private fun TandemMark(size: Dp) {
 // ---- Permissions ------------------------------------------------------------------
 
 @Composable
-private fun PermissionsPage() {
+private fun PermissionsPage(preview: Boolean = false) {
     val context = LocalContext.current
     val status = rememberPermissionStatus()
     val requests = rememberPermissionRequests(status)
     val background = MaterialTheme.colorScheme.background
     val total = 6
+    // In a preview the cards flip on and off by themselves, so the morph can be watched
+    // without asking Android for anything.
+    val demo = remember { mutableStateMapOf<Int, Boolean>() }
+    fun granted(index: Int, real: Boolean) = if (preview) demo[index] == true else real
+    fun grant(index: Int, real: () -> Unit): () -> Unit = if (preview) ({ demo[index] = demo[index] != true }) else real
 
     Box(Modifier.fillMaxSize()) {
         Column(
@@ -409,35 +416,35 @@ private fun PermissionsPage() {
             Column(verticalArrangement = Arrangement.spacedBy(GroupedSpacing)) {
                 PermissionCard(
                     TandemIcons.Notifications, stringResource(R.string.perm_notifications), stringResource(R.string.perm_notifications_why),
-                    granted = status.notifications, onGrant = requests::notifications,
+                    granted = granted(0, status.notifications), onGrant = grant(0, requests::notifications),
                     note = blockedNote(!status.notifications && status.isBlocked(Manifest.permission.POST_NOTIFICATIONS), requests),
                     index = 0, total = total, modifier = Modifier.staggeredEntry(2),
                 )
                 PermissionCard(
                     TandemIcons.Battery, stringResource(R.string.perm_battery), stringResource(R.string.perm_battery_why),
-                    granted = status.battery, onGrant = { Permissions.openBatterySettings(context) },
+                    granted = granted(1, status.battery), onGrant = grant(1) { Permissions.openBatterySettings(context) },
                     index = 1, total = total, modifier = Modifier.staggeredEntry(3),
                 )
                 PermissionCard(
                     TandemIcons.Screenshot, stringResource(R.string.perm_photos), stringResource(R.string.perm_photos_why),
-                    granted = status.photos, onGrant = requests::photos,
+                    granted = granted(2, status.photos), onGrant = grant(2, requests::photos),
                     note = blockedNote(!status.photos && status.isBlocked(Manifest.permission.READ_MEDIA_IMAGES), requests),
                     index = 2, total = total, modifier = Modifier.staggeredEntry(4),
                 )
                 PermissionCard(
                     TandemIcons.Devices, stringResource(R.string.perm_listener), stringResource(R.string.perm_listener_why),
-                    granted = status.notificationAccess, onGrant = { Permissions.openNotificationAccessSettings(context) },
+                    granted = granted(3, status.notificationAccess), onGrant = grant(3) { Permissions.openNotificationAccessSettings(context) },
                     index = 3, total = total, modifier = Modifier.staggeredEntry(5),
                 )
                 PermissionCard(
                     TandemIcons.Call, stringResource(R.string.perm_phone), stringResource(R.string.perm_phone_why),
-                    granted = status.phone != PermissionLevel.Off, partly = status.phone == PermissionLevel.Partly,
-                    onGrant = requests::phone, note = phoneNote(status, requests),
+                    granted = granted(4, status.phone != PermissionLevel.Off), partly = !preview && status.phone == PermissionLevel.Partly,
+                    onGrant = grant(4, requests::phone), note = if (preview) null else phoneNote(status, requests),
                     index = 4, total = total, modifier = Modifier.staggeredEntry(6),
                 )
                 PermissionCard(
                     TandemIcons.QrScan, stringResource(R.string.perm_camera), stringResource(R.string.perm_camera_why),
-                    granted = status.camera, onGrant = requests::camera,
+                    granted = granted(5, status.camera), onGrant = grant(5, requests::camera),
                     note = blockedNote(!status.camera && status.isBlocked(Manifest.permission.CAMERA), requests),
                     index = 5, total = total, modifier = Modifier.staggeredEntry(7),
                 )

@@ -4,11 +4,10 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Themed icons use one tint, so the pills get a clear gap instead of overlapping. -->
-    <group android:pivotX="64.91" android:pivotY="54" android:rotation="-32">
-        <path android:fillColor="#FF000000" android:fillAlpha="0.6" android:pathData="M57.91,39.00a7.00,7.00 0 0 1 14.00,0v30.00a7.00,7.00 0 0 1 -14.00,0z" />
+    <!-- One tint, two pills: the front pill has a thin gap cut around it so they stay apart, like the Mac menu bar icon. Same size, lean and overlap as the colour icon. -->
+    <group>
+        <clip-path android:pathData="M0,0H108V108H0ZM48.15,37.94A9.33,9.33 0 0 0 32.33,47.83L46.22,70.06A9.33,9.33 0 0 0 62.04,60.17Z" />
+        <path android:fillColor="#FF000000" android:pathData="M60.17,38.95A7.43,7.43 0 0 0 47.57,46.82L61.46,69.05A7.43,7.43 0 0 0 74.06,61.18Z" />
     </group>
-    <group android:pivotX="43.09" android:pivotY="54" android:rotation="-32">
-        <path android:fillColor="#FF000000" android:pathData="M36.09,39.00a7.00,7.00 0 0 1 14.00,0v30.00a7.00,7.00 0 0 1 -14.00,0z" />
-    </group>
+    <path android:fillColor="#FF000000" android:pathData="M46.54,38.95A7.43,7.43 0 0 0 33.94,46.82L47.83,69.05A7.43,7.43 0 0 0 60.43,61.18Z" />
 </vector>

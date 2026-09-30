@@ -137,8 +137,26 @@ class UpdateRepository(
         }
     }
 
+    /** Developer options: shows a fake update so the banner can be pressed through. */
+    fun showPreview() {
+        _state.value = UpdateState.Available(
+            ReleaseInfo(
+                tag = PREVIEW_TAG, versionName = "9.9.9", title = "Preview", changelog = "", apkUrl = null,
+                apkSizeBytes = 0, sha256Url = null, htmlUrl = "", publishedAt = "",
+            ),
+        )
+    }
+
     /** Downloads, verifies and hands the APK to the installer. One tap for the person. */
     suspend fun downloadAndInstall(release: ReleaseInfo) {
+        if (release.tag == PREVIEW_TAG) {
+            for (step in 0..20) {
+                _state.value = UpdateState.Downloading(release, step / 20f)
+                kotlinx.coroutines.delay(120)
+            }
+            _state.value = UpdateState.ReadyToInstall(release, PREVIEW_TAG)
+            return
+        }
         val file = download(release) ?: return
         install(file)
     }
@@ -201,6 +219,10 @@ class UpdateRepository(
 
     /** Installs through a PackageInstaller session, so progress and errors come back to us. */
     suspend fun install(file: File) = withContext(Dispatchers.IO) {
+        if (file.path == PREVIEW_TAG) {
+            _state.value = UpdateState.Idle
+            return@withContext
+        }
         if (!canRequestInstalls()) {
             openInstallPermissionSettings()
             _state.value = UpdateState.Failed("Allow Tandem to install apps, then try again")
@@ -245,6 +267,7 @@ class UpdateRepository(
         const val FAILED_REASON = "Could not reach GitHub"
         const val APK_NAME = "Tandem.apk"
         /** Often enough that a new release shows within hours, rare enough for GitHub's limits. */
+        private const val PREVIEW_TAG = "preview"
         const val CHECK_INTERVAL_MS = 3 * 3600 * 1000L
     }
 }

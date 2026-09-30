@@ -149,7 +149,7 @@ private struct MenuDeviceRow: View {
     var body: some View {
         Hoverable { hovering in
             HStack(spacing: 10) {
-                DeviceGlyph(platform: device.platform, online: device.online, size: 36)
+                DeviceGlyph(platform: device.platform, online: device.online, size: 36, ring: true)
                     .scaleEffect(hovering ? 1.06 : 1)
                     .animation(.tandemSpringy, value: hovering)
                 VStack(alignment: .leading, spacing: 1) {

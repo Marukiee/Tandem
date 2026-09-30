@@ -112,9 +112,7 @@ fun ActionTile(
         }
         Text(
             label, style = MaterialTheme.typography.labelLarge, color = content,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2,
-            // Two lines always take the same room, so tiles with a short label stay level.
-            minLines = 2,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 1, softWrap = false,
         )
     }
 }
