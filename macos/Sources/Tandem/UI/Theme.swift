@@ -84,6 +84,16 @@ extension View {
 
 // MARK: Hover
 
+private struct HoverEnabledKey: EnvironmentKey { static let defaultValue = true }
+
+extension EnvironmentValues {
+    /// False while a sheet or dialog covers the window, so nothing behind it reacts to the pointer.
+    var hoverEnabled: Bool {
+        get { self[HoverEnabledKey.self] }
+        set { self[HoverEnabledKey.self] = newValue }
+    }
+}
+
 /// A card or button that rises a little under the pointer. The spring is the same one
 /// used everywhere else. With Reduce Motion on, nothing moves and only the shadow
 /// changes.
@@ -93,10 +103,11 @@ struct HoverLift: ViewModifier {
     var enabled = true
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.hoverEnabled) private var hoverEnabled
     @LocalState private var hovering = false
 
     func body(content: Content) -> some View {
-        let active = hovering && enabled
+        let active = hovering && enabled && hoverEnabled
         content
             .scaleEffect(active && !reduceMotion ? scale : 1)
             .offset(y: active && !reduceMotion ? -lift : 0)
@@ -113,13 +124,14 @@ struct HoverHighlight: ViewModifier {
     var tint: Color = .primary
     var selected = false
 
+    @Environment(\.hoverEnabled) private var hoverEnabled
     @LocalState private var hovering = false
 
     func body(content: Content) -> some View {
         content
             .background {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(tint.opacity(selected ? 0.14 : (hovering ? 0.075 : 0)))
+                    .fill(tint.opacity(selected ? 0.14 : (hovering && hoverEnabled ? 0.075 : 0)))
             }
             .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .onHover { hovering = $0 }
@@ -132,10 +144,11 @@ struct HoverHighlight: ViewModifier {
 /// as a row whose icon nudges while its background lights up.
 struct Hoverable<Content: View>: View {
     @ViewBuilder var content: (Bool) -> Content
+    @Environment(\.hoverEnabled) private var hoverEnabled
     @LocalState private var hovering = false
 
     var body: some View {
-        content(hovering).onHover { hovering = $0 }
+        content(hovering && hoverEnabled).onHover { hovering = $0 }
     }
 }
 
@@ -163,11 +176,12 @@ private struct BouncyButtonBody: View {
     let configuration: ButtonStyleConfiguration
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.hoverEnabled) private var hoverEnabled
     @LocalState private var hovering = false
 
     var body: some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? pressedScale : (hovering && isEnabled && !reduceMotion ? 1.06 : 1))
+            .scaleEffect(configuration.isPressed ? pressedScale : (hovering && hoverEnabled && isEnabled && !reduceMotion ? 1.06 : 1))
             .onHover { hovering = $0 }
             .animation(.tandemBouncy, value: configuration.isPressed)
             .animation(.tandemSpringy, value: hovering)

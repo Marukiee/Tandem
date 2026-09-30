@@ -116,7 +116,6 @@ struct DeviceDetail: View {
                 }
             }
         }
-        .hoverLift(scale: 1.004, lift: 1)
     }
 
     private func networkSymbol(_ network: TandemNetwork) -> String {
@@ -214,7 +213,6 @@ struct DeviceDetail: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .hoverLift(scale: 1.004, lift: 1)
             .transition(.opacity.combined(with: .move(edge: .bottom)))
             .animation(.tandem, value: items.map(\.id))
         }
@@ -253,7 +251,6 @@ struct DeviceDetail: View {
                 }
             }
         }
-        .hoverLift(scale: 1.004, lift: 1)
     }
 }
 
@@ -337,7 +334,6 @@ struct DropZone: View {
                         .fill(Palette.indigo.opacity(targeted ? 0.10 : (hovering ? 0.04 : 0)))
                 )
         }
-        .hoverLift(scale: 1.008, lift: 1.5, enabled: !targeted)
         .scaleEffect(targeted ? 1.015 : 1)
         .animation(.tandemSpringy, value: targeted)
         .animation(.tandemFade, value: hovering)
@@ -375,7 +371,6 @@ struct RemoteControlCard: View {
                     .tint(Palette.indigo)
                 }
             }
-            .hoverLift(scale: 1.004, lift: 1)
             .task {
                 // Poll while the card is on screen, so it disappears once allowed.
                 while !Task.isCancelled {
@@ -433,7 +428,6 @@ struct HotspotCard: View {
                 }
             }
         }
-        .hoverLift(scale: 1.004, lift: 1)
         .animation(.tandem, value: model.hotspotStatus)
     }
 }

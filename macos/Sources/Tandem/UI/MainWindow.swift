@@ -34,6 +34,9 @@ struct MainWindow: View {
             .animation(.tandem, value: selection)
         }
         .background(HideWindowTitle())
+        // A sheet or dialog covers the window; nothing behind it should react to the pointer.
+        // Set before the sheet is attached, so the sheet itself is not affected.
+        .environment(\.hoverEnabled, !(showPairing || model.pendingTrash != nil || model.removedFromCircle))
         .overlay(alignment: .bottom) {
             if let toast = model.toast {
                 ToastView(text: toast)
