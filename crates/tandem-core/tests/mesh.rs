@@ -520,3 +520,118 @@ async fn the_circle_survives_a_restart() {
     })
     .await;
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn only_circle_members_can_sign_for_the_hotspot() {
+    use tandem_core::hotspot::{ACTION_ON, AUTH_PREFIX, auth_message};
+
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    let stranger = node("Stranger").await;
+    pair(&phone, &mac).await;
+
+    let mac_id = mac.engine.id().to_string();
+    let challenge = [9u8; 16];
+    let message = auth_message(&challenge, &mac_id, ACTION_ON, 1_700_000_000_000);
+    let signature = mac.engine.sign_message(&message);
+    assert_eq!(signature.len(), 64);
+
+    assert!(phone.engine.verify_member(&mac.engine.id(), &message, &signature));
+
+    // A different challenge, action, time or device id makes it a different message.
+    let other_challenge = auth_message(&[8u8; 16], &mac_id, ACTION_ON, 1_700_000_000_000);
+    assert!(!phone.engine.verify_member(&mac.engine.id(), &other_challenge, &signature));
+    let other_action = auth_message(&challenge, &mac_id, 2, 1_700_000_000_000);
+    assert!(!phone.engine.verify_member(&mac.engine.id(), &other_action, &signature));
+    let other_time = auth_message(&challenge, &mac_id, ACTION_ON, 1_700_000_000_001);
+    assert!(!phone.engine.verify_member(&mac.engine.id(), &other_time, &signature));
+
+    // A signature that was cut short or damaged.
+    assert!(!phone.engine.verify_member(&mac.engine.id(), &message, &signature[..63]));
+    assert!(!phone.engine.verify_member(&mac.engine.id(), &message, &[]));
+    let mut flipped = signature.clone();
+    flipped[10] ^= 1;
+    assert!(!phone.engine.verify_member(&mac.engine.id(), &message, &flipped));
+
+    // A valid signature from someone outside the circle, and one that claims to be the mac.
+    let stranger_signature = stranger.engine.sign_message(&message);
+    assert!(!phone.engine.verify_member(&stranger.engine.id(), &message, &stranger_signature));
+    assert!(!phone.engine.verify_member(&mac.engine.id(), &message, &stranger_signature));
+
+    // The same key signing other bytes (a circle statement, say) is not a request.
+    let mut other_purpose = b"tandem-circle-statement-v1".to_vec();
+    other_purpose.extend_from_slice(&message[AUTH_PREFIX.len()..]);
+    let cross = mac.engine.sign_message(&other_purpose);
+    assert!(!phone.engine.verify_member(&mac.engine.id(), &message, &cross));
+
+    // Once the mac is removed its old signatures stop working.
+    phone.engine.remove_device(mac.engine.id()).await.unwrap();
+    assert!(!phone.engine.verify_member(&mac.engine.id(), &message, &signature));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_removed_device_vouches_for_nobody() {
+    use tandem_core::hotspot::{ACTION_ON, auth_message};
+
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+
+    let message = auth_message(&[1u8; 16], &mac.engine.id().to_string(), ACTION_ON, 5);
+    let signature = mac.engine.sign_message(&message);
+    assert!(phone.engine.verify_member(&mac.engine.id(), &message, &signature));
+
+    phone.engine.remove_device(mac.engine.id()).await.unwrap();
+    wait_until("mac learns it was removed", || !mac.engine.is_member()).await;
+
+    // The mac no longer trusts anyone, not even the phone that removed it.
+    let from_phone = phone.engine.sign_message(&message);
+    assert!(!mac.engine.verify_member(&phone.engine.id(), &message, &from_phone));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn add_address_reconnects_without_waiting_for_the_backoff() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+    let mac_id = mac.engine.id();
+
+    mac.engine.shutdown().await;
+    wait_until("phone notices the mac is gone", || !online(&phone, mac_id)).await;
+
+    // The mac comes back on another port and has forgotten where the phone is, like a
+    // Mac that just joined the phone's hotspot.
+    let _ = std::fs::remove_file(mac.data.join("addresses.cbor"));
+    let mut cfg = EngineConfig::new(&mac.data, "Mac");
+    cfg.port = 0;
+    cfg.enable_mdns = false;
+    cfg.loopback = true;
+    let secrets = Arc::new(FileSecretStore::new(Store::new(&mac.data).unwrap()));
+    let files = Arc::new(DesktopFiles { download_dir: mac.downloads.clone() });
+    let back = Engine::start(cfg, secrets, files).await.unwrap();
+    assert_eq!(back.id(), mac_id);
+
+    // Nothing to dial, so nothing happens yet.
+    tokio::time::sleep(Duration::from_millis(600)).await;
+    assert!(!online(&phone, mac_id));
+
+    let addr = format!("127.0.0.1:{}", back.port());
+    phone.engine.add_address(&mac_id, &addr).unwrap();
+    wait_until("phone reaches the mac at the new address", || online(&phone, mac_id)).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn add_address_refuses_strangers_and_nonsense() {
+    let phone = node("Phone").await;
+    let stranger = node("Stranger").await;
+    let err = phone.engine.add_address(&stranger.engine.id(), "127.0.0.1:47820").unwrap_err();
+    assert!(matches!(err, tandem_core::Error::NotTrusted));
+
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    assert!(phone.engine.add_address(&mac.engine.id(), "not an address").is_err());
+    assert!(phone.engine.add_address(&mac.engine.id(), "192.168.43.1").is_err());
+    assert!(phone.engine.add_address(&mac.engine.id(), "192.168.43.1:47820").is_ok());
+}

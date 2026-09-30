@@ -190,6 +190,12 @@ final class EngineModel {
         }
     }
 
+    /// The dev build (bundle id ending in .dev) keeps everything apart from the real app,
+    /// so testing never touches the real identity, pairings or preferences.
+    nonisolated static var isDevBuild: Bool {
+        Bundle.main.bundleIdentifier?.hasSuffix(".dev") == true
+    }
+
     nonisolated static func supportDirectory() -> URL {
         let directory = AppIdentity.dataDirectory()
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

@@ -5,5 +5,9 @@
     <!-- Scanning a pairing code with the camera. -->
     <key>com.apple.security.device.camera</key>
     <true/>
+    <!-- Bluetooth Low Energy, to ask the phone for its hotspot. The hardened runtime
+         blocks it without this. -->
+    <key>com.apple.security.device.bluetooth</key>
+    <true/>
 </dict>
 </plist>

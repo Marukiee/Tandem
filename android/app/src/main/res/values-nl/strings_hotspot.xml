@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="hotspot_channel_request">Hotspotverzoeken</string>
+    <string name="hotspot_channel_request_desc">Als je Mac om je hotspot vraagt en je die zelf moet aanzetten</string>
+    <string name="hotspot_request_title">Je Mac wil je hotspot</string>
+    <string name="hotspot_request_text">Tik om hem aan te zetten</string>
+    <string name="hotspot_in_use_title">Je Mac gebruikt je hotspot</string>
+    <string name="hotspot_in_use_auto">Hij gaat vanzelf uit na 5 minuten zonder apparaten</string>
+    <string name="hotspot_in_use_manual">Zet hem zelf uit als je klaar bent</string>
+    <string name="hotspot_in_use_clients">%1$d verbonden. Hij gaat vanzelf uit na 5 minuten zonder apparaten</string>
+
+    <string name="hotspot_method">Methode</string>
+    <string name="hotspot_method_shizuku">Shizuku, gaat vanzelf aan</string>
+    <string name="hotspot_method_manual">Handmatig, je tikt op een melding</string>
+    <string name="hotspot_method_need_permission">Shizuku draait, tik om Tandem toestemming te geven</string>
+    <string name="hotspot_method_denied">Shizuku heeft Tandem geweigerd, sta het toe in de Shizuku-app</string>
+    <string name="hotspot_method_not_running">Handmatig. Shizuku is geïnstalleerd maar draait niet, tik om het te openen</string>
+    <string name="hotspot_method_not_installed">Handmatig. Installeer Shizuku om hem vanzelf aan te zetten</string>
+    <string name="hotspot_method_too_old">Handmatig. Werk Shizuku bij naar versie 11 of nieuwer</string>
+
+    <string name="hotspot_test">Hotspot testen</string>
+    <string name="hotspot_test_sub">Zet hem 20 seconden aan</string>
+    <string name="hotspot_test_busy">Bezig met testen</string>
+    <string name="hotspot_test_needs_pref">Zet eerst de schakelaar hierboven aan</string>
+    <string name="hotspot_test_needs_bluetooth">Sta Bluetooth toe onder Toegang, anders kan je Mac deze telefoon niet bereiken</string>
+    <string name="hotspot_test_manual">Tik op de melding om de hotspot aan te zetten</string>
+    <string name="hotspot_test_ok">De hotspot ging aan</string>
+    <string name="hotspot_test_failed">De hotspot ging niet aan</string>
+    <string name="hotspot_test_battery">Geweigerd, de accu is te leeg</string>
+    <string name="hotspot_test_roaming">Geweigerd, je zit in roaming</string>
+
+    <string name="hotspot_roaming">Ook in roaming</string>
+    <string name="hotspot_roaming_sub">Standaard uit, data in het buitenland kan duur zijn</string>
+    <string name="hotspot_setup">Installatiegids</string>
+    <string name="hotspot_setup_sub">Shizuku, Bluetooth en de Mac-kant, stap voor stap</string>
+</resources>

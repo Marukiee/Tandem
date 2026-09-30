@@ -250,3 +250,27 @@
 /* Over */
 "Version %@" = "Versie %@";
 "Your phone and computers as one. Open source under AGPL-3.0." = "Je telefoon en computers als één geheel. Open source onder AGPL-3.0.";
+
+/* Hotspot over Bluetooth */
+"Already asking your phone" = "Er wordt al aan je telefoon gevraagd";
+"Turn on Bluetooth to ask your phone for its hotspot" = "Zet Bluetooth aan om je telefoon om zijn hotspot te vragen";
+"Tandem may not use Bluetooth. Allow it in System Settings under Privacy and Security" = "Tandem mag Bluetooth niet gebruiken. Sta het toe in Systeeminstellingen onder Privacy en beveiliging";
+"This Mac cannot use Bluetooth Low Energy" = "Deze Mac kan Bluetooth Low Energy niet gebruiken";
+"Could not find your phone over Bluetooth. Is it nearby and is hotspot sharing on?" = "Kon je telefoon niet vinden via Bluetooth. Is hij dichtbij en staat hotspot delen aan?";
+"Could not connect to your phone over Bluetooth" = "Kon geen Bluetooth-verbinding met je telefoon maken";
+"The Bluetooth connection to your phone dropped" = "De Bluetooth-verbinding met je telefoon viel weg";
+"Your phone did not answer as expected" = "Je telefoon antwoordde niet zoals verwacht";
+"Tap the notification on your phone to turn on the hotspot" = "Tik op de melding op je telefoon om de hotspot aan te zetten";
+"Nobody turned the hotspot on in time" = "Niemand heeft de hotspot op tijd aangezet";
+"Your phone did not recognise this Mac" = "Je telefoon herkent deze Mac niet";
+"Your phone's battery is too low to share its hotspot" = "De accu van je telefoon is te leeg om de hotspot te delen";
+"Your phone is roaming, so it does not share its hotspot" = "Je telefoon zit in roaming en deelt de hotspot dus niet";
+"Hotspot sharing is switched off on your phone" = "Hotspot delen staat uit op je telefoon";
+"Your phone could not turn on its hotspot" = "Je telefoon kon zijn hotspot niet aanzetten";
+"Enter the hotspot name and password in Settings first" = "Vul eerst de naam en het wachtwoord van de hotspot in bij Instellingen";
+"Connected through the hotspot of %@" = "Verbonden via de hotspot van %@";
+"This Mac is online again" = "Deze Mac is weer online";
+"The hotspot is not visible yet" = "De hotspot is nog niet zichtbaar";
+"Could not join the hotspot" = "Kon niet met de hotspot verbinden";
+"Joined the hotspot but got no connection" = "Met de hotspot verbonden, maar geen verbinding gekregen";
+"This Mac has no Wi-Fi" = "Deze Mac heeft geen wifi";

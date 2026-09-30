@@ -13,14 +13,14 @@ UPDATE_KEY="${UPDATE_PUBLIC_KEY:-}"
 # An app without the key installs updates without checking who signed them.
 [ "$CONFIG" != release ] || [ -n "$UPDATE_KEY" ] || { echo "no update public key for a release build"; exit 1; }
 DIST="macos/dist"
-APP="$DIST/Tandem.app"
-# A debug build is a separate app: its own bundle id (so its own preferences and
-# permissions) and its own data folder, so testing never touches the installed Tandem.
+# A debug build is a separate app, so testing never touches the real identity, pairings
+# or preferences: another bundle id, and its data lives in Application Support/Tandem-Dev.
 if [ "$CONFIG" = release ]; then
   BUNDLE_ID="nl.markmaaktmedia.Tandem"; APP_NAME="Tandem"
 else
   BUNDLE_ID="nl.markmaaktmedia.Tandem.dev"; APP_NAME="Tandem Dev"
 fi
+APP="$DIST/$APP_NAME.app"
 
 PROFILE=$([ "$CONFIG" = release ] && echo release || echo debug) ./scripts/build-core-macos.sh
 ( cd macos && swift build -c "$CONFIG" --arch arm64 2>&1 | grep -v "search path\|was built for newer" ; true )
