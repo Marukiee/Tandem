@@ -116,7 +116,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatusChip(
-                    TandemIcons.Check,
+                    if (device.online) TandemIcons.Check else TandemIcons.Close,
                     stringResource(if (device.online) R.string.status_online else R.string.status_offline),
                     tint = if (device.online) LocalTandemExtraColors.current.online else MaterialTheme.colorScheme.onSurfaceVariant,
                 )

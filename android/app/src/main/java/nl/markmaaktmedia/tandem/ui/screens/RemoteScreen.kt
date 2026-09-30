@@ -139,8 +139,9 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
                     when (direction) {
                         SwipeDirection.Up -> MacKeys.UP
                         SwipeDirection.Down -> MacKeys.DOWN
-                        SwipeDirection.Left -> MacKeys.LEFT
-                        SwipeDirection.Right -> MacKeys.RIGHT
+                        // As on a real trackpad: swiping left pulls in the space to the right.
+                        SwipeDirection.Left -> MacKeys.RIGHT
+                        SwipeDirection.Right -> MacKeys.LEFT
                     },
                     Mods.CTRL,
                 )

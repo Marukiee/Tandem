@@ -119,7 +119,8 @@ fun TandemTheme(
                 urgent = TandemPalette.Urgent,
                 urgentContainer = if (dark) TandemPalette.UrgentContainerDark else TandemPalette.UrgentContainerLight,
                 onUrgentContainer = if (dark) TandemPalette.Neutral95 else TandemPalette.Neutral10,
-                online = Color(0xFF3DDC97),
+                // The bright green vanishes on a light surface, so light theme gets a deeper one.
+                online = if (dark) Color(0xFF3DDC97) else Color(0xFF0B7A4B),
                 isPureBlack = usePureBlack,
             ),
         )

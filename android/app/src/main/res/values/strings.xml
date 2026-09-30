@@ -87,7 +87,7 @@
     <string name="section_this_device">This device</string>
     <string name="setting_clipboard">Sync clipboard</string>
     <string name="setting_clipboard_sub">Text and links you copy show up on both devices</string>
-    <string name="setting_notifications_from">Show its notifications</string>
+    <string name="setting_notifications_from">Show notifications from this device</string>
     <string name="setting_notifications_from_sub">Notifications this device sends to you</string>
     <string name="setting_auto_accept">Accept files automatically</string>
     <string name="setting_auto_accept_sub">Turn off to be asked before something arrives</string>
