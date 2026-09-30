@@ -37,7 +37,7 @@ import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 
 @Composable
-fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier) {
+fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier, listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState()) {
     val context = LocalContext.current
     val host = context.graph.host
     val transfers by host.transfers.collectAsState()
@@ -45,6 +45,7 @@ fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier) {
 
     LazyColumn(
         modifier.fillMaxSize().statusBarsPadding(),
+        state = listState,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = bottomPadding + 24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

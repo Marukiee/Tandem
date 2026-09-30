@@ -190,6 +190,7 @@ private fun RouteBody(route: Route, nav: Nav) {
         Route.MirrorApps -> MirrorAppsScreen(onBack = { nav.pop() })
         Route.Appearance -> AppearanceScreen(onBack = { nav.pop() })
         Route.Developer -> nl.markmaaktmedia.tandem.ui.screens.DeveloperScreen(onBack = { nav.pop() }, onOpen = { nav.push(it) })
+        Route.Hotspot -> nl.markmaaktmedia.tandem.ui.screens.HotspotScreen(onBack = { nav.pop() })
         Route.OnboardingPreview -> OnboardingScreen(onFinished = { nav.pop() }, preview = true)
     }
 }
@@ -214,9 +215,9 @@ private fun HomeTabs(nav: Nav) {
             label = "tabs",
         ) { tab ->
             when (tab) {
-                0 -> DevicesScreen(onOpenDevice = { nav.push(Route.Device(it)) }, onPair = { nav.push(Route.Pair) }, bottomPadding = barSpace)
-                1 -> TransfersScreen(bottomPadding = barSpace)
-                else -> SettingsScreen(bottomPadding = barSpace, onOpen = { nav.push(it) })
+                0 -> DevicesScreen(onOpenDevice = { nav.push(Route.Device(it)) }, onPair = { nav.push(Route.Pair) }, bottomPadding = barSpace, listState = nav.devicesList)
+                1 -> TransfersScreen(bottomPadding = barSpace, listState = nav.transfersList)
+                else -> SettingsScreen(bottomPadding = barSpace, onOpen = { nav.push(it) }, listState = nav.settingsList)
             }
         }
         PillNavigationBar(

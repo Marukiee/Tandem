@@ -42,9 +42,6 @@ import nl.markmaaktmedia.tandem.BuildConfig
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.Permissions
 import nl.markmaaktmedia.tandem.graph
-import nl.markmaaktmedia.tandem.hotspot.HOTSPOT_EXTRA_ROWS
-import nl.markmaaktmedia.tandem.hotspot.HotspotChecklistRows
-import nl.markmaaktmedia.tandem.hotspot.HotspotSettingsRows
 import nl.markmaaktmedia.tandem.ui.Route
 import nl.markmaaktmedia.tandem.ui.routeBounds
 import nl.markmaaktmedia.tandem.ui.routeKey
@@ -63,7 +60,7 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.update.UpdateState
 
 @Composable
-fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifier = Modifier) {
+fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifier = Modifier, listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState()) {
     val context = LocalContext.current
     val graph = context.graph
     val prefs = graph.prefs
@@ -116,6 +113,7 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
 
     LazyColumn(
         modifier.fillMaxSize().statusBarsPadding(),
+        state = listState,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = bottomPadding + 24.dp),
     ) {
         item {
@@ -169,23 +167,20 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
         item {
             SectionHeader(stringResource(R.string.settings_hotspot))
             SettingsGroup {
-                HotspotChecklistRows()
-            }
-        }
-
-        item {
-            SettingsGroup {
-                // The switch stays grey until everything it needs is allowed, so it never looks
-                // on while nothing can happen. The checklist above says what is missing.
                 val permissions = nl.markmaaktmedia.tandem.ui.components.rememberPermissionStatus()
                 val ready = permissions.bluetooth && permissions.notifications
-                val rows = 1 + HOTSPOT_EXTRA_ROWS
-                SwitchRow(
-                    0, rows, TandemIcons.Hotspot, stringResource(R.string.settings_hotspot_for_mac),
-                    stringResource(if (ready) R.string.settings_hotspot_for_mac_sub else R.string.hotspot_needs_permissions),
-                    hotspot && ready, { scope.launch { prefs.setHotspotForMac(it) } }, enabled = ready,
+                ActionRow(
+                    0, 1, TandemIcons.Hotspot, stringResource(R.string.settings_hotspot),
+                    stringResource(
+                        when {
+                            !ready -> R.string.hotspot_row_setup
+                            hotspot -> R.string.hotspot_row_on
+                            else -> R.string.hotspot_row_off
+                        },
+                    ),
+                    { onOpen(Route.Hotspot) },
+                    modifier = Modifier.routeBounds(routeKey(Route.Hotspot)),
                 )
-                HotspotSettingsRows(1, rows)
             }
         }
 

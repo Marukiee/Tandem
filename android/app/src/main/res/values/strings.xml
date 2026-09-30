@@ -135,7 +135,7 @@
     <string name="settings_updates">Updates</string>
     <string name="settings_version">Installed version</string>
     <string name="settings_auto_update">Check for updates automatically</string>
-    <string name="settings_auto_update_sub">Every few hours, when you open the app</string>
+    <string name="settings_auto_update_sub">Every time you open the app</string>
     <string name="settings_check_update">Check now</string>
     <string name="settings_checking">Checking</string>
     <string name="settings_up_to_date">You are up to date</string>
@@ -293,4 +293,13 @@
     <string name="check_mac_missing">Pair your Mac first</string>
     <string name="share_target_to">Send to %1$s</string>
     <string name="share_target_all">Send to all devices</string>
+    <string name="hotspot_page_intro">When your Mac has no connection it can ask this phone for its hotspot. Everything for that is on this page.</string>
+    <string name="hotspot_section_setup">Setup</string>
+    <string name="hotspot_section_sharing">Sharing</string>
+    <string name="hotspot_section_data">Data</string>
+    <string name="hotspot_section_help">How it works</string>
+    <string name="hotspot_row_setup">Setup needed</string>
+    <string name="hotspot_row_on">On for your Mac</string>
+    <string name="hotspot_row_off">Off</string>
+    <string name="hotspot_data_used">Used so far: %1$s</string>
 </resources>

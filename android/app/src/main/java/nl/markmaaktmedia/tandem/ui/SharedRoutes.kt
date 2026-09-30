@@ -35,6 +35,7 @@ fun routeKey(route: Route): String = when (route) {
     Route.MirrorApps -> "mirror"
     Route.Appearance -> "appearance"
     Route.Developer -> "developer"
+    Route.Hotspot -> "hotspot"
     Route.OnboardingPreview -> "onboarding-preview"
 }
 

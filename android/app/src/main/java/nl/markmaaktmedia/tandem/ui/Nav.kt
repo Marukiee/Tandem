@@ -14,6 +14,7 @@ sealed interface Route {
     data object MirrorApps : Route
     data object Appearance : Route
     data object Developer : Route
+    data object Hotspot : Route
     data object OnboardingPreview : Route
 }
 
@@ -21,6 +22,12 @@ sealed interface Route {
 class Nav {
     val stack = mutableStateListOf<Route>(Route.Home)
     var tab by mutableIntStateOf(0)
+
+    // The scroll position of each home tab lives here, not in the tab: a page opened from a tab
+    // takes the tab out of the composition, and coming back must not start from the top.
+    val devicesList = androidx.compose.foundation.lazy.LazyListState()
+    val transfersList = androidx.compose.foundation.lazy.LazyListState()
+    val settingsList = androidx.compose.foundation.lazy.LazyListState()
 
     val top: Route get() = stack.last()
 
@@ -64,6 +71,7 @@ private fun routeFromKey(key: String): Route? = when {
     key == "mirror" -> Route.MirrorApps
     key == "appearance" -> Route.Appearance
     key == "developer" -> Route.Developer
+    key == "hotspot" -> Route.Hotspot
     key == "onboarding-preview" -> Route.OnboardingPreview
     else -> null
 }

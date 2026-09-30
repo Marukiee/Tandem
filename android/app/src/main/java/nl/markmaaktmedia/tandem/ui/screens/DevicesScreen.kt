@@ -67,6 +67,7 @@ fun DevicesScreen(
     onPair: () -> Unit,
     bottomPadding: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
+    listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
 ) {
     val context = LocalContext.current
     val host = context.graph.host
@@ -86,6 +87,7 @@ fun DevicesScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize().statusBarsPadding(),
+        state = listState,
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = bottomPadding + 88.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {

@@ -300,17 +300,7 @@ private fun TopBar(
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             GroupToggle(TandemIcons.Keyboard, stringResource(R.string.remote_keyboard), keyboardOn, GroupEnd.Start, onKeyboard)
             GroupToggle(TandemIcons.Mouse, stringResource(R.string.remote_mouse_buttons), mouseOn, GroupEnd.Middle, onMouse)
-            var menu by remember { mutableStateOf(false) }
-            Box {
-                GroupToggle(TandemIcons.More, stringResource(R.string.remote_more), menu, GroupEnd.End) { menu = true }
-                androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    androidx.compose.material3.DropdownMenuItem(
-                        text = { Text(stringResource(R.string.remote_media)) },
-                        leadingIcon = if (mediaOn) ({ Icon(TandemIcons.Check, null) }) else null,
-                        onClick = { onMedia(); menu = false },
-                    )
-                }
-            }
+            GroupToggle(TandemIcons.VolumeUp, stringResource(R.string.remote_media), mediaOn, GroupEnd.End, onMedia)
         }
     }
 }
@@ -334,7 +324,9 @@ private fun GroupToggle(icon: Painter, description: String, on: Boolean, positio
     val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     // The tight corners open up while the finger is down, and spring back.
-    val inner by androidx.compose.animation.core.animateDpAsState(if (pressed) GroupOuter else GroupInner, TandemMotion.springy(), label = "innerCorner")
+    // Like the modifier keys on the keyboard: a button that is on (or being pressed) rounds off
+    // into a pill, one that is off is the tight rectangle of the group.
+    val inner by androidx.compose.animation.core.animateDpAsState(if (pressed || on) GroupOuter else GroupInner, TandemMotion.springy(), label = "innerCorner")
     val shape = when (position) {
         GroupEnd.Start -> androidx.compose.foundation.shape.RoundedCornerShape(GroupOuter, inner, inner, GroupOuter)
         GroupEnd.Middle -> androidx.compose.foundation.shape.RoundedCornerShape(inner)

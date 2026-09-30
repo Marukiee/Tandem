@@ -74,12 +74,12 @@ final class Updater {
         await install()
     }
 
-    /// On launch and then hourly while the app runs: check at most every three hours. A
-    /// menu bar app can stay open for weeks, so a check at launch alone would miss releases.
+    /// Every time the app starts or comes to the front, at most once a minute. A menu bar app
+    /// can stay open for weeks, so a check at launch alone would miss releases.
     func checkIfDue() {
         // A development build must never replace itself with a release.
         guard autoCheck, mayUpdateThisBuild else { return }
-        if let last = lastChecked, Date().timeIntervalSince(last) < 3 * 3600 { return }
+        if let last = lastChecked, Date().timeIntervalSince(last) < 60 { return }
         Task { await check(manual: false) }
     }
 

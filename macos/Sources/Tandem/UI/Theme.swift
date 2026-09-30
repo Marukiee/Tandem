@@ -117,6 +117,22 @@ struct HoverLift: ViewModifier {
     }
 }
 
+/// A control that swells a little under the pointer, with no shadow. For glass buttons, which
+/// do not react to the pointer in a menu bar panel by themselves.
+struct HoverSwell: ViewModifier {
+    var scale: CGFloat = 1.06
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(hovering && hoverEnabled && !reduceMotion ? scale : 1)
+            .onHover { hovering = $0 }
+            .animation(.tandemSpringy, value: hovering)
+    }
+}
+
 /// A soft highlight behind a row while the pointer is over it. Colour only, so a
 /// tween is right, and it stays put under Reduce Motion.
 struct HoverHighlight: ViewModifier {
@@ -155,6 +171,10 @@ struct Hoverable<Content: View>: View {
 extension View {
     func hoverLift(scale: CGFloat = 1.015, lift: CGFloat = 2, enabled: Bool = true) -> some View {
         modifier(HoverLift(scale: scale, lift: lift, enabled: enabled))
+    }
+
+    func hoverSwell(_ scale: CGFloat = 1.06) -> some View {
+        modifier(HoverSwell(scale: scale))
     }
 
     func hoverHighlight(radius: CGFloat = 12, tint: Color = .primary, selected: Bool = false) -> some View {

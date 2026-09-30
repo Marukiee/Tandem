@@ -132,7 +132,7 @@
     <string name="settings_updates">Updates</string>
     <string name="settings_version">Geïnstalleerde versie</string>
     <string name="settings_auto_update">Automatisch op updates controleren</string>
-    <string name="settings_auto_update_sub">Om de paar uur, als je de app opent</string>
+    <string name="settings_auto_update_sub">Elke keer als je de app opent</string>
     <string name="settings_check_update">Nu controleren</string>
     <string name="settings_checking">Controleren</string>
     <string name="settings_up_to_date">Je bent bijgewerkt</string>
@@ -290,4 +290,13 @@
     <string name="check_mac_missing">Koppel eerst je Mac</string>
     <string name="share_target_to">Stuur naar %1$s</string>
     <string name="share_target_all">Stuur naar alle apparaten</string>
+    <string name="hotspot_page_intro">Als je Mac geen verbinding heeft kan hij deze telefoon om de hotspot vragen. Alles daarvoor staat op deze pagina.</string>
+    <string name="hotspot_section_setup">Instellen</string>
+    <string name="hotspot_section_sharing">Delen</string>
+    <string name="hotspot_section_data">Data</string>
+    <string name="hotspot_section_help">Hoe het werkt</string>
+    <string name="hotspot_row_setup">Nog in te stellen</string>
+    <string name="hotspot_row_on">Aan voor je Mac</string>
+    <string name="hotspot_row_off">Uit</string>
+    <string name="hotspot_data_used">Tot nu toe gebruikt: %1$s</string>
 </resources>

@@ -109,6 +109,7 @@ struct MenuBarPanel: View {
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)
                 .fixedSize()
+                .hoverSwell()
                 .help("More")
 
                 Spacer(minLength: 8)
@@ -116,6 +117,7 @@ struct MenuBarPanel: View {
                 Button("Open Tandem") { openMain(pairing: false) }
                     .buttonStyle(.glassProminent)
                     .tint(Palette.indigo)
+                    .hoverSwell(1.04)
             }
             .controlSize(.large)
         }
@@ -161,10 +163,12 @@ private struct MenuDeviceRow: View {
                     Button { pickFiles() } label: {
                         Image(systemName: "paperplane.fill").frame(width: 14, height: 14)
                     }
+                    .hoverSwell(1.12)
                     .help("Send files")
                     Button { model.sendClipboard(to: [device.id]) } label: {
                         Image(systemName: "doc.on.clipboard").frame(width: 14, height: 14)
                     }
+                    .hoverSwell(1.12)
                     .help("Send clipboard")
                 }
                 .buttonStyle(.glass)

@@ -266,8 +266,9 @@ class UpdateRepository(
         const val TAG = "UpdateRepository"
         const val FAILED_REASON = "Could not reach GitHub"
         const val APK_NAME = "Tandem.apk"
-        /** Often enough that a new release shows within hours, rare enough for GitHub's limits. */
         private const val PREVIEW_TAG = "preview"
-        const val CHECK_INTERVAL_MS = 3 * 3600 * 1000L
+
+        /** Every time the app is opened, at most once a minute so switching back and forth does not hammer GitHub. */
+        const val CHECK_INTERVAL_MS = 60 * 1000L
     }
 }

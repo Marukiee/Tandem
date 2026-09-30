@@ -47,6 +47,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func applicationDidBecomeActive(_ notification: Notification) {
+        Task { @MainActor in Updater.shared.checkIfDue() }
+    }
+
     func application(_ application: NSApplication, open urls: [URL]) {
         Task { @MainActor in
             for url in urls { EngineModel.shared.handle(url: url) }
