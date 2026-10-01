@@ -1,8 +1,24 @@
 [
   {
-    "version": "0.1.22",
+    "version": "0.1.23",
     "date": "2026-10-01",
     "highlight": true,
+    "en": {
+      "title": "A clearer update banner on the Mac",
+      "better": [
+        "The update banner is a solid card instead of a see-through bar, with what you have and what is new, the size and percentage while it downloads, and a Try again when the update fails (a failed update used to just disappear)"
+      ]
+    },
+    "nl": {
+      "title": "Een duidelijkere updatebanner op de Mac",
+      "better": [
+        "De updatebanner is een solide kaart in plaats van een doorzichtige balk, met wat je hebt en wat er nieuw is, de grootte en het percentage tijdens het downloaden, en een Probeer opnieuw als de update mislukt (een mislukte update verdween eerst gewoon)"
+      ]
+    }
+  },
+  {
+    "version": "0.1.22",
+    "date": "2026-10-01",
     "en": {
       "title": "Cleaner top of the window and steadier playback buttons",
       "better": [

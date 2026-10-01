@@ -397,3 +397,9 @@
 "Choose %@ (Tandem) in Sound settings or the sound menu to play this Mac's sound on the phone. About 700 MB an hour. macOS asks for System Audio Recording the first time." = "Kies %@ (Tandem) in de geluidsinstellingen of het geluidsmenu om het geluid van deze Mac op de telefoon af te spelen. Ongeveer 700 MB per uur. macOS vraagt de eerste keer om Systeemgeluid opnemen.";
 
 "Your phone disconnected, so the sound plays on this Mac until it is back" = "Je telefoon verbrak de verbinding, dus het geluid speelt op deze Mac tot hij terug is";
+
+"You have version %@" = "Je hebt versie %@";
+"%@ of %@" = "%@ van %@";
+"Tandem opens again by itself" = "Tandem start vanzelf opnieuw";
+"The update did not work" = "De update is mislukt";
+"Dismiss" = "Sluiten";

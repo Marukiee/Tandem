@@ -39,6 +39,9 @@ final class Updater {
     }
 
     var state: State = .idle
+    /// True when the last failure came from installing (download, checks, unpacking), not from a look at GitHub.
+    /// The banner only speaks up about the first: a check nobody asked for that finds no network says nothing.
+    private(set) var installFailed = false
     var lastChecked: Date? = UserDefaults.standard.object(forKey: "updateLastChecked") as? Date
 
     @ObservationIgnored @AppStorage("autoCheckUpdates") var autoCheck = true
@@ -100,6 +103,7 @@ final class Updater {
             return
         }
         state = .checking
+        installFailed = false
         do {
             var request = URLRequest(url: URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases/latest")!)
             request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -161,6 +165,7 @@ final class Updater {
 
     func install() async {
         guard case let .available(release) = state, mayUpdateThisBuild else { return }
+        installFailed = false
         do {
             state = .downloading(release, 0)
             trace("download start")
@@ -179,9 +184,11 @@ final class Updater {
             exit(0)
         } catch let error as UpdateError {
             trace("failed: \(error.message)")
+            installFailed = true
             state = .failed(error.message)
         } catch {
             trace("failed: \(error.localizedDescription)")
+            installFailed = true
             state = .failed(error.localizedDescription)
         }
     }
