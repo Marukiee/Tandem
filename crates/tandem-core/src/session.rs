@@ -33,6 +33,28 @@ pub(crate) struct Session {
 
 const DATAGRAM_POINTER: u8 = 1;
 const DATAGRAM_SCROLL: u8 = 2;
+const DATAGRAM_AUDIO: u8 = 3;
+
+/// The bytes before the samples in an audio datagram: kind, stream and a counter.
+pub const AUDIO_HEADER: usize = 6;
+
+/// One piece of sound as a datagram: kind, the stream it belongs to, a counter that goes up by one
+/// per packet (so the receiver sees what was lost), then the samples.
+pub fn audio_datagram(stream: u8, seq: u32, pcm: &[u8]) -> bytes::Bytes {
+    let mut out = Vec::with_capacity(AUDIO_HEADER + pcm.len());
+    out.push(DATAGRAM_AUDIO);
+    out.push(stream);
+    out.extend_from_slice(&seq.to_be_bytes());
+    out.extend_from_slice(pcm);
+    bytes::Bytes::from(out)
+}
+
+fn parse_audio(data: &[u8]) -> Option<(u8, u32, &[u8])> {
+    if data.len() <= AUDIO_HEADER || data[0] != DATAGRAM_AUDIO {
+        return None;
+    }
+    Some((data[1], u32::from_be_bytes([data[2], data[3], data[4], data[5]]), &data[AUDIO_HEADER..]))
+}
 
 /// Encodes a pointer movement as a datagram: kind, then dx and dy as big-endian i16.
 pub fn pointer_datagram(dx: i16, dy: i16) -> bytes::Bytes {
@@ -247,7 +269,14 @@ impl Inner {
             let conn = conn.clone();
             async move {
                 while let Ok(data) = conn.read_datagram().await {
-                    if let Some(input) = parse_datagram(&data) {
+                    if let Some((stream, seq, pcm)) = parse_audio(&data) {
+                        // Straight to the app, not through the event channel: that one may drop
+                        // events when the app is slow, and sound must never take the others with it.
+                        let sink = this.audio.read().unwrap().clone();
+                        if let Some(sink) = sink {
+                            sink.audio(id, stream, seq, pcm);
+                        }
+                    } else if let Some(input) = parse_datagram(&data) {
                         this.emit(Event::Input { from: id, input });
                     }
                 }
@@ -354,6 +383,13 @@ impl Inner {
             Msg::Input(input) => self.emit(Event::Input { from: id, input }),
             Msg::Hotspot(hotspot) => self.emit(Event::Hotspot { from: id, hotspot }),
             Msg::BleKey { key } => self.ble_on_key(id, key),
+            Msg::AudioStart { stream, sample_rate, channels } => {
+                // Sample rates and channel counts far outside what any device has are a mistake.
+                if (8_000..=192_000).contains(&sample_rate) && (1..=2).contains(&channels) {
+                    self.emit(Event::AudioStart { from: id, stream, sample_rate, channels });
+                }
+            }
+            Msg::AudioStop { stream } => self.emit(Event::AudioStop { from: id, stream }),
             Msg::MediaPlayers { mut players } => {
                 // A phone has a handful of sessions; more than this is a bug or an abuse.
                 players.truncate(16);
@@ -430,6 +466,17 @@ impl Inner {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn audio_datagrams_round_trip() {
+        let pcm = [1u8, 2, 3, 4, 5, 6, 7, 8];
+        let data = audio_datagram(9, 0x0102_0304, &pcm);
+        assert_eq!(data.len(), AUDIO_HEADER + pcm.len());
+        assert_eq!(parse_audio(&data), Some((9, 0x0102_0304, &pcm[..])));
+        // Without samples, or of another kind, it is not audio.
+        assert_eq!(parse_audio(&data[..AUDIO_HEADER]), None);
+        assert_eq!(parse_audio(&pointer_datagram(1, 2)), None);
+    }
 
     #[test]
     fn pointer_datagrams_round_trip() {

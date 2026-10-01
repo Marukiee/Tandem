@@ -53,6 +53,21 @@ pub trait TandemEventSink: Send + Sync {
     fn on_event(&self, event: TandemEvent);
 }
 
+/// Receives the sound another device sends. Called on the connection's own task for every packet,
+/// so it must only queue the samples and return, never wait for the speaker.
+#[uniffi::export(foreign)]
+pub trait TandemAudioSink: Send + Sync {
+    fn on_audio(&self, from: String, stream: u8, seq: u32, pcm: Vec<u8>);
+}
+
+struct AudioAdapter(Arc<dyn TandemAudioSink>);
+
+impl crate::engine::AudioSink for AudioAdapter {
+    fn audio(&self, from: DeviceId, stream: u8, seq: u32, pcm: &[u8]) {
+        self.0.on_audio(from.to_string(), stream, seq, pcm.to_vec());
+    }
+}
+
 /// Where the identity key is kept. Android wraps it with the Keystore, macOS uses the
 /// Keychain.
 #[uniffi::export(foreign)]
@@ -755,6 +770,9 @@ pub enum TandemEvent {
     MediaArt { from: String, key: u64, jpeg: Vec<u8> },
     /// `action` is None for a command this version does not know.
     MediaCommand { from: String, player: String, action: Option<TandemMediaAction>, position_ms: Option<u64> },
+    /// The other device is about to send its sound: 16 bit signed samples, interleaved.
+    AudioStart { from: String, stream: u8, sample_rate: u32, channels: u8 },
+    AudioStop { from: String, stream: u8 },
 }
 
 impl From<Event> for TandemEvent {
@@ -833,6 +851,10 @@ impl From<Event> for TandemEvent {
                 TandemEvent::MediaPlayers { from: from.to_string(), players: players.into_iter().map(Into::into).collect() }
             }
             Event::MediaArt { from, key, jpeg } => TandemEvent::MediaArt { from: from.to_string(), key, jpeg },
+            Event::AudioStart { from, stream, sample_rate, channels } => {
+                TandemEvent::AudioStart { from: from.to_string(), stream, sample_rate, channels }
+            }
+            Event::AudioStop { from, stream } => TandemEvent::AudioStop { from: from.to_string(), stream },
             Event::MediaCommand { from, player, action, position_ms } => {
                 use crate::proto::MediaAction as M;
                 let action = match action {
@@ -1228,6 +1250,30 @@ impl TandemEngine {
     pub async fn update_status(&self, status: TandemStatus) {
         let engine = self.engine.clone();
         let _ = self.runtime.spawn(async move { engine.update_status(status.into()).await }).await;
+    }
+
+    /// Where the sound of other devices goes. Set it before anyone sends any.
+    pub fn set_audio_sink(&self, sink: Arc<dyn TandemAudioSink>) {
+        self.engine.set_audio_sink(Arc::new(AudioAdapter(sink)));
+    }
+
+    /// How many bytes of samples fit in one packet to this device, 0 when it is not connected.
+    pub fn audio_payload_limit(&self, id: String) -> u32 {
+        DeviceId::parse(&id).map(|id| self.engine.audio_payload_limit(&id) as u32).unwrap_or(0)
+    }
+
+    /// Sends one packet of sound without waiting. Packets that get lost stay lost.
+    pub fn send_audio(&self, target: String, stream: u8, seq: u32, pcm: Vec<u8>) -> Result<(), TandemError> {
+        let id = DeviceId::parse(&target)?;
+        self.engine.send_audio(&id, stream, seq, &pcm).map_err(Into::into)
+    }
+
+    pub async fn send_audio_start(&self, target: String, stream: u8, sample_rate: u32, channels: u8) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::AudioStart { stream, sample_rate, channels }).await.map(|_| ())
+    }
+
+    pub async fn send_audio_stop(&self, target: String, stream: u8) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::AudioStop { stream }).await.map(|_| ())
     }
 
     /// This device's players, whole list, to the devices that should show them.

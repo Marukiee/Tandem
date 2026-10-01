@@ -129,6 +129,10 @@ class EngineHost(
     var engine: TandemEngine? = null
         private set
 
+    /** Where the Mac's sound goes. Set before the engine starts; the engine hands it every packet. */
+    @Volatile
+    var audioSink: uniffi.tandem_core.TandemAudioSink? = null
+
     val myId: String get() = engine?.id().orEmpty()
     val myName: String get() = engine?.name().orEmpty()
 
@@ -152,6 +156,7 @@ class EngineHost(
                 )
                 val started = TandemEngine.start(config, AndroidVault(context), AndroidFiles(context), Sink())
                 engine = started
+                audioSink?.let { started.setAudioSink(it) }
                 _state.value = EngineState.Running
                 refreshDevices()
             } catch (e: Exception) {

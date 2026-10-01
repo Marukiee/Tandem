@@ -74,7 +74,6 @@
 "Find phone" = "Zoek telefoon";
 "Send" = "Stuur";
 "Send with Tandem" = "Stuur met Tandem";
-"Send files" = "Bestanden sturen";
 "Choose files to send to %@" = "Kies bestanden om naar %@ te sturen";
 "Your phone is ringing" = "Je telefoon gaat over";
 "That device is not connected right now" = "Dat apparaat is nu niet verbonden";
@@ -131,11 +130,9 @@
 
 /* Meldingen */
 "Code %@ recognised and copied" = "Code %@ herkend en gekopieerd";
-"Show in Finder" = "Toon in Finder";
 "Answer" = "Opnemen";
 "Decline" = "Weigeren";
 "Received %@" = "%@ ontvangen";
-"From %@" = "Van %@";
 "Unknown number" = "Onbekend nummer";
 "Incoming call" = "Inkomend gesprek";
 "Calling" = "Bellen";
@@ -201,7 +198,6 @@
 "Tandem only asks for what a feature needs, and each one is optional. Here you can see what is on, turn things on, and try them without a second device." = "Tandem vraagt alleen wat een functie nodig heeft, en alles is optioneel. Hier zie je wat aan staat, zet je dingen aan en kun je ze proberen zonder tweede apparaat.";
 "Notifications" = "Meldingen";
 "To show notifications from your phone, incoming calls and files that arrived." = "Om meldingen van je telefoon, inkomende gesprekken en ontvangen bestanden te tonen.";
-"Local network" = "Lokaal netwerk";
 "To find your other devices on your Wi-Fi. macOS asks the first time Tandem looks for them." = "Om je andere apparaten op je wifi te vinden. macOS vraagt het de eerste keer dat Tandem ze zoekt.";
 "Accessibility" = "Toegankelijkheid";
 "Only for using your phone as a trackpad, keyboard or media remote." = "Alleen om je telefoon als trackpad, toetsenbord of mediabediening te gebruiken.";
@@ -296,13 +292,10 @@
 /* Hotspot requirements */
 "Finish the two steps below to turn this on." = "Rond de twee stappen hieronder af om dit aan te zetten.";
 "What it needs" = "Wat het nodig heeft";
-"Bluetooth" = "Bluetooth";
-"Allow" = "Toestaan";
 "Open Settings" = "Instellingen openen";
 "Tandem may use Bluetooth to ask your phone." = "Tandem mag Bluetooth gebruiken om je telefoon te vragen.";
 "Tandem has not asked yet." = "Tandem heeft het nog niet gevraagd.";
 "Bluetooth is off for Tandem in System Settings." = "Bluetooth staat voor Tandem uit in Systeeminstellingen.";
-"Your phone's hotspot" = "De hotspot van je telefoon";
 "Network name and password are saved." = "Netwerknaam en wachtwoord zijn opgeslagen.";
 "Fill in the network name and password below." = "Vul hieronder de netwerknaam en het wachtwoord in.";
 "Finish the hotspot setup in Settings first" = "Rond eerst de hotspot-instellingen af";
@@ -346,12 +339,10 @@
 "Join your phone's hotspot once and Tandem takes over." = "Maak één keer verbinding met de hotspot van je telefoon, de rest doet Tandem.";
 
 /* Notifications page */
-"Notifications" = "Meldingen";
 "What your phones showed. New ones also appear as notifications on this Mac." = "Wat je telefoons lieten zien. Nieuwe verschijnen ook als melding op deze Mac.";
 "No notifications yet" = "Nog geen meldingen";
 "When a phone shows a notification, it is listed here." = "Als een telefoon een melding toont, staat die hier.";
 "Clear all" = "Alles wissen";
-"Nothing yet" = "Nog niets";
 "%lld shared" = "%lld gedeeld";
 "%lld from your phones" = "%lld van je telefoons";
 "macOS only tells Tandem the name of your network if it may see your location. Your position is never read." = "macOS geeft Tandem de naam van je netwerk alleen als het je locatie mag zien. Je positie wordt nooit gelezen.";
@@ -360,7 +351,6 @@
 /* Hotspot failures */
 "Nobody tapped the notification on your phone in time. Tap it next time, or start Shizuku so the phone can do it by itself." = "Niemand tikte op tijd op de melding op je telefoon. Tik er de volgende keer op, of start Shizuku zodat de telefoon het zelf doet.";
 "Your phone could not turn on its hotspot. Tap the notification on your phone, or make sure Shizuku is running so it can start by itself." = "Je telefoon kon zijn hotspot niet aanzetten. Tik op de melding op je telefoon, of zorg dat Shizuku draait zodat hij zelf kan starten.";
-"Try again" = "Probeer opnieuw";
 
 "Bluetooth without a network" = "Bluetooth zonder netwerk";
 "Clipboard and notifications from your phone still arrive over Bluetooth when this Mac has no connection." = "Klembord en meldingen van je telefoon komen ook via Bluetooth aan als deze Mac geen verbinding heeft.";
@@ -377,6 +367,17 @@
 "Music from your phone shows here with buttons, and what Spotify and Music play here shows on your phone." = "Muziek van je telefoon staat hier met knoppen, en wat Spotify en Muziek hier spelen staat op je telefoon.";
 "Allow Tandem to control Spotify and Music in System Settings, under Privacy and Security, Automation" = "Geef Tandem toestemming om Spotify en Muziek te bedienen in Systeeminstellingen, onder Privacy en beveiliging, Automatisering";
 "Previous" = "Vorige";
-"Next" = "Volgende";
 "Play" = "Afspelen";
 "Pause" = "Pauzeren";
+
+"Use this phone as a speaker" = "Gebruik deze telefoon als speaker";
+"Everything this Mac plays comes out of %@" = "Alles wat deze Mac afspeelt komt uit %@";
+"Plays this Mac's sound on %@ and mutes this Mac. Uses about 700 MB an hour. The first time, macOS asks to allow System Audio Recording." = "Speelt het geluid van deze Mac af op %@ en zet deze Mac stil. Gebruikt ongeveer 700 MB per uur. De eerste keer vraagt macOS om Systeemgeluid opnemen toe te staan.";
+"Stop using this phone as a speaker" = "Stop met deze telefoon als speaker gebruiken";
+"Your phone does not allow this. Turn on Speaker for your Mac in the settings of Tandem on your phone." = "Je telefoon staat dit niet toe. Zet Speaker voor je Mac aan in de instellingen van Tandem op je telefoon.";
+"Your phone stopped playing the sound" = "Je telefoon is gestopt met het geluid afspelen";
+"The sound stopped because your phone disconnected" = "Het geluid stopte omdat je telefoon de verbinding verbrak";
+"Mute this Mac while a phone is its speaker" = "Zet deze Mac stil als een telefoon zijn speaker is";
+"Turn this off to hear the sound on both. It takes effect the next time you start it." = "Zet dit uit om het geluid op allebei te horen. Het werkt de volgende keer dat je het start.";
+"This needs macOS 14.2 or later" = "Dit heeft macOS 14.2 of nieuwer nodig";
+"Could not capture the sound (%@, error %lld)" = "Kon het geluid niet opvangen (%@, fout %lld)";

@@ -758,3 +758,73 @@ async fn players_and_their_commands_travel_both_ways() {
     .await;
     assert_eq!((who.as_str(), action, at), ("com.spotify.music", MediaAction::Seek, Some(90_000)));
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn sound_travels_as_datagrams_and_arrives_in_order() {
+    use std::sync::Mutex;
+    use tandem_core::engine::AudioSink;
+    use tandem_core::proto::Msg;
+
+    struct Collect(Mutex<Vec<(u8, u32, Vec<u8>)>>);
+    impl AudioSink for Collect {
+        fn audio(&self, _from: DeviceId, stream: u8, seq: u32, pcm: &[u8]) {
+            self.0.lock().unwrap().push((stream, seq, pcm.to_vec()));
+        }
+    }
+
+    let mac = node("Mac").await;
+    let phone = node("Phone").await;
+    pair(&mac, &phone).await;
+    wait_until("connected", || online(&mac, phone.engine.id()) && online(&phone, mac.engine.id())).await;
+
+    let heard = Arc::new(Collect(Mutex::new(Vec::new())));
+    phone.engine.set_audio_sink(heard.clone());
+    let mut phone_events = phone.engine.subscribe();
+
+    mac.engine.send_msg(&[phone.engine.id()], Msg::AudioStart { stream: 3, sample_rate: 48_000, channels: 2 }).await;
+    let (stream, rate, channels) = expect(&mut phone_events, "the start", |e| match e {
+        Event::AudioStart { stream, sample_rate, channels, .. } => Some((*stream, *sample_rate, *channels)),
+        _ => None,
+    })
+    .await;
+    assert_eq!((stream, rate, channels), (3, 48_000, 2));
+
+    // Packets as large as the path allows, a whole number of 4 byte frames each.
+    let limit = mac.engine.audio_payload_limit(&phone.engine.id()) / 4 * 4;
+    assert!(limit >= 400, "a datagram should carry at least a few milliseconds of sound, got {limit}");
+    let packet = |n: u32| -> Vec<u8> { (0..limit).map(|i| (i as u32 + n) as u8).collect() };
+    for seq in 0..40u32 {
+        mac.engine.send_audio(&phone.engine.id(), 3, seq, &packet(seq)).unwrap();
+        // A real capture hands over a packet every few milliseconds.
+        tokio::time::sleep(Duration::from_millis(2)).await;
+    }
+    wait_until("the packets arrive", || heard.0.lock().unwrap().len() >= 40).await;
+    let got = heard.0.lock().unwrap().clone();
+    // Loopback does not lose or reorder, so what went in is what comes out.
+    assert_eq!(got.len(), 40);
+    for (index, (stream, seq, pcm)) in got.iter().enumerate() {
+        assert_eq!((*stream, *seq), (3, index as u32));
+        assert_eq!(pcm, &packet(index as u32));
+    }
+
+    mac.engine.send_msg(&[phone.engine.id()], Msg::AudioStop { stream: 3 }).await;
+    let stopped = expect(&mut phone_events, "the stop", |e| match e {
+        Event::AudioStop { stream, .. } => Some(*stream),
+        _ => None,
+    })
+    .await;
+    assert_eq!(stopped, 3);
+
+    // A start with a sample rate nobody has is a mistake and is dropped.
+    mac.engine.send_msg(&[phone.engine.id()], Msg::AudioStart { stream: 4, sample_rate: 5, channels: 9 }).await;
+    let junk = tokio::time::timeout(Duration::from_millis(500), async {
+        loop {
+            if let Ok(Event::AudioStart { .. }) = phone_events.recv().await {
+                return true;
+            }
+        }
+    })
+    .await
+    .is_ok();
+    assert!(!junk, "an impossible format was passed on");
+}

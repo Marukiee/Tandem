@@ -177,6 +177,17 @@ private struct MenuDeviceRow: View {
                     .hoverSwell(1.12)
                     .disabled(!(device.online || device.ble))
                     .help("Send clipboard")
+                    if device.platform == .android {
+                        let on = model.speaker.device == device.id
+                        Button { model.toggleSpeaker(for: device.id) } label: {
+                            Image(systemName: on ? "speaker.wave.3.fill" : "speaker.wave.2").frame(width: 14, height: 14)
+                                .foregroundStyle(on ? Palette.indigo : Color.primary)
+                        }
+                        .hoverGrey()
+                        .hoverSwell(1.12)
+                        .disabled(!device.online)
+                        .help(on ? "Stop using this phone as a speaker" : "Use this phone as a speaker")
+                    }
                 }
                 .buttonStyle(.glass)
                 .buttonBorderShape(.circle)

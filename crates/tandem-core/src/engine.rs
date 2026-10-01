@@ -122,7 +122,14 @@ pub(crate) struct Inner {
     pub accept_slots: Arc<Semaphore>,
     pub last_announce_hour: AtomicU64,
     pub ble: Mutex<crate::ble::BleHub>,
+    pub audio: RwLock<Option<Arc<dyn AudioSink>>>,
     pub ble_msg_id: std::sync::atomic::AtomicU8,
+}
+
+/// Where the sound of the other device goes. Called on the connection's own task for every
+/// packet, so it must only queue the samples and return.
+pub trait AudioSink: Send + Sync {
+    fn audio(&self, from: DeviceId, stream: u8, seq: u32, pcm: &[u8]);
 }
 
 #[derive(Clone)]
@@ -183,6 +190,7 @@ impl Engine {
             accept_slots: Arc::new(Semaphore::new(16)),
             last_announce_hour: AtomicU64::new(discovery::current_hour()),
             ble: Mutex::new(Default::default()),
+            audio: RwLock::new(None),
             ble_msg_id: std::sync::atomic::AtomicU8::new(0),
         });
 
@@ -435,6 +443,26 @@ impl Engine {
     pub fn send_datagram(&self, id: &DeviceId, data: bytes::Bytes) -> Result<()> {
         let session = self.inner.session_of(id).ok_or(Error::NotConnected)?;
         session.conn.send_datagram(data).map_err(Error::connection)
+    }
+
+    /// Where incoming sound is delivered. Without one it is dropped.
+    pub fn set_audio_sink(&self, sink: Arc<dyn AudioSink>) {
+        *self.inner.audio.write().unwrap() = Some(sink);
+    }
+
+    /// How many bytes of samples fit in one datagram to this device, 0 when unknown. The sender cuts
+    /// its sound to this, and keeps it a whole number of sample frames.
+    pub fn audio_payload_limit(&self, id: &DeviceId) -> usize {
+        self.inner
+            .session_of(id)
+            .and_then(|s| s.conn.max_datagram_size())
+            .map(|max| max.saturating_sub(crate::session::AUDIO_HEADER))
+            .unwrap_or(0)
+    }
+
+    /// Sends one piece of sound, unreliably: a late packet is worth nothing, so none is retried.
+    pub fn send_audio(&self, id: &DeviceId, stream: u8, seq: u32, pcm: &[u8]) -> Result<()> {
+        self.send_datagram(id, crate::session::audio_datagram(stream, seq, pcm))
     }
 
     pub async fn shutdown(&self) {

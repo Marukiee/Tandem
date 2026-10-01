@@ -19,6 +19,10 @@ class ActionReceiver : BroadcastReceiver() {
             ACCEPT -> if (device != null) runCatching { host.engine?.acceptOffer(device, offer.toULong()) }
             DECLINE -> if (device != null) context.graph.scope.launch { runCatching { host.engine?.declineOffer(device, offer.toULong()) } }
             STOP_RING -> FindPhone.stop()
+            STOP_AUDIO -> {
+                context.graph.audio.stop(tell = true)
+                return
+            }
             SEND_SCREENSHOT -> {
                 val uri = intent.getStringExtra(EXTRA_URI)?.let(android.net.Uri::parse)
                 val targets = intent.getStringArrayExtra(EXTRA_TARGETS)?.toList().orEmpty()
@@ -54,6 +58,7 @@ class ActionReceiver : BroadcastReceiver() {
         const val ACCEPT = "nl.markmaaktmedia.tandem.ACCEPT"
         const val DECLINE = "nl.markmaaktmedia.tandem.DECLINE"
         const val STOP_RING = "nl.markmaaktmedia.tandem.STOP_RING"
+        const val STOP_AUDIO = "nl.markmaaktmedia.tandem.STOP_AUDIO"
         const val SEND_SCREENSHOT = "nl.markmaaktmedia.tandem.SEND_SCREENSHOT"
         const val EXTRA_URI = "uri"
         const val EXTRA_TARGETS = "targets"

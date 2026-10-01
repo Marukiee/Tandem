@@ -337,7 +337,7 @@
     <string name="changelog_new">New</string>
     <string name="changelog_better">Better</string>
     <string name="changelog_fixed">Fixed</string>
-    <string name="settings_media">Music</string>
+    <string name="settings_media">Music and sound</string>
     <string name="settings_media_share">Show and control music</string>
     <string name="settings_media_share_sub">What plays on this phone shows on your Mac with buttons, and what plays on your Mac shows here</string>
     <string name="settings_media_apps">Choose apps</string>
@@ -350,4 +350,12 @@
     <string name="media_next">Next</string>
     <string name="media_play">Play</string>
     <string name="media_pause">Pause</string>
+    <string name="settings_audio_output">Speaker for your Mac</string>
+    <string name="settings_audio_output_sub">Your Mac can play its sound through this phone. A notification shows while it does, with a button to stop</string>
+    <string name="audio_playing_title">Playing sound from %1$s</string>
+    <string name="audio_playing_text">Your Mac is using this phone as its speaker</string>
+    <string name="audio_stop">Stop</string>
+    <string name="channel_audio">Sound from your Mac</string>
+    <string name="channel_audio_desc">Shown while your Mac plays its sound through this phone</string>
+    <string name="audio_test_name">the test tone</string>
 </resources>

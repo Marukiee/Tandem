@@ -64,13 +64,14 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
 
         SectionHeader(stringResource(R.string.dev_pieces))
         SettingsGroup {
-            ActionRow(0, 2, TandemIcons.Update, stringResource(R.string.dev_update), stringResource(R.string.dev_update_sub), { scope.launch { graph.prefs.setDismissedUpdate(""); updater.showPreview() } })
+            ActionRow(0, 3, TandemIcons.Update, stringResource(R.string.dev_update), stringResource(R.string.dev_update_sub), { scope.launch { graph.prefs.setDismissedUpdate(""); updater.showPreview() } })
             val context = LocalContext.current
             val fake by nl.markmaaktmedia.tandem.media.FakePlayer.running.collectAsState()
             SwitchRow(
-                1, 2, TandemIcons.Music, stringResource(R.string.dev_player), stringResource(R.string.dev_player_sub), fake,
+                1, 3, TandemIcons.Music, stringResource(R.string.dev_player), stringResource(R.string.dev_player_sub), fake,
                 { if (it) nl.markmaaktmedia.tandem.media.FakePlayer.start(context) else nl.markmaaktmedia.tandem.media.FakePlayer.stop() },
             )
+            ActionRow(2, 3, TandemIcons.VolumeUp, stringResource(R.string.dev_tone), stringResource(R.string.dev_tone_sub), { graph.audio.playTestTone() })
         }
     }
 }

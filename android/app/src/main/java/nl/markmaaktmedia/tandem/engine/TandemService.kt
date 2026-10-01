@@ -64,7 +64,7 @@ class TandemService : LifecycleService() {
                 ShareShortcuts.update(this@TandemService, devices)
             }
         }
-        lifecycleScope.launch { host.events.collect { handle(it) } }
+        lifecycleScope.launch { host.events.collect { graph.audio.onEvent(it); handle(it) } }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -80,6 +80,7 @@ class TandemService : LifecycleService() {
         calls.stop()
         hotspot.stop()
         graph.media.stop()
+        graph.audio.stop(tell = true)
         multicast?.release()
         FindPhone.stop()
         super.onDestroy()

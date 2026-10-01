@@ -4,20 +4,30 @@
     "date": "2026-10-01",
     "highlight": true,
     "en": {
-      "title": "Hotspot at a glance and a kept history",
+      "title": "Music, speaker and a kept history",
       "new": [
+        "Control the music on your phone from your Mac: what plays shows with play, pause, next, previous and a bar you can click to jump, and what Spotify and Music play on your Mac shows on your phone",
+        "A phone that only remote controls your Mac's Spotify does not show up as a second Spotify: a player that plays what another already plays is left out, on both devices",
+        "Choose which apps may share what they play, and switch the whole thing off, on the phone and on the Mac",
+        "Use your phone as your Mac's speaker: a switch on the phone's page and in the small menu plays everything the Mac plays on the phone, and mutes the Mac",
         "Android shows when your Mac is connected over your phone's hotspot",
-        "What's new: this list, under Settings on Android and under About in the Mac settings"
+        "What's new: this list, under Settings on Android and under About in the Mac settings",
+        "Developer options on Android: a test music player and a test sound, to try both without playing anything real"
       ],
       "better": [
         "The Shared list is kept when the app restarts, so an update no longer empties it (Android and Mac)"
       ]
     },
     "nl": {
-      "title": "Hotspot in één oogopslag en een bewaarde geschiedenis",
+      "title": "Muziek, speaker en een bewaarde geschiedenis",
       "new": [
+        "Bedien de muziek op je telefoon vanaf je Mac: wat er speelt staat met afspelen, pauze, volgende, vorige en een balk waar je op kunt klikken om te springen, en wat Spotify en Muziek op je Mac spelen staat op je telefoon",
+        "Een telefoon die alleen de Spotify van je Mac bedient, komt niet als tweede Spotify in beeld: een speler die speelt wat een andere al speelt blijft weg, op beide apparaten",
+        "Kies welke apps mogen laten zien wat ze spelen, en zet het geheel uit, op de telefoon en op de Mac",
+        "Gebruik je telefoon als speaker van je Mac: een schakelaar op de pagina van de telefoon en in het kleine menu speelt alles wat de Mac afspeelt op de telefoon af, en zet de Mac stil",
         "Android laat zien wanneer je Mac via de hotspot van je telefoon verbonden is",
-        "Wat is er nieuw: deze lijst, onder Instellingen op Android en onder Over in de Mac-instellingen"
+        "Wat is er nieuw: deze lijst, onder Instellingen op Android en onder Over in de Mac-instellingen",
+        "Ontwikkelaarsopties op Android: een testspeler voor muziek en een testgeluid, om beide te proberen zonder iets echts af te spelen"
       ],
       "better": [
         "De lijst bij Gedeeld blijft bewaard als de app opnieuw start, dus een update maakt hem niet meer leeg (Android en Mac)"

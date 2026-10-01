@@ -53,6 +53,7 @@ class TandemPrefs(private val context: Context) {
         val bluetoothMessages = booleanPreferencesKey("bluetooth_messages")
         val mediaShare = booleanPreferencesKey("media_share")
         val mediaExcluded = stringSetPreferencesKey("media_excluded")
+        val audioOutput = booleanPreferencesKey("audio_output")
     }
 
     val appearance: Flow<Appearance> = data.map { p ->
@@ -84,6 +85,9 @@ class TandemPrefs(private val context: Context) {
 
     /** What plays on this phone shows on the Mac with controls, and what plays on the Mac shows here. */
     val mediaShare: Flow<Boolean> = data.map { it[Keys.mediaShare] ?: true }
+
+    /** The Mac may play its sound through this phone. On by default: it only plays while the Mac asks, with a notification. */
+    val audioOutput: Flow<Boolean> = data.map { it[Keys.audioOutput] ?: true }
 
     /** Apps whose playback is never shared. Everything else is. */
     val mediaExcluded: Flow<Set<String>> = data.map { it[Keys.mediaExcluded] ?: emptySet() }
@@ -166,6 +170,7 @@ class TandemPrefs(private val context: Context) {
 
     suspend fun setBluetoothMessages(value: Boolean) = set(Keys.bluetoothMessages, value)
     suspend fun setMediaShare(value: Boolean) = set(Keys.mediaShare, value)
+    suspend fun setAudioOutput(value: Boolean) = set(Keys.audioOutput, value)
 
     suspend fun setMediaApp(packageName: String, allowed: Boolean) {
         context.store.edit { p ->

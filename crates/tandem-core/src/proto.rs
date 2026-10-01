@@ -77,6 +77,13 @@ pub enum Msg {
         #[serde(default)]
         position_ms: Option<u64>,
     },
+    /// This device is about to send its sound to the other one, as 16 bit signed samples,
+    /// interleaved. The samples themselves go as datagrams (see `session::audio_datagram`).
+    /// `stream` tells one start from the next, so a late packet of an old one is ignored.
+    AudioStart { stream: u8, sample_rate: u32, channels: u8 },
+    /// The sound stops. Either side says it: the sender when it is done, the receiver when it
+    /// will not play it (switched off, or something else took the speaker).
+    AudioStop { stream: u8 },
     /// The key two devices seal Bluetooth frames with. Made by the one with the lower id and
     /// sent over the authenticated connection, never over the air.
     BleKey {

@@ -334,7 +334,7 @@
     <string name="changelog_new">Nieuw</string>
     <string name="changelog_better">Beter</string>
     <string name="changelog_fixed">Opgelost</string>
-    <string name="settings_media">Muziek</string>
+    <string name="settings_media">Muziek en geluid</string>
     <string name="settings_media_share">Muziek tonen en bedienen</string>
     <string name="settings_media_share_sub">Wat er op deze telefoon speelt staat met knoppen op je Mac, en wat er op je Mac speelt zie je hier</string>
     <string name="settings_media_apps">Apps kiezen</string>
@@ -347,4 +347,12 @@
     <string name="media_next">Volgende</string>
     <string name="media_play">Afspelen</string>
     <string name="media_pause">Pauzeren</string>
+    <string name="settings_audio_output">Speaker voor je Mac</string>
+    <string name="settings_audio_output_sub">Je Mac kan zijn geluid via deze telefoon afspelen. Een melding laat het zien zolang dat gebeurt, met een knop om te stoppen</string>
+    <string name="audio_playing_title">Geluid van %1$s wordt afgespeeld</string>
+    <string name="audio_playing_text">Je Mac gebruikt deze telefoon als speaker</string>
+    <string name="audio_stop">Stop</string>
+    <string name="channel_audio">Geluid van je Mac</string>
+    <string name="channel_audio_desc">Zichtbaar zolang je Mac zijn geluid via deze telefoon afspeelt</string>
+    <string name="audio_test_name">de testtoon</string>
 </resources>

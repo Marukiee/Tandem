@@ -13,6 +13,7 @@ object Channels {
     const val INCOMING = "incoming"
     const val SCREENSHOT = "screenshot"
     const val HOTSPOT = "hotspot"
+    const val AUDIO = "audio"
 
     fun create(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -28,6 +29,7 @@ object Channels {
                 channel(INCOMING, R.string.channel_incoming, R.string.channel_incoming_desc, NotificationManager.IMPORTANCE_DEFAULT),
                 channel(SCREENSHOT, R.string.channel_screenshot, R.string.channel_screenshot_desc, NotificationManager.IMPORTANCE_HIGH),
                 channel(HOTSPOT, R.string.channel_hotspot, R.string.channel_hotspot_desc, NotificationManager.IMPORTANCE_DEFAULT),
+                channel(AUDIO, R.string.channel_audio, R.string.channel_audio_desc, NotificationManager.IMPORTANCE_LOW),
             ),
         )
     }

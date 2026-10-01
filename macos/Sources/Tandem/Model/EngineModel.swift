@@ -89,6 +89,26 @@ final class EngineModel {
     var remoteMedia: [String: RemoteMedia] = [:]
     var mediaArt: [UInt64: NSImage] = [:]
     let macMedia = MacMedia()
+
+    /// Where this Mac's sound goes: to a phone, as its speaker, or nowhere special.
+    enum SpeakerState: Equatable {
+        case off
+        case starting(String)
+        case on(String)
+        case failed(String)
+
+        var device: String? {
+            switch self {
+            case let .starting(id), let .on(id): id
+            default: nil
+            }
+        }
+    }
+    var speaker: SpeakerState = .off
+    @ObservationIgnored private var tap: SystemAudioTap?
+    @ObservationIgnored private var speakerStream: UInt8 = 0
+    @ObservationIgnored private var speakerStartedAt = Date.distantPast
+    @ObservationIgnored private var speakerWatch: Task<Void, Never>?
     var mediaShare = UserDefaults.standard.object(forKey: "mediaShare") as? Bool ?? true {
         didSet {
             UserDefaults.standard.set(mediaShare, forKey: "mediaShare")
@@ -289,6 +309,10 @@ final class EngineModel {
             if case let .disconnected(id) = event {
                 injector.sourceDisconnected(id)
                 remoteMedia[id] = nil
+                if speaker.device == id {
+                    stopSpeaker(tellPhone: false, state: .off)
+                    showToast(String(localized: "The sound stopped because your phone disconnected"))
+                }
             }
             // A phone that just connected knows nothing of what this Mac plays.
             if case let .connected(id) = event, device(id)?.platform == .android { publishMedia(only: [id]) }
@@ -380,9 +404,117 @@ final class EngineModel {
                 }
             }
 
-        case .notificationAction, .appIcon, .callAction, .dial, .ring:
+        case let .audioStop(from, stream):
+            guard speaker.device == from, stream == speakerStream else { return }
+            // A stop right after the start is a no: the phone does not allow it. Later it is the person
+            // pressing Stop on the phone, or another app taking the speaker.
+            if Date().timeIntervalSince(speakerStartedAt) < 3 {
+                stopSpeaker(tellPhone: false, state: .failed(String(localized: "Your phone does not allow this. Turn on Speaker for your Mac in the settings of Tandem on your phone.")))
+            } else {
+                stopSpeaker(tellPhone: false, state: .off)
+                showToast(String(localized: "Your phone stopped playing the sound"))
+            }
+
+        case .audioStart, .notificationAction, .appIcon, .callAction, .dial, .ring:
             break
         }
+    }
+
+    // MARK: Speaker
+
+    /// Plays this Mac's sound on a phone. The tap is opened first to learn the format, the phone is told,
+    /// and only then does sound flow, so the phone's speaker is ready when the first packet arrives.
+    func startSpeaker(on id: String) {
+        guard let engine, device(id)?.online == true else {
+            showToast(String(localized: "That device is not connected right now"))
+            return
+        }
+        stopSpeaker(tellPhone: true, state: .off)
+        speakerStream &+= 1
+        let stream = speakerStream
+        speaker = .starting(id)
+        let mute = UserDefaults.standard.object(forKey: "audioMuteLocal") as? Bool ?? true
+        let tap = SystemAudioTap()
+        self.tap = tap
+        Task { @MainActor [weak self] in
+            do {
+                let format = try tap.prepare(muteLocal: mute)
+                try await engine.sendAudioStart(target: id, stream: stream, sampleRate: format.sampleRate, channels: format.channels)
+                let limit = Int(engine.audioPayloadLimit(id: id))
+                let frameBytes = Int(format.channels) * 2
+                // A datagram has room for a few milliseconds of sound; less than this means there is no connection.
+                guard limit >= 400 else { throw SystemAudioTap.Failure.step("connection", -1) }
+                try tap.start(handler: Self.sender(engine: engine, id: id, stream: stream, chunk: limit / frameBytes * frameBytes))
+                guard let self, self.tap === tap else { tap.stop(); return }
+                self.speaker = .on(id)
+                self.speakerStartedAt = Date()
+                self.watchSpeaker(tap: tap, id: id, stream: stream, mute: mute)
+            } catch {
+                guard let self, self.tap === tap else { tap.stop(); return }
+                self.stopSpeaker(tellPhone: true, state: .failed(error.localizedDescription))
+            }
+        }
+    }
+
+    /// Cuts what the capture delivers into packets and sends them, in order, without ever waiting.
+    private nonisolated static func sender(engine: TandemEngine, id: String, stream: UInt8, chunk: Int) -> @Sendable (Data) -> Void {
+        final class Pending: @unchecked Sendable {
+            var bytes = Data()
+            var seq: UInt32 = 0
+        }
+        let pending = Pending()
+        return { pcm in
+            pending.bytes.append(pcm)
+            while pending.bytes.count >= chunk {
+                let packet = Data(pending.bytes.prefix(chunk))
+                pending.bytes.removeFirst(chunk)
+                try? engine.sendAudio(target: id, stream: stream, seq: pending.seq, pcm: packet)
+                pending.seq &+= 1
+            }
+        }
+    }
+
+    /// Notices a capture that has gone quiet because the output it was clocked by went away (headphones
+    /// unplugged, say) and opens it again on the new default output.
+    private func watchSpeaker(tap: SystemAudioTap, id: String, stream: UInt8, mute: Bool) {
+        speakerWatch?.cancel()
+        speakerWatch = Task { @MainActor [weak self] in
+            var current = tap
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self, case .on = self.speaker, self.tap === current, let engine = self.engine else { return }
+                guard Date().timeIntervalSince(current.lastDelivery) > 4 else { continue }
+                current.stop()
+                let fresh = SystemAudioTap()
+                do {
+                    let format = try fresh.prepare(muteLocal: mute)
+                    let frameBytes = Int(format.channels) * 2
+                    let limit = Int(engine.audioPayloadLimit(id: id))
+                    try fresh.start(handler: Self.sender(engine: engine, id: id, stream: stream, chunk: limit / frameBytes * frameBytes))
+                    self.tap = fresh
+                    current = fresh
+                } catch {
+                    self.stopSpeaker(tellPhone: true, state: .failed(error.localizedDescription))
+                    return
+                }
+            }
+        }
+    }
+
+    func stopSpeaker(tellPhone: Bool, state: SpeakerState = .off) {
+        speakerWatch?.cancel()
+        speakerWatch = nil
+        tap?.stop()
+        tap = nil
+        if tellPhone, let id = speaker.device, let engine {
+            let stream = speakerStream
+            Task { try? await engine.sendAudioStop(target: id, stream: stream) }
+        }
+        speaker = state
+    }
+
+    func toggleSpeaker(for id: String) {
+        if speaker.device == id { stopSpeaker(tellPhone: true) } else { startSpeaker(on: id) }
     }
 
     // MARK: Music
@@ -753,6 +885,7 @@ final class EngineModel {
         let center = NSWorkspace.shared.notificationCenter
         center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
+                self?.stopSpeaker(tellPhone: true)
                 guard let engine = self?.engine else { return }
                 let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: true, wakeMac: WiredAddress.mac())
                 Task { await engine.updateStatus(status: status) }

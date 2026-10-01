@@ -110,6 +110,7 @@ private struct GeneralSettings: View {
     @AppStorage("showInDock") private var showInDock = true
     @AppStorage("copyCodes") private var copyCodes = true
     @AppStorage("bleMessages") private var bleMessages = true
+    @AppStorage("audioMuteLocal") private var audioMuteLocal = true
     @AppStorage(ReceivedImages.copyKey) private var copyImages = true
     @AppStorage(ReceivedImages.pasteKey) private var pasteImages = false
     @LocalState private var folder = DownloadFolder.url
@@ -188,6 +189,11 @@ private struct GeneralSettings: View {
                     "Show and control music",
                     subtitle: "Music from your phone shows here with buttons, and what Spotify and Music play here shows on your phone.",
                     isOn: Binding(get: { model.mediaShare }, set: { model.mediaShare = $0 })
+                )
+                DescribedToggle(
+                    "Mute this Mac while a phone is its speaker",
+                    subtitle: "Turn this off to hear the sound on both. It takes effect the next time you start it.",
+                    isOn: $audioMuteLocal
                 )
                 DescribedToggle(
                     "Bluetooth without a network",

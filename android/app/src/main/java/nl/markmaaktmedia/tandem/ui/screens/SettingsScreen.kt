@@ -70,6 +70,7 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
     val screenshot by prefs.screenshotPrompt.collectAsState(initial = true)
     val bleMessages by prefs.bluetoothMessages.collectAsState(initial = true)
     val mediaShare by prefs.mediaShare.collectAsState(initial = true)
+    val audioOutput by prefs.audioOutput.collectAsState(initial = true)
     val mirror by prefs.mirrorNotifications.collectAsState(initial = true)
     val calls by prefs.callMirror.collectAsState(initial = true)
     val hotspot by prefs.hotspotForMac.collectAsState(initial = false)
@@ -160,8 +161,9 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
         item {
             SectionHeader(stringResource(R.string.settings_media))
             SettingsGroup {
-                SwitchRow(0, 2, TandemIcons.Music, stringResource(R.string.settings_media_share), stringResource(R.string.settings_media_share_sub), mediaShare, { scope.launch { prefs.setMediaShare(it) } })
-                ActionRow(1, 2, TandemIcons.Devices, stringResource(R.string.settings_media_apps), stringResource(R.string.settings_media_apps_sub), { onOpen(Route.MediaApps) })
+                SwitchRow(0, 3, TandemIcons.Music, stringResource(R.string.settings_media_share), stringResource(R.string.settings_media_share_sub), mediaShare, { scope.launch { prefs.setMediaShare(it) } })
+                ActionRow(1, 3, TandemIcons.Devices, stringResource(R.string.settings_media_apps), stringResource(R.string.settings_media_apps_sub), { onOpen(Route.MediaApps) })
+                SwitchRow(2, 3, TandemIcons.VolumeUp, stringResource(R.string.settings_audio_output), stringResource(R.string.settings_audio_output_sub), audioOutput, { scope.launch { prefs.setAudioOutput(it) } })
             }
         }
 

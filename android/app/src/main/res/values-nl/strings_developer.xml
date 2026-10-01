@@ -15,4 +15,6 @@
     <string name="dev_update_sub">Toont bovenin een nep-update. Bijwerken loopt door het downloaden, er wordt niets geïnstalleerd.</string>
     <string name="dev_player">Testspeler voor muziek</string>
     <string name="dev_player_sub">Een nepmuziekapp, om de knoppen op je Mac te proberen zonder iets af te spelen</string>
+    <string name="dev_tone">Testgeluid</string>
+    <string name="dev_tone_sub">Speelt drie seconden een toon af, zoals het geluid van je Mac via deze telefoon zou klinken</string>
 </resources>

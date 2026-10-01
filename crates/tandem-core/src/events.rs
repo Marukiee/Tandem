@@ -61,4 +61,6 @@ pub enum Event {
     MediaPlayers { from: DeviceId, players: Vec<MediaPlayer> },
     MediaArt { from: DeviceId, key: u64, jpeg: Vec<u8> },
     MediaCommand { from: DeviceId, player: String, action: MediaAction, position_ms: Option<u64> },
+    AudioStart { from: DeviceId, stream: u8, sample_rate: u32, channels: u8 },
+    AudioStop { from: DeviceId, stream: u8 },
 }
