@@ -541,28 +541,85 @@ private struct UpdateSettings: View {
 // MARK: About
 
 private struct AboutSettings: View {
+    private let entries = Changelog.load()
+
     var body: some View {
-        VStack(spacing: 6) {
-            Spacer(minLength: 0)
-            PillMark(size: 104, style: .plate)
-                .padding(.bottom, 14)
-            Text(AppIdentity.displayName)
-                .font(.largeTitle.weight(.bold))
-            Text("Version \(Bundle.main.appVersion)")
-                .foregroundStyle(.secondary)
-            Text("Your phone and computers as one. Open source under AGPL-3.0.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 320)
-                .padding(.top, 10)
-            Link("github.com/Marukiee/Tandem", destination: URL(string: "https://github.com/Marukiee/Tandem")!)
-                .padding(.top, 10)
-            Spacer(minLength: 0)
+        ScrollView {
+            VStack(spacing: 6) {
+                PillMark(size: 104, style: .plate)
+                    .padding(.top, 8)
+                    .padding(.bottom, 14)
+                Text(AppIdentity.displayName)
+                    .font(.largeTitle.weight(.bold))
+                Text("Version \(Bundle.main.appVersion)")
+                    .foregroundStyle(.secondary)
+                Text("Your phone and computers as one. Open source under AGPL-3.0.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 320)
+                    .padding(.top, 10)
+                Link("github.com/Marukiee/Tandem", destination: URL(string: "https://github.com/Marukiee/Tandem")!)
+                    .padding(.top, 10)
+
+                if !entries.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("What's new").font(.title3.weight(.semibold))
+                        ForEach(entries) { ChangeCard(entry: $0, installed: $0.version == Bundle.main.appVersion) }
+                    }
+                    .frame(maxWidth: 520, alignment: .leading)
+                    .padding(.top, 28)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
+            .padding(24)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .multilineTextAlignment(.center)
-        .padding(24)
+    }
+}
+
+private struct ChangeCard: View {
+    let entry: ChangeEntry
+    let installed: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(entry.version).font(.callout.weight(.semibold)).foregroundStyle(Palette.indigo)
+                Text(entry.date).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                if installed {
+                    Text("Installed")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Palette.indigo.opacity(0.14), in: .capsule)
+                }
+            }
+            Text(entry.title).font(.headline)
+            group("New", entry.new)
+            group("Better", entry.better)
+            group("Fixed", entry.fixed)
+        }
+        .multilineTextAlignment(.leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(.quaternary.opacity(0.5), in: .rect(cornerRadius: 18))
+    }
+
+    @ViewBuilder
+    private func group(_ title: LocalizedStringKey, _ items: [String]) -> some View {
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                ForEach(items, id: \.self) { item in
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("•").foregroundStyle(Palette.indigo)
+                        Text(item).font(.callout)
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -15,6 +15,7 @@ sealed interface Route {
     data object Appearance : Route
     data object Developer : Route
     data object Hotspot : Route
+    data object Changelog : Route
     data object OnboardingPreview : Route
 }
 
@@ -72,6 +73,7 @@ private fun routeFromKey(key: String): Route? = when {
     key == "appearance" -> Route.Appearance
     key == "developer" -> Route.Developer
     key == "hotspot" -> Route.Hotspot
+    key == "changelog" -> Route.Changelog
     key == "onboarding-preview" -> Route.OnboardingPreview
     else -> null
 }

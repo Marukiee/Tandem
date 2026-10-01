@@ -45,6 +45,9 @@ done
 rm "$ICONSET/base.png"
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 
+# What's new
+cp changelog.json "$APP/Contents/Resources/changelog.json"
+
 # Translations
 for lproj in macos/Resources/*.lproj; do
   [ -d "$lproj" ] && cp -R "$lproj" "$APP/Contents/Resources/"

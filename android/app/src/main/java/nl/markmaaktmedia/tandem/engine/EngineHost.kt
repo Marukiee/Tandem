@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.BuildConfig
@@ -76,8 +78,46 @@ class EngineHost(
     private val _devices = MutableStateFlow<List<TandemDevice>>(emptyList())
     val devices: StateFlow<List<TandemDevice>> = _devices.asStateFlow()
 
-    private val _transfers = MutableStateFlow<List<TransferItem>>(emptyList())
+    // The history of what was sent and received outlives the app: it is read back at start, so an
+    // update (which restarts the app) no longer empties the Shared tab.
+    private val historyFile = File(context.filesDir, "transfers.json")
+    private val _transfers = MutableStateFlow(loadHistory())
     val transfers: StateFlow<List<TransferItem>> = _transfers.asStateFlow()
+
+    init {
+        @OptIn(kotlinx.coroutines.FlowPreview::class)
+        scope.launch(Dispatchers.IO) {
+            _transfers.drop(1).debounce(600).collect { saveHistory(it) }
+        }
+    }
+
+    private fun loadHistory(): List<TransferItem> = runCatching {
+        val array = org.json.JSONArray(historyFile.takeIf { it.exists() }?.readText() ?: return@runCatching emptyList())
+        (0 until array.length()).map { array.getJSONObject(it) }.map { o ->
+            TransferItem(
+                id = o.getString("id"), peer = o.getString("peer"), name = o.getString("name"),
+                done = o.optLong("size"), total = o.optLong("size"), incoming = o.getBoolean("incoming"),
+                state = if (o.optBoolean("failed")) TransferItem.State.Failed else TransferItem.State.Done,
+                location = o.optString("location").ifEmpty { null }, error = o.optString("error").ifEmpty { null },
+                updatedAt = o.optLong("at"),
+            )
+        }
+    }.getOrDefault(emptyList())
+
+    /** Only what has finished: a transfer that was running when the app stopped cannot be picked up as it was. */
+    private fun saveHistory(list: List<TransferItem>) {
+        runCatching {
+            val array = org.json.JSONArray()
+            list.filter { it.state != TransferItem.State.Active }.take(60).forEach {
+                array.put(
+                    org.json.JSONObject().put("id", it.id).put("peer", it.peer).put("name", it.name).put("size", it.total)
+                        .put("incoming", it.incoming).put("failed", it.state == TransferItem.State.Failed)
+                        .put("location", it.location ?: "").put("error", it.error ?: "").put("at", it.updatedAt),
+                )
+            }
+            historyFile.writeText(array.toString())
+        }
+    }
 
     private val _events = MutableSharedFlow<TandemEvent>(extraBufferCapacity = 512)
     val events: SharedFlow<TandemEvent> = _events.asSharedFlow()

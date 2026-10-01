@@ -326,4 +326,12 @@
     <string name="wake_sent">Wekpakket verstuurd. Het werkt alleen voor een Mac aan een netwerkkabel die het toestaat, en kan een paar seconden duren.</string>
     <string name="wake_failed">Kon het wekpakket niet versturen. Zit je op hetzelfde netwerk?</string>
     <string name="wake_hint">Wakker maken werkt alleen als de Mac met een netwerkkabel is aangesloten en "Wake for network access" aanstaat. Een laptop met de klep dicht wordt meestal niet wakker.</string>
+    <string name="route_hotspot">Je hotspot</string>
+    <string name="route_hotspot_long">Verbonden via je hotspot</string>
+    <string name="changelog_title">Wat is er nieuw</string>
+    <string name="changelog_sub">Wat er in elke versie veranderd is</string>
+    <string name="changelog_installed">Geïnstalleerd</string>
+    <string name="changelog_new">Nieuw</string>
+    <string name="changelog_better">Beter</string>
+    <string name="changelog_fixed">Opgelost</string>
 </resources>

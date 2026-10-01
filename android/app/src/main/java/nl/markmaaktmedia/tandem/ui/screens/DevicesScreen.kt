@@ -173,6 +173,7 @@ fun DeviceCard(
     // Asleep is only known from what the device said as it went, so it is a guess that it can be woken.
     val asleep = !device.online && device.status.asleep == true
     val canWake = asleep && device.status.wakeMac != null
+    val viaHotspot = nl.markmaaktmedia.tandem.ui.components.rememberViaHotspot(device)
     Column(
         modifier
             .fillMaxWidth()
@@ -193,7 +194,7 @@ fun DeviceCard(
                         if (device.online) {
                             listOfNotNull(
                                 stringResource(R.string.status_online),
-                                route?.let { routeName(it) },
+                                if (viaHotspot) stringResource(R.string.route_hotspot) else route?.let { routeName(it) },
                                 device.rttMs?.let { "$it ms" },
                             ).joinToString(" · ")
                         } else when {

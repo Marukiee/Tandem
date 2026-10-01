@@ -232,10 +232,11 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
         item {
             SectionHeader(stringResource(R.string.settings_about))
             SettingsGroup {
-                ActionRow(0, 2, TandemIcons.OpenInNew, "github.com/Marukiee/Tandem", stringResource(R.string.settings_license), {
+                ActionRow(0, 3, TandemIcons.Update, stringResource(R.string.changelog_title), stringResource(R.string.changelog_sub), { onOpen(Route.Changelog) })
+                ActionRow(1, 3, TandemIcons.OpenInNew, "github.com/Marukiee/Tandem", stringResource(R.string.settings_license), {
                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Marukiee/Tandem")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 })
-                ActionRow(1, 2, TandemIcons.Restart, stringResource(R.string.settings_reset), stringResource(R.string.settings_reset_sub), { confirmReset = true }, danger = true)
+                ActionRow(2, 3, TandemIcons.Restart, stringResource(R.string.settings_reset), stringResource(R.string.settings_reset_sub), { confirmReset = true }, danger = true)
             }
             Spacer(Modifier.height(16.dp))
         }

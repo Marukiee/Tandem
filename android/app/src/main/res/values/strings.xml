@@ -329,4 +329,12 @@
     <string name="wake_sent">Wake signal sent. It only works for a Mac on a network cable that allows it, and can take a few seconds.</string>
     <string name="wake_failed">Could not send the wake signal. Are you on the same network?</string>
     <string name="wake_hint">Waking works only when the Mac is connected by a network cable and Wake for network access is on. A laptop with its lid closed usually does not wake.</string>
+    <string name="route_hotspot">Your hotspot</string>
+    <string name="route_hotspot_long">Connected over your hotspot</string>
+    <string name="changelog_title">What\'s new</string>
+    <string name="changelog_sub">What changed in each version</string>
+    <string name="changelog_installed">Installed</string>
+    <string name="changelog_new">New</string>
+    <string name="changelog_better">Better</string>
+    <string name="changelog_fixed">Fixed</string>
 </resources>

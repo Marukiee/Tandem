@@ -49,6 +49,9 @@ android {
         }
     }
 
+    // What's new reads the changelog that lives in the repo root, so there is one copy to write.
+    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/changelog"))
+
     buildTypes {
         debug {
             applicationIdSuffix = ".debug"
@@ -143,3 +146,10 @@ dependencies {
 
     testImplementation(libs.junit)
 }
+
+// Copies the changelog next to the other assets before anything is packaged.
+val syncChangelog by tasks.registering(Copy::class) {
+    from(rootProject.file("../changelog.json"))
+    into(layout.buildDirectory.dir("generated/changelog"))
+}
+tasks.named("preBuild") { dependsOn(syncChangelog) }

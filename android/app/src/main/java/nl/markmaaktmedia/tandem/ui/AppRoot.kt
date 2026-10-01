@@ -191,6 +191,7 @@ private fun RouteBody(route: Route, nav: Nav) {
         Route.Appearance -> AppearanceScreen(onBack = { nav.pop() })
         Route.Developer -> nl.markmaaktmedia.tandem.ui.screens.DeveloperScreen(onBack = { nav.pop() }, onOpen = { nav.push(it) })
         Route.Hotspot -> nl.markmaaktmedia.tandem.ui.screens.HotspotScreen(onBack = { nav.pop() })
+        Route.Changelog -> nl.markmaaktmedia.tandem.ui.screens.ChangelogScreen(onBack = { nav.pop() })
         Route.OnboardingPreview -> OnboardingScreen(onFinished = { nav.pop() }, preview = true)
     }
 }

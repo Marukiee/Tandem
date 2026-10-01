@@ -40,7 +40,12 @@ final class EngineModel {
     static let shared = EngineModel()
 
     var devices: [TandemDevice] = []
-    var transfers: [TransferItem] = []
+    // What was sent and received outlives the app, so an update (which restarts it) no longer
+    // empties the Shared page.
+    var transfers: [TransferItem] = EngineModel.loadStoredTransfers() {
+        didSet { scheduleSaveTransfers() }
+    }
+    @ObservationIgnored private var saveTransfersTask: Task<Void, Never>?
     var pairing = PairingState()
     var myName = EngineModel.savedName ?? Host.current().localizedName ?? "Mac"
     var myId = ""
@@ -202,6 +207,38 @@ final class EngineModel {
     /// so testing never touches the real identity, pairings or preferences.
     nonisolated static var isDevBuild: Bool {
         Bundle.main.bundleIdentifier?.hasSuffix(".dev") == true
+    }
+
+    private struct StoredTransfer: Codable {
+        var id: String, peer: String, name: String, size: UInt64, incoming: Bool, failed: Bool
+        var location: String?, error: String?, at: Date
+    }
+
+    nonisolated private static var transfersFile: URL { supportDirectory().appendingPathComponent("transfers.json") }
+
+    nonisolated static func loadStoredTransfers() -> [TransferItem] {
+        guard let data = try? Data(contentsOf: transfersFile),
+              let stored = try? JSONDecoder().decode([StoredTransfer].self, from: data) else { return [] }
+        return stored.map {
+            TransferItem(
+                id: $0.id, peer: $0.peer, name: $0.name, done: $0.size, total: $0.size, incoming: $0.incoming,
+                state: $0.failed ? .failed : .done, location: $0.location, error: $0.error, started: $0.at, updated: $0.at
+            )
+        }
+    }
+
+    /// Debounced, because progress updates arrive many times a second. Only finished items are kept.
+    private func scheduleSaveTransfers() {
+        saveTransfersTask?.cancel()
+        saveTransfersTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled, let self else { return }
+            let stored = self.transfers.filter { $0.state != .active }.prefix(60).map {
+                StoredTransfer(id: $0.id, peer: $0.peer, name: $0.name, size: $0.total, incoming: $0.incoming,
+                               failed: $0.state == .failed, location: $0.location, error: $0.error, at: $0.updated)
+            }
+            if let data = try? JSONEncoder().encode(Array(stored)) { try? data.write(to: Self.transfersFile, options: .atomic) }
+        }
     }
 
     nonisolated static func supportDirectory() -> URL {

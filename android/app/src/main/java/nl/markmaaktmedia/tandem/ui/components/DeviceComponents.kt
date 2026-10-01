@@ -60,6 +60,7 @@ import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import uniffi.tandem_core.TandemBattery
+import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemPlatform
 import uniffi.tandem_core.TandemRoute
 
@@ -95,6 +96,18 @@ enum class DeviceIconChoice(val key: String, val label: Int) {
     companion object {
         fun fromKey(key: String?): DeviceIconChoice? = entries.firstOrNull { it.key == key }
     }
+}
+
+/**
+ * True when this device is probably reaching the phone over the phone's own hotspot: the hotspot is
+ * on, a Mac is connected, and, where the system says how many devices are on the hotspot, there is one.
+ * A Mac on the same home Wi-Fi while the hotspot happens to be on is the one case this cannot tell apart.
+ */
+@Composable
+fun rememberViaHotspot(device: TandemDevice): Boolean {
+    if (!device.online || device.platform != TandemPlatform.MAC_OS) return false
+    val snapshot by nl.markmaaktmedia.tandem.hotspot.HotspotModule.get(LocalContext.current).controller.snapshot.collectAsState()
+    return snapshot.on && (snapshot.clients?.let { it > 0 } ?: true)
 }
 
 /** The icon picked for this device, or null for the platform's own. Follows changes as they are made. */

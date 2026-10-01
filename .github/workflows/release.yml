@@ -240,6 +240,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
+
       - uses: actions/download-artifact@v8
         with:
           path: dist
@@ -248,13 +250,19 @@ jobs:
       - name: List the files
         run: ls -l dist
 
+      # The same text the apps show under What's new, so the release page and the apps agree.
+      - name: Release notes
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: python3 scripts/release-notes.py "$VERSION" > notes.md
+
       # The apps look for these names in releases/latest: Tandem.apk and
       # Tandem.apk.sha256 on Android, Tandem-macOS.zip with .sha256 and .sig on the Mac.
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.meta.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          generate_release_notes: true
+          body_path: notes.md
           make_latest: ${{ needs.meta.outputs.prerelease != 'true' }}
           prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
           fail_on_unmatched_files: true

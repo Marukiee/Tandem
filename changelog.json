@@ -1,0 +1,139 @@
+[
+  {
+    "version": "0.1.17",
+    "date": "2026-10-01",
+    "highlight": true,
+    "en": {
+      "title": "Hotspot at a glance and a kept history",
+      "new": [
+        "Android shows when your Mac is connected over your phone's hotspot",
+        "What's new: this list, under Settings on Android and under About in the Mac settings"
+      ],
+      "better": [
+        "The Shared list is kept when the app restarts, so an update no longer empties it (Android and Mac)"
+      ]
+    },
+    "nl": {
+      "title": "Hotspot in één oogopslag en een bewaarde geschiedenis",
+      "new": [
+        "Android laat zien wanneer je Mac via de hotspot van je telefoon verbonden is",
+        "Wat is er nieuw: deze lijst, onder Instellingen op Android en onder Over in de Mac-instellingen"
+      ],
+      "better": [
+        "De lijst bij Gedeeld blijft bewaard als de app opnieuw start, dus een update maakt hem niet meer leeg (Android en Mac)"
+      ]
+    }
+  },
+  {
+    "version": "0.1.16",
+    "date": "2026-09-30",
+    "en": {
+      "title": "Bluetooth without a network, and asleep",
+      "new": [
+        "Clipboard and notifications reach your Mac over Bluetooth when there is no network",
+        "A device that is only reachable over Bluetooth shows as such on both apps",
+        "The Mac says when it is going to sleep, and the phone shows Asleep with a Wake up button for a Mac on a network cable"
+      ],
+      "better": [
+        "The clipboard button works on the Mac when there is only Bluetooth",
+        "The Mac notices it is already on the phone's hotspot instead of offering to turn it on",
+        "The small menu buttons stay grey while the pointer is over them"
+      ],
+      "fixed": [
+        "A thin light bar along the top of the Mac window when switching pages (the cause could not be seen directly, so check that it is gone)"
+      ]
+    },
+    "nl": {
+      "title": "Bluetooth zonder netwerk, en slaapstand",
+      "new": [
+        "Klembord en meldingen komen via Bluetooth bij je Mac aan als er geen netwerk is",
+        "Een apparaat dat alleen via Bluetooth bereikbaar is, staat zo in beide apps",
+        "De Mac meldt dat hij gaat slapen, en de telefoon toont Slaapt met een knop Wakker maken voor een Mac aan een netwerkkabel"
+      ],
+      "better": [
+        "De klembordknop werkt op de Mac ook als er alleen Bluetooth is",
+        "De Mac merkt dat hij al op de hotspot van de telefoon zit, in plaats van aan te bieden hem aan te zetten",
+        "De knoppen in het kleine menu blijven grijs zolang de aanwijzer erboven staat"
+      ],
+      "fixed": [
+        "Een dunne lichte balk bovenaan het Mac-venster bij het wisselen van pagina (de oorzaak was niet direct te zien, dus kijk of hij weg is)"
+      ]
+    }
+  },
+  {
+    "version": "0.1.15",
+    "date": "2026-09-30",
+    "en": {
+      "title": "Charging, clearer",
+      "better": [
+        "The battery pill in the device list uses the Mac's charging green",
+        "The battery ring gives a small bounce when charging starts or stops"
+      ]
+    },
+    "nl": {
+      "title": "Opladen, duidelijker",
+      "better": [
+        "De batterijpill in de apparatenlijst heeft het laadgroen van de Mac",
+        "De batterijring maakt een kleine bounce als het opladen begint of stopt"
+      ]
+    }
+  },
+  {
+    "version": "0.1.14",
+    "date": "2026-09-30",
+    "en": {
+      "title": "The hotspot starts by itself",
+      "new": [
+        "Change the icon of a device on Android, with the same six choices as on the Mac",
+        "The hotspot page shows the last attempt and why it failed"
+      ],
+      "better": [
+        "The data limit is a smooth slider with a tick for every step",
+        "Download in the update banner asks for the install permission first and carries on when you come back",
+        "Less empty space at the top of the Mac pages, and a plain fade between them"
+      ],
+      "fixed": [
+        "Turning on the hotspot from the Mac with Shizuku never worked: it asked for USB tethering and used a name the system refuses. Both are fixed",
+        "Checking for updates no longer wipes a download that is running"
+      ]
+    },
+    "nl": {
+      "title": "De hotspot gaat vanzelf aan",
+      "new": [
+        "Het icoon van een apparaat aanpassen op Android, met dezelfde zes keuzes als op de Mac",
+        "De hotspotpagina toont de laatste poging en waarom die mislukte"
+      ],
+      "better": [
+        "De datalimiet is een soepele slider met een tik bij elke stap",
+        "Download in de updatebalk vraagt eerst om de installatietoestemming en gaat verder als je terugkomt",
+        "Minder lege ruimte bovenaan de Mac-pagina's, en een gewone fade ertussen"
+      ],
+      "fixed": [
+        "De hotspot aanzetten vanaf de Mac met Shizuku werkte nooit: hij vroeg USB-tethering aan en gebruikte een naam die het systeem weigert. Allebei opgelost",
+        "Op updates controleren maakt een lopende download niet meer leeg"
+      ]
+    }
+  },
+  {
+    "version": "0.1.0",
+    "date": "2026-09-29",
+    "en": {
+      "title": "The first versions",
+      "new": [
+        "Send files, the clipboard and screenshots between your phone and your Mac, and see each other's battery",
+        "Notifications and calls from your phone on your Mac, and your phone as a trackpad and keyboard",
+        "The Mac can ask the phone to turn on its hotspot when it has no connection",
+        "Updates inside the app, without ever having to remove it first"
+      ]
+    },
+    "nl": {
+      "title": "De eerste versies",
+      "new": [
+        "Bestanden, klembord en screenshots versturen tussen je telefoon en je Mac, en elkaars batterij zien",
+        "Meldingen en gesprekken van je telefoon op je Mac, en je telefoon als trackpad en toetsenbord",
+        "De Mac kan de telefoon vragen de hotspot aan te zetten als hij geen verbinding heeft",
+        "Updates in de app, zonder ooit eerst te hoeven verwijderen"
+      ]
+    }
+  }
+]
