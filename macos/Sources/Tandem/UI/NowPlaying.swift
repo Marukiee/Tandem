@@ -110,18 +110,22 @@ struct PlayerProgress: View {
         let active = player.canSeek && (scrub != nil || hovering)
         let thickness: CGFloat = active ? 10 : (compact ? 4 : 6)
         return GeometryReader { proxy in
-            let width = max(proxy.size.width, 1)
+            let width: CGFloat = max(proxy.size.width, 1)
+            let filled: CGFloat = width * CGFloat(fraction)
+            // Where along the bar an x is, as 0 to 1. Said in one place so the two gestures agree, and with the
+            // conversion spelled out: older compilers will not turn a CGFloat into a Double on their own here.
+            let along: (CGFloat) -> Double = { x in Double(min(CGFloat(1), max(CGFloat(0), x / width))) }
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.primary.opacity(0.1))
                 Capsule()
                     .fill(Palette.indigo.gradient)
-                    .frame(width: max(thickness, width * fraction))
+                    .frame(width: max(thickness, filled))
                 if active {
                     Circle()
                         .fill(.white)
                         .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
                         .frame(width: 16, height: 16)
-                        .offset(x: min(max(0, width * fraction - 8), width - 16))
+                        .offset(x: min(max(CGFloat(0), filled - 8), width - 16))
                         .transition(.scale.combined(with: .opacity))
                 }
             }
@@ -132,11 +136,11 @@ struct PlayerProgress: View {
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         guard player.canSeek else { return }
-                        scrub = min(1, max(0, value.location.x / width))
+                        scrub = along(value.location.x)
                     }
                     .onEnded { value in
                         guard player.canSeek else { return }
-                        let target = min(1, max(0, value.location.x / width))
+                        let target: Double = along(value.location.x)
                         scrub = nil
                         held = (target, Date(), report)
                         model.sendMedia(.seek, player: player, to: device.id, positionMs: UInt64(target * Double(duration)))

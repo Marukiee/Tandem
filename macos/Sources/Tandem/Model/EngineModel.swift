@@ -543,7 +543,7 @@ final class EngineModel {
 
     private func reconcileSpeakerDevices() {
         speakerDevices.sync(
-            phones: devices.filter { $0.platform == .android }.map { ($0.id, $0.name) },
+            phones: devices.filter { $0.platform == .android }.map { (id: $0.id, name: $0.name) },
             enabled: speakerInSound
         )
     }
