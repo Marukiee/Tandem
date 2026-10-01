@@ -37,6 +37,7 @@ fun routeKey(route: Route): String = when (route) {
     Route.Developer -> "developer"
     Route.Hotspot -> "hotspot"
     Route.Changelog -> "changelog"
+    Route.MediaApps -> "media-apps"
     Route.OnboardingPreview -> "onboarding-preview"
 }
 

@@ -9,6 +9,12 @@
          blocks it without this. -->
     <key>com.apple.security.device.bluetooth</key>
     <true/>
+    <!-- Pressing play, pause and skip in Spotify and Music from the phone. -->
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+    <!-- Capturing this Mac's sound to play it on the phone. -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
     <!-- macOS only shows the name of the Wi-Fi network to apps with Location access. It is
          used to fill in the phone's hotspot during setup, nothing else. -->
     <key>com.apple.security.personal-information.location</key>

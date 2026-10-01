@@ -2,7 +2,7 @@
 
 use crate::ids::DeviceId;
 use crate::proto::{
-    CallAction, CallMsg, HotspotMsg, InputMsg, NotificationAction, NotificationMsg, ShareOffer,
+    CallAction, CallMsg, HotspotMsg, InputMsg, MediaAction, MediaPlayer, NotificationAction, NotificationMsg, ShareOffer,
 };
 
 #[derive(Clone, Debug)]
@@ -58,4 +58,7 @@ pub enum Event {
     Ring { from: DeviceId, on: bool },
     Input { from: DeviceId, input: InputMsg },
     Hotspot { from: DeviceId, hotspot: HotspotMsg },
+    MediaPlayers { from: DeviceId, players: Vec<MediaPlayer> },
+    MediaArt { from: DeviceId, key: u64, jpeg: Vec<u8> },
+    MediaCommand { from: DeviceId, player: String, action: MediaAction, position_ms: Option<u64> },
 }

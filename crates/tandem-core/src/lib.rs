@@ -8,6 +8,7 @@ pub mod ffi;
 pub mod hotspot;
 pub mod identity;
 pub mod ids;
+pub mod media;
 pub mod net;
 pub mod pairing;
 pub mod platform;

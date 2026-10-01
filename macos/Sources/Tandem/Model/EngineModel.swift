@@ -79,6 +79,22 @@ final class EngineModel {
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     @ObservationIgnored let hotspot = HotspotCoordinator()
     @ObservationIgnored let bleMessenger = BleMessenger()
+
+    // Music: what the phones play (with the time it was said, to count on from), their covers, and
+    // what this Mac plays. One switch turns all of it off, in both directions.
+    struct RemoteMedia {
+        var players: [TandemMediaPlayer]
+        var at: Date
+    }
+    var remoteMedia: [String: RemoteMedia] = [:]
+    var mediaArt: [UInt64: NSImage] = [:]
+    let macMedia = MacMedia()
+    var mediaShare = UserDefaults.standard.object(forKey: "mediaShare") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(mediaShare, forKey: "mediaShare")
+            mediaSettingChanged()
+        }
+    }
     @ObservationIgnored private var bleWatch: Task<Void, Never>?
     /// Where a sent file came from, by the name it travels under, so a finished
     /// transfer can be opened later. The core reports no location for outgoing files.
@@ -114,7 +130,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot"],
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media"],
             lowPower: false
         )
 
@@ -180,6 +196,7 @@ final class EngineModel {
         hotspot.attach(model: self)
         startBleWatch()
         observeSleep()
+        startMedia()
         pushStatus()
         statusTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.pushStatus() }
@@ -269,7 +286,12 @@ final class EngineModel {
             refreshDevices()
             if case let .connected(id) = event { hotspot.deviceConnected(id) }
             // A phone that drops while a button is held must not leave it held here.
-            if case let .disconnected(id) = event { injector.sourceDisconnected(id) }
+            if case let .disconnected(id) = event {
+                injector.sourceDisconnected(id)
+                remoteMedia[id] = nil
+            }
+            // A phone that just connected knows nothing of what this Mac plays.
+            if case let .connected(id) = event, device(id)?.platform == .android { publishMedia(only: [id]) }
 
         case let .paired(id):
             refreshDevices()
@@ -340,9 +362,66 @@ final class EngineModel {
         case let .hotspot(from, message):
             hotspot.handle(from: from, message: message)
 
+        case let .mediaPlayers(from, players):
+            guard mediaShare else { return }
+            remoteMedia[from] = RemoteMedia(players: players, at: Date())
+
+        case let .mediaArt(_, key, jpeg):
+            guard mediaShare, let image = NSImage(data: jpeg) else { return }
+            mediaArt[key] = image
+            // The newest few are all that is ever on screen.
+            if mediaArt.count > 24, let old = mediaArt.keys.first(where: { $0 != key }) { mediaArt.removeValue(forKey: old) }
+
+        case let .mediaCommand(_, player, action, position):
+            guard mediaShare, let action else { return }
+            macMedia.perform(action, player: player, positionMs: position) { [weak self] outcome in
+                if outcome == .notAllowed {
+                    self?.showToast(String(localized: "Allow Tandem to control Spotify and Music in System Settings, under Privacy and Security, Automation"))
+                }
+            }
+
         case .notificationAction, .appIcon, .callAction, .dial, .ring:
             break
         }
+    }
+
+    // MARK: Music
+
+    private func startMedia() {
+        macMedia.onChange = { [weak self] in self?.publishMedia() }
+        if mediaShare { macMedia.start() }
+    }
+
+    /// Tells the phones what this Mac plays: the whole list, so a player that is gone drops off.
+    func publishMedia(only: [String]? = nil) {
+        guard let engine else { return }
+        let phones = only ?? devices.filter { $0.platform == .android }.map(\.id)
+        guard !phones.isEmpty else { return }
+        let players = mediaShare ? macMedia.players : []
+        Task { _ = try? await engine.sendMediaPlayers(targets: phones, players: players) }
+    }
+
+    private func mediaSettingChanged() {
+        if mediaShare {
+            macMedia.start()
+            publishMedia()
+        } else {
+            macMedia.stop()
+            remoteMedia = [:]
+            publishMedia()
+        }
+    }
+
+    /// What a phone plays that is worth showing: not what this Mac already plays, such as a phone
+    /// that only remote controls this Mac's Spotify.
+    func visibleMedia(for deviceID: String) -> [TandemMediaPlayer] {
+        guard mediaShare, let remote = remoteMedia[deviceID] else { return [] }
+        return tandemMediaVisible(local: macMedia.players, remote: remote.players)
+    }
+
+    func sendMedia(_ action: TandemMediaAction, player: TandemMediaPlayer, to deviceID: String, positionMs: UInt64? = nil) {
+        guard let engine else { return }
+        Task { try? await engine.sendMediaCommand(target: deviceID, player: player.id, action: action, positionMs: positionMs) }
     }
 
     // MARK: Transfers

@@ -372,3 +372,11 @@
 "New" = "Nieuw";
 "Better" = "Beter";
 "Fixed" = "Opgelost";
+
+"Show and control music" = "Muziek tonen en bedienen";
+"Music from your phone shows here with buttons, and what Spotify and Music play here shows on your phone." = "Muziek van je telefoon staat hier met knoppen, en wat Spotify en Muziek hier spelen staat op je telefoon.";
+"Allow Tandem to control Spotify and Music in System Settings, under Privacy and Security, Automation" = "Geef Tandem toestemming om Spotify en Muziek te bedienen in Systeeminstellingen, onder Privacy en beveiliging, Automatisering";
+"Previous" = "Vorige";
+"Next" = "Volgende";
+"Play" = "Afspelen";
+"Pause" = "Pauzeren";

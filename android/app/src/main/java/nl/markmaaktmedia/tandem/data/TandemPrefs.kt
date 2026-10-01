@@ -51,6 +51,8 @@ class TandemPrefs(private val context: Context) {
         val remoteMouse = booleanPreferencesKey("remote_mouse")
         val deviceIcons = stringPreferencesKey("device_icons")
         val bluetoothMessages = booleanPreferencesKey("bluetooth_messages")
+        val mediaShare = booleanPreferencesKey("media_share")
+        val mediaExcluded = stringSetPreferencesKey("media_excluded")
     }
 
     val appearance: Flow<Appearance> = data.map { p ->
@@ -79,6 +81,12 @@ class TandemPrefs(private val context: Context) {
     /** Trackpad screen: the media buttons start off, the left and right buttons start on. */
     val remoteMedia: Flow<Boolean> = data.map { it[Keys.remoteMedia] ?: false }
     val remoteMouse: Flow<Boolean> = data.map { it[Keys.remoteMouse] ?: true }
+
+    /** What plays on this phone shows on the Mac with controls, and what plays on the Mac shows here. */
+    val mediaShare: Flow<Boolean> = data.map { it[Keys.mediaShare] ?: true }
+
+    /** Apps whose playback is never shared. Everything else is. */
+    val mediaExcluded: Flow<Set<String>> = data.map { it[Keys.mediaExcluded] ?: emptySet() }
 
     /** Clipboard and notifications over Bluetooth when there is no network. On by default: it only listens. */
     val bluetoothMessages: Flow<Boolean> = data.map { it[Keys.bluetoothMessages] ?: true }
@@ -157,6 +165,14 @@ class TandemPrefs(private val context: Context) {
     suspend fun setRemoteMouse(value: Boolean) = set(Keys.remoteMouse, value)
 
     suspend fun setBluetoothMessages(value: Boolean) = set(Keys.bluetoothMessages, value)
+    suspend fun setMediaShare(value: Boolean) = set(Keys.mediaShare, value)
+
+    suspend fun setMediaApp(packageName: String, allowed: Boolean) {
+        context.store.edit { p ->
+            val excluded = p[Keys.mediaExcluded] ?: emptySet()
+            p[Keys.mediaExcluded] = if (allowed) excluded - packageName else excluded + packageName
+        }
+    }
 
     /** [icon] null goes back to the platform's own icon. */
     suspend fun setDeviceIcon(deviceId: String, icon: String?) {

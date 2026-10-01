@@ -185,6 +185,11 @@ private struct GeneralSettings: View {
                 )
                 .disabled(!copyImages)
                 DescribedToggle(
+                    "Show and control music",
+                    subtitle: "Music from your phone shows here with buttons, and what Spotify and Music play here shows on your phone.",
+                    isOn: Binding(get: { model.mediaShare }, set: { model.mediaShare = $0 })
+                )
+                DescribedToggle(
                     "Bluetooth without a network",
                     subtitle: "Clipboard and notifications from your phone still arrive over Bluetooth when this Mac has no connection.",
                     isOn: $bleMessages

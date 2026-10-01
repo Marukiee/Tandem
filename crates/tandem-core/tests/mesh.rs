@@ -697,3 +697,64 @@ async fn bluetooth_frames_carry_a_clipboard_and_refuse_a_replay() {
     // A message that is not allowed over the air is refused before it is sealed.
     assert!(!phone.engine.ble_send(&mac.engine.id(), Msg::Ring { on: true }));
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn players_and_their_commands_travel_both_ways() {
+    use tandem_core::proto::{MediaAction, MediaPlayer, Msg};
+
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+
+    let mut mac_events = mac.engine.subscribe();
+    let mut phone_events = phone.engine.subscribe();
+
+    let player = MediaPlayer {
+        id: "com.spotify.music".into(),
+        app: "Spotify".into(),
+        title: "Blinding Lights".into(),
+        artist: "The Weeknd".into(),
+        album: "After Hours".into(),
+        playing: true,
+        position_ms: Some(42_000),
+        duration_ms: Some(200_000),
+        can_prev: true,
+        can_next: true,
+        can_seek: true,
+        art: 7,
+    };
+    let reached = phone.engine.send_msg(&[mac.engine.id()], Msg::MediaPlayers { players: vec![player.clone()] }).await;
+    assert_eq!(reached, vec![mac.engine.id()]);
+    let got = expect(&mut mac_events, "the phone's players", |e| match e {
+        Event::MediaPlayers { players, .. } => Some(players.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(got, vec![player]);
+
+    phone
+        .engine
+        .send_msg(&[mac.engine.id()], Msg::MediaArt { key: 7, jpeg: serde_bytes::ByteBuf::from(vec![0xFF, 0xD8, 1, 2, 3]) })
+        .await;
+    let (key, size) = expect(&mut mac_events, "the cover", |e| match e {
+        Event::MediaArt { key, jpeg, .. } => Some((*key, jpeg.len())),
+        _ => None,
+    })
+    .await;
+    assert_eq!((key, size), (7, 5));
+
+    // The Mac pauses it: the command reaches the phone with what it needs.
+    mac.engine
+        .send_msg(
+            &[phone.engine.id()],
+            Msg::MediaCommand { player: "com.spotify.music".into(), action: MediaAction::Seek, position_ms: Some(90_000) },
+        )
+        .await;
+    let (who, action, at) = expect(&mut phone_events, "the command", |e| match e {
+        Event::MediaCommand { player, action, position_ms, .. } => Some((player.clone(), *action, *position_ms)),
+        _ => None,
+    })
+    .await;
+    assert_eq!((who.as_str(), action, at), ("com.spotify.music", MediaAction::Seek, Some(90_000)));
+}

@@ -69,6 +69,7 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
     val deviceName by prefs.deviceName.collectAsState(initial = null)
     val screenshot by prefs.screenshotPrompt.collectAsState(initial = true)
     val bleMessages by prefs.bluetoothMessages.collectAsState(initial = true)
+    val mediaShare by prefs.mediaShare.collectAsState(initial = true)
     val mirror by prefs.mirrorNotifications.collectAsState(initial = true)
     val calls by prefs.callMirror.collectAsState(initial = true)
     val hotspot by prefs.hotspotForMac.collectAsState(initial = false)
@@ -153,6 +154,14 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
                 SwitchRow(0, 3, TandemIcons.Screenshot, stringResource(R.string.settings_screenshot), stringResource(R.string.settings_screenshot_sub), screenshot, { scope.launch { prefs.setScreenshotPrompt(it) } })
                 SwitchRow(1, 3, TandemIcons.Bluetooth, stringResource(R.string.settings_ble_messages), stringResource(R.string.settings_ble_messages_sub), bleMessages, { scope.launch { prefs.setBluetoothMessages(it) } })
                 ActionRow(2, 3, TandemIcons.Paste, stringResource(R.string.settings_clip_tile), stringResource(R.string.settings_clip_tile_sub), { nl.markmaaktmedia.tandem.share.ClipboardTileService.requestAdd(context) })
+            }
+        }
+
+        item {
+            SectionHeader(stringResource(R.string.settings_media))
+            SettingsGroup {
+                SwitchRow(0, 2, TandemIcons.Music, stringResource(R.string.settings_media_share), stringResource(R.string.settings_media_share_sub), mediaShare, { scope.launch { prefs.setMediaShare(it) } })
+                ActionRow(1, 2, TandemIcons.Devices, stringResource(R.string.settings_media_apps), stringResource(R.string.settings_media_apps_sub), { onOpen(Route.MediaApps) })
             }
         }
 

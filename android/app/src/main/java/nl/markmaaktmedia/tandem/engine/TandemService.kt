@@ -55,6 +55,7 @@ class TandemService : LifecycleService() {
         screenshots = ScreenshotWatcher(this, host, graph.prefs, graph.scope).also { it.start() }
         calls = CallMonitor(this, host, graph.prefs, graph.scope).also { it.start() }
         hotspot = HotspotModule.get(this).also { it.start { status.resend() } }
+        graph.media.start()
 
         lifecycleScope.launch {
             host.devices.collectLatest { devices ->
@@ -78,6 +79,7 @@ class TandemService : LifecycleService() {
         screenshots.stop()
         calls.stop()
         hotspot.stop()
+        graph.media.stop()
         multicast?.release()
         FindPhone.stop()
         super.onDestroy()

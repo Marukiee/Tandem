@@ -39,6 +39,8 @@ struct MenuBarPanel: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
+            MenuNowPlaying()
+
             UpdateBanner(compact: true)
             footer
         }
@@ -46,6 +48,7 @@ struct MenuBarPanel: View {
         .frame(width: 344)
         .animation(.tandem, value: model.devices.map(\.id))
         .animation(.tandem, value: model.isTransferring)
+        .animation(.tandem, value: model.remoteMedia.mapValues(\.players))
     }
 
     // MARK: Header

@@ -63,6 +63,20 @@ pub enum Msg {
     Ring { on: bool },
     Input(InputMsg),
     Hotspot(HotspotMsg),
+    /// The players this device has right now, sent whenever they change. The whole list: a player
+    /// that is missing from it has gone.
+    MediaPlayers { players: Vec<MediaPlayer> },
+    /// The cover of a player's current track. `key` is `MediaPlayer::art`. Sent once per cover,
+    /// apart from the list so a progress update never carries a picture.
+    MediaArt { key: u64, jpeg: ByteBuf },
+    /// Asks the other device to do something with one of its players.
+    MediaCommand {
+        player: String,
+        action: MediaAction,
+        /// Where to jump to, for `Seek`.
+        #[serde(default)]
+        position_ms: Option<u64>,
+    },
     /// The key two devices seal Bluetooth frames with. Made by the one with the lower id and
     /// sent over the authenticated connection, never over the air.
     BleKey {
@@ -242,6 +256,51 @@ pub struct NotificationMsg {
     pub otp: Option<String>,
     #[serde(default)]
     pub progress: Option<(u32, u32)>,
+}
+
+/// Something that can play on a device: an app's media session on the phone, a music app on the Mac.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MediaPlayer {
+    /// Stable for as long as the player exists on its device: the package name or the bundle id.
+    pub id: String,
+    /// What people call it, such as "Spotify".
+    pub app: String,
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub artist: String,
+    #[serde(default)]
+    pub album: String,
+    #[serde(default)]
+    pub playing: bool,
+    /// How far in the track was when this was sent. The receiver counts on from there while it plays.
+    #[serde(default)]
+    pub position_ms: Option<u64>,
+    #[serde(default)]
+    pub duration_ms: Option<u64>,
+    #[serde(default)]
+    pub can_prev: bool,
+    #[serde(default)]
+    pub can_next: bool,
+    #[serde(default)]
+    pub can_seek: bool,
+    /// Which cover belongs to this track, 0 for none. The picture comes in a `MediaArt` message.
+    #[serde(default)]
+    pub art: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MediaAction {
+    Play,
+    Pause,
+    /// Pause if it plays, play if it does not, so a button needs no state of its own.
+    Toggle,
+    Next,
+    Previous,
+    Seek,
+    #[serde(other)]
+    Other,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

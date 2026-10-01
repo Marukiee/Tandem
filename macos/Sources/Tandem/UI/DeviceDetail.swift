@@ -159,6 +159,7 @@ struct DeviceDetail: View {
     private var content: some View {
         VStack(spacing: 18) {
             actions
+            NowPlayingCard(device: device)
             DropZone(device: device)
             if device.platform == .android { HotspotCard(device: device) }
             RemoteControlCard()

@@ -38,7 +38,7 @@ const OUTBOX_LIMIT: usize = 32;
 /// A chunk is msg id, index, count, then payload.
 const CHUNK_HEADER: usize = 3;
 
-/// Which messages may cross the air.
+/// Which messages may cross the air. A media cover is not one of them: it is too big for Bluetooth.
 pub fn allowed(msg: &Msg) -> bool {
     matches!(
         msg,
@@ -46,6 +46,8 @@ pub fn allowed(msg: &Msg) -> bool {
             | Msg::Notification(_)
             | Msg::NotificationRemoved { .. }
             | Msg::NotificationAction(_)
+            | Msg::MediaPlayers { .. }
+            | Msg::MediaCommand { .. }
             | Msg::Ping { .. }
     )
 }

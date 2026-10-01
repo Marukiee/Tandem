@@ -37,6 +37,10 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Music and video apps, to list the ones that can show what they play. -->
+        <intent>
+            <action android:name="android.media.browse.MediaBrowserService" />
+        </intent>
         <!-- Shizuku, to see whether it is installed. The hotspot works without it. -->
         <package android:name="moe.shizuku.privileged.api" />
     </queries>

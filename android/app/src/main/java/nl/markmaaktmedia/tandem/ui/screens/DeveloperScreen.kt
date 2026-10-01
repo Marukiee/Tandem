@@ -13,6 +13,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import nl.markmaaktmedia.tandem.ui.components.SwitchRow
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -61,7 +64,13 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
 
         SectionHeader(stringResource(R.string.dev_pieces))
         SettingsGroup {
-            ActionRow(0, 1, TandemIcons.Update, stringResource(R.string.dev_update), stringResource(R.string.dev_update_sub), { scope.launch { graph.prefs.setDismissedUpdate(""); updater.showPreview() } })
+            ActionRow(0, 2, TandemIcons.Update, stringResource(R.string.dev_update), stringResource(R.string.dev_update_sub), { scope.launch { graph.prefs.setDismissedUpdate(""); updater.showPreview() } })
+            val context = LocalContext.current
+            val fake by nl.markmaaktmedia.tandem.media.FakePlayer.running.collectAsState()
+            SwitchRow(
+                1, 2, TandemIcons.Music, stringResource(R.string.dev_player), stringResource(R.string.dev_player_sub), fake,
+                { if (it) nl.markmaaktmedia.tandem.media.FakePlayer.start(context) else nl.markmaaktmedia.tandem.media.FakePlayer.stop() },
+            )
         }
     }
 }

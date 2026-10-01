@@ -322,6 +322,85 @@ impl From<DeviceInfo> for TandemDevice {
     }
 }
 
+/// Something that can play on a device. See `proto::MediaPlayer`.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemMediaPlayer {
+    pub id: String,
+    pub app: String,
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+    pub playing: bool,
+    pub position_ms: Option<u64>,
+    pub duration_ms: Option<u64>,
+    pub can_prev: bool,
+    pub can_next: bool,
+    pub can_seek: bool,
+    pub art: u64,
+}
+
+impl From<crate::proto::MediaPlayer> for TandemMediaPlayer {
+    fn from(p: crate::proto::MediaPlayer) -> Self {
+        TandemMediaPlayer {
+            id: p.id,
+            app: p.app,
+            title: p.title,
+            artist: p.artist,
+            album: p.album,
+            playing: p.playing,
+            position_ms: p.position_ms,
+            duration_ms: p.duration_ms,
+            can_prev: p.can_prev,
+            can_next: p.can_next,
+            can_seek: p.can_seek,
+            art: p.art,
+        }
+    }
+}
+
+impl From<TandemMediaPlayer> for crate::proto::MediaPlayer {
+    fn from(p: TandemMediaPlayer) -> Self {
+        crate::proto::MediaPlayer {
+            id: p.id,
+            app: p.app,
+            title: p.title,
+            artist: p.artist,
+            album: p.album,
+            playing: p.playing,
+            position_ms: p.position_ms,
+            duration_ms: p.duration_ms,
+            can_prev: p.can_prev,
+            can_next: p.can_next,
+            can_seek: p.can_seek,
+            art: p.art,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemMediaAction {
+    Play,
+    Pause,
+    Toggle,
+    Next,
+    Previous,
+    Seek,
+}
+
+impl From<TandemMediaAction> for crate::proto::MediaAction {
+    fn from(a: TandemMediaAction) -> Self {
+        use crate::proto::MediaAction as M;
+        match a {
+            TandemMediaAction::Play => M::Play,
+            TandemMediaAction::Pause => M::Pause,
+            TandemMediaAction::Toggle => M::Toggle,
+            TandemMediaAction::Next => M::Next,
+            TandemMediaAction::Previous => M::Previous,
+            TandemMediaAction::Seek => M::Seek,
+        }
+    }
+}
+
 #[derive(Clone, Debug, uniffi::Record)]
 pub struct TandemPairingOffer {
     pub uri: String,
@@ -672,6 +751,10 @@ pub enum TandemEvent {
     Ring { from: String, on: bool },
     Input { from: String, input: TandemInput },
     Hotspot { from: String, hotspot: TandemHotspot },
+    MediaPlayers { from: String, players: Vec<TandemMediaPlayer> },
+    MediaArt { from: String, key: u64, jpeg: Vec<u8> },
+    /// `action` is None for a command this version does not know.
+    MediaCommand { from: String, player: String, action: Option<TandemMediaAction>, position_ms: Option<u64> },
 }
 
 impl From<Event> for TandemEvent {
@@ -746,8 +829,35 @@ impl From<Event> for TandemEvent {
             Event::Ring { from, on } => TandemEvent::Ring { from: from.to_string(), on },
             Event::Input { from, input } => TandemEvent::Input { from: from.to_string(), input: input.into() },
             Event::Hotspot { from, hotspot } => TandemEvent::Hotspot { from: from.to_string(), hotspot: hotspot.into() },
+            Event::MediaPlayers { from, players } => {
+                TandemEvent::MediaPlayers { from: from.to_string(), players: players.into_iter().map(Into::into).collect() }
+            }
+            Event::MediaArt { from, key, jpeg } => TandemEvent::MediaArt { from: from.to_string(), key, jpeg },
+            Event::MediaCommand { from, player, action, position_ms } => {
+                use crate::proto::MediaAction as M;
+                let action = match action {
+                    M::Play => Some(TandemMediaAction::Play),
+                    M::Pause => Some(TandemMediaAction::Pause),
+                    M::Toggle => Some(TandemMediaAction::Toggle),
+                    M::Next => Some(TandemMediaAction::Next),
+                    M::Previous => Some(TandemMediaAction::Previous),
+                    M::Seek => Some(TandemMediaAction::Seek),
+                    M::Other => None,
+                };
+                TandemEvent::MediaCommand { from: from.to_string(), player, action, position_ms }
+            }
         }
     }
+}
+
+/// The players of the other device worth showing next to this device's own: the ones that play
+/// something a local player already plays are left out, so a phone that only remote controls the
+/// Mac's Spotify does not give a second Spotify. Both apps call this, so they cannot disagree.
+#[uniffi::export]
+pub fn tandem_media_visible(local: Vec<TandemMediaPlayer>, remote: Vec<TandemMediaPlayer>) -> Vec<TandemMediaPlayer> {
+    let local: Vec<crate::proto::MediaPlayer> = local.into_iter().map(Into::into).collect();
+    let remote: Vec<crate::proto::MediaPlayer> = remote.into_iter().map(Into::into).collect();
+    crate::media::visible(&local, &remote).into_iter().map(Into::into).collect()
 }
 
 // ---- Hotspot over Bluetooth ------------------------------------------------------
@@ -1118,6 +1228,33 @@ impl TandemEngine {
     pub async fn update_status(&self, status: TandemStatus) {
         let engine = self.engine.clone();
         let _ = self.runtime.spawn(async move { engine.update_status(status.into()).await }).await;
+    }
+
+    /// This device's players, whole list, to the devices that should show them.
+    pub async fn send_media_players(
+        &self,
+        targets: Vec<String>,
+        players: Vec<TandemMediaPlayer>,
+    ) -> Result<Vec<String>, TandemError> {
+        self.send(targets, crate::proto::Msg::MediaPlayers { players: players.into_iter().map(Into::into).collect() }).await
+    }
+
+    /// A cover for the players' `art` key. Sent once per cover.
+    pub async fn send_media_art(&self, targets: Vec<String>, key: u64, jpeg: Vec<u8>) -> Result<Vec<String>, TandemError> {
+        self.send(targets, crate::proto::Msg::MediaArt { key, jpeg: serde_bytes::ByteBuf::from(jpeg) }).await
+    }
+
+    /// Asks `target` to do something with one of its players.
+    pub async fn send_media_command(
+        &self,
+        target: String,
+        player: String,
+        action: TandemMediaAction,
+        position_ms: Option<u64>,
+    ) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::MediaCommand { player, action: action.into(), position_ms })
+            .await
+            .map(|_| ())
     }
 
     pub async fn send_notification(

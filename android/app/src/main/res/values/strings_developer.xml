@@ -13,4 +13,6 @@
     <string name="dev_access_sub">The real Permissions page with its status and test buttons</string>
     <string name="dev_update">Update banner</string>
     <string name="dev_update_sub">Shows a fake update at the top. Update walks through downloading, nothing is installed.</string>
+    <string name="dev_player">Test music player</string>
+    <string name="dev_player_sub">A pretend music app, to try the buttons on your Mac without playing anything</string>
 </resources>

@@ -354,6 +354,19 @@ impl Inner {
             Msg::Input(input) => self.emit(Event::Input { from: id, input }),
             Msg::Hotspot(hotspot) => self.emit(Event::Hotspot { from: id, hotspot }),
             Msg::BleKey { key } => self.ble_on_key(id, key),
+            Msg::MediaPlayers { mut players } => {
+                // A phone has a handful of sessions; more than this is a bug or an abuse.
+                players.truncate(16);
+                self.emit(Event::MediaPlayers { from: id, players });
+            }
+            Msg::MediaArt { key, jpeg } => {
+                if jpeg.len() <= 512 * 1024 {
+                    self.emit(Event::MediaArt { from: id, key, jpeg: jpeg.into_vec() });
+                }
+            }
+            Msg::MediaCommand { player, action, position_ms } => {
+                self.emit(Event::MediaCommand { from: id, player, action, position_ms });
+            }
             Msg::Candidates { addrs } => {
                 for text in addrs {
                     if let Ok(addr) = text.parse::<SocketAddr>() {

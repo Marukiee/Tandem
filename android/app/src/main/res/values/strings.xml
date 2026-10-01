@@ -337,4 +337,17 @@
     <string name="changelog_new">New</string>
     <string name="changelog_better">Better</string>
     <string name="changelog_fixed">Fixed</string>
+    <string name="settings_media">Music</string>
+    <string name="settings_media_share">Show and control music</string>
+    <string name="settings_media_share_sub">What plays on this phone shows on your Mac with buttons, and what plays on your Mac shows here</string>
+    <string name="settings_media_apps">Choose apps</string>
+    <string name="settings_media_apps_sub">Apps you switch off are never shown on your Mac</string>
+    <string name="media_apps_intro">Every app that plays music or video can show what it plays on your Mac. Switch off the ones that should stay private.</string>
+    <string name="media_access_missing">Reading what plays needs notification access, the same permission that sends notifications to your Mac.</string>
+    <string name="media_apps_empty">No music apps found yet. Start something playing and come back.</string>
+    <string name="media_now_playing">Now playing</string>
+    <string name="media_previous">Previous</string>
+    <string name="media_next">Next</string>
+    <string name="media_play">Play</string>
+    <string name="media_pause">Pause</string>
 </resources>

@@ -334,4 +334,17 @@
     <string name="changelog_new">Nieuw</string>
     <string name="changelog_better">Beter</string>
     <string name="changelog_fixed">Opgelost</string>
+    <string name="settings_media">Muziek</string>
+    <string name="settings_media_share">Muziek tonen en bedienen</string>
+    <string name="settings_media_share_sub">Wat er op deze telefoon speelt staat met knoppen op je Mac, en wat er op je Mac speelt zie je hier</string>
+    <string name="settings_media_apps">Apps kiezen</string>
+    <string name="settings_media_apps_sub">Apps die je uitzet worden nooit op je Mac getoond</string>
+    <string name="media_apps_intro">Elke app die muziek of video afspeelt kan tonen wat hij speelt op je Mac. Zet de apps uit die privé moeten blijven.</string>
+    <string name="media_access_missing">Lezen wat er speelt heeft toegang tot meldingen nodig, dezelfde toestemming die meldingen naar je Mac stuurt.</string>
+    <string name="media_apps_empty">Nog geen muziek-apps gevonden. Start iets en kom terug.</string>
+    <string name="media_now_playing">Speelt nu</string>
+    <string name="media_previous">Vorige</string>
+    <string name="media_next">Volgende</string>
+    <string name="media_play">Afspelen</string>
+    <string name="media_pause">Pauzeren</string>
 </resources>

@@ -30,6 +30,10 @@
     <string>macOS only tells Tandem the name of your Wi-Fi network if it may see your location. Tandem uses the name to set up your phone's hotspot, and never your position.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>macOS only tells Tandem the name of your Wi-Fi network if it may see your location. Tandem uses the name to set up your phone's hotspot, and never your position.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>Tandem presses play, pause and skip in Spotify and Music when you do it from your phone.</string>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Tandem sends this Mac's sound to your phone when you choose to use your phone as a speaker.</string>
     <key>NSCameraUsageDescription</key>
     <string>Tandem scans the pairing code shown on another device.</string>
 

@@ -18,6 +18,7 @@ class Graph(app: Application) {
     val prefs = TandemPrefs(app)
     val host = EngineHost(app, prefs, scope)
     val updater = UpdateRepository(app, prefs)
+    val media = nl.markmaaktmedia.tandem.media.MediaMirror(app, prefs, host, scope)
 
     /** Picked device icons, hot from the first frame so a list does not flash the default ones. */
     val deviceIcons: kotlinx.coroutines.flow.StateFlow<Map<String, String>> = prefs.deviceIcons.stateIn(

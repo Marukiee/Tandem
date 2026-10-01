@@ -13,4 +13,6 @@
     <string name="dev_access_sub">De echte Rechten-pagina met status en testknoppen</string>
     <string name="dev_update">Updatebalk</string>
     <string name="dev_update_sub">Toont bovenin een nep-update. Bijwerken loopt door het downloaden, er wordt niets geïnstalleerd.</string>
+    <string name="dev_player">Testspeler voor muziek</string>
+    <string name="dev_player_sub">Een nepmuziekapp, om de knoppen op je Mac te proberen zonder iets af te spelen</string>
 </resources>
