@@ -326,9 +326,9 @@ class MediaMirror(
     fun activePackages(): List<String> = synchronized(lock) { tracked.values.map { it.controller.packageName }.distinct() }
 
     /** Presses a button of one of the Mac's players. */
-    fun commandMac(deviceId: String, player: String, action: TandemMediaAction) {
+    fun commandMac(deviceId: String, player: String, action: TandemMediaAction, positionMs: Long? = null) {
         val engine = host.engine ?: return
-        scope.launch(Dispatchers.IO) { runCatching { engine.sendMediaCommand(deviceId, player, action, null) } }
+        scope.launch(Dispatchers.IO) { runCatching { engine.sendMediaCommand(deviceId, player, action, positionMs?.toULong()) } }
     }
 
     private companion object {

@@ -63,34 +63,95 @@ struct PlayerCover: View {
 }
 
 /// The position is only sent when something changes, so it is counted on from there while it plays.
-/// A click on the bar jumps to that place, when the app allows it.
-private struct PlayerProgress: View {
+/// The bar can be dragged: it follows the pointer, shows where it would land, and jumps there when let
+/// go, and holds that place until the phone reports the new position. A click is a drag of nothing.
+struct PlayerProgress: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
     let player: TandemMediaPlayer
+    var compact = false
+
+    /// Where the pointer is while it is down, as a fraction of the bar.
+    @LocalState private var scrub: Double?
+    /// Where it was let go, until the phone says where the music really is.
+    @LocalState private var held: (fraction: Double, since: Date, report: Date)?
+    @LocalState private var hovering = false
 
     var body: some View {
         if let start = player.positionMs, let duration = player.durationMs, duration > 0 {
-            let at = model.remoteMedia[device.id]?.at ?? Date()
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                let moved = player.playing ? UInt64(max(0, context.date.timeIntervalSince(at)) * 1000) : 0
-                let fraction = min(1, Double(start + moved) / Double(duration))
-                ProgressCapsule(fraction: fraction)
-                    .frame(height: 6)
-                    .contentShape(Rectangle())
-                    .overlay {
-                        GeometryReader { proxy in
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .onTapGesture(coordinateSpace: .local) { point in
-                                    guard player.canSeek, proxy.size.width > 0 else { return }
-                                    let target = UInt64(Double(duration) * min(1, max(0, point.x / proxy.size.width)))
-                                    model.sendMedia(.seek, player: player, to: device.id, positionMs: target)
-                                }
+            let report = model.remoteMedia[device.id]?.at ?? Date()
+            TimelineView(.periodic(from: .now, by: 0.5)) { context in
+                let fraction = shown(start: start, duration: duration, report: report, now: context.date)
+                VStack(spacing: 3) {
+                    bar(fraction: fraction, duration: duration, report: report)
+                    if !compact {
+                        HStack {
+                            Text(Self.time(UInt64(fraction * Double(duration))))
+                            Spacer()
+                            Text(Self.time(duration))
                         }
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
                     }
+                }
             }
         }
+    }
+
+    private func shown(start: UInt64, duration: UInt64, report: Date, now: Date) -> Double {
+        if let scrub { return scrub }
+        // A jump is held for a moment, or until the phone reports again, so the bar does not spring back.
+        if let held, held.report == report, now.timeIntervalSince(held.since) < 2.5 { return held.fraction }
+        let moved = player.playing ? UInt64(max(0, now.timeIntervalSince(report)) * 1000) : 0
+        return min(1, Double(start + moved) / Double(duration))
+    }
+
+    private func bar(fraction: Double, duration: UInt64, report: Date) -> some View {
+        let active = player.canSeek && (scrub != nil || hovering)
+        let thickness: CGFloat = active ? 10 : (compact ? 4 : 6)
+        return GeometryReader { proxy in
+            let width = max(proxy.size.width, 1)
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.primary.opacity(0.1))
+                Capsule()
+                    .fill(Palette.indigo.gradient)
+                    .frame(width: max(thickness, width * fraction))
+                if active {
+                    Circle()
+                        .fill(.white)
+                        .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+                        .frame(width: 16, height: 16)
+                        .offset(x: min(max(0, width * fraction - 8), width - 16))
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .frame(height: thickness)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard player.canSeek else { return }
+                        scrub = min(1, max(0, value.location.x / width))
+                    }
+                    .onEnded { value in
+                        guard player.canSeek else { return }
+                        let target = min(1, max(0, value.location.x / width))
+                        scrub = nil
+                        held = (target, Date(), report)
+                        model.sendMedia(.seek, player: player, to: device.id, positionMs: UInt64(target * Double(duration)))
+                    }
+            )
+            .onHover { hovering = $0 }
+            .animation(.tandemSpringy, value: active)
+        }
+        .frame(height: 16)
+    }
+
+    static func time(_ ms: UInt64) -> String {
+        let total = Int(ms / 1000)
+        let (h, m, s) = (total / 3600, (total / 60) % 60, total % 60)
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
     }
 }
 
@@ -142,6 +203,7 @@ struct MenuNowPlaying: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                    PlayerProgress(device: device, player: player, compact: true)
                 }
                 Spacer(minLength: 4)
                 PlayerButtons(device: device, player: player, size: .small)

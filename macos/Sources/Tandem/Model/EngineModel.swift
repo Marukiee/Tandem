@@ -105,6 +105,16 @@ final class EngineModel {
         }
     }
     var speaker: SpeakerState = .off
+    /// Each phone as an output in System Settings, Sound. Off unless asked for: it adds devices to the system.
+    var speakerInSound = UserDefaults.standard.bool(forKey: "speakerInSound") {
+        didSet {
+            UserDefaults.standard.set(speakerInSound, forKey: "speakerInSound")
+            reconcileSpeakerDevices()
+        }
+    }
+    @ObservationIgnored let speakerDevices = SpeakerDevices()
+    /// The sound is going to a phone because its output was chosen in the system, not from a button here.
+    @ObservationIgnored private var speakerViaOutput = false
     @ObservationIgnored private var tap: SystemAudioTap?
     @ObservationIgnored private var speakerStream: UInt8 = 0
     @ObservationIgnored private var speakerStartedAt = Date.distantPast
@@ -217,6 +227,7 @@ final class EngineModel {
         startBleWatch()
         observeSleep()
         startMedia()
+        speakerDevices.onSelect = { [weak self] phone, uid in self?.outputChosen(phone: phone, uid: uid) }
         pushStatus()
         statusTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.pushStatus() }
@@ -298,6 +309,7 @@ final class EngineModel {
     func refreshDevices() {
         guard let engine else { return }
         devices = engine.devices()
+        reconcileSpeakerDevices()
     }
 
     private func handle(_ event: TandemEvent) {
@@ -313,6 +325,8 @@ final class EngineModel {
                     stopSpeaker(tellPhone: false, state: .off)
                     showToast(String(localized: "The sound stopped because your phone disconnected"))
                 }
+                // The output that was chosen for it has nobody to play on any more.
+                if speakerDevices.selectedPhone == id { speakerDevices.restoreOutput() }
             }
             // A phone that just connected knows nothing of what this Mac plays.
             if case let .connected(id) = event, device(id)?.platform == .android { publishMedia(only: [id]) }
@@ -424,7 +438,7 @@ final class EngineModel {
 
     /// Plays this Mac's sound on a phone. The tap is opened first to learn the format, the phone is told,
     /// and only then does sound flow, so the phone's speaker is ready when the first packet arrives.
-    func startSpeaker(on id: String) {
+    func startSpeaker(on id: String, tapDeviceUID: String? = nil) {
         guard let engine, device(id)?.online == true else {
             showToast(String(localized: "That device is not connected right now"))
             return
@@ -433,12 +447,13 @@ final class EngineModel {
         speakerStream &+= 1
         let stream = speakerStream
         speaker = .starting(id)
+        speakerViaOutput = tapDeviceUID != nil
         let mute = UserDefaults.standard.object(forKey: "audioMuteLocal") as? Bool ?? true
         let tap = SystemAudioTap()
         self.tap = tap
         Task { @MainActor [weak self] in
             do {
-                let format = try tap.prepare(muteLocal: mute)
+                let format = try tap.prepare(muteLocal: mute, deviceUID: tapDeviceUID)
                 try await engine.sendAudioStart(target: id, stream: stream, sampleRate: format.sampleRate, channels: format.channels)
                 let limit = Int(engine.audioPayloadLimit(id: id))
                 let frameBytes = Int(format.channels) * 2
@@ -448,7 +463,7 @@ final class EngineModel {
                 guard let self, self.tap === tap else { tap.stop(); return }
                 self.speaker = .on(id)
                 self.speakerStartedAt = Date()
-                self.watchSpeaker(tap: tap, id: id, stream: stream, mute: mute)
+                self.watchSpeaker(tap: tap, id: id, stream: stream, mute: mute, deviceUID: tapDeviceUID)
             } catch {
                 guard let self, self.tap === tap else { tap.stop(); return }
                 self.stopSpeaker(tellPhone: true, state: .failed(error.localizedDescription))
@@ -476,7 +491,7 @@ final class EngineModel {
 
     /// Notices a capture that has gone quiet because the output it was clocked by went away (headphones
     /// unplugged, say) and opens it again on the new default output.
-    private func watchSpeaker(tap: SystemAudioTap, id: String, stream: UInt8, mute: Bool) {
+    private func watchSpeaker(tap: SystemAudioTap, id: String, stream: UInt8, mute: Bool, deviceUID: String? = nil) {
         speakerWatch?.cancel()
         speakerWatch = Task { @MainActor [weak self] in
             var current = tap
@@ -487,7 +502,7 @@ final class EngineModel {
                 current.stop()
                 let fresh = SystemAudioTap()
                 do {
-                    let format = try fresh.prepare(muteLocal: mute)
+                    let format = try fresh.prepare(muteLocal: mute, deviceUID: deviceUID)
                     let frameBytes = Int(format.channels) * 2
                     let limit = Int(engine.audioPayloadLimit(id: id))
                     try fresh.start(handler: Self.sender(engine: engine, id: id, stream: stream, chunk: limit / frameBytes * frameBytes))
@@ -511,10 +526,39 @@ final class EngineModel {
             Task { try? await engine.sendAudioStop(target: id, stream: stream) }
         }
         speaker = state
+        speakerViaOutput = false
     }
 
     func toggleSpeaker(for id: String) {
-        if speaker.device == id { stopSpeaker(tellPhone: true) } else { startSpeaker(on: id) }
+        if speaker.device == id {
+            stopSpeaker(tellPhone: true)
+            // Leaving its output chosen would play on this Mac's speakers under another name.
+            if speakerDevices.selectedPhone == id { speakerDevices.restoreOutput() }
+        } else {
+            startSpeaker(on: id)
+        }
+    }
+
+    // MARK: Phones as sound outputs
+
+    private func reconcileSpeakerDevices() {
+        speakerDevices.sync(
+            phones: devices.filter { $0.platform == .android }.map { ($0.id, $0.name) },
+            enabled: speakerInSound
+        )
+    }
+
+    /// A phone's output was chosen in System Settings, or something else was after one had been.
+    private func outputChosen(phone: String?, uid: String?) {
+        if let phone, let uid {
+            guard device(phone)?.online == true else {
+                showToast(String(localized: "Your phone is not connected, so the sound stays on this Mac"))
+                return
+            }
+            startSpeaker(on: phone, tapDeviceUID: uid)
+        } else if speakerViaOutput {
+            stopSpeaker(tellPhone: true)
+        }
     }
 
     // MARK: Music

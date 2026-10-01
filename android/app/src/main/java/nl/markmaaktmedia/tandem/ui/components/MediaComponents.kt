@@ -2,6 +2,18 @@ package nl.markmaaktmedia.tandem.ui.components
 
 import android.os.SystemClock
 import androidx.compose.foundation.Image
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -102,10 +115,13 @@ private fun PlayerCard(deviceId: String, player: TandemMediaPlayer, entry: Remot
                     delay(500)
                 }
             }
-            val position = (start + if (player.playing) (now - entry.at) else 0L).coerceIn(0L, duration)
-            LinearProgressIndicator(
-                progress = { position.toFloat() / duration },
-                modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+            val natural = ((start + if (player.playing) (now - entry.at) else 0L).toFloat() / duration).coerceIn(0f, 1f)
+            SeekBar(
+                fraction = natural,
+                duration = duration,
+                enabled = player.canSeek,
+                report = entry.at,
+                onSeek = { target -> media.commandMac(deviceId, player.id, TandemMediaAction.SEEK, (target * duration).toLong()) },
             )
         }
 
@@ -130,4 +146,88 @@ private fun PlayerCard(deviceId: String, player: TandemMediaPlayer, entry: Remot
             )
         }
     }
+}
+
+
+/**
+ * A progress bar that can be dragged. It follows the finger, shows where it would land, and jumps
+ * there when let go, and holds that place until the other device reports where the music really is.
+ * A tap is a jump too.
+ */
+@Composable
+private fun SeekBar(fraction: Float, duration: Long, enabled: Boolean, report: Long, onSeek: (Float) -> Unit) {
+    val haptics = LocalHapticFeedback.current
+    // The gesture blocks below keep the values they started with; these always hold the latest.
+    val latestReport by rememberUpdatedState(report)
+    val latestSeek by rememberUpdatedState(onSeek)
+    var drag by remember { mutableStateOf<Float?>(null) }
+    // Where it was let go, when, and which report it was waiting past.
+    var held by remember { mutableStateOf<Triple<Float, Long, Long>?>(null) }
+    val now = SystemClock.elapsedRealtime()
+    val hold = held?.takeIf { it.third == report && now - it.second < 2500 }
+    val shown = drag ?: hold?.first ?: fraction
+    val active = drag != null
+    val thickness by animateDpAsState(if (active) 10.dp else 6.dp, label = "seekThickness")
+    val primary = MaterialTheme.colorScheme.primary
+    val track = MaterialTheme.colorScheme.surfaceContainerHighest
+
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(28.dp)
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
+                    detectTapGestures { offset ->
+                        val target = (offset.x / size.width).coerceIn(0f, 1f)
+                        held = Triple(target, SystemClock.elapsedRealtime(), latestReport)
+                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                        latestSeek(target)
+                    }
+                }
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
+                    detectHorizontalDragGestures(
+                        onDragStart = { offset ->
+                            drag = (offset.x / size.width).coerceIn(0f, 1f)
+                            haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                        },
+                        onDragEnd = {
+                            drag?.let { target ->
+                                held = Triple(target, SystemClock.elapsedRealtime(), latestReport)
+                                haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                                latestSeek(target)
+                            }
+                            drag = null
+                        },
+                        onDragCancel = { drag = null },
+                    ) { change, _ ->
+                        change.consume()
+                        drag = (change.position.x / size.width).coerceIn(0f, 1f)
+                    }
+                },
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Canvas(Modifier.fillMaxWidth().height(28.dp)) {
+                val h = thickness.toPx()
+                val top = (size.height - h) / 2
+                drawRoundRect(track, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2))
+                drawRoundRect(primary, Offset(0f, top), Size(maxOf(h, size.width * shown), h), CornerRadius(h / 2))
+                if (active) drawCircle(primary, radius = 9.dp.toPx(), center = Offset((size.width * shown).coerceIn(9.dp.toPx(), size.width - 9.dp.toPx()), size.height / 2))
+            }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            Text(clock((shown * duration).toLong()), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            Text(clock(duration), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** 3:07, or 1:02:09 for a long one. */
+private fun clock(ms: Long): String {
+    val total = (ms / 1000).coerceAtLeast(0)
+    val h = total / 3600
+    val m = (total / 60) % 60
+    val s = total % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }

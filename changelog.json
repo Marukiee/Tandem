@@ -1,8 +1,32 @@
 [
   {
-    "version": "0.1.17",
+    "version": "0.1.18",
     "date": "2026-10-01",
     "highlight": true,
+    "en": {
+      "title": "Jump through the music, and your phone as a sound output",
+      "new": [
+        "Drag the progress bar of the music to jump to another place, on the Mac and on the phone, with the time shown next to it; a click or a tap jumps too",
+        "Your phone can show up in System Settings, Sound, as an output: choose it there and this Mac's sound plays on the phone. Experimental and off by default, under Settings, General, Show my phone in Sound settings. macOS shows no volume slider for it, so the volume is the phone's"
+      ],
+      "better": [
+        "The small menu shows a thin progress bar under what plays on your phone"
+      ]
+    },
+    "nl": {
+      "title": "Door de muziek springen, en je telefoon als geluidsuitgang",
+      "new": [
+        "Sleep de voortgangsbalk van de muziek om naar een andere plek te springen, op de Mac en op de telefoon, met de tijd ernaast; een klik of tik springt ook",
+        "Je telefoon kan als uitgang verschijnen in Systeeminstellingen, Geluid: kies hem daar en het geluid van deze Mac speelt op de telefoon. Experimenteel en standaard uit, onder Instellingen, Algemeen, Toon mijn telefoon in de geluidsinstellingen. macOS toont er geen volumeregelaar voor, dus het volume is dat van de telefoon"
+      ],
+      "better": [
+        "Het kleine menu toont een dunne voortgangsbalk onder wat er op je telefoon speelt"
+      ]
+    }
+  },
+  {
+    "version": "0.1.17",
+    "date": "2026-10-01",
     "en": {
       "title": "Music, speaker and a kept history",
       "new": [

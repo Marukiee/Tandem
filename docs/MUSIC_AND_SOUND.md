@@ -50,6 +50,28 @@ The Mac can play its sound on a phone, which then is its speaker.
 - **Cost.** 48 kHz stereo is about 1.5 Mbit/s, about 700 MB an hour. The delay is roughly a tenth of
   a second plus the network: fine for music, noticeable for video.
 
+### The phone in the system's sound outputs
+
+A real output device needs a driver (an administrator installs it, and a mistake in it can silence the
+whole Mac), so there is none. Instead, Settings, General, Show my phone in Sound settings (off by
+default) makes one public aggregate device per phone, `Name (Tandem)`, with the Mac's own speakers as its
+only member. The system lists it like any output. Tandem watches the default output; when one of these is
+chosen it taps what is played to that output (a Core Audio tap on that device's stream), mutes it and
+sends it to the phone, and when something else is chosen it stops. Without Tandem running, or with the
+phone away, it simply plays on the speakers, so choosing it never leaves the Mac silent.
+
+- macOS shows no volume slider for a device made this way; the volume is the phone's.
+- The devices are removed when Tandem quits and when a phone is removed, and made again the next time.
+  If one is left behind (a crash), the next start clears it, or delete it in Audio MIDI Setup.
+- Stopping from a button in Tandem puts the output back to what it was; so does the phone disconnecting.
+
+## Seeking
+
+The progress bar of a player can be dragged, on the Mac and on the phone: it follows the pointer, shows
+where it would land and the time, jumps there when let go, and holds that place until the other device
+reports the new position. A click or tap is a jump too. The command is `MediaCommand` with `Seek` and a
+position; Spotify and Music are asked with `set player position`, a phone's session with `seekTo`.
+
 ## Not tested on hardware
 
 The duplicate rule, the datagram format and the jitter buffer have tests, and the sound conversion

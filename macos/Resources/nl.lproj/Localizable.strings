@@ -381,3 +381,7 @@
 "Turn this off to hear the sound on both. It takes effect the next time you start it." = "Zet dit uit om het geluid op allebei te horen. Het werkt de volgende keer dat je het start.";
 "This needs macOS 14.2 or later" = "Dit heeft macOS 14.2 of nieuwer nodig";
 "Could not capture the sound (%@, error %lld)" = "Kon het geluid niet opvangen (%@, fout %lld)";
+
+"Show my phone in Sound settings" = "Toon mijn telefoon in de geluidsinstellingen";
+"Adds your phone to the sound outputs in System Settings. Choose it there to play this Mac's sound on the phone. macOS shows no volume slider for it: use the volume of the phone. Experimental." = "Zet je telefoon bij de geluidsuitgangen in Systeeminstellingen. Kies hem daar om het geluid van deze Mac op de telefoon af te spelen. macOS toont er geen volumeregelaar voor: gebruik het volume van de telefoon. Experimenteel.";
+"Your phone is not connected, so the sound stays on this Mac" = "Je telefoon is niet verbonden, dus het geluid blijft op deze Mac";

@@ -191,6 +191,11 @@ private struct GeneralSettings: View {
                     isOn: Binding(get: { model.mediaShare }, set: { model.mediaShare = $0 })
                 )
                 DescribedToggle(
+                    "Show my phone in Sound settings",
+                    subtitle: "Adds your phone to the sound outputs in System Settings. Choose it there to play this Mac's sound on the phone. macOS shows no volume slider for it: use the volume of the phone. Experimental.",
+                    isOn: Binding(get: { model.speakerInSound }, set: { model.speakerInSound = $0 })
+                )
+                DescribedToggle(
                     "Mute this Mac while a phone is its speaker",
                     subtitle: "Turn this off to hear the sound on both. It takes effect the next time you start it.",
                     isOn: $audioMuteLocal
