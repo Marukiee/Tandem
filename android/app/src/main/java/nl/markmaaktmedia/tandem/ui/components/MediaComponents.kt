@@ -168,6 +168,8 @@ private fun SeekBar(fraction: Float, duration: Long, enabled: Boolean, report: L
     val shown = drag ?: hold?.first ?: fraction
     val active = drag != null
     val thickness by animateDpAsState(if (active) 10.dp else 6.dp, label = "seekThickness")
+    // The knob grows in place instead of appearing at once.
+    val knob by androidx.compose.animation.core.animateFloatAsState(if (active) 1f else 0f, label = "seekKnob")
     val primary = MaterialTheme.colorScheme.primary
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
 
@@ -213,7 +215,7 @@ private fun SeekBar(fraction: Float, duration: Long, enabled: Boolean, report: L
                 val top = (size.height - h) / 2
                 drawRoundRect(track, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2))
                 drawRoundRect(primary, Offset(0f, top), Size(maxOf(h, size.width * shown), h), CornerRadius(h / 2))
-                if (active) drawCircle(primary, radius = 9.dp.toPx(), center = Offset((size.width * shown).coerceIn(9.dp.toPx(), size.width - 9.dp.toPx()), size.height / 2))
+                if (knob > 0.01f) drawCircle(primary, radius = 9.dp.toPx() * knob, center = Offset((size.width * shown).coerceIn(9.dp.toPx(), size.width - 9.dp.toPx()), size.height / 2))
             }
         }
         Row(Modifier.fillMaxWidth()) {

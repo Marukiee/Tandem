@@ -1,6 +1,7 @@
 import AppKit
 import CoreAudio
 import Foundation
+import Observation
 
 /// Puts a phone in the list of sound outputs of the system (System Settings, Sound, Output), so
 /// choosing it there makes this Mac's sound play on the phone.
@@ -16,22 +17,29 @@ import Foundation
 /// volume is the phone's. The devices are removed when Tandem quits and when a phone is removed, and
 /// are made again the next time, so nothing is left behind.
 @MainActor
+@Observable
 final class SpeakerDevices {
     static let uidPrefix = "nl.markmaaktmedia.tandem.speaker."
 
     /// Called when one of them becomes the output (the phone and the device's UID), or when something
     /// else does after one had been (nil, nil).
-    var onSelect: ((String?, String?) -> Void)?
+    @ObservationIgnored var onSelect: ((String?, String?) -> Void)?
+
+    /// The outputs that exist right now, by phone: what the system lists them as. For the settings to show.
+    private(set) var created: [String: String] = [:]
+
+    /// Why an output could not be made, for the settings to show. Nil when all went well.
+    private(set) var problem: String?
 
     /// The phone whose output is the system output right now.
     private(set) var selectedPhone: String?
 
-    private var lastOutsideOutput: String?
-    private var listener: AudioObjectPropertyListenerBlock?
+    @ObservationIgnored private var lastOutsideOutput: String?
+    @ObservationIgnored private var listener: AudioObjectPropertyListenerBlock?
     /// What the devices were last made to match. Starts as something no list is, so the first call always
     /// runs and clears what an earlier run left behind.
-    private var signature = "-"
-    private var quitObserver: NSObjectProtocol?
+    @ObservationIgnored private var signature = "-"
+    @ObservationIgnored private var quitObserver: NSObjectProtocol?
 
     static func uid(forPhone id: String) -> String { uidPrefix + id }
 
@@ -69,12 +77,17 @@ final class SpeakerDevices {
             if wanted[uid] != nil, Self.phone(fromUID: uid) == selectedPhone { continue }
             AudioHardwareDestroyAggregateDevice(device)
         }
+        problem = nil
         for (uid, name) in wanted where AudioDevices.device(forUID: uid) == nil { create(uid: uid, name: name) }
+        created = wanted.reduce(into: [:]) { result, entry in
+            if AudioDevices.device(forUID: entry.key) != nil, let phone = Self.phone(fromUID: entry.key) { result[phone] = entry.value }
+        }
         if enabled { defaultChanged() }
     }
 
     func removeAll() {
         signature = "-"
+        created = [:]
         stopListening()
         for device in AudioDevices.all() {
             if let uid = AudioDevices.uid(of: device), uid.hasPrefix(Self.uidPrefix) { AudioHardwareDestroyAggregateDevice(device) }
@@ -94,7 +107,10 @@ final class SpeakerDevices {
         ]
         var device = AudioObjectID(kAudioObjectUnknown)
         let status = AudioHardwareCreateAggregateDevice(description as CFDictionary, &device)
-        if status != noErr { NSLog("Tandem: could not make the sound output %@ (%d)", name, status) }
+        if status != noErr {
+            NSLog("Tandem: could not make the sound output %@ (%d)", name, status)
+            problem = String(localized: "Could not make the sound output for \(name) (error \(Int(status)))")
+        }
     }
 
     // MARK: Which output is chosen

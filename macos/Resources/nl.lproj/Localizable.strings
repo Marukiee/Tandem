@@ -385,3 +385,8 @@
 "Show my phone in Sound settings" = "Toon mijn telefoon in de geluidsinstellingen";
 "Adds your phone to the sound outputs in System Settings. Choose it there to play this Mac's sound on the phone. macOS shows no volume slider for it: use the volume of the phone. Experimental." = "Zet je telefoon bij de geluidsuitgangen in Systeeminstellingen. Kies hem daar om het geluid van deze Mac op de telefoon af te spelen. macOS toont er geen volumeregelaar voor: gebruik het volume van de telefoon. Experimenteel.";
 "Your phone is not connected, so the sound stays on this Mac" = "Je telefoon is niet verbonden, dus het geluid blijft op deze Mac";
+
+"No phone to show yet. Pair an Android phone first." = "Nog geen telefoon om te tonen. Koppel eerst een Android-telefoon.";
+"In the list of sound outputs as: %@" = "In de lijst met geluidsuitgangen als: %@";
+"Could not make the sound output for %@ (error %lld)" = "Kon de geluidsuitgang voor %@ niet maken (fout %lld)";
+"Plays this Mac's sound on %@ and mutes this Mac. Also an output in Sound settings. About 700 MB an hour. macOS asks for System Audio Recording the first time." = "Speelt het geluid van deze Mac af op %@ en zet deze Mac stil. Ook een uitgang in de geluidsinstellingen. Ongeveer 700 MB per uur. macOS vraagt de eerste keer om Systeemgeluid opnemen.";

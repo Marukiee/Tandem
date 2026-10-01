@@ -25,19 +25,23 @@ private struct PlayerCard: View {
 
     var body: some View {
         Card(radius: Metrics.card, padding: 16) {
-            HStack(spacing: 14) {
+            HStack(alignment: .top, spacing: 14) {
                 PlayerCover(player: player, size: 64)
                 VStack(alignment: .leading, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(player.title).font(.headline).lineLimit(1)
-                        Text([player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                    // What plays on the left, the buttons at the top right, and the bar below both, the width of the card.
+                    HStack(alignment: .top, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(player.title).font(.headline).lineLimit(1)
+                            Text([player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · "))
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 8)
+                        PlayerButtons(device: device, player: player, size: .regular)
                     }
                     PlayerProgress(device: device, player: player)
                 }
-                PlayerButtons(device: device, player: player, size: .regular)
             }
         }
     }
@@ -120,14 +124,17 @@ struct PlayerProgress: View {
                 Capsule()
                     .fill(Palette.indigo.gradient)
                     .frame(width: max(thickness, filled))
-                if active {
-                    Circle()
-                        .fill(.white)
-                        .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
-                        .frame(width: 16, height: 16)
-                        .offset(x: min(max(CGFloat(0), filled - 8), width - 16))
-                        .transition(.scale.combined(with: .opacity))
-                }
+                // Always there, grown from nothing in place. A knob that is inserted with a scale transition
+                // after being offset zooms out of the left edge, because the scale is taken around where the
+                // view is laid out and the offset is only applied on top of that.
+                Circle()
+                    .fill(.white)
+                    .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
+                    .frame(width: 16, height: 16)
+                    .scaleEffect(active ? 1 : 0.01)
+                    .opacity(active ? 1 : 0)
+                    .offset(x: min(max(CGFloat(0), filled - 8), width - 16))
+                    .allowsHitTesting(false)
             }
             .frame(height: thickness)
             .frame(maxHeight: .infinity)

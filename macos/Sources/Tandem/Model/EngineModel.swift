@@ -105,14 +105,15 @@ final class EngineModel {
         }
     }
     var speaker: SpeakerState = .off
-    /// Each phone as an output in System Settings, Sound. Off unless asked for: it adds devices to the system.
-    var speakerInSound = UserDefaults.standard.bool(forKey: "speakerInSound") {
+    /// Each phone as an output in System Settings, Sound. On unless switched off: it is the way to pick a phone
+    /// as the speaker from the place people look for outputs.
+    var speakerInSound = UserDefaults.standard.object(forKey: "speakerInSound") as? Bool ?? true {
         didSet {
             UserDefaults.standard.set(speakerInSound, forKey: "speakerInSound")
             reconcileSpeakerDevices()
         }
     }
-    @ObservationIgnored let speakerDevices = SpeakerDevices()
+    let speakerDevices = SpeakerDevices()
     /// The sound is going to a phone because its output was chosen in the system, not from a button here.
     @ObservationIgnored private var speakerViaOutput = false
     @ObservationIgnored private var tap: SystemAudioTap?

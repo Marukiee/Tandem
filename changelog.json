@@ -1,8 +1,32 @@
 [
   {
-    "version": "0.1.18",
+    "version": "0.1.19",
     "date": "2026-10-01",
     "highlight": true,
+    "en": {
+      "title": "A phone in the sound list, and a tidier player",
+      "new": [
+        "Your phone now shows up as an output in System Settings, Sound by default, and the Mac settings say what came of it, or why not"
+      ],
+      "better": [
+        "The playback buttons sit at the top right of the player, above the progress bar",
+        "The knob on the progress bar grows in place when you point at it, instead of flying in from the left"
+      ]
+    },
+    "nl": {
+      "title": "Een telefoon in de geluidslijst, en een nettere speler",
+      "new": [
+        "Je telefoon staat nu standaard als uitgang in Systeeminstellingen, Geluid, en de Mac-instellingen zeggen wat ervan terechtkwam, of waarom niet"
+      ],
+      "better": [
+        "De afspeelknoppen staan rechtsboven in de speler, boven de voortgangsbalk",
+        "Het bolletje op de voortgangsbalk groeit op zijn plek als je erboven staat, in plaats van van links binnen te vliegen"
+      ]
+    }
+  },
+  {
+    "version": "0.1.18",
+    "date": "2026-10-01",
     "en": {
       "title": "Jump through the music, and your phone as a sound output",
       "new": [

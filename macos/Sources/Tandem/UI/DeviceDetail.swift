@@ -305,7 +305,12 @@ extension DeviceDetail {
         switch model.speaker {
         case .on(device.id): return String(localized: "Everything this Mac plays comes out of \(device.name)")
         case .starting(device.id): return String(localized: "Starting")
-        default: return String(localized: "Plays this Mac's sound on \(device.name) and mutes this Mac. About 700 MB an hour. macOS asks for System Audio Recording the first time.")
+        default:
+            // Where the output is made, say so: that is where a person looks for it.
+            if model.speakerDevices.created[device.id] != nil {
+                return String(localized: "Plays this Mac's sound on \(device.name) and mutes this Mac. Also an output in Sound settings. About 700 MB an hour. macOS asks for System Audio Recording the first time.")
+            }
+            return String(localized: "Plays this Mac's sound on \(device.name) and mutes this Mac. About 700 MB an hour. macOS asks for System Audio Recording the first time.")
         }
     }
 }

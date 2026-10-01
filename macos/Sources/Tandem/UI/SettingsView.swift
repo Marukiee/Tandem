@@ -119,6 +119,15 @@ private struct GeneralSettings: View {
     @LocalState private var language = LanguageSetting.current
     @LocalState private var needsRestart = false
 
+    /// What the phone outputs in the system's list came to, so a switch that does nothing says why.
+    private var speakerOutputStatus: (text: String, failed: Bool) {
+        let devices = model.speakerDevices
+        if let problem = devices.problem { return (problem, true) }
+        if devices.created.isEmpty { return (String(localized: "No phone to show yet. Pair an Android phone first."), false) }
+        let names = devices.created.values.sorted().joined(separator: ", ")
+        return (String(localized: "In the list of sound outputs as: \(names)"), false)
+    }
+
     var body: some View {
         Form {
             Section {
@@ -195,6 +204,12 @@ private struct GeneralSettings: View {
                     subtitle: "Adds your phone to the sound outputs in System Settings. Choose it there to play this Mac's sound on the phone. macOS shows no volume slider for it: use the volume of the phone. Experimental.",
                     isOn: Binding(get: { model.speakerInSound }, set: { model.speakerInSound = $0 })
                 )
+                if model.speakerInSound {
+                    let status = speakerOutputStatus
+                    Text(status.text)
+                        .font(.caption)
+                        .foregroundStyle(status.failed ? Palette.urgent : Color.secondary)
+                }
                 DescribedToggle(
                     "Mute this Mac while a phone is its speaker",
                     subtitle: "Turn this off to hear the sound on both. It takes effect the next time you start it.",
