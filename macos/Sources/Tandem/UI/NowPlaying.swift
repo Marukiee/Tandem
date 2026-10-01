@@ -175,14 +175,14 @@ struct PlayerButtons: View {
     var size: Size
 
     var body: some View {
-        GlassEffectContainer(spacing: 8) {
-            HStack(spacing: 6) {
-                button("backward.fill", enabled: player.canPrev, help: "Previous") { model.sendMedia(.previous, player: player, to: device.id) }
-                button(player.playing ? "pause.fill" : "play.fill", enabled: true, help: player.playing ? "Pause" : "Play") {
-                    model.sendMedia(.toggle, player: player, to: device.id)
-                }
-                button("forward.fill", enabled: player.canNext, help: "Next") { model.sendMedia(.next, player: player, to: device.id) }
+        // No glass container around them: glass this close together blends into one blob under the pointer, and
+        // a swelling button then no longer has its icon in the middle of its glass.
+        HStack(spacing: 6) {
+            button("backward.fill", enabled: player.canPrev, help: "Previous") { model.sendMedia(.previous, player: player, to: device.id) }
+            button(player.playing ? "pause.fill" : "play.fill", enabled: true, help: player.playing ? "Pause" : "Play") {
+                model.sendMedia(.toggle, player: player, to: device.id)
             }
+            button("forward.fill", enabled: player.canNext, help: "Next") { model.sendMedia(.next, player: player, to: device.id) }
         }
         .buttonStyle(.glass)
         .buttonBorderShape(.circle)

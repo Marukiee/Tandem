@@ -25,9 +25,13 @@ struct MainWindow: View {
     /// (a light band under the toolbar) before it knows where its content starts, which
     /// shows as a white bar for a few frames. Hidden while the page settles.
     @LocalState private var settling = false
+    /// Whether the sidebar is shown. The bar along the top of the page is only wanted when it is not.
+    @LocalState private var columnVisibility: NavigationSplitViewVisibility = .all
+
+    private var sidebarShown: Bool { columnVisibility != .detailOnly }
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             Sidebar(selection: $selection, showPairing: $showPairing)
                 .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 340)
         } detail: {
@@ -36,7 +40,8 @@ struct MainWindow: View {
                     .ignoresSafeArea()
                 detail
             }
-            .scrollEdgeEffectHidden(settling, for: .top)
+            .scrollEdgeEffectHidden(settling || sidebarShown, for: .top)
+            .toolbarBackgroundVisibility(sidebarShown ? .hidden : .automatic, for: .windowToolbar)
             .safeAreaInset(edge: .top, spacing: 0) { UpdateBanner() }
             // The sidebar header already says Tandem. What the toolbar shows is the
             // device you are on, once its card has scrolled away.
@@ -47,7 +52,7 @@ struct MainWindow: View {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { settling = false }
             }
         }
-        .background(HideWindowTitle())
+        .background(HideWindowTitle(showsBar: !sidebarShown))
         // A sheet or dialog covers the window; nothing behind it should react to the pointer.
         // Set before the sheet is attached, so the sheet itself is not affected.
         .environment(\.hoverEnabled, !(showPairing || model.pendingTrash != nil || model.removedFromCircle))

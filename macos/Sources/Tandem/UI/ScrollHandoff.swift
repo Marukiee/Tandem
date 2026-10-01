@@ -37,14 +37,27 @@ private struct TitleHandoff: ViewModifier {
 
 /// Hides the window's own title, which would repeat the name in the sidebar header.
 /// The title stays set, so the Window menu and Mission Control still show it.
+///
+/// With the sidebar shown, the window buttons sit in the sidebar and the top of the page has nothing to carry,
+/// so its bar goes: no material, no line. With the sidebar hidden the buttons float over the page and the bar
+/// is what keeps them readable, so it stays.
 struct HideWindowTitle: NSViewRepresentable {
+    var showsBar = true
+
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
-        DispatchQueue.main.async { view.window?.titleVisibility = .hidden }
+        DispatchQueue.main.async { apply(to: view.window) }
         return view
     }
 
     func updateNSView(_ view: NSView, context: Context) {
-        DispatchQueue.main.async { view.window?.titleVisibility = .hidden }
+        DispatchQueue.main.async { apply(to: view.window) }
+    }
+
+    private func apply(to window: NSWindow?) {
+        guard let window else { return }
+        window.titleVisibility = .hidden
+        window.titlebarSeparatorStyle = showsBar ? .automatic : .none
+        window.titlebarAppearsTransparent = !showsBar
     }
 }

@@ -1,8 +1,26 @@
 [
   {
-    "version": "0.1.21",
+    "version": "0.1.22",
     "date": "2026-10-01",
     "highlight": true,
+    "en": {
+      "title": "Cleaner top of the window and steadier playback buttons",
+      "better": [
+        "The thin blurred bar along the top of the Mac window is gone while the sidebar is shown, and stays when the sidebar is hidden, where it keeps the window buttons readable",
+        "The playback buttons no longer pull toward each other when you point at them: they turn grey and swell with the icon in the middle"
+      ]
+    },
+    "nl": {
+      "title": "Een schonere bovenkant van het venster en stabielere afspeelknoppen",
+      "better": [
+        "De dunne vage balk bovenaan het Mac-venster is weg zolang de zijbalk zichtbaar is, en blijft staan als de zijbalk verborgen is, waar hij de vensterknoppen leesbaar houdt",
+        "De afspeelknoppen trekken niet meer naar elkaar toe als je erboven staat: ze worden grijs en zwellen op met het icoon in het midden"
+      ]
+    }
+  },
+  {
+    "version": "0.1.21",
+    "date": "2026-10-01",
     "en": {
       "title": "Sound keeps playing with the screen off",
       "better": [
