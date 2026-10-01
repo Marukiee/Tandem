@@ -10,6 +10,11 @@
     <string name="perm_open_app_info">Open app-info</string>
     <string name="perm_try_again">Probeer opnieuw</string>
     <string name="perm_blocked">Android vraagt hier niet nog een keer naar. Zet het aan in de app-info.</string>
+    <string name="perm_listener_stopped">Toegestaan, maar Android draait de luisteraar niet, dus er wordt niets verstuurd. Dat gebeurt na een update. Start hem hier opnieuw.</string>
+    <string name="perm_listener_restart">Start opnieuw</string>
+    <string name="perm_listener_open">Open instellingen</string>
+    <string name="perm_listener_running">Luistert mee. Laatst verstuurd om %1$s.</string>
+    <string name="perm_listener_idle">Luistert mee. Sinds het opstarten is er nog niets verstuurd.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_page">Pagina %1$d van %2$d</string>

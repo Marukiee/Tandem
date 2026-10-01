@@ -159,8 +159,8 @@ struct DeviceDetail: View {
     private var content: some View {
         VStack(spacing: 18) {
             actions
-            NowPlayingCard(device: device)
             DropZone(device: device)
+            NowPlayingCard(device: device)
             if device.platform == .android { HotspotCard(device: device) }
             RemoteControlCard()
             recentTransfers
@@ -312,12 +312,12 @@ extension DeviceDetail {
 
     private func speakerSubtitle(enabled: Bool, failure: String?) -> String {
         if let failure { return failure }
-        guard enabled else { return String(localized: "Off: this phone is not offered as a sound output") }
+        guard enabled else { return String(localized: "Off: not offered as a sound output") }
         switch model.speaker {
-        case .on(device.id): return String(localized: "Everything this Mac plays comes out of \(device.name). Choose another output to stop.")
+        case .on(device.id): return String(localized: "This Mac's sound plays on \(device.name). Pick another output to stop.")
         case .starting(device.id): return String(localized: "Starting")
         default:
-            return String(localized: "Choose \(device.name) (Tandem) in Sound settings or the sound menu to play this Mac's sound on the phone. About 700 MB an hour. macOS asks for System Audio Recording the first time.")
+            return String(localized: "Pick \(device.name) (Tandem) in the sound menu")
         }
     }
 }

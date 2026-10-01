@@ -103,6 +103,15 @@ private struct DescribedToggle: View {
 // MARK: General
 
 private struct GeneralSettings: View {
+    /// What Tandem can read of the music apps right now, so it is clear when a phone shows nothing and why.
+    private var mediaSeen: String {
+        let players = model.macMedia.players
+        if players.isEmpty { return String(localized: "Nothing from Spotify or Music yet") }
+        return players
+            .map { $0.playing ? String(localized: "\($0.app) (playing)") : String(localized: "\($0.app) (paused)") }
+            .joined(separator: ", ")
+    }
+
     @Environment(EngineModel.self) private var model
     @LocalState private var name = ""
     @FocusState private var nameFocused: Bool
@@ -187,9 +196,14 @@ private struct GeneralSettings: View {
                 .disabled(!copyImages)
                 DescribedToggle(
                     "Show and control music",
-                    subtitle: "Music from your phone shows here with buttons, and what Spotify and Music play here shows on your phone.",
+                    subtitle: "Music from your phone shows here with buttons, and what Spotify and Music play here shows on your phone, with its cover. Spotify covers are fetched from Spotify.",
                     isOn: Binding(get: { model.mediaShare }, set: { model.mediaShare = $0 })
                 )
+                if model.mediaShare {
+                    LabeledContent("Seen on this Mac") {
+                        Text(mediaSeen).foregroundStyle(.secondary)
+                    }
+                }
                 DescribedToggle(
                     "Mute this Mac while a phone is its speaker",
                     subtitle: "Turn this off to hear the sound on both. It takes effect the next time you start it.",

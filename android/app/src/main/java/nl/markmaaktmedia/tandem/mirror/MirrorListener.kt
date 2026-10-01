@@ -5,12 +5,16 @@ import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.graph
 import uniffi.tandem_core.TandemButton
 import uniffi.tandem_core.TandemEvent
 import uniffi.tandem_core.TandemNotification
+import uniffi.tandem_core.TandemPlatform
 
 /**
  * Sends this phone's notifications to your other devices, and carries their replies
@@ -27,7 +31,9 @@ class MirrorListener : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        _connected.value = true
         val graph = applicationContext.graph
+        eventJob?.cancel()
         eventJob = graph.scope.launch {
             graph.host.events.collect { event ->
                 if (event is TandemEvent.NotificationAction) handleAction(event)
@@ -36,8 +42,14 @@ class MirrorListener : NotificationListenerService() {
     }
 
     override fun onListenerDisconnected() {
+        _connected.value = false
         eventJob?.cancel()
         super.onListenerDisconnected()
+    }
+
+    override fun onDestroy() {
+        _connected.value = false
+        super.onDestroy()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -46,12 +58,18 @@ class MirrorListener : NotificationListenerService() {
         graph.scope.launch {
             if (!graph.prefs.mirrorNotifications.first()) return@launch
             if (!shouldMirror(sbn, graph)) return@launch
-            // Offline devices are included: with no connection the core sends over Bluetooth if a link is up.
-            val targets = graph.host.devices.value.filter { it.notificationsEnabled }.map { it.id }
+            // The devices that show notifications, which is every one but another phone. Not decided by the per-device
+            // switch: on this phone that switch is "show notifications FROM that device", and a Mac sends none, so a
+            // person who turned it off for the Mac silently stopped everything going the other way. The Mac decides
+            // with its own switch whether to show what arrives. Offline devices are included: with no connection the
+            // core sends over Bluetooth if a link is up.
+            val targets = graph.host.devices.value.filter { it.platform != TandemPlatform.ANDROID }.map { it.id }
             if (targets.isEmpty()) return@launch
             active[sbn.key] = sbn
             val notification = convert(sbn) ?: return@launch
-            runCatching { graph.host.engine?.sendNotification(targets, notification) }
+            // The core says who it reached, and fails when it reached nobody, so a non-empty answer is a real send.
+            val reached = runCatching { graph.host.engine?.sendNotification(targets, notification) }.getOrNull()
+            if (!reached.isNullOrEmpty()) _lastSent.value = System.currentTimeMillis()
         }
     }
 
@@ -131,6 +149,21 @@ class MirrorListener : NotificationListenerService() {
         } else {
             runCatching { action.actionIntent.send() }
         }
+    }
+
+    companion object {
+        private val _connected = MutableStateFlow(false)
+
+        /**
+         * True while Android has this service bound. Notification access can be allowed in the settings and still
+         * not be running, most often right after an update, and then nothing is mirrored.
+         */
+        val connected: StateFlow<Boolean> = _connected.asStateFlow()
+
+        private val _lastSent = MutableStateFlow<Long?>(null)
+
+        /** When a notification last went out to another device, or null since the app started. */
+        val lastSent: StateFlow<Long?> = _lastSent.asStateFlow()
     }
 }
 

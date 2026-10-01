@@ -18,7 +18,7 @@ struct NotificationsView: View {
                     ContentUnavailableView(
                         "No notifications yet",
                         systemImage: "bell",
-                        description: Text("When a phone shows a notification, it is listed here.")
+                        description: Text("When a phone shows a notification, it is listed here. Nothing coming in? On the phone, open Settings, Permissions and look at Notification access.")
                     )
                     .frame(maxWidth: .infinity, minHeight: 260)
                 } else {

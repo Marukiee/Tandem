@@ -10,6 +10,11 @@
     <string name="perm_open_app_info">Open app info</string>
     <string name="perm_try_again">Try again</string>
     <string name="perm_blocked">Android will not ask about this again. Turn it on in app info.</string>
+    <string name="perm_listener_stopped">Allowed, but Android is not running the listener, so nothing is sent. That happens after an update. Restart it here.</string>
+    <string name="perm_listener_restart">Restart it</string>
+    <string name="perm_listener_open">Open settings</string>
+    <string name="perm_listener_running">Listening. Last sent at %1$s.</string>
+    <string name="perm_listener_idle">Listening. Nothing sent since Tandem started.</string>
 
     <!-- Onboarding -->
     <string name="onboarding_page">Page %1$d of %2$d</string>

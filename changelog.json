@@ -1,8 +1,48 @@
 [
   {
-    "version": "0.1.23",
+    "version": "0.1.24",
     "date": "2026-10-01",
     "highlight": true,
+    "en": {
+      "title": "Covers on your phone, the trackpad buttons in the player, and notifications that keep running",
+      "new": [
+        "The album cover of what Spotify and Music play on the Mac now shows on your phone (Spotify covers are fetched from Spotify by the id of the track, Music covers from Music once Tandem may control it)",
+        "The player on your phone has the trackpad's buttons: mute, volume down, previous, play or pause, next and volume up for the Mac",
+        "Settings on the Mac shows which of Spotify and Music Tandem sees right now, so it is clear why a phone shows nothing"
+      ],
+      "better": [
+        "The player on your phone moves: it slides open when something starts and closes when it stops, the title slides in on a new track, the cover fades in and sinks back while paused, and the play button and the bar follow",
+        "The battery ring and pill of the Mac on your phone use the green of the connection dot, and charging animates like it does on the Mac: the number rolls and the bolt breathes under it",
+        "The Mac tells your phone the moment it is plugged in or out, instead of up to a minute later",
+        "On the Mac the album cover reaches the bottom of the player card as well as the top, the drop zone for files sits above the player, and the speaker row has a short text",
+        "The empty Notifications page on the Mac says where to look on the phone when nothing arrives"
+      ],
+      "fixed": [
+        "Notifications from your phone did not arrive after an update: Android sometimes leaves the notification listener unbound while the permission shows green. Tandem now looks every minute and binds it again, and Permissions says when access is allowed but not running, with a Restart button and the time of the last notification it sent"
+      ]
+    },
+    "nl": {
+      "title": "Hoezen op je telefoon, de trackpadknoppen in de speler en meldingen die blijven werken",
+      "new": [
+        "De albumhoes van wat Spotify en Muziek op de Mac spelen staat nu ook op je telefoon (Spotify-hoezen worden bij Spotify opgehaald met het id van het nummer, hoezen van Muziek bij Muziek zodra Tandem die mag bedienen)",
+        "De speler op je telefoon heeft de knoppen van de trackpad: dempen, volume zachter, vorige, afspelen of pauzeren, volgende en volume harder voor de Mac",
+        "Instellingen op de Mac laat zien welke van Spotify en Muziek Tandem nu ziet, zodat duidelijk is waarom een telefoon niets toont"
+      ],
+      "better": [
+        "De speler op je telefoon beweegt: hij schuift open als er iets begint en dicht als het stopt, de titel schuift binnen bij een nieuw nummer, de hoes verschijnt met een fade en zakt weg tijdens pauze, en de afspeelknop en de balk volgen",
+        "De batterijring en de pill van de Mac op je telefoon hebben het groen van het verbindingsbolletje, en opladen beweegt zoals op de Mac: het getal rolt en de bliksem ademt eronder",
+        "De Mac meldt je telefoon meteen als de lader erin of eruit gaat, in plaats van tot een minuut later",
+        "Op de Mac reikt de albumhoes in de spelerkaart nu ook tot onderaan, staat de zone voor bestanden boven de speler en heeft de speakerrij een korte tekst",
+        "De lege Meldingen-pagina op de Mac zegt waar je op de telefoon moet kijken als er niets binnenkomt"
+      ],
+      "fixed": [
+        "Meldingen van je telefoon kwamen na een update niet aan: Android laat de meldingenluisteraar soms losgekoppeld terwijl het recht groen staat. Tandem kijkt nu elke minuut en koppelt hem opnieuw, en Rechten zegt het als toegang is toegestaan maar niet draait, met een knop Start opnieuw en het tijdstip van de laatste melding die is verstuurd"
+      ]
+    }
+  },
+  {
+    "version": "0.1.23",
+    "date": "2026-10-01",
     "en": {
       "title": "A clearer update banner on the Mac",
       "better": [

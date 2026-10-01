@@ -26,7 +26,9 @@ import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.engine.EngineHost
 import nl.markmaaktmedia.tandem.mirror.MirrorListener
 import uniffi.tandem_core.TandemEvent
+import uniffi.tandem_core.TandemInput
 import uniffi.tandem_core.TandemMediaAction
+import uniffi.tandem_core.TandemMediaKey
 import uniffi.tandem_core.TandemMediaPlayer
 import uniffi.tandem_core.TandemPlatform
 import java.io.ByteArrayOutputStream
@@ -329,6 +331,15 @@ class MediaMirror(
     fun commandMac(deviceId: String, player: String, action: TandemMediaAction, positionMs: Long? = null) {
         val engine = host.engine ?: return
         scope.launch(Dispatchers.IO) { runCatching { engine.sendMediaCommand(deviceId, player, action, positionMs?.toULong()) } }
+    }
+
+    /**
+     * Presses a media key on the Mac, the same keys the trackpad has. Volume is the Mac's own, not a player's, so it
+     * goes this way and not as a command to Spotify or Music.
+     */
+    fun pressMacKey(deviceId: String, key: TandemMediaKey) {
+        val engine = host.engine ?: return
+        scope.launch(Dispatchers.IO) { runCatching { engine.sendInput(deviceId, TandemInput.Media(key)) } }
     }
 
     private companion object {

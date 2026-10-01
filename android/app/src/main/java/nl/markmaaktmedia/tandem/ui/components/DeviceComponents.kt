@@ -2,6 +2,9 @@ package nl.markmaaktmedia.tandem.ui.components
 
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -29,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,14 +47,16 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.TransferItem
 import nl.markmaaktmedia.tandem.graph
@@ -170,9 +176,6 @@ fun ActionTile(
     }
 }
 
-/** The system green the Mac uses for a charging battery. */
-private val ChargingGreen = Color(0xFF30D158)
-
 /** The device as a round tonal badge. Filled with the accent while it is online. */
 @Composable
 fun DeviceGlyph(
@@ -285,29 +288,57 @@ fun PresenceDot(online: Boolean, modifier: Modifier = Modifier) {
     }
 }
 
-/** Battery as a ring. The number rolls when it changes. */
+/**
+ * A number that rolls up when it grows and down when it shrinks, the way the counters on the Mac do. Only the
+ * number is passed in, so a unit next to it stays where it is.
+ */
+@Composable
+fun RollingNumber(
+    value: Int,
+    modifier: Modifier = Modifier,
+    style: TextStyle = LocalTextStyle.current,
+    color: Color = Color.Unspecified,
+    fontWeight: FontWeight? = null,
+) {
+    AnimatedContent(
+        targetState = value,
+        modifier = modifier,
+        transitionSpec = {
+            val rising = targetState > initialState
+            (slideInVertically(TandemMotion.spatial()) { if (rising) it / 2 else -it / 2 } + fadeIn(TandemMotion.fadeSpec())) togetherWith
+                (slideOutVertically(TandemMotion.spatial()) { if (rising) -it / 2 else it / 2 } + fadeOut(TandemMotion.fadeSpec()))
+        },
+        label = "rollingNumber",
+    ) { shown ->
+        Text("$shown", style = style, color = color, fontWeight = fontWeight)
+    }
+}
+
+/**
+ * Battery as a ring, drawn the way the Mac draws it for a phone: the arc grows to the level, the number rolls, and
+ * while it charges the ring turns the green of the online dot and a bolt breathes under the number.
+ */
 @Composable
 fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp = 64.dp) {
     val level = battery.level.toInt()
-    val sweep by animateFloatAsState(level / 100f, TandemMotion.spatial(), label = "batterySweep")
+    val extras = LocalTandemExtraColors.current
+    // Only a full battery closes the ring: at 97 percent a closed circle with a flaw would read as full.
+    val sweep by animateFloatAsState(
+        if (level >= 100) 1f else level / 100f * 0.945f,
+        TandemMotion.spatial(), label = "batterySweep",
+    )
     val tint by animateColorAsState(
         when {
-            battery.charging -> LocalTandemExtraColors.current.online
-            level <= 15 -> LocalTandemExtraColors.current.urgent
+            battery.charging -> extras.online
+            level <= 15 -> extras.urgent
             else -> MaterialTheme.colorScheme.primary
         },
         TandemMotion.colourSpec(), label = "batteryTint",
     )
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
-    // The whole ring gives a small bounce when charging starts or stops, so the change is seen.
-    val bounce = remember { androidx.compose.animation.core.Animatable(1f) }
-    var firstFrame by remember { androidx.compose.runtime.mutableStateOf(true) }
-    androidx.compose.runtime.LaunchedEffect(battery.charging) {
-        if (firstFrame) { firstFrame = false; return@LaunchedEffect }
-        bounce.snapTo(0.88f)
-        bounce.animateTo(1f, TandemMotion.bouncy())
-    }
-    Box(modifier.size(size).graphicsLayer { scaleX = bounce.value; scaleY = bounce.value }, contentAlignment = Alignment.Center) {
+    // Sized from the ring, not from the font scale, so the number always fits inside it.
+    val numberSize = with(LocalDensity.current) { (size * 0.28f).toSp() }
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size)) {
             val stroke = size.toPx() * 0.11f
             val inset = stroke / 2
@@ -315,32 +346,24 @@ fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp 
             drawArc(track, 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(stroke))
             drawArc(tint, -90f, 360f * sweep, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AnimatedContent(
-                targetState = level,
-                transitionSpec = {
-                    (slideInVertically { it / 2 } + fadeIn()) togetherWith (slideOutVertically { -it / 2 } + fadeOut())
-                },
-                label = "batteryNumber",
-            ) { value ->
-                Text(
-                    "$value",
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = (size.value * 0.27f).sp),
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            // The bolt pops in and out when charging starts and stops, and breathes while it lasts.
-            androidx.compose.animation.AnimatedVisibility(
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            RollingNumber(
+                level,
+                style = MaterialTheme.typography.titleMedium.copy(fontSize = numberSize),
+                fontWeight = FontWeight.Bold,
+            )
+            // The bolt grows in under the number, which makes room by moving up, and breathes while it lasts.
+            AnimatedVisibility(
                 visible = battery.charging,
-                enter = androidx.compose.animation.scaleIn(TandemMotion.bouncy(), initialScale = 0.2f) + fadeIn(),
-                exit = androidx.compose.animation.scaleOut(TandemMotion.spatial(), targetScale = 0.2f) + fadeOut(),
+                enter = fadeIn(TandemMotion.fadeSpec()) + expandVertically(TandemMotion.spatial()),
+                exit = fadeOut(TandemMotion.fadeSpec()) + shrinkVertically(TandemMotion.spatial()),
             ) {
-                val pulse by androidx.compose.animation.core.rememberInfiniteTransition(label = "boltPulse").animateFloat(
-                    initialValue = 0.55f, targetValue = 1f,
-                    animationSpec = androidx.compose.animation.core.infiniteRepeatable(tween(900), RepeatMode.Reverse),
+                val pulse by rememberInfiniteTransition(label = "boltPulse").animateFloat(
+                    initialValue = 0.45f, targetValue = 1f,
+                    animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
                     label = "boltAlpha",
                 )
-                Icon(TandemIcons.BoltFilled, null, tint = tint, modifier = Modifier.size(size * 0.2f).graphicsLayer { alpha = pulse })
+                Icon(TandemIcons.BoltFilled, null, tint = tint, modifier = Modifier.size(size * 0.18f).graphicsLayer { alpha = pulse })
             }
         }
     }
@@ -349,14 +372,14 @@ fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp 
 /** A compact percentage with a bolt while charging, for list rows. */
 @Composable
 fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
-    val low = battery.level.toInt() <= 15 && !battery.charging
+    val level = battery.level.toInt()
+    val low = level <= 15 && !battery.charging
     val extras = LocalTandemExtraColors.current
     val base = MaterialTheme.colorScheme.surfaceContainerHighest
-    // The Mac's charging green, not the deeper one used for the online dot, which reads as olive in a pill.
-    val charging = ChargingGreen
+    // Charging is the green of the online dot, to the last digit, so a connected device that charges is one colour.
     val container by animateColorAsState(
         when {
-            battery.charging -> androidx.compose.ui.graphics.lerp(base, charging, 0.3f)
+            battery.charging -> lerp(base, extras.online, 0.2f)
             low -> extras.urgentContainer
             else -> base
         },
@@ -364,7 +387,7 @@ fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
     )
     val content by animateColorAsState(
         when {
-            battery.charging -> charging
+            battery.charging -> extras.online
             low -> extras.onUrgentContainer
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },
@@ -389,7 +412,10 @@ fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
                 tint = content,
             )
         }
-        Text("${battery.level}%", style = MaterialTheme.typography.labelMedium, color = content)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RollingNumber(level, style = MaterialTheme.typography.labelMedium, color = content)
+            Text("%", style = MaterialTheme.typography.labelMedium, color = content)
+        }
     }
 }
 

@@ -29,6 +29,50 @@ enum PowerReader {
     }
 }
 
+/// Says when the charger goes in or out or the level moves, so the other devices see it at once and not at the
+/// next minute. A burst of changes is waited out, and nothing is said when the numbers did not change.
+@MainActor
+final class PowerWatcher {
+    private var source: CFRunLoopSource?
+    private var debounce: Task<Void, Never>?
+    private var last: TandemBattery?
+
+    var onChange: (() -> Void)?
+
+    func start() {
+        guard source == nil else { return }
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        let callback: IOPowerSourceCallbackType = { context in
+            guard let context else { return }
+            let watcher = Unmanaged<PowerWatcher>.fromOpaque(context).takeUnretainedValue()
+            MainActor.assumeIsolated { watcher.changed() }
+        }
+        guard let created = IOPSNotificationCreateRunLoopSource(callback, context)?.takeRetainedValue() else { return }
+        source = created
+        last = PowerReader.battery()
+        CFRunLoopAddSource(CFRunLoopGetMain(), created, .commonModes)
+    }
+
+    func stop() {
+        debounce?.cancel()
+        if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
+        source = nil
+    }
+
+    private func changed() {
+        debounce?.cancel()
+        debounce = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(700))
+            if Task.isCancelled { return }
+            let now = PowerReader.battery()
+            let same = now?.level == last?.level && now?.charging == last?.charging && now?.powerSave == last?.powerSave
+            if same { return }
+            last = now
+            onChange?()
+        }
+    }
+}
+
 /// Watches the network and tells the engine when it changes.
 @MainActor
 final class NetworkWatcher {

@@ -2,6 +2,7 @@ package nl.markmaaktmedia.tandem.ui.remote
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -20,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -94,6 +96,79 @@ fun MediaControls(onKey: (TandemMediaKey) -> Unit, modifier: Modifier = Modifier
 }
 
 private class MediaItem(val key: TandemMediaKey, val icon: (@Composable () -> Painter)?, val label: Int)
+
+/**
+ * The trackpad's media buttons, for a player that reports what it is doing: mute, volume down, previous, play or pause,
+ * next and volume up, joined the same way. Previous, play and next press the player's own buttons, and the play button
+ * shows what a press will do, because the player says whether it plays. Volume and mute are the Mac's and go out as the
+ * same keys the trackpad sends. A button the player cannot do is dimmed and does nothing.
+ */
+@Composable
+fun PlayerControls(
+    playing: Boolean,
+    canPrevious: Boolean,
+    canNext: Boolean,
+    onPrevious: () -> Unit,
+    onToggle: () -> Unit,
+    onNext: () -> Unit,
+    onKey: (TandemMediaKey) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val items = listOf(
+        MediaItem(TandemMediaKey.MUTE, { TandemIcons.VolumeOff }, R.string.remote_media_mute),
+        MediaItem(TandemMediaKey.VOLUME_DOWN, { TandemIcons.VolumeDown }, R.string.remote_media_volume_down),
+        MediaItem(TandemMediaKey.PREVIOUS, { TandemIcons.Previous }, R.string.remote_media_previous),
+        MediaItem(TandemMediaKey.PLAY_PAUSE, null, R.string.remote_media_play_pause),
+        MediaItem(TandemMediaKey.NEXT, { TandemIcons.Next }, R.string.remote_media_next),
+        MediaItem(TandemMediaKey.VOLUME_UP, { TandemIcons.VolumeUp }, R.string.remote_media_volume_up),
+    )
+
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(JoinGap)) {
+        items.forEachIndexed { index, item ->
+            val isPlay = item.key == TandemMediaKey.PLAY_PAUSE
+            val enabled = when (item.key) {
+                TandemMediaKey.PREVIOUS -> canPrevious
+                TandemMediaKey.NEXT -> canNext
+                else -> true
+            }
+            val dim by animateFloatAsState(if (enabled) 1f else 0.38f, TandemMotion.fadeSpec(), label = "buttonDim")
+            GroupButton(
+                press = rememberPressState(),
+                height = MediaHeight,
+                joins = Joins.row(index, items.size),
+                colors = if (isPlay) GroupTone.accent() else GroupTone.neutral(),
+                modifier = Modifier.weight(1f).graphicsLayer { alpha = dim },
+                description = stringResource(item.label),
+                onUp = { inside ->
+                    if (inside && enabled) {
+                        when (item.key) {
+                            TandemMediaKey.PREVIOUS -> onPrevious()
+                            TandemMediaKey.PLAY_PAUSE -> onToggle()
+                            TandemMediaKey.NEXT -> onNext()
+                            else -> onKey(item.key)
+                        }
+                    }
+                },
+            ) { tint ->
+                val icon = item.icon
+                if (icon == null) {
+                    AnimatedContent(
+                        targetState = playing,
+                        transitionSpec = {
+                            (scaleIn(TandemMotion.springy(), initialScale = 0.4f) + fadeIn(TandemMotion.fadeSpec())) togetherWith
+                                (scaleOut(TandemMotion.springy(), targetScale = 0.4f) + fadeOut(TandemMotion.fadeSpec()))
+                        },
+                        label = "playerPlayPause",
+                    ) { isPlaying ->
+                        Icon(if (isPlaying) TandemIcons.Pause else TandemIcons.Play, null, tint = tint, modifier = Modifier.size(24.dp))
+                    }
+                } else {
+                    Icon(icon(), null, tint = tint, modifier = Modifier.size(24.dp))
+                }
+            }
+        }
+    }
+}
 
 /**
  * Left and right mouse button, joined. Both work as a real button: the press goes

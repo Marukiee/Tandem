@@ -18,6 +18,20 @@ progress update never carries a picture. The other device presses buttons with `
 - **Mac.** Spotify and Music announce every track and every play or pause to anyone listening, with
   no permission. Pressing their buttons uses Apple Events and asks once under Privacy and Security,
   Automation. Other players (a browser tab, a video app) are not shown: macOS keeps them from apps.
+  Settings, General shows which of the two Tandem sees right now.
+- **Covers from the Mac.** The announcements carry no picture. A Spotify cover is asked of Spotify's
+  public embed endpoint (`open.spotify.com/oembed`) by the id of the track: no account, no
+  permission, and only an image from Spotify's own servers is taken. Besides the update check it is
+  the one place the Mac app talks to a server outside the circle, and the switch for music stops it.
+  A cover from Music is asked of Music with Apple Events, converted to a small JPEG (Music hands out
+  TIFF), and only once Tandem is already allowed to control Music: it never opens the permission
+  question by itself. The player is sent with the key of its cover once the cover is in hand, and the
+  cover goes in `Msg::MediaArt`, once per phone.
+- **Buttons on the phone.** The phone's player for the Mac has the trackpad's buttons: mute, volume
+  down, previous, play or pause, next, volume up. Previous, play and next are `Msg::MediaCommand`
+  for that player (Apple Events on the Mac). Volume and mute are the Mac's own, sent as the media keys
+  of `Msg::Input`, the same ones the trackpad sends, so they need the Accessibility permission on the
+  Mac just like the trackpad does.
 
 ### One player, not two
 

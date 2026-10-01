@@ -74,6 +74,7 @@ final class EngineModel {
     @ObservationIgnored private var continuation: AsyncStream<TandemEvent>.Continuation?
     @ObservationIgnored private var clipboard: ClipboardMonitor?
     @ObservationIgnored private let network = NetworkWatcher()
+    @ObservationIgnored private let power = PowerWatcher()
     @ObservationIgnored private let injector = InputInjector()
     @ObservationIgnored private var statusTimer: Timer?
     @ObservationIgnored private var toastTask: Task<Void, Never>?
@@ -122,6 +123,8 @@ final class EngineModel {
         }
     }
     @ObservationIgnored private var bleWatch: Task<Void, Never>?
+    /// The covers already sent to each phone, by key.
+    @ObservationIgnored private var coversSent: [String: Set<UInt64>] = [:]
     /// Where a sent file came from, by the name it travels under, so a finished
     /// transfer can be opened later. The core reports no location for outgoing files.
     @ObservationIgnored private var outgoingSources: [String: String] = [:]
@@ -186,6 +189,7 @@ final class EngineModel {
         injector.releaseAll()
         clipboard?.stop()
         network.stop()
+        power.stop()
         statusTimer?.invalidate()
         continuation?.finish()
         await engine?.shutdown()
@@ -224,6 +228,8 @@ final class EngineModel {
         observeSleep()
         startMedia()
         speakerDevices.onSelect = { [weak self] phone, uid in self?.outputChosen(phone: phone, uid: uid) }
+        power.onChange = { [weak self] in self?.pushStatus() }
+        power.start()
         pushStatus()
         statusTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.pushStatus() }
@@ -317,6 +323,7 @@ final class EngineModel {
             if case let .disconnected(id) = event {
                 injector.sourceDisconnected(id)
                 remoteMedia[id] = nil
+                coversSent[id] = nil
                 // The output stays chosen: with the phone gone the sound plays on this Mac, and it moves to the phone
                 // again by itself when the phone is back (below), which is also what happens after the Mac sleeps.
                 if speaker.device == id {
@@ -325,7 +332,10 @@ final class EngineModel {
                 }
             }
             // A phone that just connected knows nothing of what this Mac plays.
-            if case let .connected(id) = event, device(id)?.platform == .android { publishMedia(only: [id]) }
+            if case let .connected(id) = event, device(id)?.platform == .android {
+                coversSent[id] = nil
+                publishMedia(only: [id])
+            }
             // Its output is the chosen one and the sound is not on it: it was away, and is back.
             if case let .connected(id) = event, speakerDevices.selectedPhone == id, speaker.device != id { startSpeaker(on: id) }
 
@@ -590,6 +600,12 @@ final class EngineModel {
         guard !phones.isEmpty else { return }
         let players = mediaShare ? macMedia.players : []
         Task { _ = try? await engine.sendMediaPlayers(targets: phones, players: players) }
+        // A cover goes to each phone once, and again to a phone that has just connected and knows nothing.
+        for player in players where player.art != 0 {
+            guard let jpeg = macMedia.cover(for: player.art) else { continue }
+            let fresh = phones.filter { coversSent[$0, default: []].insert(player.art).inserted }
+            if !fresh.isEmpty { Task { _ = try? await engine.sendMediaArt(targets: fresh, key: player.art, jpeg: jpeg) } }
+        }
     }
 
     private func mediaSettingChanged() {

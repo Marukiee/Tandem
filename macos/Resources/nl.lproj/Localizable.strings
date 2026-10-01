@@ -341,7 +341,7 @@
 /* Notifications page */
 "What your phones showed. New ones also appear as notifications on this Mac." = "Wat je telefoons lieten zien. Nieuwe verschijnen ook als melding op deze Mac.";
 "No notifications yet" = "Nog geen meldingen";
-"When a phone shows a notification, it is listed here." = "Als een telefoon een melding toont, staat die hier.";
+"When a phone shows a notification, it is listed here. Nothing coming in? On the phone, open Settings, Permissions and look at Notification access." = "Als een telefoon een melding toont, staat die hier. Komt er niets binnen? Open op de telefoon Instellingen, Rechten en kijk bij Toegang tot meldingen.";
 "Clear all" = "Alles wissen";
 "%lld shared" = "%lld gedeeld";
 "%lld from your phones" = "%lld van je telefoons";
@@ -364,15 +364,17 @@
 "Fixed" = "Opgelost";
 
 "Show and control music" = "Muziek tonen en bedienen";
-"Music from your phone shows here with buttons, and what Spotify and Music play here shows on your phone." = "Muziek van je telefoon staat hier met knoppen, en wat Spotify en Muziek hier spelen staat op je telefoon.";
+"Music from your phone shows here with buttons, and what Spotify and Music play here shows on your phone, with its cover. Spotify covers are fetched from Spotify." = "Muziek van je telefoon staat hier met knoppen, en wat Spotify en Muziek hier spelen staat op je telefoon, met de hoes erbij. Hoezen van Spotify worden bij Spotify opgehaald.";
+"Seen on this Mac" = "Gezien op deze Mac";
+"Nothing from Spotify or Music yet" = "Nog niets van Spotify of Muziek";
+"%@ (playing)" = "%@ (speelt)";
+"%@ (paused)" = "%@ (gepauzeerd)";
 "Allow Tandem to control Spotify and Music in System Settings, under Privacy and Security, Automation" = "Geef Tandem toestemming om Spotify en Muziek te bedienen in Systeeminstellingen, onder Privacy en beveiliging, Automatisering";
 "Previous" = "Vorige";
 "Play" = "Afspelen";
 "Pause" = "Pauzeren";
 
 "Use this phone as a speaker" = "Gebruik deze telefoon als speaker";
-"Everything this Mac plays comes out of %@" = "Alles wat deze Mac afspeelt komt uit %@";
-"Plays this Mac's sound on %@ and mutes this Mac. About 700 MB an hour. macOS asks for System Audio Recording the first time." = "Speelt het geluid van deze Mac af op %@ en zet deze Mac stil. Ongeveer 700 MB per uur. macOS vraagt de eerste keer om Systeemgeluid opnemen.";
 "Stop using this phone as a speaker" = "Stop met deze telefoon als speaker gebruiken";
 "Your phone does not allow this. Turn on Speaker for your Mac in the settings of Tandem on your phone." = "Je telefoon staat dit niet toe. Zet Speaker voor je Mac aan in de instellingen van Tandem op je telefoon.";
 "Your phone stopped playing the sound" = "Je telefoon is gestopt met het geluid afspelen";
@@ -389,12 +391,11 @@
 "No phone to show yet. Pair an Android phone first." = "Nog geen telefoon om te tonen. Koppel eerst een Android-telefoon.";
 "In the list of sound outputs as: %@" = "In de lijst met geluidsuitgangen als: %@";
 "Could not make the sound output for %@ (error %lld)" = "Kon de geluidsuitgang voor %@ niet maken (fout %lld)";
-"Plays this Mac's sound on %@ and mutes this Mac. Also an output in Sound settings. About 700 MB an hour. macOS asks for System Audio Recording the first time." = "Speelt het geluid van deze Mac af op %@ en zet deze Mac stil. Ook een uitgang in de geluidsinstellingen. Ongeveer 700 MB per uur. macOS vraagt de eerste keer om Systeemgeluid opnemen.";
 
 "Use now" = "Nu gebruiken";
-"Off: this phone is not offered as a sound output" = "Uit: deze telefoon wordt niet als geluidsuitgang aangeboden";
-"Everything this Mac plays comes out of %@. Choose another output to stop." = "Alles wat deze Mac afspeelt komt uit %@. Kies een andere uitgang om te stoppen.";
-"Choose %@ (Tandem) in Sound settings or the sound menu to play this Mac's sound on the phone. About 700 MB an hour. macOS asks for System Audio Recording the first time." = "Kies %@ (Tandem) in de geluidsinstellingen of het geluidsmenu om het geluid van deze Mac op de telefoon af te spelen. Ongeveer 700 MB per uur. macOS vraagt de eerste keer om Systeemgeluid opnemen.";
+"Off: not offered as a sound output" = "Uit: wordt niet als geluidsuitgang aangeboden";
+"This Mac's sound plays on %@. Pick another output to stop." = "Het geluid van deze Mac speelt op %@. Kies een andere uitgang om te stoppen.";
+"Pick %@ (Tandem) in the sound menu" = "Kies %@ (Tandem) in het geluidsmenu";
 
 "Your phone disconnected, so the sound plays on this Mac until it is back" = "Je telefoon verbrak de verbinding, dus het geluid speelt op deze Mac tot hij terug is";
 

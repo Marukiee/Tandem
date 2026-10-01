@@ -63,6 +63,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.Permissions
+import nl.markmaaktmedia.tandem.mirror.MirrorListener
 import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.SquircleShape
@@ -105,6 +106,9 @@ class PermissionStatus internal constructor(private val context: Context) {
         internal set
 
     fun refresh() {
+        // Back from the notification access settings, or just opening this screen: if access is on but the listener is
+        // not bound, ask Android to bind it, so the card does not stay on a tick that is not true.
+        if (Permissions.notificationAccess(context) && !MirrorListener.connected.value) Permissions.rebindListener(context)
         version++
     }
 

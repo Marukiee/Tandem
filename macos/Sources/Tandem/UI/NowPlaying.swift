@@ -25,8 +25,8 @@ private struct PlayerCard: View {
 
     var body: some View {
         Card(radius: Metrics.card, padding: 16) {
-            HStack(alignment: .top, spacing: 14) {
-                PlayerCover(player: player, size: 64)
+            CoverBeside(spacing: 14) {
+                PlayerCover(player: player, size: nil)
                 VStack(alignment: .leading, spacing: 8) {
                     // What plays on the left, the buttons at the top right, and the bar below both, the width of the card.
                     HStack(alignment: .top, spacing: 12) {
@@ -47,22 +47,61 @@ private struct PlayerCard: View {
     }
 }
 
+/// A cover at the left and the text beside it. The cover is a square as tall as the text, so it starts where the
+/// text starts and ends where it ends: the card has the same space above it as below. The text takes the rest of the width.
+private struct CoverBeside: Layout {
+    var spacing: CGFloat
+    /// Never smaller than this, for a player that has no bar and so only a line or two of text.
+    private let minimum: CGFloat = 56
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard subviews.count == 2 else { return .zero }
+        let width = proposal.width ?? 420
+        // The text hardly changes height with its width (every line is one line long), so it is measured with the
+        // cover at its smallest, and then given what is left once the cover has its real size.
+        let probe = max(width - spacing - minimum, 0)
+        let height = max(minimum, subviews[1].sizeThatFits(ProposedViewSize(width: probe, height: nil)).height)
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        let side = bounds.height
+        subviews[0].place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: side, height: side))
+        let rest = max(bounds.width - side - spacing, 0)
+        subviews[1].place(
+            at: CGPoint(x: bounds.minX + side + spacing, y: bounds.minY),
+            anchor: .topLeading,
+            proposal: ProposedViewSize(width: rest, height: side)
+        )
+    }
+}
+
 struct PlayerCover: View {
     @Environment(EngineModel.self) private var model
     let player: TandemMediaPlayer
-    var size: CGFloat
+    /// A side, or nil to fill the square it is given.
+    var size: CGFloat?
 
     var body: some View {
+        if let size {
+            cover(side: size).frame(width: size, height: size)
+        } else {
+            GeometryReader { proxy in cover(side: min(proxy.size.width, proxy.size.height)) }
+        }
+    }
+
+    private func cover(side: CGFloat) -> some View {
         ZStack {
-            RoundedRectangle(cornerRadius: size * 0.22, style: .continuous).fill(Color.primary.opacity(0.07))
+            RoundedRectangle(cornerRadius: side * 0.22, style: .continuous).fill(Color.primary.opacity(0.07))
             if let image = model.mediaArt[player.art], player.art != 0 {
                 Image(nsImage: image).resizable().scaledToFill()
             } else {
-                Image(systemName: "music.note").font(.system(size: size * 0.4)).foregroundStyle(.secondary)
+                Image(systemName: "music.note").font(.system(size: side * 0.4)).foregroundStyle(.secondary)
             }
         }
-        .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: side * 0.22, style: .continuous))
     }
 }
 

@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,8 +34,11 @@ import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.Channels
 import nl.markmaaktmedia.tandem.engine.Permissions
 import nl.markmaaktmedia.tandem.graph
+import nl.markmaaktmedia.tandem.mirror.MirrorListener
 import nl.markmaaktmedia.tandem.ui.components.PermissionCard
 import nl.markmaaktmedia.tandem.ui.components.PermissionLevel
+import nl.markmaaktmedia.tandem.ui.components.PermissionNote
+import nl.markmaaktmedia.tandem.ui.components.PermissionNoteAction
 import nl.markmaaktmedia.tandem.ui.components.TandemIconButton
 import nl.markmaaktmedia.tandem.ui.components.blockedNote
 import nl.markmaaktmedia.tandem.ui.components.phoneNote
@@ -55,6 +59,10 @@ fun AccessScreen(onBack: () -> Unit) {
     val requests = rememberPermissionRequests(status)
     var notificationTest by remember { mutableStateOf<String?>(null) }
     var listenerTest by remember { mutableStateOf<String?>(null) }
+    // Allowed in the settings is not the same as running: Android sometimes leaves the listener unbound after an update.
+    val listening by MirrorListener.connected.collectAsState()
+    val lastSent by MirrorListener.lastSent.collectAsState()
+    val stopped = status.notificationAccess && !listening
 
     val total = 8
 
@@ -110,7 +118,19 @@ fun AccessScreen(onBack: () -> Unit) {
             PermissionCard(
                 TandemIcons.Devices, stringResource(R.string.perm_listener), stringResource(R.string.perm_listener_why),
                 granted = status.notificationAccess,
+                partly = stopped,
                 onGrant = { Permissions.openNotificationAccessSettings(context) },
+                note = if (stopped) {
+                    PermissionNote(
+                        stringResource(R.string.perm_listener_stopped),
+                        listOf(
+                            PermissionNoteAction(stringResource(R.string.perm_listener_restart), { Permissions.restartListener(context) }, primary = true),
+                            PermissionNoteAction(stringResource(R.string.perm_listener_open), { Permissions.openNotificationAccessSettings(context) }),
+                        ),
+                    )
+                } else {
+                    null
+                },
                 testLabel = stringResource(R.string.perm_listener_test),
                 onTest = {
                     val targets = graph.host.devices.value.filter { it.online }.map { it.id }
@@ -134,7 +154,12 @@ fun AccessScreen(onBack: () -> Unit) {
                         }
                     }
                 },
-                testResult = listenerTest,
+                testResult = listenerTest ?: if (listening) {
+                    lastSent?.let { stringResource(R.string.perm_listener_running, android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(it))) }
+                        ?: stringResource(R.string.perm_listener_idle)
+                } else {
+                    null
+                },
                 index = 3, total = total,
                 modifier = Modifier.staggeredEntry(5),
             )

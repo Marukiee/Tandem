@@ -20,6 +20,7 @@ import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.calls.CallMonitor
 import nl.markmaaktmedia.tandem.hotspot.HotspotModule
+import nl.markmaaktmedia.tandem.mirror.ListenerWatchdog
 import nl.markmaaktmedia.tandem.share.ClipboardSendActivity
 import nl.markmaaktmedia.tandem.share.ScreenshotWatcher
 import nl.markmaaktmedia.tandem.share.ShareShortcuts
@@ -37,6 +38,7 @@ class TandemService : LifecycleService() {
     private lateinit var screenshots: ScreenshotWatcher
     private lateinit var calls: CallMonitor
     private lateinit var hotspot: HotspotModule
+    private lateinit var listenerWatchdog: ListenerWatchdog
     private var multicast: WifiManager.MulticastLock? = null
     private var lastProgressPost = 0L
 
@@ -56,6 +58,7 @@ class TandemService : LifecycleService() {
         calls = CallMonitor(this, host, graph.prefs, graph.scope).also { it.start() }
         hotspot = HotspotModule.get(this).also { it.start { status.resend() } }
         graph.media.start()
+        listenerWatchdog = ListenerWatchdog(this, graph.scope).also { it.start() }
 
         lifecycleScope.launch {
             host.devices.collectLatest { devices ->
@@ -79,6 +82,7 @@ class TandemService : LifecycleService() {
         screenshots.stop()
         calls.stop()
         hotspot.stop()
+        listenerWatchdog.stop()
         graph.media.stop()
         graph.audio.stop(tell = true)
         multicast?.release()
