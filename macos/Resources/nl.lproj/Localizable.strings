@@ -372,7 +372,7 @@
 
 "Use this phone as a speaker" = "Gebruik deze telefoon als speaker";
 "Everything this Mac plays comes out of %@" = "Alles wat deze Mac afspeelt komt uit %@";
-"Plays this Mac's sound on %@ and mutes this Mac. Uses about 700 MB an hour. The first time, macOS asks to allow System Audio Recording." = "Speelt het geluid van deze Mac af op %@ en zet deze Mac stil. Gebruikt ongeveer 700 MB per uur. De eerste keer vraagt macOS om Systeemgeluid opnemen toe te staan.";
+"Plays this Mac's sound on %@ and mutes this Mac. About 700 MB an hour. macOS asks for System Audio Recording the first time." = "Speelt het geluid van deze Mac af op %@ en zet deze Mac stil. Ongeveer 700 MB per uur. macOS vraagt de eerste keer om Systeemgeluid opnemen.";
 "Stop using this phone as a speaker" = "Stop met deze telefoon als speaker gebruiken";
 "Your phone does not allow this. Turn on Speaker for your Mac in the settings of Tandem on your phone." = "Je telefoon staat dit niet toe. Zet Speaker voor je Mac aan in de instellingen van Tandem op je telefoon.";
 "Your phone stopped playing the sound" = "Je telefoon is gestopt met het geluid afspelen";

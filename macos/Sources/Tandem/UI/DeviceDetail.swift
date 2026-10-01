@@ -160,7 +160,6 @@ struct DeviceDetail: View {
         VStack(spacing: 18) {
             actions
             NowPlayingCard(device: device)
-            if device.platform == .android { SpeakerCard(device: device) }
             DropZone(device: device)
             if device.platform == .android { HotspotCard(device: device) }
             RemoteControlCard()
@@ -267,6 +266,10 @@ struct DeviceDetail: View {
                         set: { model.setSettings(device, autoAccept: $0) }
                     ))
                 }
+                if device.platform == .android {
+                    Divider().opacity(0.4).padding(.horizontal, 14)
+                    speakerRow
+                }
                 Divider().opacity(0.4).padding(.horizontal, 14)
                 SettingRow(symbol: "trash", title: "Remove this device", subtitle: device.vouchedByRemoved ? "It was added by a device that has since been removed" : "It leaves the circle everywhere") {
                     Button("Remove") { confirmRemoval = true }
@@ -274,6 +277,35 @@ struct DeviceDetail: View {
                         .tint(Palette.urgent)
                 }
             }
+        }
+    }
+}
+
+extension DeviceDetail {
+    /// Makes the phone this Mac's speaker: everything the Mac plays comes out of the phone.
+    fileprivate var speakerRow: some View {
+        let active = model.speaker.device == device.id
+        let failure: String? = { if case let .failed(text) = model.speaker { return text } else { return nil } }()
+        return SettingRow(
+            symbol: active ? "speaker.wave.3.fill" : "speaker.wave.2",
+            title: "Use this phone as a speaker",
+            subtitle: LocalizedStringKey(speakerSubtitle(failure: failure)),
+            subtitleColor: failure == nil ? .secondary : Palette.urgent
+        ) {
+            HStack(spacing: 8) {
+                if case let .starting(id) = model.speaker, id == device.id { PillSpinner(size: 16) }
+                Toggle("", isOn: Binding(get: { active }, set: { _ in model.toggleSpeaker(for: device.id) }))
+                    .disabled(!device.online)
+            }
+        }
+    }
+
+    private func speakerSubtitle(failure: String?) -> String {
+        if let failure { return failure }
+        switch model.speaker {
+        case .on(device.id): return String(localized: "Everything this Mac plays comes out of \(device.name)")
+        case .starting(device.id): return String(localized: "Starting")
+        default: return String(localized: "Plays this Mac's sound on \(device.name) and mutes this Mac. About 700 MB an hour. macOS asks for System Audio Recording the first time.")
         }
     }
 }
@@ -303,6 +335,8 @@ struct SettingRow<Trailing: View>: View {
     let symbol: String
     let title: LocalizedStringKey
     let subtitle: LocalizedStringKey
+    /// Grey as a rule; red for a row that has something wrong to say.
+    var subtitleColor: Color = .secondary
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
@@ -314,7 +348,7 @@ struct SettingRow<Trailing: View>: View {
                 .background(Palette.indigo.opacity(0.12), in: .circle)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.callout.weight(.medium))
-                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                Text(subtitle).font(.caption).foregroundStyle(subtitleColor)
             }
             Spacer(minLength: 12)
             trailing.labelsHidden()

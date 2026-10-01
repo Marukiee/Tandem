@@ -10,7 +10,8 @@
         "Your phone can show up in System Settings, Sound, as an output: choose it there and this Mac's sound plays on the phone. Experimental and off by default, under Settings, General, Show my phone in Sound settings. macOS shows no volume slider for it, so the volume is the phone's"
       ],
       "better": [
-        "The small menu shows a thin progress bar under what plays on your phone"
+        "The small menu shows a thin progress bar under what plays on your phone",
+        "Use this phone as a speaker is now a row with the other options at the bottom of the device page, not a block of its own"
       ]
     },
     "nl": {
@@ -20,7 +21,8 @@
         "Je telefoon kan als uitgang verschijnen in Systeeminstellingen, Geluid: kies hem daar en het geluid van deze Mac speelt op de telefoon. Experimenteel en standaard uit, onder Instellingen, Algemeen, Toon mijn telefoon in de geluidsinstellingen. macOS toont er geen volumeregelaar voor, dus het volume is dat van de telefoon"
       ],
       "better": [
-        "Het kleine menu toont een dunne voortgangsbalk onder wat er op je telefoon speelt"
+        "Het kleine menu toont een dunne voortgangsbalk onder wat er op je telefoon speelt",
+        "Gebruik deze telefoon als speaker is nu een rij bij de andere opties onderaan de apparaatpagina, en geen apart blok meer"
       ]
     }
   },
