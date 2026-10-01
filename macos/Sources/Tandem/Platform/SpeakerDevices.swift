@@ -19,7 +19,7 @@ import Observation
 @MainActor
 @Observable
 final class SpeakerDevices {
-    static let uidPrefix = "nl.markmaaktmedia.tandem.speaker."
+    static let uidPrefix = AudioDevices.speakerUIDPrefix
 
     /// Called when one of them becomes the output (the phone and the device's UID), or when something
     /// else does after one had been (nil, nil).
@@ -149,6 +149,17 @@ final class SpeakerDevices {
             selectedPhone = nil
             onSelect?(nil, nil)
         }
+    }
+
+    /// Makes a phone's output the system output, like choosing it in the sound menu: the watcher then sees it and
+    /// the sound starts. False when the output does not exist or the system would not switch.
+    @discardableResult
+    func select(phone: String) -> Bool {
+        guard var device = AudioDevices.device(forUID: Self.uid(forPhone: phone)) else { return false }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain
+        )
+        return AudioObjectSetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, UInt32(MemoryLayout<AudioObjectID>.size), &device) == noErr
     }
 
     /// Goes back to the output that was in use before a phone was chosen, for when the phone goes away

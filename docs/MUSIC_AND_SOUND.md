@@ -53,17 +53,25 @@ The Mac can play its sound on a phone, which then is its speaker.
 ### The phone in the system's sound outputs
 
 A real output device needs a driver (an administrator installs it, and a mistake in it can silence the
-whole Mac), so there is none. Instead, Settings, General, Show my phone in Sound settings (off by
-default) makes one public aggregate device per phone, `Name (Tandem)`, with the Mac's own speakers as its
-only member. The system lists it like any output. Tandem watches the default output; when one of these is
-chosen it taps what is played to that output (a Core Audio tap on that device's stream), mutes it and
-sends it to the phone, and when something else is chosen it stops. Without Tandem running, or with the
-phone away, it simply plays on the speakers, so choosing it never leaves the Mac silent.
+whole Mac), so there is none. Instead, Tandem makes one public aggregate device per phone, `Name (Tandem)`,
+with the Mac's own speakers as its only member. The system lists it like any output, in System Settings,
+Sound and in the sound menu of Control Center (checked: the system reports such a device as an output
+that can be the default and is not hidden).
 
+The switch on the phone's page, Use this phone as a speaker, is on by default and stays on: it only decides
+whether the phone is offered. Tandem watches the default output. When one of these is chosen it starts the
+sound: a Core Audio tap on everything this Mac plays, the Mac muted, sent to the phone. When something else is
+chosen it stops. A Use now button on the page, and the speaker button in the small menu, do the same by
+choosing the output for you.
+
+- Without Tandem running, or with the phone away, the output simply plays on the speakers, so choosing it never
+  leaves the Mac silent. If the phone drops away or the Mac sleeps while its output is chosen, the sound moves
+  to the phone again when it is back.
 - macOS shows no volume slider for a device made this way; the volume is the phone's.
-- The devices are removed when Tandem quits and when a phone is removed, and made again the next time.
-  If one is left behind (a crash), the next start clears it, or delete it in Audio MIDI Setup.
-- Stopping from a button in Tandem puts the output back to what it was; so does the phone disconnecting.
+- The capture takes its clock from the Mac's speakers, not from the output made for the phone, because one
+  aggregate cannot be part of another.
+- The devices are removed when Tandem quits and when a phone is removed or switched off, and made again the
+  next time. If one is left behind (a crash), the next start clears it, or delete it in Audio MIDI Setup.
 
 ## Seeking
 

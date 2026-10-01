@@ -1,8 +1,34 @@
 [
   {
-    "version": "0.1.19",
+    "version": "0.1.20",
     "date": "2026-10-01",
     "highlight": true,
+    "en": {
+      "title": "Pick your phone in the sound menu",
+      "new": [
+        "Choose your phone in the sound menu (Control Center) or in System Settings, Sound, and this Mac's sound plays on it at once; choose another output and it stops"
+      ],
+      "better": [
+        "Use this phone as a speaker now stays on: the switch offers the phone as a sound output, per phone, instead of starting the sound itself, and a Use now button starts it from the device page",
+        "When the phone drops away or the Mac sleeps while the phone is the chosen output, the sound moves to the phone again by itself when it is back",
+        "The setting Show my phone in Sound settings is gone; the switch on the device page does that job"
+      ]
+    },
+    "nl": {
+      "title": "Kies je telefoon in het geluidsmenu",
+      "new": [
+        "Kies je telefoon in het geluidsmenu (Bedieningscentrum) of in Systeeminstellingen, Geluid, en het geluid van deze Mac speelt meteen op de telefoon; kies een andere uitgang en het stopt"
+      ],
+      "better": [
+        "Gebruik deze telefoon als speaker blijft nu aan staan: de schakelaar biedt de telefoon per telefoon als geluidsuitgang aan in plaats van zelf het geluid te starten, en een knop Nu gebruiken start het vanaf de apparaatpagina",
+        "Als de telefoon wegvalt of de Mac slaapt terwijl de telefoon de gekozen uitgang is, gaat het geluid vanzelf weer naar de telefoon zodra die terug is",
+        "De instelling Toon mijn telefoon in de geluidsinstellingen is weg; de schakelaar op de apparaatpagina doet dat werk"
+      ]
+    }
+  },
+  {
+    "version": "0.1.19",
+    "date": "2026-10-01",
     "en": {
       "title": "A phone in the sound list, and a tidier player",
       "new": [

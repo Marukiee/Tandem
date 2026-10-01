@@ -40,12 +40,10 @@ final class SystemAudioTap: @unchecked Sendable {
     private var beatAt = Date.distantPast
     var lastDelivery: Date { lastBeat.lock(); defer { lastBeat.unlock() }; return beatAt }
 
-    /// Opens the tap and says what it will deliver. Nothing flows until [start]. With [deviceUID] only
-    /// what is sent to that output is taken, so a sound output made for a phone takes just what is
-    /// played to it; without, everything this Mac plays.
-    func prepare(muteLocal: Bool, deviceUID: String? = nil) throws -> Format {
-        let description = deviceUID.map { CATapDescription(excludingProcesses: [], deviceUID: $0, stream: 0) }
-            ?? CATapDescription(stereoGlobalTapButExcludeProcesses: [])
+    /// Opens the tap and says what it will deliver. Nothing flows until [start]. It takes everything this Mac
+    /// plays, whichever output it is sent to: with the Mac's sound going to a phone, that is all of it.
+    func prepare(muteLocal: Bool) throws -> Format {
+        let description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
         description.name = "Tandem"
         description.isPrivate = true
         description.muteBehavior = muteLocal ? .muted : .unmuted
@@ -53,12 +51,12 @@ final class SystemAudioTap: @unchecked Sendable {
         var status = AudioHardwareCreateProcessTap(description, &tapID)
         guard status == noErr else { throw Failure.step("tap", status) }
 
-        // The clock comes from a real output. For a tapped output of ours that is the speakers underneath it,
-        // since an output made of other devices cannot be part of another.
-        let outputUID = deviceUID != nil ? (AudioDevices.builtInOutputUID() ?? "") : try Self.defaultOutputUID()
-        guard !outputUID.isEmpty else {
+        let outputUID: String
+        do {
+            outputUID = try Self.clockUID()
+        } catch {
             stop()
-            throw Failure.step("output", -1)
+            throw error
         }
         let aggregate: [String: Any] = [
             kAudioAggregateDeviceNameKey: "Tandem speaker tap",
@@ -138,23 +136,14 @@ final class SystemAudioTap: @unchecked Sendable {
 
     // MARK: Pieces
 
-    private static func defaultOutputUID() throws -> String {
-        var address = AudioObjectPropertyAddress(
-            mSelector: kAudioHardwarePropertyDefaultSystemOutputDevice,
-            mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMain
-        )
-        var device = AudioObjectID(kAudioObjectUnknown)
-        var size = UInt32(MemoryLayout<AudioObjectID>.size)
-        var status = AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device)
-        guard status == noErr, device != kAudioObjectUnknown else { throw Failure.step("output", status) }
-
-        address.mSelector = kAudioDevicePropertyDeviceUID
-        var uid: Unmanaged<CFString>?
-        size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
-        status = AudioObjectGetPropertyData(device, &address, 0, nil, &size, &uid)
-        guard status == noErr, let value = uid?.takeRetainedValue() else { throw Failure.step("output name", status) }
-        return value as String
+    /// The output the capture takes its clock from: the one in use, unless that is made of other devices (the
+    /// output Tandem makes for a phone is, and one cannot be part of another), then the Mac's own speakers.
+    private static func clockUID() throws -> String {
+        if let device = AudioDevices.defaultOutput(), !AudioDevices.isAggregate(device), let uid = AudioDevices.uid(of: device) {
+            return uid
+        }
+        if let builtIn = AudioDevices.builtInOutputUID() { return builtIn }
+        throw Failure.step("output", -1)
     }
 
     /// Turns what the tap hands over (float or integer, interleaved or one buffer per channel) into

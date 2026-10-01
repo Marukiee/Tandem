@@ -105,14 +105,9 @@ final class EngineModel {
         }
     }
     var speaker: SpeakerState = .off
-    /// Each phone as an output in System Settings, Sound. On unless switched off: it is the way to pick a phone
-    /// as the speaker from the place people look for outputs.
-    var speakerInSound = UserDefaults.standard.object(forKey: "speakerInSound") as? Bool ?? true {
-        didSet {
-            UserDefaults.standard.set(speakerInSound, forKey: "speakerInSound")
-            reconcileSpeakerDevices()
-        }
-    }
+    /// The phones the person switched off as a speaker. Every other phone is offered as a sound output, all the
+    /// time, and plays the Mac's sound only while that output is the one chosen.
+    var speakerOff = Set(UserDefaults.standard.stringArray(forKey: "speakerOffPhones") ?? [])
     let speakerDevices = SpeakerDevices()
     /// The sound is going to a phone because its output was chosen in the system, not from a button here.
     @ObservationIgnored private var speakerViaOutput = false
@@ -322,15 +317,17 @@ final class EngineModel {
             if case let .disconnected(id) = event {
                 injector.sourceDisconnected(id)
                 remoteMedia[id] = nil
+                // The output stays chosen: with the phone gone the sound plays on this Mac, and it moves to the phone
+                // again by itself when the phone is back (below), which is also what happens after the Mac sleeps.
                 if speaker.device == id {
                     stopSpeaker(tellPhone: false, state: .off)
-                    showToast(String(localized: "The sound stopped because your phone disconnected"))
+                    showToast(String(localized: "Your phone disconnected, so the sound plays on this Mac until it is back"))
                 }
-                // The output that was chosen for it has nobody to play on any more.
-                if speakerDevices.selectedPhone == id { speakerDevices.restoreOutput() }
             }
             // A phone that just connected knows nothing of what this Mac plays.
             if case let .connected(id) = event, device(id)?.platform == .android { publishMedia(only: [id]) }
+            // Its output is the chosen one and the sound is not on it: it was away, and is back.
+            if case let .connected(id) = event, speakerDevices.selectedPhone == id, speaker.device != id { startSpeaker(on: id) }
 
         case let .paired(id):
             refreshDevices()
@@ -439,7 +436,7 @@ final class EngineModel {
 
     /// Plays this Mac's sound on a phone. The tap is opened first to learn the format, the phone is told,
     /// and only then does sound flow, so the phone's speaker is ready when the first packet arrives.
-    func startSpeaker(on id: String, tapDeviceUID: String? = nil) {
+    func startSpeaker(on id: String) {
         guard let engine, device(id)?.online == true else {
             showToast(String(localized: "That device is not connected right now"))
             return
@@ -448,13 +445,14 @@ final class EngineModel {
         speakerStream &+= 1
         let stream = speakerStream
         speaker = .starting(id)
-        speakerViaOutput = tapDeviceUID != nil
+        // Chosen as an output, it stops again when another is chosen.
+        speakerViaOutput = speakerDevices.selectedPhone == id
         let mute = UserDefaults.standard.object(forKey: "audioMuteLocal") as? Bool ?? true
         let tap = SystemAudioTap()
         self.tap = tap
         Task { @MainActor [weak self] in
             do {
-                let format = try tap.prepare(muteLocal: mute, deviceUID: tapDeviceUID)
+                let format = try tap.prepare(muteLocal: mute)
                 try await engine.sendAudioStart(target: id, stream: stream, sampleRate: format.sampleRate, channels: format.channels)
                 let limit = Int(engine.audioPayloadLimit(id: id))
                 let frameBytes = Int(format.channels) * 2
@@ -464,7 +462,7 @@ final class EngineModel {
                 guard let self, self.tap === tap else { tap.stop(); return }
                 self.speaker = .on(id)
                 self.speakerStartedAt = Date()
-                self.watchSpeaker(tap: tap, id: id, stream: stream, mute: mute, deviceUID: tapDeviceUID)
+                self.watchSpeaker(tap: tap, id: id, stream: stream, mute: mute)
             } catch {
                 guard let self, self.tap === tap else { tap.stop(); return }
                 self.stopSpeaker(tellPhone: true, state: .failed(error.localizedDescription))
@@ -492,7 +490,7 @@ final class EngineModel {
 
     /// Notices a capture that has gone quiet because the output it was clocked by went away (headphones
     /// unplugged, say) and opens it again on the new default output.
-    private func watchSpeaker(tap: SystemAudioTap, id: String, stream: UInt8, mute: Bool, deviceUID: String? = nil) {
+    private func watchSpeaker(tap: SystemAudioTap, id: String, stream: UInt8, mute: Bool) {
         speakerWatch?.cancel()
         speakerWatch = Task { @MainActor [weak self] in
             var current = tap
@@ -503,7 +501,7 @@ final class EngineModel {
                 current.stop()
                 let fresh = SystemAudioTap()
                 do {
-                    let format = try fresh.prepare(muteLocal: mute, deviceUID: deviceUID)
+                    let format = try fresh.prepare(muteLocal: mute)
                     let frameBytes = Int(format.channels) * 2
                     let limit = Int(engine.audioPayloadLimit(id: id))
                     try fresh.start(handler: Self.sender(engine: engine, id: id, stream: stream, chunk: limit / frameBytes * frameBytes))
@@ -530,11 +528,14 @@ final class EngineModel {
         speakerViaOutput = false
     }
 
+    /// Starts or stops the sound on a phone, the way choosing or leaving its output in the sound menu does.
     func toggleSpeaker(for id: String) {
         if speaker.device == id {
             stopSpeaker(tellPhone: true)
             // Leaving its output chosen would play on this Mac's speakers under another name.
             if speakerDevices.selectedPhone == id { speakerDevices.restoreOutput() }
+        } else if speakerEnabled(for: id), speakerDevices.created[id] != nil, speakerDevices.selectedPhone != id, speakerDevices.select(phone: id) {
+            // Chosen like a person would: the sound menu shows what is going on, and the watcher starts the sound.
         } else {
             startSpeaker(on: id)
         }
@@ -542,21 +543,34 @@ final class EngineModel {
 
     // MARK: Phones as sound outputs
 
+    func speakerEnabled(for id: String) -> Bool { !speakerOff.contains(id) }
+
+    /// Offers a phone as a sound output, or stops offering it. On by default; it only makes the phone a choice.
+    func setSpeakerEnabled(_ on: Bool, for id: String) {
+        if on { speakerOff.remove(id) } else { speakerOff.insert(id) }
+        UserDefaults.standard.set(Array(speakerOff), forKey: "speakerOffPhones")
+        if !on {
+            if speaker.device == id { stopSpeaker(tellPhone: true) }
+            if speakerDevices.selectedPhone == id { speakerDevices.restoreOutput() }
+        }
+        reconcileSpeakerDevices()
+    }
+
     private func reconcileSpeakerDevices() {
         speakerDevices.sync(
-            phones: devices.filter { $0.platform == .android }.map { (id: $0.id, name: $0.name) },
-            enabled: speakerInSound
+            phones: devices.filter { $0.platform == .android && speakerEnabled(for: $0.id) }.map { (id: $0.id, name: $0.name) },
+            enabled: true
         )
     }
 
-    /// A phone's output was chosen in System Settings, or something else was after one had been.
+    /// A phone's output was chosen in System Settings or the sound menu, or something else was after one had been.
     private func outputChosen(phone: String?, uid: String?) {
-        if let phone, let uid {
+        if let phone {
             guard device(phone)?.online == true else {
                 showToast(String(localized: "Your phone is not connected, so the sound stays on this Mac"))
                 return
             }
-            startSpeaker(on: phone, tapDeviceUID: uid)
+            startSpeaker(on: phone)
         } else if speakerViaOutput {
             stopSpeaker(tellPhone: true)
         }

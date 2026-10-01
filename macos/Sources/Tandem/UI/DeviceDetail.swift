@@ -282,35 +282,42 @@ struct DeviceDetail: View {
 }
 
 extension DeviceDetail {
-    /// Makes the phone this Mac's speaker: everything the Mac plays comes out of the phone.
+    /// Offers the phone as a sound output, all the time: the switch stays on, and the phone is there to pick in the
+    /// sound menu or System Settings, Sound. Only while it is picked does this Mac's sound play on it. The button
+    /// is the same thing from here.
     fileprivate var speakerRow: some View {
-        let active = model.speaker.device == device.id
-        let failure: String? = { if case let .failed(text) = model.speaker { return text } else { return nil } }()
+        let streaming = model.speaker.device == device.id
+        let enabled = model.speakerEnabled(for: device.id)
+        let failure: String? = {
+            if case let .failed(text) = model.speaker { return text }
+            return enabled ? model.speakerDevices.problem : nil
+        }()
         return SettingRow(
-            symbol: active ? "speaker.wave.3.fill" : "speaker.wave.2",
+            symbol: streaming ? "speaker.wave.3.fill" : "speaker.wave.2",
             title: "Use this phone as a speaker",
-            subtitle: LocalizedStringKey(speakerSubtitle(failure: failure)),
+            subtitle: LocalizedStringKey(speakerSubtitle(enabled: enabled, failure: failure)),
             subtitleColor: failure == nil ? .secondary : Palette.urgent
         ) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 if case let .starting(id) = model.speaker, id == device.id { PillSpinner(size: 16) }
-                Toggle("", isOn: Binding(get: { active }, set: { _ in model.toggleSpeaker(for: device.id) }))
-                    .disabled(!device.online)
+                if enabled {
+                    Button(LocalizedStringKey(streaming ? "Stop" : "Use now")) { model.toggleSpeaker(for: device.id) }
+                        .buttonStyle(.glass)
+                        .disabled(!device.online && !streaming)
+                }
+                Toggle("", isOn: Binding(get: { enabled }, set: { model.setSpeakerEnabled($0, for: device.id) }))
             }
         }
     }
 
-    private func speakerSubtitle(failure: String?) -> String {
+    private func speakerSubtitle(enabled: Bool, failure: String?) -> String {
         if let failure { return failure }
+        guard enabled else { return String(localized: "Off: this phone is not offered as a sound output") }
         switch model.speaker {
-        case .on(device.id): return String(localized: "Everything this Mac plays comes out of \(device.name)")
+        case .on(device.id): return String(localized: "Everything this Mac plays comes out of \(device.name). Choose another output to stop.")
         case .starting(device.id): return String(localized: "Starting")
         default:
-            // Where the output is made, say so: that is where a person looks for it.
-            if model.speakerDevices.created[device.id] != nil {
-                return String(localized: "Plays this Mac's sound on \(device.name) and mutes this Mac. Also an output in Sound settings. About 700 MB an hour. macOS asks for System Audio Recording the first time.")
-            }
-            return String(localized: "Plays this Mac's sound on \(device.name) and mutes this Mac. About 700 MB an hour. macOS asks for System Audio Recording the first time.")
+            return String(localized: "Choose \(device.name) (Tandem) in Sound settings or the sound menu to play this Mac's sound on the phone. About 700 MB an hour. macOS asks for System Audio Recording the first time.")
         }
     }
 }

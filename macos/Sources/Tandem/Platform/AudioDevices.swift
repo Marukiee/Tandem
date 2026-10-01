@@ -5,6 +5,9 @@ import Foundation
 enum AudioDevices {
     private static let system = AudioObjectID(kAudioObjectSystemObject)
 
+    /// What the UIDs of the sound outputs Tandem makes for phones start with.
+    static let speakerUIDPrefix = "nl.markmaaktmedia.tandem.speaker."
+
     private static func address(_ selector: AudioObjectPropertySelector, scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal) -> AudioObjectPropertyAddress {
         AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: kAudioObjectPropertyElementMain)
     }
@@ -69,6 +72,15 @@ enum AudioDevices {
         var size = UInt32(MemoryLayout<UInt32>.size)
         guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &transport) == noErr else { return false }
         return transport == kAudioDeviceTransportTypeBuiltIn
+    }
+
+    /// Whether the device is made of other devices, like the outputs Tandem makes. One cannot be part of another.
+    static func isAggregate(_ device: AudioObjectID) -> Bool {
+        var address = address(kAudioDevicePropertyTransportType)
+        var transport: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &transport) == noErr else { return false }
+        return transport == kAudioDeviceTransportTypeAggregate
     }
 
     /// The UID of the Mac's own speakers (or whatever is built in and plays sound), else of the current
