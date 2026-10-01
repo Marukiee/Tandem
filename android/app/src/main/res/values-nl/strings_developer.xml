@@ -16,5 +16,5 @@
     <string name="dev_player">Testspeler voor muziek</string>
     <string name="dev_player_sub">Een nepmuziekapp, om de knoppen op je Mac te proberen zonder iets af te spelen</string>
     <string name="dev_tone">Testgeluid</string>
-    <string name="dev_tone_sub">Speelt drie seconden een toon af, zoals het geluid van je Mac via deze telefoon zou klinken</string>
+    <string name="dev_tone_sub">Speelt twintig seconden een toon af, zoals het geluid van je Mac via deze telefoon zou klinken. Vergrendel de telefoon en luister of hij doorgaat</string>
 </resources>

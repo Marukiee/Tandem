@@ -1,8 +1,26 @@
 [
   {
-    "version": "0.1.20",
+    "version": "0.1.21",
     "date": "2026-10-01",
     "highlight": true,
+    "en": {
+      "title": "Sound keeps playing with the screen off",
+      "better": [
+        "While your Mac's sound plays through the phone, the phone keeps its processor and Wi-Fi awake, so it keeps playing with the screen off, and lets them go the moment it stops",
+        "The test sound in the developer options now plays for twenty seconds, so you can lock the phone and listen"
+      ]
+    },
+    "nl": {
+      "title": "Het geluid blijft spelen met het scherm uit",
+      "better": [
+        "Zolang het geluid van je Mac via de telefoon speelt, houdt de telefoon zijn processor en wifi wakker, zodat het doorspeelt met het scherm uit, en laat hij ze los zodra het stopt",
+        "Het testgeluid in de ontwikkelaarsopties speelt nu twintig seconden, zodat je de telefoon kunt vergrendelen en luisteren"
+      ]
+    }
+  },
+  {
+    "version": "0.1.20",
+    "date": "2026-10-01",
     "en": {
       "title": "Pick your phone in the sound menu",
       "new": [

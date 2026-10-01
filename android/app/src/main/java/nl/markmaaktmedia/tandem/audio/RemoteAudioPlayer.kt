@@ -10,6 +10,9 @@ import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.net.wifi.WifiManager
+import android.os.Build
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
@@ -48,6 +51,11 @@ class RemoteAudioPlayer(
     private val lock = Any()
     private var session: Session? = null
     private val audio = context.getSystemService(AudioManager::class.java)
+
+    // With the screen off the phone sleeps as soon as it may, and its Wi-Fi saves power by holding packets back.
+    // Both are kept awake while sound plays, which is what a music player does, and let go again when it stops.
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
 
     /** The name of the device whose sound is playing, or null. For the settings page. */
     private val _playingFrom = MutableStateFlow<String?>(null)
@@ -110,6 +118,7 @@ class RemoteAudioPlayer(
         // Not getting the focus is no reason not to play: the Mac asked for it.
         runCatching { audio.requestAudioFocus(focus) }
 
+        holdAwake()
         val buffer = JitterBuffer(frameBytes, bytesPerMs)
         buffer.reset(stream)
         val s = Session(device, stream, track, buffer, focus)
@@ -127,7 +136,7 @@ class RemoteAudioPlayer(
      * Plays a tone through the same path the Mac's sound takes: opening the speaker, the buffer, the
      * notification. For the developer options, to hear that this phone can be a speaker at all.
      */
-    fun playTestTone(seconds: Int = 3) {
+    fun playTestTone(seconds: Int = 20) {
         scope.launch(kotlinx.coroutines.Dispatchers.Default) {
             val rate = 48_000
             start(TEST_DEVICE, TEST_STREAM, rate, 2, name = context.getString(R.string.audio_test_name), force = true)
@@ -197,9 +206,31 @@ class RemoteAudioPlayer(
         val s = synchronized(lock) { session.also { session = null } } ?: return
         s.running = false
         s.focus?.let { runCatching { audio.abandonAudioFocusRequest(it) } }
+        letSleep()
         _playingFrom.value = null
         context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
         if (tell) scope.launch { runCatching { host.engine?.sendAudioStop(s.device, s.stream.toUByte()) } }
+    }
+
+    private fun holdAwake() {
+        runCatching {
+            // A timeout, so a stop that never comes cannot keep the phone awake for good.
+            wakeLock = context.getSystemService(PowerManager::class.java)
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "tandem:audio")
+                .apply { setReferenceCounted(false); acquire(MAX_HOLD_MS) }
+            @Suppress("DEPRECATION")
+            val mode = if (Build.VERSION.SDK_INT >= 34) WifiManager.WIFI_MODE_FULL_LOW_LATENCY else WifiManager.WIFI_MODE_FULL_HIGH_PERF
+            wifiLock = context.applicationContext.getSystemService(WifiManager::class.java)
+                .createWifiLock(mode, "tandem:audio")
+                .apply { setReferenceCounted(false); acquire() }
+        }.onFailure { Log.w(TAG, "could not keep the phone awake", it) }
+    }
+
+    private fun letSleep() {
+        runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
+        runCatching { wifiLock?.takeIf { it.isHeld }?.release() }
+        wakeLock = null
+        wifiLock = null
     }
 
     private fun refuse(device: String, stream: Int) {
@@ -238,5 +269,6 @@ class RemoteAudioPlayer(
         /** How much is written before the speaker starts, to ride out a slow packet. */
         const val PREBUFFER_MS = 90L
         const val UNDERRUN_NS = 150_000_000L
+        const val MAX_HOLD_MS = 6 * 60 * 60 * 1000L
     }
 }

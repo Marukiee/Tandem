@@ -16,5 +16,5 @@
     <string name="dev_player">Test music player</string>
     <string name="dev_player_sub">A pretend music app, to try the buttons on your Mac without playing anything</string>
     <string name="dev_tone">Test sound</string>
-    <string name="dev_tone_sub">Plays a tone for three seconds, the way your Mac\'s sound would play through this phone</string>
+    <string name="dev_tone_sub">Plays a tone for twenty seconds, the way your Mac\'s sound would play through this phone. Lock the phone and listen to see that it keeps going</string>
 </resources>
