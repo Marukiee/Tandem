@@ -109,8 +109,8 @@ struct MenuBarPanel: View {
             .buttonStyle(.glass)
             .buttonBorderShape(.circle)
             .fixedSize()
-            .hoverSwell()
             .hoverGrey()
+            .hoverSwell()
             .help("More")
 
             Spacer(minLength: 8)
@@ -163,15 +163,15 @@ private struct MenuDeviceRow: View {
                     Button { pickFiles() } label: {
                         Image(systemName: "paperplane.fill").frame(width: 14, height: 14)
                     }
-                    .hoverSwell(1.12)
                     .hoverGrey()
+                    .hoverSwell(1.12)
                     .disabled(!device.online)
                     .help("Send files")
                     Button { model.sendClipboard(to: [device.id]) } label: {
                         Image(systemName: "doc.on.clipboard").frame(width: 14, height: 14)
                     }
-                    .hoverSwell(1.12)
                     .hoverGrey()
+                    .hoverSwell(1.12)
                     .disabled(!(device.online || device.ble))
                     .help("Send clipboard")
                 }

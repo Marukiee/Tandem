@@ -144,6 +144,8 @@ struct HoverSwell: ViewModifier {
 /// A round glass button that turns grey under the pointer and stays grey. The system's own
 /// hover on glass flashes and fades back to white in a menu bar panel, so this holds it.
 /// Multiplied, so the white glass darkens and the icon on it stays as black as it was.
+/// Applied before the swell, so the grey grows with the button and covers its rim, which
+/// otherwise stays white around a grey disc.
 struct HoverGrey: ViewModifier {
     @Environment(\.hoverEnabled) private var hoverEnabled
     @LocalState private var hovering = false
@@ -153,6 +155,7 @@ struct HoverGrey: ViewModifier {
             .overlay {
                 Circle()
                     .fill(Color(white: 0.78))
+                    .padding(-1)
                     .blendMode(.multiply)
                     .opacity(hovering && hoverEnabled ? 1 : 0)
                     .allowsHitTesting(false)
