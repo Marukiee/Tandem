@@ -9,6 +9,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -49,6 +53,7 @@ import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.hotspot.BleAvailability
 import nl.markmaaktmedia.tandem.hotspot.HotspotChecklistRows
 import nl.markmaaktmedia.tandem.hotspot.HotspotModule
+import nl.markmaaktmedia.tandem.hotspot.HotspotUsage
 import nl.markmaaktmedia.tandem.hotspot.Phase
 import nl.markmaaktmedia.tandem.hotspot.Refusal
 import nl.markmaaktmedia.tandem.hotspot.ShizukuState
@@ -63,7 +68,7 @@ import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 
-/** What a Mac may use in one hotspot session, from none to ten gigabytes. */
+/** What a Mac may use in a day over the hotspot, from none to ten gigabytes. */
 private val LIMITS_MB = listOf(0L, 100L, 250L, 500L, 1024L, 2048L, 3072L, 5120L, 10240L)
 
 /** Everything about letting your Mac use this phone's hotspot, on a page of its own. */
@@ -77,7 +82,8 @@ fun HotspotScreen(onBack: () -> Unit) {
     val roaming by module.prefs.allowRoaming.collectAsState(initial = false)
     val limitMb by module.prefs.dataLimitMb.collectAsState(initial = 0L)
     val totalBytes by module.prefs.dataUsedBytes.collectAsState(initial = 0L)
-    val sessionBytes by module.controller.sessionBytes.collectAsState()
+    val days by module.prefs.dailyUsage.collectAsState(initial = emptyMap())
+    val since by module.prefs.usageSince.collectAsState(initial = null)
     val snapshot by module.controller.snapshot.collectAsState()
     val shizuku by module.shizuku.state.collectAsState()
     val attempt by module.controller.lastAttempt.collectAsState()
@@ -146,7 +152,11 @@ fun HotspotScreen(onBack: () -> Unit) {
                                 when (result?.phase) {
                                     Phase.On -> R.string.hotspot_test_ok
                                     Phase.NeedsTap -> R.string.hotspot_test_manual
-                                    Phase.Refused -> if (result.refusal == Refusal.Battery) R.string.hotspot_test_battery else R.string.hotspot_test_roaming
+                                    Phase.Refused -> when (result.refusal) {
+                                        Refusal.Battery -> R.string.hotspot_test_battery
+                                        Refusal.Limit -> R.string.hotspot_test_limit
+                                        else -> R.string.hotspot_test_roaming
+                                    }
                                     else -> R.string.hotspot_test_failed
                                 },
                             )
@@ -159,11 +169,21 @@ fun HotspotScreen(onBack: () -> Unit) {
 
         // 3. Data: a limit on a slider and what has been used.
         SectionHeader(stringResource(R.string.hotspot_section_data))
+        // What is used is counted as it is used and written at once, so the total and today are already up to date,
+        // with the session that is running: nothing is added on top.
+        val todayBytes = days[HotspotUsage.dayKey(System.currentTimeMillis())] ?: 0L
+        DataUsageCard(
+            todayBytes = todayBytes,
+            totalBytes = totalBytes,
+            since = since,
+            days = days,
+            onReset = { scope.launch { module.prefs.resetDataUsed() } },
+        )
+        androidx.compose.foundation.layout.Spacer(Modifier.height(10.dp))
         DataLimitCard(
             limitMb = limitMb,
-            usedBytes = totalBytes + if (snapshot.on) sessionBytes else 0L,
+            todayBytes = todayBytes,
             onLimit = { scope.launch { module.prefs.setDataLimitMb(it) } },
-            onReset = { scope.launch { module.prefs.resetDataUsed() } },
         )
 
         // 4. How it turns on, and where to read more.
@@ -229,7 +249,7 @@ fun HotspotScreen(onBack: () -> Unit) {
  * smooth to drag and still ends on a value that means something.
  */
 @Composable
-private fun DataLimitCard(limitMb: Long, usedBytes: Long, onLimit: (Long) -> Unit, onReset: () -> Unit) {
+private fun DataLimitCard(limitMb: Long, todayBytes: Long, onLimit: (Long) -> Unit) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -250,7 +270,7 @@ private fun DataLimitCard(limitMb: Long, usedBytes: Long, onLimit: (Long) -> Uni
     val value = if (dragging) position else thumb.value
     val step = value.roundToInt().coerceIn(0, LIMITS_MB.lastIndex)
     val shown = LIMITS_MB[step]
-    val used = android.text.format.Formatter.formatShortFileSize(context, usedBytes)
+    val used = android.text.format.Formatter.formatShortFileSize(context, todayBytes)
 
     Column(
         Modifier.fillMaxWidth().padding(bottom = 2.dp)
@@ -297,8 +317,83 @@ private fun DataLimitCard(limitMb: Long, usedBytes: Long, onLimit: (Long) -> Uni
             Text(stringResource(R.string.hotspot_data_none), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
             Text("10 GB", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.hotspot_data_used, used), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+    }
+}
+
+/**
+ * What the Mac has used over the hotspot: today, the total since it was last reset by hand, and the last days one
+ * under the other with a bar each. A day is the unit because a session is gone when it ends, and the total on its
+ * own does not say when the data went.
+ */
+@Composable
+private fun DataUsageCard(todayBytes: Long, totalBytes: Long, since: Long?, days: Map<String, Long>, onReset: () -> Unit) {
+    val context = LocalContext.current
+    fun size(bytes: Long) = android.text.format.Formatter.formatShortFileSize(context, bytes)
+    val today = HotspotUsage.dayKey(System.currentTimeMillis())
+    val yesterday = HotspotUsage.dayKey(System.currentTimeMillis() - 24 * 3_600_000L)
+    // Today is shown above, so the list is the days before it.
+    val recent = HotspotUsage.recent(days.filterKeys { it != today }, 7)
+    val most = recent.maxOfOrNull { it.second }?.coerceAtLeast(1L) ?: 1L
+    val formatter = remember { java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", java.util.Locale.getDefault()) }
+
+    Column(
+        Modifier.fillMaxWidth()
+            .clip(CardSquircle)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(stringResource(R.string.hotspot_usage_title), style = MaterialTheme.typography.titleSmall)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(stringResource(R.string.hotspot_usage_today), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            Text(size(todayBytes), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+        }
+        Row(verticalAlignment = Alignment.Bottom) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.hotspot_usage_total), style = MaterialTheme.typography.bodyMedium)
+                since?.let {
+                    Text(
+                        stringResource(R.string.hotspot_usage_since, android.text.format.DateFormat.getMediumDateFormat(context).format(java.util.Date(it))),
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Text(size(totalBytes), style = MaterialTheme.typography.titleMedium)
+        }
+        if (recent.isEmpty() && totalBytes <= 0L) {
+            Text(
+                stringResource(R.string.hotspot_usage_empty),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (recent.isNotEmpty()) {
+            Text(
+                stringResource(R.string.hotspot_usage_days),
+                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            recent.forEach { (day, bytes) ->
+                val label = when (day) {
+                    yesterday -> stringResource(R.string.hotspot_usage_yesterday)
+                    else -> runCatching { java.time.LocalDate.parse(day).format(formatter) }.getOrDefault(day)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.9f))
+                    // The bar of the biggest day is full, the others are in proportion to it.
+                    Box(
+                        Modifier.weight(1.2f).height(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    ) {
+                        Box(
+                            Modifier.fillMaxHeight().fillMaxWidth((bytes.toFloat() / most).coerceIn(0.04f, 1f))
+                                .clip(CircleShape).background(MaterialTheme.colorScheme.primary),
+                        )
+                    }
+                    Text(size(bytes), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.6f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                }
+            }
+        }
+        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
             SecondaryPillButton(stringResource(R.string.hotspot_data_reset), onReset)
         }
     }

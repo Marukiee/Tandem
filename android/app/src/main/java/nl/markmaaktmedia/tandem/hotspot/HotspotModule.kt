@@ -40,6 +40,9 @@ class HotspotModule private constructor(private val context: Context) {
     @Volatile private var enabled = false
     @Volatile private var allowRoaming = false
     @Volatile private var dataLimitMb = 0L
+
+    /** The days as stored, with what was just counted added at once, so the limit does not wait for the write. */
+    @Volatile private var days: Map<String, Long> = emptyMap()
     private var onStatusChanged: () -> Unit = {}
 
     val controller = HotspotController(
@@ -53,7 +56,12 @@ class HotspotModule private constructor(private val context: Context) {
         macConnected = { graph.host.devices.value.any { it.online && it.platform == TandemPlatform.MAC_OS } },
         onStatusChanged = { onStatusChanged() },
         dataLimitMb = { dataLimitMb },
-        onDataUsed = { bytes -> scope.launch { prefs.addDataUsed(bytes) } },
+        onDataUsed = { bytes ->
+            val now = System.currentTimeMillis()
+            days = HotspotUsage.add(days, HotspotUsage.dayKey(now), bytes)
+            scope.launch { prefs.addDataUsed(bytes, now) }
+        },
+        usedToday = { days[HotspotUsage.dayKey(System.currentTimeMillis())] ?: 0L },
     )
 
     private val challenges = ChallengeStore(
@@ -102,6 +110,7 @@ class HotspotModule private constructor(private val context: Context) {
         jobs += scope.launch { graph.prefs.bluetoothMessages.collectLatest { messagesOn = it; reconcile() } }
         jobs += scope.launch { prefs.allowRoaming.collectLatest { allowRoaming = it } }
         jobs += scope.launch { prefs.dataLimitMb.collectLatest { dataLimitMb = it } }
+        jobs += scope.launch { prefs.dailyUsage.collectLatest { days = it } }
         jobs += scope.launch { graph.host.state.collectLatest { reconcile() } }
         jobs += scope.launch { controller.snapshot.collectLatest { publish(it) } }
         jobs += scope.launch {

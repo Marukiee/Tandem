@@ -5,6 +5,8 @@
     <string name="hotspot_request_title">Je Mac wil je hotspot</string>
     <string name="hotspot_request_text">Tik om hem aan te zetten</string>
     <string name="hotspot_in_use_title">Je Mac gebruikt je hotspot</string>
+    <string name="hotspot_in_use_today">%1$s vandaag</string>
+    <string name="hotspot_in_use_session">%1$s deze sessie</string>
     <string name="hotspot_in_use_auto">Hij gaat vanzelf uit na 5 minuten zonder apparaten</string>
     <string name="hotspot_in_use_manual">Zet hem zelf uit als je klaar bent</string>
     <string name="hotspot_in_use_clients">%1$d verbonden. Hij gaat vanzelf uit na 5 minuten zonder apparaten</string>
@@ -28,6 +30,7 @@
     <string name="hotspot_test_failed">De hotspot ging niet aan</string>
     <string name="hotspot_test_battery">Geweigerd, de accu is te leeg</string>
     <string name="hotspot_test_roaming">Geweigerd, je zit in roaming</string>
+    <string name="hotspot_test_limit">Geweigerd, de datalimiet van vandaag is bereikt</string>
 
     <string name="hotspot_roaming">Ook in roaming</string>
     <string name="hotspot_roaming_sub">Standaard uit, data in het buitenland kan duur zijn</string>

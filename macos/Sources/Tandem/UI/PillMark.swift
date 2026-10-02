@@ -154,22 +154,60 @@ enum MenuBarGlyph {
     }
 }
 
+extension MenuBarGlyph {
+    /// The hotspot, in place of the pills while it is being asked for, joined or used: waves that fill up one by one
+    /// while it is busy, and the hotspot symbol once the Mac is on it. A template image like the pills.
+    static func hotspot(busy: Bool, wave: Int) -> NSImage {
+        let key = 2000 + (busy ? 1 + wave : 0)
+        if let cached = cache[key] { return cached }
+        let configuration = NSImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
+        let levels: [Double] = [0, 0.34, 0.67, 1]
+        let base: NSImage? = busy
+            ? NSImage(systemSymbolName: "wifi", variableValue: levels[wave % levels.count], accessibilityDescription: nil)
+            : NSImage(systemSymbolName: "personalhotspot", accessibilityDescription: nil)
+        let image = base?.withSymbolConfiguration(configuration) ?? NSImage(size: NSSize(width: 18, height: 18))
+        image.isTemplate = true
+        cache[key] = image
+        return image
+    }
+}
+
 /// The label of the menu bar item. It follows the model, and while files are moving
-/// it advances a phase so the pills slide.
+/// it advances a phase so the pills slide. While the hotspot is busy it shows waves
+/// that fill up, and the hotspot symbol while this Mac is on it, so that can be seen
+/// without opening anything.
 struct MenuBarIcon: View {
     @Environment(EngineModel.self) private var model
     @LocalState private var phase = 0.0
+    @LocalState private var wave = 0
 
     var body: some View {
-        let moving = model.isTransferring && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
-        Image(nsImage: MenuBarGlyph.image(connected: model.onlineCount > 0, phase: moving ? phase : nil))
-            .accessibilityLabel(Text("Tandem"))
-            .task(id: moving) {
-                guard moving else { return }
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .milliseconds(70))
-                    phase += 1 / Double(MenuBarGlyph.frames)
-                }
+        let reduce = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let moving = model.isTransferring && !reduce
+        let status = model.hotspotStatus
+        let busy = status.isBusy
+        let onHotspot: Bool = { if case .connected = status { return true } else { return false } }()
+        Group {
+            if busy || onHotspot {
+                Image(nsImage: MenuBarGlyph.hotspot(busy: busy, wave: reduce ? 3 : wave))
+            } else {
+                Image(nsImage: MenuBarGlyph.image(connected: model.onlineCount > 0, phase: moving ? phase : nil))
             }
+        }
+        .accessibilityLabel(Text(busy || onHotspot ? status.text : "Tandem"))
+        .task(id: moving) {
+            guard moving else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(70))
+                phase += 1 / Double(MenuBarGlyph.frames)
+            }
+        }
+        .task(id: busy && !reduce) {
+            guard busy && !reduce else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(380))
+                wave = (wave + 1) % 4
+            }
+        }
     }
 }

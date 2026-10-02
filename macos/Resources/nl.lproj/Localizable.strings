@@ -404,3 +404,17 @@
 "Tandem opens again by itself" = "Tandem start vanzelf opnieuw";
 "The update did not work" = "De update is mislukt";
 "Dismiss" = "Sluiten";
+
+"Via hotspot" = "Via hotspot";
+"Hotspot on, sharing mobile data" = "Hotspot aan, deelt mobiele data";
+"Phone on %@" = "Telefoon op %@";
+"Phone on Wi-Fi" = "Telefoon op wifi";
+"Phone on mobile data" = "Telefoon op mobiele data";
+"Phone on mobile data (roaming)" = "Telefoon op mobiele data (roaming)";
+"Phone on Ethernet" = "Telefoon op Ethernet";
+"Phone has no network" = "Telefoon heeft geen netwerk";
+"Phone on a network" = "Telefoon op een netwerk";
+"Asked over Bluetooth, your phone is in range" = "Gevraagd via Bluetooth, je telefoon is in bereik";
+"Asked over Bluetooth, so your phone has to be near" = "Gevraagd via Bluetooth, dus je telefoon moet dichtbij zijn";
+"Media keys for your phone's music" = "Mediatoetsen voor de muziek van je telefoon";
+"While your phone plays, its music shows in Control Center and in apps that show what plays, and the media keys of your keyboard control it." = "Terwijl je telefoon speelt, staat de muziek in het Bedieningscentrum en in apps die tonen wat er speelt, en de mediatoetsen van je toetsenbord bedienen hem.";

@@ -13,6 +13,8 @@ struct MenuBarPanel: View {
         VStack(spacing: 10) {
             header
 
+            if model.hotspotStatus != .idle { MenuHotspot() }
+
             if model.devices.isEmpty {
                 empty
             } else {
@@ -47,6 +49,7 @@ struct MenuBarPanel: View {
         .padding(14)
         .frame(width: 344)
         .animation(.tandem, value: model.devices.map(\.id))
+        .animation(.tandem, value: model.hotspotStatus)
         .animation(.tandem, value: model.isTransferring)
         .animation(.tandem, value: model.remoteMedia.mapValues(\.players))
     }
@@ -137,12 +140,70 @@ struct MenuBarPanel: View {
     }
 }
 
+/// Where the hotspot is: being asked for, turning on, joined, in use, or what went wrong, with its button. The
+/// icon in the menu bar says the same in short, so this is what to read once the panel is open.
+private struct MenuHotspot: View {
+    @Environment(EngineModel.self) private var model
+
+    var body: some View {
+        let status = model.hotspotStatus
+        HStack(spacing: 10) {
+            ZStack {
+                if status.isBusy {
+                    PillSpinner(size: 20)
+                } else {
+                    Image(systemName: symbol(status))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(tint(status))
+                }
+            }
+            .frame(width: 24, height: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Hotspot").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text(status.text).font(.callout).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 4)
+            if let phone = model.hotspotPhone {
+                if case .connected = status {
+                    Button("Stop") { model.hotspot.stop(phone.id) }
+                        .buttonStyle(.glass)
+                        .controlSize(.small)
+                } else if case .failed = status {
+                    Button("Try again") { model.hotspot.requestNow(phone.id) }
+                        .buttonStyle(.glass)
+                        .controlSize(.small)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(tint(status).opacity(0.10), in: .rect(cornerRadius: 18, style: .continuous))
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    private func symbol(_ status: HotspotStatus) -> String {
+        switch status {
+        case .connected: "personalhotspot"
+        case .failed: "exclamationmark.triangle.fill"
+        default: "wifi"
+        }
+    }
+
+    private func tint(_ status: HotspotStatus) -> Color {
+        switch status {
+        case .failed: Palette.urgent
+        default: Palette.indigo
+        }
+    }
+}
+
 private struct MenuDeviceRow: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
     @LocalState private var targeted = false
 
     var body: some View {
+        let reach = model.reach(of: device)
         Hoverable { hovering in
             HStack(spacing: 10) {
                 DeviceGlyph(platform: device.platform, online: device.online, size: 36, ring: true, deviceID: device.id)
@@ -151,9 +212,9 @@ private struct MenuDeviceRow: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(device.name).font(.callout.weight(.semibold)).lineLimit(1)
                     HStack(spacing: 5) {
-                        Text(device.connectionText)
+                        Text(reach.text)
                             .font(.caption.weight(.medium))
-                            .foregroundStyle(device.connectionColor)
+                            .foregroundStyle(reach.color)
                         if let battery = device.status.battery {
                             Image(systemName: batterySymbol(battery)).font(.caption2).foregroundStyle(.secondary)
                             Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
@@ -197,7 +258,7 @@ private struct MenuDeviceRow: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .hoverHighlight(radius: 18, tint: targeted ? Palette.indigo : .primary, selected: targeted)
-        .opacity(device.online || device.ble ? 1 : 0.6)
+        .opacity(reach.reachable ? 1 : 0.6)
         .scaleEffect(targeted ? 1.02 : 1)
         .animation(.tandemSpringy, value: targeted)
         .animation(.tandem, value: device.online)

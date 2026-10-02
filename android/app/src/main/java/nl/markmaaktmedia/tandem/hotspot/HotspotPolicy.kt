@@ -1,6 +1,6 @@
 package nl.markmaaktmedia.tandem.hotspot
 
-enum class Refusal { Disabled, Battery, Roaming }
+enum class Refusal { Disabled, Battery, Roaming, Limit }
 
 /** When this phone says no to a request, whoever asked and however they asked. */
 object HotspotPolicy {
@@ -16,10 +16,13 @@ object HotspotPolicy {
         charging: Boolean,
         roaming: Boolean,
         allowRoaming: Boolean,
+        /** What a Mac may use in a day has been used. */
+        limitReached: Boolean = false,
     ): Refusal? {
         if (!enabled) return Refusal.Disabled
         if (batteryPercent != null && batteryPercent <= MIN_BATTERY_PERCENT && !charging) return Refusal.Battery
         if (roaming && !allowRoaming) return Refusal.Roaming
+        if (limitReached) return Refusal.Limit
         return null
     }
 
@@ -27,6 +30,7 @@ object HotspotPolicy {
         Refusal.Disabled -> BleState.Disabled
         Refusal.Battery -> BleState.RefusedBattery
         Refusal.Roaming -> BleState.RefusedRoaming
+        Refusal.Limit -> BleState.RefusedLimit
     }
 
     /** The short codes carried in the `error` field of a QUIC `HotspotMsg::State`. */
@@ -34,6 +38,7 @@ object HotspotPolicy {
         Refusal.Disabled -> "disabled"
         Refusal.Battery -> "battery"
         Refusal.Roaming -> "roaming"
+        Refusal.Limit -> "limit"
     }
 }
 

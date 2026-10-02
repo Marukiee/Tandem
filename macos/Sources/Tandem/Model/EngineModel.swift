@@ -89,6 +89,28 @@ final class EngineModel {
     }
     var remoteMedia: [String: RemoteMedia] = [:]
     var mediaArt: [UInt64: NSImage] = [:]
+    /// The phone's music in the system's Now Playing, so the media keys and the apps that show what plays see it.
+    let nowPlaying = SystemNowPlaying()
+    var systemNowPlaying = UserDefaults.standard.object(forKey: "systemNowPlaying") as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(systemNowPlaying, forKey: "systemNowPlaying")
+            refreshNowPlaying()
+        }
+    }
+    /// The phone's player that is worth showing: what plays comes before what is paused.
+    var activePhonePlayer: (device: TandemDevice, player: TandemMediaPlayer)? {
+        let all = devices
+            .filter { reach(of: $0).reachable }
+            .flatMap { device in visibleMedia(for: device.id).map { (device: device, player: $0) } }
+        return all.first { $0.player.playing } ?? all.first
+    }
+    /// The phone the hotspot is asked of: the first Android device.
+    var hotspotPhone: TandemDevice? { devices.first(where: { $0.platform == .android }) }
+    /// The colour of each cover, for the wash behind its player.
+    var mediaTint: [UInt64: NSColor] = [:]
+    /// The phones whose Bluetooth beacon is in range right now. Not a link: it says the phone is there to ask for its
+    /// hotspot, and that a link can follow.
+    var bleNearby: Set<String> = []
     let macMedia = MacMedia()
 
     /// Where this Mac's sound goes: to a phone, as its speaker, or nowhere special.
@@ -312,6 +334,7 @@ final class EngineModel {
         guard let engine else { return }
         devices = engine.devices()
         reconcileSpeakerDevices()
+        refreshNowPlaying()
     }
 
     private func handle(_ event: TandemEvent) {
@@ -324,6 +347,7 @@ final class EngineModel {
                 injector.sourceDisconnected(id)
                 remoteMedia[id] = nil
                 coversSent[id] = nil
+                refreshNowPlaying()
                 // The output stays chosen: with the phone gone the sound plays on this Mac, and it moves to the phone
                 // again by itself when the phone is back (below), which is also what happens after the Mac sleeps.
                 if speaker.device == id {
@@ -411,10 +435,13 @@ final class EngineModel {
         case let .mediaPlayers(from, players):
             guard mediaShare else { return }
             remoteMedia[from] = RemoteMedia(players: players, at: Date())
+            refreshNowPlaying()
 
         case let .mediaArt(_, key, jpeg):
             guard mediaShare, let image = NSImage(data: jpeg) else { return }
             mediaArt[key] = image
+            if let tint = Self.averageColor(of: image) { mediaTint[key] = tint }
+            refreshNowPlaying()
             // The newest few are all that is ever on screen.
             if mediaArt.count > 24, let old = mediaArt.keys.first(where: { $0 != key }) { mediaArt.removeValue(forKey: old) }
 
@@ -589,7 +616,12 @@ final class EngineModel {
     // MARK: Music
 
     private func startMedia() {
-        macMedia.onChange = { [weak self] in self?.publishMedia() }
+        macMedia.onChange = { [weak self] in
+            self?.publishMedia()
+            // What this Mac plays decides which of the phone's players are worth showing.
+            self?.refreshNowPlaying()
+        }
+        nowPlaying.onCommand = { [weak self] action, position in self?.nowPlayingCommand(action, position) }
         if mediaShare { macMedia.start() }
     }
 
@@ -617,6 +649,44 @@ final class EngineModel {
             remoteMedia = [:]
             publishMedia()
         }
+        refreshNowPlaying()
+    }
+
+    /// Says to the system what the phone plays, or that nothing does. Cheap to call: it only publishes a change.
+    func refreshNowPlaying() {
+        guard mediaShare, systemNowPlaying, let (device, player) = activePhonePlayer else {
+            nowPlaying.update(nil, cover: nil)
+            return
+        }
+        var elapsed: Double?
+        if let position = player.positionMs {
+            let reported = remoteMedia[device.id]?.at ?? Date()
+            elapsed = Double(position) / 1000 + (player.playing ? max(0, Date().timeIntervalSince(reported)) : 0)
+        }
+        let cover = player.art == 0 ? nil : mediaArt[player.art]
+        nowPlaying.update(SystemNowPlaying.Item(deviceID: device.id, player: player, elapsed: elapsed), cover: cover)
+    }
+
+    private func nowPlayingCommand(_ action: TandemMediaAction, _ positionMs: UInt64?) {
+        guard let (device, player) = activePhonePlayer else { return }
+        sendMedia(action, player: player, to: device.id, positionMs: positionMs)
+    }
+
+    /// The colour of a picture as a whole: drawn down to one pixel, which averages it.
+    nonisolated static func averageColor(of image: NSImage) -> NSColor? {
+        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        var pixel = [UInt8](repeating: 0, count: 4)
+        let drawn = pixel.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(
+                data: buffer.baseAddress, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else { return false }
+            context.interpolationQuality = .high
+            context.draw(cg, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            return true
+        }
+        guard drawn else { return nil }
+        return NSColor(srgbRed: CGFloat(pixel[0]) / 255, green: CGFloat(pixel[1]) / 255, blue: CGFloat(pixel[2]) / 255, alpha: 1)
     }
 
     /// What a phone plays that is worth showing: not what this Mac already plays, such as a phone
@@ -974,18 +1044,33 @@ final class EngineModel {
     /// Keeps a Bluetooth link to the phone while it is out of reach over the network, so
     /// clipboard and notifications still arrive. Two looks in a row must agree first, because a
     /// phone that just dropped off Wi-Fi usually comes straight back.
+    /// Looks for the phone over Bluetooth while it is out of reach over the network: to see that it is in range (and
+    /// say so), and to open a link for clipboard and notifications when the two share a key. Two looks in a row must
+    /// agree first, because a phone that just dropped off Wi-Fi usually comes straight back.
     private func startBleWatch() {
+        bleMessenger.onNearby = { [weak self] id, near in
+            Task { @MainActor in
+                guard let self else { return }
+                if near { self.bleNearby.insert(id) } else { self.bleNearby.remove(id) }
+            }
+        }
         bleWatch?.cancel()
         bleWatch = Task { @MainActor [weak self] in
             var lastOffline: String?
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(3))
                 guard let self, let engine = self.engine else { continue }
-                let on = UserDefaults.standard.object(forKey: "bleMessages") as? Bool ?? true
-                let candidate = on
-                    ? self.devices.first(where: { $0.platform == .android && !$0.online && engine.bleReady(id: $0.id) })?.id
-                    : nil
-                self.bleMessenger.want(phoneId: candidate != nil && candidate == lastOffline ? candidate : nil, engine: engine)
+                let messages = UserDefaults.standard.object(forKey: "bleMessages") as? Bool ?? true
+                // The beacon is also what the hotspot is asked for, so it is looked for when that is switched on.
+                let looking = messages || self.hotspot.autoEnabled
+                let candidate = looking ? self.devices.first(where: { $0.platform == .android && !$0.online })?.id : nil
+                let stable = candidate != nil && candidate == lastOffline ? candidate : nil
+                self.bleMessenger.want(
+                    phoneId: stable,
+                    canLink: messages && stable.map { engine.bleReady(id: $0) } == true,
+                    engine: engine
+                )
+                if stable == nil, !self.bleNearby.isEmpty { self.bleNearby.removeAll() }
                 lastOffline = candidate
             }
         }

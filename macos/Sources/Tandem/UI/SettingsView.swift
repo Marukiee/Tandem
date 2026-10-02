@@ -203,6 +203,11 @@ private struct GeneralSettings: View {
                     LabeledContent("Seen on this Mac") {
                         Text(mediaSeen).foregroundStyle(.secondary)
                     }
+                    DescribedToggle(
+                        "Media keys for your phone's music",
+                        subtitle: "While your phone plays, its music shows in Control Center and in apps that show what plays, and the media keys of your keyboard control it.",
+                        isOn: Binding(get: { model.systemNowPlaying }, set: { model.systemNowPlaying = $0 })
+                    )
                 }
                 DescribedToggle(
                     "Mute this Mac while a phone is its speaker",
@@ -330,8 +335,8 @@ private struct DevicesSettings: View {
             ForEach(model.devices, id: \.id) { device in
                 Section {
                     LabeledContent {
-                        Text(device.connectionText)
-                            .foregroundStyle(device.connectionColor)
+                        Text(model.reach(of: device).text)
+                            .foregroundStyle(model.reach(of: device).color)
                     } label: {
                         HStack(spacing: 10) {
                             DeviceGlyph(platform: device.platform, online: device.online, size: 30)

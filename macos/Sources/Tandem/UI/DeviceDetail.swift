@@ -50,6 +50,8 @@ struct DeviceDetail: View {
 
     // MARK: Header
 
+    private var reach: Reach { model.reach(of: device) }
+
     private var header: some View {
         Card(radius: 32, padding: 22, tint: device.online ? Palette.indigo : nil) {
             HStack(spacing: 20) {
@@ -93,14 +95,14 @@ struct DeviceDetail: View {
                         .contentTransition(.opacity)
                         
                     HStack(spacing: 8) {
-                        Chip(
-                            symbol: device.online ? "checkmark.circle.fill" : (device.ble ? "dot.radiowaves.left.and.right" : "circle.dashed"),
-                            text: device.online ? "Connected" : (device.ble ? "Over Bluetooth" : "Not connected"),
-                            tint: device.online ? .green : (device.ble ? Palette.indigo : .secondary),
-                            strong: device.online || device.ble
-                        )
-                        if let route = device.route, device.online {
-                            Chip(symbol: route.symbol, text: route.label)
+                        Chip(symbol: reach.symbol, text: reach.text, tint: reach.color, strong: reach.reachable)
+                        if device.online {
+                            if usingItsHotspot {
+                                // This Mac is on the phone's hotspot: that says more than the kind of address.
+                                Chip(symbol: "personalhotspot", text: "Via hotspot", tint: Palette.indigo)
+                            } else if let route = device.route {
+                                Chip(symbol: route.symbol, text: route.label)
+                            }
                         }
                         if let rtt = device.rttMs, device.online {
                             Chip(symbol: "speedometer", text: "\(rtt) ms")
@@ -108,14 +110,9 @@ struct DeviceDetail: View {
                     }
                     if device.online {
                         HStack(spacing: 8) {
-                            if let network = device.status.network {
-                                Chip(symbol: networkSymbol(network), text: networkLabel(network))
-                            }
+                            phoneNetworkChips
                             if device.status.dnd == true {
                                 Chip(symbol: "moon.fill", text: "Do not disturb")
-                            }
-                            if device.status.hotspot == true {
-                                Chip(symbol: "personalhotspot", text: "Hotspot on", tint: Palette.indigo)
                             }
                         }
                     } else {
@@ -134,6 +131,39 @@ struct DeviceDetail: View {
         }
     }
 
+    /// This Mac has joined the phone's hotspot, by itself or by hand.
+    private var usingItsHotspot: Bool {
+        if device.platform == .android, case .connected = model.hotspotStatus { return true }
+        return false
+    }
+
+    /// What the phone's own connection is, said as the phone's, because on this page "mobile data" next to a Mac
+    /// reads as the Mac's. While its hotspot is on over mobile data one chip says both: the hotspot is that data.
+    @ViewBuilder
+    private var phoneNetworkChips: some View {
+        let hotspotOn = device.status.hotspot == true
+        if let network = device.status.network {
+            if hotspotOn && network.kind == .cellular {
+                Chip(symbol: "personalhotspot", text: "Hotspot on, sharing mobile data", tint: Palette.indigo)
+            } else {
+                Chip(symbol: networkSymbol(network), text: LocalizedStringKey(phoneNetworkText(network)))
+                if hotspotOn { Chip(symbol: "personalhotspot", text: "Hotspot on", tint: Palette.indigo) }
+            }
+        } else if hotspotOn {
+            Chip(symbol: "personalhotspot", text: "Hotspot on", tint: Palette.indigo)
+        }
+    }
+
+    private func phoneNetworkText(_ network: TandemNetwork) -> String {
+        switch network.kind {
+        case .wifi: network.ssid.map { String(localized: "Phone on \($0)") } ?? String(localized: "Phone on Wi-Fi")
+        case .cellular: network.roaming ? String(localized: "Phone on mobile data (roaming)") : String(localized: "Phone on mobile data")
+        case .ethernet: String(localized: "Phone on Ethernet")
+        case .none: String(localized: "Phone has no network")
+        case .other: String(localized: "Phone on a network")
+        }
+    }
+
     private func networkSymbol(_ network: TandemNetwork) -> String {
         switch network.kind {
         case .wifi: "wifi"
@@ -141,16 +171,6 @@ struct DeviceDetail: View {
         case .ethernet: "cable.connector"
         case .none: "wifi.slash"
         case .other: "network"
-        }
-    }
-
-    private func networkLabel(_ network: TandemNetwork) -> LocalizedStringKey {
-        switch network.kind {
-        case .wifi: network.ssid.map { LocalizedStringKey($0) } ?? "Wi-Fi"
-        case .cellular: network.roaming ? "Mobile data (roaming)" : "Mobile data"
-        case .ethernet: "Ethernet"
-        case .none: "No network"
-        case .other: "Network"
         }
     }
 
@@ -512,10 +532,18 @@ struct HotspotCard: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .transition(.opacity.combined(with: .move(edge: .top)))
-                } else if device.online {
+                } else if ready {
                     Divider().opacity(0.4).padding(.horizontal, 14)
                     HStack {
-                        Text("Need it right now?").font(.callout).foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Need it right now?").font(.callout).foregroundStyle(.secondary)
+                            if !device.online {
+                                // Without a network the request goes over Bluetooth, which only works in range.
+                                Text(model.reach(of: device).reachable ? "Asked over Bluetooth, your phone is in range" : "Asked over Bluetooth, so your phone has to be near")
+                                    .font(.caption)
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
                         Spacer()
                         Button("Turn on hotspot") { model.hotspot.requestNow(device.id) }
                             .buttonStyle(.glass)

@@ -60,6 +60,9 @@ enum class BleState(val code: Int) {
 
     /** The person switched the feature off on the phone. */
     Disabled(8),
+
+    /** What a Mac may use in a day has been used. */
+    RefusedLimit(9),
     ;
 
     companion object {

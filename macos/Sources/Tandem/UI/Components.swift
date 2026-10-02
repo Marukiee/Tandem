@@ -84,10 +84,43 @@ extension TandemRoute {
     }
 }
 
-extension TandemDevice {
-    /// The one word that says whether the device can be reached right now.
-    var connectionText: LocalizedStringKey { online ? "Connected" : (ble ? "Over Bluetooth" : "Not connected") }
-    var connectionColor: Color { online ? .green : (ble ? Palette.indigo : .secondary) }
+/// How a device can be reached right now, best first. Bluetooth is a link that is up, or the beacon of the phone in
+/// range: either way the hotspot can be asked for, which is what matters when there is no network.
+enum Reach {
+    case network, bluetooth, none
+
+    var reachable: Bool { self != .none }
+
+    var text: LocalizedStringKey {
+        switch self {
+        case .network: "Connected"
+        case .bluetooth: "Over Bluetooth"
+        case .none: "Not connected"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .network: .green
+        case .bluetooth: Palette.indigo
+        case .none: .secondary
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .network: "checkmark.circle.fill"
+        case .bluetooth: "dot.radiowaves.left.and.right"
+        case .none: "circle.dashed"
+        }
+    }
+}
+
+extension EngineModel {
+    func reach(of device: TandemDevice) -> Reach {
+        if device.online { return .network }
+        return device.ble || bleNearby.contains(device.id) ? .bluetooth : .none
+    }
 }
 
 /// A device as a round glyph. Connected devices get the accent tint. The green ring is

@@ -62,13 +62,22 @@ class HotspotNotifications(private val context: Context) {
      * Shown for as long as a Mac asked for the hotspot and it is on. With Shizuku the
      * button turns it off; without, it can only take you to the switch.
      */
-    fun postInUse(automatic: Boolean, clients: Int?, usedBytes: Long = 0L) {
+    fun postInUse(automatic: Boolean, clients: Int?, sessionBytes: Long = 0L, todayBytes: Long = 0L) {
         if (!Channels.canPost(context)) return
-        val text = when {
+        val base = when {
             !automatic -> context.getString(R.string.hotspot_in_use_manual)
             clients != null && clients > 0 -> context.getString(R.string.hotspot_in_use_clients, clients)
             else -> context.getString(R.string.hotspot_in_use_auto)
-        } + if (usedBytes > 0) " · " + context.getString(R.string.hotspot_in_use_data, android.text.format.Formatter.formatShortFileSize(context, usedBytes)) else ""
+        }
+        fun size(bytes: Long) = android.text.format.Formatter.formatShortFileSize(context, bytes)
+        // The day is what a person wants to know, so it is the line. The session is under it, when the note is opened.
+        val today = if (todayBytes > 0) context.getString(R.string.hotspot_in_use_today, size(todayBytes)) else null
+        val text = if (today != null) "$base · $today" else base
+        val detail = if (today != null && sessionBytes > 0) {
+            "$base\n$today · ${context.getString(R.string.hotspot_in_use_session, size(sessionBytes))}"
+        } else {
+            text
+        }
         val stop = if (automatic) {
             PendingIntent.getBroadcast(
                 context, 0, Intent(context, HotspotActionReceiver::class.java).setAction(HotspotActionReceiver.STOP),
@@ -83,6 +92,7 @@ class HotspotNotifications(private val context: Context) {
                 .setSmallIcon(R.drawable.ic_stat_tandem)
                 .setContentTitle(context.getString(R.string.hotspot_in_use_title))
                 .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(detail))
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setShowWhen(false)

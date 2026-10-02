@@ -34,20 +34,38 @@ class HotspotPrefs(private val context: Context) {
 
     /** Megabytes a Mac may use in one session before the hotspot switches itself off. 0 is no limit. */
     val dataLimitMb: Flow<Long> = context.hotspotStore.data.map { it[limitKey] ?: 0L }
-    /** Everything the Mac has used over the hotspot, since it was last reset. */
+    /** Everything the Mac has used over the hotspot, since it was last reset by hand. Never reset by itself. */
     val dataUsedBytes: Flow<Long> = context.hotspotStore.data.map { it[usedKey] ?: 0L }
+
+    private val daysKey = androidx.datastore.preferences.core.stringPreferencesKey("data_days")
+    private val sinceKey = androidx.datastore.preferences.core.longPreferencesKey("data_since")
+
+    /** What was used on each day, by date (`2026-10-02`), for the last two months. */
+    val dailyUsage: Flow<Map<String, Long>> = context.hotspotStore.data.map { HotspotUsage.decode(it[daysKey]) }
+
+    /** When counting began, or began again after a reset. Null until something has been counted. */
+    val usageSince: Flow<Long?> = context.hotspotStore.data.map { it[sinceKey] }
 
     suspend fun setDataLimitMb(value: Long) {
         context.hotspotStore.edit { it[limitKey] = value }
     }
 
-    suspend fun addDataUsed(bytes: Long) {
+    /** Adds to the running total and to the day it was used on, in one write, as it is used. */
+    suspend fun addDataUsed(bytes: Long, at: Long = System.currentTimeMillis()) {
         if (bytes <= 0) return
-        context.hotspotStore.edit { it[usedKey] = (it[usedKey] ?: 0L) + bytes }
+        context.hotspotStore.edit { prefs ->
+            prefs[usedKey] = (prefs[usedKey] ?: 0L) + bytes
+            prefs[daysKey] = HotspotUsage.encode(HotspotUsage.add(HotspotUsage.decode(prefs[daysKey]), HotspotUsage.dayKey(at), bytes))
+            if (prefs[sinceKey] == null) prefs[sinceKey] = at
+        }
     }
 
     suspend fun resetDataUsed() {
-        context.hotspotStore.edit { it[usedKey] = 0L }
+        context.hotspotStore.edit {
+            it[usedKey] = 0L
+            it.remove(daysKey)
+            it.remove(sinceKey)
+        }
     }
 }
 

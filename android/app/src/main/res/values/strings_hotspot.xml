@@ -5,6 +5,8 @@
     <string name="hotspot_request_title">Your Mac wants your hotspot</string>
     <string name="hotspot_request_text">Tap to turn it on</string>
     <string name="hotspot_in_use_title">Your Mac is using your hotspot</string>
+    <string name="hotspot_in_use_today">%1$s today</string>
+    <string name="hotspot_in_use_session">%1$s this session</string>
     <string name="hotspot_in_use_auto">It turns off by itself after 5 minutes without devices</string>
     <string name="hotspot_in_use_manual">Turn it off yourself when you are done</string>
     <string name="hotspot_in_use_clients">%1$d connected. It turns off by itself after 5 minutes without devices</string>
@@ -28,6 +30,7 @@
     <string name="hotspot_test_failed">The hotspot did not come on</string>
     <string name="hotspot_test_battery">Refused, the battery is too low</string>
     <string name="hotspot_test_roaming">Refused, you are roaming</string>
+    <string name="hotspot_test_limit">Refused, the data limit for today is reached</string>
 
     <string name="hotspot_roaming">Also while roaming</string>
     <string name="hotspot_roaming_sub">Off by default, data abroad can be expensive</string>

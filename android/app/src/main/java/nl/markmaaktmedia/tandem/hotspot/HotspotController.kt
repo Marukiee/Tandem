@@ -75,10 +75,12 @@ class HotspotController(
     private val macConnected: () -> Boolean,
     /** The hotspot came on or went off: the status the other devices see must follow. */
     private val onStatusChanged: () -> Unit,
-    /** Megabytes a session may use, 0 for no limit. */
+    /** Megabytes a Mac may use in a day, 0 for no limit. */
     private val dataLimitMb: () -> Long = { 0L },
-    /** Called with the bytes a finished stretch of the session used, to add to the running total. */
+    /** Called with the bytes used since the last look, as they are used, to add to the total and to today. */
     private val onDataUsed: (Long) -> Unit = {},
+    /** What was used today so far, by every session of the day. */
+    private val usedToday: () -> Long = { 0L },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val _snapshot = MutableStateFlow(HotspotSnapshot())
@@ -94,10 +96,10 @@ class HotspotController(
     val lastAttempt: StateFlow<HotspotAttempt?> = _lastAttempt.asStateFlow()
 
     private val _sessionBytes = MutableStateFlow(0L)
-    /** What the Mac has used since this hotspot session started. */
+    /** What the Mac has used since this hotspot session started. The day's total is kept by the module. */
     val sessionBytes: StateFlow<Long> = _sessionBytes.asStateFlow()
-    private var meterBase = -1L
-    private var meterCounted = 0L
+    /** The system's mobile byte count at the last look, or below zero while the hotspot is not being counted. */
+    private var lastSample = -1L
 
     // Whether we started it, and whether a Mac asked. A hotspot the person switched on
     // for their own reasons is never turned off behind their back.
@@ -178,6 +180,7 @@ class HotspotController(
             charging = PhoneConditions.charging(context),
             roaming = PhoneConditions.roaming(context),
             allowRoaming = allowRoaming(),
+            limitReached = dataLimitMb() > 0 && usedToday() >= dataLimitMb() * BYTES_PER_MB,
         )
         if (refusal != null) {
             refuse(refusal)
@@ -249,7 +252,9 @@ class HotspotController(
     }
 
     private fun finishOff() {
-        settleMeter()
+        // The last stretch counts too, and the next session starts from nothing.
+        tickMeter()
+        lastSample = -1L
         startedByUs = false
         askedFor = false
         idle.reset()
@@ -257,14 +262,19 @@ class HotspotController(
         publish(HotspotSnapshot(Phase.Off))
     }
 
-    /** Adds what this stretch used to the running total and starts the next one from zero. */
-    private fun settleMeter() {
-        if (meterBase < 0) return
-        val used = (PhoneConditions.mobileBytes() - meterBase).coerceAtLeast(0L)
-        val fresh = used - meterCounted
-        if (fresh > 0) onDataUsed(fresh)
-        meterBase = -1L
-        meterCounted = 0L
+    /**
+     * Counts what moved since the last look, at once: into the total and into today. Nothing waits for the end of a
+     * session, so a session cut short (the app restarted, the hotspot switched off by hand) loses at most the seconds
+     * since the last look, and nothing is ever started over.
+     */
+    private fun tickMeter() {
+        val now = PhoneConditions.mobileBytes()
+        val fresh = HotspotUsage.delta(lastSample, now)
+        lastSample = now
+        if (fresh > 0) {
+            _sessionBytes.value += fresh
+            onDataUsed(fresh)
+        }
     }
 
     private fun refuse(refusal: Refusal) {
@@ -295,17 +305,15 @@ class HotspotController(
     private fun watchOn() {
         if (watching?.isActive == true) return
         watching = scope.launch {
-            if (meterBase < 0) {
-                meterBase = PhoneConditions.mobileBytes()
-                meterCounted = 0L
+            if (lastSample < 0) {
+                lastSample = PhoneConditions.mobileBytes()
                 _sessionBytes.value = 0L
             }
             while (_snapshot.value.phase == Phase.On) {
-                val used = (PhoneConditions.mobileBytes() - meterBase).coerceAtLeast(0L)
-                _sessionBytes.value = used
-                val limit = dataLimitMb() * 1_048_576L
-                if (limit > 0 && used >= limit && (startedByUs || askedFor)) {
-                    Log.i(TAG, "data limit reached: $used of $limit bytes")
+                tickMeter()
+                val limit = dataLimitMb() * BYTES_PER_MB
+                if (limit > 0 && usedToday() >= limit && (startedByUs || askedFor)) {
+                    Log.i(TAG, "daily data limit reached: ${usedToday()} of $limit bytes")
                     notifications.postLimitReached(dataLimitMb())
                     turnOff()
                     return@launch
@@ -314,7 +322,12 @@ class HotspotController(
                 val clients = if (automatic && startedByUs) shizuku.status().clients else null
                 _snapshot.update { if (it.phase == Phase.On) it.copy(clients = clients) else it }
 
-                if (askedFor) notifications.postInUse(automatic = automatic && startedByUs, clients = clients, usedBytes = _sessionBytes.value)
+                if (askedFor) {
+                    notifications.postInUse(
+                        automatic = automatic && startedByUs, clients = clients,
+                        sessionBytes = _sessionBytes.value, todayBytes = usedToday(),
+                    )
+                }
 
                 if (startedByUs && automatic) {
                     val inUse = clients?.let { it > 0 } ?: macConnected()
@@ -374,6 +387,7 @@ class HotspotController(
         private const val STOP_WAIT_MS = 10_000L
         private const val TAP_WAIT_MS = 3 * 60_000L
         private const val POLL_MS = 1_000L
+        private const val BYTES_PER_MB = 1_048_576L
         private const val WATCH_MS = 15_000L
         private const val WATCH_METERED_MS = 5_000L
         private const val SETTLE_MS = 30_000L

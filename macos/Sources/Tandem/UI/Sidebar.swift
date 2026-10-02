@@ -137,18 +137,20 @@ private struct DevicesHeader: View {
 }
 
 private struct DeviceRow: View {
+    @Environment(EngineModel.self) private var model
     let device: TandemDevice
 
     var body: some View {
+        let reach = model.reach(of: device)
         Hoverable { hovering in
             HStack(spacing: 11) {
                 DeviceGlyph(platform: device.platform, online: device.online, size: 38, deviceID: device.id)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(device.name).font(.callout.weight(.semibold)).lineLimit(1)
                     HStack(spacing: 4) {
-                        Text(device.connectionText)
+                        Text(reach.text)
                             .font(.caption.weight(.medium))
-                            .foregroundStyle(device.connectionColor)
+                            .foregroundStyle(reach.color)
                         if device.online, let rtt = device.rttMs {
                             Text("· \(rtt) ms").font(.caption).foregroundStyle(.secondary)
                         }
@@ -169,8 +171,9 @@ private struct DeviceRow: View {
         }
         .padding(.vertical, 3)
         // Not reachable: the whole row steps back, so the connected ones stand out.
-        .opacity(device.online || device.ble ? 1 : 0.6)
+        .opacity(reach.reachable ? 1 : 0.6)
         .animation(.tandem, value: device.online)
+        .animation(.tandem, value: reach.reachable)
     }
 }
 
