@@ -14,9 +14,11 @@ class InstallResultReceiver : BroadcastReceiver() {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION")
                 val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-                confirm?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)?.let { context.startActivity(it) }
+                // Android only lets the screen with the question open over an app that is in front. The updater knows
+                // whether that is so, and otherwise keeps the question for when the person comes back.
+                if (confirm != null) context.graph.updater.onConfirmationNeeded(confirm)
             }
-            PackageInstaller.STATUS_SUCCESS -> Unit
+            PackageInstaller.STATUS_SUCCESS -> context.graph.updater.clearConfirmation()
             PackageInstaller.STATUS_FAILURE_ABORTED ->
                 context.graph.updater.reportInstallFailure(context.getString(R.string.update_reason_cancelled))
             else -> {

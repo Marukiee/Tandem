@@ -28,6 +28,12 @@ sealed interface UpdateState {
     /** Handed to the installer, which is showing its own confirmation or working. */
     data class Installing(val release: ReleaseInfo) : UpdateState
 
+    /**
+     * The installer is waiting for a tap and Android did not let it ask: the app was not in front. The banner has the
+     * button, and a notification says so as well.
+     */
+    data class AwaitingConfirmation(val release: ReleaseInfo) : UpdateState
+
     /** [release] is set when trying again can pick up where it stopped, without asking GitHub again. */
     data class Failed(val reason: String, val release: ReleaseInfo? = null) : UpdateState
 }

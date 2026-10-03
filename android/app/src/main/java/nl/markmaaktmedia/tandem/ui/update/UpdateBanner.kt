@@ -67,6 +67,7 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
         is UpdateState.ReadyToInstall -> s.release
         is UpdateState.NeedsPermission -> s.release
         is UpdateState.Installing -> s.release
+        is UpdateState.AwaitingConfirmation -> s.release
         else -> null
     }
     val failed = state as? UpdateState.Failed
@@ -74,6 +75,8 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
     // Back from the "install unknown apps" screen with the switch on: carry on where it stopped.
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
         scope.launch { updater.resumeAfterPermission() }
+        // An update that finished downloading while the app was out of sight asks its question now.
+        updater.resumeConfirmation()
     }
     val visible = failed != null || (release != null && release.tag != dismissed)
 
@@ -108,13 +111,17 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                                 style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis,
                             )
                             Text(
-                                if (state is UpdateState.NeedsPermission) stringResource(R.string.update_needs_permission)
-                                else stringResource(R.string.update_on_version, BuildConfig.VERSION_NAME),
+                                when (state) {
+                                    is UpdateState.NeedsPermission -> stringResource(R.string.update_needs_permission)
+                                    is UpdateState.AwaitingConfirmation -> stringResource(R.string.update_confirm_hint)
+                                    else -> stringResource(R.string.update_on_version, BuildConfig.VERSION_NAME)
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
                         when (val s = state) {
                             is UpdateState.Downloading, is UpdateState.Installing -> PillSpinner(size = 24.dp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            is UpdateState.AwaitingConfirmation -> PrimaryPillButton(stringResource(R.string.update_install), { updater.launchConfirmation() })
                             is UpdateState.ReadyToInstall -> PrimaryPillButton(stringResource(R.string.update_install), { scope.launch { updater.install(s.release, java.io.File(s.filePath)) } })
                             is UpdateState.NeedsPermission -> PrimaryPillButton(stringResource(R.string.update_allow), { updater.openInstallPermissionSettings() })
                             else -> PrimaryPillButton(stringResource(R.string.update_download), { scope.launch { updater.downloadAndInstall(release) } })

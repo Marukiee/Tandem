@@ -245,7 +245,12 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
         ) {
             Column {
                 Spacer(Modifier.height(Gap))
-                MediaControls(onKey = { link.send(TandemInput.Media(it)) })
+                val remote by graph.media.remote.collectAsState()
+                MediaControls(
+                    onKey = { link.send(TandemInput.Media(it)) },
+                    playing = remote[id]?.players?.let { list -> list.any { it.playing } },
+                    muted = device?.status?.muted == true,
+                )
             }
         }
 

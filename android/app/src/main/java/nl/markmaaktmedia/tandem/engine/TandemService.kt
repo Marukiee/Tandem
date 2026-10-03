@@ -47,9 +47,11 @@ class TandemService : LifecycleService() {
         Channels.create(this)
         startForeground(NOTIFICATION_ID, foregroundNotification(emptyList()), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
 
-        // mDNS needs multicast packets, which Wi-Fi drops to save power unless asked.
+        // mDNS needs multicast packets, which Wi-Fi drops to save power unless asked. Asking costs power all day long,
+        // on a busy network more than anything else Tandem does, so it is only asked for while a paired device is
+        // missing and has to be found (see the collector of the device list below).
         multicast = getSystemService(WifiManager::class.java)
-            .createMulticastLock("tandem").apply { setReferenceCounted(false); acquire() }
+            .createMulticastLock("tandem").apply { setReferenceCounted(false) }
 
         val host = graph.host
         host.start()
@@ -62,6 +64,11 @@ class TandemService : LifecycleService() {
 
         lifecycleScope.launch {
             host.devices.collectLatest { devices ->
+                // Everything paired is here: nobody to look for, so the Wi-Fi may filter multicast again.
+                val missing = devices.any { !it.online }
+                multicast?.let { lock ->
+                    if (missing && !lock.isHeld) lock.acquire() else if (!missing && lock.isHeld) lock.release()
+                }
                 val online = devices.filter { it.online }.map { it.name }
                 getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, foregroundNotification(online))
                 ShareShortcuts.update(this@TandemService, devices)
@@ -85,7 +92,7 @@ class TandemService : LifecycleService() {
         listenerWatchdog.stop()
         graph.media.stop()
         graph.audio.stop(tell = true)
-        multicast?.release()
+        multicast?.takeIf { it.isHeld }?.release()
         FindPhone.stop()
         super.onDestroy()
     }

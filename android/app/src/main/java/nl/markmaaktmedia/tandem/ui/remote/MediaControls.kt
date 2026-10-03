@@ -39,13 +39,20 @@ val MouseHeight = 56.dp
  * button is the same size: the play button used to be bigger, which made the row look
  * like a mistake. It keeps its accent colour, that is enough to find it.
  *
- * The Mac does not report whether something is playing, so the icon follows the
- * presses instead: each press flips it, which is right until the Mac and the phone
- * disagree once, and then a single press puts them back in step.
+ * [playing] and [muted] are what the other device says, and the buttons show it: play is lit while it plays, mute while
+ * the sound is off, and both follow when it changes on the other side. Without a report for play (nothing to ask) the
+ * icon follows the presses instead: each press flips it, which is right until the two disagree once, and then a single
+ * press puts them back in step.
  */
 @Composable
-fun MediaControls(onKey: (TandemMediaKey) -> Unit, modifier: Modifier = Modifier) {
-    var playing by remember { mutableStateOf(false) }
+fun MediaControls(
+    onKey: (TandemMediaKey) -> Unit,
+    modifier: Modifier = Modifier,
+    playing: Boolean? = null,
+    muted: Boolean = false,
+) {
+    var guess by remember { mutableStateOf(false) }
+    val lit = playing ?: guess
 
     val items = listOf(
         MediaItem(TandemMediaKey.MUTE, { TandemIcons.VolumeOff }, R.string.remote_media_mute),
@@ -63,12 +70,12 @@ fun MediaControls(onKey: (TandemMediaKey) -> Unit, modifier: Modifier = Modifier
                 press = rememberPressState(),
                 height = MediaHeight,
                 joins = Joins.row(index, items.size),
-                colors = if (isPlay) GroupTone.accent() else GroupTone.neutral(),
+                colors = toneOf(item.key, playing = lit, muted = muted),
                 modifier = Modifier.weight(1f),
                 description = stringResource(item.label),
                 onUp = { inside ->
                     if (inside) {
-                        if (isPlay) playing = !playing
+                        if (isPlay) guess = !guess
                         onKey(item.key)
                     }
                 },
@@ -78,7 +85,7 @@ fun MediaControls(onKey: (TandemMediaKey) -> Unit, modifier: Modifier = Modifier
                     // The glyph swaps with a springy scale and a quick fade, so it reads as
                     // the same button changing its mind rather than two icons cut together.
                     AnimatedContent(
-                        targetState = playing,
+                        targetState = lit,
                         transitionSpec = {
                             (scaleIn(TandemMotion.springy(), initialScale = 0.4f) + fadeIn(TandemMotion.fadeSpec())) togetherWith
                                 (scaleOut(TandemMotion.springy(), targetScale = 0.4f) + fadeOut(TandemMotion.fadeSpec()))
@@ -98,6 +105,17 @@ fun MediaControls(onKey: (TandemMediaKey) -> Unit, modifier: Modifier = Modifier
 private class MediaItem(val key: TandemMediaKey, val icon: (@Composable () -> Painter)?, val label: Int)
 
 /**
+ * What a button looks like at rest. The two that are an on and an off say which they are: play is lit while the music
+ * plays, mute while the sound is off. Volume, previous and next are not a state, so they stay as they were.
+ */
+@Composable
+private fun toneOf(key: TandemMediaKey, playing: Boolean, muted: Boolean): GroupColors = when (key) {
+    TandemMediaKey.PLAY_PAUSE -> if (playing) GroupTone.selected() else GroupTone.accent()
+    TandemMediaKey.MUTE -> if (muted) GroupTone.selected() else GroupTone.neutral()
+    else -> GroupTone.neutral()
+}
+
+/**
  * The trackpad's media buttons, for a player that reports what it is doing: mute, volume down, previous, play or pause,
  * next and volume up, joined the same way. Previous, play and next press the player's own buttons, and the play button
  * shows what a press will do, because the player says whether it plays. Volume and mute are the Mac's and go out as the
@@ -113,6 +131,7 @@ fun PlayerControls(
     onNext: () -> Unit,
     onKey: (TandemMediaKey) -> Unit,
     modifier: Modifier = Modifier,
+    muted: Boolean = false,
 ) {
     val items = listOf(
         MediaItem(TandemMediaKey.MUTE, { TandemIcons.VolumeOff }, R.string.remote_media_mute),
@@ -136,7 +155,7 @@ fun PlayerControls(
                 press = rememberPressState(),
                 height = MediaHeight,
                 joins = Joins.row(index, items.size),
-                colors = if (isPlay) GroupTone.accent() else GroupTone.neutral(),
+                colors = toneOf(item.key, playing = playing, muted = muted),
                 modifier = Modifier.weight(1f).graphicsLayer { alpha = dim },
                 description = stringResource(item.label),
                 onUp = { inside ->

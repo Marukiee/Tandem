@@ -357,5 +357,13 @@
     <string name="audio_stop">Stop</string>
     <string name="channel_audio">Geluid van je Mac</string>
     <string name="channel_audio_desc">Zichtbaar zolang je Mac zijn geluid via deze telefoon afspeelt</string>
+    <string name="media_idle_title">Er speelt niets</string>
+    <string name="media_idle_hint">Druk op afspelen om iets te starten</string>
+    <string name="update_confirm_title">Rond de update af</string>
+    <string name="update_confirm_hint">Android wil dat je bevestigt</string>
+    <string name="update_ready_title">Tandem %1$s staat klaar om te installeren</string>
+    <string name="update_ready_text">Tik om de update af te ronden</string>
+    <string name="channel_update">App-updates</string>
+    <string name="channel_update_desc">Meldt wanneer een nieuwe versie van Tandem klaarstaat</string>
     <string name="audio_test_name">de testtoon</string>
 </resources>

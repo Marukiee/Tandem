@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -71,7 +72,9 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemMediaAction
+import uniffi.tandem_core.TandemMediaKey
 import uniffi.tandem_core.TandemMediaPlayer
+import uniffi.tandem_core.TandemPlatform
 import uniffi.tandem_core.tandemMediaVisible
 
 /** What is on the other device, kept after it stops so the card can leave the way it came. */
@@ -82,8 +85,10 @@ private class Playing(val players: List<TandemMediaPlayer>, val entry: RemotePla
  * phone already plays are left out, so a phone that only remote controls the Mac's Spotify does
  * not show it twice.
  *
- * The section opens when something starts and closes when it stops, and keeps the last thing it
- * showed while it closes, so the card fades out whole instead of emptying first.
+ * A computer that can be reached always has its player here, also when nothing plays: the bar and
+ * the buttons stay, and play then presses the play key of the computer, which starts whatever played
+ * last. For other devices the section opens when something starts and closes when it stops, and keeps
+ * the last thing it showed while it closes, so the card fades out whole instead of emptying first.
  */
 @Composable
 fun NowPlayingSection(device: TandemDevice) {
@@ -98,6 +103,21 @@ fun NowPlayingSection(device: TandemDevice) {
         if (share && entry != null && reachable) tandemMediaVisible(local, entry.players) else emptyList()
     }
     val current = if (entry != null && shown.isNotEmpty()) Playing(shown, entry) else null
+
+    if (reachable && (device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.WINDOWS)) {
+        val muted = device.status.muted == true
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            SectionHeader(stringResource(R.string.media_now_playing), top = 12.dp, bottom = 0.dp)
+            if (current == null) {
+                PlayerCard(device.id, null, null, null, muted)
+            } else {
+                current.players.forEach { player ->
+                    key(player.id) { PlayerCard(device.id, player, current.entry, covers[player.art.toLong()], muted) }
+                }
+            }
+        }
+        return
+    }
 
     val last = remember { mutableStateOf<Playing?>(null) }
     if (current != null) last.value = current
@@ -115,24 +135,31 @@ fun NowPlayingSection(device: TandemDevice) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SectionHeader(stringResource(R.string.media_now_playing), top = 12.dp, bottom = 0.dp)
             content.players.forEach { player ->
-                key(player.id) { PlayerCard(device.id, player, content.entry, covers[player.art.toLong()]) }
+                key(player.id) { PlayerCard(device.id, player, content.entry, covers[player.art.toLong()], device.status.muted == true) }
             }
         }
     }
 }
 
+/** [player] is null while nothing plays: the card is then the empty player, with the buttons that still make sense. */
 @Composable
-private fun PlayerCard(deviceId: String, player: TandemMediaPlayer, entry: RemotePlayers, cover: Bitmap?) {
+private fun PlayerCard(deviceId: String, player: TandemMediaPlayer?, entry: RemotePlayers?, cover: Bitmap?, muted: Boolean) {
     val media = LocalContext.current.graph.media
-    Column(
-        Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Cover(cover, playing = player.playing)
+    // The side padding is on the rows, not on the card: the seek bar takes the whole width, because its touch area
+    // reaches past the bar to the edges of the card.
+    Column(Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).padding(vertical = 16.dp)) {
+        Row(
+            Modifier.padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Cover(cover, playing = player?.playing == true)
             // A new track slides its text in from below and the old one up and out, so a skip is seen.
+            val idleTitle = stringResource(R.string.media_idle_title)
+            val idleHint = stringResource(R.string.media_idle_hint)
             AnimatedContent(
-                targetState = player.title to listOf(player.artist, player.app).filter { it.isNotBlank() }.joinToString(" · "),
+                targetState = if (player == null) idleTitle to idleHint
+                else player.title to listOf(player.artist, player.app).filter { it.isNotBlank() }.joinToString(" · "),
                 modifier = Modifier.weight(1f),
                 transitionSpec = {
                     (fadeIn(TandemMotion.fadeSpec()) + slideInVertically(TandemMotion.spatial()) { it / 3 }) togetherWith
@@ -151,35 +178,45 @@ private fun PlayerCard(deviceId: String, player: TandemMediaPlayer, entry: Remot
             }
         }
 
-        val duration = player.durationMs?.toLong() ?: 0L
-        val start = player.positionMs?.toLong()
-        if (duration > 0 && start != null) {
-            // The position is only sent when something changes, so it is counted on from there while it plays.
-            val now by produceState(SystemClock.elapsedRealtime(), player.playing, entry) {
-                while (player.playing) {
-                    value = SystemClock.elapsedRealtime()
-                    delay(500)
-                }
+        val duration = player?.durationMs?.toLong() ?: 0L
+        val start = player?.positionMs?.toLong()
+        val seekable = player != null && entry != null && duration > 0 && start != null
+        // The bar is always there, so the card does not change shape when music starts. It brings 12dp of touch area
+        // above and below it, so it asks 12dp less of the gap around it.
+        Spacer(Modifier.height(2.dp))
+        // The position is only sent when something changes, so it is counted on from there while it plays.
+        val playingNow = player?.playing == true
+        val now by produceState(SystemClock.elapsedRealtime(), playingNow, entry) {
+            while (playingNow) {
+                value = SystemClock.elapsedRealtime()
+                delay(500)
             }
-            val natural = ((start + if (player.playing) (now - entry.at) else 0L).toFloat() / duration).coerceIn(0f, 1f)
-            SeekBar(
-                fraction = natural,
-                duration = duration,
-                enabled = player.canSeek,
-                playing = player.playing,
-                report = entry.at,
-                onSeek = { target -> media.commandMac(deviceId, player.id, TandemMediaAction.SEEK, (target * duration).toLong()) },
-            )
         }
+        val natural = if (seekable) ((start!! + if (playingNow) (now - entry!!.at) else 0L).toFloat() / duration).coerceIn(0f, 1f) else 0f
+        SeekBar(
+            fraction = natural,
+            duration = duration,
+            enabled = seekable && player!!.canSeek,
+            playing = playingNow,
+            report = entry?.at ?: 0L,
+            onSeek = { target -> if (player != null) media.commandMac(deviceId, player.id, TandemMediaAction.SEEK, (target * duration).toLong()) },
+        )
+        Spacer(Modifier.height(2.dp))
 
         // The trackpad's buttons, with volume: the Mac's own keys for that, the player's own for the rest.
         PlayerControls(
-            playing = player.playing,
-            canPrevious = player.canPrev,
-            canNext = player.canNext,
-            onPrevious = { media.commandMac(deviceId, player.id, TandemMediaAction.PREVIOUS) },
-            onToggle = { media.commandMac(deviceId, player.id, TandemMediaAction.TOGGLE) },
-            onNext = { media.commandMac(deviceId, player.id, TandemMediaAction.NEXT) },
+            modifier = Modifier.padding(horizontal = 16.dp),
+            playing = player?.playing == true,
+            muted = muted,
+            canPrevious = player?.canPrev == true,
+            canNext = player?.canNext == true,
+            onPrevious = { if (player != null) media.commandMac(deviceId, player.id, TandemMediaAction.PREVIOUS) },
+            // Nothing playing: the play key of the computer, which starts whatever played last.
+            onToggle = {
+                if (player != null) media.commandMac(deviceId, player.id, TandemMediaAction.TOGGLE)
+                else media.pressMacKey(deviceId, TandemMediaKey.PLAY_PAUSE)
+            },
+            onNext = { if (player != null) media.commandMac(deviceId, player.id, TandemMediaAction.NEXT) },
             onKey = { media.pressMacKey(deviceId, it) },
         )
     }
@@ -237,55 +274,61 @@ private fun SeekBar(fraction: Float, duration: Long, enabled: Boolean, playing: 
         TandemMotion.colourSpec(), label = "seekFill",
     )
 
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(28.dp)
-                .pointerInput(enabled) {
-                    if (!enabled) return@pointerInput
-                    detectTapGestures { offset ->
-                        val target = (offset.x / size.width).coerceIn(0f, 1f)
-                        held = Triple(target, SystemClock.elapsedRealtime(), latestReport)
-                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                        latestSeek(target)
-                    }
+    // The strip is as wide as the card and 12dp taller than the bar and its times on both sides, and all of it takes
+    // the finger. The bar itself is inset by the card's padding, so a touch maps onto the bar, not onto the strip.
+    val inset = 16.dp
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                val edge = inset.toPx()
+                fun along(x: Float) = ((x - edge) / (size.width - 2 * edge).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                detectTapGestures { offset ->
+                    val target = along(offset.x)
+                    held = Triple(target, SystemClock.elapsedRealtime(), latestReport)
+                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    latestSeek(target)
                 }
-                .pointerInput(enabled) {
-                    if (!enabled) return@pointerInput
-                    detectHorizontalDragGestures(
-                        onDragStart = { offset ->
-                            drag = (offset.x / size.width).coerceIn(0f, 1f)
-                            haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                        },
-                        onDragEnd = {
-                            drag?.let { target ->
-                                held = Triple(target, SystemClock.elapsedRealtime(), latestReport)
-                                haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                                latestSeek(target)
-                            }
-                            drag = null
-                        },
-                        onDragCancel = { drag = null },
-                    ) { change, _ ->
-                        change.consume()
-                        drag = (change.position.x / size.width).coerceIn(0f, 1f)
-                    }
-                },
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            Canvas(Modifier.fillMaxWidth().height(28.dp)) {
-                val h = thickness.toPx()
-                val top = (size.height - h) / 2
-                drawRoundRect(track, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2))
-                drawRoundRect(primary, Offset(0f, top), Size(maxOf(h, size.width * shown), h), CornerRadius(h / 2))
-                if (knob > 0.01f) drawCircle(primary, radius = 9.dp.toPx() * knob, center = Offset((size.width * shown).coerceIn(9.dp.toPx(), size.width - 9.dp.toPx()), size.height / 2))
             }
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
+                val edge = inset.toPx()
+                fun along(x: Float) = ((x - edge) / (size.width - 2 * edge).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        drag = along(offset.x)
+                        haptics.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                    },
+                    onDragEnd = {
+                        drag?.let { target ->
+                            held = Triple(target, SystemClock.elapsedRealtime(), latestReport)
+                            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                            latestSeek(target)
+                        }
+                        drag = null
+                    },
+                    onDragCancel = { drag = null },
+                ) { change, _ ->
+                    change.consume()
+                    drag = along(change.position.x)
+                }
+            },
+    ) {
+        Spacer(Modifier.height(12.dp))
+        Canvas(Modifier.fillMaxWidth().padding(horizontal = inset).height(28.dp)) {
+            val h = thickness.toPx()
+            val top = (size.height - h) / 2
+            drawRoundRect(track, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2))
+            drawRoundRect(primary, Offset(0f, top), Size(maxOf(h, size.width * shown), h), CornerRadius(h / 2))
+            if (knob > 0.01f) drawCircle(primary, radius = 9.dp.toPx() * knob, center = Offset((size.width * shown).coerceIn(9.dp.toPx(), size.width - 9.dp.toPx()), size.height / 2))
         }
-        Row(Modifier.fillMaxWidth()) {
+        Spacer(Modifier.height(2.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = inset)) {
             Text(clock((shown * duration).toLong()), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
             Text(clock(duration), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        Spacer(Modifier.height(12.dp))
     }
 }
 

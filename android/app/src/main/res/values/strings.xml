@@ -324,6 +324,14 @@
     <string name="update_reason_damaged">The download is damaged (the checksum does not match)</string>
     <string name="update_reason_installer">The installer could not finish</string>
     <string name="update_reason_cancelled">The installation was cancelled</string>
+    <string name="media_idle_title">Nothing playing</string>
+    <string name="media_idle_hint">Press play to start something</string>
+    <string name="update_confirm_title">Finish the update</string>
+    <string name="update_confirm_hint">Android wants you to confirm</string>
+    <string name="update_ready_title">Tandem %1$s is ready to install</string>
+    <string name="update_ready_text">Tap to finish the update</string>
+    <string name="channel_update">App updates</string>
+    <string name="channel_update_desc">Says when a new version of Tandem is ready to install</string>
     <string name="settings_ble_messages">Bluetooth without a network</string>
     <string name="settings_ble_messages_sub">Clipboard and notifications still reach your Mac over Bluetooth when there is no Wi-Fi</string>
     <string name="status_bluetooth">Bluetooth</string>

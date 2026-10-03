@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -76,6 +77,11 @@ fun AppRoot() {
     // Once set up, the background service keeps the engine alive whatever the screens do.
     LaunchedEffect(onboarded) {
         if (onboarded == true) TandemService.start(context)
+    }
+    // A cold start: the answer to "has the person set up the app" comes a moment after the screen is up, which is
+    // after the effect below has already seen the app come to the front, so that one skips this start.
+    LaunchedEffect(onboarded) {
+        if (onboarded == true) graph.updater.checkIfDue()
     }
     // Every time the app comes to the front, so a release from an hour ago is not missed
     // just because the process has been alive for days.
@@ -205,6 +211,7 @@ private fun HomeTabs(nav: Nav) {
         PillNavItem(stringResource(R.string.tab_settings), { TandemIcons.Settings }, { TandemIcons.SettingsFilled }),
     )
     val barSpace = 66.dp + 24.dp
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     Box(Modifier.fillMaxSize()) {
         AnimatedContent(
@@ -225,7 +232,19 @@ private fun HomeTabs(nav: Nav) {
         PillNavigationBar(
             items = items,
             selectedIndex = nav.tab,
-            onSelect = { nav.tab = it },
+            onSelect = { next ->
+                val left = nav.tab
+                nav.tab = next
+                if (next != left) {
+                    // The page that was left starts from the top the next time. Not at once: it is still sliding
+                    // out of sight, and it would jump on the way. A page opened from inside the tab and closed
+                    // again never comes through here, so that one keeps its place.
+                    scope.launch {
+                        delay(500)
+                        if (nav.tab != left) nav.listOf(left).scrollToItem(0)
+                    }
+                }
+            },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
         )
     }

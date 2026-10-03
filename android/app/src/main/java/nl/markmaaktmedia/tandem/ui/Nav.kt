@@ -26,10 +26,18 @@ class Nav {
     var tab by mutableIntStateOf(0)
 
     // The scroll position of each home tab lives here, not in the tab: a page opened from a tab
-    // takes the tab out of the composition, and coming back must not start from the top.
+    // takes the tab out of the composition, and coming back must not start from the top. Switching
+    // to another tab is leaving the page for good, and that one does start from the top next time
+    // (see HomeTabs).
     val devicesList = androidx.compose.foundation.lazy.LazyListState()
     val transfersList = androidx.compose.foundation.lazy.LazyListState()
     val settingsList = androidx.compose.foundation.lazy.LazyListState()
+
+    fun listOf(tab: Int) = when (tab) {
+        0 -> devicesList
+        1 -> transfersList
+        else -> settingsList
+    }
 
     val top: Route get() = stack.last()
 

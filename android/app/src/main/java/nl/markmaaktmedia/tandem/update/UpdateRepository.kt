@@ -1,5 +1,6 @@
 package nl.markmaaktmedia.tandem.update
 
+import android.app.ActivityManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -19,6 +20,7 @@ import kotlinx.coroutines.withContext
 import nl.markmaaktmedia.tandem.BuildConfig
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.data.TandemPrefs
+import nl.markmaaktmedia.tandem.engine.Channels
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -67,7 +69,7 @@ class UpdateRepository(
     suspend fun check(manual: Boolean = true): ReleaseInfo? {
         // A check must not wipe a download or install that is under way.
         when (val busy = _state.value) {
-            is UpdateState.Downloading, is UpdateState.Installing, is UpdateState.NeedsPermission ->
+            is UpdateState.Downloading, is UpdateState.Installing, is UpdateState.NeedsPermission, is UpdateState.AwaitingConfirmation ->
                 return null
             is UpdateState.ReadyToInstall -> return busy.release
             else -> Unit
@@ -304,7 +306,74 @@ class UpdateRepository(
 
     /** The installer said no, or the person backed out of its screen. */
     fun reportInstallFailure(reason: String) {
+        clearConfirmation()
         _state.value = UpdateState.Failed(reason, current)
+    }
+
+    /** The screen of the installer that asks "Update this app?", kept until the person has answered it. */
+    @Volatile private var pendingConfirmation: Intent? = null
+    @Volatile private var confirmationShown = false
+
+    /**
+     * The installer wants a tap. If the app is in front the question opens at once. If it is not (the download took a
+     * while and the person went elsewhere), Android blocks a screen opening over another app without a word, so the
+     * question waits: a notification says the update is ready, and the banner has the button when the app is open.
+     */
+    fun onConfirmationNeeded(confirm: Intent) {
+        pendingConfirmation = confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        confirmationShown = false
+        val release = current
+        if (release != null) _state.value = UpdateState.AwaitingConfirmation(release)
+        if (appIsInFront()) {
+            launchConfirmation()
+        } else {
+            notifyReady(confirm, release)
+        }
+    }
+
+    /** Opens the installer's question. Called from a tap, or when the app comes to the front with one waiting. */
+    fun launchConfirmation() {
+        val confirm = pendingConfirmation ?: return
+        confirmationShown = true
+        clearNotification()
+        runCatching { context.startActivity(confirm) }.onFailure { Log.w(TAG, "could not open the installer", it) }
+    }
+
+    /** The app came to the front: a question that has been waiting is asked now, once. */
+    fun resumeConfirmation() {
+        if (pendingConfirmation != null && !confirmationShown && _state.value is UpdateState.AwaitingConfirmation) launchConfirmation()
+    }
+
+    fun clearConfirmation() {
+        pendingConfirmation = null
+        confirmationShown = false
+        clearNotification()
+    }
+
+    /** True when something of this app is on the screen. A foreground service does not count: it is not seen. */
+    private fun appIsInFront(): Boolean {
+        val info = ActivityManager.RunningAppProcessInfo()
+        ActivityManager.getMyMemoryState(info)
+        return info.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+    }
+
+    private fun notifyReady(confirm: Intent, release: ReleaseInfo?) {
+        if (!Channels.canPost(context)) return
+        val open = PendingIntent.getActivity(context, NOTIFICATION_ID, confirm, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val notification = androidx.core.app.NotificationCompat.Builder(context, Channels.UPDATE)
+            .setSmallIcon(R.drawable.ic_stat_tandem)
+            .setContentTitle(context.getString(R.string.update_ready_title, release?.versionName.orEmpty()))
+            .setContentText(context.getString(R.string.update_ready_text))
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        runCatching {
+            androidx.core.app.NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun clearNotification() {
+        runCatching { androidx.core.app.NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID) }
     }
 
     fun cleanUpOldDownloads(keepFileName: String? = null) {
@@ -317,6 +386,7 @@ class UpdateRepository(
         const val TAG = "UpdateRepository"
         const val APK_NAME = "Tandem.apk"
         private const val PREVIEW_TAG = "preview"
+        private const val NOTIFICATION_ID = 4017
 
         /** Every time the app is opened, at most once a minute so switching back and forth does not hammer GitHub. */
         const val CHECK_INTERVAL_MS = 60 * 1000L

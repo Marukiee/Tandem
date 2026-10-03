@@ -25,7 +25,8 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
  * look right instead of only the one that was designed for.
  *
  * The ripple stays. It is what tells you where the touch landed, and losing it for
- * the sake of the scale would trade information for polish.
+ * the sake of the scale would trade information for polish. It covers the element at its
+ * full size while the content dips, so a row in a slab is lit edge to edge.
  */
 fun Modifier.bouncyClickable(
     enabled: Boolean = true,
@@ -45,10 +46,10 @@ fun Modifier.bouncyClickable(
         label = "pressScale",
     )
 
-    graphicsLayer {
-        scaleX = scale
-        scaleY = scale
-    }.clickable(
+    // The press feedback comes first and the dip after it. The other way round, the highlight dipped with the
+    // content and stopped short of the edges of the row it sat in, and the part of the row that was pressed
+    // shrank under the finger.
+    clickable(
         interactionSource = interactionSource,
         indication = ripple(),
         enabled = enabled,
@@ -57,5 +58,8 @@ fun Modifier.bouncyClickable(
     ) {
         if (withHaptics) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         onClick()
+    }.graphicsLayer {
+        scaleX = scale
+        scaleY = scale
     }
 }

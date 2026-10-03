@@ -379,6 +379,8 @@ fun <T> SwipeToDelete(
     var armed by remember(key) { mutableStateOf(false) }
     var removed by remember(key) { mutableStateOf(false) }
     var widthPx by remember(key) { mutableIntStateOf(1) }
+    // The side the row was pulled to (-1 left, 1 right), kept while it springs back to rest.
+    var side by remember(key) { mutableIntStateOf(0) }
 
     val tensionTravel = with(density) { 60.dp.toPx() }
     val tensionMax = with(density) { 20.dp.toPx() }
@@ -387,6 +389,15 @@ fun <T> SwipeToDelete(
     // dampingRatio 1 is critically damped, and below that it overshoots.
     fun springTo(target: Float, stiffness: Float, damping: Float) {
         scope.launch { offset.animateTo(target, spring(dampingRatio = damping, stiffness = stiffness)) }
+    }
+
+    // The elastic settle back to rest, from the velocity the row had. It overshoots past rest on purpose.
+    fun settleBack() {
+        scope.launch {
+            offset.animateTo(0f, spring(dampingRatio = 0.75f, stiffness = 1500f))
+            // Back where it started: the next pull may go either way.
+            side = 0
+        }
     }
 
     AnimatedVisibility(
@@ -401,9 +412,11 @@ fun <T> SwipeToDelete(
                 .onSizeChanged { widthPx = it.width.coerceAtLeast(1) },
         ) {
             val x = offset.value
-            val shown = kotlin.math.abs(x)
+            // The panel belongs to the side the row was pulled to. The bounce on letting go overshoots to the other
+            // side of rest, and a panel that followed the sign of the offset showed a sliver of itself there.
+            val shown = revealShown(x, side)
             // Anchored to the edge being uncovered: swiping left uncovers the right edge.
-            val toLeft = x < 0f
+            val toLeft = if (side != 0) side < 0 else x < 0f
             if (shown > 1f) {
                 Box(
                     modifier = Modifier.matchParentSize(),
@@ -456,6 +469,7 @@ fun <T> SwipeToDelete(
                             onHorizontalDrag = { change, delta ->
                                 change.consume()
                                 accumulated += delta
+                                if (accumulated != 0f) side = if (accumulated < 0f) -1 else 1
                                 val travelled = kotlin.math.abs(accumulated)
                                 val dir = kotlin.math.sign(accumulated)
                                 val commitPx = widthPx * CommitFraction
@@ -495,14 +509,14 @@ fun <T> SwipeToDelete(
                                     }
                                 } else {
                                     // Cancelled: an elastic settle back, from the velocity it had.
-                                    springTo(0f, stiffness = 1500f, damping = 0.75f)
+                                    settleBack()
                                 }
                                 loose = false
                                 armed = false
                                 accumulated = 0f
                             },
                             onDragCancel = {
-                                springTo(0f, stiffness = 1500f, damping = 0.75f)
+                                settleBack()
                                 loose = false
                                 armed = false
                                 accumulated = 0f
@@ -536,6 +550,14 @@ private val GestureThresholdDeactivate =
 
 /** How far across the row the gesture has to go before letting go deletes. */
 private const val CommitFraction = 0.35f
+
+/**
+ * How much of the delete panel shows at this offset, for a row pulled to [side] (-1 left, 1 right, 0 not known yet).
+ * Only the side it was pulled to counts: when the spring-back overshoots rest, the offset has the other sign for a
+ * moment and the panel must not appear on that side.
+ */
+internal fun revealShown(x: Float, side: Int): Float =
+    if (side == 0) kotlin.math.abs(x) else maxOf(0f, x * side)
 
 /** A tappable suggestion under an empty chat. */
 @Composable

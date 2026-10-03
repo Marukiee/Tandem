@@ -31,7 +31,7 @@ class StatusReporter(
     private val host: EngineHost,
     private val scope: CoroutineScope,
 ) {
-    private var last = TandemStatus(null, null, null, null, null, null, null, null)
+    private var last = TandemStatus(null, null, null, null, null, null, null, null, null)
     private var pending: Job? = null
 
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
@@ -72,7 +72,7 @@ class StatusReporter(
 
     /** Sends the whole status again, for a device that just connected. */
     fun resend() {
-        last = TandemStatus(null, null, null, null, null, null, null, null)
+        last = TandemStatus(null, null, null, null, null, null, null, null, null)
         schedule(0)
     }
 
@@ -90,6 +90,7 @@ class StatusReporter(
                 freeStorage = now.freeStorage.takeIf { it != last.freeStorage },
                 asleep = null,
                 wakeMac = null,
+                muted = null,
             )
             last = now
             host.pushStatus(change)
@@ -134,6 +135,7 @@ class StatusReporter(
             freeStorage = runCatching { StatFs(context.filesDir.absolutePath).availableBytes.toULong() }.getOrNull(),
             asleep = null,
             wakeMac = null,
+            muted = null,
         )
     }
 }
