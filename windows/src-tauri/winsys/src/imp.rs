@@ -15,10 +15,15 @@ use windows::Media::{
     SystemMediaTransportControlsTimelineProperties,
 };
 use windows::Storage::Streams::{DataWriter, InMemoryRandomAccessStream, RandomAccessStreamReference};
-use windows::Win32::Foundation::HWND;
+use windows::Win32::Foundation::{HWND, LPARAM, RECT};
+use windows::Win32::Graphics::Dwm::{DWMWA_CLOAKED, DwmGetWindowAttribute};
 use windows::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
 use windows::Win32::System::WinRT::{ISystemMediaTransportControlsInterop, RO_INIT_MULTITHREADED, RoInitialize};
-use windows::core::{HSTRING, Ref, factory};
+use windows::Win32::UI::WindowsAndMessaging::{
+    EnumChildWindows, GWL_EXSTYLE, GWL_STYLE, GetClassNameW, GetForegroundWindow, GetWindowLongPtrW, GetWindowRect,
+    IsIconic, IsWindowVisible,
+};
+use windows::core::{BOOL, HSTRING, Ref, factory};
 
 use super::{Battery, Button, Now, Request};
 
@@ -197,4 +202,49 @@ fn reference(jpeg: &[u8]) -> windows::core::Result<RandomAccessStreamReference> 
     writer.DetachStream()?;
     stream.Seek(0)?;
     RandomAccessStreamReference::CreateFromStream(&stream)
+}
+
+/// What Windows says about a window and the windows inside it, for the log: it is how a window that is "shown" but not
+/// to be seen can be understood from far away.
+pub fn describe(window: isize) -> String {
+    let hwnd = HWND(window as *mut c_void);
+    let mut text = String::new();
+    unsafe {
+        let mut rect = RECT::default();
+        let _ = GetWindowRect(hwnd, &mut rect);
+        let mut cloaked = 0u32;
+        let _ = DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, (&mut cloaked as *mut u32).cast(), 4);
+        text.push_str(&format!(
+            "rect {},{} to {},{}; visible {}; iconic {}; cloaked {}; style {:#x}; exstyle {:#x}; in front {}",
+            rect.left,
+            rect.top,
+            rect.right,
+            rect.bottom,
+            IsWindowVisible(hwnd).as_bool(),
+            IsIconic(hwnd).as_bool(),
+            cloaked,
+            GetWindowLongPtrW(hwnd, GWL_STYLE),
+            GetWindowLongPtrW(hwnd, GWL_EXSTYLE),
+            GetForegroundWindow() == hwnd,
+        ));
+        unsafe extern "system" fn child(hwnd: HWND, found: LPARAM) -> BOOL {
+            let text = unsafe { &mut *(found.0 as *mut String) };
+            let mut name = [0u16; 64];
+            let length = unsafe { GetClassNameW(hwnd, &mut name) }.max(0) as usize;
+            let mut rect = RECT::default();
+            let _ = unsafe { GetWindowRect(hwnd, &mut rect) };
+            text.push_str(&format!(
+                "; child {} {} at {},{} to {},{}",
+                String::from_utf16_lossy(&name[..length]),
+                if unsafe { IsWindowVisible(hwnd) }.as_bool() { "visible" } else { "hidden" },
+                rect.left,
+                rect.top,
+                rect.right,
+                rect.bottom
+            ));
+            BOOL(1)
+        }
+        let _ = EnumChildWindows(Some(hwnd), Some(child), LPARAM(&mut text as *mut String as isize));
+    }
+    text
 }

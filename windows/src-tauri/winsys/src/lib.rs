@@ -56,6 +56,10 @@ mod imp {
         None
     }
 
+    pub fn describe(_window: isize) -> String {
+        String::new()
+    }
+
     pub struct Media;
 
     impl Media {
@@ -67,4 +71,4 @@ mod imp {
     }
 }
 
-pub use imp::{Media, battery};
+pub use imp::{Media, battery, describe};

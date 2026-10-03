@@ -6,6 +6,7 @@
 [![Rust](https://img.shields.io/badge/core-Rust-DEA584?logo=rust&logoColor=white)](#hoe-het-werkt)
 [![Android](https://img.shields.io/badge/Android-12%2B-3DDC84?logo=android&logoColor=white)](#)
 [![macOS](https://img.shields.io/badge/macOS-26%2B-000000?logo=apple&logoColor=white)](#)
+[![Windows](https://img.shields.io/badge/Windows-experimenteel-0078D4?logo=windows&logoColor=white)](windows/README.md)
 [![Linux](https://img.shields.io/badge/Linux-tandemd-FCC624?logo=linux&logoColor=black)](packaging/README.md)
 
 Je telefoon en je computers als één geheel. Bestanden, klembord, meldingen en
@@ -64,6 +65,18 @@ Updates installeren zichzelf. Omdat elke versie met hetzelfde certificaat is
 ondertekend, blijven je toestemmingen (Bluetooth, lokaal netwerk, meldingen,
 toegankelijkheid) staan.
 
+### Windows (experimenteel)
+
+1. Download `Tandem-Windows-x64-setup.exe` van de [nieuwste release](https://github.com/Marukiee/Tandem/releases/latest).
+2. Open het bestand. Windows waarschuwt voor een onbekende uitgever, omdat het installatieprogramma nog niet
+   is ondertekend: kies "Meer informatie" en dan "Toch uitvoeren". Je hebt geen beheerder nodig.
+3. Vraagt de firewall of Tandem mag communiceren, kies dan "Privénetwerken". Anders vindt je telefoon deze pc niet.
+4. Koppel je telefoon met de QR-code in het venster.
+
+Het is nieuw en nog op weinig pc's gebruikt, dus verwacht rafelige randjes. Wat werkt en wat nog niet staat
+in [windows/README.md](windows/README.md). Tussen versies door staat er een voorbeeldbouw op de release
+`windows-preview`.
+
 ### Linux en de Hub
 
 `tandemd` draait als achtergronddienst op Linux. Installeren, koppelen en de systemd-dienst
@@ -72,8 +85,8 @@ zoals een server op je tailnet, zet je op met de [Hub](hub/README.md).
 
 ## Hoe het werkt
 
-Eén Rust-core doet het netwerk, de versleuteling en de overdracht. Android, macOS
-en Linux zijn dunne schillen eromheen.
+Eén Rust-core doet het netwerk, de versleuteling en de overdracht. Android, macOS,
+Windows en Linux zijn dunne schillen eromheen.
 
 - **QUIC met TLS 1.3**. Elk apparaat heeft één Ed25519-sleutel. Apparaten
   vertrouwen elkaars sleutel, geen certificaatautoriteit. Bestanden gaan over

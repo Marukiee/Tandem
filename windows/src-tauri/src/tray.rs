@@ -54,7 +54,26 @@ pub fn show_main(app: &AppHandle) {
         let _ = window.unminimize();
         let _ = window.set_focus();
     }
+    describe_later(app, "main");
 }
+
+/// What Windows says about a window a moment after it was shown, in the log. It is how a window that is shown but cannot
+/// be seen gets understood from far away.
+#[cfg(windows)]
+fn describe_later(app: &AppHandle, label: &'static str) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(1500));
+        if let Some(window) = app.get_webview_window(label) {
+            if let Ok(hwnd) = window.hwnd() {
+                log::info!("window {label}: {}", tandem_winsys::describe(hwnd.0 as isize));
+            }
+        }
+    });
+}
+
+#[cfg(not(windows))]
+fn describe_later(_app: &AppHandle, _label: &'static str) {}
 
 pub fn quit_app(app: &AppHandle) {
     // Close the connections politely, so the other devices see this one go instead of time out.
@@ -117,6 +136,7 @@ fn toggle_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
         panel.outer_size(),
         panel.outer_position()
     );
+    describe_later(app, "panel");
 }
 
 /// Called when the panel loses focus. The click that opened it can still be settling, so a blur right after opening

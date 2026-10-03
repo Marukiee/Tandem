@@ -1,8 +1,30 @@
 [
   {
-    "version": "0.1.25",
+    "version": "0.1.26",
     "date": "2026-10-03",
     "highlight": true,
+    "en": {
+      "title": "Tandem for Windows, as an experiment",
+      "new": [
+        "Tandem now runs on Windows, as an experiment: pairing, files in both directions, the clipboard, your phone's notifications, its music (also in the media controls of Windows and on the media keys of the keyboard) and the battery of the PC on your phone. The phone's trackpad and keyboard work on the PC too, once you turn that on in its settings. The installer is under Assets on the release page; it is not signed yet, so Windows asks once whether to run it"
+      ],
+      "better": [
+        "Your phone now shares its music with a Windows PC the way it does with a Mac"
+      ]
+    },
+    "nl": {
+      "title": "Tandem voor Windows, als experiment",
+      "new": [
+        "Tandem draait nu op Windows, als experiment: koppelen, bestanden in beide richtingen, het klembord, de meldingen van je telefoon, de muziek (ook in de mediabediening van Windows en op de mediatoetsen van het toetsenbord) en de accu van de pc op je telefoon. Het trackpad en toetsenbord van je telefoon werken ook op de pc, zodra je dat in de instellingen daar aanzet. Het installatiebestand staat onder Assets op de releasepagina; het is nog niet ondertekend, dus Windows vraagt eenmalig of je het wilt uitvoeren"
+      ],
+      "better": [
+        "Je telefoon deelt zijn muziek nu met een Windows-pc zoals hij dat met een Mac doet"
+      ]
+    }
+  },
+  {
+    "version": "0.1.25",
+    "date": "2026-10-03",
     "en": {
       "title": "Your phone's music in the Mac's Now Playing, Bluetooth that shows, and hotspot data per day",
       "new": [
