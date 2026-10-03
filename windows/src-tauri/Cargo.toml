@@ -24,7 +24,7 @@ tauri-plugin-notification = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
 anyhow = "1"
-log = "0.4"
+log = { version = "0.4", features = ["std"] }
 arboard = { version = "3", default-features = false }
 base64 = "0.22"
 hostname = "0.4"

@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager, PhysicalPosition, PhysicalSize, Size};
+use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Size};
 
 use crate::{i18n, state::AppState};
 
@@ -31,6 +31,18 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         })
         .build(app)?;
     Ok(())
+}
+
+/// Sizes the main window to the screen: on a small laptop screen the usual size would hang behind the taskbar. Done
+/// once, before the window is first shown.
+pub fn fit_main(app: &AppHandle) {
+    let Some(window) = app.get_webview_window("main") else { return };
+    let Ok(Some(screen)) = app.primary_monitor() else { return };
+    let scale = screen.scale_factor();
+    let (width, height) = (screen.size().width as f64 / scale, screen.size().height as f64 / scale);
+    let wanted = LogicalSize::new((width * 0.9).clamp(860.0, 1040.0), (height * 0.82).clamp(560.0, 720.0));
+    let _ = window.set_size(Size::Logical(wanted));
+    let _ = window.center();
 }
 
 pub fn show_main(app: &AppHandle) {

@@ -12,7 +12,7 @@ use tandem_core::platform::{sanitize_name, unique_path};
 use tandem_core::store::{FileSecretStore, SecretStore, Store};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::{events, settings, state::AppState};
+use crate::{events, names, settings, state::AppState};
 
 /// The identity key lives in a file in the profile of the person, as it does for the command line daemon.
 struct Vault(FileSecretStore);
@@ -44,7 +44,7 @@ impl TandemFiles for Files {
     fn store_download(&self, temp_path: String, name: String, _mime: String) -> Result<String, TandemError> {
         let dir = settings::download_dir(&self.app);
         std::fs::create_dir_all(&dir).map_err(io_failure)?;
-        let target = unique_path(&dir, &sanitize_name(&name));
+        let target = unique_path(&dir, &names::windows_safe(&sanitize_name(&name)));
         let temp = Path::new(&temp_path);
         if std::fs::rename(temp, &target).is_err() {
             // Another drive: copy, then drop the temporary file.

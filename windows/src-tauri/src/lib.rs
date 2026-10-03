@@ -11,6 +11,7 @@ mod input;
 mod logfile;
 mod media;
 mod model;
+mod names;
 mod power;
 mod settings;
 mod state;
@@ -41,6 +42,7 @@ pub fn run() {
             logfile::init(&handle);
             settings::load(&handle);
             tray::build(&handle)?;
+            tray::fit_main(&handle);
             media::start(&handle);
             power::start(handle.clone());
             engine::start(handle.clone());
