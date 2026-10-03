@@ -38,7 +38,8 @@ function Panel() {
   // Ask the shell for the height this content needs; its bottom edge stays on the taskbar.
   useEffect(() => {
     if (!native || !box.current) return undefined;
-    const observer = new ResizeObserver(() => call("resize_panel", { height: box.current.offsetHeight + 2 }));
+    // The content, plus the padding (2 x 14) and the border (2 x 1) of the box around it.
+    const observer = new ResizeObserver(() => call("resize_panel", { height: box.current.offsetHeight + 30 }));
     observer.observe(box.current);
     return () => observer.disconnect();
   }, []);
