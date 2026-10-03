@@ -99,8 +99,9 @@ pub fn show_panel_in_corner(app: &AppHandle) {
 
 /// The width of the panel, in points.
 const PANEL_WIDTH: f64 = 352.0;
-/// What its height is until its content has said what it needs.
+/// What its height is until its content has said what it needs, and the least it is ever.
 const PANEL_HEIGHT: f64 = 400.0;
+const PANEL_MIN: f64 = 100.0;
 
 /// How far the visible part of a window lies inside the rectangle Windows gives it: left, top, right, bottom. A window
 /// without a frame still has an invisible edge to grab, and `set_size` sets the visible part, not the whole.
@@ -141,18 +142,27 @@ fn toggle_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
     let edge = insets(&panel);
     // What is placed is the visible part, from the height its content asked for.
     let wanted = app.state::<AppState>().panel_height.lock().unwrap().unwrap_or(PANEL_HEIGHT);
-    let (width, height) = ((PANEL_WIDTH * scale).round() as i32, (wanted.clamp(180.0, 720.0) * scale).round() as i32);
-    let margin = (12.0 * scale) as i32;
-    let (mut x, mut y) = (click.x as i32 - width / 2, click.y as i32 - height - margin);
+    let (width, height) = ((PANEL_WIDTH * scale).round() as i32, (wanted.clamp(PANEL_MIN, 720.0) * scale).round() as i32);
+    let margin = (10.0 * scale) as i32;
+    let (cx, cy) = (click.x as i32, click.y as i32);
+    let (mut x, mut y) = (cx - width / 2, cy - height / 2);
     if let Ok(Some(screen)) = app.monitor_from_point(click.x, click.y) {
-        let (left, top) = (screen.position().x, screen.position().y);
-        let (w, h) = (screen.size().width as i32, screen.size().height as i32);
-        x = x.clamp(left + margin, (left + w - width - margin).max(left));
-        // A taskbar at the top of the screen: the panel hangs under the icon instead.
-        if click.y < (top + h / 2) as f64 {
-            y = click.y as i32 + margin;
+        // The work area is the screen without the taskbar. The panel goes against the side the taskbar is on, which is
+        // the side the click came from.
+        let work = screen.work_area();
+        let (left, top) = (work.position.x, work.position.y);
+        let (right, bottom) = (left + work.size.width as i32, top + work.size.height as i32);
+        if cy >= bottom {
+            y = bottom - height - margin;
+        } else if cy < top {
+            y = top + margin;
+        } else if cx >= right {
+            x = right - width - margin;
+        } else if cx < left {
+            x = left + margin;
         }
-        y = y.clamp(top + margin, (top + h - height - margin).max(top));
+        x = x.clamp(left + margin, (right - width - margin).max(left));
+        y = y.clamp(top + margin, (bottom - height - margin).max(top));
     }
     let _ = panel.set_size(Size::Physical(PhysicalSize::new(width as u32, height as u32)));
     let _ = panel.set_position(PhysicalPosition::new(x - edge.left, y - edge.top));
@@ -195,7 +205,7 @@ pub fn resize_panel(app: &AppHandle, logical_height: f64) {
         return;
     }
     let scale = panel.scale_factor().unwrap_or(1.0);
-    let wanted = ((logical_height.clamp(180.0, 720.0)) * scale).round() as i32;
+    let wanted = ((logical_height.clamp(PANEL_MIN, 720.0)) * scale).round() as i32;
     let (Ok(inner), Ok(inner_at)) = (panel.inner_size(), panel.inner_position()) else { return };
     if (inner.height as i32 - wanted).abs() <= 1 {
         return;
