@@ -182,7 +182,7 @@ class MediaMirror(
         val built = if (share) build() else emptyList()
         _local.value = built.map { it.player }
         val engine = host.engine ?: return
-        val targets = only ?: macs()
+        val targets = only ?: computers()
         if (targets.isEmpty()) return
         val players = built.map { it.player }
         Log.d(TAG, "sharing ${players.size} player(s) with ${targets.size} device(s): ${players.joinToString { "${it.app}: ${it.title}" }}")
@@ -196,7 +196,7 @@ class MediaMirror(
         }
     }
 
-    private fun macs(): List<String> = host.devices.value.filter { it.platform == TandemPlatform.MAC_OS }.map { it.id }
+    private fun computers(): List<String> = host.devices.value.filter { showsPhoneMusic(it.platform) }.map { it.id }
 
     private fun build(): List<Built> {
         val controllers = synchronized(lock) { tracked.values.map { it.controller } }
@@ -287,7 +287,7 @@ class MediaMirror(
             is TandemEvent.Connected -> {
                 // A device that just connected knows nothing yet, and has not seen any cover.
                 sentArt.remove(event.id)
-                if (host.device(event.id)?.platform == TandemPlatform.MAC_OS) schedulePublish(listOf(event.id))
+                if (host.device(event.id)?.platform?.let(::showsPhoneMusic) == true) schedulePublish(listOf(event.id))
             }
             is TandemEvent.Disconnected -> _remote.update { it - event.id }
             else -> Unit
@@ -349,3 +349,7 @@ class MediaMirror(
         const val COVER_PX = 160
     }
 }
+
+/** The computers that put the phone's music in their own media controls (Now Playing on the Mac, the overlay on Windows). */
+internal fun showsPhoneMusic(platform: TandemPlatform): Boolean =
+    platform == TandemPlatform.MAC_OS || platform == TandemPlatform.WINDOWS
