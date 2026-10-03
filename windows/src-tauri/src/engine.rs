@@ -69,18 +69,31 @@ pub fn start(app: AppHandle) {
     // The engine opens its socket and announces itself on the network, so it starts off the main thread.
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
-        match build(&app) {
+        log::info!("the engine is starting");
+        let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| build(&app)))
+            .unwrap_or_else(|panic| Err(format!("the engine panicked while starting: {}", panic_text(&*panic))));
+        match built {
             Ok(engine) => {
+                log::info!("the engine runs as {} on port {}", engine.name(), engine.port());
                 *state.engine.write().unwrap() = Some(engine);
                 events::refresh_devices(&app);
                 let _ = app.emit("engine-ready", ());
             }
             Err(reason) => {
+                log::error!("the engine did not start: {reason}");
                 *state.error.lock().unwrap() = Some(reason.clone());
                 let _ = app.emit("engine-error", reason);
             }
         }
     });
+}
+
+fn panic_text(panic: &(dyn std::any::Any + Send)) -> String {
+    panic
+        .downcast_ref::<&str>()
+        .map(|text| text.to_string())
+        .or_else(|| panic.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "no message".to_string())
 }
 
 fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
@@ -97,7 +110,7 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         app_version: app.package_info().version.to_string(),
         port: 47820,
         enable_mdns: true,
-        caps: vec!["clipboard".into(), "share".into(), "notify".into(), "input".into()],
+        caps: vec!["clipboard".into(), "share".into(), "notify".into(), "input".into(), "battery".into(), "media".into()],
         low_power: false,
     };
     TandemEngine::start(

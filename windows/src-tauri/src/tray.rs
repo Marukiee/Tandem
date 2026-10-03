@@ -56,7 +56,10 @@ pub fn quit_app(app: &AppHandle) {
 /// how the panel is looked at when nobody is there to click the icon. Nothing was clicked, so there is no click to
 /// settle, and the panel stays until it is clicked away from or the icon is clicked.
 pub fn show_panel_in_corner(app: &AppHandle) {
-    let Ok(Some(screen)) = app.primary_monitor() else { return };
+    let Ok(Some(screen)) = app.primary_monitor() else {
+        log::warn!("the panel was asked for, but there is no main screen");
+        return;
+    };
     let (left, top) = (screen.position().x as f64, screen.position().y as f64);
     let (width, height) = (screen.size().width as f64, screen.size().height as f64);
     toggle_panel(app, PhysicalPosition::new(left + width - 120.0, top + height - 20.0));
@@ -86,6 +89,7 @@ fn toggle_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
     }
     let _ = panel.set_position(PhysicalPosition::new(x, y));
     *app.state::<AppState>().panel_shown.lock().unwrap() = Some(Instant::now());
+    log::info!("the panel opens at {x},{y}, {width} by {height}");
     let _ = panel.show();
     let _ = panel.set_focus();
 }

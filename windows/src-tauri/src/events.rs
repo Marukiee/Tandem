@@ -9,7 +9,7 @@ use tandem_core::ffi::{TandemCall, TandemCallState, TandemEvent, TandemNotificat
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
-use crate::{clip, i18n, input, model, settings, state::AppState};
+use crate::{clip, i18n, input, media, model, settings, state::AppState};
 
 /// A notification on the desktop of Windows.
 pub fn toast(app: &AppHandle, title: &str, body: &str) {
@@ -112,6 +112,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 data.art.insert(key, uri.clone());
             }
             let _ = app.emit("art", json!({ "key": key.to_string(), "uri": uri }));
+            media::refresh(app);
         }
         TandemEvent::Call { from, call } => incoming_call(app, &from, &call),
         TandemEvent::Input { from, input } => remote_input(app, &from, input),
@@ -136,6 +137,7 @@ fn remote_input(app: &AppHandle, from: &str, event: tandem_core::ffi::TandemInpu
 
 fn emit_players(app: &AppHandle) {
     let _ = app.emit("players", players_json(app));
+    media::refresh(app);
 }
 
 pub fn players_json(app: &AppHandle) -> Value {

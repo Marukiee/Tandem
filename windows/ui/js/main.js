@@ -58,7 +58,7 @@ function Dialogs() {
 }
 
 function Page() {
-  if (state.error) return html`<main class="page"><div class="wrap"><div class="card empty"><${Icon} name="alert-triangle" size=${34} /><div style="font-weight:600">${t("engine_failed")}</div><div class="small">${state.error}</div></div></div></main>`;
+  if (state.error) return html`<main class="page"><div class="wrap"><div class="card empty"><${Icon} name="alert-triangle" size=${34} /><div style="font-weight:600">${t("engine_failed")}</div><div class="small">${state.error}</div><div style="margin-top:12px"><button class="btn small" onClick=${() => call("open_logs").catch(() => {})}>${t("open_logs")}</button></div></div></div></main>`;
   if (!state.ready) return html`<main class="page"><div class="wrap"><div class="empty muted">${t("engine_starting")}</div></div></main>`;
   let body;
   if (state.page === "shared") body = html`<${SharedPage} />`;

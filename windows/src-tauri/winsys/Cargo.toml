@@ -1,0 +1,20 @@
+[package]
+name = "tandem-winsys"
+version = "0.1.0"
+description = "The few parts of Windows that Tandem uses: the battery and the media controls of the system"
+edition = "2024"
+license = "AGPL-3.0-only"
+repository = "https://github.com/Marukiee/Tandem"
+rust-version = "1.90"
+
+# On any other system the crate compiles to nothing that does anything, so the app can be built and tested anywhere.
+[target.'cfg(windows)'.dependencies]
+log = "0.4"
+windows = { version = "0.62", features = [
+    "Foundation",
+    "Media",
+    "Storage_Streams",
+    "Win32_Foundation",
+    "Win32_System_Power",
+    "Win32_System_WinRT",
+] }

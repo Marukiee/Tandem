@@ -11,7 +11,7 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::state::AppState;
-use crate::{clip, events, model, settings, tray};
+use crate::{clip, events, logfile, media, model, settings, tray};
 
 type Reply<T> = Result<T, String>;
 
@@ -272,6 +272,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["remoteInput"].as_bool() {
             current.remote_input = v;
         }
+        if let Some(v) = patch["systemMedia"].as_bool() {
+            current.system_media = v;
+        }
         if let Some(v) = patch["language"].as_str() {
             if ["auto", "en", "nl"].contains(&v) {
                 current.language = v.to_string();
@@ -282,6 +285,8 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         }
     }
     settings::save(&app);
+    // The switch for the media controls takes effect at once.
+    media::refresh(&app);
     json!(settings::get(&app))
 }
 
@@ -337,6 +342,13 @@ pub fn hide_panel(app: AppHandle) {
 #[tauri::command]
 pub fn resize_panel(app: AppHandle, height: f64) {
     tray::resize_panel(&app, height);
+}
+
+#[tauri::command]
+pub fn open_logs(app: AppHandle) -> Reply<()> {
+    let dir = logfile::folder(&app).ok_or("There is no folder for the log")?;
+    std::fs::create_dir_all(&dir).map_err(shown)?;
+    app.opener().open_path(dir.to_string_lossy(), None::<&str>).map_err(shown)
 }
 
 #[tauri::command]

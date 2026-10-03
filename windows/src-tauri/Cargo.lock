@@ -4356,11 +4356,13 @@ dependencies = [
  "base64 0.22.1",
  "enigo",
  "hostname",
+ "log",
  "qrcode",
  "serde",
  "serde_json",
  "sys-locale",
  "tandem-core",
+ "tandem-winsys",
  "tauri",
  "tauri-build",
  "tauri-plugin-autostart",
@@ -4368,6 +4370,14 @@ dependencies = [
  "tauri-plugin-notification",
  "tauri-plugin-opener",
  "tauri-plugin-single-instance",
+]
+
+[[package]]
+name = "tandem-winsys"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "windows 0.62.2",
 ]
 
 [[package]]

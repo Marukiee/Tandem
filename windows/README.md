@@ -40,11 +40,11 @@ That writes `dist-windows/Tandem-Windows-x64-setup.exe` (per-user installer, no 
 ## What works, and what does not yet
 
 Works (compiled and unit tested, but see the last line): pairing by code, files both ways, clipboard both ways,
-phone notifications as Windows notifications, the tray panel, music of the phone shown with buttons, the phone's
-trackpad and keyboard on this PC (off until you turn it on in the settings), settings, Dutch and English.
+phone notifications as Windows notifications, the tray panel, music of the phone shown with buttons and in the
+media controls of Windows (the overlay by the volume, the media keys), the battery of this PC on the phone, the
+phone's trackpad and keyboard on this PC (off until you turn it on in the settings), settings, Dutch and English.
 
-Not yet: the phone's music as the system media overlay, the hotspot, Bluetooth, sound to the phone, automatic
-updates, folders, replying to notifications.
+Not yet: the hotspot, Bluetooth, sound to the phone, automatic updates, folders, replying to notifications.
 
 `Tandem.exe --minimized` starts it in the tray (what starting with Windows does) and `Tandem.exe --panel` opens
 the small panel in the corner of the screen, which is how CI takes a picture of it.

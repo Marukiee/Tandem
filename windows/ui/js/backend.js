@@ -62,10 +62,23 @@ function apply(snapshot) {
 
 /** Loads everything once and then follows what the app reports. */
 export async function connect() {
+  // Listen before looking: the engine starts on its own and can be ready (or have failed) at any moment, and an event
+  // that comes while the first look is taken must not be lost. The look itself then overwrites whatever came early.
+  await follow();
   apply(await call("get_state"));
   const media = await call("get_players");
   set({ players: media.players, art: media.art });
 
+  // Belt and braces: should the news of the engine ever not arrive, ask again until it is there.
+  if (!state.ready && !state.error) {
+    const timer = setInterval(async () => {
+      if (state.ready || state.error) return clearInterval(timer);
+      apply(await call("get_state"));
+    }, 500);
+  }
+}
+
+async function follow() {
   await listen("devices", (devices) => set({ devices, selected: pick(devices) }));
   await listen("transfer", (item) => set({ transfers: upsert(state.transfers, item) }));
   await listen("offer", (offer) => set({ offers: [...state.offers, offer] }));

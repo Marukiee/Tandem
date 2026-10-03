@@ -16,9 +16,10 @@ Vaste afspraken voor dit project. Lees dit voordat je iets aanpast.
 
 ## Wat dit is
 
-Een KDE Connect-alternatief voor Android, macOS en Linux. Eén Rust-core
-(`crates/tandem-core`) doet netwerk, versleuteling en overdracht. `android/` en
-`macos/` zijn dunne schillen die de core aanroepen via UniFFI.
+Een KDE Connect-alternatief voor Android, macOS en Linux, en (experimenteel) Windows.
+Eén Rust-core (`crates/tandem-core`) doet netwerk, versleuteling en overdracht.
+`android/`, `macos/` en `windows/` zijn dunne schillen die de core aanroepen (UniFFI,
+bij Windows rechtstreeks als Rust-crate).
 
 ```
 crates/tandem-core     de core: identiteit, circle, QUIC, overdracht, plugins
@@ -26,6 +27,7 @@ crates/tandemd         headless daemon en CLI (Linux, Hub, tests)
 crates/uniffi-bindgen  genereert de Kotlin- en Swift-bindings
 android/               Kotlin, Compose Material 3 Expressive
 macos/                 SwiftUI met Liquid Glass, gebouwd met SwiftPM
+windows/               Tauri 2 (Rust + webview, UI in windows/ui), eigen Cargo-workspace
 docs/                  PROTOCOL.md en SECURITY.md
 scripts/               bouwen, signen, releasen
 ```

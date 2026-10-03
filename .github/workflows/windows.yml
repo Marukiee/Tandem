@@ -56,7 +56,8 @@ jobs:
           if-no-files-found: error
 
       # Installs the app on the runner, starts it and takes pictures of the screen, so what it looks like on Windows can
-      # be checked without a Windows PC. The runner may have no screen to take a picture of; that is not a failure.
+      # be checked without a Windows PC. The log of the app goes in the pictures' folder too. The runner may have no
+      # screen to take a picture of; that is not a failure.
       - name: Start the app and take screenshots
         continue-on-error: true
         shell: pwsh
@@ -74,14 +75,24 @@ jobs:
           Start-Process $setup.FullName -ArgumentList "/S" -Wait
           $exe = Get-ChildItem $env:LOCALAPPDATA -Recurse -Include "Tandem.exe", "tandem-windows.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $exe) { Get-ChildItem $env:LOCALAPPDATA -Directory | ForEach-Object { Write-Host $_.FullName }; throw "the installer put no Tandem.exe on the machine" }
+          # The console of the runner is out of the way, so the window of the app is what is in the picture.
+          (New-Object -ComObject Shell.Application).MinimizeAll()
           Write-Host "starting $($exe.FullName)"
           Start-Process $exe.FullName
-          Start-Sleep -Seconds 12
+          Start-Sleep -Seconds 15
           Shot "app-main"
           # A second start with --panel hands the first one the order to open the small panel.
           Start-Process $exe.FullName -ArgumentList "--panel"
-          Start-Sleep -Seconds 4
+          Start-Sleep -Seconds 5
           Shot "app-panel"
+          Get-Process | Where-Object { $_.ProcessName -match "Tandem|msedgewebview2" } | Select-Object ProcessName, Id, Responding | Format-Table | Out-String | Write-Host
+          $logs = Get-ChildItem $env:LOCALAPPDATA, $env:APPDATA -Recurse -Filter "tandem*.log" -ErrorAction SilentlyContinue
+          foreach ($log in $logs) {
+            Write-Host "---- $($log.FullName)"
+            Get-Content $log.FullName | Write-Host
+            Copy-Item $log.FullName "screenshots/$($log.Name)"
+          }
+          if (-not $logs) { Write-Host "the app wrote no log" }
 
       # The pages with pretend data, drawn by the Edge on the runner: the same engine as the window of the app, with
       # the fonts and the font smoothing of Windows.
@@ -94,10 +105,22 @@ jobs:
           Start-Sleep -Seconds 2
           New-Item -ItemType Directory -Force screenshots | Out-Null
           $out = (Resolve-Path screenshots).Path
-          foreach ($page in "device", "shared", "notifications", "settings") {
-            & $edge --headless=new --disable-gpu --hide-scrollbars --virtual-time-budget=6000 --window-size=1040,820 "--screenshot=$out\ui-$page.png" "http://127.0.0.1:8765/index.html?page=$page"
+          $edgeData = Join-Path $env:RUNNER_TEMP "edge-profile"
+          $shots = @(
+            @{ name = "ui-device"; url = "index.html?page=device"; size = "1040,820" },
+            @{ name = "ui-shared"; url = "index.html?page=shared"; size = "1040,820" },
+            @{ name = "ui-notifications"; url = "index.html?page=notifications"; size = "1040,820" },
+            @{ name = "ui-settings"; url = "index.html?page=settings"; size = "1040,820" },
+            @{ name = "ui-panel"; url = "panel.html"; size = "352,640" }
+          )
+          foreach ($shot in $shots) {
+            $file = Join-Path $out "$($shot.name).png"
+            # A profile of its own, so Edge starts as a new process instead of handing the page to one already running.
+            $process = Start-Process $edge -PassThru -ArgumentList "--headless=new", "--disable-gpu", "--no-first-run", "--hide-scrollbars", "--user-data-dir=$edgeData", "--virtual-time-budget=8000", "--window-size=$($shot.size)", "--screenshot=$file", "http://127.0.0.1:8765/$($shot.url)"
+            $process | Wait-Process -Timeout 60 -ErrorAction SilentlyContinue
+            Write-Host "$($shot.name): $(Test-Path $file)"
+            Get-Process msedge -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
           }
-          & $edge --headless=new --disable-gpu --hide-scrollbars --virtual-time-budget=6000 --window-size=352,640 "--screenshot=$out\ui-panel.png" "http://127.0.0.1:8765/panel.html"
 
       - uses: actions/upload-artifact@v7
         if: always()

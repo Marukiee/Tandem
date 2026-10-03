@@ -248,6 +248,7 @@ export function SettingsPage() {
         onChange=${async (v) => { try { set({ autostart: await call("set_autostart", { enabled: v }) }); } catch (e) { failed(e); } }} />
       <${SettingRow} icon="x" title=${t("close_to_tray")} sub=${t("close_to_tray_sub")} on=${s.closeToTray} onChange=${(v) => patch({ closeToTray: v })} />
       <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
+      <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
       <${SettingRow} icon="pointer" title=${t("remote_input")} sub=${t("remote_input_sub")} on=${s.remoteInput} onChange=${(v) => patch({ remoteInput: v })} />
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
       <${SettingRow} icon="info-circle" title=${t("language")}>
@@ -262,6 +263,7 @@ export function SettingsPage() {
       <div>Tandem ${state.version}${state.build ? " (" + state.build + ")" : ""}</div>
       <div class="small muted" style="margin-top:6px">${t("experimental_note")}</div>
       <div class="small muted" style="margin-top:6px">${t("firewall")}</div>
+      <div style="margin-top:10px"><button class="btn small" onClick=${() => call("open_logs").catch(failed)}>${t("open_logs")}</button></div>
     </div>
   </div>`;
 }

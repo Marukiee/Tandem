@@ -16,6 +16,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tandem-core = { path = "../../crates/tandem-core" }
+tandem-winsys = { path = "winsys" }
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-dialog = "2"
@@ -23,6 +24,7 @@ tauri-plugin-notification = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
 anyhow = "1"
+log = "0.4"
 arboard = { version = "3", default-features = false }
 base64 = "0.22"
 hostname = "0.4"

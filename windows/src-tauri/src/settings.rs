@@ -23,6 +23,9 @@ pub struct Settings {
     /// The phone's trackpad and keyboard move the pointer and type on this PC. Off until the person turns it on,
     /// because Windows has no permission to ask for: this is the only door.
     pub remote_input: bool,
+    /// What the phone plays shows in the media controls of Windows (by the volume, on the lock screen), and the media
+    /// keys of the keyboard control it.
+    pub system_media: bool,
 }
 
 impl Default for Settings {
@@ -34,6 +37,7 @@ impl Default for Settings {
             phone_notifications: true,
             language: "auto".into(),
             remote_input: false,
+            system_media: true,
         }
     }
 }

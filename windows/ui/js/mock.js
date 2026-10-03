@@ -32,7 +32,7 @@ const state = {
     { device: "phone", deviceName: "Maruks Telefoon", key: "a", appId: "wa", appName: "WhatsApp", title: "Anna", text: "Zie je dat? Ik ben er over tien minuten.", ts: now - 120000, buttons: [] },
     { device: "phone", deviceName: "Maruks Telefoon", key: "b", appId: "bank", appName: "Bank", title: "Code 482913", text: "Gebruik 482913 om in te loggen.", ts: now - 900000, otp: "482913", buttons: [] },
   ],
-  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, language: "auto", downloadDir: "" },
+  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, language: "auto", downloadDir: "" },
   autostart: true, downloadDir: "C:\\Users\\Mark\\Downloads\\Tandem", systemLanguage: navigator.language, build_: "",
 };
 

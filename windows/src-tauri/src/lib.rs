@@ -8,7 +8,10 @@ mod engine;
 mod events;
 mod i18n;
 mod input;
+mod logfile;
+mod media;
 mod model;
+mod power;
 mod settings;
 mod state;
 mod tray;
@@ -35,8 +38,11 @@ pub fn run() {
         .manage(state::AppState::default())
         .setup(|app| {
             let handle = app.handle().clone();
+            logfile::init(&handle);
             settings::load(&handle);
             tray::build(&handle)?;
+            media::start(&handle);
+            power::start(handle.clone());
             engine::start(handle.clone());
             clip::start(handle.clone());
             // Started with Windows it waits in the tray; started by hand it shows its window.
@@ -89,6 +95,7 @@ pub fn run() {
             commands::show_main,
             commands::hide_panel,
             commands::resize_panel,
+            commands::open_logs,
             commands::quit_app,
         ])
         .run(tauri::generate_context!())
