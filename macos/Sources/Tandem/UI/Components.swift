@@ -45,7 +45,7 @@ struct GlassActionButton: View {
 extension TandemPlatform {
     var symbol: String {
         switch self {
-        case .android: "candybarphone"
+        case .android: "iphone"
         case .macOs: "laptopcomputer"
         case .linux: "desktopcomputer"
         case .windows: "pc"
@@ -179,7 +179,7 @@ enum DeviceIconChoice: CaseIterable {
 
     var symbol: String {
         switch self {
-        case .phone: "candybarphone"
+        case .phone: "iphone"
         case .tablet: "ipad"
         case .laptop: "laptopcomputer"
         case .desktop: "desktopcomputer"
@@ -249,7 +249,9 @@ struct PillSpinner: View {
     var size: CGFloat = 28
 
     var body: some View {
-        TimelineView(.animation) { context in
+        // 30 frames a second is smooth for something this slow, and a screen that refreshes 120 times a second would
+        // wake the app four times as often.
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
             let cycle = 2.6
             let t = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: cycle) / cycle
             // Two eased turns, with a breath between them.

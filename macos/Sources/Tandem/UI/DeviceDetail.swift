@@ -556,7 +556,9 @@ struct HotspotCard: View {
         .animation(.tandem, value: model.hotspotStatus)
         .animation(.tandem, value: ready)
         .sheet(isPresented: $showSetup) { HotspotSetupSheet() }
-        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+        // The permission only changes in System Settings, so it is read again when the person comes back from there.
+        // A timer that asked the system every second kept the app and the permission service awake for nothing.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             bluetooth = CBManager.authorization
         }
     }

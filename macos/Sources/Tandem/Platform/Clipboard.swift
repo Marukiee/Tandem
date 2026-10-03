@@ -25,11 +25,19 @@ final class ClipboardMonitor {
     }
 
     func start() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.35, repeats: true) { [weak self] _ in
+        guard timer == nil else { return }
+        // What was copied while nobody was there to send it to is not news when somebody arrives.
+        lastCount = NSPasteboard.general.changeCount
+        // Half a second, and the system may stretch it by as much again to run it together with other timers.
+        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.poll() }
         }
-        timer?.tolerance = 0.15
+        timer?.tolerance = 0.5
+    }
+
+    /// Looks at the pasteboard only while at least one device is connected: with nobody to tell, the polling is pure cost.
+    func setActive(_ active: Bool) {
+        if active { start() } else { stop() }
     }
 
     func stop() {

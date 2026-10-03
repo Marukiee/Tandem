@@ -9,6 +9,8 @@ struct UpdateBanner: View {
     @LocalState private var updater = Updater.shared
     @AppStorage("updateDismissedVersion") private var dismissedVersion = ""
     var compact = false
+    /// Slides in from the bottom, for a banner that sits at the foot of something.
+    var fromBottom = false
 
     var body: some View {
         Group {
@@ -25,7 +27,7 @@ struct UpdateBanner: View {
                 EmptyView()
             }
         }
-        .transition(.move(edge: .top).combined(with: .opacity))
+        .transition(.move(edge: fromBottom ? .bottom : .top).combined(with: .opacity))
         .animation(.tandemSpringy, value: updater.state)
     }
 

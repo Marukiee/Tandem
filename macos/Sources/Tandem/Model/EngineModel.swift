@@ -80,6 +80,7 @@ final class EngineModel {
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     @ObservationIgnored let hotspot = HotspotCoordinator()
     @ObservationIgnored let bleMessenger = BleMessenger()
+    @ObservationIgnored private let outputMute = OutputMuteWatcher()
 
     // Music: what the phones play (with the time it was said, to count on from), their covers, and
     // what this Mac plays. One switch turns all of it off, in both directions.
@@ -210,6 +211,7 @@ final class EngineModel {
     func stop() async {
         injector.releaseAll()
         clipboard?.stop()
+        outputMute.stop()
         network.stop()
         power.stop()
         statusTimer?.invalidate()
@@ -233,8 +235,8 @@ final class EngineModel {
         let monitor = ClipboardMonitor { [weak self] text, isURL in
             self?.localClipboardChanged(text, isURL: isURL)
         }
-        monitor.start()
         clipboard = monitor
+        monitor.setActive(devices.contains { $0.online || $0.ble })
 
         network.onChange = { [weak self] in
             guard let self else { return }
@@ -252,6 +254,14 @@ final class EngineModel {
         speakerDevices.onSelect = { [weak self] phone, uid in self?.outputChosen(phone: phone, uid: uid) }
         power.onChange = { [weak self] in self?.pushStatus() }
         power.start()
+        // The mute button of a phone follows this Mac, whoever pressed it.
+        outputMute.start { [weak self] muted in
+            guard let muted else { return }
+            Task { @MainActor in
+                guard let engine = self?.engine else { return }
+                await engine.updateStatus(status: TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: muted))
+            }
+        }
         pushStatus()
         statusTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.pushStatus() }
@@ -333,6 +343,7 @@ final class EngineModel {
     func refreshDevices() {
         guard let engine else { return }
         devices = engine.devices()
+        clipboard?.setActive(devices.contains { $0.online || $0.ble })
         reconcileSpeakerDevices()
         refreshNowPlaying()
     }
@@ -987,7 +998,7 @@ final class EngineModel {
 
     func pushStatus() {
         guard let engine else { return }
-        var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: false, wakeMac: WiredAddress.mac())
+        var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: false, wakeMac: WiredAddress.mac(), muted: OutputMute.isMuted())
         status.battery = PowerReader.battery()
         status.network = TandemNetwork(
             kind: network.isOnline ? .wifi : .none,
@@ -1032,7 +1043,7 @@ final class EngineModel {
             MainActor.assumeIsolated {
                 self?.stopSpeaker(tellPhone: true)
                 guard let engine = self?.engine else { return }
-                let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: true, wakeMac: WiredAddress.mac())
+                let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: true, wakeMac: WiredAddress.mac(), muted: nil)
                 Task { await engine.updateStatus(status: status) }
             }
         }

@@ -63,7 +63,14 @@ struct Sidebar: View {
         .focusEffectDisabled()
         .onKeyPress(.upArrow) { move(-1) }
         .onKeyPress(.downArrow) { move(1) }
-        .safeAreaInset(edge: .bottom, spacing: 0) { PairButton(showPairing: $showPairing) }
+        // At the foot of the sidebar: the update sits just above the way to pair, out of the way of the pages.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                UpdateBanner(compact: true, fromBottom: true)
+                    .padding(.horizontal, 10)
+                PairButton(showPairing: $showPairing)
+            }
+        }
     }
 
     private func move(_ step: Int) -> KeyPress.Result {
