@@ -58,6 +58,7 @@ object TandemIcons {
     val Upload: Painter @Composable get() = painterResource(R.drawable.sym_upload)
     val Download: Painter @Composable get() = painterResource(R.drawable.sym_download)
     val Folder: Painter @Composable get() = painterResource(R.drawable.sym_folder_open)
+    val Pin: Painter @Composable get() = painterResource(R.drawable.sym_push_pin)
     val QrScan: Painter @Composable get() = painterResource(R.drawable.sym_qr_code_scanner)
     val QrShow: Painter @Composable get() = painterResource(R.drawable.sym_qr_code_2)
     val Call: Painter @Composable get() = painterResource(R.drawable.sym_call)

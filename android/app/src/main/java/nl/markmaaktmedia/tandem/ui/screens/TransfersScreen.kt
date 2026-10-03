@@ -33,6 +33,7 @@ import nl.markmaaktmedia.tandem.ui.components.EmptyState
 import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
 import nl.markmaaktmedia.tandem.ui.components.SwipeToDelete
 import nl.markmaaktmedia.tandem.ui.components.TransferRow
+import nl.markmaaktmedia.tandem.ui.components.rememberTransferActions
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 
@@ -84,7 +85,7 @@ fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier, listState:
                     TransferRow(
                         item = item,
                         peerName = devices.firstOrNull { it.id == item.peer }?.name ?: "?",
-                        onOpen = item.location?.let { location -> { openLocation(context, location) } },
+                        actions = rememberTransferActions(item, onRemove = { host.removeTransfer(item.id) }),
                     )
                 }
             }

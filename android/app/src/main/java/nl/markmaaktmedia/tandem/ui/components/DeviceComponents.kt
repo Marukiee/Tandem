@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -442,33 +445,36 @@ fun StatusChip(
 @Composable
 fun formatBytes(bytes: Long): String = Formatter.formatShortFileSize(LocalContext.current, bytes)
 
+/**
+ * One shared file: a picture of it (or an icon for its kind), its name and where it came from or went to, and a menu
+ * with the same things the Mac offers on a right click. A tap opens the file. While it is still coming the tile shows
+ * the direction and a bar shows how far it is; a failed one says why.
+ */
 @Composable
 fun TransferRow(
     item: TransferItem,
     peerName: String,
+    actions: TransferActions,
     modifier: Modifier = Modifier,
-    onOpen: (() -> Unit)? = null,
 ) {
+    val context = LocalContext.current
     val tint = when (item.state) {
         TransferItem.State.Active -> MaterialTheme.colorScheme.primary
-        TransferItem.State.Done -> LocalTandemExtraColors.current.online
+        TransferItem.State.Done -> MaterialTheme.colorScheme.onSurfaceVariant
         TransferItem.State.Failed -> LocalTandemExtraColors.current.urgent
     }
+    var menu by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val tappable = actions.open != null && item.state == TransferItem.State.Done
     Row(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier
+            .fillMaxWidth()
+            .then(if (tappable) Modifier.bouncyClickable(onClickLabel = stringResource(R.string.transfer_menu_open)) { actions.open?.invoke() } else Modifier)
+            .padding(start = 14.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Box(Modifier.size(40.dp).clip(CircleShape).background(tint.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
-            Icon(
-                when (item.state) {
-                    TransferItem.State.Active -> if (item.incoming) TandemIcons.Download else TandemIcons.Upload
-                    TransferItem.State.Done -> TandemIcons.Check
-                    TransferItem.State.Failed -> TandemIcons.Error
-                },
-                null, tint = tint, modifier = Modifier.size(20.dp),
-            )
-        }
+        PreviewTile(item, tint)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(item.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.MiddleEllipsis)
             val subtitle = when (item.state) {
@@ -485,8 +491,78 @@ fun TransferRow(
                 }
             }
         }
-        if (onOpen != null && item.state == TransferItem.State.Done && item.incoming) {
-            TandemIconButton(TandemIcons.OpenInNew, stringResource(R.string.action_open), onOpen)
+        Box {
+            TandemIconButton(TandemIcons.More, stringResource(R.string.transfer_menu_more), { menu = true })
+            androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                @Composable
+                fun entry(label: Int, icon: androidx.compose.ui.graphics.painter.Painter, action: (() -> Unit)?) {
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(stringResource(label)) },
+                        leadingIcon = { Icon(icon, null, Modifier.size(20.dp)) },
+                        enabled = action != null,
+                        onClick = { menu = false; action?.invoke() },
+                    )
+                }
+                entry(R.string.transfer_menu_open, TandemIcons.OpenInNew, actions.open)
+                entry(R.string.transfer_menu_show, TandemIcons.Folder, actions.showFolder)
+                entry(R.string.transfer_menu_copy_path, TandemIcons.Copy, actions.copyPath)
+                entry(R.string.transfer_menu_remove, TandemIcons.Close, actions.remove)
+                // Only what arrived on this phone. A file that was sent is the person's own original.
+                if (actions.deleteFile != null) entry(R.string.transfer_menu_delete, TandemIcons.Delete) { confirmDelete = true }
+            }
+        }
+    }
+    if (confirmDelete) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.transfer_delete_title)) },
+            text = { Text(stringResource(R.string.transfer_delete_body, item.name)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    confirmDelete = false
+                    if (actions.deleteFile?.invoke() == true) actions.remove?.invoke()
+                    else android.widget.Toast.makeText(context, R.string.transfer_delete_failed, android.widget.Toast.LENGTH_SHORT).show()
+                }) { Text(stringResource(R.string.transfer_delete_confirm), color = LocalTandemExtraColors.current.urgent) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+}
+
+/** The square at the start of a row: the picture of a finished file, or an icon for what it is or what it is doing. */
+@Composable
+private fun PreviewTile(item: TransferItem, tint: Color) {
+    val context = LocalContext.current
+    val size = 52.dp
+    val sizePx = with(LocalDensity.current) { size.roundToPx() }
+    val where = (item.location ?: item.source)?.takeIf { item.state == TransferItem.State.Done }
+    val preview by androidx.compose.runtime.produceState<android.graphics.Bitmap?>(null, where, item.name) {
+        value = where?.let { Previews.load(context, it, item.name, sizePx) }
+    }
+    val icon = when (item.state) {
+        TransferItem.State.Active -> if (item.incoming) TandemIcons.Download else TandemIcons.Upload
+        TransferItem.State.Failed -> TandemIcons.Error
+        TransferItem.State.Done -> when (Previews.kindOf(item.name, null)) {
+            Previews.Kind.Image -> TandemIcons.Image
+            Previews.Kind.Audio -> TandemIcons.Music
+            Previews.Kind.Video -> TandemIcons.Play
+            Previews.Kind.Archive -> TandemIcons.Folder
+            else -> TandemIcons.File
+        }
+    }
+    val background = if (item.state == TransferItem.State.Done) MaterialTheme.colorScheme.surfaceContainerHighest else tint.copy(alpha = 0.16f)
+    Box(Modifier.size(size).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(background), contentAlignment = Alignment.Center) {
+        androidx.compose.animation.Crossfade(targetState = preview, animationSpec = TandemMotion.fadeSpec(), label = "preview") { picture ->
+            if (picture != null) {
+                androidx.compose.foundation.Image(
+                    picture.asImageBitmap(), null, Modifier.fillMaxSize(),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                )
+            } else {
+                Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
+            }
         }
     }
 }

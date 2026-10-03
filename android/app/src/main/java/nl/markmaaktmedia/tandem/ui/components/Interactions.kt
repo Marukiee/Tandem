@@ -1,7 +1,8 @@
 package nl.markmaaktmedia.tandem.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.material3.ripple
@@ -28,12 +29,15 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
  * the sake of the scale would trade information for polish. It covers the element at its
  * full size while the content dips, so a row in a slab is lit edge to edge.
  */
+@OptIn(ExperimentalFoundationApi::class)
 fun Modifier.bouncyClickable(
     enabled: Boolean = true,
     pressedScale: Float = TandemMotion.PressedScale,
     withHaptics: Boolean = false,
     role: Role? = Role.Button,
     onClickLabel: String? = null,
+    /** Something that happens on a long press, with a buzz. */
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ): Modifier = composed {
     val interactionSource = remember { MutableInteractionSource() }
@@ -49,16 +53,23 @@ fun Modifier.bouncyClickable(
     // The press feedback comes first and the dip after it. The other way round, the highlight dipped with the
     // content and stopped short of the edges of the row it sat in, and the part of the row that was pressed
     // shrank under the finger.
-    clickable(
+    combinedClickable(
         interactionSource = interactionSource,
         indication = ripple(),
         enabled = enabled,
         role = role,
         onClickLabel = onClickLabel,
-    ) {
-        if (withHaptics) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-        onClick()
-    }.graphicsLayer {
+        onLongClick = onLongClick?.let { long ->
+            {
+                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                long()
+            }
+        },
+        onClick = {
+            if (withHaptics) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            onClick()
+        },
+    ).graphicsLayer {
         scaleX = scale
         scaleY = scale
     }

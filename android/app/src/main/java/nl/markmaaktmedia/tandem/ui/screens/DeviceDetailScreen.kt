@@ -48,6 +48,7 @@ import nl.markmaaktmedia.tandem.ui.components.BatteryRing
 import nl.markmaaktmedia.tandem.ui.components.DeviceGlyph
 import nl.markmaaktmedia.tandem.ui.components.DeviceIconPicker
 import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
+import nl.markmaaktmedia.tandem.ui.components.rememberTransferActions
 import nl.markmaaktmedia.tandem.ui.components.rememberPickedIcon
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
@@ -237,7 +238,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             SettingsGroup {
                 recent.forEach { item ->
                     Column(Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer)) {
-                        TransferRow(item, device.name, onOpen = item.location?.let { location -> { openLocation(context, location) } })
+                        TransferRow(item, device.name, rememberTransferActions(item, onRemove = { host.removeTransfer(item.id) }))
                     }
                 }
             }

@@ -49,6 +49,8 @@ data class TransferItem(
     val error: String? = null,
     val speed: Double = 0.0,
     val updatedAt: Long = System.currentTimeMillis(),
+    /** Where a file that was sent came from on this phone, as far as it can still be reached. */
+    val source: String? = null,
 ) {
     enum class State { Active, Done, Failed }
 
@@ -99,7 +101,7 @@ class EngineHost(
                 done = o.optLong("size"), total = o.optLong("size"), incoming = o.getBoolean("incoming"),
                 state = if (o.optBoolean("failed")) TransferItem.State.Failed else TransferItem.State.Done,
                 location = o.optString("location").ifEmpty { null }, error = o.optString("error").ifEmpty { null },
-                updatedAt = o.optLong("at"),
+                updatedAt = o.optLong("at"), source = o.optString("source").ifEmpty { null },
             )
         }
     }.getOrDefault(emptyList())
@@ -112,7 +114,8 @@ class EngineHost(
                 array.put(
                     org.json.JSONObject().put("id", it.id).put("peer", it.peer).put("name", it.name).put("size", it.total)
                         .put("incoming", it.incoming).put("failed", it.state == TransferItem.State.Failed)
-                        .put("location", it.location ?: "").put("error", it.error ?: "").put("at", it.updatedAt),
+                        .put("location", it.location ?: "").put("error", it.error ?: "").put("at", it.updatedAt)
+                        .put("source", it.source ?: ""),
                 )
             }
             historyFile.writeText(array.toString())
@@ -249,7 +252,7 @@ class EngineHost(
                 }
                 existing.copy(done = done, total = e.total.toLong(), state = TransferItem.State.Active, speed = speed, updatedAt = now)
             } else {
-                TransferItem(id, e.peer, e.name, done, e.total.toLong(), e.incoming, TransferItem.State.Active, updatedAt = now)
+                TransferItem(id, e.peer, e.name, done, e.total.toLong(), e.incoming, TransferItem.State.Active, updatedAt = now, source = sourceOf(e.incoming, e.name, e.total.toLong()))
             }
             if (existing != null) list.map { if (it.id == id) item else it } else (listOf(item) + list).take(60)
         }
@@ -263,6 +266,7 @@ class EngineHost(
                 state = if (e.error == null) TransferItem.State.Done else TransferItem.State.Failed,
                 error = e.error,
                 location = e.location,
+                source = old?.source ?: sourceOf(e.incoming, e.name, e.size.toLong()),
                 done = if (e.error == null) maxOf(e.size.toLong(), old?.total ?: 0) else old?.done ?: 0,
                 total = maxOf(e.size.toLong(), old?.total ?: 0),
                 speed = 0.0,
@@ -291,6 +295,12 @@ class EngineHost(
         return engine.sendFiles(targets, files, origin).sentTo.size
     }
 
+    /** The sources of the files that were offered, by name and size: the events about them say no more than that. */
+    private val outgoingSources = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    private fun sourceOf(incoming: Boolean, name: String, size: Long): String? =
+        if (incoming) null else outgoingSources["$name|$size"]
+
     private fun describe(uri: Uri, hold: Boolean): TandemOutgoingFile? {
         val resolver = context.contentResolver
         var name = uri.lastPathSegment?.substringAfterLast('/') ?: "file"
@@ -312,6 +322,8 @@ class EngineHost(
             }.onFailure { Log.w(TAG, "could not open $uri", it) }
         }
         val mime = resolver.getType(uri) ?: "application/octet-stream"
+        if (outgoingSources.size > 200) outgoingSources.clear()
+        outgoingSources["$name|$size"] = source
         return TandemOutgoingFile(source = source, name = name, size = size.toULong(), mime = mime)
     }
 

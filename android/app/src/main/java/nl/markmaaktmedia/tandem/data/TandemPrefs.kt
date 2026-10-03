@@ -54,6 +54,7 @@ class TandemPrefs(private val context: Context) {
         val mediaShare = booleanPreferencesKey("media_share")
         val mediaExcluded = stringSetPreferencesKey("media_excluded")
         val audioOutput = booleanPreferencesKey("audio_output")
+        val pinnedDevices = stringSetPreferencesKey("pinned_devices")
     }
 
     val appearance: Flow<Appearance> = data.map { p ->
@@ -94,6 +95,16 @@ class TandemPrefs(private val context: Context) {
 
     /** Clipboard and notifications over Bluetooth when there is no network. On by default: it only listens. */
     val bluetoothMessages: Flow<Boolean> = data.map { it[Keys.bluetoothMessages] ?: true }
+
+    /** The devices that were pinned, by id: they stay at the top of the list. */
+    val pinnedDevices: Flow<Set<String>> = data.map { it[Keys.pinnedDevices] ?: emptySet() }
+
+    suspend fun setPinned(deviceId: String, pinned: Boolean) {
+        context.store.edit { p ->
+            val now = p[Keys.pinnedDevices] ?: emptySet()
+            p[Keys.pinnedDevices] = if (pinned) now + deviceId else now - deviceId
+        }
+    }
 
     /** The icon a person picked for a device, by device id. A device without an entry keeps its platform's icon. */
     val deviceIcons: Flow<Map<String, String>> = data.map { p -> parseIcons(p[Keys.deviceIcons]) }

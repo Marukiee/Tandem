@@ -1,8 +1,59 @@
 [
   {
+    "version": "0.1.27",
+    "date": "2026-10-04",
+    "en": {
+      "title": "Previews in Shared, pinned devices, and an app that asks less of your battery",
+      "new": [
+        "Shared on the phone shows a preview of every file instead of a check mark, opens it with a tap, and has a menu behind three dots with what the right-click menu on the Mac has: open, show in Files, copy the path, remove from the list and delete the file",
+        "Hold a device on the Devices page of the phone to pin it. Pinned devices come first, then the ones that are connected, and from four devices on they sit two by two in smaller cards, so they all fit",
+        "Tandem for Windows (still an experiment) now updates itself: it looks for a new version on GitHub, downloads the installer, checks its hash and its signature, and runs it. The switch and a button are in its settings",
+        "A Mac or PC with its sound off tells the phone, so mute shows as pressed in the player on the phone and lets go when you unmute on the computer"
+      ],
+      "better": [
+        "The player of a Mac or PC is always on its page on the phone, also when nothing plays. The bar stays, it is much easier to grab, and play then presses the play key of the computer. Play and mute show when they are on",
+        "The update notice on the Mac and on Windows sits at the foot of the sidebar instead of over the page",
+        "The Mac shows a phone with the symbol of a phone of today, not one with keys",
+        "A phone or a Mac that was updated or killed is back within seconds. Before, the other device kept the dead connection until the idle timeout (up to 70 seconds) and turned the new one away",
+        "On the phone, switching to Devices, Shared or Settings starts that page at the top, and going back from a page opened inside a tab keeps your place",
+        "The Mac wakes up less: the pasteboard is only watched while a device is connected, the spinner runs at 30 frames a second, and the Bluetooth permission is read when you come back to the app instead of every second",
+        "The phone only holds the multicast lock, which costs power on a busy network, while a paired device is missing",
+        "Tandem for Windows keeps no hidden windows: the main window and the panel are made when they are asked for and gone when closed, so a tray app that nobody looks at is only its engine, and the clipboard is listened to instead of looked at every 700 milliseconds"
+      ],
+      "fixed": [
+        "Swiping a row away on the phone and letting go showed a sliver of the red panel on the other side while the row bounced back",
+        "Holding a row in Settings on the phone dipped it, but the highlight did not run to the edges",
+        "The update on the phone said it was available and then did nothing: Android blocks the installer screen over another app without a word. Tandem now asks when it is in front, and otherwise with a notification and a button in the banner, and it also checks on a cold start"
+      ]
+    },
+    "nl": {
+      "title": "Voorbeelden bij Gedeeld, vastgezette apparaten en een app die minder accu vraagt",
+      "new": [
+        "Gedeeld op de telefoon toont van elk bestand een voorbeeld in plaats van een vinkje, opent het met een tik en heeft achter drie puntjes een menu met wat het rechtermuisknopmenu op de Mac heeft: openen, tonen in Bestanden, pad kopiëren, uit de lijst halen en het bestand verwijderen",
+        "Houd een apparaat op de Apparaten-pagina van de telefoon ingedrukt om het vast te pinnen. Vastgepinde apparaten staan bovenaan, daarna die verbonden zijn, en vanaf vier apparaten staan ze twee aan twee in kleinere kaarten, zodat ze allemaal passen",
+        "Tandem voor Windows (nog steeds een experiment) werkt zichzelf nu bij: hij zoekt op GitHub naar een nieuwe versie, downloadt het installatiebestand, controleert de hash en de handtekening en voert het uit. De schakelaar en een knop staan in de instellingen",
+        "Een Mac of pc zonder geluid meldt dat aan de telefoon, dus dempen staat als ingedrukt in de speler op de telefoon en gaat los als je op de computer het geluid weer aanzet"
+      ],
+      "better": [
+        "De speler van een Mac of pc staat op de telefoon altijd op zijn pagina, ook als er niets speelt. De balk blijft, is veel makkelijker te pakken, en afspelen drukt dan op de afspeeltoets van de computer. Afspelen en dempen laten zien wanneer ze aan staan",
+        "De updatemelding op de Mac en op Windows staat onderaan de zijbalk in plaats van over de pagina",
+        "De Mac toont een telefoon met het symbool van een telefoon van nu, niet een met toetsen",
+        "Een telefoon of een Mac die is bijgewerkt of afgesloten is binnen enkele seconden terug. Eerder hield het andere apparaat de dode verbinding vast tot de rusttijd om was (tot 70 seconden) en wees het de nieuwe af",
+        "Op de telefoon begint de pagina bovenaan als je naar Apparaten, Gedeeld of Instellingen wisselt, en terug vanuit een pagina die binnen een tab is geopend houdt je plek vast",
+        "De Mac wordt minder vaak wakker: het klembord wordt alleen bekeken terwijl een apparaat verbonden is, de spinner draait op 30 beelden per seconde en de Bluetooth-toestemming wordt gelezen als je terugkomt in de app in plaats van elke seconde",
+        "De telefoon houdt het multicastslot, dat stroom kost op een druk netwerk, alleen vast terwijl een gekoppeld apparaat ontbreekt",
+        "Tandem voor Windows houdt geen verborgen vensters: het hoofdvenster en het paneel worden gemaakt als erom gevraagd wordt en zijn weg als ze dicht gaan, dus een app in het systeemvak waar niemand naar kijkt is alleen zijn motor, en naar het klembord wordt geluisterd in plaats van elke 700 milliseconden te kijken"
+      ],
+      "fixed": [
+        "Een rij wegvegen op de telefoon en loslaten liet aan de andere kant een randje van het rode paneel zien terwijl de rij terugveerde",
+        "Een rij in Instellingen op de telefoon ingedrukt houden drukte hem in, maar de markering liep niet door tot de randen",
+        "De update op de telefoon zei dat hij beschikbaar was en deed daarna niets: Android blokkeert het installatiescherm over een andere app zonder iets te zeggen. Tandem vraagt het nu als hij vooraan staat, en anders met een melding en een knop in de banner, en controleert ook bij een koude start"
+      ]
+    }
+  },
+  {
     "version": "0.1.26",
     "date": "2026-10-03",
-    "highlight": true,
     "en": {
       "title": "Tandem for Windows, as an experiment",
       "new": [

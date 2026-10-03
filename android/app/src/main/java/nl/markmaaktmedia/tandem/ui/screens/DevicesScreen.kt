@@ -84,6 +84,16 @@ fun DevicesScreen(
     }
 
     val online = devices.count { it.online }
+    val prefs = context.graph.prefs
+    val pinned by prefs.pinnedDevices.collectAsState(initial = emptySet())
+    val ordered = androidx.compose.runtime.remember(devices, pinned) {
+        orderDevices(
+            devices, pinned, id = { it.id }, name = { it.name },
+            reach = { if (it.online) 0 else if (it.ble) 1 else if (it.status.asleep == true) 2 else 3 },
+        )
+    }
+    // Up to three devices get a card of their own with buttons; more than that go two by two, smaller, so they fit.
+    val compact = ordered.size > 3
 
     LazyColumn(
         modifier = modifier.fillMaxSize().statusBarsPadding(),
@@ -132,10 +142,28 @@ fun DevicesScreen(
             }
         }
 
-        items(devices, key = { it.id }) { device ->
+        if (compact) {
+            items(ordered.chunked(2), key = { row -> row.joinToString("+") { it.id } }) { row ->
+                Row(Modifier.fillMaxWidth().animateItem(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    row.forEach { device ->
+                        CompactDeviceCard(
+                            device = device,
+                            pinned = device.id in pinned,
+                            modifier = Modifier.weight(1f).routeBounds(routeKey(Route.Device(device.id))),
+                            onOpen = { onOpenDevice(device.id) },
+                            onPin = { scope.launch { prefs.setPinned(device.id, device.id !in pinned) } },
+                        )
+                    }
+                    if (row.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+        if (!compact) items(ordered, key = { it.id }) { device ->
             DeviceCard(
                 device = device,
-                modifier = Modifier.routeBounds(routeKey(Route.Device(device.id))),
+                pinned = device.id in pinned,
+                onPin = { scope.launch { prefs.setPinned(device.id, device.id !in pinned) } },
+                modifier = Modifier.animateItem().routeBounds(routeKey(Route.Device(device.id))),
                 onOpen = { onOpenDevice(device.id) },
                 onSendFiles = { pickerTarget = device.id; picker.launch(arrayOf("*/*")) },
                 onSendClipboard = {
@@ -169,6 +197,8 @@ fun DeviceCard(
     onSendClipboard: () -> Unit,
     modifier: Modifier = Modifier,
     onWake: () -> Unit = {},
+    pinned: Boolean = false,
+    onPin: () -> Unit = {},
 ) {
     // Asleep is only known from what the device said as it went, so it is a guess that it can be woken.
     val asleep = !device.online && device.status.asleep == true
@@ -179,7 +209,7 @@ fun DeviceCard(
             .fillMaxWidth()
             .clip(CardSquircle)
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .bouncyClickable(onClick = onOpen)
+            .bouncyClickable(onLongClick = onPin, onClick = onOpen)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -207,6 +237,9 @@ fun DeviceCard(
                         maxLines = 1,
                     )
                 }
+            }
+            if (pinned) {
+                Icon(TandemIcons.Pin, stringResource(R.string.device_pinned), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
             }
             device.status.battery?.let { BatteryBadge(it) }
         }
@@ -238,5 +271,50 @@ private fun QuickAction(icon: androidx.compose.ui.graphics.painter.Painter, labe
     ) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(18.dp))
         Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
+    }
+}
+
+
+/** A smaller card for when there are many devices: who, how it is doing, and nothing else. Tap opens, hold pins. */
+@Composable
+private fun CompactDeviceCard(
+    device: TandemDevice,
+    pinned: Boolean,
+    onOpen: () -> Unit,
+    onPin: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val asleep = !device.online && device.status.asleep == true
+    Column(
+        modifier
+            .clip(CardSquircle)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .bouncyClickable(onLongClick = onPin, onClick = onOpen)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DeviceGlyph(device.platform, device.online, size = 44.dp, deviceId = device.id)
+            Spacer(Modifier.weight(1f))
+            if (pinned) Icon(TandemIcons.Pin, stringResource(R.string.device_pinned), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+            device.status.battery?.let { BatteryBadge(it) }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(device.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                PresenceDot(device.online)
+                Text(
+                    when {
+                        device.online -> stringResource(R.string.status_online)
+                        device.ble -> stringResource(R.string.status_bluetooth)
+                        asleep -> stringResource(R.string.status_asleep)
+                        else -> stringResource(R.string.status_offline)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
