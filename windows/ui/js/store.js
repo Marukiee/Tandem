@@ -13,7 +13,9 @@ export const state = {
   notifications: [],
   players: {},
   art: {},
-  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, language: "auto", downloadDir: "" },
+  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "" },
+  // How the update stands: idle, checking, up-to-date, available, downloading, installing or failed.
+  update: { state: "idle", dismissed: "" },
   autostart: false,
   downloadDir: "",
   systemLanguage: "",

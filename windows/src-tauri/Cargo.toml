@@ -17,6 +17,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tandem-core = { path = "../../crates/tandem-core" }
 tandem-winsys = { path = "winsys" }
+sha2 = "0.10"
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-dialog = "2"
@@ -33,6 +34,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sys-locale = "0.3"
 enigo = "0.6.1"
+
+[dev-dependencies]
+ring = "0.17"
 
 # Its own workspace: the repository root only holds the crates of the core, and this one needs a webview toolchain
 # that the other platforms' CI jobs should never have to build.

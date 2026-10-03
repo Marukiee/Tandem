@@ -11,7 +11,7 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::state::AppState;
-use crate::{clip, events, logfile, media, model, settings, tray};
+use crate::{clip, events, logfile, media, model, settings, tray, update};
 
 type Reply<T> = Result<T, String>;
 
@@ -38,6 +38,7 @@ pub fn get_state(app: AppHandle, state: State<'_, AppState>) -> Value {
         "downloadDir": settings::download_dir(&app).to_string_lossy(),
         "systemLanguage": sys_locale::get_locale().unwrap_or_default(),
         "build": option_env!("TANDEM_BUILD").unwrap_or(""),
+        "update": update::current(&app),
     })
 }
 
@@ -275,6 +276,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["systemMedia"].as_bool() {
             current.system_media = v;
         }
+        if let Some(v) = patch["autoUpdate"].as_bool() {
+            current.auto_update = v;
+        }
         if let Some(v) = patch["language"].as_str() {
             if ["auto", "en", "nl"].contains(&v) {
                 current.language = v.to_string();
@@ -342,6 +346,33 @@ pub fn hide_panel(app: AppHandle) {
 #[tauri::command]
 pub fn resize_panel(app: AppHandle, height: f64) {
     tray::resize_panel(&app, height);
+}
+
+/// A page of Tandem on GitHub, in the browser. Only those: the window has no business sending anyone elsewhere.
+#[tauri::command]
+pub fn open_url(app: AppHandle, url: String) -> Reply<()> {
+    if !url.starts_with("https://github.com/Marukiee/Tandem") {
+        return Err("That address is not opened from here".into());
+    }
+    app.opener().open_url(url, None::<&str>).map_err(shown)
+}
+
+/// Looks for a newer version now, on a button. Answers with how the update stands afterwards.
+#[tauri::command]
+pub async fn check_update(app: AppHandle) -> Value {
+    let looking = app.clone();
+    let _ = tauri::async_runtime::spawn_blocking(move || update::check(&looking, true)).await;
+    update::current(&app)
+}
+
+#[tauri::command]
+pub fn install_update(app: AppHandle) {
+    update::install(&app);
+}
+
+#[tauri::command]
+pub fn dismiss_update(app: AppHandle, version: String) {
+    update::dismiss(&app, &version);
 }
 
 #[tauri::command]

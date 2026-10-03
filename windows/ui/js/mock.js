@@ -19,6 +19,18 @@ const devices = empty ? [] : [
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false, status: {} },
 ];
 
+/** What the update shows when the page is asked for ?update=available, downloading, installing or failed. */
+function updateFor(kind) {
+  const base = { dismissed: "", version: "0.1.27", page: "https://github.com/Marukiee/Tandem/releases/latest" };
+  switch (kind) {
+    case "available": return { ...base, state: "available", notes: "" };
+    case "downloading": return { ...base, state: "downloading", progress: 0.42 };
+    case "installing": return { ...base, state: "installing" };
+    case "failed": return { ...base, state: "failed", reason: "The download is damaged (the checksum does not match)" };
+    default: return { state: "idle", dismissed: "" };
+  }
+}
+
 const state = {
   ready: true, error: null, self: { id: "me", name: "Laptop van Mark", port: 47820 }, version: "0.1.25", build: "preview",
   devices,
@@ -32,7 +44,8 @@ const state = {
     { device: "phone", deviceName: "Maruks Telefoon", key: "a", appId: "wa", appName: "WhatsApp", title: "Anna", text: "Zie je dat? Ik ben er over tien minuten.", ts: now - 120000, buttons: [] },
     { device: "phone", deviceName: "Maruks Telefoon", key: "b", appId: "bank", appName: "Bank", title: "Code 482913", text: "Gebruik 482913 om in te loggen.", ts: now - 900000, otp: "482913", buttons: [] },
   ],
-  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, language: "auto", downloadDir: "" },
+  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "" },
+  update: updateFor(new URLSearchParams(location.search).get("update")),
   autostart: true, downloadDir: "C:\\Users\\Mark\\Downloads\\Tandem", systemLanguage: navigator.language, build_: "",
 };
 
@@ -79,6 +92,8 @@ export async function call(command, args) {
     }
     case "set_settings": Object.assign(state.settings, args.patch); return state.settings;
     case "set_autostart": state.autostart = args.enabled; return args.enabled;
+    case "check_update": state.update = { state: "up-to-date", dismissed: state.update.dismissed }; return state.update;
+    case "dismiss_update": state.update = { ...state.update, dismissed: args.version }; return null;
     case "set_device_settings": {
       const d = devices.find((x) => x.id === args.id);
       if (d) Object.assign(d, { clipboard: args.clipboard, autoAccept: args.autoAccept, notifications: args.notifications });

@@ -96,13 +96,41 @@ jobs:
           $exe = Get-ChildItem $env:LOCALAPPDATA -Recurse -Include "Tandem.exe", "tandem-windows.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $exe) { Get-ChildItem $env:LOCALAPPDATA -Directory | ForEach-Object { Write-Host $_.FullName }; throw "the installer put no Tandem.exe on the machine" }
 
+          # What Tandem and the web views of Windows that it keeps alive hold, in megabytes. The point of putting windows away
+          # is that this drops when nothing is on the screen.
+          function Memory($label) {
+            $mine = Get-Process -Name Tandem -ErrorAction SilentlyContinue
+            $views = Get-Process -Name msedgewebview2 -ErrorAction SilentlyContinue
+            $own = ($mine | Measure-Object -Property WorkingSet64 -Sum).Sum / 1MB
+            $web = ($views | Measure-Object -Property WorkingSet64 -Sum).Sum / 1MB
+            Write-Host ("memory {0}: Tandem {1:N0} MB, {2} web view processes {3:N0} MB, together {4:N0} MB" -f $label, $own, @($views).Count, $web, ($own + $web))
+          }
+
           # The console of the runner is out of the way, so the window of the app is what is in the picture.
           (New-Object -ComObject Shell.Application).MinimizeAll()
+          $env:TANDEM_PANEL_KEPT_SECONDS = "6"
           Write-Host "starting $($exe.FullName)"
           Start-Process $exe.FullName
           Write-Host "the engine is up: $(WaitFor 'the engine runs' 90)"
-          Start-Sleep -Seconds 3
+          Write-Host "the window is up: $(WaitFor 'the main window shows' 120)"
+          Start-Sleep -Seconds 4
           Shot "app-main"
+          Memory "window open"
+
+          # Closing the window gives the web view back.
+          (Get-Process -Name Tandem | Select-Object -First 1).CloseMainWindow() | Out-Null
+          Start-Sleep -Seconds 10
+          Memory "window closed"
+
+          # The panel from the corner: made when asked for, away again a few seconds after it was closed.
+          Start-Process $exe.FullName -ArgumentList "--panel"
+          Write-Host "the panel opened: $(WaitFor 'the panel opens' 90)"
+          Start-Sleep -Seconds 3
+          Shot "app-panel-second"
+          Memory "panel open"
+          Start-Process $exe.FullName -ArgumentList "--panel"
+          Start-Sleep -Seconds 14
+          Memory "panel closed and put away"
           ShowLog "main"
           Stop-Process -Name Tandem -Force -ErrorAction SilentlyContinue
           Start-Sleep -Seconds 3

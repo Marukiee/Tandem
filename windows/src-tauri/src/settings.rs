@@ -23,6 +23,10 @@ pub struct Settings {
     /// The phone's trackpad and keyboard move the pointer and type on this PC. Off until the person turns it on,
     /// because Windows has no permission to ask for: this is the only door.
     pub remote_input: bool,
+    /// Look for a newer Tandem now and then, and say so when there is one.
+    pub auto_update: bool,
+    /// The version whose banner the person sent away with Later.
+    pub dismissed_update: String,
     /// What the phone plays shows in the media controls of Windows (by the volume, on the lock screen), and the media
     /// keys of the keyboard control it.
     pub system_media: bool,
@@ -38,6 +42,8 @@ impl Default for Settings {
             language: "auto".into(),
             remote_input: false,
             system_media: true,
+            auto_update: true,
+            dismissed_update: String::new(),
         }
     }
 }
@@ -63,6 +69,11 @@ pub fn save(app: &AppHandle) {
     if let Ok(text) = serde_json::to_string_pretty(&settings) {
         let _ = std::fs::write(path, text);
     }
+}
+
+pub fn set_dismissed_update(app: &AppHandle, version: &str) {
+    app.state::<AppState>().settings.lock().unwrap().dismissed_update = version.to_string();
+    save(app);
 }
 
 pub fn get(app: &AppHandle) -> Settings {

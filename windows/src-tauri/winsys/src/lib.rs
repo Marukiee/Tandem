@@ -60,10 +60,15 @@ mod imp {
         String::new()
     }
 
+    /// Nothing tells this system when the clipboard changes, so the caller has to look by itself.
+    pub fn watch_clipboard(_on_change: impl Fn() + Send + Sync + 'static) -> bool {
+        false
+    }
+
     pub struct Media;
 
     impl Media {
-        pub fn start(_window: isize, _on_request: impl Fn(Request) + Send + Sync + 'static) -> Media {
+        pub fn start(_on_request: impl Fn(Request) + Send + Sync + 'static) -> Media {
             Media
         }
         pub fn show(&self, _now: Now) {}
@@ -71,4 +76,4 @@ mod imp {
     }
 }
 
-pub use imp::{Media, battery, describe};
+pub use imp::{Media, battery, describe, watch_clipboard};

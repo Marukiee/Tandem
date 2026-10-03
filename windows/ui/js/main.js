@@ -7,6 +7,45 @@ import { setLanguage, t } from "./i18n.js";
 import { DevicePage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
 import { say, selectedDevice, set, state, useStore } from "./store.js";
 
+/** The update, at the foot of the sidebar: what is out, how far the download is, and what went wrong. */
+function UpdateBanner() {
+  const u = state.update;
+  const failed = (e) => say(String(e && e.message ? e.message : e));
+  if (u.state === "available" && u.version !== u.dismissed) {
+    return html`<div class="update">
+      <div class="update-head"><span class="update-icon"><${Icon} name="arrow-down" size=${15} /></span>
+        <div class="grow"><div class="t">${t("update_available", u.version)}</div><div class="s">${t("update_you_have", state.version)}</div></div></div>
+      <div class="update-actions">
+        <button class="btn small ghost" onClick=${() => call("dismiss_update", { version: u.version }).catch(failed)}>${t("later")}</button>
+        <button class="btn small accent" onClick=${() => call("install_update").catch(failed)}>${t("update_and_restart")}</button>
+      </div>
+    </div>`;
+  }
+  if (u.state === "downloading") {
+    const pct = Math.round((u.progress || 0) * 100);
+    return html`<div class="update">
+      <div class="update-head"><span class="update-icon"><${Icon} name="arrow-down" size=${15} /></span>
+        <div class="grow"><div class="t">${t("update_downloading", u.version)}</div></div><span class="small muted">${pct}%</span></div>
+      <div class="prog"><i style=${`width:${pct}%`}></i></div>
+    </div>`;
+  }
+  if (u.state === "installing") {
+    return html`<div class="update"><div class="update-head"><span class="update-icon"><${Icon} name="refresh" size=${15} /></span>
+      <div class="grow"><div class="t">${t("update_installing")}</div><div class="s">${t("update_reopens")}</div></div></div></div>`;
+  }
+  if (u.state === "failed") {
+    return html`<div class="update bad">
+      <div class="update-head"><span class="update-icon bad"><${Icon} name="alert-triangle" size=${15} /></span>
+        <div class="grow"><div class="t">${t("update_failed")}</div><div class="s">${u.reason}</div></div></div>
+      <div class="update-actions">
+        ${u.page && html`<button class="btn small ghost" onClick=${() => call("open_url", { url: u.page }).catch(failed)}>${t("update_open_page")}</button>`}
+        ${u.version && html`<button class="btn small" onClick=${() => call("install_update").catch(failed)}>${t("try_again")}</button>`}
+      </div>
+    </div>`;
+  }
+  return null;
+}
+
 function Nav() {
   const unread = state.notifications.length;
   return html`<nav class="nav">
@@ -31,6 +70,7 @@ function Nav() {
     <div class=${"row" + (state.page === "notifications" ? " selected" : "")} onClick=${() => set({ page: "notifications" })}>
       <${Icon} name="bell" size=${19} /><span class="grow">${t("notifications")}</span>${unread > 0 && html`<span class="badge">${unread > 99 ? "99+" : unread}</span>`}</div>
     <div class=${"row" + (state.page === "settings" ? " selected" : "")} onClick=${() => set({ page: "settings" })}><${Icon} name="settings" size=${19} /><span class="grow">${t("settings")}</span></div>
+    <${UpdateBanner} />
   </nav>`;
 }
 

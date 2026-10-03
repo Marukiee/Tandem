@@ -54,6 +54,7 @@ function apply(snapshot) {
     notifications: snapshot.notifications,
     settings: snapshot.settings,
     autostart: snapshot.autostart,
+    update: snapshot.update || state.update,
     downloadDir: snapshot.downloadDir,
     systemLanguage: snapshot.systemLanguage,
     selected: pick(snapshot.devices),
@@ -88,6 +89,8 @@ async function follow() {
   await listen("players", (players) => set({ players }));
   await listen("art", ({ key, uri }) => set({ art: { ...state.art, [key]: uri } }));
   await listen("say", (text) => say(text));
+  // The event leaves out what the person decided about it, so that stays.
+  await listen("update", (update) => set({ update: { dismissed: state.update.dismissed, ...update } }));
   await listen("engine-ready", async () => apply(await call("get_state")));
   await listen("engine-error", (error) => set({ error }));
   await listen("paired", ({ id, name }) => {

@@ -15,15 +15,18 @@ use windows::Media::{
     SystemMediaTransportControlsTimelineProperties,
 };
 use windows::Storage::Streams::{DataWriter, InMemoryRandomAccessStream, RandomAccessStreamReference};
-use windows::Win32::Foundation::{HWND, LPARAM, RECT};
+use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Dwm::{DWMWA_CLOAKED, DwmGetWindowAttribute};
+use windows::Win32::System::DataExchange::AddClipboardFormatListener;
+use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
 use windows::Win32::System::WinRT::{ISystemMediaTransportControlsInterop, RO_INIT_MULTITHREADED, RoInitialize};
 use windows::Win32::UI::WindowsAndMessaging::{
-    EnumChildWindows, GWL_EXSTYLE, GWL_STYLE, GetClassNameW, GetForegroundWindow, GetWindowLongPtrW, GetWindowRect,
-    IsIconic, IsWindowVisible,
+    CreateWindowExW, DefWindowProcW, DispatchMessageW, EnumChildWindows, GWL_EXSTYLE, GWL_STYLE, GetClassNameW,
+    GetForegroundWindow, GetMessageW, GetWindowLongPtrW, GetWindowRect, HWND_MESSAGE, IsIconic, IsWindowVisible, MSG,
+    RegisterClassW, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE, WM_CLIPBOARDUPDATE, WNDCLASSW,
 };
-use windows::core::{BOOL, HSTRING, Ref, factory};
+use windows::core::{BOOL, HSTRING, Ref, factory, w};
 
 use super::{Battery, Button, Now, Request};
 
@@ -51,14 +54,15 @@ pub struct Media {
 }
 
 impl Media {
-    /// Connects to the media controls of the window with this handle. `on_request` is called, on a thread of the system,
-    /// when a button is pressed or the bar is dragged.
-    pub fn start(window: isize, on_request: impl Fn(Request) + Send + Sync + 'static) -> Media {
+    /// Connects to the media controls of the system. They belong to a window, so this makes one of its own that is never
+    /// shown: the windows of the app come and go, and the media controls must not go with them. `on_request` is called,
+    /// on a thread of the system, when a button is pressed or the bar is dragged.
+    pub fn start(on_request: impl Fn(Request) + Send + Sync + 'static) -> Media {
         let (commands, inbox) = mpsc::channel();
         let on_request: Arc<dyn Fn(Request) + Send + Sync> = Arc::new(on_request);
         std::thread::Builder::new()
             .name("tandem-media".into())
-            .spawn(move || run(window, inbox, on_request))
+            .spawn(move || run(inbox, on_request))
             .ok();
         Media { commands: Mutex::new(commands) }
     }
@@ -72,11 +76,20 @@ impl Media {
     }
 }
 
-fn run(window: isize, inbox: Receiver<Command>, on_request: Arc<dyn Fn(Request) + Send + Sync>) {
+fn run(inbox: Receiver<Command>, on_request: Arc<dyn Fn(Request) + Send + Sync>) {
     unsafe {
         let _ = RoInitialize(RO_INIT_MULTITHREADED);
     }
-    let controls = match open(window, on_request) {
+    // A window of the stock class "STATIC", with no size, never shown.
+    let window = unsafe {
+        let instance = GetModuleHandleW(None).ok().map(|module| HINSTANCE(module.0));
+        CreateWindowExW(WINDOW_EX_STYLE(0), w!("STATIC"), w!("Tandem"), WINDOW_STYLE(0), 0, 0, 0, 0, None, None, instance, None)
+    };
+    let Ok(window) = window else {
+        log::warn!("the media controls of Windows have no window to belong to");
+        return;
+    };
+    let controls = match open(window.0 as isize, on_request) {
         Ok(controls) => controls,
         Err(error) => {
             log::warn!("the media controls of Windows are not available: {error}");
@@ -247,4 +260,54 @@ pub fn describe(window: isize) -> String {
         let _ = EnumChildWindows(Some(hwnd), Some(child), LPARAM(&mut text as *mut String as isize));
     }
     text
+}
+
+// ---- The clipboard ---------------------------------------------------------------
+
+static CLIPBOARD_CHANGED: std::sync::OnceLock<Box<dyn Fn() + Send + Sync>> = std::sync::OnceLock::new();
+
+/// Calls `on_change` each time the clipboard changes, whichever program changed it, and costs nothing in between: the
+/// system sends the message, nobody has to look. It comes more than once for one copy (once for each format a program
+/// puts on it), so the caller waits a moment and looks once. True when the system accepted the listener.
+pub fn watch_clipboard(on_change: impl Fn() + Send + Sync + 'static) -> bool {
+    if CLIPBOARD_CHANGED.set(Box::new(on_change)).is_err() {
+        return false;
+    }
+    let (ready_tx, ready_rx) = mpsc::channel();
+    let started = std::thread::Builder::new().name("tandem-clipboard".into()).spawn(move || unsafe {
+        let Ok(module) = GetModuleHandleW(None) else {
+            let _ = ready_tx.send(false);
+            return;
+        };
+        let instance = HINSTANCE(module.0);
+        let class = w!("TandemClipboardWatcher");
+        let window_class = WNDCLASSW { lpfnWndProc: Some(clipboard_proc), hInstance: instance, lpszClassName: class, ..Default::default() };
+        RegisterClassW(&window_class);
+        // A window that is only there to be sent messages: it has no size and is never shown.
+        let window = CreateWindowExW(WINDOW_EX_STYLE(0), class, w!(""), WINDOW_STYLE(0), 0, 0, 0, 0, Some(HWND_MESSAGE), None, Some(instance), None);
+        let listening = match window {
+            Ok(window) => AddClipboardFormatListener(window).is_ok(),
+            Err(_) => false,
+        };
+        let _ = ready_tx.send(listening);
+        if !listening {
+            return;
+        }
+        let mut message = MSG::default();
+        while GetMessageW(&mut message, None, 0, 0).as_bool() {
+            let _ = TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    });
+    started.is_ok() && ready_rx.recv_timeout(Duration::from_secs(3)).unwrap_or(false)
+}
+
+unsafe extern "system" fn clipboard_proc(window: HWND, message: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    if message == WM_CLIPBOARDUPDATE {
+        if let Some(on_change) = CLIPBOARD_CHANGED.get() {
+            on_change();
+        }
+        return LRESULT(0);
+    }
+    unsafe { DefWindowProcW(window, message, wparam, lparam) }
 }

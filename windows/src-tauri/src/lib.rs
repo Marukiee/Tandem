@@ -16,8 +16,9 @@ mod power;
 mod settings;
 mod state;
 mod tray;
+mod update;
 
-use tauri::{Manager, WindowEvent};
+use tauri::{Manager, RunEvent, WindowEvent};
 
 pub fn run() {
     tauri::Builder::default()
@@ -42,14 +43,9 @@ pub fn run() {
             logfile::init(&handle);
             settings::load(&handle);
             tray::build(&handle)?;
-            tray::fit_main(&handle);
-            for label in ["main", "panel"] {
-                if let Some(window) = handle.get_webview_window(label) {
-                    log::info!("window {label}: outer {:?}, scale {:?}", window.outer_size(), window.scale_factor());
-                }
-            }
             media::start(&handle);
             power::start(handle.clone());
+            update::start(handle.clone());
             engine::start(handle.clone());
             clip::start(handle.clone());
             // Started with Windows it waits in the tray; started by hand it shows its window.
@@ -64,10 +60,10 @@ pub fn run() {
         .on_window_event(|window, event| match event {
             WindowEvent::CloseRequested { api, .. } if window.label() == "main" => {
                 let app = window.app_handle();
-                if settings::get(app).close_to_tray {
+                // Closing the window to the tray really closes it, which gives back what its web view held; the next
+                // time it is wanted a new one is made. Tandem itself runs on.
+                if !settings::get(app).close_to_tray {
                     api.prevent_close();
-                    let _ = window.hide();
-                } else {
                     tray::quit_app(app);
                 }
             }
@@ -103,8 +99,18 @@ pub fn run() {
             commands::hide_panel,
             commands::resize_panel,
             commands::open_logs,
+            commands::check_update,
+            commands::open_url,
+            commands::install_update,
+            commands::dismiss_update,
             commands::quit_app,
         ])
-        .run(tauri::generate_context!())
-        .expect("Tandem could not start");
+        .build(tauri::generate_context!())
+        .expect("Tandem could not start")
+        .run(|_app, event| {
+            // The last window going away is not a reason to stop: Tandem lives in the tray. Quitting is its own thing.
+            if let RunEvent::ExitRequested { api, code: None, .. } = event {
+                api.prevent_exit();
+            }
+        });
 }

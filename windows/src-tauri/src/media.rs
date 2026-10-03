@@ -33,21 +33,9 @@ struct Active {
     last_playing: Instant,
 }
 
-#[cfg(windows)]
-pub fn start(app: &AppHandle) {
-    let Some(window) = app.get_webview_window("main") else { return };
-    let Ok(hwnd) = window.hwnd() else {
-        log::warn!("the main window has no handle for the media controls");
-        return;
-    };
-    let handle = app.clone();
-    let _ = MEDIA.set(Media::start(hwnd.0 as isize, move |request| respond(&handle, request)));
-}
-
-#[cfg(not(windows))]
 pub fn start(app: &AppHandle) {
     let handle = app.clone();
-    let _ = MEDIA.set(Media::start(0, move |request| respond(&handle, request)));
+    let _ = MEDIA.set(Media::start(move |request| respond(&handle, request)));
 }
 
 /// Looks again at what the phones play and shows it, or takes it away.

@@ -9,33 +9,7 @@
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "label": "main",
-        "title": "Tandem",
-        "url": "index.html",
-        "width": 1040,
-        "height": 720,
-        "minWidth": 860,
-        "minHeight": 560,
-        "center": true,
-        "visible": false
-      },
-      {
-        "label": "panel",
-        "title": "Tandem",
-        "url": "panel.html",
-        "width": 352,
-        "height": 540,
-        "visible": false,
-        "decorations": false,
-        "resizable": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "focus": false,
-        "shadow": true
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src ipc: http://ipc.localhost"
     }

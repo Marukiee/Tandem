@@ -223,6 +223,20 @@ export function NotificationsPage() {
   </div>`;
 }
 
+/** One line for the settings row: where the update stands. */
+function updateText() {
+  const u = state.update;
+  switch (u.state) {
+    case "checking": return t("update_checking");
+    case "up-to-date": return t("update_up_to_date");
+    case "available": return t("update_available", u.version);
+    case "downloading": return t("update_downloading", u.version);
+    case "installing": return t("update_installing");
+    case "failed": return u.reason;
+    default: return t("update_version_now", state.version);
+  }
+}
+
 export function SettingsPage() {
   const s = state.settings;
   const [name, setName] = useState(state.self ? state.self.name : "");
@@ -251,6 +265,10 @@ export function SettingsPage() {
       <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
       <${SettingRow} icon="pointer" title=${t("remote_input")} sub=${t("remote_input_sub")} on=${s.remoteInput} onChange=${(v) => patch({ remoteInput: v })} />
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
+      <${SettingRow} icon="refresh" title=${t("auto_update")} sub=${t("auto_update_sub")} on=${s.autoUpdate} onChange=${(v) => patch({ autoUpdate: v })} />
+      <${SettingRow} icon="arrow-down" title=${t("check_now")} sub=${updateText()}>
+        <button class="btn small" disabled=${state.update.state === "checking" || state.update.state === "downloading" || state.update.state === "installing"} onClick=${() => call("check_update").then((u) => set({ update: { dismissed: state.update.dismissed, ...u } })).catch(failed)}>${t("check_now")}</button>
+      <//>
       <${SettingRow} icon="info-circle" title=${t("language")}>
         <select value=${s.language} onChange=${(e) => patch({ language: e.target.value })}>
           <option value="auto">${t("language_auto")}</option><option value="en">English</option><option value="nl">Nederlands</option>

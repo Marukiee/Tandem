@@ -165,6 +165,28 @@ h2 { font: 600 16px var(--font-display); margin: 6px 2px 0; }
 .btn.danger { color: var(--bad); }
 .btn[disabled] { opacity: 0.45; pointer-events: none; }
 .btn.small { min-height: 26px; padding: 2px 10px; font-size: 12px; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+.btn.ghost:hover { color: var(--text); background: var(--hover); }
+
+/* ---- The update, at the foot of the sidebar ---- */
+.update {
+  margin: 8px 2px 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: none;
+}
+.update.bad { background: color-mix(in srgb, var(--bad) 10%, transparent); border-color: color-mix(in srgb, var(--bad) 28%, transparent); }
+.update-head { display: flex; align-items: center; gap: 10px; }
+.update-head .t { font-weight: 600; font-size: 13px; line-height: 1.25; }
+.update-head .s { font-size: 12px; color: var(--text-2); line-height: 1.25; }
+.update-icon { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; }
+.update-icon.bad { background: var(--bad); color: #fff; }
+.update-actions { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
 
 .ib {
   width: 32px;

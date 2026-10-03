@@ -254,6 +254,18 @@ jobs:
         shell: pwsh
         run: ./scripts/build-windows.ps1 -Version $env:VERSION
 
+      # The installer is what the app downloads when it updates itself. The .sig is over these exact bytes, and the app
+      # checks it with the public key it was built with before it runs anything.
+      - name: Sign the installer
+        shell: pwsh
+        env:
+          TANDEM_UPDATE_ED25519_SECRET: ${{ secrets.TANDEM_UPDATE_ED25519_SECRET }}
+        run: |
+          python -m pip install --quiet cryptography
+          $signature = python scripts/sign-update.py dist-windows/Tandem-Windows-x64-setup.exe
+          if ($LASTEXITCODE -ne 0) { throw "the installer was not signed" }
+          Set-Content -Path dist-windows/Tandem-Windows-x64-setup.exe.sig -Value $signature -NoNewline -Encoding ascii
+
       - uses: actions/upload-artifact@v7
         with:
           name: windows
