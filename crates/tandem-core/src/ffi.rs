@@ -107,11 +107,17 @@ struct FilesAdapter(Arc<dyn TandemFiles>);
 
 impl FileStore for FilesAdapter {
     fn open_read(&self, source: &str) -> std::io::Result<std::fs::File> {
-        let fd = self
-            .0
-            .open_read(source.to_string())
-            .map_err(|e| std::io::Error::other(e.to_string()))?;
-        file_from_descriptor(fd)
+        // Where a descriptor cannot be handed over (Windows) the source is a path, and the core opens it itself.
+        #[cfg(not(unix))]
+        return std::fs::File::open(source);
+        #[cfg(unix)]
+        {
+            let fd = self
+                .0
+                .open_read(source.to_string())
+                .map_err(|e| std::io::Error::other(e.to_string()))?;
+            file_from_descriptor(fd)
+        }
     }
 
     fn store_download(&self, temp: &std::path::Path, name: &str, mime: &str) -> std::io::Result<String> {
@@ -126,13 +132,6 @@ impl FileStore for FilesAdapter {
 fn file_from_descriptor(fd: i32) -> std::io::Result<std::fs::File> {
     use std::os::fd::FromRawFd;
     Ok(unsafe { std::fs::File::from_raw_fd(fd) })
-}
-
-/// Only the phone and the Mac hand over descriptors. A Windows app opens files by path, with the core as a plain
-/// Rust crate, and never goes through the bindings.
-#[cfg(not(unix))]
-fn file_from_descriptor(_fd: i32) -> std::io::Result<std::fs::File> {
-    Err(std::io::Error::other("a file descriptor from the app cannot be used on this platform"))
 }
 
 // ---- Plain types ------------------------------------------------------------------

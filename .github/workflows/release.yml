@@ -231,10 +231,40 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  windows:
+    name: Windows
+    needs: meta
+    runs-on: windows-latest
+    timeout-minutes: 60
+    # A platform that is new: when it fails, the phone and the Mac still get their release, only without Windows files.
+    continue-on-error: true
+    env:
+      VERSION: ${{ needs.meta.outputs.version }}
+      TANDEM_BUILD: ${{ needs.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            windows/src-tauri -> target
+
+      - name: Build the installer and the daemon
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -Version $env:VERSION
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: dist-windows/*
+          if-no-files-found: error
+
   publish:
     name: GitHub Release
-    needs: [meta, android, macos, linux]
-    if: needs.meta.outputs.publish == 'true'
+    needs: [meta, android, macos, linux, windows]
+    # The release does not wait for Windows to succeed, only for it to be done.
+    if: ${{ !cancelled() && needs.meta.outputs.publish == 'true' && needs.android.result == 'success' && needs.macos.result == 'success' && needs.linux.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

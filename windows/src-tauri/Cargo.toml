@@ -1,0 +1,42 @@
+[package]
+name = "tandem-windows"
+version = "0.1.0"
+description = "Tandem for Windows"
+edition = "2024"
+license = "AGPL-3.0-only"
+repository = "https://github.com/Marukiee/Tandem"
+rust-version = "1.90"
+
+[lib]
+name = "tandem_windows_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tandem-core = { path = "../../crates/tandem-core" }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+anyhow = "1"
+arboard = { version = "3", default-features = false }
+base64 = "0.22"
+hostname = "0.4"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sys-locale = "0.3"
+
+# Its own workspace: the repository root only holds the crates of the core, and this one needs a webview toolchain
+# that the other platforms' CI jobs should never have to build.
+[workspace]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true

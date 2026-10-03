@@ -31,13 +31,15 @@ en "publish" uit laten staan. Je krijgt dan de bestanden als download bij de run
 ## Wat CI doet
 
 De workflow [release.yml](../.github/workflows/release.yml) draait vier bouwjobs en
-publiceert pas als alle vier slagen.
+publiceert pas als de eerste drie slagen. Windows is een vijfde job die niets tegenhoudt: faalt hij
+dan komen telefoon en Mac gewoon uit, alleen zonder Windows-bestanden.
 
 | Job | Resultaat |
 | --- | --- |
 | Android | Getekende APK. Faalt als hij niet met de release-sleutel is getekend. |
 | Mac | App gebouwd, getekend met het Mac-certificaat, gezipt en van een Ed25519-handtekening voorzien |
 | Linux | `tandemd` voor x86_64 en aarch64, elk op een eigen runner, gebouwd op Ubuntu 22.04 zodat hij ook op Debian 12 en de Raspberry Pi draait |
+| Windows | Het installatieprogramma van de app (NSIS, per gebruiker, ongetekend) en `tandemd.exe`, gebouwd met `scripts/build-windows.ps1` |
 | GitHub Release | Zet alle bestanden onder de vaste namen aan de release, met automatisch gegenereerde notities |
 
 Bestanden in de release:
@@ -46,6 +48,13 @@ Bestanden in de release:
 - `Tandem-macOS.zip`, `Tandem-macOS.zip.sha256` en `Tandem-macOS.zip.sig` voor de Mac
 - `tandemd-linux-x86_64.tar.gz` en `tandemd-linux-aarch64.tar.gz`, elk met een `.sha256`
   en een kopie met het versienummer in de naam
+- `Tandem-Windows-x64-setup.exe` en `tandemd-windows-x86_64.zip`, elk met een `.sha256`, en een
+  kopie met het versienummer in de naam. Windows werkt zichzelf nog niet bij.
+
+Tussen versies door staat er een los voorbeeld op de release `windows-preview`
+([windows.yml](../.github/workflows/windows.yml)): elke wijziging aan `windows/` of de kern bouwt het
+installatieprogramma opnieuw en vervangt de bestanden daar. Die release is een pre-release, dus niemand
+krijgt hem als update.
 
 **Blijf deze namen precies zo houden.** De apps zoeken erop. De notities zijn wat GitHub
 zelf genereert. Wil je ze aanpassen, doe dat na afloop met

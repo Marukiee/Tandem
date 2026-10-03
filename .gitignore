@@ -37,3 +37,6 @@ macos/Sources/tandem_coreFFI/include/
 *.pem
 .env
 .claude/
+
+# Output of scripts/build-windows.ps1
+/dist-windows/

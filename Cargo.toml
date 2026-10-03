@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+# The Windows app has its own workspace: it needs a webview toolchain the other platforms never build.
+exclude = ["windows"]
 
 [workspace.package]
 version = "0.1.0"

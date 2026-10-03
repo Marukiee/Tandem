@@ -1,0 +1,101 @@
+name: Windows app
+
+# Builds the Windows app on every change to it and keeps the installer on the release "windows-preview", so it can be
+# tried on a PC without waiting for a version. The installers of versions come from the release workflow.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - "crates/**"
+      - "Cargo.lock"
+      - "scripts/build-windows.ps1"
+      - ".github/workflows/windows.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  app:
+    name: Windows app
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            windows/src-tauri -> target
+
+      # The newest version in the changelog: a preview is a build on the way to the next one.
+      - name: Version
+        id: v
+        shell: bash
+        run: echo "version=$(python -c "import json;print(json.load(open('changelog.json'))[0]['version'])")" >> "$GITHUB_OUTPUT"
+
+      - name: Build the installer and the daemon
+        shell: pwsh
+        env:
+          TANDEM_BUILD: preview-${{ github.run_number }}
+        run: ./scripts/build-windows.ps1 -Version ${{ steps.v.outputs.version }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: dist-windows/*
+          if-no-files-found: error
+
+      # Installs the app on the runner, starts it and takes a picture of the screen, so what it looks like on Windows
+      # can be checked without a Windows PC. The runner may have no screen to take a picture of; that is not a failure.
+      - name: Start the app and take a screenshot
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist-windows -Filter "Tandem-Windows-x64-setup.exe"
+          Start-Process $setup.FullName -ArgumentList "/S" -Wait
+          $exe = Join-Path $env:LOCALAPPDATA "Tandem/Tandem.exe"
+          if (-not (Test-Path $exe)) { $exe = (Get-ChildItem "$env:LOCALAPPDATA/Programs" -Recurse -Filter "Tandem.exe" | Select-Object -First 1).FullName }
+          Write-Host "starting $exe"
+          Start-Process $exe
+          Start-Sleep -Seconds 12
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+          $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          New-Item -ItemType Directory -Force screenshots | Out-Null
+          $bitmap.Save("screenshots/main.png")
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: screenshots
+          path: screenshots/*
+          if-no-files-found: ignore
+
+      - name: Publish the preview
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git tag -f windows-preview
+          git push -f origin windows-preview
+          notes="A preview of the Windows app, built from commit ${GITHUB_SHA::7}. It is not a version: it is replaced by the next build, and it is not offered as an update anywhere."
+          if gh release view windows-preview >/dev/null 2>&1; then
+            gh release edit windows-preview --prerelease --latest=false --notes "$notes"
+          else
+            gh release create windows-preview --prerelease --latest=false --title "Windows preview" --notes "$notes"
+          fi
+          gh release upload windows-preview dist-windows/Tandem-Windows-x64-setup.exe dist-windows/Tandem-Windows-x64-setup.exe.sha256 dist-windows/tandemd-windows-x86_64.zip dist-windows/tandemd-windows-x86_64.zip.sha256 --clobber
