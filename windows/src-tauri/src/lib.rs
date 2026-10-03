@@ -43,6 +43,11 @@ pub fn run() {
             settings::load(&handle);
             tray::build(&handle)?;
             tray::fit_main(&handle);
+            for label in ["main", "panel"] {
+                if let Some(window) = handle.get_webview_window(label) {
+                    log::info!("window {label}: outer {:?}, scale {:?}", window.outer_size(), window.scale_factor());
+                }
+            }
             media::start(&handle);
             power::start(handle.clone());
             engine::start(handle.clone());

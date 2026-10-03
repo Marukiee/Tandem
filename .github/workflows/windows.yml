@@ -71,28 +71,51 @@ jobs:
             New-Item -ItemType Directory -Force screenshots | Out-Null
             $bitmap.Save("screenshots/$name.png")
           }
+          $log = Join-Path $env:LOCALAPPDATA "nl.markmaaktmedia.tandem\logs\tandem.log"
+          # The app says in its log what it has done, which is how to know it is ready: a cold start of the web view can
+          # take a long time on a new machine.
+          function WaitFor($pattern, $seconds) {
+            $until = (Get-Date).AddSeconds($seconds)
+            while ((Get-Date) -lt $until) {
+              if ((Test-Path $log) -and (Select-String -Path $log -Pattern $pattern -Quiet)) { return $true }
+              Start-Sleep -Milliseconds 500
+            }
+            return $false
+          }
+          function ShowLog($title) {
+            Write-Host "---- $title"
+            Get-ChildItem (Split-Path $log) -Filter "*.log" -ErrorAction SilentlyContinue | ForEach-Object {
+              Write-Host "-- $($_.Name)"
+              Get-Content $_.FullName | Write-Host
+              Copy-Item $_.FullName "screenshots/$title-$($_.Name)" -ErrorAction SilentlyContinue
+            }
+          }
+          New-Item -ItemType Directory -Force screenshots | Out-Null
           $setup = Get-ChildItem dist-windows -Filter "Tandem-Windows-x64-setup.exe"
           Start-Process $setup.FullName -ArgumentList "/S" -Wait
           $exe = Get-ChildItem $env:LOCALAPPDATA -Recurse -Include "Tandem.exe", "tandem-windows.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $exe) { Get-ChildItem $env:LOCALAPPDATA -Directory | ForEach-Object { Write-Host $_.FullName }; throw "the installer put no Tandem.exe on the machine" }
+
           # The console of the runner is out of the way, so the window of the app is what is in the picture.
           (New-Object -ComObject Shell.Application).MinimizeAll()
           Write-Host "starting $($exe.FullName)"
           Start-Process $exe.FullName
-          Start-Sleep -Seconds 15
+          Write-Host "the engine is up: $(WaitFor 'the engine runs' 90)"
+          Start-Sleep -Seconds 3
           Shot "app-main"
-          # A second start with --panel hands the first one the order to open the small panel.
+          ShowLog "main"
+          Stop-Process -Name Tandem -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 3
+
+          # A start with --panel opens the small panel in the corner, where a click on the tray icon would put it.
+          Remove-Item (Split-Path $log) -Recurse -Force -ErrorAction SilentlyContinue
           Start-Process $exe.FullName -ArgumentList "--panel"
-          Start-Sleep -Seconds 5
+          Write-Host "the panel opened: $(WaitFor 'the panel opens' 90)"
+          Start-Sleep -Seconds 3
           Shot "app-panel"
-          Get-Process | Where-Object { $_.ProcessName -match "Tandem|msedgewebview2" } | Select-Object ProcessName, Id, Responding | Format-Table | Out-String | Write-Host
-          $logs = Get-ChildItem $env:LOCALAPPDATA, $env:APPDATA -Recurse -Filter "tandem*.log" -ErrorAction SilentlyContinue
-          foreach ($log in $logs) {
-            Write-Host "---- $($log.FullName)"
-            Get-Content $log.FullName | Write-Host
-            Copy-Item $log.FullName "screenshots/$($log.Name)"
-          }
-          if (-not $logs) { Write-Host "the app wrote no log" }
+          Start-Sleep -Seconds 4
+          ShowLog "panel"
+          Get-Process | Where-Object { $_.ProcessName -match "Tandem" } | Select-Object ProcessName, Id, Responding | Format-Table | Out-String | Write-Host
 
       # The pages with pretend data, drawn by the Edge on the runner: the same engine as the window of the app, with
       # the fonts and the font smoothing of Windows.
@@ -110,8 +133,7 @@ jobs:
             @{ name = "ui-device"; url = "index.html?page=device"; size = "1040,820" },
             @{ name = "ui-shared"; url = "index.html?page=shared"; size = "1040,820" },
             @{ name = "ui-notifications"; url = "index.html?page=notifications"; size = "1040,820" },
-            @{ name = "ui-settings"; url = "index.html?page=settings"; size = "1040,820" },
-            @{ name = "ui-panel"; url = "panel.html"; size = "352,640" }
+            @{ name = "ui-settings"; url = "index.html?page=settings"; size = "1040,820" }
           )
           foreach ($shot in $shots) {
             $file = Join-Path $out "$($shot.name).png"

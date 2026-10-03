@@ -15,6 +15,8 @@ pub struct AppState {
     pub settings: Mutex<Settings>,
     pub data: Mutex<Data>,
     pub panel_shown: Mutex<Option<Instant>>,
+    /// The height the content of the panel asked for, in points, kept while the panel is hidden.
+    pub panel_height: Mutex<Option<f64>>,
 }
 
 /// What has happened since Tandem started, kept so a window that opens later can show it.

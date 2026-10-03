@@ -78,15 +78,22 @@ pub fn show_panel_in_corner(app: &AppHandle) {
     *app.state::<AppState>().panel_shown.lock().unwrap() = Instant::now().checked_add(Duration::from_secs(3600));
 }
 
+/// The width of the panel, in points.
+const PANEL_WIDTH: f64 = 352.0;
+/// What its height is until its content has said what it needs.
+const PANEL_HEIGHT: f64 = 400.0;
+
 fn toggle_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
     let Some(panel) = app.get_webview_window("panel") else { return };
     if panel.is_visible().unwrap_or(false) {
+        log::info!("the panel closes");
         let _ = panel.hide();
         return;
     }
+    // The size is set here, from what the content asked for, instead of read back from a window that was never shown.
     let scale = panel.scale_factor().unwrap_or(1.0);
-    let size = panel.outer_size().unwrap_or(PhysicalSize::new((352.0 * scale) as u32, (540.0 * scale) as u32));
-    let (width, height) = (size.width as i32, size.height as i32);
+    let wanted = app.state::<AppState>().panel_height.lock().unwrap().unwrap_or(PANEL_HEIGHT);
+    let (width, height) = ((PANEL_WIDTH * scale).round() as i32, (wanted.clamp(180.0, 720.0) * scale).round() as i32);
     let margin = (12.0 * scale) as i32;
     let (mut x, mut y) = (click.x as i32 - width / 2, click.y as i32 - height - margin);
     if let Ok(Some(screen)) = app.monitor_from_point(click.x, click.y) {
@@ -99,18 +106,26 @@ fn toggle_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
         }
         y = y.clamp(top + margin, (top + h - height - margin).max(top));
     }
+    let _ = panel.set_size(Size::Physical(PhysicalSize::new(width as u32, height as u32)));
     let _ = panel.set_position(PhysicalPosition::new(x, y));
     *app.state::<AppState>().panel_shown.lock().unwrap() = Some(Instant::now());
-    log::info!("the panel opens at {x},{y}, {width} by {height}");
-    let _ = panel.show();
-    let _ = panel.set_focus();
+    let shown = panel.show();
+    let focused = panel.set_focus();
+    log::info!(
+        "the panel opens at {x},{y}, {width} by {height} (scale {scale}): show {shown:?}, focus {focused:?}, visible {:?}, now {:?} at {:?}",
+        panel.is_visible(),
+        panel.outer_size(),
+        panel.outer_position()
+    );
 }
 
 /// Called when the panel loses focus. The click that opened it can still be settling, so a blur right after opening
 /// is not a reason to close.
 pub fn panel_lost_focus(app: &AppHandle) {
     let shown = *app.state::<AppState>().panel_shown.lock().unwrap();
-    if shown.map(|t| t.elapsed() < Duration::from_millis(300)).unwrap_or(false) {
+    let settling = shown.map(|t| t.elapsed() < Duration::from_millis(300)).unwrap_or(false);
+    log::info!("the panel lost focus{}", if settling { " (still settling, so it stays)" } else { " and closes" });
+    if settling {
         return;
     }
     if let Some(panel) = app.get_webview_window("panel") {
@@ -118,9 +133,14 @@ pub fn panel_lost_focus(app: &AppHandle) {
     }
 }
 
-/// The panel asks for the height its content needs. The bottom edge stays where it is, since it sits on the taskbar.
+/// The panel asks for the height its content needs. While it is open the bottom edge stays where it is, since it sits
+/// on the taskbar; while it is closed the height is only kept for the next time.
 pub fn resize_panel(app: &AppHandle, logical_height: f64) {
+    *app.state::<AppState>().panel_height.lock().unwrap() = Some(logical_height);
     let Some(panel) = app.get_webview_window("panel") else { return };
+    if !panel.is_visible().unwrap_or(false) {
+        return;
+    }
     let scale = panel.scale_factor().unwrap_or(1.0);
     let wanted = ((logical_height.clamp(180.0, 720.0)) * scale).round() as u32;
     let (Ok(size), Ok(position)) = (panel.outer_size(), panel.outer_position()) else { return };

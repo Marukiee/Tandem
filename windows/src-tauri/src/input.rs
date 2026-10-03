@@ -99,7 +99,13 @@ fn button(number: u8) -> Button {
 const PIXELS_PER_CLICK: f32 = 40.0;
 
 fn run(rx: mpsc::Receiver<Msg>) {
-    let Ok(mut enigo) = Enigo::new(&Settings::default()) else { return };
+    let mut enigo = match Enigo::new(&Settings::default()) {
+        Ok(enigo) => enigo,
+        Err(error) => {
+            log::warn!("the pointer and keyboard cannot be driven: {error}");
+            return;
+        }
+    };
     let mut buttons: HashSet<u8> = HashSet::new();
     let mut keys: HashSet<u16> = HashSet::new();
     let mut held_mods: Vec<Key> = Vec::new();
