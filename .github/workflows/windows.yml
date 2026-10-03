@@ -116,9 +116,9 @@ jobs:
           git tag -f windows-preview
           git push -f origin windows-preview
           title="Windows preview (experimental)"
-          notes="An experimental preview of Tandem for Windows, built from commit ${GITHUB_SHA::7}. It is not a version: the next build replaces it, and it is not offered as an update anywhere. It has not been tried on many PCs yet, so things can break.
-
-Windows may warn about an unknown publisher, because the installer is not signed yet: choose More info, then Run anyway. When the firewall asks, allow Tandem on private networks, or your phone cannot find this PC."
+          about="An experimental preview of Tandem for Windows, built from commit ${GITHUB_SHA::7}. It is not a version: the next build replaces it, and it is not offered as an update anywhere. It has not been tried on many PCs yet, so things can break."
+          help="Windows may warn about an unknown publisher, because the installer is not signed yet: choose More info, then Run anyway. When the firewall asks, allow Tandem on private networks, or your phone cannot find this PC."
+          notes=$(printf '%s\n\n%s' "$about" "$help")
           if gh release view windows-preview >/dev/null 2>&1; then
             gh release edit windows-preview --prerelease --latest=false --title "$title" --notes "$notes"
           else
