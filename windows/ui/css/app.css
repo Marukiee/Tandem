@@ -76,6 +76,7 @@ button { font: inherit; color: inherit; }
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px; font: 600 15px var(--font-display); }
 .brand img { width: 24px; height: 24px; border-radius: 6px; }
+.tag { font: 600 10px var(--font); letter-spacing: 0.02em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 7px; }
 .label { font-size: 12px; color: var(--text-3); padding: 10px 10px 4px; }
 
 .row {
@@ -257,16 +258,16 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 .drop.over { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); transform: scale(1.01); }
 
 .ring { position: relative; width: 66px; height: 66px; flex: none; }
-.ring svg { transform: rotate(-90deg); }
+.ring > svg { transform: rotate(-90deg); }
 .ring .mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
 .ring .num { font: 700 19px var(--font-display); }
 .ring .bolt { color: var(--ok); margin-top: 1px; }
 
 /* ---- Player ---- */
-.player { display: grid; grid-template-columns: 88px 1fr; gap: 14px; align-items: stretch; }
+.player { display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: stretch; }
 .cover {
-  width: 88px;
-  height: 88px;
+  width: 96px;
+  height: 96px;
   border-radius: 14px;
   background: var(--card-2) center/cover no-repeat;
   display: grid;
@@ -275,14 +276,15 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
   transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
 .cover.paused { transform: scale(0.93); }
+.player .main { display: flex; flex-direction: column; justify-content: space-between; gap: 10px; min-width: 0; }
 .player .top { display: flex; align-items: flex-start; gap: 10px; }
 .player .t { font-weight: 600; font-size: 15px; }
 .player .btns { display: flex; gap: 4px; }
-.bar { position: relative; height: 16px; display: flex; align-items: center; margin-top: 8px; cursor: default; }
+.bar { position: relative; height: 16px; display: flex; align-items: center; cursor: default; }
 .bar .track { position: relative; width: 100%; height: 4px; border-radius: 2px; background: var(--line-strong); transition: height 0.15s ease; }
 .bar:hover .track, .bar.drag .track { height: 8px; }
 .bar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--accent); min-width: 4px; }
-.times { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.times { display: flex; justify-content: space-between; font-size: 11px; line-height: 1.2; margin-top: 1px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .times .live { color: var(--text); }
 
 /* ---- Transfers, notifications ---- */
@@ -312,9 +314,10 @@ body.panel { background: var(--card); }
 .panelbox { display: flex; flex-direction: column; gap: 8px; padding: 14px; height: 100vh; overflow: auto; border: 1px solid var(--line-strong); }
 .panelbox .row { padding: 7px 8px; }
 .panelbox .card { padding: 10px 12px; background: var(--card-2); }
-.panelbox .player { grid-template-columns: 52px 1fr; gap: 10px; }
-.panelbox .cover { width: 52px; height: 52px; border-radius: 10px; }
-.panelbox .bar { margin-top: 4px; height: 12px; }
+.panelbox .player { grid-template-columns: 56px 1fr; gap: 10px; }
+.panelbox .cover { width: 56px; height: 56px; border-radius: 10px; }
+.panelbox .player .main { gap: 4px; }
+.panelbox .bar { height: 12px; }
 .panelbox .bar .track { height: 3px; }
 .panelbox .bar:hover .track, .panelbox .bar.drag .track { height: 6px; }
 .panelbox .t { font-size: 13px; }

@@ -7,6 +7,7 @@ mod commands;
 mod engine;
 mod events;
 mod i18n;
+mod input;
 mod model;
 mod settings;
 mod state;
@@ -17,7 +18,13 @@ use tauri::{Manager, WindowEvent};
 pub fn run() {
     tauri::Builder::default()
         // A second start only brings the first one forward.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| tray::show_main(app)))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if args.iter().any(|a| a == "--panel") {
+                tray::show_panel_in_corner(app);
+            } else {
+                tray::show_main(app);
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
@@ -33,7 +40,10 @@ pub fn run() {
             engine::start(handle.clone());
             clip::start(handle.clone());
             // Started with Windows it waits in the tray; started by hand it shows its window.
-            if !std::env::args().any(|a| a == "--minimized") {
+            let args: Vec<String> = std::env::args().collect();
+            if args.iter().any(|a| a == "--panel") {
+                tray::show_panel_in_corner(&handle);
+            } else if !args.iter().any(|a| a == "--minimized") {
                 tray::show_main(&handle);
             }
             Ok(())

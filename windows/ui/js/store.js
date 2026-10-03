@@ -13,7 +13,7 @@ export const state = {
   notifications: [],
   players: {},
   art: {},
-  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, language: "auto", downloadDir: "" },
+  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, language: "auto", downloadDir: "" },
   autostart: false,
   downloadDir: "",
   systemLanguage: "",

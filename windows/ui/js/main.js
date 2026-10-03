@@ -1,6 +1,6 @@
 // The main window: the devices on the left, a page on the right.
 import { html, render, useEffect } from "../vendor/preact-htm.js";
-import { call, connect, listenDrops } from "./backend.js";
+import { call, connect, listenDrops, native } from "./backend.js";
 import { DeviceGlyph } from "./components.js";
 import { Icon } from "./icons.js";
 import { setLanguage, t } from "./i18n.js";
@@ -10,7 +10,7 @@ import { say, selectedDevice, set, state, useStore } from "./store.js";
 function Nav() {
   const unread = state.notifications.length;
   return html`<nav class="nav">
-    <div class="brand"><img src="icons/brand.png" alt="" />Tandem</div>
+    <div class="brand"><img src="icons/brand.png" alt="" />Tandem<span class="tag">${t("experimental")}</span></div>
     <div class="label">${t("devices")}</div>
     ${state.devices.map((d) => {
       const battery = d.status && d.status.battery;
@@ -82,6 +82,11 @@ function App() {
 }
 
 await connect();
+// In a plain browser a page can be asked for by name, which is how each one is looked at while it is being made.
+if (!native) {
+  const wanted = new URLSearchParams(location.search).get("page");
+  if (wanted) set({ page: wanted });
+}
 setLanguage(state.settings.language, state.systemLanguage);
 await listenDrops(
   (over) => set({ dropping: over }),

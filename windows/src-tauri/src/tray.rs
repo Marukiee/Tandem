@@ -52,6 +52,17 @@ pub fn quit_app(app: &AppHandle) {
     app.exit(0);
 }
 
+/// Opens the panel in the lower right corner of the main screen, where the icon is, for a start with `--panel`. It is
+/// how the panel is looked at when nobody is there to click the icon. Nothing was clicked, so there is no click to
+/// settle, and the panel stays until it is clicked away from or the icon is clicked.
+pub fn show_panel_in_corner(app: &AppHandle) {
+    let Ok(Some(screen)) = app.primary_monitor() else { return };
+    let (left, top) = (screen.position().x as f64, screen.position().y as f64);
+    let (width, height) = (screen.size().width as f64, screen.size().height as f64);
+    toggle_panel(app, PhysicalPosition::new(left + width - 120.0, top + height - 20.0));
+    *app.state::<AppState>().panel_shown.lock().unwrap() = Instant::now().checked_add(Duration::from_secs(3600));
+}
+
 fn toggle_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
     let Some(panel) = app.get_webview_window("panel") else { return };
     if panel.is_visible().unwrap_or(false) {

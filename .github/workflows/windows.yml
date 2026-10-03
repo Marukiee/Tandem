@@ -55,26 +55,49 @@ jobs:
           path: dist-windows/*
           if-no-files-found: error
 
-      # Installs the app on the runner, starts it and takes a picture of the screen, so what it looks like on Windows
-      # can be checked without a Windows PC. The runner may have no screen to take a picture of; that is not a failure.
-      - name: Start the app and take a screenshot
+      # Installs the app on the runner, starts it and takes pictures of the screen, so what it looks like on Windows can
+      # be checked without a Windows PC. The runner may have no screen to take a picture of; that is not a failure.
+      - name: Start the app and take screenshots
         continue-on-error: true
         shell: pwsh
         run: |
+          function Shot($name) {
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+            $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+            $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+            New-Item -ItemType Directory -Force screenshots | Out-Null
+            $bitmap.Save("screenshots/$name.png")
+          }
           $setup = Get-ChildItem dist-windows -Filter "Tandem-Windows-x64-setup.exe"
           Start-Process $setup.FullName -ArgumentList "/S" -Wait
-          $exe = Join-Path $env:LOCALAPPDATA "Tandem/Tandem.exe"
-          if (-not (Test-Path $exe)) { $exe = (Get-ChildItem "$env:LOCALAPPDATA/Programs" -Recurse -Filter "Tandem.exe" | Select-Object -First 1).FullName }
-          Write-Host "starting $exe"
-          Start-Process $exe
+          $exe = Get-ChildItem $env:LOCALAPPDATA -Recurse -Include "Tandem.exe", "tandem-windows.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $exe) { Get-ChildItem $env:LOCALAPPDATA -Directory | ForEach-Object { Write-Host $_.FullName }; throw "the installer put no Tandem.exe on the machine" }
+          Write-Host "starting $($exe.FullName)"
+          Start-Process $exe.FullName
           Start-Sleep -Seconds 12
-          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-          $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-          $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          Shot "app-main"
+          # A second start with --panel hands the first one the order to open the small panel.
+          Start-Process $exe.FullName -ArgumentList "--panel"
+          Start-Sleep -Seconds 4
+          Shot "app-panel"
+
+      # The pages with pretend data, drawn by the Edge on the runner: the same engine as the window of the app, with
+      # the fonts and the font smoothing of Windows.
+      - name: Screenshots of the pages with pretend data
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $edge = "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe"
+          Start-Process python -ArgumentList "-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", "windows/ui" -WindowStyle Hidden
+          Start-Sleep -Seconds 2
           New-Item -ItemType Directory -Force screenshots | Out-Null
-          $bitmap.Save("screenshots/main.png")
+          $out = (Resolve-Path screenshots).Path
+          foreach ($page in "device", "shared", "notifications", "settings") {
+            & $edge --headless=new --disable-gpu --hide-scrollbars --virtual-time-budget=6000 --window-size=1040,820 "--screenshot=$out\ui-$page.png" "http://127.0.0.1:8765/index.html?page=$page"
+          }
+          & $edge --headless=new --disable-gpu --hide-scrollbars --virtual-time-budget=6000 --window-size=352,640 "--screenshot=$out\ui-panel.png" "http://127.0.0.1:8765/panel.html"
 
       - uses: actions/upload-artifact@v7
         if: always()
@@ -92,10 +115,13 @@ jobs:
           set -euo pipefail
           git tag -f windows-preview
           git push -f origin windows-preview
-          notes="A preview of the Windows app, built from commit ${GITHUB_SHA::7}. It is not a version: it is replaced by the next build, and it is not offered as an update anywhere."
+          title="Windows preview (experimental)"
+          notes="An experimental preview of Tandem for Windows, built from commit ${GITHUB_SHA::7}. It is not a version: the next build replaces it, and it is not offered as an update anywhere. It has not been tried on many PCs yet, so things can break.
+
+Windows may warn about an unknown publisher, because the installer is not signed yet: choose More info, then Run anyway. When the firewall asks, allow Tandem on private networks, or your phone cannot find this PC."
           if gh release view windows-preview >/dev/null 2>&1; then
-            gh release edit windows-preview --prerelease --latest=false --notes "$notes"
+            gh release edit windows-preview --prerelease --latest=false --title "$title" --notes "$notes"
           else
-            gh release create windows-preview --prerelease --latest=false --title "Windows preview" --notes "$notes"
+            gh release create windows-preview --prerelease --latest=false --title "$title" --notes "$notes"
           fi
           gh release upload windows-preview dist-windows/Tandem-Windows-x64-setup.exe dist-windows/Tandem-Windows-x64-setup.exe.sha256 dist-windows/tandemd-windows-x86_64.zip dist-windows/tandemd-windows-x86_64.zip.sha256 --clobber

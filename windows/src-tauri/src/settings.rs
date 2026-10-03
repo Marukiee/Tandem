@@ -20,6 +20,9 @@ pub struct Settings {
     pub phone_notifications: bool,
     /// "auto" follows Windows, otherwise "en" or "nl".
     pub language: String,
+    /// The phone's trackpad and keyboard move the pointer and type on this PC. Off until the person turns it on,
+    /// because Windows has no permission to ask for: this is the only door.
+    pub remote_input: bool,
 }
 
 impl Default for Settings {
@@ -30,6 +33,7 @@ impl Default for Settings {
             copy_codes: true,
             phone_notifications: true,
             language: "auto".into(),
+            remote_input: false,
         }
     }
 }

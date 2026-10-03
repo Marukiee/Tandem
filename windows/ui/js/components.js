@@ -140,7 +140,7 @@ export function PlayerCard({ device, player, compact = false }) {
     <div class=${"cover" + (player.playing ? "" : " paused")} style=${cover ? `background-image:url(${cover})` : ""}>
       ${!cover && html`<${Icon} name="music" size=${compact ? 22 : 30} />`}
     </div>
-    <div class="grow">
+    <div class="main">
       <div class="top">
         <div class="grow">
           <div class="t ellipsis">${player.title}</div>
@@ -152,12 +152,12 @@ export function PlayerCard({ device, player, compact = false }) {
           <button class="ib solid" title=${t("next")} disabled=${!player.canNext} onClick=${() => send("next")}><${Icon} name="player-skip-forward" size=${16} filled=${true} /></button>
         </div>
       </div>
-      ${duration > 0 && html`
+      ${duration > 0 && html`<div class="progress">
         <div class=${"bar" + (scrub != null ? " drag" : "")} ref=${bar} onPointerDown=${down} onPointerMove=${move} onPointerUp=${up}>
           <div class="track"><div class="fill" style=${`width:${fraction * 100}%`}></div></div>
         </div>
         ${!compact && html`<div class="times"><span class=${scrub != null ? "live" : ""}>${fmtTime(fraction * duration)}</span><span>${fmtTime(duration)}</span></div>`}
-      `}
+      </div>`}
     </div>
   </div>`;
 }

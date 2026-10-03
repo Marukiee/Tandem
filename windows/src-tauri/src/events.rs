@@ -9,7 +9,7 @@ use tandem_core::ffi::{TandemCall, TandemCallState, TandemEvent, TandemNotificat
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
-use crate::{clip, i18n, model, settings, state::AppState};
+use crate::{clip, i18n, input, model, settings, state::AppState};
 
 /// A notification on the desktop of Windows.
 pub fn toast(app: &AppHandle, title: &str, body: &str) {
@@ -46,6 +46,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
     match event {
         TandemEvent::DevicesChanged | TandemEvent::CircleChanged | TandemEvent::Connected { .. } => refresh_devices(app),
         TandemEvent::Disconnected { id } => {
+            input::release_all();
             let had = app.state::<AppState>().data.lock().unwrap().players.remove(&id).is_some();
             refresh_devices(app);
             if had {
@@ -113,7 +114,23 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             let _ = app.emit("art", json!({ "key": key.to_string(), "uri": uri }));
         }
         TandemEvent::Call { from, call } => incoming_call(app, &from, &call),
+        TandemEvent::Input { from, input } => remote_input(app, &from, input),
         _ => {}
+    }
+}
+
+/// The trackpad and keyboard of a phone. Only when the person allowed it; otherwise they are told once in a while
+/// why nothing happens, since nothing on the phone says so.
+fn remote_input(app: &AppHandle, from: &str, event: tandem_core::ffi::TandemInput) {
+    if settings::get(app).remote_input {
+        input::send(event);
+        return;
+    }
+    static ASKED: std::sync::Mutex<Option<Instant>> = std::sync::Mutex::new(None);
+    let mut asked = ASKED.lock().unwrap();
+    if asked.map(|t| t.elapsed() > Duration::from_secs(120)).unwrap_or(true) {
+        *asked = Some(Instant::now());
+        toast(app, &i18n::t1(app, "remote_off_title", &device_name(app, from)), &i18n::t(app, "remote_off_body"));
     }
 }
 

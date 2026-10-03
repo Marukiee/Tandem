@@ -269,6 +269,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["phoneNotifications"].as_bool() {
             current.phone_notifications = v;
         }
+        if let Some(v) = patch["remoteInput"].as_bool() {
+            current.remote_input = v;
+        }
         if let Some(v) = patch["language"].as_str() {
             if ["auto", "en", "nl"].contains(&v) {
                 current.language = v.to_string();
