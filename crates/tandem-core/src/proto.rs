@@ -165,6 +165,10 @@ pub struct Status {
     /// that has one reports it, and it only wakes the device while it is on that cable.
     #[serde(default)]
     pub wake_mac: Option<String>,
+    /// The sound of this device is off (muted, or the volume is at nothing). A phone that remote controls the player
+    /// of a computer shows it on the mute button, and follows it when the computer is unmuted by other means.
+    #[serde(default)]
+    pub muted: Option<bool>,
 }
 
 impl Status {
@@ -174,7 +178,7 @@ impl Status {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac);
+        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted);
     }
 }
 
@@ -541,6 +545,30 @@ mod tests {
             Msg::Clipboard(c) => assert_eq!(c.text, "hi"),
             other => panic!("wrong message: {other:?}"),
         }
+    }
+
+    #[test]
+    fn a_status_from_before_muted_existed_still_reads() {
+        // The map an older device sends: no `muted` in it at all.
+        let old = ciborium::Value::Map(vec![(ciborium::Value::Text("hotspot".into()), ciborium::Value::Bool(true))]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&old, &mut bytes).unwrap();
+        let status: Status = decode(&bytes).unwrap();
+        assert_eq!(status.hotspot, Some(true));
+        assert_eq!(status.muted, None);
+    }
+
+    #[test]
+    fn muted_is_taken_over_and_the_rest_is_kept() {
+        let mut mine = Status { hotspot: Some(true), ..Default::default() };
+        mine.merge(&Status { muted: Some(true), ..Default::default() });
+        assert_eq!((mine.hotspot, mine.muted), (Some(true), Some(true)));
+        // Unmuting is news too: a `false` replaces the `true`.
+        mine.merge(&Status { muted: Some(false), ..Default::default() });
+        assert_eq!(mine.muted, Some(false));
+        // A change about something else leaves it alone.
+        mine.merge(&Status { dnd: Some(true), ..Default::default() });
+        assert_eq!(mine.muted, Some(false));
     }
 
     #[test]

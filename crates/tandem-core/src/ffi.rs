@@ -264,6 +264,7 @@ pub struct TandemStatus {
     pub free_storage: Option<u64>,
     pub asleep: Option<bool>,
     pub wake_mac: Option<String>,
+    pub muted: Option<bool>,
 }
 
 impl From<Status> for TandemStatus {
@@ -283,6 +284,7 @@ impl From<Status> for TandemStatus {
             free_storage: s.free_storage,
             asleep: s.asleep,
             wake_mac: s.wake_mac,
+            muted: s.muted,
         }
     }
 }
@@ -304,6 +306,7 @@ impl From<TandemStatus> for Status {
             free_storage: s.free_storage,
             asleep: s.asleep,
             wake_mac: s.wake_mac,
+            muted: s.muted,
         }
     }
 }
