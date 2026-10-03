@@ -1,8 +1,50 @@
 [
   {
+    "version": "0.1.25",
+    "date": "2026-10-03",
+    "highlight": true,
+    "en": {
+      "title": "Your phone's music in the Mac's Now Playing, Bluetooth that shows, and hotspot data per day",
+      "new": [
+        "Your phone's music now shows in the Now Playing of macOS: the media keys of your keyboard and headphones, Control Center and apps that show what plays (a notch app, say) see it and control it. Settings, General has a switch, and a player that stays paused for five minutes gives the keys back",
+        "The icon in the menu bar changes while the hotspot is being asked for (waves that fill up) and while this Mac is on it, and the small menu shows where the hotspot is, with Stop and Try again",
+        "The hotspot page on the phone shows what your Mac used today, the total (which no longer starts over by itself) and the last days, and the notification shows today",
+        "The data limit of the hotspot is now per day: it switches the hotspot off when reached and says no to new requests until tomorrow"
+      ],
+      "better": [
+        "A phone in Bluetooth range shows as Over Bluetooth on the Mac, and the hotspot can be asked for from the device page when there is no network at all",
+        "The player has a thin bar that grows under the pointer, without the white ball, in the app and in the small menu, where the buttons are now above the bar. The cover sinks back while paused, a new track slides in, and the card takes a light wash of the cover's colour",
+        "The device page says whose network it is (Phone on mobile data), says Via hotspot instead of Internet when this Mac is on the phone's hotspot, and shows hotspot and mobile data as one chip",
+        "The hotspot data is counted as it is used, so a session that is cut short no longer loses it"
+      ],
+      "fixed": [
+        "The Mac showed Not connected for a phone that was in Bluetooth range: it never connected to a phone whose beacon showed no tag at first sight. It now keeps looking, and tries such a phone after a few seconds",
+        "The progress bar was 16 points thick in every state since 0.1.18, because the knob that zoomed in under the pointer stretched it"
+      ]
+    },
+    "nl": {
+      "title": "De muziek van je telefoon in het Now Playing van de Mac, Bluetooth die zichtbaar is en hotspotdata per dag",
+      "new": [
+        "De muziek van je telefoon staat nu in het Now Playing van macOS: de mediatoetsen van je toetsenbord en koptelefoon, het Bedieningscentrum en apps die tonen wat er speelt (een notch-app bijvoorbeeld) zien hem en bedienen hem. Instellingen, Algemeen heeft een schakelaar, en een speler die vijf minuten op pauze staat geeft de toetsen terug",
+        "Het icoon in de menubalk verandert terwijl de hotspot wordt aangevraagd (golfjes die vollopen) en zolang deze Mac erop zit, en het kleine menu laat zien waar de hotspot is, met Stop en Probeer opnieuw",
+        "De hotspotpagina op de telefoon laat zien wat je Mac vandaag gebruikte, het totaal (dat niet meer vanzelf opnieuw begint) en de laatste dagen, en de melding toont vandaag",
+        "De datalimiet van de hotspot geldt nu per dag: bij het bereiken gaat de hotspot uit en worden nieuwe verzoeken tot morgen geweigerd"
+      ],
+      "better": [
+        "Een telefoon in Bluetooth-bereik staat op de Mac als Via Bluetooth, en de hotspot kan vanaf de apparaatpagina worden aangevraagd als er helemaal geen netwerk is",
+        "De speler heeft een dunne balk die groeit onder de aanwijzer, zonder het witte bolletje, in de app en in het kleine menu, waar de knoppen nu boven de balk staan. De cover zakt weg bij pauze, een nieuw nummer schuift binnen en de kaart krijgt een lichte tint van de kleur van de cover",
+        "De apparaatpagina zegt van wie het netwerk is (Telefoon op mobiele data), zegt Via hotspot in plaats van Internet als deze Mac op de hotspot van de telefoon zit, en toont hotspot en mobiele data als één chip",
+        "De hotspotdata worden geteld zoals ze worden gebruikt, dus een sessie die wordt afgebroken verliest ze niet meer"
+      ],
+      "fixed": [
+        "De Mac toonde Niet verbonden voor een telefoon die in Bluetooth-bereik was: hij maakte nooit verbinding met een telefoon waarvan de beacon bij de eerste keer zien geen tag toonde. Nu blijft hij zoeken en probeert hij zo'n telefoon na een paar seconden",
+        "De voortgangsbalk was sinds 0.1.18 in elke toestand 16 punten dik, omdat het bolletje dat onder de aanwijzer inzoomde hem rekte"
+      ]
+    }
+  },
+  {
     "version": "0.1.24",
     "date": "2026-10-01",
-    "highlight": true,
     "en": {
       "title": "Covers on your phone, the trackpad buttons in the player, and notifications that keep running",
       "new": [

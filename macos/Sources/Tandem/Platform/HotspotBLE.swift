@@ -16,6 +16,8 @@ enum HotspotBleState: UInt8 {
     case refusedRoaming = 7
     /// The person switched hotspot sharing off on the phone.
     case disabled = 8
+    /// What a Mac may use in a day over the hotspot has been used.
+    case refusedLimit = 9
 }
 
 enum HotspotBleError: Error, LocalizedError {
@@ -334,7 +336,7 @@ final class BleHotspotClient: NSObject, CBCentralManagerDelegate, CBPeripheralDe
         case .manual:
             // Someone has to pick up the phone. Give them a few minutes.
             arm(seconds: 200) { self.finish(.success(.manual)) }
-        case .failed, .refusedAuth, .refusedBattery, .refusedRoaming, .disabled:
+        case .failed, .refusedAuth, .refusedBattery, .refusedRoaming, .refusedLimit, .disabled:
             finish(.success(state))
         }
     }

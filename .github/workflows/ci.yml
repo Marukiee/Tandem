@@ -22,10 +22,13 @@ jobs:
     name: Rust (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    # Windows is not a platform of ours yet: the job is here to show how far the core is from building and passing
+    # there, and a red mark on it must not turn the whole run red.
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable

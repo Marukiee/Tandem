@@ -6,8 +6,20 @@ the hotspot request (see HOTSPOT.md) and needs no new permission.
 ## Who talks to whom
 
 The phone is the GATT server and advertiser, the Mac the central, as for the hotspot. The Mac
-only keeps a link while the phone has been out of reach over the network for two looks in a row
-(six seconds), and only to a phone it already shares a key with.
+only looks for the phone, and only keeps a link, while the phone has been out of reach over the
+network for two looks in a row (six seconds), and only opens a link to a phone it already shares
+a key with.
+
+### Seeing the phone
+
+The scan reports every sighting of the service, not only the first. The phone's tag (the hourly
+hint) rides in the scan response, which is not always in the first sight of it, and a scan that
+reports a device once would never see it. A sighting with the right tag means the phone is in
+range: the Mac shows it as "Over Bluetooth" and offers to ask it for its hotspot, whether or not
+the two share a key yet. A phone that never shows a tag is tried after five seconds when a link
+is allowed, and let go again after fifteen if no frame from it opens with the phone's key; such a
+beacon is then left alone for ten minutes, so a stranger's phone is not tried every few seconds.
+A beacon not seen for fifteen seconds is out of range.
 
 Two characteristics on the service `6f2d7a10-8b1c-4e6f-a3d5-1c9e5b7f2a40`:
 

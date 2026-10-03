@@ -33,6 +33,18 @@ progress update never carries a picture. The other device presses buttons with `
   of `Msg::Input`, the same ones the trackpad sends, so they need the Accessibility permission on the
   Mac just like the trackpad does.
 
+### In the system's Now Playing (Mac)
+
+The player of a phone is also published to macOS as a Now Playing item (`MPNowPlayingInfoCenter`, with
+the remote commands play, pause, toggle, next, previous and change position from
+`MPRemoteCommandCenter`), so the media keys of the keyboard and of headphones, Control Center and any
+app that shows what plays, a notch app say, see it and control it. Tandem plays no audio for this: mediaremoted
+accepts an app that publishes a playing item as the active Now Playing app (checked in its log, where the active
+client changes from the running music app to the publisher), and sends the keys to its handlers, which send
+the matching `Msg::MediaCommand` on to the phone. Only a player that is worth showing is published (not one
+that plays what this Mac already plays), and one that stays paused for five minutes is let go, so the play
+key goes back to whatever this Mac played last. Settings, General has a switch.
+
 ### One player, not two
 
 A device leaves out a player of the other device that plays what one of its own already plays: the

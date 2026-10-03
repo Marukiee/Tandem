@@ -201,6 +201,7 @@ final class HotspotCoordinator {
         case .refusedAuth: String(localized: "Your phone did not recognise this Mac")
         case .refusedBattery: String(localized: "Your phone's battery is too low to share its hotspot")
         case .refusedRoaming: String(localized: "Your phone is roaming, so it does not share its hotspot")
+        case .refusedLimit: String(localized: "Your phone's daily data limit for the hotspot is reached")
         case .disabled: String(localized: "Hotspot sharing is switched off on your phone")
         default: String(localized: "Your phone could not turn on its hotspot. Tap the notification on your phone, or make sure Shizuku is running so it can start by itself.")
         }
@@ -292,6 +293,7 @@ final class HotspotCoordinator {
                 case "manual": quicAnswer = .manual
                 case "battery": quicAnswer = .refusedBattery
                 case "roaming": quicAnswer = .refusedRoaming
+                case "limit": quicAnswer = .refusedLimit
                 case "disabled": quicAnswer = .disabled
                 case .some: quicAnswer = .failed
                 case .none:

@@ -33,9 +33,17 @@ zetten" die het hotspotscherm van Android opent. Je Mac wacht dan tot drie minut
 ## Regels op de telefoon
 
 - Alleen aan als de schakelaar aan staat en BLUETOOTH_ADVERTISE en BLUETOOTH_CONNECT zijn toegestaan.
-- Geweigerd onder 15 procent accu (behalve aan de lader) en in roaming (tenzij "Ook in roaming" aan staat).
+- Geweigerd onder 15 procent accu (behalve aan de lader), in roaming (tenzij "Ook in roaming" aan staat) en als de daglimiet voor data is bereikt.
 - Uit op verzoek en na 5 minuten zonder verbonden apparaten. Een hotspot die jij zelf aanzette blijft met rust.
-- Zolang de Mac de hotspot gebruikt staat er een melding "Je Mac gebruikt je hotspot" met een Stopknop.
+- Zolang de Mac de hotspot gebruikt staat er een melding "Je Mac gebruikt je hotspot" met een Stopknop. Op de regel staat wat er vandaag is gebruikt, onder de melding (uitgeklapt) ook wat deze sessie gebruikte.
+
+## Data per dag
+
+De mobiele data die de hotspot gebruikt wordt geteld zoals hij wordt gebruikt, niet pas aan het eind van een sessie: elke 5 tot 15 seconden gaat het verschil in de mobiele bytes van het systeem (`TrafficStats`) naar het totaal en naar de dag van vandaag. Een sessie die wordt afgebroken (app herstart, hotspot met de hand uit) verliest dus hooguit de seconden sinds de laatste meting, en er begint niets opnieuw. Het totaal wordt alleen met de knop "Teller resetten" op nul gezet. De dagen (de laatste 60, `HotspotUsage.kt`) staan op de hotspotpagina.
+
+Het is het mobiele verkeer van de hele telefoon zolang de hotspot aan staat, dus inclusief wat de telefoon zelf doet. Een telling per interface of per client kan een app zonder extra rechten niet lezen (`/sys/class/net` is geblokkeerd).
+
+De limiet geldt per dag: is hij bereikt dan gaat een hotspot die een Mac vroeg uit, en weigert de telefoon nieuwe verzoeken tot de volgende dag (statuscode 9, in QUIC de fout `limit`).
 
 ## Het BLE-protocol
 
@@ -74,7 +82,8 @@ geldige handtekening telt. Een goed verzoek krijgt een ATT-succes, een slecht ve
 `0x80` (bewust niet "onvoldoende authenticatie", want dat laat de Mac koppelen via Bluetooth).
 
 **Statuscodes** (byte 0 van state): 0 uit, 1 start, 2 aan, 3 handmatig (tik op de melding),
-4 mislukt, 5 verzoek niet vertrouwd, 6 accu te laag, 7 roaming, 8 uitgezet op de telefoon.
+4 mislukt, 5 verzoek niet vertrouwd, 6 accu te laag, 7 roaming, 8 uitgezet op de telefoon,
+9 daglimiet voor data bereikt.
 
 **Volgorde op de Mac.** Verbinden, services en characteristics ontdekken, notificaties op
 state aanzetten, challenge lezen, ondertekenen met `sign_message`, request schrijven, dan
