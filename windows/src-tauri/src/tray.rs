@@ -102,6 +102,34 @@ const PANEL_WIDTH: f64 = 352.0;
 /// What its height is until its content has said what it needs.
 const PANEL_HEIGHT: f64 = 400.0;
 
+/// How far the visible part of a window lies inside the rectangle Windows gives it: left, top, right, bottom. A window
+/// without a frame still has an invisible edge to grab, and `set_size` sets the visible part, not the whole.
+struct Insets {
+    left: i32,
+    top: i32,
+    right: i32,
+    bottom: i32,
+}
+
+fn insets(window: &tauri::WebviewWindow) -> Insets {
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let measured = (|| {
+        let (outer, inner) = (window.outer_size().ok()?, window.inner_size().ok()?);
+        let (outer_at, inner_at) = (window.outer_position().ok()?, window.inner_position().ok()?);
+        let left = inner_at.x - outer_at.x;
+        let top = inner_at.y - outer_at.y;
+        let right = outer.width as i32 - inner.width as i32 - left;
+        let bottom = outer.height as i32 - inner.height as i32 - top;
+        (left >= 0 && top >= 0 && right >= 0 && bottom >= 0).then_some(Insets { left, top, right, bottom })
+    })();
+    measured.unwrap_or(Insets {
+        left: (8.0 * scale) as i32,
+        top: (1.0 * scale) as i32,
+        right: (8.0 * scale) as i32,
+        bottom: (8.0 * scale) as i32,
+    })
+}
+
 fn toggle_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
     let Some(panel) = app.get_webview_window("panel") else { return };
     if panel.is_visible().unwrap_or(false) {
@@ -109,8 +137,9 @@ fn toggle_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
         let _ = panel.hide();
         return;
     }
-    // The size is set here, from what the content asked for, instead of read back from a window that was never shown.
     let scale = panel.scale_factor().unwrap_or(1.0);
+    let edge = insets(&panel);
+    // What is placed is the visible part, from the height its content asked for.
     let wanted = app.state::<AppState>().panel_height.lock().unwrap().unwrap_or(PANEL_HEIGHT);
     let (width, height) = ((PANEL_WIDTH * scale).round() as i32, (wanted.clamp(180.0, 720.0) * scale).round() as i32);
     let margin = (12.0 * scale) as i32;
@@ -126,15 +155,16 @@ fn toggle_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
         y = y.clamp(top + margin, (top + h - height - margin).max(top));
     }
     let _ = panel.set_size(Size::Physical(PhysicalSize::new(width as u32, height as u32)));
-    let _ = panel.set_position(PhysicalPosition::new(x, y));
+    let _ = panel.set_position(PhysicalPosition::new(x - edge.left, y - edge.top));
     *app.state::<AppState>().panel_shown.lock().unwrap() = Some(Instant::now());
     let shown = panel.show();
     let focused = panel.set_focus();
     log::info!(
-        "the panel opens at {x},{y}, {width} by {height} (scale {scale}): show {shown:?}, focus {focused:?}, visible {:?}, now {:?} at {:?}",
-        panel.is_visible(),
-        panel.outer_size(),
-        panel.outer_position()
+        "the panel opens at {x},{y}, {width} by {height} (scale {scale}, edge {},{},{},{}): show {shown:?}, focus {focused:?}",
+        edge.left,
+        edge.top,
+        edge.right,
+        edge.bottom
     );
     describe_later(app, "panel");
 }
@@ -155,6 +185,9 @@ pub fn panel_lost_focus(app: &AppHandle) {
 
 /// The panel asks for the height its content needs. While it is open the bottom edge stays where it is, since it sits
 /// on the taskbar; while it is closed the height is only kept for the next time.
+///
+/// Everything is measured on the visible part of the window. Setting the size of the visible part from the size of the
+/// whole made the window a little bigger at every call, and the content, seeing its window grow, asked again.
 pub fn resize_panel(app: &AppHandle, logical_height: f64) {
     *app.state::<AppState>().panel_height.lock().unwrap() = Some(logical_height);
     let Some(panel) = app.get_webview_window("panel") else { return };
@@ -162,12 +195,13 @@ pub fn resize_panel(app: &AppHandle, logical_height: f64) {
         return;
     }
     let scale = panel.scale_factor().unwrap_or(1.0);
-    let wanted = ((logical_height.clamp(180.0, 720.0)) * scale).round() as u32;
-    let (Ok(size), Ok(position)) = (panel.outer_size(), panel.outer_position()) else { return };
-    if size.height == wanted {
+    let wanted = ((logical_height.clamp(180.0, 720.0)) * scale).round() as i32;
+    let (Ok(inner), Ok(inner_at)) = (panel.inner_size(), panel.inner_position()) else { return };
+    if (inner.height as i32 - wanted).abs() <= 1 {
         return;
     }
-    let bottom = position.y + size.height as i32;
-    let _ = panel.set_size(Size::Physical(PhysicalSize::new(size.width, wanted)));
-    let _ = panel.set_position(PhysicalPosition::new(position.x, bottom - wanted as i32));
+    let edge = insets(&panel);
+    let bottom = inner_at.y + inner.height as i32;
+    let _ = panel.set_size(Size::Physical(PhysicalSize::new(inner.width, wanted as u32)));
+    let _ = panel.set_position(PhysicalPosition::new(inner_at.x - edge.left, bottom - wanted - edge.top));
 }
