@@ -16,3 +16,6 @@ tandem-core = { version = "0.1.0", path = "../tandem-core" }
 tokio = { version = "1.53.1", features = ["rt-multi-thread", "macros", "signal", "fs", "io-util", "sync", "time", "net"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[target.'cfg(windows)'.dependencies]
+getrandom = "0.4"

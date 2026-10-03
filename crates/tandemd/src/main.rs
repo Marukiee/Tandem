@@ -4,7 +4,7 @@
 //! other subcommand talks to the running daemon over a local socket, or starts a
 //! short-lived engine of its own when no daemon is running.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -16,8 +16,10 @@ use tandem_core::proto::ShareOrigin;
 use tandem_core::store::{FileSecretStore, Store};
 use tandem_core::transfer::OutgoingFile;
 use tandem_core::{DeviceId, Engine, EngineConfig};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::{UnixListener, UnixStream};
+
+mod control;
+
+use control::{ask_daemon, forget, serve_control};
 
 #[derive(Parser)]
 #[command(name = "tandemd", version, about = "Tandem for the command line and for machines without a screen")]
@@ -89,10 +91,6 @@ async fn start_engine(cli: &Cli) -> Result<(Engine, PathBuf)> {
     let files = Arc::new(DesktopFiles { download_dir });
     let engine = Engine::start(cfg, secrets, files).await.context("could not start")?;
     Ok((engine, data_dir))
-}
-
-fn socket_path(data_dir: &Path) -> PathBuf {
-    data_dir.join("tandemd.sock")
 }
 
 fn resolve(engine: &Engine, wanted: &str) -> Result<DeviceId> {
@@ -236,42 +234,15 @@ fn parse_line(line: &str) -> Option<Command> {
     }
 }
 
-async fn serve_control(engine: Engine, socket: PathBuf) -> Result<()> {
-    let _ = std::fs::remove_file(&socket);
-    let listener = UnixListener::bind(&socket).with_context(|| format!("cannot listen on {}", socket.display()))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&socket, std::fs::Permissions::from_mode(0o600))?;
+/// What the daemon says to one line from `tandemd` run as a command: `ok` and the output, or `error` and why.
+pub(crate) async fn answer(engine: &Engine, line: &str) -> String {
+    match parse_line(line) {
+        Some(command) => match execute(engine, &command).await {
+            Ok(text) => format!("ok\n{text}"),
+            Err(e) => format!("error\n{e:#}\n"),
+        },
+        None => "error\nunknown command\n".to_string(),
     }
-    loop {
-        let (stream, _) = listener.accept().await?;
-        let engine = engine.clone();
-        tokio::spawn(async move {
-            let (read, mut write) = stream.into_split();
-            let mut line = String::new();
-            if BufReader::new(read).read_line(&mut line).await.is_err() {
-                return;
-            }
-            let reply = match parse_line(&line) {
-                Some(command) => match execute(&engine, &command).await {
-                    Ok(text) => format!("ok\n{text}"),
-                    Err(e) => format!("error\n{e:#}\n"),
-                },
-                None => "error\nunknown command\n".to_string(),
-            };
-            let _ = write.write_all(reply.as_bytes()).await;
-        });
-    }
-}
-
-async fn ask_daemon(socket: &Path, line: &str) -> Result<Option<String>> {
-    let Ok(mut stream) = UnixStream::connect(socket).await else { return Ok(None) };
-    stream.write_all(format!("{line}\n").as_bytes()).await?;
-    stream.shutdown().await?;
-    let mut reply = String::new();
-    tokio::io::AsyncReadExt::read_to_string(&mut stream, &mut reply).await?;
-    Ok(Some(reply))
 }
 
 fn print_event(engine: &Engine, event: &Event) {
@@ -306,11 +277,10 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
     let data_dir = cli.data_dir.clone().unwrap_or_else(default_data_dir);
-    let socket = socket_path(&data_dir);
 
     // Most commands go to the daemon when there is one.
     if let Some(line) = command_line(&cli.command) {
-        if let Some(reply) = ask_daemon(&socket, &line).await? {
+        if let Some(reply) = ask_daemon(&data_dir, &line).await? {
             let (status, body) = reply.split_once('\n').unwrap_or((&reply, ""));
             if status == "ok" && matches!(cli.command, Command::PairShow) {
                 print_qr(body.trim());
@@ -330,7 +300,11 @@ async fn main() -> Result<()> {
         Command::Run => {
             println!("{}", describe(&engine));
             let mut events = engine.subscribe();
-            let control = tokio::spawn(serve_control(engine.clone(), socket_path(&data_dir)));
+            let control_dir = data_dir.clone();
+            let control = tokio::spawn({
+                let engine = engine.clone();
+                async move { serve_control(engine, &control_dir).await }
+            });
             loop {
                 tokio::select! {
                     _ = tokio::signal::ctrl_c() => break,
@@ -342,7 +316,7 @@ async fn main() -> Result<()> {
                 }
             }
             control.abort();
-            let _ = std::fs::remove_file(socket_path(&data_dir));
+            forget(&data_dir);
         }
         Command::PairShow => {
             let offer = engine.create_pairing_offer()?;
