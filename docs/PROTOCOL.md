@@ -40,6 +40,10 @@ gemaakt worden.
 - Standaardpoort UDP 47820. Andere poorten worden meegestuurd in de adreslijst.
 - Zijn beide kanten tegelijk aan het bellen, dan blijft de verbinding over die
   gemaakt is door het apparaat met het laagste id. De andere sluit met code 2.
+- Wie een verbinding zo afwijst, stuurt de bestaande een `Ping` en sluit die met code
+  4 als er binnen drie seconden geen `Pong` komt. Een app die net is bijgewerkt of
+  afgesloten zegt niets, en zonder deze controle zou het apparaat dat terugkomt moeten
+  wachten tot de rusttijd om is (45 seconden, op Android 70).
 
 ## Berichtformaat
 

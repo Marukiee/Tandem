@@ -144,12 +144,13 @@ impl Inner {
             pong: Notify::new(),
         });
 
-        {
+        let kept = {
             let mut peers = self.peers.lock().unwrap();
             let Some(peer) = peers.get_mut(&id) else {
                 conn.close(1u32.into(), b"not in the circle");
                 return Err(Error::NotTrusted);
             };
+            let mut kept = None;
             if let Some(existing) = &peer.session {
                 if existing.conn.close_reason().is_none() {
                     // Two connections at once: keep the one dialed by the lower id, so
@@ -157,21 +158,34 @@ impl Inner {
                     let new_dialer = if dialer { self.my_id } else { id };
                     let old_dialer = if existing.dialer { self.my_id } else { id };
                     if new_dialer > old_dialer {
-                        conn.close(2u32.into(), b"duplicate connection");
-                        return Ok(());
+                        kept = Some(existing.clone());
+                    } else {
+                        existing.conn.close(2u32.into(), b"duplicate connection");
                     }
-                    existing.conn.close(2u32.into(), b"duplicate connection");
                 }
             }
-            peer.session = Some(session.clone());
-            peer.hello = Some(hello.clone());
-            peer.fail_count = 0;
-        }
+            if kept.is_none() {
+                peer.session = Some(session.clone());
+                peer.hello = Some(hello.clone());
+                peer.fail_count = 0;
+            }
+            kept
+        };
 
+        // Also when this connection is turned away: the device may have come back on a new port.
         for candidate in &hello.candidates {
             if let Ok(addr) = candidate.parse::<SocketAddr>() {
                 self.learn_addr(&id, addr, false);
             }
+        }
+
+        if let Some(existing) = kept {
+            conn.close(2u32.into(), b"duplicate connection");
+            // The connection that stays may be a dead one, of an app that was killed or updated
+            // a moment ago. Ask it, so it goes within seconds and the next attempt gets in,
+            // instead of after the idle timeout.
+            probe(existing);
+            return Ok(());
         }
 
         info!(peer = %id, name = %hello.name, dialer, "connected");
@@ -447,20 +461,25 @@ impl Inner {
             .filter_map(|p| p.session.clone())
             .collect();
         for session in sessions {
-            tokio::spawn(async move {
-                let waiter = session.pong.notified();
-                tokio::pin!(waiter);
-                waiter.as_mut().enable();
-                if session.tx.send(Msg::Ping { nonce: crate::engine::rand_u64() }).await.is_err() {
-                    return;
-                }
-                if tokio::time::timeout(Duration::from_secs(3), waiter).await.is_err() {
-                    debug!(peer = %session.peer, "connection did not answer after a network change");
-                    session.conn.close(4u32.into(), b"path lost");
-                }
-            });
+            probe(session);
         }
     }
+}
+
+/// Asks a connection whether the other end still answers, and closes it if not.
+fn probe(session: Arc<Session>) {
+    tokio::spawn(async move {
+        let waiter = session.pong.notified();
+        tokio::pin!(waiter);
+        waiter.as_mut().enable();
+        if session.tx.send(Msg::Ping { nonce: crate::engine::rand_u64() }).await.is_err() {
+            return;
+        }
+        if tokio::time::timeout(Duration::from_secs(3), waiter).await.is_err() {
+            debug!(peer = %session.peer, "connection did not answer");
+            session.conn.close(4u32.into(), b"path lost");
+        }
+    });
 }
 
 #[cfg(test)]

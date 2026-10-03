@@ -521,6 +521,78 @@ async fn the_circle_survives_a_restart() {
     .await;
 }
 
+/// A thread pool of its own for one device, so everything that device is doing can be dropped at once.
+struct Lane(Option<tokio::runtime::Runtime>);
+
+impl Lane {
+    fn new() -> Lane {
+        Lane(Some(tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build().unwrap()))
+    }
+
+    fn spawn<F>(&self, future: F) -> tokio::task::JoinHandle<F::Output>
+    where
+        F: std::future::Future + Send + 'static,
+        F::Output: Send + 'static,
+    {
+        self.0.as_ref().unwrap().spawn(future)
+    }
+
+    /// Like a process that is killed: nothing runs any more and nobody is told.
+    fn kill(mut self) {
+        self.0.take().unwrap().shutdown_background();
+    }
+}
+
+impl Drop for Lane {
+    fn drop(&mut self) {
+        // A runtime cannot be dropped inside async code, which is where a test ends.
+        if let Some(runtime) = self.0.take() {
+            runtime.shutdown_background();
+        }
+    }
+}
+
+/// An app that is updated or killed says no goodbye, so the other end keeps a connection nobody answers on until
+/// the idle timeout (45 seconds here, 70 on Android). The device that comes back must not have to wait for that.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_device_that_was_killed_gets_back_in_before_the_old_connection_times_out() {
+    let (lane_a, lane_b) = (Lane::new(), Lane::new());
+    let a = lane_a.spawn(node("A")).await.unwrap();
+    let b = lane_b.spawn(node("B")).await.unwrap();
+    let offer = a.engine.create_pairing_offer().unwrap();
+    let scanning = b.engine.clone();
+    lane_b.spawn(async move { scanning.pair_with_uri(&offer.uri).await.unwrap() }).await.unwrap();
+    wait_until("connected", || online(&a, b.engine.id()) && online(&b, a.engine.id())).await;
+
+    // The connection that survives two devices dialing each other is the one dialed by the lower id, so the
+    // device with the higher id is the one that gets turned away when it comes back, and the one to kill.
+    let (low, high, high_name, high_lane, _low_lane) =
+        if a.engine.id() < b.engine.id() { (a, b, "B", lane_b, lane_a) } else { (b, a, "A", lane_a, lane_b) };
+    let low_id = low.engine.id();
+    let high_id = high.engine.id();
+    high_lane.kill();
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(online(&low, high_id), "nobody told it, so as far as it knows the connection is fine");
+
+    let mut cfg = EngineConfig::new(&high.data, high_name);
+    cfg.port = 0;
+    cfg.enable_mdns = false;
+    cfg.loopback = true;
+    let secrets = Arc::new(FileSecretStore::new(Store::new(&high.data).unwrap()));
+    let files = Arc::new(DesktopFiles { download_dir: high.downloads.clone() });
+    let again = Engine::start(cfg, secrets, files).await.unwrap();
+    assert_eq!(again.id(), high_id);
+    again.add_address(&low_id, &format!("127.0.0.1:{}", low.engine.port())).unwrap();
+    // Only a new connection can bring this: the old one is dead.
+    again
+        .update_status(Status { battery: Some(Battery { level: 77, charging: false, power_save: false }), ..Default::default() })
+        .await;
+    wait_until("the device that came back is heard again", || {
+        low.engine.devices().iter().any(|d| d.id == high_id && d.status.battery.is_some_and(|b| b.level == 77))
+    })
+    .await;
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn only_circle_members_can_sign_for_the_hotspot() {
     use tandem_core::hotspot::{ACTION_ON, AUTH_PREFIX, auth_message};
