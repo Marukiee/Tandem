@@ -72,3 +72,21 @@ apparaat zelf nog een koppeling verleggen. Wie dat kan, heeft al toegang tot de 
 ## Op de opdrachtregel
 
 `tandemd ls <apparaat> [pad]`, `get`, `put`, `mkdir`, `rm`, `mv`: werken tegen een draaiende daemon of voeren zelf uit.
+
+## Als schijf in Finder
+
+Met de cargo-feature `webdav` (die de build voor de telefoon weglaat) kan de core de bestanden van een ander apparaat
+aanbieden als WebDAV-share op deze machine (`crates/tandem-core/src/webdav.rs`, gebouwd op `dav-server`). Finder en Verkenner
+kunnen zo'n adres als schijf openen. De Mac-app doet dat met `NetFSMountURLSync`: knop Toon in Finder op de bestandenpagina.
+
+- De server luistert alleen op `127.0.0.1`, kiest zelf een poort, en elk verzoek heeft een wachtwoord nodig dat voor deze
+  keer is gemaakt (Basic) en de juiste `Host`, zodat een webpagina er niet bij kan. De naam van de schijf is de laatste
+  component van het adres.
+- Elk verzoek wordt een verzoek om de bestanden (`FsClient`), dus het beleid van het andere apparaat geldt onverkort.
+- Lezen haalt per keer een megabyte op. Schrijven gaat eerst naar een tijdelijk bestand op deze machine en komt in een keer
+  op het andere apparaat aan. Finder schrijft alleen met een slot, dus locks worden toegekend (`FakeLs`).
+- macOS laat een programma dat een netwerkschijf leest wachten op toestemming van de persoon. De Mac-app gaat daarom nooit zelf
+  in de schijf (Finder mag het al), en werpt hem uit met een tijdslimiet. Een schijf die na een crash is blijven staan wordt
+  bij de volgende start weggehaald.
+- Met `TANDEM_WEBDAV_LOG=<bestand>` schrijft de server elk verzoek en elk antwoord naar dat bestand, om te zien wat een
+  programma vraagt.
