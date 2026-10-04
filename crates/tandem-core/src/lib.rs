@@ -9,6 +9,7 @@ pub mod ffi;
 pub mod hotspot;
 pub mod identity;
 pub mod ids;
+pub mod live;
 pub mod media;
 pub mod net;
 pub mod otp;

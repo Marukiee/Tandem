@@ -31,6 +31,9 @@ pub(crate) struct Session {
     pub pong: Notify,
 }
 
+/// Stream priority of the control stream. Frames of live video are below it, file transfers below them.
+const CONTROL_PRIORITY: i32 = 8;
+
 const DATAGRAM_POINTER: u8 = 1;
 const DATAGRAM_SCROLL: u8 = 2;
 const DATAGRAM_AUDIO: u8 = 3;
@@ -133,6 +136,8 @@ impl Inner {
             conn.close(1u32.into(), b"bad protocol version");
             return Err(Error::protocol("peer speaks protocol 0"));
         }
+        // Above live video, so a keyframe request or a key press is never stuck behind frames.
+        let _ = send.set_priority(CONTROL_PRIORITY);
         let (tx, rx) = mpsc::channel::<Msg>(256);
         let session = Arc::new(Session {
             peer: id,
@@ -192,6 +197,7 @@ impl Inner {
         self.emit(Event::Connected { id });
         self.emit(Event::DevicesChanged);
         self.sessions_changed.notify_waiters();
+        self.live_peer_up(id, hello.boot_id);
 
         // Bring the other side up to date.
         let status = self.my_status.lock().unwrap().clone();
@@ -278,12 +284,25 @@ impl Inner {
             }
         };
 
+        // Frames of live video, one unidirectional stream each.
+        let frames = {
+            let this = self.clone();
+            let conn = conn.clone();
+            async move {
+                while let Ok(recv) = conn.accept_uni().await {
+                    tokio::spawn(this.clone().serve_media_stream(id, recv));
+                }
+            }
+        };
+
         let datagrams = {
             let this = self.clone();
             let conn = conn.clone();
             async move {
                 while let Ok(data) = conn.read_datagram().await {
-                    if let Some((stream, seq, pcm)) = parse_audio(&data) {
+                    if let Some((session, counter, x, y)) = crate::live::parse_pointer_datagram(&data) {
+                        this.live_pointer(id, session, counter, x, y);
+                    } else if let Some((stream, seq, pcm)) = parse_audio(&data) {
                         // Straight to the app, not through the event channel: that one may drop
                         // events when the app is slow, and sound must never take the others with it.
                         let sink = this.audio.read().unwrap().clone();
@@ -301,6 +320,7 @@ impl Inner {
             _ = reader => {}
             _ = writer => {}
             _ = files => {}
+            _ = frames => {}
             _ = datagrams => {}
             _ = conn.closed() => {}
             _ = self.cancel.cancelled() => {}
@@ -309,7 +329,7 @@ impl Inner {
         self.session_ended(&session);
     }
 
-    fn session_ended(&self, session: &Arc<Session>) {
+    fn session_ended(self: &Arc<Self>, session: &Arc<Session>) {
         let id = session.peer;
         let mut was_current = false;
         {
@@ -324,6 +344,7 @@ impl Inner {
         }
         if was_current {
             info!(peer = %id, "disconnected");
+            self.live_peer_down(id);
             self.emit(Event::Disconnected { id });
             self.emit(Event::DevicesChanged);
             self.poke.notify_one();
@@ -429,6 +450,14 @@ impl Inner {
             Msg::MediaCommand { player, action, position_ms } => {
                 self.emit(Event::MediaCommand { from: id, player, action, position_ms });
             }
+            msg @ (Msg::MediaRequest(_)
+            | Msg::MediaAccept(_)
+            | Msg::MediaDeny { .. }
+            | Msg::MediaUpdate { .. }
+            | Msg::MediaStop { .. }
+            | Msg::MediaKeyframe { .. }
+            | Msg::MediaReport(_)
+            | Msg::MediaInput { .. }) => self.handle_live_msg(id, msg),
             Msg::Candidates { addrs } => {
                 for text in addrs {
                     if let Ok(addr) = text.parse::<SocketAddr>() {

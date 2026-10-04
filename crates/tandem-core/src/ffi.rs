@@ -849,6 +849,12 @@ pub enum TandemEvent {
     /// The other device is about to send its sound: 16 bit signed samples, interleaved.
     AudioStart { from: String, stream: u8, sample_rate: u32, channels: u8 },
     AudioStop { from: String, stream: u8 },
+    /// Another device asks for the screen or the camera of this one. The same news as `TandemMediaHost.on_request`.
+    MediaRequested { from: String, request: TandemMediaRequest, pre_approved: bool },
+    MediaStarted { peer: String, session: u64, kind: TandemMediaKind, role: TandemMediaRole },
+    MediaEnded { peer: String, session: u64, kind: TandemMediaKind, role: TandemMediaRole, reason: TandemMediaEnd },
+    /// The bitrate the encoder of a host session should move to.
+    MediaBitrate { peer: String, session: u64, bits_per_second: u32 },
 }
 
 impl From<Event> for TandemEvent {
@@ -942,6 +948,22 @@ impl From<Event> for TandemEvent {
                 TandemEvent::AudioStart { from: from.to_string(), stream, sample_rate, channels }
             }
             Event::AudioStop { from, stream } => TandemEvent::AudioStop { from: from.to_string(), stream },
+            Event::MediaRequested { from, request, pre_approved } => {
+                TandemEvent::MediaRequested { from: from.to_string(), request: request.into(), pre_approved }
+            }
+            Event::MediaStarted { peer, session, kind, role } => {
+                TandemEvent::MediaStarted { peer: peer.to_string(), session, kind: kind.into(), role: role.into() }
+            }
+            Event::MediaEnded { peer, session, kind, role, reason } => TandemEvent::MediaEnded {
+                peer: peer.to_string(),
+                session,
+                kind: kind.into(),
+                role: role.into(),
+                reason: reason.into(),
+            },
+            Event::MediaBitrate { peer, session, bits_per_second } => {
+                TandemEvent::MediaBitrate { peer: peer.to_string(), session, bits_per_second }
+            }
             Event::MediaCommand { from, player, action, position_ms } => {
                 use crate::proto::MediaAction as M;
                 let action = match action {
@@ -1788,5 +1810,682 @@ impl TandemEngine {
         }
         #[cfg(not(feature = "webdav"))]
         let _ = id;
+    }
+}
+
+// ---- Live video: a screen or a camera, and the control of a screen ----------------------
+//
+// The contract is in docs/SCREEN.md. Everything here returns at once: the calls that can be made from an encoder or a
+// UI thread never wait for the network.
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemMediaKind {
+    Screen,
+    Camera,
+}
+
+impl From<crate::live::MediaKind> for TandemMediaKind {
+    fn from(kind: crate::live::MediaKind) -> Self {
+        match kind {
+            crate::live::MediaKind::Camera => TandemMediaKind::Camera,
+            // A kind this version does not know is turned away before an app ever sees it.
+            crate::live::MediaKind::Screen | crate::live::MediaKind::Other => TandemMediaKind::Screen,
+        }
+    }
+}
+
+impl From<TandemMediaKind> for crate::live::MediaKind {
+    fn from(kind: TandemMediaKind) -> Self {
+        match kind {
+            TandemMediaKind::Screen => crate::live::MediaKind::Screen,
+            TandemMediaKind::Camera => crate::live::MediaKind::Camera,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemMediaCodec {
+    H264,
+    Hevc,
+}
+
+impl From<crate::live::MediaCodec> for TandemMediaCodec {
+    fn from(codec: crate::live::MediaCodec) -> Self {
+        match codec {
+            crate::live::MediaCodec::Hevc => TandemMediaCodec::Hevc,
+            crate::live::MediaCodec::H264 | crate::live::MediaCodec::Other => TandemMediaCodec::H264,
+        }
+    }
+}
+
+impl From<TandemMediaCodec> for crate::live::MediaCodec {
+    fn from(codec: TandemMediaCodec) -> Self {
+        match codec {
+            TandemMediaCodec::H264 => crate::live::MediaCodec::H264,
+            TandemMediaCodec::Hevc => crate::live::MediaCodec::Hevc,
+        }
+    }
+}
+
+/// Why a session did not start or came to an end.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemMediaEnd {
+    /// A person stopped it.
+    Ended,
+    Declined,
+    /// The policy of the host says never.
+    Policy,
+    Busy,
+    /// The kind or the codec is not something the host can do.
+    Unsupported,
+    /// The host would, but cannot: no permission to capture, no camera.
+    Unavailable,
+    Timeout,
+    /// The same device started a new session of this kind.
+    Replaced,
+    UnknownSession,
+    /// The other device was gone for longer than the grace period, or restarted.
+    PeerGone,
+    Error,
+}
+
+impl From<crate::live::MediaEnd> for TandemMediaEnd {
+    fn from(end: crate::live::MediaEnd) -> Self {
+        use crate::live::MediaEnd as E;
+        match end {
+            E::Ended => TandemMediaEnd::Ended,
+            E::Declined => TandemMediaEnd::Declined,
+            E::Policy => TandemMediaEnd::Policy,
+            E::Busy => TandemMediaEnd::Busy,
+            E::Unsupported => TandemMediaEnd::Unsupported,
+            E::Unavailable => TandemMediaEnd::Unavailable,
+            E::Timeout => TandemMediaEnd::Timeout,
+            E::Replaced => TandemMediaEnd::Replaced,
+            E::UnknownSession => TandemMediaEnd::UnknownSession,
+            E::PeerGone => TandemMediaEnd::PeerGone,
+            E::Error => TandemMediaEnd::Error,
+        }
+    }
+}
+
+impl From<TandemMediaEnd> for crate::live::MediaEnd {
+    fn from(end: TandemMediaEnd) -> Self {
+        use crate::live::MediaEnd as E;
+        match end {
+            TandemMediaEnd::Ended => E::Ended,
+            TandemMediaEnd::Declined => E::Declined,
+            TandemMediaEnd::Policy => E::Policy,
+            TandemMediaEnd::Busy => E::Busy,
+            TandemMediaEnd::Unsupported => E::Unsupported,
+            TandemMediaEnd::Unavailable => E::Unavailable,
+            TandemMediaEnd::Timeout => E::Timeout,
+            TandemMediaEnd::Replaced => E::Replaced,
+            TandemMediaEnd::UnknownSession => E::UnknownSession,
+            TandemMediaEnd::PeerGone => E::PeerGone,
+            TandemMediaEnd::Error => E::Error,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemMediaFacing {
+    Any,
+    Front,
+    Back,
+}
+
+impl From<crate::live::MediaFacing> for TandemMediaFacing {
+    fn from(facing: crate::live::MediaFacing) -> Self {
+        match facing {
+            crate::live::MediaFacing::Any => TandemMediaFacing::Any,
+            crate::live::MediaFacing::Front => TandemMediaFacing::Front,
+            crate::live::MediaFacing::Back => TandemMediaFacing::Back,
+        }
+    }
+}
+
+impl From<TandemMediaFacing> for crate::live::MediaFacing {
+    fn from(facing: TandemMediaFacing) -> Self {
+        match facing {
+            TandemMediaFacing::Any => crate::live::MediaFacing::Any,
+            TandemMediaFacing::Front => crate::live::MediaFacing::Front,
+            TandemMediaFacing::Back => crate::live::MediaFacing::Back,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemMediaRole {
+    Host,
+    Viewer,
+}
+
+impl From<crate::live::MediaRole> for TandemMediaRole {
+    fn from(role: crate::live::MediaRole) -> Self {
+        match role {
+            crate::live::MediaRole::Host => TandemMediaRole::Host,
+            crate::live::MediaRole::Viewer => TandemMediaRole::Viewer,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemMediaState {
+    /// Viewer: the request is out.
+    Requesting,
+    /// Host: the app is being asked.
+    Pending,
+    Active,
+    /// The connection is gone and may come back within the grace period.
+    Suspended,
+}
+
+impl From<crate::live::MediaState> for TandemMediaState {
+    fn from(state: crate::live::MediaState) -> Self {
+        match state {
+            crate::live::MediaState::Requesting => TandemMediaState::Requesting,
+            crate::live::MediaState::Pending => TandemMediaState::Pending,
+            crate::live::MediaState::Active => TandemMediaState::Active,
+            crate::live::MediaState::Suspended => TandemMediaState::Suspended,
+        }
+    }
+}
+
+/// What became of a frame the host app pushed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemMediaPush {
+    /// Queued for the network. Not a promise that it arrives.
+    Sent,
+    /// Dropped because the link is behind or the viewer is away. A keyframe is asked for through `on_keyframe`.
+    Dropped,
+    /// Not a keyframe, and the stream has a hole: nothing goes out until a keyframe comes.
+    WaitingForKeyframe,
+    /// Refused: empty, too big, not Annex B, or a keyframe without any parameter sets.
+    Invalid,
+    /// No such session, or it has ended.
+    NoSession,
+}
+
+impl From<crate::live::MediaPush> for TandemMediaPush {
+    fn from(push: crate::live::MediaPush) -> Self {
+        match push {
+            crate::live::MediaPush::Sent => TandemMediaPush::Sent,
+            crate::live::MediaPush::Dropped => TandemMediaPush::Dropped,
+            crate::live::MediaPush::WaitingForKeyframe => TandemMediaPush::WaitingForKeyframe,
+            crate::live::MediaPush::Invalid => TandemMediaPush::Invalid,
+            crate::live::MediaPush::NoSession => TandemMediaPush::NoSession,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemMediaPermission {
+    Ask,
+    Always,
+    Never,
+}
+
+impl From<crate::live::MediaPermission> for TandemMediaPermission {
+    fn from(permission: crate::live::MediaPermission) -> Self {
+        match permission {
+            crate::live::MediaPermission::Ask => TandemMediaPermission::Ask,
+            crate::live::MediaPermission::Always => TandemMediaPermission::Always,
+            crate::live::MediaPermission::Never => TandemMediaPermission::Never,
+        }
+    }
+}
+
+impl From<TandemMediaPermission> for crate::live::MediaPermission {
+    fn from(permission: TandemMediaPermission) -> Self {
+        match permission {
+            TandemMediaPermission::Ask => crate::live::MediaPermission::Ask,
+            TandemMediaPermission::Always => crate::live::MediaPermission::Always,
+            TandemMediaPermission::Never => crate::live::MediaPermission::Never,
+        }
+    }
+}
+
+/// What one device may ask of this one. See `live::MediaPolicy`.
+#[derive(Clone, Copy, Debug, uniffi::Record)]
+pub struct TandemMediaPolicy {
+    /// Showing this device's screen.
+    pub screen: TandemMediaPermission,
+    /// Showing this device's camera.
+    pub camera: TandemMediaPermission,
+    /// Letting the other device control this device's screen.
+    pub control: TandemMediaPermission,
+}
+
+impl From<crate::live::MediaPolicy> for TandemMediaPolicy {
+    fn from(policy: crate::live::MediaPolicy) -> Self {
+        TandemMediaPolicy { screen: policy.screen.into(), camera: policy.camera.into(), control: policy.control.into() }
+    }
+}
+
+impl From<TandemMediaPolicy> for crate::live::MediaPolicy {
+    fn from(policy: TandemMediaPolicy) -> Self {
+        crate::live::MediaPolicy { screen: policy.screen.into(), camera: policy.camera.into(), control: policy.control.into() }
+    }
+}
+
+/// What the viewer asks the host for. Zeros mean no preference.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemMediaWant {
+    pub kind: TandemMediaKind,
+    /// Preferred first.
+    pub codecs: Vec<TandemMediaCodec>,
+    pub max_width: u32,
+    pub max_height: u32,
+    pub max_fps: u32,
+    /// Bits per second.
+    pub max_bitrate: u32,
+    /// Only means something for a screen.
+    pub control: bool,
+    pub facing: TandemMediaFacing,
+}
+
+/// A request as the host app gets it.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemMediaRequest {
+    pub session: u64,
+    pub kind: TandemMediaKind,
+    pub codecs: Vec<TandemMediaCodec>,
+    pub max_width: u32,
+    pub max_height: u32,
+    pub max_fps: u32,
+    pub max_bitrate: u32,
+    pub control: bool,
+    pub facing: TandemMediaFacing,
+}
+
+impl From<crate::live::MediaRequest> for TandemMediaRequest {
+    fn from(request: crate::live::MediaRequest) -> Self {
+        TandemMediaRequest {
+            session: request.session,
+            kind: request.kind.into(),
+            codecs: request.codecs.into_iter().map(Into::into).collect(),
+            max_width: request.max_width,
+            max_height: request.max_height,
+            max_fps: request.max_fps,
+            max_bitrate: request.max_bitrate,
+            control: request.control,
+            facing: request.facing.into(),
+        }
+    }
+}
+
+/// What the host gives, as the host app states it and as the viewer app is told.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemMediaAccept {
+    pub codec: TandemMediaCodec,
+    pub width: u32,
+    pub height: u32,
+    pub fps: u32,
+    /// The starting target in bits per second, and the most the core will ever ask the encoder for.
+    pub bitrate: u32,
+    /// Whether the viewer may send input. The core clamps it by the request and by the policy.
+    pub control: bool,
+}
+
+impl From<crate::live::MediaAccept> for TandemMediaAccept {
+    fn from(accept: crate::live::MediaAccept) -> Self {
+        TandemMediaAccept {
+            codec: accept.codec.into(),
+            width: accept.width,
+            height: accept.height,
+            fps: accept.fps,
+            bitrate: accept.bitrate,
+            control: accept.control,
+        }
+    }
+}
+
+/// The picture changed shape, or control was granted or taken away. Fields that did not change are `None`.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemMediaUpdate {
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+    /// Degrees clockwise the picture has to be turned to look upright.
+    pub rotation: Option<u16>,
+    pub fps: Option<u32>,
+    pub control: Option<bool>,
+}
+
+impl From<crate::live::MediaUpdate> for TandemMediaUpdate {
+    fn from(update: crate::live::MediaUpdate) -> Self {
+        TandemMediaUpdate {
+            width: update.format.map(|f| f.width),
+            height: update.format.map(|f| f.height),
+            rotation: update.format.map(|f| f.rotation),
+            fps: update.format.map(|f| f.fps),
+            control: update.control,
+        }
+    }
+}
+
+impl From<TandemMediaUpdate> for crate::live::MediaUpdate {
+    fn from(update: TandemMediaUpdate) -> Self {
+        // A size needs both sides; one alone says nothing about the shape.
+        let format = match (update.width, update.height) {
+            (Some(width), Some(height)) => Some(crate::live::MediaFormat {
+                width,
+                height,
+                rotation: update.rotation.unwrap_or(0),
+                fps: update.fps.unwrap_or(0),
+            }),
+            _ => None,
+        };
+        crate::live::MediaUpdate { format, control: update.control }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, uniffi::Enum)]
+pub enum TandemMediaInput {
+    /// A fraction of the streamed picture, 0.0 to 1.0, the top left corner is the origin.
+    PointerAbs { x: f32, y: f32 },
+    PointerRel { dx: i16, dy: i16 },
+    /// 0 primary, 1 secondary, 2 middle, 3 back, 4 forward. `clicks` is the count of this press, 0 counts as 1.
+    Button { button: u8, down: bool, clicks: u8 },
+    /// Pixels of the streamed picture, in the natural direction: the content follows the fingers.
+    Scroll { dx: i16, dy: i16 },
+    /// `code` is the USB HID usage on the Keyboard page, `mods` is 1 shift, 2 control, 4 alt, 8 meta, 16 caps lock.
+    Key { code: u32, down: bool, mods: u16, text: String },
+    /// A piece of text that was committed. Not the clipboard.
+    Text { text: String },
+}
+
+impl From<crate::live::MediaInput> for TandemMediaInput {
+    fn from(input: crate::live::MediaInput) -> Self {
+        use crate::live::MediaInput as I;
+        match input {
+            I::PointerAbs { x, y } => TandemMediaInput::PointerAbs { x, y },
+            I::PointerRel { dx, dy } => TandemMediaInput::PointerRel { dx, dy },
+            I::Button { button, down, clicks } => TandemMediaInput::Button { button, down, clicks },
+            I::Scroll { dx, dy } => TandemMediaInput::Scroll { dx, dy },
+            I::Key { code, down, mods, text } => TandemMediaInput::Key { code, down, mods, text },
+            I::Text { text } => TandemMediaInput::Text { text },
+        }
+    }
+}
+
+impl From<TandemMediaInput> for crate::live::MediaInput {
+    fn from(input: TandemMediaInput) -> Self {
+        use crate::live::MediaInput as I;
+        match input {
+            TandemMediaInput::PointerAbs { x, y } => I::PointerAbs { x, y },
+            TandemMediaInput::PointerRel { dx, dy } => I::PointerRel { dx, dy },
+            TandemMediaInput::Button { button, down, clicks } => I::Button { button, down, clicks },
+            TandemMediaInput::Scroll { dx, dy } => I::Scroll { dx, dy },
+            TandemMediaInput::Key { code, down, mods, text } => I::Key { code, down, mods, text },
+            TandemMediaInput::Text { text } => I::Text { text },
+        }
+    }
+}
+
+/// A live session as the apps list it.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemMediaSession {
+    pub session: u64,
+    pub peer: String,
+    pub kind: TandemMediaKind,
+    pub role: TandemMediaRole,
+    pub state: TandemMediaState,
+    pub accept: Option<TandemMediaAccept>,
+    pub control: bool,
+}
+
+/// Counters of a session, for a debug overlay. What does not apply to the role stays zero.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemMediaStats {
+    /// Host: frames the app pushed. Viewer: frames that arrived whole.
+    pub frames_in: u64,
+    /// Host: frames queued for the network. Viewer: frames handed to the app.
+    pub frames_out: u64,
+    /// Host: bytes queued. Viewer: bytes received.
+    pub bytes: u64,
+    pub dropped_busy: u64,
+    pub dropped_late: u64,
+    pub dropped_waiting: u64,
+    pub dropped_invalid: u64,
+    pub dropped_offline: u64,
+    pub superseded: u64,
+    pub lost: u64,
+    pub discarded: u64,
+    pub late: u64,
+    pub app_dropped: u64,
+    pub keyframes_requested: u64,
+    pub input_refused: u64,
+    pub target_bitrate: u32,
+    pub inflight_frames: u32,
+    pub inflight_bytes: u64,
+    pub jitter_us: u32,
+    pub last_frame_age_ms: Option<u64>,
+    pub rtt_ms: Option<u32>,
+}
+
+impl From<crate::live::MediaStats> for TandemMediaStats {
+    fn from(s: crate::live::MediaStats) -> Self {
+        TandemMediaStats {
+            frames_in: s.frames_in,
+            frames_out: s.frames_out,
+            bytes: s.bytes,
+            dropped_busy: s.dropped_busy,
+            dropped_late: s.dropped_late,
+            dropped_waiting: s.dropped_waiting,
+            dropped_invalid: s.dropped_invalid,
+            dropped_offline: s.dropped_offline,
+            superseded: s.superseded,
+            lost: s.lost,
+            discarded: s.discarded,
+            late: s.late,
+            app_dropped: s.app_dropped,
+            keyframes_requested: s.keyframes_requested,
+            input_refused: s.input_refused,
+            target_bitrate: s.target_bitrate,
+            inflight_frames: s.inflight_frames,
+            inflight_bytes: s.inflight_bytes,
+            jitter_us: s.jitter_us,
+            last_frame_age_ms: s.last_frame_age_ms,
+            rtt_ms: s.rtt_ms,
+        }
+    }
+}
+
+/// The app that has the picture. Every method is called on a thread of the core and must only note what happened and
+/// return. `on_stop` can overlap in time with another callback; after it nothing more is wanted for the session.
+#[uniffi::export(foreign)]
+pub trait TandemMediaHost: Send + Sync {
+    /// Another device asks for the screen or the camera. `pre_approved` means the person said "always" for this device
+    /// and kind: do not ask again, but do start the capture and call `media_accept`.
+    fn on_request(&self, from: String, request: TandemMediaRequest, pre_approved: bool);
+    /// The viewer needs a keyframe now: force one out of the encoder.
+    fn on_keyframe(&self, session: u64);
+    /// The link carries less (or more) than before: move the encoder to this many bits per second.
+    fn on_bitrate(&self, session: u64, bits_per_second: u32);
+    /// Input from the viewer. Only comes when control was granted.
+    fn on_input(&self, session: u64, input: TandemMediaInput);
+    /// The session is over, for whatever reason, including a stop by this very app.
+    fn on_stop(&self, session: u64, reason: TandemMediaEnd);
+}
+
+/// The app that shows the picture. `on_frame` is called one frame at a time, in order, from a task of the session's own;
+/// `on_ended` is always the last call for a session. Queue the frames to the decoder and return.
+#[uniffi::export(foreign)]
+pub trait TandemMediaViewer: Send + Sync {
+    fn on_accepted(&self, session: u64, accept: TandemMediaAccept);
+    fn on_update(&self, session: u64, update: TandemMediaUpdate);
+    /// `data` is one access unit in Annex B; a keyframe starts with its parameter sets. When `discontinuity` is set, flush
+    /// the decoder before this frame.
+    fn on_frame(&self, session: u64, pts_us: u64, keyframe: bool, discontinuity: bool, data: Vec<u8>);
+    fn on_ended(&self, session: u64, reason: TandemMediaEnd);
+}
+
+struct MediaHostAdapter(Arc<dyn TandemMediaHost>);
+
+impl crate::live::MediaHost for MediaHostAdapter {
+    fn on_request(&self, from: DeviceId, request: crate::live::MediaRequest, pre_approved: bool) {
+        self.0.on_request(from.to_string(), request.into(), pre_approved);
+    }
+
+    fn on_keyframe(&self, session: u64) {
+        self.0.on_keyframe(session);
+    }
+
+    fn on_bitrate(&self, session: u64, bits_per_second: u32) {
+        self.0.on_bitrate(session, bits_per_second);
+    }
+
+    fn on_input(&self, session: u64, input: crate::live::MediaInput) {
+        self.0.on_input(session, input.into());
+    }
+
+    fn on_stop(&self, session: u64, reason: crate::live::MediaEnd) {
+        self.0.on_stop(session, reason.into());
+    }
+}
+
+struct MediaViewerAdapter(Arc<dyn TandemMediaViewer>);
+
+impl crate::live::MediaViewer for MediaViewerAdapter {
+    fn on_accepted(&self, session: u64, accept: crate::live::MediaAccept) {
+        self.0.on_accepted(session, accept.into());
+    }
+
+    fn on_update(&self, session: u64, update: crate::live::MediaUpdate) {
+        self.0.on_update(session, update.into());
+    }
+
+    fn on_frame(&self, session: u64, frame: crate::live::MediaFrame) {
+        self.0.on_frame(session, frame.pts_us, frame.keyframe, frame.discontinuity, frame.data);
+    }
+
+    fn on_ended(&self, session: u64, reason: crate::live::MediaEnd) {
+        self.0.on_ended(session, reason.into());
+    }
+}
+
+#[uniffi::export]
+impl TandemEngine {
+    /// Where requests for this device's screen or camera, keyframe requests, bitrate hints and input go. Set it before
+    /// anyone can ask: without one, every request is answered with `Unsupported`.
+    pub fn set_media_host(&self, host: Arc<dyn TandemMediaHost>) {
+        self.engine.set_media_host(Arc::new(MediaHostAdapter(host)));
+    }
+
+    /// Where the frames of the sessions this device asks for go.
+    pub fn set_media_viewer(&self, viewer: Arc<dyn TandemMediaViewer>) {
+        self.engine.set_media_viewer(Arc::new(MediaViewerAdapter(viewer)));
+    }
+
+    /// Asks a device for its screen or camera. Returns the session id at once; the answer arrives through
+    /// `TandemMediaViewer.on_accepted` or `on_ended`.
+    pub fn media_request(&self, peer: String, want: TandemMediaWant) -> Result<u64, TandemError> {
+        let peer = DeviceId::parse(&peer)?;
+        let mut request = crate::live::MediaWant::new(want.kind.into());
+        request.codecs = want.codecs.into_iter().map(Into::into).collect();
+        request.max_width = want.max_width;
+        request.max_height = want.max_height;
+        request.max_fps = want.max_fps;
+        request.max_bitrate = want.max_bitrate;
+        request.control = want.control;
+        request.facing = want.facing.into();
+        self.engine.media_request(peer, request).map_err(Into::into)
+    }
+
+    /// The host app agrees. Frames may be pushed from now on; the first one must be a keyframe.
+    pub fn media_accept(&self, session: u64, answer: TandemMediaAccept) -> Result<(), TandemError> {
+        let answer = crate::live::MediaAnswer {
+            codec: answer.codec.into(),
+            width: answer.width,
+            height: answer.height,
+            fps: answer.fps,
+            bitrate: answer.bitrate,
+            control: answer.control,
+        };
+        self.engine.media_accept(session, answer).map_err(Into::into)
+    }
+
+    pub fn media_deny(&self, session: u64, reason: TandemMediaEnd) -> Result<(), TandemError> {
+        self.engine.media_deny(session, reason.into()).map_err(Into::into)
+    }
+
+    /// Ends a session from either side. The other side is told.
+    pub fn media_stop(&self, session: u64) -> Result<(), TandemError> {
+        self.engine.media_stop(session).map_err(Into::into)
+    }
+
+    /// An encoded frame: one access unit in Annex B. Never waits for the network; the answer says what became of it.
+    pub fn media_push_frame(&self, session: u64, data: Vec<u8>, pts_us: u64, keyframe: bool) -> TandemMediaPush {
+        self.engine.media_push_frame(session, data, pts_us, keyframe).into()
+    }
+
+    /// Parameter sets the encoder gave apart from its frames (SPS and PPS, and VPS for HEVC), in Annex B. They are put
+    /// in front of every keyframe that comes without them.
+    pub fn media_push_config(&self, session: u64, data: Vec<u8>) -> Result<(), TandemError> {
+        self.engine.media_push_config(session, data).map_err(Into::into)
+    }
+
+    /// The picture changed shape, or control is granted or taken away. Call it before the first frame of the new size;
+    /// that frame must be a keyframe.
+    pub fn media_update(&self, session: u64, update: TandemMediaUpdate) -> Result<(), TandemError> {
+        self.engine.media_update(session, update.into()).map_err(Into::into)
+    }
+
+    /// Input for the host. Fails when control was not granted.
+    pub fn media_send_input(&self, session: u64, input: TandemMediaInput) -> Result<(), TandemError> {
+        self.engine.media_send_input(session, input.into()).map_err(Into::into)
+    }
+
+    /// The decoder choked: ask the host for a keyframe.
+    pub fn media_request_keyframe(&self, session: u64) -> Result<(), TandemError> {
+        self.engine.media_request_keyframe(session).map_err(Into::into)
+    }
+
+    pub fn media_sessions(&self) -> Vec<TandemMediaSession> {
+        self.engine
+            .media_sessions()
+            .into_iter()
+            .map(|s| TandemMediaSession {
+                session: s.session,
+                peer: s.peer.to_string(),
+                kind: s.kind.into(),
+                role: s.role.into(),
+                state: s.state.into(),
+                accept: s.accept.map(Into::into),
+                control: s.control,
+            })
+            .collect()
+    }
+
+    pub fn media_stats(&self, session: u64) -> Option<TandemMediaStats> {
+        self.engine.media_stats(session).map(Into::into)
+    }
+
+    // What other devices may ask of this one.
+
+    pub fn media_policy(&self, id: String) -> Result<TandemMediaPolicy, TandemError> {
+        Ok(self.engine.media_policy(&DeviceId::parse(&id)?).into())
+    }
+
+    /// Whether the device has choices of its own, or is on the default.
+    pub fn has_own_media_policy(&self, id: String) -> bool {
+        DeviceId::parse(&id).map(|id| self.engine.has_own_media_policy(&id)).unwrap_or(false)
+    }
+
+    pub fn media_default_policy(&self) -> TandemMediaPolicy {
+        self.engine.media_default_policy().into()
+    }
+
+    pub fn set_media_policy(&self, id: String, policy: TandemMediaPolicy) -> Result<(), TandemError> {
+        self.engine.set_media_policy(&DeviceId::parse(&id)?, policy.into()).map_err(Into::into)
+    }
+
+    /// Back to the default for this device.
+    pub fn clear_media_policy(&self, id: String) -> Result<(), TandemError> {
+        self.engine.clear_media_policy(&DeviceId::parse(&id)?).map_err(Into::into)
+    }
+
+    pub fn set_media_default_policy(&self, policy: TandemMediaPolicy) -> Result<(), TandemError> {
+        self.engine.set_media_default_policy(policy.into()).map_err(Into::into)
     }
 }

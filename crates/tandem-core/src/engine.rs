@@ -105,6 +105,7 @@ pub(crate) struct Inner {
     pub store: Store,
     pub files: Arc<dyn FileStore>,
     pub file_service: crate::files::FileService,
+    pub live: crate::live::Live,
     pub events: broadcast::Sender<Event>,
     pub peers: Mutex<HashMap<DeviceId, Peer>>,
     pub out_offers: Mutex<HashMap<u64, OutOffer>>,
@@ -163,6 +164,7 @@ impl Engine {
         let port = net::local_port(&endpoint);
         let (events, _) = broadcast::channel(2048);
         let file_service = crate::files::FileService::new(store.clone());
+        let live = crate::live::Live::new(store.clone());
 
         let inner = Arc::new(Inner {
             my_name: RwLock::new(cfg.device_name.clone()),
@@ -175,6 +177,7 @@ impl Engine {
             store,
             files,
             file_service,
+            live,
             events,
             peers: Mutex::new(HashMap::new()),
             out_offers: Mutex::new(HashMap::new()),

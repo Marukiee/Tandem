@@ -67,4 +67,18 @@ pub enum Event {
     MediaCommand { from: DeviceId, player: String, action: MediaAction, position_ms: Option<u64> },
     AudioStart { from: DeviceId, stream: u8, sample_rate: u32, channels: u8 },
     AudioStop { from: DeviceId, stream: u8 },
+
+    /// Another device asks for the screen or the camera of this one. Same news as `MediaHost::on_request`; the
+    /// callback is the one to act on, this is for whatever else wants to know.
+    MediaRequested { from: DeviceId, request: crate::live::MediaRequest, pre_approved: bool },
+    MediaStarted { peer: DeviceId, session: u64, kind: crate::live::MediaKind, role: crate::live::MediaRole },
+    MediaEnded {
+        peer: DeviceId,
+        session: u64,
+        kind: crate::live::MediaKind,
+        role: crate::live::MediaRole,
+        reason: crate::live::MediaEnd,
+    },
+    /// The bitrate the encoder of a host session should move to.
+    MediaBitrate { peer: DeviceId, session: u64, bits_per_second: u32 },
 }
