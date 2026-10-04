@@ -31,13 +31,24 @@ struct TandemApp: App {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let services = ServiceProvider()
+    private var terminateSignal: DispatchSourceSignal?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let showInDock = UserDefaults.standard.object(forKey: "showInDock") as? Bool ?? true
         NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
         NSApp.servicesProvider = services
+        // A request to stop (from `kill`, a script, the system) is a quit like any other: the engine says goodbye and the
+        // drives of phones are taken away first, instead of the process just being gone.
+        signal(SIGTERM, SIG_IGN)
+        let source = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        // Not from inside a block of the main queue: terminating waits for the engine to stop in a loop of its own, and
+        // the work that stops it is on that same queue, which does not run while a block of it is still going.
+        source.setEventHandler { RunLoop.main.perform(inModes: [.common]) { NSApp.terminate(nil) } }
+        source.resume()
+        terminateSignal = source
         NSUpdateDynamicServices()
         Task { @MainActor in
+            DriveMount.removeLeftovers()
             DebugSupport.install()
             EngineModel.shared.start()
             Updater.shared.checkIfDue()

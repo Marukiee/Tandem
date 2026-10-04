@@ -450,3 +450,10 @@
 "There is something with that name already." = "Er is al iets met die naam.";
 "That folder is not empty." = "Die map is niet leeg.";
 "%@ is not connected right now." = "%@ is nu niet verbonden.";
+"Open these files as a drive, so any app can use them" = "Open deze bestanden als schijf, zodat elke app ze kan gebruiken";
+"Opening in Finder" = "Openen in Finder";
+"Open in Finder" = "Open in Finder";
+"Eject" = "Werp uit";
+"Show drives in Finder" = "Toon schijven in Finder";
+"The drive is in Finder, in the sidebar under Locations" = "De schijf staat in Finder, in de zijbalk onder Locaties";
+"The first time, macOS asks whether Tandem may use network drives. Allow it." = "De eerste keer vraagt macOS of Tandem netwerkschijven mag gebruiken. Sta het toe.";

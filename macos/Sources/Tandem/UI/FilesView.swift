@@ -30,8 +30,21 @@ struct FilesView: View {
             .frame(maxWidth: 900)
             .frame(maxWidth: .infinity)
         }
-        .task(id: device.id) { browser.attach(device: device, model: model) }
-        .onChange(of: device.online) { _, online in if online { browser.refresh() } }
+        .task(id: device.id) {
+            browser.attach(device: device, model: model)
+            if DebugSupport.mountDrive, let engine = model.tandem { model.drives.mount(device: device, engine: engine) }
+        }
+        .onChange(of: model.drives.state(of: device.id)) { _, state in
+            if case .mounted = state { model.showToast(String(localized: "The drive is in Finder, in the sidebar under Locations")) }
+        }
+        .onChange(of: device.online) { _, online in
+            if online {
+                browser.refresh()
+            } else {
+                // A drive whose device has gone makes everything that touches it wait, so it goes first.
+                Task { await model.drives.eject(device: device.id, engine: model.tandem) }
+            }
+        }
         .dropDestination(for: URL.self) { urls, _ in
             guard browser.writable else { return false }
             browser.upload(urls)
@@ -92,7 +105,46 @@ struct FilesView: View {
                     .help("Look again")
                 }
                 breadcrumb
+                drive
             }
+        }
+    }
+
+    /// The files as a drive between the other drives of Finder.
+    @ViewBuilder
+    private var drive: some View {
+        let state = model.drives.state(of: device.id)
+        HStack(spacing: 10) {
+            switch state {
+            case .off, .failed:
+                Button { model.drives.mount(device: device, engine: model.tandem!) } label: {
+                    Label("Show in Finder", systemImage: "externaldrive.badge.plus").font(.callout.weight(.medium))
+                }
+                .buttonStyle(.bordered)
+                .disabled(!device.online || model.tandem == nil)
+                .help("Open these files as a drive, so any app can use them")
+                if case let .failed(message) = state {
+                    Text(message).font(.caption).foregroundStyle(.red).lineLimit(2)
+                } else {
+                    Text("The first time, macOS asks whether Tandem may use network drives. Allow it.")
+                        .font(.caption).foregroundStyle(.tertiary).lineLimit(2)
+                }
+            case .mounting:
+                ProgressView().controlSize(.small)
+                Text("Opening in Finder").font(.callout).foregroundStyle(.secondary)
+            case .mounted:
+                // The folder of all drives, which is a place on this Mac: this app does not go into the drive itself.
+                Button { NSWorkspace.shared.open(URL(fileURLWithPath: "/Volumes", isDirectory: true)) } label: {
+                    Label("Show drives in Finder", systemImage: "externaldrive.fill").font(.callout.weight(.medium))
+                }
+                .buttonStyle(.bordered)
+                .help("The drive is in Finder, in the sidebar under Locations")
+                Button { Task { await model.drives.eject(device: device.id, engine: model.tandem) } } label: {
+                    Label("Eject", systemImage: "eject.fill").font(.callout.weight(.medium))
+                }
+                .buttonStyle(.bordered)
+            }
+            Spacer(minLength: 0)
         }
     }
 

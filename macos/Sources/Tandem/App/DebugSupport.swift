@@ -74,6 +74,8 @@ enum DebugSupport {
     /// The folder of a device's files to start in, and the row to have chosen there.
     static var filesPath: String? { variable("TANDEM_DEBUG_FILES_PATH") }
     static var filesSelection: String? { variable("TANDEM_DEBUG_FILES_SELECT") }
+    /// Opens the files as a drive in Finder as soon as the page is there.
+    static var mountDrive: Bool { variable("TANDEM_DEBUG_MOUNT") != nil }
 
     static func initialSettingsSection() -> SettingsSection? {
         variable("TANDEM_DEBUG_SETTINGS").flatMap { SettingsSection(rawValue: $0) }

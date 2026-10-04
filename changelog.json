@@ -1,5 +1,33 @@
 [
   {
+    "version": "0.1.29",
+    "date": "2026-10-04",
+    "en": {
+      "title": "Browse your phone's files from the Mac",
+      "new": [
+        "Browse files on the page of a phone opens its folders on the Mac: open folders and files, upload (the button or drop them), download to where received files go, make folders, rename and delete. It goes over the same encrypted connection as everything else, straight between your devices",
+        "File access under Settings on the phone chooses what other devices can see and change: which folders, whether they may change or delete anything, whether hidden files show, a limit on what they may send, other choices for one device than for the rest, and a list of what they did. Android asks you once to allow access to all files, and until you do nothing of the phone can be seen",
+        "The files of a phone can also open as a drive in Finder, as an experiment: Show in Finder on the files page. macOS asks once whether Tandem may use network drives",
+        "tandemd has ls, get, put, mkdir, rm and mv for the files of another device"
+      ],
+      "better": [
+        "The Mac app stops properly when it is told to from outside, such as with kill or at shutdown, instead of being cut off"
+      ]
+    },
+    "nl": {
+      "title": "Bestanden van je telefoon bekijken op de Mac",
+      "new": [
+        "Bestanden bekijken op de pagina van een telefoon opent zijn mappen op de Mac: mappen en bestanden openen, uploaden (met de knop of door ze neer te zetten), downloaden naar waar ontvangen bestanden komen, mappen maken, hernoemen en verwijderen. Het gaat over dezelfde versleutelde verbinding als al het andere, rechtstreeks tussen je apparaten",
+        "Bestandstoegang onder Instellingen op de telefoon kiest wat andere apparaten kunnen zien en wijzigen: welke mappen, of ze iets mogen wijzigen of verwijderen, of verborgen bestanden getoond worden, een limiet op wat ze mogen sturen, andere keuzes voor één apparaat dan voor de rest, en een lijst van wat ze deden. Android vraagt je eenmalig om toegang tot alle bestanden toe te staan, en zolang je dat niet doet is er niets van de telefoon te zien",
+        "De bestanden van een telefoon kunnen ook als schijf in Finder openen, als experiment: Toon in Finder op de bestandenpagina. macOS vraagt eenmalig of Tandem netwerkschijven mag gebruiken",
+        "tandemd heeft ls, get, put, mkdir, rm en mv voor de bestanden van een ander apparaat"
+      ],
+      "better": [
+        "De Mac-app stopt netjes als hem dat van buitenaf wordt gevraagd, bijvoorbeeld met kill of bij afsluiten, in plaats van dat hij wordt afgekapt"
+      ]
+    }
+  },
+  {
     "version": "0.1.28",
     "date": "2026-10-04",
     "en": {

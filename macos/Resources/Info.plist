@@ -24,6 +24,8 @@
     <string>Tandem finds your other devices on your network to send files and share your clipboard.</string>
     <key>NSBonjourServices</key>
     <array><string>_tandem._udp</string></array>
+    <key>NSNetworkVolumesUsageDescription</key>
+    <string>Tandem opens the files of your phone as a drive, and other apps on this Mac use that drive.</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>Tandem uses Bluetooth to ask your phone to turn on its hotspot when this Mac has no connection.</string>
     <key>NSLocationUsageDescription</key>
