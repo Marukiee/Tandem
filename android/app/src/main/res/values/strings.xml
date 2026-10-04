@@ -39,7 +39,7 @@
     <string name="devices_none">Nothing paired yet</string>
     <string name="devices_none_online">Nothing online right now</string>
     <string name="empty_title">Pair your first device</string>
-    <string name="empty_body">Tandem finds your devices on your own network and over Tailscale. Nothing goes through a server.</string>
+    <string name="empty_body">Tandem finds your devices on your own network. Nothing goes through a server.</string>
     <string name="action_pair">Pair a device</string>
     <string name="action_files">Files</string>
     <string name="action_clipboard">Clipboard</string>
@@ -396,10 +396,10 @@
     <string name="files_for">For</string>
     <string name="files_all_devices">All devices</string>
     <string name="files_own">Own settings for this device</string>
-    <string name="files_own_sub">Off: it follows the settings for all devices</string>
+    <string name="files_own_sub">Otherwise it follows the settings for all devices</string>
     <string name="files_rights">What they may do</string>
     <string name="files_enabled">Share files</string>
-    <string name="files_enabled_sub">The main switch. Off, nothing of this phone can be seen</string>
+    <string name="files_enabled_sub">Without this, nothing of this phone can be seen</string>
     <string name="files_write">Allow changing files</string>
     <string name="files_write_sub">Putting files here, replacing them and renaming them</string>
     <string name="files_delete">Allow deleting files</string>

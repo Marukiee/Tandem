@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +52,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
@@ -670,3 +672,20 @@ fun SoftDivider(modifier: Modifier = Modifier) {
 /** Vertical breathing room, so a Column does not need a Spacer spelled out. */
 @Composable
 fun VSpace(height: Int) = Spacer(Modifier.height(height.dp))
+
+/**
+ * Lets a row reach past the side padding of its page, out to the edges of the screen. A row that scrolls sideways then
+ * goes on under the edge, instead of being cut off where the padding ends. The row puts the same padding inside itself,
+ * so it starts and ends where the rest of the page does.
+ */
+fun Modifier.bleed(by: Dp): Modifier = layout { measurable, constraints ->
+    if (!constraints.hasBoundedWidth) {
+        // With no width to reach out from there is nothing to bleed past.
+        val placeable = measurable.measure(constraints)
+        return@layout layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
+    val side = by.roundToPx()
+    val wider = constraints.maxWidth + side * 2
+    val placeable = measurable.measure(constraints.copy(minWidth = wider, maxWidth = wider))
+    layout(constraints.maxWidth, placeable.height) { placeable.place(-side, 0) }
+}

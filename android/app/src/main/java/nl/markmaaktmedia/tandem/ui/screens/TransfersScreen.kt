@@ -54,7 +54,7 @@ fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier, listState:
             Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.tab_transfers), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 if (transfers.any { it.state != TransferItem.State.Active }) {
-                    SecondaryPillButton(stringResource(R.string.action_clear), { host.clearFinishedTransfers() })
+                    SecondaryPillButton(stringResource(R.string.action_clear), { host.clearFinishedTransfers() }, icon = TandemIcons.Close)
                 }
             }
         }

@@ -52,6 +52,7 @@ import nl.markmaaktmedia.tandem.ui.components.DeviceGlyph
 import nl.markmaaktmedia.tandem.ui.components.EmptyState
 import nl.markmaaktmedia.tandem.ui.components.PresenceDot
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
+import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
 import nl.markmaaktmedia.tandem.ui.components.StatusChip
 import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
 import nl.markmaaktmedia.tandem.ui.components.platformIcon
@@ -102,18 +103,22 @@ fun DevicesScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item(key = "header") {
-            Column(Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) {
-                Text(stringResource(R.string.tab_devices), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-                Text(
-                    when {
-                        state is EngineState.Failed -> stringResource(R.string.engine_failed)
-                        devices.isEmpty() -> stringResource(R.string.devices_none)
-                        online == 0 -> stringResource(R.string.devices_none_online)
-                        else -> pluralStringResource(R.plurals.devices_online, online, online)
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.tab_devices), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+                    Text(
+                        when {
+                            state is EngineState.Failed -> stringResource(R.string.engine_failed)
+                            devices.isEmpty() -> stringResource(R.string.devices_none)
+                            online == 0 -> stringResource(R.string.devices_none_online)
+                            else -> pluralStringResource(R.plurals.devices_online, online, online)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                // With no device yet the page has its own button in the middle; after that this is the way to the next one.
+                if (devices.isNotEmpty()) SecondaryPillButton(stringResource(R.string.action_pair), onPair, icon = TandemIcons.Add)
             }
         }
 

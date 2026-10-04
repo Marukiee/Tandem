@@ -45,6 +45,8 @@ final class FilesBrowser {
     private(set) var loading = false
     private(set) var failure: String?
     private(set) var jobs: [FileJob] = []
+    /// The folders the other device shares.
+    private(set) var roots: [TandemFsRoot] = []
     /// The name of the chosen row.
     var selection: String?
 
@@ -53,6 +55,10 @@ final class FilesBrowser {
     @ObservationIgnored private var generation = 0
 
     var parts: [String] { path.split(separator: "/").map(String.init) }
+
+    /// Whether the list of shared folders is a place worth going to. With a single folder there is nothing to choose,
+    /// so the page starts inside it and has no list to go back to.
+    var hasFolderList: Bool { roots.count != 1 }
 
     /// Whether things can be put here and changed: not in the list of folders, and only where the other device allows it.
     var writable: Bool {
@@ -68,6 +74,7 @@ final class FilesBrowser {
         deviceId = device.id
         deviceName = device.name
         path = DebugSupport.filesPath ?? "/"
+        roots = []
         entries = []
         selection = DebugSupport.filesSelection
         jobs = []
@@ -86,8 +93,12 @@ final class FilesBrowser {
         Task {
             do {
                 let roots = try await engine.fsRoots(id: id)
-                let items = try await engine.fsList(id: id, path: path)
+                // Asked for the list of folders while there is only one: look inside it instead.
+                let target = path == "/" && roots.count == 1 ? "/" + roots[0].name : path
+                let items = try await engine.fsList(id: id, path: target)
                 guard mine == generation else { return }
+                self.roots = roots
+                if target != path { self.path = target }
                 changeable = Dictionary(uniqueKeysWithValues: roots.map { ($0.name, $0.write) })
                 entries = items.sorted { a, b in
                     if a.dir != b.dir { return a.dir }
@@ -116,6 +127,7 @@ final class FilesBrowser {
 
     func up() {
         let kept = parts.dropLast()
+        guard !kept.isEmpty || hasFolderList else { return }
         go(to: kept.isEmpty ? "/" : "/" + kept.joined(separator: "/"))
     }
 

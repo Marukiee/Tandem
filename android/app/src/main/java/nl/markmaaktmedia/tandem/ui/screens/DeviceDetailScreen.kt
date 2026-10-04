@@ -47,7 +47,6 @@ import nl.markmaaktmedia.tandem.ui.components.platformName
 import nl.markmaaktmedia.tandem.ui.components.BatteryRing
 import nl.markmaaktmedia.tandem.ui.components.DeviceGlyph
 import nl.markmaaktmedia.tandem.ui.components.DeviceIconPicker
-import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
 import nl.markmaaktmedia.tandem.ui.components.rememberTransferActions
 import nl.markmaaktmedia.tandem.ui.components.rememberPickedIcon
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
@@ -117,7 +116,8 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 DeviceGlyph(
                     device.platform, device.online, size = 68.dp, deviceId = device.id,
-                    modifier = Modifier.bouncyClickable(withHaptics = true, onClickLabel = stringResource(R.string.icon_change)) { choosingIcon = !choosingIcon },
+                    onClick = { choosingIcon = !choosingIcon },
+                    onClickLabel = stringResource(R.string.icon_change),
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(device.name, style = MaterialTheme.typography.headlineSmall, maxLines = 2)

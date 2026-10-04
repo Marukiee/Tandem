@@ -36,7 +36,7 @@
     <string name="devices_none">Nog niets gekoppeld</string>
     <string name="devices_none_online">Nu is niets online</string>
     <string name="empty_title">Koppel je eerste apparaat</string>
-    <string name="empty_body">Tandem vindt je apparaten op je eigen netwerk en via Tailscale. Er gaat niets via een server.</string>
+    <string name="empty_body">Tandem vindt je apparaten op je eigen netwerk. Er gaat niets via een server.</string>
     <string name="action_pair">Apparaat koppelen</string>
     <string name="action_files">Bestanden</string>
     <string name="action_clipboard">Klembord</string>
@@ -393,10 +393,10 @@
     <string name="files_for">Voor</string>
     <string name="files_all_devices">Alle apparaten</string>
     <string name="files_own">Eigen instellingen voor dit apparaat</string>
-    <string name="files_own_sub">Uit: het volgt de instellingen voor alle apparaten</string>
+    <string name="files_own_sub">Anders volgt het de instellingen voor alle apparaten</string>
     <string name="files_rights">Wat ze mogen</string>
     <string name="files_enabled">Bestanden delen</string>
-    <string name="files_enabled_sub">De hoofdschakelaar. Uit: er is niets van deze telefoon te zien</string>
+    <string name="files_enabled_sub">Zonder dit is er niets van deze telefoon te zien</string>
     <string name="files_write">Wijzigen toestaan</string>
     <string name="files_write_sub">Bestanden hierheen zetten, vervangen en hernoemen</string>
     <string name="files_delete">Verwijderen toestaan</string>

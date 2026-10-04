@@ -47,6 +47,7 @@ import nl.markmaaktmedia.tandem.ui.components.SectionHeader
 import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
 import nl.markmaaktmedia.tandem.ui.components.SwitchRow
 import nl.markmaaktmedia.tandem.ui.components.TandemIconButton
+import nl.markmaaktmedia.tandem.ui.components.bleed
 import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
 import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
@@ -139,7 +140,7 @@ fun FileAccessScreen(onBack: () -> Unit) {
         }
 
         SectionHeader(stringResource(R.string.files_for))
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().bleed(16.dp).horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Choice(stringResource(R.string.files_all_devices), target == null) { target = null }
             devices.forEach { device -> Choice(device.name, target == device.id) { target = device.id } }
         }

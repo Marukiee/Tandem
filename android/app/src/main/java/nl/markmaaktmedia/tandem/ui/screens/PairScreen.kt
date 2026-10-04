@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -45,6 +46,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
@@ -64,9 +66,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -548,6 +552,12 @@ private fun ViewfinderCorners(locked: Boolean) {
 
 // ---- Showing -------------------------------------------------------------------
 
+/** How long a code works, which is also what the countdown under it runs over. */
+private const val CodeLifetimeMs = 300_000L
+
+/** The space between the tile and the outside of the frame around it. */
+private val FrameSpace = 22.dp
+
 @Composable
 private fun ShowPanel() {
     val context = LocalContext.current
@@ -574,26 +584,21 @@ private fun ShowPanel() {
     DisposableEffect(Unit) { onDispose { host.engine?.cancelPairingOffer() } }
 
     val expired = uri != null && now > expiresAt
-    val remaining = if (uri == null) 1f else ((expiresAt - now) / 300_000f).coerceIn(0f, 1f)
-    val ring by animateFloatAsState(remaining, tween(500, easing = LinearEasing), label = "ring")
+    val left = if (uri == null) CodeLifetimeMs else (expiresAt - now).coerceIn(0L, CodeLifetimeMs)
+    val remaining by animateFloatAsState(left / CodeLifetimeMs.toFloat(), tween(500, easing = LinearEasing), label = "countdown")
     val primary = MaterialTheme.colorScheme.primary
-    val track = MaterialTheme.colorScheme.surfaceContainerHighest
     // A QR code needs a light ground to scan, so it keeps one in both themes. The tile
     // goes back to the theme the moment there is no code on it.
     val tile by animateColorAsState(if (expired) MaterialTheme.colorScheme.surfaceContainerHigh else Color.White, TandemMotion.colourSpec(), label = "qrTile")
     val bitmap = remember(uri) { uri?.let { qrBitmap(it) } }
 
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        // Leaves room for the hint and the copy button, and never grows past what scans well.
-        val ringSize = minOf(maxWidth, maxHeight - 130.dp).coerceIn(200.dp, 300.dp)
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Box(contentAlignment = Alignment.Center) {
-                Canvas(Modifier.size(ringSize)) {
-                    val stroke = 8.dp.toPx()
-                    drawArc(track, 0f, 360f, false, Offset(stroke / 2, stroke / 2), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke))
-                    drawArc(primary, -90f, 360f * ring, false, Offset(stroke / 2, stroke / 2), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke, cap = StrokeCap.Round))
-                }
-                Box(Modifier.size(ringSize - 68.dp).clip(SheetSquircle).background(tile), contentAlignment = Alignment.Center) {
+        // Leaves room for the countdown, the hint and the copy button, and never grows past what scans well.
+        val side = minOf(maxWidth - (FrameSpace + 16.dp) * 2, maxHeight - 250.dp).coerceIn(190.dp, 300.dp)
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Box(Modifier.size(side + FrameSpace * 2), contentAlignment = Alignment.Center) {
+                CodeFrame(locked = bitmap != null && !expired)
+                Box(Modifier.size(side).clip(SheetSquircle).background(tile), contentAlignment = Alignment.Center) {
                     AnimatedContent(
                         targetState = when {
                             expired -> 2
@@ -619,22 +624,81 @@ private fun ShowPanel() {
                                     round++
                                 }, icon = TandemIcons.Refresh)
                             }
-                            1 -> bitmap?.let { Image(it.asImageBitmap(), null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(14.dp)) }
+                            1 -> bitmap?.let { Image(it.asImageBitmap(), null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize().padding(16.dp)) }
                             else -> PillSpinner(size = 40.dp, color = primary)
                         }
                     }
                 }
             }
-            Text(stringResource(R.string.pair_show_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            Countdown(remaining, left, Modifier.width(side))
+            Text(
+                stringResource(R.string.pair_show_hint),
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 12.dp),
+            )
             SecondaryPillButton(stringResource(R.string.pair_copy_link), { uri?.let { clipboard.setText(AnnotatedString(it)) } }, icon = TandemIcons.Copy)
         }
     }
 }
 
+/**
+ * Four corner brackets around the code, the frame a camera draws around what it is about to read, so the screen
+ * that shows a code and the one that scans it look like two halves of the same thing. They close in on the code
+ * once there is one, the way the corners on the scanner close in on a find.
+ */
+@Composable
+private fun CodeFrame(locked: Boolean) {
+    val colour by animateColorAsState(
+        if (locked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+        TandemMotion.colourSpec(), label = "frameColour",
+    )
+    val inset by animateDpAsState(if (locked) 10.dp else 0.dp, TandemMotion.springy(), label = "frameInset")
+    Canvas(Modifier.fillMaxSize()) {
+        val stroke = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
+        val left = inset.toPx()
+        val top = left
+        val right = size.width - left
+        val bottom = size.height - top
+        // The curve runs parallel to the tile inside it: the tile's corner plus the space between them.
+        val r = (36.dp + FrameSpace - 10.dp).toPx()
+        val arm = 16.dp.toPx()
+        val path = Path().apply {
+            moveTo(left, top + r + arm); lineTo(left, top + r)
+            arcTo(Rect(left, top, left + 2 * r, top + 2 * r), 180f, 90f, false); lineTo(left + r + arm, top)
+            moveTo(right - r - arm, top); lineTo(right - r, top)
+            arcTo(Rect(right - 2 * r, top, right, top + 2 * r), 270f, 90f, false); lineTo(right, top + r + arm)
+            moveTo(right, bottom - r - arm); lineTo(right, bottom - r)
+            arcTo(Rect(right - 2 * r, bottom - 2 * r, right, bottom), 0f, 90f, false); lineTo(right - r - arm, bottom)
+            moveTo(left + r + arm, bottom); lineTo(left + r, bottom)
+            arcTo(Rect(left, bottom - 2 * r, left + 2 * r, bottom), 90f, 90f, false); lineTo(left, bottom - r - arm)
+        }
+        drawPath(path, colour, style = stroke)
+    }
+}
+
+/** How long the code still works: a bar that drains, and the time it has left. */
+@Composable
+private fun Countdown(fraction: Float, leftMs: Long, modifier: Modifier = Modifier) {
+    val seconds = (leftMs + 999) / 1000
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.weight(1f).height(6.dp).clip(PillShape).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
+            Box(Modifier.fillMaxHeight().fillMaxWidth(fraction.coerceIn(0f, 1f)).clip(PillShape).background(MaterialTheme.colorScheme.primary))
+        }
+        Text(
+            "%d:%02d".format(seconds / 60, seconds % 60),
+            style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** The dark indigo the code is drawn in: the colour of the app, and still about 16 to 1 against the white tile. */
+private const val CodeInk = 0xFF1B1A4A.toInt()
+
 /** Draws the QR with sharp modules and a quiet zone, so it scans from across a room. */
 private fun qrBitmap(text: String, size: Int = 720): Bitmap {
     val hints = mapOf(EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M, EncodeHintType.MARGIN to 0)
     val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, size, size, hints)
-    val pixels = IntArray(size * size) { i -> if (matrix.get(i % size, i / size)) AndroidColor.BLACK else AndroidColor.WHITE }
+    val pixels = IntArray(size * size) { i -> if (matrix.get(i % size, i / size)) CodeInk else AndroidColor.WHITE }
     return Bitmap.createBitmap(pixels, size, size, Bitmap.Config.ARGB_8888)
 }

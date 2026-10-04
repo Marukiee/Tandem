@@ -334,17 +334,17 @@ private struct DevicesSettings: View {
             }
             ForEach(model.devices, id: \.id) { device in
                 Section {
-                    LabeledContent {
+                    // Not a LabeledContent: that sets the state level with the first line of the name, and with two lines
+                    // beside it the state belongs in the middle.
+                    HStack(spacing: 10) {
+                        DeviceGlyph(platform: device.platform, online: device.online, size: 30)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(device.name).font(.body.weight(.medium))
+                            Text(device.platform.label).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 12)
                         Text(model.reach(of: device).text)
                             .foregroundStyle(model.reach(of: device).color)
-                    } label: {
-                        HStack(spacing: 10) {
-                            DeviceGlyph(platform: device.platform, online: device.online, size: 30)
-                            VStack(alignment: .leading, spacing: 0) {
-                                Text(device.name).font(.body.weight(.medium))
-                                Text(device.platform.label).font(.caption).foregroundStyle(.secondary)
-                            }
-                        }
                     }
                     DescribedToggle(
                         "Sync clipboard",
@@ -361,15 +361,15 @@ private struct DevicesSettings: View {
                         subtitle: "Turn off to be asked before something arrives",
                         isOn: Binding(get: { device.autoAccept }, set: { model.setSettings(device, autoAccept: $0) })
                     )
-                    LabeledContent {
-                        Button("Remove…", role: .destructive) { removing = device }
-                    } label: {
+                    HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Remove this device")
                             Text(device.vouchedByRemoved ? "It was added by a device that has since been removed" : "It leaves the circle everywhere")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
+                        Spacer(minLength: 12)
+                        Button("Remove…", role: .destructive) { removing = device }
                     }
                 }
             }
@@ -409,13 +409,13 @@ private struct HotspotSettings: View {
     var body: some View {
         Form {
             Section {
-                LabeledContent {
-                    Button("Set up…") { showSetup = true }
-                } label: {
+                HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Guided setup")
                         Text("Join your phone's hotspot once and Tandem takes over.").font(.caption).foregroundStyle(.secondary)
                     }
+                    Spacer(minLength: 12)
+                    Button("Set up…") { showSetup = true }
                 }
             }
             Section {

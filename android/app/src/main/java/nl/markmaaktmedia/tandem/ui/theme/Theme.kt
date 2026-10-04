@@ -67,6 +67,8 @@ data class TandemExtraColors(
     val urgentContainer: Color,
     val onUrgentContainer: Color,
     val online: Color,
+    /** The green of a battery that charges: the plain green of the Mac, not the mint of the online dot. */
+    val charging: Color,
     /** True when the pure black surface is in use, so a component can skip its tint. */
     val isPureBlack: Boolean,
 )
@@ -77,6 +79,7 @@ val LocalTandemExtraColors = staticCompositionLocalOf {
         urgentContainer = TandemPalette.UrgentContainerLight,
         onUrgentContainer = TandemPalette.Neutral10,
         online = Color(0xFF3DDC97),
+        charging = Color(0xFF30D158),
         isPureBlack = false,
     )
 }
@@ -86,6 +89,7 @@ private fun blendExtras(from: TandemExtraColors, to: TandemExtraColors, fraction
     urgentContainer = lerp(from.urgentContainer, to.urgentContainer, fraction),
     onUrgentContainer = lerp(from.onUrgentContainer, to.onUrgentContainer, fraction),
     online = lerp(from.online, to.online, fraction),
+    charging = lerp(from.charging, to.charging, fraction),
     isPureBlack = if (fraction < 0.5f) from.isPureBlack else to.isPureBlack,
 )
 
@@ -121,6 +125,8 @@ fun TandemTheme(
                 onUrgentContainer = if (dark) TandemPalette.Neutral95 else TandemPalette.Neutral10,
                 // The bright green vanishes on a light surface, so light theme gets a deeper one.
                 online = if (dark) Color(0xFF3DDC97) else Color(0xFF0B7A4B),
+                // The same green the Mac uses for it, deeper on a light surface where the bright one vanishes.
+                charging = if (dark) Color(0xFF30D158) else Color(0xFF1A8F37),
                 isPureBlack = usePureBlack,
             ),
         )

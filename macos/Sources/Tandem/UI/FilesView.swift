@@ -150,9 +150,11 @@ struct FilesView: View {
 
     private var breadcrumb: some View {
         HStack(spacing: 4) {
-            crumb(String(localized: "Folders"), index: 0)
+            if browser.hasFolderList { crumb(String(localized: "Folders"), index: 0) }
             ForEach(Array(browser.parts.enumerated()), id: \.offset) { index, part in
-                Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(.tertiary)
+                if index > 0 || browser.hasFolderList {
+                    Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(.tertiary)
+                }
                 crumb(part, index: index + 1)
             }
         }

@@ -25,12 +25,15 @@ struct GlassActionButton: View {
     let title: LocalizedStringKey
     let symbol: String
     var prominent = false
+    /// Takes the width it is given, so buttons side by side come out the same size whatever their labels are.
+    var wide = false
     let action: () -> Void
 
     var body: some View {
         let button = Button(action: action) {
             Label(title, systemImage: symbol)
                 .font(.callout.weight(.semibold))
+                .frame(maxWidth: wide ? .infinity : nil)
         }
         if prominent {
             button.buttonStyle(.glassProminent).tint(Palette.indigo).controlSize(.large)

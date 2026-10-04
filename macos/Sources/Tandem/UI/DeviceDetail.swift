@@ -340,7 +340,7 @@ extension DeviceDetail {
 
     private func speakerSubtitle(enabled: Bool, failure: String?) -> String {
         if let failure { return failure }
-        guard enabled else { return String(localized: "Off: not offered as a sound output") }
+        guard enabled else { return String(localized: "Not offered as a sound output") }
         switch model.speaker {
         case .on(device.id): return String(localized: "This Mac's sound plays on \(device.name). Pick another output to stop.")
         case .starting(device.id): return String(localized: "Starting")

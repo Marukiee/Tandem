@@ -3,11 +3,11 @@
 /* Koppelen */
 "This code has expired. Ask the other device to show a new QR code." = "Deze code is verlopen. Vraag het andere apparaat om een nieuwe QR-code te tonen.";
 "This code does not match. Ask the other device to show a new QR code and scan that one." = "Deze code klopt niet. Vraag het andere apparaat om een nieuwe QR-code te tonen en scan die.";
-"The other device is not showing a pairing code. Choose Add device on it and try again." = "Het andere apparaat toont geen koppelcode. Kies daar Apparaat toevoegen en probeer het opnieuw.";
+"The other device is not showing a pairing code. Choose Pair a device on it and try again." = "Het andere apparaat toont geen koppelcode. Kies daar Apparaat koppelen en probeer het opnieuw.";
 "Close" = "Sluit";
 "Pair a device" = "Apparaat koppelen";
 "Pair a device…" = "Apparaat koppelen…";
-"Open Tandem on the other device, choose Add device and scan this code." = "Open Tandem op het andere apparaat, kies Apparaat toevoegen en scan deze code.";
+"Open Tandem on your other device, choose Pair a device and scan this code." = "Open Tandem op je andere apparaat, kies Apparaat koppelen en scan deze code.";
 "Paste a pairing link" = "Plak een koppellink";
 "Join" = "Koppel";
 "Connecting" = "Verbinden";
@@ -17,7 +17,7 @@
 "They will now find each other on their own." = "Ze vinden elkaar nu vanzelf.";
 "Pairing link copied" = "Koppellink gekopieerd";
 "Copy link" = "Kopieer link";
-"I have a code" = "Ik heb een code";
+"I have a link" = "Ik heb een link";
 "New device" = "Nieuw apparaat";
 
 /* Apparaten */
@@ -125,7 +125,7 @@
 "OK" = "OK";
 "Another device took this Mac out of your circle. To join again, reset Tandem in Settings and pair once more." = "Een ander apparaat heeft deze Mac uit je circle gehaald. Om weer mee te doen zet je Tandem terug in Instellingen en koppel je opnieuw.";
 "Starting" = "Starten";
-"Tandem finds your devices on your own network and over Tailscale. Nothing goes through a server." = "Tandem vindt je apparaten op je eigen netwerk en via Tailscale. Er gaat niets via een server.";
+"Tandem finds your devices on your own network. Nothing goes through a server." = "Tandem vindt je apparaten op je eigen netwerk. Er gaat niets via een server.";
 "Tandem could not start" = "Tandem kon niet starten";
 
 /* Meldingen */
@@ -393,7 +393,7 @@
 "Could not make the sound output for %@ (error %lld)" = "Kon de geluidsuitgang voor %@ niet maken (fout %lld)";
 
 "Use now" = "Nu gebruiken";
-"Off: not offered as a sound output" = "Uit: wordt niet als geluidsuitgang aangeboden";
+"Not offered as a sound output" = "Wordt niet als geluidsuitgang aangeboden";
 "This Mac's sound plays on %@. Pick another output to stop." = "Het geluid van deze Mac speelt op %@. Kies een andere uitgang om te stoppen.";
 "Pick %@ (Tandem) in the sound menu" = "Kies %@ (Tandem) in het geluidsmenu";
 

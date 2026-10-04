@@ -989,7 +989,7 @@ final class EngineModel {
             return String(localized: "This code does not match. Ask the other device to show a new QR code and scan that one.")
         }
         if text.contains("this device is not showing a pairing code") {
-            return String(localized: "The other device is not showing a pairing code. Choose Add device on it and try again.")
+            return String(localized: "The other device is not showing a pairing code. Choose Pair a device on it and try again.")
         }
         return raw
     }

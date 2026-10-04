@@ -190,6 +190,9 @@ fun DeviceGlyph(
     onTile: Boolean = false,
     /** With the id, the icon the person picked for this device is used. */
     deviceId: String? = null,
+    /** Makes the glyph a button. It is set here and not through [modifier] so the press lights up the circle, not the square around it. */
+    onClick: (() -> Unit)? = null,
+    onClickLabel: String? = null,
 ) {
     val picked = rememberPickedIcon(deviceId)
     val container by animateColorAsState(
@@ -204,7 +207,14 @@ fun DeviceGlyph(
         if (online) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
         TandemMotion.colourSpec(), label = "glyphContent",
     )
-    Box(modifier.size(size).clip(CircleShape).background(container), contentAlignment = Alignment.Center) {
+    Box(
+        modifier
+            .size(size)
+            .clip(CircleShape)
+            .then(if (onClick != null) Modifier.bouncyClickable(withHaptics = true, onClickLabel = onClickLabel, onClick = onClick) else Modifier)
+            .background(container),
+        contentAlignment = Alignment.Center,
+    ) {
         AnimatedContent(
             targetState = picked,
             transitionSpec = { (scaleIn(TandemMotion.bouncy(), initialScale = 0.5f) + fadeIn()) togetherWith (scaleOut(TandemMotion.spatial(), targetScale = 0.5f) + fadeOut()) },
@@ -349,7 +359,7 @@ fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp 
     )
     val tint by animateColorAsState(
         when {
-            battery.charging -> extras.online
+            battery.charging -> extras.charging
             level <= 15 -> extras.urgent
             else -> MaterialTheme.colorScheme.primary
         },
@@ -399,10 +409,10 @@ fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
     val low = level <= 15 && !battery.charging
     val extras = LocalTandemExtraColors.current
     val base = MaterialTheme.colorScheme.surfaceContainerHighest
-    // Charging is the green of the online dot, to the last digit, so a connected device that charges is one colour.
+    // Charging is the plain green the Mac shows for it, on the ring and on this pill.
     val container by animateColorAsState(
         when {
-            battery.charging -> lerp(base, extras.online, 0.2f)
+            battery.charging -> lerp(base, extras.charging, 0.22f)
             low -> extras.urgentContainer
             else -> base
         },
@@ -410,7 +420,7 @@ fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
     )
     val content by animateColorAsState(
         when {
-            battery.charging -> extras.online
+            battery.charging -> extras.charging
             low -> extras.onUrgentContainer
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },

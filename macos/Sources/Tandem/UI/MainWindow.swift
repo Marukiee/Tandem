@@ -180,20 +180,19 @@ extension Notification.Name {
 
 struct WelcomeView: View {
     var body: some View {
-        VStack(spacing: 8) {
-            PillMark(size: 84, style: .plate)
-                .padding(.top, 30)
-            Card(radius: 34, padding: 8) {
-                PairingPanel()
-                    .frame(width: 460)
-            }
-            .padding(.top, 10)
-            Text("Tandem finds your devices on your own network and over Tailscale. Nothing goes through a server.")
+        VStack(spacing: 4) {
+            PillMark(size: 64, style: .plate)
+                .padding(.top, 6)
+            // No card around it: the code has its own tile, and a card around a tile around a code is one frame too many.
+            PairingPanel()
+                .frame(width: 460)
+            Text("Tandem finds your devices on your own network. Nothing goes through a server.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 420)
-                .padding(.vertical, 18)
+                .padding(.top, 6)
+                .padding(.bottom, 20)
         }
         .frame(maxWidth: .infinity)
     }

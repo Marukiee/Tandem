@@ -71,6 +71,7 @@ fun MediaControls(
                 height = MediaHeight,
                 joins = Joins.row(index, items.size),
                 colors = toneOf(item.key, playing = lit, muted = muted),
+                round = latched(item.key, playing = lit, muted = muted),
                 modifier = Modifier.weight(1f),
                 description = stringResource(item.label),
                 onUp = { inside ->
@@ -116,6 +117,13 @@ private fun toneOf(key: TandemMediaKey, playing: Boolean, muted: Boolean): Group
 }
 
 /**
+ * Whether a button is on, and so comes loose from the group: it rounds off into a pill for as long as it is on, like the
+ * toggles at the top of the trackpad and the modifier keys of the keyboard, and joins the others again when it goes off.
+ */
+private fun latched(key: TandemMediaKey, playing: Boolean, muted: Boolean): Boolean =
+    (key == TandemMediaKey.PLAY_PAUSE && playing) || (key == TandemMediaKey.MUTE && muted)
+
+/**
  * The trackpad's media buttons, for a player that reports what it is doing: mute, volume down, previous, play or pause,
  * next and volume up, joined the same way. Previous, play and next press the player's own buttons, and the play button
  * shows what a press will do, because the player says whether it plays. Volume and mute are the Mac's and go out as the
@@ -156,6 +164,7 @@ fun PlayerControls(
                 height = MediaHeight,
                 joins = Joins.row(index, items.size),
                 colors = toneOf(item.key, playing = playing, muted = muted),
+                round = latched(item.key, playing = playing, muted = muted),
                 modifier = Modifier.weight(1f).graphicsLayer { alpha = dim },
                 description = stringResource(item.label),
                 onUp = { inside ->

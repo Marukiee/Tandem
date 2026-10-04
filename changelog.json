@@ -1,5 +1,41 @@
 [
   {
+    "version": "0.1.30",
+    "date": "2026-10-04",
+    "en": {
+      "title": "A calmer way to pair, and smaller fixes",
+      "new": [
+        "Pairing looks the same on the Mac and the phone: the code sits on its tile in a frame of corner brackets, with the time it has left as a bar under it, and the code is drawn in the dark indigo of the app",
+        "The Devices page on the phone has a Pair a device button once you have a device, so the next one is not hidden away"
+      ],
+      "better": [
+        "The files of a phone open straight inside its folder on the Mac when it shares just one, instead of a list with a single folder in it",
+        "The play and mute buttons of the player on a device page come loose from the row while they are on, like the toggles at the top of the trackpad",
+        "Pressing the icon of a device on the phone lights up the circle, not a square around it",
+        "The row of devices under File access runs to the edges of the screen instead of being cut off early",
+        "Clear finished has a cross, and the texts under File access no longer start with Off",
+        "The state of a device in the Mac settings sits level with its name, and the welcome text no longer mentions Tailscale",
+        "The battery pill and ring on the phone use the plain green of the Mac while a device charges"
+      ]
+    },
+    "nl": {
+      "title": "Rustiger koppelen en kleinere verbeteringen",
+      "new": [
+        "Koppelen ziet er op de Mac en de telefoon hetzelfde uit: de code staat op zijn tegel in een kader van hoekbeugels, met de tijd die hij nog heeft als balk eronder, en de code is getekend in het donkere indigo van de app",
+        "De pagina Apparaten op de telefoon heeft een knop Apparaat koppelen zodra je een apparaat hebt, zodat het volgende niet verstopt zit"
+      ],
+      "better": [
+        "De bestanden van een telefoon openen op de Mac meteen in zijn map als er maar één wordt gedeeld, in plaats van een lijst met één map erin",
+        "De knoppen play en mute van de speler op een apparaatpagina komen los van de rij zolang ze aan staan, zoals de schakelaars bovenin het trackpad",
+        "Het icoon van een apparaat indrukken op de telefoon laat de cirkel oplichten, niet een vierkant eromheen",
+        "De rij met apparaten onder Bestandstoegang loopt door tot de randen van het scherm in plaats van eerder te worden afgesneden",
+        "Voltooide wissen heeft een kruisje, en de teksten onder Bestandstoegang beginnen niet meer met Uit",
+        "De status van een apparaat in de Mac-instellingen staat op één lijn met zijn naam, en de welkomsttekst noemt Tailscale niet meer",
+        "De batterij-pill en -ring op de telefoon gebruiken het gewone groen van de Mac zolang een apparaat oplaadt"
+      ]
+    }
+  },
+  {
     "version": "0.1.29",
     "date": "2026-10-04",
     "en": {
