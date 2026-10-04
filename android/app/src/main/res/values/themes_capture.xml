@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The capture screen: black behind the camera from the first frame, so it never flashes light. -->
+    <style name="Theme.Tandem.Capture" parent="Theme.Tandem">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Activity</item>
+    </style>
+</resources>
