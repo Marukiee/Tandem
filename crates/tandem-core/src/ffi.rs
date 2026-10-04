@@ -15,7 +15,7 @@ use crate::ids::{DeviceId, Platform};
 use crate::net::Route;
 use crate::platform::FileStore;
 use crate::proto::{
-    Battery, CallActionKind, CallMsg, CallState, HotspotMsg, InputMsg, MediaKey, NetKind, NetworkStatus,
+    Battery, CallActionKind, CallMsg, CallState, CaptureKind, CaptureWhy, HotspotMsg, InputMsg, MediaKey, NetKind, NetworkStatus,
     NotifButton, NotificationAction, NotificationMsg, ShareOrigin, Status,
 };
 use crate::store::{DeviceSettings, SecretStore};
@@ -463,6 +463,8 @@ pub enum TandemShareOrigin {
     Screenshot,
     Photo,
     Clipboard,
+    /// The answer to a capture request, with the id of that request.
+    Capture { request: u64 },
     Other,
 }
 
@@ -473,6 +475,7 @@ impl From<TandemShareOrigin> for ShareOrigin {
             TandemShareOrigin::Screenshot => ShareOrigin::Screenshot,
             TandemShareOrigin::Photo => ShareOrigin::Photo,
             TandemShareOrigin::Clipboard => ShareOrigin::Clipboard,
+            TandemShareOrigin::Capture { request } => ShareOrigin::Capture(request),
             TandemShareOrigin::Other => ShareOrigin::Other,
         }
     }
@@ -485,6 +488,7 @@ impl From<ShareOrigin> for TandemShareOrigin {
             ShareOrigin::Screenshot => TandemShareOrigin::Screenshot,
             ShareOrigin::Photo => TandemShareOrigin::Photo,
             ShareOrigin::Clipboard => TandemShareOrigin::Clipboard,
+            ShareOrigin::Capture(request) => TandemShareOrigin::Capture { request },
             ShareOrigin::Other => TandemShareOrigin::Other,
         }
     }
@@ -753,6 +757,55 @@ impl From<TandemHotspot> for HotspotMsg {
     }
 }
 
+/// What the phone is asked to make. A kind this version does not know never reaches the app.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemCaptureKind {
+    Photo,
+    Document,
+    Picture,
+}
+
+impl From<TandemCaptureKind> for CaptureKind {
+    fn from(k: TandemCaptureKind) -> Self {
+        match k {
+            TandemCaptureKind::Photo => CaptureKind::Photo,
+            TandemCaptureKind::Document => CaptureKind::Document,
+            TandemCaptureKind::Picture => CaptureKind::Picture,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemCaptureWhy {
+    Cancelled,
+    /// The phone is not allowed to use the camera.
+    Refused,
+    Unavailable,
+    Other,
+}
+
+impl From<TandemCaptureWhy> for CaptureWhy {
+    fn from(w: TandemCaptureWhy) -> Self {
+        match w {
+            TandemCaptureWhy::Cancelled => CaptureWhy::Cancelled,
+            TandemCaptureWhy::Refused => CaptureWhy::Refused,
+            TandemCaptureWhy::Unavailable => CaptureWhy::Unavailable,
+            TandemCaptureWhy::Other => CaptureWhy::Other,
+        }
+    }
+}
+
+impl From<CaptureWhy> for TandemCaptureWhy {
+    fn from(w: CaptureWhy) -> Self {
+        match w {
+            CaptureWhy::Cancelled => TandemCaptureWhy::Cancelled,
+            CaptureWhy::Refused => TandemCaptureWhy::Refused,
+            CaptureWhy::Unavailable => TandemCaptureWhy::Unavailable,
+            CaptureWhy::Other => TandemCaptureWhy::Other,
+        }
+    }
+}
+
 #[derive(Clone, Debug, uniffi::Enum)]
 pub enum TandemEvent {
     DevicesChanged,
@@ -785,6 +838,10 @@ pub enum TandemEvent {
     Ring { from: String, on: bool },
     Input { from: String, input: TandemInput },
     Hotspot { from: String, hotspot: TandemHotspot },
+    /// The other device wants a picture. Answer with `send_files` and origin `Capture { request: id }`,
+    /// or with `cancel_capture`.
+    CaptureRequested { from: String, id: u64, kind: TandemCaptureKind },
+    CaptureCancelled { from: String, id: u64, why: TandemCaptureWhy },
     MediaPlayers { from: String, players: Vec<TandemMediaPlayer> },
     MediaArt { from: String, key: u64, jpeg: Vec<u8> },
     /// `action` is None for a command this version does not know.
@@ -866,6 +923,17 @@ impl From<Event> for TandemEvent {
             Event::Ring { from, on } => TandemEvent::Ring { from: from.to_string(), on },
             Event::Input { from, input } => TandemEvent::Input { from: from.to_string(), input: input.into() },
             Event::Hotspot { from, hotspot } => TandemEvent::Hotspot { from: from.to_string(), hotspot: hotspot.into() },
+            Event::CaptureRequested { from, id, kind } => {
+                let kind = match kind {
+                    CaptureKind::Document => TandemCaptureKind::Document,
+                    CaptureKind::Picture => TandemCaptureKind::Picture,
+                    _ => TandemCaptureKind::Photo,
+                };
+                TandemEvent::CaptureRequested { from: from.to_string(), id, kind }
+            }
+            Event::CaptureCancelled { from, id, why } => {
+                TandemEvent::CaptureCancelled { from: from.to_string(), id, why: why.into() }
+            }
             Event::MediaPlayers { from, players } => {
                 TandemEvent::MediaPlayers { from: from.to_string(), players: players.into_iter().map(Into::into).collect() }
             }
@@ -1389,6 +1457,18 @@ impl TandemEngine {
 
     pub async fn send_hotspot(&self, target: String, hotspot: TandemHotspot) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::Hotspot(hotspot.into())).await.map(|_| ())
+    }
+
+    /// Asks a device for a picture. Fails with `NotConnected` when it is not online, so the asker can say so
+    /// at once instead of waiting.
+    pub async fn request_capture(&self, target: String, id: u64, kind: TandemCaptureKind) -> Result<(), TandemError> {
+        let msg = crate::proto::Msg::CaptureRequest(crate::proto::CaptureRequest { id, kind: kind.into() });
+        self.send(vec![target], msg).await.map(|_| ())
+    }
+
+    pub async fn cancel_capture(&self, target: String, id: u64, why: TandemCaptureWhy) -> Result<(), TandemError> {
+        let msg = crate::proto::Msg::CaptureCancel(crate::proto::CaptureCancel { id, why: why.into() });
+        self.send(vec![target], msg).await.map(|_| ())
     }
 
     pub async fn decline_offer(&self, from: String, offer: u64) -> Result<(), TandemError> {

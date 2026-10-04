@@ -90,6 +90,28 @@ regie over gelijktijdigheid en hervatten.
 
 Onvolledige bestanden staan als `.part` en worden pas hernoemd na een goede hash.
 
+### Invoegen vanaf de telefoon
+
+Een computer vraagt de telefoon om een foto, een gescand document of een plaatje uit de
+galerij. De telefoon opent zijn camera, de computer toont dat hij wacht.
+
+1. De computer kiest een willekeurig `id` en stuurt `CaptureRequest { id, kind }` op de
+   controlestream. `kind` is `photo`, `document` of `picture`. Een soort die de telefoon
+   niet kent beantwoordt hij meteen met `CaptureCancel { id, why: unavailable }`.
+2. Is het gelukt, dan stuurt de telefoon het resultaat als gewone bestandsdeling
+   (`ShareOffer`) met `origin` gelijk aan `{ "capture": id }`. De computer haalt het op
+   zoals elk bestand en weet aan het id bij welke vraag het hoort. Een bod met een
+   `capture`-id dat niet bij een lopende vraag van deze computer hoort is gewoon een
+   bestand dat binnenkomt en krijgt dezelfde behandeling als elke andere deling.
+3. `CaptureCancel { id, why }` beëindigt een vraag zonder bestand, in beide richtingen.
+   De computer stuurt het als de persoon annuleert of de tijd om is, zodat het scherm op
+   de telefoon sluit. De telefoon stuurt het als de persoon het scherm sloot (`cancelled`),
+   de camera niet gebruikt mag worden (`refused`) of niet beschikbaar is (`unavailable`).
+   Ontbreekt `why`, dan betekent het `cancelled`.
+
+Een oudere versie leest `origin` `capture` niet als bekende waarde en slaat het bod over,
+maar die kan ook geen vraag gesteld hebben.
+
 ## De circle
 
 De ledenlijst is een verzameling ondertekende verklaringen (`Add`, `Remove`,

@@ -65,6 +65,12 @@ pub enum Msg {
     Ring { on: bool },
     Input(InputMsg),
     Hotspot(HotspotMsg),
+    /// Asks this device to take a picture, scan a document or pick a photo and send it back as a
+    /// file share whose origin is `ShareOrigin::Capture` with the same id.
+    CaptureRequest(CaptureRequest),
+    /// Ends a capture. The asker sends it to close the screen on the phone, the phone sends it
+    /// when the person gave up or the camera could not be used.
+    CaptureCancel(CaptureCancel),
     /// The players this device has right now, sent whenever they change. The whole list: a player
     /// that is missing from it has gone.
     MediaPlayers { players: Vec<MediaPlayer> },
@@ -200,8 +206,51 @@ pub enum ShareOrigin {
     Screenshot,
     Photo,
     Clipboard,
+    /// The answer to a `CaptureRequest`, with the id of that request.
+    Capture(u64),
     #[serde(other)]
     Other,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CaptureKind {
+    /// One photo from the camera.
+    Photo,
+    /// A scanned page, cropped and flattened.
+    Document,
+    /// A picture that is already on the phone.
+    Picture,
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CaptureRequest {
+    pub id: u64,
+    pub kind: CaptureKind,
+}
+
+/// Why a capture ended without a file.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CaptureWhy {
+    /// Somebody closed it, on either device.
+    #[default]
+    Cancelled,
+    /// The phone is not allowed to use the camera.
+    Refused,
+    /// The phone cannot do this at all, or does not know the kind asked for.
+    Unavailable,
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CaptureCancel {
+    pub id: u64,
+    #[serde(default)]
+    pub why: CaptureWhy,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -558,6 +607,90 @@ mod tests {
         let status: Status = decode(&bytes).unwrap();
         assert_eq!(status.hotspot, Some(true));
         assert_eq!(status.muted, None);
+    }
+
+    #[test]
+    fn capture_messages_round_trip() {
+        let ask = encode(&Msg::CaptureRequest(CaptureRequest { id: 9, kind: CaptureKind::Document })).unwrap();
+        match decode_msg(&ask).unwrap() {
+            Msg::CaptureRequest(r) => assert_eq!((r.id, r.kind), (9, CaptureKind::Document)),
+            other => panic!("wrong message: {other:?}"),
+        }
+        let stop = encode(&Msg::CaptureCancel(CaptureCancel { id: 9, why: CaptureWhy::Refused })).unwrap();
+        match decode_msg(&stop).unwrap() {
+            Msg::CaptureCancel(c) => assert_eq!((c.id, c.why), (9, CaptureWhy::Refused)),
+            other => panic!("wrong message: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_capture_kind_from_the_future_is_other_and_a_cancel_without_a_reason_is_a_plain_cancel() {
+        let ask = ciborium::Value::Map(vec![(
+            ciborium::Value::Text("CaptureRequest".into()),
+            ciborium::Value::Map(vec![
+                (ciborium::Value::Text("id".into()), ciborium::Value::Integer(4.into())),
+                (ciborium::Value::Text("kind".into()), ciborium::Value::Text("hologram".into())),
+            ]),
+        )]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&ask, &mut bytes).unwrap();
+        match decode_msg(&bytes).unwrap() {
+            Msg::CaptureRequest(r) => assert_eq!((r.id, r.kind), (4, CaptureKind::Other)),
+            other => panic!("wrong message: {other:?}"),
+        }
+
+        let stop = ciborium::Value::Map(vec![(
+            ciborium::Value::Text("CaptureCancel".into()),
+            ciborium::Value::Map(vec![(ciborium::Value::Text("id".into()), ciborium::Value::Integer(4.into()))]),
+        )]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&stop, &mut bytes).unwrap();
+        match decode_msg(&bytes).unwrap() {
+            Msg::CaptureCancel(c) => assert_eq!((c.id, c.why), (4, CaptureWhy::Cancelled)),
+            other => panic!("wrong message: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn the_answer_to_a_capture_keeps_its_request_id_and_old_origins_still_read() {
+        let offer = ShareOffer { id: 1, origin: ShareOrigin::Capture(77), items: vec![] };
+        let back: ShareOffer = decode(&encode(&offer).unwrap()).unwrap();
+        assert_eq!(back.origin, ShareOrigin::Capture(77));
+
+        // An origin a newer version invented as a plain name is read as `Other`.
+        let future = ciborium::Value::Text("hologram".into());
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&future, &mut bytes).unwrap();
+        assert_eq!(decode::<ShareOrigin>(&bytes).unwrap(), ShareOrigin::Other);
+        let old = ciborium::Value::Text("photo".into());
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&old, &mut bytes).unwrap();
+        assert_eq!(decode::<ShareOrigin>(&bytes).unwrap(), ShareOrigin::Photo);
+    }
+
+    #[test]
+    fn a_version_without_capture_origins_skips_the_offer_instead_of_breaking() {
+        // How `ShareOrigin` looked before `Capture` existed.
+        #[derive(Debug, Deserialize)]
+        #[serde(rename_all = "snake_case")]
+        #[allow(dead_code)]
+        enum OldOrigin {
+            Files,
+            #[serde(other)]
+            Other,
+        }
+        #[derive(Debug, Deserialize)]
+        #[allow(dead_code)]
+        enum OldMsg {
+            ShareOffer { id: u64, origin: OldOrigin },
+            Ping { nonce: u64 },
+        }
+        let bytes = encode(&Msg::ShareOffer(ShareOffer { id: 1, origin: ShareOrigin::Capture(5), items: vec![] })).unwrap();
+        // The old reader cannot make sense of it, and that is fine: `decode_msg` falls back to
+        // `Msg::Unknown` when the bytes are well formed CBOR, so the offer is skipped and the
+        // connection carries on.
+        assert!(ciborium::from_reader::<OldMsg, _>(bytes.as_slice()).is_err());
+        assert!(ciborium::from_reader::<ciborium::Value, _>(bytes.as_slice()).is_ok());
     }
 
     #[test]

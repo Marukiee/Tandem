@@ -397,6 +397,17 @@ impl Inner {
             Msg::Ring { on } => self.emit(Event::Ring { from: id, on }),
             Msg::Input(input) => self.emit(Event::Input { from: id, input }),
             Msg::Hotspot(hotspot) => self.emit(Event::Hotspot { from: id, hotspot }),
+            Msg::CaptureRequest(request) => {
+                if request.kind == crate::proto::CaptureKind::Other {
+                    // Better an answer now than a Mac that waits two minutes for a kind this app cannot make.
+                    let why = crate::proto::CaptureWhy::Unavailable;
+                    let cancel = crate::proto::CaptureCancel { id: request.id, why };
+                    let _ = self.send_to(&id, Msg::CaptureCancel(cancel)).await;
+                } else {
+                    self.emit(Event::CaptureRequested { from: id, id: request.id, kind: request.kind });
+                }
+            }
+            Msg::CaptureCancel(cancel) => self.emit(Event::CaptureCancelled { from: id, id: cancel.id, why: cancel.why }),
             Msg::BleKey { key } => self.ble_on_key(id, key),
             Msg::AudioStart { stream, sample_rate, channels } => {
                 // Sample rates and channel counts far outside what any device has are a mistake.
