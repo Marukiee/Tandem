@@ -42,6 +42,12 @@ struct Cli {
     /// Do not announce on the local network.
     #[arg(long, global = true)]
     no_mdns: bool,
+    /// Pretend to have a battery, to see how the apps show one: a level, and a plus for charging ("80+").
+    #[arg(long, global = true, hide = true)]
+    pretend_battery: Option<String>,
+    /// Pretend to be playing a track, to see how the apps show a player.
+    #[arg(long, global = true, hide = true)]
+    pretend_player: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -299,6 +305,12 @@ async fn main() -> Result<()> {
     match &cli.command {
         Command::Run => {
             println!("{}", describe(&engine));
+            if let Some(text) = &cli.pretend_battery {
+                if let Ok(level) = text.trim_end_matches('+').parse::<u8>() {
+                    let battery = tandem_core::proto::Battery { level, charging: text.ends_with('+'), power_save: false };
+                    engine.update_status(tandem_core::proto::Status { battery: Some(battery), ..Default::default() }).await;
+                }
+            }
             let mut events = engine.subscribe();
             let control_dir = data_dir.clone();
             let control = tokio::spawn({
@@ -309,7 +321,26 @@ async fn main() -> Result<()> {
                 tokio::select! {
                     _ = tokio::signal::ctrl_c() => break,
                     event = events.recv() => match event {
-                        Ok(event) => print_event(&engine, &event),
+                        Ok(event) => {
+                            if let (true, tandem_core::events::Event::Connected { id }) = (cli.pretend_player, &event) {
+                                let player = tandem_core::proto::MediaPlayer {
+                                    id: "pretend".into(),
+                                    app: "Pretend".into(),
+                                    title: "A pretend song".into(),
+                                    artist: "Tandem".into(),
+                                    album: String::new(),
+                                    playing: true,
+                                    position_ms: Some(30_000),
+                                    duration_ms: Some(240_000),
+                                    can_prev: true,
+                                    can_next: true,
+                                    can_seek: true,
+                                    art: 0,
+                                };
+                                let _ = engine.send_msg(&[*id], tandem_core::proto::Msg::MediaPlayers { players: vec![player] }).await;
+                            }
+                            print_event(&engine, &event)
+                        }
                         Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
                         Err(_) => break,
                     },
