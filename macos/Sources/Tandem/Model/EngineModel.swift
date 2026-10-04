@@ -510,7 +510,9 @@ final class EngineModel {
                 showToast(String(localized: "Your phone stopped playing the sound"))
             }
 
-        case .audioStart, .notificationAction, .callAction, .dial, .ring, .captureRequested, .captureCancelled:
+        case .audioStart, .notificationAction, .callAction, .dial, .ring, .captureRequested, .captureCancelled,
+             .mediaRequested, .mediaStarted, .mediaEnded, .mediaBitrate:
+            // Live video has no screen on this side yet.
             break
         }
     }
