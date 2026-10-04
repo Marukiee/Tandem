@@ -11,7 +11,8 @@ verschillen, wint de code en is dit document fout.
 apparaat A  <=== QUIC, TLS 1.3, gepinde Ed25519-sleutels ===>  apparaat B
    |  stream 1: controle (berichten, lang open)
    |  stream 2..n: een bestand per stream
-   |  datagrammen: pointerbewegingen
+   |  uni-streams: een videoframe per stream (zie SCREEN.md)
+   |  datagrammen: pointerbewegingen, geluid, de aanwijzer bij schermbesturing
 ```
 
 Alles loopt over UDP met QUIC (RFC 9000). Dat geeft meerdere onafhankelijke streams
@@ -65,6 +66,8 @@ De eerste byte van elke stream die een kant opent zegt wat volgt.
 |------|-----------|-----------------------------------|
 | 1    | controle  | de beller opent hem, precies een  |
 | 2    | bestand   | de ontvanger opent hem            |
+| 3    | bestanden van een ander apparaat (FILES.md) | de vrager opent hem |
+| 4    | videoframe (SCREEN.md), unidirectioneel | de host opent hem, een per frame |
 
 ### Controlestream
 
@@ -89,6 +92,13 @@ regie over gelijktijdigheid en hervatten.
 4. De ontvanger vergelijkt met zijn eigen hash en antwoordt `FileAck { ok }`.
 
 Onvolledige bestanden staan als `.part` en worden pas hernoemd na een goede hash.
+
+### Live video
+
+Een scherm of een camera van het ene apparaat in een venster op het andere, en besturing van een scherm op afstand, gaat
+over een sessie met `MediaRequest`, `MediaAccept`, `MediaDeny`, `MediaUpdate`, `MediaStop`, `MediaKeyframe`, `MediaReport`
+en `MediaInput` op de controlestream, en een uni-stream (byte `4`) per frame. Het formaat, de stromen en het gedrag bij
+verlies staan in `SCREEN.md`.
 
 ## De circle
 
