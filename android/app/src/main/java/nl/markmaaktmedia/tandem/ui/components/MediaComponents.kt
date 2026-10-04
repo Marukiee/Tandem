@@ -37,10 +37,12 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -52,7 +54,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -62,7 +68,12 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import kotlinx.coroutines.delay
+import kotlin.math.PI
+import kotlin.math.sin
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.media.RemotePlayers
@@ -186,8 +197,10 @@ private fun PlayerCard(deviceId: String, player: TandemMediaPlayer?, entry: Remo
         Spacer(Modifier.height(2.dp))
         // The position is only sent when something changes, so it is counted on from there while it plays.
         val playingNow = player?.playing == true
-        val now by produceState(SystemClock.elapsedRealtime(), playingNow, entry) {
-            while (playingNow) {
+        // Not while the app is out of sight: nothing is looking at the bar, and it catches up when the app is back.
+        val inFront = LocalLifecycleOwner.current.lifecycle.currentStateAsState().value.isAtLeast(Lifecycle.State.RESUMED)
+        val now by produceState(SystemClock.elapsedRealtime(), playingNow, entry, inFront) {
+            while (playingNow && inFront) {
                 value = SystemClock.elapsedRealtime()
                 delay(500)
             }
@@ -250,6 +263,10 @@ private fun Cover(cover: Bitmap?, playing: Boolean) {
  * A progress bar that can be dragged. It follows the finger, shows where it would land, and jumps
  * there when let go, and holds that place until the other device reports where the music really is.
  * A tap is a jump too.
+ *
+ * The played part is a wave while the music plays, like the wavy progress of Material 3 Expressive, and eases flat when it
+ * stops. The wave moves at [WaveFrameMs], not on every frame of the screen, and only while it plays and the page is in
+ * front: a wave that moves on every frame keeps the whole screen drawing 60 times a second for as long as the card is open.
  */
 @Composable
 private fun SeekBar(fraction: Float, duration: Long, enabled: Boolean, playing: Boolean, report: Long, onSeek: (Float) -> Unit) {
@@ -264,15 +281,37 @@ private fun SeekBar(fraction: Float, duration: Long, enabled: Boolean, playing: 
     val hold = held?.takeIf { it.third == report && now - it.second < 2500 }
     val shown = drag ?: hold?.first ?: fraction
     val active = drag != null
-    val thickness by animateDpAsState(if (active) 10.dp else 6.dp, label = "seekThickness")
-    // The knob grows in place instead of appearing at once.
-    val knob by androidx.compose.animation.core.animateFloatAsState(if (active) 1f else 0f, label = "seekKnob")
+    val thickness by animateDpAsState(if (active) 8.dp else 6.dp, TandemMotion.springy(), label = "seekThickness")
+    // The handle narrows and grows while it is held, instead of changing at once.
+    val knob by animateFloatAsState(if (active) 1f else 0f, TandemMotion.springy(), label = "seekKnob")
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
     // The fill fades toward the track while the music is paused, so the bar says it is standing still.
     val primary by animateColorAsState(
         if (playing) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.primary, track, 0.55f),
         TandemMotion.colourSpec(), label = "seekFill",
     )
+
+    // The wave rises when the music starts and eases flat when it stops. A spring, since it is a size.
+    val amplitude by animateFloatAsState(if (playing) 1f else 0f, TandemMotion.spatial(), label = "seekWave")
+    val context = LocalContext.current
+    val resumed by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
+    // Animations switched off in the system settings keep the wave but let it stand still.
+    val moving = remember(context) {
+        android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) > 0f
+    }
+    // Only read while drawing, so a tick redraws the bar and recomposes nothing.
+    val phase = remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(playing, moving, resumed.isAtLeast(Lifecycle.State.RESUMED)) {
+        if (!playing || !moving || !resumed.isAtLeast(Lifecycle.State.RESUMED)) return@LaunchedEffect
+        var last = SystemClock.uptimeMillis()
+        while (true) {
+            delay(WaveFrameMs)
+            val tick = SystemClock.uptimeMillis()
+            phase.floatValue = (phase.floatValue + (tick - last) * WaveCyclesPerMs) % 1f
+            last = tick
+        }
+    }
+    val wave = remember { Path() }
 
     // The strip is as wide as the card and 12dp taller than the bar and its times on both sides, and all of it takes
     // the finger. The bar itself is inset by the card's padding, so a touch maps onto the bar, not onto the strip.
@@ -316,12 +355,48 @@ private fun SeekBar(fraction: Float, duration: Long, enabled: Boolean, playing: 
             },
     ) {
         Spacer(Modifier.height(12.dp))
-        Canvas(Modifier.fillMaxWidth().padding(horizontal = inset).height(28.dp)) {
+        // Its own layer, so a step of the wave redraws the bar and not the card around it.
+        Canvas(Modifier.fillMaxWidth().padding(horizontal = inset).height(28.dp).graphicsLayer {}) {
             val h = thickness.toPx()
-            val top = (size.height - h) / 2
-            drawRoundRect(track, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2))
-            drawRoundRect(primary, Offset(0f, top), Size(maxOf(h, size.width * shown), h), CornerRadius(h / 2))
-            if (knob > 0.01f) drawCircle(primary, radius = 9.dp.toPx() * knob, center = Offset((size.width * shown).coerceIn(9.dp.toPx(), size.width - 9.dp.toPx()), size.height / 2))
+            val mid = size.height / 2
+            // The handle sits where the music is, with a gap on both sides, and the played part and the rest stop at the gap.
+            val handleW = (5f - 2f * knob).dp.toPx()
+            val handleH = (20f + 8f * knob).dp.toPx()
+            val gap = 5.dp.toPx()
+            val cx = (size.width * shown).coerceIn(handleW / 2, size.width - handleW / 2)
+
+            val restFrom = cx + handleW / 2 + gap + h / 2
+            val restTo = size.width - h / 2
+            if (restTo > restFrom) {
+                drawLine(track, Offset(restFrom, mid), Offset(restTo, mid), h, StrokeCap.Round)
+            }
+
+            val playedFrom = h / 2
+            val playedTo = cx - handleW / 2 - gap - h / 2
+            if (playedTo > playedFrom) {
+                val height = amplitude.coerceAtLeast(0f) * WaveAmplitude.toPx()
+                if (height < 0.05f) {
+                    drawLine(primary, Offset(playedFrom, mid), Offset(playedTo, mid), h, StrokeCap.Round)
+                } else {
+                    val length = WaveLength.toPx()
+                    val taper = WaveTaper.toPx()
+                    val shift = phase.floatValue * 2f * PI.toFloat()
+                    val step = 4f
+                    wave.reset()
+                    var x = playedFrom
+                    while (true) {
+                        // The wave flattens toward the handle, so the line meets it at its middle.
+                        val near = ((playedTo - x) / taper).coerceIn(0f, 1f)
+                        val y = mid + height * near * near * (3f - 2f * near) * sin((x - playedFrom) / length * 2f * PI.toFloat() - shift)
+                        if (x == playedFrom) wave.moveTo(x, y) else wave.lineTo(x, y)
+                        if (x >= playedTo) break
+                        x = minOf(x + step, playedTo)
+                    }
+                    drawPath(wave, primary, style = Stroke(h, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                }
+            }
+
+            drawRoundRect(primary, Offset(cx - handleW / 2, mid - handleH / 2), Size(handleW, handleH), CornerRadius(handleW / 2))
         }
         Spacer(Modifier.height(2.dp))
         Row(Modifier.fillMaxWidth().padding(horizontal = inset)) {
@@ -331,6 +406,17 @@ private fun SeekBar(fraction: Float, duration: Long, enabled: Boolean, playing: 
         Spacer(Modifier.height(12.dp))
     }
 }
+
+/** Time between two steps of the wave, 20 a second: the wave drifts about a dp per step, so more would only cost battery. */
+private const val WaveFrameMs = 50L
+
+/** How far the wave travels per millisecond, in wavelengths. A little over half a wavelength a second. */
+private const val WaveCyclesPerMs = 0.00055f
+
+/** How far the wave leaves the middle line to either side, how long one wave is, and how far before the handle it flattens. */
+private val WaveAmplitude = 3.dp
+private val WaveLength = 36.dp
+private val WaveTaper = 20.dp
 
 /** 3:07, or 1:02:09 for a long one. */
 private fun clock(ms: Long): String {
