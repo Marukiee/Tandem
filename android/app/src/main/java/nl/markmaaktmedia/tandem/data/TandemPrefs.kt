@@ -56,6 +56,7 @@ class TandemPrefs(private val context: Context) {
         val audioOutput = booleanPreferencesKey("audio_output")
         val pinnedDevices = stringSetPreferencesKey("pinned_devices")
         val padSpeed = longPreferencesKey("pad_speed")
+        val audioDelay = longPreferencesKey("audio_delay")
         val padScroll = longPreferencesKey("pad_scroll")
         val padHold = longPreferencesKey("pad_hold_ms")
     }
@@ -101,6 +102,8 @@ class TandemPrefs(private val context: Context) {
 
     /** The devices that were pinned, by id: they stay at the top of the list. */
     /** How fast the pointer follows the finger, in percent: 100 is as it was, 200 twice as far. */
+    /** Which [nl.markmaaktmedia.tandem.audio.AudioDelay] the phone uses as a speaker, by position. */
+    val audioDelay: Flow<Int> = data.map { (it[Keys.audioDelay] ?: 1L).toInt() }
     val padSpeed: Flow<Int> = data.map { (it[Keys.padSpeed] ?: DEFAULT_PAD_SPEED).toInt() }
     val padScroll: Flow<Int> = data.map { (it[Keys.padScroll] ?: DEFAULT_PAD_SCROLL).toInt() }
 
@@ -187,6 +190,7 @@ class TandemPrefs(private val context: Context) {
     suspend fun setCopyCodes(value: Boolean) = set(Keys.copyCodes, value)
     suspend fun setRemoteMedia(value: Boolean) = set(Keys.remoteMedia, value)
     suspend fun setRemoteMouse(value: Boolean) = set(Keys.remoteMouse, value)
+    suspend fun setAudioDelay(index: Int) = set(Keys.audioDelay, index.toLong())
     suspend fun setPadSpeed(percent: Int) = set(Keys.padSpeed, percent.toLong())
     suspend fun setPadScroll(percent: Int) = set(Keys.padScroll, percent.toLong())
     suspend fun setPadHoldMs(ms: Int) = set(Keys.padHold, ms.toLong())

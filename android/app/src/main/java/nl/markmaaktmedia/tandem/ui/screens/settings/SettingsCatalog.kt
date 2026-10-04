@@ -58,6 +58,7 @@ internal object FocusKeys {
     const val ClipTile = "sharing.tile"
     const val MediaShare = "sharing.music"
     const val Speaker = "sharing.speaker"
+    const val SpeakerDelay = "sharing.speaker.delay"
 
     const val Mirror = "notif.mirror"
     const val Codes = "notif.codes"
@@ -195,6 +196,10 @@ internal object SettingsCatalog {
         SettingsEntry(
             "sharing_speaker", R.string.settings_audio_output, R.string.settings_kw_sharing_speaker, SettingsCategory.Sharing, sharing,
             { TandemIcons.VolumeUp }, subtitle = R.string.settings_audio_output_sub, focus = FocusKeys.Speaker,
+        ),
+        SettingsEntry(
+            "sharing_speaker_delay", R.string.settings_audio_delay, R.string.settings_kw_sharing_speaker_delay, SettingsCategory.Sharing, sharing,
+            { TandemIcons.VolumeUp }, subtitle = R.string.settings_audio_delay_sub, focus = FocusKeys.SpeakerDelay,
         ),
 
         // Notifications and calls

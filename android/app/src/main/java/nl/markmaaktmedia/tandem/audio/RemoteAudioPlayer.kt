@@ -43,7 +43,7 @@ class RemoteAudioPlayer(
     private val scope: CoroutineScope,
 ) : TandemAudioSink {
 
-    private class Session(val device: String, val stream: Int, val track: AudioTrack, val buffer: JitterBuffer, val focus: AudioFocusRequest?) {
+    private class Session(val device: String, val stream: Int, val track: AudioTrack, val buffer: JitterBuffer, val focus: AudioFocusRequest?, val prebufferMs: Long) {
         @Volatile var running = true
         var thread: Thread? = null
     }
@@ -95,13 +95,14 @@ class RemoteAudioPlayer(
         val mask = if (channels == 1) AudioFormat.CHANNEL_OUT_MONO else AudioFormat.CHANNEL_OUT_STEREO
         val frameBytes = channels * 2
         val bytesPerMs = rate * frameBytes / 1000
+        val delay = AudioDelay.fromIndex(prefs.audioDelay.first())
         val minimum = AudioTrack.getMinBufferSize(rate, mask, AudioFormat.ENCODING_PCM_16BIT)
         if (minimum <= 0) return refuse(device, stream)
         val track = try {
             AudioTrack.Builder()
                 .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
                 .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(mask).build())
-                .setBufferSizeInBytes(maxOf(minimum, bytesPerMs * BUFFER_MS))
+                .setBufferSizeInBytes(maxOf(minimum, bytesPerMs * delay.trackMs))
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
                 .build()
@@ -119,9 +120,9 @@ class RemoteAudioPlayer(
         runCatching { audio.requestAudioFocus(focus) }
 
         holdAwake()
-        val buffer = JitterBuffer(frameBytes, bytesPerMs)
+        val buffer = JitterBuffer(frameBytes, bytesPerMs, maxMs = delay.maxMs, keepMs = delay.keepMs)
         buffer.reset(stream)
-        val s = Session(device, stream, track, buffer, focus)
+        val s = Session(device, stream, track, buffer, focus, delay.prebufferMs)
         synchronized(lock) { session = s }
         val label = name ?: host.device(device)?.name ?: device
         _playingFrom.value = label
@@ -188,7 +189,7 @@ class RemoteAudioPlayer(
                 idleSince = 0L
                 s.track.write(chunk, 0, chunk.size)
                 written += chunk.size
-                if (!started && written >= PREBUFFER_MS * bytesPerMs) {
+                if (!started && written >= s.prebufferMs * bytesPerMs) {
                     s.track.play()
                     started = true
                 }
@@ -264,10 +265,6 @@ class RemoteAudioPlayer(
         const val NOTIFICATION_ID = 0x7A01
         const val TEST_DEVICE = "tandem-test-tone"
         const val TEST_STREAM = 250
-        /** What the speaker holds at most. Bigger is steadier, smaller is closer to live. */
-        const val BUFFER_MS = 200
-        /** How much is written before the speaker starts, to ride out a slow packet. */
-        const val PREBUFFER_MS = 90L
         const val UNDERRUN_NS = 150_000_000L
         const val MAX_HOLD_MS = 6 * 60 * 60 * 1000L
     }

@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.37",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Choose how much delay the sound has",
+      "new": [
+        "Settings, Devices and sharing: Sound delay for when your Mac plays through your phone. Low plays closer to live and can stutter on a poor connection, Smooth waits a little longer to stay steady. The sound itself is not compressed in any of them"
+      ]
+    },
+    "nl": {
+      "title": "Kies hoeveel vertraging het geluid heeft",
+      "new": [
+        "Instellingen, Apparaten en delen: Vertraging van het geluid voor als je Mac via je telefoon afspeelt. Laag speelt dichter bij live af en kan haperen bij een slechte verbinding, Soepel wacht iets langer om stabiel te blijven. Het geluid zelf is in geen van de standen gecomprimeerd"
+      ]
+    }
+  },
+  {
     "version": "0.1.36",
     "date": "2026-10-05",
     "en": {

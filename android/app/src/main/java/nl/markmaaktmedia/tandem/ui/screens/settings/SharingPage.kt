@@ -15,6 +15,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import nl.markmaaktmedia.tandem.ui.components.SegmentedPillRow
+import nl.markmaaktmedia.tandem.ui.components.ContentRow
+import nl.markmaaktmedia.tandem.audio.AudioDelay
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.Route
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
@@ -73,15 +81,31 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
 
         SectionHeader(stringResource(R.string.settings_media))
         SettingsGroup {
-            SettingsTarget(FocusKeys.MediaShare, 0, 3) {
-                SwitchRow(0, 3, TandemIcons.Music, stringResource(R.string.settings_media_share), stringResource(R.string.settings_media_share_sub), mediaShare, { scope.launch { prefs.setMediaShare(it) } })
+            SettingsTarget(FocusKeys.MediaShare, 0, 4) {
+                SwitchRow(0, 4, TandemIcons.Music, stringResource(R.string.settings_media_share), stringResource(R.string.settings_media_share_sub), mediaShare, { scope.launch { prefs.setMediaShare(it) } })
             }
             ActionRow(
-                1, 3, TandemIcons.Devices, stringResource(R.string.settings_media_apps), stringResource(R.string.settings_media_apps_sub),
+                1, 4, TandemIcons.Devices, stringResource(R.string.settings_media_apps), stringResource(R.string.settings_media_apps_sub),
                 { onOpen(Route.MediaApps) }, modifier = Modifier.routeBounds(routeKey(Route.MediaApps)),
             )
-            SettingsTarget(FocusKeys.Speaker, 2, 3) {
-                SwitchRow(2, 3, TandemIcons.VolumeUp, stringResource(R.string.settings_audio_output), stringResource(R.string.settings_audio_output_sub), audioOutput, { scope.launch { prefs.setAudioOutput(it) } })
+            SettingsTarget(FocusKeys.Speaker, 2, 4) {
+                SwitchRow(2, 4, TandemIcons.VolumeUp, stringResource(R.string.settings_audio_output), stringResource(R.string.settings_audio_output_sub), audioOutput, { scope.launch { prefs.setAudioOutput(it) } })
+            }
+            val audioDelay by prefs.audioDelay.collectAsState(initial = 1)
+            SettingsTarget(FocusKeys.SpeakerDelay, 3, 4) {
+                ContentRow(3, 4, TandemIcons.VolumeUp, stringResource(R.string.settings_audio_delay)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(stringResource(R.string.settings_audio_delay_sub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        SegmentedPillRow(
+                            options = AudioDelay.entries,
+                            selected = AudioDelay.fromIndex(audioDelay),
+                            label = { context.getString(when (it) { AudioDelay.LOW -> R.string.audio_delay_low; AudioDelay.NORMAL -> R.string.audio_delay_normal; AudioDelay.SMOOTH -> R.string.audio_delay_smooth }) },
+                            onSelect = { scope.launch { prefs.setAudioDelay(it.ordinal) } },
+                            modifier = Modifier.fillMaxWidth(),
+                            equalWidth = true,
+                        )
+                    }
+                }
             }
         }
     }

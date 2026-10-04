@@ -103,4 +103,10 @@
     <string name="settings_kw_pad_speed">muissnelheid, aanwijzersnelheid, cursorsnelheid, gevoeligheid, sneller, langzamer</string>
     <string name="settings_kw_pad_scroll">scrolsnelheid, scrollen, twee vingers, sneller, langzamer</string>
     <string name="settings_kw_pad_hold">slepen, vasthouden, ingedrukt houden, vertraging, lang drukken, bestanden verplaatsen, linkerknop</string>
+    <string name="settings_audio_delay">Vertraging van het geluid</string>
+    <string name="settings_audio_delay_sub">Laag speelt dichter bij live af en kan haperen bij een slechte verbinding. Soepel wacht iets langer om stabiel te blijven. Het geldt de volgende keer dat je Mac via deze telefoon afspeelt.</string>
+    <string name="audio_delay_low">Laag</string>
+    <string name="audio_delay_normal">Normaal</string>
+    <string name="audio_delay_smooth">Soepel</string>
+    <string name="settings_kw_sharing_speaker_delay">vertraging, latency, lag, geluidsvertraging, audiovertraging, haperen, stabiel, buffer, speaker, kwaliteit</string>
 </resources>
