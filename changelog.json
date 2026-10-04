@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.39",
+    "date": "2026-10-05",
+    "en": {
+      "title": "A cross for a file that is gone",
+      "new": [
+        "On the Mac, a received file that is no longer there shows a red cross and says so, instead of a green check. The small check on the corner of a preview is gone"
+      ]
+    },
+    "nl": {
+      "title": "Een kruisje voor een bestand dat weg is",
+      "new": [
+        "Op de Mac toont een ontvangen bestand dat er niet meer is een rood kruisje en zegt dat ook, in plaats van een groen vinkje. Het kleine vinkje in de hoek van een voorbeeld is weg"
+      ]
+    }
+  },
+  {
     "version": "0.1.38",
     "date": "2026-10-05",
     "en": {

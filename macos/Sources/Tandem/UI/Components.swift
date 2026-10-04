@@ -332,7 +332,11 @@ struct TransferRow: View {
                     case .active:
                         Text("\(formatBytes(item.done)) of \(formatBytes(item.total))  \(formatSpeed(item.speed))")
                     case .done:
-                        Text(item.incoming ? "From \(peerName)" : "To \(peerName)")
+                        if missing {
+                            Text("The file is no longer there")
+                        } else {
+                            Text(item.incoming ? "From \(peerName)" : "To \(peerName)")
+                        }
                     case .failed:
                         Text(item.error ?? String(localized: "Failed"))
                     }
@@ -367,13 +371,6 @@ struct TransferRow: View {
                 .scaledToFill()
                 .frame(width: 40, height: 40)
                 .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
-                .overlay(alignment: .bottomTrailing) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 14))
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(.white, Color.green)
-                        .offset(x: 4, y: 4)
-                }
         } else {
             ZStack {
                 Circle().fill(iconTint.opacity(0.16))
@@ -400,10 +397,13 @@ struct TransferRow: View {
         thumbnail = made?.nsImage
     }
 
+    /// A file that arrived and is gone now: no check but a cross, so the list does not promise what is not there.
+    private var missing: Bool { item.state == .done && item.location != nil && !model.canOpen(item) }
+
     private var symbol: String {
         switch item.state {
         case .active: item.incoming ? "arrow.down" : "arrow.up"
-        case .done: "checkmark"
+        case .done: missing ? "xmark" : "checkmark"
         case .failed: "exclamationmark"
         }
     }
@@ -411,7 +411,7 @@ struct TransferRow: View {
     private var iconTint: Color {
         switch item.state {
         case .active: Palette.indigo
-        case .done: .green
+        case .done: missing ? Palette.urgent : .green
         case .failed: Palette.urgent
         }
     }
