@@ -114,6 +114,41 @@ ondertekend.
 - Fase 1 vragen stellen, fase 2 doorbouwen zonder tussentijds te stoppen.
 - Bij twijfel over een keuze: kies, bouw door, en zeg achteraf wat je koos.
 
+## Bouwen, testen en werken met agents
+
+In een verse werkmap (worktree) ontbreken de git-genegeerde bouwresultaten. Eerst de core bouwen:
+`scripts/build-core-macos.sh` voor de Mac (geeft `macos/Libs/libtandem_core.a` en de Swift-bindings) en
+`scripts/build-core-android.sh` voor Android (jniLibs en Kotlin-bindings). Dat kost enkele minuten.
+
+- **Core:** `cargo test -p tandem-core`, `cargo build -p tandemd`. De tests zijn tijdsgevoelig: een enkele
+  time-out terwijl er veel CPU gebruikt wordt (emulator, andere builds) is geen bewijs, twee keer opnieuw draaien.
+- **Mac:** `cd macos && swift build -c debug --arch arm64`. Een app om te draaien:
+  `VERSION=0.1.31 ./scripts/build-macos.sh debug` geeft `macos/dist/Tandem Dev.app`. Start die altijd met
+  `open -n "macos/dist/Tandem Dev.app" --env TANDEM_DATA_DIR=<map> --env TANDEM_DEBUG_DIR=<map>` en nooit rechtstreeks
+  (anders is de shell de verantwoordelijke voor TCC en crasht Bluetooth). Een signaal `SIGUSR1` schrijft PNG's van de
+  vensters naar de debugmap. Glas en de zijbalk komen daar zwart of wit uit, de lay-out klopt wel. Verder
+  `TANDEM_DEBUG_PAGE` (`shared`, `files`), `TANDEM_DEBUG_SETTINGS=<tab>` (settings in een eigen venster),
+  `TANDEM_DEBUG_PANEL=1` en `TANDEM_DEBUG_NO_WINDOW=1`. Echte schermopnames van de Mac mogen niet.
+  Nooit iets van een netwerkschijf aanraken (macOS laat dan wachten op toestemming), gebruik een alarm:
+  `perl -e 'alarm N; exec @ARGV' ...`.
+- **Android:** `export ANDROID_HOME=$HOME/Library/Android/sdk JAVA_HOME=$(/usr/libexec/java_home -v 21)`, dan
+  `cd android && ./gradlew --console=plain :app:testDebugUnitTest :app:assembleDebug`. Emulators (AVD): `tandem_test`,
+  `tandem_colors`, `tandem_onb`, `tandem_remote`. Elke agent gebruikt zijn eigen AVD en `adb -s <serial>`, nooit die
+  van een ander. Starten: `$ANDROID_HOME/emulator/emulator -avd <naam> -no-snapshot-save -no-audio`. Rechten geven:
+  `adb shell pm grant nl.markmaaktmedia.tandem.debug android.permission.CAMERA`,
+  `adb shell appops set nl.markmaaktmedia.tandem.debug MANAGE_EXTERNAL_STORAGE allow`. Een koppellink openen:
+  `adb shell "am start -a android.intent.action.VIEW -c android.intent.category.BROWSABLE -d '<uri>' -p nl.markmaaktmedia.tandem.debug"`
+  (een app die al in een circle zit kan niet bij een andere joinen, eerst `adb shell pm clear <pakket>`; de Mac
+  schrijft zijn koppellink naar `pairing-uri.txt` in de debugmap, `tandemd pair-show` toont die van een daemon). Een
+  systeemdialoog van de emulator (stylus) kan de app laten lijken te hangen. Schermfoto's: `adb exec-out screencap -p`.
+- **Windows:** de UI staat in `windows/ui` en draait ook in een gewone browser met `mock.js`
+  (`python3 -m http.server`). De hele app laat zich alleen in CI bouwen.
+- **Agents:** werken in een eigen werkmap met eigen `target/`. Nooit pushen, taggen of `changelog.json` aanpassen,
+  dat doet degene die de agents aanstuurt. Committen met expliciete paden (`git add <pad>`, nooit `-A`) en de
+  Co-Authored-By-regel. Bestanden die iedereen aanraakt (`strings.xml`, `Localizable.strings`, `SettingsView.swift`,
+  `EngineModel.swift`, `ffi.rs`, `Theme.kt`) zo min en zo klein mogelijk wijzigen en nieuwe schermen in eigen
+  bestanden zetten, dan blijft samenvoegen eenvoudig. Rapporteer eerlijk wat bewezen is en wat niet.
+
 ## Sleutels
 
 Alleen niet-geheime feiten. De geheimen zelf staan nooit in de repo of in een chat.
