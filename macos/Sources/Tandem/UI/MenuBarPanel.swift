@@ -278,6 +278,7 @@ private struct MenuDeviceRow: View {
                     .hoverSwell(1.12)
                     .disabled(!(device.online || device.ble))
                     .help("Send clipboard")
+                    LiveMenuButton(device: device)
                     if device.platform == .android {
                         let on = model.speaker.device == device.id
                         Button { model.toggleSpeaker(for: device.id) } label: {

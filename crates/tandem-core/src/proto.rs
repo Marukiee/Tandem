@@ -109,6 +109,13 @@ pub enum Msg {
     MediaKeyframe { session: u64 },
     MediaReport(crate::live::MediaReport),
     MediaInput { session: u64, input: crate::live::MediaInput },
+    /// The host asks the other device to look: its person started the sharing on the host's own screen. Not a session,
+    /// the viewer answers with an ordinary `MediaRequest` if it wants to. Devices that do not know it skip it.
+    MediaOffer {
+        kind: crate::live::MediaKind,
+        #[serde(default)]
+        facing: crate::live::MediaFacing,
+    },
     /// The key two devices seal Bluetooth frames with. Made by the one with the lower id and
     /// sent over the authenticated connection, never over the air.
     BleKey {

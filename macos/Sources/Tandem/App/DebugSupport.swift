@@ -11,6 +11,9 @@ import TandemCore
 /// and `TANDEM_DEBUG_PANEL=1` (the menu bar panel in an ordinary window).
 /// `TANDEM_DEBUG_CLIPBOARD=seed` fills the clipboard history with samples and `=panel` also opens the quick panel,
 /// which then stays open when it loses the focus; `TANDEM_DEBUG_PAGE=clipboard` opens the page of the history.
+/// `TANDEM_DEBUG_LIVE=<file>` opens a window of the phone's screen or camera fed from a recorded stream and writes
+/// `live-window.png`, `live-frame.png` and `live-report.txt` (see `LiveDebug`).
+/// `TANDEM_DEBUG_LIVE_SELFTEST=1` runs the checks of the live video logic and writes `selftest.txt` (see `LiveSelfTest`).
 /// `TANDEM_DEBUG_NO_WINDOW=1` closes the main window a few seconds after the start, which is
 /// how the app runs most of the day and the state to measure its cost in. SIGUSR2 closes it
 /// at any moment, like the red button.
@@ -20,6 +23,10 @@ enum DebugSupport {
     private static var closeSource: DispatchSourceSignal?
     private static var panelWindow: NSWindow?
     private static var settingsWindow: NSWindow?
+
+    /// Glass draws nothing but its own shape in a snapshot. With this set, the live windows use a plain material
+    /// instead, so the text on it can be read in the PNG.
+    static var flatGlass: Bool { variable("TANDEM_DEBUG_FLAT_GLASS") != nil }
 
     static var directory: URL? {
         ProcessInfo.processInfo.environment["TANDEM_DEBUG_DIR"].map { URL(fileURLWithPath: $0, isDirectory: true) }
@@ -61,6 +68,13 @@ enum DebugSupport {
         if let stage = variable("TANDEM_DEBUG_INSERT") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { InsertFromPhone.shared.debugShow(stage) }
         }
+        // `TANDEM_DEBUG_LIVE=<recorded stream>`: a window of the phone's screen or camera, fed from a file (see LiveDebug).
+        if variable("TANDEM_DEBUG_LIVE_SELFTEST") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { LiveSelfTest.run(directory: directory) }
+        }
+        if let path = variable("TANDEM_DEBUG_LIVE") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { LiveDebug.run(path: path, directory: directory) }
+        }
         if variable("TANDEM_DEBUG_NO_WINDOW") != nil {
             // The app as it runs most of the day, in the menu bar with no window, for measuring what it costs.
             DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { closeWindows() }
@@ -68,7 +82,7 @@ enum DebugSupport {
     }
 
     private static func closeWindows() {
-        for window in NSApp.windows where window.isVisible && window.styleMask.contains(.titled) { window.close() }
+        for window in NSApp.windows where window.isVisible && window.styleMask.contains(.titled) && !(window.delegate is LiveWindowController) { window.close() }
     }
 
     static func initialSelection(devices: [TandemDevice]) -> SidebarSelection? {
@@ -179,6 +193,9 @@ enum DebugSupport {
     }
 
     static func snapshot(into directory: URL) {
+        // The video layer is not drawn by cacheDisplay; the live windows put a plain picture in its place meanwhile.
+        LiveManager.shared.prepareSnapshots()
+        defer { LiveManager.shared.finishSnapshots() }
         for (index, window) in NSApp.windows.enumerated() where window.isVisible && window.contentView != nil {
             // A window without a title bar has no frame around its content that is worth drawing.
             guard let view = (window.styleMask.contains(.titled) ? window.contentView?.superview : nil) ?? window.contentView,

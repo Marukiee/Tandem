@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="live_channel_ask">Vragen over je scherm en camera</string>
+    <string name="live_channel_ask_desc">Wanneer een computer je scherm of je camera wil zien</string>
+    <string name="live_channel_active">Scherm of camera delen</string>
+    <string name="live_channel_active_desc">Blijft staan zolang je scherm of camera op een computer te zien is</string>
+    <string name="live_mac_fallback">je computer</string>
+
+    <string name="live_ask_screen">%1$s wil je scherm zien</string>
+    <string name="live_ask_camera">%1$s wil je camera zien</string>
+    <string name="live_ask_text">Tik om te antwoorden</string>
+    <string name="live_ask_body_screen">Het ziet alles op je scherm tot je stopt. Er blijft een melding staan waarmee je altijd kunt stoppen.</string>
+    <string name="live_ask_body_camera">Het ziet wat je camera ziet tot je stopt. Er blijft een melding staan waarmee je altijd kunt stoppen.</string>
+    <string name="live_allow">Toestaan</string>
+    <string name="live_allow_always">%1$s altijd toestaan</string>
+    <string name="live_deny">Weigeren</string>
+    <string name="live_cancel">Annuleren</string>
+    <string name="live_stop">Stoppen</string>
+    <string name="live_camera_denied">Tandem heeft de camera hiervoor nodig. Sta het toe in de instellingen van de telefoon.</string>
+
+    <string name="live_pick_camera_title">Je camera tonen op %1$s</string>
+    <string name="live_pick_camera_body">Welke camera? Hij opent in een venster op de computer.</string>
+    <string name="live_camera_back">Achtercamera</string>
+    <string name="live_camera_front">Voorcamera</string>
+
+    <string name="live_active_title">Wordt getoond op een computer</string>
+    <string name="live_active_starting">Starten</string>
+    <string name="live_active_screen">Je scherm is te zien op %1$s</string>
+    <string name="live_active_camera">Je camera is te zien op %1$s</string>
+    <string name="live_active_both">Je scherm en camera zijn te zien op %1$s</string>
+    <string name="live_active_waiting">Klaar om te tonen op %1$s. Wacht tot het kijkt.</string>
+    <string name="live_offer_failed">De computer is nu niet bereikbaar</string>
+    <string name="live_offer_unanswered">%1$s opende het venster niet. Probeer het opnieuw vanaf de computer.</string>
+
+    <string name="live_show_screen">Mijn scherm tonen op %1$s</string>
+    <string name="live_show_camera">Mijn camera tonen op %1$s</string>
+    <string name="live_show_screen_sub">De computer opent het in een venster. Je kunt altijd stoppen.</string>
+    <string name="live_show_camera_sub">In een venster op de computer. Het is geen virtuele webcam.</string>
+    <string name="live_stop_screen">Stoppen met mijn scherm tonen</string>
+    <string name="live_stop_camera">Stoppen met mijn camera tonen</string>
+    <string name="live_section_allow">%1$s mag vragen deze telefoon te zien</string>
+    <string name="live_perm_screen">Scherm</string>
+    <string name="live_perm_camera">Camera</string>
+    <string name="live_perm_ask">Vraag me</string>
+    <string name="live_perm_always">Altijd</string>
+    <string name="live_perm_never">Nooit</string>
+    <string name="live_indicator">Pil op het scherm tijdens delen</string>
+    <string name="live_indicator_sub">Zegt wie er kijkt en heeft een Stop-knop. Vraagt toestemming om over andere apps te tonen.</string>
+</resources>

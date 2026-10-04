@@ -457,7 +457,8 @@ impl Inner {
             | Msg::MediaStop { .. }
             | Msg::MediaKeyframe { .. }
             | Msg::MediaReport(_)
-            | Msg::MediaInput { .. }) => self.handle_live_msg(id, msg),
+            | Msg::MediaInput { .. }
+            | Msg::MediaOffer { .. }) => self.handle_live_msg(id, msg),
             Msg::Candidates { addrs } => {
                 for text in addrs {
                     if let Ok(addr) = text.parse::<SocketAddr>() {

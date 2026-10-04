@@ -15,6 +15,12 @@
     <!-- Keeps the processor and Wi-Fi awake while the Mac's sound plays, with the screen off. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- Showing the screen or the camera on a Mac: a foreground service of the right type, a question that can show
+         itself over the lock screen, and the pill that says it is going on. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -119,6 +125,23 @@
             android:showWhenLocked="true"
             android:taskAffinity=""
             android:theme="@style/Theme.Tandem.Capture" />
+
+        <!-- The question when a Mac wants to see the screen or the camera, and the one of the system after it. -->
+        <activity
+            android:name=".live.LiveShareActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Tandem.Sheet" />
+
+        <service
+            android:name=".live.LiveShareService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection|camera" />
+
+        <receiver android:name=".live.LiveActionReceiver" android:exported="false" />
 
         <service
             android:name=".share.ClipboardTileService"
