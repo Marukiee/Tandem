@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.1.31",
+    "date": "2026-10-04",
+    "en": {
+      "title": "Your Mac and PC in the Files app",
+      "new": [
+        "The files of your Mac, PC and other devices show up in the Files app of the phone and in every file picker, next to the storage of the phone itself: open, copy, save into and make folders there. A big file opens at once and only travels as far as it is read. Browse files on a device page opens the Files app on that device",
+        "The Mac has its own settings for what other devices may do with its files, under Settings, Files: for all devices or one device, whether they may change or delete, hidden files, a limit on what they may send, which folders are shared (each with its own switch for changes) and a list of what they did",
+        "tandemd can do the same for Linux and servers: tandemd files share, unshare, usual, on, off, write, delete, hidden and log"
+      ]
+    },
+    "nl": {
+      "title": "Je Mac en pc in de Bestanden-app",
+      "new": [
+        "De bestanden van je Mac, pc en andere apparaten staan in de Bestanden-app van de telefoon en in elke bestandskiezer, naast de opslag van de telefoon zelf: openen, kopiëren, erin bewaren en mappen maken. Een groot bestand opent meteen en reist alleen zo ver als er gelezen wordt. Bestanden bekijken op een apparaatpagina opent de Bestanden-app op dat apparaat",
+        "De Mac heeft eigen instellingen voor wat andere apparaten met zijn bestanden mogen, onder Instellingen, Bestanden: voor alle apparaten of een apparaat, of ze iets mogen wijzigen of verwijderen, verborgen bestanden, een limiet op wat ze mogen sturen, welke mappen worden gedeeld (elk met een eigen schakelaar voor wijzigen) en een lijst van wat ze deden",
+        "tandemd kan hetzelfde voor Linux en servers: tandemd files share, unshare, usual, on, off, write, delete, hidden en log"
+      ]
+    }
+  },
+  {
     "version": "0.1.30",
     "date": "2026-10-04",
     "en": {

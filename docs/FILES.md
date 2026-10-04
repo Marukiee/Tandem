@@ -73,6 +73,26 @@ apparaat zelf nog een koppeling verleggen. Wie dat kan, heeft al toegang tot de 
 
 `tandemd ls <apparaat> [pad]`, `get`, `put`, `mkdir`, `rm`, `mv`: werken tegen een draaiende daemon of voeren zelf uit.
 
+`tandemd files` toont wat deze machine aanbiedt en verandert het, voor alle apparaten of met `--device <naam>` voor een enkel
+apparaat: `files share <map> [--name N] [--read-only]`, `unshare <naam>`, `usual` (Downloads, Documenten, Bureaublad), `on`, `off`,
+`write on|off`, `delete on|off`, `hidden on|off`, `max-upload <bytes>`, `follow` (weer de keuzes voor alle apparaten volgen) en
+`log` (wat andere apparaten deden).
+
+## Een computer als host
+
+Een computer biedt standaard niets aan. Op de Mac staat het onder Instellingen, tabblad Bestanden: kies voor wie (alle apparaten of
+een apparaat met eigen keuzes), wat ze mogen, welke mappen (met een eigen schrijfschakelaar per map) en bekijk de recente
+activiteit. Een map toevoegen laat macOS meteen om toestemming voor Documenten, Bureaublad of Downloads vragen, zodat die vraag
+bij degene aan de Mac komt en niet een telefoon laat wachten.
+
+## Op Android in de Bestanden-app
+
+Elk apparaat dat zijn bestanden aanbiedt en nu bereikbaar is verschijnt als eigen plek in de Bestanden-app van het systeem en in
+elke bestandskiezer (`TandemDocumentsProvider`, document-id `<apparaat>|<pad>`). Lezen gaat op aanvraag per stuk (`fs_read` achter
+een proxy-bestandsbeschrijving), dus een groot bestand opent meteen. Schrijven gaat eerst naar een tijdelijk bestand en komt als
+geheel op het apparaat zodra het wordt gesloten. Maken, hernoemen en verwijderen gaan direct. De knop Bestanden bekijken op de
+apparaatpagina opent de Bestanden-app op die plek.
+
 ## Als schijf in Finder
 
 Met de cargo-feature `webdav` (die de build voor de telefoon weglaat) kan de core de bestanden van een ander apparaat
