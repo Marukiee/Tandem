@@ -612,3 +612,11 @@
 "Clear all but pinned" = "Wis alles behalve vastgezet";
 "Clear everything" = "Wis alles";
 "This cannot be undone." = "Dit kan niet ongedaan worden gemaakt.";
+"Open %@ on your phone?" = "%@ openen op je telefoon?";
+"%@ is not on this Mac. Your phone can open it for you." = "%@ staat niet op deze Mac. Je telefoon kan het voor je openen.";
+"Open on phone" = "Open op telefoon";
+"Not now" = "Nu niet";
+"Remember my choice for %@" = "Onthoud mijn keuze voor %@";
+"Clicks on notifications" = "Klikken op meldingen";
+"You chose what happens for apps that are not on this Mac" = "Je koos wat er gebeurt bij apps die niet op deze Mac staan";
+"Ask again" = "Opnieuw vragen";

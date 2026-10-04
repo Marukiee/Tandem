@@ -366,6 +366,18 @@ private struct DevicesSettings: View {
                         subtitle: "Phone notifications appear here, and you can reply",
                         isOn: Binding(get: { device.notificationsEnabled }, set: { model.setSettings(device, notifications: $0) })
                     )
+                    if NotificationClicks.shared.hasChoices {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Clicks on notifications")
+                                Text("You chose what happens for apps that are not on this Mac")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 12)
+                            Button("Ask again") { withAnimation(.tandem) { NotificationClicks.shared.forgetChoices() } }
+                        }
+                    }
                     DescribedToggle(
                         "Accept files automatically",
                         subtitle: "Turn off to be asked before something arrives",

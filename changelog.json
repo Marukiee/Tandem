@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.34",
+    "date": "2026-10-04",
+    "en": {
+      "title": "A click on a phone notification opens the app",
+      "new": [
+        "Clicking a notification from your phone opens that app on the Mac when there is one, WhatsApp or Telegram for instance. When the Mac does not have it, Tandem asks whether your phone should open it, with a box to remember your choice for that app. Under Settings, Devices, Ask again brings the question back"
+      ]
+    },
+    "nl": {
+      "title": "Een klik op een melding van je telefoon opent de app",
+      "new": [
+        "Klikken op een melding van je telefoon opent die app op de Mac als die er is, bijvoorbeeld WhatsApp of Telegram. Heeft de Mac hem niet, dan vraagt Tandem of je telefoon hem moet openen, met een vakje om je keuze voor die app te onthouden. Onder Instellingen, Apparaten brengt Opnieuw vragen de vraag terug"
+      ]
+    }
+  },
+  {
     "version": "0.1.33",
     "date": "2026-10-04",
     "en": {

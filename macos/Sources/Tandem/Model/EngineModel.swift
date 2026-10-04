@@ -288,6 +288,11 @@ final class EngineModel {
         notifier.onMirrorAction = { [weak self] device, key, button, reply, dismiss in
             Task { try? await self?.engine?.notificationAction(target: device, key: key, button: button, reply: reply, dismiss: dismiss) }
         }
+        notifier.onMirrorClick = { [weak self] device, key, appId, appName in
+            NotificationClicks.shared.click(appId: appId, appName: appName) {
+                Task { try? await self?.engine?.notificationAction(target: device, key: key, button: "", reply: nil, dismiss: false) }
+            }
+        }
         notifier.onCopyCode = { [weak self] code in self?.copyCode(code) }
     }
 

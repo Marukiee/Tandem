@@ -12,6 +12,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     var onCallAction: ((_ device: String, _ callId: String, _ action: TandemCallAction) -> Void)?
     var onMirrorAction: ((_ device: String, _ key: String, _ button: String, _ reply: String?, _ dismiss: Bool) -> Void)?
     var onCopyCode: ((String) -> Void)?
+    /// A plain click on a phone notification: the device, its key, and the app it came from.
+    var onMirrorClick: ((_ device: String, _ key: String, _ appId: String, _ appName: String) -> Void)?
 
     private var dynamicCategories: [String: UNNotificationCategory] = [:]
     /// The categories made for notifications with a code, oldest first. The title of the button holds the code, so each
@@ -154,7 +156,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             }
             UNUserNotificationCenter.current().setNotificationCategories(baseCategories())
         }
-        var info = ["device": device, "key": notification.key]
+        var info = ["device": device, "key": notification.key, "app": notification.appId, "appName": notification.appName]
         // The code travels with the notification so the button still works after the app has been restarted.
         if let code { info["code"] = code }
         post(
@@ -203,7 +205,12 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
                 } else if action.hasPrefix("btn.") {
                     onMirrorAction?(device, key, String(action.dropFirst(4)), reply, false)
                 } else if action == UNNotificationDefaultActionIdentifier {
-                    onMirrorAction?(device, key, "", nil, false)
+                    if let app = info["app"], let click = onMirrorClick {
+                        click(device, key, app, info["appName"] ?? app)
+                    } else {
+                        // A notification from before this version knows no app, so it opens on the phone as it did.
+                        onMirrorAction?(device, key, "", nil, false)
+                    }
                 }
             }
         }
