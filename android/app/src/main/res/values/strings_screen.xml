@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="tile_control_computer">Control this computer</string>
     <string name="tile_control_mac">Control this Mac</string>
     <string name="screen_connecting">Connecting to %1$s</string>
     <string name="screen_waiting_approval">Waiting for %1$s</string>

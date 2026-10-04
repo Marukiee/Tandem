@@ -222,9 +222,10 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                 if (device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.LINUX || device.platform == TandemPlatform.WINDOWS) {
                     ActionTile(TandemIcons.Mouse, stringResource(R.string.tile_trackpad), { onRemote(id) }, Modifier.weight(1f).fillMaxHeight().routeBounds(routeKey(Route.Remote(id))))
                 }
-                // Only a Mac that says it can share its screen, and is reachable now.
-                if (device.platform == TandemPlatform.MAC_OS && "screen.host" in device.caps) {
-                    ActionTile(TandemIcons.Desktop, stringResource(R.string.tile_control_mac), { onScreen(id) }, Modifier.weight(1f).fillMaxHeight().routeBounds(routeKey(Route.Screen(id))))
+                // Only a computer that says it can share its screen, and is reachable now.
+                if (device.platform != TandemPlatform.ANDROID && "screen.host" in device.caps) {
+                    val label = if (device.platform == TandemPlatform.MAC_OS) R.string.tile_control_mac else R.string.tile_control_computer
+                    ActionTile(TandemIcons.Desktop, stringResource(label), { onScreen(id) }, Modifier.weight(1f).fillMaxHeight().routeBounds(routeKey(Route.Screen(id))))
                 }
                 if (device.platform == TandemPlatform.ANDROID) {
                     ActionTile(TandemIcons.Ring, stringResource(R.string.tile_find), { scope.launch { runCatching { host.engine?.ring(id, true) } } }, Modifier.weight(1f).fillMaxHeight())
