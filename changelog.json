@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.1.38",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Your Mac from your phone, and your phone on your Mac (first version)",
+      "new": [
+        "Control your Mac from the Android app: on the Mac's device page, Control this computer shows the Mac screen and turns touch into mouse clicks, moves, scrolling and a held button for dragging. The Mac asks before it lets a phone look, shows that someone is watching and can stop it at once. It needs Screen Recording and Accessibility, and the Mac must be restarted once after you allow Screen Recording",
+        "Show your phone screen or camera in a window on the Mac, from the Mac or from the phone. The window can be rotated, mirrored, kept on top and copied as a picture. It is a window and not a virtual webcam. Android always asks for the capture permission itself",
+        "This is a first version. It is tested piece by piece, not yet end to end between two real devices, so tell me what does not work"
+      ]
+    },
+    "nl": {
+      "title": "Je Mac vanaf je telefoon en je telefoon op je Mac (eerste versie)",
+      "new": [
+        "Bedien je Mac vanuit de Android-app: op de apparaatpagina van de Mac laat Deze computer bedienen het Mac-scherm zien en wordt aanraken muisklikken, bewegen, scrollen en een vastgehouden knop om te slepen. De Mac vraagt eerst toestemming voordat een telefoon mag kijken, laat zien dat iemand meekijkt en kan het direct stoppen. Het heeft Schermopname en Toegankelijkheid nodig en de Mac moet één keer opnieuw starten nadat je Schermopname toestaat",
+        "Toon het scherm of de camera van je telefoon in een venster op de Mac, vanaf de Mac of vanaf de telefoon. Het venster kan gedraaid, gespiegeld, bovenaan gehouden en als plaatje gekopieerd worden. Het is een venster en geen virtuele webcam. Android vraagt altijd zelf om de opnametoestemming",
+        "Dit is een eerste versie. Hij is stuk voor stuk getest en nog niet van begin tot eind tussen twee echte apparaten, dus meld wat niet werkt"
+      ]
+    }
+  },
+  {
     "version": "0.1.37",
     "date": "2026-10-05",
     "en": {

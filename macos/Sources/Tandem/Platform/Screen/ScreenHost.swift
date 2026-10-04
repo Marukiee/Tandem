@@ -210,10 +210,10 @@ final class ScreenHost {
         let fps = ScreenGeometry.frameRate(requested: Int(request.maxFps))
         let bitrate = ScreenGeometry.startingBitrate(width: size.width, height: size.height, fps: fps, requestedMax: Int(request.maxBitrate))
 
-        let live: LiveSession
+        let live: ScreenHostSession
         do {
             let encoder = try ScreenEncoder(.init(width: size.width, height: size.height, fps: fps, bitrate: bitrate))
-            live = LiveSession(
+            live = ScreenHostSession(
                 id: id, peer: peer, engine: engine, encoder: encoder, display: display,
                 limits: (Int(request.maxWidth), Int(request.maxHeight)), baseFps: fps, startBitrate: bitrate
             )
@@ -421,22 +421,22 @@ final class ScreenHostBridge: TandemMediaHost, @unchecked Sendable {
 /// The sessions by id, readable from any thread.
 final class SessionRegistry: @unchecked Sendable {
     private let lock = NSLock()
-    private var sessions: [UInt64: LiveSession] = [:]
+    private var sessions: [UInt64: ScreenHostSession] = [:]
 
-    func add(_ session: LiveSession) {
+    func add(_ session: ScreenHostSession) {
         lock.lock()
         sessions[session.id] = session
         lock.unlock()
     }
 
-    func get(_ id: UInt64) -> LiveSession? {
+    func get(_ id: UInt64) -> ScreenHostSession? {
         lock.lock()
         defer { lock.unlock() }
         return sessions[id]
     }
 
     @discardableResult
-    func remove(_ id: UInt64) -> LiveSession? {
+    func remove(_ id: UInt64) -> ScreenHostSession? {
         lock.lock()
         defer { lock.unlock() }
         return sessions.removeValue(forKey: id)
@@ -446,7 +446,7 @@ final class SessionRegistry: @unchecked Sendable {
 // MARK: - One running session
 
 /// The capture, the encoder and the way into the core for one viewer.
-final class LiveSession: @unchecked Sendable {
+final class ScreenHostSession: @unchecked Sendable {
     let id: UInt64
     let peer: String
     let baseFps: Int
