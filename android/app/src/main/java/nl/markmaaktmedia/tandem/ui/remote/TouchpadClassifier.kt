@@ -22,6 +22,9 @@ interface TouchpadOutput {
     fun button(button: Int, down: Boolean)
     fun swipe(direction: SwipeDirection)
     fun feedback(kind: PadFeedback) {}
+
+    /** The left button went down for a drag ([active]) or came up again, so the screen can show that it is held. */
+    fun dragging(active: Boolean) {}
 }
 
 class TouchpadConfig(
@@ -29,8 +32,13 @@ class TouchpadConfig(
     val slop: Float,
     /** How far three fingers travel before it counts as a swipe. */
     val swipeDistance: Float,
-    /** A press shorter than this is a tap, one that lasts this long picks the pointer up. */
-    val holdMs: Long = 350,
+    /**
+     * A press shorter than this is a tap, one that lasts this long picks the pointer up.
+     * Like pressing a mouse button: the finger stays put for a moment, the button goes down,
+     * and moving the same finger drags. Long enough that a tap or a pause before a move
+     * never does it, short enough that it feels like part of the touch and not a wait.
+     */
+    val holdMs: Long = 280,
     /** How soon after a tap the next touch still belongs to it. */
     val doubleTapMs: Long = 300,
     /**
@@ -48,8 +56,9 @@ class TouchpadConfig(
  *
  * - one finger moves the pointer, a short press is a click, a second short press
  *   right after is a double click
- * - a press that lasts, or a touch right after a tap that then moves or lasts, holds
- *   the left button down so the moves drag
+ * - a press that stays put for [TouchpadConfig.holdMs], or a touch right after a tap
+ *   that then moves or lasts, holds the left button down so the moves of that finger
+ *   drag, and lifting it lets go
  * - two fingers scroll, a short two finger press is a right click
  * - three fingers landing together and travelling swipe (Mission Control and spaces)
  *
@@ -194,7 +203,7 @@ class TouchpadClassifier(
     fun cancel() {
         // A finished gesture calls this too, and must keep the tap it may follow.
         if (!active) return
-        if (mode == Mode.Drag) out.button(0, false)
+        if (mode == Mode.Drag) letGoOfDrag()
         reset()
         lastTapEnd = NEVER
     }
@@ -213,7 +222,7 @@ class TouchpadClassifier(
     private fun finish(now: Long) {
         when (mode) {
             Mode.Drag -> {
-                out.button(0, false)
+                letGoOfDrag()
                 lastTapEnd = NEVER
             }
 
@@ -260,8 +269,14 @@ class TouchpadClassifier(
         resetCarry()
         out.button(0, true)
         out.feedback(PadFeedback.DragStart)
+        out.dragging(true)
         // What the finger did on the way out of the slop circle belongs to the drag.
         pointer(totalX, totalY)
+    }
+
+    private fun letGoOfDrag() {
+        out.button(0, false)
+        out.dragging(false)
     }
 
     private fun enterSwipe() {

@@ -49,6 +49,9 @@ struct Cli {
     /// Pretend to be playing a track, to see how the apps show a player.
     #[arg(long, global = true, hide = true)]
     pretend_player: bool,
+    /// With --pretend-player: the track is paused, to see how the apps show a player that stands still.
+    #[arg(long, global = true, hide = true)]
+    pretend_paused: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -609,7 +612,7 @@ async fn main() -> Result<()> {
                                     title: "A pretend song".into(),
                                     artist: "Tandem".into(),
                                     album: String::new(),
-                                    playing: true,
+                                    playing: !cli.pretend_paused,
                                     position_ms: Some(30_000),
                                     duration_ms: Some(240_000),
                                     can_prev: true,

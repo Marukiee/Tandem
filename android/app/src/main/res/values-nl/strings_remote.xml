@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="remote_hint_drag">Houd ingedrukt en beweeg om te slepen</string>
+    <string name="remote_dragging">Slepen</string>
     <string name="remote_hint_three">Drie vingers voor Mission Control en Spaces</string>
     <string name="remote_mouse_buttons">Muisknoppen</string>
     <string name="remote_left">Links</string>
