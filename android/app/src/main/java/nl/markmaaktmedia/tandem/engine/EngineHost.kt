@@ -155,7 +155,8 @@ class EngineHost(
                     appVersion = BuildConfig.VERSION_NAME,
                     port = 47820.toUShort(),
                     enableMdns = true,
-                    caps = listOf("clipboard", "share", "notify", "call", "input", "battery", "hotspot", "screenshot", "media", "capture"),
+                    caps = listOf("clipboard", "share", "notify", "call", "input", "battery", "hotspot", "screenshot", "media", "capture") +
+                        nl.markmaaktmedia.tandem.live.LiveShare.caps(context),
                     lowPower = true,
                 )
                 val started = TandemEngine.start(config, AndroidVault(context), AndroidFiles(context), Sink())

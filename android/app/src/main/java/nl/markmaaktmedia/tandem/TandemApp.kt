@@ -23,6 +23,7 @@ class Graph(app: Application) {
     val updater = UpdateRepository(app, prefs)
     val media = nl.markmaaktmedia.tandem.media.MediaMirror(app, prefs, host, scope)
     val audio = nl.markmaaktmedia.tandem.audio.RemoteAudioPlayer(app, prefs, host, scope).also { host.audioSink = it }
+    val live = nl.markmaaktmedia.tandem.live.LiveShare(app, host, scope)
 
     /** Picked device icons, hot from the first frame so a list does not flash the default ones. */
     val deviceIcons: kotlinx.coroutines.flow.StateFlow<Map<String, String>> = prefs.deviceIcons.stateIn(

@@ -241,6 +241,9 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         // What the device is playing, with the buttons for it.
         nl.markmaaktmedia.tandem.ui.components.NowPlayingSection(device)
 
+        // Showing this phone's screen or camera on it, and what it may ask for.
+        nl.markmaaktmedia.tandem.live.LiveDeviceSection(device)
+
         // Recent transfers with this device
         val recent = transfers.filter { it.peer == id }.take(5)
         if (recent.isNotEmpty()) {

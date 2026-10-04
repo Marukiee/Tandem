@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="live_channel_ask">Questions about your screen and camera</string>
+    <string name="live_channel_ask_desc">When a computer asks to see your screen or your camera</string>
+    <string name="live_channel_active">Showing your screen or camera</string>
+    <string name="live_channel_active_desc">Stays for as long as your screen or camera is shown on a computer</string>
+    <string name="live_mac_fallback">your computer</string>
+
+    <string name="live_ask_screen">%1$s wants to see your screen</string>
+    <string name="live_ask_camera">%1$s wants to see your camera</string>
+    <string name="live_ask_text">Tap to answer</string>
+    <string name="live_ask_body_screen">It sees everything on your screen until you stop it. A notification stays and you can stop it there at any time.</string>
+    <string name="live_ask_body_camera">It sees what your camera sees until you stop it. A notification stays and you can stop it there at any time.</string>
+    <string name="live_allow">Allow</string>
+    <string name="live_allow_always">Always allow %1$s</string>
+    <string name="live_deny">Deny</string>
+    <string name="live_cancel">Cancel</string>
+    <string name="live_stop">Stop</string>
+    <string name="live_camera_denied">Tandem needs the camera for this. Allow it in the settings of the phone.</string>
+
+    <string name="live_pick_camera_title">Show your camera on %1$s</string>
+    <string name="live_pick_camera_body">Which camera? It opens in a window on the computer.</string>
+    <string name="live_camera_back">Back camera</string>
+    <string name="live_camera_front">Front camera</string>
+
+    <string name="live_active_title">Showing on a computer</string>
+    <string name="live_active_starting">Starting</string>
+    <string name="live_active_screen">Your screen is shown on %1$s</string>
+    <string name="live_active_camera">Your camera is shown on %1$s</string>
+    <string name="live_active_both">Your screen and camera are shown on %1$s</string>
+    <string name="live_active_waiting">Ready to show on %1$s. Waiting for it to look.</string>
+    <string name="live_offer_failed">The computer cannot be reached right now</string>
+    <string name="live_offer_unanswered">%1$s did not open the window. Try again from the computer.</string>
+
+    <string name="live_show_screen">Show my screen on %1$s</string>
+    <string name="live_show_camera">Show my camera on %1$s</string>
+    <string name="live_show_screen_sub">The computer opens it in a window. You can stop it any time.</string>
+    <string name="live_show_camera_sub">In a window on the computer. It is not a virtual webcam.</string>
+    <string name="live_stop_screen">Stop showing my screen</string>
+    <string name="live_stop_camera">Stop showing my camera</string>
+    <string name="live_section_allow">Let %1$s ask to see this phone</string>
+    <string name="live_perm_screen">Screen</string>
+    <string name="live_perm_camera">Camera</string>
+    <string name="live_perm_ask">Ask me</string>
+    <string name="live_perm_always">Always</string>
+    <string name="live_perm_never">Never</string>
+    <string name="live_indicator">Pill on screen while sharing</string>
+    <string name="live_indicator_sub">Says who is looking and has a Stop button. Needs permission to show over other apps.</string>
+</resources>
