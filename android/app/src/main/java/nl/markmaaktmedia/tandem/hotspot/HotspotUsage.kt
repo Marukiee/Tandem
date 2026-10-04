@@ -11,8 +11,8 @@ import java.time.ZoneId
  * bytes in the preferences and an older entry can simply be cut off.
  */
 object HotspotUsage {
-    /** How many days are kept. */
-    const val KEEP_DAYS = 60
+    /** How many days are kept: enough for a year of months and a little more. */
+    const val KEEP_DAYS = 400
 
     fun dayKey(epochMs: Long, zone: ZoneId = ZoneId.systemDefault()): String =
         Instant.ofEpochMilli(epochMs).atZone(zone).toLocalDate().toString()
@@ -61,4 +61,24 @@ object HotspotUsage {
     /** The days to list, newest first: those with something used, at most [count]. */
     fun recent(days: Map<String, Long>, count: Int): List<Pair<String, Long>> =
         days.entries.filter { it.value > 0 }.sortedByDescending { it.key }.take(count).map { it.key to it.value }
+
+    /** One month of use. A month starts on a day the person chooses, so it does not have to be a calendar month. */
+    data class Period(val start: LocalDate, val endExclusive: LocalDate, val bytes: Long)
+
+    /** The day the month that holds [day] began on, for months that begin on [startDay] (1 to 28, so every month has it). */
+    fun periodStart(day: LocalDate, startDay: Int): LocalDate {
+        val begin = startDay.coerceIn(1, 28)
+        return if (day.dayOfMonth >= begin) day.withDayOfMonth(begin) else day.minusMonths(1).withDayOfMonth(begin)
+    }
+
+    /** The current month and the ones before it, newest first. The current one is there also when nothing is used yet. */
+    fun periods(days: Map<String, Long>, today: LocalDate, startDay: Int, count: Int): List<Period> {
+        val first = periodStart(today, startDay)
+        val parsed = days.mapNotNull { (key, bytes) -> runCatching { LocalDate.parse(key) }.getOrNull()?.let { it to bytes } }
+        return (0 until count).map { back ->
+            val start = first.minusMonths(back.toLong())
+            val end = start.plusMonths(1)
+            Period(start, end, parsed.sumOf { (day, bytes) -> if (!day.isBefore(start) && day.isBefore(end)) bytes else 0L })
+        }
+    }
 }

@@ -87,4 +87,21 @@
     <string name="settings_kw_about_source">github, source code, open source, license, licence, agpl, repository, code, website</string>
     <string name="settings_kw_about_developer">developer, debug, preview, onboarding, test, tone, fake player</string>
     <string name="settings_kw_about_reset">reset, wipe, factory reset, forget, clear data, unpair, start over, remove all</string>
+
+    <!-- Trackpad -->
+    <string name="settings_cat_trackpad">Trackpad</string>
+    <string name="pad_speed">Pointer speed</string>
+    <string name="pad_speed_sub">How far the pointer on the computer moves for a swipe of your finger</string>
+    <string name="pad_scroll">Scroll speed</string>
+    <string name="pad_scroll_sub">How fast two fingers scroll</string>
+    <string name="pad_hold">Hold to drag</string>
+    <string name="pad_hold_sub">How long a finger stays still before the left button is held</string>
+    <string name="pad_percent">%1$d%%</string>
+    <string name="pad_ms">%1$d ms</string>
+    <string name="pad_reset">Reset to default</string>
+    <string name="pad_reset_sub">Speed, scrolling and dragging</string>
+    <string name="settings_kw_trackpad">mouse, pointer, cursor, speed, sensitivity, touchpad, drag, scroll, trackpad</string>
+    <string name="settings_kw_pad_speed">mouse speed, pointer speed, cursor speed, sensitivity, faster, slower, tracking</string>
+    <string name="settings_kw_pad_scroll">scroll speed, scrolling, two fingers, faster, slower</string>
+    <string name="settings_kw_pad_hold">drag, hold, press and hold, delay, long press, move files, left button</string>
 </resources>

@@ -59,6 +59,8 @@ import nl.markmaaktmedia.tandem.hotspot.Phase
 import nl.markmaaktmedia.tandem.hotspot.Refusal
 import nl.markmaaktmedia.tandem.hotspot.ShizukuState
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
+import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
+import androidx.compose.foundation.layout.aspectRatio
 import nl.markmaaktmedia.tandem.ui.components.SectionHeader
 import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
 import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
@@ -87,6 +89,7 @@ fun HotspotScreen(onBack: () -> Unit) {
     val limitMb by module.prefs.dataLimitMb.collectAsState(initial = 0L)
     val totalBytes by module.prefs.dataUsedBytes.collectAsState(initial = 0L)
     val days by module.prefs.dailyUsage.collectAsState(initial = emptyMap())
+    val monthStartDay by module.prefs.monthStartDay.collectAsState(initial = 1)
     val since by module.prefs.usageSince.collectAsState(initial = null)
     val snapshot by module.controller.snapshot.collectAsState()
     val shizuku by module.shizuku.state.collectAsState()
@@ -188,6 +191,8 @@ fun HotspotScreen(onBack: () -> Unit) {
                 totalBytes = totalBytes,
                 since = since,
                 days = days,
+                startDay = monthStartDay,
+                onStartDay = { scope.launch { module.prefs.setMonthStartDay(it) } },
                 onReset = { scope.launch { module.prefs.resetDataUsed() } },
             )
         }
@@ -339,20 +344,38 @@ private fun DataLimitCard(limitMb: Long, todayBytes: Long, onLimit: (Long) -> Un
 }
 
 /**
- * What the Mac has used over the hotspot: today, the total since it was last reset by hand, and the last days one
- * under the other with a bar each. A day is the unit because a session is gone when it ends, and the total on its
- * own does not say when the data went.
+ * What the Mac has used over the hotspot: today, this month, the months before it with a bar each, and the last days.
+ * A month starts on a day the person chooses, to match the month of their mobile plan. The data is kept per day,
+ * because a session is gone when it ends and a total on its own does not say when the data went.
  */
 @Composable
-private fun DataUsageCard(todayBytes: Long, totalBytes: Long, since: Long?, days: Map<String, Long>, onReset: () -> Unit) {
+private fun DataUsageCard(
+    todayBytes: Long,
+    totalBytes: Long,
+    since: Long?,
+    days: Map<String, Long>,
+    startDay: Int,
+    onStartDay: (Int) -> Unit,
+    onReset: () -> Unit,
+) {
     val context = LocalContext.current
     fun size(bytes: Long) = android.text.format.Formatter.formatShortFileSize(context, bytes)
     val today = HotspotUsage.dayKey(System.currentTimeMillis())
     val yesterday = HotspotUsage.dayKey(System.currentTimeMillis() - 24 * 3_600_000L)
     // Today is shown above, so the list is the days before it.
     val recent = HotspotUsage.recent(days.filterKeys { it != today }, 7)
+    val months = remember(days, startDay) { HotspotUsage.periods(days, java.time.LocalDate.now(), startDay, 7) }
+    val thisMonth = months.first()
+    val before = months.drop(1).filter { it.bytes > 0 }
+    val monthsMost = before.maxOfOrNull { it.bytes }?.coerceAtLeast(1L) ?: 1L
     val most = recent.maxOfOrNull { it.second }?.coerceAtLeast(1L) ?: 1L
     val formatter = remember { java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", java.util.Locale.getDefault()) }
+    val dayMonth = remember { java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale.getDefault()) }
+    val monthName = remember { java.time.format.DateTimeFormatter.ofPattern("LLLL yyyy", java.util.Locale.getDefault()) }
+    fun monthLabel(period: HotspotUsage.Period): String =
+        if (startDay == 1) period.start.format(monthName).replaceFirstChar { it.uppercase() }
+        else context.getString(R.string.hotspot_usage_range, period.start.format(dayMonth), period.endExclusive.minusDays(1).format(dayMonth))
+    var choosingDay by remember { mutableStateOf(false) }
 
     Column(
         Modifier.fillMaxWidth()
@@ -364,25 +387,33 @@ private fun DataUsageCard(todayBytes: Long, totalBytes: Long, since: Long?, days
         Text(stringResource(R.string.hotspot_usage_title), style = MaterialTheme.typography.titleSmall)
         Row(verticalAlignment = Alignment.Bottom) {
             Text(stringResource(R.string.hotspot_usage_today), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            Text(size(todayBytes), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+            Text(size(todayBytes), style = MaterialTheme.typography.titleMedium)
         }
         Row(verticalAlignment = Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.hotspot_usage_total), style = MaterialTheme.typography.bodyMedium)
-                since?.let {
-                    Text(
-                        stringResource(R.string.hotspot_usage_since, android.text.format.DateFormat.getMediumDateFormat(context).format(java.util.Date(it))),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                Text(stringResource(R.string.hotspot_usage_month), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    stringResource(R.string.hotspot_usage_since, thisMonth.start.format(dayMonth)),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
-            Text(size(totalBytes), style = MaterialTheme.typography.titleMedium)
+            Text(size(thisMonth.bytes), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
         }
-        if (recent.isEmpty() && totalBytes <= 0L) {
+        if (before.isEmpty() && recent.isEmpty() && totalBytes <= 0L) {
             Text(
                 stringResource(R.string.hotspot_usage_empty),
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+        if (before.isNotEmpty()) {
+            Text(
+                stringResource(R.string.hotspot_usage_months),
+                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            before.forEach { period ->
+                UsageBarRow(monthLabel(period), period.bytes, monthsMost, size(period.bytes))
+            }
         }
         if (recent.isNotEmpty()) {
             Text(
@@ -395,27 +426,92 @@ private fun DataUsageCard(todayBytes: Long, totalBytes: Long, since: Long?, days
                     yesterday -> stringResource(R.string.hotspot_usage_yesterday)
                     else -> runCatching { java.time.LocalDate.parse(day).format(formatter) }.getOrDefault(day)
                 }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.9f))
-                    // The bar of the biggest day is full, the others are in proportion to it.
-                    Box(
-                        Modifier.weight(1.2f).height(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest),
-                    ) {
-                        Box(
-                            Modifier.fillMaxHeight().fillMaxWidth((bytes.toFloat() / most).coerceIn(0.04f, 1f))
-                                .clip(CircleShape).background(MaterialTheme.colorScheme.primary),
-                        )
-                    }
-                    Text(size(bytes), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.6f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
-                }
+                UsageBarRow(label, bytes, most, size(bytes))
             }
         }
-        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.hotspot_usage_month_start), style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    stringResource(R.string.hotspot_usage_month_start_day, startDay),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            SecondaryPillButton(stringResource(R.string.hotspot_usage_change), { choosingDay = true })
+        }
+        if (totalBytes > 0L) {
+            Text(
+                stringResource(
+                    R.string.hotspot_usage_all_time, size(totalBytes),
+                    since?.let { android.text.format.DateFormat.getMediumDateFormat(context).format(java.util.Date(it)) }.orEmpty(),
+                ),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
             SecondaryPillButton(stringResource(R.string.hotspot_data_reset), onReset)
         }
     }
+
+    if (choosingDay) {
+        nl.markmaaktmedia.tandem.ui.components.TandemDialog(
+            title = stringResource(R.string.hotspot_usage_month_start),
+            onDismiss = { choosingDay = false },
+            icon = TandemIcons.Hotspot,
+            actions = { SecondaryPillButton(stringResource(R.string.action_cancel), { choosingDay = false }) },
+            content = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        stringResource(R.string.hotspot_usage_month_start_body),
+                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    (1..28).chunked(7).forEach { week ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            week.forEach { day ->
+                                val chosen = day == startDay
+                                Box(
+                                    Modifier.weight(1f).aspectRatio(1f).clip(CircleShape)
+                                        .background(if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
+                                        .nl_bouncy {
+                                            onStartDay(day)
+                                            choosingDay = false
+                                        },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        "$day", style = MaterialTheme.typography.labelLarge,
+                                        color = if (chosen) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+        )
+    }
 }
+
+/** A line of the usage list: what it is, a bar in proportion to the biggest line, and the amount. */
+@Composable
+private fun UsageBarRow(label: String, bytes: Long, most: Long, amount: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.9f), maxLines = 1)
+        // The bar of the biggest line is full, the others are in proportion to it.
+        Box(
+            Modifier.weight(1.2f).height(8.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        ) {
+            Box(
+                Modifier.fillMaxHeight().fillMaxWidth((bytes.toFloat() / most).coerceIn(0.04f, 1f))
+                    .clip(CircleShape).background(MaterialTheme.colorScheme.primary),
+            )
+        }
+        Text(amount, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(0.6f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+    }
+}
+
+private fun Modifier.nl_bouncy(onClick: () -> Unit): Modifier = this.bouncyClickable(onClick = onClick)
 
 @Composable
 private fun limitLabel(mb: Long): String = when {

@@ -6,20 +6,71 @@ import TandemCore
 struct NowPlayingCard: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
+    /// The player the person picked from the small rows, until it goes away.
+    @LocalState private var chosen: String?
 
     var body: some View {
         let players = model.reach(of: device).reachable ? model.visibleMedia(for: device.id) : []
+        // One player gets the whole card: the one that was picked, otherwise what plays, otherwise the first. The
+        // others are small rows in one card below it, so three players take little more room than one.
+        let main = players.first { $0.id == chosen } ?? players.first { $0.playing } ?? players.first
+        let others = players.filter { $0.id != main?.id }
         // The model changes outside any animation, so the card brings its own: it slides in when something starts
         // to play and out when it stops.
         Group {
-            if !players.isEmpty {
+            if let main {
                 VStack(spacing: 10) {
-                    ForEach(players, id: \.id) { PlayerCard(device: device, player: $0) }
+                    PlayerCard(device: device, player: main)
+                    if !others.isEmpty {
+                        OtherPlayers(device: device, players: others) { picked in withAnimation(.tandem) { chosen = picked.id } }
+                    }
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .animation(.tandem, value: players.map(\.id))
+    }
+}
+
+/// The players that are not in front, one line each: a small cover, what plays, and the play button. A tap on the
+/// line brings that player to the front.
+private struct OtherPlayers: View {
+    @Environment(EngineModel.self) private var model
+    let device: TandemDevice
+    let players: [TandemMediaPlayer]
+    let pick: (TandemMediaPlayer) -> Void
+
+    var body: some View {
+        Card(radius: Metrics.card, padding: 8) {
+            VStack(spacing: 0) {
+                ForEach(players, id: \.id) { player in
+                    HStack(spacing: 10) {
+                        PlayerCover(player: player, size: 36)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(player.title.isEmpty ? player.app : player.title).font(.callout.weight(.medium)).lineLimit(1)
+                            Text([player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · "))
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                        Spacer(minLength: 8)
+                        Button {
+                            model.sendMedia(.toggle, player: player, to: device.id)
+                        } label: {
+                            Image(systemName: player.playing ? "pause.fill" : "play.fill")
+                                .contentTransition(.symbolEffect(.replace))
+                                .frame(width: 12, height: 12)
+                        }
+                        .buttonStyle(.glass)
+                        .buttonBorderShape(.circle)
+                        .controlSize(.regular)
+                        .help(player.playing ? "Pause" : "Play")
+                    }
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 5)
+                    .contentShape(Rectangle())
+                    .onTapGesture { pick(player) }
+                }
+            }
+        }
     }
 }
 
@@ -108,6 +159,9 @@ struct PlayerCover: View {
     /// A side, or nil to fill the square it is given.
     var size: CGFloat?
 
+    /// The last picture shown for this player, kept while the next one is on its way, so a new key never blinks the cover.
+    @LocalState private var held: NSImage?
+
     var body: some View {
         if let size {
             cover(side: size).frame(width: size, height: size)
@@ -119,7 +173,7 @@ struct PlayerCover: View {
     private func cover(side: CGFloat) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: side * 0.22, style: .continuous).fill(Color.primary.opacity(0.07))
-            if let image = model.mediaArt[player.art], player.art != 0 {
+            if let image = (player.art == 0 ? nil : model.mediaArt[player.art] ?? held) {
                 Image(nsImage: image).resizable().scaledToFill()
             } else {
                 Image(systemName: "music.note").font(.system(size: side * 0.4)).foregroundStyle(.secondary)
@@ -131,6 +185,8 @@ struct PlayerCover: View {
         .scaleEffect(player.playing ? 1 : 0.93)
         .animation(.tandemSpringy, value: player.playing)
         .animation(.tandemFade, value: player.art)
+        .onAppear { held = player.art == 0 ? nil : model.mediaArt[player.art] }
+        .onChange(of: model.mediaArt[player.art]) { _, image in if let image { held = image } }
     }
 }
 

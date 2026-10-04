@@ -137,9 +137,15 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
 
     val slop = LocalViewConfiguration.current.touchSlop
     val swipeDistance = with(LocalDensity.current) { 56.dp.toPx() }
-    val classifier = remember(link, haptics, slop, swipeDistance) {
+    val padSpeed by prefs.padSpeed.collectAsState(initial = 100)
+    val padScroll by prefs.padScroll.collectAsState(initial = 100)
+    val padHold by prefs.padHoldMs.collectAsState(initial = 280)
+    val classifier = remember(link, haptics, slop, swipeDistance, padSpeed, padScroll, padHold) {
         TouchpadClassifier(
-            TouchpadConfig(slop = slop, swipeDistance = swipeDistance),
+            TouchpadConfig(
+                slop = slop, swipeDistance = swipeDistance, holdMs = padHold.toLong(),
+                speed = padSpeed / 100f, scrollSpeed = padScroll / 100f,
+            ),
             object : TouchpadOutput {
                 override fun pointer(dx: Int, dy: Int) = link.pointer(dx, dy)
                 override fun scroll(dx: Int, dy: Int) = link.scroll(dx, dy)

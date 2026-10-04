@@ -620,3 +620,17 @@
 "Clicks on notifications" = "Klikken op meldingen";
 "You chose what happens for apps that are not on this Mac" = "Je koos wat er gebeurt bij apps die niet op deze Mac staan";
 "Ask again" = "Opnieuw vragen";
+"Link from %@ opened and copied" = "Link van %@ geopend en gekopieerd";
+"Select" = "Selecteren";
+"Select all" = "Alles selecteren";
+"Download %lld" = "Download %lld";
+"Delete %lld" = "Verwijder %lld";
+"Search in this folder" = "Zoek in deze map";
+"Search by name" = "Zoek op naam";
+"View all" = "Alles bekijken";
+"Everything sent to and received from %@" = "Alles wat naar %@ is gestuurd en ervan is ontvangen";
+"Show everything again" = "Toon weer alles";
+"Documents" = "Documenten";
+"Archives" = "Archieven";
+"Video" = "Video";
+"Audio" = "Audio";

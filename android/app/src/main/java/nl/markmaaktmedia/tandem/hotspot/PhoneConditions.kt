@@ -46,6 +46,24 @@ class HotspotPrefs(private val context: Context) {
     /** When counting began, or began again after a reset. Null until something has been counted. */
     val usageSince: Flow<Long?> = context.hotspotStore.data.map { it[sinceKey] }
 
+    private val monthKey = androidx.datastore.preferences.core.longPreferencesKey("month_start_day")
+
+    /** The day of the month a new month of use begins on, 1 to 28. */
+    val monthStartDay: Flow<Int> = context.hotspotStore.data.map { (it[monthKey] ?: 1L).toInt().coerceIn(1, 28) }
+
+    suspend fun setMonthStartDay(day: Int) {
+        context.hotspotStore.edit { it[monthKey] = day.coerceIn(1, 28).toLong() }
+    }
+
+    /** Test data: puts [bytes] on a day, without touching the rest. Only used from the developer options. */
+    suspend fun addTestUsage(day: String, bytes: Long) {
+        context.hotspotStore.edit { prefs ->
+            prefs[daysKey] = HotspotUsage.encode(HotspotUsage.add(HotspotUsage.decode(prefs[daysKey]), day, bytes))
+            prefs[usedKey] = (prefs[usedKey] ?: 0L) + bytes
+            if (prefs[sinceKey] == null) prefs[sinceKey] = System.currentTimeMillis()
+        }
+    }
+
     suspend fun setDataLimitMb(value: Long) {
         context.hotspotStore.edit { it[limitKey] = value }
     }

@@ -55,6 +55,9 @@ class TandemPrefs(private val context: Context) {
         val mediaExcluded = stringSetPreferencesKey("media_excluded")
         val audioOutput = booleanPreferencesKey("audio_output")
         val pinnedDevices = stringSetPreferencesKey("pinned_devices")
+        val padSpeed = longPreferencesKey("pad_speed")
+        val padScroll = longPreferencesKey("pad_scroll")
+        val padHold = longPreferencesKey("pad_hold_ms")
     }
 
     val appearance: Flow<Appearance> = data.map { p ->
@@ -97,6 +100,12 @@ class TandemPrefs(private val context: Context) {
     val bluetoothMessages: Flow<Boolean> = data.map { it[Keys.bluetoothMessages] ?: true }
 
     /** The devices that were pinned, by id: they stay at the top of the list. */
+    /** How fast the pointer follows the finger, in percent: 100 is as it was, 200 twice as far. */
+    val padSpeed: Flow<Int> = data.map { (it[Keys.padSpeed] ?: DEFAULT_PAD_SPEED).toInt() }
+    val padScroll: Flow<Int> = data.map { (it[Keys.padScroll] ?: DEFAULT_PAD_SCROLL).toInt() }
+
+    /** How long a finger has to stay put on the pad before it holds the left button for a drag. */
+    val padHoldMs: Flow<Int> = data.map { (it[Keys.padHold] ?: DEFAULT_PAD_HOLD_MS).toInt() }
     val pinnedDevices: Flow<Set<String>> = data.map { it[Keys.pinnedDevices] ?: emptySet() }
 
     suspend fun setPinned(deviceId: String, pinned: Boolean) {
@@ -178,6 +187,17 @@ class TandemPrefs(private val context: Context) {
     suspend fun setCopyCodes(value: Boolean) = set(Keys.copyCodes, value)
     suspend fun setRemoteMedia(value: Boolean) = set(Keys.remoteMedia, value)
     suspend fun setRemoteMouse(value: Boolean) = set(Keys.remoteMouse, value)
+    suspend fun setPadSpeed(percent: Int) = set(Keys.padSpeed, percent.toLong())
+    suspend fun setPadScroll(percent: Int) = set(Keys.padScroll, percent.toLong())
+    suspend fun setPadHoldMs(ms: Int) = set(Keys.padHold, ms.toLong())
+
+    suspend fun resetPad() {
+        context.store.edit {
+            it.remove(Keys.padSpeed)
+            it.remove(Keys.padScroll)
+            it.remove(Keys.padHold)
+        }
+    }
 
     suspend fun setBluetoothMessages(value: Boolean) = set(Keys.bluetoothMessages, value)
     suspend fun setMediaShare(value: Boolean) = set(Keys.mediaShare, value)
@@ -215,5 +235,11 @@ class TandemPrefs(private val context: Context) {
                 p[Keys.mirrorApps] = if (enabled) chosen + packageName else chosen - packageName
             }
         }
+    }
+
+    companion object {
+        const val DEFAULT_PAD_SPEED = 100L
+        const val DEFAULT_PAD_SCROLL = 100L
+        const val DEFAULT_PAD_HOLD_MS = 280L
     }
 }

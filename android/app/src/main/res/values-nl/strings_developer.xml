@@ -17,4 +17,13 @@
     <string name="dev_player_sub">Een nepmuziekapp, om de knoppen op je Mac te proberen zonder iets af te spelen</string>
     <string name="dev_tone">Testgeluid</string>
     <string name="dev_tone_sub">Speelt twintig seconden een toon af, zoals het geluid van je Mac via deze telefoon zou klinken. Vergrendel de telefoon en luister of hij doorgaat</string>
+    <string name="dev_hotspot">Hotspot</string>
+    <string name="dev_hotspot_today">500 MB bij vandaag optellen</string>
+    <string name="dev_hotspot_today_sub">Alsof je Mac het via de hotspot gebruikte. Vandaag en deze maand gaan omhoog</string>
+    <string name="dev_hotspot_months">De laatste vijf maanden vullen</string>
+    <string name="dev_hotspot_months_sub">Zet wat gebruik op een paar dagen van elke maand, om de lijst met maanden en de balken te zien</string>
+    <string name="dev_hotspot_open">De hotspotpagina openen</string>
+    <string name="dev_hotspot_open_sub">Waar de data, de limiet, het begin van de maand en de test van de hotspot staan</string>
+    <string name="dev_hotspot_clear">De getelde data wissen</string>
+    <string name="dev_hotspot_clear_sub">Haalt alle dagen, maanden en het totaal weg, ook de echte</string>
 </resources>

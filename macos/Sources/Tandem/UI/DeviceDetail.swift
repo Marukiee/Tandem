@@ -9,6 +9,8 @@ struct DeviceDetail: View {
     let device: TandemDevice
     /// Opens the files of this device. Only offered for devices that know how to show them.
     var onBrowse: () -> Void = {}
+    /// Opens the Shared page, narrowed to this device.
+    var onViewAll: () -> Void = {}
 
     @LocalState private var confirmRemoval = false
     @LocalState private var showIcons = false
@@ -248,21 +250,32 @@ struct DeviceDetail: View {
 
     @ViewBuilder
     private var recentTransfers: some View {
-        let items = model.transfers.filter { $0.peer == device.id }.prefix(6)
+        let items = Array(model.transfers.filter { $0.peer == device.id }.prefix(6))
         if !items.isEmpty {
-            Card(radius: Metrics.card, padding: Metrics.cardInset) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Recent")
-                        .font(.headline)
+            VStack(spacing: 3) {
+                HStack {
+                    Text("Recent").font(.headline)
+                    Spacer(minLength: 8)
+                    Button(action: onViewAll) {
+                        HStack(spacing: 4) {
+                            Text("View all")
+                            Image(systemName: "chevron.right").font(.caption.weight(.bold))
+                        }
+                        .font(.callout.weight(.medium))
+                        .foregroundStyle(Palette.indigo)
                         .padding(.horizontal, 10)
-                        .padding(.top, 6)
-                        .padding(.bottom, 4)
-                    ForEach(Array(items)) { item in
-                        TransferEntry(item: item, peerName: device.name)
-                            .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
+                        .padding(.vertical, 4)
+                        .hoverHighlight(radius: 10)
                     }
+                    .buttonStyle(.plain)
+                    .help("Everything sent to and received from \(device.name)")
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 6)
+                .padding(.bottom, 6)
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    TransferEntry(item: item, peerName: device.name, first: index == 0, last: index == items.count - 1)
+                        .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
+                }
             }
             .transition(.opacity.combined(with: .move(edge: .bottom)))
             .animation(.tandem, value: items.map(\.id))

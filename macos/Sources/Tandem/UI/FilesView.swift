@@ -17,6 +17,10 @@ struct FilesView: View {
     @LocalState private var newName = ""
     @LocalState private var deleting: [TandemFsEntry] = []
     @LocalState private var dropTargeted = false
+    /// Rows show a check instead of the icon, and a tap chooses or lets go of a row. Starts with a hold on a row.
+    @LocalState private var picking = false
+    @LocalState private var rowFrames: [String: CGRect] = [:]
+    @LocalState private var hold = HoldState()
 
     var body: some View {
         ScrollView {
@@ -179,31 +183,66 @@ struct FilesView: View {
 
     @ViewBuilder
     private var actions: some View {
-        let chosen = browser.selected
+        let chosen = browser.chosen
         GlassEffectContainer(spacing: 10) {
             HStack(spacing: 10) {
-                if browser.writable {
-                    GlassActionButton(title: "Upload", symbol: "square.and.arrow.up", prominent: true) { pickFiles() }
-                    GlassActionButton(title: "New folder", symbol: "folder.badge.plus") {
-                        folderName = ""
-                        askingFolderName = true
-                    }
-                }
-                if let chosen {
-                    GlassActionButton(title: "Download", symbol: "square.and.arrow.down") { browser.download([chosen]) }
-                    if browser.writable {
-                        GlassActionButton(title: "Rename", symbol: "pencil") {
-                            newName = chosen.name
-                            renaming = chosen
+                if picking {
+                    GlassActionButton(title: "Done", symbol: "checkmark", prominent: true) { stopPicking() }
+                    GlassActionButton(title: "Select all", symbol: "checkmark.circle") { browser.selectAll() }
+                    if !chosen.isEmpty {
+                        GlassActionButton(title: "Download \(chosen.count)", symbol: "square.and.arrow.down") { browser.download(chosen) }
+                        if browser.writable {
+                            GlassActionButton(title: "Delete \(chosen.count)", symbol: "trash") { deleting = chosen }
                         }
-                        GlassActionButton(title: "Delete", symbol: "trash") { deleting = [chosen] }
+                    }
+                } else {
+                    if browser.writable {
+                        GlassActionButton(title: "Upload", symbol: "square.and.arrow.up", prominent: true) { pickFiles() }
+                        GlassActionButton(title: "New folder", symbol: "folder.badge.plus") {
+                            folderName = ""
+                            askingFolderName = true
+                        }
+                    }
+                    if let one = chosen.first, chosen.count == 1 {
+                        GlassActionButton(title: "Download", symbol: "square.and.arrow.down") { browser.download([one]) }
+                        if browser.writable {
+                            GlassActionButton(title: "Rename", symbol: "pencil") {
+                                newName = one.name
+                                renaming = one
+                            }
+                            GlassActionButton(title: "Delete", symbol: "trash") { deleting = [one] }
+                        }
+                    }
+                    if !browser.entries.isEmpty {
+                        GlassActionButton(title: "Select", symbol: "checkmark.circle") { startPicking(with: browser.chosen.map(\.name)) }
                     }
                 }
                 Spacer(minLength: 0)
             }
         }
         .animation(.tandem, value: browser.selection)
+        .animation(.tandem, value: picking)
         .animation(.tandem, value: browser.writable)
+        .background {
+            // Command A and Escape, for the hands that are on the keyboard.
+            Button("") { startPicking(with: Array(browser.shown.map(\.name))) }
+                .keyboardShortcut("a", modifiers: .command).opacity(0).frame(width: 0, height: 0)
+        }
+        .onExitCommand { if picking { stopPicking() } else { browser.clearSelection() } }
+    }
+
+    private func startPicking(with names: [String]) {
+        withAnimation(.tandemSpringy) {
+            picking = true
+            browser.selection = Set(names)
+        }
+    }
+
+    private func stopPicking() {
+        withAnimation(.tandemSpringy) {
+            picking = false
+            browser.clearSelection()
+        }
     }
 
     private func pickFiles() {
@@ -213,6 +252,43 @@ struct FilesView: View {
         panel.allowsMultipleSelection = true
         NSApp.activate(ignoringOtherApps: true)
         if panel.runModal() == .OK { browser.upload(panel.urls) }
+    }
+
+    // MARK: Looking for something
+
+    private var searchBar: some View {
+        @Bindable var browser = browser
+        return HStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Search in this folder", text: $browser.query)
+                    .textFieldStyle(.plain)
+                if !browser.query.isEmpty {
+                    Button { browser.query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) }
+                        .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.quaternary.opacity(0.5), in: Capsule())
+            Menu {
+                ForEach(FilesBrowser.FileKind.allCases) { kind in
+                    Button { browser.kind = kind } label: {
+                        Label(kind.title, systemImage: browser.kind == kind ? "checkmark" : kind.symbol)
+                    }
+                }
+            } label: {
+                Label(browser.kind.title, systemImage: browser.kind.symbol)
+                    .font(.callout.weight(.medium))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(browser.kind == .all ? AnyShapeStyle(.quaternary.opacity(0.5)) : AnyShapeStyle(Palette.indigo.opacity(0.25)), in: Capsule())
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+        }
     }
 
     // MARK: What is there
@@ -245,27 +321,136 @@ struct FilesView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 200)
         } else {
-            LazyVStack(spacing: 2) {
-                ForEach(browser.entries, id: \.name) { entry in
-                    FileRow(entry: entry, selected: browser.selection == entry.name)
-                        .contentShape(Rectangle())
-                        .onTapGesture(count: 2) { browser.open(entry) }
-                        .onTapGesture { browser.selection = entry.name }
-                        .contextMenu {
-                            Button("Open") { browser.open(entry) }
-                            Button("Download") { browser.download([entry]) }
-                            if browser.writable {
-                                Divider()
+            searchBar
+            if browser.shown.isEmpty {
+                ContentUnavailableView.search
+                    .frame(maxWidth: .infinity, minHeight: 200)
+            } else {
+                list
+            }
+        }
+    }
+
+    private var list: some View {
+        LazyVStack(spacing: 2) {
+            ForEach(browser.shown, id: \.name) { entry in
+                FileRow(entry: entry, selected: browser.selection.contains(entry.name), picking: picking)
+                    .contentShape(Rectangle())
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(key: RowFrames.self, value: [entry.name: proxy.frame(in: .named("fileList"))])
+                        }
+                    }
+                    .onTapGesture(count: 2) {
+                        guard !picking else { return }
+                        browser.open(entry)
+                    }
+                    .onTapGesture { tapped(entry) }
+                    .contextMenu {
+                        let targets = picking && browser.selection.contains(entry.name) ? browser.chosen : [entry]
+                        if targets.count == 1 { Button("Open") { browser.open(entry) } }
+                        Button(targets.count == 1 ? "Download" : "Download \(targets.count)") { browser.download(targets) }
+                        if browser.writable {
+                            Divider()
+                            if targets.count == 1 {
                                 Button("Rename") {
                                     newName = entry.name
                                     renaming = entry
                                 }
-                                Button("Delete", role: .destructive) { deleting = [entry] }
                             }
+                            Button(targets.count == 1 ? "Delete" : "Delete \(targets.count)", role: .destructive) { deleting = targets }
                         }
-                }
+                    }
             }
-            .animation(.tandem, value: browser.entries.map(\.name))
+        }
+        .coordinateSpace(name: "fileList")
+        .onPreferenceChange(RowFrames.self) { rowFrames = $0 }
+        .animation(.tandem, value: browser.shown.map(\.name))
+        // A hold on a row starts choosing, and moving on from there chooses the rows the pointer passes over.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .named("fileList"))
+                .onChanged { drag in holdMoved(to: drag) }
+                .onEnded { _ in holdEnded() }
+        )
+    }
+
+    private func tapped(_ entry: TandemFsEntry) {
+        if hold.suppressTap { return }
+        let flags = NSEvent.modifierFlags
+        if picking || flags.contains(.command) || flags.contains(.shift) {
+            if !picking { startPicking(with: Array(browser.selection)) }
+            withAnimation(.tandemSpringy) { browser.toggle(entry.name) }
+            if browser.selection.isEmpty { stopPicking() }
+        } else {
+            browser.selection = [entry.name]
+        }
+    }
+
+    // MARK: Hold and move
+
+    /// The state of one press: where it began, whether it has been held long enough, and what was chosen before it.
+    final class HoldState {
+        var begun: Date?
+        var start: CGPoint = .zero
+        var moved = false
+        var active = false
+        var anchor: String?
+        var kept: Set<String> = []
+        var suppressTap = false
+    }
+
+    private func row(at point: CGPoint) -> String? {
+        let frames = rowFrames
+        guard !frames.isEmpty else { return nil }
+        if let hit = frames.first(where: { $0.value.minY <= point.y && point.y < $0.value.maxY + 2 }) { return hit.key }
+        // Above the first row or below the last one: the nearest end.
+        let ordered = frames.sorted { $0.value.minY < $1.value.minY }
+        return point.y < (ordered.first?.value.minY ?? 0) ? ordered.first?.key : ordered.last?.key
+    }
+
+    private func holdMoved(to drag: DragGesture.Value) {
+        if hold.begun == nil {
+            hold.begun = Date()
+            hold.start = drag.startLocation
+            hold.moved = false
+            hold.active = false
+            let began = hold.begun
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(320))
+                guard hold.begun == began, !hold.moved, !hold.active, let anchor = row(at: hold.start) else { return }
+                hold.active = true
+                hold.suppressTap = true
+                hold.anchor = anchor
+                hold.kept = picking ? browser.selection : []
+                withAnimation(.tandemSpringy) {
+                    picking = true
+                    browser.selection = hold.kept.union([anchor])
+                }
+                NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
+            }
+            return
+        }
+        if !hold.active {
+            if hypot(drag.location.x - hold.start.x, drag.location.y - hold.start.y) > 8 { hold.moved = true }
+            return
+        }
+        guard let anchor = hold.anchor, let name = row(at: drag.location) else { return }
+        withAnimation(.tandem) { browser.select(from: anchor, to: name, keeping: hold.kept) }
+    }
+
+    private func holdEnded() {
+        let wasHold = hold.active
+        hold.begun = nil
+        hold.active = false
+        hold.anchor = nil
+        // The tap that the end of a hold would count as comes right after this, and must not undo what the hold chose.
+        if wasHold {
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(200))
+                hold.suppressTap = false
+            }
+        } else {
+            hold.suppressTap = false
         }
     }
 
@@ -306,14 +491,27 @@ struct FilesView: View {
     }
 }
 
-/// A file or a folder in a list.
+private struct RowFrames: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { _, new in new }
+    }
+}
+
+/// A file or a folder in a list. While choosing, a check takes the place of the icon.
 private struct FileRow: View {
     let entry: TandemFsEntry
     let selected: Bool
+    let picking: Bool
 
     var body: some View {
         HStack(spacing: 12) {
-            icon.frame(width: 28, height: 28)
+            ZStack {
+                icon.opacity(picking ? 0 : 1).scaleEffect(picking ? 0.6 : 1)
+                check.opacity(picking ? 1 : 0).scaleEffect(picking ? 1 : 0.6)
+            }
+            .frame(width: 28, height: 28)
+            .animation(.tandemSpringy, value: picking)
             Text(entry.name).lineLimit(1).truncationMode(.middle)
             if entry.readonly {
                 Image(systemName: "lock.fill").font(.caption2).foregroundStyle(.tertiary)
@@ -333,6 +531,21 @@ private struct FileRow: View {
                 .fill(selected ? Palette.indigo.opacity(0.22) : Color.clear)
         }
         .hoverHighlight(radius: 12, selected: selected)
+    }
+
+    /// A ring that fills with a check, so what is chosen can be seen at a glance down the whole list.
+    private var check: some View {
+        ZStack {
+            Circle().strokeBorder(Color.secondary.opacity(0.5), lineWidth: 1.5)
+            Circle().fill(Palette.indigo).scaleEffect(selected ? 1 : 0.2).opacity(selected ? 1 : 0)
+            Image(systemName: "checkmark")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(.white)
+                .scaleEffect(selected ? 1 : 0.2)
+                .opacity(selected ? 1 : 0)
+        }
+        .frame(width: 24, height: 24)
+        .animation(.tandemSpringy, value: selected)
     }
 
     @ViewBuilder

@@ -39,6 +39,10 @@ class TouchpadConfig(
      * never does it, short enough that it feels like part of the touch and not a wait.
      */
     val holdMs: Long = 280,
+    /** How far the pointer goes for a finger that moves one unit: 1 is the finger's own distance. */
+    val speed: Float = 1f,
+    /** The same for scrolling. */
+    val scrollSpeed: Float = 1f,
     /** How soon after a tap the next touch still belongs to it. */
     val doubleTapMs: Long = 300,
     /**
@@ -320,12 +324,12 @@ class TouchpadClassifier(
     // The wire carries whole pixels. The fraction is kept, so a slow drag that moves
     // less than a pixel per frame still adds up instead of rounding to nothing.
     private fun pointer(dx: Float, dy: Float) {
-        val (x, y) = takeWhole(dx, dy)
+        val (x, y) = takeWhole(dx * config.speed, dy * config.speed)
         if (x != 0 || y != 0) out.pointer(x, y)
     }
 
     private fun scroll(dx: Float, dy: Float) {
-        val (x, y) = takeWhole(dx, dy)
+        val (x, y) = takeWhole(dx * config.scrollSpeed, dy * config.scrollSpeed)
         if (x != 0 || y != 0) out.scroll(x, y)
     }
 

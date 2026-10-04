@@ -300,6 +300,14 @@
     <string name="hotspot_usage_yesterday">Gisteren</string>
     <string name="hotspot_usage_total">In totaal</string>
     <string name="hotspot_usage_since">sinds %1$s</string>
+    <string name="hotspot_usage_month">Deze maand</string>
+    <string name="hotspot_usage_months">Eerdere maanden</string>
+    <string name="hotspot_usage_range">%1$s tot %2$s</string>
+    <string name="hotspot_usage_month_start">Nieuwe maand begint op</string>
+    <string name="hotspot_usage_month_start_day">Dag %1$d van de maand</string>
+    <string name="hotspot_usage_month_start_body">Kies de dag waarop je abonnement een nieuwe maand begint, zodat de telling bij je rekening past.</string>
+    <string name="hotspot_usage_change">Wijzig</string>
+    <string name="hotspot_usage_all_time">%1$s in totaal sinds %2$s</string>
     <string name="hotspot_usage_days">Laatste dagen</string>
     <string name="hotspot_usage_empty">Nog niets. De mobiele data die je Mac via de hotspot gebruikt wordt elke dag geteld en begint niet opnieuw.</string>
     <string name="hotspot_request_shizuku_failed">Shizuku kon hem nu niet starten. Tik om de hotspot zelf aan te zetten.</string>

@@ -303,6 +303,14 @@
     <string name="hotspot_usage_yesterday">Yesterday</string>
     <string name="hotspot_usage_total">In total</string>
     <string name="hotspot_usage_since">since %1$s</string>
+    <string name="hotspot_usage_month">This month</string>
+    <string name="hotspot_usage_months">Earlier months</string>
+    <string name="hotspot_usage_range">%1$s to %2$s</string>
+    <string name="hotspot_usage_month_start">New month starts on</string>
+    <string name="hotspot_usage_month_start_day">Day %1$d of the month</string>
+    <string name="hotspot_usage_month_start_body">Choose the day your mobile plan starts a new month, so the count matches your bill.</string>
+    <string name="hotspot_usage_change">Change</string>
+    <string name="hotspot_usage_all_time">%1$s in total since %2$s</string>
     <string name="hotspot_usage_days">Last days</string>
     <string name="hotspot_usage_empty">Nothing yet. The mobile data your Mac uses over the hotspot is counted every day, and does not start over.</string>
     <string name="hotspot_request_shizuku_failed">Shizuku could not start it this time. Tap to turn the hotspot on yourself.</string>

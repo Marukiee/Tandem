@@ -17,4 +17,13 @@
     <string name="dev_player_sub">A pretend music app, to try the buttons on your Mac without playing anything</string>
     <string name="dev_tone">Test sound</string>
     <string name="dev_tone_sub">Plays a tone for twenty seconds, the way your Mac\'s sound would play through this phone. Lock the phone and listen to see that it keeps going</string>
+    <string name="dev_hotspot">Hotspot</string>
+    <string name="dev_hotspot_today">Add 500 MB today</string>
+    <string name="dev_hotspot_today_sub">As if your Mac had used it over the hotspot. Today and this month go up</string>
+    <string name="dev_hotspot_months">Fill the last five months</string>
+    <string name="dev_hotspot_months_sub">Puts some use on a few days of each month, to see the list of months and the bars</string>
+    <string name="dev_hotspot_open">Open the hotspot page</string>
+    <string name="dev_hotspot_open_sub">Where the data, the limit, the start of the month and the test of the hotspot are</string>
+    <string name="dev_hotspot_clear">Clear the counted data</string>
+    <string name="dev_hotspot_clear_sub">Takes away all days, months and the total, also the real ones</string>
 </resources>

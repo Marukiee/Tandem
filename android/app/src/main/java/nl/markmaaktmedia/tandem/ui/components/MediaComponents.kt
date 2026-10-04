@@ -33,6 +33,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -122,9 +124,7 @@ fun NowPlayingSection(device: TandemDevice) {
             if (current == null) {
                 PlayerCard(device.id, null, null, null, muted)
             } else {
-                current.players.forEach { player ->
-                    key(player.id) { PlayerCard(device.id, player, current.entry, covers[player.art.toLong()], muted) }
-                }
+                PlayerStack(device.id, current.players, current.entry, covers, muted)
             }
         }
         return
@@ -145,9 +145,67 @@ fun NowPlayingSection(device: TandemDevice) {
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             SectionHeader(stringResource(R.string.media_now_playing), top = 12.dp, bottom = 0.dp)
-            content.players.forEach { player ->
-                key(player.id) { PlayerCard(device.id, player, content.entry, covers[player.art.toLong()], device.status.muted == true) }
+            PlayerStack(device.id, content.players, content.entry, covers, device.status.muted == true)
+        }
+    }
+}
+
+/**
+ * One player in front, with all its controls, and the rest as one line each in a single slab below it, so three players
+ * take little more room than one. A tap on a line brings that player to the front.
+ */
+@Composable
+private fun PlayerStack(deviceId: String, players: List<TandemMediaPlayer>, entry: RemotePlayers, covers: Map<Long, Bitmap>, muted: Boolean) {
+    var chosen by rememberSaveable { mutableStateOf<String?>(null) }
+    val main = players.firstOrNull { it.id == chosen } ?: players.firstOrNull { it.playing } ?: players.first()
+    key(main.id) { PlayerCard(deviceId, main, entry, covers[main.art.toLong()], muted) }
+    val others = players.filter { it.id != main.id }
+    if (others.isNotEmpty()) {
+        val media = LocalContext.current.graph.media
+        Column(Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).padding(vertical = 6.dp)) {
+            others.forEach { player ->
+                key(player.id) {
+                    Row(
+                        Modifier.fillMaxWidth().bouncyClickable(onClick = { chosen = player.id }).padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        SmallCover(covers[player.art.toLong()], player.art != 0UL)
+                        Column(Modifier.weight(1f)) {
+                            Text(player.title.ifBlank { player.app }, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                listOf(player.artist, player.app).filter { it.isNotBlank() }.joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        val label = stringResource(if (player.playing) R.string.media_pause else R.string.media_play)
+                        Box(
+                            Modifier.size(40.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                .bouncyClickable(onClickLabel = label, onClick = { media.commandMac(deviceId, player.id, TandemMediaAction.TOGGLE) }),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(if (player.playing) TandemIcons.Pause else TandemIcons.Play, label, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+/** A cover for a line of the list: it keeps the last picture while the next one arrives. */
+@Composable
+private fun SmallCover(cover: Bitmap?, hasArt: Boolean) {
+    val held = remember { arrayOfNulls<Bitmap>(1) }
+    if (cover != null) held[0] = cover
+    val shown = if (hasArt) cover ?: held[0] else null
+    Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceContainerHighest), contentAlignment = Alignment.Center) {
+        if (shown != null) {
+            val image = remember(shown) { shown.asImageBitmap() }
+            Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        } else {
+            Icon(TandemIcons.Music, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -164,7 +222,11 @@ private fun PlayerCard(deviceId: String, player: TandemMediaPlayer?, entry: Remo
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Cover(cover, playing = player?.playing == true)
+            // The key of the cover changes with each track, and the picture follows a moment later: until it is there the
+            // last one stays, instead of an empty square that blinks.
+            val held = remember { arrayOfNulls<Bitmap>(1) }
+            if (cover != null) held[0] = cover
+            Cover(if (player == null || player.art == 0UL) null else cover ?: held[0], playing = player?.playing == true)
             // A new track slides its text in from below and the old one up and out, so a skip is seen.
             val idleTitle = stringResource(R.string.media_idle_title)
             val idleHint = stringResource(R.string.media_idle_hint)

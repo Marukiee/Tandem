@@ -438,13 +438,18 @@ struct ClipboardPanelView: View {
         VStack(spacing: 0) {
             searchBar(model: model)
             divider
-            HStack(spacing: 0) {
-                list
-                    .frame(width: 330)
-                detail
-                    .padding(.top, 10)
-                    .padding(.trailing, 10)
-                    .padding(.bottom, 10)
+            if model.rows.isEmpty {
+                // Nothing to list, so nothing to show beside it: the message is in the middle of the whole panel.
+                emptyList
+            } else {
+                HStack(spacing: 0) {
+                    list
+                        .frame(width: 330)
+                    detail
+                        .padding(.top, 10)
+                        .padding(.trailing, 10)
+                        .padding(.bottom, 10)
+                }
             }
             divider
             footer

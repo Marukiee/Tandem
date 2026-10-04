@@ -186,7 +186,8 @@ class MediaMirror(
         if (targets.isEmpty()) return
         val players = built.map { it.player }
         Log.d(TAG, "sharing ${players.size} player(s) with ${targets.size} device(s): ${players.joinToString { "${it.app}: ${it.title}" }}")
-        runCatching { engine.sendMediaPlayers(targets, players) }
+        // The cover goes first: the players name it by its key, and a computer that hears the key before it has the
+        // picture shows an empty square for a moment.
         for (b in built) {
             val key = b.player.art
             val cover = b.cover ?: continue
@@ -194,6 +195,7 @@ class MediaMirror(
             val fresh = targets.filter { sentArt.getOrPut(it) { java.util.concurrent.ConcurrentHashMap.newKeySet() }.add(key.toLong()) }
             if (fresh.isNotEmpty()) runCatching { engine.sendMediaArt(fresh, key, cover) }
         }
+        runCatching { engine.sendMediaPlayers(targets, players) }
     }
 
     private fun computers(): List<String> = host.devices.value.filter { showsPhoneMusic(it.platform) }.map { it.id }
@@ -236,7 +238,7 @@ class MediaMirror(
             ?: meta?.getBitmap(MediaMetadata.METADATA_KEY_ART)
             ?: meta?.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
             ?: coverFromUri(meta)
-        val key = if (bitmap == null) 0L else (listOf(title, artist, album, bitmap.generationId).hashCode().toLong() and 0x7fffffffL) + 1
+        val key = if (bitmap == null) 0L else (listOf(title, artist, album, fingerprint(bitmap)).hashCode().toLong() and 0x7fffffffL) + 1
         val cover = if (key != 0L && bitmap != null) synchronized(artCache) { artCache.getOrPut(key) { jpeg(bitmap) } } else null
         return Built(
             TandemMediaPlayer(
@@ -255,6 +257,22 @@ class MediaMirror(
             ),
             cover,
         )
+    }
+
+    /**
+     * What a picture is, in a number that stays the same for the same picture. The generation id of a bitmap is new for
+     * every copy the player hands over, so with it the cover got a new key at every update and the computer showed
+     * an empty square each time while the same picture came in again.
+     */
+    private fun fingerprint(bitmap: Bitmap): Int {
+        var hash = bitmap.width * 31 + bitmap.height
+        if (bitmap.config == Bitmap.Config.HARDWARE) return hash
+        for (row in 0 until 6) for (column in 0 until 6) {
+            val x = (bitmap.width - 1) * column / 5
+            val y = (bitmap.height - 1) * row / 5
+            hash = hash * 31 + bitmap.getPixel(x, y)
+        }
+        return hash
     }
 
     private fun coverFromUri(meta: MediaMetadata?): Bitmap? {

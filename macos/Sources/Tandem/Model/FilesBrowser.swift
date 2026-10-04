@@ -1,7 +1,9 @@
 import AppKit
 import Foundation
 import Observation
+import SwiftUI
 import TandemCore
+import UniformTypeIdentifiers
 
 /// One file or folder on its way between this Mac and the other device, for the strip at the foot of the page.
 struct FileJob: Identifiable, Equatable {
@@ -47,8 +49,58 @@ final class FilesBrowser {
     private(set) var jobs: [FileJob] = []
     /// The folders the other device shares.
     private(set) var roots: [TandemFsRoot] = []
-    /// The name of the chosen row.
-    var selection: String?
+    /// The names of the chosen rows. More than one is chosen by holding a row and moving over the others.
+    var selection: Set<String> = []
+    /// Words the names must contain, and the kind of file to show.
+    var query = ""
+    var kind: FileKind = .all
+
+    /// A kind of file to narrow the list to.
+    enum FileKind: String, CaseIterable, Identifiable {
+        case all, folders, images, video, audio, documents, archives
+        var id: String { rawValue }
+
+        var title: LocalizedStringKey {
+            switch self {
+            case .all: "All"
+            case .folders: "Folders"
+            case .images: "Pictures"
+            case .video: "Video"
+            case .audio: "Audio"
+            case .documents: "Documents"
+            case .archives: "Archives"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .all: "square.grid.2x2"
+            case .folders: "folder"
+            case .images: "photo"
+            case .video: "film"
+            case .audio: "music.note"
+            case .documents: "doc.text"
+            case .archives: "archivebox"
+            }
+        }
+
+        func matches(_ entry: TandemFsEntry) -> Bool {
+            if self == .all { return true }
+            if entry.dir { return self == .folders }
+            guard let type = UTType(filenameExtension: (entry.name as NSString).pathExtension) else { return false }
+            switch self {
+            case .all, .folders: return true
+            case .images: return type.conforms(to: .image)
+            case .video: return type.conforms(to: .movie) || type.conforms(to: .video)
+            case .audio: return type.conforms(to: .audio)
+            case .documents:
+                let ext = (entry.name as NSString).pathExtension.lowercased()
+                return type.conforms(to: .pdf) || type.conforms(to: .text) || type.conforms(to: .presentation)
+                    || type.conforms(to: .spreadsheet) || ["doc", "docx", "pages", "numbers", "key", "odt", "rtf"].contains(ext)
+            case .archives: return type.conforms(to: .archive)
+            }
+        }
+    }
 
     @ObservationIgnored private var model: EngineModel?
     @ObservationIgnored private var changeable: [String: Bool] = [:]
@@ -66,7 +118,33 @@ final class FilesBrowser {
         return changeable[share] ?? false
     }
 
-    var selected: TandemFsEntry? { entries.first { $0.name == selection } }
+    /// What the search and the kind leave of the list.
+    var shown: [TandemFsEntry] {
+        let words = query.split(separator: " ").map { $0.lowercased() }
+        return entries.filter { entry in
+            kind.matches(entry) && words.allSatisfy { entry.name.lowercased().contains($0) }
+        }
+    }
+
+    var filtering: Bool { !query.isEmpty || kind != .all }
+
+    /// The chosen entries, in the order of the list.
+    var chosen: [TandemFsEntry] { entries.filter { selection.contains($0.name) } }
+
+    func toggle(_ name: String) {
+        if selection.contains(name) { selection.remove(name) } else { selection.insert(name) }
+    }
+
+    /// Chooses the rows from the first to the last of the given names, as they are listed, and keeps the ones chosen before.
+    func select(from first: String, to last: String, keeping kept: Set<String>) {
+        let names = shown.map(\.name)
+        guard let a = names.firstIndex(of: first), let b = names.firstIndex(of: last) else { return }
+        selection = kept.union(names[min(a, b)...max(a, b)])
+    }
+
+    func selectAll() { selection = Set(shown.map(\.name)) }
+
+    func clearSelection() { selection = [] }
 
     func attach(device: TandemDevice, model: EngineModel) {
         self.model = model
@@ -76,7 +154,7 @@ final class FilesBrowser {
         path = DebugSupport.filesPath ?? "/"
         roots = []
         entries = []
-        selection = DebugSupport.filesSelection
+        selection = DebugSupport.filesSelection.map { [$0] } ?? []
         jobs = []
         refresh()
     }
@@ -104,7 +182,7 @@ final class FilesBrowser {
                     if a.dir != b.dir { return a.dir }
                     return a.name.localizedStandardCompare(b.name) == .orderedAscending
                 }
-                if let chosen = selection, !items.contains(where: { $0.name == chosen }) { selection = nil }
+                selection = selection.filter { name in items.contains { $0.name == name } }
                 loading = false
             } catch {
                 guard mine == generation else { return }
@@ -117,7 +195,9 @@ final class FilesBrowser {
 
     func go(to newPath: String) {
         path = newPath
-        selection = nil
+        selection = []
+        query = ""
+        kind = .all
         refresh()
     }
 
@@ -242,7 +322,7 @@ final class FilesBrowser {
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard writable, !clean.isEmpty, !clean.contains("/"), clean != entry.name else { return }
         let (from, to) = (child(entry.name), child(clean))
-        selection = clean
+        selection = [clean]
         run(title: clean, total: 0, then: { [weak self] in self?.refresh() }) { engine, id, _ in
             try await engine.fsRename(id: id, from: from, to: to, overwrite: false)
         }
@@ -256,7 +336,7 @@ final class FilesBrowser {
                 try await engine.fsRemove(id: id, path: remote, recursive: entry.dir)
             }
         }
-        selection = nil
+        selection = []
     }
 
     func dismiss(_ job: FileJob) {

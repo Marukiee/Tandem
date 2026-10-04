@@ -13,6 +13,7 @@ enum class SettingsPageId(val key: String) {
     Look("look"),
     Sharing("sharing"),
     Notifications("notifications"),
+    Trackpad("trackpad"),
     Updates("updates"),
     About("about"),
     ;
@@ -31,6 +32,7 @@ internal enum class SettingsCategory(
     Look(R.string.settings_look, { TandemIcons.Palette }, Route.SettingsPage(SettingsPageId.Look)),
     Sharing(R.string.settings_cat_sharing, { TandemIcons.Devices }, Route.SettingsPage(SettingsPageId.Sharing)),
     Notifications(R.string.settings_notifications, { TandemIcons.Notifications }, Route.SettingsPage(SettingsPageId.Notifications)),
+    Trackpad(R.string.settings_cat_trackpad, { TandemIcons.Mouse }, Route.SettingsPage(SettingsPageId.Trackpad)),
     Permissions(R.string.settings_access, { TandemIcons.Shield }, Route.Access),
     Hotspot(R.string.settings_hotspot, { TandemIcons.Hotspot }, Route.Hotspot),
     Files(R.string.files_title, { TandemIcons.Folder }, Route.FileAccess),
@@ -60,6 +62,10 @@ internal object FocusKeys {
     const val Mirror = "notif.mirror"
     const val Codes = "notif.codes"
     const val Calls = "notif.calls"
+
+    const val PadSpeed = "pad.speed"
+    const val PadScroll = "pad.scroll"
+    const val PadHold = "pad.hold"
 
     const val PermNotifications = "perm.notifications"
     const val PermBattery = "perm.battery"
@@ -126,6 +132,7 @@ internal object SettingsCatalog {
     private val look = Route.SettingsPage(SettingsPageId.Look)
     private val sharing = Route.SettingsPage(SettingsPageId.Sharing)
     private val notifications = Route.SettingsPage(SettingsPageId.Notifications)
+    private val trackpad = Route.SettingsPage(SettingsPageId.Trackpad)
 
     val all: List<SettingsEntry> = listOf(
         // Look and language
@@ -135,12 +142,12 @@ internal object SettingsCatalog {
             { TandemIcons.Palette }, subtitle = R.string.settings_appearance_sub, via = look,
         ),
         SettingsEntry(
-            "look_mode", R.string.appearance_mode, R.string.settings_kw_look_mode, SettingsCategory.Look, Route.Appearance,
-            { TandemIcons.DarkMode }, page = R.string.settings_appearance, focus = FocusKeys.AppearanceMode, via = look,
+            "look_mode", R.string.appearance_mode, R.string.settings_kw_look_mode, SettingsCategory.Look, look,
+            { TandemIcons.DarkMode }, focus = FocusKeys.AppearanceMode,
         ),
         SettingsEntry(
-            "look_black", R.string.appearance_black, R.string.settings_kw_look_black, SettingsCategory.Look, Route.Appearance,
-            { TandemIcons.DarkMode }, subtitle = R.string.appearance_black_sub, page = R.string.settings_appearance, focus = FocusKeys.AppearanceBlack, via = look,
+            "look_black", R.string.appearance_black, R.string.settings_kw_look_black, SettingsCategory.Look, look,
+            { TandemIcons.DarkMode }, subtitle = R.string.appearance_black_sub, focus = FocusKeys.AppearanceBlack,
         ),
         SettingsEntry(
             "look_accent", R.string.appearance_accent, R.string.settings_kw_look_accent, SettingsCategory.Look, Route.Appearance,
@@ -207,6 +214,21 @@ internal object SettingsCatalog {
         SettingsEntry(
             "notif_calls", R.string.settings_calls, R.string.settings_kw_notif_calls, SettingsCategory.Notifications, notifications,
             { TandemIcons.Call }, subtitle = R.string.settings_calls_sub, focus = FocusKeys.Calls,
+        ),
+
+        // Trackpad
+        SettingsEntry("trackpad", R.string.settings_cat_trackpad, R.string.settings_kw_trackpad, SettingsCategory.Trackpad, trackpad, { TandemIcons.Mouse }),
+        SettingsEntry(
+            "pad_speed", R.string.pad_speed, R.string.settings_kw_pad_speed, SettingsCategory.Trackpad, trackpad,
+            { TandemIcons.Mouse }, subtitle = R.string.pad_speed_sub, focus = FocusKeys.PadSpeed,
+        ),
+        SettingsEntry(
+            "pad_scroll", R.string.pad_scroll, R.string.settings_kw_pad_scroll, SettingsCategory.Trackpad, trackpad,
+            { TandemIcons.Mouse }, subtitle = R.string.pad_scroll_sub, focus = FocusKeys.PadScroll,
+        ),
+        SettingsEntry(
+            "pad_hold", R.string.pad_hold, R.string.settings_kw_pad_hold, SettingsCategory.Trackpad, trackpad,
+            { TandemIcons.Mouse }, subtitle = R.string.pad_hold_sub, focus = FocusKeys.PadHold,
         ),
 
         // Permissions

@@ -80,25 +80,6 @@ fun AppearanceScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(6.dp))
         LiveScreenPreview()
 
-        SectionHeader(stringResource(R.string.appearance_theme))
-        SettingsGroup {
-            SettingsTarget(FocusKeys.AppearanceMode, 0, 2) {
-                ContentRow(0, 2, TandemIcons.DarkMode, stringResource(R.string.appearance_mode)) {
-                    SegmentedPillRow(
-                        options = ThemeMode.entries,
-                        selected = appearance.mode,
-                        label = { context.getString(when (it) { ThemeMode.SYSTEM -> R.string.language_system; ThemeMode.LIGHT -> R.string.appearance_light; ThemeMode.DARK -> R.string.appearance_dark }) },
-                        onSelect = { scope.launch { prefs.setThemeMode(it) } },
-                        modifier = Modifier.fillMaxWidth(),
-                        equalWidth = true,
-                    )
-                }
-            }
-            SettingsTarget(FocusKeys.AppearanceBlack, 1, 2) {
-                SwitchRow(1, 2, TandemIcons.DarkMode, stringResource(R.string.appearance_black), stringResource(R.string.appearance_black_sub), appearance.pureBlack, { scope.launch { prefs.setPureBlack(it) } })
-            }
-        }
-
         SectionHeader(stringResource(R.string.appearance_colour))
         SettingsGroup {
             SettingsTarget(FocusKeys.AppearanceAccent, 0, 2) {

@@ -73,5 +73,32 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
             )
             ActionRow(2, 3, TandemIcons.VolumeUp, stringResource(R.string.dev_tone), stringResource(R.string.dev_tone_sub), { graph.audio.playTestTone() })
         }
+
+        // The hotspot counts mobile data per day and per month. These put numbers in it so the lists can be seen and tried,
+        // and take them out again.
+        SectionHeader(stringResource(R.string.dev_hotspot))
+        SettingsGroup {
+            val context = LocalContext.current
+            val prefs = nl.markmaaktmedia.tandem.hotspot.HotspotModule.get(context).prefs
+            ActionRow(
+                0, 4, TandemIcons.Hotspot, stringResource(R.string.dev_hotspot_today), stringResource(R.string.dev_hotspot_today_sub),
+                { scope.launch { prefs.addTestUsage(nl.markmaaktmedia.tandem.hotspot.HotspotUsage.dayKey(System.currentTimeMillis()), 500L * 1024 * 1024) } },
+            )
+            ActionRow(
+                1, 4, TandemIcons.Hotspot, stringResource(R.string.dev_hotspot_months), stringResource(R.string.dev_hotspot_months_sub),
+                {
+                    scope.launch {
+                        // About a gigabyte and a half on a few days of each of the last five months, a different amount each time.
+                        val now = java.time.LocalDate.now()
+                        for (back in 1..5L) for (offset in listOf(3L, 11L, 19L)) {
+                            val day = now.minusMonths(back).withDayOfMonth(minOf(28, (offset + back).toInt()))
+                            prefs.addTestUsage(day.toString(), (180L + back * 40 + offset * 9) * 1024 * 1024)
+                        }
+                    }
+                },
+            )
+            ActionRow(2, 4, TandemIcons.Hotspot, stringResource(R.string.dev_hotspot_open), stringResource(R.string.dev_hotspot_open_sub), { onOpen(Route.Hotspot) })
+            ActionRow(3, 4, TandemIcons.Delete, stringResource(R.string.dev_hotspot_clear), stringResource(R.string.dev_hotspot_clear_sub), { scope.launch { prefs.resetDataUsed() } })
+        }
     }
 }

@@ -93,6 +93,8 @@ final class EngineModel {
         var at: Date
     }
     var remoteMedia: [String: RemoteMedia] = [:]
+    /// The device the Shared page is narrowed to, set by View all on a device page.
+    var sharedDeviceFilter: String?
     var mediaArt: [UInt64: NSImage] = [:]
     /// The phone's music in the system's Now Playing, so the media keys and the apps that show what plays see it.
     let nowPlaying = SystemNowPlaying()
@@ -420,7 +422,12 @@ final class EngineModel {
 
         case let .shareText(from, text, isUrl, open):
             if open, isUrl, let url = URL(string: text) {
+                // The link opens, and it also stays on the clipboard (and in its history) to paste it somewhere else.
+                recordIncoming(text, from: from)
+                clipboard?.apply(text)
                 NSWorkspace.shared.open(url)
+                let name = device(from)?.name ?? "?"
+                showToast(String(localized: "Link from \(name) opened and copied"))
             } else {
                 recordIncoming(text, from: from)
                 clipboard?.apply(text)
@@ -494,7 +501,14 @@ final class EngineModel {
             if let tint = Self.averageColor(of: image) { mediaTint[key] = tint }
             refreshNowPlaying()
             // The newest few are all that is ever on screen.
-            if mediaArt.count > 24, let old = mediaArt.keys.first(where: { $0 != key }) { mediaArt.removeValue(forKey: old) }
+            if mediaArt.count > 24 {
+                // Never one that a player still shows, or its cover would blink away.
+                let inUse = Set(remoteMedia.values.flatMap { $0.players.map(\.art) })
+                if let old = mediaArt.keys.first(where: { $0 != key && !inUse.contains($0) }) {
+                    mediaArt.removeValue(forKey: old)
+                    mediaTint.removeValue(forKey: old)
+                }
+            }
 
         case let .mediaCommand(_, player, action, position):
             guard mediaShare, let action else { return }
@@ -826,7 +840,7 @@ final class EngineModel {
 
     /// Where the file of a transfer lives: where it was stored, or for a sent file
     /// where it was sent from.
-    private func filePath(_ item: TransferItem) -> String? {
+    func filePath(_ item: TransferItem) -> String? {
         item.location ?? (item.incoming ? nil : outgoingSources[item.name])
     }
 

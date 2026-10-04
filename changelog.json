@@ -1,5 +1,33 @@
 [
   {
+    "version": "0.1.36",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Files you can select, months of hotspot data and a calmer player",
+      "new": [
+        "Files on the Mac: search by name, narrow to pictures, video, documents and more, and choose several files by holding one and moving over the others. A check takes the place of the icon, so you can see what you chose, and Download or Delete works on all of them",
+        "On a device page, Recent has a View all button that opens the Shared page for that device. Shared can be searched, and every file has its own box with a preview and a menu behind three dots, as on Android",
+        "The cover in the player no longer flashes away between songs. More than one player shows as one large player with the others as small lines below it, on the Mac and on Android. Tap a line to bring it forward",
+        "A link you send from your phone opens on the Mac and is also on your clipboard",
+        "Settings, Trackpad: set the pointer speed, the scroll speed and how long you hold before dragging starts",
+        "Hotspot data is counted per month. This month starts over by itself, earlier months are listed with a bar, and you set the day your month begins to match your mobile plan. Developer options have tools to fill it with test data",
+        "Light, dark and pure black are on the first page of Look and language, no longer one page deeper. The empty clipboard panel is centred"
+      ]
+    },
+    "nl": {
+      "title": "Bestanden selecteren, hotspotdata per maand en een rustigere speler",
+      "new": [
+        "Bestanden op de Mac: zoek op naam, beperk tot foto's, video, documenten en meer, en kies meerdere bestanden door er één ingedrukt te houden en over de andere te bewegen. Een vinkje neemt de plaats van het icoon in, zodat je ziet wat je koos, en Download of Verwijder werkt op allemaal",
+        "Op de pagina van een apparaat heeft Recent een knop Alles bekijken die de pagina Gedeeld voor dat apparaat opent. Gedeeld is te doorzoeken en elk bestand heeft een eigen vak met voorbeeld en een menu achter drie puntjes, zoals op Android",
+        "De cover in de speler flitst niet meer weg tussen nummers. Meer dan één speler staat als één grote speler met de andere als kleine regels eronder, op de Mac en op Android. Tik op een regel om hem naar voren te halen",
+        "Een link die je vanaf je telefoon stuurt opent op de Mac en staat ook op je klembord",
+        "Instellingen, Trackpad: stel de snelheid van de aanwijzer in, de scrolsnelheid en hoe lang je vasthoudt voordat slepen begint",
+        "Hotspotdata wordt per maand geteld. Deze maand begint vanzelf opnieuw, eerdere maanden staan in een lijst met een balk, en je stelt de dag in waarop je maand begint zodat het bij je abonnement past. De ontwikkelaarsopties hebben hulpmiddelen om het met testdata te vullen",
+        "Licht, donker en zuiver zwart staan op de eerste pagina van Uiterlijk en taal, niet meer een pagina dieper. Het lege klembordpaneel staat in het midden"
+      ]
+    }
+  },
+  {
     "version": "0.1.35",
     "date": "2026-10-04",
     "en": {

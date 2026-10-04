@@ -15,6 +15,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.ui.theme.ThemeMode
+import nl.markmaaktmedia.tandem.ui.theme.LocalAppearance
+import nl.markmaaktmedia.tandem.ui.components.SwitchRow
+import nl.markmaaktmedia.tandem.ui.components.SectionHeader
+import nl.markmaaktmedia.tandem.graph
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import nl.markmaaktmedia.tandem.ui.Route
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
 import nl.markmaaktmedia.tandem.ui.components.ContentRow
@@ -42,8 +49,32 @@ internal fun LookPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
     var pendingLanguage by remember { mutableStateOf<String?>(null) }
     val current = appLanguage()
 
+    val prefs = context.graph.prefs
+    val scope = rememberCoroutineScope()
+    val appearance = LocalAppearance.current
+
     SettingsPageFrame(stringResource(R.string.settings_look), onBack) {
         Spacer(Modifier.height(16.dp))
+        // Light, dark and pure black are what people change most, so they are here and not a page further.
+        SectionHeader(stringResource(R.string.appearance_theme))
+        SettingsGroup {
+            SettingsTarget(FocusKeys.AppearanceMode, 0, 2) {
+                ContentRow(0, 2, TandemIcons.DarkMode, stringResource(R.string.appearance_mode)) {
+                    SegmentedPillRow(
+                        options = ThemeMode.entries,
+                        selected = appearance.mode,
+                        label = { context.getString(when (it) { ThemeMode.SYSTEM -> R.string.language_system; ThemeMode.LIGHT -> R.string.appearance_light; ThemeMode.DARK -> R.string.appearance_dark }) },
+                        onSelect = { scope.launch { prefs.setThemeMode(it) } },
+                        modifier = Modifier.fillMaxWidth(),
+                        equalWidth = true,
+                    )
+                }
+            }
+            SettingsTarget(FocusKeys.AppearanceBlack, 1, 2) {
+                SwitchRow(1, 2, TandemIcons.DarkMode, stringResource(R.string.appearance_black), stringResource(R.string.appearance_black_sub), appearance.pureBlack, { scope.launch { prefs.setPureBlack(it) } })
+            }
+        }
+        Spacer(Modifier.height(12.dp))
         SettingsGroup {
             ActionRow(
                 0, 2, TandemIcons.Palette, stringResource(R.string.settings_appearance), stringResource(R.string.settings_appearance_sub),

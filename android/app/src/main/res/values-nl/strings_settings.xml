@@ -86,4 +86,21 @@
     <string name="settings_kw_about_source">github, broncode, open source, licentie, agpl, repository, code, website</string>
     <string name="settings_kw_about_developer">ontwikkelaar, debug, voorvertoning, onboarding, testen, toon, nepspeler, developer</string>
     <string name="settings_kw_about_reset">terugzetten, wissen, fabrieksinstellingen, vergeten, gegevens wissen, ontkoppelen, opnieuw beginnen, reset</string>
+
+    <!-- Trackpad -->
+    <string name="settings_cat_trackpad">Trackpad</string>
+    <string name="pad_speed">Snelheid van de aanwijzer</string>
+    <string name="pad_speed_sub">Hoe ver de aanwijzer op de computer beweegt bij een veeg van je vinger</string>
+    <string name="pad_scroll">Scrolsnelheid</string>
+    <string name="pad_scroll_sub">Hoe snel twee vingers scrollen</string>
+    <string name="pad_hold">Ingedrukt houden om te slepen</string>
+    <string name="pad_hold_sub">Hoe lang een vinger stil blijft voordat de linkerknop wordt vastgehouden</string>
+    <string name="pad_percent">%1$d%%</string>
+    <string name="pad_ms">%1$d ms</string>
+    <string name="pad_reset">Standaardwaarden herstellen</string>
+    <string name="pad_reset_sub">Snelheid, scrollen en slepen</string>
+    <string name="settings_kw_trackpad">muis, aanwijzer, cursor, snelheid, gevoeligheid, touchpad, slepen, scrollen, trackpad</string>
+    <string name="settings_kw_pad_speed">muissnelheid, aanwijzersnelheid, cursorsnelheid, gevoeligheid, sneller, langzamer</string>
+    <string name="settings_kw_pad_scroll">scrolsnelheid, scrollen, twee vingers, sneller, langzamer</string>
+    <string name="settings_kw_pad_hold">slepen, vasthouden, ingedrukt houden, vertraging, lang drukken, bestanden verplaatsen, linkerknop</string>
 </resources>

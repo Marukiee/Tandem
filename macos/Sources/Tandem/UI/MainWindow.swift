@@ -151,7 +151,14 @@ struct MainWindow: View {
                 if let device = model.device(id) {
                     // One DeviceDetail for every device, so its glyph and title can morph
                     // from one device to the next instead of being replaced.
-                    DeviceDetail(device: device, onBrowse: { selection = .files(device.id) }).transition(.page)
+                    DeviceDetail(
+                        device: device,
+                        onBrowse: { selection = .files(device.id) },
+                        onViewAll: {
+                            model.sharedDeviceFilter = device.id
+                            selection = .shared
+                        }
+                    ).transition(.page)
                 } else {
                     Color.clear
                 }

@@ -1,3 +1,4 @@
+import QuickLookThumbnailing
 import SwiftUI
 import TandemCore
 
@@ -319,16 +320,10 @@ struct TransferRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ZStack {
-                Circle().fill(iconTint.opacity(0.16))
-                Image(systemName: symbol)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(iconTint)
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .frame(width: 34, height: 34)
-            .scaleEffect(hovering ? 1.06 : 1)
-            .animation(.tandemSpringy, value: hovering)
+            leading
+                .frame(width: 40, height: 40)
+                .scaleEffect(hovering ? 1.05 : 1)
+                .animation(.tandemSpringy, value: hovering)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
@@ -354,21 +349,55 @@ struct TransferRow: View {
             }
 
             Spacer(minLength: 0)
-
-            if hovering, model.canOpen(item) {
-                Button {
-                    model.reveal(item)
-                } label: {
-                    Image(systemName: "folder").font(.callout)
-                }
-                .buttonStyle(.icon(size: 28))
-                .help("Open File Location")
-                .transition(.opacity.combined(with: .scale(scale: 0.8)))
-            }
         }
-        .padding(.vertical, 7)
+        .padding(.vertical, 6)
         .animation(.tandem, value: item.state)
         .animation(.tandemSpringy, value: hovering)
+        .task(id: item.state == .done ? item.location : nil) { await loadThumbnail() }
+    }
+
+    @LocalState private var thumbnail: NSImage?
+
+    /// The picture of the file when there is one to show, otherwise what state it is in.
+    @ViewBuilder
+    private var leading: some View {
+        if let thumbnail {
+            Image(nsImage: thumbnail)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                .overlay(alignment: .bottomTrailing) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 14))
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, Color.green)
+                        .offset(x: 4, y: 4)
+                }
+        } else {
+            ZStack {
+                Circle().fill(iconTint.opacity(0.16))
+                Image(systemName: symbol)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(iconTint)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+        }
+    }
+
+    private func loadThumbnail() async {
+        guard item.state == .done, model.canOpen(item), let path = model.filePath(item) else {
+            thumbnail = nil
+            return
+        }
+        let request = QLThumbnailGenerator.Request(
+            fileAt: URL(fileURLWithPath: path),
+            size: CGSize(width: 40, height: 40),
+            scale: 2,
+            representationTypes: .thumbnail
+        )
+        let made = try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: request)
+        thumbnail = made?.nsImage
     }
 
     private var symbol: String {
@@ -394,14 +423,33 @@ struct TransferEntry: View {
     @Environment(EngineModel.self) private var model
     let item: TransferItem
     let peerName: String
+    /// Where the slab sits in its list, so the first and the last are rounder than the ones between.
+    var first = true
+    var last = true
     @FocusState private var focused: Bool
+
+    private var shape: UnevenRoundedRectangle {
+        let outer: CGFloat = 22, inner: CGFloat = 7
+        return UnevenRoundedRectangle(
+            topLeadingRadius: first ? outer : inner, bottomLeadingRadius: last ? outer : inner,
+            bottomTrailingRadius: last ? outer : inner, topTrailingRadius: first ? outer : inner,
+            style: .continuous
+        )
+    }
 
     var body: some View {
         Hoverable { hovering in
-            TransferRow(item: item, peerName: peerName, hovering: hovering)
+            HStack(spacing: 6) {
+                TransferRow(item: item, peerName: peerName, hovering: hovering)
+                menu(hovering: hovering)
+            }
         }
-        .padding(.horizontal, 10)
-        .hoverHighlight(radius: Metrics.cardInner, tint: focused ? Palette.indigo : .primary, selected: focused)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 2)
+        .background(shape.fill(Color.primary.opacity(0.055)))
+        .hoverHighlight(radius: 12, tint: focused ? Palette.indigo : .primary, selected: focused)
+        .clipShape(shape)
+        .contentShape(shape)
         .onTapGesture {
             focused = true
             model.open(item)
@@ -421,6 +469,24 @@ struct TransferEntry: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .help(model.canOpen(item) ? Text("Open") : Text(""))
+    }
+
+    /// The three dots of the Android app: everything the right click offers, where it can be seen.
+    private func menu(hovering: Bool) -> some View {
+        Menu {
+            TransferMenu(item: item)
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(.secondary)
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(Color.primary.opacity(hovering ? 0.12 : 0.07)))
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("More")
     }
 }
 
