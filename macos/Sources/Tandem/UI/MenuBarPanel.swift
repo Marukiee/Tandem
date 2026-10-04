@@ -43,6 +43,8 @@ struct MenuBarPanel: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
+            MenuClipboardRow()
+
             MenuNowPlaying()
 
             UpdateBanner(compact: true)
@@ -141,6 +143,40 @@ struct MenuBarPanel: View {
                 NotificationCenter.default.post(name: .tandemShowPairing, object: nil)
             }
         }
+    }
+}
+
+/// The way into the clipboard history from the menu bar: a row like a device's, with the shortcut on it.
+private struct MenuClipboardRow: View {
+    var body: some View {
+        let history = ClipboardHistory.shared
+        Button {
+            ClipboardPanelController.shared.show()
+        } label: {
+            Hoverable { hovering in
+                HStack(spacing: 10) {
+                    Image(systemName: "doc.on.clipboard.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Palette.indigo)
+                        .frame(width: 36, height: 36)
+                        .background(Palette.indigo.opacity(0.14), in: Circle())
+                        .scaleEffect(hovering ? 1.06 : 1)
+                        .animation(.tandemSpringy, value: hovering)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Clipboard history").font(.callout.weight(.semibold))
+                        Text(history.enabled ? String(localized: "\(history.items.count) saved") : String(localized: "Off"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 4)
+                    if history.hotkeyOn { KeyCap(history.hotkey.display) }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .hoverHighlight(radius: 18)
+            }
+        }
+        .buttonStyle(.plain)
     }
 }
 

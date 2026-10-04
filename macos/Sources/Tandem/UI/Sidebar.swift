@@ -7,6 +7,7 @@ enum SidebarSelection: Hashable {
     case files(String)
     case shared
     case notifications
+    case clipboard
 }
 
 /// Two clearly separate groups: the devices, with how many of them are reachable, and
@@ -22,7 +23,7 @@ struct Sidebar: View {
     @Binding var showPairing: Bool
 
     private var order: [SidebarSelection] {
-        model.devices.map { .device($0.id) } + [.shared, .notifications]
+        model.devices.map { .device($0.id) } + [.shared, .notifications, .clipboard]
     }
 
     var body: some View {
@@ -55,6 +56,11 @@ struct Sidebar: View {
                     selection = .notifications
                 } content: {
                     NotificationsRow()
+                }
+                SidebarButton(selected: selection == .clipboard) {
+                    selection = .clipboard
+                } content: {
+                    ClipboardRow()
                 }
             }
             .padding(.horizontal, 10)
@@ -245,6 +251,18 @@ private struct NotificationsRow: View {
             symbol: "bell.fill",
             title: "Notifications",
             subtitle: count == 0 ? String(localized: "Nothing yet") : String(localized: "\(count) from your phones")
+        )
+    }
+}
+
+private struct ClipboardRow: View {
+    var body: some View {
+        let history = ClipboardHistory.shared
+        let count = history.items.count
+        SideRow(
+            symbol: "doc.on.clipboard.fill",
+            title: "Clipboard",
+            subtitle: !history.enabled ? String(localized: "Off") : (count == 0 ? String(localized: "Nothing yet") : String(localized: "\(count) saved"))
         )
     }
 }

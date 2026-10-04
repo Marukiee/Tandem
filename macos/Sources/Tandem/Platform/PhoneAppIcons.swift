@@ -4,8 +4,8 @@ import Observation
 /// The icons of the apps on the phones, as the phones send them, so a notification and the list of notifications can
 /// show which app they came from. Kept on disk, because a phone sends an icon once and not at every start.
 @MainActor @Observable
-final class AppIcons {
-    static let shared = AppIcons()
+final class PhoneAppIcons {
+    static let shared = PhoneAppIcons()
 
     /// Counts the icons that have arrived, so a view that showed a placeholder shows the icon when it comes.
     private(set) var version = 0

@@ -969,6 +969,13 @@ pub fn tandem_media_visible(local: Vec<TandemMediaPlayer>, remote: Vec<TandemMed
     crate::media::visible(&local, &remote).into_iter().map(Into::into).collect()
 }
 
+/// The one-time verification code in the text of a message or notification, or nothing. Every app calls this one
+/// function, so a code is recognised the same way on the phone, the Mac and Windows.
+#[uniffi::export]
+pub fn tandem_find_code(text: String) -> Option<String> {
+    crate::otp::find_code(&text)
+}
+
 // ---- Hotspot over Bluetooth ------------------------------------------------------
 
 /// The bytes a hotspot request signs. Both apps call this, so they cannot disagree.

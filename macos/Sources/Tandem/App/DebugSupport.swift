@@ -9,6 +9,8 @@ import TandemCore
 /// A few more variables choose what is on screen, so a snapshot can reach places a
 /// person would click to: `TANDEM_DEBUG_PAGE=shared` or `files` or `files:<device name>`, `TANDEM_DEBUG_SETTINGS=<section>`
 /// and `TANDEM_DEBUG_PANEL=1` (the menu bar panel in an ordinary window).
+/// `TANDEM_DEBUG_CLIPBOARD=seed` fills the clipboard history with samples and `=panel` also opens the quick panel,
+/// which then stays open when it loses the focus; `TANDEM_DEBUG_PAGE=clipboard` opens the page of the history.
 /// `TANDEM_DEBUG_NO_WINDOW=1` closes the main window a few seconds after the start, which is
 /// how the app runs most of the day and the state to measure its cost in. SIGUSR2 closes it
 /// at any moment, like the red button.
@@ -42,6 +44,12 @@ enum DebugSupport {
         closer.resume()
         closeSource = closer
 
+        if let mode = variable("TANDEM_DEBUG_CLIPBOARD") {
+            seedClipboard()
+            if mode == "panel" {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { ClipboardPanelController.shared.show() }
+            }
+        }
         if variable("TANDEM_DEBUG_SETTINGS") != nil {
             // In a window of its own rather than through the Settings scene, which only opens for an app that is in front.
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSettingsWindow() }
@@ -66,6 +74,7 @@ enum DebugSupport {
     static func initialSelection(devices: [TandemDevice]) -> SidebarSelection? {
         guard let page = variable("TANDEM_DEBUG_PAGE") else { return nil }
         if page == "shared" { return .shared }
+        if page == "clipboard" { return .clipboard }
         // `files` is the files of the first device that has some, `files:Name` the ones of that device.
         if page.hasPrefix("files") {
             let wanted = page.dropFirst("files".count).dropFirst()
@@ -80,6 +89,53 @@ enum DebugSupport {
     static var filesSelection: String? { variable("TANDEM_DEBUG_FILES_SELECT") }
     /// Opens the files as a drive in Finder as soon as the page is there.
     static var mountDrive: Bool { variable("TANDEM_DEBUG_MOUNT") != nil }
+
+    /// While a debug run shows the quick panel it must not close when the app is not the one in front.
+    static var keepsPanelOpen: Bool { variable("TANDEM_DEBUG_CLIPBOARD") == "panel" }
+
+    /// Samples for the clipboard history, so a snapshot has something to show.
+    private static func seedClipboard() {
+        let history = ClipboardHistory.shared
+        history.clear(keepingPinned: false)
+        let now = Date()
+        func item(_ minutes: Double, _ kind: ClipItem.Kind, _ text: String, app: String?, name: String?, pinned: Bool = false, device: String? = nil, symbol: String? = nil) -> ClipItem {
+            ClipItem(
+                id: UUID(), kind: kind, preview: text, text: text, characters: text.count, lines: text.reduce(1) { $1.isNewline ? $0 + 1 : $0 },
+                imageWidth: 0, imageHeight: 0, imageBytes: 0, date: now.addingTimeInterval(-minutes * 60), pinned: pinned,
+                app: app, appName: name, device: device, devicePlatform: symbol, hash: ClipboardHistory.digest(Data(text.utf8))
+            )
+        }
+        let samples = [
+            item(0.2, .text, "Tandem sends your clipboard between your devices without a server", app: "com.apple.Notes", name: "Notes"),
+            item(3, .link, "https://github.com/Marukiee/Tandem/releases/latest", app: "com.apple.Safari", name: "Safari"),
+            item(9, .text, "Pixel 9 said: pick up bread, milk and the parcel from the neighbours", app: nil, name: nil, device: "Pixel 9", symbol: "iphone"),
+            item(25, .text, "func paste(number: Int) {\n    let list = items\n    guard number >= 1, number <= list.count else { return }\n    onFinish?(list[number - 1], pastes)\n}", app: "com.apple.Terminal", name: "Terminal"),
+            item(70, .text, "NL91 ABNA 0417 1643 00", app: "com.apple.Safari", name: "Safari", pinned: true),
+            item(240, .link, "https://developer.apple.com/documentation/swiftui/glasseffectcontainer", app: "com.apple.Safari", name: "Safari"),
+            item(1500, .text, "Dear Mark,\n\nThanks for the quick reply. The invoice is attached, and the delivery is planned for next Tuesday between nine and twelve.\n\nKind regards,\nSam", app: "com.apple.TextEdit", name: "TextEdit"),
+        ]
+        for sample in samples { history.debugInsert(sample) }
+
+        // A picture, drawn here.
+        let size = NSSize(width: 1280, height: 720)
+        let image = NSImage(size: size, flipped: false) { rect in
+            NSGradient(colors: [NSColor(Palette.indigo), NSColor(Palette.rose)])?.draw(in: rect, angle: 35)
+            NSColor.white.withAlphaComponent(0.85).setFill()
+            NSBezierPath(roundedRect: NSRect(x: 380, y: 210, width: 520, height: 300), xRadius: 60, yRadius: 60).fill()
+            return true
+        }
+        if let tiff = image.tiffRepresentation, let prepared = ClipImage.prepare(data: tiff, isPNG: false) {
+            let id = UUID()
+            try? prepared.png.write(to: history.imageURL(id))
+            if let thumbnail = prepared.thumbnail { try? thumbnail.write(to: history.thumbnailURL(id)) }
+            history.debugInsert(ClipItem(
+                id: id, kind: .image, preview: "", text: nil, characters: 0, lines: 0,
+                imageWidth: prepared.width, imageHeight: prepared.height, imageBytes: prepared.png.count,
+                date: now.addingTimeInterval(-45 * 60), pinned: false, app: "com.apple.Preview", appName: "Preview",
+                device: nil, devicePlatform: nil, hash: prepared.hash
+            ))
+        }
+    }
 
     static func initialSettingsSection() -> SettingsSection? {
         variable("TANDEM_DEBUG_SETTINGS").flatMap { SettingsSection(rawValue: $0) }
@@ -124,7 +180,8 @@ enum DebugSupport {
 
     static func snapshot(into directory: URL) {
         for (index, window) in NSApp.windows.enumerated() where window.isVisible && window.contentView != nil {
-            guard let view = window.contentView?.superview ?? window.contentView,
+            // A window without a title bar has no frame around its content that is worth drawing.
+            guard let view = (window.styleMask.contains(.titled) ? window.contentView?.superview : nil) ?? window.contentView,
                   let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)
             else { continue }
             view.cacheDisplay(in: view.bounds, to: rep)

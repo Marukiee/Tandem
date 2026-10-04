@@ -20,6 +20,7 @@ import uniffi.tandem_core.TandemButton
 import uniffi.tandem_core.TandemEvent
 import uniffi.tandem_core.TandemNotification
 import uniffi.tandem_core.TandemPlatform
+import uniffi.tandem_core.tandemFindCode
 
 /**
  * Sends this phone's notifications to your other devices, and carries their replies
@@ -126,7 +127,9 @@ class MirrorListener : NotificationListenerService() {
             ongoing = n.flags and Notification.FLAG_ONGOING_EVENT != 0,
             silent = n.priority < Notification.PRIORITY_DEFAULT && Build.VERSION.SDK_INT < 26,
             buttons = buttons,
-            otp = OtpDetector.find("$title $text"),
+            // The core's detector first, which knows about banks, dashed codes and what is not a code. The older
+            // patterns below stay as a net under it, so nothing that was found before is lost.
+            otp = "$title $text".let { tandemFindCode(it) ?: OtpDetector.find(it) },
             progressDone = null,
             progressTotal = null,
         )
@@ -202,7 +205,7 @@ class MirrorListener : NotificationListenerService() {
     }
 }
 
-/** Finds a verification code in a text message, so it can go straight to the clipboard. */
+/** The simple patterns that were here first. The core's `tandemFindCode` is asked before this one. */
 object OtpDetector {
     private val patterns = listOf(
         Regex("""(?i)(?:code|kode|otp|pin|verification|verificatie|wachtwoord|password)\D{0,25}(\d{4,8})"""),

@@ -6,7 +6,7 @@ import TandemCore
 
 /// The sections of the Settings window, in the order System Settings would list them.
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case general, devices, files, access, hotspot, updates, about
+    case general, devices, files, clipboard, access, hotspot, updates, about
 
     var id: String { rawValue }
 
@@ -15,6 +15,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .general: "General"
         case .devices: "Devices"
         case .files: "Files"
+        case .clipboard: "Clipboard"
         case .access: "Access"
         case .hotspot: "Hotspot"
         case .updates: "Updates"
@@ -27,6 +28,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .general: "gearshape"
         case .devices: "laptopcomputer.and.iphone"
         case .files: "folder"
+        case .clipboard: "doc.on.clipboard"
         case .access: "hand.raised"
         case .hotspot: "personalhotspot"
         case .updates: "arrow.down.circle"
@@ -40,6 +42,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .general: 720
         case .devices: 460
         case .files: 680
+        case .clipboard: 720
         case .access: 460
         case .hotspot: 470
         case .updates: 330
@@ -72,6 +75,7 @@ struct SettingsView: View {
         case .general: GeneralSettings()
         case .devices: DevicesSettings()
         case .files: FileSettings()
+        case .clipboard: ClipboardSettings()
         case .access: AccessSettings()
         case .hotspot: HotspotSettings()
         case .updates: UpdateSettings()
@@ -184,7 +188,7 @@ private struct GeneralSettings: View {
                     }
                 DescribedToggle(
                     "Copy codes from text messages to the clipboard",
-                    subtitle: "You also get a notification when a code was copied.",
+                    subtitle: "You also get a notification when a code was copied. Without this, the notification has a Copy code button.",
                     isOn: $copyCodes
                 )
                 DescribedToggle(

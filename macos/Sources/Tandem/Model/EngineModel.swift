@@ -288,6 +288,25 @@ final class EngineModel {
         notifier.onMirrorAction = { [weak self] device, key, button, reply, dismiss in
             Task { try? await self?.engine?.notificationAction(target: device, key: key, button: button, reply: reply, dismiss: dismiss) }
         }
+        notifier.onCopyCode = { [weak self] code in self?.copyCode(code) }
+    }
+
+    /// Puts a verification code on the clipboard, marked as secret so no clipboard history keeps it. The code is never
+    /// written to a log.
+    private func putOnClipboard(_ code: String) {
+        if let clipboard {
+            clipboard.applyConcealed(code)
+        } else {
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(code, forType: .string)
+        }
+    }
+
+    /// The Copy code button of a notification or of the list: copies and says so, also when no window is open.
+    func copyCode(_ code: String) {
+        putOnClipboard(code)
+        FloatingToast.show(String(localized: "Code \(code) copied"), symbol: "key.fill")
     }
 
     /// The dev build (bundle id ending in .dev) keeps everything apart from the real app,
@@ -388,14 +407,17 @@ final class EngineModel {
             removedFromCircle = true
 
         case let .clipboard(from, text, _):
-            clipboard?.apply(text)
             let name = device(from)?.name ?? "?"
+            // Before the pasteboard changes, so the history knows it came from the device and not from the app in front.
+            recordIncoming(text, from: from)
+            clipboard?.apply(text)
             showToast(String(localized: "Clipboard from \(name)"))
 
         case let .shareText(from, text, isUrl, open):
             if open, isUrl, let url = URL(string: text) {
                 NSWorkspace.shared.open(url)
             } else {
+                recordIncoming(text, from: from)
                 clipboard?.apply(text)
                 let name = device(from)?.name ?? "?"
                 showToast(String(localized: "Text from \(name) is on your clipboard"))
@@ -421,16 +443,18 @@ final class EngineModel {
         case let .notification(from, notification):
             guard device(from)?.notificationsEnabled ?? true else { return }
             let deviceName = device(from)?.name ?? "Phone"
-            if let code = notification.otp, UserDefaults.standard.object(forKey: "copyCodes") as? Bool ?? true {
-                clipboard?.apply(code)
+            // The phone looks for the code (with the core's function) and sends it along.
+            let code = notification.otp
+            if let code, UserDefaults.standard.object(forKey: "copyCodes") as? Bool ?? true {
+                putOnClipboard(code)
                 showToast(String(localized: "Code \(code) copied"))
                 Notifier.shared.postCodeCopied(code: code, deviceName: deviceName, key: notification.key)
             }
-            Notifier.shared.postMirrored(device: from, deviceName: deviceName, notification: notification)
-            remember(notification, from: from, deviceName: deviceName)
+            Notifier.shared.postMirrored(device: from, deviceName: deviceName, notification: notification, code: code)
+            remember(notification, from: from, deviceName: deviceName, code: code)
 
         case let .appIcon(_, appId, png):
-            AppIcons.shared.store(appId: appId, png: png)
+            PhoneAppIcons.shared.store(appId: appId, png: png)
 
         case let .notificationRemoved(from, key):
             Notifier.shared.remove(id: "mirror.\(from).\(key)")
@@ -489,6 +513,12 @@ final class EngineModel {
         case .audioStart, .notificationAction, .callAction, .dial, .ring, .captureRequested, .captureCancelled:
             break
         }
+    }
+
+    /// Text that a device sent goes into the clipboard history with that device as its source.
+    private func recordIncoming(_ text: String, from id: String) {
+        guard let source = device(id) else { return }
+        ClipboardHistory.shared.record(text: text, app: nil, appName: nil, device: source.name, devicePlatform: source.platform.symbol)
     }
 
     // MARK: Speaker
@@ -1098,13 +1128,14 @@ final class EngineModel {
         }
     }
 
-    private func remember(_ notification: TandemNotification, from device: String, deviceName: String) {
+    private func remember(_ notification: TandemNotification, from device: String, deviceName: String, code: String?) {
         // Ongoing ones (music, navigation, downloads) come and go; they do not belong on a list.
         guard !notification.ongoing else { return }
         let item = MirroredNotification(
             device: device, deviceName: deviceName, key: notification.key,
             appId: notification.appId, appName: notification.appName, title: notification.title, text: notification.text,
-            date: notification.ts > 0 ? Date(timeIntervalSince1970: TimeInterval(notification.ts) / 1000) : Date()
+            date: notification.ts > 0 ? Date(timeIntervalSince1970: TimeInterval(notification.ts) / 1000) : Date(),
+            code: code
         )
         mirrored.removeAll { $0.device == device && $0.key == notification.key }
         mirrored.insert(item, at: 0)
@@ -1159,4 +1190,6 @@ struct MirroredNotification: Identifiable, Equatable {
     let title: String
     let text: String
     let date: Date
+    /// The verification code in it, if there is one, for a button that copies it.
+    var code: String? = nil
 }
