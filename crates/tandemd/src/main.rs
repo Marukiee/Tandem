@@ -19,6 +19,7 @@ use tandem_core::transfer::OutgoingFile;
 use tandem_core::{DeviceId, Engine, EngineConfig};
 
 mod control;
+mod pretend_screen;
 
 use control::{ask_daemon, forget, serve_control};
 
@@ -52,6 +53,12 @@ struct Cli {
     /// With --pretend-player: the track is paused, to see how the apps show a player that stands still.
     #[arg(long, global = true, hide = true)]
     pretend_paused: bool,
+    /// Pretend to be a screen: play this raw Annex B H.264 clip for any device that asks for the screen, to try a viewer.
+    #[arg(long, global = true, hide = true)]
+    pretend_screen: Option<PathBuf>,
+    /// With --pretend-screen: the size of the clip, written 1280x720.
+    #[arg(long, global = true, hide = true)]
+    pretend_screen_size: Option<String>,
     #[command(subcommand)]
     command: Command,
 }
@@ -171,6 +178,9 @@ async fn start_engine(cli: &Cli) -> Result<(Engine, PathBuf)> {
     cfg.loopback = cli.loopback;
     cfg.enable_mdns = !cli.no_mdns;
     cfg.caps = vec!["clipboard".into(), "share".into()];
+    if cli.pretend_screen.is_some() {
+        cfg.caps.push("screen.host".into());
+    }
     let secrets = Arc::new(FileSecretStore::new(Store::new(&data_dir)?));
     let download_dir = cli.download_dir.clone().unwrap_or_else(default_download_dir);
     let files = Arc::new(DesktopFiles { download_dir });
@@ -588,6 +598,9 @@ async fn main() -> Result<()> {
     match &cli.command {
         Command::Run => {
             println!("{}", describe(&engine));
+            if let Some(clip) = &cli.pretend_screen {
+                pretend_screen::install(&engine, clip, cli.pretend_screen_size.as_deref())?;
+            }
             if let Some(text) = &cli.pretend_battery {
                 if let Ok(level) = text.trim_end_matches('+').parse::<u8>() {
                     let battery = tandem_core::proto::Battery { level, charging: text.ends_with('+'), power_save: false };

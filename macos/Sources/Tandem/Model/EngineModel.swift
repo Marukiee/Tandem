@@ -79,7 +79,7 @@ final class EngineModel {
     @ObservationIgnored private var clipboard: ClipboardMonitor?
     @ObservationIgnored private let network = NetworkWatcher()
     @ObservationIgnored private let power = PowerWatcher()
-    @ObservationIgnored private let injector = InputInjector()
+    @ObservationIgnored let injector = InputInjector()
     @ObservationIgnored private var statusTimer: Timer?
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     @ObservationIgnored let hotspot = HotspotCoordinator()
@@ -186,7 +186,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media"],
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
@@ -213,6 +213,7 @@ final class EngineModel {
     }
 
     func stop() async {
+        ScreenHost.shared.shutdown()
         await drives.ejectAll(engine: engine)
         injector.releaseAll()
         clipboard?.stop()
@@ -253,6 +254,7 @@ final class EngineModel {
         network.start()
 
         hotspot.attach(model: self)
+        ScreenHost.shared.attach(engine: engine, model: self)
         startBleWatch()
         observeSleep()
         startMedia()
