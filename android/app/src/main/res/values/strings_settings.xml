@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Settings: overview, pages and search -->
+    <string name="settings_cat_sharing">Devices and sharing</string>
+    <string name="settings_cat_updates">Updates and backup</string>
+    <string name="settings_cat_about">About and developer</string>
+    <string name="settings_search_hint">Search settings</string>
+    <string name="settings_search_clear">Clear search</string>
+    <string name="settings_search_none_title">Nothing found</string>
+    <string name="settings_search_none_body">No setting matches \"%1$s\". Try another word.</string>
+    <string name="settings_sum_on_of">%1$d of %2$d on</string>
+    <string name="settings_sum_all_on">All on</string>
+    <string name="settings_sum_all_off">All off</string>
+    <string name="settings_sum_permissions">%1$d of %2$d permissions on</string>
+    <string name="settings_sum_files_needs_access">Needs access to all files</string>
+    <string name="settings_sum_files_off">Sharing is off</string>
+    <string name="settings_sum_files_on">Sharing is on</string>
+    <string name="settings_sum_version">Version %1$s</string>
+    <string name="settings_sum_up_to_date">Version %1$s, up to date</string>
+    <string name="settings_github" translatable="false">github.com/Marukiee/Tandem</string>
+    <plurals name="settings_search_results">
+        <item quantity="one">%d result</item>
+        <item quantity="other">%d results</item>
+    </plurals>
+    <plurals name="settings_sum_folders">
+        <item quantity="one">%d folder shared</item>
+        <item quantity="other">%d folders shared</item>
+    </plurals>
+
+    <!-- Other words for each setting, separated by commas, used by the search -->
+    <string name="settings_kw_look">appearance, theme, colour, color, dark, light, language, translate, look</string>
+    <string name="settings_kw_look_appearance">theme, colour, color, dark mode, light mode, black, palette, material you, wallpaper, style</string>
+    <string name="settings_kw_look_mode">dark mode, light mode, night mode, theme, dark theme, light theme, system theme, auto, automatic</string>
+    <string name="settings_kw_look_black">amoled, oled, black background, true black, battery, dark</string>
+    <string name="settings_kw_look_accent">colour, color, accent colour, wallpaper, material you, dynamic colour, indigo, ocean, forest, amber, rose, plum, slate</string>
+    <string name="settings_kw_look_style">palette, tonal spot, vibrant, expressive, fruit salad, fidelity, monochrome, colour scheme, colour style</string>
+    <string name="settings_kw_look_language">language, translate, english, dutch, nederlands, locale, region, system language</string>
+    <string name="settings_kw_sharing">this phone, name, id, share, screenshots, bluetooth, clipboard, music, speaker</string>
+    <string name="settings_kw_sharing_name">device name, rename, phone name, nickname, call this phone</string>
+    <string name="settings_kw_sharing_id">identity, identifier, key, fingerprint, serial, device id</string>
+    <string name="settings_kw_sharing_screenshot">screenshots, screen capture, share screenshot, photos, quick share, offer</string>
+    <string name="settings_kw_sharing_ble">bluetooth, ble, offline, no wifi, no network, low energy, clipboard, notifications</string>
+    <string name="settings_kw_sharing_tile">quick settings, tile, send clipboard, copy, paste, shortcut</string>
+    <string name="settings_kw_sharing_music">music, media, now playing, playback, player, controls, spotify, youtube, sound</string>
+    <string name="settings_kw_sharing_media_apps">apps, music apps, media apps, exclude, hide, allow list, which apps</string>
+    <string name="settings_kw_sharing_speaker">audio, sound, output, speaker, play through phone, mac sound, volume</string>
+    <string name="settings_kw_notif">mirror, calls, codes, alerts, messages, notifications</string>
+    <string name="settings_kw_notif_mirror">mirror, forward, notifications, alerts, reply, mac</string>
+    <string name="settings_kw_notif_apps">apps, which apps, exclude, block, mute, filter</string>
+    <string name="settings_kw_notif_codes">verification code, otp, sms code, two factor, 2fa, authentication, copy code, clipboard</string>
+    <string name="settings_kw_notif_calls">phone calls, incoming call, caller id, answer, decline, ringing</string>
+    <string name="settings_kw_perm">permissions, access, allow, rights, privacy, settings</string>
+    <string name="settings_kw_perm_notifications">notifications, alerts, push, show notifications, test notification</string>
+    <string name="settings_kw_perm_battery">battery, background, doze, battery optimisation, battery optimization, unrestricted, sleep</string>
+    <string name="settings_kw_perm_photos">photos, images, media, gallery, storage, screenshots</string>
+    <string name="settings_kw_perm_listener">notification listener, read notifications, access, mirror, special access</string>
+    <string name="settings_kw_perm_phone">phone, calls, contacts, call log, sms, dial, answer</string>
+    <string name="settings_kw_perm_bluetooth">bluetooth, nearby devices, ble, wireless</string>
+    <string name="settings_kw_perm_camera">camera, scan, qr, pairing code, qr code</string>
+    <string name="settings_kw_perm_install">install apps, unknown sources, update, apk, sideload</string>
+    <string name="settings_kw_hotspot">tethering, wifi sharing, internet, mobile data, share connection, mac</string>
+    <string name="settings_kw_hotspot_setup">checklist, setup, requirements, ready, bluetooth, notifications</string>
+    <string name="settings_kw_hotspot_share">let my mac use my hotspot, turn on hotspot, tethering, enable, mac internet</string>
+    <string name="settings_kw_hotspot_roaming">roaming, abroad, travel, foreign, mobile data</string>
+    <string name="settings_kw_hotspot_test">test, try, check hotspot, trial</string>
+    <string name="settings_kw_hotspot_usage">data usage, used today, history, megabytes, gigabytes, counter, statistics</string>
+    <string name="settings_kw_hotspot_limit">limit, cap, quota, data limit, maximum, budget</string>
+    <string name="settings_kw_hotspot_method">shizuku, automatic, adb, wireless debugging, how it turns on</string>
+    <string name="settings_kw_hotspot_guide">guide, help, instructions, documentation, how to, github, manual</string>
+    <string name="settings_kw_files">files, folders, storage, webdav, drive, finder, share files, browse</string>
+    <string name="settings_kw_files_permission">all files access, manage storage, storage permission, external storage</string>
+    <string name="settings_kw_files_enabled">share, sharing, allow access, turn off, enable, visible</string>
+    <string name="settings_kw_files_write">write, edit, upload, modify, rename, replace, read only</string>
+    <string name="settings_kw_files_delete">delete, remove, erase, trash</string>
+    <string name="settings_kw_files_hidden">hidden files, dotfiles, dot files, invisible</string>
+    <string name="settings_kw_files_max">upload limit, file size, maximum, largest file, size limit</string>
+    <string name="settings_kw_files_folders">folder, share a folder, directory, path, pick folder</string>
+    <string name="settings_kw_files_activity">log, history, what happened, refused, access log, recent</string>
+    <string name="settings_kw_updates">update, upgrade, version, backup, restore, export, import</string>
+    <string name="settings_kw_updates_version">version, build, release, number, about</string>
+    <string name="settings_kw_updates_auto">automatic updates, check updates, auto update, new version, github</string>
+    <string name="settings_kw_updates_check">check for updates, update now, new version, refresh, latest</string>
+    <string name="settings_kw_backup_export">backup, export, save settings, file, json, download</string>
+    <string name="settings_kw_backup_import">restore, import, load settings, backup, file, json</string>
+    <string name="settings_kw_about">about, info, version, changelog, github, developer, reset</string>
+    <string name="settings_kw_about_changelog">changelog, release notes, what\'s new, news, history, versions, changes</string>
+    <string name="settings_kw_about_source">github, source code, open source, license, licence, agpl, repository, code, website</string>
+    <string name="settings_kw_about_developer">developer, debug, preview, onboarding, test, tone, fake player</string>
+    <string name="settings_kw_about_reset">reset, wipe, factory reset, forget, clear data, unpair, start over, remove all</string>
+</resources>
