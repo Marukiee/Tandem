@@ -13,13 +13,18 @@ import org.junit.Test
 
 class TouchpadClassifierTest {
     private val log = mutableListOf<String>()
+
+    // What the screen is told for the haptics and for the cue that the button is held, apart from the wire log.
+    private val feedbacks = mutableListOf<PadFeedback>()
+    private val dragging = mutableListOf<Boolean>()
     private val out = object : TouchpadOutput {
         override fun pointer(dx: Int, dy: Int) { log += "pointer" }
         override fun scroll(dx: Int, dy: Int) { log += "scroll" }
         override fun click(button: Int, count: Int) { log += "click($button,$count)" }
         override fun button(button: Int, down: Boolean) { log += "button($button,${if (down) "down" else "up"})" }
         override fun swipe(direction: SwipeDirection) { log += "swipe($direction)" }
-        override fun feedback(kind: PadFeedback) {}
+        override fun feedback(kind: PadFeedback) { feedbacks += kind }
+        override fun dragging(active: Boolean) { dragging += active }
     }
 
     // Sums as well, because what matters for moving is that nothing is lost on the way.
@@ -105,8 +110,8 @@ class TouchpadClassifierTest {
 
     @Test fun holdingStillThenTheTimerPicksUpTheButtonAndMovingDrags() {
         frame(0, f(1, 100f, 100f))
-        assertEquals(350L, pad.deadline())
-        pad.onTimer(350)
+        assertEquals(280L, pad.deadline())
+        pad.onTimer(280)
         frame(400, f(1, 130f, 100f))
         up(500)
         assertLog("button(0,down)", "pointer", "button(0,up)")
@@ -121,7 +126,7 @@ class TouchpadClassifierTest {
 
     @Test fun holdWithoutMovingReleasesAsPlainDownUp() {
         frame(0, f(1, 100f, 100f))
-        pad.onTimer(350)
+        pad.onTimer(280)
         up(700)
         assertLog("button(0,down)", "button(0,up)")
     }
@@ -149,15 +154,15 @@ class TouchpadClassifierTest {
     @Test fun doubleTapThenHoldStillDragsOnTheTimer() {
         frame(0, f(1, 100f, 100f)); up(60)
         frame(150, f(2, 100f, 100f))
-        assertEquals(500L, pad.deadline())
-        pad.onTimer(500)
+        assertEquals(430L, pad.deadline())
+        pad.onTimer(430)
         up(600)
         assertLog("click(0,1)", "button(0,down)", "button(0,up)")
     }
 
     @Test fun cancelReleasesAHeldButton() {
         frame(0, f(1, 100f, 100f))
-        pad.onTimer(350)
+        pad.onTimer(280)
         pad.cancel()
         assertLog("button(0,down)", "button(0,up)")
         // and it is quiet afterwards
@@ -330,8 +335,141 @@ class TouchpadClassifierTest {
     @Test fun deadlineIsOnlySetWhileAHoldCouldStillHappen() {
         assertNull(pad.deadline())
         frame(0, f(1, 100f, 100f))
-        assertEquals(350L, pad.deadline())
+        assertEquals(280L, pad.deadline())
         frame(16, f(1, 100f, 100f), f(2, 200f, 100f))
         assertNull(pad.deadline())
+    }
+
+    // Press and hold to drag, like pressing a mouse button
+
+    @Test fun theHoldTakesTwoHundredAndEightyMilliseconds() {
+        frame(0, f(1, 100f, 100f))
+        assertEquals(280L, pad.deadline())
+        // Woken a little early (the clock of the loop is not exact): nothing yet.
+        pad.onTimer(279)
+        assertLog()
+        pad.onTimer(280)
+        assertLog("button(0,down)")
+    }
+
+    @Test fun aTapJustUnderTheHoldTimeStillClicks() {
+        frame(0, f(1, 100f, 100f))
+        up(270)
+        assertLog("click(0,1)")
+    }
+
+    @Test fun aStillFingerTicksAndTheButtonGoesDownTogether() {
+        frame(0, f(1, 100f, 100f))
+        pad.onTimer(280)
+        assertEquals(listOf(PadFeedback.DragStart), feedbacks)
+        assertEquals(listOf(true), dragging)
+        assertLog("button(0,down)")
+    }
+
+    @Test fun movingTheSameFingerDragsAndLiftingLetsGo() {
+        frame(0, f(1, 100f, 100f))
+        pad.onTimer(280)
+        frame(300, f(1, 120f, 100f))
+        frame(316, f(1, 160f, 130f))
+        frame(332, f(1, 220f, 130f))
+        up(348)
+        assertLog("button(0,down)", "pointer", "pointer", "pointer", "button(0,up)")
+        assertEquals(120, pointerX)
+        assertEquals(30, pointerY)
+        assertEquals(listOf(true, false), dragging)
+    }
+
+    @Test fun aFingerThatWobblesInsideTheSlopStillHolds() {
+        frame(0, f(1, 100f, 100f))
+        frame(60, f(1, 108f, 104f))
+        frame(140, f(1, 103f, 109f))
+        frame(220, f(1, 111f, 98f))
+        pad.onTimer(280)
+        assertLog("button(0,down)")
+        // The wobble did not move the pointer and the drag starts from where the finger is now.
+        assertEquals(0, pointerX + pointerY)
+        frame(300, f(1, 141f, 98f))
+        assertEquals(30, pointerX)
+    }
+
+    @Test fun aQuickMoveMovesThePointerAndNeverHolds() {
+        frame(0, f(1, 100f, 100f))
+        frame(16, f(1, 140f, 100f))
+        frame(32, f(1, 200f, 100f))
+        // The timer has nothing left to wait for once the finger is moving.
+        assertNull(pad.deadline())
+        pad.onTimer(280)
+        frame(400, f(1, 260f, 100f))
+        up(416)
+        assertEquals(160, pointerX)
+        assertTrue(log.none { it.startsWith("button") })
+        assertEquals(emptyList<Boolean>(), dragging)
+    }
+
+    @Test fun leavingTheSlopCircleBeforeTheHoldMovesThePointerEvenWhenTheFingerThenRests() {
+        frame(0, f(1, 100f, 100f))
+        frame(200, f(1, 130f, 100f))
+        assertNull(pad.deadline())
+        frame(300, f(1, 130f, 100f))
+        pad.onTimer(400)
+        up(500)
+        assertEquals(30, pointerX)
+        assertTrue(log.none { it.startsWith("button") })
+    }
+
+    @Test fun aTapAfterAHoldDragIsNotADoubleClick() {
+        frame(0, f(1, 100f, 100f))
+        pad.onTimer(280)
+        frame(300, f(1, 140f, 100f))
+        up(320)
+        frame(400, f(2, 100f, 100f)); up(440)
+        assertLog("button(0,down)", "pointer", "button(0,up)", "click(0,1)")
+    }
+
+    @Test fun anInterruptedHoldDragLetsGoAndTellsTheScreen() {
+        frame(0, f(1, 100f, 100f))
+        pad.onTimer(280)
+        frame(300, f(1, 140f, 100f))
+        pad.cancel()
+        assertLog("button(0,down)", "pointer", "button(0,up)")
+        assertEquals(listOf(true, false), dragging)
+        // Nothing is sent a second time when the finger finally lifts.
+        up(400)
+        assertLog("button(0,down)", "pointer", "button(0,up)")
+        assertEquals(listOf(true, false), dragging)
+    }
+
+    @Test fun aTapAndDragShowsTheCueToo() {
+        frame(0, f(1, 100f, 100f)); up(60)
+        frame(150, f(2, 100f, 100f))
+        frame(170, f(2, 160f, 100f))
+        up(220)
+        assertEquals(listOf(true, false), dragging)
+        assertEquals(listOf(PadFeedback.Click, PadFeedback.DragStart), feedbacks)
+    }
+
+    @Test fun twoFingersAfterAHoldTouchStartedDoNotDragButScroll() {
+        frame(0, f(1, 100f, 100f))
+        frame(60, f(1, 100f, 100f), f(2, 200f, 100f))
+        assertNull(pad.deadline())
+        frame(76, f(1, 100f, 140f), f(2, 200f, 140f))
+        frame(92, f(1, 100f, 180f), f(2, 200f, 180f))
+        up(120)
+        assertEquals(80, scrollY)
+        assertTrue(log.none { it.startsWith("button") })
+    }
+
+    @Test fun aHoldDragKeepsDraggingWhenAnotherFingerJoinsAndLeaves() {
+        frame(0, f(1, 100f, 100f))
+        pad.onTimer(280)
+        frame(300, f(1, 140f, 100f))
+        // A resting second finger must not turn the drag into something else or let go early.
+        frame(340, f(1, 140f, 100f), f(2, 300f, 300f))
+        frame(360, f(1, 170f, 100f), f(2, 300f, 300f))
+        frame(380, f(1, 200f, 100f))
+        up(400)
+        assertEquals(1, log.count { it == "button(0,down)" })
+        assertEquals(1, log.count { it == "button(0,up)" })
+        assertEquals("button(0,up)", log.last())
     }
 }

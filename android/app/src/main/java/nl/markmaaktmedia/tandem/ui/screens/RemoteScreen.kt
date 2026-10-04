@@ -4,9 +4,13 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.clickable
@@ -66,7 +70,8 @@ import nl.markmaaktmedia.tandem.ui.remote.TouchpadClassifier
 import nl.markmaaktmedia.tandem.ui.remote.TouchpadConfig
 import nl.markmaaktmedia.tandem.ui.remote.TouchpadOutput
 import nl.markmaaktmedia.tandem.ui.remote.touchpad
-import nl.markmaaktmedia.tandem.ui.theme.SheetSquircle
+import nl.markmaaktmedia.tandem.ui.theme.PillShape
+import nl.markmaaktmedia.tandem.ui.theme.SquircleShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import uniffi.tandem_core.TandemInput
@@ -96,6 +101,8 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
     val mediaOn by prefs.remoteMedia.collectAsState(initial = false)
     // The armed modifiers of the on-screen keyboard, spent by the next key or character.
     var mods by remember { mutableIntStateOf(0) }
+    // Whether the pad holds the left mouse button for a drag, so the pad can show it.
+    var dragging by remember { mutableStateOf(false) }
 
     fun pressKey(code: Short) {
         link.key(code, mods)
@@ -161,9 +168,19 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
                         },
                     )
                 }
+
+                override fun dragging(active: Boolean) {
+                    dragging = active
+                }
             },
         )
     }
+
+    // The finger's own loop lets go when the screen goes away. This covers the rest: the link closing under a held
+    // button, and the connection dropping while the finger is still down.
+    DisposableEffect(classifier) { onDispose { classifier.cancel() } }
+    val online = device?.online == true
+    LaunchedEffect(online) { if (!online) classifier.cancel() }
 
     // Closing the panel has to take the phone keyboard with it, or the keyboard stays up
     // over a screen that no longer has anything to type into.
@@ -196,12 +213,22 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
             onMedia = { scope.launch { prefs.setRemoteMedia(!mediaOn) } },
         )
 
+        // While the left button is held the pad says so where the finger is looking: the edge lights up in the accent, the
+        // corners round off the way a pressed button of a group does, and a label comes in at the top.
+        val outline by animateColorAsState(
+            // The same colour at no opacity when not held, or the fade would pass through black.
+            MaterialTheme.colorScheme.primary.copy(alpha = if (dragging) 0.8f else 0f),
+            TandemMotion.colourSpec(), label = "padOutline",
+        )
+        val corner by animateDpAsState(if (dragging) PadCornerHeld else PadCorner, TandemMotion.springy(), label = "padCorner")
+        val padShape = remember(corner) { SquircleShape(corner) }
         Box(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .clip(SheetSquircle)
+                .clip(padShape)
                 .background(MaterialTheme.colorScheme.surfaceContainer)
+                .border(2.dp, outline, padShape)
                 .touchpad(classifier),
             contentAlignment = Alignment.Center,
         ) {
@@ -213,11 +240,17 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 )
                 Text(
+                    stringResource(R.string.remote_hint_drag),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                )
+                Text(
                     stringResource(R.string.remote_hint_three),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 )
             }
+            DraggingLabel(dragging, Modifier.align(Alignment.TopCenter).padding(top = 16.dp))
         }
 
         // Each block that comes and goes brings its own gap with it, so the gap grows and
@@ -306,6 +339,36 @@ private fun TopBar(
             GroupToggle(TandemIcons.Keyboard, stringResource(R.string.remote_keyboard), keyboardOn, GroupEnd.Start, onKeyboard)
             GroupToggle(TandemIcons.Mouse, stringResource(R.string.remote_mouse_buttons), mouseOn, GroupEnd.Middle, onMouse)
             GroupToggle(TandemIcons.VolumeUp, stringResource(R.string.remote_media), mediaOn, GroupEnd.End, onMedia)
+        }
+    }
+}
+
+/** The corners of the pad, and how far they round off while the pad holds the mouse button. */
+private val PadCorner = 36.dp
+private val PadCornerHeld = 52.dp
+
+/**
+ * The label at the top of the pad while the left mouse button is held. A function of its own, because inside the pad's box
+ * the column of the screen is an implicit receiver that animated visibility would pick up and Compose refuses.
+ */
+@Composable
+private fun DraggingLabel(visible: Boolean, modifier: Modifier = Modifier) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = modifier,
+        enter = fadeIn(TandemMotion.fadeSpec()) + scaleIn(TandemMotion.springy(), initialScale = 0.8f),
+        exit = fadeOut(TandemMotion.fadeSpec()) + scaleOut(TandemMotion.fadeSpec(), targetScale = 0.9f),
+    ) {
+        Row(
+            Modifier
+                .clip(PillShape)
+                .background(MaterialTheme.colorScheme.primary)
+                .padding(start = 12.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(TandemIcons.Drag, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
+            Text(stringResource(R.string.remote_dragging), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
         }
     }
 }

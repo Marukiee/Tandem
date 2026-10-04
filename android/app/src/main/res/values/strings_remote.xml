@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="remote_hint_drag">Press and hold, then move, to drag</string>
+    <string name="remote_dragging">Dragging</string>
     <string name="remote_hint_three">Three fingers for Mission Control and Spaces</string>
     <string name="remote_mouse_buttons">Mouse buttons</string>
     <string name="remote_left">Left</string>
