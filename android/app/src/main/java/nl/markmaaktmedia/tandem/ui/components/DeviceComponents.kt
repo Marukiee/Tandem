@@ -6,11 +6,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -37,6 +35,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.asImageBitmap
@@ -46,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -268,27 +268,44 @@ fun DeviceIconPicker(
     }
 }
 
-/** A dot that breathes while the device is online. */
+/** A dot that breathes a few times when it shows up online, and then rests. */
 @Composable
 fun PresenceDot(online: Boolean, modifier: Modifier = Modifier) {
     val color by animateColorAsState(
         if (online) LocalTandemExtraColors.current.online else MaterialTheme.colorScheme.outline,
         TandemMotion.colourSpec(), label = "presence",
     )
-    val transition = rememberInfiniteTransition(label = "presenceBreath")
-    val ring by transition.animateFloat(
-        0f, 1f, infiniteRepeatable(tween(1800), RepeatMode.Restart), label = "ring",
-    )
     Box(modifier.size(14.dp), contentAlignment = Alignment.Center) {
-        if (online) {
-            Box(
-                Modifier
-                    .size(8.dp + 6.dp * ring)
-                    .background(color.copy(alpha = 0.35f * (1f - ring)), CircleShape),
-            )
-        }
+        if (online) BreathingRing(color)
         Box(Modifier.size(8.dp).background(color, CircleShape))
     }
+}
+
+/**
+ * The ring around an online dot. It goes out three times and stops: an animation that never ends keeps the screen
+ * drawing 60 frames a second for as long as the page is open, which on the emulator was half a core for a dot.
+ */
+@Composable
+private fun BreathingRing(color: Color) {
+    val ring = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        repeat(3) {
+            ring.snapTo(0f)
+            ring.animateTo(1f, tween(1800, easing = LinearEasing))
+        }
+    }
+    // One circle that never changes, in a layer of its own that is scaled and faded.
+    Box(
+        Modifier
+            .size(14.dp)
+            .graphicsLayer {
+                val scale = (8f + 6f * ring.value) / 14f
+                scaleX = scale
+                scaleY = scale
+                alpha = 0.35f * (1f - ring.value)
+            }
+            .background(color, CircleShape),
+    )
 }
 
 /**
@@ -361,12 +378,15 @@ fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp 
                 enter = fadeIn(TandemMotion.fadeSpec()) + expandVertically(TandemMotion.spatial()),
                 exit = fadeOut(TandemMotion.fadeSpec()) + shrinkVertically(TandemMotion.spatial()),
             ) {
-                val pulse by rememberInfiniteTransition(label = "boltPulse").animateFloat(
-                    initialValue = 0.45f, targetValue = 1f,
-                    animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
-                    label = "boltAlpha",
-                )
-                Icon(TandemIcons.BoltFilled, null, tint = tint, modifier = Modifier.size(size * 0.18f).graphicsLayer { alpha = pulse })
+                // Four breaths, then it stays lit: see BreathingRing.
+                val pulse = remember { Animatable(1f) }
+                LaunchedEffect(Unit) {
+                    repeat(4) {
+                        pulse.animateTo(0.45f, tween(900))
+                        pulse.animateTo(1f, tween(900))
+                    }
+                }
+                Icon(TandemIcons.BoltFilled, null, tint = tint, modifier = Modifier.size(size * 0.18f).graphicsLayer { alpha = pulse.value })
             }
         }
     }
