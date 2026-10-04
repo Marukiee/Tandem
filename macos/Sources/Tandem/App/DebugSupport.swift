@@ -49,6 +49,10 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_PANEL") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { showPanelWindow() }
         }
+        // `TANDEM_DEBUG_INSERT=choose|which|waiting|receiving|done|ready|refused|offline|timeout|cancelled`: the Insert from phone panel.
+        if let stage = variable("TANDEM_DEBUG_INSERT") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { InsertFromPhone.shared.debugShow(stage) }
+        }
         if variable("TANDEM_DEBUG_NO_WINDOW") != nil {
             // The app as it runs most of the day, in the menu bar with no window, for measuring what it costs.
             DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { closeWindows() }

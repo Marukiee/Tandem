@@ -80,7 +80,7 @@ fun DevicesScreen(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         val target = pickerTarget
         if (target != null && uris.isNotEmpty()) {
-            scope.launch { host.sendUris(uris, listOf(target), uniffi.tandem_core.TandemShareOrigin.FILES) }
+            scope.launch { host.sendUris(uris, listOf(target), uniffi.tandem_core.TandemShareOrigin.Files) }
         }
     }
 

@@ -2,7 +2,7 @@
 
 use crate::ids::DeviceId;
 use crate::proto::{
-    CallAction, CallMsg, HotspotMsg, InputMsg, MediaAction, MediaPlayer, NotificationAction, NotificationMsg, ShareOffer,
+    CallAction, CallMsg, CaptureKind, CaptureWhy, HotspotMsg, InputMsg, MediaAction, MediaPlayer, NotificationAction, NotificationMsg, ShareOffer,
 };
 
 #[derive(Clone, Debug)]
@@ -58,6 +58,10 @@ pub enum Event {
     Ring { from: DeviceId, on: bool },
     Input { from: DeviceId, input: InputMsg },
     Hotspot { from: DeviceId, hotspot: HotspotMsg },
+    /// The other device wants a picture. Open the camera, then answer with a file share whose origin is
+    /// `ShareOrigin::Capture(id)`, or with `cancel_capture`.
+    CaptureRequested { from: DeviceId, id: u64, kind: CaptureKind },
+    CaptureCancelled { from: DeviceId, id: u64, why: CaptureWhy },
     MediaPlayers { from: DeviceId, players: Vec<MediaPlayer> },
     MediaArt { from: DeviceId, key: u64, jpeg: Vec<u8> },
     MediaCommand { from: DeviceId, player: String, action: MediaAction, position_ms: Option<u64> },

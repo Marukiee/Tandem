@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capture_channel_name">Camera voor je Mac</string>
+    <string name="capture_channel_desc">Als je Mac om een foto, een scan of een afbeelding vraagt</string>
+    <string name="capture_notif_photo">%1$s wil een foto</string>
+    <string name="capture_notif_document">%1$s wil een scan</string>
+    <string name="capture_notif_picture">%1$s wil een afbeelding</string>
+    <string name="capture_notif_text_photo">Tik om hem te maken</string>
+    <string name="capture_notif_text_document">Tik om te scannen</string>
+    <string name="capture_notif_text_picture">Tik om te kiezen</string>
+    <string name="capture_notif_cancel">Annuleer</string>
+
+    <string name="capture_for_device">Voor %1$s</string>
+    <string name="capture_title_photo">Foto maken</string>
+    <string name="capture_title_document">Document scannen</string>
+    <string name="capture_title_picture">Afbeelding kiezen</string>
+    <string name="capture_flash_off">Flits uit</string>
+    <string name="capture_flash_auto">Flits automatisch</string>
+    <string name="capture_flash_on">Flits aan</string>
+    <string name="capture_flip">Camera wisselen</string>
+    <string name="capture_shutter">Foto maken</string>
+    <string name="capture_close">Sluit</string>
+    <string name="capture_retake">Opnieuw</string>
+    <string name="capture_use_photo">Gebruik foto</string>
+    <string name="capture_use_scan">Gebruik scan</string>
+    <string name="capture_doc_hint">Zet de pagina in het kader</string>
+    <string name="capture_crop_hint">Sleep de hoeken naar de randen van de pagina</string>
+
+    <string name="capture_perm_title">Sta de camera toe</string>
+    <string name="capture_perm_text">Tandem heeft de camera nodig om dit voor %1$s te maken. Het gaat direct naar %1$s en blijft niet in je galerij staan.</string>
+    <string name="capture_perm_allow">Camera toestaan</string>
+    <string name="capture_perm_settings">Open instellingen</string>
+    <string name="capture_perm_not_now">Niet nu</string>
+
+    <string name="capture_scan_start">Scannen</string>
+    <string name="capture_pick_start">Afbeelding kiezen</string>
+    <string name="capture_cancel">Annuleer</string>
+    <string name="capture_waiting_scan">De scanner wordt geopend</string>
+    <string name="capture_waiting_pick">Je afbeeldingen worden geopend</string>
+
+    <string name="capture_sending">Versturen naar %1$s</string>
+    <string name="capture_sent">Verstuurd naar %1$s</string>
+    <string name="capture_failed">%1$s is niet bereikbaar</string>
+    <string name="capture_failed_text">Controleer of het aan staat en op hetzelfde netwerk zit en probeer het opnieuw.</string>
+    <string name="capture_retry">Probeer opnieuw</string>
+
+    <string name="capture_ended_mac">%1$s heeft dit gesloten</string>
+    <string name="capture_ended_lost">De verbinding met %1$s is verloren</string>
+
+    <string name="capture_name_photo">Foto</string>
+    <string name="capture_name_scan">Scan</string>
+    <string name="capture_mac_fallback">je Mac</string>
+</resources>

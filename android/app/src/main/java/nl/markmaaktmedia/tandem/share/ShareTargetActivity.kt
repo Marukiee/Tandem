@@ -104,7 +104,7 @@ class ShareTargetActivity : ComponentActivity() {
         val text = intent.getStringExtra(Intent.EXTRA_TEXT)?.takeIf { it.isNotBlank() }
         if (uris.isEmpty() && text == null) return null
         val screenshot = uris.any { looksLikeScreenshot(it) }
-        return Shared(uris, text, if (screenshot) TandemShareOrigin.SCREENSHOT else TandemShareOrigin.FILES)
+        return Shared(uris, text, if (screenshot) TandemShareOrigin.Screenshot else TandemShareOrigin.Files)
     }
 
     private fun looksLikeScreenshot(uri: Uri): Boolean = runCatching {
@@ -198,7 +198,7 @@ class ShareTargetActivity : ComponentActivity() {
 
     @Composable
     private fun summaryOf(shared: Shared): String = when {
-        shared.origin == TandemShareOrigin.SCREENSHOT -> androidx.compose.ui.res.stringResource(R.string.share_summary_screenshot)
+        shared.origin == TandemShareOrigin.Screenshot -> androidx.compose.ui.res.stringResource(R.string.share_summary_screenshot)
         shared.uris.isNotEmpty() -> androidx.compose.ui.res.pluralStringResource(R.plurals.file_count, shared.uris.size, shared.uris.size)
         shared.text?.startsWith("http") == true -> shared.text
         else -> androidx.compose.ui.res.stringResource(R.string.share_summary_text)

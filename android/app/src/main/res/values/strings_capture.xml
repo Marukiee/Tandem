@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="capture_channel_name">Camera for your Mac</string>
+    <string name="capture_channel_desc">When your Mac asks for a photo, a scan or a picture</string>
+    <string name="capture_notif_photo">%1$s wants a photo</string>
+    <string name="capture_notif_document">%1$s wants a scan</string>
+    <string name="capture_notif_picture">%1$s wants a picture</string>
+    <string name="capture_notif_text_photo">Tap to take it</string>
+    <string name="capture_notif_text_document">Tap to scan it</string>
+    <string name="capture_notif_text_picture">Tap to choose it</string>
+    <string name="capture_notif_cancel">Cancel</string>
+
+    <string name="capture_for_device">For %1$s</string>
+    <string name="capture_title_photo">Take a photo</string>
+    <string name="capture_title_document">Scan a document</string>
+    <string name="capture_title_picture">Choose a picture</string>
+    <string name="capture_flash_off">Flash off</string>
+    <string name="capture_flash_auto">Flash on automatic</string>
+    <string name="capture_flash_on">Flash on</string>
+    <string name="capture_flip">Switch camera</string>
+    <string name="capture_shutter">Take photo</string>
+    <string name="capture_close">Close</string>
+    <string name="capture_retake">Retake</string>
+    <string name="capture_use_photo">Use photo</string>
+    <string name="capture_use_scan">Use scan</string>
+    <string name="capture_doc_hint">Fit the page in the frame</string>
+    <string name="capture_crop_hint">Drag the corners to the edges of the page</string>
+
+    <string name="capture_perm_title">Allow the camera</string>
+    <string name="capture_perm_text">Tandem needs the camera to take this for %1$s. It goes straight to %1$s and is not kept in your gallery.</string>
+    <string name="capture_perm_allow">Allow camera</string>
+    <string name="capture_perm_settings">Open settings</string>
+    <string name="capture_perm_not_now">Not now</string>
+
+    <string name="capture_scan_start">Scan</string>
+    <string name="capture_pick_start">Choose picture</string>
+    <string name="capture_cancel">Cancel</string>
+    <string name="capture_waiting_scan">Opening the scanner</string>
+    <string name="capture_waiting_pick">Opening your pictures</string>
+
+    <string name="capture_sending">Sending to %1$s</string>
+    <string name="capture_sent">Sent to %1$s</string>
+    <string name="capture_failed">Could not reach %1$s</string>
+    <string name="capture_failed_text">Check that it is on and on the same network, then try again.</string>
+    <string name="capture_retry">Try again</string>
+
+    <string name="capture_ended_mac">%1$s closed this</string>
+    <string name="capture_ended_lost">Lost the connection to %1$s</string>
+
+    <string name="capture_name_photo">Photo</string>
+    <string name="capture_name_scan">Scan</string>
+    <string name="capture_mac_fallback">your Mac</string>
+</resources>

@@ -110,10 +110,12 @@ impl Inner {
     }
 
     pub(crate) fn on_share_offer(self: Arc<Self>, from: DeviceId, offer: ShareOffer) {
-        self.emit(Event::ShareOffered { from, offer: offer.clone() });
         let auto = self.settings.read().unwrap().for_device(&from).auto_accept;
+        let event = Event::ShareOffered { from, offer: offer.clone() };
         let entry = Arc::new(InOffer { offer, started: std::sync::atomic::AtomicBool::new(false) });
         self.in_offers.lock().unwrap().insert((from, entry.offer.id), entry.clone());
+        // After the insert: an app that accepts straight from the event must find the offer.
+        self.emit(event);
         if auto {
             self.begin_receive(from, entry);
         }

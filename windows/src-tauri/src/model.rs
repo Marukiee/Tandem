@@ -96,6 +96,7 @@ pub fn origin(o: TandemShareOrigin) -> &'static str {
         TandemShareOrigin::Screenshot => "screenshot",
         TandemShareOrigin::Photo => "photo",
         TandemShareOrigin::Clipboard => "clipboard",
+        TandemShareOrigin::Capture { .. } => "capture",
         TandemShareOrigin::Other => "other",
     }
 }
