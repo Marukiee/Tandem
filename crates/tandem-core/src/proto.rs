@@ -23,6 +23,8 @@ pub const STREAM_CONTROL: u8 = 1;
 pub const STREAM_FILE: u8 = 2;
 /// One request about the files of the device at the other end. See `files`.
 pub const STREAM_FS: u8 = 3;
+/// One frame of live video, on a unidirectional stream the host opens. See `live`.
+pub const STREAM_MEDIA: u8 = 4;
 
 pub const MAX_CONTROL_FRAME: usize = 8 * 1024 * 1024;
 pub const MAX_SMALL_FRAME: usize = 64 * 1024;
@@ -86,6 +88,21 @@ pub enum Msg {
     /// The sound stops. Either side says it: the sender when it is done, the receiver when it
     /// will not play it (switched off, or something else took the speaker).
     AudioStop { stream: u8 },
+    /// Live video (a screen or a camera, and the control of a screen). See docs/SCREEN.md. The frames themselves do
+    /// not travel as messages but as streams of their own.
+    MediaRequest(crate::live::MediaRequest),
+    MediaAccept(crate::live::MediaAccept),
+    MediaDeny {
+        session: u64,
+        reason: crate::live::MediaEnd,
+        #[serde(default)]
+        message: String,
+    },
+    MediaUpdate { session: u64, update: crate::live::MediaUpdate },
+    MediaStop { session: u64, reason: crate::live::MediaEnd },
+    MediaKeyframe { session: u64 },
+    MediaReport(crate::live::MediaReport),
+    MediaInput { session: u64, input: crate::live::MediaInput },
     /// The key two devices seal Bluetooth frames with. Made by the one with the lower id and
     /// sent over the authenticated connection, never over the air.
     BleKey {

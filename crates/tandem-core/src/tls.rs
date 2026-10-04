@@ -62,7 +62,8 @@ fn provider() -> Arc<CryptoProvider> {
 fn transport(tuning: Tuning) -> Arc<quinn::TransportConfig> {
     let mut config = quinn::TransportConfig::default();
     config.max_concurrent_bidi_streams(128u32.into());
-    config.max_concurrent_uni_streams(32u32.into());
+    // A frame of live video is a stream of its own, and a few dozen can be on their way at once.
+    config.max_concurrent_uni_streams(128u32.into());
     config.keep_alive_interval(Some(tuning.keep_alive));
     config.max_idle_timeout(quinn::IdleTimeout::try_from(tuning.idle_timeout).ok());
     // Large windows so a single file stream can fill a fast Wi-Fi link.
