@@ -106,7 +106,8 @@ export function PlayerCard({ device, player, compact = false }) {
   useEffect(() => { reportedAt.current = Date.now(); held.current = null; }, [player.positionMs, player.playing, player.title]);
   useEffect(() => {
     if (!player.playing) return undefined;
-    const id = setInterval(() => tick((n) => n + 1), 500);
+    // Once a second: the time beside the bar has whole seconds only, and every redraw of the page costs power.
+    const id = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(id);
   }, [player.playing]);
 
