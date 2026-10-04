@@ -12,7 +12,7 @@ aan openzetten. Per apparaat (of als standaard voor apparaten zonder eigen keuze
 | Instelling | Standaard | Wat het doet |
 |---|---|---|
 | `enabled` | aan | De hoofdschakelaar. Uit: het andere apparaat ziet niets en krijgt te horen waarom. |
-| `shares` | Downloads, Documenten en Bureaublad (Android: de hele telefoon) | De mappen die worden aangeboden, met een naam. Geen mappen: niets te zien. |
+| `shares` | De hele telefoon op Android, op een computer niets | De mappen die worden aangeboden, met een naam. Geen mappen: niets te zien. Een computer biedt pas iets aan als zijn app laat zien wat dat is. `default_shares()` geeft Downloads, Documenten en Bureaublad voor een app die dat kan tonen. |
 | `write` | aan | Maken, overschrijven en hernoemen. |
 | `delete` | aan | Verwijderen. |
 | `hidden` | uit | Bestanden en mappen die met een punt beginnen, en wat Windows verborgen noemt. |

@@ -110,8 +110,13 @@ impl FileService {
     pub fn new(store: Store) -> FileService {
         let policies = match store.read_cbor::<Policies>(POLICY_FILE) {
             Ok(Some(policies)) => policies,
-            // Nothing chosen yet: the folders people expect to share, and everything allowed, which is what was asked for.
-            _ => Policies { default: FilePolicy { shares: default_shares(), ..FilePolicy::default() }, devices: HashMap::new() },
+            // Nothing chosen yet: everything allowed, which is what was asked for, but only the phone offers folders
+            // from the start. A computer has no screen yet to show and change what it offers, and until it has one
+            // nothing should leave it that a person has not seen being offered.
+            _ => Policies {
+                default: FilePolicy { shares: if cfg!(target_os = "android") { default_shares() } else { Vec::new() }, ..FilePolicy::default() },
+                devices: HashMap::new(),
+            },
         };
         FileService { store, policies: RwLock::new(policies), activity: Mutex::new(VecDeque::new()) }
     }
@@ -178,7 +183,7 @@ fn now_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
-/// The folders offered when nobody has chosen: the ones people put things in.
+/// The folders worth offering: the ones people put things in. What an app puts in the default when it can show them.
 pub fn default_shares() -> Vec<Share> {
     #[cfg(target_os = "android")]
     {
