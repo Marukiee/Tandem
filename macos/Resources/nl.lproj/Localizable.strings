@@ -129,6 +129,7 @@
 "Tandem could not start" = "Tandem kon niet starten";
 
 /* Meldingen */
+"Code %@ recognised and copied" = "Code %@ herkend en gekopieerd";
 "Copy code %@" = "Kopieer code %@";
 "Answer" = "Opnemen";
 "Decline" = "Weigeren";
@@ -161,7 +162,7 @@
 "Folder" = "Map";
 "Use Downloads" = "Gebruik Downloads";
 "Files that arrive go straight into this folder. By default that is your Downloads folder." = "Ontvangen bestanden komen direct in deze map. Standaard is dat je Downloads-map.";
-"A code in a text message on your phone goes to the clipboard when it arrives. Without this, its notification has a Copy code button." = "Een code in een sms op je telefoon gaat naar het klembord zodra hij binnenkomt. Zonder dit heeft de melding een knop Kopieer code.";
+"You also get a notification when a code was copied. Without this, the notification has a Copy code button." = "Je krijgt ook een melding als een code is gekopieerd. Zonder dit heeft de melding een knop Kopieer code.";
 "Remove…" = "Verwijder…";
 "Backup" = "Back-up";
 "Export settings" = "Instellingen exporteren";
@@ -186,7 +187,7 @@
 "This is how your other devices see it." = "Zo zien je andere apparaten hem.";
 "Start at login" = "Start bij inloggen";
 "Show in the Dock" = "Toon in het Dock";
-"Copy verification codes automatically" = "Kopieer verificatiecodes automatisch";
+"Copy codes from text messages to the clipboard" = "Kopieer codes uit sms-berichten naar het klembord";
 "Received files" = "Ontvangen bestanden";
 "Choose…" = "Kies…";
 "Reset Tandem…" = "Tandem terugzetten…";

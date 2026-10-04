@@ -26,8 +26,9 @@ const WEAK_MAX_TEXT: usize = 240;
 const NEAR_YEAR: usize = 14;
 
 /// The one-time code in `text`, or `None`. Digits only for a plain code ("123-456" and "123 456"
-/// come back as "123456"). A code that is lettered and dashed ("G-123456") comes back as written,
-/// because the letters are part of what the sender printed.
+/// come back as "123456"). The letters in front of a dash ("G-123456", "FB-12345") are a tag the
+/// sender prints and the page that asks for the code already shows, so the digits come back. A code
+/// that mixes letters and digits on both sides of the dash ("K7P-2XM") comes back as written.
 pub fn find_code(text: &str) -> Option<String> {
     let chars: Vec<char> = text.chars().take(MAX_CHARS).collect();
     if chars.len() < 4 {
@@ -274,7 +275,8 @@ fn dashed_candidates(chars: &[char]) -> Vec<Candidate> {
             continue;
         }
         let digits = token.chars().filter(|c| c.is_ascii_digit()).count();
-        out.push(Candidate { start, end, value: token, digits, year: false });
+        let value = if letters_then_digits { right.to_string() } else { token };
+        out.push(Candidate { start, end, value, digits, year: false });
     }
     out
 }
@@ -518,9 +520,13 @@ mod tests {
     }
 
     #[test]
+    fn a_tag_before_the_dash_is_left_off() {
+        expect("G-123456 is your Google verification code.", "123456");
+        expect("FB-12345 is your Facebook confirmation code", "12345");
+    }
+
+    #[test]
     fn dashed_alphanumeric_codes_stay_as_written() {
-        expect("G-123456 is your Google verification code.", "G-123456");
-        expect("FB-12345 is your Facebook confirmation code", "FB-12345");
         expect("Your verification code is K7P-2XM", "K7P-2XM");
         expect("Use code AB12-CD34 to sign in", "AB12-CD34");
     }

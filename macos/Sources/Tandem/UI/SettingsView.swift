@@ -117,7 +117,7 @@ private struct GeneralSettings: View {
     @FocusState private var nameFocused: Bool
     @LocalState private var startAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage("showInDock") private var showInDock = true
-    @AppStorage("copyCodes") private var copyCodes = false
+    @AppStorage("copyCodes") private var copyCodes = true
     @AppStorage("bleMessages") private var bleMessages = true
     @AppStorage("audioMuteLocal") private var audioMuteLocal = true
     @AppStorage(ReceivedImages.copyKey) private var copyImages = true
@@ -179,8 +179,8 @@ private struct GeneralSettings: View {
                         NSApp.setActivationPolicy(on ? .regular : .accessory)
                     }
                 DescribedToggle(
-                    "Copy verification codes automatically",
-                    subtitle: "A code in a text message on your phone goes to the clipboard when it arrives. Without this, its notification has a Copy code button.",
+                    "Copy codes from text messages to the clipboard",
+                    subtitle: "You also get a notification when a code was copied. Without this, the notification has a Copy code button.",
                     isOn: $copyCodes
                 )
                 DescribedToggle(

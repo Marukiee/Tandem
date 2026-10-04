@@ -291,14 +291,9 @@ final class EngineModel {
         notifier.onCopyCode = { [weak self] code in self?.copyCode(code) }
     }
 
-    /// Whether a code in a phone's notification goes to the clipboard by itself. Off until the person turns it on,
-    /// because it replaces what they had copied.
-    static var copyCodesAutomatically: Bool {
-        UserDefaults.standard.object(forKey: "copyCodes") as? Bool ?? false
-    }
-
-    /// Puts a verification code on the clipboard and says so. The code is never written to a log.
-    func copyCode(_ code: String) {
+    /// Puts a verification code on the clipboard, marked as secret so no clipboard history keeps it. The code is never
+    /// written to a log.
+    private func putOnClipboard(_ code: String) {
         if let clipboard {
             clipboard.applyConcealed(code)
         } else {
@@ -306,6 +301,11 @@ final class EngineModel {
             pasteboard.clearContents()
             pasteboard.setString(code, forType: .string)
         }
+    }
+
+    /// The Copy code button of a notification or of the list: copies and says so, also when no window is open.
+    func copyCode(_ code: String) {
+        putOnClipboard(code)
         FloatingToast.show(String(localized: "Code \(code) copied"), symbol: "key.fill")
     }
 
@@ -437,9 +437,13 @@ final class EngineModel {
         case let .notification(from, notification):
             guard device(from)?.notificationsEnabled ?? true else { return }
             let deviceName = device(from)?.name ?? "Phone"
-            // Looked for here with the core's function, so this Mac and the phone agree on what a code is.
-            let code = notification.ongoing ? nil : tandemFindCode(text: [notification.title, notification.text].joined(separator: " "))
-            if let code, Self.copyCodesAutomatically { copyCode(code) }
+            // The phone looks for the code (with the core's function) and sends it along.
+            let code = notification.otp
+            if let code, UserDefaults.standard.object(forKey: "copyCodes") as? Bool ?? true {
+                putOnClipboard(code)
+                showToast(String(localized: "Code \(code) copied"))
+                Notifier.shared.postCodeCopied(code: code, deviceName: deviceName, key: notification.key)
+            }
             Notifier.shared.postMirrored(device: from, deviceName: deviceName, notification: notification, code: code)
             remember(notification, from: from, deviceName: deviceName, code: code)
 
