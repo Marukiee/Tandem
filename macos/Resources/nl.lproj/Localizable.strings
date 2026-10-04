@@ -463,9 +463,9 @@
 "Take photo" = "Foto maken";
 "Scan document" = "Document scannen";
 "Choose picture" = "Afbeelding kiezen";
-"Take the photo on your phone" = "Maak de foto op je telefoon";
-"Scan the document on your phone" = "Scan het document op je telefoon";
-"Choose a picture on your phone" = "Kies een afbeelding op je telefoon";
+"Take the photo" = "Maak de foto";
+"Scan the document" = "Scan het document";
+"Choose a picture" = "Kies een afbeelding";
 "Receiving the photo" = "Foto ontvangen";
 "Receiving the scan" = "Scan ontvangen";
 "Receiving the picture" = "Afbeelding ontvangen";

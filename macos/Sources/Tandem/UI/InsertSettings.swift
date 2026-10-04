@@ -4,55 +4,72 @@ import TandemCore
 
 // MARK: Menu bar panel
 
-/// The action in the menu bar panel: three buttons, one for each thing the phone can be asked for.
+/// The action in the menu bar panel: three tiles, one for each thing the phone can be asked for.
 /// Only shown when an Android phone is paired.
 struct MenuInsertFromPhone: View {
     @Environment(EngineModel.self) private var model
 
     var body: some View {
         let phones = model.devices.filter { $0.platform == .android }
-        if !phones.isEmpty {
+        if !phones.isEmpty || InsertHUDText.flat {
             let ready = phones.contains { $0.online }
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "camera.viewfinder")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Palette.indigo)
-                    Text("Insert from phone")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 6)
-                GlassEffectContainer(spacing: 6) {
-                    HStack(spacing: 6) {
+                Text("Insert from phone")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .padding(.leading, 10)
+                GlassEffectContainer(spacing: 8) {
+                    HStack(spacing: 8) {
                         ForEach(InsertKind.allCases) { kind in
-                            Button {
-                                InsertFromPhone.shared.begin(kind: kind)
-                            } label: {
-                                VStack(spacing: 4) {
-                                    Image(systemName: kind.symbol)
-                                        .font(.system(size: 16, weight: .medium))
-                                        .frame(height: 20)
-                                    Text(verbatim: kind.title)
-                                        .font(.caption2.weight(.medium))
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.8)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 7)
-                            }
-                            .buttonStyle(.glass)
-                            .buttonBorderShape(.roundedRectangle(radius: 16))
-                            .hoverSwell(1.04)
-                            .help(kind.instruction)
+                            MenuKindTile(kind: kind) { InsertFromPhone.shared.begin(kind: kind) }
                         }
                     }
                 }
                 .opacity(ready ? 1 : 0.55)
             }
-            .padding(.horizontal, 4)
         }
+    }
+}
+
+/// The symbol in the corner where the eye starts, the name at the opposite one. Under the pointer the symbol
+/// fills and swells and the tile rises, all on springs.
+private struct MenuKindTile: View {
+    let kind: InsertKind
+    let action: () -> Void
+    @LocalState private var hovering = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 0) {
+                ZStack {
+                    Circle().fill(hovering ? Palette.indigo : Palette.indigo.opacity(0.15))
+                    Image(systemName: kind.symbol)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(hovering ? Color.white : Palette.indigo)
+                }
+                .frame(width: 32, height: 32)
+                .scaleEffect(hovering && !reduceMotion ? 1.14 : 1, anchor: .topLeading)
+                Spacer(minLength: 4)
+                Text(verbatim: kind.title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity)
+            .frame(height: 84, alignment: .topLeading)
+            .contentShape(shape)
+        }
+        .buttonStyle(.glass)
+        .buttonBorderShape(.roundedRectangle(radius: 22))
+        .scaleEffect(hovering && !reduceMotion ? 1.035 : 1)
+        .offset(y: hovering && !reduceMotion ? -2 : 0)
+        .onHover { hovering = $0 }
+        .animation(.spring(response: 0.38, dampingFraction: 0.6), value: hovering)
+        .help(kind.instruction)
     }
 }
 

@@ -37,9 +37,9 @@ enum InsertKind: String, CaseIterable, Identifiable {
     /// What the person does on the phone while the Mac waits.
     var instruction: String {
         switch self {
-        case .photo: String(localized: "Take the photo on your phone")
-        case .document: String(localized: "Scan the document on your phone")
-        case .picture: String(localized: "Choose a picture on your phone")
+        case .photo: String(localized: "Take the photo")
+        case .document: String(localized: "Scan the document")
+        case .picture: String(localized: "Choose a picture")
         }
     }
 
@@ -150,6 +150,12 @@ final class InsertFromPhone {
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
 
     private let lastDeviceKey = "insertLastDevice"
+    private static let lastKindKey = "insertLastKind"
+
+    /// What was asked for last, which the panel lights first so Return repeats it.
+    static var lastKind: InsertKind? {
+        UserDefaults.standard.string(forKey: lastKindKey).flatMap(InsertKind.init(rawValue:))
+    }
 
     // MARK: Which app is in front
 
@@ -230,6 +236,7 @@ final class InsertFromPhone {
         guard let engine = model.tandem else { return }
         let session = Session(id: UInt64.random(in: 1...UInt64.max), kind: kind, device: id, deviceName: phone.name, started: Date())
         UserDefaults.standard.set(id, forKey: lastDeviceKey)
+        UserDefaults.standard.set(kind.rawValue, forKey: Self.lastKindKey)
         phase = .waiting(session)
         armTimeout(session, after: Self.timeout)
         Task { @MainActor in
@@ -448,6 +455,9 @@ final class InsertFromPhone {
         let session = Session(id: 1, kind: .document, device: "debug", deviceName: "Pixel 9", started: Date())
         switch stage {
         case "choose": phase = .choosing(kind: nil, device: "debug")
+        case "choose2":
+            phase = .choosing(kind: nil, device: "debug")
+            InsertHUDController.shared.debugHighlight(2)
         case "which": phase = .choosing(kind: .photo, device: nil)
         case "waiting": phase = .waiting(session)
         case "receiving": phase = .receiving(session, name: "Scan 2026-10-04 at 14.31.pdf", done: 1_400_000, total: 3_900_000)
