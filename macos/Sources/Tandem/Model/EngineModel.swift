@@ -288,6 +288,25 @@ final class EngineModel {
         notifier.onMirrorAction = { [weak self] device, key, button, reply, dismiss in
             Task { try? await self?.engine?.notificationAction(target: device, key: key, button: button, reply: reply, dismiss: dismiss) }
         }
+        notifier.onCopyCode = { [weak self] code in self?.copyCode(code) }
+    }
+
+    /// Whether a code in a phone's notification goes to the clipboard by itself. Off until the person turns it on,
+    /// because it replaces what they had copied.
+    static var copyCodesAutomatically: Bool {
+        UserDefaults.standard.object(forKey: "copyCodes") as? Bool ?? false
+    }
+
+    /// Puts a verification code on the clipboard and says so. The code is never written to a log.
+    func copyCode(_ code: String) {
+        if let clipboard {
+            clipboard.applyConcealed(code)
+        } else {
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(code, forType: .string)
+        }
+        FloatingToast.show(String(localized: "Code \(code) copied"), symbol: "key.fill")
     }
 
     /// The dev build (bundle id ending in .dev) keeps everything apart from the real app,
@@ -418,13 +437,11 @@ final class EngineModel {
         case let .notification(from, notification):
             guard device(from)?.notificationsEnabled ?? true else { return }
             let deviceName = device(from)?.name ?? "Phone"
-            if let code = notification.otp, UserDefaults.standard.object(forKey: "copyCodes") as? Bool ?? true {
-                clipboard?.apply(code)
-                showToast(String(localized: "Code \(code) copied"))
-                Notifier.shared.postCodeCopied(code: code, deviceName: deviceName, key: notification.key)
-            }
-            Notifier.shared.postMirrored(device: from, deviceName: deviceName, notification: notification)
-            remember(notification, from: from, deviceName: deviceName)
+            // Looked for here with the core's function, so this Mac and the phone agree on what a code is.
+            let code = notification.ongoing ? nil : tandemFindCode(text: [notification.title, notification.text].joined(separator: " "))
+            if let code, Self.copyCodesAutomatically { copyCode(code) }
+            Notifier.shared.postMirrored(device: from, deviceName: deviceName, notification: notification, code: code)
+            remember(notification, from: from, deviceName: deviceName, code: code)
 
         case let .notificationRemoved(from, key):
             Notifier.shared.remove(id: "mirror.\(from).\(key)")
@@ -1092,13 +1109,14 @@ final class EngineModel {
         }
     }
 
-    private func remember(_ notification: TandemNotification, from device: String, deviceName: String) {
+    private func remember(_ notification: TandemNotification, from device: String, deviceName: String, code: String?) {
         // Ongoing ones (music, navigation, downloads) come and go; they do not belong on a list.
         guard !notification.ongoing else { return }
         let item = MirroredNotification(
             device: device, deviceName: deviceName, key: notification.key,
             appName: notification.appName, title: notification.title, text: notification.text,
-            date: notification.ts > 0 ? Date(timeIntervalSince1970: TimeInterval(notification.ts) / 1000) : Date()
+            date: notification.ts > 0 ? Date(timeIntervalSince1970: TimeInterval(notification.ts) / 1000) : Date(),
+            code: code
         )
         mirrored.removeAll { $0.device == device && $0.key == notification.key }
         mirrored.insert(item, at: 0)
@@ -1152,4 +1170,6 @@ struct MirroredNotification: Identifiable, Equatable {
     let title: String
     let text: String
     let date: Date
+    /// The verification code in it, if there is one, for a button that copies it.
+    var code: String? = nil
 }

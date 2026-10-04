@@ -11,12 +11,18 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     var onFileAction: ((String) -> Void)?
     var onCallAction: ((_ device: String, _ callId: String, _ action: TandemCallAction) -> Void)?
     var onMirrorAction: ((_ device: String, _ key: String, _ button: String, _ reply: String?, _ dismiss: Bool) -> Void)?
+    var onCopyCode: ((String) -> Void)?
 
     private var dynamicCategories: [String: UNNotificationCategory] = [:]
+    /// The categories made for notifications with a code, oldest first. The title of the button holds the code, so each
+    /// notification needs a category of its own, and only the latest ones are kept.
+    private var codeCategoryIDs: [String] = []
+    private static let codeCategoriesKept = 20
     private var authorised = false
 
     private static let fileCategory = "tandem.file"
     private static let callCategory = "tandem.call"
+    private static let copyCodeAction = "copycode"
 
     func setUp() {
         guard Bundle.main.bundleIdentifier != nil else { return }
@@ -78,17 +84,6 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         )
     }
 
-    /// Says that a one-time code from a phone notification was found and put on the
-    /// clipboard, so it can be pasted without going back to the phone.
-    func postCodeCopied(code: String, deviceName: String, key: String) {
-        post(
-            id: "code.\(key)",
-            title: String(localized: "Code \(code) recognised and copied"),
-            body: String(localized: "From \(deviceName)"),
-            thread: "codes"
-        )
-    }
-
     func postCall(device: String, id: String, name: String?, number: String?, incoming: Bool) {
         let who = name ?? number ?? String(localized: "Unknown number")
         post(
@@ -103,33 +98,56 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         )
     }
 
-    func postMirrored(device: String, deviceName: String, notification: TandemNotification) {
+    func postMirrored(device: String, deviceName: String, notification: TandemNotification, code: String? = nil) {
         var category: String?
-        if !notification.buttons.isEmpty {
-            let actions: [UNNotificationAction] = notification.buttons.prefix(4).map { button in
-                if button.isReply {
-                    return UNTextInputNotificationAction(
-                        identifier: "btn." + button.id,
-                        title: button.title,
-                        options: [],
-                        textInputButtonTitle: String(localized: "Send"),
-                        textInputPlaceholder: button.title
-                    )
-                }
-                return UNNotificationAction(identifier: "btn." + button.id, title: button.title, options: [])
-            }
-            let id = "tandem.mirror." + notification.appId
-            dynamicCategories[id] = UNNotificationCategory(identifier: id, actions: actions, intentIdentifiers: [])
-            UNUserNotificationCenter.current().setNotificationCategories(baseCategories())
-            category = id
+        var actions: [UNNotificationAction] = []
+        if let code {
+            actions.append(UNNotificationAction(
+                identifier: Self.copyCodeAction,
+                title: String(localized: "Copy code \(code)"),
+                options: [],
+                icon: UNNotificationActionIcon(systemImageName: "doc.on.doc")
+            ))
         }
+        actions += notification.buttons.prefix(4).map { button in
+            if button.isReply {
+                return UNTextInputNotificationAction(
+                    identifier: "btn." + button.id,
+                    title: button.title,
+                    options: [],
+                    textInputButtonTitle: String(localized: "Send"),
+                    textInputPlaceholder: button.title
+                )
+            }
+            return UNNotificationAction(identifier: "btn." + button.id, title: button.title, options: [])
+        }
+        if !actions.isEmpty {
+            if code != nil {
+                let id = "tandem.mirror.code.\(device).\(notification.key)"
+                dynamicCategories[id] = UNNotificationCategory(identifier: id, actions: actions, intentIdentifiers: [])
+                codeCategoryIDs.removeAll { $0 == id }
+                codeCategoryIDs.append(id)
+                while codeCategoryIDs.count > Self.codeCategoriesKept {
+                    dynamicCategories.removeValue(forKey: codeCategoryIDs.removeFirst())
+                }
+                category = id
+            } else {
+                let id = "tandem.mirror." + notification.appId
+                dynamicCategories[id] = UNNotificationCategory(identifier: id, actions: actions, intentIdentifiers: [])
+                category = id
+            }
+            UNUserNotificationCenter.current().setNotificationCategories(baseCategories())
+        }
+        var info = ["device": device, "key": notification.key]
+        // The code travels with the notification so the button still works after the app has been restarted.
+        if let code { info["code"] = code }
         post(
             id: "mirror.\(device).\(notification.key)",
             title: notification.title.isEmpty ? notification.appName : notification.title,
             body: notification.text,
             subtitle: notification.appName + " · " + deviceName,
             category: category,
-            userInfo: ["device": device, "key": notification.key],
+            userInfo: info,
             sound: !notification.silent,
             thread: notification.appId
         )
@@ -161,7 +179,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
                 if action == "reject" { onCallAction?(device, call, .reject) }
             default:
                 guard let device = info["device"], let key = info["key"] else { return }
-                if action == UNNotificationDismissActionIdentifier {
+                if action == Self.copyCodeAction {
+                    if let code = info["code"] { onCopyCode?(code) }
+                } else if action == UNNotificationDismissActionIdentifier {
                     onMirrorAction?(device, key, "", nil, true)
                 } else if action.hasPrefix("btn.") {
                     onMirrorAction?(device, key, String(action.dropFirst(4)), reply, false)

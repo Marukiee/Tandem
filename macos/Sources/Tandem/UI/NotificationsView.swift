@@ -53,6 +53,7 @@ struct NotificationsView: View {
 }
 
 private struct NotificationRow: View {
+    @Environment(EngineModel.self) private var model
     let item: MirroredNotification
 
     var body: some View {
@@ -71,6 +72,15 @@ private struct NotificationRow: View {
                 if !item.title.isEmpty { Text(item.title).font(.callout.weight(.semibold)) }
                 if !item.text.isEmpty { Text(item.text).font(.callout).foregroundStyle(.secondary).lineLimit(4) }
                 Text(item.deviceName).font(.caption2).foregroundStyle(.tertiary)
+                if let code = item.code {
+                    Button { model.copyCode(code) } label: {
+                        Label("Copy code \(code)", systemImage: "doc.on.doc")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
+                    .padding(.top, 4)
+                }
             }
         }
         .padding(.horizontal, 10)
