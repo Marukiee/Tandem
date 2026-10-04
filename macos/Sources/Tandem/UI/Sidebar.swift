@@ -3,6 +3,8 @@ import TandemCore
 
 enum SidebarSelection: Hashable {
     case device(String)
+    /// The files of that device.
+    case files(String)
     case shared
     case notifications
 }
@@ -31,7 +33,7 @@ struct Sidebar: View {
                     .padding(.top, 10)
                     .padding(.bottom, 4)
                 ForEach(model.devices, id: \.id) { device in
-                    SidebarButton(selected: selection == .device(device.id)) {
+                    SidebarButton(selected: selection == .device(device.id) || selection == .files(device.id)) {
                         selection = .device(device.id)
                     } content: {
                         DeviceRow(device: device)

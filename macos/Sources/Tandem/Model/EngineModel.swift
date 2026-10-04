@@ -70,6 +70,8 @@ final class EngineModel {
     }
 
     @ObservationIgnored private var engine: TandemEngine?
+    /// The engine, for the pages that talk to the files of another device.
+    var tandem: TandemEngine? { engine }
     @ObservationIgnored private var eventTask: Task<Void, Never>?
     @ObservationIgnored private var continuation: AsyncStream<TandemEvent>.Continuation?
     @ObservationIgnored private var clipboard: ClipboardMonitor?

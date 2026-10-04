@@ -7,6 +7,8 @@ import UniformTypeIdentifiers
 struct DeviceDetail: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
+    /// Opens the files of this device. Only offered for devices that know how to show them.
+    var onBrowse: () -> Void = {}
 
     @LocalState private var confirmRemoval = false
     @LocalState private var showIcons = false
@@ -202,6 +204,12 @@ struct DeviceDetail: View {
                 }
                 .disabled(!(device.online || device.ble))
                 .opacity(device.online || device.ble ? 1 : 0.5)
+                // Phones are the ones that offer folders for now; a computer offers none until its app can show them.
+                if device.platform == .android && device.caps.contains("files") {
+                    GlassActionButton(title: "Browse files", symbol: "folder") { onBrowse() }
+                        .disabled(!device.online)
+                        .opacity(device.online ? 1 : 0.5)
+                }
                 if device.platform == .android {
                     let ringing = model.ringing.contains(device.id)
                     GlassActionButton(

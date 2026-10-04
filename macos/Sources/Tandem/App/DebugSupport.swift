@@ -1,12 +1,13 @@
 import AppKit
 import SwiftUI
+import TandemCore
 
 /// Development helper. With `TANDEM_DEBUG_DIR` set, the app writes its pairing link
 /// there and saves its own windows as PNG whenever it receives SIGUSR1. That is how
 /// the interface gets checked without needing screen-recording permission.
 ///
 /// A few more variables choose what is on screen, so a snapshot can reach places a
-/// person would click to: `TANDEM_DEBUG_PAGE=shared`, `TANDEM_DEBUG_SETTINGS=<section>`
+/// person would click to: `TANDEM_DEBUG_PAGE=shared` or `files` or `files:<device name>`, `TANDEM_DEBUG_SETTINGS=<section>`
 /// and `TANDEM_DEBUG_PANEL=1` (the menu bar panel in an ordinary window).
 /// `TANDEM_DEBUG_NO_WINDOW=1` closes the main window a few seconds after the start, which is
 /// how the app runs most of the day and the state to measure its cost in. SIGUSR2 closes it
@@ -58,9 +59,21 @@ enum DebugSupport {
         for window in NSApp.windows where window.isVisible && window.styleMask.contains(.titled) { window.close() }
     }
 
-    static func initialSelection(devices: [String]) -> SidebarSelection? {
-        variable("TANDEM_DEBUG_PAGE") == "shared" ? .shared : nil
+    static func initialSelection(devices: [TandemDevice]) -> SidebarSelection? {
+        guard let page = variable("TANDEM_DEBUG_PAGE") else { return nil }
+        if page == "shared" { return .shared }
+        // `files` is the files of the first device that has some, `files:Name` the ones of that device.
+        if page.hasPrefix("files") {
+            let wanted = page.dropFirst("files".count).dropFirst()
+            let found = devices.first { $0.caps.contains("files") && (wanted.isEmpty || $0.name == wanted) }
+            return found.map { .files($0.id) }
+        }
+        return nil
     }
+
+    /// The folder of a device's files to start in, and the row to have chosen there.
+    static var filesPath: String? { variable("TANDEM_DEBUG_FILES_PATH") }
+    static var filesSelection: String? { variable("TANDEM_DEBUG_FILES_SELECT") }
 
     static func initialSettingsSection() -> SettingsSection? {
         variable("TANDEM_DEBUG_SETTINGS").flatMap { SettingsSection(rawValue: $0) }

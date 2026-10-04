@@ -419,3 +419,34 @@
 "Media keys for your phone's music" = "Mediatoetsen voor de muziek van je telefoon";
 "While your phone plays, its music shows in Control Center and in apps that show what plays, and the media keys of your keyboard control it." = "Terwijl je telefoon speelt, staat de muziek in het Bedieningscentrum en in apps die tonen wat er speelt, en de mediatoetsen van je toetsenbord bedienen hem.";
 "Your phone's daily data limit for the hotspot is reached" = "De daglimiet voor data van de hotspot op je telefoon is bereikt";
+
+/* Bestanden van een ander apparaat */
+"New folder" = "Nieuwe map";
+"Name" = "Naam";
+"Make" = "Maak";
+"Rename" = "Hernoem";
+"Delete %@?" = "%@ verwijderen?";
+"Delete %lld items?" = "%lld onderdelen verwijderen?";
+"Delete from %@" = "Verwijderen van %@";
+"It is removed from the other device and does not go to a trash there." = "Het wordt van het andere apparaat gehaald en gaat daar niet naar de prullenmand.";
+"Back to the device" = "Terug naar het apparaat";
+"Files on %@" = "Bestanden op %@";
+"Folders this device shares with you" = "Mappen die dit apparaat met je deelt";
+"Not connected right now" = "Nu niet verbonden";
+"Look again" = "Kijk opnieuw";
+"Folders" = "Mappen";
+"Upload" = "Uploaden";
+"Download" = "Download";
+"Delete" = "Verwijder";
+"Looking" = "Even kijken";
+"Nothing is shared" = "Er wordt niets gedeeld";
+"This folder is empty" = "Deze map is leeg";
+"Drop files here to put them in it." = "Zet bestanden hier neer om ze erin te zetten.";
+"Browse files" = "Bestanden bekijken";
+"%@ does not share its files. Turn it on in Tandem on that device, under File access." = "%@ deelt zijn bestanden niet. Zet het aan in Tandem op dat apparaat, onder Bestandstoegang.";
+"Tandem on %@ is not allowed to reach its files. Allow access to all files in Tandem on that device, under File access." = "Tandem op %@ mag niet bij de bestanden. Sta toegang tot alle bestanden toe in Tandem op dat apparaat, onder Bestandstoegang.";
+"%@ does not allow that." = "%@ staat dat niet toe.";
+"That is gone." = "Dat is weg.";
+"There is something with that name already." = "Er is al iets met die naam.";
+"That folder is not empty." = "Die map is niet leeg.";
+"%@ is not connected right now." = "%@ is nu niet verbonden.";

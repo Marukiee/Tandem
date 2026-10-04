@@ -27,6 +27,8 @@ struct MainWindow: View {
     @Environment(EngineModel.self) private var model
     @LocalState private var selection: SidebarSelection? = MainWindow.remembered
     @LocalState private var showPairing = false
+    /// The page a debug run asked for is chosen once, as soon as the devices it names have shown up.
+    @LocalState private var debugChosen = false
     /// True for a moment after the page changes. A new scroll view draws its top edge effect
     /// (a light band under the toolbar) before it knows where its content starts, which
     /// shows as a white bar for a few frames. Hidden while the page settles.
@@ -95,10 +97,14 @@ struct MainWindow: View {
         }
         .onChange(of: model.devices.map(\.id)) { _, ids in
             if case let .device(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
+            if case let .files(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
+            chooseDebugPage()
             if selection == nil, let first = ids.first { selection = .device(first) }
         }
+        // What a device can do is only known once it has connected, which is after its name is.
+        .onChange(of: model.devices.map { $0.caps.count }) { chooseDebugPage() }
         .onAppear {
-            if let debug = DebugSupport.initialSelection(devices: model.devices.map(\.id)) {
+            if let debug = DebugSupport.initialSelection(devices: model.devices) {
                 selection = debug
             } else if case let .device(id) = selection, model.device(id) == nil {
                 // The device that was open when the window went away has been removed since.
@@ -115,6 +121,12 @@ struct MainWindow: View {
             MainWindow.wantsPairing = false
             showPairing = true
         }
+    }
+
+    private func chooseDebugPage() {
+        guard !debugChosen, let debug = DebugSupport.initialSelection(devices: model.devices) else { return }
+        debugChosen = true
+        selection = debug
     }
 
     private var trashTitle: String {
@@ -139,7 +151,13 @@ struct MainWindow: View {
                 if let device = model.device(id) {
                     // One DeviceDetail for every device, so its glyph and title can morph
                     // from one device to the next instead of being replaced.
-                    DeviceDetail(device: device).transition(.page)
+                    DeviceDetail(device: device, onBrowse: { selection = .files(device.id) }).transition(.page)
+                } else {
+                    Color.clear
+                }
+            case let .files(id):
+                if let device = model.device(id) {
+                    FilesView(device: device, onBack: { selection = .device(id) }).transition(.page)
                 } else {
                     Color.clear
                 }
