@@ -89,6 +89,7 @@ A person can store a choice per device and kind, in the core, so a screen in the
 | `MediaKeyframe` | viewer to host | `session`: send me a keyframe now |
 | `MediaReport` | viewer to host | `session`, `interval_ms`, `frames`, `bytes`, `lost`, `dropped`, `jitter_us`: once a second |
 | `MediaInput` | viewer to host | `session`, `input` (see below) |
+| `MediaOffer` | host to viewer | `kind`, `facing`: the person started the sharing on the host itself and asks the viewer to look. Not a session: the viewer's app answers with an ordinary `MediaRequest`. A device that does not know it skips it |
 
 `MediaEnd` is the one list of reasons for `MediaDeny` and `MediaStop`: `ended` (a person stopped it), `declined`, `policy`,
 `busy`, `unsupported` (kind or codec not available), `unavailable` (no permission to capture, no camera), `timeout`,
@@ -166,6 +167,15 @@ viewer                       host core                       host app
 
 A second request of the same kind from the same peer replaces the first (the old one ends with `replaced`): a viewer that
 crashed must not lock itself out. At most 8 sessions per device, one per kind per peer.
+
+### Start from the host
+
+The viewer always asks, so a person who starts the sharing on the phone itself ("Show my screen on the Mac") does it in
+two steps: the phone's app gets the capture permission first and keeps it ready, then `media_offer(peer, kind, facing)`
+sends a `MediaOffer`. The viewer's core emits `Event::MediaOffered`; its app opens a window and calls `media_request`.
+The host's app recognises that request as the one it is waiting for (same peer, same kind) and answers it without asking
+again. Nothing starts by itself: an offer that the viewer ignores just times out on the host. The apps only offer to a
+device whose caps say `screen.view` or `camera.view`.
 
 ### Frames and what happens to them
 

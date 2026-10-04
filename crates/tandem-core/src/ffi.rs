@@ -855,6 +855,8 @@ pub enum TandemEvent {
     MediaEnded { peer: String, session: u64, kind: TandemMediaKind, role: TandemMediaRole, reason: TandemMediaEnd },
     /// The bitrate the encoder of a host session should move to.
     MediaBitrate { peer: String, session: u64, bits_per_second: u32 },
+    /// The other device is ready to show its screen or camera and asks this one to look. Answer with `media_request`.
+    MediaOffered { from: String, kind: TandemMediaKind, facing: TandemMediaFacing },
 }
 
 impl From<Event> for TandemEvent {
@@ -963,6 +965,9 @@ impl From<Event> for TandemEvent {
             },
             Event::MediaBitrate { peer, session, bits_per_second } => {
                 TandemEvent::MediaBitrate { peer: peer.to_string(), session, bits_per_second }
+            }
+            Event::MediaOffered { from, kind, facing } => {
+                TandemEvent::MediaOffered { from: from.to_string(), kind: kind.into(), facing: facing.into() }
             }
             Event::MediaCommand { from, player, action, position_ms } => {
                 use crate::proto::MediaAction as M;
@@ -2390,6 +2395,13 @@ impl TandemEngine {
         request.control = want.control;
         request.facing = want.facing.into();
         self.engine.media_request(peer, request).map_err(Into::into)
+    }
+
+    /// Tells a device that this one is ready to show its screen or camera and would like it to look. The other app
+    /// answers with `media_request`; nothing starts by itself.
+    pub fn media_offer(&self, peer: String, kind: TandemMediaKind, facing: TandemMediaFacing) -> Result<(), TandemError> {
+        let peer = DeviceId::parse(&peer)?;
+        self.engine.media_offer(peer, kind.into(), facing.into()).map_err(Into::into)
     }
 
     /// The host app agrees. Frames may be pushed from now on; the first one must be a keyframe.

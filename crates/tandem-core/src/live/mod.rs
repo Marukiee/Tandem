@@ -372,6 +372,22 @@ impl Engine {
         self.inner.live_request(peer, want)
     }
 
+    /// Tells `peer` that this device is ready to show its screen or camera and would like it to look. The peer's app
+    /// decides and answers with a `media_request`; nothing starts by itself. Does nothing when `peer` is not connected.
+    pub fn media_offer(&self, peer: DeviceId, kind: MediaKind, facing: MediaFacing) -> Result<()> {
+        if kind == MediaKind::Other {
+            return Err(Error::invalid("that kind of video does not exist"));
+        }
+        if !self.inner.peers.lock().unwrap().contains_key(&peer) {
+            return Err(Error::NotTrusted);
+        }
+        if self.inner.session_of(&peer).is_none() {
+            return Err(Error::NotConnected);
+        }
+        self.inner.live_send(peer, Msg::MediaOffer { kind, facing });
+        Ok(())
+    }
+
     /// The host app agrees. Frames may be pushed from now on; the first must be a keyframe.
     pub fn media_accept(&self, session: u64, answer: MediaAnswer) -> Result<()> {
         let _rt = self.inner.live.handle.enter();
@@ -866,6 +882,12 @@ impl Inner {
                     return self.live_tell_unknown(peer, session);
                 };
                 self.live_input(&host, input);
+            }
+            Msg::MediaOffer { kind, facing } => {
+                // Only the two kinds this version knows are worth showing a person.
+                if kind != MediaKind::Other {
+                    self.emit(Event::MediaOffered { from: peer, kind, facing });
+                }
             }
             _ => {}
         }

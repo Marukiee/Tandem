@@ -81,4 +81,7 @@ pub enum Event {
     },
     /// The bitrate the encoder of a host session should move to.
     MediaBitrate { peer: DeviceId, session: u64, bits_per_second: u32 },
+    /// The other device is ready to show its screen or camera and asks this one to look (`Engine::media_offer`). Answer
+    /// with `media_request` if the person wants to see it.
+    MediaOffered { from: DeviceId, kind: crate::live::MediaKind, facing: crate::live::MediaFacing },
 }
