@@ -137,6 +137,10 @@ class EngineHost(
     @Volatile
     var audioSink: uniffi.tandem_core.TandemAudioSink? = null
 
+    /** Where the frames of a Mac's screen go. Set before the engine starts, like the audio sink. */
+    @Volatile
+    var mediaViewer: uniffi.tandem_core.TandemMediaViewer? = null
+
     val myId: String get() = engine?.id().orEmpty()
     val myName: String get() = engine?.name().orEmpty()
 
@@ -155,12 +159,13 @@ class EngineHost(
                     appVersion = BuildConfig.VERSION_NAME,
                     port = 47820.toUShort(),
                     enableMdns = true,
-                    caps = listOf("clipboard", "share", "notify", "call", "input", "battery", "hotspot", "screenshot", "media", "capture"),
+                    caps = listOf("clipboard", "share", "notify", "call", "input", "battery", "hotspot", "screenshot", "media", "capture", "screen.view"),
                     lowPower = true,
                 )
                 val started = TandemEngine.start(config, AndroidVault(context), AndroidFiles(context), Sink())
                 engine = started
                 audioSink?.let { started.setAudioSink(it) }
+                mediaViewer?.let { started.setMediaViewer(it) }
                 _state.value = EngineState.Running
                 refreshDevices()
             } catch (e: Exception) {

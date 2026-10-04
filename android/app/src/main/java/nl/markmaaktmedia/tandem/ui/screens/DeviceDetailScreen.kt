@@ -68,7 +68,7 @@ import uniffi.tandem_core.TandemPlatform
 import uniffi.tandem_core.TandemShareOrigin
 
 @Composable
-fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Unit) {
+fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Unit, onScreen: (String) -> Unit = {}) {
     val context = LocalContext.current
     val host = context.graph.host
     val devices by host.devices.collectAsState()
@@ -221,6 +221,10 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                 }, Modifier.weight(1f).fillMaxHeight())
                 if (device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.LINUX || device.platform == TandemPlatform.WINDOWS) {
                     ActionTile(TandemIcons.Mouse, stringResource(R.string.tile_trackpad), { onRemote(id) }, Modifier.weight(1f).fillMaxHeight().routeBounds(routeKey(Route.Remote(id))))
+                }
+                // Only a Mac that says it can share its screen, and is reachable now.
+                if (device.platform == TandemPlatform.MAC_OS && "screen.host" in device.caps) {
+                    ActionTile(TandemIcons.Desktop, stringResource(R.string.tile_control_mac), { onScreen(id) }, Modifier.weight(1f).fillMaxHeight().routeBounds(routeKey(Route.Screen(id))))
                 }
                 if (device.platform == TandemPlatform.ANDROID) {
                     ActionTile(TandemIcons.Ring, stringResource(R.string.tile_find), { scope.launch { runCatching { host.engine?.ring(id, true) } } }, Modifier.weight(1f).fillMaxHeight())

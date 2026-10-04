@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tile_control_mac">Bedien deze Mac</string>
+    <string name="screen_connecting">Verbinden met %1$s</string>
+    <string name="screen_waiting_approval">Wachten op %1$s</string>
+    <string name="screen_waiting_approval_sub">Kies Sta toe in de vraag die op je Mac is verschenen.</string>
+    <string name="screen_first_picture">Wachten op het eerste beeld</string>
+    <string name="screen_reconnecting">Verbinding weg, opnieuw verbinden</string>
+    <string name="screen_reconnecting_try">Nieuwe poging, poging %1$d</string>
+    <string name="screen_no_picture">Even geen beeld</string>
+    <string name="screen_view_only">Alleen kijken</string>
+    <string name="screen_stopped_title">%1$s is gestopt met delen</string>
+    <string name="screen_stopped_body">Iemand bij de Mac heeft op Stop gedrukt of het bedienen op afstand uitgezet.</string>
+    <string name="screen_denied_title">%1$s zei nee</string>
+    <string name="screen_denied_body">Je kunt deze telefoon op de Mac toestaan, in Tandem onder Op afstand bedienen, of het opnieuw vragen.</string>
+    <string name="screen_busy_title">%1$s is bezig</string>
+    <string name="screen_busy_body">Een ander apparaat kijkt nu mee op die Mac.</string>
+    <string name="screen_unavailable_title">%1$s kan zijn scherm niet delen</string>
+    <string name="screen_unavailable_body">Tandem op de Mac heeft Schermopname nodig. Zet het aan in Systeeminstellingen, onder Privacy en beveiliging, en start Tandem daar opnieuw.</string>
+    <string name="screen_noanswer_title">Geen antwoord van %1$s</string>
+    <string name="screen_noanswer_body">Niemand heeft de vraag op de Mac op tijd beantwoord.</string>
+    <string name="screen_lost_title">Verbinding kwijt</string>
+    <string name="screen_lost_body">Tandem kreeg het scherm na meerdere pogingen niet terug.</string>
+    <string name="screen_decoder_title">Deze telefoon kon het beeld niet tonen</string>
+    <string name="screen_decoder_body">De videodecoder van deze telefoon is gestopt. Opnieuw proberen helpt meestal.</string>
+    <string name="screen_try_again">Opnieuw proberen</string>
+    <string name="screen_close">Sluit</string>
+    <string name="screen_keyboard">Toetsenbord</string>
+    <string name="screen_touch_mode">Het scherm direct aanraken</string>
+    <string name="screen_trackpad_mode">Het scherm als trackpad gebruiken</string>
+    <string name="screen_fit">Passend maken</string>
+    <string name="screen_show_bar">Toon knoppen</string>
+    <string name="screen_stats_hint">Houd ingedrukt voor details</string>
+    <string name="screen_stats_fps">%1$d fps</string>
+    <string name="screen_stats_bitrate">%1$.1f Mbit/s</string>
+    <string name="screen_stats_delay">%1$d ms</string>
+    <string name="screen_stats_target">Doel %1$.1f Mbit/s</string>
+    <string name="screen_stats_lost">%1$d kwijt, %2$d overgeslagen</string>
+    <string name="screen_stats_size">%1$d x %2$d</string>
+    <string name="screen_hint_trackpad">Beweeg één vinger om de aanwijzer te sturen. Tik om te klikken, houd ingedrukt voor een rechtermuisklik, houd ingedrukt en beweeg om te slepen. Twee vingers scrollen, knijpen zoomt.</string>
+    <string name="screen_hint_touch">Raak aan om te klikken waar je aanraakt. Houd ingedrukt voor een rechtermuisklik. Twee vingers scrollen, knijpen zoomt.</string>
+</resources>

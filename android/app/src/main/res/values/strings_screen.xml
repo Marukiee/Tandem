@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tile_control_mac">Control this Mac</string>
+    <string name="screen_connecting">Connecting to %1$s</string>
+    <string name="screen_waiting_approval">Waiting for %1$s</string>
+    <string name="screen_waiting_approval_sub">Choose Allow in the question that appeared on your Mac.</string>
+    <string name="screen_first_picture">Waiting for the first picture</string>
+    <string name="screen_reconnecting">Connection lost, reconnecting</string>
+    <string name="screen_reconnecting_try">Trying again, attempt %1$d</string>
+    <string name="screen_no_picture">No picture for a moment</string>
+    <string name="screen_view_only">View only</string>
+    <string name="screen_stopped_title">%1$s stopped sharing</string>
+    <string name="screen_stopped_body">Someone at the Mac pressed Stop, or turned remote control off.</string>
+    <string name="screen_denied_title">%1$s said no</string>
+    <string name="screen_denied_body">You can allow this phone on the Mac, in Tandem under Remote control, or ask again.</string>
+    <string name="screen_busy_title">%1$s is busy</string>
+    <string name="screen_busy_body">Another device is looking at that Mac right now.</string>
+    <string name="screen_unavailable_title">%1$s cannot share its screen</string>
+    <string name="screen_unavailable_body">Tandem on the Mac needs Screen Recording. Turn it on in System Settings, under Privacy and Security, and restart Tandem there.</string>
+    <string name="screen_noanswer_title">No answer from %1$s</string>
+    <string name="screen_noanswer_body">Nobody answered the question on the Mac in time.</string>
+    <string name="screen_lost_title">Connection lost</string>
+    <string name="screen_lost_body">Tandem could not get the screen back after several tries.</string>
+    <string name="screen_decoder_title">This phone could not show the picture</string>
+    <string name="screen_decoder_body">The video decoder of this phone stopped. Trying again usually helps.</string>
+    <string name="screen_try_again">Try again</string>
+    <string name="screen_close">Close</string>
+    <string name="screen_keyboard">Keyboard</string>
+    <string name="screen_touch_mode">Touch the screen directly</string>
+    <string name="screen_trackpad_mode">Use the screen as a trackpad</string>
+    <string name="screen_fit">Fit to screen</string>
+    <string name="screen_show_bar">Show controls</string>
+    <string name="screen_stats_hint">Long press for details</string>
+    <string name="screen_stats_fps">%1$d fps</string>
+    <string name="screen_stats_bitrate">%1$.1f Mbit/s</string>
+    <string name="screen_stats_delay">%1$d ms</string>
+    <string name="screen_stats_target">Target %1$.1f Mbit/s</string>
+    <string name="screen_stats_lost">%1$d lost, %2$d dropped</string>
+    <string name="screen_stats_size">%1$d x %2$d</string>
+    <string name="screen_hint_trackpad">Move one finger to steer the pointer. Tap to click, press and hold for a right click, press and hold then move to drag. Two fingers scroll, pinch zooms.</string>
+    <string name="screen_hint_touch">Touch to click where you touch. Press and hold for a right click. Two fingers scroll, pinch zooms.</string>
+</resources>
