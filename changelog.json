@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.35",
+    "date": "2026-10-04",
+    "en": {
+      "title": "Insert from your phone",
+      "new": [
+        "Your Mac can ask your phone for a photo, a scan or a picture and paste it where you are typing. Press Control Option Command P on the Mac or choose Insert from phone in the Services menu. The phone gets a notification, opens a camera screen, the document scanner or the gallery, and sends the result straight back. A scan comes as a PDF. Closing the screen on either side stops the other one too",
+        "The camera screen has a flash switch, a button to switch cameras, and a look at the photo before it is sent"
+      ]
+    },
+    "nl": {
+      "title": "Invoegen vanaf je telefoon",
+      "new": [
+        "Je Mac kan je telefoon om een foto, een scan of een plaatje vragen en dat plakken waar je typt. Druk op de Mac op Control Option Command P of kies Insert from phone in het menu Services. De telefoon krijgt een melding, opent een camerascherm, de documentscanner of de galerij en stuurt het resultaat direct terug. Een scan komt als pdf. Sluit je het scherm aan één kant, dan stopt de andere kant ook",
+        "Het camerascherm heeft een flitsschakelaar, een knop om van camera te wisselen en laat de foto zien voordat hij verstuurd wordt"
+      ]
+    }
+  },
+  {
     "version": "0.1.34",
     "date": "2026-10-04",
     "en": {

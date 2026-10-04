@@ -19,6 +19,10 @@ class ActionReceiver : BroadcastReceiver() {
             ACCEPT -> if (device != null) runCatching { host.engine?.acceptOffer(device, offer.toULong()) }
             DECLINE -> if (device != null) context.graph.scope.launch { runCatching { host.engine?.declineOffer(device, offer.toULong()) } }
             STOP_RING -> FindPhone.stop()
+            CANCEL_CAPTURE -> {
+                val request = intent.getLongExtra(EXTRA_OFFER, 0)
+                if (device != null) context.graph.scope.launch { host.cancelCapture(device, request, uniffi.tandem_core.TandemCaptureWhy.CANCELLED) }
+            }
             STOP_AUDIO -> {
                 context.graph.audio.stop(tell = true)
                 return
@@ -57,6 +61,7 @@ class ActionReceiver : BroadcastReceiver() {
     companion object {
         const val ACCEPT = "nl.markmaaktmedia.tandem.ACCEPT"
         const val DECLINE = "nl.markmaaktmedia.tandem.DECLINE"
+        const val CANCEL_CAPTURE = "nl.markmaaktmedia.tandem.CANCEL_CAPTURE"
         const val STOP_RING = "nl.markmaaktmedia.tandem.STOP_RING"
         const val STOP_AUDIO = "nl.markmaaktmedia.tandem.STOP_AUDIO"
         const val SEND_SCREENSHOT = "nl.markmaaktmedia.tandem.SEND_SCREENSHOT"

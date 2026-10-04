@@ -50,4 +50,5 @@
     <string name="capture_name_photo">Photo</string>
     <string name="capture_name_scan">Scan</string>
     <string name="capture_mac_fallback">your Mac</string>
+    <string name="capture_error_local">That did not work</string>
 </resources>

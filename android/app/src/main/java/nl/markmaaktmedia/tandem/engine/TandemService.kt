@@ -19,11 +19,13 @@ import nl.markmaaktmedia.tandem.MainActivity
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.calls.CallMonitor
+import nl.markmaaktmedia.tandem.capture.CaptureActivity
 import nl.markmaaktmedia.tandem.hotspot.HotspotModule
 import nl.markmaaktmedia.tandem.mirror.ListenerWatchdog
 import nl.markmaaktmedia.tandem.share.ClipboardSendActivity
 import nl.markmaaktmedia.tandem.share.ScreenshotWatcher
 import nl.markmaaktmedia.tandem.share.ShareShortcuts
+import uniffi.tandem_core.TandemCaptureKind
 import uniffi.tandem_core.TandemEvent
 
 /**
@@ -128,6 +130,9 @@ class TandemService : LifecycleService() {
             is TandemEvent.Dial -> calls.dial(event.number)
             is TandemEvent.Hotspot -> hotspot.onEvent(event)
 
+            is TandemEvent.CaptureRequested -> postCaptureRequest(event)
+            is TandemEvent.CaptureCancelled -> getSystemService(NotificationManager::class.java).cancel(captureNotificationId(event.id.toLong()))
+
             is TandemEvent.Notification -> Unit
 
             else -> Unit
@@ -135,6 +140,42 @@ class TandemService : LifecycleService() {
     }
 
     // ---- Notifications ---------------------------------------------------------
+
+    private fun captureNotificationId(request: Long): Int = 0x4341 + (request xor (request ushr 32)).toInt().and(0xFFFF)
+
+    /** A computer asks for a photo, a scan or a picture: a heads-up that opens the camera screen. */
+    private fun postCaptureRequest(event: TandemEvent.CaptureRequested) {
+        val name = graph.host.device(event.from)?.name ?: getString(R.string.capture_mac_fallback)
+        val request = event.id.toLong()
+        val (title, text) = when (event.kind) {
+            TandemCaptureKind.PHOTO -> R.string.capture_notif_photo to R.string.capture_notif_text_photo
+            TandemCaptureKind.DOCUMENT -> R.string.capture_notif_document to R.string.capture_notif_text_document
+            TandemCaptureKind.PICTURE -> R.string.capture_notif_picture to R.string.capture_notif_text_picture
+        }
+        val open = PendingIntent.getActivity(
+            this, captureNotificationId(request),
+            CaptureActivity.intent(this, event.from, request, event.kind),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val cancel = PendingIntent.getBroadcast(
+            this, captureNotificationId(request),
+            Intent(this, ActionReceiver::class.java).setAction(ActionReceiver.CANCEL_CAPTURE)
+                .putExtra(ActionReceiver.EXTRA_DEVICE, event.from).putExtra(ActionReceiver.EXTRA_OFFER, request),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notification = NotificationCompat.Builder(this, Channels.CAPTURE)
+            .setSmallIcon(R.drawable.ic_stat_tandem)
+            .setContentTitle(getString(title, name))
+            .setContentText(getString(text))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .setTimeoutAfter(120_000)
+            .addAction(0, getString(R.string.capture_notif_cancel), cancel)
+            .build()
+        getSystemService(NotificationManager::class.java).notify(captureNotificationId(request), notification)
+    }
 
     private fun open(): PendingIntent = PendingIntent.getActivity(
         this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,

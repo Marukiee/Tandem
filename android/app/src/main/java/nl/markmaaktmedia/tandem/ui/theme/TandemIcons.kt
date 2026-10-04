@@ -66,6 +66,11 @@ object TandemIcons {
     val Ring: Painter @Composable get() = painterResource(R.drawable.sym_notifications_active)
     val Screenshot: Painter @Composable get() = painterResource(R.drawable.sym_screenshot)
     val Image: Painter @Composable get() = painterResource(R.drawable.sym_image)
+    val Camera: Painter @Composable get() = painterResource(R.drawable.sym_photo_camera)
+    val FlashOn: Painter @Composable get() = painterResource(R.drawable.sym_flash_on)
+    val FlashOff: Painter @Composable get() = painterResource(R.drawable.sym_flash_off)
+    val FlashAuto: Painter @Composable get() = painterResource(R.drawable.sym_flash_auto)
+    val FlipCamera: Painter @Composable get() = painterResource(R.drawable.sym_cameraswitch)
     val File: Painter @Composable get() = painterResource(R.drawable.sym_description)
 
     // Status

@@ -50,4 +50,5 @@
     <string name="capture_name_photo">Foto</string>
     <string name="capture_name_scan">Scan</string>
     <string name="capture_mac_fallback">je Mac</string>
+    <string name="capture_error_local">Dat is niet gelukt</string>
 </resources>

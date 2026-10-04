@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.BuildConfig
 import nl.markmaaktmedia.tandem.data.TandemPrefs
+import uniffi.tandem_core.TandemCaptureWhy
 import uniffi.tandem_core.TandemConfig
 import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemEngine
@@ -154,7 +155,7 @@ class EngineHost(
                     appVersion = BuildConfig.VERSION_NAME,
                     port = 47820.toUShort(),
                     enableMdns = true,
-                    caps = listOf("clipboard", "share", "notify", "call", "input", "battery", "hotspot", "screenshot", "media"),
+                    caps = listOf("clipboard", "share", "notify", "call", "input", "battery", "hotspot", "screenshot", "media", "capture"),
                     lowPower = true,
                 )
                 val started = TandemEngine.start(config, AndroidVault(context), AndroidFiles(context), Sink())
@@ -293,6 +294,18 @@ class EngineHost(
         val files = uris.mapNotNull { describe(it, hold) }
         if (files.isEmpty() || targets.isEmpty()) return 0
         return engine.sendFiles(targets, files, origin).sentTo.size
+    }
+
+    /** Sends what another device asked for, tagged with its request so it knows what the file answers. */
+    suspend fun sendCapture(file: File, mime: String, target: String, request: Long): Boolean {
+        val engine = engine ?: return false
+        val outgoing = TandemOutgoingFile(source = file.absolutePath, name = file.name, size = file.length().toULong(), mime = mime)
+        return engine.sendFiles(listOf(target), listOf(outgoing), TandemShareOrigin.Capture(request.toULong())).sentTo.isNotEmpty()
+    }
+
+    /** Tells the device that asked that there will be no picture, so its waiting screen closes. */
+    suspend fun cancelCapture(target: String, request: Long, why: TandemCaptureWhy) {
+        runCatching { engine?.cancelCapture(target, request.toULong(), why) }
     }
 
     /** The sources of the files that were offered, by name and size: the events about them say no more than that. */

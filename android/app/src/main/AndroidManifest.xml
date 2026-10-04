@@ -109,6 +109,17 @@
             android:taskAffinity=""
             android:theme="@style/Theme.Tandem.Sheet" />
 
+        <!-- The camera, the scanner and the gallery, for a computer that asks for a picture. -->
+        <activity
+            android:name=".capture.CaptureActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Tandem.Capture" />
+
         <service
             android:name=".share.ClipboardTileService"
             android:exported="true"
