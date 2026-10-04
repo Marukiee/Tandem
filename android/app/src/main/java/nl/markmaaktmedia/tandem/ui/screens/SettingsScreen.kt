@@ -200,7 +200,8 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
         item {
             SectionHeader(stringResource(R.string.settings_access))
             SettingsGroup {
-                ActionRow(0, 1, TandemIcons.Shield, stringResource(R.string.settings_access_row), stringResource(R.string.settings_access_sub), { onOpen(Route.Access) }, modifier = Modifier.routeBounds(routeKey(Route.Access)))
+                ActionRow(0, 2, TandemIcons.Shield, stringResource(R.string.settings_access_row), stringResource(R.string.settings_access_sub), { onOpen(Route.Access) }, modifier = Modifier.routeBounds(routeKey(Route.Access)))
+                ActionRow(1, 2, TandemIcons.Folder, stringResource(R.string.files_title), stringResource(R.string.files_row_sub), { onOpen(Route.FileAccess) }, modifier = Modifier.routeBounds(routeKey(Route.FileAccess)))
             }
         }
 

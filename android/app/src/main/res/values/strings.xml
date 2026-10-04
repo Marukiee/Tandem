@@ -382,4 +382,46 @@
     <string name="channel_audio">Sound from your Mac</string>
     <string name="channel_audio_desc">Shown while your Mac plays its sound through this phone</string>
     <string name="audio_test_name">the test tone</string>
+
+    <!-- File access: what other devices may do with the files of this phone -->
+    <string name="files_title">File access</string>
+    <string name="files_row_sub">Which of your files other devices can see and change</string>
+    <string name="files_intro">Choose what your other devices can see and change on this phone. They connect straight to the phone, over your own network.</string>
+    <string name="files_permission_header">This phone</string>
+    <string name="files_permission_title">Access to all files</string>
+    <string name="files_permission_on">Tandem can reach every folder you share</string>
+    <string name="files_permission_off">Without it other devices see nothing of this phone. Tap to allow it.</string>
+    <string name="files_on">On</string>
+    <string name="files_off">Off</string>
+    <string name="files_for">For</string>
+    <string name="files_all_devices">All devices</string>
+    <string name="files_own">Own settings for this device</string>
+    <string name="files_own_sub">Off: it follows the settings for all devices</string>
+    <string name="files_rights">What they may do</string>
+    <string name="files_enabled">Share files</string>
+    <string name="files_enabled_sub">The main switch. Off, nothing of this phone can be seen</string>
+    <string name="files_write">Allow changing files</string>
+    <string name="files_write_sub">Putting files here, replacing them and renaming them</string>
+    <string name="files_delete">Allow deleting files</string>
+    <string name="files_delete_sub">Removing files and folders from this phone</string>
+    <string name="files_hidden">Show hidden files</string>
+    <string name="files_hidden_sub">Names that start with a dot</string>
+    <string name="files_max_upload">Largest file they may send</string>
+    <string name="files_max_upload_sub">Tap to change</string>
+    <string name="files_no_limit">No limit</string>
+    <string name="files_folders">Folders</string>
+    <string name="files_folder_changes">Changes allowed</string>
+    <string name="files_folder_read_only">Read only</string>
+    <string name="files_remove_folder">Stop sharing this folder</string>
+    <string name="files_add_folder">Add a folder</string>
+    <string name="files_add_folder_sub">Pick a folder on this phone to share</string>
+    <string name="files_activity">Recent activity</string>
+    <string name="files_activity_none">Nothing yet. Changes other devices make, and what was refused, show up here.</string>
+    <string name="files_did_write">Put</string>
+    <string name="files_did_remove">Removed</string>
+    <string name="files_did_mkdir">Made folder</string>
+    <string name="files_did_rename">Moved</string>
+    <string name="files_did_read">Read</string>
+    <string name="files_refused">refused: %1$s</string>
+    <string name="files_just_now">Just now</string>
 </resources>

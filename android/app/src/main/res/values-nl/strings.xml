@@ -379,4 +379,46 @@
     <string name="channel_update">App-updates</string>
     <string name="channel_update_desc">Meldt wanneer een nieuwe versie van Tandem klaarstaat</string>
     <string name="audio_test_name">de testtoon</string>
+
+    <!-- Bestandstoegang: wat andere apparaten met de bestanden van deze telefoon mogen -->
+    <string name="files_title">Bestandstoegang</string>
+    <string name="files_row_sub">Welke bestanden andere apparaten kunnen zien en wijzigen</string>
+    <string name="files_intro">Kies wat je andere apparaten op deze telefoon kunnen zien en wijzigen. Ze verbinden rechtstreeks met de telefoon, over je eigen netwerk.</string>
+    <string name="files_permission_header">Deze telefoon</string>
+    <string name="files_permission_title">Toegang tot alle bestanden</string>
+    <string name="files_permission_on">Tandem kan bij elke map die je deelt</string>
+    <string name="files_permission_off">Zonder dit zien andere apparaten niets van deze telefoon. Tik om het toe te staan.</string>
+    <string name="files_on">Aan</string>
+    <string name="files_off">Uit</string>
+    <string name="files_for">Voor</string>
+    <string name="files_all_devices">Alle apparaten</string>
+    <string name="files_own">Eigen instellingen voor dit apparaat</string>
+    <string name="files_own_sub">Uit: het volgt de instellingen voor alle apparaten</string>
+    <string name="files_rights">Wat ze mogen</string>
+    <string name="files_enabled">Bestanden delen</string>
+    <string name="files_enabled_sub">De hoofdschakelaar. Uit: er is niets van deze telefoon te zien</string>
+    <string name="files_write">Wijzigen toestaan</string>
+    <string name="files_write_sub">Bestanden hierheen zetten, vervangen en hernoemen</string>
+    <string name="files_delete">Verwijderen toestaan</string>
+    <string name="files_delete_sub">Bestanden en mappen van deze telefoon halen</string>
+    <string name="files_hidden">Verborgen bestanden tonen</string>
+    <string name="files_hidden_sub">Namen die met een punt beginnen</string>
+    <string name="files_max_upload">Grootste bestand dat ze mogen sturen</string>
+    <string name="files_max_upload_sub">Tik om te wijzigen</string>
+    <string name="files_no_limit">Geen limiet</string>
+    <string name="files_folders">Mappen</string>
+    <string name="files_folder_changes">Wijzigen toegestaan</string>
+    <string name="files_folder_read_only">Alleen lezen</string>
+    <string name="files_remove_folder">Deze map niet meer delen</string>
+    <string name="files_add_folder">Map toevoegen</string>
+    <string name="files_add_folder_sub">Kies een map op deze telefoon om te delen</string>
+    <string name="files_activity">Recente activiteit</string>
+    <string name="files_activity_none">Nog niets. Wijzigingen van andere apparaten, en wat is geweigerd, komen hier te staan.</string>
+    <string name="files_did_write">Neergezet</string>
+    <string name="files_did_remove">Verwijderd</string>
+    <string name="files_did_mkdir">Map gemaakt</string>
+    <string name="files_did_rename">Verplaatst</string>
+    <string name="files_did_read">Gelezen</string>
+    <string name="files_refused">geweigerd: %1$s</string>
+    <string name="files_just_now">Zojuist</string>
 </resources>

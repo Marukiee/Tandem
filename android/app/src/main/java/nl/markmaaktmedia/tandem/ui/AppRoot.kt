@@ -193,6 +193,7 @@ private fun RouteBody(route: Route, nav: Nav) {
         Route.Pair -> PairScreen(onBack = { nav.pop() }, onPaired = { nav.pop() })
         is Route.Remote -> RemoteScreen(route.id, onBack = { nav.pop() })
         Route.Access -> AccessScreen(onBack = { nav.pop() })
+        Route.FileAccess -> nl.markmaaktmedia.tandem.ui.screens.FileAccessScreen(onBack = { nav.pop() })
         Route.MirrorApps -> MirrorAppsScreen(onBack = { nav.pop() })
         Route.Appearance -> AppearanceScreen(onBack = { nav.pop() })
         Route.Developer -> nl.markmaaktmedia.tandem.ui.screens.DeveloperScreen(onBack = { nav.pop() }, onOpen = { nav.push(it) })

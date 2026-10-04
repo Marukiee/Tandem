@@ -11,6 +11,7 @@ sealed interface Route {
     data object Pair : Route
     data class Remote(val id: String) : Route
     data object Access : Route
+    data object FileAccess : Route
     data object MirrorApps : Route
     data object Appearance : Route
     data object Developer : Route
@@ -78,6 +79,7 @@ private fun routeFromKey(key: String): Route? = when {
     key == "pair" -> Route.Pair
     key.startsWith("remote:") -> Route.Remote(key.removePrefix("remote:"))
     key == "access" -> Route.Access
+    key == "files" -> Route.FileAccess
     key == "mirror" -> Route.MirrorApps
     key == "appearance" -> Route.Appearance
     key == "developer" -> Route.Developer
