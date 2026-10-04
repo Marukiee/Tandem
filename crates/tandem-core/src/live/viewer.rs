@@ -1,12 +1,13 @@
 //! The device that shows the picture: reads every frame stream to the end the moment it appears, puts the frames in
 //! order, and hands them to the app from a task of its own so that a slow app costs frames and never the network.
 
+use std::collections::VecDeque;
 use std::sync::atomic::AtomicU16;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use quinn::RecvStream;
-use tokio::sync::{Notify, mpsc, watch};
+use tokio::sync::{Notify, watch};
 use tokio_util::sync::CancellationToken;
 use tracing::debug;
 
@@ -18,16 +19,23 @@ use crate::live::{MediaFrame, MediaStats, Phase};
 use crate::proto::{Msg, STREAM_MEDIA};
 
 /// Frames queued towards the app before it counts as too slow.
-pub const DELIVERY_QUEUE: usize = 32;
+pub const DELIVERY_QUEUE: usize = 24;
+/// A frame that has waited this long for the app is stale. The queue is thrown away and a keyframe is asked for: a few
+/// frames fewer on screen is better than a picture that runs behind.
+const DELIVERY_STALE: Duration = Duration::from_millis(400);
+/// A keyframe finding more than this many frames waiting, or one this old, takes the place of all of them.
+const BEHIND_FRAMES: usize = 3;
+const BEHIND_AGE: Duration = Duration::from_millis(100);
 /// A frame whose stream stays unfinished this long is given up on.
 const READ_TIMEOUT: Duration = Duration::from_secs(5);
 /// How long a frame that overtakes the answer to the request waits for it.
 const ACCEPT_WAIT: Duration = Duration::from_secs(2);
 const REPORT_EVERY: Duration = Duration::from_secs(1);
 
-pub struct Delivery {
+struct Queued {
     frame: Frame,
     discontinuity: bool,
+    at: Instant,
 }
 
 #[derive(Default)]
@@ -50,7 +58,8 @@ pub struct ViewerState {
     pub accept: Option<MediaAccept>,
     pub control: bool,
     asm: Assembler,
-    deliver: Option<mpsc::Sender<Delivery>>,
+    /// Frames in order, waiting for the app.
+    queue: VecDeque<Queued>,
     pub stats: MediaStats,
     since: Counters,
     jitter: Jitter,
@@ -70,6 +79,8 @@ pub struct ViewerSession {
     pub st: Mutex<ViewerState>,
     /// The driver should look at its timers again.
     pub wake: Notify,
+    /// A frame is waiting for the app.
+    ready: Notify,
     activated: watch::Sender<bool>,
     pub pointer_counter: AtomicU16,
 }
@@ -90,7 +101,7 @@ impl ViewerSession {
                 accept: None,
                 control: false,
                 asm: Assembler::new(now),
-                deliver: None,
+                queue: VecDeque::new(),
                 stats: MediaStats::default(),
                 since: Counters::default(),
                 jitter: Jitter { arrival: None, pts: 0, value_us: 0.0 },
@@ -99,6 +110,7 @@ impl ViewerSession {
                 end_reason: None,
             }),
             wake: Notify::new(),
+            ready: Notify::new(),
             activated: watch::channel(false).0,
             pointer_counter: AtomicU16::new(0),
         })
@@ -106,18 +118,16 @@ impl ViewerSession {
 
     /// The host said yes. Starts the tasks that hand frames to the app and keep the timers.
     pub fn activate(self: &Arc<Self>, inner: &Arc<Inner>, accept: MediaAccept) {
-        let (tx, rx) = mpsc::channel(DELIVERY_QUEUE);
         {
             let mut st = self.st.lock().unwrap();
             st.control = accept.control;
             st.accept = Some(accept);
-            st.deliver = Some(tx);
             st.phase = Phase::Active;
             st.last_report = Instant::now();
             st.asm = Assembler::new(Instant::now());
         }
         self.activated.send_replace(true);
-        tokio::spawn(run_delivery(inner.clone(), self.clone(), rx));
+        tokio::spawn(run_delivery(inner.clone(), self.clone()));
         tokio::spawn(run_driver(inner.clone(), self.clone()));
     }
 
@@ -127,28 +137,41 @@ impl ViewerSession {
         st.stats.discarded += step.discarded as u64;
         st.stats.late += step.late as u64;
         st.since.lost += step.lost;
-        let mut overflow = false;
+        let mut broke = false;
         for (frame, discontinuity) in step.deliver {
-            if overflow {
+            if broke {
                 st.stats.app_dropped += 1;
                 st.since.dropped += 1;
                 continue;
             }
-            let queued = st.deliver.as_ref().map(|tx| tx.try_send(Delivery { frame, discontinuity }).is_ok()).unwrap_or(false);
-            if queued {
-                st.stats.frames_out += 1;
-            } else {
-                // The app cannot keep up. What follows would refer to this frame, so it is a loss like any other.
-                overflow = true;
-                st.stats.app_dropped += 1;
-                st.since.dropped += 1;
+            let mut discontinuity = discontinuity;
+            let behind = st.queue.len() > BEHIND_FRAMES || st.queue.front().is_some_and(|q| now.duration_since(q.at) > BEHIND_AGE);
+            if frame.keyframe() && behind {
+                // Everything before a keyframe is old news, and the app is behind with it. A frame or two in the queue
+                // is the normal state of a busy decoder and is left alone.
+                let old = st.queue.len() as u64;
+                st.queue.clear();
+                st.stats.app_dropped += old;
+                st.since.dropped += old as u32;
+                discontinuity = true;
+            } else if st.queue.front().is_some_and(|q| now.duration_since(q.at) > DELIVERY_STALE) || st.queue.len() >= DELIVERY_QUEUE {
+                // The app cannot keep up, and what follows would refer to what is dropped here.
+                let old = st.queue.len() as u64 + 1;
+                st.queue.clear();
+                st.stats.app_dropped += old;
+                st.since.dropped += old as u32;
+                broke = true;
+                continue;
             }
+            st.queue.push_back(Queued { frame, discontinuity, at: now });
+            st.stats.frames_out += 1;
         }
-        if overflow {
+        if broke {
             let more = st.asm.app_overflow(now);
-            st.stats.lost += more.lost as u64;
             st.stats.discarded += more.discarded as u64;
-            st.since.lost += more.lost;
+        }
+        if !st.queue.is_empty() {
+            self.ready.notify_one();
         }
         let ask = st.asm.key_due(now);
         if ask {
@@ -167,7 +190,7 @@ impl ViewerSession {
         let was = st.phase;
         st.phase = Phase::Ended;
         st.end_reason = Some(reason);
-        st.deliver = None;
+        st.queue.clear();
         drop(st);
         self.cancel.cancel();
         Some(was)
@@ -313,12 +336,18 @@ impl Inner {
 }
 
 /// Hands the frames to the app, one at a time and in order, and tells it how the session ended.
-async fn run_delivery(inner: Arc<Inner>, viewer: Arc<ViewerSession>, mut rx: mpsc::Receiver<Delivery>) {
+async fn run_delivery(inner: Arc<Inner>, viewer: Arc<ViewerSession>) {
     loop {
-        let item = tokio::select! {
-            _ = viewer.cancel.cancelled() => break,
-            item = rx.recv() => match item { Some(item) => item, None => break },
+        let next = viewer.st.lock().unwrap().queue.pop_front();
+        let Some(item) = next else {
+            tokio::select! {
+                _ = viewer.cancel.cancelled() => break,
+                _ = viewer.ready.notified() => continue,
+            }
         };
+        if viewer.cancel.is_cancelled() {
+            break;
+        }
         let app = inner.live.viewer.read().unwrap().clone();
         if let Some(app) = app {
             let frame = MediaFrame {
