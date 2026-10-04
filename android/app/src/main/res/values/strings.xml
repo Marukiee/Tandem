@@ -424,4 +424,8 @@
     <string name="files_did_read">Read</string>
     <string name="files_refused">refused: %1$s</string>
     <string name="files_just_now">Just now</string>
+    <string name="docs_not_connected">That device is not connected right now</string>
+    <string name="docs_not_ready">Tandem is still starting. Try again in a moment</string>
+    <string name="files_browse">Browse files</string>
+    <string name="files_browse_sub">Open its files in the Files app</string>
 </resources>

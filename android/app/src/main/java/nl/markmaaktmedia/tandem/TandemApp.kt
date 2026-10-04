@@ -5,8 +5,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.engine.EngineHost
@@ -25,6 +28,18 @@ class Graph(app: Application) {
     val deviceIcons: kotlinx.coroutines.flow.StateFlow<Map<String, String>> = prefs.deviceIcons.stateIn(
         scope, SharingStarted.Eagerly, runBlocking { prefs.deviceIcons.first() },
     )
+
+    init {
+        // The places in the Files app are the devices that share their files and can be reached, so it is told when they change.
+        scope.launch {
+            host.devices
+                .map { list -> list.filter { it.online && "files" in it.caps }.map { it.id }.toSet() }
+                .distinctUntilChanged()
+                .collect {
+                    app.contentResolver.notifyChange(android.provider.DocumentsContract.buildRootsUri(app.packageName + ".documents"), null)
+                }
+        }
+    }
 
     /** Set by the first-run flow so the home screen opens straight on pairing. */
     val startAtPair = kotlinx.coroutines.flow.MutableStateFlow(false)

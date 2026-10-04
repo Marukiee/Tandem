@@ -17,6 +17,7 @@ enum DebugSupport {
     private static var signalSource: DispatchSourceSignal?
     private static var closeSource: DispatchSourceSignal?
     private static var panelWindow: NSWindow?
+    private static var settingsWindow: NSWindow?
 
     static var directory: URL? {
         ProcessInfo.processInfo.environment["TANDEM_DEBUG_DIR"].map { URL(fileURLWithPath: $0, isDirectory: true) }
@@ -42,9 +43,8 @@ enum DebugSupport {
         closeSource = closer
 
         if variable("TANDEM_DEBUG_SETTINGS") != nil {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-            }
+            // In a window of its own rather than through the Settings scene, which only opens for an app that is in front.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSettingsWindow() }
         }
         if variable("TANDEM_DEBUG_PANEL") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { showPanelWindow() }
@@ -79,6 +79,22 @@ enum DebugSupport {
 
     static func initialSettingsSection() -> SettingsSection? {
         variable("TANDEM_DEBUG_SETTINGS").flatMap { SettingsSection(rawValue: $0) }
+    }
+
+    private static func showSettingsWindow() {
+        let host = NSHostingView(rootView: SettingsView().environment(EngineModel.shared))
+        let window = NSWindow(
+            contentRect: NSRect(x: 120, y: 120, width: 560, height: 10),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "Settings (debug)"
+        window.contentView = host
+        window.setContentSize(host.fittingSize)
+        window.isReleasedWhenClosed = false
+        window.makeKeyAndOrderFront(nil)
+        settingsWindow = window
     }
 
     private static func showPanelWindow() {

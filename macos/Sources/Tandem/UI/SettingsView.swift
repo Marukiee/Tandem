@@ -6,7 +6,7 @@ import TandemCore
 
 /// The sections of the Settings window, in the order System Settings would list them.
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case general, devices, access, hotspot, updates, about
+    case general, devices, files, access, hotspot, updates, about
 
     var id: String { rawValue }
 
@@ -14,6 +14,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: "General"
         case .devices: "Devices"
+        case .files: "Files"
         case .access: "Access"
         case .hotspot: "Hotspot"
         case .updates: "Updates"
@@ -25,6 +26,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: "gearshape"
         case .devices: "laptopcomputer.and.iphone"
+        case .files: "folder"
         case .access: "hand.raised"
         case .hotspot: "personalhotspot"
         case .updates: "arrow.down.circle"
@@ -37,6 +39,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .general: 600
         case .devices: 460
+        case .files: 680
         case .access: 460
         case .hotspot: 470
         case .updates: 330
@@ -68,6 +71,7 @@ struct SettingsView: View {
         switch section {
         case .general: GeneralSettings()
         case .devices: DevicesSettings()
+        case .files: FileSettings()
         case .access: AccessSettings()
         case .hotspot: HotspotSettings()
         case .updates: UpdateSettings()
@@ -77,7 +81,7 @@ struct SettingsView: View {
 }
 
 /// A toggle with a line of explanation under it, as grouped forms show them.
-private struct DescribedToggle: View {
+struct DescribedToggle: View {
     let title: LocalizedStringKey
     let subtitle: LocalizedStringKey?
     @Binding var isOn: Bool

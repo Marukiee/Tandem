@@ -421,4 +421,8 @@
     <string name="files_did_read">Gelezen</string>
     <string name="files_refused">geweigerd: %1$s</string>
     <string name="files_just_now">Zojuist</string>
+    <string name="docs_not_connected">Dat apparaat is nu niet verbonden</string>
+    <string name="docs_not_ready">Tandem is nog aan het opstarten. Probeer het zo opnieuw</string>
+    <string name="files_browse">Bestanden bekijken</string>
+    <string name="files_browse_sub">Open zijn bestanden in de Bestanden-app</string>
 </resources>

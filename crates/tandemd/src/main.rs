@@ -11,6 +11,7 @@ use std::time::Duration;
 use anyhow::{Context, Result, bail};
 use clap::{Parser, Subcommand};
 use tandem_core::events::Event;
+use tandem_core::files::{FilePolicy, Share, default_shares};
 use tandem_core::platform::DesktopFiles;
 use tandem_core::proto::ShareOrigin;
 use tandem_core::store::{FileSecretStore, Store};
@@ -99,6 +100,47 @@ enum Command {
     },
     /// Move or rename something on another device.
     Mv { device: String, from: String, to: String },
+    /// What other devices may do with the files of this machine. Without an action, what is allowed now.
+    Files {
+        /// Change the choices for one device instead of the ones for all.
+        #[arg(long)]
+        device: Option<String>,
+        #[command(subcommand)]
+        action: Option<FilesAction>,
+    },
+}
+
+#[derive(Subcommand, Clone)]
+enum FilesAction {
+    /// Let other devices see the folders below.
+    On,
+    /// Show nothing to other devices.
+    Off,
+    /// Offer a folder, under its own name unless `--name` says otherwise.
+    Share {
+        path: PathBuf,
+        #[arg(long)]
+        name: Option<String>,
+        /// Others may look at it but not change it.
+        #[arg(long)]
+        read_only: bool,
+    },
+    /// Stop offering a folder.
+    Unshare { name: String },
+    /// Offer Downloads, Documents and Desktop.
+    Usual,
+    /// Allow or refuse creating, replacing and renaming (`on` or `off`).
+    Write { switch: String },
+    /// Allow or refuse removing (`on` or `off`).
+    Delete { switch: String },
+    /// Show or hide the files that start with a dot (`on` or `off`).
+    Hidden { switch: String },
+    /// The biggest file another device may put here, in bytes. 0 is no limit.
+    MaxUpload { bytes: u64 },
+    /// Follow the choices for all devices again (with `--device`).
+    Follow,
+    /// What other devices did lately.
+    Log,
 }
 
 /// A path as the daemon, which may run somewhere else, should read it.
@@ -267,7 +309,103 @@ async fn execute(engine: &Engine, command: &Command) -> Result<String> {
             engine.files(id).rename(from, to, false).await?;
             Ok("moved\n".to_string())
         }
+        Command::Files { device, action } => files_policy(engine, device.as_deref(), action.as_ref()),
     }
+}
+
+fn switch(value: &str) -> Result<bool> {
+    match value {
+        "on" | "yes" | "true" => Ok(true),
+        "off" | "no" | "false" => Ok(false),
+        other => bail!("expected on or off, not {other:?}"),
+    }
+}
+
+/// Shows or changes what other devices may do with the files here.
+fn files_policy(engine: &Engine, device: Option<&str>, action: Option<&FilesAction>) -> Result<String> {
+    let target = device.map(|d| resolve(engine, d)).transpose()?;
+    let mut policy = match &target {
+        Some(id) => engine.file_policy(id),
+        None => engine.file_default_policy(),
+    };
+    let mut changed = true;
+    match action {
+        None => changed = false,
+        Some(FilesAction::Log) => {
+            let mut out = String::new();
+            for entry in engine.file_activity().into_iter().take(40) {
+                let who = engine.devices().iter().find(|d| d.id == entry.peer).map(|d| d.name.clone()).unwrap_or_else(|| entry.peer.short());
+                let result = if entry.ok { String::new() } else { format!("  refused: {}", entry.detail) };
+                out.push_str(&format!("{who}  {}  {}{result}\n", entry.action, entry.path));
+            }
+            return Ok(if out.is_empty() { "nothing yet\n".to_string() } else { out });
+        }
+        Some(FilesAction::Follow) => {
+            let id = target.as_ref().context("follow needs --device")?;
+            engine.clear_file_policy(id)?;
+            changed = false;
+            policy = engine.file_policy(id);
+        }
+        Some(FilesAction::On) => policy.enabled = true,
+        Some(FilesAction::Off) => policy.enabled = false,
+        Some(FilesAction::Write { switch: value }) => policy.write = switch(value)?,
+        Some(FilesAction::Delete { switch: value }) => policy.delete = switch(value)?,
+        Some(FilesAction::Hidden { switch: value }) => policy.hidden = switch(value)?,
+        Some(FilesAction::MaxUpload { bytes }) => policy.max_upload = *bytes,
+        Some(FilesAction::Usual) => {
+            for share in default_shares() {
+                if !policy.shares.iter().any(|s| s.name == share.name || s.path == share.path) {
+                    policy.shares.push(share);
+                }
+            }
+        }
+        Some(FilesAction::Share { path, name, read_only }) => {
+            let path = std::fs::canonicalize(absolute(path)).with_context(|| format!("cannot find {}", path.display()))?;
+            if !path.is_dir() {
+                bail!("{} is not a folder", path.display());
+            }
+            let base = name
+                .clone()
+                .or_else(|| path.file_name().map(|n| n.to_string_lossy().into_owned()))
+                .unwrap_or_else(|| "Files".to_string());
+            let name = (1..).map(|n| if n == 1 { base.clone() } else { format!("{base} {n}") }).find(|c| !policy.shares.iter().any(|s| &s.name == c)).unwrap_or(base);
+            policy.shares.push(Share { name, path: path.to_string_lossy().into_owned(), write: !read_only });
+        }
+        Some(FilesAction::Unshare { name }) => {
+            let before = policy.shares.len();
+            policy.shares.retain(|s| &s.name != name);
+            if policy.shares.len() == before {
+                bail!("no folder is offered as {name:?}");
+            }
+        }
+    }
+    if changed {
+        match &target {
+            Some(id) => engine.set_file_policy(id, policy.clone())?,
+            None => engine.set_file_default_policy(policy.clone())?,
+        }
+    }
+    Ok(describe_policy(engine, target.as_ref(), &policy))
+}
+
+fn describe_policy(engine: &Engine, target: Option<&DeviceId>, policy: &FilePolicy) -> String {
+    let yes = |on: bool| if on { "on" } else { "off" };
+    let mut out = match target {
+        None => "files, for all devices\n".to_string(),
+        Some(id) => {
+            let own = if engine.has_own_file_policy(id) { "its own choices" } else { "follows the choices for all devices" };
+            format!("files, for {} ({own})\n", engine.devices().iter().find(|d| &d.id == id).map(|d| d.name.clone()).unwrap_or_default())
+        }
+    };
+    out.push_str(&format!("  sharing {}, changing {}, removing {}, hidden files {}\n", yes(policy.enabled), yes(policy.write), yes(policy.delete), yes(policy.hidden)));
+    out.push_str(&format!("  biggest file they may send: {}\n", if policy.max_upload == 0 { "no limit".to_string() } else { format!("{} bytes", policy.max_upload) }));
+    if policy.shares.is_empty() {
+        out.push_str("  no folders are offered; `tandemd files share <folder>` or `tandemd files usual` offers some\n");
+    }
+    for share in &policy.shares {
+        out.push_str(&format!("  {}  {}  {}\n", share.name, share.path, if share.write { "changes allowed" } else { "read only" }));
+    }
+    out
 }
 
 fn command_line(command: &Command) -> Option<String> {
@@ -299,6 +437,26 @@ fn command_line(command: &Command) -> Option<String> {
         Command::Mkdir { device, path } => vec!["mkdir".into(), device.clone(), path.clone()],
         Command::Rm { device, path, recursive } => vec!["rm".into(), device.clone(), path.clone(), recursive.to_string()],
         Command::Mv { device, from, to } => vec!["mv".into(), device.clone(), from.clone(), to.clone()],
+        Command::Files { device, action } => {
+            let mut parts = vec!["files".to_string(), device.clone().unwrap_or_default()];
+            match action {
+                None => {}
+                Some(FilesAction::On) => parts.push("on".into()),
+                Some(FilesAction::Off) => parts.push("off".into()),
+                Some(FilesAction::Usual) => parts.push("usual".into()),
+                Some(FilesAction::Follow) => parts.push("follow".into()),
+                Some(FilesAction::Log) => parts.push("log".into()),
+                Some(FilesAction::Share { path, name, read_only }) => {
+                    parts.extend(["share".into(), absolute(path).to_string_lossy().into_owned(), name.clone().unwrap_or_default(), read_only.to_string()])
+                }
+                Some(FilesAction::Unshare { name }) => parts.extend(["unshare".into(), name.clone()]),
+                Some(FilesAction::Write { switch }) => parts.extend(["write".into(), switch.clone()]),
+                Some(FilesAction::Delete { switch }) => parts.extend(["delete".into(), switch.clone()]),
+                Some(FilesAction::Hidden { switch }) => parts.extend(["hidden".into(), switch.clone()]),
+                Some(FilesAction::MaxUpload { bytes }) => parts.extend(["max-upload".into(), bytes.to_string()]),
+            }
+            parts
+        }
         Command::Run => return None,
     };
     Some(parts.join("\t"))
@@ -334,6 +492,30 @@ fn parse_line(line: &str) -> Option<Command> {
             recursive: rest.get(2).map(|v| v == "true").unwrap_or(false),
         }),
         "mv" => Some(Command::Mv { device: rest.first()?.clone(), from: rest.get(1)?.clone(), to: rest.get(2)?.clone() }),
+        "files" => {
+            let device = rest.first().filter(|d| !d.is_empty()).cloned();
+            let arg = |n: usize| rest.get(n).cloned();
+            let action = match rest.get(1).map(String::as_str) {
+                None | Some("") => None,
+                Some("on") => Some(FilesAction::On),
+                Some("off") => Some(FilesAction::Off),
+                Some("usual") => Some(FilesAction::Usual),
+                Some("follow") => Some(FilesAction::Follow),
+                Some("log") => Some(FilesAction::Log),
+                Some("share") => Some(FilesAction::Share {
+                    path: PathBuf::from(arg(2)?),
+                    name: arg(3).filter(|n| !n.is_empty()),
+                    read_only: arg(4).map(|v| v == "true").unwrap_or(false),
+                }),
+                Some("unshare") => Some(FilesAction::Unshare { name: arg(2)? }),
+                Some("write") => Some(FilesAction::Write { switch: arg(2)? }),
+                Some("delete") => Some(FilesAction::Delete { switch: arg(2)? }),
+                Some("hidden") => Some(FilesAction::Hidden { switch: arg(2)? }),
+                Some("max-upload") => Some(FilesAction::MaxUpload { bytes: arg(2)?.parse().ok()? }),
+                Some(_) => return None,
+            };
+            Some(Command::Files { device, action })
+        }
         _ => None,
     }
 }

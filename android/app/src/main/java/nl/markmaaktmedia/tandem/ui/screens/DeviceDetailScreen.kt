@@ -228,6 +228,16 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             }
         }
 
+        // Its files, in the Files app of the system, next to the storage of this phone.
+        if (device.online && "files" in device.caps) {
+            SettingsGroup {
+                ActionRow(
+                    0, 1, TandemIcons.Folder, stringResource(R.string.files_browse), stringResource(R.string.files_browse_sub),
+                    { nl.markmaaktmedia.tandem.files.TandemDocumentsProvider.open(context, id) },
+                )
+            }
+        }
+
         // What the device is playing, with the buttons for it.
         nl.markmaaktmedia.tandem.ui.components.NowPlayingSection(device)
 
