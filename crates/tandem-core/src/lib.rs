@@ -18,6 +18,8 @@ pub mod session;
 pub mod store;
 pub mod tls;
 pub mod transfer;
+#[cfg(feature = "webdav")]
+pub mod webdav;
 
 pub use engine::{DeviceInfo, Engine, EngineConfig};
 pub use error::{Error, Result};

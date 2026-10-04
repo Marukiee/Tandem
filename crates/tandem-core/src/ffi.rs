@@ -966,6 +966,9 @@ impl Drop for OwnedRuntime {
 pub struct TandemEngine {
     runtime: OwnedRuntime,
     engine: Engine,
+    /// The files of other devices that are served as drives on this machine, by device.
+    #[cfg(feature = "webdav")]
+    drives: std::sync::Mutex<std::collections::HashMap<String, crate::webdav::WebDavShare>>,
 }
 
 fn parse_ids(ids: &[String]) -> Result<Vec<DeviceId>, TandemError> {
@@ -1026,7 +1029,12 @@ impl TandemEngine {
             }
         });
 
-        Ok(Arc::new(TandemEngine { runtime: OwnedRuntime(Some(runtime)), engine }))
+        Ok(Arc::new(TandemEngine {
+            runtime: OwnedRuntime(Some(runtime)),
+            engine,
+            #[cfg(feature = "webdav")]
+            drives: Default::default(),
+        }))
     }
 
     pub fn id(&self) -> String {
@@ -1646,5 +1654,52 @@ impl TandemEngine {
         let peer = DeviceId::parse(&id)?;
         let engine = self.engine.clone();
         self.runtime.spawn(async move { engine.files(peer).rename(&from, &to, overwrite).await }).await.map_err(join_error)?.map_err(Into::into)
+    }
+}
+
+/// Where the files of a device can be opened as a drive.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemWebDav {
+    pub url: String,
+    pub user: String,
+    pub password: String,
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+impl TandemEngine {
+    /// Serves the files of a device as a WebDAV share on this machine, for Finder or Explorer to open as a drive. It
+    /// is a new one each time, with a password made for it; the one before is stopped. A build for a phone has no
+    /// use for this and says so.
+    pub async fn serve_files_as_drive(&self, id: String, name: String) -> Result<TandemWebDav, TandemError> {
+        #[cfg(feature = "webdav")]
+        {
+            let peer = DeviceId::parse(&id)?;
+            let engine = self.engine.clone();
+            let share = self
+                .runtime
+                .spawn(async move { crate::webdav::serve(engine.files(peer), &name).await })
+                .await
+                .map_err(join_error)??;
+            let reply = TandemWebDav { url: share.url.clone(), user: share.user.clone(), password: share.password.clone() };
+            if let Some(old) = self.drives.lock().unwrap().insert(id, share) {
+                old.stop();
+            }
+            Ok(reply)
+        }
+        #[cfg(not(feature = "webdav"))]
+        {
+            let _ = (id, name);
+            Err(TandemError::Failed { reason: "this build cannot serve files as a drive".into() })
+        }
+    }
+
+    /// Stops serving the files of a device as a drive.
+    pub fn stop_serving_files_as_drive(&self, id: String) {
+        #[cfg(feature = "webdav")]
+        if let Some(old) = self.drives.lock().unwrap().remove(&id) {
+            old.stop();
+        }
+        #[cfg(not(feature = "webdav"))]
+        let _ = id;
     }
 }

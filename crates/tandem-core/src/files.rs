@@ -805,9 +805,16 @@ async fn write_body(temp: &Path, size: u64, recv: &mut RecvStream) -> std::resul
 // ---- The device that looks --------------------------------------------------------
 
 /// Another device's files, as far as it lets this one see them.
+#[derive(Clone)]
 pub struct FsClient {
     pub(crate) inner: Arc<Inner>,
     pub(crate) peer: DeviceId,
+}
+
+impl std::fmt::Debug for FsClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FsClient").field("peer", &self.peer).finish()
+    }
 }
 
 impl FsClient {

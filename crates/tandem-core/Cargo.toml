@@ -6,6 +6,11 @@ license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 
+[features]
+# The files of another device as a WebDAV share on this machine, which Finder and Explorer can open as a drive. Left out
+# of the phone's build, which has no use for a web server.
+webdav = ["dep:dav-server", "dep:hyper", "dep:hyper-util"]
+
 [lib]
 name = "tandem_core"
 crate-type = ["lib", "cdylib", "staticlib"]
@@ -14,8 +19,11 @@ crate-type = ["lib", "cdylib", "staticlib"]
 blake3 = "1.8.7"
 bytes = "1.12.1"
 ciborium = "0.2.2"
+dav-server = { version = "0.11.0", default-features = false, optional = true }
 data-encoding = "2.11.1"
 futures-util = "0.3.34"
+hyper = { version = "1.9", default-features = false, features = ["http1", "server"], optional = true }
+hyper-util = { version = "0.1", default-features = false, features = ["tokio"], optional = true }
 if-addrs = "0.15.0"
 log = "0.4.34"
 mdns-sd = "0.21.4"

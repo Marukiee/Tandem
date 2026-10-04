@@ -7,7 +7,7 @@ export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
 export MACOSX_DEPLOYMENT_TARGET=26.0
 PROFILE="${PROFILE:-release}"
 TARGET="aarch64-apple-darwin"
-FLAGS=(--target "$TARGET" -p tandem-core)
+FLAGS=(--target "$TARGET" -p tandem-core --features webdav)
 [ "$PROFILE" = "release" ] && FLAGS+=(--release)
 
 cargo build "${FLAGS[@]}"
