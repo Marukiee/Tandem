@@ -122,6 +122,12 @@ over een sessie met `MediaRequest`, `MediaAccept`, `MediaDeny`, `MediaUpdate`, `
 en `MediaInput` op de controlestream, en een uni-stream (byte `4`) per frame. Het formaat, de stromen en het gedrag bij
 verlies staan in `SCREEN.md`.
 
+### Status.muted
+
+`Status` heeft een veld `muted` (optioneel): het geluid van dit apparaat staat uit, of het volume staat op nul. Een telefoon
+die de speler van een computer bedient, toont dat op de dempknop en volgt het als de computer op een andere manier weer
+aan gaat. Een oudere versie kent het veld niet en slaat het over.
+
 ## De circle
 
 De ledenlijst is een verzameling ondertekende verklaringen (`Add`, `Remove`,
