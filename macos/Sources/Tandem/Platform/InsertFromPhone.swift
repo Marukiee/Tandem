@@ -168,7 +168,22 @@ final class InsertFromPhone {
             let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
             MainActor.assumeIsolated { self?.remember(app) }
         })
+        watchPhones()
+    }
+
+    /// Whether a phone that can take the picture is paired. Until one is, the shortcut stays free for other apps.
+    var canInsert: Bool {
+        model.devices.contains { $0.platform == .android && $0.caps.contains("capture") }
+    }
+
+    /// Registers or releases the shortcut as phones come and go, and when they learn to capture.
+    private func watchPhones() {
         InsertShortcutCenter.shared.apply()
+        withObservationTracking {
+            _ = model.devices.map { "\($0.id)\($0.caps)" }
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.watchPhones() }
+        }
     }
 
     private func remember(_ app: NSRunningApplication?) {

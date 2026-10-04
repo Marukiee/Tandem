@@ -150,7 +150,7 @@ final class InsertShortcutCenter {
     func apply() {
         hotKey?.unregister()
         hotKey = nil
-        guard InsertShortcut.enabled, !paused else { return }
+        guard InsertShortcut.enabled, !paused, InsertFromPhone.shared.canInsert else { return }
         let shortcut = InsertShortcut.current
         hotKey = GlobalHotKey(keyCode: shortcut.keyCode, modifiers: shortcut.modifiers) {
             InsertFromPhone.shared.toggle()

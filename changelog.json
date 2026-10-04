@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.1.33",
+    "date": "2026-10-04",
+    "en": {
+      "title": "Clipboard history, settings you can search and dragging with a press",
+      "new": [
+        "The Mac keeps a clipboard history: Control Option V opens a panel with everything you copied lately, text and pictures, with search, pins and Return to paste it where you are typing. Password managers are left out by default, and under Settings, Clipboard you choose how much is kept, for how long, from which apps, and you can clear it",
+        "Settings on Android start with an overview of categories that open as their own pages, with a search bar that finds a setting by name or by what it does and scrolls to it",
+        "The trackpad page drags like a mouse button: press and hold on the pad, then move. The pad shows that the button is down",
+        "The played part of the seek bar in the player is a wave while the music plays and a straight line when it stops",
+        "Notifications on the Mac that hold a verification code get a Copy code button, and the phone and the Mac now find codes the same way"
+      ]
+    },
+    "nl": {
+      "title": "Klembordgeschiedenis, instellingen met zoekbalk en slepen met indrukken",
+      "new": [
+        "De Mac bewaart een klembordgeschiedenis: Control Option V opent een paneel met alles wat je onlangs hebt gekopieerd, tekst en plaatjes, met zoeken, vastzetten en Return om het te plakken waar je typt. Wachtwoordmanagers worden standaard overgeslagen en onder Instellingen, Klembord kies je hoeveel er bewaard wordt, hoe lang, van welke apps, en kun je alles wissen",
+        "Instellingen op Android beginnen met een overzicht van categorieën die als eigen pagina openen, met een zoekbalk die een instelling vindt op naam of op wat hij doet en er naartoe scrolt",
+        "De trackpadpagina sleept als een muisknop: houd het vlak ingedrukt en beweeg dan. Het vlak laat zien dat de knop ingedrukt is",
+        "Het afgespeelde deel van de zoekbalk in de speler is een golf zolang de muziek speelt en een rechte lijn als die stopt",
+        "Meldingen op de Mac met een verificatiecode krijgen een knop Kopieer code, en de telefoon en de Mac vinden codes nu op dezelfde manier"
+      ]
+    }
+  },
+  {
     "version": "0.1.32",
     "date": "2026-10-04",
     "en": {
