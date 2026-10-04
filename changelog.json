@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.1.28",
+    "date": "2026-10-04",
+    "en": {
+      "title": "A Mac that rests with its window open, and a Devices page that does too",
+      "better": [
+        "The Mac app no longer works hard for nothing when its window stays open on a phone that is charging. The charging bolt was redrawn at every frame of the screen, which kept the app at about 30 percent of a core for as long as the window stayed open. It now pulses in the system's compositor, and the app is at about 2 percent while a track plays on that page and well under 1 percent when nothing does",
+        "A closed window on the Mac gives its memory back: the app drops from about 69 to about 41 MB when you close the window, where it used to stay where it was",
+        "The bar of the player on the Mac and on Windows moves once a second instead of twice, and not at all while the music is paused, because every redraw of a window costs power",
+        "On the phone the Devices page stops drawing when nothing changes. The rings around the dots of online devices and the charging bolt breathe a few times when they show up and then rest, where they used to keep the screen busy at 60 frames a second for as long as the page was open"
+      ]
+    },
+    "nl": {
+      "title": "Een Mac die rust met zijn venster open, en een Apparaten-pagina die dat ook doet",
+      "better": [
+        "De Mac-app werkt niet meer hard voor niets als zijn venster open staat op een telefoon die oplaadt. De laadbliksem werd bij elk beeld van het scherm opnieuw getekend, waardoor de app op zo'n 30 procent van een kern zat zolang het venster openstond. Hij pulseert nu in de compositor van het systeem, en de app zit op zo'n 2 procent terwijl er op die pagina een nummer speelt en ruim onder 1 procent als er niets speelt",
+        "Een gesloten venster op de Mac geeft zijn geheugen terug: de app zakt van zo'n 69 naar zo'n 41 MB als je het venster sluit, waar hij eerst gewoon bleef staan",
+        "De balk van de speler op de Mac en op Windows beweegt één keer per seconde in plaats van twee keer, en helemaal niet als de muziek op pauze staat, want elke keer dat een venster opnieuw wordt getekend kost stroom",
+        "Op de telefoon stopt de Apparaten-pagina met tekenen als er niets verandert. De ringen om de bolletjes van online apparaten en de laadbliksem ademen een paar keer als ze verschijnen en rusten dan, waar ze het scherm eerst met 60 beelden per seconde bezig hielden zolang de pagina openstond"
+      ]
+    }
+  },
+  {
     "version": "0.1.27",
     "date": "2026-10-04",
     "en": {
