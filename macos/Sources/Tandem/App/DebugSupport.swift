@@ -51,6 +51,9 @@ enum DebugSupport {
         closer.resume()
         closeSource = closer
 
+        // `TANDEM_DEBUG_SCREEN=encode`: runs the screen encoder against a drawn picture and decodes the result, then quits.
+        if variable("TANDEM_DEBUG_SCREEN") == "encode" { ScreenDebug.run(into: directory) }
+
         if let mode = variable("TANDEM_DEBUG_CLIPBOARD") {
             seedClipboard()
             if mode == "panel" {

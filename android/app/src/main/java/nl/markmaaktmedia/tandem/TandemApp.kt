@@ -25,6 +25,9 @@ class Graph(app: Application) {
     val audio = nl.markmaaktmedia.tandem.audio.RemoteAudioPlayer(app, prefs, host, scope).also { host.audioSink = it }
     val live = nl.markmaaktmedia.tandem.live.LiveShare(app, host, scope)
 
+    /** This phone as the viewer of a Mac's screen. */
+    val screen = nl.markmaaktmedia.tandem.screen.ScreenViewer(app, host).also { host.mediaViewer = it }
+
     /** Picked device icons, hot from the first frame so a list does not flash the default ones. */
     val deviceIcons: kotlinx.coroutines.flow.StateFlow<Map<String, String>> = prefs.deviceIcons.stateIn(
         scope, SharingStarted.Eagerly, runBlocking { prefs.deviceIcons.first() },

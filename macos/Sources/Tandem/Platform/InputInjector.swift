@@ -27,6 +27,9 @@ final class InputInjector {
     private var pressClickState: Int64 = 1
     private var lastClick: (time: Date, location: CGPoint, button: UInt8, count: Int64)?
 
+    /// Scrolling by a viewer of the screen comes in pixels of its picture, which are less than a point.
+    private var remoteScroll = Remainder()
+
     private var lastSource: String?
     private var watchdog: Task<Void, Never>?
     /// Long enough for a deliberate press and hold, short enough to matter when the
@@ -70,6 +73,8 @@ final class InputInjector {
         }
         armWatchdog()
     }
+
+    fileprivate func noteSource(_ device: String) { lastSource = device }
 
     /// The phone that was sending is gone: let go of whatever it was holding.
     func sourceDisconnected(_ device: String) {
@@ -115,10 +120,16 @@ final class InputInjector {
         return delta * gain
     }
 
-    private func movePointer(dx: Double, dy: Double) {
+    /// `accelerate` is for a finger on a trackpad. A pointer that is steered by a picture of this very screen already
+    /// knows how far it wants to go, and acceleration would make it overshoot.
+    private func movePointer(dx: Double, dy: Double, accelerate: Bool = true) {
         let current = currentLocation()
-        let target = clamp(CGPoint(x: current.x + accelerated(dx), y: current.y + accelerated(dy)))
+        let moveX = accelerate ? accelerated(dx) : dx
+        let moveY = accelerate ? accelerated(dy) : dy
+        move(to: clamp(CGPoint(x: current.x + moveX, y: current.y + moveY)), dx: dx, dy: dy)
+    }
 
+    private func move(to target: CGPoint, dx: Double, dy: Double) {
         // With a button held the pointer drags, and the event has to say which button,
         // or the app underneath would see a plain move and drop the selection.
         let type: CGEventType
@@ -127,7 +138,7 @@ final class InputInjector {
             (type, button) = (.leftMouseDragged, .left)
         } else if heldButtons.contains(1) {
             (type, button) = (.rightMouseDragged, .right)
-        } else if heldButtons.contains(2) {
+        } else if heldButtons.contains(where: { $0 >= 2 }) {
             (type, button) = (.otherMouseDragged, .center)
         } else {
             (type, button) = (.mouseMoved, .left)
@@ -159,6 +170,8 @@ final class InputInjector {
         switch button {
         case 1: (.rightMouseDown, .rightMouseUp, .right)
         case 2: (.otherMouseDown, .otherMouseUp, .center)
+        // The extra buttons of a mouse, the ones that go back and forward in a browser.
+        case 3, 4: (.otherMouseDown, .otherMouseUp, CGMouseButton(rawValue: UInt32(button)) ?? .center)
         default: (.leftMouseDown, .leftMouseUp, .left)
         }
     }
@@ -271,5 +284,79 @@ final class InputInjector {
                 data2: -1
             )?.cgEvent?.post(tap: .cghidEventTap)
         }
+    }
+}
+
+// MARK: Remote desktop
+
+/// How the picture a phone looks at sits on this Mac, which is what turns its positions into positions on the display.
+struct RemoteGeometry {
+    /// The display that is streamed, in the space events are posted in.
+    var bounds: CGRect
+    /// The width of the streamed picture in pixels.
+    var streamWidth: Int
+}
+
+extension InputInjector {
+    /// The input of a viewer of this Mac's screen. Goes through the same event posting, held button bookkeeping and
+    /// release on silence as the phone as a trackpad, so a viewer that vanishes mid-drag cannot leave a button pressed.
+    func handle(remote input: TandemMediaInput, in geometry: RemoteGeometry, from device: String) {
+        guard requestPermissionIfNeeded() else { return }
+        noteSource(device)
+        switch input {
+        case let .pointerAbs(x, y):
+            let target = ScreenGeometry.point(x: Double(x), y: Double(y), in: geometry.bounds)
+            let current = currentLocation()
+            move(to: target, dx: target.x - current.x, dy: target.y - current.y)
+        case let .pointerRel(dx, dy):
+            let k = ScreenGeometry.pointsPerPixel(streamWidth: geometry.streamWidth, bounds: geometry.bounds)
+            movePointer(dx: Double(dx) * k, dy: Double(dy) * k, accelerate: false)
+        case let .button(button, down, clicks):
+            remoteButton(button, down: down, clicks: clicks)
+        case let .scroll(dx, dy):
+            let k = ScreenGeometry.pointsPerPixel(streamWidth: geometry.streamWidth, bounds: geometry.bounds)
+            let (x, y) = remoteScroll.take(Double(dx) * k, Double(dy) * k)
+            if x != 0 || y != 0 { scroll(dx: x, dy: y) }
+        case let .key(code, down, mods, text):
+            remoteKey(code: code, down: down, mods: mods, text: text)
+        case let .text(text):
+            type(text)
+        }
+        armWatchdog()
+    }
+
+    /// The viewer is gone or was stopped: let go of whatever it held.
+    func endRemote() {
+        releaseAll()
+        remoteScroll.reset()
+    }
+
+    private func remoteButton(_ button: UInt8, down: Bool, clicks: UInt8) {
+        guard button <= 4 else { return }
+        let location = currentLocation()
+        if down {
+            guard !heldButtons.contains(button) else { return }
+            // The viewer counts the clicks, it knows how fast its person tapped.
+            pressClickState = Int64(max(1, clicks))
+            post(mouse: button, down: true, at: location, clickState: pressClickState)
+            heldButtons.insert(button)
+        } else {
+            guard heldButtons.contains(button) else { return }
+            post(mouse: button, down: false, at: location, clickState: pressClickState)
+            heldButtons.remove(button)
+        }
+    }
+
+    private func remoteKey(code: UInt32, down: Bool, mods: UInt16, text: String) {
+        // Modifiers travel as flags on the keys, so a key down for Shift on its own has nothing to do.
+        if HidKeys.isModifier(code) { return }
+        guard let mac = HidKeys.macKeyCode(forUsage: code) else {
+            // A key this Mac has no position for, but the viewer knows what it typed.
+            if down, !text.isEmpty { type(text) }
+            return
+        }
+        var flags = flags(from: UInt8(truncatingIfNeeded: mods & 0x0F))
+        if mods & 16 != 0 { flags.insert(.maskAlphaShift) }
+        key(code: CGKeyCode(mac), down: down, flags: flags)
     }
 }

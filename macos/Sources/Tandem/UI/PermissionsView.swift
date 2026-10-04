@@ -44,8 +44,15 @@ final class AccessChecker {
             AccessItem(
                 id: "accessibility", symbol: "cursorarrow.motionlines",
                 title: "Accessibility",
-                why: "Only for using your phone as a trackpad, keyboard or media remote.",
+                why: "Only for using your phone as a trackpad, keyboard or media remote, and for controlling this Mac from another device.",
                 status: AXIsProcessTrusted() ? .allowed : .notAsked
+            ),
+            AccessItem(
+                id: "screen", symbol: "rectangle.dashed.badge.record",
+                title: "Screen Recording",
+                why: "Only to let another device of yours see this Mac's screen, when you allow it. Turn it on, then restart Tandem.",
+                status: CGPreflightScreenCaptureAccess() ? .allowed : .notAsked,
+                detail: ScreenHost.shared.needsRestart ? String(localized: "Restart Tandem so your other devices can see that this Mac is ready.") : nil
             ),
             AccessItem(
                 id: "bluetooth", symbol: "dot.radiowaves.left.and.right",
@@ -103,6 +110,8 @@ final class AccessChecker {
             UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
         case "accessibility":
             _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+        case "screen":
+            ScreenHost.shared.requestScreenRecording()
         case "bluetooth":
             bluetooth = CBCentralManager(delegate: nil, queue: nil)
         case "camera":
@@ -119,6 +128,7 @@ final class AccessChecker {
             "notifications": "com.apple.Notifications-Settings.extension",
             "network": "com.apple.preference.security?Privacy_LocalNetwork",
             "accessibility": "com.apple.preference.security?Privacy_Accessibility",
+            "screen": "com.apple.preference.security?Privacy_ScreenCapture",
             "bluetooth": "com.apple.preference.security?Privacy_Bluetooth",
             "camera": "com.apple.preference.security?Privacy_Camera",
             "login": "com.apple.LoginItems-Settings.extension",
@@ -207,6 +217,12 @@ private struct AccessRow: View {
                     StatusPill(status: item.status)
                 }
                 Text(item.why).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                if let detail = item.detail {
+                    HStack(spacing: 8) {
+                        Text(detail).font(.caption).foregroundStyle(Palette.indigo).fixedSize(horizontal: false, vertical: true)
+                        Button("Restart") { ScreenHost.shared.relaunch() }.buttonStyle(.glassProminent).controlSize(.small)
+                    }
+                }
                 HStack(spacing: 8) {
                     if item.status != .allowed, item.status != .unknown, item.status != .denied {
                         Button("Allow") { checker.request(item.id) }.buttonStyle(.glassProminent).controlSize(.small)

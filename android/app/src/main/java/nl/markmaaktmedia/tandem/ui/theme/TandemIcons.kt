@@ -88,6 +88,8 @@ object TandemIcons {
     // Remote
     val Mouse: Painter @Composable get() = painterResource(R.drawable.sym_mouse)
     val Touch: Painter @Composable get() = painterResource(R.drawable.sym_touch_app)
+    val FitScreen: Painter @Composable get() = painterResource(R.drawable.sym_fit_screen)
+    val CloudOff: Painter @Composable get() = painterResource(R.drawable.sym_cloud_off)
     val Drag: Painter @Composable get() = painterResource(R.drawable.sym_drag_pan)
     val Keyboard: Painter @Composable get() = painterResource(R.drawable.sym_keyboard)
     val Backspace: Painter @Composable get() = painterResource(R.drawable.sym_backspace)
