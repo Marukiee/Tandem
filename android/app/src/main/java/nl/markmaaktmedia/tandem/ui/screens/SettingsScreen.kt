@@ -2,11 +2,8 @@ package nl.markmaaktmedia.tandem.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -79,10 +76,10 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
     // Built again when the language changes, because the words searched are the words shown.
     val index = remember(language) { SettingsCatalog.index(context) }
     val hits = remember(index, state.query) { SettingsSearch.search(index.entries, state.query) }
+    val summaries = rememberCategorySummaries()
 
     var focused by remember { mutableStateOf(false) }
     val searching = state.query.isNotBlank()
-    // The title makes room while there is something to search: the keyboard takes half the screen.
     val active = focused || state.query.isNotEmpty()
     val fieldFocus = remember { FocusRequester() }
 
@@ -120,16 +117,10 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
     }
 
     Column(modifier.fillMaxSize().statusBarsPadding()) {
-        AnimatedVisibility(
-            visible = !active,
-            enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
-            exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
-        ) {
-            Text(
-                stringResource(R.string.tab_settings), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp),
-            )
-        }
+        Text(
+            stringResource(R.string.tab_settings), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp),
+        )
         SettingsSearchField(
             query = state.query,
             onQueryChange = { state.query = it },
@@ -138,7 +129,7 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
             onBack = ::endSearch,
             onSearch = { keyboard?.hide(); focusManager.clearFocus() },
             focusRequester = fieldFocus,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = if (active) 12.dp else 4.dp, bottom = 12.dp),
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 12.dp),
         )
 
         Box(Modifier.weight(1f).fillMaxWidth().imePadding()) {
@@ -151,13 +142,14 @@ fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifie
                     SettingsResults(
                         hits = hits,
                         index = index,
+                        summaries = summaries,
                         query = state.query,
                         bottomPadding = if (imeVisible) 16.dp else bottomPadding + 24.dp,
                         onDragStart = { keyboard?.hide() },
                         onPick = ::open,
                     )
                 } else {
-                    Categories(bottomPadding, listState, onOpen)
+                    Categories(summaries, bottomPadding, listState, onOpen)
                 }
             }
         }
@@ -172,8 +164,7 @@ private val Groups = listOf(
 )
 
 @Composable
-private fun Categories(bottomPadding: Dp, listState: LazyListState, onOpen: (Route) -> Unit) {
-    val summaries = rememberCategorySummaries()
+private fun Categories(summaries: Map<SettingsCategory, String>, bottomPadding: Dp, listState: LazyListState, onOpen: (Route) -> Unit) {
     LazyColumn(
         Modifier.fillMaxSize(),
         state = listState,

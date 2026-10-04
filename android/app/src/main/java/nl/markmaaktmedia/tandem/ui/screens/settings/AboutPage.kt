@@ -56,7 +56,7 @@ internal fun AboutPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         }
 
         // Alone at the bottom: the one thing on these pages that cannot be undone.
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(24.dp))
         SettingsGroup {
             ActionRow(
                 0, 1, TandemIcons.Restart, stringResource(R.string.settings_reset), stringResource(R.string.settings_reset_sub),

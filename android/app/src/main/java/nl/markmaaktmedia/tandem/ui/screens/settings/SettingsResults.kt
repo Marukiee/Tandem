@@ -51,6 +51,7 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 internal fun SettingsResults(
     hits: List<SearchHit>,
     index: SettingsIndex,
+    summaries: Map<SettingsCategory, String>,
     query: String,
     bottomPadding: Dp,
     onDragStart: () -> Unit,
@@ -90,13 +91,13 @@ internal fun SettingsResults(
         }
         itemsIndexed(hits, key = { _, hit -> hit.entry.id }) { position, hit ->
             val target = index.target(hit.entry.id) ?: return@itemsIndexed
-            ResultRow(position, hits.size, hit, target, onClick = { onPick(target) }, modifier = Modifier.animateItem())
+            ResultRow(position, hits.size, hit, target, summaries[target.category], onClick = { onPick(target) }, modifier = Modifier.animateItem())
         }
     }
 }
 
 @Composable
-private fun ResultRow(position: Int, total: Int, hit: SearchHit, target: SettingsEntry, onClick: () -> Unit, modifier: Modifier) {
+private fun ResultRow(position: Int, total: Int, hit: SearchHit, target: SettingsEntry, summary: String?, onClick: () -> Unit, modifier: Modifier) {
     val title = hit.entry.title
     val accent = MaterialTheme.colorScheme.primary
     val styled = remember(hit, accent) {
@@ -105,7 +106,8 @@ private fun ResultRow(position: Int, total: Int, hit: SearchHit, target: Setting
             hit.titleMatch.forEach { addStyle(SpanStyle(color = accent, fontWeight = FontWeight.Bold), it.first, it.last + 1) }
         }
     }
-    val where = listOfNotNull(hit.entry.category, hit.entry.page).joinToString(", ")
+    // A page is found by its name, so what is more useful under it than its own name is how it is set now.
+    val where = if (target.isCategoryPage && !summary.isNullOrBlank()) summary else listOfNotNull(hit.entry.category, hit.entry.page).joinToString(", ")
 
     SlabRow(position, total, onClick, modifier) {
         Row(

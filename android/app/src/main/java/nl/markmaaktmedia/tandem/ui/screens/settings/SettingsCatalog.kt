@@ -24,7 +24,7 @@ enum class SettingsPageId(val key: String) {
 
 /** What the overview lists, in this order. A category that is one screen opens that screen. */
 internal enum class SettingsCategory(
-    @StringRes val title: Int,
+    @param:StringRes val title: Int,
     val icon: @Composable () -> Painter,
     val route: Route,
 ) {
@@ -108,16 +108,19 @@ internal object FocusKeys {
  */
 internal class SettingsEntry(
     val id: String,
-    @StringRes val title: Int,
-    @StringRes val keywords: Int,
+    @param:StringRes val title: Int,
+    @param:StringRes val keywords: Int,
     val category: SettingsCategory,
     val route: Route,
     val icon: @Composable () -> Painter,
-    @StringRes val subtitle: Int? = null,
-    @StringRes val page: Int? = null,
+    @param:StringRes val subtitle: Int? = null,
+    @param:StringRes val page: Int? = null,
     val focus: String? = null,
     val via: Route? = null,
-)
+) {
+    /** True for the entry that is the page of its category itself, not a row on it. */
+    val isCategoryPage: Boolean get() = focus == null && route == category.route
+}
 
 internal object SettingsCatalog {
     private val look = Route.SettingsPage(SettingsPageId.Look)
