@@ -53,7 +53,8 @@ class SettingsCatalogTest {
     @Test fun theStringFilesHoldNoDashesAndAreInSync() {
         listOf(english, dutch).forEach { path ->
             val text = File(path).readText()
-            assertFalse(path, text.contains('—') || text.contains('–'))
+            // Written as code points so this file holds no dash itself.
+            assertFalse(path, text.contains(Char(0x2014)) || text.contains(Char(0x2013)))
         }
         fun all(path: String) = Regex("""<(?:string|plurals) name="([a-z_]+)"""").findAll(File(path).readText()).map { it.groupValues[1] }.toSet()
         // The one string that is not translated is a web address.
