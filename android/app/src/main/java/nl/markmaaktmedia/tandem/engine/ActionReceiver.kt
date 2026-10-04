@@ -35,7 +35,7 @@ class ActionReceiver : BroadcastReceiver() {
                     ScreenshotWatcher.showStatus(context, context.getString(R.string.screenshot_sending, label), sending = true)
                     context.graph.scope.launch {
                         try {
-                            val sent = host.sendUris(listOf(uri), targets, uniffi.tandem_core.TandemShareOrigin.SCREENSHOT)
+                            val sent = host.sendUris(listOf(uri), targets, uniffi.tandem_core.TandemShareOrigin.Screenshot)
                             if (sent > 0) {
                                 ScreenshotWatcher.showStatus(context, context.getString(R.string.screenshot_sent, label))
                             } else {

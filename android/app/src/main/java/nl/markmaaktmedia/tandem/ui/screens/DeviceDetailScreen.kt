@@ -81,7 +81,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
     val pickedIcon = rememberPickedIcon(id)
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        if (uris.isNotEmpty()) scope.launch { host.sendUris(uris, listOf(id), TandemShareOrigin.FILES) }
+        if (uris.isNotEmpty()) scope.launch { host.sendUris(uris, listOf(id), TandemShareOrigin.Files) }
     }
 
     if (device == null) {

@@ -134,6 +134,8 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.mlkit.barcode)
+    // Insert from phone: scanning a document for the Mac.
+    implementation(libs.mlkit.scanner)
     // Drawing the pairing code.
     implementation(libs.zxing.core)
 
