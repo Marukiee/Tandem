@@ -16,6 +16,8 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 - Android: Trackpad-pagina, hotspotkaart met maanden en de dagkeuze, Uiterlijk en taal.
 - Hold-to-drag en snelheid op de Xperia afstellen, golvende zoekbalk (efficientie opnieuw meten).
 - Updatebanner op Android overlapt de paginakoppen.
+- Android, apparaatpagina van een Mac: de regel waarmee je de Mac laat vragen om deze telefoon te zien is te lang en staat lelijk.
+  Korter maken en naar een betere plek verplaatsen (bijvoorbeeld bij de instellingen van dat apparaat), in dezelfde vorm als de andere rijen.
 
 ## 1. Audio van de telefoon naar de Mac
 
