@@ -229,7 +229,7 @@ struct ClipRowView: View {
                 .clipShape(.rect(cornerRadius: 8, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Picture").font(.callout.weight(.medium))
-                    Text("\(item.imageWidth) × \(item.imageHeight)").font(.caption).foregroundStyle(.secondary)
+                    Text(verbatim: "\(item.imageWidth) × \(item.imageHeight)").font(.caption).foregroundStyle(.secondary)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

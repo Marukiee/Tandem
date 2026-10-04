@@ -160,7 +160,8 @@ enum DebugSupport {
 
     static func snapshot(into directory: URL) {
         for (index, window) in NSApp.windows.enumerated() where window.isVisible && window.contentView != nil {
-            guard let view = window.contentView?.superview ?? window.contentView,
+            // A window without a title bar has no frame around its content that is worth drawing.
+            guard let view = (window.styleMask.contains(.titled) ? window.contentView?.superview : nil) ?? window.contentView,
                   let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds)
             else { continue }
             view.cacheDisplay(in: view.bounds, to: rep)

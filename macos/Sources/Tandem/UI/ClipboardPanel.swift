@@ -224,7 +224,10 @@ final class ClipboardPanelController {
 
         let panel = self.panel ?? makePanel()
         self.panel = panel
-        panel.contentView = NSHostingView(rootView: ClipboardPanelView(model: model).environment(EngineModel.shared))
+        let host = NSHostingView(rootView: ClipboardPanelView(model: model).environment(EngineModel.shared))
+        // The panel has a size of its own; letting the view size the window raised a layout exception.
+        host.sizingOptions = []
+        panel.contentView = host
         place(panel)
         panel.alphaValue = 0
         panel.makeKeyAndOrderFront(nil)
@@ -447,7 +450,7 @@ struct ClipboardPanelView: View {
             footer
         }
         .frame(width: ClipboardPanelController.size.width, height: ClipboardPanelController.size.height)
-        .glassEffect(.regular, in: .rect(cornerRadius: 30, style: .continuous))
+        .modifier(PanelGlass(radius: 30))
         .overlay(alignment: .bottomTrailing) {
             if model.actionsOpen, let item = model.selected {
                 ClipActionsMenu(actions: model.actions(for: item), index: model.actionIndex) { model.run($0) }
@@ -736,7 +739,22 @@ struct ClipActionsMenu: View {
         }
         .padding(6)
         .frame(width: 280)
-        .glassEffect(.regular, in: .rect(cornerRadius: 19, style: .continuous))
+        .modifier(PanelGlass(radius: 19))
         .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
+    }
+}
+
+/// Glass for what floats. A debug snapshot cannot capture glass, so a debug run that keeps the panel open draws a
+/// plain fill in its place and the layout can be checked.
+private struct PanelGlass: ViewModifier {
+    let radius: CGFloat
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        if DebugSupport.keepsPanelOpen {
+            content.background(Color(nsColor: .windowBackgroundColor), in: shape)
+        } else {
+            content.glassEffect(.regular, in: shape)
+        }
     }
 }
