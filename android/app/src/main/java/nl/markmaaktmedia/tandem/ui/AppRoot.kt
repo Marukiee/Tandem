@@ -146,7 +146,7 @@ private fun MainNavigation() {
                 // third of the screen away and fades up, the old one slides a third the other
                 // way and shrinks a little behind it. Going back mirrors it, and the page that
                 // leaves goes all the way out. The same spec is what the back gesture seeks.
-                val forward = routeDepth(targetState) > routeDepth(initialState)
+                val forward = isForward(nav, initialState, targetState)
                 val ease = tween<Float>(SharedAxisMillis, easing = Emphasized)
                 val slide = tween<IntOffset>(SharedAxisMillis, easing = Emphasized)
                 if (forward) {
@@ -172,11 +172,14 @@ private fun MainNavigation() {
 private const val SharedAxisMillis = 350
 private val Emphasized = androidx.compose.animation.core.CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
-/** How deep a page sits, so a transition knows whether it is opening or going back. */
-private fun routeDepth(route: Route): Int = when (route) {
-    Route.Home -> 0
-    is Route.Remote -> 2
-    else -> 1
+/**
+ * Whether going from one page to the other is opening a page rather than going back. Judged by the place in the back
+ * stack: a page that is no longer in it was just popped, so that is always the way back. Settings pages open other
+ * pages that can also be opened from the overview, which a fixed depth per page cannot tell apart.
+ */
+private fun isForward(nav: Nav, from: Route, to: Route): Boolean {
+    val fromAt = nav.stack.lastIndexOf(from)
+    return fromAt >= 0 && nav.stack.lastIndexOf(to) > fromAt
 }
 
 @Composable
@@ -201,6 +204,7 @@ private fun RouteBody(route: Route, nav: Nav) {
         Route.Changelog -> nl.markmaaktmedia.tandem.ui.screens.ChangelogScreen(onBack = { nav.pop() })
         Route.MediaApps -> nl.markmaaktmedia.tandem.ui.screens.MediaAppsScreen(onBack = { nav.pop() })
         Route.OnboardingPreview -> OnboardingScreen(onFinished = { nav.pop() }, preview = true)
+        is Route.SettingsPage -> nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageScreen(route.page, onBack = { nav.pop() }, onOpen = { nav.push(it) })
     }
 }
 

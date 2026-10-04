@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Box
@@ -64,6 +65,9 @@ import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
 import nl.markmaaktmedia.tandem.ui.components.SwitchRow
 import nl.markmaaktmedia.tandem.ui.components.TandemIconButton
 import nl.markmaaktmedia.tandem.ui.components.rememberPermissionStatus
+import nl.markmaaktmedia.tandem.ui.screens.settings.FocusKeys
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsTarget
+import nl.markmaaktmedia.tandem.ui.screens.settings.settingsTarget
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
@@ -112,59 +116,65 @@ fun HotspotScreen(onBack: () -> Unit) {
 
         // 1. Is everything in place?
         SectionHeader(stringResource(R.string.hotspot_section_setup))
-        SettingsGroup { HotspotChecklistRows() }
+        SettingsGroup(Modifier.settingsTarget(FocusKeys.HotspotSetup, RoundedCornerShape(24.dp))) { HotspotChecklistRows() }
 
         // 2. Sharing: the switch, the roaming choice and a test.
         SectionHeader(stringResource(R.string.hotspot_section_sharing))
         SettingsGroup {
-            SwitchRow(
-                0, 3, TandemIcons.Hotspot, stringResource(R.string.settings_hotspot_for_mac),
-                stringResource(if (ready) R.string.settings_hotspot_for_mac_sub else R.string.hotspot_needs_permissions),
-                enabled && ready, { scope.launch { graph.prefs.setHotspotForMac(it) } }, enabled = ready,
-            )
-            SwitchRow(
-                1, 3, TandemIcons.Cellular, stringResource(R.string.hotspot_roaming), stringResource(R.string.hotspot_roaming_sub), roaming,
-                { scope.launch { module.prefs.setAllowRoaming(it) } },
-            )
+            SettingsTarget(FocusKeys.HotspotShare, 0, 3) {
+                SwitchRow(
+                    0, 3, TandemIcons.Hotspot, stringResource(R.string.settings_hotspot_for_mac),
+                    stringResource(if (ready) R.string.settings_hotspot_for_mac_sub else R.string.hotspot_needs_permissions),
+                    enabled && ready, { scope.launch { graph.prefs.setHotspotForMac(it) } }, enabled = ready,
+                )
+            }
+            SettingsTarget(FocusKeys.HotspotRoaming, 1, 3) {
+                SwitchRow(
+                    1, 3, TandemIcons.Cellular, stringResource(R.string.hotspot_roaming), stringResource(R.string.hotspot_roaming_sub), roaming,
+                    { scope.launch { module.prefs.setAllowRoaming(it) } },
+                )
+            }
             val busy = snapshot.phase == Phase.Starting || snapshot.phase == Phase.NeedsTap
-            ActionRow(
-                2, 3, TandemIcons.Refresh,
-                stringResource(if (busy) R.string.hotspot_test_busy else R.string.hotspot_test),
-                stringResource(R.string.hotspot_test_sub),
-                onClick = {
-                    if (busy) return@ActionRow
-                    val message = when (module.availability()) {
-                        BleAvailability.PrefOff -> R.string.hotspot_test_needs_pref
-                        BleAvailability.NoPermission -> R.string.hotspot_test_needs_bluetooth
-                        else -> null
-                    }
-                    if (message != null) {
-                        Toast.makeText(context, context.getString(message), Toast.LENGTH_LONG).show()
-                        return@ActionRow
-                    }
-                    module.controller.test()
-                    scope.launch {
-                        val result = withTimeoutOrNull(25_000) { module.controller.snapshot.first { it.phase != Phase.Starting } }
-                        val failure = module.controller.lastAttempt.value?.takeIf { it.viaShizuku && !it.ok }
-                        val text = when {
-                            result?.phase == Phase.NeedsTap && failure != null -> context.getString(R.string.hotspot_test_shizuku_failed, failure.detail)
-                            else -> context.getString(
-                                when (result?.phase) {
-                                    Phase.On -> R.string.hotspot_test_ok
-                                    Phase.NeedsTap -> R.string.hotspot_test_manual
-                                    Phase.Refused -> when (result.refusal) {
-                                        Refusal.Battery -> R.string.hotspot_test_battery
-                                        Refusal.Limit -> R.string.hotspot_test_limit
-                                        else -> R.string.hotspot_test_roaming
-                                    }
-                                    else -> R.string.hotspot_test_failed
-                                },
-                            )
+            SettingsTarget(FocusKeys.HotspotTest, 2, 3) {
+                ActionRow(
+                    2, 3, TandemIcons.Refresh,
+                    stringResource(if (busy) R.string.hotspot_test_busy else R.string.hotspot_test),
+                    stringResource(R.string.hotspot_test_sub),
+                    onClick = {
+                        if (busy) return@ActionRow
+                        val message = when (module.availability()) {
+                            BleAvailability.PrefOff -> R.string.hotspot_test_needs_pref
+                            BleAvailability.NoPermission -> R.string.hotspot_test_needs_bluetooth
+                            else -> null
                         }
-                        Toast.makeText(context, text, Toast.LENGTH_LONG).show()
-                    }
-                },
-            )
+                        if (message != null) {
+                            Toast.makeText(context, context.getString(message), Toast.LENGTH_LONG).show()
+                            return@ActionRow
+                        }
+                        module.controller.test()
+                        scope.launch {
+                            val result = withTimeoutOrNull(25_000) { module.controller.snapshot.first { it.phase != Phase.Starting } }
+                            val failure = module.controller.lastAttempt.value?.takeIf { it.viaShizuku && !it.ok }
+                            val text = when {
+                                result?.phase == Phase.NeedsTap && failure != null -> context.getString(R.string.hotspot_test_shizuku_failed, failure.detail)
+                                else -> context.getString(
+                                    when (result?.phase) {
+                                        Phase.On -> R.string.hotspot_test_ok
+                                        Phase.NeedsTap -> R.string.hotspot_test_manual
+                                        Phase.Refused -> when (result.refusal) {
+                                            Refusal.Battery -> R.string.hotspot_test_battery
+                                            Refusal.Limit -> R.string.hotspot_test_limit
+                                            else -> R.string.hotspot_test_roaming
+                                        }
+                                        else -> R.string.hotspot_test_failed
+                                    },
+                                )
+                            }
+                            Toast.makeText(context, text, Toast.LENGTH_LONG).show()
+                        }
+                    },
+                )
+            }
         }
 
         // 3. Data: a limit on a slider and what has been used.
@@ -172,19 +182,23 @@ fun HotspotScreen(onBack: () -> Unit) {
         // What is used is counted as it is used and written at once, so the total and today are already up to date,
         // with the session that is running: nothing is added on top.
         val todayBytes = days[HotspotUsage.dayKey(System.currentTimeMillis())] ?: 0L
-        DataUsageCard(
-            todayBytes = todayBytes,
-            totalBytes = totalBytes,
-            since = since,
-            days = days,
-            onReset = { scope.launch { module.prefs.resetDataUsed() } },
-        )
+        SettingsTarget(FocusKeys.HotspotUsage, CardSquircle) {
+            DataUsageCard(
+                todayBytes = todayBytes,
+                totalBytes = totalBytes,
+                since = since,
+                days = days,
+                onReset = { scope.launch { module.prefs.resetDataUsed() } },
+            )
+        }
         androidx.compose.foundation.layout.Spacer(Modifier.height(10.dp))
-        DataLimitCard(
-            limitMb = limitMb,
-            todayBytes = todayBytes,
-            onLimit = { scope.launch { module.prefs.setDataLimitMb(it) } },
-        )
+        SettingsTarget(FocusKeys.HotspotLimit, CardSquircle) {
+            DataLimitCard(
+                limitMb = limitMb,
+                todayBytes = todayBytes,
+                onLimit = { scope.launch { module.prefs.setDataLimitMb(it) } },
+            )
+        }
 
         // 4. How it turns on, and where to read more.
         SectionHeader(stringResource(R.string.hotspot_section_help))
@@ -198,22 +212,24 @@ fun HotspotScreen(onBack: () -> Unit) {
                 ShizukuState.TooOld -> R.string.hotspot_method_too_old
             }
             val rows = if (attempt != null) 3 else 2
-            ActionRow(
-                0, rows, TandemIcons.Hotspot, stringResource(R.string.hotspot_method), stringResource(methodText),
-                onClick = {
-                    when (shizuku) {
-                        ShizukuState.NeedsPermission -> module.shizuku.requestPermission()
-                        ShizukuState.NotRunning, ShizukuState.Denied -> module.shizuku.launchShizuku()
-                        ShizukuState.NotInstalled, ShizukuState.TooOld -> context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                        )
-                        ShizukuState.Ready -> Unit
-                    }
-                },
-                trailing = if (shizuku == ShizukuState.Ready) {
-                    { Icon(TandemIcons.Check, null, tint = LocalTandemExtraColors.current.online, modifier = Modifier.size(24.dp)) }
-                } else null,
-            )
+            SettingsTarget(FocusKeys.HotspotMethod, 0, rows) {
+                ActionRow(
+                    0, rows, TandemIcons.Hotspot, stringResource(R.string.hotspot_method), stringResource(methodText),
+                    onClick = {
+                        when (shizuku) {
+                            ShizukuState.NeedsPermission -> module.shizuku.requestPermission()
+                            ShizukuState.NotRunning, ShizukuState.Denied -> module.shizuku.launchShizuku()
+                            ShizukuState.NotInstalled, ShizukuState.TooOld -> context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                            ShizukuState.Ready -> Unit
+                        }
+                    },
+                    trailing = if (shizuku == ShizukuState.Ready) {
+                        { Icon(TandemIcons.Check, null, tint = LocalTandemExtraColors.current.online, modifier = Modifier.size(24.dp)) }
+                    } else null,
+                )
+            }
             attempt?.let { last ->
                 val time = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(last.at))
                 ActionRow(
@@ -230,14 +246,16 @@ fun HotspotScreen(onBack: () -> Unit) {
                     } else null,
                 )
             }
-            ActionRow(
-                rows - 1, rows, TandemIcons.OpenInNew, stringResource(R.string.hotspot_setup), stringResource(R.string.hotspot_setup_sub),
-                onClick = {
-                    context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Marukiee/Tandem/blob/main/docs/HOTSPOT.md")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                    )
-                },
-            )
+            SettingsTarget(FocusKeys.HotspotGuide, rows - 1, rows) {
+                ActionRow(
+                    rows - 1, rows, TandemIcons.OpenInNew, stringResource(R.string.hotspot_setup), stringResource(R.string.hotspot_setup_sub),
+                    onClick = {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Marukiee/Tandem/blob/main/docs/HOTSPOT.md")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    },
+                )
+            }
         }
         androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 24.dp))
     }

@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Instellingen: overzicht, subpagina's en zoeken -->
+    <string name="settings_cat_sharing">Apparaten en delen</string>
+    <string name="settings_cat_updates">Updates en back-up</string>
+    <string name="settings_cat_about">Over en ontwikkelaar</string>
+    <string name="settings_search_hint">Zoek in instellingen</string>
+    <string name="settings_search_clear">Zoekopdracht wissen</string>
+    <string name="settings_search_none_title">Niets gevonden</string>
+    <string name="settings_search_none_body">Geen instelling past bij \"%1$s\". Probeer een ander woord.</string>
+    <string name="settings_sum_on_of">%1$d van %2$d aan</string>
+    <string name="settings_sum_all_on">Alles aan</string>
+    <string name="settings_sum_all_off">Alles uit</string>
+    <string name="settings_sum_permissions">%1$d van %2$d rechten aan</string>
+    <string name="settings_sum_files_needs_access">Heeft toegang tot alle bestanden nodig</string>
+    <string name="settings_sum_files_off">Delen staat uit</string>
+    <string name="settings_sum_files_on">Delen staat aan</string>
+    <string name="settings_sum_version">Versie %1$s</string>
+    <string name="settings_sum_up_to_date">Versie %1$s, bijgewerkt</string>
+    <plurals name="settings_search_results">
+        <item quantity="one">%d resultaat</item>
+        <item quantity="other">%d resultaten</item>
+    </plurals>
+    <plurals name="settings_sum_folders">
+        <item quantity="one">%d map gedeeld</item>
+        <item quantity="other">%d mappen gedeeld</item>
+    </plurals>
+
+    <!-- Zoektermen per instelling, gescheiden door komma's -->
+    <string name="settings_kw_look">uiterlijk, thema, kleur, donker, licht, taal, vertalen, look</string>
+    <string name="settings_kw_look_appearance">thema, kleur, donkere modus, lichte modus, zwart, palet, achtergrond, stijl, dark mode</string>
+    <string name="settings_kw_look_mode">donkere modus, lichte modus, nachtmodus, thema, donker thema, licht thema, systeemthema, automatisch, dark mode, light mode</string>
+    <string name="settings_kw_look_black">amoled, oled, zwarte achtergrond, echt zwart, batterij, accu, donker</string>
+    <string name="settings_kw_look_accent">kleur, accentkleur, achtergrond, behang, material you, dynamische kleur, indigo, oceaan, bos, amber, roze, pruim, leisteen</string>
+    <string name="settings_kw_look_style">palet, tonal spot, levendig, expressief, fruitsalade, getrouw, monochroom, kleurenschema, kleurstijl</string>
+    <string name="settings_kw_look_language">taal, vertalen, engels, nederlands, regio, systeemtaal, language, english</string>
+    <string name="settings_kw_sharing">deze telefoon, naam, id, delen, screenshots, bluetooth, klembord, muziek, speaker</string>
+    <string name="settings_kw_sharing_name">apparaatnaam, hernoemen, naam telefoon, bijnaam, naam wijzigen, device name</string>
+    <string name="settings_kw_sharing_id">identiteit, id, sleutel, vingerafdruk, apparaat-id, nummer, device id</string>
+    <string name="settings_kw_sharing_screenshot">screenshot, schermafbeelding, schermafdruk, delen, foto\'s, aanbieden</string>
+    <string name="settings_kw_sharing_ble">bluetooth, ble, offline, geen wifi, geen netwerk, klembord, meldingen</string>
+    <string name="settings_kw_sharing_tile">snelle instellingen, tegel, klembord sturen, kopiëren, plakken, snelkoppeling, quick settings</string>
+    <string name="settings_kw_sharing_music">muziek, media, nu aan het spelen, afspelen, speler, bediening, spotify, youtube, geluid</string>
+    <string name="settings_kw_sharing_media_apps">apps, muziekapps, media-apps, uitsluiten, verbergen, welke apps, kiezen</string>
+    <string name="settings_kw_sharing_speaker">audio, geluid, uitvoer, speaker, luidspreker, afspelen via telefoon, geluid van je mac, volume</string>
+    <string name="settings_kw_notif">doorsturen, gesprekken, codes, meldingen, berichten, notificaties</string>
+    <string name="settings_kw_notif_mirror">doorsturen, spiegelen, meldingen, notificaties, antwoorden, mac</string>
+    <string name="settings_kw_notif_apps">apps, welke apps, uitsluiten, blokkeren, dempen, filter, kiezen</string>
+    <string name="settings_kw_notif_codes">verificatiecode, sms-code, twee-staps, 2fa, authenticatie, code kopiëren, klembord, otp</string>
+    <string name="settings_kw_notif_calls">telefoongesprekken, inkomend gesprek, beller, opnemen, weigeren, bellen, caller id</string>
+    <string name="settings_kw_perm">toestemmingen, rechten, toegang, toestaan, privacy, permissions</string>
+    <string name="settings_kw_perm_notifications">meldingen, notificaties, pushmeldingen, testmelding, notifications</string>
+    <string name="settings_kw_perm_battery">batterij, accu, achtergrond, batterijoptimalisatie, accu-optimalisatie, onbeperkt, slaapstand, battery</string>
+    <string name="settings_kw_perm_photos">foto\'s, afbeeldingen, media, galerij, opslag, screenshots</string>
+    <string name="settings_kw_perm_listener">meldingen lezen, toegang tot meldingen, speciale toegang, doorsturen, notification listener</string>
+    <string name="settings_kw_perm_phone">telefoon, gesprekken, contacten, bellijst, sms, bellen, opnemen</string>
+    <string name="settings_kw_perm_bluetooth">bluetooth, apparaten in de buurt, ble, draadloos</string>
+    <string name="settings_kw_perm_camera">camera, scannen, qr, koppelcode, qr-code</string>
+    <string name="settings_kw_perm_install">apps installeren, onbekende bronnen, bijwerken, apk, sideload</string>
+    <string name="settings_kw_hotspot">tethering, wifi delen, internet, mobiele data, verbinding delen, mac</string>
+    <string name="settings_kw_hotspot_setup">checklist, instellen, vereisten, klaar, bluetooth, meldingen</string>
+    <string name="settings_kw_hotspot_share">hotspot aanzetten, tethering, inschakelen, mac internet, delen, hotspot gebruiken</string>
+    <string name="settings_kw_hotspot_roaming">roaming, buitenland, reizen, mobiele data</string>
+    <string name="settings_kw_hotspot_test">testen, proberen, hotspot controleren, test</string>
+    <string name="settings_kw_hotspot_usage">datagebruik, vandaag gebruikt, geschiedenis, megabytes, gigabytes, teller, statistieken</string>
+    <string name="settings_kw_hotspot_limit">limiet, maximum, datalimiet, quotum, budget, dagelijks</string>
+    <string name="settings_kw_hotspot_method">shizuku, automatisch, adb, draadloos debuggen, hoe hij aangaat, vanzelf</string>
+    <string name="settings_kw_hotspot_guide">handleiding, gids, hulp, instructies, documentatie, hoe, github</string>
+    <string name="settings_kw_files">bestanden, mappen, opslag, webdav, schijf, finder, bestanden delen, bladeren</string>
+    <string name="settings_kw_files_permission">toegang tot alle bestanden, opslag beheren, opslagrecht, externe opslag</string>
+    <string name="settings_kw_files_enabled">delen, toegang toestaan, uitzetten, inschakelen, zichtbaar</string>
+    <string name="settings_kw_files_write">schrijven, bewerken, uploaden, wijzigen, hernoemen, vervangen, alleen lezen</string>
+    <string name="settings_kw_files_delete">verwijderen, wissen, prullenbak</string>
+    <string name="settings_kw_files_hidden">verborgen bestanden, punt-bestanden, onzichtbaar</string>
+    <string name="settings_kw_files_max">uploadlimiet, bestandsgrootte, maximum, grootste bestand, limiet</string>
+    <string name="settings_kw_files_folders">map, map delen, directory, pad, map kiezen, toevoegen</string>
+    <string name="settings_kw_files_activity">logboek, geschiedenis, wat er gebeurde, geweigerd, toegangslog, recent</string>
+    <string name="settings_kw_updates">bijwerken, update, versie, back-up, terugzetten, exporteren, importeren, backup</string>
+    <string name="settings_kw_updates_version">versie, build, release, nummer, over</string>
+    <string name="settings_kw_updates_auto">automatische updates, updates controleren, nieuwe versie, github</string>
+    <string name="settings_kw_updates_check">controleren op updates, nu bijwerken, nieuwe versie, vernieuwen, laatste, update</string>
+    <string name="settings_kw_backup_export">back-up, backup, exporteren, instellingen opslaan, bestand, json, downloaden</string>
+    <string name="settings_kw_backup_import">terugzetten, importeren, instellingen laden, back-up, backup, bestand, json</string>
+    <string name="settings_kw_about">over, info, versie, wijzigingen, github, ontwikkelaar, terugzetten</string>
+    <string name="settings_kw_about_changelog">wijzigingen, release notes, wat is er nieuw, nieuws, geschiedenis, versies, changelog</string>
+    <string name="settings_kw_about_source">github, broncode, open source, licentie, agpl, repository, code, website</string>
+    <string name="settings_kw_about_developer">ontwikkelaar, debug, voorvertoning, onboarding, testen, toon, nepspeler, developer</string>
+    <string name="settings_kw_about_reset">terugzetten, wissen, fabrieksinstellingen, vergeten, gegevens wissen, ontkoppelen, opnieuw beginnen, reset</string>
+</resources>
