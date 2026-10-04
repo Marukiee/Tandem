@@ -406,14 +406,17 @@ final class EngineModel {
             removedFromCircle = true
 
         case let .clipboard(from, text, _):
-            clipboard?.apply(text)
             let name = device(from)?.name ?? "?"
+            // Before the pasteboard changes, so the history knows it came from the device and not from the app in front.
+            recordIncoming(text, from: from)
+            clipboard?.apply(text)
             showToast(String(localized: "Clipboard from \(name)"))
 
         case let .shareText(from, text, isUrl, open):
             if open, isUrl, let url = URL(string: text) {
                 NSWorkspace.shared.open(url)
             } else {
+                recordIncoming(text, from: from)
                 clipboard?.apply(text)
                 let name = device(from)?.name ?? "?"
                 showToast(String(localized: "Text from \(name) is on your clipboard"))
@@ -504,6 +507,12 @@ final class EngineModel {
         case .audioStart, .notificationAction, .appIcon, .callAction, .dial, .ring:
             break
         }
+    }
+
+    /// Text that a device sent goes into the clipboard history with that device as its source.
+    private func recordIncoming(_ text: String, from id: String) {
+        guard let source = device(id) else { return }
+        ClipboardHistory.shared.record(text: text, app: nil, appName: nil, device: source.name, devicePlatform: source.platform.symbol)
     }
 
     // MARK: Speaker

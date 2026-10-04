@@ -26,6 +26,11 @@ struct TandemApp: App {
         Settings {
             SettingsView().environment(model)
         }
+        .commands {
+            CommandGroup(after: .pasteboard) {
+                Button("Clipboard History") { ClipboardPanelController.shared.show() }
+            }
+        }
     }
 }
 
@@ -51,6 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DriveMount.removeLeftovers()
             DebugSupport.install()
             EngineModel.shared.start()
+            ClipboardPanelController.shared.start()
             Updater.shared.checkIfDue()
             Updater.shared.startPeriodicChecks()
             if ProcessInfo.processInfo.environment["TANDEM_UPDATE_TEST_FROM"] != nil {
@@ -74,6 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // Give the engine a moment to close its connections politely.
         Task { @MainActor in
+            ClipboardHistory.shared.flush()
             await EngineModel.shared.stop()
             NSApp.reply(toApplicationShouldTerminate: true)
         }

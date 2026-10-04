@@ -22,6 +22,12 @@ enum SettingsBackup {
         ("hotspotDelay", .number),
         ("hotspotSSID", .string),
         ("autoCheckUpdates", .bool),
+        ("clipboardHistoryEnabled", .bool),
+        ("clipboardHistoryLimit", .number),
+        ("clipboardHistoryDays", .number),
+        ("clipboardHistoryImages", .bool),
+        ("clipboardHotkeyOn", .bool),
+        ("clipboardPasteDirectly", .bool),
     ]
 
     private static let format = 1
@@ -113,5 +119,6 @@ enum SettingsBackup {
         let showInDock = UserDefaults.standard.object(forKey: "showInDock") as? Bool ?? true
         NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
         if let name = EngineModel.savedName { model.rename(to: name) }
+        ClipboardHistory.shared.reloadSettings()
     }
 }
