@@ -133,6 +133,8 @@ struct MenuBarPanel: View {
         openWindow(id: "main")
         NSApp.activate(ignoringOtherApps: true)
         if pairing {
+            // The window may be made from nothing, which takes longer than the delay: the flag is for that case.
+            MainWindow.wantsPairing = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 NotificationCenter.default.post(name: .tandemShowPairing, object: nil)
             }

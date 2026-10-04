@@ -195,10 +195,7 @@ private struct SideRow: View {
 
     var body: some View {
         HStack(spacing: 11) {
-            Image(systemName: symbol)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Palette.indigo)
-                .symbolEffect(.pulse, isActive: pulse)
+            PulsingSymbol(name: symbol, pointSize: 17, weight: .semibold, color: NSColor(Palette.indigo), active: pulse)
                 .frame(width: 38, height: 38)
                 .background(Palette.indigo.opacity(0.14), in: Circle())
             VStack(alignment: .leading, spacing: 2) {

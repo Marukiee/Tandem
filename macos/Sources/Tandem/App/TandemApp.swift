@@ -8,9 +8,10 @@ struct TandemApp: App {
 
     var body: some Scene {
         Window(AppIdentity.displayName, id: "main") {
-            MainWindow()
-                .environment(model)
-                .frame(minWidth: 900, minHeight: 600)
+            ReleasedWhenClosed {
+                MainWindow().environment(model)
+            }
+            .frame(minWidth: 900, minHeight: 600)
         }
         .defaultSize(width: 1020, height: 700)
         .windowResizability(.contentMinSize)

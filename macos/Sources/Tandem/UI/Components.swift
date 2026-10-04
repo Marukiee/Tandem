@@ -232,10 +232,8 @@ struct BatteryRing: View {
                     .contentTransition(.numericText(value: Double(battery.level)))
                     .animation(.tandem, value: battery.level)
                 if battery.charging {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: size * 0.16))
-                        .foregroundStyle(.green)
-                        .symbolEffect(.pulse)
+                    PulsingSymbol(name: "bolt.fill", pointSize: size * 0.16, color: .systemGreen)
+                        .frame(width: size * 0.2, height: size * 0.2)
                 }
             }
         }

@@ -18,8 +18,14 @@ extension AnyTransition {
 }
 
 struct MainWindow: View {
+    /// The page that was open when the window last went away, for the next time its contents are made: they are
+    /// dropped while the window is closed (see `ReleasedWhenClosed`).
+    @MainActor private static var remembered: SidebarSelection?
+    /// Set when something wants the pairing sheet before the contents of the window exist to be told.
+    @MainActor static var wantsPairing = false
+
     @Environment(EngineModel.self) private var model
-    @LocalState private var selection: SidebarSelection?
+    @LocalState private var selection: SidebarSelection? = MainWindow.remembered
     @LocalState private var showPairing = false
     /// True for a moment after the page changes. A new scroll view draws its top edge effect
     /// (a light band under the toolbar) before it knows where its content starts, which
@@ -47,6 +53,7 @@ struct MainWindow: View {
             .toolbar(removing: .title)
             .animation(.tandem, value: selection)
             .onChange(of: selection) {
+                MainWindow.remembered = selection
                 settling = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { settling = false }
             }
@@ -93,11 +100,21 @@ struct MainWindow: View {
         .onAppear {
             if let debug = DebugSupport.initialSelection(devices: model.devices.map(\.id)) {
                 selection = debug
+            } else if case let .device(id) = selection, model.device(id) == nil {
+                // The device that was open when the window went away has been removed since.
+                selection = model.devices.first.map { .device($0.id) }
             } else if selection == nil, let first = model.devices.first {
                 selection = .device(first.id)
             }
+            if MainWindow.wantsPairing {
+                MainWindow.wantsPairing = false
+                showPairing = true
+            }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .tandemShowPairing)) { _ in showPairing = true }
+        .onReceive(NotificationCenter.default.publisher(for: .tandemShowPairing)) { _ in
+            MainWindow.wantsPairing = false
+            showPairing = true
+        }
     }
 
     private var trashTitle: String {

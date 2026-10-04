@@ -152,7 +152,9 @@ struct PlayerProgress: View {
     var body: some View {
         if let start = player.positionMs, let duration = player.durationMs, duration > 0 {
             let report = model.remoteMedia[device.id]?.at ?? Date()
-            TimelineView(.periodic(from: .now, by: 0.5)) { context in
+            // Once a second, and not at all while it is paused: the time beside the bar only has whole seconds, and every
+            // redraw makes the window lay itself out again.
+            TimelineView(.animation(minimumInterval: 1, paused: !player.playing)) { context in
                 let fraction = shown(start: start, duration: duration, report: report, now: context.date)
                 VStack(spacing: 3) {
                     bar(fraction: fraction, duration: duration, report: report)

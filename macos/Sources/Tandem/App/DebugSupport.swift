@@ -9,10 +9,12 @@ import SwiftUI
 /// person would click to: `TANDEM_DEBUG_PAGE=shared`, `TANDEM_DEBUG_SETTINGS=<section>`
 /// and `TANDEM_DEBUG_PANEL=1` (the menu bar panel in an ordinary window).
 /// `TANDEM_DEBUG_NO_WINDOW=1` closes the main window a few seconds after the start, which is
-/// how the app runs most of the day and the state to measure its cost in.
+/// how the app runs most of the day and the state to measure its cost in. SIGUSR2 closes it
+/// at any moment, like the red button.
 @MainActor
 enum DebugSupport {
     private static var signalSource: DispatchSourceSignal?
+    private static var closeSource: DispatchSourceSignal?
     private static var panelWindow: NSWindow?
 
     static var directory: URL? {
@@ -32,6 +34,11 @@ enum DebugSupport {
         source.setEventHandler { snapshot(into: directory) }
         source.resume()
         signalSource = source
+        signal(SIGUSR2, SIG_IGN)
+        let closer = DispatchSource.makeSignalSource(signal: SIGUSR2, queue: .main)
+        closer.setEventHandler { closeWindows() }
+        closer.resume()
+        closeSource = closer
 
         if variable("TANDEM_DEBUG_SETTINGS") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -43,10 +50,12 @@ enum DebugSupport {
         }
         if variable("TANDEM_DEBUG_NO_WINDOW") != nil {
             // The app as it runs most of the day, in the menu bar with no window, for measuring what it costs.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
-                for window in NSApp.windows where window.isVisible && window.styleMask.contains(.titled) { window.close() }
-            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) { closeWindows() }
         }
+    }
+
+    private static func closeWindows() {
+        for window in NSApp.windows where window.isVisible && window.styleMask.contains(.titled) { window.close() }
     }
 
     static func initialSelection(devices: [String]) -> SidebarSelection? {
