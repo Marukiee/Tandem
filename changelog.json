@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.32",
+    "date": "2026-10-04",
+    "en": {
+      "title": "The icon of the app on your notifications",
+      "new": [
+        "Notifications from your phone come with the icon of the app they came from, Snapchat or WhatsApp for instance: as the picture on the banner on the Mac and in front of each line on the Notifications page. The phone sends an icon once per app, the Mac keeps it"
+      ]
+    },
+    "nl": {
+      "title": "Het icoon van de app bij je meldingen",
+      "new": [
+        "Meldingen van je telefoon komen met het icoon van de app waar ze vandaan komen, bijvoorbeeld Snapchat of WhatsApp: als plaatje op de melding op de Mac en voor elke regel op de pagina Meldingen. De telefoon stuurt een icoon één keer per app en de Mac bewaart het"
+      ]
+    }
+  },
+  {
     "version": "0.1.31",
     "date": "2026-10-04",
     "en": {

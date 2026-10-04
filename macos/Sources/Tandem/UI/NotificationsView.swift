@@ -57,11 +57,20 @@ private struct NotificationRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "bell.fill")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Palette.indigo)
-                .frame(width: 34, height: 34)
-                .background(Palette.indigo.opacity(0.14), in: Circle())
+            if let icon = AppIcons.shared.image(for: item.appId) {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(width: 34, height: 34)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            } else {
+                Image(systemName: "bell.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Palette.indigo)
+                    .frame(width: 34, height: 34)
+                    .background(Palette.indigo.opacity(0.14), in: Circle())
+            }
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(item.appName).font(.caption.weight(.semibold)).foregroundStyle(.secondary)

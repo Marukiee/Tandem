@@ -426,6 +426,9 @@ final class EngineModel {
             Notifier.shared.postMirrored(device: from, deviceName: deviceName, notification: notification)
             remember(notification, from: from, deviceName: deviceName)
 
+        case let .appIcon(_, appId, png):
+            AppIcons.shared.store(appId: appId, png: png)
+
         case let .notificationRemoved(from, key):
             Notifier.shared.remove(id: "mirror.\(from).\(key)")
             mirrored.removeAll { $0.device == from && $0.key == key }
@@ -480,7 +483,7 @@ final class EngineModel {
                 showToast(String(localized: "Your phone stopped playing the sound"))
             }
 
-        case .audioStart, .notificationAction, .appIcon, .callAction, .dial, .ring:
+        case .audioStart, .notificationAction, .callAction, .dial, .ring:
             break
         }
     }
@@ -1097,7 +1100,7 @@ final class EngineModel {
         guard !notification.ongoing else { return }
         let item = MirroredNotification(
             device: device, deviceName: deviceName, key: notification.key,
-            appName: notification.appName, title: notification.title, text: notification.text,
+            appId: notification.appId, appName: notification.appName, title: notification.title, text: notification.text,
             date: notification.ts > 0 ? Date(timeIntervalSince1970: TimeInterval(notification.ts) / 1000) : Date()
         )
         mirrored.removeAll { $0.device == device && $0.key == notification.key }
@@ -1148,6 +1151,7 @@ struct MirroredNotification: Identifiable, Equatable {
     let device: String
     let deviceName: String
     let key: String
+    let appId: String
     let appName: String
     let title: String
     let text: String

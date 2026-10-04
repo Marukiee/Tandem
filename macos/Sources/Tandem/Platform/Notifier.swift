@@ -46,7 +46,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         category: String? = nil,
         userInfo: [String: String] = [:],
         sound: Bool = false,
-        thread: String? = nil
+        thread: String? = nil,
+        image: URL? = nil
     ) {
         guard Bundle.main.bundleIdentifier != nil else { return }
         let content = UNMutableNotificationContent()
@@ -57,6 +58,10 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         if let thread { content.threadIdentifier = thread }
         content.userInfo = userInfo
         if sound { content.sound = .default }
+        // macOS keeps the icon of this app on a banner, so the icon of the app it came from rides along as the picture.
+        if let image, let attachment = try? UNNotificationAttachment(identifier: "icon", url: image, options: nil) {
+            content.attachments = [attachment]
+        }
         content.interruptionLevel = category == Self.callCategory ? .timeSensitive : .active
         let request = UNNotificationRequest(identifier: id, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
@@ -131,7 +136,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             category: category,
             userInfo: ["device": device, "key": notification.key],
             sound: !notification.silent,
-            thread: notification.appId
+            thread: notification.appId,
+            image: AppIcons.shared.attachmentCopy(for: notification.appId)
         )
     }
 

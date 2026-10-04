@@ -2,6 +2,10 @@ package nl.markmaaktmedia.tandem.mirror
 
 import android.app.Notification
 import android.content.pm.ApplicationInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Path
+import android.graphics.RectF
 import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -10,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 import nl.markmaaktmedia.tandem.graph
 import uniffi.tandem_core.TandemButton
 import uniffi.tandem_core.TandemEvent
@@ -67,6 +72,7 @@ class MirrorListener : NotificationListenerService() {
             if (targets.isEmpty()) return@launch
             active[sbn.key] = sbn
             val notification = convert(sbn) ?: return@launch
+            sendIcon(graph, sbn, targets)
             // The core says who it reached, and fails when it reached nobody, so a non-empty answer is a real send.
             val reached = runCatching { graph.host.engine?.sendNotification(targets, notification) }.getOrNull()
             if (!reached.isNullOrEmpty()) _lastSent.value = System.currentTimeMillis()
@@ -126,6 +132,32 @@ class MirrorListener : NotificationListenerService() {
         )
     }
 
+    /**
+     * The icon of the app goes to every device once, ahead of its first notification, so the other side can show which
+     * app a notification came from. A device that could not be reached gets it again with the next one.
+     */
+    private suspend fun sendIcon(graph: nl.markmaaktmedia.tandem.Graph, sbn: StatusBarNotification, targets: List<String>) {
+        val fresh = targets.filter { iconsSent.add("$it|${sbn.packageName}") }
+        if (fresh.isEmpty()) return
+        val png = appIconPng(sbn)
+        val reached = if (png == null) emptyList() else runCatching { graph.host.engine?.sendAppIcon(fresh, sbn.packageName, png) }.getOrNull().orEmpty()
+        fresh.filter { it !in reached }.forEach { iconsSent.remove("$it|${sbn.packageName}") }
+    }
+
+    /** The launcher icon of the app, as a rounded square: the system mask is not applied when an adaptive icon is drawn by hand. */
+    private fun appIconPng(sbn: StatusBarNotification): ByteArray? {
+        val info: ApplicationInfo? = sbn.notification.extras.getParcelable("android.appInfo", ApplicationInfo::class.java)
+        val drawable = info?.loadIcon(packageManager) ?: runCatching { packageManager.getApplicationIcon(sbn.packageName) }.getOrNull() ?: return null
+        val size = 128
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val corner = size * 0.23f
+        canvas.clipPath(Path().apply { addRoundRect(RectF(0f, 0f, size.toFloat(), size.toFloat()), corner, corner, Path.Direction.CW) })
+        drawable.setBounds(0, 0, size, size)
+        drawable.draw(canvas)
+        return ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+    }
+
     private fun handleAction(event: TandemEvent.NotificationAction) {
         val sbn = active[event.key] ?: activeNotifications.firstOrNull { it.key == event.key } ?: return
         if (event.dismiss) {
@@ -152,6 +184,9 @@ class MirrorListener : NotificationListenerService() {
     }
 
     companion object {
+        /** Which device already has the icon of which app, as `device|package`. */
+        private val iconsSent: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
         private val _connected = MutableStateFlow(false)
 
         /**
