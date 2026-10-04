@@ -31,6 +31,10 @@ pub enum TandemError {
     NotTrusted,
     #[error("{reason}")]
     Pairing { reason: String },
+    /// The other device would not do what was asked with its files. `code` is one of: not_found, denied, disabled,
+    /// outside, exists, not_empty, not_dir, is_dir, too_large, unsupported, io.
+    #[error("{reason}")]
+    Files { code: String, reason: String },
 }
 
 impl From<crate::Error> for TandemError {
@@ -39,6 +43,7 @@ impl From<crate::Error> for TandemError {
             crate::Error::NotConnected => TandemError::NotConnected,
             crate::Error::NotTrusted => TandemError::NotTrusted,
             crate::Error::Pairing(reason) => TandemError::Pairing { reason },
+            crate::Error::Files { code, message } => TandemError::Files { code: code.as_str().to_string(), reason: message },
             other => TandemError::Failed { reason: other.to_string() },
         }
     }
@@ -1410,4 +1415,236 @@ impl TandemEngine {
 
 fn join_error(e: tokio::task::JoinError) -> TandemError {
     TandemError::Failed { reason: format!("internal error: {e}") }
+}
+
+// ---- Files ------------------------------------------------------------------------
+
+/// A folder that is offered to other devices.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemShare {
+    pub name: String,
+    pub path: String,
+    pub write: bool,
+}
+
+/// What a device may do with the files of this one. See `files::FilePolicy`.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemFilePolicy {
+    pub enabled: bool,
+    pub shares: Vec<TandemShare>,
+    pub write: bool,
+    pub delete: bool,
+    pub hidden: bool,
+    pub max_upload: u64,
+}
+
+impl From<crate::files::FilePolicy> for TandemFilePolicy {
+    fn from(p: crate::files::FilePolicy) -> Self {
+        TandemFilePolicy {
+            enabled: p.enabled,
+            shares: p.shares.into_iter().map(|s| TandemShare { name: s.name, path: s.path, write: s.write }).collect(),
+            write: p.write,
+            delete: p.delete,
+            hidden: p.hidden,
+            max_upload: p.max_upload,
+        }
+    }
+}
+
+impl From<TandemFilePolicy> for crate::files::FilePolicy {
+    fn from(p: TandemFilePolicy) -> Self {
+        crate::files::FilePolicy {
+            enabled: p.enabled,
+            shares: p.shares.into_iter().map(|s| crate::files::Share { name: s.name, path: s.path, write: s.write }).collect(),
+            write: p.write,
+            delete: p.delete,
+            hidden: p.hidden,
+            max_upload: p.max_upload,
+        }
+    }
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemFsRoot {
+    pub name: String,
+    pub write: bool,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemFsEntry {
+    pub name: String,
+    pub dir: bool,
+    pub size: u64,
+    pub modified_ms: u64,
+    pub readonly: bool,
+}
+
+impl From<crate::files::FsEntry> for TandemFsEntry {
+    fn from(e: crate::files::FsEntry) -> Self {
+        TandemFsEntry { name: e.name, dir: e.dir, size: e.size, modified_ms: e.modified_ms, readonly: e.readonly }
+    }
+}
+
+/// One thing another device did to the files of this one.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemFileActivity {
+    pub at_ms: u64,
+    pub device: String,
+    pub action: String,
+    pub path: String,
+    pub ok: bool,
+    pub detail: String,
+}
+
+/// Hears how far a file has come. Called on a runtime thread, so it must only note the numbers and return.
+#[uniffi::export(foreign)]
+pub trait TandemFsProgress: Send + Sync {
+    fn progress(&self, done: u64, total: u64);
+}
+
+/// The folders that are offered when nobody has chosen any.
+#[uniffi::export]
+pub fn tandem_default_shares() -> Vec<TandemShare> {
+    crate::files::default_shares().into_iter().map(|s| TandemShare { name: s.name, path: s.path, write: s.write }).collect()
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+impl TandemEngine {
+    // What other devices may do with the files here.
+
+    pub fn file_policy(&self, id: String) -> Result<TandemFilePolicy, TandemError> {
+        Ok(self.engine.file_policy(&DeviceId::parse(&id)?).into())
+    }
+
+    /// Whether the device has choices of its own, or is on the default.
+    pub fn has_own_file_policy(&self, id: String) -> bool {
+        DeviceId::parse(&id).map(|id| self.engine.has_own_file_policy(&id)).unwrap_or(false)
+    }
+
+    pub fn file_default_policy(&self) -> TandemFilePolicy {
+        self.engine.file_default_policy().into()
+    }
+
+    pub fn set_file_policy(&self, id: String, policy: TandemFilePolicy) -> Result<(), TandemError> {
+        self.engine.set_file_policy(&DeviceId::parse(&id)?, policy.into()).map_err(Into::into)
+    }
+
+    /// Back to the default for this device.
+    pub fn clear_file_policy(&self, id: String) -> Result<(), TandemError> {
+        self.engine.clear_file_policy(&DeviceId::parse(&id)?).map_err(Into::into)
+    }
+
+    pub fn set_file_default_policy(&self, policy: TandemFilePolicy) -> Result<(), TandemError> {
+        self.engine.set_file_default_policy(policy.into()).map_err(Into::into)
+    }
+
+    /// What other devices did to the files here, newest first.
+    pub fn file_activity(&self) -> Vec<TandemFileActivity> {
+        self.engine
+            .file_activity()
+            .into_iter()
+            .map(|a| TandemFileActivity { at_ms: a.at_ms, device: a.peer.to_string(), action: a.action, path: a.path, ok: a.ok, detail: a.detail })
+            .collect()
+    }
+
+    // The files of another device.
+
+    pub async fn fs_roots(&self, id: String) -> Result<Vec<TandemFsRoot>, TandemError> {
+        let peer = DeviceId::parse(&id)?;
+        let engine = self.engine.clone();
+        let roots = self.runtime.spawn(async move { engine.files(peer).roots().await }).await.map_err(join_error)??;
+        Ok(roots.into_iter().map(|r| TandemFsRoot { name: r.name, write: r.write }).collect())
+    }
+
+    pub async fn fs_list(&self, id: String, path: String) -> Result<Vec<TandemFsEntry>, TandemError> {
+        let peer = DeviceId::parse(&id)?;
+        let engine = self.engine.clone();
+        let items = self.runtime.spawn(async move { engine.files(peer).list(&path).await }).await.map_err(join_error)??;
+        Ok(items.into_iter().map(Into::into).collect())
+    }
+
+    pub async fn fs_stat(&self, id: String, path: String) -> Result<TandemFsEntry, TandemError> {
+        let peer = DeviceId::parse(&id)?;
+        let engine = self.engine.clone();
+        let entry = self.runtime.spawn(async move { engine.files(peer).stat(&path).await }).await.map_err(join_error)??;
+        Ok(entry.into())
+    }
+
+    /// Part of a file, in memory. At most 64 MiB; for more, download it.
+    pub async fn fs_read(&self, id: String, path: String, offset: u64, len: u64) -> Result<Vec<u8>, TandemError> {
+        let peer = DeviceId::parse(&id)?;
+        let engine = self.engine.clone();
+        self.runtime.spawn(async move { engine.files(peer).read(&path, offset, len).await }).await.map_err(join_error)?.map_err(Into::into)
+    }
+
+    /// A file of the other device to `to`, a path on this one. What an earlier try left as `to.tandem-part` is carried on.
+    pub async fn fs_download(
+        &self,
+        id: String,
+        path: String,
+        to: String,
+        progress: Option<Arc<dyn TandemFsProgress>>,
+    ) -> Result<(), TandemError> {
+        let peer = DeviceId::parse(&id)?;
+        let engine = self.engine.clone();
+        self.runtime
+            .spawn(async move {
+                engine
+                    .files(peer)
+                    .download(&path, std::path::Path::new(&to), move |done, total| {
+                        if let Some(progress) = &progress {
+                            progress.progress(done, total);
+                        }
+                    })
+                    .await
+            })
+            .await
+            .map_err(join_error)?
+            .map_err(Into::into)
+    }
+
+    /// A file on this device, a path, to the other device.
+    pub async fn fs_upload(
+        &self,
+        id: String,
+        from: String,
+        path: String,
+        overwrite: bool,
+        progress: Option<Arc<dyn TandemFsProgress>>,
+    ) -> Result<(), TandemError> {
+        let peer = DeviceId::parse(&id)?;
+        let engine = self.engine.clone();
+        self.runtime
+            .spawn(async move {
+                engine
+                    .files(peer)
+                    .upload(std::path::Path::new(&from), &path, overwrite, move |done, total| {
+                        if let Some(progress) = &progress {
+                            progress.progress(done, total);
+                        }
+                    })
+                    .await
+            })
+            .await
+            .map_err(join_error)?
+            .map_err(Into::into)
+    }
+
+    pub async fn fs_mkdir(&self, id: String, path: String) -> Result<(), TandemError> {
+        let peer = DeviceId::parse(&id)?;
+        let engine = self.engine.clone();
+        self.runtime.spawn(async move { engine.files(peer).mkdir(&path).await }).await.map_err(join_error)?.map_err(Into::into)
+    }
+
+    pub async fn fs_remove(&self, id: String, path: String, recursive: bool) -> Result<(), TandemError> {
+        let peer = DeviceId::parse(&id)?;
+        let engine = self.engine.clone();
+        self.runtime.spawn(async move { engine.files(peer).remove(&path, recursive).await }).await.map_err(join_error)?.map_err(Into::into)
+    }
+
+    pub async fn fs_rename(&self, id: String, from: String, to: String, overwrite: bool) -> Result<(), TandemError> {
+        let peer = DeviceId::parse(&id)?;
+        let engine = self.engine.clone();
+        self.runtime.spawn(async move { engine.files(peer).rename(&from, &to, overwrite).await }).await.map_err(join_error)?.map_err(Into::into)
+    }
 }

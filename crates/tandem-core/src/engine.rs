@@ -104,6 +104,7 @@ pub(crate) struct Inner {
     pub port: u16,
     pub store: Store,
     pub files: Arc<dyn FileStore>,
+    pub file_service: crate::files::FileService,
     pub events: broadcast::Sender<Event>,
     pub peers: Mutex<HashMap<DeviceId, Peer>>,
     pub out_offers: Mutex<HashMap<u64, OutOffer>>,
@@ -161,6 +162,7 @@ impl Engine {
         let endpoint = net::make_endpoint(&identity, cfg.port, cfg.tuning)?;
         let port = net::local_port(&endpoint);
         let (events, _) = broadcast::channel(2048);
+        let file_service = crate::files::FileService::new(store.clone());
 
         let inner = Arc::new(Inner {
             my_name: RwLock::new(cfg.device_name.clone()),
@@ -172,6 +174,7 @@ impl Engine {
             port,
             store,
             files,
+            file_service,
             events,
             peers: Mutex::new(HashMap::new()),
             out_offers: Mutex::new(HashMap::new()),
@@ -275,6 +278,44 @@ impl Engine {
     }
 
     /// Sends files to every listed device that is connected right now.
+    // ---- Files ----------------------------------------------------------------
+
+    /// The files of another device, as far as it lets this one see them.
+    pub fn files(&self, peer: DeviceId) -> crate::files::FsClient {
+        crate::files::FsClient { inner: self.inner.clone(), peer }
+    }
+
+    /// What the device may do with the files of this one.
+    pub fn file_policy(&self, id: &DeviceId) -> crate::files::FilePolicy {
+        self.inner.file_service.policy(id)
+    }
+
+    /// Whether the device has choices of its own, or is on the default.
+    pub fn has_own_file_policy(&self, id: &DeviceId) -> bool {
+        self.inner.file_service.has_own_policy(id)
+    }
+
+    pub fn file_default_policy(&self) -> crate::files::FilePolicy {
+        self.inner.file_service.default_policy()
+    }
+
+    pub fn set_file_policy(&self, id: &DeviceId, policy: crate::files::FilePolicy) -> Result<()> {
+        self.inner.file_service.set_policy(id, policy)
+    }
+
+    pub fn clear_file_policy(&self, id: &DeviceId) -> Result<()> {
+        self.inner.file_service.clear_policy(id)
+    }
+
+    pub fn set_file_default_policy(&self, policy: crate::files::FilePolicy) -> Result<()> {
+        self.inner.file_service.set_default_policy(policy)
+    }
+
+    /// What other devices did to the files of this one, newest first.
+    pub fn file_activity(&self) -> Vec<crate::files::FileActivity> {
+        self.inner.file_service.activity()
+    }
+
     pub async fn send_files(
         &self,
         targets: &[DeviceId],
@@ -504,6 +545,15 @@ impl Inner {
         self.my_name.read().unwrap().clone()
     }
 
+    /// What this device can do for the others: what the app says, and always letting them look at its files.
+    pub fn caps(&self) -> Vec<String> {
+        let mut caps = self.cfg.caps.clone();
+        if !caps.iter().any(|c| c == "files") {
+            caps.push("files".into());
+        }
+        caps
+    }
+
     pub fn my_hello(&self) -> Hello {
         Hello {
             proto: PROTOCOL_VERSION,
@@ -511,7 +561,7 @@ impl Inner {
             name: self.name(),
             platform: self.cfg.platform,
             model: self.cfg.model.clone(),
-            caps: self.cfg.caps.clone(),
+            caps: self.caps(),
             candidates: net::local_candidates(self.port, self.cfg.loopback),
             circle_digest: self.circle.read().unwrap().digest(),
             boot_id: self.boot_id,

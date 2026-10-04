@@ -70,6 +70,40 @@ enum Command {
     Remove { device: String },
     /// Print this device's id and name.
     Whoami,
+    /// List a folder of another device: `tandemd ls phone /Phone/DCIM`. Without a path, the folders it offers.
+    Ls {
+        device: String,
+        #[arg(default_value = "/")]
+        path: String,
+    },
+    /// Copy a file from another device to this one.
+    Get { device: String, remote: String, local: PathBuf },
+    /// Copy a file from this device to another one.
+    Put {
+        device: String,
+        local: PathBuf,
+        remote: String,
+        /// Replace a file that is there already.
+        #[arg(long)]
+        overwrite: bool,
+    },
+    /// Make a folder on another device.
+    Mkdir { device: String, path: String },
+    /// Remove a file or a folder on another device.
+    Rm {
+        device: String,
+        path: String,
+        /// A folder with everything in it.
+        #[arg(short, long)]
+        recursive: bool,
+    },
+    /// Move or rename something on another device.
+    Mv { device: String, from: String, to: String },
+}
+
+/// A path as the daemon, which may run somewhere else, should read it.
+fn absolute(path: &std::path::Path) -> PathBuf {
+    if path.is_absolute() { path.to_path_buf() } else { std::env::current_dir().unwrap_or_default().join(path) }
 }
 
 fn default_data_dir() -> PathBuf {
@@ -198,6 +232,41 @@ async fn execute(engine: &Engine, command: &Command) -> Result<String> {
             engine.remove_device(id).await?;
             Ok("removed\n".to_string())
         }
+        Command::Ls { device, path } => {
+            let id = resolve(engine, device)?;
+            let mut out = String::new();
+            for entry in engine.files(id).list(path).await? {
+                let size = if entry.dir { "-".to_string() } else { entry.size.to_string() };
+                out.push_str(&format!("{size:>12}  {}{}\n", entry.name, if entry.dir { "/" } else { "" }));
+            }
+            Ok(out)
+        }
+        Command::Get { device, remote, local } => {
+            let id = resolve(engine, device)?;
+            let local = absolute(local);
+            engine.files(id).download(remote, &local, |_, _| {}).await?;
+            Ok(format!("saved {}\n", local.display()))
+        }
+        Command::Put { device, local, remote, overwrite } => {
+            let id = resolve(engine, device)?;
+            engine.files(id).upload(&absolute(local), remote, *overwrite, |_, _| {}).await?;
+            Ok("sent\n".to_string())
+        }
+        Command::Mkdir { device, path } => {
+            let id = resolve(engine, device)?;
+            engine.files(id).mkdir(path).await?;
+            Ok("made\n".to_string())
+        }
+        Command::Rm { device, path, recursive } => {
+            let id = resolve(engine, device)?;
+            engine.files(id).remove(path, *recursive).await?;
+            Ok("removed\n".to_string())
+        }
+        Command::Mv { device, from, to } => {
+            let id = resolve(engine, device)?;
+            engine.files(id).rename(from, to, false).await?;
+            Ok("moved\n".to_string())
+        }
     }
 }
 
@@ -216,6 +285,20 @@ fn command_line(command: &Command) -> Option<String> {
         Command::Clip { device, text } => vec!["clip".into(), device.clone(), text.join(" ")],
         Command::Remove { device } => vec!["remove".into(), device.clone()],
         Command::PairShow => vec!["pair-show".into()],
+        Command::Ls { device, path } => vec!["ls".into(), device.clone(), path.clone()],
+        Command::Get { device, remote, local } => {
+            vec!["get".into(), device.clone(), remote.clone(), absolute(local).to_string_lossy().into_owned()]
+        }
+        Command::Put { device, local, remote, overwrite } => vec![
+            "put".into(),
+            device.clone(),
+            absolute(local).to_string_lossy().into_owned(),
+            remote.clone(),
+            overwrite.to_string(),
+        ],
+        Command::Mkdir { device, path } => vec!["mkdir".into(), device.clone(), path.clone()],
+        Command::Rm { device, path, recursive } => vec!["rm".into(), device.clone(), path.clone(), recursive.to_string()],
+        Command::Mv { device, from, to } => vec!["mv".into(), device.clone(), from.clone(), to.clone()],
         Command::Run => return None,
     };
     Some(parts.join("\t"))
@@ -236,6 +319,21 @@ fn parse_line(line: &str) -> Option<Command> {
         }),
         "clip" => Some(Command::Clip { device: rest.first()?.clone(), text: vec![rest.get(1)?.clone()] }),
         "remove" => Some(Command::Remove { device: rest.first()?.clone() }),
+        "ls" => Some(Command::Ls { device: rest.first()?.clone(), path: rest.get(1)?.clone() }),
+        "get" => Some(Command::Get { device: rest.first()?.clone(), remote: rest.get(1)?.clone(), local: PathBuf::from(rest.get(2)?) }),
+        "put" => Some(Command::Put {
+            device: rest.first()?.clone(),
+            local: PathBuf::from(rest.get(1)?),
+            remote: rest.get(2)?.clone(),
+            overwrite: rest.get(3).map(|v| v == "true").unwrap_or(false),
+        }),
+        "mkdir" => Some(Command::Mkdir { device: rest.first()?.clone(), path: rest.get(1)?.clone() }),
+        "rm" => Some(Command::Rm {
+            device: rest.first()?.clone(),
+            path: rest.get(1)?.clone(),
+            recursive: rest.get(2).map(|v| v == "true").unwrap_or(false),
+        }),
+        "mv" => Some(Command::Mv { device: rest.first()?.clone(), from: rest.get(1)?.clone(), to: rest.get(2)?.clone() }),
         _ => None,
     }
 }
@@ -369,7 +467,18 @@ async fn main() -> Result<()> {
         }
         other => {
             // Give a fresh engine a moment to reach the devices it already knows.
-            if matches!(other, Command::Send { .. } | Command::Clip { .. }) {
+            let needs_a_device = matches!(
+                other,
+                Command::Send { .. }
+                    | Command::Clip { .. }
+                    | Command::Ls { .. }
+                    | Command::Get { .. }
+                    | Command::Put { .. }
+                    | Command::Mkdir { .. }
+                    | Command::Rm { .. }
+                    | Command::Mv { .. }
+            );
+            if needs_a_device {
                 for _ in 0..50 {
                     if engine.devices().iter().any(|d| d.online) {
                         break;

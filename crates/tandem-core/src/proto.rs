@@ -21,6 +21,8 @@ pub const PROTOCOL_VERSION: u16 = 1;
 /// First byte of every stream a peer opens, so the other side knows what follows.
 pub const STREAM_CONTROL: u8 = 1;
 pub const STREAM_FILE: u8 = 2;
+/// One request about the files of the device at the other end. See `files`.
+pub const STREAM_FS: u8 = 3;
 
 pub const MAX_CONTROL_FRAME: usize = 8 * 1024 * 1024;
 pub const MAX_SMALL_FRAME: usize = 64 * 1024;

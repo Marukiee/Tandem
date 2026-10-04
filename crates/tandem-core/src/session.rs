@@ -16,7 +16,7 @@ use crate::error::{Error, Result};
 use crate::events::Event;
 use crate::ids::DeviceId;
 use crate::proto::{
-    self, Hello, InputMsg, MAX_CONTROL_FRAME, MAX_SMALL_FRAME, Msg, STREAM_CONTROL, STREAM_FILE, decode_msg,
+    self, Hello, InputMsg, MAX_CONTROL_FRAME, MAX_SMALL_FRAME, Msg, STREAM_CONTROL, STREAM_FILE, STREAM_FS, decode_msg,
 };
 
 pub(crate) struct Session {
@@ -335,6 +335,7 @@ impl Inner {
         tokio::io::AsyncReadExt::read_exact(&mut recv, &mut kind).await?;
         match kind[0] {
             STREAM_FILE => self.serve_file(id, send, recv).await,
+            STREAM_FS => self.serve_fs(id, send, recv).await,
             other => Err(Error::protocol(format!("unknown stream kind {other}"))),
         }
     }

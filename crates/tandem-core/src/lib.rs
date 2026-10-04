@@ -4,6 +4,7 @@ pub mod discovery;
 pub mod engine;
 pub mod error;
 pub mod events;
+pub mod files;
 pub mod ffi;
 pub mod hotspot;
 pub mod identity;

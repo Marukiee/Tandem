@@ -24,6 +24,9 @@ pub enum Error {
     Invalid(String),
     #[error("cancelled")]
     Cancelled,
+    /// The other device would not do what was asked with its files, and says why.
+    #[error("{message}")]
+    Files { code: crate::files::FsCode, message: String },
 }
 
 impl Error {
