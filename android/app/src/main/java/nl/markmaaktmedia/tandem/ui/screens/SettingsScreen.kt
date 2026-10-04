@@ -1,310 +1,214 @@
 package nl.markmaaktmedia.tandem.ui.screens
 
-import android.content.Intent
-import android.net.Uri
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatDelegate
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.os.LocaleListCompat
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import nl.markmaaktmedia.tandem.BuildConfig
+import androidx.lifecycle.viewmodel.compose.viewModel
 import nl.markmaaktmedia.tandem.R
-import nl.markmaaktmedia.tandem.engine.Permissions
-import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.Route
+import nl.markmaaktmedia.tandem.ui.components.GroupedRow
+import nl.markmaaktmedia.tandem.ui.components.RowIcon
 import nl.markmaaktmedia.tandem.ui.routeBounds
 import nl.markmaaktmedia.tandem.ui.routeKey
-import nl.markmaaktmedia.tandem.ui.components.ActionRow
-import nl.markmaaktmedia.tandem.ui.components.ContentRow
-import nl.markmaaktmedia.tandem.ui.components.InfoRow
-import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
-import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
-import nl.markmaaktmedia.tandem.ui.components.SectionHeader
-import nl.markmaaktmedia.tandem.ui.components.SegmentedPillRow
-import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
-import nl.markmaaktmedia.tandem.ui.components.SwitchRow
-import nl.markmaaktmedia.tandem.ui.components.TandemConfirmDialog
-import nl.markmaaktmedia.tandem.ui.components.TandemDialog
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsCatalog
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsCategory
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsEntry
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsResults
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsSearch
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsSearchField
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsViewModel
+import nl.markmaaktmedia.tandem.ui.screens.settings.rememberCategorySummaries
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
-import nl.markmaaktmedia.tandem.update.UpdateState
+import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 
+/**
+ * The Settings tab: a search field and the categories, each of which opens a page. Typing swaps the categories for
+ * the results, and a result opens the page that holds the setting and lights the row up.
+ *
+ * Everything that used to be on this one long page lives on those pages now (see `ui/screens/settings`).
+ */
 @Composable
-fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifier = Modifier, listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState()) {
+fun SettingsScreen(bottomPadding: Dp, onOpen: (Route) -> Unit, modifier: Modifier = Modifier, listState: LazyListState = rememberLazyListState()) {
+    val state = viewModel<SettingsViewModel>()
+    val focusManager = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
-    val graph = context.graph
-    val prefs = graph.prefs
-    val scope = rememberCoroutineScope()
+    val language = LocalConfiguration.current.locales[0]
+    // Built again when the language changes, because the words searched are the words shown.
+    val index = remember(language) { SettingsCatalog.index(context) }
+    val hits = remember(index, state.query) { SettingsSearch.search(index.entries, state.query) }
 
-    val deviceName by prefs.deviceName.collectAsState(initial = null)
-    val screenshot by prefs.screenshotPrompt.collectAsState(initial = true)
-    val bleMessages by prefs.bluetoothMessages.collectAsState(initial = true)
-    val mediaShare by prefs.mediaShare.collectAsState(initial = true)
-    val audioOutput by prefs.audioOutput.collectAsState(initial = true)
-    val mirror by prefs.mirrorNotifications.collectAsState(initial = true)
-    val calls by prefs.callMirror.collectAsState(initial = true)
-    val hotspot by prefs.hotspotForMac.collectAsState(initial = false)
-    val autoUpdate by prefs.autoUpdateCheck.collectAsState(initial = true)
-    val copyCodes by prefs.copyCodes.collectAsState(initial = true)
-    val updateState by graph.updater.state.collectAsState()
+    var focused by remember { mutableStateOf(false) }
+    val searching = state.query.isNotBlank()
+    // The title makes room while there is something to search: the keyboard takes half the screen.
+    val active = focused || state.query.isNotEmpty()
+    val fieldFocus = remember { FocusRequester() }
 
-    var renaming by remember { mutableStateOf(false) }
-    var pendingLanguage by remember { mutableStateOf<String?>(null) }
-    var confirmReset by remember { mutableStateOf(false) }
+    fun endSearch() {
+        state.query = ""
+        keyboard?.hide()
+        focusManager.clearFocus()
+    }
 
-    val currentLanguage = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore(',').substringBefore('-').ifBlank { "system" }
-    val languages = listOf("system", "en", "nl")
+    // Back clears the search before it leaves the tab.
+    BackHandler(enabled = active) { endSearch() }
 
-    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            val json = prefs.exportJson(currentLanguage)
-            val saved = withContext(Dispatchers.IO) {
-                runCatching { context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(json.toByteArray()) } }.isSuccess
-            }
-            Toast.makeText(context, if (saved) R.string.backup_saved else R.string.backup_failed, Toast.LENGTH_SHORT).show()
+    // The keyboard going away by itself (the Back gesture closes it first) also ends the focus on the field.
+    val imeVisible = WindowInsets.isImeVisible
+    var imeWasVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(imeVisible) {
+        if (imeVisible) {
+            imeWasVisible = true
+        } else if (imeWasVisible) {
+            imeWasVisible = false
+            focusManager.clearFocus()
         }
     }
-    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        scope.launch {
-            val text = withContext(Dispatchers.IO) {
-                runCatching { context.contentResolver.openInputStream(uri)!!.use { it.readBytes().decodeToString() } }.getOrNull()
-            }
-            val language = text?.let { prefs.importJson(it) }
-            when {
-                text == null -> Toast.makeText(context, R.string.backup_failed, Toast.LENGTH_SHORT).show()
-                language == null -> Toast.makeText(context, R.string.backup_invalid, Toast.LENGTH_SHORT).show()
-                else -> {
-                    prefs.deviceName.first()?.let { name -> runCatching { graph.host.engine?.renameSelf(name) } }
-                    Toast.makeText(context, R.string.backup_restored, Toast.LENGTH_SHORT).show()
-                    if (language != currentLanguage) pendingLanguage = language
+
+    // A request left over from an earlier search has nothing to light up on this page.
+    LaunchedEffect(Unit) { state.focus.clear() }
+
+    fun open(entry: SettingsEntry) {
+        keyboard?.hide()
+        focusManager.clearFocus()
+        state.focus.request(entry.focus)
+        // The page that normally leads to the screen goes underneath, so Back climbs the same way the person would.
+        entry.via?.let(onOpen)
+        onOpen(entry.route)
+    }
+
+    Column(modifier.fillMaxSize().statusBarsPadding()) {
+        AnimatedVisibility(
+            visible = !active,
+            enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
+            exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
+        ) {
+            Text(
+                stringResource(R.string.tab_settings), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 12.dp),
+            )
+        }
+        SettingsSearchField(
+            query = state.query,
+            onQueryChange = { state.query = it },
+            active = active,
+            onFocusChange = { focused = it },
+            onBack = ::endSearch,
+            onSearch = { keyboard?.hide(); focusManager.clearFocus() },
+            focusRequester = fieldFocus,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = if (active) 12.dp else 4.dp, bottom = 12.dp),
+        )
+
+        Box(Modifier.weight(1f).fillMaxWidth().imePadding()) {
+            AnimatedContent(
+                targetState = searching,
+                transitionSpec = { fadeIn(TandemMotion.fadeSpec()) togetherWith fadeOut(TandemMotion.fadeSpec()) },
+                label = "settingsContent",
+            ) { showResults ->
+                if (showResults) {
+                    SettingsResults(
+                        hits = hits,
+                        index = index,
+                        query = state.query,
+                        bottomPadding = if (imeVisible) 16.dp else bottomPadding + 24.dp,
+                        onDragStart = { keyboard?.hide() },
+                        onPick = ::open,
+                    )
+                } else {
+                    Categories(bottomPadding, listState, onOpen)
                 }
             }
         }
     }
+}
 
+/** The groups of categories, in the order of the list in [SettingsCategory]. */
+private val Groups = listOf(
+    listOf(SettingsCategory.Look, SettingsCategory.Sharing, SettingsCategory.Notifications),
+    listOf(SettingsCategory.Permissions, SettingsCategory.Hotspot, SettingsCategory.Files),
+    listOf(SettingsCategory.Updates, SettingsCategory.About),
+)
+
+@Composable
+private fun Categories(bottomPadding: Dp, listState: LazyListState, onOpen: (Route) -> Unit) {
+    val summaries = rememberCategorySummaries()
     LazyColumn(
-        modifier.fillMaxSize().statusBarsPadding(),
+        Modifier.fillMaxSize(),
         state = listState,
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = bottomPadding + 24.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = bottomPadding + 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            Text(stringResource(R.string.tab_settings), style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp))
-        }
-
-        item {
-            SectionHeader(stringResource(R.string.settings_this_phone))
-            SettingsGroup {
-                ActionRow(0, 2, TandemIcons.Phone, stringResource(R.string.settings_name), deviceName ?: graph.host.myName, { renaming = true })
-                InfoRow(1, 2, TandemIcons.Key, stringResource(R.string.settings_id), graph.host.myId.take(10))
-            }
-        }
-
-        item {
-            SectionHeader(stringResource(R.string.settings_look))
-            SettingsGroup {
-                ActionRow(0, 2, TandemIcons.Palette, stringResource(R.string.settings_appearance), stringResource(R.string.settings_appearance_sub), { onOpen(Route.Appearance) }, modifier = Modifier.routeBounds(routeKey(Route.Appearance)))
-                ContentRow(1, 2, TandemIcons.Language, stringResource(R.string.settings_language)) {
-                    SegmentedPillRow(
-                        options = languages,
-                        selected = if (currentLanguage in languages) currentLanguage else "system",
-                        label = { context.getString(when (it) { "en" -> R.string.language_en; "nl" -> R.string.language_nl; else -> R.string.language_system }) },
-                        // Switching language recreates the app, so ask before doing it.
-                        onSelect = { if (it != currentLanguage) pendingLanguage = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        equalWidth = true,
+        items(Groups.size) { group ->
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Groups[group].forEachIndexed { position, category ->
+                    CategoryRow(
+                        position, Groups[group].size, category, summaries[category].orEmpty(),
+                        onClick = { onOpen(category.route) },
+                        modifier = Modifier.routeBounds(routeKey(category.route)),
                     )
                 }
             }
         }
-
-        item {
-            SectionHeader(stringResource(R.string.settings_sharing))
-            SettingsGroup {
-                SwitchRow(0, 3, TandemIcons.Screenshot, stringResource(R.string.settings_screenshot), stringResource(R.string.settings_screenshot_sub), screenshot, { scope.launch { prefs.setScreenshotPrompt(it) } })
-                SwitchRow(1, 3, TandemIcons.Bluetooth, stringResource(R.string.settings_ble_messages), stringResource(R.string.settings_ble_messages_sub), bleMessages, { scope.launch { prefs.setBluetoothMessages(it) } })
-                ActionRow(2, 3, TandemIcons.Paste, stringResource(R.string.settings_clip_tile), stringResource(R.string.settings_clip_tile_sub), { nl.markmaaktmedia.tandem.share.ClipboardTileService.requestAdd(context) })
-            }
-        }
-
-        item {
-            SectionHeader(stringResource(R.string.settings_media))
-            SettingsGroup {
-                SwitchRow(0, 3, TandemIcons.Music, stringResource(R.string.settings_media_share), stringResource(R.string.settings_media_share_sub), mediaShare, { scope.launch { prefs.setMediaShare(it) } })
-                ActionRow(1, 3, TandemIcons.Devices, stringResource(R.string.settings_media_apps), stringResource(R.string.settings_media_apps_sub), { onOpen(Route.MediaApps) })
-                SwitchRow(2, 3, TandemIcons.VolumeUp, stringResource(R.string.settings_audio_output), stringResource(R.string.settings_audio_output_sub), audioOutput, { scope.launch { prefs.setAudioOutput(it) } })
-            }
-        }
-
-        item {
-            SectionHeader(stringResource(R.string.settings_notifications))
-            SettingsGroup {
-                SwitchRow(0, 4, TandemIcons.Notifications, stringResource(R.string.settings_mirror), stringResource(R.string.settings_mirror_sub), mirror, { scope.launch { prefs.setMirrorNotifications(it) } })
-                ActionRow(1, 4, TandemIcons.Devices, stringResource(R.string.settings_mirror_apps), stringResource(R.string.settings_mirror_apps_sub), { onOpen(Route.MirrorApps) }, modifier = Modifier.routeBounds(routeKey(Route.MirrorApps)))
-                SwitchRow(2, 4, TandemIcons.Key, stringResource(R.string.settings_codes), stringResource(R.string.settings_codes_sub), copyCodes, { scope.launch { prefs.setCopyCodes(it) } })
-                SwitchRow(3, 4, TandemIcons.Call, stringResource(R.string.settings_calls), stringResource(R.string.settings_calls_sub), calls, { scope.launch { prefs.setCallMirror(it) } })
-            }
-        }
-
-        item {
-            SectionHeader(stringResource(R.string.settings_hotspot))
-            SettingsGroup {
-                val permissions = nl.markmaaktmedia.tandem.ui.components.rememberPermissionStatus()
-                val ready = permissions.bluetooth && permissions.notifications
-                ActionRow(
-                    0, 1, TandemIcons.Hotspot, stringResource(R.string.settings_hotspot),
-                    stringResource(
-                        when {
-                            !ready -> R.string.hotspot_row_setup
-                            hotspot -> R.string.hotspot_row_on
-                            else -> R.string.hotspot_row_off
-                        },
-                    ),
-                    { onOpen(Route.Hotspot) },
-                    modifier = Modifier.routeBounds(routeKey(Route.Hotspot)),
-                )
-            }
-        }
-
-        item {
-            SectionHeader(stringResource(R.string.settings_access))
-            SettingsGroup {
-                ActionRow(0, 2, TandemIcons.Shield, stringResource(R.string.settings_access_row), stringResource(R.string.settings_access_sub), { onOpen(Route.Access) }, modifier = Modifier.routeBounds(routeKey(Route.Access)))
-                ActionRow(1, 2, TandemIcons.Folder, stringResource(R.string.files_title), stringResource(R.string.files_row_sub), { onOpen(Route.FileAccess) }, modifier = Modifier.routeBounds(routeKey(Route.FileAccess)))
-            }
-        }
-
-        item {
-            SectionHeader(stringResource(R.string.settings_updates))
-            SettingsGroup {
-                InfoRow(0, 3, TandemIcons.Info, stringResource(R.string.settings_version), BuildConfig.VERSION_NAME)
-                SwitchRow(1, 3, TandemIcons.Update, stringResource(R.string.settings_auto_update), stringResource(R.string.settings_auto_update_sub), autoUpdate, { scope.launch { prefs.setAutoUpdateCheck(it) } })
-                ActionRow(
-                    2, 3, TandemIcons.Refresh, stringResource(R.string.settings_check_update),
-                    when (updateState) {
-                        is UpdateState.Checking -> stringResource(R.string.settings_checking)
-                        is UpdateState.UpToDate -> stringResource(R.string.settings_up_to_date)
-                        is UpdateState.Available -> stringResource(R.string.update_available, (updateState as UpdateState.Available).release.versionName)
-                        is UpdateState.Failed -> (updateState as UpdateState.Failed).reason
-                        is UpdateState.Downloading -> stringResource(R.string.update_downloading, ((updateState as UpdateState.Downloading).progress * 100).toInt())
-                        is UpdateState.NeedsPermission -> stringResource(R.string.update_needs_permission)
-                        else -> null
-                    },
-                    { scope.launch { graph.updater.check() } },
-                )
-            }
-        }
-
-        item {
-            SectionHeader(stringResource(R.string.settings_backup))
-            SettingsGroup {
-                ActionRow(0, 2, TandemIcons.Upload, stringResource(R.string.backup_export), stringResource(R.string.backup_export_sub), { exportLauncher.launch("tandem-settings.json") })
-                ActionRow(1, 2, TandemIcons.Download, stringResource(R.string.backup_import), stringResource(R.string.backup_import_sub), { importLauncher.launch(arrayOf("*/*")) })
-            }
-        }
-
-        item {
-            SectionHeader(stringResource(R.string.dev_section))
-            SettingsGroup {
-                ActionRow(0, 1, TandemIcons.Info, stringResource(R.string.dev_title), stringResource(R.string.dev_sub), { onOpen(Route.Developer) }, modifier = Modifier.routeBounds(routeKey(Route.Developer)))
-            }
-        }
-
-        item {
-            SectionHeader(stringResource(R.string.settings_about))
-            SettingsGroup {
-                ActionRow(0, 3, TandemIcons.Update, stringResource(R.string.changelog_title), stringResource(R.string.changelog_sub), { onOpen(Route.Changelog) })
-                ActionRow(1, 3, TandemIcons.OpenInNew, "github.com/Marukiee/Tandem", stringResource(R.string.settings_license), {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Marukiee/Tandem")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                })
-                ActionRow(2, 3, TandemIcons.Restart, stringResource(R.string.settings_reset), stringResource(R.string.settings_reset_sub), { confirmReset = true }, danger = true)
-            }
-            Spacer(Modifier.height(16.dp))
-        }
     }
+}
 
-    if (renaming) {
-        var text by remember { mutableStateOf(deviceName ?: graph.host.myName) }
-        TandemDialog(
-            title = stringResource(R.string.settings_name),
-            onDismiss = { renaming = false },
-            icon = TandemIcons.Phone,
-            actions = {
-                SecondaryPillButton(stringResource(R.string.action_cancel), { renaming = false })
-                PrimaryPillButton(stringResource(R.string.action_save), {
-                    val name = text.trim()
-                    if (name.isNotEmpty()) scope.launch {
-                        prefs.setDeviceName(name)
-                        runCatching { graph.host.engine?.renameSelf(name) }
-                    }
-                    renaming = false
-                })
-            },
-            content = {
-                OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true, keyboardOptions = KeyboardOptions.Default, shape = MaterialTheme.shapes.large)
-            },
-        )
-    }
-
-    pendingLanguage?.let { language ->
-        TandemConfirmDialog(
-            title = stringResource(R.string.language_restart_title),
-            body = stringResource(R.string.language_restart_body),
-            confirmLabel = stringResource(R.string.language_restart_confirm),
-            cancelLabel = stringResource(R.string.language_restart_cancel),
-            destructive = false,
-            onConfirm = {
-                pendingLanguage = null
-                AppCompatDelegate.setApplicationLocales(if (language == "system") LocaleListCompat.getEmptyLocaleList() else LocaleListCompat.forLanguageTags(language))
-            },
-            onDismiss = { pendingLanguage = null },
-        )
-    }
-
-    if (confirmReset) {
-        TandemConfirmDialog(
-            title = stringResource(R.string.settings_reset),
-            body = stringResource(R.string.settings_reset_body),
-            confirmLabel = stringResource(R.string.settings_reset_confirm),
-            cancelLabel = stringResource(R.string.action_cancel),
-            destructive = true,
-            onConfirm = {
-                graph.host.stop()
-                nl.markmaaktmedia.tandem.engine.TandemService.stop(context)
-                (context.getSystemService(android.app.ActivityManager::class.java)).clearApplicationUserData()
-            },
-            onDismiss = { confirmReset = false },
-        )
+/** One category: its icon, its name, and a line that says how it is set right now. */
+@Composable
+private fun CategoryRow(index: Int, total: Int, category: SettingsCategory, summary: String, onClick: () -> Unit, modifier: Modifier) {
+    GroupedRow(index, total, modifier = modifier, onClick = onClick) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            RowIcon(category.icon())
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(category.title), style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Icon(TandemIcons.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        }
     }
 }

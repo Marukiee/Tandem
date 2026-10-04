@@ -87,7 +87,7 @@ fun Modifier.settingsTarget(key: String, shape: Shape): Modifier {
     val focus = viewModel<SettingsViewModel>(owner).focus
     val requester = remember { BringIntoViewRequester() }
     val glow = remember { Animatable(0f) }
-    var size by remember { mutableStateOf(IntSize.Zero) }
+    var bounds by remember { mutableStateOf(IntSize.Zero) }
     val margin = with(LocalDensity.current) { RevealMargin.toPx() }
 
     LaunchedEffect(focus, key) {
@@ -96,7 +96,7 @@ fun Modifier.settingsTarget(key: String, shape: Shape): Modifier {
             focus.consume(key)
             // The page is still sliding in, and rows that fade in one by one are not at rest yet.
             delay(ArriveMillis)
-            requester.bringIntoView(Rect(0f, -margin, size.width.toFloat(), size.height + margin))
+            requester.bringIntoView(Rect(0f, -margin, bounds.width.toFloat(), bounds.height + margin))
             repeat(2) { round ->
                 glow.animateTo(1f, tween(durationMillis = 220, easing = TandemMotion.Standard))
                 glow.animateTo(0f, tween(durationMillis = if (round == 0) 320 else 900, easing = TandemMotion.Standard))
@@ -107,7 +107,7 @@ fun Modifier.settingsTarget(key: String, shape: Shape): Modifier {
     val colour = MaterialTheme.colorScheme.primary
     return this
         .bringIntoViewRequester(requester)
-        .onSizeChanged { size = it }
+        .onSizeChanged { bounds = it }
         .drawWithContent {
             drawContent()
             val amount = glow.value
@@ -117,7 +117,7 @@ fun Modifier.settingsTarget(key: String, shape: Shape): Modifier {
                 val width = 2.dp.toPx()
                 // Inset by half the line, so the ring is drawn inside the row and not half cut off by its edge.
                 inset(width / 2) {
-                    drawOutline(shape.createOutline(size, layoutDirection, this), colour.copy(alpha = 0.9f * amount), style = Stroke(width))
+                    drawOutline(shape.createOutline(this.size, layoutDirection, this), colour.copy(alpha = 0.9f * amount), style = Stroke(width))
                 }
             }
         }
@@ -133,6 +133,12 @@ fun Modifier.settingsTarget(key: String, index: Int, total: Int): Modifier = set
 @Composable
 fun SettingsTarget(key: String, index: Int, total: Int, content: @Composable () -> Unit) {
     Box(Modifier.settingsTarget(key, index, total)) { content() }
+}
+
+/** The same, for something that is not a row of a slab, like a card, with the shape it has. */
+@Composable
+fun SettingsTarget(key: String, shape: Shape, content: @Composable () -> Unit) {
+    Box(Modifier.settingsTarget(key, shape)) { content() }
 }
 
 private const val ArriveMillis = 420L

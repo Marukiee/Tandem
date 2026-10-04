@@ -40,6 +40,7 @@ fun routeKey(route: Route): String = when (route) {
     Route.Changelog -> "changelog"
     Route.MediaApps -> "media-apps"
     Route.OnboardingPreview -> "onboarding-preview"
+    is Route.SettingsPage -> "settings:${route.page.key}"
 }
 
 /** Marks a tapped item, or the page it opens, as the two ends of one transition. */

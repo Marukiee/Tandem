@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -49,6 +50,9 @@ import nl.markmaaktmedia.tandem.ui.components.SwitchRow
 import nl.markmaaktmedia.tandem.ui.components.TandemIconButton
 import nl.markmaaktmedia.tandem.ui.components.bleed
 import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
+import nl.markmaaktmedia.tandem.ui.screens.settings.FocusKeys
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsTarget
+import nl.markmaaktmedia.tandem.ui.screens.settings.settingsTarget
 import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemFilePolicy
@@ -127,16 +131,18 @@ fun FileAccessScreen(onBack: () -> Unit) {
         // Without this Android lets the app see almost nothing of the storage, and a device that asks gets nothing.
         SectionHeader(stringResource(R.string.files_permission_header))
         SettingsGroup {
-            ActionRow(
-                0, 1, TandemIcons.Folder,
-                stringResource(R.string.files_permission_title),
-                stringResource(if (allowed) R.string.files_permission_on else R.string.files_permission_off),
-                onClick = {
-                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
-                    context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                },
-                trailing = { Text(stringResource(if (allowed) R.string.files_on else R.string.files_off), color = MaterialTheme.colorScheme.onSurfaceVariant) },
-            )
+            SettingsTarget(FocusKeys.FilesPermission, 0, 1) {
+                ActionRow(
+                    0, 1, TandemIcons.Folder,
+                    stringResource(R.string.files_permission_title),
+                    stringResource(if (allowed) R.string.files_permission_on else R.string.files_permission_off),
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
+                        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    },
+                    trailing = { Text(stringResource(if (allowed) R.string.files_on else R.string.files_off), color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                )
+            }
         }
 
         SectionHeader(stringResource(R.string.files_for))
@@ -170,28 +176,38 @@ fun FileAccessScreen(onBack: () -> Unit) {
         if (policy != null) {
             SectionHeader(stringResource(R.string.files_rights))
             SettingsGroup {
-                SwitchRow(0, 5, TandemIcons.Folder, stringResource(R.string.files_enabled), stringResource(R.string.files_enabled_sub), policy.enabled, { on -> change { it.copy(enabled = on) } }, editable)
-                SwitchRow(1, 5, TandemIcons.Upload, stringResource(R.string.files_write), stringResource(R.string.files_write_sub), policy.write, { on -> change { it.copy(write = on) } }, editable)
-                SwitchRow(2, 5, TandemIcons.Delete, stringResource(R.string.files_delete), stringResource(R.string.files_delete_sub), policy.delete, { on -> change { it.copy(delete = on) } }, editable)
-                SwitchRow(3, 5, TandemIcons.File, stringResource(R.string.files_hidden), stringResource(R.string.files_hidden_sub), policy.hidden, { on -> change { it.copy(hidden = on) } }, editable)
+                SettingsTarget(FocusKeys.FilesEnabled, 0, 5) {
+                    SwitchRow(0, 5, TandemIcons.Folder, stringResource(R.string.files_enabled), stringResource(R.string.files_enabled_sub), policy.enabled, { on -> change { it.copy(enabled = on) } }, editable)
+                }
+                SettingsTarget(FocusKeys.FilesWrite, 1, 5) {
+                    SwitchRow(1, 5, TandemIcons.Upload, stringResource(R.string.files_write), stringResource(R.string.files_write_sub), policy.write, { on -> change { it.copy(write = on) } }, editable)
+                }
+                SettingsTarget(FocusKeys.FilesDelete, 2, 5) {
+                    SwitchRow(2, 5, TandemIcons.Delete, stringResource(R.string.files_delete), stringResource(R.string.files_delete_sub), policy.delete, { on -> change { it.copy(delete = on) } }, editable)
+                }
+                SettingsTarget(FocusKeys.FilesHidden, 3, 5) {
+                    SwitchRow(3, 5, TandemIcons.File, stringResource(R.string.files_hidden), stringResource(R.string.files_hidden_sub), policy.hidden, { on -> change { it.copy(hidden = on) } }, editable)
+                }
                 val limit = policy.maxUpload.toLong()
-                ActionRow(
-                    4, 5, TandemIcons.Download,
-                    stringResource(R.string.files_max_upload),
-                    stringResource(R.string.files_max_upload_sub),
-                    onClick = {
-                        if (editable) {
-                            val next = UploadLimits[(UploadLimits.indexOf(limit).coerceAtLeast(-1) + 1) % UploadLimits.size]
-                            change { it.copy(maxUpload = next.toULong()) }
-                        }
-                    },
-                    trailing = {
-                        Text(
-                            if (limit == 0L) stringResource(R.string.files_no_limit) else android.text.format.Formatter.formatShortFileSize(context, limit),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    },
-                )
+                SettingsTarget(FocusKeys.FilesMax, 4, 5) {
+                    ActionRow(
+                        4, 5, TandemIcons.Download,
+                        stringResource(R.string.files_max_upload),
+                        stringResource(R.string.files_max_upload_sub),
+                        onClick = {
+                            if (editable) {
+                                val next = UploadLimits[(UploadLimits.indexOf(limit).coerceAtLeast(-1) + 1) % UploadLimits.size]
+                                change { it.copy(maxUpload = next.toULong()) }
+                            }
+                        },
+                        trailing = {
+                            Text(
+                                if (limit == 0L) stringResource(R.string.files_no_limit) else android.text.format.Formatter.formatShortFileSize(context, limit),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                    )
+                }
             }
 
             SectionHeader(stringResource(R.string.files_folders))
@@ -225,16 +241,18 @@ fun FileAccessScreen(onBack: () -> Unit) {
                         }
                     }
                 }
-                ActionRow(
-                    policy.shares.size, total, TandemIcons.Add,
-                    stringResource(R.string.files_add_folder),
-                    stringResource(R.string.files_add_folder_sub),
-                    onClick = { if (editable) picker.launch(null) },
-                )
+                SettingsTarget(FocusKeys.FilesFolder, policy.shares.size, total) {
+                    ActionRow(
+                        policy.shares.size, total, TandemIcons.Add,
+                        stringResource(R.string.files_add_folder),
+                        stringResource(R.string.files_add_folder_sub),
+                        onClick = { if (editable) picker.launch(null) },
+                    )
+                }
             }
         }
 
-        SectionHeader(stringResource(R.string.files_activity))
+        SectionHeader(stringResource(R.string.files_activity), modifier = Modifier.settingsTarget(FocusKeys.FilesActivity, RoundedCornerShape(12.dp)))
         if (activity.isEmpty()) {
             Text(
                 stringResource(R.string.files_activity_none),

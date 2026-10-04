@@ -45,6 +45,8 @@ import nl.markmaaktmedia.tandem.ui.components.phoneNote
 import nl.markmaaktmedia.tandem.ui.components.rememberPermissionRequests
 import nl.markmaaktmedia.tandem.ui.components.rememberPermissionStatus
 import nl.markmaaktmedia.tandem.ui.components.staggeredEntry
+import nl.markmaaktmedia.tandem.ui.screens.settings.FocusKeys
+import nl.markmaaktmedia.tandem.ui.screens.settings.settingsTarget
 import nl.markmaaktmedia.tandem.ui.theme.GroupedSpacing
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemNotification
@@ -100,20 +102,20 @@ fun AccessScreen(onBack: () -> Unit) {
                 testResult = notificationTest,
                 note = blockedNote(!status.notifications && status.isBlocked(Manifest.permission.POST_NOTIFICATIONS), requests),
                 index = 0, total = total,
-                modifier = Modifier.staggeredEntry(2),
+                modifier = Modifier.staggeredEntry(2).settingsTarget(FocusKeys.PermNotifications, 0, total),
             )
             PermissionCard(
                 TandemIcons.Battery, stringResource(R.string.perm_battery), stringResource(R.string.perm_battery_why),
                 granted = status.battery, onGrant = { Permissions.openBatterySettings(context) },
                 index = 1, total = total,
-                modifier = Modifier.staggeredEntry(3),
+                modifier = Modifier.staggeredEntry(3).settingsTarget(FocusKeys.PermBattery, 1, total),
             )
             PermissionCard(
                 TandemIcons.Screenshot, stringResource(R.string.perm_photos), stringResource(R.string.perm_photos_why),
                 granted = status.photos, onGrant = requests::photos,
                 note = blockedNote(!status.photos && status.isBlocked(Manifest.permission.READ_MEDIA_IMAGES), requests),
                 index = 2, total = total,
-                modifier = Modifier.staggeredEntry(4),
+                modifier = Modifier.staggeredEntry(4).settingsTarget(FocusKeys.PermPhotos, 2, total),
             )
             PermissionCard(
                 TandemIcons.Devices, stringResource(R.string.perm_listener), stringResource(R.string.perm_listener_why),
@@ -161,7 +163,7 @@ fun AccessScreen(onBack: () -> Unit) {
                     null
                 },
                 index = 3, total = total,
-                modifier = Modifier.staggeredEntry(5),
+                modifier = Modifier.staggeredEntry(5).settingsTarget(FocusKeys.PermListener, 3, total),
             )
             PermissionCard(
                 TandemIcons.Call, stringResource(R.string.perm_phone), stringResource(R.string.perm_phone_why),
@@ -170,27 +172,27 @@ fun AccessScreen(onBack: () -> Unit) {
                 onGrant = requests::phone,
                 note = phoneNote(status, requests),
                 index = 4, total = total,
-                modifier = Modifier.staggeredEntry(6),
+                modifier = Modifier.staggeredEntry(6).settingsTarget(FocusKeys.PermPhone, 4, total),
             )
             PermissionCard(
                 TandemIcons.Bluetooth, stringResource(R.string.perm_bluetooth), stringResource(R.string.perm_bluetooth_why),
                 granted = status.bluetooth, onGrant = requests::bluetooth,
                 note = blockedNote(!status.bluetooth && status.isBlocked(Permissions.bluetoothPermissions.toList()), requests),
                 index = 5, total = total,
-                modifier = Modifier.staggeredEntry(7),
+                modifier = Modifier.staggeredEntry(7).settingsTarget(FocusKeys.PermBluetooth, 5, total),
             )
             PermissionCard(
                 TandemIcons.QrScan, stringResource(R.string.perm_camera), stringResource(R.string.perm_camera_why),
                 granted = status.camera, onGrant = requests::camera,
                 note = blockedNote(!status.camera && status.isBlocked(Manifest.permission.CAMERA), requests),
                 index = 6, total = total,
-                modifier = Modifier.staggeredEntry(8),
+                modifier = Modifier.staggeredEntry(8).settingsTarget(FocusKeys.PermCamera, 6, total),
             )
             PermissionCard(
                 TandemIcons.Update, stringResource(R.string.perm_install), stringResource(R.string.perm_install_why),
                 granted = status.installApps, onGrant = { Permissions.openInstallSettings(context) },
                 index = 7, total = total,
-                modifier = Modifier.staggeredEntry(9),
+                modifier = Modifier.staggeredEntry(9).settingsTarget(FocusKeys.PermInstall, 7, total),
             )
         }
         Spacer(Modifier.height(24.dp))

@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId
 
 sealed interface Route {
     data object Home : Route
@@ -19,6 +20,9 @@ sealed interface Route {
     data object Changelog : Route
     data object MediaApps : Route
     data object OnboardingPreview : Route
+
+    /** A page of the Settings overview that is not a screen of its own. */
+    data class SettingsPage(val page: SettingsPageId) : Route
 }
 
 /** A small back stack. The home screen is always at the bottom. */
@@ -87,5 +91,6 @@ private fun routeFromKey(key: String): Route? = when {
     key == "changelog" -> Route.Changelog
     key == "media-apps" -> Route.MediaApps
     key == "onboarding-preview" -> Route.OnboardingPreview
+    key.startsWith("settings:") -> SettingsPageId.fromKey(key.removePrefix("settings:"))?.let(Route::SettingsPage)
     else -> null
 }

@@ -47,6 +47,8 @@ import nl.markmaaktmedia.tandem.ui.components.SegmentedPillRow
 import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
 import nl.markmaaktmedia.tandem.ui.components.SwitchRow
 import nl.markmaaktmedia.tandem.ui.components.TandemIconButton
+import nl.markmaaktmedia.tandem.ui.screens.settings.FocusKeys
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsTarget
 import nl.markmaaktmedia.tandem.ui.theme.ColourSeed
 import nl.markmaaktmedia.tandem.ui.theme.LocalAppearance
 import nl.markmaaktmedia.tandem.ui.theme.PaletteStyle
@@ -80,91 +82,99 @@ fun AppearanceScreen(onBack: () -> Unit) {
 
         SectionHeader(stringResource(R.string.appearance_theme))
         SettingsGroup {
-            ContentRow(0, 2, TandemIcons.DarkMode, stringResource(R.string.appearance_mode)) {
-                SegmentedPillRow(
-                    options = ThemeMode.entries,
-                    selected = appearance.mode,
-                    label = { context.getString(when (it) { ThemeMode.SYSTEM -> R.string.language_system; ThemeMode.LIGHT -> R.string.appearance_light; ThemeMode.DARK -> R.string.appearance_dark }) },
-                    onSelect = { scope.launch { prefs.setThemeMode(it) } },
-                    modifier = Modifier.fillMaxWidth(),
-                    equalWidth = true,
-                )
+            SettingsTarget(FocusKeys.AppearanceMode, 0, 2) {
+                ContentRow(0, 2, TandemIcons.DarkMode, stringResource(R.string.appearance_mode)) {
+                    SegmentedPillRow(
+                        options = ThemeMode.entries,
+                        selected = appearance.mode,
+                        label = { context.getString(when (it) { ThemeMode.SYSTEM -> R.string.language_system; ThemeMode.LIGHT -> R.string.appearance_light; ThemeMode.DARK -> R.string.appearance_dark }) },
+                        onSelect = { scope.launch { prefs.setThemeMode(it) } },
+                        modifier = Modifier.fillMaxWidth(),
+                        equalWidth = true,
+                    )
+                }
             }
-            SwitchRow(1, 2, TandemIcons.DarkMode, stringResource(R.string.appearance_black), stringResource(R.string.appearance_black_sub), appearance.pureBlack, { scope.launch { prefs.setPureBlack(it) } })
+            SettingsTarget(FocusKeys.AppearanceBlack, 1, 2) {
+                SwitchRow(1, 2, TandemIcons.DarkMode, stringResource(R.string.appearance_black), stringResource(R.string.appearance_black_sub), appearance.pureBlack, { scope.launch { prefs.setPureBlack(it) } })
+            }
         }
 
         SectionHeader(stringResource(R.string.appearance_colour))
         SettingsGroup {
-            ContentRow(0, 2, TandemIcons.Palette, stringResource(R.string.appearance_accent)) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Wallpaper is one of the tiles, not a switch above them: it is a
-                    // choice between the same things, and a switch made the accent
-                    // tiles look usable while they were ignored.
-                    ColourSeed.entries.chunked(SeedColumns).forEach { rowSeeds ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            rowSeeds.forEach { seed ->
-                                SeedPreviewTile(
-                                    seed = seed.resolve(context),
-                                    style = appearance.style,
-                                    dark = dark,
-                                    pureBlack = appearance.pureBlack,
-                                    selected = appearance.seed == seed,
-                                    label = stringResource(seedLabel(seed)),
-                                    onClick = { scope.launch { prefs.setSeed(seed) } },
-                                    modifier = Modifier.weight(1f),
-                                    overlay = { scheme ->
-                                        if (seed == ColourSeed.WALLPAPER) {
-                                            Box(
-                                                Modifier
-                                                    .align(Alignment.TopStart)
-                                                    .padding(6.dp)
-                                                    .size(20.dp)
-                                                    .clip(CircleShape)
-                                                    .background(scheme.surface.copy(alpha = 0.9f)),
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                Icon(TandemIcons.Image, null, tint = scheme.onSurface, modifier = Modifier.size(12.dp))
+            SettingsTarget(FocusKeys.AppearanceAccent, 0, 2) {
+                ContentRow(0, 2, TandemIcons.Palette, stringResource(R.string.appearance_accent)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Wallpaper is one of the tiles, not a switch above them: it is a
+                        // choice between the same things, and a switch made the accent
+                        // tiles look usable while they were ignored.
+                        ColourSeed.entries.chunked(SeedColumns).forEach { rowSeeds ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                rowSeeds.forEach { seed ->
+                                    SeedPreviewTile(
+                                        seed = seed.resolve(context),
+                                        style = appearance.style,
+                                        dark = dark,
+                                        pureBlack = appearance.pureBlack,
+                                        selected = appearance.seed == seed,
+                                        label = stringResource(seedLabel(seed)),
+                                        onClick = { scope.launch { prefs.setSeed(seed) } },
+                                        modifier = Modifier.weight(1f),
+                                        overlay = { scheme ->
+                                            if (seed == ColourSeed.WALLPAPER) {
+                                                Box(
+                                                    Modifier
+                                                        .align(Alignment.TopStart)
+                                                        .padding(6.dp)
+                                                        .size(20.dp)
+                                                        .clip(CircleShape)
+                                                        .background(scheme.surface.copy(alpha = 0.9f)),
+                                                    contentAlignment = Alignment.Center,
+                                                ) {
+                                                    Icon(TandemIcons.Image, null, tint = scheme.onSurface, modifier = Modifier.size(12.dp))
+                                                }
                                             }
-                                        }
-                                    },
-                                )
+                                        },
+                                    )
+                                }
                             }
                         }
+                        Note(visible = appearance.seed == ColourSeed.WALLPAPER, text = stringResource(R.string.colours_wallpaper_note))
+                        Note(visible = appearance.style == PaletteStyle.MONOCHROME, text = stringResource(R.string.colours_mono_note))
                     }
-                    Note(visible = appearance.seed == ColourSeed.WALLPAPER, text = stringResource(R.string.colours_wallpaper_note))
-                    Note(visible = appearance.style == PaletteStyle.MONOCHROME, text = stringResource(R.string.colours_mono_note))
                 }
             }
-            ContentRow(1, 2, TandemIcons.Palette, stringResource(R.string.appearance_style)) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    val seed = appearance.seed.resolve(context)
-                    PaletteStyle.entries.chunked(StyleColumns).forEach { rowStyles ->
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            rowStyles.forEach { style ->
-                                StylePreviewCard(
-                                    style = style,
-                                    seed = seed,
-                                    dark = dark,
-                                    pureBlack = appearance.pureBlack,
-                                    selected = appearance.style == style,
-                                    label = stringResource(styleLabel(style)),
-                                    onClick = { scope.launch { prefs.setStyle(style) } },
-                                    modifier = Modifier.weight(1f),
-                                )
+            SettingsTarget(FocusKeys.AppearanceStyle, 1, 2) {
+                ContentRow(1, 2, TandemIcons.Palette, stringResource(R.string.appearance_style)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        val seed = appearance.seed.resolve(context)
+                        PaletteStyle.entries.chunked(StyleColumns).forEach { rowStyles ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                rowStyles.forEach { style ->
+                                    StylePreviewCard(
+                                        style = style,
+                                        seed = seed,
+                                        dark = dark,
+                                        pureBlack = appearance.pureBlack,
+                                        selected = appearance.style == style,
+                                        label = stringResource(styleLabel(style)),
+                                        onClick = { scope.launch { prefs.setStyle(style) } },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
                             }
                         }
-                    }
-                    AnimatedContent(
-                        targetState = appearance.style,
-                        transitionSpec = { fadeIn(TandemMotion.fadeSpec()) togetherWith fadeOut(TandemMotion.fadeSpec()) },
-                        label = "styleDescription",
-                    ) { style ->
-                        Text(
-                            text = stringResource(styleDescription(style)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                        )
+                        AnimatedContent(
+                            targetState = appearance.style,
+                            transitionSpec = { fadeIn(TandemMotion.fadeSpec()) togetherWith fadeOut(TandemMotion.fadeSpec()) },
+                            label = "styleDescription",
+                        ) { style ->
+                            Text(
+                                text = stringResource(styleDescription(style)),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 4.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -195,7 +205,7 @@ private const val SeedColumns = 4
 private const val StyleColumns = 3
 
 @StringRes
-private fun seedLabel(seed: ColourSeed): Int = when (seed) {
+internal fun seedLabel(seed: ColourSeed): Int = when (seed) {
     ColourSeed.WALLPAPER -> R.string.colours_seed_wallpaper
     ColourSeed.INDIGO -> R.string.colours_seed_indigo
     ColourSeed.OCEAN -> R.string.colours_seed_ocean
