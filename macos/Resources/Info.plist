@@ -55,6 +55,14 @@
             <key>NSPortName</key><string>@APP_NAME@</string>
             <key>NSSendFileTypes</key><array><string>public.item</string></array>
         </dict>
+        <!-- Only offered where the app in front can take a picture, which is what the return types say. -->
+        <dict>
+            <key>NSMenuItem</key><dict><key>default</key><string>Insert from phone</string></dict>
+            <key>NSMessage</key><string>insertFromPhone</string>
+            <key>NSPortName</key><string>@APP_NAME@</string>
+            <key>NSReturnTypes</key>
+            <array><string>public.png</string><string>public.tiff</string><string>com.adobe.pdf</string></array>
+        </dict>
     </array>
 </dict>
 </plist>

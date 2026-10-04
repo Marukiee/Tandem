@@ -51,6 +51,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DriveMount.removeLeftovers()
             DebugSupport.install()
             EngineModel.shared.start()
+            InsertFromPhone.shared.install()
             Updater.shared.checkIfDue()
             Updater.shared.startPeriodicChecks()
             if ProcessInfo.processInfo.environment["TANDEM_UPDATE_TEST_FROM"] != nil {
@@ -88,6 +89,12 @@ final class ServiceProvider: NSObject {
               !urls.isEmpty
         else { return }
         Task { @MainActor in DevicePicker.send(urls) }
+    }
+
+    /// "Insert from phone" in the Services menu. The picture arrives later and is pasted into the app the
+    /// service was chosen in, so this returns at once and writes nothing to the pasteboard it was given.
+    @objc func insertFromPhone(_ pasteboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString>) {
+        Task { @MainActor in InsertFromPhone.shared.begin() }
     }
 }
 

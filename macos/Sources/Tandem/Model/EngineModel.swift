@@ -354,6 +354,7 @@ final class EngineModel {
     }
 
     private func handle(_ event: TandemEvent) {
+        InsertFromPhone.shared.observe(event)
         switch event {
         case .devicesChanged, .connected, .disconnected, .circleChanged:
             refreshDevices()
@@ -400,7 +401,9 @@ final class EngineModel {
                 showToast(String(localized: "Text from \(name) is on your clipboard"))
             }
 
-        case let .shareOffered(from, _, _, items):
+        case let .shareOffered(from, offer, _, items):
+            // The answer to "Insert from phone" is taken without asking and has its own panel.
+            if InsertFromPhone.shared.owns(offer: offer) { break }
             if let device = device(from), !device.autoAccept {
                 Notifier.shared.post(
                     id: "offer.\(from)",
@@ -480,7 +483,7 @@ final class EngineModel {
                 showToast(String(localized: "Your phone stopped playing the sound"))
             }
 
-        case .audioStart, .notificationAction, .appIcon, .callAction, .dial, .ring:
+        case .audioStart, .notificationAction, .appIcon, .callAction, .dial, .ring, .captureRequested, .captureCancelled:
             break
         }
     }
@@ -766,7 +769,7 @@ final class EngineModel {
         }
         if transfers.count > 60 { transfers.removeLast(transfers.count - 60) }
 
-        if incoming, error == nil, let location {
+        if incoming, error == nil, let location, !InsertFromPhone.shared.owns(offer: offer) {
             let from = device(peer)?.name ?? "?"
             Notifier.shared.postFileReceived(name: name, from: from, location: location)
             if ReceivedImages.copy(URL(fileURLWithPath: location)) {

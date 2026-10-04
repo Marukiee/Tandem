@@ -35,7 +35,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     /// The window is as tall as the tab needs, like the system's own Settings windows.
     var height: CGFloat {
         switch self {
-        case .general: 600
+        case .general: 720
         case .devices: 460
         case .access: 460
         case .hotspot: 470
@@ -220,6 +220,8 @@ private struct GeneralSettings: View {
                     isOn: $bleMessages
                 )
             }
+
+            InsertSettingsSection()
 
             Section {
                 LabeledContent("Folder") {
