@@ -181,6 +181,7 @@ struct DeviceDetail: View {
     private var content: some View {
         VStack(spacing: 18) {
             actions
+            LiveActionRow(device: device)
             DropZone(device: device)
             NowPlayingCard(device: device)
             if device.platform == .android { HotspotCard(device: device) }

@@ -186,7 +186,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media"],
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "camera.view"],
             lowPower: false
         )
 
@@ -253,6 +253,7 @@ final class EngineModel {
         network.start()
 
         hotspot.attach(model: self)
+        LiveManager.shared.attach(engine: engine)
         startBleWatch()
         observeSleep()
         startMedia()
@@ -517,8 +518,11 @@ final class EngineModel {
 
         case .audioStart, .notificationAction, .callAction, .dial, .ring, .captureRequested, .captureCancelled,
              .mediaRequested, .mediaStarted, .mediaEnded, .mediaBitrate:
-            // Live video has no screen on this side yet.
+            // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break
+
+        case let .mediaOffered(from, kind, facing):
+            LiveManager.shared.handleOffer(from: from, kind: kind, facing: facing)
         }
     }
 
