@@ -228,6 +228,10 @@ struct DeviceGlyph: View {
     var plain = false
     /// With an id the glyph follows the icon the person picked for that device.
     var deviceID: String?
+    /// Green instead of indigo while the device is there, for where nothing else says that it is (the menu bar panel).
+    var greenWhenOnline = false
+
+    private var onlineColor: Color { greenWhenOnline ? .green : Palette.indigo }
 
     private var symbol: String {
         deviceID.flatMap { model.deviceIcons[$0] } ?? platform.symbol
@@ -237,12 +241,12 @@ struct DeviceGlyph: View {
         let ringWidth = max(1.6, size * 0.055)
         ZStack {
             if !plain {
-                Circle().fill(onSelection ? Color.white.opacity(0.24) : (online ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07)))
+                Circle().fill(onSelection ? Color.white.opacity(0.24) : (online ? onlineColor.opacity(0.14) : Color.primary.opacity(0.07)))
             }
             Image(systemName: symbol)
                 .font(.system(size: size * (plain ? 0.86 : (size > 60 ? 0.5 : 0.42)), weight: plain ? .regular : .semibold))
                 .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(onSelection ? Color.white : (online ? Palette.indigo : Color.secondary))
+                .foregroundStyle(onSelection ? Color.white : (online ? onlineColor : Color.secondary))
                 .contentTransition(.symbolEffect(.replace))
             if ring {
                 Circle()

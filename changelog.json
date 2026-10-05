@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.56",
+    "date": "2026-10-05",
+    "en": {
+      "title": "A cleaner device row in the menu bar panel",
+      "new": [
+        "Mac: in the menu bar panel a connected device no longer has the word Connected under its name, which was cut off anyway. Its icon is green instead, with the green ring. What is not the plain case (Over Bluetooth, Not connected) is still written out. The round buttons are a little smaller so more of the name fits",
+        "Mac: the shadow of the Insert from phone panel is no longer cut off at the edges of its window, and when you press Escape the panel now fades out instead of vanishing at once"
+      ]
+    },
+    "nl": {
+      "title": "Een rustiger apparaatrij in het menubalkpaneel",
+      "new": [
+        "Mac: in het menubalkpaneel staat bij een verbonden apparaat niet meer het woord Verbonden onder zijn naam, dat toch werd afgekapt. Zijn icoon is in plaats daarvan groen, met de groene ring. Wat niet de gewone situatie is (Via Bluetooth, Niet verbonden) blijft wel geschreven staan. De ronde knoppen zijn iets kleiner, zodat meer van de naam past",
+        "Mac: de schaduw van het paneel van Voeg in vanaf telefoon wordt niet meer afgesneden aan de randen van zijn venster, en als je op Escape drukt vervaagt het paneel nu in plaats van meteen te verdwijnen"
+      ]
+    }
+  },
+  {
     "version": "0.1.55",
     "date": "2026-10-05",
     "en": {

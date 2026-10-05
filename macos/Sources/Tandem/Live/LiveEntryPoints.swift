@@ -48,7 +48,7 @@ struct LiveMenuButton: View {
 
     var body: some View {
         if device.canShowScreen || device.canShowCamera {
-            RoundIconMenu(symbol: "rectangle.on.rectangle", onHover: onHover) {
+            RoundIconMenu(symbol: "rectangle.on.rectangle", size: 28, onHover: onHover) {
                 if device.canShowScreen {
                     Button {
                         LiveManager.shared.start(device: device, kind: .screen)

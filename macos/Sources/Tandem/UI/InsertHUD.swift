@@ -43,7 +43,7 @@ final class InsertHUDController {
     static let shared = InsertHUDController()
 
     /// Room around the card for its shadow.
-    static let margin: CGFloat = 34
+    static let margin: CGFloat = 56
 
     private var panel: HUDPanel?
     private let visibility = HUDVisibility()
@@ -85,7 +85,9 @@ final class InsertHUDController {
     }
 
     private func hide() {
-        updateKeyboard(false)
+        // The keys go back at once, but the panel is not ordered out and in again for it (that is for a card that stays):
+        // it is about to fade, and a flicker first takes the fade away.
+        releaseKeyboard()
         // Going is quicker and quieter than coming: a short fade with a small step up, then the window leaves.
         withAnimation(.easeIn(duration: 0.16)) { visibility.shown = false }
         hideTask?.cancel()
@@ -195,6 +197,12 @@ final class InsertHUDController {
                 }
             }
         }
+    }
+
+    private func releaseKeyboard() {
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
+        panel?.takesKey = false
     }
 
     private func key(_ event: NSEvent) -> Bool {

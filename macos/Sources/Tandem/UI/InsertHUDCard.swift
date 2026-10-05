@@ -15,14 +15,26 @@ struct InsertHUDCard: View {
     static let width: CGFloat = 400
     static let radius: CGFloat = 40
 
+    /// The last card that was about something. When the phase goes back to idle the card fades out showing this, instead
+    /// of collapsing to nothing while it fades.
+    @LocalState private var lastShown: InsertFromPhone.Phase = .idle
+
     var body: some View {
-        let phase = model.phase
+        let live = model.phase
+        let phase: InsertFromPhone.Phase = if case .idle = live { lastShown } else { live }
         content(for: phase)
             .frame(width: Self.width)
             .hudSurface(radius: Self.radius)
-            .outerShadow(radius: Self.radius, blur: 24, y: 10, opacity: 0.2)
+            .outerShadow(radius: Self.radius, blur: 20, y: 8, opacity: 0.22)
             .animation(.spring(response: 0.5, dampingFraction: 0.82), value: phase.cardKey)
             .onGeometryChange(for: CGSize.self) { $0.size } action: { onSize($0) }
+            .onAppear { remember(live) }
+            .onChange(of: live.cardKey) { _, _ in remember(model.phase) }
+    }
+
+    private func remember(_ phase: InsertFromPhone.Phase) {
+        if case .idle = phase { return }
+        lastShown = phase
     }
 
     @ViewBuilder

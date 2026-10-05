@@ -238,7 +238,7 @@ private struct MenuDeviceRow: View {
         let reach = model.reach(of: device)
         Hoverable { hovering in
             HStack(spacing: 10) {
-                DeviceGlyph(platform: device.platform, online: device.online, size: 36, ring: true, deviceID: device.id)
+                DeviceGlyph(platform: device.platform, online: device.online, size: 36, ring: true, deviceID: device.id, greenWhenOnline: true)
                     .scaleEffect(hovering ? 1.06 : 1)
                     .animation(.tandemSpringy, value: hovering)
                 VStack(alignment: .leading, spacing: 1) {
@@ -250,23 +250,26 @@ private struct MenuDeviceRow: View {
                                 .foregroundStyle(Palette.indigo)
                                 .transition(.opacity)
                         } else {
-                            Text(reach.text)
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(reach.color)
-                                .transition(.opacity)
-                        }
-                        if let battery = device.status.battery {
-                            Image(systemName: batterySymbol(battery)).font(.caption2).foregroundStyle(.secondary)
-                            Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            // Connected says itself: the glyph is green. Only what is not the plain case is written out.
+                            if reach != .network {
+                                Text(reach.text)
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(reach.color)
+                                    .transition(.opacity)
+                            }
+                            if let battery = device.status.battery {
+                                Image(systemName: batterySymbol(battery)).font(.caption2).foregroundStyle(.secondary)
+                                Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            }
                         }
                     }
                     .lineLimit(1)
                 }
                 Spacer(minLength: 4)
-                HStack(spacing: 6) {
-                    RoundIconButton(symbol: "paperplane.fill", onHover: { hint = $0 ? "Send files" : nil }) { pickFiles() }
+                HStack(spacing: 4) {
+                    RoundIconButton(symbol: "paperplane.fill", size: 28, onHover: { hint = $0 ? "Send files" : nil }) { pickFiles() }
                         .disabled(!device.online)
-                    RoundIconButton(symbol: "doc.on.clipboard", onHover: { hint = $0 ? "Send clipboard" : nil }) {
+                    RoundIconButton(symbol: "doc.on.clipboard", size: 28, onHover: { hint = $0 ? "Send clipboard" : nil }) {
                         model.sendClipboard(to: [device.id])
                     }
                     .disabled(!(device.online || device.ble))
@@ -274,7 +277,7 @@ private struct MenuDeviceRow: View {
                     if device.platform == .android {
                         let on = model.speaker.device == device.id
                         RoundIconButton(
-                            symbol: on ? "speaker.wave.3.fill" : "speaker.wave.2", tint: on ? Palette.indigo : nil,
+                            symbol: on ? "speaker.wave.3.fill" : "speaker.wave.2", tint: on ? Palette.indigo : nil, size: 28,
                             onHover: { hint = $0 ? (on ? "Stop using this phone as a speaker" : "Use this phone as a speaker") : nil }
                         ) { model.toggleSpeaker(for: device.id) }
                         .disabled(!device.online)
