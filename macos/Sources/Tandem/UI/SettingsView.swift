@@ -60,22 +60,24 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     }
 }
 
-/// The Settings window as macOS draws it for every app: tabs with icons across the top of a
-/// window that resizes to the tab, and grouped forms underneath. Nothing here is custom
-/// chrome, so it gets the system's glass, spacing and keyboard behaviour for free.
+/// The Settings window like System Settings: a sidebar with the sections and the section next to it. Tabs ran out of room as
+/// the sections grew, and the ones that did not fit went into a menu behind two arrows. A sidebar has room for all of them and
+/// scrolls when there are more.
 struct SettingsView: View {
     @LocalState private var selection: SettingsSection = DebugSupport.initialSettingsSection() ?? .general
 
     var body: some View {
-        TabView(selection: $selection) {
-            ForEach(SettingsSection.allCases) { section in
-                detail(for: section)
-                    .tabItem { Label(section.title, systemImage: section.symbol) }
+        NavigationSplitView {
+            List(SettingsSection.allCases, selection: $selection) { section in
+                Label(section.title, systemImage: section.symbol)
                     .tag(section)
             }
+            .navigationSplitViewColumnWidth(min: 176, ideal: 190, max: 220)
+        } detail: {
+            detail(for: selection)
+                .navigationTitle(Text(selection.title))
         }
-        .scenePadding()
-        .frame(width: 560, height: selection.height)
+        .frame(width: 780, height: 620)
     }
 
     @ViewBuilder

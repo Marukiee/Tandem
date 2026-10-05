@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.60",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Settings with a sidebar on the Mac",
+      "new": [
+        "Mac: Settings has a sidebar with all sections, like System Settings, instead of tabs. With the new sections for Mouse and keyboard and Quick Share the tabs did not fit any more, and the last ones ended up in a menu behind two arrows where they looked greyed out"
+      ]
+    },
+    "nl": {
+      "title": "Instellingen met een zijbalk op de Mac",
+      "new": [
+        "Mac: Instellingen heeft een zijbalk met alle onderdelen, zoals de Systeeminstellingen, in plaats van tabbladen. Met de nieuwe onderdelen Muis en toetsenbord en Quick Share pasten de tabbladen niet meer, en de laatste kwamen in een menu achter twee pijltjes waar ze grijs leken"
+      ]
+    }
+  },
+  {
     "version": "0.1.59",
     "date": "2026-10-05",
     "en": {
