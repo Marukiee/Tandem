@@ -20,6 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.ui.components.ContentRow
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
 import nl.markmaaktmedia.tandem.ui.components.SectionHeader
@@ -39,7 +40,10 @@ import uniffi.tandem_core.TandemMediaPermission
 fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
     val canScreen = "screen.view" in device.caps && LiveShare.supports(LocalContext.current, TandemMediaKind.SCREEN)
     val canCamera = "camera.view" in device.caps && LiveShare.supports(LocalContext.current, TandemMediaKind.CAMERA)
-    if (!canScreen && !canCamera) return
+    val canSound = "audio.play" in device.caps
+    if (!canScreen && !canCamera && !canSound) return
+    // What a device may ask is only about its screen and camera, so a device with neither has nothing to show here.
+    if (permissions && !canScreen && !canCamera) return
 
     val context = LocalContext.current
     val live = context.graph.live
@@ -50,15 +54,28 @@ fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
     if (!permissions) {
     SectionHeader(stringResource(R.string.live_section_share), top = 12.dp, bottom = 0.dp)
     SettingsGroup {
+        val soundTo by SoundShareService.active.collectAsState()
+        val soundRow = if (canSound) 1 else 0
         val rows = listOfNotNull(
             if (canScreen) TandemMediaKind.SCREEN else null,
             if (canCamera) TandemMediaKind.CAMERA else null,
         )
+        if (canSound) {
+            val sending = soundTo == device.id
+            ActionRow(
+                0, rows.size + soundRow, TandemIcons.VolumeUp,
+                stringResource(if (sending) R.string.sound_stop_title else R.string.sound_send_title, device.name),
+                stringResource(if (sending) R.string.sound_stop_sub else R.string.sound_send_sub),
+                {
+                    if (sending) SoundShareService.stop(context) else context.startActivity(SoundShareActivity.forPeer(context, device.id))
+                },
+            )
+        }
         rows.forEachIndexed { index, kind ->
             val showing = active.any { it.peer == device.id && it.kind == kind }
             val camera = kind == TandemMediaKind.CAMERA
             ActionRow(
-                index, rows.size,
+                index + soundRow, rows.size + soundRow,
                 painterResource(if (camera) R.drawable.sym_videocam else R.drawable.sym_screen_share),
                 if (showing) stringResource(if (camera) R.string.live_stop_camera else R.string.live_stop_screen)
                 else stringResource(if (camera) R.string.live_show_camera else R.string.live_show_screen, device.name),
@@ -80,28 +97,32 @@ fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
             TandemMediaPermission.ALWAYS to stringResource(R.string.live_perm_always),
             TandemMediaPermission.NEVER to stringResource(R.string.live_perm_never),
         )
-        listOfNotNull(if (canScreen) TandemMediaKind.SCREEN else null, if (canCamera) TandemMediaKind.CAMERA else null).forEach { kind ->
-            val current = policy?.let { if (kind == TandemMediaKind.CAMERA) it.camera else it.screen } ?: TandemMediaPermission.ASK
-            Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
-                Text(
-                    stringResource(if (kind == TandemMediaKind.CAMERA) R.string.live_perm_camera else R.string.live_perm_screen),
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 12.dp, top = 8.dp, bottom = 6.dp),
-                )
+        val kinds = listOfNotNull(if (canScreen) TandemMediaKind.SCREEN else null, if (canCamera) TandemMediaKind.CAMERA else null)
+        // One row each, in the same form as the other pickers of the app, so the corners and the spacing are the same.
+        val total = kinds.size + (if (canScreen) 1 else 0) + 1
+        kinds.forEachIndexed { index, kind ->
+            val camera = kind == TandemMediaKind.CAMERA
+            val current = policy?.let { if (camera) it.camera else it.screen } ?: TandemMediaPermission.ASK
+            ContentRow(
+                index, total, painterResource(if (camera) R.drawable.sym_videocam else R.drawable.sym_screen_share),
+                stringResource(if (camera) R.string.live_perm_camera else R.string.live_perm_screen),
+            ) {
                 SegmentedPillRow(
                     options = listOf(TandemMediaPermission.ASK, TandemMediaPermission.ALWAYS, TandemMediaPermission.NEVER),
                     selected = current,
                     label = { labels.getValue(it) },
                     onSelect = { choice ->
                         val base = policy ?: return@SegmentedPillRow
-                        val next = if (kind == TandemMediaKind.CAMERA) base.copy(camera = choice) else base.copy(screen = choice)
+                        val next = if (camera) base.copy(camera = choice) else base.copy(screen = choice)
                         runCatching { engine?.setMediaPolicy(device.id, next) }
                         policy = next
                     },
+                    modifier = Modifier.fillMaxWidth(),
                     equalWidth = true,
                 )
             }
         }
+        var next = kinds.size
         // Clicking and typing from the computer needs the accessibility service, which only the person can turn on.
         if (canScreen) {
             var controlOn by remember { mutableStateOf(TandemAccessibilityService.running) }
@@ -110,14 +131,14 @@ fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
                 onPauseOrDispose {}
             }
             ActionRow(
-                0, 2, TandemIcons.Mouse, stringResource(R.string.live_control_title),
+                next++, total, TandemIcons.Mouse, stringResource(R.string.live_control_title),
                 stringResource(if (controlOn) R.string.live_control_on else R.string.live_control_off),
                 { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
             )
         }
         var wanted by remember { mutableStateOf(live.indicatorWanted && live.indicator.canShow()) }
         SwitchRow(
-            1, 2, TandemIcons.Info, stringResource(R.string.live_indicator), stringResource(R.string.live_indicator_sub), wanted,
+            next, total, TandemIcons.Info, stringResource(R.string.live_indicator), stringResource(R.string.live_indicator_sub), wanted,
             { on ->
                 live.indicatorWanted = on
                 if (on && !live.indicator.canShow()) {

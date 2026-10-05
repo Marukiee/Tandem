@@ -64,6 +64,9 @@ import nl.markmaaktmedia.tandem.ui.screens.RemoteScreen
 import nl.markmaaktmedia.tandem.ui.screens.SettingsScreen
 import nl.markmaaktmedia.tandem.ui.screens.TransfersScreen
 import nl.markmaaktmedia.tandem.ui.update.UpdateBanner
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.ui.layout.onSizeChanged
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 
@@ -139,6 +142,16 @@ private fun MainNavigation() {
         }
     }
 
+    // The update banner is drawn over the pages, so the pages move down by its height while it is there and nothing
+    // sits under it. It already includes the status bar, which the pages add again themselves, so that part is taken off.
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val statusBar = WindowInsets.statusBars.getTop(density)
+    var bannerPx by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val bannerShown = nav.top !is Route.Screen
+    val below by androidx.compose.animation.core.animateDpAsState(
+        with(density) { if (bannerShown) (bannerPx - statusBar).coerceAtLeast(0).toDp() else 0.dp },
+        TandemMotion.spatial(), label = "bannerSpace",
+    )
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         transition.AnimatedContent(
             transitionSpec = {
@@ -160,14 +173,17 @@ private fun MainNavigation() {
                         .apply { targetContentZIndex = -1f }
                 }
             },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(top = below),
         ) { route ->
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
         }
         // Over every screen: an update is worth seeing wherever you are in the app.
         // Not over the screen of a computer: that is full screen, and a banner would sit on top of someone else's desktop.
-        if (nav.top !is Route.Screen) {
-            UpdateBanner(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp))
+        if (bannerShown) {
+            UpdateBanner(
+                Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)
+                    .onSizeChanged { bannerPx = it.height + with(density) { 8.dp.roundToPx() } + statusBar },
+            )
         }
     }
 }
@@ -195,10 +211,11 @@ private fun RouteContent(route: Route, nav: Nav) {
 private fun RouteBody(route: Route, nav: Nav) {
     when (route) {
         Route.Home -> HomeTabs(nav)
-        is Route.Device -> DeviceDetailScreen(route.id, onBack = { nav.pop() }, onRemote = { nav.push(Route.Remote(it)) }, onScreen = { nav.push(Route.Screen(it)) })
+        is Route.Device -> DeviceDetailScreen(route.id, onBack = { nav.pop() }, onRemote = { nav.push(Route.Remote(it)) }, onScreen = { nav.push(Route.Screen(it)) }, onSettings = { nav.push(Route.DeviceSettings(it)) })
         Route.Pair -> PairScreen(onBack = { nav.pop() }, onPaired = { nav.pop() })
         is Route.Remote -> RemoteScreen(route.id, onBack = { nav.pop() })
         is Route.Screen -> nl.markmaaktmedia.tandem.screen.ScreenViewerScreen(route.id, onBack = { nav.pop() })
+        is Route.DeviceSettings -> nl.markmaaktmedia.tandem.ui.screens.DeviceSettingsScreen(route.id, onBack = { nav.pop() })
         Route.Access -> AccessScreen(onBack = { nav.pop() })
         Route.FileAccess -> nl.markmaaktmedia.tandem.ui.screens.FileAccessScreen(onBack = { nav.pop() })
         Route.MirrorApps -> MirrorAppsScreen(onBack = { nav.pop() })

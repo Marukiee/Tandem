@@ -52,4 +52,9 @@
     <string name="live_control_title">Let it click and type</string>
     <string name="live_control_on">On. A computer you allow can click and type while it shows this screen.</string>
     <string name="live_control_off">Off. It can look at the screen but not touch it. Turn on Tandem control in Accessibility settings.</string>
+    <string name="sound_send_title">Send this phone\'s sound to %1$s</string>
+    <string name="sound_send_sub">What plays on this phone plays on the computer too. Android asks first, every time</string>
+    <string name="sound_stop_title">Stop sending sound to %1$s</string>
+    <string name="sound_stop_sub">The sound of this phone is playing on the computer now</string>
+    <string name="sound_sending">Sending sound to %1$s</string>
 </resources>

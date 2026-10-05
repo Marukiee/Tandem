@@ -32,6 +32,7 @@ fun routeKey(route: Route): String = when (route) {
     Route.Pair -> "pair"
     is Route.Remote -> "remote:${route.id}"
     is Route.Screen -> "screen:${route.id}"
+    is Route.DeviceSettings -> "devsettings:${route.id}"
     Route.Access -> "access"
     Route.FileAccess -> "files"
     Route.MirrorApps -> "mirror"

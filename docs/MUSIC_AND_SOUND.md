@@ -111,3 +111,15 @@ position; Spotify and Music are asked with `set player position`, a phone's sess
 The duplicate rule, the datagram format and the jitter buffer have tests, and the sound conversion
 was run on hand made buffers. The capture itself, the permission prompt, the Apple Events and
 the Spotify and Music announcements have only been compiled: they have not run on a Mac with sound.
+
+## Het geluid van een telefoon op de Mac
+
+De andere kant op werkt met dezelfde berichten: de telefoon stuurt `AudioStart` met stream `9` (de Mac gebruikt een eigen
+streamnummer naar de telefoon), daarna datagrammen met 16 bit samples, en sluit af met `AudioStop`. De Mac meldt dat
+hij het kan met de mogelijkheid `audio.play`. Op Android neemt `SoundShareService` het geluid van andere apps op met
+AudioPlaybackCapture (toestemming voor opnemen en de vraag van het systeem over schermopname, elke keer; apps die opname
+niet toestaan blijven stil). Op de Mac speelt `PhoneSound` het af: een korte buffer (`SoundRing`) met een kussen vooraf,
+stilte op de plaats van een verloren pakket, oud geluid weg als de klokken uit elkaar lopen, en een audio-engine die
+op het tempo van de luidsprekers trekt. De vertraging heeft drie standen (laag, normaal, soepel) zoals op de telefoon.
+De buffer heeft een zelftest: `TANDEM_DEBUG_SOUNDRING=1` met `TANDEM_DEBUG_DIR` schrijft `soundring.txt`.
+

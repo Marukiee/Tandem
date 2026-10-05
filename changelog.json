@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.1.42",
+    "date": "2026-10-05",
+    "en": {
+      "title": "The sound of your phone on your Mac, and settings for each device on their own page",
+      "new": [
+        "Send the sound of your phone to your Mac: on the Mac's page in the Android app, Send this phone's sound to the Mac. What plays on the phone plays on the Mac too, not compressed. Android asks to record every time, and apps that do not allow their sound to be recorded stay silent. On the Mac, Settings has a switch to allow it and a Delay choice: Low is closer to live, Smooth is steadier",
+        "What is set for a device has a page of its own: Settings for this device, at the foot of the device page. Sharing, what the Mac may ask of the phone, clicking and typing and removing the device are there, in rows that match the rest of the app",
+        "The update banner on Android pushes the page down while it shows, so it no longer covers the title and the back button"
+      ]
+    },
+    "nl": {
+      "title": "Het geluid van je telefoon op je Mac, en instellingen per apparaat op een eigen pagina",
+      "new": [
+        "Stuur het geluid van je telefoon naar je Mac: op de pagina van de Mac in de Android-app staat Stuur het geluid van deze telefoon naar de Mac. Wat op de telefoon speelt, speelt ook op de Mac, ongecomprimeerd. Android vraagt elke keer om op te nemen en apps die hun geluid niet laten opnemen blijven stil. Op de Mac heeft Instellingen een schakelaar om het toe te staan en een keuze voor Vertraging: Laag is dichter bij live, Soepel is stabieler",
+        "Wat voor een apparaat is ingesteld heeft een eigen pagina: Instellingen van dit apparaat, onderaan de apparaatpagina. Delen, wat de Mac aan de telefoon mag vragen, klikken en typen en het apparaat verwijderen staan daar, in rijen die bij de rest van de app passen",
+        "De updatebalk op Android duwt de pagina omlaag zolang hij er is, zodat hij de titel en de terugknop niet meer bedekt"
+      ]
+    }
+  },
+  {
     "version": "0.1.41",
     "date": "2026-10-05",
     "en": {

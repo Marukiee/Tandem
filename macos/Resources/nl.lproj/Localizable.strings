@@ -730,3 +730,12 @@
 "Stop clicking and typing on the phone" = "Stop met klikken en typen op de telefoon";
 "Click and type on the phone" = "Klik en typ op de telefoon";
 "The phone does not allow clicking yet. Turn on Tandem control in its Accessibility settings, then show the screen again." = "De telefoon staat klikken nog niet toe. Zet Tandem-bediening aan in de toegankelijkheidsinstellingen en toon het scherm opnieuw.";
+"Sound from your phone" = "Geluid van je telefoon";
+"Let a phone play its sound here" = "Laat een telefoon zijn geluid hier afspelen";
+"Start it on the phone, on the page of this Mac. Turning this off stops it" = "Start het op de telefoon, op de pagina van deze Mac. Uitzetten stopt het";
+"Delay" = "Vertraging";
+"Low" = "Laag";
+"Normal" = "Normaal";
+"Smooth" = "Soepel";
+"Low plays closer to live and can stutter on a poor connection. Smooth waits a little longer to stay steady. It applies the next time a phone starts." = "Laag speelt dichter bij live af en kan haperen bij een slechte verbinding. Soepel wacht iets langer om stabiel te blijven. Het geldt de volgende keer dat een telefoon begint.";
+"Sound from %@ plays on this Mac" = "Geluid van %@ speelt op deze Mac";

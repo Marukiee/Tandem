@@ -52,4 +52,9 @@
     <string name="live_control_title">Laat klikken en typen toe</string>
     <string name="live_control_on">Aan. Een computer die je toestaat kan klikken en typen terwijl hij dit scherm toont.</string>
     <string name="live_control_off">Uit. Hij kan het scherm bekijken maar niet aanraken. Zet Tandem-bediening aan in de toegankelijkheidsinstellingen.</string>
+    <string name="sound_send_title">Stuur het geluid van deze telefoon naar %1$s</string>
+    <string name="sound_send_sub">Wat op deze telefoon speelt, speelt ook op de computer. Android vraagt elke keer eerst</string>
+    <string name="sound_stop_title">Stop met geluid sturen naar %1$s</string>
+    <string name="sound_stop_sub">Het geluid van deze telefoon speelt nu op de computer</string>
+    <string name="sound_sending">Geluid sturen naar %1$s</string>
 </resources>

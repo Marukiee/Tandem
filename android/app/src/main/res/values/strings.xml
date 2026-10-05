@@ -436,4 +436,6 @@
     <string name="docs_not_ready">Tandem is still starting. Try again in a moment</string>
     <string name="files_browse">Browse files</string>
     <string name="files_browse_sub">Open its files in the Files app</string>
+    <string name="device_settings_title">Settings for this device</string>
+    <string name="device_settings_sub">Sharing, what it may ask of this phone, and removing it</string>
 </resources>

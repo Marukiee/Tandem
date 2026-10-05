@@ -72,6 +72,14 @@ enum DebugSupport {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { InsertFromPhone.shared.debugShow(stage) }
         }
         // `TANDEM_DEBUG_LIVE=<recorded stream>`: a window of the phone's screen or camera, fed from a file (see LiveDebug).
+        if variable("TANDEM_DEBUG_SOUNDRING") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let failures = SoundRingSelfTest.run()
+                let text = (failures.isEmpty ? "all passed" : "FAILED") + "\n" + failures.map { "failed: \($0)\n" }.joined()
+                try? text.write(to: directory.appendingPathComponent("soundring.txt"), atomically: true, encoding: .utf8)
+                NSApp.terminate(nil)
+            }
+        }
         if variable("TANDEM_DEBUG_LIVE_SELFTEST") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { LiveSelfTest.run(directory: directory) }
         }

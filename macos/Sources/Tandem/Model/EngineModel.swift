@@ -188,7 +188,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "camera.view"] + ScreenHost.shared.capabilities(),
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "camera.view", "audio.play"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
@@ -258,6 +258,7 @@ final class EngineModel {
         hotspot.attach(model: self)
         LiveManager.shared.attach(engine: engine)
         ScreenHost.shared.attach(engine: engine, model: self)
+        engine.setAudioSink(sink: PhoneSound.shared.sink)
         startBleWatch()
         observeSleep()
         startMedia()
@@ -391,6 +392,7 @@ final class EngineModel {
             // A phone that drops while a button is held must not leave it held here.
             if case let .disconnected(id) = event {
                 injector.sourceDisconnected(id)
+                PhoneSound.shared.stop(device: id)
                 remoteMedia[id] = nil
                 coversSent[id] = nil
                 refreshNowPlaying()
@@ -521,7 +523,16 @@ final class EngineModel {
                 }
             }
 
+        case let .audioStart(from, stream, sampleRate, channels):
+            // A phone that wants its sound to play here. Anything else that starts is not for this Mac to play.
+            guard stream == PhoneSound.stream else { return }
+            PhoneSound.shared.start(from: from, name: device(from)?.name ?? "?", sampleRate: sampleRate, channels: channels, engineModel: self)
+
         case let .audioStop(from, stream):
+            if stream == PhoneSound.stream {
+                PhoneSound.shared.stop(device: from)
+                return
+            }
             guard speaker.device == from, stream == speakerStream else { return }
             // A stop right after the start is a no: the phone does not allow it. Later it is the person
             // pressing Stop on the phone, or another app taking the speaker.
@@ -532,7 +543,7 @@ final class EngineModel {
                 showToast(String(localized: "Your phone stopped playing the sound"))
             }
 
-        case .audioStart, .notificationAction, .callAction, .dial, .ring, .captureRequested, .captureCancelled,
+        case .notificationAction, .callAction, .dial, .ring, .captureRequested, .captureCancelled,
              .mediaRequested, .mediaStarted, .mediaEnded, .mediaBitrate:
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break

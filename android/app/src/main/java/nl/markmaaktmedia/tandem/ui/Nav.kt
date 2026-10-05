@@ -12,6 +12,9 @@ sealed interface Route {
     data object Pair : Route
     data class Remote(val id: String) : Route
 
+    /** What is set for one device: sharing, what it may ask, and removing it. */
+    data class DeviceSettings(val id: String) : Route
+
     /** The screen of a Mac on the phone, with its mouse and keyboard. */
     data class Screen(val id: String) : Route
     data object Access : Route
@@ -85,6 +88,7 @@ private fun routeFromKey(key: String): Route? = when {
     key.startsWith("device:") -> Route.Device(key.removePrefix("device:"))
     key == "pair" -> Route.Pair
     key.startsWith("remote:") -> Route.Remote(key.removePrefix("remote:"))
+    key.startsWith("devsettings:") -> Route.DeviceSettings(key.removePrefix("devsettings:"))
     key.startsWith("screen:") -> Route.Screen(key.removePrefix("screen:"))
     key == "access" -> Route.Access
     key == "files" -> Route.FileAccess

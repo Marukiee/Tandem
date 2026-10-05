@@ -68,14 +68,13 @@ import uniffi.tandem_core.TandemPlatform
 import uniffi.tandem_core.TandemShareOrigin
 
 @Composable
-fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Unit, onScreen: (String) -> Unit = {}) {
+fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Unit, onScreen: (String) -> Unit = {}, onSettings: (String) -> Unit = {}) {
     val context = LocalContext.current
     val host = context.graph.host
     val devices by host.devices.collectAsState()
     val transfers by host.transfers.collectAsState()
     val device = devices.firstOrNull { it.id == id }
     val scope = rememberCoroutineScope()
-    var confirmRemove by remember { mutableStateOf(false) }
     var choosingIcon by remember { mutableStateOf(false) }
     val asleep = device?.let { !it.online && it.status.asleep == true } == true
     val pickedIcon = rememberPickedIcon(id)
@@ -265,33 +264,14 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             }
         }
 
-        SectionHeader(stringResource(R.string.section_preferences), top = 12.dp, bottom = 0.dp)
+        // Everything that is set for this device has a page of its own, so this one is for what it does now.
         SettingsGroup {
-            SwitchRow(0, 3, TandemIcons.Paste, stringResource(R.string.setting_clipboard), stringResource(R.string.setting_clipboard_sub), device.clipboardEnabled, { set(clipboard = it) })
-            SwitchRow(1, 3, TandemIcons.Notifications, stringResource(R.string.setting_notifications_from), stringResource(R.string.setting_notifications_from_sub), device.notificationsEnabled, { set(notifications = it) })
-            SwitchRow(2, 3, TandemIcons.Download, stringResource(R.string.setting_auto_accept), stringResource(R.string.setting_auto_accept_sub), device.autoAccept, { set(autoAccept = it) })
-        }
-        // What this device may ask of this phone: with the other things that are set per device.
-        nl.markmaaktmedia.tandem.live.LiveDeviceSection(device, permissions = true)
-        if (device.vouchedByRemoved) {
-            Text(stringResource(R.string.warning_vouched), style = MaterialTheme.typography.bodySmall, color = LocalTandemExtraColors.current.urgent, modifier = Modifier.padding(horizontal = 8.dp))
-        }
-        SettingsGroup {
-            ActionRow(0, 1, TandemIcons.Delete, stringResource(R.string.action_remove_device), stringResource(R.string.action_remove_device_sub), { confirmRemove = true }, danger = true)
+            ActionRow(
+                0, 1, TandemIcons.Settings, stringResource(R.string.device_settings_title),
+                stringResource(R.string.device_settings_sub), { onSettings(id) },
+            )
         }
         Spacer(Modifier.height(24.dp))
-    }
-
-    if (confirmRemove) {
-        TandemConfirmDialog(
-            title = stringResource(R.string.remove_title, device.name),
-            body = stringResource(R.string.remove_body),
-            confirmLabel = stringResource(R.string.remove_confirm),
-            cancelLabel = stringResource(R.string.action_cancel),
-            destructive = true,
-            onConfirm = { scope.launch { runCatching { host.engine?.removeDevice(id) }; onBack() } },
-            onDismiss = { confirmRemove = false },
-        )
     }
 }
 
