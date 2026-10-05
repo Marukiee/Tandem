@@ -3,6 +3,25 @@
 Alles wat nog niet af is, op volgorde van aanpak. Begin bovenaan. Een punt is pas af als het op echte
 toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze en de agentregels.
 
+## Open lijst voor een grote ronde (bijgewerkt 2026-10-06, na versie 0.1.63)
+
+Hier staat in een regel per punt wat nog open staat, met waar het uitgewerkt is. Elk nieuw verzoek van Mark komt hier bij en in zijn
+sectie; een punt gaat eruit zodra het op echte toestellen is gezien. Gedaan en gereleased: Quick Share (0.1.57 tot 0.1.60), koppelen
+met een typbare code en uitnodigen vanuit een cirkel, vegen om te pinnen, Linux-venster en eigen decoder (0.1.61), de gedeelde muis
+komt terug (0.1.62), laatst gekopieerde in het menubalkpaneel (0.1.63).
+
+- Toegang tot de Linux-pc regelen (na de weekreset) en dan alles daar nalopen: sectie 3. Daarna Wayland-invoer via libei, MPRIS,
+  schermopname via PipeWire, het slepen van bestanden en de ssh-terminal op Linux.
+- Alles op alle systemen en tussen alle systemen: sectie 8 (docs/PARITY.md schrijven, dan afwerken).
+- Bestanden slepen over de rand tussen computers: sectie 4. Een ingebouwde ssh-terminal, grijs als het niet staat: sectie 4c.
+- Android delen en de Mac bedienen (sectie 5b): geluid zonder scherm, deelstatus groen of rood met een stop-icoon, Control this Mac
+  soepeler, de knoppen Toetsenbord en Muis met meebewegende ronde hoeken, het beeld dat met het toetsenbord omhoog schuift,
+  uitleg over de extra toestemming, de vraag "keuze onthouden" weg, de hover-uitleg onderin het telefoonvenster op de Mac weg,
+  scrollen met twee vingers, het venster sluiten stopt het delen, bellen via de Mac (met wat wel en niet kan).
+- Uiterlijk (sectie 5): Mac Quick Share-rij (knop Verstuur bestanden zonder paars, dezelfde hover als de andere iconen), Wat is er nieuw
+  naar Updates en back-up, het menu Diensten laat alleen zien wat aanstaat.
+- Windows: sectie 2 (de pc bedienen vanuit Android, Windows als host). Audio, Opus en HEVC: secties 1 en 7.
+
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)
 
 - Je Mac bedienen vanuit Android, van begin tot eind (Schermopname en Toegankelijkheid, herstart na
