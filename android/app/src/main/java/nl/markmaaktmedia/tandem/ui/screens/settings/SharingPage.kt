@@ -98,11 +98,11 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         SectionHeader(stringResource(R.string.settings_quickshare_group))
         SettingsGroup {
             SwitchRow(
-                0, 5, TandemIcons.Send, stringResource(R.string.quickshare_toggle_title), stringResource(R.string.quickshare_row_hint), quickOn, { quick.setEnabled(it) },
+                0, 5, TandemIcons.QuickShare, stringResource(R.string.quickshare_toggle_title), stringResource(R.string.quickshare_row_hint), quickOn, { quick.setEnabled(it) },
                 blocked = if (status.notifications) null else stringResource(R.string.perm_needs_notifications_quickshare), onBlocked = { onOpen(Route.Access) },
             )
             SettingsTarget(FocusKeys.QuickVisible, 1, 5) {
-                ContentRow(1, 5, TandemIcons.Send, stringResource(R.string.settings_quickshare_visible)) {
+                ContentRow(1, 5, TandemIcons.QuickShare, stringResource(R.string.settings_quickshare_visible)) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(stringResource(R.string.settings_quickshare_visible_sub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         SegmentedPillRow(
@@ -117,12 +117,12 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                 }
             }
             ActionRow(
-                2, 5, TandemIcons.Send, stringResource(R.string.settings_quickshare_tile), stringResource(R.string.settings_quickshare_tile_sub),
+                2, 5, TandemIcons.QuickShare, stringResource(R.string.settings_quickshare_tile), stringResource(R.string.settings_quickshare_tile_sub),
                 { nl.markmaaktmedia.tandem.quickshare.QuickShareTileService.requestAdd(context) },
                 modifier = Modifier.settingsTarget(FocusKeys.QuickTile, 2, 5),
             )
             SettingsTarget(FocusKeys.QuickTap, 3, 5) {
-                ContentRow(3, 5, TandemIcons.Send, stringResource(R.string.settings_quickshare_tap)) {
+                ContentRow(3, 5, TandemIcons.QuickShare, stringResource(R.string.settings_quickshare_tap)) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(stringResource(R.string.settings_quickshare_tap_sub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         SegmentedPillRow(

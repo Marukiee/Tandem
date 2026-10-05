@@ -3,13 +3,14 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+  <!-- A ring with two arrows that go opposite ways: one thing going out, one coming in. -->
   <path
-      android:fillColor="#FFFFFFFF"
+      android:fillColor="#FF000000"
       android:pathData="M12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM12,20c-4.41,0 -8,-3.59 -8,-8s3.59,-8 8,-8 8,3.59 8,8 -3.59,8 -8,8z"/>
   <path
-      android:fillColor="#FFFFFFFF"
+      android:fillColor="#FF000000"
       android:pathData="M9,7.2L5.9,10.3L7.3,11.7L8,11V16.8H10V11L10.7,11.7L12.1,10.3Z"/>
   <path
-      android:fillColor="#FFFFFFFF"
+      android:fillColor="#FF000000"
       android:pathData="M15,16.8L18.1,13.7L16.7,12.3L16,13V7.2H14V13L13.3,12.3L11.9,13.7Z"/>
 </vector>

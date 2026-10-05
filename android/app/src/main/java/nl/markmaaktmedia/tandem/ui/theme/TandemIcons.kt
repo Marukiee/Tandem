@@ -42,6 +42,8 @@ object TandemIcons {
 
     // Devices
     val Phone: Painter @Composable get() = painterResource(R.drawable.sym_smartphone)
+    /** Quick Share: a ring with two arrows. Our own mark, not the logo of Google. */
+    val QuickShare: Painter @Composable get() = painterResource(R.drawable.sym_quick_share)
     val Laptop: Painter @Composable get() = painterResource(R.drawable.sym_laptop_mac)
     val Desktop: Painter @Composable get() = painterResource(R.drawable.sym_computer)
     val Windows: Painter @Composable get() = painterResource(R.drawable.sym_desktop_windows)

@@ -32,7 +32,7 @@ internal enum class SettingsCategory(
 ) {
     Look(R.string.settings_look, { TandemIcons.Palette }, Route.SettingsPage(SettingsPageId.Look)),
     Sharing(R.string.settings_cat_sharing, { TandemIcons.Devices }, Route.SettingsPage(SettingsPageId.Sharing)),
-    QuickShare(R.string.settings_cat_quickshare, { TandemIcons.Send }, Route.SettingsPage(SettingsPageId.QuickShare)),
+    QuickShare(R.string.settings_cat_quickshare, { TandemIcons.QuickShare }, Route.SettingsPage(SettingsPageId.QuickShare)),
     Notifications(R.string.settings_notifications, { TandemIcons.Notifications }, Route.SettingsPage(SettingsPageId.Notifications)),
     Trackpad(R.string.settings_cat_trackpad, { TandemIcons.Mouse }, Route.SettingsPage(SettingsPageId.Trackpad)),
     Permissions(R.string.settings_access, { TandemIcons.Shield }, Route.Access),
@@ -170,7 +170,7 @@ internal object SettingsCatalog {
         ),
 
         // Quick Share
-        SettingsEntry("quickshare", R.string.settings_cat_quickshare, R.string.settings_kw_quickshare, SettingsCategory.QuickShare, quickShare, { TandemIcons.Send }),
+        SettingsEntry("quickshare", R.string.settings_cat_quickshare, R.string.settings_kw_quickshare, SettingsCategory.QuickShare, quickShare, { TandemIcons.QuickShare }),
 
         // Devices and sharing
         SettingsEntry("sharing", R.string.settings_cat_sharing, R.string.settings_kw_sharing, SettingsCategory.Sharing, sharing, { TandemIcons.Devices }),
@@ -200,15 +200,15 @@ internal object SettingsCatalog {
         ),
         SettingsEntry(
             "sharing_quick_tile", R.string.settings_quickshare_tile, R.string.settings_kw_sharing_quick_tile, SettingsCategory.Sharing, sharing,
-            { TandemIcons.Send }, subtitle = R.string.settings_quickshare_tile_sub, focus = FocusKeys.QuickTile,
+            { TandemIcons.QuickShare }, subtitle = R.string.settings_quickshare_tile_sub, focus = FocusKeys.QuickTile,
         ),
         SettingsEntry(
             "sharing_quick_tap", R.string.settings_quickshare_tap, R.string.settings_kw_sharing_quick_tap, SettingsCategory.Sharing, sharing,
-            { TandemIcons.Send }, subtitle = R.string.settings_quickshare_tap_sub, focus = FocusKeys.QuickTap,
+            { TandemIcons.QuickShare }, subtitle = R.string.settings_quickshare_tap_sub, focus = FocusKeys.QuickTap,
         ),
         SettingsEntry(
             "sharing_quick_visible", R.string.settings_quickshare_visible, R.string.settings_kw_sharing_quick_visible, SettingsCategory.Sharing, sharing,
-            { TandemIcons.Send }, subtitle = R.string.settings_quickshare_visible_sub, focus = FocusKeys.QuickVisible,
+            { TandemIcons.QuickShare }, subtitle = R.string.settings_quickshare_visible_sub, focus = FocusKeys.QuickVisible,
         ),
         SettingsEntry(
             "sharing_media_apps", R.string.settings_media_apps, R.string.settings_kw_sharing_media_apps, SettingsCategory.Sharing, Route.MediaApps,

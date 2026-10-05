@@ -428,7 +428,7 @@ function QuickShareSection({ s, patch }) {
   return html`<div style="display:flex;flex-direction:column;gap:12px">
     <h2>${t("qs_title")}</h2>
     <div class="card flush">
-      <${SettingRow} icon="send" title=${t("qs_title")} sub=${t("qs_sub")} on=${s.quickShare} onChange=${(v) => patch({ quickShare: v })} />
+      <${SettingRow} icon="quickshare" title=${t("qs_title")} sub=${t("qs_sub")} on=${s.quickShare} onChange=${(v) => patch({ quickShare: v })} />
     </div>
     ${view.problem && html`<div class="small" style="color:var(--danger,#c0392b)">${view.problem}</div>`}
     ${s.quickShare && html`<h3 class="muted" style="margin:6px 0 0;font-size:13px">${t("qs_nearby")}</h3>

@@ -42,7 +42,7 @@ internal fun QuickSharePage(onBack: () -> Unit, onOpen: (Route) -> Unit = {}) {
         Spacer(Modifier.height(16.dp))
         SettingsGroup {
             SwitchRow(
-                0, 1, TandemIcons.Send, stringResource(R.string.quickshare_toggle_title), stringResource(R.string.quickshare_toggle_sub), enabled, { host.setEnabled(it) },
+                0, 1, TandemIcons.QuickShare, stringResource(R.string.quickshare_toggle_title), stringResource(R.string.quickshare_toggle_sub), enabled, { host.setEnabled(it) },
                 blocked = if (status.notifications) null else stringResource(R.string.perm_needs_notifications_quickshare), onBlocked = { onOpen(Route.Access) },
             )
         }
@@ -57,7 +57,7 @@ internal fun QuickSharePage(onBack: () -> Unit, onOpen: (Route) -> Unit = {}) {
         SectionHeader(stringResource(R.string.quickshare_how_title))
         SettingsGroup {
             ContentRow(0, 3, TandemIcons.Download, stringResource(R.string.quickshare_how_receive)) {}
-            ContentRow(1, 3, TandemIcons.Send, stringResource(R.string.quickshare_how_send)) {}
+            ContentRow(1, 3, TandemIcons.QuickShare, stringResource(R.string.quickshare_how_send)) {}
             ContentRow(2, 3, TandemIcons.Folder, stringResource(R.string.quickshare_how_files)) {}
         }
 
