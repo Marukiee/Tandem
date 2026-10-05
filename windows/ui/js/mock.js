@@ -9,7 +9,7 @@ const cover = "data:image/svg+xml;utf8," + encodeURIComponent(
 
 const now = Date.now();
 const devices = empty ? [] : [
-  { id: "phone", name: "Maruks Telefoon", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: [],
+  { id: "phone", name: "Maruks Telefoon", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host"],
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 80, charging: true, powerSave: false }, network: { kind: "cellular", ssid: null, metered: true, roaming: false, signal: 3 }, hotspot: true, dnd: false } },
   { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: [],
@@ -76,6 +76,12 @@ export async function call(command, args) {
     case "get_state": return state;
     case "get_players": return { players, art };
     case "live_start": return 1;
+    case "fs_roots": return [{ name: "Phone", write: false }];
+    case "fs_list": return args.path === "/Phone"
+      ? [{ name: "DCIM", dir: true, size: 0, modifiedMs: 1730000000000, readonly: false }, { name: "Download", dir: true, size: 0, modifiedMs: 1730000000000, readonly: false },
+         { name: "notes.txt", dir: false, size: 2048, modifiedMs: 1730000000000, readonly: false }]
+      : [{ name: "IMG_0001.jpg", dir: false, size: 3400000, modifiedMs: 1730000000000, readonly: false }, { name: "clip.mp4", dir: false, size: 48200000, modifiedMs: 1730000000000, readonly: false }];
+    case "fs_get": return { saved: args.paths, skippedFolders: 0 };
     case "clip_history_search": return [
       { id: 3, text: "https://example.com/some/long/link", from: "Maruks Telefoon", at_ms: Date.now() - 120000, pinned: true },
       { id: 2, text: "Meeting at ten, room 4", from: "", at_ms: Date.now() - 3600000, pinned: false },

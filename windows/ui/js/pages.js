@@ -169,6 +169,8 @@ export function DevicePage({ device }) {
         <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
       ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("camera.host")} title=${hasCap("camera.host") ? t("live_camera_tip") : t("live_update_phone")} onClick=${() => show("camera")}>
         <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
+      ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
+        <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}
       ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
         <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}
     </div>
@@ -228,6 +230,98 @@ export function ClipboardPage() {
           </div>
           <button class=${"btn small" + (item.pinned ? " accent" : "")} title=${item.pinned ? t("let_go") : t("keep_this")} onClick=${() => call("clip_history_pin", { id: item.id })}><${Icon} name="pin" size=${15} /></button>
           <button class="btn small" title=${t("remove")} onClick=${() => call("clip_history_remove", { id: item.id })}><${Icon} name="x" size=${15} /></button>
+        </div>`)}</div>`}
+  </div>`;
+}
+
+// ---- The files of another device ----------------------------------------------------------
+
+const KINDS = {
+  all: () => true,
+  folders: (e) => e.dir,
+  images: (e) => !e.dir && /\.(jpe?g|png|gif|webp|heic|bmp|svg)$/i.test(e.name),
+  video: (e) => !e.dir && /\.(mp4|mov|mkv|avi|webm|m4v)$/i.test(e.name),
+  documents: (e) => !e.dir && /\.(pdf|docx?|xlsx?|pptx?|txt|md|rtf|odt|csv)$/i.test(e.name),
+};
+
+function sizeText(n) {
+  if (n < 1024) return n + " B";
+  const units = ["KB", "MB", "GB", "TB"];
+  let v = n / 1024, i = 0;
+  while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
+  return v.toFixed(v < 10 ? 1 : 0) + " " + units[i];
+}
+
+export function FilesPage() {
+  const device = state.devices.find((d) => d.id === state.selected);
+  const [path, setPath] = useState("/");
+  const [entries, setEntries] = useState([]);
+  const [problem, setProblem] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState("all");
+  const [picked, setPicked] = useState(new Set());
+  const [busy, setBusy] = useState(false);
+  if (!device) return html`<div class="wrap"><div class="card empty">${t("nothing_yet")}</div></div>`;
+
+  const open = async (next) => {
+    setLoading(true); setProblem("");
+    try {
+      let target = next;
+      if (target === "/") {
+        const roots = await call("fs_roots", { id: device.id });
+        // With one shared folder there is nothing to choose: look inside it.
+        if (roots.length === 1) target = "/" + roots[0].name;
+        else { setEntries(roots.map((r) => ({ name: r.name, dir: true, size: 0, modifiedMs: 0, readonly: !r.write }))); setPath("/"); setPicked(new Set()); setLoading(false); return; }
+      }
+      setEntries(await call("fs_list", { id: device.id, path: target }));
+      setPath(target); setPicked(new Set()); setQuery("");
+    } catch (e) { setProblem(String(e)); }
+    setLoading(false);
+  };
+  useEffect(() => { open("/"); }, [device.id]);
+
+  const parts = path.split("/").filter(Boolean);
+  const join = (name) => (path === "/" ? "" : path) + "/" + name;
+  const shown = entries.filter((e) => KINDS[kind](e) && query.toLowerCase().split(/\s+/).filter(Boolean).every((w) => e.name.toLowerCase().includes(w)));
+  const toggle = (name) => setPicked((old) => { const next = new Set(old); next.has(name) ? next.delete(name) : next.add(name); return next; });
+  const chosen = entries.filter((e) => picked.has(e.name));
+  const download = async () => {
+    setBusy(true);
+    try {
+      const result = await call("fs_get", { id: device.id, paths: chosen.map((e) => join(e.name)), folders: chosen.map((e) => e.dir) });
+      say(t("downloaded_n", result.saved.length) + (result.skippedFolders ? " " + t("folders_skipped") : ""));
+      setPicked(new Set());
+    } catch (e) { failed(e); }
+    setBusy(false);
+  };
+
+  return html`<div class="wrap">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn small" onClick=${() => set({ page: "device" })}><${Icon} name="chevron-left" size=${16} />${t("back")}</button>
+      <div class="grow"><h1 style="margin:0">${t("files_on", device.name)}</h1></div>
+      ${chosen.length > 0 && html`<button class="btn accent" disabled=${busy} onClick=${download}><${Icon} name="download" size=${17} />${t("download_n", chosen.length)}</button>`}
+    </div>
+    <div class="small" style="margin:8px 0;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+      <a href="#" onClick=${(e) => { e.preventDefault(); open("/"); }}>${t("folders")}</a>
+      ${parts.map((part, i) => html`<span class="muted">/</span><a href="#" onClick=${(e) => { e.preventDefault(); open("/" + parts.slice(0, i + 1).join("/")); }}>${part}</a>`)}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <input type="search" placeholder=${t("search_folder")} value=${query} onInput=${(e) => setQuery(e.target.value)}
+        style="flex:1;min-width:160px;padding:9px 16px;border-radius:999px;border:1px solid rgba(128,128,128,0.35);background:transparent;color:inherit;font:inherit;outline:none" />
+      ${Object.keys(KINDS).map((k) => html`<button class=${"btn small" + (kind === k ? " accent" : "")} onClick=${() => setKind(k)}>${t("kind_" + k)}</button>`)}
+    </div>
+    ${problem && html`<div class="card"><div class="small" style="color:var(--danger,#d33)">${problem}</div></div>`}
+    ${loading ? html`<div class="card empty">${t("looking")}</div>`
+      : shown.length === 0 ? html`<div class="card empty"><${Icon} name="files" size=${34} /><div>${entries.length ? t("nothing_matches") : t("folder_empty")}</div></div>`
+      : html`<div class="card flush">${shown.map((e) => html`<div class="item" key=${e.name}>
+          <button class="btn small" style=${"width:30px;height:30px;padding:0;border-radius:999px;justify-content:center;" + (picked.has(e.name) ? "background:var(--accent, #5b5bd6);color:#fff;border-color:transparent" : "")} title=${t("select")} onClick=${() => toggle(e.name)}>
+            ${picked.has(e.name) ? html`<${Icon} name="check" size=${15} />` : html`<${Icon} name=${e.dir ? "folder-open" : "file"} size=${15} />`}
+          </button>
+          <div class="grow" style="cursor:pointer;min-width:0" onClick=${() => (e.dir ? open(join(e.name)) : toggle(e.name))}>
+            <div class="ellipsis">${e.name}</div>
+            <div class="small muted">${e.dir ? t("folder") : sizeText(e.size)}${e.modifiedMs ? " · " + new Date(e.modifiedMs).toLocaleDateString() : ""}</div>
+          </div>
         </div>`)}</div>`}
   </div>`;
 }

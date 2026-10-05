@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.48",
+    "date": "2026-10-05",
+    "en": {
+      "title": "The files of your phone on Windows and Linux",
+      "new": [
+        "Windows and Linux: on the page of a phone, Browse files opens its folders. Search by name, narrow to pictures, video or documents, tick several files and copy them to the download folder. A folder cannot be copied yet. A name that is taken gets a number"
+      ]
+    },
+    "nl": {
+      "title": "De bestanden van je telefoon op Windows en Linux",
+      "new": [
+        "Windows en Linux: op de pagina van een telefoon opent Bestanden bekijken zijn mappen. Zoek op naam, beperk tot foto's, video of documenten, vink meerdere bestanden aan en kopieer ze naar de downloadmap. Een map kan nog niet gekopieerd worden. Een naam die al bestaat krijgt een nummer"
+      ]
+    }
+  },
+  {
     "version": "0.1.47",
     "date": "2026-10-05",
     "en": {

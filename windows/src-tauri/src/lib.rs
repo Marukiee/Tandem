@@ -2,6 +2,7 @@
 //! its events into notifications and the lists the interface shows, and hosts the interface in two windows, the main
 //! one and the small panel above the tray icon.
 
+mod browse;
 mod clip;
 mod commands;
 mod engine;
@@ -106,6 +107,9 @@ pub fn run() {
             commands::install_update,
             commands::dismiss_update,
             commands::quit_app,
+            browse::fs_roots,
+            browse::fs_list,
+            browse::fs_get,
             history::clip_history,
             history::clip_history_search,
             history::clip_history_pin,
