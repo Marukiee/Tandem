@@ -52,8 +52,14 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
 
 ## 3. Linux
 
-- Eerst een echte app (nu alleen tandemd in de terminal), daarna schermopname via PipeWire en
-  VAAPI of x264 voor de host. De kern is gedeeld; de rest is per besturingssysteem.
+- Gedaan in 0.1.46 (experimenteel, nog niet op een echt Linux-bureaublad gezien): de app van Windows gebouwd op Ubuntu als
+  .deb en AppImage (`scripts/build-linux-app.sh`, `.github/workflows/linux.yml`, de release `linux-preview` en een job `linux-app`
+  in de releaseworkflow). Het systeem meldt zich als Linux, de batterij komt uit `/sys/class/power_supply`, updates van
+  Windows staan uit.
+- Nog niet: mediabediening via MPRIS (de muziek van de telefoon in de mediabediening van het bureaublad), luisteren naar het
+  klembord zonder te pollen, de invoer op Wayland (enigo werkt vooral op X11), het venster met het telefoonscherm testen in
+  WebKitGTK (WebCodecs is daar niet vanzelfsprekend), een eigen updatepad, een pakket voor Flatpak of de AUR.
+- Daarna: je Linux-computer bedienen vanuit Android (schermopname via PipeWire en een encoder).
 
 ## 4. Muis en toetsenbord over computers
 
