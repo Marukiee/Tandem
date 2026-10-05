@@ -28,6 +28,8 @@ struct TransferItem: Identifiable, Equatable {
 
 struct PairingState: Equatable {
     var uri: String?
+    /// The same offer as eight digits that can be typed on the other device.
+    var code: String?
     var expiresAt: Date?
     var joinedName: String?
     var error: String?
@@ -1024,6 +1026,7 @@ final class EngineModel {
         do {
             let offer = try engine.createPairingOffer()
             pairing.uri = offer.uri
+            pairing.code = offer.code
             DebugSupport.write(offer.uri, named: "pairing-uri.txt")
             pairing.expiresAt = Date(timeIntervalSince1970: Double(offer.expiresAtMs) / 1000)
         } catch {
@@ -1070,6 +1073,24 @@ final class EngineModel {
         }
         if text.contains("this device is not showing a pairing code") {
             return String(localized: "The other device is not showing a pairing code. Choose Pair a device on it and try again.")
+        }
+        if text.contains("accepted these digits") {
+            return String(localized: "No device accepted that code. Check the 8 digits, or ask the other device to show a new one.")
+        }
+        if text.contains("no device is showing a code") {
+            return String(localized: "No device is showing a code. Choose Pair a device on the other one, and check that both are on the same Wi-Fi.")
+        }
+        if text.contains("has 8 digits") {
+            return String(localized: "A code has 8 digits. Type them, or paste the link.")
+        }
+        if text.contains("in a circle already") || text.contains("already in a circle") {
+            return String(localized: "Both devices are in a circle. A device in a circle can only take in one that is not. Remove one of them from its circle first.")
+        }
+        if text.contains("has to be updated") || text.contains("needs an update") {
+            return String(localized: "The other device needs the latest Tandem first.")
+        }
+        if text.contains("too many tries") {
+            return String(localized: "Too many tries. Ask the other device to show a new code.")
         }
         return raw
     }

@@ -40,7 +40,33 @@ pub fn get_state(app: AppHandle, state: State<'_, AppState>) -> Value {
         "build": option_env!("TANDEM_BUILD").unwrap_or(""),
         "update": update::current(&app),
         "canShare": cfg!(windows),
+        "platform": if cfg!(windows) { "windows" } else { "linux" },
+        "input": input_support(),
     })
+}
+
+/// Why this system will not let Tandem move the pointer and press keys for another device: "wayland" or "no-display", and
+/// nothing when it does. Windows always does. Linux does under X11; under Wayland an app may not do it unasked, and the X11
+/// compatibility layer that is there only reaches old-style windows, so it would look as if it works while it does not.
+pub fn input_blocked() -> Option<&'static str> {
+    if cfg!(windows) {
+        return None;
+    }
+    let session = std::env::var("XDG_SESSION_TYPE").unwrap_or_default().to_lowercase();
+    if session == "wayland" || (session.is_empty() && std::env::var_os("WAYLAND_DISPLAY").is_some()) {
+        Some("wayland")
+    } else if std::env::var_os("DISPLAY").is_none() {
+        Some("no-display")
+    } else {
+        None
+    }
+}
+
+fn input_support() -> Value {
+    match input_blocked() {
+        Some(why) => json!({ "ok": false, "why": why }),
+        None => json!({ "ok": true, "why": "" }),
+    }
 }
 
 #[tauri::command]
@@ -67,7 +93,7 @@ fn qr_svg(text: &str) -> String {
 #[tauri::command]
 pub fn create_pairing(state: State<'_, AppState>) -> Reply<Value> {
     let offer = state.engine()?.create_pairing_offer().map_err(shown)?;
-    Ok(json!({ "uri": offer.uri, "expiresAtMs": offer.expires_at_ms, "qr": qr_svg(&offer.uri) }))
+    Ok(json!({ "uri": offer.uri, "code": offer.code, "expiresAtMs": offer.expires_at_ms, "qr": qr_svg(&offer.uri) }))
 }
 
 #[tauri::command]

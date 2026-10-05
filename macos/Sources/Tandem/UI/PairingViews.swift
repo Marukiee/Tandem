@@ -38,7 +38,7 @@ struct PairingPanel: View {
             } else {
                 VStack(spacing: 8) {
                     Text("Pair a device").font(.title2.weight(.bold))
-                    Text("Open Tandem on your other device, choose Pair a device and scan this code.")
+                    Text("Open Tandem on your other device, choose Pair a device and scan this code, or type the digits below.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -57,7 +57,7 @@ struct PairingPanel: View {
                                     model.showToast(String(localized: "Pairing link copied"))
                                 }
                             }
-                            GlassActionButton(title: "I have a link", symbol: "square.and.arrow.down", wide: true) {
+                            GlassActionButton(title: "I have a code or link", symbol: "square.and.arrow.down", wide: true) {
                                 withAnimation(.tandem) { showPaste.toggle() }
                             }
                         }
@@ -65,7 +65,7 @@ struct PairingPanel: View {
                     .frame(width: 360)
                     if showPaste {
                         HStack(spacing: 8) {
-                            TextField("Paste a pairing link", text: $pasted)
+                            TextField("Code of 8 digits or a link", text: $pasted)
                                 .textFieldStyle(.roundedBorder)
                                 .frame(width: 260)
                                 .onSubmit(joinWithPasted)
@@ -171,7 +171,19 @@ private struct CodeStage: View {
 
             Countdown(expiresAt: model.pairing.expiresAt)
                 .frame(width: side)
+
+            if let code = model.pairing.code, ready {
+                VStack(spacing: 2) {
+                    Text("Or type this code").font(.caption).foregroundStyle(.secondary)
+                    Text(code)
+                        .font(.system(size: 30, weight: .semibold, design: .rounded).monospacedDigit())
+                        .tracking(2)
+                        .textSelection(.enabled)
+                }
+                .transition(.opacity)
+            }
         }
+        .animation(.tandemFade, value: ready)
     }
 
     private var expired: Bool {

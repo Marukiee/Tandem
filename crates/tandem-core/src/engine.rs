@@ -111,6 +111,7 @@ pub(crate) struct Inner {
     pub out_offers: Mutex<HashMap<u64, OutOffer>>,
     pub in_offers: Mutex<HashMap<(DeviceId, u64), Arc<InOffer>>>,
     pub pairing: Mutex<Option<PendingPairing>>,
+    pub open_pairings: Mutex<HashMap<discovery::Hint, crate::pairing::OpenPairing>>,
     pub my_status: Mutex<Status>,
     pub settings: RwLock<Settings>,
     pub last_remote_clip: Mutex<Option<u64>>,
@@ -183,6 +184,7 @@ impl Engine {
             out_offers: Mutex::new(HashMap::new()),
             in_offers: Mutex::new(HashMap::new()),
             pairing: Mutex::new(None),
+            open_pairings: Mutex::new(HashMap::new()),
             my_status: Mutex::new(Status::default()),
             settings: RwLock::new(settings),
             last_remote_clip: Mutex::new(None),
@@ -426,9 +428,22 @@ impl Engine {
         self.inner.cancel_pairing_offer();
     }
 
-    /// Joins the circle of the device that showed this code.
+    /// Pairs with the device that shows this code: the link from its QR code, or the short code that was typed. A device
+    /// that is alone joins the circle of the other. A device that is in a circle takes the other one into it, when that
+    /// one is alone.
     pub async fn pair_with_uri(&self, uri: &str) -> Result<DeviceId> {
         self.inner.pair_with_uri(uri).await
+    }
+
+    /// Tries a short code on the device at these addresses, without looking for it on the network. For tests.
+    #[doc(hidden)]
+    pub async fn pair_with_code_at(&self, code: &str, addrs: &[std::net::SocketAddr]) -> Result<DeviceId> {
+        use crate::pairing::CodeFailure;
+        let code = crate::pairing::normalize_code(code).ok_or_else(|| Error::Pairing("a pairing code has 8 digits".into()))?;
+        self.inner.pair_with_code_at(&code, addrs).await.map_err(|failure| match failure {
+            CodeFailure::NoMatch => Error::Pairing("the code did not match".into()),
+            CodeFailure::Skip(e) | CodeFailure::Fatal(e) => e,
+        })
     }
 
     /// False once another device removed this one from the circle.
@@ -820,6 +835,7 @@ impl Inner {
         let key = tls::peer_key(&connection).ok_or_else(|| Error::Connection("no client key".into()))?;
         match tls::negotiated_alpn(&connection).as_deref() {
             Some(alpn) if alpn == tls::ALPN_PAIR => self.handle_pairing(connection, key).await,
+            Some(alpn) if alpn == tls::ALPN_PAIR_CODE => self.handle_code_pairing(connection, key).await,
             Some(alpn) if alpn == tls::ALPN_MAIN => {
                 if !self.circle.read().unwrap().is_member(&key) {
                     connection.close(1u32.into(), b"not in the circle");
@@ -849,6 +865,7 @@ impl Inner {
             }
             self.dial_due_peers();
             self.clean_up_offers();
+            self.sync_pairing_announcement();
             if self.addrs_dirty.swap(false, Ordering::Relaxed) {
                 self.persist_addresses();
             }
@@ -969,6 +986,7 @@ impl Inner {
     }
 
     fn handle_sighting(&self, sighting: Sighting) {
+        self.note_pairing_sighting(sighting.hint, &sighting.addrs, sighting.pairing);
         let hour = discovery::current_hour();
         let matched: Option<DeviceId> = {
             let peers = self.peers.lock().unwrap();

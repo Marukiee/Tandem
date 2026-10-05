@@ -10,12 +10,16 @@
 <body class="live">
   <canvas id="picture"></canvas>
   <div id="state" class="state"><div id="message"></div><button id="close" class="btn accent" hidden></button></div>
-  <div id="bar" class="bar" hidden>
-    <button id="pin" class="btn small"></button>
-    <button id="turn" class="btn small"></button>
-    <button id="copy" class="btn small"></button>
-    <button id="stop" class="btn small danger"></button>
+  <div id="top" class="top" data-tauri-drag-region>
+    <div id="bar" class="bar" hidden>
+      <button id="pin" class="round" type="button"></button>
+      <button id="turn" class="round" type="button"></button>
+      <button id="copy" class="round" type="button"></button>
+      <button id="stop" class="round danger" type="button"></button>
+    </div>
+    <div id="chrome" class="chrome"></div>
   </div>
+  <div id="edges"></div>
   <script type="module" src="js/live.js"></script>
 </body>
 </html>

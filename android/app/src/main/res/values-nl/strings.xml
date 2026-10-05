@@ -63,13 +63,14 @@
     <string name="pair_new_device">Nieuw apparaat</string>
     <string name="pair_done">Gekoppeld met %1$s</string>
     <string name="pair_done_body">Ze vinden elkaar nu vanzelf.</string>
-    <string name="pair_have_link">Ik heb een link</string>
-    <string name="pair_paste_hint">Plak de koppellink</string>
+    <string name="pair_have_link">Ik heb een code of link</string>
+    <string name="pair_paste_hint">Code van 8 cijfers of link</string>
     <string name="pair_join">Koppelen</string>
     <string name="pair_camera_why">Tandem gebruikt de camera alleen om de code op je andere apparaat te scannen.</string>
     <string name="pair_expired">Verlopen</string>
     <string name="pair_new_code">Nieuwe code</string>
-    <string name="pair_show_hint">Open Tandem op het andere apparaat, kies Apparaat koppelen en scan deze code.</string>
+    <string name="pair_show_hint">Open Tandem op het andere apparaat, kies Apparaat koppelen en scan deze code, of typ de cijfers hieronder.</string>
+    <string name="pair_show_code_label">Of typ deze code</string>
     <string name="pair_copy_link">Kopieer link</string>
     <string name="net_mobile">Mobiele data</string>
     <string name="net_none">Geen netwerk</string>
@@ -435,4 +436,6 @@
     <string name="files_browse_sub">Open zijn bestanden in de Bestanden-app</string>
     <string name="device_settings_title">Instellingen van dit apparaat</string>
     <string name="device_settings_sub">Delen, wat het van deze telefoon mag vragen, en verwijderen</string>
+    <string name="swipe_pin">Vastpinnen</string>
+    <string name="swipe_unpin">Losmaken</string>
 </resources>

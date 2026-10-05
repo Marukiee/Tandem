@@ -81,6 +81,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -149,6 +150,14 @@ private fun pairFailure(error: Throwable): PairFailure {
         "from this device" in text -> PairFailure.Known(R.string.pair_err_own_title, R.string.pair_err_own_body, false)
         // The other device might just have been busy, so the same code stays worth another go.
         "did not answer" in text -> PairFailure.Known(R.string.pair_err_no_answer_title, R.string.pair_err_no_answer_body, false, spent = false)
+        "too many tries" in text -> PairFailure.Known(R.string.pair_err_expired_title, R.string.pair_err_expired_body, true)
+        "accepted these digits" in text -> PairFailure.Known(R.string.pair_err_digits_title, R.string.pair_err_digits_body, false, spent = false)
+        "no device is showing a code" in text -> PairFailure.Known(R.string.pair_err_none_title, R.string.pair_err_none_body, false, spent = false)
+        "has 8 digits" in text -> PairFailure.Known(R.string.pair_err_eight_title, R.string.pair_err_eight_body, false, spent = false)
+        "in a circle already" in text || "already in a circle" in text ->
+            PairFailure.Known(R.string.pair_err_circles_title, R.string.pair_err_circles_body, false, spent = false)
+        "has to be updated" in text || "needs an update" in text ->
+            PairFailure.Known(R.string.pair_err_update_title, R.string.pair_err_update_body, false, spent = false)
         else -> PairFailure.Raw(raw)
     }
 }
@@ -564,6 +573,7 @@ private fun ShowPanel() {
     val host = context.graph.host
     val clipboard = LocalClipboardManager.current
     var uri by remember { mutableStateOf<String?>(null) }
+    var code by remember { mutableStateOf<String?>(null) }
     var expiresAt by remember { mutableStateOf(0L) }
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     var round by remember { mutableStateOf(0) }
@@ -572,6 +582,7 @@ private fun ShowPanel() {
     LaunchedEffect(round, engineState) {
         runCatching { host.engine?.createPairingOffer() }.getOrNull()?.let {
             uri = it.uri
+            code = it.code
             expiresAt = it.expiresAtMs.toLong()
         }
     }
@@ -594,7 +605,7 @@ private fun ShowPanel() {
 
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         // Leaves room for the countdown, the hint and the copy button, and never grows past what scans well.
-        val side = minOf(maxWidth - (FrameSpace + 16.dp) * 2, maxHeight - 250.dp).coerceIn(190.dp, 300.dp)
+        val side = minOf(maxWidth - (FrameSpace + 16.dp) * 2, maxHeight - 330.dp).coerceIn(170.dp, 300.dp)
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Box(Modifier.size(side + FrameSpace * 2), contentAlignment = Alignment.Center) {
                 CodeFrame(locked = bitmap != null && !expired)
@@ -631,6 +642,20 @@ private fun ShowPanel() {
                 }
             }
             Countdown(remaining, left, Modifier.width(side))
+            AnimatedVisibility(
+                visible = code != null && !expired,
+                enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
+                exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(stringResource(R.string.pair_show_code_label), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        code.orEmpty(),
+                        style = MaterialTheme.typography.headlineLarge.copy(fontFeatureSettings = "tnum", letterSpacing = 2.sp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
             Text(
                 stringResource(R.string.pair_show_hint),
                 style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,

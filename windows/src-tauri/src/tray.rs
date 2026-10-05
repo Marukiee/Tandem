@@ -87,6 +87,8 @@ fn create_main(app: &AppHandle) {
         .title("Tandem")
         .inner_size(1040.0, 720.0)
         .min_inner_size(860.0, 560.0)
+        // Linux draws no frame of its own: the page does (see ui/js/chrome.js), in the style of the rest of the app.
+        .decorations(cfg!(windows))
         .visible(false)
         .on_page_load(move |_, payload| {
             if matches!(payload.event(), PageLoadEvent::Finished) {

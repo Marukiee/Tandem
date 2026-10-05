@@ -22,6 +22,8 @@ mod settings;
 mod state;
 mod tray;
 mod update;
+#[cfg(feature = "native-video")]
+mod video;
 
 use tauri::{Manager, RunEvent, WindowEvent};
 

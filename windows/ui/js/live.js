@@ -1,7 +1,11 @@
 // The window of one phone's screen or camera. The frames arrive from the Rust side as H.264 access units in Annex B and
 // are decoded by the browser engine (WebCodecs), which uses the graphics card where it can, and drawn on a canvas.
+import { html, render } from "../vendor/preact-htm.js";
 import { call, listen } from "./backend.js";
-import { t } from "./i18n.js";
+import { ResizeEdges, WindowButtons } from "./chrome.js";
+import { iconMarkup } from "./icons.js";
+import { setPlatform, t } from "./i18n.js";
+import { set } from "./store.js";
 
 const tauri = window.__TAURI__;
 const session = Number(new URLSearchParams(location.search).get("session"));
@@ -11,6 +15,7 @@ const stateBox = document.getElementById("state");
 const message = document.getElementById("message");
 const closeButton = document.getElementById("close");
 const bar = document.getElementById("bar");
+const top = document.getElementById("top");
 
 let name = "";
 let kind = "screen";
@@ -23,6 +28,9 @@ let pinned = false;
 let ended = false;
 let hasPicture = false;
 let lastAsk = 0;
+// Pictures that were decoded by the app itself (see video.rs) arrive as JPEG, in the order they were made.
+let jpegAsked = 0;
+let jpegShown = 0;
 
 const say = (text, withClose = false) => {
   stateBox.classList.remove("hidden");
@@ -60,8 +68,10 @@ function codecOf(sps) {
 function draw(frame) {
   const turn = (((phoneRotation + extraRotation) % 360) + 360) % 360;
   const swap = turn === 90 || turn === 270;
-  const width = swap ? frame.displayHeight : frame.displayWidth;
-  const height = swap ? frame.displayWidth : frame.displayHeight;
+  const frameWidth = frame.displayWidth ?? frame.width;
+  const frameHeight = frame.displayHeight ?? frame.height;
+  const width = swap ? frameHeight : frameWidth;
+  const height = swap ? frameWidth : frameHeight;
   if (canvas.width !== width || canvas.height !== height) {
     canvas.width = width;
     canvas.height = height;
@@ -69,7 +79,7 @@ function draw(frame) {
   context.save();
   context.translate(width / 2, height / 2);
   context.rotate((turn * Math.PI) / 180);
-  context.drawImage(frame, -frame.displayWidth / 2, -frame.displayHeight / 2);
+  context.drawImage(frame, -frameWidth / 2, -frameHeight / 2);
   context.restore();
   frame.close();
   if (!hasPicture) {
@@ -103,10 +113,24 @@ function askKeyframe() {
   call("live_keyframe", { session }).catch(() => {});
 }
 
+/** A picture the app decoded: it is drawn unless a later one was drawn already while this one was being unpacked. */
+async function showJpeg(data) {
+  const mine = ++jpegAsked;
+  try {
+    const bitmap = await createImageBitmap(new Blob([data], { type: "image/jpeg" }));
+    if (mine < jpegShown) { bitmap.close(); return; }
+    jpegShown = mine;
+    draw(bitmap);
+  } catch {
+    // A picture that does not unpack is skipped; the next one follows at once.
+  }
+}
+
 async function onFrame(buffer) {
   if (ended) return;
   const bytes = new Uint8Array(buffer);
   const flags = bytes[0];
+  if (flags & 4) return showJpeg(bytes.subarray(9));
   const keyframe = (flags & 1) !== 0;
   const timestamp = Number(new DataView(buffer).getBigUint64(1));
   const data = bytes.subarray(9);
@@ -163,21 +187,34 @@ function finish(reason) {
 
 async function start() {
   const text = (key) => t(key);
-  document.getElementById("pin").textContent = text("live_pin");
-  document.getElementById("turn").textContent = text("live_turn");
-  document.getElementById("copy").textContent = text("live_copy");
-  document.getElementById("stop").textContent = text("live_stop");
+  const round = (id, icon, label) => {
+    const button = document.getElementById(id);
+    button.innerHTML = iconMarkup(icon, 18, 1.9);
+    button.title = label;
+    button.setAttribute("aria-label", label);
+  };
+  round("pin", "pin", text("live_pin"));
+  round("turn", "refresh", text("live_turn"));
+  round("copy", "copy", text("live_copy"));
+  round("stop", "x", text("live_stop"));
   closeButton.textContent = text("close");
 
-  if (!window.VideoDecoder) {
-    say(t("live_cannot_decode"), true);
-    return;
-  }
   // In a plain browser, which is how this window is tried while it is being made, a recording stands in for the phone.
   if (!tauri) return preview(new URLSearchParams(location.search).get("clip"));
   const channel = new tauri.core.Channel();
   channel.onmessage = (buffer) => { onFrame(buffer instanceof ArrayBuffer ? buffer : new Uint8Array(buffer).buffer); };
   const info = await call("live_attach", { session, onFrame: channel });
+  setPlatform(info.platform);
+  set({ platform: info.platform });
+  if (!info.native && !window.VideoDecoder) {
+    say(t("live_cannot_decode"), true);
+    return;
+  }
+  if (info.platform === "linux") {
+    // No frame of the system around this window: the buttons for it float in the strip, and the edges resize.
+    render(html`<${WindowButtons} />`, document.getElementById("chrome"));
+    render(html`<${ResizeEdges} />`, document.getElementById("edges"));
+  }
   name = info.name;
   kind = info.kind;
   phoneRotation = info.rotation || 0;
@@ -207,9 +244,9 @@ window.addEventListener("pagehide", () => { call("live_stop", { session }); });
 // The bar steps aside while the pointer is still, so it never sits on the picture.
 let hideTimer = 0;
 document.addEventListener("mousemove", () => {
-  bar.classList.remove("away");
+  top.classList.remove("away");
   clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => bar.classList.add("away"), 2500);
+  hideTimer = setTimeout(() => top.classList.add("away"), 2500);
 });
 
 /** The access units of a recording in Annex B: the parameter sets belong to the picture that follows them. */
@@ -234,6 +271,7 @@ function accessUnits(bytes) {
 }
 
 async function preview(url) {
+  if (!window.VideoDecoder) return say(t("live_cannot_decode"), true);
   if (!url) return say("?clip=<recording in Annex B>", false);
   const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
   const frames = accessUnits(bytes);

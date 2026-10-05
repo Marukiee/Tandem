@@ -48,6 +48,7 @@ tokio-util = "0.7.19"
 tracing = { version = "0.1.44", features = ["log"] }
 uniffi = { version = "0.32.2", features = ["tokio"] }
 x509-parser = "0.18.1"
+spake2 = "0.4"
 
 [dev-dependencies]
 anyhow = "1.0.104"

@@ -438,6 +438,8 @@ impl From<TandemMediaAction> for crate::proto::MediaAction {
 #[derive(Clone, Debug, uniffi::Record)]
 pub struct TandemPairingOffer {
     pub uri: String,
+    /// The same offer as eight digits that can be typed on the other device, like "1234 5678".
+    pub code: String,
     pub expires_at_ms: u64,
 }
 
@@ -1292,7 +1294,7 @@ impl TandemEngine {
 
     pub fn create_pairing_offer(&self) -> Result<TandemPairingOffer, TandemError> {
         let offer = self.engine.create_pairing_offer()?;
-        Ok(TandemPairingOffer { uri: offer.uri, expires_at_ms: offer.expires_at })
+        Ok(TandemPairingOffer { uri: offer.uri, code: offer.code, expires_at_ms: offer.expires_at })
     }
 
     pub fn cancel_pairing_offer(&self) {
@@ -1332,6 +1334,7 @@ impl TandemEngine {
         self.engine.send_datagram(&id, crate::session::scroll_datagram(dx, dy)).map_err(Into::into)
     }
 
+    /// Pairs with the device that shows this: the link of its QR code or the eight digits of its short code.
     pub async fn pair_with_uri(&self, uri: String) -> Result<String, TandemError> {
         let engine = self.engine.clone();
         let id = self

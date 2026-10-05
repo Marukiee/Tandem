@@ -62,6 +62,11 @@ const paths = {
 
 import { html } from "../vendor/preact-htm.js";
 
+/** An icon as markup, for the pages that are not drawn by Preact. */
+export function iconMarkup(name, size = 18, stroke = 1.75) {
+  return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${stroke}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || ""}</svg>`;
+}
+
 /** An icon by name, drawn in the colour of the text around it. */
 export function Icon({ name, size = 18, stroke = 1.75, filled = false, class: cls = "" }) {
   const inner = paths[name] || "";

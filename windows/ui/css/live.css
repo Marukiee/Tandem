@@ -7,11 +7,29 @@ body.live canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; objec
 }
 .live .state.hidden { display: none; }
 .live .state button { pointer-events: auto; }
-.live .bar {
-  position: fixed; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px;
-  border-radius: 999px; background: rgba(30, 30, 34, 0.82); backdrop-filter: blur(12px); transition: opacity 0.25s;
+
+/* The strip along the top: the window is dragged by it, and the buttons float in it. It fades away with the buttons. */
+.live .top {
+  position: fixed; top: 0; left: 0; right: 0; height: 52px; display: flex; align-items: flex-start; justify-content: center;
+  padding: 8px 10px 0; transition: opacity 0.25s;
+  background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0));
 }
-.live .bar.away { opacity: 0; pointer-events: none; }
-.live .bar .btn { border-radius: 999px; color: #fff; background: rgba(255, 255, 255, 0.12); }
-.live .bar .btn.on { background: var(--accent, #5b5bd6); }
-.live .bar .btn.danger { background: rgba(232, 97, 60, 0.9); }
+.live .top.away { opacity: 0; pointer-events: none; }
+.live .bar {
+  display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: rgba(28, 28, 33, 0.78);
+  backdrop-filter: blur(14px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.live .bar[hidden] { display: none; }
+.live .round {
+  width: 34px; height: 34px; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center; cursor: default;
+  color: #fff; background: rgba(255, 255, 255, 0.10); transition: background 0.12s, transform 0.12s;
+}
+.live .round:hover { background: rgba(255, 255, 255, 0.2); }
+.live .round:active { transform: scale(0.92); }
+.live .round.on { background: var(--accent, #5b5bd6); }
+.live .round.danger { background: rgba(229, 72, 77, 0.92); }
+.live .round.danger:hover { background: #e5484d; }
+.live .chrome { position: absolute; right: 10px; top: 8px; }
+.live .chrome .wbtn { color: rgba(255, 255, 255, 0.85); }
+.live .chrome .wbtn:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.live .chrome .wbtn.close:hover { background: #e5484d; }

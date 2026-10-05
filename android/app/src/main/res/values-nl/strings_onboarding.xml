@@ -37,4 +37,14 @@
     <string name="pair_err_own_body">Scan in plaats daarvan de code op je andere apparaat.</string>
     <string name="pair_err_no_answer_title">Het andere apparaat antwoordt niet</string>
     <string name="pair_err_no_answer_body">Check of beide apparaten op hetzelfde netwerk zitten en Tandem op het andere geopend is, en probeer het opnieuw.</string>
+    <string name="pair_err_digits_title">Geen apparaat accepteerde die code</string>
+    <string name="pair_err_digits_body">Check de 8 cijfers. Een code werkt maar 5 minuten en een paar pogingen, dus misschien moet het andere apparaat een nieuwe tonen.</string>
+    <string name="pair_err_none_title">Geen apparaat toont een code</string>
+    <string name="pair_err_none_body">Open Apparaat koppelen op het andere apparaat, kies Tonen en check of beide apparaten op hetzelfde wifi zitten.</string>
+    <string name="pair_err_eight_title">Een code heeft 8 cijfers</string>
+    <string name="pair_err_eight_body">Typ de 8 cijfers van het andere apparaat, of plak de link.</string>
+    <string name="pair_err_circles_title">Beide apparaten zitten in een cirkel</string>
+    <string name="pair_err_circles_body">Een apparaat in een cirkel kan alleen een apparaat opnemen dat nog in geen cirkel zit. Haal er eerst een uit zijn cirkel.</string>
+    <string name="pair_err_update_title">Het andere apparaat moet bijgewerkt worden</string>
+    <string name="pair_err_update_body">Installeer de nieuwste Tandem op het andere apparaat en probeer het opnieuw.</string>
 </resources>

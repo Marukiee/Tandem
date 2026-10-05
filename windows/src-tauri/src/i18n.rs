@@ -45,6 +45,8 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "remote_off_title") => "{0} wants to control this PC",
         ("nl", "remote_off_body") => "Zet 'Telefoon mag deze pc bedienen' aan bij Instellingen in Tandem.",
         (_, "remote_off_body") => "Turn on 'Let my phone control this PC' under Settings in Tandem.",
+        ("nl", "remote_blocked_body") => "Dit kan niet onder Wayland. Log in met een X11-sessie om je telefoon deze computer te laten bedienen.",
+        (_, "remote_blocked_body") => "This does not work under Wayland. Log in with an X11 session to let your phone control this computer.",
         ("nl", "open_tandem") => "Tandem openen",
         (_, "open_tandem") => "Open Tandem",
         ("nl", "quick_share") => "Quick Share",

@@ -24,6 +24,7 @@ use crate::identity::Identity;
 
 pub const ALPN_MAIN: &[u8] = b"tandem/1";
 pub const ALPN_PAIR: &[u8] = b"tandem-pair/1";
+pub const ALPN_PAIR_CODE: &[u8] = b"tandem-pair-code/1";
 
 /// The name we present in the handshake. It carries no meaning: trust is the key.
 pub const SERVER_NAME: &str = "tandem";
@@ -86,7 +87,7 @@ pub fn server_config(identity: &Identity, tuning: Tuning) -> Result<quinn::Serve
             PrivateKeyDer::Pkcs8(identity.private_key_der()),
         )
         .map_err(|e| Error::crypto(e.to_string()))?;
-    crypto.alpn_protocols = vec![ALPN_MAIN.to_vec(), ALPN_PAIR.to_vec()];
+    crypto.alpn_protocols = vec![ALPN_MAIN.to_vec(), ALPN_PAIR.to_vec(), ALPN_PAIR_CODE.to_vec()];
     crypto.max_early_data_size = 0;
 
     let quic = QuicServerConfig::try_from(crypto).map_err(|e| Error::crypto(e.to_string()))?;

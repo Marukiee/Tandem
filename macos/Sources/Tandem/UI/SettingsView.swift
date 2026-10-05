@@ -73,6 +73,8 @@ struct SettingsView: View {
                     .tag(section)
             }
             .navigationSplitViewColumnWidth(min: 176, ideal: 190, max: 220)
+            // The sections always fit, so there is nothing to fold away, and the round button for it only got in the way.
+            .toolbar(removing: .sidebarToggle)
         } detail: {
             detail(for: selection)
                 .navigationTitle(Text(selection.title))

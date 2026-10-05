@@ -30,7 +30,7 @@ const en = {
   on_wifi: "On Wi-Fi", on_wifi_ssid: "On {0}", on_cellular: "On mobile data", on_cellular_roaming: "On mobile data (roaming)", on_ethernet: "On Ethernet", no_network: "No network",
   hotspot_on: "Hotspot on", hotspot_cellular: "Hotspot on, sharing mobile data", dnd: "Do not disturb", charging: "Charging", battery: "Battery",
   add_title: "Add a device", add_lead: "Open Tandem on your phone, choose Pair a device and scan this code. It works for five minutes.",
-  show_code: "Show a code", enter_code: "Enter a code", copy_link: "Copy link", copied: "Copied", paste_label: "Paste the link of the other device",
+  show_code: "Show a code", enter_code: "Enter a code", copy_link: "Copy link", copied: "Copied", paste_label: "Type the 8 digits or paste the link of the other device", or_type_code: "Or type this code on the other device", code_placeholder: "1234 5678 or tandem://pair…",
   pair: "Pair", pairing: "Pairing…", paired_with: "Paired with {0}", pair_failed: "Pairing did not work", new_code: "New code", close: "Close",
   welcome_title: "Pair your phone", welcome_lead: "Tandem connects this PC with your phone and Mac over your own network, with nothing in between.",
   step1: "Install Tandem on your phone", step2: "Open it and choose Pair a device", step3: "Scan the code on this screen",
@@ -70,6 +70,20 @@ const en = {
   phone_notifications: "Show phone notifications as Windows notifications", phone_notifications_sub: "Replies are not possible from here yet",
   language: "Language", language_auto: "Same as Windows", about: "About", version: "Version", engine_starting: "Starting…", engine_failed: "Tandem could not start",
   panel_open: "Open Tandem", panel_none: "No devices yet", panel_connected: "{0} of {1} connected", pc_connected_summary: "{0} connected",
+  win_minimize: "Minimise", win_maximize: "Maximise", win_restore: "Restore", win_close: "Close",
+  "language_auto@linux": "Same as the system",
+  "start_with_windows@linux": "Start at login", "start_with_windows_sub@linux": "Tandem waits in the tray so your phone can always reach this computer",
+  "show_its_notifications_sub@linux": "Phone notifications appear here and as desktop notifications",
+  "lead_notifications@linux": "What your phones showed. New ones also appear as desktop notifications.",
+  "phone_notifications@linux": "Show phone notifications as desktop notifications",
+  "system_media@linux": "Phone music in the media controls of the desktop", "system_media_sub@linux": "The media keys of your keyboard control what your phone plays",
+  "experimental_note@linux": "Tandem for Linux is new and experimental. Not everything is finished yet and it can still break.",
+  "firewall@linux": "If your firewall blocks incoming connections, allow Tandem on your home network (UDP port 47820). Without it your phone cannot find this computer.",
+  "mouse_firewall@linux": "If your firewall blocks incoming connections, allow Tandem on your home network (UDP port 47820). Without it the other computers cannot reach this one.",
+  "mouse_pair_first@linux": "Pair a Mac or a Windows PC first, and it shows up here.",
+  share_pointer_linux: "Sharing the mouse and keyboard of this computer with others is not available on Linux yet.",
+  input_wayland: "Needs permission this session does not give: under Wayland an app cannot move the pointer or press keys. Log in with an X11 session instead (the gear at the login screen).",
+  input_no_display: "No screen was found to send the pointer and keys to.",
   mac: "Mac", phone: "Phone", pc: "PC", unknown: "Device", quit: "Quit",
 };
 
@@ -104,7 +118,7 @@ const nl = {
   on_wifi: "Op wifi", on_wifi_ssid: "Op {0}", on_cellular: "Op mobiele data", on_cellular_roaming: "Op mobiele data (roaming)", on_ethernet: "Op Ethernet", no_network: "Geen netwerk",
   hotspot_on: "Hotspot aan", hotspot_cellular: "Hotspot aan, deelt mobiele data", dnd: "Niet storen", charging: "Aan het laden", battery: "Batterij",
   add_title: "Apparaat toevoegen", add_lead: "Open Tandem op je telefoon, kies Apparaat koppelen en scan deze code. Hij werkt vijf minuten.",
-  show_code: "Toon een code", enter_code: "Voer een code in", copy_link: "Kopieer link", copied: "Gekopieerd", paste_label: "Plak de link van het andere apparaat",
+  show_code: "Toon een code", enter_code: "Voer een code in", copy_link: "Kopieer link", copied: "Gekopieerd", paste_label: "Typ de 8 cijfers of plak de link van het andere apparaat", or_type_code: "Of typ deze code op het andere apparaat", code_placeholder: "1234 5678 of tandem://pair…",
   pair: "Koppelen", pairing: "Koppelen…", paired_with: "Gekoppeld met {0}", pair_failed: "Koppelen is niet gelukt", new_code: "Nieuwe code", close: "Sluiten",
   welcome_title: "Koppel je telefoon", welcome_lead: "Tandem verbindt deze pc met je telefoon en Mac via je eigen netwerk, zonder iets ertussen.",
   step1: "Installeer Tandem op je telefoon", step2: "Open het en kies Apparaat koppelen", step3: "Scan de code op dit scherm",
@@ -144,11 +158,30 @@ const nl = {
   phone_notifications: "Telefoonmeldingen tonen als Windows-melding", phone_notifications_sub: "Antwoorden vanaf hier kan nog niet",
   language: "Taal", language_auto: "Zoals Windows", about: "Over", version: "Versie", engine_starting: "Starten…", engine_failed: "Tandem kon niet starten",
   panel_open: "Tandem openen", panel_none: "Nog geen apparaten", panel_connected: "{0} van {1} verbonden", pc_connected_summary: "{0} verbonden",
+  win_minimize: "Minimaliseren", win_maximize: "Maximaliseren", win_restore: "Herstellen", win_close: "Sluiten",
+  "language_auto@linux": "Zoals het systeem",
+  "start_with_windows@linux": "Starten bij inloggen", "start_with_windows_sub@linux": "Tandem wacht in het systeemvak zodat je telefoon deze computer altijd kan bereiken",
+  "show_its_notifications_sub@linux": "Meldingen van de telefoon verschijnen hier en als bureaubladmelding",
+  "lead_notifications@linux": "Wat je telefoons lieten zien. Nieuwe verschijnen ook als bureaubladmelding.",
+  "phone_notifications@linux": "Telefoonmeldingen tonen als bureaubladmelding",
+  "system_media@linux": "Muziek van je telefoon in de mediabediening van het bureaublad", "system_media_sub@linux": "De mediatoetsen van je toetsenbord bedienen wat je telefoon afspeelt",
+  "experimental_note@linux": "Tandem voor Linux is nieuw en experimenteel. Niet alles is af en het kan nog stukgaan.",
+  "firewall@linux": "Als je firewall inkomende verbindingen blokkeert, sta Tandem dan toe op je thuisnetwerk (UDP-poort 47820). Zonder dat kan je telefoon deze computer niet vinden.",
+  "mouse_firewall@linux": "Als je firewall inkomende verbindingen blokkeert, sta Tandem dan toe op je thuisnetwerk (UDP-poort 47820). Zonder dat kunnen de andere computers deze niet bereiken.",
+  share_pointer_linux: "De muis en het toetsenbord van deze computer delen met anderen kan op Linux nog niet.",
+  input_wayland: "Heeft een toestemming nodig die deze sessie niet geeft: onder Wayland mag een app de muis niet bewegen of toetsen indrukken. Log in met een X11-sessie (het tandwiel op het inlogscherm).",
+  input_no_display: "Er is geen scherm gevonden om de muis en toetsen naartoe te sturen.",
   mac: "Mac", phone: "Telefoon", pc: "Pc", unknown: "Apparaat", quit: "Afsluiten",
 };
 
 const tables = { en, nl };
 let current = "en";
+let platform = "windows";
+
+/** "windows" or "linux": a few words differ, and a key can have a version for one system, written "key@linux". */
+export function setPlatform(name) {
+  platform = name === "linux" ? "linux" : "windows";
+}
 
 /** Picks the language from the choice of the person, or else from Windows. */
 export function setLanguage(choice, system) {
@@ -163,7 +196,8 @@ export function language() {
 
 /** A word or sentence by key, with {0}, {1} filled in. */
 export function t(key, ...args) {
-  let text = tables[current][key] ?? tables.en[key] ?? key;
+  const own = key + "@" + platform;
+  let text = tables[current][own] ?? tables.en[own] ?? tables[current][key] ?? tables.en[key] ?? key;
   args.forEach((value, i) => { text = text.replaceAll("{" + i + "}", value); });
   return text;
 }

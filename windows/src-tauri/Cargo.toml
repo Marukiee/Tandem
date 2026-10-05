@@ -34,6 +34,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sys-locale = "0.3"
 enigo = "0.6.1"
+openh264 = { version = "0.9.8", optional = true }
+jpeg-encoder = { version = "0.7", optional = true }
 
 [dev-dependencies]
 ring = "0.17"
@@ -47,3 +49,8 @@ opt-level = 3
 lto = "thin"
 codegen-units = 1
 strip = true
+
+[features]
+# A picture decoder of its own, for the systems whose web view cannot decode video (the one on Linux, mostly): the phone's screen and
+# camera arrive as H.264, are decoded here and go on to the window as JPEG. Windows has the decoder in its web view.
+native-video = ["dep:openh264", "dep:jpeg-encoder"]

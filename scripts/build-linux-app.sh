@@ -22,7 +22,8 @@ conf = json.load(open(path))
 conf["version"] = sys.argv[1]
 json.dump(conf, open(path, "w"), indent=2)
 PY
-npx --yes "@tauri-apps/cli@2" build --ci --bundles deb,rpm,appimage
+# The web view of Linux has no video decoder to speak of, so the app brings one (see windows/src-tauri/src/video.rs).
+npx --yes "@tauri-apps/cli@2" build --ci --features native-video --bundles deb,rpm,appimage
 
 bundle="src-tauri/target/release/bundle"
 deb="$(ls "$bundle"/deb/*.deb | head -n1)"

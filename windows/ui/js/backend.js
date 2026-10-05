@@ -1,5 +1,6 @@
 // The way to the app behind the window. Inside Tandem it is the Rust side; in a plain browser, which is how the
 // interface is looked at and tried while it is being made, a pretend one (mock.js) answers instead.
+import { setPlatform } from "./i18n.js";
 import { say, set, state } from "./store.js";
 
 const tauri = window.__TAURI__;
@@ -42,6 +43,7 @@ function upsert(list, item, limit = 60) {
 }
 
 function apply(snapshot) {
+  setPlatform(snapshot.platform);
   set({
     ready: snapshot.ready,
     error: snapshot.error,
@@ -49,6 +51,8 @@ function apply(snapshot) {
     version: snapshot.version,
     build: snapshot.build,
     canShare: !!snapshot.canShare,
+    platform: snapshot.platform || "windows",
+    input: snapshot.input || { ok: true, why: "" },
     devices: snapshot.devices,
     transfers: snapshot.transfers,
     offers: snapshot.offers,

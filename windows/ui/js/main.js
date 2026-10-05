@@ -3,6 +3,7 @@ import { html, render, useEffect } from "../vendor/preact-htm.js";
 import { call, connect, listenDrops, native } from "./backend.js";
 import { DeviceGlyph } from "./components.js";
 import { Icon } from "./icons.js";
+import { ResizeEdges, Titlebar, framed } from "./chrome.js";
 import { setLanguage, t } from "./i18n.js";
 import { ClipboardPage, DevicePage, FilesPage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
 import { say, selectedDevice, set, state, useStore } from "./store.js";
@@ -49,7 +50,7 @@ function UpdateBanner() {
 function Nav() {
   const unread = state.notifications.length;
   return html`<nav class="nav">
-    <div class="brand"><img src="icons/brand.png" alt="" />Tandem<span class="tag">${t("experimental")}</span></div>
+    <div class="brand" data-tauri-drag-region><img src="icons/brand.png" alt="" />Tandem<span class="tag">${t("experimental")}</span></div>
     <div class="label">${t("devices")}</div>
     ${state.devices.map((d) => {
       const battery = d.status && d.status.battery;
@@ -118,8 +119,10 @@ function Page() {
 function App() {
   useStore();
   useEffect(() => { setLanguage(state.settings.language, state.systemLanguage); }, [state.settings.language, state.systemLanguage]);
-  return html`<div id="app">
+  return html`<div id="app" class=${framed() ? "framed" : ""}>
+    ${framed() && html`<${Titlebar} />`}
     <${Nav} /><${Page} /><${Dialogs} />
+    ${framed() && html`<${ResizeEdges} />`}
     ${state.say && html`<div class="toast" role="status">${state.say}</div>`}
   </div>`;
 }

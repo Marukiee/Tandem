@@ -1,9 +1,14 @@
 //! The screen or the camera of a phone, in a window of its own. The core delivers the pictures as H.264 access units in
-//! Annex B; they go on, untouched, to the window, where the browser engine of the window decodes them (WebCodecs) and draws
-//! them. This file keeps the sessions, the window that belongs to each, and the way the frames get there.
+//! Annex B. They go on, untouched, to the window, where the browser engine of the window decodes them (WebCodecs) and draws
+//! them. Where that engine cannot (the web view of Linux), the app decodes them itself (`video.rs`, the feature `native-video`)
+//! and the window gets JPEG pictures instead. This file keeps the sessions, the window that belongs to each, and the way the
+//! frames get there.
 
 use std::collections::HashMap;
-use std::sync::{LazyLock, Mutex};
+use std::sync::atomic::AtomicBool;
+#[cfg(feature = "native-video")]
+use std::sync::atomic::Ordering;
+use std::sync::{Arc, LazyLock, Mutex};
 
 use serde_json::{json, Value};
 use tandem_core::ffi::{
@@ -29,6 +34,20 @@ struct Session {
     accepted: Option<Value>,
     rotation: u16,
     ended: Option<String>,
+    /// The decoder of this app, when the window cannot decode (the feature `native-video`).
+    #[cfg(feature = "native-video")]
+    decode: Option<std::sync::mpsc::SyncSender<Frame>>,
+    /// Set when a frame was dropped because the decoder was behind: it waits for the next full picture.
+    #[cfg_attr(not(feature = "native-video"), allow(dead_code))]
+    lost: Arc<AtomicBool>,
+}
+
+#[cfg(feature = "native-video")]
+struct Frame {
+    pts_us: u64,
+    keyframe: bool,
+    discontinuity: bool,
+    data: Vec<u8>,
 }
 
 static SESSIONS: LazyLock<Mutex<HashMap<u64, Session>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -41,6 +60,81 @@ fn pack(pts_us: u64, keyframe: bool, discontinuity: bool, data: Vec<u8>) -> Vec<
     out.extend_from_slice(&pts_us.to_be_bytes());
     out.extend_from_slice(&data);
     out
+}
+
+/// A decoded picture as the window gets it: the flag 4, the time, and the JPEG.
+#[cfg(feature = "native-video")]
+fn pack_jpeg(pts_us: u64, jpeg: Vec<u8>) -> Vec<u8> {
+    let mut out = Vec::with_capacity(9 + jpeg.len());
+    out.push(4);
+    out.extend_from_slice(&pts_us.to_be_bytes());
+    out.extend_from_slice(&jpeg);
+    out
+}
+
+/// Gives a packet to the window, or keeps it for the window that is still loading.
+fn deliver(session: u64, packet: Vec<u8>, keyframe: bool) {
+    let mut sessions = SESSIONS.lock().unwrap();
+    let Some(s) = sessions.get_mut(&session) else { return };
+    if let Some(channel) = &s.channel {
+        if channel.send(InvokeResponseBody::Raw(packet)).is_err() {
+            // The window is gone: nothing more to send it.
+            s.channel = None;
+        }
+        return;
+    }
+    if keyframe {
+        s.backlog.clear();
+    }
+    if s.backlog.len() < BACKLOG {
+        s.backlog.push(packet);
+    }
+}
+
+/// The thread that decodes the pictures of one session. A frame that cannot be decoded in time is dropped and the next
+/// full picture is waited for, so the window never falls behind what the phone is showing.
+#[cfg(feature = "native-video")]
+fn spawn_decoder(app: &AppHandle, session: u64, lost: Arc<AtomicBool>) -> Option<std::sync::mpsc::SyncSender<Frame>> {
+    use std::time::{Duration, Instant};
+    let (tx, rx) = std::sync::mpsc::sync_channel::<Frame>(8);
+    let app = app.clone();
+    std::thread::Builder::new()
+        .name("tandem-video".into())
+        .spawn(move || {
+            let Some(mut decoder) = crate::video::Decoder::new() else { return };
+            let mut waiting = true;
+            let mut asked = Instant::now() - Duration::from_secs(10);
+            while let Ok(frame) = rx.recv() {
+                if frame.discontinuity {
+                    if let Some(fresh) = crate::video::Decoder::new() {
+                        decoder = fresh;
+                    }
+                    waiting = true;
+                }
+                if lost.swap(false, Ordering::Relaxed) {
+                    waiting = true;
+                }
+                if frame.keyframe {
+                    waiting = false;
+                }
+                if waiting {
+                    // Nothing to build on: ask for a full picture, not more than once in a while.
+                    if asked.elapsed() > Duration::from_millis(700) {
+                        asked = Instant::now();
+                        if let Ok(engine) = app.state::<AppState>().engine() {
+                            let _ = engine.media_request_keyframe(session);
+                        }
+                    }
+                    continue;
+                }
+                if let Some(jpeg) = decoder.picture(&frame.data) {
+                    // Only the newest picture is worth keeping for a window that is not there yet.
+                    deliver(session, pack_jpeg(frame.pts_us, jpeg), true);
+                }
+            }
+        })
+        .ok()?;
+    Some(tx)
 }
 
 pub struct Viewer {
@@ -75,22 +169,20 @@ impl TandemMediaViewer for Viewer {
     }
 
     fn on_frame(&self, session: u64, pts_us: u64, keyframe: bool, discontinuity: bool, data: Vec<u8>) {
-        let packet = pack(pts_us, keyframe, discontinuity, data);
-        let mut sessions = SESSIONS.lock().unwrap();
-        let Some(s) = sessions.get_mut(&session) else { return };
-        if let Some(channel) = &s.channel {
-            if channel.send(InvokeResponseBody::Raw(packet)).is_err() {
-                // The window is gone: nothing more to send it.
-                s.channel = None;
+        #[cfg(feature = "native-video")]
+        {
+            let sessions = SESSIONS.lock().unwrap();
+            if let Some(Some(decode)) = sessions.get(&session).map(|s| s.decode.as_ref()) {
+                if decode.try_send(Frame { pts_us, keyframe, discontinuity, data }).is_err() {
+                    // The decoder is behind: this picture is lost, and what follows it builds on it.
+                    if let Some(s) = sessions.get(&session) {
+                        s.lost.store(true, Ordering::Relaxed);
+                    }
+                }
+                return;
             }
-            return;
         }
-        if keyframe {
-            s.backlog.clear();
-        }
-        if s.backlog.len() < BACKLOG {
-            s.backlog.push(packet);
-        }
+        deliver(session, pack(pts_us, keyframe, discontinuity, data), keyframe);
     }
 
     fn on_ended(&self, session: u64, reason: TandemMediaEnd) {
@@ -123,6 +215,7 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
     };
     let session = engine.media_request(id, want).map_err(|e| e.to_string())?;
     let label = format!("live-{session}");
+    let lost = Arc::new(AtomicBool::new(false));
     SESSIONS.lock().unwrap().insert(
         session,
         Session {
@@ -134,6 +227,9 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
             accepted: None,
             rotation: 0,
             ended: None,
+            #[cfg(feature = "native-video")]
+            decode: spawn_decoder(app, session, lost.clone()),
+            lost,
         },
     );
     let (width, height) = if camera { (720.0, 560.0) } else { (440.0, 820.0) };
@@ -141,6 +237,8 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
         .title(name)
         .inner_size(width, height)
         .min_inner_size(240.0, 240.0)
+        // Linux draws no frame of its own: the page does, over the picture (see ui/js/chrome.js).
+        .decorations(cfg!(windows))
         .build();
     if let Err(e) = built {
         SESSIONS.lock().unwrap().remove(&session);
@@ -159,7 +257,10 @@ pub fn live_attach(session: u64, on_frame: Channel<InvokeResponseBody>) -> Reply
         let _ = on_frame.send(InvokeResponseBody::Raw(packet));
     }
     s.channel = Some(on_frame);
-    Ok(json!({ "name": s.name, "kind": s.kind, "accepted": s.accepted, "rotation": s.rotation, "ended": s.ended }))
+    Ok(json!({
+        "name": s.name, "kind": s.kind, "accepted": s.accepted, "rotation": s.rotation, "ended": s.ended,
+        "native": cfg!(feature = "native-video"), "platform": if cfg!(windows) { "windows" } else { "linux" },
+    }))
 }
 
 /// The decoder lost the thread of the picture.

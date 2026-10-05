@@ -66,13 +66,14 @@
     <string name="pair_new_device">New device</string>
     <string name="pair_done">Paired with %1$s</string>
     <string name="pair_done_body">They will now find each other on their own.</string>
-    <string name="pair_have_link">I have a link</string>
-    <string name="pair_paste_hint">Paste the pairing link</string>
+    <string name="pair_have_link">I have a code or link</string>
+    <string name="pair_paste_hint">Code of 8 digits or link</string>
     <string name="pair_join">Join</string>
     <string name="pair_camera_why">Tandem uses the camera only to scan the code on your other device.</string>
     <string name="pair_expired">Expired</string>
     <string name="pair_new_code">New code</string>
-    <string name="pair_show_hint">Open Tandem on the other device, choose Pair a device and scan this code.</string>
+    <string name="pair_show_hint">Open Tandem on the other device, choose Pair a device and scan this code, or type the digits below.</string>
+    <string name="pair_show_code_label">Or type this code</string>
     <string name="pair_copy_link">Copy link</string>
     <string name="net_mobile">Mobile data</string>
     <string name="net_none">No network</string>
@@ -438,4 +439,6 @@
     <string name="files_browse_sub">Open its files in the Files app</string>
     <string name="device_settings_title">Settings for this device</string>
     <string name="device_settings_sub">Sharing, what it may ask of this phone, and removing it</string>
+    <string name="swipe_pin">Pin</string>
+    <string name="swipe_unpin">Unpin</string>
 </resources>

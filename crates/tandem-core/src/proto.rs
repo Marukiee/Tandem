@@ -519,6 +519,10 @@ pub struct PairRequest {
     /// HMAC over the channel binding with the secret from the QR code.
     #[serde(with = "bytes_array")]
     pub proof: [u8; 32],
+    /// When the scanner is in a circle already and the device that shows the code is alone: the circle of the
+    /// scanner, with the device that shows the code vouched for in it.
+    #[serde(default)]
+    pub invite: Option<Vec<Statement>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -526,6 +530,9 @@ pub struct PairAccept {
     pub name: String,
     pub platform: Platform,
     pub statements: Vec<Statement>,
+    /// The device that showed the code took the circle of the invite. An older version leaves this out.
+    #[serde(default)]
+    pub adopted: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -537,6 +544,42 @@ pub struct PairReject {
 pub enum PairReply {
     Accept(PairAccept),
     Reject(PairReject),
+}
+
+// Pairing with a short code. First the two sides agree on a key from the code (SPAKE2), then each proves it got the same key.
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CodeHello {
+    pub name: String,
+    pub platform: Platform,
+    #[serde(with = "serde_bytes")]
+    pub spake: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CodeServerHello {
+    pub name: String,
+    pub platform: Platform,
+    /// Only this device is in its circle, so it can take the circle of the scanner.
+    pub alone: bool,
+    #[serde(with = "serde_bytes")]
+    pub spake: Vec<u8>,
+    #[serde(with = "bytes_array")]
+    pub confirm: [u8; 32],
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CodeReply {
+    Hello(CodeServerHello),
+    Reject(PairReject),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CodeFinish {
+    #[serde(with = "bytes_array")]
+    pub confirm: [u8; 32],
+    #[serde(default)]
+    pub invite: Option<Vec<Statement>>,
 }
 
 pub fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>> {

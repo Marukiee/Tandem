@@ -54,6 +54,7 @@ import nl.markmaaktmedia.tandem.ui.components.PresenceDot
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
 import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
 import nl.markmaaktmedia.tandem.ui.components.StatusChip
+import nl.markmaaktmedia.tandem.ui.components.SwipeToPin
 import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
 import nl.markmaaktmedia.tandem.ui.components.platformIcon
 import nl.markmaaktmedia.tandem.ui.components.routeName
@@ -87,6 +88,7 @@ fun DevicesScreen(
     val online = devices.count { it.online }
     val prefs = context.graph.prefs
     val pinned by prefs.pinnedDevices.collectAsState(initial = emptySet())
+    val togglePin: (TandemDevice) -> Unit = { device -> scope.launch { prefs.setPinned(device.id, device.id !in pinned) } }
     val ordered = androidx.compose.runtime.remember(devices, pinned) {
         orderDevices(
             devices, pinned, id = { it.id }, name = { it.name },
@@ -151,24 +153,40 @@ fun DevicesScreen(
             items(ordered.chunked(2), key = { row -> row.joinToString("+") { it.id } }) { row ->
                 Row(Modifier.fillMaxWidth().animateItem(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { device ->
-                        CompactDeviceCard(
-                            device = device,
+                        SwipeToPin(
+                            item = device,
+                            key = device.id,
                             pinned = device.id in pinned,
-                            modifier = Modifier.weight(1f).routeBounds(routeKey(Route.Device(device.id))),
-                            onOpen = { onOpenDevice(device.id) },
-                            onPin = { scope.launch { prefs.setPinned(device.id, device.id !in pinned) } },
-                        )
+                            onToggle = togglePin,
+                            shape = CardSquircle,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            CompactDeviceCard(
+                                device = device,
+                                pinned = device.id in pinned,
+                                modifier = Modifier.fillMaxWidth().routeBounds(routeKey(Route.Device(device.id))),
+                                onOpen = { onOpenDevice(device.id) },
+                            )
+                        }
                     }
                     if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
         }
         if (!compact) items(ordered, key = { it.id }) { device ->
+          // The swipe is keyed on the device id, so a status update does not reset a swipe that is under way.
+          SwipeToPin(
+            item = device,
+            key = device.id,
+            pinned = device.id in pinned,
+            onToggle = togglePin,
+            shape = CardSquircle,
+            modifier = Modifier.animateItem(),
+          ) {
             DeviceCard(
                 device = device,
                 pinned = device.id in pinned,
-                onPin = { scope.launch { prefs.setPinned(device.id, device.id !in pinned) } },
-                modifier = Modifier.animateItem().routeBounds(routeKey(Route.Device(device.id))),
+                modifier = Modifier.routeBounds(routeKey(Route.Device(device.id))),
                 onOpen = { onOpenDevice(device.id) },
                 onSendFiles = { pickerTarget = device.id; picker.launch(arrayOf("*/*")) },
                 onSendClipboard = {
@@ -190,6 +208,7 @@ fun DevicesScreen(
                     }
                 },
             )
+          }
         }
     }
 }
@@ -203,7 +222,6 @@ fun DeviceCard(
     modifier: Modifier = Modifier,
     onWake: () -> Unit = {},
     pinned: Boolean = false,
-    onPin: () -> Unit = {},
 ) {
     // Asleep is only known from what the device said as it went, so it is a guess that it can be woken.
     val asleep = !device.online && device.status.asleep == true
@@ -214,7 +232,7 @@ fun DeviceCard(
             .fillMaxWidth()
             .clip(CardSquircle)
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .bouncyClickable(onLongClick = onPin, onClick = onOpen)
+            .bouncyClickable(onClick = onOpen)
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -280,13 +298,12 @@ private fun QuickAction(icon: androidx.compose.ui.graphics.painter.Painter, labe
 }
 
 
-/** A smaller card for when there are many devices: who, how it is doing, and nothing else. Tap opens, hold pins. */
+/** A smaller card for when there are many devices: who, how it is doing, and nothing else. Tap opens, swipe pins. */
 @Composable
 private fun CompactDeviceCard(
     device: TandemDevice,
     pinned: Boolean,
     onOpen: () -> Unit,
-    onPin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val asleep = !device.online && device.status.asleep == true
@@ -294,7 +311,7 @@ private fun CompactDeviceCard(
         modifier
             .clip(CardSquircle)
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .bouncyClickable(onLongClick = onPin, onClick = onOpen)
+            .bouncyClickable(onClick = onOpen)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {

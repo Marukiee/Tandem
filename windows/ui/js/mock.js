@@ -32,7 +32,7 @@ function updateFor(kind) {
 }
 
 const state = {
-  ready: true, error: null, self: { id: "me", name: "Laptop van Mark", port: 47820 }, version: "0.1.25", build: "preview", canShare: true,
+  ready: true, error: null, self: { id: "me", name: "Laptop van Mark", port: 47820 }, version: "0.1.25", build: "preview", canShare: true, platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
   devices,
   transfers: empty ? [] : [
     { id: "1-0-in", peer: "phone", name: "IMG_20261003_141201.jpg", incoming: true, state: "done", done: 4200000, total: 4200000, location: "C:\\Users\\Mark\\Downloads\\Tandem\\IMG_20261003_141201.jpg", updatedAt: now - 60000, startedAt: now - 62000 },
@@ -87,7 +87,7 @@ export async function call(command, args) {
       { id: 2, text: "Meeting at ten, room 4", from: "", at_ms: Date.now() - 3600000, pinned: false },
     ].filter((i) => !args.query || i.text.toLowerCase().includes(args.query.toLowerCase()));
     case "clip_history_pin": case "clip_history_remove": case "clip_history_clear": case "clip_history_copy": return null;
-    case "create_pairing": return { uri: "tandem://pair?c=PREVIEW", expiresAtMs: Date.now() + 300000, qr };
+    case "create_pairing": return { uri: "tandem://pair?c=PREVIEW", code: "4821 7093", expiresAtMs: Date.now() + 300000, qr };
     case "pair": return "phone";
     case "send_clipboard": return args.ids.length;
     case "pick_and_send":

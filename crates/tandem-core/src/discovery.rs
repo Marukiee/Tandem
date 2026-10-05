@@ -48,6 +48,8 @@ pub fn hints_around(id: &DeviceId, hour: u64) -> [Hint; 3] {
 pub struct Sighting {
     pub hint: Hint,
     pub addrs: Vec<SocketAddr>,
+    /// The device is showing a pairing code right now.
+    pub pairing: bool,
 }
 
 pub struct Discovery {
@@ -55,6 +57,7 @@ pub struct Discovery {
     registered: Option<String>,
     my_id: DeviceId,
     port: u16,
+    pairing: bool,
 }
 
 impl Discovery {
@@ -84,7 +87,8 @@ impl Discovery {
                             .map(|ip| SocketAddr::new(ip.to_ip_addr(), port))
                             .filter(|addr| !is_useless(addr.ip()))
                             .collect();
-                        if !addrs.is_empty() && sightings.send(Sighting { hint, addrs }).is_err() {
+                        let pairing = service.get_property_val_str("p").is_some();
+                        if !addrs.is_empty() && sightings.send(Sighting { hint, addrs, pairing }).is_err() {
                             break;
                         }
                     }
@@ -92,9 +96,18 @@ impl Discovery {
             })
             .map_err(Error::from)?;
 
-        let mut discovery = Discovery { daemon, registered: None, my_id, port };
+        let mut discovery = Discovery { daemon, registered: None, my_id, port, pairing: false };
         discovery.announce()?;
         Ok(discovery)
+    }
+
+    /// Says whether this device is showing a pairing code, so a device that is given the short code can find it.
+    pub fn set_pairing(&mut self, open: bool) -> Result<()> {
+        if self.pairing == open {
+            return Ok(());
+        }
+        self.pairing = open;
+        self.announce()
     }
 
     /// Publishes the current hint. Call again when the hour turns over.
@@ -105,16 +118,13 @@ impl Discovery {
         let hint = hint_for(&self.my_id, current_hour());
         let hint_text = data_encoding::BASE32_NOPAD.encode(&hint).to_ascii_lowercase();
         // The instance name is random too, so it reveals nothing stable.
-        let instance = format!("t{}", &hint_text[..8]);
+        let instance = format!("t{}{}", &hint_text[..8], if self.pairing { "p" } else { "" });
         let host = format!("{instance}.local.");
-        let info = ServiceInfo::new(
-            SERVICE_TYPE,
-            &instance,
-            &host,
-            "",
-            self.port,
-            &[("h", hint_text.as_str()), ("v", "1")][..],
-        )
+        let mut properties = vec![("h", hint_text.as_str()), ("v", "1")];
+        if self.pairing {
+            properties.push(("p", "1"));
+        }
+        let info = ServiceInfo::new(SERVICE_TYPE, &instance, &host, "", self.port, &properties[..])
         .map_err(|e| Error::Connection(format!("mdns service: {e}")))?
         .enable_addr_auto();
         let fullname = info.get_fullname().to_string();

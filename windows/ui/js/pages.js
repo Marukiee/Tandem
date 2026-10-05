@@ -58,6 +58,7 @@ export function PairPanel({ onDone }) {
     </div>
     ${tab === "show" && html`
       <div class="qr" dangerouslySetInnerHTML=${{ __html: offer ? offer.qr : "" }}></div>
+      ${offer && offer.code && html`<div class="typecode"><div class="muted small">${t("or_type_code")}</div><div class="digits">${offer.code}</div></div>`}
       <div style="display:flex;gap:8px">
         <input type="text" class="grow" readonly value=${offer ? offer.uri : ""} onFocus=${(e) => e.target.select()} />
         <button class="btn" onClick=${copy}><${Icon} name=${copied ? "check" : "copy"} size=${16} />${copied ? t("copied") : t("copy_link")}</button>
@@ -66,7 +67,7 @@ export function PairPanel({ onDone }) {
     ${tab === "enter" && html`
       <label class="muted small" for="link">${t("paste_label")}</label>
       <div style="display:flex;gap:8px;margin-top:6px">
-        <input id="link" type="text" class="grow" placeholder="tandem://pair?…" value=${link} onInput=${(e) => setLink(e.target.value)} />
+        <input id="link" type="text" class="grow" placeholder=${t("code_placeholder")} value=${link} onInput=${(e) => setLink(e.target.value)} />
         <button class="btn accent" disabled=${busy || !link.trim()} onClick=${pair}>${busy ? t("pairing") : t("pair")}</button>
       </div>`}
     ${problem && html`<p style="color:var(--bad)">${problem}</p>`}
@@ -122,12 +123,20 @@ export function TransferRow({ item }) {
   </div>`;
 }
 
-function SettingRow({ icon, title, sub, on, onChange, children }) {
-  return html`<div class="setting">
+/** [disabled] greys the row out, and [why] says in its place what has to be done before it works. */
+function SettingRow({ icon, title, sub, on, onChange, children, disabled, why }) {
+  return html`<div class=${"setting" + (disabled ? " disabled" : "")}>
     <${Icon} name=${icon} size=${20} />
-    <div class="grow"><div class="t">${title}</div>${sub && html`<div class="s">${sub}</div>`}</div>
-    ${children || html`<${Switch} on=${on} onChange=${onChange} label=${title} />`}
+    <div class="grow"><div class="t">${title}</div>${(why || sub) && html`<div class="s">${why || sub}</div>`}</div>
+    ${children || html`<${Switch} on=${on && !disabled} onChange=${onChange} label=${title} disabled=${disabled} />`}
   </div>`;
+}
+
+/** Why this system will not let Tandem drive the pointer and keyboard, in words, or nothing when it does. */
+function inputWhy() {
+  const input = state.input;
+  if (input.ok) return "";
+  return t(input.why === "no-display" ? "input_no_display" : "input_wayland");
 }
 
 export function DevicePage({ device }) {
@@ -390,8 +399,8 @@ function MouseSection({ s, patch }) {
 
     <h2>${t("mouse_here")}</h2>
     <div class="card flush">
-      <${SettingRow} icon="pointer" title=${t("share_pointer_next")} sub=${others.length ? t("share_pointer_sub") : t("mouse_pair_first")}>
-        <select disabled=${!others.length} value=${s.shareDevice} onChange=${(e) => patch({ shareDevice: e.target.value, shareEdge: e.target.value && !s.shareEdge ? "right" : s.shareEdge })}>
+      <${SettingRow} icon="pointer" title=${t("share_pointer_next")} disabled=${!state.canShare} why=${!state.canShare ? t("share_pointer_linux") : ""} sub=${others.length ? t("share_pointer_sub") : t("mouse_pair_first")}>
+        <select disabled=${!state.canShare || !others.length} value=${s.shareDevice} onChange=${(e) => patch({ shareDevice: e.target.value, shareEdge: e.target.value && !s.shareEdge ? "right" : s.shareEdge })}>
           <option value="">${t("share_pointer_off")}</option>
           ${others.map((d) => html`<option value=${d.id}>${d.name}</option>`)}
         </select>
@@ -406,7 +415,7 @@ function MouseSection({ s, patch }) {
 
     <h2>${t("mouse_in")}</h2>
     <div class="card flush">
-      <${SettingRow} icon="pointer" title=${t("mouse_in_title")} sub=${t("mouse_in_sub")} on=${s.remoteInput} onChange=${(v) => patch({ remoteInput: v })} />
+      <${SettingRow} icon="pointer" title=${t("mouse_in_title")} sub=${t("mouse_in_sub")} on=${s.remoteInput} onChange=${(v) => patch({ remoteInput: v })} disabled=${!state.input.ok} why=${inputWhy()} />
     </div>
     <div class="small muted">${t("mouse_firewall")}</div>
 
@@ -470,7 +479,6 @@ export function SettingsPage() {
       <${SettingRow} icon="x" title=${t("close_to_tray")} sub=${t("close_to_tray_sub")} on=${s.closeToTray} onChange=${(v) => patch({ closeToTray: v })} />
       <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
       <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
-      ${!state.canShare && html`<${SettingRow} icon="pointer" title=${t("remote_input")} sub=${t("remote_input_sub")} on=${s.remoteInput} onChange=${(v) => patch({ remoteInput: v })} />`}
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
       <${SettingRow} icon="refresh" title=${t("auto_update")} sub=${t("auto_update_sub")} on=${s.autoUpdate} onChange=${(v) => patch({ autoUpdate: v })} />
       <${SettingRow} icon="arrow-down" title=${t("check_now")} sub=${updateText()}>
@@ -485,7 +493,7 @@ export function SettingsPage() {
 
     <${QuickShareSection} s=${s} patch=${patch} />
 
-    ${state.canShare && html`<${MouseSection} s=${s} patch=${patch} />`}
+    <${MouseSection} s=${s} patch=${patch} />
 
     <h2>${t("about")}</h2>
     <div class="card">

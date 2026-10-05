@@ -8,6 +8,8 @@
 "Pair a device" = "Apparaat koppelen";
 "Pair a device…" = "Apparaat koppelen…";
 "Open Tandem on your other device, choose Pair a device and scan this code." = "Open Tandem op je andere apparaat, kies Apparaat koppelen en scan deze code.";
+"Open Tandem on your other device, choose Pair a device and scan this code, or type the digits below." = "Open Tandem op je andere apparaat, kies Apparaat koppelen en scan deze code, of typ de cijfers hieronder.";
+"Code of 8 digits or a link" = "Code van 8 cijfers of een link";
 "Paste a pairing link" = "Plak een koppellink";
 "Join" = "Koppel";
 "Connecting" = "Verbinden";
@@ -17,6 +19,7 @@
 "They will now find each other on their own." = "Ze vinden elkaar nu vanzelf.";
 "Pairing link copied" = "Koppellink gekopieerd";
 "Copy link" = "Kopieer link";
+"I have a code or link" = "Ik heb een code of link";
 "I have a link" = "Ik heb een link";
 "New device" = "Nieuw apparaat";
 
@@ -827,3 +830,11 @@
 "Scan docs" = "Scan docs";
 "Phone as output" = "Telefoon als uitvoer";
 "Stop phone output" = "Stop telefoonuitvoer";
+
+"Or type this code" = "Of typ deze code";
+"No device accepted that code. Check the 8 digits, or ask the other device to show a new one." = "Geen apparaat accepteerde die code. Check de 8 cijfers, of vraag het andere apparaat om een nieuwe te tonen.";
+"No device is showing a code. Choose Pair a device on the other one, and check that both are on the same Wi-Fi." = "Geen apparaat toont een code. Kies Apparaat koppelen op het andere apparaat en check of beide op hetzelfde wifi zitten.";
+"A code has 8 digits. Type them, or paste the link." = "Een code heeft 8 cijfers. Typ ze, of plak de link.";
+"Both devices are in a circle. A device in a circle can only take in one that is not. Remove one of them from its circle first." = "Beide apparaten zitten in een cirkel. Een apparaat in een cirkel kan alleen een apparaat opnemen dat in geen cirkel zit. Haal er eerst een uit zijn cirkel.";
+"The other device needs the latest Tandem first." = "Het andere apparaat heeft eerst de nieuwste Tandem nodig.";
+"Too many tries. Ask the other device to show a new code." = "Te veel pogingen. Vraag het andere apparaat om een nieuwe code.";

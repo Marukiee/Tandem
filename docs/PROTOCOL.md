@@ -172,6 +172,32 @@ verklaring zonder handtekening.
 5. B controleert de handtekeningen en dat hij er zelf in staat, en neemt de circle over.
 6. A geeft de nieuwe verklaring door aan de andere leden zodra ze verbinden.
 
+### Uitnodigen
+
+Een apparaat dat al in een circle zit mag de code van een apparaat dat alleen is scannen. B
+zet dan in `PairRequest.invite` zijn eigen verklaringen, met een `Add` voor A erin. A (die
+alleen is) controleert de handtekeningen en dat zowel A als B erin staan, vervangt zijn
+eigen circle door die van B en antwoordt met `PairAccept.adopted = true`. B voegt dan zijn
+`Add` voor A toe en geeft die door. Een A die in een circle zit weigert. De QR-code heeft
+daarvoor `adopts: true` en A's `platform`, zodat B een oudere A niet uitnodigt.
+
+### Korte code
+
+Naast de QR is er een code van 8 cijfers ("1234 5678") om over te typen. Het is hetzelfde
+aanbod: dezelfde eenmalige verlooptijd, en samen met de QR maximaal 5 pogingen.
+
+1. A meldt in zijn mDNS-record `p=1` zolang hij een code toont. B zoekt de apparaten die dat
+   melden (tot 12 seconden) en probeert ze een voor een.
+2. B belt met ALPN `tandem-pair-code/1` zonder een sleutel te pinnen, en de twee kanten
+   doen SPAKE2 (Ed25519, wachtwoord is de code) over `CodeHello` en `CodeServerHello`. Een
+   gok per verbinding, en niets wat offline te raden valt.
+3. Beide kanten bewijzen dat ze dezelfde sleutel kregen met een HMAC-SHA256 over de rol, de
+   TLS-exporter, B's sleutel, A's sleutel, A's naam en of A alleen is. A stuurt zijn bewijs
+   mee, B controleert dat voordat hij iets prijsgeeft, en stuurt dan `CodeFinish` met zijn
+   eigen bewijs (en bij uitnodigen de circle).
+4. Daarna gaat het als bij de QR: A voegt B toe en stuurt de circle, of neemt de circle van B
+   over.
+
 ## Ontdekking
 
 - **mDNS**: `_tandem._udp.local.`, met een TXT-veld `h` dat elk uur wisselt en alleen

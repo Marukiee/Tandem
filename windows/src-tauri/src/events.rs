@@ -161,7 +161,8 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
 /// The trackpad and keyboard of a phone. Only when the person allowed it; otherwise they are told once in a while
 /// why nothing happens, since nothing on the phone says so.
 fn remote_input(app: &AppHandle, from: &str, event: tandem_core::ffi::TandemInput) {
-    if settings::get(app).remote_input {
+    let blocked = crate::commands::input_blocked();
+    if settings::get(app).remote_input && blocked.is_none() {
         input::send(event);
         return;
     }
@@ -169,7 +170,9 @@ fn remote_input(app: &AppHandle, from: &str, event: tandem_core::ffi::TandemInpu
     let mut asked = ASKED.lock().unwrap();
     if asked.map(|t| t.elapsed() > Duration::from_secs(120)).unwrap_or(true) {
         *asked = Some(Instant::now());
-        toast(app, &i18n::t1(app, "remote_off_title", &device_name(app, from)), &i18n::t(app, "remote_off_body"));
+        // The system not allowing it is another thing than the person not having turned it on, and needs other words.
+        let body = if blocked.is_some() { i18n::t(app, "remote_blocked_body") } else { i18n::t(app, "remote_off_body") };
+        toast(app, &i18n::t1(app, "remote_off_title", &device_name(app, from)), &body);
     }
 }
 

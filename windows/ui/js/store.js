@@ -16,6 +16,10 @@ export const state = {
   settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: false },
   // This PC can be the main computer of a shared mouse and keyboard (Windows only).
   canShare: false,
+  // "windows" or "linux": a few words and what is possible differ.
+  platform: "windows",
+  // Whether this system lets Tandem move the pointer and press keys, and if not why (wayland, no-display).
+  input: { ok: true, why: "" },
   // How the update stands: idle, checking, up-to-date, available, downloading, installing or failed.
   update: { state: "idle", dismissed: "" },
   autostart: false,

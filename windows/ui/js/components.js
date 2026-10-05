@@ -64,8 +64,8 @@ export function Chip({ icon, children, tone = "" }) {
   return html`<span class=${"chip " + tone}>${icon && html`<${Icon} name=${icon} size=${14} />`}${children}</span>`;
 }
 
-export function Switch({ on, onChange, label }) {
-  return html`<button class=${"switch" + (on ? " on" : "")} role="switch" aria-checked=${on} aria-label=${label} onClick=${() => onChange(!on)}></button>`;
+export function Switch({ on, onChange, label, disabled }) {
+  return html`<button class=${"switch" + (on ? " on" : "")} role="switch" aria-checked=${on} aria-label=${label} disabled=${!!disabled} onClick=${() => !disabled && onChange(!on)}></button>`;
 }
 
 const routeText = { lan: "local_network", tailnet: "tailscale", other: "internet" };

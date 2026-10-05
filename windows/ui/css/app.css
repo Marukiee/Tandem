@@ -250,6 +250,9 @@ h2 { font: 600 16px var(--font-display); margin: 6px 2px 0; }
 .setting .icon { color: var(--text-2); }
 .setting .t { font-weight: 500; }
 .setting .s { font-size: 12px; color: var(--text-2); }
+.setting.disabled .icon, .setting.disabled .t { opacity: 0.5; }
+.setting.disabled select { opacity: 0.5; }
+.switch:disabled { opacity: 0.45; cursor: not-allowed; }
 
 input[type="text"], textarea, select {
   font: inherit;
@@ -324,6 +327,8 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 .dialog h2 { margin: 0 0 6px; font-size: 18px; }
 .qr { background: #fff; border-radius: 12px; padding: 8px; width: 232px; height: 232px; margin: 12px auto; }
 .qr svg { width: 100%; height: 100%; display: block; }
+.typecode { text-align: center; margin: 0 0 12px; }
+.typecode .digits { font-size: 30px; font-weight: 600; letter-spacing: 2px; font-variant-numeric: tabular-nums; user-select: text; }
 .toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 9px 16px; border-radius: 8px; box-shadow: var(--shadow); animation: rise 0.2s; z-index: 30; max-width: 80vw; }
 .seg { display: inline-flex; background: var(--card-2); border: 1px solid var(--line); border-radius: 8px; padding: 2px; gap: 2px; margin-bottom: 8px; }
 .seg button { border: 0; background: transparent; padding: 4px 14px; border-radius: 6px; cursor: default; color: var(--text-2); }
@@ -349,3 +354,25 @@ body.panel { background: var(--card); }
 .nav .addrow { color: var(--accent); }
 .ok-text { color: var(--ok); }
 select { cursor: default; }
+
+/* ---- The frame of the window, where the app draws it itself (Linux) ---- */
+#app.framed { grid-template-rows: 40px 1fr; box-shadow: inset 0 0 0 1px var(--line-strong); }
+#app.framed .nav { grid-row: 1 / 3; }
+#app.framed .titlebar { grid-column: 2; grid-row: 1; }
+#app.framed .page { grid-column: 2; grid-row: 2; }
+.titlebar { display: flex; align-items: center; justify-content: flex-end; padding: 0 10px; background: var(--bg); }
+.wbtns { display: flex; gap: 6px; }
+.wbtn {
+  width: 28px; height: 28px; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center;
+  background: transparent; color: var(--text-2); cursor: default; transition: background 0.12s, color 0.12s, transform 0.12s;
+}
+.wbtn:hover { background: var(--hover); color: var(--text); }
+.wbtn:active { background: var(--press); transform: scale(0.92); }
+.wbtn.close:hover { background: #e5484d; color: #fff; }
+.edge { position: fixed; z-index: 100; }
+.edge-n, .edge-s { left: 8px; right: 8px; height: 5px; cursor: ns-resize; }
+.edge-e, .edge-w { top: 8px; bottom: 8px; width: 5px; cursor: ew-resize; }
+.edge-n { top: 0; } .edge-s { bottom: 0; } .edge-e { right: 0; } .edge-w { left: 0; }
+.edge-nw, .edge-ne, .edge-sw, .edge-se { width: 9px; height: 9px; }
+.edge-nw { top: 0; left: 0; cursor: nwse-resize; } .edge-se { bottom: 0; right: 0; cursor: nwse-resize; }
+.edge-ne { top: 0; right: 0; cursor: nesw-resize; } .edge-sw { bottom: 0; left: 0; cursor: nesw-resize; }

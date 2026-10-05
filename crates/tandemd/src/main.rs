@@ -249,7 +249,10 @@ fn describe(engine: &Engine) -> String {
 async fn execute(engine: &Engine, command: &Command) -> Result<String> {
     match command {
         Command::Run => unreachable!("handled by the caller"),
-        Command::PairShow => Ok(format!("{}\n", engine.create_pairing_offer()?.uri)),
+        Command::PairShow => {
+            let offer = engine.create_pairing_offer()?;
+            Ok(format!("{}\ncode: {}\n", offer.uri, offer.code))
+        }
         Command::Whoami => Ok(format!("{} {}\n", engine.id(), engine.name())),
         Command::Devices => Ok(describe(engine)),
         Command::Pair { uri } => {
@@ -483,7 +486,7 @@ fn parse_line(line: &str) -> Option<Command> {
         "whoami" => Some(Command::Whoami),
         "devices" => Some(Command::Devices),
         "pair-show" => Some(Command::PairShow),
-        "pair" => Some(Command::Pair { uri: rest.first()?.clone() }),
+        "pair" if !rest.is_empty() => Some(Command::Pair { uri: rest.join(" ") }),
         "send" => Some(Command::Send {
             device: rest.first()?.clone(),
             files: rest.iter().skip(1).map(PathBuf::from).collect(),
@@ -582,8 +585,10 @@ async fn main() -> Result<()> {
         if let Some(reply) = ask_daemon(&data_dir, &line).await? {
             let (status, body) = reply.split_once('\n').unwrap_or((&reply, ""));
             if status == "ok" && matches!(cli.command, Command::PairShow) {
-                print_qr(body.trim());
-                println!("Scan this with Tandem on another device. It works for five minutes.");
+                let mut lines = body.lines();
+                print_qr(lines.next().unwrap_or_default().trim());
+                let code = lines.next().and_then(|line| line.strip_prefix("code: ")).unwrap_or_default();
+                println!("Scan this with Tandem on another device, or type the code {code} there. It works for five minutes.");
                 return Ok(());
             }
             print!("{body}");
@@ -648,7 +653,7 @@ async fn main() -> Result<()> {
         Command::PairShow => {
             let offer = engine.create_pairing_offer()?;
             print_qr(&offer.uri);
-            println!("Scan this with Tandem on another device. It works for five minutes.");
+            println!("Scan this with Tandem on another device, or type the code {} there. It works for five minutes.", offer.code);
             let mut events = engine.subscribe();
             let waited = tokio::time::timeout(Duration::from_secs(300), async {
                 loop {

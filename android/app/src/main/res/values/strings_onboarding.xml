@@ -37,4 +37,14 @@
     <string name="pair_err_own_body">Scan the code on your other device instead.</string>
     <string name="pair_err_no_answer_title">The other device did not answer</string>
     <string name="pair_err_no_answer_body">Check that both devices are on the same network and that Tandem is open on the other one, then try again.</string>
+    <string name="pair_err_digits_title">No device accepted that code</string>
+    <string name="pair_err_digits_body">Check the 8 digits. A code only works for 5 minutes and for a few tries, so the other device may have to show a new one.</string>
+    <string name="pair_err_none_title">No device is showing a code</string>
+    <string name="pair_err_none_body">Open Pair a device on the other device, choose Show and check that both devices are on the same Wi-Fi.</string>
+    <string name="pair_err_eight_title">A code has 8 digits</string>
+    <string name="pair_err_eight_body">Type the 8 digits from the other device, or paste its link.</string>
+    <string name="pair_err_circles_title">Both devices are in a circle</string>
+    <string name="pair_err_circles_body">A device in a circle can only take in a device that is not in one yet. Remove one of the two from its circle first.</string>
+    <string name="pair_err_update_title">The other device needs an update</string>
+    <string name="pair_err_update_body">Install the latest Tandem on the other device and try again.</string>
 </resources>

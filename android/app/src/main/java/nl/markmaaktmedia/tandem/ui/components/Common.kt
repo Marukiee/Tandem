@@ -369,6 +369,9 @@ fun <T> SwipeToDelete(
     shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.large,
     background: Color = MaterialTheme.colorScheme.error,
     iconTint: Color = MaterialTheme.colorScheme.onError,
+    icon: Painter = TandemIcons.Delete,
+    /** False for an action that keeps the row, like pinning: the row settles back after the action fires. */
+    removeOnCommit: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -445,7 +448,7 @@ fun <T> SwipeToDelete(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             val icon = @Composable {
-                                Icon(painter = TandemIcons.Delete, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+                                Icon(painter = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
                             }
                             val text = @Composable {
                                 Text(label, style = MaterialTheme.typography.labelLarge, color = iconTint, maxLines = 1, softWrap = false)
@@ -499,15 +502,22 @@ fun <T> SwipeToDelete(
                                 val commitPx = widthPx * CommitFraction
                                 if (loose && kotlin.math.abs(accumulated) > commitPx) {
                                     view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-                                    removed = true
-                                    // Fired now, not after the fling, so the gap closes in step
-                                    // with the row gliding away.
-                                    onDelete(item)
-                                    scope.launch {
-                                        offset.animateTo(
-                                            kotlin.math.sign(accumulated) * widthPx * 1.1f,
-                                            tween(durationMillis = 260, easing = TandemMotion.Standard),
-                                        )
+                                    if (removeOnCommit) {
+                                        removed = true
+                                        // Fired now, not after the fling, so the gap closes in step
+                                        // with the row gliding away.
+                                        onDelete(item)
+                                        scope.launch {
+                                            offset.animateTo(
+                                                kotlin.math.sign(accumulated) * widthPx * 1.1f,
+                                                tween(durationMillis = 260, easing = TandemMotion.Standard),
+                                            )
+                                        }
+                                    } else {
+                                        // An action that keeps the row: it fires, and the row settles back the way a
+                                        // cancelled swipe does.
+                                        onDelete(item)
+                                        settleBack()
                                     }
                                 } else {
                                     // Cancelled: an elastic settle back, from the velocity it had.
@@ -530,6 +540,39 @@ fun <T> SwipeToDelete(
             }
         }
     }
+}
+
+/** The yellow of the pin swipe, and the dark that its icon and label are drawn in. */
+private val PinYellow = Color(0xFFFFC931)
+private val OnPinYellow = Color(0xFF3B2E00)
+
+/**
+ * Swipe a device aside to pin it, or to unpin it. The same gesture as [SwipeToDelete] with the same numbers, because it
+ * is that gesture: only the panel is yellow and the row stays where it was, settling back instead of flying off.
+ */
+@Composable
+fun <T> SwipeToPin(
+    item: T,
+    key: Any,
+    pinned: Boolean,
+    onToggle: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = MaterialTheme.shapes.large,
+    content: @Composable () -> Unit,
+) {
+    SwipeToDelete(
+        item = item,
+        key = key,
+        onDelete = onToggle,
+        modifier = modifier,
+        label = stringResource(if (pinned) nl.markmaaktmedia.tandem.R.string.swipe_unpin else nl.markmaaktmedia.tandem.R.string.swipe_pin),
+        shape = shape,
+        background = PinYellow,
+        iconTint = OnPinYellow,
+        icon = TandemIcons.Pin,
+        removeOnCommit = false,
+        content = content,
+    )
 }
 
 /**
