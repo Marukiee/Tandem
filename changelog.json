@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.1.53",
+    "date": "2026-10-05",
+    "en": {
+      "title": "A cleaner phone window on the Mac",
+      "new": [
+        "Mac: the window of your phone screen has no title bar by default, so the phone fills it edge to edge without black edges. Move the pointer to the top and the buttons of the window and the name of the phone come, and go again when you leave",
+        "Mac: the menu with the three dots is a round button like the others, and the camera menu too. The button for clicking and typing on the phone is always pressable: when the phone does not allow it yet, it tells you how to turn it on, and when it does, it lights up and says so when you switch it",
+        "Mac: Try again after a dropped connection uses the same window instead of opening a second one",
+        "Android: Control this Mac on the device page is the same size as Browse files below it"
+      ]
+    },
+    "nl": {
+      "title": "Een rustiger telefoonvenster op de Mac",
+      "new": [
+        "Mac: het venster met het telefoonscherm heeft standaard geen titelbalk, zodat de telefoon het venster vult zonder zwarte randen. Ga met de muis naar de bovenkant en de knoppen van het venster en de naam van de telefoon komen tevoorschijn, en gaan weer weg als je wegbeweegt",
+        "Mac: het menu met de drie puntjes is een ronde knop zoals de andere, ook het cameramenu. De knop om op de telefoon te klikken en te typen kun je altijd indrukken: staat de telefoon het nog niet toe, dan zegt hij hoe je het aanzet, en staat het aan dan licht hij op en meldt hij het als je het omzet",
+        "Mac: Probeer opnieuw na een verbroken verbinding gebruikt hetzelfde venster in plaats van een tweede te openen",
+        "Android: Bedien deze Mac op de apparaatpagina is even groot als Bestanden bekijken eronder"
+      ]
+    }
+  },
+  {
     "version": "0.1.52",
     "date": "2026-10-05",
     "en": {

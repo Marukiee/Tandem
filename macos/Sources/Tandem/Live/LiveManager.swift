@@ -82,7 +82,8 @@ final class LiveManager {
     /// Opens a window and asks the phone. A window of this kind for this phone that is already there comes to the front.
     @discardableResult
     func start(
-        device: TandemDevice, kind: TandemMediaKind, facing: LiveCameraFacing = .back, quality: LiveQuality = .standard
+        device: TandemDevice, kind: TandemMediaKind, facing: LiveCameraFacing = .back, quality: LiveQuality = .standard,
+        reusing: LiveSession? = nil
     ) -> LiveSession? {
         if let existing = session(of: kind, on: device.id), existing.cameraFacing == facing || kind == .screen {
             windows[ObjectIdentifier(existing)]?.bringToFront()
@@ -90,7 +91,8 @@ final class LiveManager {
         }
         guard let engine else { return nil }
         // A second request of the same kind replaces the first, so the old window is told to let go quietly.
-        let replaced = session(of: kind, on: device.id)
+        // Try again after an end is the same window asking again: an ended session is not "running", so it has to be named.
+        let replaced = reusing ?? session(of: kind, on: device.id)
 
         let want = TandemMediaWant(
             kind: kind, codecs: [.h264], maxWidth: quality.box(for: kind).long, maxHeight: quality.box(for: kind).short,
@@ -111,6 +113,9 @@ final class LiveManager {
             reset(replaced, id: id, facing: facing, quality: quality)
         }
         bind(session, to: id)
+        if let reused = replaced, let controller = windows[ObjectIdentifier(reused)] {
+            controller.bringToFront()
+        }
         if replaced == nil {
             sessions.append(session)
             let controller = LiveWindowController(session: session, manager: self)
@@ -124,7 +129,7 @@ final class LiveManager {
     /// The same window asks again: after an end, or with another camera or quality.
     func restart(_ session: LiveSession) {
         guard let device = EngineModel.shared.device(session.peer) else { return }
-        start(device: device, kind: session.kind, facing: session.cameraFacing, quality: session.quality)
+        start(device: device, kind: session.kind, facing: session.cameraFacing, quality: session.quality, reusing: session)
     }
 
     private func reset(_ session: LiveSession, id: UInt64, facing: LiveCameraFacing, quality: LiveQuality) {

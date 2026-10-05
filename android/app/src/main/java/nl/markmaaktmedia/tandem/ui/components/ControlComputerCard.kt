@@ -2,14 +2,12 @@ package nl.markmaaktmedia.tandem.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -47,26 +45,22 @@ fun ControlComputerCard(device: TandemDevice, onOpen: () -> Unit, modifier: Modi
         },
     )
     Column(modifier.fillMaxWidth().clip(CardSquircle).background(scheme.surfaceContainer)) {
+        // The same row as the others on the page (Browse files below it), so the two are the same size.
         Row(
-            Modifier.fillMaxWidth().bouncyClickable(enabled = ready, onClickLabel = title, onClick = onOpen).padding(16.dp),
+            Modifier.fillMaxWidth().bouncyClickable(enabled = ready, onClickLabel = title, onClick = onOpen).padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Box(
-                Modifier.size(48.dp).clip(CircleShape).background(if (ready) scheme.primaryContainer else scheme.surfaceContainerHighest),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    TandemIcons.Desktop, null,
-                    tint = if (ready) scheme.onPrimaryContainer else scheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    modifier = Modifier.size(22.dp),
-                )
-            }
+            RowIcon(
+                TandemIcons.Desktop,
+                tint = if (ready) scheme.onSecondaryContainer else scheme.onSurfaceVariant.copy(alpha = 0.6f),
+                container = if (ready) scheme.secondaryContainer else scheme.surfaceContainerHighest,
+            )
             Column(Modifier.weight(1f).alpha(if (ready) 1f else 0.6f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
+                Text(title, style = MaterialTheme.typography.titleSmall)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
             }
-            if (ready) Icon(TandemIcons.ChevronRight, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+            if (ready) Icon(TandemIcons.ChevronRight, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
         // What is missing, only while the computer is reachable: offline there is nothing to set up yet.
         if (device.online && mac && !hosts) {

@@ -8,17 +8,21 @@ private final class LiveWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 }
 
-/// The window of one session: a title bar with the phone's name, resizable and locked to the shape of the picture, with
-/// an option to float above everything and a small frame-less mode.
+/// The window of one session: the picture edge to edge, locked to its shape and resizable. The title bar is not drawn until
+/// the pointer goes to the top of the window, so by default there is nothing but the phone. An option makes it float above
+/// everything, and a frame-less mode takes the title bar away for good.
 @MainActor
 final class LiveWindowController: NSObject, NSWindowDelegate {
     let session: LiveSession
     private unowned let manager: LiveManager
     private(set) var window: NSWindow!
     private var shownSize: CGSize = .zero
+    private var hoverMonitor: Any?
     private static var cascade = NSPoint.zero
+    /// How far down from the top of the window the pointer shows the title bar.
+    private static let topZone: CGFloat = 56
 
-    private static let titledMask: NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
+    private static let titledMask: NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
     private static let framelessMask: NSWindow.StyleMask = [.borderless, .resizable]
 
     init(session: LiveSession, manager: LiveManager) {
@@ -30,6 +34,9 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         let window = LiveWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: Self.titledMask, backing: .buffered, defer: false)
         window.title = session.title
         window.subtitle = session.subtitle
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.acceptsMouseMovedEvents = true
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.collectionBehavior = [.fullScreenPrimary]
@@ -40,6 +47,11 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         host.sizingOptions = []
         window.contentView = host
         self.window = window
+        setTitleBar(shown: false, animated: false)
+        hoverMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .mouseExited]) { [weak self] event in
+            self?.pointerMoved(event)
+            return event
+        }
         contentSizeChanged()
         window.center()
         if Self.cascade != .zero {
@@ -58,6 +70,29 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         if window.isMiniaturized { window.deminiaturize(nil) }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    // MARK: The title bar that comes when the pointer asks for it
+
+    private func pointerMoved(_ event: NSEvent) {
+        guard event.window === window, window.styleMask.contains(.titled) else { return }
+        let inZone = event.type == .mouseMoved && event.locationInWindow.y >= window.frame.height - Self.topZone
+        if inZone != session.titleBarShown { setTitleBar(shown: inZone, animated: true) }
+    }
+
+    /// The three buttons of the window and the name of the phone, shown or not. The buttons are only faded, so they are
+    /// still there to click once the pointer has come to them.
+    private func setTitleBar(shown: Bool, animated: Bool) {
+        session.titleBarShown = shown
+        let buttons: [NSWindow.ButtonType] = [.closeButton, .miniaturizeButton, .zoomButton]
+        for type in buttons {
+            guard let button = window.standardWindowButton(type) else { continue }
+            if animated {
+                NSAnimationContext.runAnimationGroup { $0.duration = 0.18; button.animator().alphaValue = shown ? 1 : 0 }
+            } else {
+                button.alphaValue = shown ? 1 : 0
+            }
+        }
     }
 
     // MARK: Size
@@ -139,6 +174,7 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
             window.title = session.title
             window.subtitle = session.subtitle
         }
+        if on { session.titleBarShown = false } else { setTitleBar(shown: false, animated: false) }
         window.makeKeyAndOrderFront(nil)
     }
 
@@ -174,6 +210,8 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     // MARK: NSWindowDelegate
 
     func windowWillClose(_ notification: Notification) {
+        if let hoverMonitor { NSEvent.removeMonitor(hoverMonitor) }
+        hoverMonitor = nil
         manager.windowClosed(session)
     }
 }

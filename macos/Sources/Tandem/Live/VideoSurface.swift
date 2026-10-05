@@ -42,7 +42,8 @@ final class VideoSurfaceView: NSView {
         wantsLayer = true
         layer = CALayer()
         layer?.backgroundColor = NSColor.black.cgColor
-        displayLayer.videoGravity = .resizeAspect
+        // Fill, not fit: the window is locked to the shape of the picture, and a pixel of difference must not show as a black edge.
+        displayLayer.videoGravity = .resizeAspectFill
         displayLayer.backgroundColor = NSColor.black.cgColor
         layer?.addSublayer(displayLayer)
     }
@@ -133,11 +134,14 @@ final class VideoSurfaceView: NSView {
         let iw = CGFloat(CVPixelBufferGetWidth(image))
         let ih = CGFloat(CVPixelBufferGetHeight(image))
         guard iw > 0, ih > 0, bounds.width > 0, bounds.height > 0 else { return nil }
-        let scale = min(bounds.width / iw, bounds.height / ih)
+        // The picture fills the view (see the layer), so a little of it can lie outside.
+        let scale = max(bounds.width / iw, bounds.height / ih)
         let drawn = CGRect(x: (bounds.width - iw * scale) / 2, y: (bounds.height - ih * scale) / 2, width: iw * scale, height: ih * scale)
         let point = convert(event.locationInWindow, from: nil)
-        guard drawn.contains(point) else { return nil }
-        return (Float((point.x - drawn.minX) / drawn.width), Float(1 - (point.y - drawn.minY) / drawn.height))
+        guard bounds.contains(point) else { return nil }
+        let x = min(max((point.x - drawn.minX) / drawn.width, 0), 1)
+        let y = min(max(1 - (point.y - drawn.minY) / drawn.height, 0), 1)
+        return (Float(x), Float(y))
     }
 
     private func send(_ input: TandemMediaInput) { onInput?(input) }

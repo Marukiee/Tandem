@@ -751,3 +751,11 @@
 "Let another computer use this Mac" = "Laat een andere computer deze Mac gebruiken";
 "Its pointer and keyboard come in at the edge where it sits and work here. Only for devices in your circle" = "Zijn aanwijzer en toetsenbord komen binnen bij de rand waar hij staat en werken hier. Alleen voor apparaten in je circle";
 "The pointer is on %@. Press Control, Option and Command with Escape to bring it back." = "De aanwijzer is op %@. Druk op Control, Option en Command met Escape om hem terug te halen.";
+"The phone does not allow clicking yet" = "De telefoon staat klikken nog niet toe";
+"You can click and type on the phone now" = "Je kunt nu klikken en typen op de telefoon";
+"Clicking and typing on the phone is off" = "Klikken en typen op de telefoon staat uit";
+"To click and type on the phone from this Mac, Tandem needs its Accessibility control on the phone. Only you can turn that on." = "Om vanaf deze Mac op de telefoon te klikken en te typen heeft Tandem op de telefoon de bediening via Toegankelijkheid nodig. Alleen jij kunt die aanzetten.";
+"1. On the phone open Settings, then Accessibility." = "1. Open op de telefoon Instellingen en dan Toegankelijkheid.";
+"2. Open Installed apps (or Downloaded apps), then Tandem." = "2. Open Geïnstalleerde apps (of Gedownloade apps) en dan Tandem.";
+"3. Turn Tandem on and allow it." = "3. Zet Tandem aan en sta het toe.";
+"4. Show the phone screen again here." = "4. Toon het telefoonscherm hier opnieuw.";

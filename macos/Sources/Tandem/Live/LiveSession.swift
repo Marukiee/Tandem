@@ -181,6 +181,8 @@ final class LiveSession {
     var stats: LiveStats?
     var alwaysOnTop = false
     var frameless = false
+    /// The pointer is at the top of the window, so the title bar and the name of the phone are drawn.
+    var titleBarShown = false
     var showStats: Bool = UserDefaults.standard.bool(forKey: "liveShowStats") {
         didSet { UserDefaults.standard.set(showStats, forKey: "liveShowStats") }
     }

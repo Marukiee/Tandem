@@ -12,6 +12,9 @@ struct LiveView: View {
     @LocalState private var hideTask: Task<Void, Never>?
     @LocalState private var overToolbar = false
     @LocalState private var showInfo = false
+    @LocalState private var showMore = false
+    @LocalState private var showCamera = false
+    @LocalState private var showControlHelp = false
 
     private var phoneOnline: Bool { model.device(session.peer)?.online ?? (session.peer == "debug") }
 
@@ -48,7 +51,25 @@ struct LiveView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.94)))
                 }
             }
+
+            // The name of the phone, only while the pointer is at the top (the title bar of the window is not drawn).
+            VStack {
+                if session.titleBarShown {
+                    VStack(spacing: 1) {
+                        Text(session.title).font(.callout.weight(.semibold))
+                        Text(session.subtitle).font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    .liveGlass(in: .capsule)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                Spacer()
+            }
+            .allowsHitTesting(false)
         }
+        .ignoresSafeArea()
         .frame(minWidth: 160, minHeight: 90)
         .onContinuousHover { phase in
             switch phase {
@@ -59,6 +80,7 @@ struct LiveView: View {
         .animation(.tandem, value: controlsVisible)
         .animation(.tandem, value: session.phase)
         .animation(.tandemFade, value: session.showStats)
+        .animation(.tandem, value: session.titleBarShown)
         .onAppear { scheduleHide() }
     }
 
@@ -137,36 +159,8 @@ struct LiveView: View {
                 }
                 button("camera.viewfinder", help: "Copy a picture to the clipboard") { controller.copyScreenshot() }
                     .disabled(!session.hasPicture)
-                Menu {
-                    Button("Turn the picture a quarter", systemImage: "rotate.right") { turn() }
-                        .disabled(!session.hasPicture)
-                    if session.kind == .camera {
-                        Toggle("Mirror the picture", systemImage: "arrow.left.and.right.righttriangle.left.righttriangle.right", isOn: Binding(get: { session.mirrored }, set: { session.mirrored = $0 }))
-                        Picker("Camera", selection: Binding(get: { session.cameraFacing }, set: { choose(facing: $0, quality: session.quality) })) {
-                            Text("Back camera").tag(LiveCameraFacing.back)
-                            Text("Front camera").tag(LiveCameraFacing.front)
-                        }
-                        Picker("Quality", selection: Binding(get: { session.quality }, set: { choose(facing: session.cameraFacing, quality: $0) })) {
-                            Text("720p").tag(LiveQuality.standard)
-                            Text("1080p").tag(LiveQuality.high)
-                        }
-                    }
-                    Toggle("Keep this window on top", systemImage: "pin", isOn: Binding(get: { session.alwaysOnTop }, set: { controller.setAlwaysOnTop($0) }))
-                    Toggle("Floating window without a frame", systemImage: "rectangle.dashed", isOn: Binding(get: { session.frameless }, set: { controller.setFrameless($0) }))
-                    Toggle("Show statistics", isOn: Binding(get: { session.showStats }, set: { session.showStats = $0 }))
-                    Divider()
-                    Button("Close window") { controller.close() }
-                } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 20, height: 20)
-                }
-                .menuStyle(.button)
-                .menuIndicator(.hidden)
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .controlSize(.large)
-                .fixedSize()
+                button("ellipsis", help: "More") { showMore.toggle() }
+                    .popover(isPresented: $showMore, arrowEdge: .top) { menuRows(everything: true) }
             }
             .padding(8)
         }
@@ -190,16 +184,26 @@ struct LiveView: View {
                 button("rotate.right", help: "Turn the picture a quarter") { turn() }
                     .disabled(!session.hasPicture)
                 if session.kind == .screen {
-                    // Clicks and keys go to the phone only when it allowed it; until then the button is grey and says why.
+                    // Always pressable: when the phone has not allowed clicking yet, the press says what to do about it.
                     button(
                         "cursorarrow.click.2",
                         help: session.controlGranted
                             ? (session.controlOn ? "Stop clicking and typing on the phone" : "Click and type on the phone")
-                            : "The phone does not allow clicking yet. Turn on Tandem control in its Accessibility settings, then show the screen again.",
+                            : "The phone does not allow clicking yet",
                         active: session.controlGranted && session.controlOn
-                    ) { session.controlOn.toggle() }
-                        .disabled(!session.controlGranted)
-                        .opacity(session.controlGranted ? 1 : 0.5)
+                    ) {
+                        if session.controlGranted {
+                            session.controlOn.toggle()
+                            FloatingToast.show(
+                                session.controlOn ? String(localized: "You can click and type on the phone now") : String(localized: "Clicking and typing on the phone is off"),
+                                symbol: session.controlOn ? "cursorarrow.click.2" : "cursorarrow.slash"
+                            )
+                        } else {
+                            showControlHelp = true
+                        }
+                    }
+                    .opacity(session.controlGranted ? 1 : 0.55)
+                    .popover(isPresented: $showControlHelp, arrowEdge: .top) { controlHelp }
                 }
                 if session.kind == .camera {
                     button(
@@ -228,9 +232,10 @@ struct LiveView: View {
             Image(systemName: symbol)
                 .font(.system(size: 15, weight: .semibold))
                 .frame(width: 20, height: 20)
-                .foregroundStyle(tint ?? (active ? Palette.indigoLight : Color.primary))
+                .foregroundStyle(tint ?? (active ? Color.white : Color.primary))
         }
         .buttonStyle(.glass)
+        .tint(active ? Palette.indigo : nil)
         .buttonBorderShape(.circle)
         .controlSize(.large)
         .help(help)
@@ -238,35 +243,18 @@ struct LiveView: View {
 
     /// The side of the phone's camera and how sharp the picture is. A change asks the phone again: it is the same window.
     private var cameraMenu: some View {
-        Menu {
-            Picker("Camera", selection: Binding(
-                get: { session.cameraFacing },
-                set: { choose(facing: $0, quality: session.quality) }
-            )) {
-                Text("Back camera").tag(LiveCameraFacing.back)
-                Text("Front camera").tag(LiveCameraFacing.front)
+        button("arrow.triangle.2.circlepath.camera", help: "Camera and quality") { showCamera.toggle() }
+            .popover(isPresented: $showCamera, arrowEdge: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    MenuRow(title: "Back camera", checked: session.cameraFacing == .back) { choose(facing: .back, quality: session.quality); showCamera = false }
+                    MenuRow(title: "Front camera", checked: session.cameraFacing == .front) { choose(facing: .front, quality: session.quality); showCamera = false }
+                    Divider().padding(.vertical, 4)
+                    MenuRow(title: "720p", checked: session.quality == .standard) { choose(facing: session.cameraFacing, quality: .standard); showCamera = false }
+                    MenuRow(title: "1080p", checked: session.quality == .high) { choose(facing: session.cameraFacing, quality: .high); showCamera = false }
+                }
+                .padding(8)
+                .frame(width: 220)
             }
-            .pickerStyle(.inline)
-            Picker("Quality", selection: Binding(
-                get: { session.quality },
-                set: { choose(facing: session.cameraFacing, quality: $0) }
-            )) {
-                Text("720p").tag(LiveQuality.standard)
-                Text("1080p").tag(LiveQuality.high)
-            }
-            .pickerStyle(.inline)
-        } label: {
-            Image(systemName: "arrow.triangle.2.circlepath.camera")
-                .font(.system(size: 15, weight: .semibold))
-                .frame(width: 20, height: 20)
-        }
-        .menuStyle(.button)
-        .menuIndicator(.hidden)
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
-        .controlSize(.large)
-        .fixedSize()
-        .help("Camera and quality")
     }
 
     private func choose(facing: LiveCameraFacing, quality: LiveQuality) {
@@ -275,34 +263,92 @@ struct LiveView: View {
         LiveManager.shared.start(device: device, kind: .camera, facing: facing, quality: quality)
     }
 
+    /// The same round button as the others, with the rest in a list under it.
     private var moreMenu: some View {
-        Menu {
-            Toggle("Show statistics", isOn: Binding(get: { session.showStats }, set: { session.showStats = $0 }))
+        button("ellipsis", help: "More") { showMore.toggle() }
+            .popover(isPresented: $showMore, arrowEdge: .top) { menuRows(everything: false) }
+            .popover(isPresented: $showInfo, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("A window, not a webcam", systemImage: "camera.badge.ellipsis").font(.headline)
+                    Text(Self.webcamNote).font(.callout).foregroundStyle(.secondary)
+                }
+                .padding(16)
+                .frame(width: 280)
+            }
+    }
+
+    /// What is in the list under the round button. In a narrow window the buttons that did not fit are in it too.
+    private func menuRows(everything: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if everything {
+                MenuRow(title: "Turn the picture a quarter", symbol: "rotate.right", disabled: !session.hasPicture) { turn(); showMore = false }
+                if session.kind == .camera {
+                    MenuRow(title: "Mirror the picture", symbol: "arrow.left.and.right.righttriangle.left.righttriangle.right", checked: session.mirrored) { session.mirrored.toggle() }
+                    MenuRow(title: "Back camera", checked: session.cameraFacing == .back) { choose(facing: .back, quality: session.quality); showMore = false }
+                    MenuRow(title: "Front camera", checked: session.cameraFacing == .front) { choose(facing: .front, quality: session.quality); showMore = false }
+                    MenuRow(title: "720p", checked: session.quality == .standard) { choose(facing: session.cameraFacing, quality: .standard); showMore = false }
+                    MenuRow(title: "1080p", checked: session.quality == .high) { choose(facing: session.cameraFacing, quality: .high); showMore = false }
+                }
+                MenuRow(title: "Keep this window on top", symbol: "pin", checked: session.alwaysOnTop) { controller.setAlwaysOnTop(!session.alwaysOnTop) }
+                MenuRow(title: "Floating window without a frame", symbol: "rectangle.dashed", checked: session.frameless) { showMore = false; controller.setFrameless(!session.frameless) }
+            }
+            MenuRow(title: "Show statistics", symbol: "chart.bar", checked: session.showStats) { session.showStats.toggle() }
             if session.kind == .camera {
-                Divider()
-                Button("About using this in a call…") { showInfo = true }
+                MenuRow(title: "About using this in a call…", symbol: "info.circle") { showMore = false; showInfo = true }
             }
-            Divider()
-            Button("Close window") { controller.close() }
-        } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 15, weight: .semibold))
-                .frame(width: 20, height: 20)
+            Divider().padding(.vertical, 4)
+            MenuRow(title: "Close window", symbol: "xmark") { showMore = false; controller.close() }
         }
-        .menuStyle(.button)
-        .menuIndicator(.hidden)
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
-        .controlSize(.large)
-        .fixedSize()
-        .popover(isPresented: $showInfo, arrowEdge: .top) {
-            VStack(alignment: .leading, spacing: 8) {
-                Label("A window, not a webcam", systemImage: "camera.badge.ellipsis").font(.headline)
-                Text(Self.webcamNote).font(.callout).foregroundStyle(.secondary)
+        .padding(8)
+        .frame(width: 270)
+    }
+
+    /// Why the button for clicking on the phone does nothing yet, and what to do about it.
+    private var controlHelp: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("The phone does not allow clicking yet", systemImage: "cursorarrow.click.2").font(.headline)
+            Text("To click and type on the phone from this Mac, Tandem needs its Accessibility control on the phone. Only you can turn that on.")
+                .font(.callout).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("1. On the phone open Settings, then Accessibility.")
+                Text("2. Open Installed apps (or Downloaded apps), then Tandem.")
+                Text("3. Turn Tandem on and allow it.")
+                Text("4. Show the phone screen again here.")
             }
-            .padding(16)
-            .frame(width: 280)
+            .font(.callout)
         }
+        .padding(16)
+        .frame(width: 320)
+    }
+}
+
+/// One line of the lists under the round buttons: a symbol, the words, and a check when it is on.
+private struct MenuRow: View {
+    let title: LocalizedStringKey
+    var symbol: String?
+    var checked: Bool?
+    var disabled = false
+    let action: () -> Void
+    @LocalState private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: symbol ?? "circle").opacity(symbol == nil ? 0 : 1).frame(width: 18)
+                Text(title)
+                Spacer(minLength: 8)
+                if checked == true { Image(systemName: "checkmark").font(.caption.weight(.semibold)) }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(hovering && !disabled ? Color.primary.opacity(0.1) : Color.clear, in: .rect(cornerRadius: 8, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.4 : 1)
+        .onHover { hovering = $0 }
     }
 }
 
