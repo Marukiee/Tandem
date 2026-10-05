@@ -34,4 +34,27 @@
     <string name="quickshare_stopped">De overdracht is gestopt</string>
     <string name="quickshare_row_on">Aan, zichtbaar voor iedereen in de buurt</string>
     <string name="quickshare_row_off">Uit</string>
+    <string name="tile_quickshare_label">Quick Share</string>
+    <string name="tile_quickshare_on">Aan</string>
+    <string name="tile_quickshare_off">Uit</string>
+    <string name="settings_quickshare_group">Quick Share</string>
+    <string name="settings_quickshare_tile">Quick Share-tegel</string>
+    <string name="settings_quickshare_tile_sub">Zet Quick Share bij de snelle instellingen van Android, om het met één tik aan en uit te zetten</string>
+    <string name="settings_quickshare_tap">Als je op de tegel tikt</string>
+    <string name="settings_quickshare_tap_sub">Quick Share aan of uit zetten, of de pagina openen</string>
+    <string name="quickshare_tap_toggle">Aan of uit</string>
+    <string name="quickshare_tap_open">Pagina openen</string>
+    <string name="settings_quickshare_visible">Blijf aan gedurende</string>
+    <string name="settings_quickshare_visible_sub">Quick Share zet zichzelf na deze tijd uit, zodat deze telefoon niet langer zichtbaar is dan je wilt</string>
+    <string name="quickshare_visible_always">Tot ik het uitzet</string>
+    <string name="quickshare_visible_hour">1 uur</string>
+    <string name="quickshare_visible_10">10 minuten</string>
+    <string name="settings_quickshare_page">Quick Share-pagina</string>
+    <string name="settings_quickshare_page_sub">De apparaten in de buurt en hoe het werkt</string>
+    <string name="quickshare_row_hint">Versturen naar en ontvangen van apparaten in de buurt</string>
+    <string name="perm_needs_photos">Heeft toegang tot je foto\'s nodig. Tik om het toe te staan.</string>
+    <string name="perm_needs_bluetooth">Heeft de Bluetooth-toestemming nodig. Tik om het toe te staan.</string>
+    <string name="perm_needs_listener">Heeft toegang tot meldingen nodig. Tik om het toe te staan.</string>
+    <string name="perm_needs_phone">Heeft de toestemming voor gesprekken nodig. Tik om het toe te staan.</string>
+    <string name="perm_needs_notifications_quickshare">Heeft de toestemming voor meldingen nodig, om te laten zien wie je iets wil sturen. Tik om het toe te staan.</string>
 </resources>

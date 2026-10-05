@@ -61,6 +61,9 @@ internal object FocusKeys {
     const val MediaShare = "sharing.music"
     const val Speaker = "sharing.speaker"
     const val SpeakerDelay = "sharing.speaker.delay"
+    const val QuickTile = "sharing.quick.tile"
+    const val QuickTap = "sharing.quick.tap"
+    const val QuickVisible = "sharing.quick.visible"
 
     const val Mirror = "notif.mirror"
     const val Codes = "notif.codes"
@@ -194,6 +197,18 @@ internal object SettingsCatalog {
         SettingsEntry(
             "sharing_music", R.string.settings_media_share, R.string.settings_kw_sharing_music, SettingsCategory.Sharing, sharing,
             { TandemIcons.Music }, subtitle = R.string.settings_media_share_sub, focus = FocusKeys.MediaShare,
+        ),
+        SettingsEntry(
+            "sharing_quick_tile", R.string.settings_quickshare_tile, R.string.settings_kw_sharing_quick_tile, SettingsCategory.Sharing, sharing,
+            { TandemIcons.Send }, subtitle = R.string.settings_quickshare_tile_sub, focus = FocusKeys.QuickTile,
+        ),
+        SettingsEntry(
+            "sharing_quick_tap", R.string.settings_quickshare_tap, R.string.settings_kw_sharing_quick_tap, SettingsCategory.Sharing, sharing,
+            { TandemIcons.Send }, subtitle = R.string.settings_quickshare_tap_sub, focus = FocusKeys.QuickTap,
+        ),
+        SettingsEntry(
+            "sharing_quick_visible", R.string.settings_quickshare_visible, R.string.settings_kw_sharing_quick_visible, SettingsCategory.Sharing, sharing,
+            { TandemIcons.Send }, subtitle = R.string.settings_quickshare_visible_sub, focus = FocusKeys.QuickVisible,
         ),
         SettingsEntry(
             "sharing_media_apps", R.string.settings_media_apps, R.string.settings_kw_sharing_media_apps, SettingsCategory.Sharing, Route.MediaApps,

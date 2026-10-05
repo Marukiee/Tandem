@@ -108,6 +108,14 @@ private fun MainNavigation() {
     val startAtPair by LocalContext.current.graph.startAtPair.collectAsState()
     val pairLink by LocalContext.current.graph.pairLink.collectAsState()
     LaunchedEffect(pairLink) { if (pairLink != null) nav.push(Route.Pair) }
+    val quickShareFlag = LocalContext.current.graph.openQuickShare
+    val openQuickShare by quickShareFlag.collectAsState()
+    LaunchedEffect(openQuickShare) {
+        if (openQuickShare) {
+            nav.push(Route.SettingsPage(nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId.QuickShare))
+            quickShareFlag.value = false
+        }
+    }
     val pairFlag = LocalContext.current.graph.startAtPair
     LaunchedEffect(startAtPair) {
         if (startAtPair) {

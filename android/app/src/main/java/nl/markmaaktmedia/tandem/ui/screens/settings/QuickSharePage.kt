@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
+import nl.markmaaktmedia.tandem.ui.Route
 import nl.markmaaktmedia.tandem.ui.components.ContentRow
 import nl.markmaaktmedia.tandem.ui.components.InfoRow
 import nl.markmaaktmedia.tandem.ui.components.PillSpinner
@@ -30,16 +31,20 @@ import uniffi.tandem_core.TandemQsKind
 
 /** Quick Share without Google services: the switch, how it works, and the devices that were found nearby. */
 @Composable
-internal fun QuickSharePage(onBack: () -> Unit) {
+internal fun QuickSharePage(onBack: () -> Unit, onOpen: (Route) -> Unit = {}) {
     val host = LocalContext.current.graph.quickShare
     val enabled by host.enabled.collectAsState()
     val peers by host.peers.collectAsState()
     val problem by host.problem.collectAsState()
+    val status = nl.markmaaktmedia.tandem.ui.components.rememberPermissionStatus()
 
     SettingsPageFrame(stringResource(R.string.quickshare_title), onBack) {
         Spacer(Modifier.height(16.dp))
         SettingsGroup {
-            SwitchRow(0, 1, TandemIcons.Send, stringResource(R.string.quickshare_toggle_title), stringResource(R.string.quickshare_toggle_sub), enabled, { host.setEnabled(it) })
+            SwitchRow(
+                0, 1, TandemIcons.Send, stringResource(R.string.quickshare_toggle_title), stringResource(R.string.quickshare_toggle_sub), enabled, { host.setEnabled(it) },
+                blocked = if (status.notifications) null else stringResource(R.string.perm_needs_notifications_quickshare), onBlocked = { onOpen(Route.Access) },
+            )
         }
         problem?.let {
             Text(

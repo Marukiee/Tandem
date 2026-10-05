@@ -122,4 +122,7 @@
     <string name="clip_history_clear">Wis alles behalve wat je bewaart</string>
     <string name="settings_kw_sharing_clip_history">klembord, geschiedenis, gekopieerd, plakken, opnieuw kopieren, clips</string>
     <string name="settings_kw_quickshare">quick share nearby share airdrop android delen versturen ontvangen bestanden offline google</string>
+    <string name="settings_kw_sharing_quick_tile">quick share tegel snelle instellingen schakelaar toevoegen</string>
+    <string name="settings_kw_sharing_quick_tap">quick share tegel tik openen aan uit actie</string>
+    <string name="settings_kw_sharing_quick_visible">quick share zichtbaar aan blijven timer minuten uur uit</string>
 </resources>

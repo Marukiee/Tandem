@@ -9,6 +9,8 @@ import android.util.Log
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -65,6 +67,16 @@ class QuickShareHost(
     private val _enabled = MutableStateFlow(prefs.getBoolean(ENABLED, false))
     val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
 
+    /** How long it stays on after it was turned on, in minutes. Zero is until it is turned off. */
+    private val _visibleMinutes = MutableStateFlow(prefs.getInt(VISIBLE_MINUTES, 0))
+    val visibleMinutes: StateFlow<Int> = _visibleMinutes.asStateFlow()
+
+    /** What a tap on the tile does: opens the page when true, turns Quick Share on or off when false. */
+    private val _tileOpens = MutableStateFlow(prefs.getBoolean(TILE_OPENS, false))
+    val tileOpens: StateFlow<Boolean> = _tileOpens.asStateFlow()
+
+    private var offJob: Job? = null
+
     private val _peers = MutableStateFlow<List<Peer>>(emptyList())
     val peers: StateFlow<List<Peer>> = _peers.asStateFlow()
 
@@ -82,15 +94,57 @@ class QuickShareHost(
     private var lock: WifiManager.MulticastLock? = null
     private val notifications = QuickShareNotifications(app)
 
-    /** Starts it when the person left it on. Called once the engine runs. */
+    /** Starts it when the person left it on, unless the time they gave it has run out. Called once the engine runs. */
     fun startIfEnabled() {
-        if (_enabled.value) scope.launch { start() }
+        if (!_enabled.value) return
+        val until = prefs.getLong(UNTIL, 0)
+        if (until != 0L && System.currentTimeMillis() >= until) {
+            setEnabled(false)
+            return
+        }
+        scheduleOff(until)
+        scope.launch { start() }
     }
 
     fun setEnabled(on: Boolean) {
         prefs.edit().putBoolean(ENABLED, on).apply()
         _enabled.value = on
+        if (on) scheduleOff(0) else cancelOff()
         scope.launch { if (on) start() else stop() }
+        QuickShareTileService.refresh(app)
+    }
+
+    fun setVisibleMinutes(minutes: Int) {
+        prefs.edit().putInt(VISIBLE_MINUTES, minutes).apply()
+        _visibleMinutes.value = minutes
+        if (_enabled.value) scheduleOff(0)
+    }
+
+    fun setTileOpens(opens: Boolean) {
+        prefs.edit().putBoolean(TILE_OPENS, opens).apply()
+        _tileOpens.value = opens
+    }
+
+    /** Turns itself off after the time that was chosen. `until` is a time that was kept from before, or zero for a fresh start. */
+    private fun scheduleOff(until: Long) {
+        offJob?.cancel()
+        val minutes = _visibleMinutes.value
+        if (minutes <= 0) {
+            prefs.edit().putLong(UNTIL, 0).apply()
+            return
+        }
+        val end = if (until > 0) until else System.currentTimeMillis() + minutes * 60_000L
+        prefs.edit().putLong(UNTIL, end).apply()
+        offJob = scope.launch {
+            delay((end - System.currentTimeMillis()).coerceAtLeast(0))
+            setEnabled(false)
+        }
+    }
+
+    private fun cancelOff() {
+        offJob?.cancel()
+        offJob = null
+        prefs.edit().putLong(UNTIL, 0).apply()
     }
 
     private suspend fun start() = withContext(Dispatchers.IO) {
@@ -227,5 +281,8 @@ class QuickShareHost(
     companion object {
         private const val TAG = "TandemQuickShare"
         private const val ENABLED = "enabled"
+        private const val VISIBLE_MINUTES = "visible_minutes"
+        private const val TILE_OPENS = "tile_opens"
+        private const val UNTIL = "until"
     }
 }

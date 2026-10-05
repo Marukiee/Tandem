@@ -5,15 +5,30 @@ import TandemCore
 /// In the menu bar panel: the devices nearby that Quick Share found, to send files to with a click or by dropping them, and what is
 /// being sent now. Only there while Quick Share is on.
 struct MenuQuickShare: View {
-    private var share: QuickShare { .shared }
+    @Bindable private var share = QuickShare.shared
 
     var body: some View {
-        if share.enabled {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Quick Share")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 10)
+        VStack(alignment: .leading, spacing: 8) {
+            // The switch is always there, so Quick Share goes on and off from the menu bar without opening Settings.
+            HStack(spacing: 10) {
+                Image(systemName: "arrow.up.arrow.down.circle.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(share.enabled ? Palette.indigo : Color.secondary)
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(share.enabled ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07)))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Quick Share").font(.callout.weight(.semibold))
+                    Text(share.enabled ? "Visible to everyone nearby" : "Off")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 4)
+                Toggle("", isOn: $share.enabled).labelsHidden().toggleStyle(.switch).controlSize(.small)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .hoverHighlight(radius: 18)
+            if share.enabled {
                 if share.peers.isEmpty {
                     HStack(spacing: 10) {
                         PillSpinner(size: 16)
@@ -34,9 +49,10 @@ struct MenuQuickShare: View {
                 }
                 ForEach(share.outgoing) { item in OutgoingRow(item: item) }
             }
-            .animation(.tandem, value: share.peers.map(\.id))
-            .animation(.tandem, value: share.outgoing.map(\.id))
         }
+        .animation(.tandem, value: share.enabled)
+        .animation(.tandem, value: share.peers.map(\.id))
+        .animation(.tandem, value: share.outgoing.map(\.id))
     }
 }
 

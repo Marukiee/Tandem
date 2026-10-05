@@ -55,6 +55,9 @@ class Graph(app: Application) {
     /** Set by the first-run flow so the home screen opens straight on pairing. */
     val startAtPair = kotlinx.coroutines.flow.MutableStateFlow(false)
 
+    /** Set by the tile of Quick Share: the page of Quick Share is to be opened. */
+    val openQuickShare = kotlinx.coroutines.flow.MutableStateFlow(false)
+
     /** A tandem:// pairing link that opened the app from outside. */
     val pairLink = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 }

@@ -34,4 +34,27 @@
     <string name="quickshare_stopped">The transfer stopped</string>
     <string name="quickshare_row_on">On, visible to everyone nearby</string>
     <string name="quickshare_row_off">Off</string>
+    <string name="tile_quickshare_label">Quick Share</string>
+    <string name="tile_quickshare_on">On</string>
+    <string name="tile_quickshare_off">Off</string>
+    <string name="settings_quickshare_group">Quick Share</string>
+    <string name="settings_quickshare_tile">Quick Share tile</string>
+    <string name="settings_quickshare_tile_sub">Put Quick Share in the quick settings of Android, to turn it on and off with one tap</string>
+    <string name="settings_quickshare_tap">When you tap the tile</string>
+    <string name="settings_quickshare_tap_sub">Turn Quick Share on or off, or open its page</string>
+    <string name="quickshare_tap_toggle">Turn on or off</string>
+    <string name="quickshare_tap_open">Open the page</string>
+    <string name="settings_quickshare_visible">Stay on for</string>
+    <string name="settings_quickshare_visible_sub">Quick Share turns itself off after this time, so this phone is not visible longer than you want</string>
+    <string name="quickshare_visible_always">Until I turn it off</string>
+    <string name="quickshare_visible_hour">1 hour</string>
+    <string name="quickshare_visible_10">10 minutes</string>
+    <string name="settings_quickshare_page">Quick Share page</string>
+    <string name="settings_quickshare_page_sub">The devices nearby and how it works</string>
+    <string name="quickshare_row_hint">Send to and receive from devices nearby</string>
+    <string name="perm_needs_photos">Needs access to your photos. Tap to allow it.</string>
+    <string name="perm_needs_bluetooth">Needs the Bluetooth permission. Tap to allow it.</string>
+    <string name="perm_needs_listener">Needs access to notifications. Tap to allow it.</string>
+    <string name="perm_needs_phone">Needs the permission for calls. Tap to allow it.</string>
+    <string name="perm_needs_notifications_quickshare">Needs the permission for notifications, to show who wants to send you something. Tap to allow it.</string>
 </resources>

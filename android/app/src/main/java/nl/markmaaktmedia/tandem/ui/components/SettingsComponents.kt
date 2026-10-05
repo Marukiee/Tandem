@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
@@ -55,15 +56,25 @@ fun SwitchRow(
     checked: Boolean,
     onChange: (Boolean) -> Unit,
     enabled: Boolean = true,
+    /**
+     * Why the switch cannot be used yet, when the permission it needs is missing. The row goes grey, says it instead of its
+     * description, and a tap on it calls [onBlocked] (which takes the person to where it can be allowed).
+     */
+    blocked: String? = null,
+    onBlocked: (() -> Unit)? = null,
 ) {
-    GroupedRow(index, total, onClick = if (enabled) ({ onChange(!checked) }) else null) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+    val usable = enabled && blocked == null
+    GroupedRow(index, total, onClick = if (blocked != null) onBlocked else if (enabled) ({ onChange(!checked) }) else null) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp).then(if (blocked != null) Modifier.alpha(0.6f) else Modifier),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
             RowIcon(icon)
-            RowText(title, subtitle, Modifier.weight(1f))
+            RowText(title, blocked ?: subtitle, Modifier.weight(1f))
             Switch(
-                checked = checked,
+                checked = checked && blocked == null,
                 onCheckedChange = null,
-                enabled = enabled,
+                enabled = usable,
                 colors = SwitchDefaults.colors(),
             )
         }

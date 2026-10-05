@@ -27,5 +27,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleLink(intent: android.content.Intent?) {
         intent?.data?.toString()?.takeIf { it.startsWith("tandem://") }?.let { graph.pairLink.value = it }
+        if (intent?.action == nl.markmaaktmedia.tandem.quickshare.QuickShareTileService.ACTION_OPEN_PAGE) graph.openQuickShare.value = true
     }
 }

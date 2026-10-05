@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.1.58",
+    "date": "2026-10-05",
+    "en": {
+      "title": "A Quick Share tile, and settings that say what they need",
+      "new": [
+        "Android: a Quick Share tile for the quick settings of Android. It is lit while Quick Share is on, and a tap turns it on or off, or opens its page, as you choose. Under Devices and sharing there is a new group Quick Share with the switch, how long it stays on (until you turn it off, 1 hour or 10 minutes), a button that puts the tile in your quick settings, and what a tap on the tile does",
+        "Android: settings that need a permission that is not given yet are grey and say what they need, and a tap takes you to where you can allow it. That goes for the screenshot prompt, Bluetooth messages, mirroring notifications, copying codes, calls and Quick Share. Before only the hotspot did that",
+        "Mac: the menu bar panel has a Quick Share switch that is always there, so you can turn it on and off without opening Settings"
+      ]
+    },
+    "nl": {
+      "title": "Een Quick Share-tegel, en instellingen die zeggen wat ze nodig hebben",
+      "new": [
+        "Android: een Quick Share-tegel voor de snelle instellingen van Android. Hij licht op zolang Quick Share aan staat, en een tik zet het aan of uit, of opent de pagina, zoals je kiest. Bij Apparaten en delen staat een nieuwe groep Quick Share met de schakelaar, hoe lang het aan blijft (tot je het uitzet, 1 uur of 10 minuten), een knop die de tegel bij je snelle instellingen zet, en wat een tik op de tegel doet",
+        "Android: instellingen die een toestemming nodig hebben die nog niet gegeven is zijn grijs en zeggen wat ze nodig hebben, en een tik brengt je naar waar je het kunt toestaan. Dat geldt voor de screenshotvraag, Bluetooth-berichten, meldingen spiegelen, codes kopieren, gesprekken en Quick Share. Eerder deed alleen de hotspot dat",
+        "Mac: het menubalkpaneel heeft een Quick Share-schakelaar die er altijd is, zodat je het kunt aan- en uitzetten zonder Instellingen te openen"
+      ]
+    }
+  },
+  {
     "version": "0.1.57",
     "date": "2026-10-05",
     "en": {
