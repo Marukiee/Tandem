@@ -340,7 +340,10 @@ struct LiveView: View {
                 Text("1. On the phone open Settings, then Accessibility.")
                 Text("2. Open Installed apps (or Downloaded apps), then Tandem.")
                 Text("3. Turn Tandem on and allow it.")
-                Text("4. Show the phone screen again here.")
+                Text("If the switch is grey: open App info for Tandem on the phone, tap the three dots at the top and choose Allow restricted settings. Then do step 2 and 3 again.")
+                    .foregroundStyle(.secondary)
+                Text("The button here wakes up by itself once the phone allows it.")
+                    .foregroundStyle(.secondary)
             }
             .font(.callout)
         }

@@ -6,6 +6,7 @@ import android.graphics.Path
 import android.os.Bundle
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import nl.markmaaktmedia.tandem.graph
 
 /**
  * What lets a computer click and type on this phone while it shows the screen. Android gives an app no other way to touch
@@ -17,6 +18,7 @@ class TandemAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
+        runCatching { graph.live.accessibilityChanged() }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
@@ -25,6 +27,7 @@ class TandemAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         if (instance === this) instance = null
+        runCatching { graph.live.accessibilityChanged() }
         super.onDestroy()
     }
 

@@ -6,7 +6,7 @@ import TandemCore
 
 /// The sections of the Settings window, in the order System Settings would list them.
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case general, devices, files, clipboard, screen, access, hotspot, updates, about
+    case general, devices, files, clipboard, screen, pointer, access, hotspot, updates, about
 
     var id: String { rawValue }
 
@@ -17,6 +17,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .files: "Files"
         case .clipboard: "Clipboard"
         case .screen: "Remote control"
+        case .pointer: "Mouse and keyboard"
         case .access: "Access"
         case .hotspot: "Hotspot"
         case .updates: "Updates"
@@ -31,6 +32,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .files: "folder"
         case .clipboard: "doc.on.clipboard"
         case .screen: "display"
+        case .pointer: "cursorarrow.motionlines"
         case .access: "hand.raised"
         case .hotspot: "personalhotspot"
         case .updates: "arrow.down.circle"
@@ -46,6 +48,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .files: 680
         case .clipboard: 720
         case .screen: 700
+        case .pointer: 720
         case .access: 460
         case .hotspot: 470
         case .updates: 330
@@ -80,6 +83,7 @@ struct SettingsView: View {
         case .files: FileSettings()
         case .clipboard: ClipboardSettings()
         case .screen: ScreenSettings()
+        case .pointer: PointerSettings()
         case .access: AccessSettings()
         case .hotspot: HotspotSettings()
         case .updates: UpdateSettings()

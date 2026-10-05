@@ -8,6 +8,8 @@ import TandemCore
 /// Only shown when an Android phone is paired.
 struct MenuInsertFromPhone: View {
     @Environment(EngineModel.self) private var model
+    /// The tile under the pointer: its explanation takes the place of the title above the tiles.
+    @LocalState private var hovered: InsertKind?
 
     var body: some View {
         // Only phones that say they can answer: until an app version does, there is nothing to show.
@@ -15,15 +17,21 @@ struct MenuInsertFromPhone: View {
         if !phones.isEmpty || InsertHUDText.flat {
             let ready = phones.contains { $0.online }
             VStack(alignment: .leading, spacing: 8) {
-                Text("Insert from phone")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 10)
-                GlassEffectContainer(spacing: 8) {
-                    HStack(spacing: 8) {
-                        ForEach(InsertKind.allCases) { kind in
-                            MenuKindTile(kind: kind) { InsertFromPhone.shared.begin(kind: kind) }
-                        }
+                Group {
+                    if let hovered {
+                        Text(verbatim: hovered.instruction).foregroundStyle(Palette.indigo)
+                    } else {
+                        Text("Insert from phone").foregroundStyle(.secondary)
+                    }
+                }
+                .font(.caption.weight(.semibold))
+                .padding(.leading, 10)
+                .animation(.tandemFade, value: hovered)
+                HStack(spacing: 8) {
+                    ForEach(InsertKind.allCases.filter { $0 != .picture }) { kind in
+                        MenuKindTile(kind: kind, onHover: { inside in
+                            if inside { hovered = kind } else if hovered == kind { hovered = nil }
+                        }) { InsertFromPhone.shared.begin(kind: kind) }
                     }
                 }
                 .opacity(ready ? 1 : 0.55)
@@ -32,45 +40,43 @@ struct MenuInsertFromPhone: View {
     }
 }
 
-/// The symbol in the corner where the eye starts, the name at the opposite one. Under the pointer the symbol
-/// fills and swells and the tile rises, all on springs.
+/// The symbol at the left, the name next to it, on the same plain tint as the rows around it. Under the pointer the
+/// tint deepens and the symbol fills: colour only, no bounce.
 private struct MenuKindTile: View {
     let kind: InsertKind
+    var onHover: (Bool) -> Void
     let action: () -> Void
     @LocalState private var hovering = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
                 ZStack {
                     Circle().fill(hovering ? Palette.indigo : Palette.indigo.opacity(0.15))
                     Image(systemName: kind.symbol)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(hovering ? Color.white : Palette.indigo)
                 }
                 .frame(width: 32, height: 32)
-                .scaleEffect(hovering && !reduceMotion ? 1.14 : 1, anchor: .topLeading)
-                Spacer(minLength: 4)
                 Text(verbatim: kind.title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 12.5, weight: .semibold))
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 0)
             }
-            .padding(10)
+            .padding(.horizontal, 10)
             .frame(maxWidth: .infinity)
-            .frame(height: 84, alignment: .topLeading)
+            .frame(height: 52)
+            .background(shape.fill(Color.primary.opacity(hovering ? 0.11 : 0.06)))
             .contentShape(shape)
         }
-        .buttonStyle(.glass)
-        .buttonBorderShape(.roundedRectangle(radius: 22))
-        .scaleEffect(hovering && !reduceMotion ? 1.035 : 1)
-        .offset(y: hovering && !reduceMotion ? -2 : 0)
-        .onHover { hovering = $0 }
-        .animation(.spring(response: 0.38, dampingFraction: 0.6), value: hovering)
-        .help(kind.instruction)
+        .buttonStyle(RoundPressStyle())
+        .onHover { inside in
+            hovering = inside
+            onHover(inside)
+        }
+        .animation(.tandemFade, value: hovering)
     }
 }
 

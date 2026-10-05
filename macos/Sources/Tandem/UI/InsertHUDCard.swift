@@ -20,7 +20,7 @@ struct InsertHUDCard: View {
         content(for: phase)
             .frame(width: Self.width)
             .hudSurface(radius: Self.radius)
-            .shadow(color: .black.opacity(0.18), radius: 26, y: 12)
+            .outerShadow(radius: Self.radius, blur: 24, y: 10, opacity: 0.2)
             .animation(.spring(response: 0.5, dampingFraction: 0.82), value: phase.cardKey)
             .onGeometryChange(for: CGSize.self) { $0.size } action: { onSize($0) }
     }
@@ -68,28 +68,21 @@ private extension InsertFromPhone.Phase {
 
 // MARK: Hover
 
-/// What a control does when the pointer (or the keyboard) is on it: it tells the window where it is,
-/// and while it is lit it rises and swells on a spring.
+/// What a control does when the pointer (or the keyboard) is on it: it tells the window where it is, so the window can
+/// light it. What lights is colour, in the control itself; nothing rises, swells or bounces.
 private struct HUDLit: ViewModifier {
     let id: Int
-    var scale: CGFloat = 1.05
-    var lift: CGFloat = 0
     @Environment(HUDInteraction.self) private var interaction
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        let lit = interaction.highlighted == id
         content
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(HUDSpace.name)) } action: { interaction.frames[id] = $0 }
-            .scaleEffect(lit && !reduceMotion ? scale : 1)
-            .offset(y: lit && !reduceMotion ? -lift : 0)
-            .animation(.spring(response: 0.38, dampingFraction: 0.62), value: lit)
     }
 }
 
 private extension View {
     func hudLit(_ id: Int, scale: CGFloat = 1.05, lift: CGFloat = 0) -> some View {
-        modifier(HUDLit(id: id, scale: scale, lift: lift))
+        modifier(HUDLit(id: id))
     }
 }
 
@@ -297,8 +290,7 @@ private struct KindTile: View {
                             .foregroundStyle(lit ? Color.white : Palette.indigo)
                     }
                     .frame(width: 40, height: 40)
-                    .scaleEffect(lit ? 1.14 : 1, anchor: .topLeading)
-                    .animation(.spring(response: 0.36, dampingFraction: 0.55), value: lit)
+                    .animation(.tandemFade, value: lit)
                     Spacer(minLength: 0)
                     Keycap(text: "\(index + 1)", lit: lit)
                 }
@@ -321,7 +313,7 @@ private struct KindTile: View {
         .scaleEffect(arrived ? 1 : 0.86)
         .task {
             try? await Task.sleep(for: .milliseconds(70 + index * 55))
-            withAnimation(.spring(response: 0.46, dampingFraction: 0.66)) { arrived = true }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { arrived = true }
         }
         .accessibilityLabel(Text(verbatim: kind.title))
     }
@@ -532,13 +524,33 @@ extension View {
         }
     }
 
+    /// A shadow that is only outside the shape. Glass lets light through, and an ordinary shadow behind it shows through as
+    /// a grey cloud under what is on the card.
+    fileprivate func outerShadow(radius: CGFloat, blur: CGFloat, y: CGFloat, opacity: Double) -> some View {
+        background {
+            let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+            shape
+                .fill(Color.black)
+                .shadow(color: .black.opacity(opacity), radius: blur, y: y)
+                .mask {
+                    Rectangle()
+                        .padding(-200)
+                        .overlay { shape.blendMode(.destinationOut) }
+                        .compositingGroup()
+                }
+        }
+    }
+
     /// A tile on the card: glass of its own, tinted indigo while it is lit.
     @ViewBuilder
     fileprivate func hudTile(_ shape: RoundedRectangle, lit: Bool) -> some View {
         if InsertHUDText.flat {
             background(lit ? Palette.indigo.opacity(0.22) : Color(nsColor: .quaternarySystemFill), in: shape)
         } else {
-            glassEffect(lit ? Glass.regular.tint(Palette.indigo.opacity(0.20)) : Glass.regular, in: shape)
+            // The glass stays as it is and the tint is a fill under the content that fades in and out. Changing the tint of
+            // the glass itself jumps from one to the other.
+            background(shape.fill(Palette.indigo.opacity(lit ? 0.2 : 0)).animation(.tandemFade, value: lit))
+                .glassEffect(.regular, in: shape)
         }
     }
 

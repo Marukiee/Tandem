@@ -758,7 +758,8 @@
 "1. On the phone open Settings, then Accessibility." = "1. Open op de telefoon Instellingen en dan Toegankelijkheid.";
 "2. Open Installed apps (or Downloaded apps), then Tandem." = "2. Open Geïnstalleerde apps (of Gedownloade apps) en dan Tandem.";
 "3. Turn Tandem on and allow it." = "3. Zet Tandem aan en sta het toe.";
-"4. Show the phone screen again here." = "4. Toon het telefoonscherm hier opnieuw.";
+"If the switch is grey: open App info for Tandem on the phone, tap the three dots at the top and choose Allow restricted settings. Then do step 2 and 3 again." = "Is de schakelaar grijs: open op de telefoon App-info van Tandem, tik bovenaan op de drie puntjes en kies Beperkte instellingen toestaan. Doe dan stap 2 en 3 opnieuw.";
+"The button here wakes up by itself once the phone allows it." = "De knop hier wordt vanzelf actief zodra de telefoon het toestaat.";
 "Mouse and keyboard" = "Muis en toetsenbord";
 "One mouse and one keyboard for more computers. Push the pointer over the edge of the screen and it carries on at the next computer." = "Eén muis en één toetsenbord voor meer computers. Duw de muis over de rand van het scherm en hij gaat verder op de volgende computer.";
 "How it works" = "Hoe het werkt";

@@ -99,7 +99,7 @@ fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
         )
         val kinds = listOfNotNull(if (canScreen) TandemMediaKind.SCREEN else null, if (canCamera) TandemMediaKind.CAMERA else null)
         // One row each, in the same form as the other pickers of the app, so the corners and the spacing are the same.
-        val total = kinds.size + (if (canScreen) 1 else 0) + 1
+        val total = kinds.size + (if (canScreen) 2 else 0) + 1
         kinds.forEachIndexed { index, kind ->
             val camera = kind == TandemMediaKind.CAMERA
             val current = policy?.let { if (camera) it.camera else it.screen } ?: TandemMediaPermission.ASK
@@ -123,6 +123,26 @@ fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
             }
         }
         var next = kinds.size
+        // Whether this computer is asked every time it wants to click and type too. Without "always" here, a computer that
+        // is allowed to see the screen for good is still asked each time, because it asks for both.
+        if (canScreen) {
+            val current = policy?.control ?: TandemMediaPermission.ASK
+            ContentRow(next++, total, TandemIcons.Mouse, stringResource(R.string.live_perm_control)) {
+                SegmentedPillRow(
+                    options = listOf(TandemMediaPermission.ASK, TandemMediaPermission.ALWAYS, TandemMediaPermission.NEVER),
+                    selected = current,
+                    label = { labels.getValue(it) },
+                    onSelect = { choice ->
+                        val base = policy ?: return@SegmentedPillRow
+                        val changed = base.copy(control = choice)
+                        runCatching { engine?.setMediaPolicy(device.id, changed) }
+                        policy = changed
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    equalWidth = true,
+                )
+            }
+        }
         // Clicking and typing from the computer needs the accessibility service, which only the person can turn on.
         if (canScreen) {
             var controlOn by remember { mutableStateOf(TandemAccessibilityService.running) }

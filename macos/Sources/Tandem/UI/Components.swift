@@ -44,6 +44,90 @@ struct GlassActionButton: View {
     }
 }
 
+// MARK: Round icon buttons for the menu bar panel
+
+/// The disc under an icon in the menu bar panel. A plain tint that darkens under the pointer: the system's glass
+/// button flashed grey and fell back inside that panel, and a tint does not.
+private struct RoundIconDisc: View {
+    let symbol: String
+    var tint: Color?
+    var size: CGFloat
+    var hovering: Bool
+    var enabled: Bool
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.43, weight: .semibold))
+            .contentTransition(.symbolEffect(.replace))
+            .foregroundStyle(tint ?? Color.primary)
+            .frame(width: size, height: size)
+            .background(Circle().fill(Color.primary.opacity(hovering && enabled ? 0.2 : 0.1)))
+            .overlay(Circle().strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
+            .contentShape(Circle())
+            .opacity(enabled ? 1 : 0.4)
+            .animation(.tandemFade, value: hovering)
+    }
+}
+
+struct RoundPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+/// A round button with an icon. It says what it does through `onHover`, so the row it sits in can show the words where
+/// they are read, instead of a tooltip that comes late and over something else.
+struct RoundIconButton: View {
+    let symbol: String
+    var tint: Color?
+    var size: CGFloat = 30
+    var onHover: ((Bool) -> Void)?
+    let action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            RoundIconDisc(symbol: symbol, tint: tint, size: size, hovering: hovering && hoverEnabled, enabled: isEnabled)
+        }
+        .buttonStyle(RoundPressStyle())
+        .onHover { inside in
+            hovering = inside
+            onHover?(inside)
+        }
+    }
+}
+
+/// The same round button that opens a menu.
+struct RoundIconMenu<Content: View>: View {
+    let symbol: String
+    var size: CGFloat = 30
+    var onHover: ((Bool) -> Void)?
+    @ViewBuilder var content: Content
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
+    var body: some View {
+        Menu {
+            content
+        } label: {
+            RoundIconDisc(symbol: symbol, tint: nil, size: size, hovering: hovering && hoverEnabled, enabled: isEnabled)
+        }
+        .menuStyle(.button)
+        .menuIndicator(.hidden)
+        .buttonStyle(.plain)
+        .fixedSize()
+        .onHover { inside in
+            hovering = inside
+            onHover?(inside)
+        }
+    }
+}
+
 // MARK: Device visuals
 
 extension TandemPlatform {

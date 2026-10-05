@@ -105,22 +105,12 @@ struct MenuBarPanel: View {
     /// same height so the row reads as one line.
     private var footer: some View {
         HStack(spacing: 8) {
-            Menu {
+            RoundIconMenu(symbol: "ellipsis") {
                 Button("Pair a device…") { openMain(pairing: true) }
                 Divider()
                 Button("Quit Tandem") { NSApp.terminate(nil) }
                     .keyboardShortcut("q")
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .frame(width: 18, height: 18)
             }
-            .menuStyle(.button)
-            .menuIndicator(.hidden)
-            .buttonStyle(.glass)
-            .buttonBorderShape(.circle)
-            .fixedSize()
-            .hoverGrey()
-            .hoverSwell()
             .help("More")
 
             Spacer(minLength: 8)
@@ -241,6 +231,8 @@ private struct MenuDeviceRow: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
     @LocalState private var targeted = false
+    /// What the button under the pointer does, shown in the place of the status line while the pointer is on it.
+    @LocalState private var hint: LocalizedStringKey?
 
     var body: some View {
         let reach = model.reach(of: device)
@@ -252,9 +244,17 @@ private struct MenuDeviceRow: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(device.name).font(.callout.weight(.semibold)).lineLimit(1)
                     HStack(spacing: 5) {
-                        Text(reach.text)
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(reach.color)
+                        if let hint {
+                            Text(hint)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(Palette.indigo)
+                                .transition(.opacity)
+                        } else {
+                            Text(reach.text)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(reach.color)
+                                .transition(.opacity)
+                        }
                         if let battery = device.status.battery {
                             Image(systemName: batterySymbol(battery)).font(.caption2).foregroundStyle(.secondary)
                             Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
@@ -264,36 +264,22 @@ private struct MenuDeviceRow: View {
                 }
                 Spacer(minLength: 4)
                 HStack(spacing: 6) {
-                    Button { pickFiles() } label: {
-                        Image(systemName: "paperplane.fill").frame(width: 14, height: 14)
+                    RoundIconButton(symbol: "paperplane.fill", onHover: { hint = $0 ? "Send files" : nil }) { pickFiles() }
+                        .disabled(!device.online)
+                    RoundIconButton(symbol: "doc.on.clipboard", onHover: { hint = $0 ? "Send clipboard" : nil }) {
+                        model.sendClipboard(to: [device.id])
                     }
-                    .hoverGrey()
-                    .hoverSwell(1.12)
-                    .disabled(!device.online)
-                    .help("Send files")
-                    Button { model.sendClipboard(to: [device.id]) } label: {
-                        Image(systemName: "doc.on.clipboard").frame(width: 14, height: 14)
-                    }
-                    .hoverGrey()
-                    .hoverSwell(1.12)
                     .disabled(!(device.online || device.ble))
-                    .help("Send clipboard")
-                    LiveMenuButton(device: device)
+                    LiveMenuButton(device: device, onHover: { hint = $0 ? "Show phone screen or camera" : nil })
                     if device.platform == .android {
                         let on = model.speaker.device == device.id
-                        Button { model.toggleSpeaker(for: device.id) } label: {
-                            Image(systemName: on ? "speaker.wave.3.fill" : "speaker.wave.2").frame(width: 14, height: 14)
-                                .foregroundStyle(on ? Palette.indigo : Color.primary)
-                        }
-                        .hoverGrey()
-                        .hoverSwell(1.12)
+                        RoundIconButton(
+                            symbol: on ? "speaker.wave.3.fill" : "speaker.wave.2", tint: on ? Palette.indigo : nil,
+                            onHover: { hint = $0 ? (on ? "Stop using this phone as a speaker" : "Use this phone as a speaker") : nil }
+                        ) { model.toggleSpeaker(for: device.id) }
                         .disabled(!device.online)
-                        .help(on ? "Stop using this phone as a speaker" : "Use this phone as a speaker")
                     }
                 }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .controlSize(.regular)
             }
         }
         .padding(.horizontal, 10)
@@ -303,6 +289,7 @@ private struct MenuDeviceRow: View {
         .scaleEffect(targeted ? 1.02 : 1)
         .animation(.tandemSpringy, value: targeted)
         .animation(.tandem, value: device.online)
+        .animation(.tandemFade, value: hint == nil)
         .dropDestination(for: URL.self) { urls, _ in
             guard device.online else {
                 model.showToast(String(localized: "That device is not connected right now"))

@@ -4,7 +4,7 @@ import { call, connect, listenDrops, native } from "./backend.js";
 import { DeviceGlyph } from "./components.js";
 import { Icon } from "./icons.js";
 import { setLanguage, t } from "./i18n.js";
-import { ClipboardPage, DevicePage, FilesPage, MousePage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
+import { ClipboardPage, DevicePage, FilesPage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
 import { say, selectedDevice, set, state, useStore } from "./store.js";
 
 /** The update, at the foot of the sidebar: what is out, how far the download is, and what went wrong. */
@@ -68,7 +68,6 @@ function Nav() {
     <div class="spacer"></div>
     <div class=${"row" + (state.page === "shared" ? " selected" : "")} onClick=${() => set({ page: "shared" })}><${Icon} name="files" size=${19} /><span class="grow">${t("shared")}</span></div>
     <div class=${"row" + (state.page === "clipboard" ? " selected" : "")} onClick=${() => set({ page: "clipboard" })}><${Icon} name="clipboard" size=${19} /><span class="grow">${t("clipboard")}</span></div>
-    ${state.canShare && html`<div class=${"row" + (state.page === "mouse" ? " selected" : "")} onClick=${() => set({ page: "mouse" })}><${Icon} name="pointer" size=${19} /><span class="grow">${t("mouse_title")}</span></div>`}
     <div class=${"row" + (state.page === "notifications" ? " selected" : "")} onClick=${() => set({ page: "notifications" })}>
       <${Icon} name="bell" size=${19} /><span class="grow">${t("notifications")}</span>${unread > 0 && html`<span class="badge">${unread > 99 ? "99+" : unread}</span>`}</div>
     <div class=${"row" + (state.page === "settings" ? " selected" : "")} onClick=${() => set({ page: "settings" })}><${Icon} name="settings" size=${19} /><span class="grow">${t("settings")}</span></div>
@@ -106,7 +105,6 @@ function Page() {
   if (state.page === "shared") body = html`<${SharedPage} />`;
   else if (state.page === "clipboard") body = html`<${ClipboardPage} />`;
   else if (state.page === "files") body = html`<${FilesPage} />`;
-  else if (state.page === "mouse") body = html`<${MousePage} />`;
   else if (state.page === "notifications") body = html`<${NotificationsPage} />`;
   else if (state.page === "settings") body = html`<${SettingsPage} />`;
   else if (state.devices.length === 0) body = html`<${Welcome} />`;

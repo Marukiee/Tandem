@@ -373,15 +373,13 @@ function updateText() {
   }
 }
 
-// One mouse and keyboard for more computers: how it works, where each computer sits, and who may use this PC.
-export function MousePage() {
-  const s = state.settings;
-  const patch = async (change) => set({ settings: await call("set_settings", { patch: change }) });
+// One mouse and keyboard for more computers, in the settings: how it works, where each computer sits, and who may use this PC.
+function MouseSection({ s, patch }) {
   const others = state.devices.filter((d) => d.platform === "macos" || d.platform === "windows");
   const edges = ["left", "right", "top", "bottom"];
   const step = (icon, text) => html`<div style="display:flex;gap:12px;align-items:center"><span class="glyph" style="width:30px;height:30px;flex:none"><${Icon} name=${icon} size=${16} /></span><span>${text}</span></div>`;
-  return html`<div class="wrap">
-    <div><h1>${t("mouse_title")}</h1><div class="muted">${t("mouse_intro")}</div></div>
+  return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <div><h2>${t("mouse_title")}</h2><div class="muted">${t("mouse_intro")}</div></div>
 
     <div class="card" style="display:flex;flex-direction:column;gap:12px">
       <div style="font-weight:600">${t("mouse_how")}</div>
@@ -443,7 +441,7 @@ export function SettingsPage() {
       <${SettingRow} icon="x" title=${t("close_to_tray")} sub=${t("close_to_tray_sub")} on=${s.closeToTray} onChange=${(v) => patch({ closeToTray: v })} />
       <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
       <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
-      <${SettingRow} icon="pointer" title=${t("remote_input")} sub=${t("remote_input_sub")} on=${s.remoteInput} onChange=${(v) => patch({ remoteInput: v })} />
+      ${!state.canShare && html`<${SettingRow} icon="pointer" title=${t("remote_input")} sub=${t("remote_input_sub")} on=${s.remoteInput} onChange=${(v) => patch({ remoteInput: v })} />`}
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
       <${SettingRow} icon="refresh" title=${t("auto_update")} sub=${t("auto_update_sub")} on=${s.autoUpdate} onChange=${(v) => patch({ autoUpdate: v })} />
       <${SettingRow} icon="arrow-down" title=${t("check_now")} sub=${updateText()}>
@@ -455,6 +453,8 @@ export function SettingsPage() {
         </select>
       <//>
     </div>
+
+    ${state.canShare && html`<${MouseSection} s=${s} patch=${patch} />`}
 
     <h2>${t("about")}</h2>
     <div class="card">

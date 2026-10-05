@@ -49,6 +49,7 @@ class LiveShareActivity : ComponentActivity() {
     private lateinit var kind: TandemMediaKind
     private var facing = TandemMediaFacing.ANY
     private var preApproved = false
+    private var controlWanted = false
     private var asking by mutableStateOf(true)
     private var handled = false
 
@@ -80,6 +81,7 @@ class LiveShareActivity : ComponentActivity() {
             kind = waiting.request.kind
             facing = waiting.request.facing
             preApproved = waiting.preApproved
+            controlWanted = waiting.request.control
         } else {
             peer = intent.getStringExtra(EXTRA_PEER) ?: return finish()
             kind = runCatching { TandemMediaKind.valueOf(intent.getStringExtra(EXTRA_KIND).orEmpty()) }.getOrNull() ?: return finish()
@@ -134,7 +136,7 @@ class LiveShareActivity : ComponentActivity() {
                                     PrimaryPillButton(stringResource(R.string.live_allow), { proceed() }, Modifier.fillMaxWidth())
                                     SecondaryPillButton(
                                         stringResource(R.string.live_allow_always, name),
-                                        { graph.live.allowAlways(peer, kind); proceed() },
+                                        { graph.live.allowAlways(peer, kind, controlWanted); proceed() },
                                         Modifier.fillMaxWidth(),
                                     )
                                     SecondaryPillButton(stringResource(R.string.live_deny), { declined() }, Modifier.fillMaxWidth())

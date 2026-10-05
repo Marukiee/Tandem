@@ -244,14 +244,30 @@ class LiveShare(
     }
 
     /** "Always allow this Mac": kept by the core, so nothing in the way can overrule it. */
-    fun allowAlways(peer: String, kind: TandemMediaKind) {
+    fun allowAlways(peer: String, kind: TandemMediaKind, control: Boolean = false) {
         val engine = host.engine ?: return
         runCatching {
             val policy = engine.mediaPolicy(peer)
+            // A Mac that asks to click and type as well is only asked no more when that is allowed for good too: the core
+            // does not call a request approved while one part of it still has to be asked.
             engine.setMediaPolicy(
                 peer,
-                if (kind == TandemMediaKind.CAMERA) policy.copy(camera = TandemMediaPermission.ALWAYS) else policy.copy(screen = TandemMediaPermission.ALWAYS),
+                if (kind == TandemMediaKind.CAMERA) {
+                    policy.copy(camera = TandemMediaPermission.ALWAYS)
+                } else {
+                    policy.copy(screen = TandemMediaPermission.ALWAYS, control = if (control) TandemMediaPermission.ALWAYS else policy.control)
+                },
             )
+        }
+    }
+
+    /**
+     * The person turned the accessibility service on or off while a screen is being shown: the Mac is told at once, so
+     * the button for clicking on its side wakes up without showing the screen again.
+     */
+    fun accessibilityChanged() {
+        main.post {
+            shares.filter { it.kind == TandemMediaKind.SCREEN }.forEach { it.refreshControl() }
         }
     }
 
@@ -339,6 +355,7 @@ class LiveShare(
         /** Whether the computer may click and type: it asked, and the accessibility service is on. The core clamps it by the policy. */
         @Volatile
         var control = false
+        private var wantsControl = false
         private var config: ByteArray? = null
         private var armedTimeout: Runnable? = null
         private var plan: LivePlan.Plan? = null
@@ -366,7 +383,8 @@ class LiveShare(
             armedTimeout?.let { main.removeCallbacks(it) }
             armedTimeout = null
             session = request.session
-            control = request.control && kind == TandemMediaKind.SCREEN && TandemAccessibilityService.running
+            wantsControl = request.control && kind == TandemMediaKind.SCREEN
+            control = wantsControl && TandemAccessibilityService.running
             publish()
             val limits = LivePlan.Limits(
                 request.maxWidth.toInt(), request.maxHeight.toInt(), request.maxFps.toInt(), request.maxBitrate.toInt(),
@@ -384,6 +402,19 @@ class LiveShare(
             }
             pipeline = made
             made.start()
+        }
+
+        /** Tells the Mac whether clicking is possible now, after the accessibility service came or went. */
+        fun refreshControl() {
+            val id = session ?: return
+            if (!accepted || !wantsControl) return
+            val now = TandemAccessibilityService.running
+            if (now == control) return
+            control = now
+            val current = plan ?: return
+            runCatching {
+                host.engine?.mediaUpdate(id, TandemMediaUpdate(current.width.toUInt(), current.height.toUInt(), 0u, current.fps.toUInt(), now))
+            }
         }
 
         // ---- What the capture says --------------------------------------------------------------------------

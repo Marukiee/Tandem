@@ -143,7 +143,7 @@ struct MainWindow: View {
                 Text("Starting").foregroundStyle(.secondary)
             }
             .transition(.opacity)
-        } else if model.devices.isEmpty && selection != .shared && selection != .notifications && selection != .clipboard && selection != .pointer {
+        } else if model.devices.isEmpty && selection != .shared && selection != .notifications && selection != .clipboard {
             ScrollView { WelcomeView() }.transition(.page)
         } else {
             switch selection {
@@ -174,8 +174,6 @@ struct MainWindow: View {
                 NotificationsView().transition(.page)
             case .clipboard:
                 ClipboardPage().transition(.page)
-            case .pointer:
-                PointerPage().transition(.page)
             case nil:
                 Color.clear
             }

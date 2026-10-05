@@ -296,8 +296,6 @@ struct PlayerButtons: View {
     var size: Size
 
     var body: some View {
-        // No glass container around them: glass this close together blends into one blob under the pointer, and
-        // a swelling button then no longer has its icon in the middle of its glass.
         HStack(spacing: 6) {
             button("backward.fill", enabled: player.canPrev, help: "Previous") { model.sendMedia(.previous, player: player, to: device.id) }
             button(player.playing ? "pause.fill" : "play.fill", enabled: true, help: player.playing ? "Pause" : "Play") {
@@ -305,21 +303,12 @@ struct PlayerButtons: View {
             }
             button("forward.fill", enabled: player.canNext, help: "Next") { model.sendMedia(.next, player: player, to: device.id) }
         }
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
-        .controlSize(size == .regular ? .large : .regular)
     }
 
     private func button(_ symbol: String, enabled: Bool, help: LocalizedStringKey, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .contentTransition(.symbolEffect(.replace))
-                .frame(width: size == .regular ? 16 : 13, height: size == .regular ? 16 : 13)
-        }
-        .hoverGrey()
-        .hoverSwell(1.1)
-        .disabled(!enabled)
-        .help(help)
+        RoundIconButton(symbol: symbol, size: size == .regular ? 38 : 30, action: action)
+            .disabled(!enabled)
+            .help(help)
     }
 }
 

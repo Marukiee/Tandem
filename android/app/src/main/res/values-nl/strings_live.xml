@@ -43,6 +43,7 @@
     <string name="live_section_share">Deel deze telefoon</string>
     <string name="live_perm_screen">Scherm</string>
     <string name="live_perm_camera">Camera</string>
+    <string name="live_perm_control">Klikken en typen</string>
     <string name="live_perm_ask">Vraag me</string>
     <string name="live_perm_always">Altijd</string>
     <string name="live_perm_never">Nooit</string>
@@ -52,7 +53,7 @@
     <string name="a11y_description">Laat een computer die je hebt toegestaan op deze telefoon klikken en typen terwijl hij het scherm toont. Er gebeurt niets tot je het scherm deelt en de computer om bediening vraagt. Tandem leest niets van het scherm behalve het veld waarin getypt wordt.</string>
     <string name="live_control_title">Laat klikken en typen toe</string>
     <string name="live_control_on">Aan. Een computer die je toestaat kan klikken en typen terwijl hij dit scherm toont.</string>
-    <string name="live_control_off">Uit. Hij kan het scherm bekijken maar niet aanraken. Zet Tandem-bediening aan in de toegankelijkheidsinstellingen.</string>
+    <string name="live_control_off">Uit. Hij kan het scherm bekijken maar niet aanraken. Zet Tandem-bediening aan in de toegankelijkheidsinstellingen. Is de schakelaar grijs, open dan eerst App-info van Tandem, tik rechtsboven op de drie puntjes en kies Beperkte instellingen toestaan.</string>
     <string name="sound_send_title">Stuur het geluid van deze telefoon naar %1$s</string>
     <string name="sound_send_sub">Wat op deze telefoon speelt, speelt ook op de computer. Android vraagt elke keer eerst</string>
     <string name="sound_stop_title">Stop met geluid sturen naar %1$s</string>

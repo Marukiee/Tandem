@@ -43,6 +43,7 @@
     <string name="live_section_share">Share this phone</string>
     <string name="live_perm_screen">Screen</string>
     <string name="live_perm_camera">Camera</string>
+    <string name="live_perm_control">Click and type</string>
     <string name="live_perm_ask">Ask me</string>
     <string name="live_perm_always">Always</string>
     <string name="live_perm_never">Never</string>
@@ -52,7 +53,7 @@
     <string name="a11y_description">Lets a computer you allowed click and type on this phone while it shows the screen. Nothing happens until you start sharing the screen and the computer asks for control. Tandem reads nothing from the screen except the field that is being typed in.</string>
     <string name="live_control_title">Let it click and type</string>
     <string name="live_control_on">On. A computer you allow can click and type while it shows this screen.</string>
-    <string name="live_control_off">Off. It can look at the screen but not touch it. Turn on Tandem control in Accessibility settings.</string>
+    <string name="live_control_off">Off. It can look at the screen but not touch it. Turn on Tandem control in Accessibility settings. If the switch is grey, open App info for Tandem, tap the three dots at the top and choose Allow restricted settings first.</string>
     <string name="sound_send_title">Send this phone\'s sound to %1$s</string>
     <string name="sound_send_sub">What plays on this phone plays on the computer too. Android asks first, every time</string>
     <string name="sound_stop_title">Stop sending sound to %1$s</string>

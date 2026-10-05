@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.1.55",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Clicking on the phone from the Mac, and calmer buttons",
+      "new": [
+        "Android and Mac: clicking on the phone screen from the Mac needed more than the screen being allowed for good. A Mac that also asks to click and type was asked every time, and only allowed on that one time. Now Always allow covers both, and the settings of the Mac on the phone have a row for clicking and typing of their own. When you turn on the accessibility service while the screen is shown, the Mac is told at once and its button wakes up, without showing the screen again. The explanation names the grey switch that Android shows for apps that were not installed from the Play Store (Allow restricted settings)",
+        "Mouse and keyboard moved into the settings: a tab of its own on the Mac, a section on Windows. The page in the sidebar is gone again",
+        "Mac: the round buttons in the menu bar panel and on the player are plain round buttons now. They darken smoothly under the pointer instead of flashing grey, and the name of what a button does shows in the line of the device instead of a late tooltip",
+        "Mac: the Insert from phone tiles in the menu bar panel are calmer and no longer cut off their names. The explanation shows above the tiles while you hover. Choose picture stays in the panel of the keyboard shortcut",
+        "Mac: the panel of Insert from phone has no grey cloud under the tiles any more, the tiles light up with a colour instead of rising and bouncing, and the panel leaves with a short fade"
+      ]
+    },
+    "nl": {
+      "title": "Klikken op de telefoon vanaf de Mac, en rustigere knoppen",
+      "new": [
+        "Android en Mac: klikken op het telefoonscherm vanaf de Mac vroeg meer dan dat het scherm voorgoed mocht. Een Mac die ook vraagt om te klikken en te typen werd elke keer gevraagd, en alleen die ene keer toegestaan. Nu geldt Altijd toestaan voor allebei, en bij de instellingen van de Mac op de telefoon staat een eigen rij voor klikken en typen. Zet je de toegankelijkheidsdienst aan terwijl het scherm getoond wordt, dan hoort de Mac dat meteen en wordt zijn knop actief, zonder het scherm opnieuw te tonen. De uitleg noemt de grijze schakelaar die Android toont voor apps die niet uit de Play Store komen (Beperkte instellingen toestaan)",
+        "Muis en toetsenbord is naar de instellingen verhuisd: een eigen tabblad op de Mac, een onderdeel op Windows. De pagina in de zijbalk is weer weg",
+        "Mac: de ronde knoppen in het menubalkpaneel en bij de speler zijn gewone ronde knoppen geworden. Ze worden vloeiend donkerder onder de muis in plaats van kort grijs te flitsen, en de naam van wat een knop doet staat in de regel van het apparaat in plaats van in een late tooltip",
+        "Mac: de tegels van Voeg in vanaf telefoon in het menubalkpaneel zijn rustiger en kappen hun namen niet meer af. De uitleg staat boven de tegels zodra je erover beweegt. Kies afbeelding blijft staan in het paneel van de sneltoets",
+        "Mac: het paneel van Voeg in vanaf telefoon heeft geen grijze wolk meer onder de tegels, de tegels lichten op met kleur in plaats van te stijgen en te stuiteren, en het paneel verdwijnt met een korte fade"
+      ]
+    }
+  },
+  {
     "version": "0.1.54",
     "date": "2026-10-05",
     "en": {

@@ -79,17 +79,18 @@ final class InsertHUDController {
         if !visibility.shown {
             // One turn later, so the first frame is laid out before the card comes in.
             DispatchQueue.main.async { [weak self] in
-                withAnimation(.spring(response: 0.46, dampingFraction: 0.72)) { self?.visibility.shown = true }
+                withAnimation(.spring(response: 0.46, dampingFraction: 0.86)) { self?.visibility.shown = true }
             }
         }
     }
 
     private func hide() {
         updateKeyboard(false)
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.9)) { visibility.shown = false }
+        // Going is quicker and quieter than coming: a short fade with a small step up, then the window leaves.
+        withAnimation(.easeIn(duration: 0.16)) { visibility.shown = false }
         hideTask?.cancel()
         hideTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(420))
+            try? await Task.sleep(for: .milliseconds(220))
             guard !Task.isCancelled, let self else { return }
             self.panel?.orderOut(nil)
             self.interaction.highlighted = nil
@@ -280,8 +281,8 @@ struct InsertHUDRoot: View {
             if visibility.shown {
                 InsertHUDCard(model: InsertFromPhone.shared, onSize: onSize)
                     .transition(.asymmetric(
-                        insertion: .scale(scale: 0.78, anchor: .top).combined(with: .offset(y: -18)).combined(with: .opacity),
-                        removal: .scale(scale: 0.92, anchor: .top).combined(with: .opacity)
+                        insertion: .scale(scale: 0.9, anchor: .top).combined(with: .offset(y: -10)).combined(with: .opacity),
+                        removal: .offset(y: -6).combined(with: .opacity)
                     ))
             }
         }

@@ -57,7 +57,7 @@ altijd een toets om de aanwijzer terug te halen, ook als de verbinding wegvalt.
   Control, zodat Ctrl+C hier kopieert daar. Instelling: Instellingen, Gedeelde muis en toetsenbord, kies de computer en de kant.
   Nog niet: een tweede computer als buur van de buur (ketens), en op Linux zien van invoer.
 
-- Mac: een pagina in de zijbalk (0.1.53, `macos/Sources/Tandem/UI/PointerPage.swift`) met uitleg, de toestemming die deze Mac nodig heeft
+- Mac: een tabblad in de Instellingen (0.1.55, `macos/Sources/Tandem/UI/PointerSettings.swift`; in 0.1.53 stond het als pagina in de zijbalk) met uitleg, de toestemming die deze Mac nodig heeft
   (Toegankelijkheid), de plek van elke computer, en per computer of die deze Mac mag gebruiken (`PointerShare.allowed`; de oude ene
   schakelaar blijft gelden tot de pagina is geopend). Een telefoon heeft geen rand om over te gaan: zijn scherm tonen in een venster en de
   muis erin bewegen is het bedienen van de telefoon (`docs/SCREEN.md`).
