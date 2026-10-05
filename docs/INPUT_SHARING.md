@@ -36,6 +36,14 @@ altijd een toets om de aanwijzer terug te halen, ook als de verbinding wegvalt.
   `send_pointer_share`. Een apparaat dat het bericht niet kent slaat het over.
 - De rekenlogica en de tests voor overgang en terugkeer.
 
+## Wat er staat in 0.1.49 (Mac naar Mac, nog niet op twee echte computers gezien)
+
+- `macos/Sources/Tandem/Platform/PointerShare.swift`: de Mac als hoofdcomputer (een `CGEventTap` die de muis en de toetsen ziet, de
+  aanwijzer verbergen en loskoppelen, de bewegingen als `InputMsg` sturen, Control Option Command met Escape om terug te halen)
+  en als bestuurde computer (de aanwijzer komt binnen bij de tegenoverliggende rand, de bewegingen gaan onversneld in, en bij de
+  rand waar hij binnenkwam gaat hij terug). Instellingen: per apparaat links, rechts, erboven of eronder, en een schakelaar om
+  deze Mac te laten gebruiken (standaard uit).
+
 ## Wat er nog moet, per systeem
 
 1. **Mac als hoofdcomputer:** een `CGEventTap` die de muis en de toetsen ziet (heeft Toegankelijkheid en Invoercontrole nodig, de
