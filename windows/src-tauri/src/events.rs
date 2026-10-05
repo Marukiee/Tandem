@@ -125,7 +125,28 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             media::refresh(app);
         }
         TandemEvent::Call { from, call } => incoming_call(app, &from, &call),
-        TandemEvent::Input { from, input } => remote_input(app, &from, input),
+        TandemEvent::Input { from, input } => {
+            // From the computer that has the pointer: it was allowed when the pointer came over.
+            if input::shared_is(&from) {
+                input::send_shared(input);
+            } else {
+                remote_input(app, &from, input);
+            }
+        }
+        TandemEvent::PointerShare { from, msg } => {
+            use tandem_core::ffi::TandemPointerShare as Share;
+            match msg {
+                Share::Enter { edge, along } => {
+                    if settings::get(app).remote_input {
+                        input::shared_enter(from, edge.into(), along);
+                    } else if let Ok(engine) = app.state::<AppState>().engine() {
+                        // Not allowed: the pointer goes straight back.
+                        tauri::async_runtime::spawn(async move { let _ = engine.send_pointer_share(from, Share::Leave { along }).await; });
+                    }
+                }
+                Share::Leave { .. } | Share::Release => input::shared_end(&from),
+            }
+        }
         _ => {}
     }
 }

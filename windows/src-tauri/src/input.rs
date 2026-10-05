@@ -9,9 +9,14 @@ use std::sync::{Mutex, OnceLock, mpsc};
 
 use enigo::{Axis, Button, Coordinate, Direction, Enigo, Key, Keyboard, Mouse, Settings};
 use tandem_core::ffi::{TandemInput, TandemMediaKey};
+use tandem_core::pointer_share::{self, Edge, Screen};
 
 enum Msg {
     Input(TandemInput),
+    /// Input from a computer that has the pointer (see `pointer_share`): the movements come already accelerated.
+    Shared(TandemInput),
+    /// The pointer of such a computer comes in over `edge` of its screen, `along` of the way down.
+    Enter { edge: Edge, along: f32 },
     /// The phone went away in the middle of something: let go of whatever it was holding.
     ReleaseAll,
 }
@@ -24,6 +29,36 @@ fn worker() -> &'static Mutex<mpsc::Sender<Msg>> {
         std::thread::Builder::new().name("tandem-input".into()).spawn(move || run(rx)).ok();
         Mutex::new(tx)
     })
+}
+
+/// The computer that has the pointer now, and the side of this screen it came in by.
+static SHARED: Mutex<Option<(String, Edge)>> = Mutex::new(None);
+static LEAVE: OnceLock<Box<dyn Fn(String, f32) + Send + Sync>> = OnceLock::new();
+
+/// What to do when the pointer runs into the edge it came in by: say so to the computer that has it.
+pub fn on_leave(tell: impl Fn(String, f32) + Send + Sync + 'static) {
+    let _ = LEAVE.set(Box::new(tell));
+}
+
+/// A computer sends its pointer over: it comes in at the opposite side of this screen.
+pub fn shared_enter(device: String, edge: Edge, along: f32) {
+    *SHARED.lock().unwrap() = Some((device, edge.opposite()));
+    let _ = worker().lock().unwrap().send(Msg::Enter { edge, along });
+}
+
+pub fn shared_end(device: &str) {
+    let mut guard = SHARED.lock().unwrap();
+    if guard.as_ref().is_some_and(|(d, _)| d == device) {
+        *guard = None;
+    }
+}
+
+pub fn shared_is(device: &str) -> bool {
+    SHARED.lock().unwrap().as_ref().is_some_and(|(d, _)| d == device)
+}
+
+pub fn send_shared(input: TandemInput) {
+    let _ = worker().lock().unwrap().send(Msg::Shared(input));
 }
 
 pub fn send(input: TandemInput) {
@@ -113,6 +148,42 @@ fn run(rx: mpsc::Receiver<Msg>) {
     let (mut rest_x, mut rest_y) = (0.0f32, 0.0f32);
 
     while let Ok(msg) = rx.recv() {
+        let msg = match msg {
+            Msg::Enter { edge, along } => {
+                if let Ok((width, height)) = enigo.main_display() {
+                    let (x, y) = pointer_share::enter_at(Screen { width: width as f32, height: height as f32 }, edge, along);
+                    let _ = enigo.move_mouse(x as i32, y as i32, Coordinate::Abs);
+                }
+                continue;
+            }
+            Msg::Shared(TandemInput::Pointer { dx, dy }) => {
+                let _ = enigo.move_mouse(i32::from(dx), i32::from(dy), Coordinate::Rel);
+                // At the edge it came in by and moving out: it goes back to the computer that has the real mouse.
+                let shared = SHARED.lock().unwrap().clone();
+                if let (Some((device, entered_by)), Ok((x, y)), Ok((w, h))) = (shared, enigo.location(), enigo.main_display()) {
+                    let (x, y, w, h) = (x as f32, y as f32, w as f32, h as f32);
+                    let leaving = match entered_by {
+                        Edge::Left => x <= 0.0 && dx < 0,
+                        Edge::Right => x >= w - 1.0 && dx > 0,
+                        Edge::Top => y <= 0.0 && dy < 0,
+                        Edge::Bottom => y >= h - 1.0 && dy > 0,
+                    };
+                    if leaving {
+                        let along = match entered_by {
+                            Edge::Left | Edge::Right => y / (h - 1.0).max(1.0),
+                            Edge::Top | Edge::Bottom => x / (w - 1.0).max(1.0),
+                        };
+                        *SHARED.lock().unwrap() = None;
+                        if let Some(tell) = LEAVE.get() {
+                            tell(device, along.clamp(0.0, 1.0));
+                        }
+                    }
+                }
+                continue;
+            }
+            Msg::Shared(other) => Msg::Input(other),
+            other => other,
+        };
         match msg {
             Msg::ReleaseAll => {
                 for b in buttons.drain() {
@@ -125,6 +196,8 @@ fn run(rx: mpsc::Receiver<Msg>) {
                     let _ = enigo.key(m, Direction::Release);
                 }
             }
+            // Dealt with above.
+            Msg::Shared(_) | Msg::Enter { .. } => {}
             Msg::Input(input) => match input {
                 TandemInput::Pointer { dx, dy } => {
                     // A small boost for quick swipes, so the whole screen is a short stroke away.

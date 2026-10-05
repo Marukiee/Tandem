@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.50",
+    "date": "2026-10-05",
+    "en": {
+      "title": "A Windows PC next to your Mac, with one mouse and keyboard",
+      "new": [
+        "Windows: a PC can be the computer that the pointer of a Mac goes over to. Put the PC on a side of the Mac in Settings, Mouse and keyboard across computers, and turn on the setting that lets a phone or another computer use the mouse and keyboard of the PC. The pointer comes in at the opposite side of the PC and goes back to the Mac at the edge where it came in. It has not been tried on a real PC next to a Mac yet"
+      ]
+    },
+    "nl": {
+      "title": "Een Windows-pc naast je Mac, met één muis en toetsenbord",
+      "new": [
+        "Windows: een pc kan de computer zijn waar de aanwijzer van een Mac naartoe gaat. Zet de pc aan een kant van de Mac bij Instellingen, Muis en toetsenbord over computers, en zet de instelling aan die een telefoon of andere computer de muis en het toetsenbord van de pc laat gebruiken. De aanwijzer komt binnen aan de tegenoverliggende kant van de pc en gaat terug naar de Mac bij de rand waar hij binnenkwam. Het is nog niet op een echte pc naast een Mac geprobeerd"
+      ]
+    }
+  },
+  {
     "version": "0.1.49",
     "date": "2026-10-05",
     "en": {

@@ -49,6 +49,15 @@ pub fn run() {
             media::start(&handle);
             power::start(handle.clone());
             update::start(handle.clone());
+            // When the pointer of another computer runs into the edge it came in by, that computer is told.
+            let leave_app = handle.clone();
+            input::on_leave(move |device, along| {
+                if let Ok(engine) = leave_app.state::<state::AppState>().engine() {
+                    tauri::async_runtime::spawn(async move {
+                        let _ = engine.send_pointer_share(device, tandem_core::ffi::TandemPointerShare::Leave { along }).await;
+                    });
+                }
+            });
             engine::start(handle.clone());
             clip::start(handle.clone());
             // Started with Windows it waits in the tray; started by hand it shows its window.

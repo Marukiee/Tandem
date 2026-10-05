@@ -44,6 +44,10 @@ altijd een toets om de aanwijzer terug te halen, ook als de verbinding wegvalt.
   rand waar hij binnenkwam gaat hij terug). Instellingen: per apparaat links, rechts, erboven of eronder, en een schakelaar om
   deze Mac te laten gebruiken (standaard uit).
 
+- Windows als bestuurde computer (0.1.50): `windows/src-tauri/src/input.rs` laat de aanwijzer binnenkomen aan de tegenoverliggende
+  kant (`pointer_share::enter_at`), speelt de bewegingen onversneld af, en meldt `Leave` bij de rand waar hij binnenkwam. Het gebruikt
+  de bestaande schakelaar voor het afspelen van invoer als toestemming.
+
 ## Wat er nog moet, per systeem
 
 1. **Mac als hoofdcomputer:** een `CGEventTap` die de muis en de toetsen ziet (heeft Toegankelijkheid en Invoercontrole nodig, de
