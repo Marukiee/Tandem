@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.43",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Your phone's screen and camera in a window on Windows",
+      "new": [
+        "Windows: on the page of a phone, Show phone screen and Phone camera open the picture in a window of its own. The phone asks first. The window has Keep on top, Turn, Copy picture and Stop. The picture is decoded by the graphics card where Windows can. The camera is a window and not a virtual webcam, so share or capture the window in Zoom or OBS. Phones that have Tandem 0.1.38 or newer can do it; the buttons stay grey with a tip for the others",
+        "This is the Windows app that is still experimental, and this part has not been run on a real Windows PC yet. The picture decoder was tried in a browser with a recording"
+      ]
+    },
+    "nl": {
+      "title": "Het scherm en de camera van je telefoon in een venster op Windows",
+      "new": [
+        "Windows: op de pagina van een telefoon openen Telefoonscherm tonen en Telefooncamera het beeld in een eigen venster. De telefoon vraagt eerst. Het venster heeft Bovenaan houden, Draai, Kopieer beeld en Stop. Het beeld wordt door de grafische kaart gedecodeerd waar Windows dat kan. De camera is een venster en geen virtuele webcam, dus deel of leg het venster vast in Zoom of OBS. Telefoons met Tandem 0.1.38 of nieuwer kunnen het; voor de andere blijven de knoppen grijs met een tip",
+        "Dit is de Windows-app die nog experimenteel is en dit onderdeel is nog niet op een echte Windows-pc gedraaid. De beelddecoder is in een browser geprobeerd met een opname"
+      ]
+    }
+  },
+  {
     "version": "0.1.42",
     "date": "2026-10-05",
     "en": {

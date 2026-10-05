@@ -75,6 +75,7 @@ export async function call(command, args) {
   switch (command) {
     case "get_state": return state;
     case "get_players": return { players, art };
+    case "live_start": return 1;
     case "create_pairing": return { uri: "tandem://pair?c=PREVIEW", expiresAtMs: Date.now() + 300000, qr };
     case "pair": return "phone";
     case "send_clipboard": return args.ids.length;

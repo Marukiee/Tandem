@@ -146,6 +146,8 @@ export function DevicePage({ device }) {
     id: device.id, clipboard: device.clipboard, autoAccept: device.autoAccept, notifications: device.notifications, ...patch,
   }).catch(failed);
   const battery = device.status && device.status.battery;
+  const hasCap = (cap) => Array.isArray(device.caps) && device.caps.includes(cap);
+  const show = (kind) => call("live_start", { id: device.id, kind, name: device.name }).catch(failed);
 
   return html`<div class="wrap">
     <div class="card head" style=${device.online ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
@@ -163,6 +165,10 @@ export function DevicePage({ device }) {
     <div class="actions">
       <button class="btn accent" disabled=${!device.online} onClick=${send}><${Icon} name="send" size=${17} />${t("send_files")}</button>
       <button class="btn" disabled=${!device.online} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
+      ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("screen.host")} title=${hasCap("screen.host") ? "" : t("live_update_phone")} onClick=${() => show("screen")}>
+        <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
+      ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("camera.host")} title=${hasCap("camera.host") ? t("live_camera_tip") : t("live_update_phone")} onClick=${() => show("camera")}>
+        <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
       ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
         <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}
     </div>

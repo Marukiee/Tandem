@@ -74,6 +74,7 @@ pub fn start(app: AppHandle) {
             .unwrap_or_else(|panic| Err(format!("the engine panicked while starting: {}", panic_text(&*panic))));
         match built {
             Ok(engine) => {
+                engine.set_media_viewer(Arc::new(crate::live::Viewer { app: app.clone() }));
                 log::info!("the engine runs as {} on port {}", engine.name(), engine.port());
                 *state.engine.write().unwrap() = Some(engine);
                 events::refresh_devices(&app);

@@ -8,6 +8,7 @@ mod engine;
 mod events;
 mod i18n;
 mod input;
+mod live;
 mod logfile;
 mod media;
 mod model;
@@ -104,6 +105,11 @@ pub fn run() {
             commands::install_update,
             commands::dismiss_update,
             commands::quit_app,
+            live::live_start,
+            live::live_attach,
+            live::live_keyframe,
+            live::live_stop,
+            live::live_pin,
         ])
         .build(tauri::generate_context!())
         .expect("Tandem could not start")
