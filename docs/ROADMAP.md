@@ -70,6 +70,15 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
 - Nog niet: Linux (zien van invoer via libei of evdev, afspelen via libei of XTest), een gedeeld klembord bij de overgang,
   ketens van meer dan twee computers, toetsvertaling voor andere indelingen dan US.
 
+## 4b. Quick Share en AirDrop
+
+- Besloten 2026-10-05: Quick Share-protocol zelf in Tandem, zonder Google Play Services, op Android, Mac, Windows en Linux, alleen
+  "Iedereen"-modus, met een schakelaar (standaard uit). Plan en onzekerheden in docs/QUICKSHARE.md. Nog niets gebouwd.
+- AirDrop naar iPhones: niet te bouwen in een app van derden (AWDL), ook niet op Android zonder Google. Google doet het alleen in zijn
+  eigen Quick Share. Wat overblijft voor iPhones: LocalSend-protocol ondersteunen (iPhone-vriend installeert LocalSend). Een QR-pagina
+  is door de gebruiker afgewezen.
+- Op de Mac kan een knop "Via AirDrop versturen" het systeemvenster openen (NSSharingService), dat is makkelijk en betrouwbaar.
+
 ## 5. Uiterlijk
 
 - Icoontjes in de rondjes: de verhouding op Android en Mac nalopen (icoon onder de helft van de cirkel).
