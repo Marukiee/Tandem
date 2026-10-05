@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.49",
+    "date": "2026-10-05",
+    "en": {
+      "title": "One mouse and keyboard over more computers (first version, Mac to Mac)",
+      "new": [
+        "Settings, Mouse and keyboard across computers: say on which side of this Mac another computer sits, and the pointer goes over when it reaches that edge, with the keyboard following. The other Mac has to allow it with Let another computer use this Mac. Control, Option and Command with Escape brings the pointer back at any time. The pointer also comes back by itself when it runs into the edge where it came in",
+        "This works between Macs for now. Windows and Linux do not take part yet, and it has not been tried on two real computers, so tell me what does not work"
+      ]
+    },
+    "nl": {
+      "title": "Eén muis en toetsenbord over meer computers (eerste versie, Mac naar Mac)",
+      "new": [
+        "Instellingen, Muis en toetsenbord over computers: zeg aan welke kant van deze Mac een andere computer staat, en de aanwijzer gaat over als hij die rand raakt, met het toetsenbord erachteraan. De andere Mac moet het toestaan met Laat een andere computer deze Mac gebruiken. Control, Option en Command met Escape haalt de aanwijzer altijd terug. De aanwijzer komt ook vanzelf terug als hij de rand raakt waar hij binnenkwam",
+        "Dit werkt voorlopig tussen Macs. Windows en Linux doen nog niet mee en het is nog niet op twee echte computers geprobeerd, dus meld wat niet werkt"
+      ]
+    }
+  },
+  {
     "version": "0.1.48",
     "date": "2026-10-05",
     "en": {

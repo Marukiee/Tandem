@@ -179,6 +179,8 @@ private struct GeneralSettings: View {
 
             PhoneSoundSettings()
 
+            PointerShareSettings()
+
             Section("Behaviour") {
                 Toggle("Start at login", isOn: $startAtLogin)
                     .onChange(of: startAtLogin) { _, on in

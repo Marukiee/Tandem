@@ -74,6 +74,19 @@ final class InputInjector {
         armWatchdog()
     }
 
+    /// The same as `handle`, for a computer that has its own mouse: the movements come already accelerated by that computer,
+    /// so they go in as they are.
+    func handleShared(_ input: TandemInput, from device: String) {
+        guard requestPermissionIfNeeded() else { return }
+        lastSource = device
+        if case let .pointer(dx, dy) = input {
+            movePointer(dx: Double(dx), dy: Double(dy), accelerate: false)
+            armWatchdog()
+        } else {
+            handle(input, from: device)
+        }
+    }
+
     fileprivate func noteSource(_ device: String) { lastSource = device }
 
     /// The phone that was sending is gone: let go of whatever it was holding.

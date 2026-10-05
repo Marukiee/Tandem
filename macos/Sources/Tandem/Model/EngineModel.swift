@@ -259,6 +259,7 @@ final class EngineModel {
         LiveManager.shared.attach(engine: engine)
         ScreenHost.shared.attach(engine: engine, model: self)
         engine.setAudioSink(sink: PhoneSound.shared.sink)
+        PointerShare.shared.start()
         startBleWatch()
         observeSleep()
         startMedia()
@@ -392,6 +393,7 @@ final class EngineModel {
             // A phone that drops while a button is held must not leave it held here.
             if case let .disconnected(id) = event {
                 injector.sourceDisconnected(id)
+                PointerShare.shared.deviceGone(id)
                 PhoneSound.shared.stop(device: id)
                 remoteMedia[id] = nil
                 coversSent[id] = nil
@@ -490,7 +492,10 @@ final class EngineModel {
             }
 
         case let .input(from, input):
-            injector.handle(input, from: from)
+            if !PointerShare.shared.controlled(input, from: from) { injector.handle(input, from: from) }
+
+        case let .pointerShare(from, message):
+            PointerShare.shared.received(message, from: from)
 
         case let .hotspot(from, message):
             hotspot.handle(from: from, message: message)
@@ -544,7 +549,7 @@ final class EngineModel {
             }
 
         case .notificationAction, .callAction, .dial, .ring, .captureRequested, .captureCancelled,
-             .mediaRequested, .mediaStarted, .mediaEnded, .mediaBitrate, .pointerShare:
+             .mediaRequested, .mediaStarted, .mediaEnded, .mediaBitrate:
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break
 

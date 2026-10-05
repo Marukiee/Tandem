@@ -739,3 +739,15 @@
 "Smooth" = "Soepel";
 "Low plays closer to live and can stutter on a poor connection. Smooth waits a little longer to stay steady. It applies the next time a phone starts." = "Laag speelt dichter bij live af en kan haperen bij een slechte verbinding. Soepel wacht iets langer om stabiel te blijven. Het geldt de volgende keer dat een telefoon begint.";
 "Sound from %@ plays on this Mac" = "Geluid van %@ speelt op deze Mac";
+"Mouse and keyboard across computers" = "Muis en toetsenbord over computers";
+"Use this Mac's mouse and keyboard on other computers" = "Gebruik de muis en het toetsenbord van deze Mac op andere computers";
+"Move the pointer over the edge of the screen. This Mac needs Accessibility, which Tandem already asks for" = "Beweeg de aanwijzer over de rand van het scherm. Deze Mac heeft Toegankelijkheid nodig, waar Tandem al om vraagt";
+"Not next to this Mac" = "Niet naast deze Mac";
+"On the left" = "Links";
+"On the right" = "Rechts";
+"Above" = "Erboven";
+"Below" = "Eronder";
+"Press Control, Option and Command with Escape to bring the pointer back at any time." = "Druk op Control, Option en Command met Escape om de aanwijzer altijd terug te halen.";
+"Let another computer use this Mac" = "Laat een andere computer deze Mac gebruiken";
+"Its pointer and keyboard come in at the edge where it sits and work here. Only for devices in your circle" = "Zijn aanwijzer en toetsenbord komen binnen bij de rand waar hij staat en werken hier. Alleen voor apparaten in je circle";
+"The pointer is on %@. Press Control, Option and Command with Escape to bring it back." = "De aanwijzer is op %@. Druk op Control, Option en Command met Escape om hem terug te halen.";
