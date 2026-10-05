@@ -23,12 +23,12 @@
     <string name="live_camera_back">Achtercamera</string>
     <string name="live_camera_front">Voorcamera</string>
 
-    <string name="live_active_title">Wordt getoond op een computer</string>
+    <string name="live_active_title">Delen</string>
     <string name="live_active_starting">Starten</string>
-    <string name="live_active_screen">Je scherm is te zien op %1$s</string>
-    <string name="live_active_camera">Je camera is te zien op %1$s</string>
-    <string name="live_active_both">Je scherm en camera zijn te zien op %1$s</string>
-    <string name="live_active_waiting">Klaar om te tonen op %1$s. Wacht tot het kijkt.</string>
+    <string name="live_active_screen">Scherm gedeeld met %1$s</string>
+    <string name="live_active_camera">Camera gedeeld met %1$s</string>
+    <string name="live_active_both">Scherm en camera gedeeld met %1$s</string>
+    <string name="live_active_waiting">Klaar om te delen met %1$s</string>
     <string name="live_offer_failed">De computer is nu niet bereikbaar</string>
     <string name="live_offer_unanswered">%1$s opende het venster niet. Probeer het opnieuw vanaf de computer.</string>
 
@@ -38,7 +38,8 @@
     <string name="live_show_camera_sub">In een venster op de computer. Het is geen virtuele webcam.</string>
     <string name="live_stop_screen">Stoppen met mijn scherm tonen</string>
     <string name="live_stop_camera">Stoppen met mijn camera tonen</string>
-    <string name="live_section_allow">%1$s mag vragen deze telefoon te zien</string>
+    <string name="live_section_allow">Verzoeken van %1$s</string>
+    <string name="live_section_share">Deel deze telefoon</string>
     <string name="live_perm_screen">Scherm</string>
     <string name="live_perm_camera">Camera</string>
     <string name="live_perm_ask">Vraag me</string>

@@ -63,6 +63,7 @@ class LiveEncoder(
                         sink.onConfig(data)
                     } else {
                         framesOut++
+                        lastOutMs = android.os.SystemClock.elapsedRealtime()
                         bytesOut += data.size
                         sink.onFrame(data, info.presentationTimeUs, info.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME != 0)
                     }
@@ -114,8 +115,27 @@ class LiveEncoder(
         surface = codec.createInputSurface()
     }
 
+    @Volatile private var lastOutMs = android.os.SystemClock.elapsedRealtime()
+
+    /**
+     * Some encoders keep the last picture of a screen that stopped changing until the next one comes, so the Mac shows
+     * the screen as it was a moment ago until something moves. When nothing has come out for a while, a keyframe is
+     * asked for, which makes the encoder let go of what it holds.
+     */
+    private val watchdog = object : Runnable {
+        override fun run() {
+            if (closed.get()) return
+            if (framesOut > 0 && android.os.SystemClock.elapsedRealtime() - lastOutMs > STALL_MS) {
+                requestKeyframe()
+                lastOutMs = android.os.SystemClock.elapsedRealtime()
+            }
+            handler.postDelayed(this, STALL_MS)
+        }
+    }
+
     fun start() {
         codec.start()
+        handler.postDelayed(watchdog, STALL_MS)
     }
 
     /** The Mac lost the thread of the picture: the next frame is a full one. */
@@ -144,6 +164,7 @@ class LiveEncoder(
     companion object {
         private const val TAG = "TandemLive"
         private const val KEYFRAME_SECONDS = 3
-        private const val REPEAT_AFTER_US = 500_000L
+        private const val REPEAT_AFTER_US = 100_000L
+        private const val STALL_MS = 700L
     }
 }

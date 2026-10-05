@@ -36,7 +36,7 @@ import uniffi.tandem_core.TandemMediaPermission
  * say what the computer may ask for. Nothing appears for a device that cannot look.
  */
 @Composable
-fun LiveDeviceSection(device: TandemDevice) {
+fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
     val canScreen = "screen.view" in device.caps && LiveShare.supports(LocalContext.current, TandemMediaKind.SCREEN)
     val canCamera = "camera.view" in device.caps && LiveShare.supports(LocalContext.current, TandemMediaKind.CAMERA)
     if (!canScreen && !canCamera) return
@@ -47,6 +47,8 @@ fun LiveDeviceSection(device: TandemDevice) {
     val engine = context.graph.host.engine
     var policy by remember(device.id) { mutableStateOf(runCatching { engine?.mediaPolicy(device.id) }.getOrNull()) }
 
+    if (!permissions) {
+    SectionHeader(stringResource(R.string.live_section_share), top = 12.dp, bottom = 0.dp)
     SettingsGroup {
         val rows = listOfNotNull(
             if (canScreen) TandemMediaKind.SCREEN else null,
@@ -66,6 +68,9 @@ fun LiveDeviceSection(device: TandemDevice) {
                 },
             )
         }
+    }
+
+    return
     }
 
     SectionHeader(stringResource(R.string.live_section_allow, device.name), top = 12.dp, bottom = 0.dp)

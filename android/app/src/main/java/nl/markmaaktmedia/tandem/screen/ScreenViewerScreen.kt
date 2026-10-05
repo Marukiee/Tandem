@@ -89,6 +89,11 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import nl.markmaaktmedia.tandem.R
+import androidx.compose.foundation.layout.width
+import nl.markmaaktmedia.tandem.ui.remote.rememberPressState
+import nl.markmaaktmedia.tandem.ui.remote.Joins
+import nl.markmaaktmedia.tandem.ui.remote.GroupTone
+import nl.markmaaktmedia.tandem.ui.remote.GroupButton
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.PillLoader
 import nl.markmaaktmedia.tandem.ui.components.PresenceDot
@@ -564,19 +569,29 @@ private fun ControlBar(
         if (zoomed) {
             TandemIconButton(TandemIcons.FitScreen, stringResource(R.string.screen_fit), onFit)
         }
-        TandemIconButton(
-            if (direct) TandemIcons.Touch else TandemIcons.Mouse,
-            stringResource(if (direct) R.string.screen_trackpad_mode else R.string.screen_touch_mode),
-            onMode,
-            background = scheme.surfaceContainerHigh,
-        )
-        TandemIconButton(
-            TandemIcons.Keyboard,
-            stringResource(R.string.screen_keyboard),
-            onKeyboard,
-            tint = if (keyboardOn) scheme.onPrimary else scheme.onSurfaceVariant,
-            background = if (keyboardOn) scheme.primary else scheme.surfaceContainerHigh,
-        )
+        // The two buttons are one group, like the buttons of the trackpad page: they touch each other with small corners
+        // and round out one by one while a finger is on them.
+        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            val modePress = rememberPressState()
+            val keyboardPress = rememberPressState()
+            GroupButton(
+                press = modePress, height = 40.dp, joins = Joins.row(0, 2), colors = GroupTone.neutral(),
+                modifier = Modifier.width(48.dp),
+                description = stringResource(if (direct) R.string.screen_trackpad_mode else R.string.screen_touch_mode),
+                onUp = { inside -> if (inside) onMode() },
+            ) { tint ->
+                Icon(if (direct) TandemIcons.Touch else TandemIcons.Mouse, null, tint = tint, modifier = Modifier.size(20.dp))
+            }
+            GroupButton(
+                press = keyboardPress, height = 40.dp, joins = Joins.row(1, 2),
+                colors = if (keyboardOn) GroupTone.selected() else GroupTone.neutral(),
+                modifier = Modifier.width(48.dp),
+                description = stringResource(R.string.screen_keyboard),
+                onUp = { inside -> if (inside) onKeyboard() },
+            ) { tint ->
+                Icon(TandemIcons.Keyboard, null, tint = tint, modifier = Modifier.size(20.dp))
+            }
+        }
     }
 }
 

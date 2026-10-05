@@ -38,6 +38,17 @@
     <string name="screen_stats_target">Doel %1$.1f Mbit/s</string>
     <string name="screen_stats_lost">%1$d kwijt, %2$d overgeslagen</string>
     <string name="screen_stats_size">%1$d x %2$d</string>
-    <string name="screen_hint_trackpad">Beweeg één vinger om de aanwijzer te sturen. Tik om te klikken, houd ingedrukt voor een rechtermuisklik, houd ingedrukt en beweeg om te slepen. Twee vingers scrollen, knijpen zoomt.</string>
-    <string name="screen_hint_touch">Raak aan om te klikken waar je aanraakt. Houd ingedrukt voor een rechtermuisklik. Twee vingers scrollen, knijpen zoomt.</string>
+    <string name="control_sub_ready">Zie het scherm en gebruik de aanwijzer en het toetsenbord vanaf hier</string>
+    <string name="control_sub_offline">Nu niet verbonden</string>
+    <string name="control_sub_setup">Heeft eerst wat instellen op deze computer nodig</string>
+    <string name="control_sub_unavailable">Nog niet mogelijk met deze computer</string>
+    <string name="control_setup_title">Doe dit op de Mac, eenmalig</string>
+    <string name="control_setup_1">Werk Tandem op de Mac bij naar versie 0.1.38 of nieuwer.</string>
+    <string name="control_setup_2">Open Systeeminstellingen, Privacy en beveiliging, en sta Schermopname toe voor Tandem.</string>
+    <string name="control_setup_3">Sta Toegankelijkheid ook toe voor Tandem. Zonder dat kun je kijken, maar doen klikken en typen niets.</string>
+    <string name="control_setup_4">Sluit Tandem op de Mac af en open hem opnieuw. Deze knop gaat aan zodra dat klaar is.</string>
+    <string name="control_no_access">Toegankelijkheid staat uit op de Mac, dus je kunt kijken maar niet klikken of typen. Sta het toe voor Tandem in Systeeminstellingen, Privacy en beveiliging, en start Tandem op de Mac opnieuw.</string>
+    <string name="section_control">Bediening</string>
+    <string name="screen_hint_trackpad">Beweeg één vinger om de aanwijzer te sturen. Tik om te klikken, tik met twee vingers voor een rechtermuisklik. Houd ingedrukt en beweeg om te slepen. Twee vingers die bewegen scrollen, knijpen zoomt.</string>
+    <string name="screen_hint_touch">Raak aan om te klikken waar je aanraakt. Tik met twee vingers voor een rechtermuisklik. Houd ingedrukt en beweeg om te slepen. Twee vingers die bewegen scrollen, knijpen zoomt.</string>
 </resources>

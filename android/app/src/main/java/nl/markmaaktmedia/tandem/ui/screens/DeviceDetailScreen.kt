@@ -222,15 +222,18 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                 if (device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.LINUX || device.platform == TandemPlatform.WINDOWS) {
                     ActionTile(TandemIcons.Mouse, stringResource(R.string.tile_trackpad), { onRemote(id) }, Modifier.weight(1f).fillMaxHeight().routeBounds(routeKey(Route.Remote(id))))
                 }
-                // Only a computer that says it can share its screen, and is reachable now.
-                if (device.platform != TandemPlatform.ANDROID && "screen.host" in device.caps) {
-                    val label = if (device.platform == TandemPlatform.MAC_OS) R.string.tile_control_mac else R.string.tile_control_computer
-                    ActionTile(TandemIcons.Desktop, stringResource(label), { onScreen(id) }, Modifier.weight(1f).fillMaxHeight().routeBounds(routeKey(Route.Screen(id))))
-                }
                 if (device.platform == TandemPlatform.ANDROID) {
                     ActionTile(TandemIcons.Ring, stringResource(R.string.tile_find), { scope.launch { runCatching { host.engine?.ring(id, true) } } }, Modifier.weight(1f).fillMaxHeight())
                 }
             }
+        }
+
+        // Seeing and controlling a computer: always there, grey with the steps until it can work.
+        if (device.platform != TandemPlatform.ANDROID) {
+            nl.markmaaktmedia.tandem.ui.components.ControlComputerCard(
+                device, { onScreen(id) },
+                Modifier.routeBounds(routeKey(Route.Screen(id))),
+            )
         }
 
         // Its files, in the Files app of the system, next to the storage of this phone.
@@ -268,6 +271,8 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             SwitchRow(1, 3, TandemIcons.Notifications, stringResource(R.string.setting_notifications_from), stringResource(R.string.setting_notifications_from_sub), device.notificationsEnabled, { set(notifications = it) })
             SwitchRow(2, 3, TandemIcons.Download, stringResource(R.string.setting_auto_accept), stringResource(R.string.setting_auto_accept_sub), device.autoAccept, { set(autoAccept = it) })
         }
+        // What this device may ask of this phone: with the other things that are set per device.
+        nl.markmaaktmedia.tandem.live.LiveDeviceSection(device, permissions = true)
         if (device.vouchedByRemoved) {
             Text(stringResource(R.string.warning_vouched), style = MaterialTheme.typography.bodySmall, color = LocalTandemExtraColors.current.urgent, modifier = Modifier.padding(horizontal = 8.dp))
         }

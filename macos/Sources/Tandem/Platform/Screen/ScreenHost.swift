@@ -75,7 +75,9 @@ final class ScreenHost {
     /// allowed. Decided once, at start, because the Hello is.
     func capabilities() -> [String] {
         advertised = enabled && ScreenCapturer.hasPermission
-        return advertised ? ["screen.host"] : []
+        guard advertised else { return [] }
+        // Without Accessibility a phone can look but its clicks and keys go nowhere, which it is told.
+        return AXIsProcessTrusted() ? ["screen.host", "screen.control"] : ["screen.host"]
     }
 
     /// Screen Recording was allowed after the app started, so the Hello has to be said again, which is a restart.

@@ -23,12 +23,12 @@
     <string name="live_camera_back">Back camera</string>
     <string name="live_camera_front">Front camera</string>
 
-    <string name="live_active_title">Showing on a computer</string>
+    <string name="live_active_title">Sharing</string>
     <string name="live_active_starting">Starting</string>
-    <string name="live_active_screen">Your screen is shown on %1$s</string>
-    <string name="live_active_camera">Your camera is shown on %1$s</string>
-    <string name="live_active_both">Your screen and camera are shown on %1$s</string>
-    <string name="live_active_waiting">Ready to show on %1$s. Waiting for it to look.</string>
+    <string name="live_active_screen">Screen shared with %1$s</string>
+    <string name="live_active_camera">Camera shared with %1$s</string>
+    <string name="live_active_both">Screen and camera shared with %1$s</string>
+    <string name="live_active_waiting">Ready to share with %1$s</string>
     <string name="live_offer_failed">The computer cannot be reached right now</string>
     <string name="live_offer_unanswered">%1$s did not open the window. Try again from the computer.</string>
 
@@ -38,7 +38,8 @@
     <string name="live_show_camera_sub">In a window on the computer. It is not a virtual webcam.</string>
     <string name="live_stop_screen">Stop showing my screen</string>
     <string name="live_stop_camera">Stop showing my camera</string>
-    <string name="live_section_allow">Let %1$s ask to see this phone</string>
+    <string name="live_section_allow">Requests from %1$s</string>
+    <string name="live_section_share">Share this phone</string>
     <string name="live_perm_screen">Screen</string>
     <string name="live_perm_camera">Camera</string>
     <string name="live_perm_ask">Ask me</string>

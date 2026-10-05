@@ -725,3 +725,5 @@
 "Ask shows a question on this Mac every time. Always allow lets that device in without asking. Never turns it away without a word." = "Vraag het mij toont elke keer een vraag op deze Mac. Altijd toestaan laat dat apparaat zonder vragen binnen. Nooit wijst het zonder iets te zeggen af.";
 "Only to let another device of yours see this Mac's screen, when you allow it. Turn it on, then restart Tandem." = "Alleen om een ander apparaat van jou het scherm van deze Mac te laten zien, als jij dat toestaat. Zet het aan en start Tandem daarna opnieuw.";
 "Allow Tandem to record this Mac's screen in System Settings, under Screen Recording" = "Sta Tandem toe het scherm van deze Mac op te nemen in Systeeminstellingen, onder Schermopname";
+"Update Tandem on the phone to version 0.1.38 or newer" = "Werk Tandem op de telefoon bij naar versie 0.1.38 of nieuwer";
+"Shows your phone's camera in a window. It is a window and not a virtual webcam: share or capture it in Zoom or OBS." = "Toont de camera van je telefoon in een venster. Het is een venster en geen virtuele webcam: deel of leg het vast in Zoom of OBS.";

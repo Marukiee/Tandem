@@ -104,8 +104,9 @@ struct LiveView: View {
         case let .ended(end):
             StateCard(
                 copy: .ended(end, name: name, kind: session.kind), busy: false, footnote: nil,
-                primary: LiveCopy.ended(end, name: name, kind: session.kind).canRetry ? (String(localized: "Try again"), { LiveManager.shared.restart(session) }) : nil,
-                secondary: (String(localized: "Close"), { controller.close() })
+                // Close is the one that is coloured: after a stop it is what you came to do, and Try again is the other choice.
+                primary: (String(localized: "Close"), { controller.close() }),
+                secondary: LiveCopy.ended(end, name: name, kind: session.kind).canRetry ? (String(localized: "Try again"), { LiveManager.shared.restart(session) }) : nil
             )
         }
     }

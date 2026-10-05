@@ -32,7 +32,7 @@ interface ViewerOutput {
 class ViewerConfig(
     /** How far a finger may wander and still count as held in place. */
     val slop: Float,
-    /** A press that lasts this long is a hold: a right click when lifted, a drag when moved. */
+    /** A press that lasts this long is a hold: a drag when moved, a plain click when lifted. */
     val holdMs: Long = 350,
     /** How soon after a tap the next touch still belongs to it. */
     val doubleTapMs: Long = 300,
@@ -44,7 +44,7 @@ class ViewerConfig(
  *
  * Trackpad mode (the default), the pointer is somewhere on the screen and the finger steers it:
  * - one finger moves the pointer, a short tap clicks, a second tap soon after is a double click
- * - press and hold, then lift without moving: right click. Press and hold, then move: drag with the left button
+ * - press and hold, then move: drag with the left button. Held and lifted without moving is a plain click
  * - a tap followed at once by a touch that moves drags too
  * - two fingers: moving together scrolls, moving apart or together zooms the picture, a short tap is a right click
  * - three fingers move the zoomed picture
@@ -269,11 +269,12 @@ class ViewerGestures(private val config: ViewerConfig, private val out: ViewerOu
             Mode.Pending -> {
                 val finger = fingers[primary] ?: fingers.values.firstOrNull()
                 when {
-                    // A hold that was lifted without moving.
+                    // A hold that was lifted without moving is a plain click: holding is for dragging, as on the trackpad
+                    // page, and the right button is two fingers.
                     maxFingers == 1 && (armed || !quick) -> {
                         out.feedback(ViewerFeedback.Click)
                         if (direct && finger != null) out.pointerTo(finger.x, finger.y)
-                        out.click(1, 1)
+                        out.click(0, 1)
                         lastTapEnd = NEVER
                     }
 

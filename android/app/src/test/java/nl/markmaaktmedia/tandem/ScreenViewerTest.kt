@@ -66,13 +66,13 @@ class ScreenViewerTest {
         assertTrue(clicks(out).isEmpty())
     }
 
-    @Test fun holdingAndLiftingIsARightClick() {
+    @Test fun holdingAndLiftingIsAPlainClickAndNotARightClick() {
         val out = Recorder()
         val g = gestures(out)
         g.touch(0, Touch(1, 100f, 100f))
         g.onTimer(400)
         g.lift(500)
-        assertEquals(listOf("button 1 down 1", "button 1 up 1"), clicks(out))
+        assertEquals(listOf("button 0 down 1", "button 0 up 1"), clicks(out))
     }
 
     @Test fun holdingThenMovingDragsWithTheLeftButton() {

@@ -82,9 +82,9 @@ class LiveShare(
     val indicator = LiveIndicator(app)
     private val settings = app.getSharedPreferences("live", Context.MODE_PRIVATE)
 
-    /** Whether the pill with the Mac's name is drawn on screen while sharing. Needs the permission to draw over apps. */
+    /** Whether a small pill is drawn on screen while sharing. Off unless asked for: the notification and the system say it already, and the pill is in the shared picture too. Needs the permission to draw over apps. */
     var indicatorWanted: Boolean
-        get() = settings.getBoolean("indicator", true)
+        get() = settings.getBoolean("indicator", false)
         set(value) = settings.edit().putBoolean("indicator", value).apply()
 
     init {

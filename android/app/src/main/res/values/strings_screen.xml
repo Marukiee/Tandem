@@ -38,6 +38,17 @@
     <string name="screen_stats_target">Target %1$.1f Mbit/s</string>
     <string name="screen_stats_lost">%1$d lost, %2$d dropped</string>
     <string name="screen_stats_size">%1$d x %2$d</string>
-    <string name="screen_hint_trackpad">Move one finger to steer the pointer. Tap to click, press and hold for a right click, press and hold then move to drag. Two fingers scroll, pinch zooms.</string>
-    <string name="screen_hint_touch">Touch to click where you touch. Press and hold for a right click. Two fingers scroll, pinch zooms.</string>
+    <string name="control_sub_ready">See the screen and use the pointer and keyboard from here</string>
+    <string name="control_sub_offline">Not connected right now</string>
+    <string name="control_sub_setup">Needs a little setup on this computer first</string>
+    <string name="control_sub_unavailable">Not possible with this computer yet</string>
+    <string name="control_setup_title">Do this on the Mac, once</string>
+    <string name="control_setup_1">Update Tandem on the Mac to version 0.1.38 or newer.</string>
+    <string name="control_setup_2">Open System Settings, Privacy and Security, and allow Screen Recording for Tandem.</string>
+    <string name="control_setup_3">Allow Accessibility for Tandem too. Without it you can look, but clicking and typing do nothing.</string>
+    <string name="control_setup_4">Quit Tandem on the Mac and open it again. This button turns on when that is done.</string>
+    <string name="control_no_access">Accessibility is off on the Mac, so you can look but not click or type. Allow it for Tandem in System Settings, Privacy and Security, then restart Tandem on the Mac.</string>
+    <string name="section_control">Control</string>
+    <string name="screen_hint_trackpad">Move one finger to steer the pointer. Tap to click, tap with two fingers for a right click. Press and hold, then move, to drag. Two fingers moving scroll, pinch zooms.</string>
+    <string name="screen_hint_touch">Touch to click where you touch. Tap with two fingers for a right click. Press and hold, then move, to drag. Two fingers moving scroll, pinch zooms.</string>
 </resources>
