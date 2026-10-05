@@ -54,6 +54,22 @@ geschreven (de licenties van rquickshare en Tandem zijn verschillend).
   Android-API's. Of de Quick Share van Google ons apparaat betrouwbaar toont en accepteert moet op een echte telefoon blijken.
 - Google kan het protocol veranderen. Dat is onderhoud dat we niet kunnen voorkomen.
 
+## Stand (0.1.57, nog niet met een echt Quick Share-apparaat geprobeerd)
+
+- **Kern** (`crates/tandem-core/src/quickshare/`): de protobuf-definities van Google (Apache 2.0, in `proto/quickshare/`, gebouwd met
+  `protox` zodat er geen `protoc` nodig is), `crypto.rs` (UKEY2 en secure messages), `link.rs` (frames, payloads, keep alives),
+  `transfer.rs` (ontvangen en versturen van bestanden), `service.rs` (luisteren, zichtbaar zijn, zoeken en versturen met mDNS),
+  `ffi.rs` (het object voor Kotlin en Swift). Bewezen: een hele overdracht tussen een zender en een ontvanger in één proces (bestanden
+  van 300 kB in stukken, weigeren, de sleutelafleiding met de constante van Google), en twee exemplaren die elkaar vinden via echte
+  multicast DNS en een bestand sturen (`cargo test -- --ignored two_instances`). Niet bewezen: dat Google's Quick Share ons accepteert.
+- **Mac:** tabblad Quick Share in de Instellingen met de schakelaar, kaarten voor binnenkomende overdrachten (PIN, Weiger, Accepteer,
+  voortgang), een rij Quick Share in het menubalkpaneel om te versturen (klik of laat bestanden vallen).
+- **Android:** pagina Quick Share bij Instellingen, een melding met Weigeren en Accepteren en de PIN, en een rij "In de buurt, met
+  Quick Share" in het deelmenu. Ontvangen bestanden gaan naar Downloads.
+- **Nog niet:** Bluetooth-advertentie (telefoon naar telefoon zonder dat de ander al zichtbaar is, en Mac naar telefoon), de
+  snelheidsupgrade, Windows en Linux, tekst en links als eigen soort inhoud (nu een .txt-bestand), de PIN is uit het geheugen van de
+  Android-code nagemaakt en moet met een echte telefoon worden vergeleken.
+
 ## Plan in stappen
 1. **Kern (Rust, `crates/tandem-core/src/quickshare/`):** mDNS adverteren en zoeken, TCP met lengte-voorvoegsel, UKEY2, secure
    messages, ontvangen van bestanden, daarna versturen. Tests met twee exemplaren in één proces en vaste testvectoren voor de

@@ -12,6 +12,7 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 enum class SettingsPageId(val key: String) {
     Look("look"),
     Sharing("sharing"),
+    QuickShare("quickshare"),
     Notifications("notifications"),
     Trackpad("trackpad"),
     Updates("updates"),
@@ -31,6 +32,7 @@ internal enum class SettingsCategory(
 ) {
     Look(R.string.settings_look, { TandemIcons.Palette }, Route.SettingsPage(SettingsPageId.Look)),
     Sharing(R.string.settings_cat_sharing, { TandemIcons.Devices }, Route.SettingsPage(SettingsPageId.Sharing)),
+    QuickShare(R.string.settings_cat_quickshare, { TandemIcons.Send }, Route.SettingsPage(SettingsPageId.QuickShare)),
     Notifications(R.string.settings_notifications, { TandemIcons.Notifications }, Route.SettingsPage(SettingsPageId.Notifications)),
     Trackpad(R.string.settings_cat_trackpad, { TandemIcons.Mouse }, Route.SettingsPage(SettingsPageId.Trackpad)),
     Permissions(R.string.settings_access, { TandemIcons.Shield }, Route.Access),
@@ -134,6 +136,7 @@ internal object SettingsCatalog {
     private val sharing = Route.SettingsPage(SettingsPageId.Sharing)
     private val notifications = Route.SettingsPage(SettingsPageId.Notifications)
     private val trackpad = Route.SettingsPage(SettingsPageId.Trackpad)
+    private val quickShare = Route.SettingsPage(SettingsPageId.QuickShare)
 
     val all: List<SettingsEntry> = listOf(
         // Look and language
@@ -162,6 +165,9 @@ internal object SettingsCatalog {
             "look_language", R.string.settings_language, R.string.settings_kw_look_language, SettingsCategory.Look, look,
             { TandemIcons.Language }, focus = FocusKeys.Language,
         ),
+
+        // Quick Share
+        SettingsEntry("quickshare", R.string.settings_cat_quickshare, R.string.settings_kw_quickshare, SettingsCategory.QuickShare, quickShare, { TandemIcons.Send }),
 
         // Devices and sharing
         SettingsEntry("sharing", R.string.settings_cat_sharing, R.string.settings_kw_sharing, SettingsCategory.Sharing, sharing, { TandemIcons.Devices }),

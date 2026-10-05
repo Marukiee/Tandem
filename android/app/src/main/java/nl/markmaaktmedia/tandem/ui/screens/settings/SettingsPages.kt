@@ -30,6 +30,7 @@ fun SettingsPageScreen(page: SettingsPageId, onBack: () -> Unit, onOpen: (Route)
     when (page) {
         SettingsPageId.Look -> LookPage(onBack, onOpen)
         SettingsPageId.Sharing -> SharingPage(onBack, onOpen)
+        SettingsPageId.QuickShare -> QuickSharePage(onBack)
         SettingsPageId.Notifications -> NotificationsPage(onBack, onOpen)
         SettingsPageId.Trackpad -> TrackpadPage(onBack)
         SettingsPageId.Updates -> UpdatesPage(onBack)

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quickshare_title">Quick Share</string>
+    <string name="quickshare_toggle_title">Quick Share</string>
+    <string name="quickshare_toggle_sub">Verstuur bestanden naar en ontvang bestanden van telefoons en computers met Quick Share, zonder Google-diensten. Zolang dit aan staat kan iedereen op hetzelfde wifi deze telefoon vinden.</string>
+    <string name="quickshare_problem">Quick Share is niet gestart: %1$s</string>
+    <string name="quickshare_how_title">Hoe het werkt</string>
+    <string name="quickshare_how_receive">Om te ontvangen opent het andere apparaat Quick Share en kiest deze telefoon. Beide moeten op hetzelfde wifi zitten en het andere apparaat moet zichtbaar zijn voor iedereen.</string>
+    <string name="quickshare_how_send">Om te versturen deel je iets vanuit een app en kies je een apparaat onder In de buurt. Vergelijk de pincode met het scherm van het andere apparaat.</string>
+    <string name="quickshare_how_files">Wat binnenkomt gaat naar je map Downloads.</string>
+    <string name="quickshare_nearby">Apparaten in de buurt</string>
+    <string name="quickshare_nearby_share">In de buurt, met Quick Share</string>
+    <string name="quickshare_searching">Zoeken naar apparaten in de buurt</string>
+    <string name="quickshare_off_hint">Zet Quick Share aan bij Instellingen om naar apparaten in de buurt te versturen</string>
+    <string name="quickshare_sending_to">Versturen naar %1$s</string>
+    <string name="quickshare_pin_compare">Pincode %1$s. Die moet hetzelfde zijn op het andere apparaat.</string>
+    <string name="quickshare_refused">%1$s zei nee</string>
+    <string name="quickshare_failed">De overdracht is niet gelukt</string>
+    <string name="quickshare_off_note">Uit. Niemand kan deze telefoon vinden of er met Quick Share naartoe sturen.</string>
+    <string name="settings_cat_quickshare">Quick Share</string>
+    <string name="settings_kw_quickshare">quick share nearby share airdrop android delen versturen ontvangen bestanden offline google</string>
+    <string name="quickshare_channel_ask">Quick Share-verzoeken</string>
+    <string name="quickshare_channel_ask_desc">Iemand wil je iets sturen met Quick Share</string>
+    <string name="quickshare_channel_progress">Quick Share-overdrachten</string>
+    <string name="quickshare_something">Iets</string>
+    <string name="quickshare_and_more">%1$s en nog %2$d</string>
+    <string name="quickshare_wants_to_share">%1$s wil iets delen</string>
+    <string name="quickshare_pin">Pincode %1$s</string>
+    <string name="quickshare_pin_line">Pincode %1$s. Controleer dat die hetzelfde is op het andere apparaat.</string>
+    <string name="quickshare_decline">Weigeren</string>
+    <string name="quickshare_accept">Accepteren</string>
+    <string name="quickshare_cancel">Annuleren</string>
+    <string name="quickshare_receiving">Ontvangen van %1$s</string>
+    <string name="quickshare_received_from">Ontvangen van %1$s</string>
+    <string name="quickshare_stopped">De overdracht is gestopt</string>
+    <string name="quickshare_row_on">Aan, zichtbaar voor iedereen in de buurt</string>
+    <string name="quickshare_row_off">Uit</string>
+</resources>

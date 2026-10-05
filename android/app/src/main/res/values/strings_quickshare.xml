@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="quickshare_title">Quick Share</string>
+    <string name="quickshare_toggle_title">Quick Share</string>
+    <string name="quickshare_toggle_sub">Send files to and receive files from phones and computers with Quick Share, without Google services. While this is on, this phone can be found by everyone on the same Wi-Fi.</string>
+    <string name="quickshare_problem">Quick Share did not start: %1$s</string>
+    <string name="quickshare_how_title">How it works</string>
+    <string name="quickshare_how_receive">To receive, the other device opens Quick Share and picks this phone. Both have to be on the same Wi-Fi, and the other device has to be visible to everyone.</string>
+    <string name="quickshare_how_send">To send, share something from any app and pick a device under Nearby. Compare the PIN with the screen of the other device.</string>
+    <string name="quickshare_how_files">What arrives goes to your Downloads folder.</string>
+    <string name="quickshare_nearby">Nearby devices</string>
+    <string name="quickshare_nearby_share">Nearby, with Quick Share</string>
+    <string name="quickshare_searching">Looking for devices nearby</string>
+    <string name="quickshare_off_hint">Turn on Quick Share in Settings to send to devices nearby</string>
+    <string name="quickshare_sending_to">Sending to %1$s</string>
+    <string name="quickshare_pin_compare">PIN %1$s. It has to be the same on the other device.</string>
+    <string name="quickshare_refused">%1$s said no</string>
+    <string name="quickshare_failed">The transfer did not work</string>
+    <string name="quickshare_off_note">Off. Nobody can find this phone or send to it with Quick Share.</string>
+    <string name="settings_cat_quickshare">Quick Share</string>
+    <string name="settings_kw_quickshare">quick share nearby share airdrop android share send receive files offline google</string>
+    <string name="quickshare_channel_ask">Quick Share requests</string>
+    <string name="quickshare_channel_ask_desc">Somebody wants to send you something with Quick Share</string>
+    <string name="quickshare_channel_progress">Quick Share transfers</string>
+    <string name="quickshare_something">Something</string>
+    <string name="quickshare_and_more">%1$s and %2$d more</string>
+    <string name="quickshare_wants_to_share">%1$s wants to share</string>
+    <string name="quickshare_pin">PIN %1$s</string>
+    <string name="quickshare_pin_line">PIN %1$s. Check that it is the same on the other device.</string>
+    <string name="quickshare_decline">Decline</string>
+    <string name="quickshare_accept">Accept</string>
+    <string name="quickshare_cancel">Cancel</string>
+    <string name="quickshare_receiving">Receiving from %1$s</string>
+    <string name="quickshare_received_from">Received from %1$s</string>
+    <string name="quickshare_stopped">The transfer stopped</string>
+    <string name="quickshare_row_on">On, visible to everyone nearby</string>
+    <string name="quickshare_row_off">Off</string>
+</resources>

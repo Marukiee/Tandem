@@ -152,7 +152,12 @@ class ShareTargetActivity : ComponentActivity() {
     @Composable
     private fun ShareScreen(shared: Shared, onClose: () -> Unit) {
         val host = LocalContext.current.graph.host
+        val quick = LocalContext.current.graph.quickShare
         val devices by host.devices.collectAsState()
+        val nearbyOn by quick.enabled.collectAsState()
+        val nearby by quick.peers.collectAsState()
+        val outgoing by quick.outgoing.collectAsState()
+        val nearbyPin = outgoing.lastOrNull { it.state == nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Outgoing.State.Sending }?.pin
         val scope = rememberCoroutineScope()
         var phase by remember { mutableStateOf<SendPhase>(SendPhase.Choosing) }
         var visible by remember { mutableStateOf(false) }
@@ -191,8 +196,45 @@ class ShareTargetActivity : ComponentActivity() {
                         }
                     },
                     onClose = onClose,
+                    nearbyOn = nearbyOn,
+                    nearby = nearby,
+                    nearbyPin = nearbyPin,
+                    onSendNearby = { peer ->
+                        phase = SendPhase.Sending
+                        scope.launch {
+                            val result = sendNearby(shared, peer, quick)
+                            phase = result
+                            if (result is SendPhase.Done) {
+                                delay(1000)
+                                visible = false
+                                delay(250)
+                                onClose()
+                            }
+                        }
+                    },
                 )
             }
+        }
+    }
+
+    /** Sends what was shared to a device that Quick Share found, and waits for the end of it. */
+    private suspend fun sendNearby(
+        shared: Shared, peer: nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Peer, quick: nl.markmaaktmedia.tandem.quickshare.QuickShareHost,
+    ): SendPhase {
+        val uris = shared.uris.ifEmpty {
+            // Text goes as a small file, which is what the receiving side can take in.
+            val text = shared.text ?: return SendPhase.Failed(getString(R.string.share_empty))
+            val file = java.io.File(cacheDir, "quickshare/text/${System.currentTimeMillis()}.txt").apply { parentFile?.mkdirs(); writeText(text) }
+            listOf(Uri.fromFile(file))
+        }
+        val id = quick.send(uris, peer).getOrElse { return SendPhase.Failed(it.message ?: it.toString()) }
+        val end = withTimeoutOrNull(10 * 60_000L) {
+            quick.outgoing.first { list -> list.any { it.id == id && it.state != nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Outgoing.State.Sending } }
+        }?.firstOrNull { it.id == id }
+        return when (end?.state) {
+            nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Outgoing.State.Sent -> SendPhase.Done(uris.size)
+            nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Outgoing.State.Refused -> SendPhase.Failed(getString(R.string.quickshare_refused, peer.name))
+            else -> SendPhase.Failed(getString(R.string.quickshare_failed))
         }
     }
 

@@ -72,6 +72,10 @@ fun SharePickerSheet(
     preview: @Composable () -> Unit,
     onSend: (List<String>) -> Unit,
     onClose: () -> Unit,
+    nearbyOn: Boolean = false,
+    nearby: List<nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Peer> = emptyList(),
+    nearbyPin: String? = null,
+    onSendNearby: (nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Peer) -> Unit = {},
 ) {
     val online = devices.filter { it.online }
     var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -145,9 +149,19 @@ fun SharePickerSheet(
                             )
                         }
                     }
+                    if (nearbyOn) NearbySection(nearby, onSendNearby)
                 }
 
-                SendPhase.Sending -> StatusBlock { PillSpinner(size = 44.dp); Text(stringResource(R.string.share_sending), style = MaterialTheme.typography.titleMedium) }
+                SendPhase.Sending -> StatusBlock {
+                    PillSpinner(size = 44.dp)
+                    Text(stringResource(R.string.share_sending), style = MaterialTheme.typography.titleMedium)
+                    nearbyPin?.let {
+                        Text(
+                            stringResource(R.string.quickshare_pin_compare, it),
+                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
+                        )
+                    }
+                }
 
                 is SendPhase.Done -> StatusBlock {
                     val scale by animateFloatAsState(1f, TandemMotion.bouncy(), label = "doneScale")
@@ -164,6 +178,49 @@ fun SharePickerSheet(
                 }
             }
         }
+    }
+}
+
+/** The devices Quick Share found nearby, as round targets like the share sheet of Android has them. */
+@Composable
+private fun NearbySection(peers: List<nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Peer>, onSend: (nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Peer) -> Unit) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            stringResource(R.string.quickshare_nearby_share),
+            style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 6.dp),
+        )
+        if (peers.isEmpty()) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PillSpinner(size = 22.dp)
+                Text(stringResource(R.string.quickshare_searching), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else {
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), maxItemsInEachRow = 3) {
+                peers.forEach { peer -> NearbyTile(peer, { onSend(peer) }, Modifier.weight(1f)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NearbyTile(peer: nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Peer, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .clip(SquircleShape(26.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .bouncyClickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 14.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(Modifier.size(48.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+            Icon(
+                if (peer.kind == uniffi.tandem_core.TandemQsKind.PHONE) TandemIcons.Phone else TandemIcons.Desktop, null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(24.dp),
+            )
+        }
+        Text(peer.name, style = MaterialTheme.typography.labelMedium, maxLines = 2, textAlign = TextAlign.Center)
     }
 }
 

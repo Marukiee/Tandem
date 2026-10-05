@@ -67,6 +67,9 @@ internal fun rememberCategorySummaries(): Map<SettingsCategory, String> {
         status.phone != PermissionLevel.Off, status.bluetooth, status.camera, status.installApps,
     )
 
+    // Quick Share.
+    val quickShareOn by graph.quickShare.enabled.collectAsState()
+
     // Hotspot.
     val hotspot by prefs.hotspotForMac.collectAsState(initial = false)
     val hotspotReady = status.bluetooth && status.notifications
@@ -85,6 +88,7 @@ internal fun rememberCategorySummaries(): Map<SettingsCategory, String> {
     return mapOf(
         SettingsCategory.Look to look,
         SettingsCategory.Sharing to summaryOnOf(sharing.first, sharing.second),
+        SettingsCategory.QuickShare to stringResource(if (quickShareOn) R.string.quickshare_row_on else R.string.quickshare_row_off),
         SettingsCategory.Notifications to summaryOnOf(notifications.first, notifications.second),
         SettingsCategory.Permissions to stringResource(R.string.settings_sum_permissions, granted.count { it }, granted.size),
         SettingsCategory.Hotspot to stringResource(

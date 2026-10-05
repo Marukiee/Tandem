@@ -143,6 +143,7 @@
             android:foregroundServiceType="mediaProjection|camera" />
 
         <receiver android:name=".live.LiveActionReceiver" android:exported="false" />
+        <receiver android:name=".quickshare.QuickShareActionReceiver" android:exported="false" />
 
         <service
             android:name=".share.ClipboardTileService"

@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.1.57",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Quick Share, without Google services",
+      "new": [
+        "Mac and Android: Tandem can now send files to and receive files from phones and computers that have Quick Share, with no Google services and no account. It speaks the protocol of Quick Share itself, in the mode Everyone. It is off until you turn it on in Settings, because while it is on the device can be found by everyone on the same Wi-Fi. It has not been tried with a real Quick Share device yet, only between two copies of Tandem, so tell me what you see",
+        "Mac: a Quick Share tab in Settings, cards in the corner of the screen when someone sends you something (with the PIN to compare, Decline and Accept, and the progress), and a Quick Share row in the menu bar panel with the devices nearby: click one to pick files, or drop files on it",
+        "Android: a Quick Share page in Settings, a notification with Decline and Accept when someone sends you something, and a row Nearby, with Quick Share in the share sheet, as round targets like the share menu of Android. What arrives goes to Downloads",
+        "This is Quick Share only. AirDrop to an iPhone is not possible from an app: it needs a radio mode of Apple that apps cannot use"
+      ]
+    },
+    "nl": {
+      "title": "Quick Share, zonder Google-diensten",
+      "new": [
+        "Mac en Android: Tandem kan nu bestanden versturen naar en ontvangen van telefoons en computers met Quick Share, zonder Google-diensten en zonder account. Het spreekt zelf het protocol van Quick Share, in de modus Iedereen. Het staat uit tot je het aanzet bij Instellingen, want zolang het aan staat kan het apparaat door iedereen op hetzelfde wifi worden gevonden. Het is nog niet geprobeerd met een echt Quick Share-apparaat, alleen tussen twee exemplaren van Tandem, dus laat weten wat je ziet",
+        "Mac: een tabblad Quick Share bij de Instellingen, kaarten in de hoek van het scherm als iemand je iets stuurt (met de pincode om te vergelijken, Weiger en Accepteer, en de voortgang), en een rij Quick Share in het menubalkpaneel met de apparaten in de buurt: klik op een apparaat om bestanden te kiezen, of laat bestanden erop vallen",
+        "Android: een pagina Quick Share bij Instellingen, een melding met Weigeren en Accepteren als iemand je iets stuurt, en een rij In de buurt, met Quick Share in het deelmenu, als ronde doelen zoals het deelmenu van Android. Wat binnenkomt gaat naar Downloads",
+        "Dit is alleen Quick Share. AirDrop naar een iPhone kan niet vanuit een app: het vraagt een radiostand van Apple die apps niet kunnen gebruiken"
+      ]
+    }
+  },
+  {
     "version": "0.1.56",
     "date": "2026-10-05",
     "en": {

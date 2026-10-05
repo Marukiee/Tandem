@@ -25,6 +25,7 @@ class Graph(app: Application) {
     val audio = nl.markmaaktmedia.tandem.audio.RemoteAudioPlayer(app, prefs, host, scope).also { host.audioSink = it }
     val live = nl.markmaaktmedia.tandem.live.LiveShare(app, host, scope)
     val clipHistory = nl.markmaaktmedia.tandem.data.ClipHistory(app)
+    val quickShare = nl.markmaaktmedia.tandem.quickshare.QuickShareHost(app, scope) { host.myName }
 
     /** This phone as the viewer of a Mac's screen. */
     val screen = nl.markmaaktmedia.tandem.screen.ScreenViewer(app, host).also { host.mediaViewer = it }
@@ -35,6 +36,11 @@ class Graph(app: Application) {
     )
 
     init {
+        // Quick Share starts once the engine runs, when the person left it on.
+        scope.launch {
+            host.state.first { it == nl.markmaaktmedia.tandem.engine.EngineState.Running }
+            quickShare.startIfEnabled()
+        }
         // The places in the Files app are the devices that share their files and can be reached, so it is told when they change.
         scope.launch {
             host.devices
