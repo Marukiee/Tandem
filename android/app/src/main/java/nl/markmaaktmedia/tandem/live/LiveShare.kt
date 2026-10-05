@@ -158,7 +158,9 @@ class LiveShare(
 
     private fun askThePerson(session: ULong, from: String, kind: TandemMediaKind) {
         val open = LiveShareActivity.forRequest(app, session)
-        if (inForeground) {
+        // With the app in front, or with permission to draw over other apps (which also lets it open a screen from the
+        // background), the question opens by itself. Otherwise it is a notification that has to be tapped.
+        if (inForeground || android.provider.Settings.canDrawOverlays(app)) {
             runCatching { app.startActivity(open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             return
         }

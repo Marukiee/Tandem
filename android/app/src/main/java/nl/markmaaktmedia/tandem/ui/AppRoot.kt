@@ -165,7 +165,10 @@ private fun MainNavigation() {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
         }
         // Over every screen: an update is worth seeing wherever you are in the app.
-        UpdateBanner(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp))
+        // Not over the screen of a computer: that is full screen, and a banner would sit on top of someone else's desktop.
+        if (nav.top !is Route.Screen) {
+            UpdateBanner(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp))
+        }
     }
 }
 

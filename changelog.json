@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.41",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Fewer taps to share your screen, and no banner over a Mac's screen",
+      "new": [
+        "When Tandem may draw over other apps, a Mac that asks to see your screen opens the question by itself instead of waiting for you to tap a notification. Android still shows its own capture question every time",
+        "The update banner no longer sits on top of the screen of a computer you are controlling from the phone. That viewer was tried on an emulator against a stand-in Mac: the picture plays, a tap is a click and a drag moves the pointer"
+      ]
+    },
+    "nl": {
+      "title": "Minder tikken om je scherm te delen, en geen balk over het scherm van een Mac",
+      "new": [
+        "Als Tandem over andere apps mag tekenen, opent de vraag van een Mac die je scherm wil zien vanzelf in plaats van te wachten tot je op een melding tikt. Android toont zijn eigen opnamevraag nog steeds elke keer",
+        "De updatebalk ligt niet meer over het scherm van een computer die je met je telefoon bedient. Die weergave is op een emulator geprobeerd tegen een nagebootste Mac: het beeld speelt, een tik is een klik en slepen beweegt de aanwijzer"
+      ]
+    }
+  },
+  {
     "version": "0.1.40",
     "date": "2026-10-05",
     "en": {
