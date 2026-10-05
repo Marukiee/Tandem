@@ -28,14 +28,15 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 - Windows Rust-job in CI viel eenmaal om op `the_picture_comes_back_tagged_with_the_request` (tijdgevoelig, 20 s time-out):
   bij herhaling stabieler maken.
 
-## 1. Audio van de telefoon naar de Mac
+## 1. Audio van de telefoon naar de Mac (gebouwd in 0.1.42, nog niet op echte toestellen gehoord)
 
-- Android: opnemen van het geluid van andere apps met AudioPlaybackCapture, via dezelfde
-  MediaProjection-toestemming als LiveShare (let op: apps kunnen opname uitzetten).
-- Mac: ontvanger met jitter-buffer en CoreAudio-uitvoer, instelling voor vertraging zoals op Android
-  (AudioDelay), schakelaar per apparaat, duidelijke indicator.
-- Kwaliteit nu: onbewerkte PCM 16 bit stereo op de bronsnelheid, geen codec. Overweeg Opus alleen als
-  een slecht netwerk dat nodig maakt.
+- Android: `SoundShareService` en `SoundShareActivity` (AudioPlaybackCapture, toestemming voor opnemen en de vraag van het
+  systeem, elke keer), een rij op de apparaatpagina van een Mac die `audio.play` meldt.
+- Mac: `PhoneSound` met een buffer (`SoundRing`, zelftest `TANDEM_DEBUG_SOUNDRING=1`), een audio-engine, een schakelaar en een
+  keuze voor vertraging in Instellingen. Zie docs/MUSIC_AND_SOUND.md.
+- Te controleren op de Xperia en de Mac: hoort het geluid er, hoe groot is de vertraging, welke apps blijven stil omdat ze
+  opname niet toestaan, wat doet de stilte bij een netwerkhapering.
+- Nog niet: Opus of een andere codec voor een slecht netwerk, geluid van de telefoon naar Windows.
 
 ## 2. Windows (experimentele Tauri-app)
 
