@@ -95,6 +95,65 @@ pub fn mac_to_vk(code: u16) -> Option<u16> {
     })
 }
 
+/// The key of the library for a Windows virtual-key code. On Windows that is the code itself; elsewhere the library wants a
+/// character or a named key, because there the numbers mean something else.
+#[cfg(windows)]
+fn key_of(vk: u16) -> Key {
+    Key::Other(u32::from(vk))
+}
+
+#[cfg(not(windows))]
+fn key_of(vk: u16) -> Key {
+    portable_key(vk).unwrap_or(Key::Other(u32::from(vk)))
+}
+
+/// The same keys as `mac_to_vk` gives, as the library names them on every system.
+#[cfg_attr(windows, allow(dead_code))]
+fn portable_key(vk: u16) -> Option<Key> {
+    Some(match vk {
+        0x41..=0x5A => Key::Unicode((b'a' + (vk - 0x41) as u8) as char),
+        0x30..=0x39 => Key::Unicode((b'0' + (vk - 0x30) as u8) as char),
+        0xBB => Key::Unicode('='),
+        0xBD => Key::Unicode('-'),
+        0xDD => Key::Unicode(']'),
+        0xDB => Key::Unicode('['),
+        0xDE => Key::Unicode('\''),
+        0xBA => Key::Unicode(';'),
+        0xDC => Key::Unicode('\\'),
+        0xBC => Key::Unicode(','),
+        0xBF => Key::Unicode('/'),
+        0xBE => Key::Unicode('.'),
+        0xC0 => Key::Unicode('`'),
+        0x0D => Key::Return,
+        0x09 => Key::Tab,
+        0x20 => Key::Space,
+        0x08 => Key::Backspace,
+        0x1B => Key::Escape,
+        0x2E => Key::Delete,
+        0x24 => Key::Home,
+        0x23 => Key::End,
+        0x21 => Key::PageUp,
+        0x22 => Key::PageDown,
+        0x25 => Key::LeftArrow,
+        0x27 => Key::RightArrow,
+        0x28 => Key::DownArrow,
+        0x26 => Key::UpArrow,
+        0x70 => Key::F1,
+        0x71 => Key::F2,
+        0x72 => Key::F3,
+        0x73 => Key::F4,
+        0x74 => Key::F5,
+        0x75 => Key::F6,
+        0x76 => Key::F7,
+        0x77 => Key::F8,
+        0x78 => Key::F9,
+        0x79 => Key::F10,
+        0x7A => Key::F11,
+        0x7B => Key::F12,
+        _ => return None,
+    })
+}
+
 /// The modifier keys a Key message asks for: shift 1, control 2, option 4, command 8. Command and control both
 /// become Ctrl, since that is where the shortcuts of a Mac live on a PC (Cmd+C is Ctrl+C), and option is Alt.
 fn modifiers(mods: u8) -> Vec<Key> {
@@ -190,7 +249,7 @@ fn run(rx: mpsc::Receiver<Msg>) {
                     let _ = enigo.button(button(b), Direction::Release);
                 }
                 for k in keys.drain() {
-                    let _ = enigo.key(Key::Other(k as u32), Direction::Release);
+                    let _ = enigo.key(key_of(k), Direction::Release);
                 }
                 for m in held_mods.drain(..) {
                     let _ = enigo.key(m, Direction::Release);
@@ -245,10 +304,10 @@ fn run(rx: mpsc::Receiver<Msg>) {
                             }
                         }
                         keys.insert(vk);
-                        let _ = enigo.key(Key::Other(u32::from(vk)), Direction::Press);
+                        let _ = enigo.key(key_of(vk), Direction::Press);
                     } else {
                         keys.remove(&vk);
-                        let _ = enigo.key(Key::Other(u32::from(vk)), Direction::Release);
+                        let _ = enigo.key(key_of(vk), Direction::Release);
                         // The modifiers belonged to this key; they are let go with it.
                         for m in held_mods.drain(..) {
                             let _ = enigo.key(m, Direction::Release);
@@ -281,6 +340,18 @@ mod tests {
         assert_eq!(mac_to_vk(126), Some(0x26)); // up
         assert_eq!(mac_to_vk(29), Some(0x30)); // 0
         assert_eq!(mac_to_vk(9999), None);
+    }
+
+    #[test]
+    fn every_key_the_phone_sends_has_a_portable_name() {
+        for code in 0u16..128 {
+            if let Some(vk) = mac_to_vk(code) {
+                assert!(portable_key(vk).is_some(), "mac code {code} (vk {vk:#x}) has no portable key");
+            }
+        }
+        assert_eq!(portable_key(0x41), Some(Key::Unicode('a')));
+        assert_eq!(portable_key(0x5A), Some(Key::Unicode('z')));
+        assert_eq!(portable_key(0x39), Some(Key::Unicode('9')));
     }
 
     #[test]

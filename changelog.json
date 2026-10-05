@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.52",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Typing from your phone or another computer works on Linux too",
+      "new": [
+        "Linux: the keyboard of a phone, or of a Mac or PC that shares its mouse, now types the right keys on the Linux version of Tandem. Before, the keys were sent as numbers that only mean something on Windows. It has not been tried on a real Linux desktop yet"
+      ]
+    },
+    "nl": {
+      "title": "Typen vanaf je telefoon of een andere computer werkt nu ook op Linux",
+      "new": [
+        "Linux: het toetsenbord van een telefoon, of van een Mac of pc die zijn muis deelt, typt nu de goede toetsen in de Linux-versie van Tandem. Eerder gingen de toetsen als nummers die alleen op Windows iets betekenen. Het is nog niet op een echt Linux-bureaublad geprobeerd"
+      ]
+    }
+  },
+  {
     "version": "0.1.51",
     "date": "2026-10-05",
     "en": {
