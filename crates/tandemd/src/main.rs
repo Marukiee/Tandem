@@ -586,7 +586,9 @@ async fn main() -> Result<()> {
             let (status, body) = reply.split_once('\n').unwrap_or((&reply, ""));
             if status == "ok" && matches!(cli.command, Command::PairShow) {
                 let mut lines = body.lines();
-                print_qr(lines.next().unwrap_or_default().trim());
+                let link = lines.next().unwrap_or_default().trim();
+                print_qr(link);
+                println!("{link}");
                 let code = lines.next().and_then(|line| line.strip_prefix("code: ")).unwrap_or_default();
                 println!("Scan this with Tandem on another device, or type the code {code} there. It works for five minutes.");
                 return Ok(());
@@ -653,6 +655,7 @@ async fn main() -> Result<()> {
         Command::PairShow => {
             let offer = engine.create_pairing_offer()?;
             print_qr(&offer.uri);
+            println!("{}", offer.uri);
             println!("Scan this with Tandem on another device, or type the code {} there. It works for five minutes.", offer.code);
             let mut events = engine.subscribe();
             let waited = tokio::time::timeout(Duration::from_secs(300), async {
