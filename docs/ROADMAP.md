@@ -163,6 +163,21 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
   koppelen aan de Mac (dat is de andere kant op: de Mac zou dan als muis voor de telefoon moeten dienen, en macOS kan dat niet
   als app).
 
+- **Venster op de Mac sluiten stopt het delen op de telefoon (gevraagd 2026-10-06):** als het Android-scherm op de Mac wordt
+  weggeklikt moet de telefoon ook stoppen met delen (de opname, de melding en de tegel). Nu stopt alleen het venster. De Mac stuurt
+  bij het sluiten `media_stop` en Android moet daarop `ScreenPipeline` en `LiveShareService` echt beeindigen (ook bij een
+  verbinding die wegvalt); het pictogram in de statusbalk verdwijnt dan.
+- **Bellen via de Mac (gevraagd 2026-10-06, de vraag was: kan dat?):** een gesprek op de telefoon met de microfoon en de luidsprekers van
+  de Mac, zoals de Continuity-integratie tussen iPhone en Mac, en een melding op de Mac als je bezig bent met bellen om het gesprek
+  naar deze Mac te verplaatsen. Eerlijk antwoord: het geluid van een gewoon gesprek is voor een app op Android niet te pakken. Het
+  opnemen van gespreksgeluid (`VOICE_CALL`) en het afspelen van geluid in het gesprek is voor niet-systeemapps geblokkeerd, en
+  `AudioPlaybackCapture` slaat telefonie over. macOS kan zich ook niet als headset (Bluetooth HFP) aan een Android-telefoon
+  aanbieden, dat kan alleen met een iPhone. Windows kan dat wel (Phone Link doet het via HFP), dus voor de pc is er een weg. Wat
+  Tandem op de Mac wel kan, zonder dat geluid: de melding met naam en nummer, opnemen, ophangen, dempen en luidspreker aanzetten
+  (`TelecomManager`, `ANSWER_PHONE_CALLS`) vanaf de Mac, en een venster als er gebeld wordt met die knoppen. Het verplaatsen van het
+  geluid zelf werkt dan alleen met een andere weg: bellen via een VoIP-app (Wi-Fi bellen via Tandem, SIP) of de telefoon als
+  Bluetooth-HID/HFP-apparaat, en die wegen zijn per stuk nog niet onderzocht.
+
 ## 7. Kwaliteit en documentatie
 
 - Remote desktop: adaptieve kwaliteit volledig (nu alleen via bitrate-meldingen), HEVC, meerdere
