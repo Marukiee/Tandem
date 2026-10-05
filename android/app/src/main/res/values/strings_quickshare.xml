@@ -18,7 +18,6 @@
     <string name="quickshare_failed">The transfer did not work</string>
     <string name="quickshare_off_note">Off. Nobody can find this phone or send to it with Quick Share.</string>
     <string name="settings_cat_quickshare">Quick Share</string>
-    <string name="settings_kw_quickshare">quick share nearby share airdrop android share send receive files offline google</string>
     <string name="quickshare_channel_ask">Quick Share requests</string>
     <string name="quickshare_channel_ask_desc">Somebody wants to send you something with Quick Share</string>
     <string name="quickshare_channel_progress">Quick Share transfers</string>

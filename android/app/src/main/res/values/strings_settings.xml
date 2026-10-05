@@ -122,4 +122,5 @@
     <string name="clip_history_remove">Remove</string>
     <string name="clip_history_clear">Clear all but the ones you keep</string>
     <string name="settings_kw_sharing_clip_history">clipboard, history, copied, paste, copy again, clips</string>
+    <string name="settings_kw_quickshare">quick share nearby share airdrop android share send receive files offline google</string>
 </resources>
