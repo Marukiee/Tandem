@@ -838,3 +838,5 @@
 "Both devices are in a circle. A device in a circle can only take in one that is not. Remove one of them from its circle first." = "Beide apparaten zitten in een cirkel. Een apparaat in een cirkel kan alleen een apparaat opnemen dat in geen cirkel zit. Haal er eerst een uit zijn cirkel.";
 "The other device needs the latest Tandem first." = "Het andere apparaat heeft eerst de nieuwste Tandem nodig.";
 "Too many tries. Ask the other device to show a new code." = "Te veel pogingen. Vraag het andere apparaat om een nieuwe code.";
+"Nothing saved yet" = "Nog niets bewaard";
+"Image" = "Afbeelding";

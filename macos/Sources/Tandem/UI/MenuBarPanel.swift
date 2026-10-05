@@ -140,6 +140,14 @@ struct MenuBarPanel: View {
 
 /// The way into the clipboard history from the menu bar: a row like a device's, with the shortcut on it.
 private struct MenuClipboardRow: View {
+    /// The newest thing on the list, as one line.
+    static func latest(of items: [ClipItem]) -> String {
+        guard let item = items.max(by: { $0.date < $1.date }) else { return String(localized: "Nothing saved yet") }
+        if item.isImage { return String(localized: "Image") }
+        let line = item.preview.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty } ?? ""
+        return line.isEmpty ? String(localized: "Nothing saved yet") : line
+    }
+
     var body: some View {
         let history = ClipboardHistory.shared
         Button {
@@ -156,9 +164,12 @@ private struct MenuClipboardRow: View {
                         .animation(.tandemFade, value: hovering)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Clipboard history").font(.callout.weight(.semibold))
-                        Text(history.enabled ? String(localized: "\(history.items.count) saved") : String(localized: "Off"))
+                        // What was copied last, not how many things there are: that is what the row is for.
+                        Text(history.enabled ? Self.latest(of: history.items) : String(localized: "Off"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                     }
                     Spacer(minLength: 4)
                     if history.hotkeyOn { KeyCap(history.hotkey.display) }

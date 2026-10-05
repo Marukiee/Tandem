@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.63",
+    "date": "2026-10-06",
+    "en": {
+      "title": "The last thing you copied in the menu bar panel",
+      "new": [
+        "Mac: the Clipboard history row in the menu bar panel shows the last thing you copied instead of how many things are saved"
+      ]
+    },
+    "nl": {
+      "title": "Het laatst gekopieerde in het menubalkpaneel",
+      "new": [
+        "Mac: de rij Klembordgeschiedenis in het menubalkpaneel toont het laatst gekopieerde in plaats van hoeveel er bewaard zijn"
+      ]
+    }
+  },
+  {
     "version": "0.1.62",
     "date": "2026-10-06",
     "en": {
