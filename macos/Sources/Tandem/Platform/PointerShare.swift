@@ -67,6 +67,9 @@ final class PointerShare {
     @ObservationIgnored private var savedLocation = CGPoint.zero
     @ObservationIgnored private var enteredBy = "left"
     @ObservationIgnored private var heldModifiers: Set<CGKeyCode> = []
+    /// How far the pointer has gone over there, in the pixels this Mac sent, counted from the place it came in: negative once it
+    /// went back past that place. Only a way out for a computer that never says the pointer came back (see `forward`).
+    @ObservationIgnored private var travelled: Double = 0
 
     private var model: EngineModel { EngineModel.shared }
 
@@ -194,6 +197,7 @@ final class PointerShare {
         savedLocation = CGEvent(source: nil)?.location ?? .zero
         remote = (device, edge)
         heldModifiers = []
+        travelled = 0
         CGAssociateMouseAndMouseCursorPosition(0)
         CGDisplayHideCursor(CGMainDisplayID())
         Task { try? await engine.sendPointerShare(target: device, msg: .enter(edge: tandemEdge(edge), along: Float(along))) }
@@ -211,6 +215,8 @@ final class PointerShare {
     }
 
     private static let escape: CGKeyCode = 53
+    /// How far back past the place it came in the pointer goes before this Mac takes it back by itself, in pixels.
+    private static let wayOut = 400.0
 
     private func forward(_ type: CGEventType, _ event: CGEvent, to device: String) -> Bool {
         guard let engine = model.tandem else { comeBack(along: nil); return false }
@@ -220,6 +226,21 @@ final class PointerShare {
             let dx = event.getIntegerValueField(.mouseEventDeltaX)
             let dy = event.getIntegerValueField(.mouseEventDeltaY)
             if dx != 0 || dy != 0 { send(.pointer(dx: Int16(clamping: dx), dy: Int16(clamping: dy))) }
+            // The other computer says when the pointer runs into the edge it came in by. One that cannot (it does not move the
+            // pointer, or never answers) would keep it for good, so going back well past where it came in brings it home anyway.
+            if let edge = remote?.edge {
+                switch edge {
+                case "right": travelled += Double(dx)
+                case "left": travelled -= Double(dx)
+                case "bottom": travelled += Double(dy)
+                default: travelled -= Double(dy)
+                }
+                if travelled < -Self.wayOut {
+                    Task { try? await engine.sendPointerShare(target: device, msg: .release) }
+                    comeBack(along: nil)
+                    return true
+                }
+            }
         case .leftMouseDown: send(.button(button: 0, down: true))
         case .leftMouseUp: send(.button(button: 0, down: false))
         case .rightMouseDown: send(.button(button: 1, down: true))

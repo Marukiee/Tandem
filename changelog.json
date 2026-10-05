@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.62",
+    "date": "2026-10-06",
+    "en": {
+      "title": "The shared mouse always comes back",
+      "new": [
+        "Shared mouse: a computer that cannot play the pointer, like Linux under Wayland, no longer keeps it when it comes over. It hands it straight back, so the Mac pointer cannot get stuck on a screen that does not move",
+        "Mac: when the other computer never gives the pointer back, moving the mouse back past the place where it went over now brings it home by itself, next to the Control, Option and Command with Escape keys that always worked"
+      ]
+    },
+    "nl": {
+      "title": "De gedeelde muis komt altijd terug",
+      "new": [
+        "Gedeelde muis: een computer die de muisaanwijzer niet kan afspelen, zoals Linux onder Wayland, houdt hem niet meer vast als hij overkomt. Hij geeft hem meteen terug, zodat de aanwijzer van de Mac niet kan blijven hangen op een scherm dat niet beweegt",
+        "Mac: als de andere computer de aanwijzer nooit teruggeeft, haalt terugbewegen voorbij de plek waar hij overging hem nu vanzelf naar huis, naast de toetsen Control, Option en Command met Escape die altijd al werkten"
+      ]
+    }
+  },
+  {
     "version": "0.1.61",
     "date": "2026-10-05",
     "en": {

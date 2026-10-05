@@ -5,6 +5,7 @@
 //! key that goes down is let go after it and a burst of pointer movements never holds up the engine.
 
 use std::collections::HashSet;
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Mutex, OnceLock, mpsc};
 
 use enigo::{Axis, Button, Coordinate, Direction, Enigo, Key, Keyboard, Mouse, Settings};
@@ -22,6 +23,22 @@ enum Msg {
 }
 
 static WORKER: OnceLock<Mutex<mpsc::Sender<Msg>>> = OnceLock::new();
+/// Whether the library could connect to what plays the input on this system: 0 not known yet, 1 yes, 2 no.
+static STATE: AtomicU8 = AtomicU8::new(0);
+
+/// Whether this system lets the app play pointer and keyboard input. A computer that cannot has to hand a pointer that comes
+/// over straight back, or the person who sent it would be stuck on a screen that does not move.
+pub fn ready() -> bool {
+    let _ = worker();
+    for _ in 0..40 {
+        match STATE.load(Ordering::Relaxed) {
+            1 => return true,
+            2 => return false,
+            _ => std::thread::sleep(std::time::Duration::from_millis(50)),
+        }
+    }
+    false
+}
 
 fn worker() -> &'static Mutex<mpsc::Sender<Msg>> {
     WORKER.get_or_init(|| {
@@ -197,9 +214,11 @@ fn run(rx: mpsc::Receiver<Msg>) {
         Ok(enigo) => enigo,
         Err(error) => {
             log::warn!("the pointer and keyboard cannot be driven: {error}");
+            STATE.store(2, Ordering::Relaxed);
             return;
         }
     };
+    STATE.store(1, Ordering::Relaxed);
     let mut buttons: HashSet<u8> = HashSet::new();
     let mut keys: HashSet<u16> = HashSet::new();
     let mut held_mods: Vec<Key> = Vec::new();

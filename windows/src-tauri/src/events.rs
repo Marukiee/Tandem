@@ -137,7 +137,9 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             use tandem_core::ffi::TandemPointerShare as Share;
             match msg {
                 Share::Enter { edge, along } => {
-                    if settings::get(app).remote_input {
+                    // Taken only when it can really be played here: a pointer that comes over and does nothing leaves the person
+                    // on the other computer stuck, so what cannot be done is handed straight back.
+                    if settings::get(app).remote_input && crate::commands::input_blocked().is_none() && input::ready() {
                         input::shared_enter(from, edge.into(), along);
                     } else if let Ok(engine) = app.state::<AppState>().engine() {
                         // Not allowed: the pointer goes straight back.
