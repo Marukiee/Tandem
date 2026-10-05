@@ -37,6 +37,7 @@ import uniffi.tandem_core.TandemShareOrigin
 import uniffi.tandem_core.TandemStatus
 import uniffi.tandem_core.tandemInitLogging
 import java.io.File
+import nl.markmaaktmedia.tandem.graph
 
 data class TransferItem(
     val id: String,
@@ -210,7 +211,10 @@ class EngineHost(
 
             is TandemEvent.RemovedFromCircle -> _removed.value = true
 
-            is TandemEvent.Clipboard -> applyRemoteClipboard(event.text)
+            is TandemEvent.Clipboard -> {
+                applyRemoteClipboard(event.text)
+                context.graph.clipHistory.record(event.text, device(event.from)?.name.orEmpty())
+            }
 
             is TandemEvent.ShareText -> {
                 if (event.open && event.isUrl) {
@@ -349,6 +353,7 @@ class EngineHost(
     /** Sends the clipboard to the chosen devices. */
     suspend fun sendClipboard(targets: List<String>, text: String): Int {
         val engine = engine ?: return 0
+        context.graph.clipHistory.record(text, "")
         return engine.sendClipboard(targets, text, isUrl = text.startsWith("http://") || text.startsWith("https://")).size
     }
 

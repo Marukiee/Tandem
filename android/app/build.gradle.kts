@@ -147,6 +147,8 @@ dependencies {
     implementation(libs.shizuku.provider)
 
     testImplementation(libs.junit)
+    // The JVM tests run without Android, whose JSON classes are empty shells there.
+    testImplementation("org.json:json:20240303")
 }
 
 // Copies the changelog next to the other assets before anything is packaged.

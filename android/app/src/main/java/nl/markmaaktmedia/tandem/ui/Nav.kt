@@ -25,6 +25,7 @@ sealed interface Route {
     data object Hotspot : Route
     data object Changelog : Route
     data object MediaApps : Route
+    data object ClipboardHistory : Route
     data object OnboardingPreview : Route
 
     /** A page of the Settings overview that is not a screen of its own. */
@@ -91,6 +92,7 @@ private fun routeFromKey(key: String): Route? = when {
     key.startsWith("devsettings:") -> Route.DeviceSettings(key.removePrefix("devsettings:"))
     key.startsWith("screen:") -> Route.Screen(key.removePrefix("screen:"))
     key == "access" -> Route.Access
+    key == "clipboard-history" -> Route.ClipboardHistory
     key == "files" -> Route.FileAccess
     key == "mirror" -> Route.MirrorApps
     key == "appearance" -> Route.Appearance

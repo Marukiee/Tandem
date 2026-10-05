@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.45",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Clipboard history on Android",
+      "new": [
+        "Android: Settings, Devices and sharing, Clipboard history. What came to your clipboard from other devices and what you sent shows up there. Tap one to copy it again, keep the ones you want, remove the rest, and search. It is what passed through Tandem, because Android does not let an app read everything you copy, and it stays on the phone"
+      ]
+    },
+    "nl": {
+      "title": "Klembordgeschiedenis op Android",
+      "new": [
+        "Android: Instellingen, Apparaten en delen, Klembordgeschiedenis. Wat van andere apparaten op je klembord kwam en wat je stuurde staat daar. Tik op een item om het opnieuw te kopieren, bewaar wat je wilt houden, verwijder de rest en zoek. Het is wat via Tandem is gegaan, want Android laat een app niet alles lezen wat je kopieert, en het blijft op de telefoon"
+      ]
+    }
+  },
+  {
     "version": "0.1.44",
     "date": "2026-10-05",
     "en": {

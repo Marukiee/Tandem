@@ -66,16 +66,20 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
 
         SectionHeader(stringResource(R.string.settings_sharing))
         SettingsGroup {
-            SettingsTarget(FocusKeys.Screenshot, 0, 3) {
-                SwitchRow(0, 3, TandemIcons.Screenshot, stringResource(R.string.settings_screenshot), stringResource(R.string.settings_screenshot_sub), screenshot, { scope.launch { prefs.setScreenshotPrompt(it) } })
+            SettingsTarget(FocusKeys.Screenshot, 0, 4) {
+                SwitchRow(0, 4, TandemIcons.Screenshot, stringResource(R.string.settings_screenshot), stringResource(R.string.settings_screenshot_sub), screenshot, { scope.launch { prefs.setScreenshotPrompt(it) } })
             }
-            SettingsTarget(FocusKeys.Ble, 1, 3) {
-                SwitchRow(1, 3, TandemIcons.Bluetooth, stringResource(R.string.settings_ble_messages), stringResource(R.string.settings_ble_messages_sub), bleMessages, { scope.launch { prefs.setBluetoothMessages(it) } })
+            SettingsTarget(FocusKeys.Ble, 1, 4) {
+                SwitchRow(1, 4, TandemIcons.Bluetooth, stringResource(R.string.settings_ble_messages), stringResource(R.string.settings_ble_messages_sub), bleMessages, { scope.launch { prefs.setBluetoothMessages(it) } })
             }
             ActionRow(
-                2, 3, TandemIcons.Paste, stringResource(R.string.settings_clip_tile), stringResource(R.string.settings_clip_tile_sub),
+                2, 4, TandemIcons.Paste, stringResource(R.string.settings_clip_tile), stringResource(R.string.settings_clip_tile_sub),
                 { nl.markmaaktmedia.tandem.share.ClipboardTileService.requestAdd(context) },
-                modifier = Modifier.settingsTarget(FocusKeys.ClipTile, 2, 3),
+                modifier = Modifier.settingsTarget(FocusKeys.ClipTile, 2, 4),
+            )
+            ActionRow(
+                3, 4, TandemIcons.Paste, stringResource(R.string.clip_history_title), stringResource(R.string.clip_history_row_sub),
+                { onOpen(Route.ClipboardHistory) }, modifier = Modifier.routeBounds(routeKey(Route.ClipboardHistory)),
             )
         }
 

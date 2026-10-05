@@ -24,6 +24,7 @@ class Graph(app: Application) {
     val media = nl.markmaaktmedia.tandem.media.MediaMirror(app, prefs, host, scope)
     val audio = nl.markmaaktmedia.tandem.audio.RemoteAudioPlayer(app, prefs, host, scope).also { host.audioSink = it }
     val live = nl.markmaaktmedia.tandem.live.LiveShare(app, host, scope)
+    val clipHistory = nl.markmaaktmedia.tandem.data.ClipHistory(app)
 
     /** This phone as the viewer of a Mac's screen. */
     val screen = nl.markmaaktmedia.tandem.screen.ScreenViewer(app, host).also { host.mediaViewer = it }

@@ -215,6 +215,7 @@ private fun RouteBody(route: Route, nav: Nav) {
         Route.Pair -> PairScreen(onBack = { nav.pop() }, onPaired = { nav.pop() })
         is Route.Remote -> RemoteScreen(route.id, onBack = { nav.pop() })
         is Route.Screen -> nl.markmaaktmedia.tandem.screen.ScreenViewerScreen(route.id, onBack = { nav.pop() })
+        is Route.ClipboardHistory -> nl.markmaaktmedia.tandem.ui.screens.ClipboardHistoryScreen(onBack = { nav.pop() })
         is Route.DeviceSettings -> nl.markmaaktmedia.tandem.ui.screens.DeviceSettingsScreen(route.id, onBack = { nav.pop() })
         Route.Access -> AccessScreen(onBack = { nav.pop() })
         Route.FileAccess -> nl.markmaaktmedia.tandem.ui.screens.FileAccessScreen(onBack = { nav.pop() })

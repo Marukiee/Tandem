@@ -194,6 +194,10 @@ internal object SettingsCatalog {
             { TandemIcons.Devices }, subtitle = R.string.settings_media_apps_sub, via = sharing,
         ),
         SettingsEntry(
+            "sharing_clip_history", R.string.clip_history_title, R.string.settings_kw_sharing_clip_history, SettingsCategory.Sharing, Route.ClipboardHistory,
+            { TandemIcons.Paste }, subtitle = R.string.clip_history_row_sub, via = sharing,
+        ),
+        SettingsEntry(
             "sharing_speaker", R.string.settings_audio_output, R.string.settings_kw_sharing_speaker, SettingsCategory.Sharing, sharing,
             { TandemIcons.VolumeUp }, subtitle = R.string.settings_audio_output_sub, focus = FocusKeys.Speaker,
         ),

@@ -110,4 +110,16 @@
     <string name="audio_delay_normal">Normal</string>
     <string name="audio_delay_smooth">Smooth</string>
     <string name="settings_kw_sharing_speaker_delay">delay, latency, lag, sound delay, audio delay, stutter, steady, buffer, speaker, quality</string>
+    <string name="clip_history_title">Clipboard history</string>
+    <string name="clip_history_row_sub">What came to your clipboard from other devices, and what you sent</string>
+    <string name="clip_history_sub">This is what passed through Tandem. Android does not let an app read everything you copy, so it is not everything. It stays on this phone.</string>
+    <string name="clip_history_search">Search</string>
+    <string name="clip_history_empty">Nothing yet. What comes to your clipboard from another device shows up here.</string>
+    <string name="clip_history_none">Nothing matches.</string>
+    <string name="clip_history_copied">Copied</string>
+    <string name="clip_history_pin">Keep this one</string>
+    <string name="clip_history_unpin">Let this one go</string>
+    <string name="clip_history_remove">Remove</string>
+    <string name="clip_history_clear">Clear all but the ones you keep</string>
+    <string name="settings_kw_sharing_clip_history">clipboard, history, copied, paste, copy again, clips</string>
 </resources>

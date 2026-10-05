@@ -109,4 +109,16 @@
     <string name="audio_delay_normal">Normaal</string>
     <string name="audio_delay_smooth">Soepel</string>
     <string name="settings_kw_sharing_speaker_delay">vertraging, latency, lag, geluidsvertraging, audiovertraging, haperen, stabiel, buffer, speaker, kwaliteit</string>
+    <string name="clip_history_title">Klembordgeschiedenis</string>
+    <string name="clip_history_row_sub">Wat van andere apparaten op je klembord kwam, en wat je stuurde</string>
+    <string name="clip_history_sub">Dit is wat via Tandem is gegaan. Android laat een app niet alles lezen wat je kopieert, dus het is niet alles. Het blijft op deze telefoon.</string>
+    <string name="clip_history_search">Zoeken</string>
+    <string name="clip_history_empty">Nog niets. Wat van een ander apparaat op je klembord komt, verschijnt hier.</string>
+    <string name="clip_history_none">Niets komt overeen.</string>
+    <string name="clip_history_copied">Gekopieerd</string>
+    <string name="clip_history_pin">Bewaar deze</string>
+    <string name="clip_history_unpin">Laat deze los</string>
+    <string name="clip_history_remove">Verwijder</string>
+    <string name="clip_history_clear">Wis alles behalve wat je bewaart</string>
+    <string name="settings_kw_sharing_clip_history">klembord, geschiedenis, gekopieerd, plakken, opnieuw kopieren, clips</string>
 </resources>
