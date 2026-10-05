@@ -109,6 +109,25 @@
             </intent-filter>
         </activity>
 
+        <!-- Share to Quick Share: the same sheet, with only the devices nearby. This phone has no Quick Share of Google. -->
+        <activity-alias
+            android:name=".share.QuickShareTarget"
+            android:targetActivity=".share.ShareTargetActivity"
+            android:exported="true"
+            android:icon="@drawable/ic_quickshare_target"
+            android:label="@string/quickshare_share_label">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity-alias>
+
         <activity
             android:name=".share.ClipboardSendActivity"
             android:exported="false"

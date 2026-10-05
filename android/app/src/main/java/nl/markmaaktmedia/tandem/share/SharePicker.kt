@@ -73,6 +73,9 @@ fun SharePickerSheet(
     onSend: (List<String>) -> Unit,
     onClose: () -> Unit,
     nearbyOn: Boolean = false,
+    /** Chosen as Quick Share in the share menu: the devices of Tandem are left out. */
+    nearbyOnly: Boolean = false,
+    onEnableNearby: () -> Unit = {},
     nearby: List<nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Peer> = emptyList(),
     nearbyPin: String? = null,
     onSendNearby: (nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Peer) -> Unit = {},
@@ -114,6 +117,7 @@ fun SharePickerSheet(
                             Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                         }
                     }
+                    if (!nearbyOnly) {
                     if (online.isEmpty()) {
                         Column(Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             PillSpinner(size = 36.dp)
@@ -149,7 +153,13 @@ fun SharePickerSheet(
                             )
                         }
                     }
-                    if (nearbyOn) NearbySection(nearby, onSendNearby)
+                    }
+                    if (nearbyOn) NearbySection(nearby, onSendNearby) else if (nearbyOnly) {
+                        Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(stringResource(R.string.quickshare_off_hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                            PrimaryPillButton(stringResource(R.string.quickshare_turn_on), onEnableNearby)
+                        }
+                    }
                 }
 
                 SendPhase.Sending -> StatusBlock {

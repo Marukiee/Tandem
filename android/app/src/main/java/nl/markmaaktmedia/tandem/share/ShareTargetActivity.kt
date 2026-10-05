@@ -89,9 +89,11 @@ class ShareTargetActivity : ComponentActivity() {
             directSend(shared, shortcutId)
             return
         }
+        // Chosen as "Quick Share" in the share menu: only the devices nearby are shown.
+        val nearbyOnly = intent.component?.className?.endsWith("QuickShareTarget") == true
         setContent {
             val appearance = graph.prefs.appearance.collectAppearance()
-            TandemTheme(appearance, applySystemBarStyle = false) { ShareScreen(shared) { finish() } }
+            TandemTheme(appearance, applySystemBarStyle = false) { ShareScreen(shared, nearbyOnly) { finish() } }
         }
     }
 
@@ -150,7 +152,7 @@ class ShareTargetActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun ShareScreen(shared: Shared, onClose: () -> Unit) {
+    private fun ShareScreen(shared: Shared, nearbyOnly: Boolean, onClose: () -> Unit) {
         val host = LocalContext.current.graph.host
         val quick = LocalContext.current.graph.quickShare
         val devices by host.devices.collectAsState()
@@ -197,6 +199,8 @@ class ShareTargetActivity : ComponentActivity() {
                     },
                     onClose = onClose,
                     nearbyOn = nearbyOn,
+                    nearbyOnly = nearbyOnly,
+                    onEnableNearby = { quick.setEnabled(true) },
                     nearby = nearby,
                     nearbyPin = nearbyPin,
                     onSendNearby = { peer ->

@@ -62,4 +62,6 @@
     <string name="quickshare_how_receive_title">Ontvangen</string>
     <string name="quickshare_how_send_title">Versturen</string>
     <string name="quickshare_how_files_title">Waar het naartoe gaat</string>
+    <string name="quickshare_share_label">Quick Share</string>
+    <string name="quickshare_turn_on">Zet Quick Share aan</string>
 </resources>

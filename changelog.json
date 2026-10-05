@@ -7,7 +7,8 @@
       "new": [
         "Mac: Settings has a sidebar with all sections, like System Settings, instead of tabs. With the new sections for Mouse and keyboard and Quick Share the tabs did not fit any more, and the last ones ended up in a menu behind two arrows where they looked greyed out",
         "Android, Windows and Linux: Quick Share has its own icon, a ring with two arrows, in the tile, the settings and the share sheet. It looks like the Quick Share of Android but is not its logo, which is a mark of Google",
-        "Android: the How it works rows on the Quick Share page have a short title with the words under it in the quiet colour, like the other rows, instead of one long line in bold"
+        "Android: the How it works rows on the Quick Share page have a short title with the words under it in the quiet colour, like the other rows, instead of one long line in bold",
+        "Android: Quick Share is an entry of its own in the share menu, with its own icon, next to Tandem. It opens the sheet with only the devices nearby, and has a button to turn Quick Share on when it is off. The share sheet of Tandem still has the row Nearby, with Quick Share"
       ]
     },
     "nl": {
@@ -15,7 +16,8 @@
       "new": [
         "Mac: Instellingen heeft een zijbalk met alle onderdelen, zoals de Systeeminstellingen, in plaats van tabbladen. Met de nieuwe onderdelen Muis en toetsenbord en Quick Share pasten de tabbladen niet meer, en de laatste kwamen in een menu achter twee pijltjes waar ze grijs leken",
         "Android, Windows en Linux: Quick Share heeft een eigen icoon, een cirkel met twee pijlen, in de tegel, de instellingen en het deelmenu. Het lijkt op de Quick Share van Android maar is niet het logo, want dat is een merk van Google",
-        "Android: de rijen Hoe het werkt op de Quick Share-pagina hebben een korte titel met de uitleg eronder in de rustige kleur, zoals de andere rijen, in plaats van één lange regel in vet"
+        "Android: de rijen Hoe het werkt op de Quick Share-pagina hebben een korte titel met de uitleg eronder in de rustige kleur, zoals de andere rijen, in plaats van één lange regel in vet",
+        "Android: Quick Share is een eigen keuze in het deelmenu, met een eigen icoon, naast Tandem. Het opent het blad met alleen de apparaten in de buurt, en heeft een knop om Quick Share aan te zetten als het uit staat. Het deelblad van Tandem heeft nog steeds de rij In de buurt, met Quick Share"
       ]
     }
   },
