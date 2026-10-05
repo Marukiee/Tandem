@@ -144,6 +144,25 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
   zodat het deel waar je op typt in beeld blijft (`WindowInsets.ime`, het beeld in een kolom die de inzet volgt met een
   veer).
 
+- **Uitleg over de extra toestemming (gevraagd 2026-10-06):** het is onduidelijk dat je voor het bedienen van de telefoon vanaf de
+  Mac, terwijl het scherm wordt gespiegeld, nog een toestemming moet geven (Toegankelijkheid voor Tandem op de telefoon, en het
+  scherm delen zelf). Toon dat als stappen met een vinkje per stap, op de Mac in het telefoonvenster (de kaart Deze telefoon
+  bedienen) en op de telefoon in de melding van het delen, zodat de volgorde en het waarom duidelijk zijn. Elke stap grijs tot hij
+  gedaan is.
+- **De vraag "keuze onthouden" weg (gevraagd 2026-10-06):** Tandem vraagt zelf of een keuze onthouden moet worden bij het delen
+  van het scherm, terwijl Android toch elke keer zijn eigen bevestiging vraagt. Onze eigen vraag is dan overbodig: weg, en het
+  beleid (vragen, altijd, nooit) blijft een instelling.
+- **Hover bij de knoppen onderin het telefoonvenster op de Mac (gevraagd 2026-10-06):** de uitleg die opkomt bij de knoppen onderin
+  (`Live/LiveView.swift`) is lelijk en moet weg; een gewone systeem-tooltip met de naam is genoeg, geen eigen animatie.
+- **Scrollen met twee vingers op een telefoon die zijn scherm deelt (gevraagd 2026-10-06):** het scrollen vanaf de Mac komt niet aan.
+  Zonder root of Shizuku kan een app op Android alleen gebaren afspelen met de toegankelijkheidsservice (`dispatchGesture`), geen
+  echte muis of toetsenbord (`InputManager.injectInputEvent` is voor het systeem). Plan: de scrollgebeurtenis van de Mac
+  (trackpad met twee vingers, ook de uitloop) wordt een korte veeg op de telefoon, in stukken van ongeveer 16 ms zodat hij
+  vloeiend loopt, met de richting omgekeerd of niet volgens de instelling "natuurlijk scrollen". Een echt toetsenbord en echte muis
+  is alleen mogelijk met Shizuku (de optionele modus uit het klembordontwerp) of door de telefoon via Bluetooth als HID te laten
+  koppelen aan de Mac (dat is de andere kant op: de Mac zou dan als muis voor de telefoon moeten dienen, en macOS kan dat niet
+  als app).
+
 ## 7. Kwaliteit en documentatie
 
 - Remote desktop: adaptieve kwaliteit volledig (nu alleen via bitrate-meldingen), HEVC, meerdere
