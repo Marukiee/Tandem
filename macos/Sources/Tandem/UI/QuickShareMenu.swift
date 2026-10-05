@@ -6,6 +6,7 @@ import TandemCore
 /// being sent now. Only there while Quick Share is on.
 struct MenuQuickShare: View {
     @Bindable private var share = QuickShare.shared
+    @LocalState private var showDevices = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -29,23 +30,45 @@ struct MenuQuickShare: View {
             .padding(.vertical, 8)
             .hoverHighlight(radius: 18)
             if share.enabled {
-                if share.peers.isEmpty {
-                    HStack(spacing: 10) {
-                        PillSpinner(size: 16)
-                        Text("Looking for devices nearby")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
+                // The devices are not laid out at once: they are there when the person says they want to send.
+                Button {
+                    withAnimation(.tandem) { showDevices.toggle() }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: showDevices ? "chevron.down" : "paperplane")
+                            .font(.system(size: 12, weight: .semibold))
+                            .frame(width: 16)
+                        Text(showDevices ? "Hide devices" : "Send files…").font(.callout.weight(.medium))
+                        Spacer(minLength: 0)
                     }
+                    .foregroundStyle(Palette.indigo)
                     .padding(.horizontal, 10)
-                    .frame(height: 36)
-                } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
+                    .frame(height: 34)
+                    .hoverHighlight(radius: 14)
+                }
+                .buttonStyle(.plain)
+                if showDevices {
+                    let named = share.peers
+                    if named.isEmpty {
                         HStack(spacing: 10) {
-                            ForEach(share.peers) { peer in PeerChip(peer: peer) }
+                            PillSpinner(size: 16)
+                            Text("Looking for devices nearby")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
                         }
-                        .padding(.horizontal, 4)
+                        .padding(.horizontal, 10)
+                        .frame(height: 36)
+                        .transition(.opacity)
+                    } else {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(named) { peer in PeerChip(peer: peer) }
+                            }
+                            .padding(.horizontal, 4)
+                        }
+                        .scrollClipDisabled()
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                     }
-                    .scrollClipDisabled()
                 }
                 ForEach(share.outgoing) { item in OutgoingRow(item: item) }
             }

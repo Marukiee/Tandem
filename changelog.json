@@ -9,7 +9,9 @@
         "Android: the Quick Share sheet slides between Receive and Send, and its height, the devices and the state of a request (ready, receiving, received) change with a short animation instead of jumping",
         "Quick Share: devices nearby that do not say who they are, because they are not visible to everyone, are no longer shown as empty circles. They are left out and a line says how many there are and what to set on them. This goes for Android, Mac, Windows and Linux",
         "Android: to send, you first choose between Photos and videos, with the photo picker of Android, and Files, with the Files app, instead of the old list that opened before",
-        "Android: the Quick Share page in Settings has more now: who you receive as, how long it stays on, a button that opens the Quick Share sheet, the tile and what a tap on it does, and the devices nearby with their names"
+        "Android: the Quick Share page in Settings has more now: who you receive as, how long it stays on, a button that opens the Quick Share sheet, the tile and what a tap on it does, and the devices nearby with their names",
+        "Mac: Send with Quick Share in the Services menu. In Finder, right click files, then Services, then Send with Quick Share, and pick a device. A place in the Share menu itself needs an app extension, which this build does not make",
+        "Mac: with Quick Share on, the menu bar panel no longer lays out the devices at once. They show when you press Send files, and fold away again with Hide devices"
       ]
     },
     "nl": {
@@ -19,7 +21,9 @@
         "Android: het Quick Share-blad schuift tussen Ontvangen en Versturen, en de hoogte, de apparaten en de toestand van een verzoek (klaar, ontvangen, ontvangen) veranderen met een korte animatie in plaats van te springen",
         "Quick Share: apparaten in de buurt die niet zeggen wie ze zijn, omdat ze niet zichtbaar zijn voor iedereen, staan niet meer als lege cirkels in de lijst. Ze worden weggelaten en een regel zegt hoeveel het er zijn en wat je erop moet instellen. Dat geldt voor Android, Mac, Windows en Linux",
         "Android: om te versturen kies je eerst tussen Foto's en video's, met de fotokiezer van Android, en Bestanden, met de Bestanden-app, in plaats van de oude lijst die eerst openging",
-        "Android: de Quick Share-pagina bij Instellingen heeft nu meer: als wie je ontvangt, hoe lang het aan blijft, een knop die het Quick Share-blad opent, de tegel en wat een tik erop doet, en de apparaten in de buurt met hun namen"
+        "Android: de Quick Share-pagina bij Instellingen heeft nu meer: als wie je ontvangt, hoe lang het aan blijft, een knop die het Quick Share-blad opent, de tegel en wat een tik erop doet, en de apparaten in de buurt met hun namen",
+        "Mac: Verstuur met Quick Share in het menu Diensten. Klik in Finder met rechts op bestanden, dan Diensten, dan Verstuur met Quick Share, en kies een apparaat. Een plek in het deelmenu zelf vraagt een app-extensie, en die maakt deze bouw niet",
+        "Mac: met Quick Share aan legt het menubalkpaneel de apparaten niet meer meteen neer. Ze verschijnen als je op Verstuur bestanden drukt, en klappen weer weg met Verberg apparaten"
       ]
     }
   },

@@ -98,6 +98,15 @@ final class ServiceProvider: NSObject {
         Task { @MainActor in DevicePicker.send(urls) }
     }
 
+    /// "Send with Quick Share" in the Services menu (in Finder: right click, Services). A real entry in the Share menu needs an
+    /// app extension, which this build does not make; the Services menu is the way in that does not.
+    @objc func sendQuickShare(_ pasteboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString>) {
+        guard let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+              !urls.isEmpty
+        else { return }
+        Task { @MainActor in DevicePicker.sendNearby(urls) }
+    }
+
     /// "Insert from phone" in the Services menu. The picture arrives later and is pasted into the app the
     /// service was chosen in, so this returns at once and writes nothing to the pasteboard it was given.
     @objc func insertFromPhone(_ pasteboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString>) {
@@ -109,6 +118,7 @@ final class ServiceProvider: NSObject {
 @MainActor
 enum DevicePicker {
     private static var actions: [BlockAction] = []
+    fileprivate static var quickActions: [BlockAction] = []
 
     static func send(_ urls: [URL]) {
         let model = EngineModel.shared
@@ -137,6 +147,33 @@ enum DevicePicker {
             menu.addItem(allItem)
             menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
         }
+    }
+}
+
+extension DevicePicker {
+    /// Asks which of the devices that Quick Share found the files go to.
+    static func sendNearby(_ urls: [URL]) {
+        let share = QuickShare.shared
+        guard share.enabled else {
+            Notifier.shared.post(id: "quickshare-off", title: String(localized: "Quick Share is off"), body: String(localized: "Turn it on in the menu bar panel or in Settings, then try again."))
+            return
+        }
+        let peers = share.peers
+        guard !peers.isEmpty else {
+            Notifier.shared.post(id: "quickshare-none", title: String(localized: "No devices nearby"), body: String(localized: "On the other device open Quick Share and set it to be seen by everyone."))
+            return
+        }
+        let menu = NSMenu()
+        quickActions = []
+        for peer in peers {
+            let action = BlockAction { QuickShare.shared.send(urls, to: peer) }
+            quickActions.append(action)
+            let item = NSMenuItem(title: peer.name, action: #selector(BlockAction.run), keyEquivalent: "")
+            item.target = action
+            item.image = NSImage(systemSymbolName: peer.kind.symbol, accessibilityDescription: nil)
+            menu.addItem(item)
+        }
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
     }
 }
 
