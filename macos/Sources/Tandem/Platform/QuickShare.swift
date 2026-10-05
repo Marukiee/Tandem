@@ -172,6 +172,8 @@ final class QuickShare {
     // MARK: What the service says
 
     fileprivate func found(_ peer: TandemQsPeer) {
+        // A device that does not say who it is is not visible to everyone, and nothing can be sent to it.
+        guard !peer.name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         let new = Peer(id: peer.id, name: peer.name, kind: peer.kind)
         if let index = peers.firstIndex(where: { $0.id == new.id }) { peers[index] = new } else { peers.append(new) }
     }

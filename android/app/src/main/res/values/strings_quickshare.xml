@@ -85,4 +85,16 @@
     <string name="quickshare_sending_state">Sending...</string>
     <string name="quickshare_close">Close</string>
     <string name="quickshare_done">Done</string>
+    <plurals name="quickshare_unnamed">
+        <item quantity="one">%d device nearby is not visible to everyone, so it cannot be sent to. On that device, set Quick Share to Everyone.</item>
+        <item quantity="other">%d devices nearby are not visible to everyone, so they cannot be sent to. On those devices, set Quick Share to Everyone.</item>
+    </plurals>
+    <string name="quickshare_pick_title">What do you want to send?</string>
+    <string name="quickshare_pick_body">Pick photos and videos, or files from your phone.</string>
+    <string name="quickshare_pick_media">Photos and videos</string>
+    <string name="quickshare_pick_files">Files</string>
+    <string name="quickshare_visibility">Visibility</string>
+    <string name="quickshare_quick_settings">Quick settings</string>
+    <string name="quickshare_open_sheet">Open Quick Share</string>
+    <string name="quickshare_open_sheet_sub">Receive requests and send to devices nearby</string>
 </resources>

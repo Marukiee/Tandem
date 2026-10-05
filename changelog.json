@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.1.61",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Smoother Quick Share, with names and better pickers",
+      "new": [
+        "Android: the choice Stay on for opens under the row, at the value you tapped, instead of somewhere else on the screen",
+        "Android: the Quick Share sheet slides between Receive and Send, and its height, the devices and the state of a request (ready, receiving, received) change with a short animation instead of jumping",
+        "Quick Share: devices nearby that do not say who they are, because they are not visible to everyone, are no longer shown as empty circles. They are left out and a line says how many there are and what to set on them. This goes for Android, Mac, Windows and Linux",
+        "Android: to send, you first choose between Photos and videos, with the photo picker of Android, and Files, with the Files app, instead of the old list that opened before",
+        "Android: the Quick Share page in Settings has more now: who you receive as, how long it stays on, a button that opens the Quick Share sheet, the tile and what a tap on it does, and the devices nearby with their names"
+      ]
+    },
+    "nl": {
+      "title": "Soepeler Quick Share, met namen en betere keuzemenu's",
+      "new": [
+        "Android: de keuze Blijf aan gedurende klapt onder de rij uit, bij de waarde waarop je tikte, in plaats van ergens anders op het scherm",
+        "Android: het Quick Share-blad schuift tussen Ontvangen en Versturen, en de hoogte, de apparaten en de toestand van een verzoek (klaar, ontvangen, ontvangen) veranderen met een korte animatie in plaats van te springen",
+        "Quick Share: apparaten in de buurt die niet zeggen wie ze zijn, omdat ze niet zichtbaar zijn voor iedereen, staan niet meer als lege cirkels in de lijst. Ze worden weggelaten en een regel zegt hoeveel het er zijn en wat je erop moet instellen. Dat geldt voor Android, Mac, Windows en Linux",
+        "Android: om te versturen kies je eerst tussen Foto's en video's, met de fotokiezer van Android, en Bestanden, met de Bestanden-app, in plaats van de oude lijst die eerst openging",
+        "Android: de Quick Share-pagina bij Instellingen heeft nu meer: als wie je ontvangt, hoe lang het aan blijft, een knop die het Quick Share-blad opent, de tegel en wat een tik erop doet, en de apparaten in de buurt met hun namen"
+      ]
+    }
+  },
+  {
     "version": "0.1.60",
     "date": "2026-10-05",
     "en": {

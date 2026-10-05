@@ -85,4 +85,16 @@
     <string name="quickshare_sending_state">Versturen...</string>
     <string name="quickshare_close">Sluiten</string>
     <string name="quickshare_done">Klaar</string>
+    <plurals name="quickshare_unnamed">
+        <item quantity="one">%d apparaat in de buurt is niet zichtbaar voor iedereen, dus er kan niets naartoe. Zet Quick Share op dat apparaat op Iedereen.</item>
+        <item quantity="other">%d apparaten in de buurt zijn niet zichtbaar voor iedereen, dus er kan niets naartoe. Zet Quick Share op die apparaten op Iedereen.</item>
+    </plurals>
+    <string name="quickshare_pick_title">Wat wil je versturen?</string>
+    <string name="quickshare_pick_body">Kies foto\'s en video\'s, of bestanden van je telefoon.</string>
+    <string name="quickshare_pick_media">Foto\'s en video\'s</string>
+    <string name="quickshare_pick_files">Bestanden</string>
+    <string name="quickshare_visibility">Zichtbaarheid</string>
+    <string name="quickshare_quick_settings">Snelle instellingen</string>
+    <string name="quickshare_open_sheet">Quick Share openen</string>
+    <string name="quickshare_open_sheet_sub">Verzoeken ontvangen en versturen naar apparaten in de buurt</string>
 </resources>

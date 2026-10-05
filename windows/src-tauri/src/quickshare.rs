@@ -167,6 +167,10 @@ struct Hears {
 
 impl Sink for Hears {
     fn peer_found(&self, peer: Peer) {
+        // A device that does not say who it is is not visible to everyone, and nothing can be sent to it.
+        if peer.name.trim().is_empty() {
+            return;
+        }
         let found = PeerView { id: peer.id.clone(), name: peer.name.clone(), kind: kind_name(peer.kind) };
         {
             let mut view = VIEW.lock().unwrap();

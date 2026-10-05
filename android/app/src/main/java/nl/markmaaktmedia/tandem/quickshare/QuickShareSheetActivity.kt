@@ -9,10 +9,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -126,7 +130,11 @@ class QuickShareSheetActivity : ComponentActivity() {
         LaunchedEffect(Unit) { visible = true }
         // A request that comes in is shown at once.
         LaunchedEffect(incoming.size) { if (incoming.isNotEmpty()) tab = 0 }
-        val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris -> if (uris.isNotEmpty()) send(uris) else pending = null }
+        // What is to be sent is picked with the pickers Android itself has: the one for photos and videos, which is made for that,
+        // and the one of the Files app for everything else. The old "choose content" list is not used.
+        val media = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris -> if (uris.isNotEmpty()) send(uris) else pending = null }
+        val documents = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> if (uris.isNotEmpty()) send(uris) else pending = null }
+        var choosing by remember { mutableStateOf(false) }
         val name = graph.host.myName.ifBlank { "Tandem" }
         val close: () -> Unit = { scope.launch { visible = false; delay(250); finish() } }
         val scrim by animateFloatAsState(if (visible) 0.5f else 0f, TandemMotion.fadeSpec(), label = "scrim")
@@ -149,21 +157,55 @@ class QuickShareSheetActivity : ComponentActivity() {
                         .navigationBarsPadding(),
                 ) {
                     Column(
-                        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 22.dp, bottom = 96.dp),
+                        Modifier.fillMaxWidth().animateContentSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 22.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Text(stringResource(R.string.quickshare_title), style = MaterialTheme.typography.headlineLarge)
                         Spacer(Modifier.height(6.dp))
-                        if (tab == 0) {
-                            Receive(name, enabled, minutes, incoming, onToggle = { quick.setEnabled(it) })
-                        } else {
-                            Send(
-                                name, enabled, devices.filter { it.online }, peers, outgoing,
-                                onTurnOn = { quick.setEnabled(true) },
-                                onMine = { pending = Target.Mine(it); picker.launch("*/*") },
-                                onNearby = { pending = Target.Nearby(it); picker.launch("*/*") },
-                            )
+                        // The page slides to the side the tab is on and fades, so the two feel like neighbours.
+                        androidx.compose.animation.AnimatedContent(
+                            targetState = tab,
+                            transitionSpec = {
+                                val forward = targetState > initialState
+                                (slideInHorizontally(TandemMotion.spatial()) { if (forward) it / 4 else -it / 4 } + fadeIn(TandemMotion.fadeSpec())) togetherWith
+                                    (slideOutHorizontally(TandemMotion.spatial()) { if (forward) -it / 4 else it / 4 } + fadeOut(TandemMotion.fadeSpec()))
+                            },
+                            label = "quickShareTab",
+                        ) { current ->
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                if (current == 0) {
+                                    Receive(name, enabled, minutes, incoming, onToggle = { quick.setEnabled(it) })
+                                } else {
+                                    Send(
+                                        name, enabled, devices.filter { it.online }, peers, outgoing,
+                                        onTurnOn = { quick.setEnabled(true) },
+                                        onMine = { pending = Target.Mine(it); choosing = true },
+                                        onNearby = { pending = Target.Nearby(it); choosing = true },
+                                    )
+                                }
+                            }
                         }
+                    }
+                    if (choosing) {
+                        nl.markmaaktmedia.tandem.ui.components.TandemDialog(
+                            title = stringResource(R.string.quickshare_pick_title),
+                            icon = TandemIcons.QuickShare,
+                            body = stringResource(R.string.quickshare_pick_body),
+                            onDismiss = { choosing = false; pending = null },
+                            closeLabel = stringResource(R.string.action_cancel),
+                            actions = {
+                                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    PrimaryPillButton(stringResource(R.string.quickshare_pick_media), {
+                                        choosing = false
+                                        media.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+                                    }, Modifier.fillMaxWidth())
+                                    SecondaryPillButton(stringResource(R.string.quickshare_pick_files), {
+                                        choosing = false
+                                        documents.launch(arrayOf("*/*"))
+                                    }, Modifier.fillMaxWidth())
+                                }
+                            },
+                        )
                     }
                     // The two ways of the page, in a pill that floats at the bottom.
                     Row(
@@ -183,7 +225,7 @@ class QuickShareSheetActivity : ComponentActivity() {
     private fun Tab(label: String, icon: androidx.compose.ui.graphics.painter.Painter, selected: Boolean, onClick: () -> Unit) {
         Row(
             Modifier.clip(CircleShape)
-                .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+                .background(androidx.compose.animation.animateColorAsState(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent, TandemMotion.colourSpec(), label = "tabFill").value)
                 .bouncyClickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -212,7 +254,7 @@ class QuickShareSheetActivity : ComponentActivity() {
         Spacer(Modifier.height(4.dp))
         Text(stringResource(R.string.quickshare_requests), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Column(
-            Modifier.fillMaxWidth().clip(SquircleShape(24.dp)).background(MaterialTheme.colorScheme.surfaceContainer).padding(16.dp),
+            Modifier.fillMaxWidth().clip(SquircleShape(24.dp)).background(MaterialTheme.colorScheme.surfaceContainer).animateContentSize().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             if (incoming.isEmpty()) {
@@ -238,12 +280,19 @@ class QuickShareSheetActivity : ComponentActivity() {
                     )
                 }
             }
+            val phase = when { item.failure != null -> 3; item.saved != null -> 2; item.accepted -> 1; else -> 0 }
+            androidx.compose.animation.AnimatedContent(
+                targetState = phase,
+                transitionSpec = { (fadeIn(TandemMotion.fadeSpec()) + androidx.compose.animation.scaleIn(TandemMotion.springy(), 0.96f)) togetherWith fadeOut(TandemMotion.fadeSpec()) },
+                label = "requestPhase",
+            ) { current ->
+              Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             when {
-                item.failure != null -> {
+                current == 3 -> {
                     Text(stringResource(R.string.quickshare_stopped), style = MaterialTheme.typography.titleMedium)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { SecondaryPillButton(stringResource(R.string.quickshare_close), { quick.dismiss(item.id) }) }
                 }
-                item.saved != null -> {
+                current == 2 -> {
                     Text(stringResource(R.string.quickshare_received_state), style = MaterialTheme.typography.titleMedium)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                         item.link?.let { link ->
@@ -255,7 +304,7 @@ class QuickShareSheetActivity : ComponentActivity() {
                         PrimaryPillButton(stringResource(R.string.quickshare_done), { quick.dismiss(item.id) })
                     }
                 }
-                item.accepted -> {
+                current == 1 -> {
                     Text(stringResource(R.string.quickshare_receiving_state), style = MaterialTheme.typography.titleMedium)
                     val total = item.total.toFloat().coerceAtLeast(1f)
                     LinearProgressIndicator(progress = { (item.done.toFloat() / total).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
@@ -269,6 +318,8 @@ class QuickShareSheetActivity : ComponentActivity() {
                         PrimaryPillButton(stringResource(R.string.quickshare_accept), { quick.accept(item.id) })
                     }
                 }
+            }
+              }
             }
         }
     }
@@ -305,11 +356,12 @@ class QuickShareSheetActivity : ComponentActivity() {
                 PrimaryPillButton(stringResource(R.string.quickshare_turn_on), onTurnOn)
             }
         } else {
+            val unnamed = peers.count { it.name.isBlank() }
             DevicesCard {
-                if (peers.isEmpty()) {
+                if (peers.none { it.name.isNotBlank() }) {
                     Text(stringResource(R.string.quickshare_searching), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(8.dp))
                 }
-                peers.forEach { peer ->
+                peers.filter { it.name.isNotBlank() }.forEach { peer ->
                     val sending = outgoing.any { it.peerName == peer.name && it.state == QuickShareHost.Outgoing.State.Sending }
                     DeviceCircle(
                         peer.name,
@@ -318,13 +370,25 @@ class QuickShareSheetActivity : ComponentActivity() {
                     ) { onNearby(peer) }
                 }
             }
+            UnnamedHint(unnamed)
+        }
+    }
+
+    /** Devices that are nearby but do not say who they are: they are not visible to everyone, so nothing can be sent to them. */
+    @Composable
+    private fun UnnamedHint(count: Int) {
+        if (count > 0) {
+            Text(
+                androidx.compose.ui.res.pluralStringResource(R.plurals.quickshare_unnamed, count, count),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp),
+            )
         }
     }
 
     @Composable
     private fun DevicesCard(content: @Composable () -> Unit) {
         FlowRow(
-            Modifier.fillMaxWidth().clip(SquircleShape(28.dp)).background(MaterialTheme.colorScheme.surfaceContainer).padding(12.dp),
+            Modifier.fillMaxWidth().clip(SquircleShape(28.dp)).background(MaterialTheme.colorScheme.surfaceContainer).animateContentSize().padding(12.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
         ) { content() }
     }

@@ -133,9 +133,12 @@ fun <T> DropdownRow(
                 Icon(TandemIcons.ChevronDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
             }
         }
-        androidx.compose.material3.DropdownMenu(expanded = open.value, onDismissRequest = { open.value = false }) {
-            options.forEach { (option, label) ->
-                androidx.compose.material3.DropdownMenuItem(text = { Text(label) }, onClick = { onSelect(option); open.value = false })
+        // The menu hangs from a point at the right end of the bottom of the row, so it opens under the value that was tapped.
+        Box(Modifier.align(Alignment.BottomEnd).padding(end = 16.dp)) {
+            androidx.compose.material3.DropdownMenu(expanded = open.value, onDismissRequest = { open.value = false }) {
+                options.forEach { (option, label) ->
+                    androidx.compose.material3.DropdownMenuItem(text = { Text(label) }, onClick = { onSelect(option); open.value = false })
+                }
             }
         }
     }
