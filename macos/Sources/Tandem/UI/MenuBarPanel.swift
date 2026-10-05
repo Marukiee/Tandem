@@ -275,12 +275,12 @@ private struct MenuDeviceRow: View {
                         model.sendClipboard(to: [device.id])
                     }
                     .disabled(!(device.online || device.ble))
-                    LiveMenuButton(device: device, onHover: { hint = $0 ? "Show phone screen or camera" : nil })
+                    LiveMenuButton(device: device, onHover: { hint = $0 ? "Show phone screen" : nil })
                     if device.platform == .android {
                         let on = model.speaker.device == device.id
                         RoundIconButton(
                             symbol: on ? "speaker.wave.3.fill" : "speaker.wave.2", tint: on ? Palette.indigo : nil, size: 28,
-                            onHover: { hint = $0 ? (on ? "Stop using this phone as a speaker" : "Use this phone as a speaker") : nil }
+                            onHover: { hint = $0 ? (on ? "Stop phone output" : "Phone as output") : nil }
                         ) { model.toggleSpeaker(for: device.id) }
                         .disabled(!device.online)
                     }
