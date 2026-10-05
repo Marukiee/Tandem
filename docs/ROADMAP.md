@@ -57,8 +57,13 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
   in de releaseworkflow). Het systeem meldt zich als Linux, de batterij komt uit `/sys/class/power_supply`, updates van
   Windows staan uit.
 - Nog niet: mediabediening via MPRIS (de muziek van de telefoon in de mediabediening van het bureaublad), luisteren naar het
-  klembord zonder te pollen, de invoer op Wayland (enigo werkt vooral op X11), het venster met het telefoonscherm testen in
-  WebKitGTK (WebCodecs is daar niet vanzelfsprekend), een eigen updatepad, een pakket voor Flatpak of de AUR.
+  klembord zonder te pollen, de invoer op Wayland (enigo werkt vooral op X11; sinds 0.1.61 is de schakelaar grijs met uitleg
+  onder Wayland, echte invoer vraagt libei en een toestemmingsvenster), een eigen updatepad, een pakket voor Flatpak of de AUR.
+- 0.1.61: eigen vensterbalk, ronde knoppen in het livevenster, een eigen H.264-decoder (`video.rs`, OpenH264 en JPEG) omdat
+  WebKitGTK waarschijnlijk geen WebCodecs heeft, woorden per systeem. Allemaal alleen op een Mac en in CI gezien.
+- **Toegang tot de Linux-computer van de gebruiker (genoemd 2026-10-05, nog niet gedaan):** met SSH vanaf de Mac (de gebruiker zet
+  sshd aan en zet zelf een sleutel van de Mac in `authorized_keys`) kan ik de app daar draaien, logs lezen en schermafbeeldingen
+  nemen (Wayland: `grim` of de portal, X11: `scrot`). Dan kan alles voor Linux echt nagelopen worden.
 - Daarna: je Linux-computer bedienen vanuit Android (schermopname via PipeWire en een encoder).
 
 ## 4. Muis en toetsenbord over computers
@@ -69,6 +74,32 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
   Windows als hoofd met hooks (0.1.51). Instellingen en een toets om terug te halen staan op Mac en Windows.
 - Nog niet: Linux (zien van invoer via libei of evdev, afspelen via libei of XTest), een gedeeld klembord bij de overgang,
   ketens van meer dan twee computers, toetsvertaling voor andere indelingen dan US.
+- **Bestanden slepen over de rand (gevraagd 2026-10-05):** als de muis naar een andere computer is gegaan moet je een bestand
+  van het ene scherm naar het andere kunnen slepen, zonder haperen, zoals een Mac dat met Universal Control kan, en tussen alle
+  systemen (Mac, Windows, Linux, later Android). Ontwerp: bij het slepen van een bestand (muisknop ingedrukt met een
+  bestandsarkering) over de rand meldt de bron aan de ontvanger "slepen begonnen" met de bestandslijst (naam, grootte, soort),
+  de ontvanger toont een sleepaanwijzing onder de muis (bestanden zijn dan nog niet gekopieerd), en bij loslaten haalt de
+  ontvanger de bestanden op via de bestaande overdracht (pull) en zet ze waar de muis losliet (map in Finder of Verkenner, anders
+  de downloadmap). Per systeem: Mac `NSDraggingSession` en `NSPasteboard` (bron lezen met een sleep-monitor, doel met een
+  eigen `NSDraggingDestination` of door een echte sleep te starten met `beginDraggingSession` op een onzichtbaar venster onder de
+  muis), Windows OLE `IDropSource` en `IDropTarget` met `DoDragDrop`, Linux X11 XDND en Wayland `wl_data_device` (op Wayland
+  alleen vanuit een eigen venster). Het lastige is de bron: een andere app begint de sleep, dus de app moet de sleep zien
+  zonder hem te onderbreken. Wat al kan helpen: de gedeelde-muis-gebeurtenissen (`PointerShareMsg`) en het ophalen van bestanden
+  (`files.rs`). Eerst bouwen voor Mac en Windows, Linux volgt zodra de invoer daar werkt.
+
+## 4c. Een ingebouwde SSH-terminal (gevraagd 2026-10-05)
+
+- Een terminal in de app naar de apparaten die dat kunnen (Mac met Remote Login aan, Linux met sshd, Windows met OpenSSH, de
+  Android-telefoon alleen met een SSH-app zoals Termux), zonder dat je een ander programma opent. Ontwerp: de app (Mac
+  SwiftUI en de Tauri-app) toont een terminalvenster, de kern doet de SSH-verbinding (crate `russh`, sleutels in de
+  sleutelhanger van het systeem, host key pinnen op eerste gebruik zoals de rest van Tandem pint), bij voorkeur door de
+  bestaande versleutelde verbinding naar het apparaat te gebruiken als tunnel naar poort 22 zodat het ook buiten het LAN en
+  zonder poorten openzetten werkt. Weergave met een bestaande terminalemulator (SwiftTerm op de Mac, xterm.js in de Tauri-app).
+- **Grijs als het niet goed staat:** de knop op de apparaatpagina is grijs, met de reden ernaast, zolang het apparaat geen SSH
+  aanbiedt (Mac: Remote Login uit; Linux: geen sshd; Windows: geen OpenSSH-server; telefoon: geen SSH-server) of er nog geen
+  sleutel is ingesteld. Elk apparaat meldt in zijn `Hello.caps` of en hoe het SSH kan ontvangen (`ssh.host`) en de ander toont
+  per geval de stappen om het aan te zetten. Zie ook de regel in de werkafspraken: instellingen zonder rechten worden grijs, niet
+  verborgen.
 
 ## 4b. Quick Share en AirDrop
 
