@@ -16,8 +16,17 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 - Android: Trackpad-pagina, hotspotkaart met maanden en de dagkeuze, Uiterlijk en taal.
 - Hold-to-drag en snelheid op de Xperia afstellen, golvende zoekbalk (efficientie opnieuw meten).
 - Updatebanner op Android overlapt de paginakoppen.
-- Android, apparaatpagina van een Mac: de regel waarmee je de Mac laat vragen om deze telefoon te zien is te lang en staat lelijk.
-  Korter maken en naar een betere plek verplaatsen (bijvoorbeeld bij de instellingen van dat apparaat), in dezelfde vorm als de andere rijen.
+
+- Gedaan in 0.1.40 en 0.1.41, nog niet op echte toestellen gezien: de kaart Deze Mac bedienen met stappen, de
+  twee-vingers-rechtsklik, de verbonden knoppen in de weergave, het Android-scherm dat bijblijft op de Mac
+  (de encoder herhaalt het beeld elke 100 ms en een wachter vraagt een keyframe als er 0,7 s niets uitkomt), de Android-toegankelijkheidsservice voor het bedienen
+  van de telefoon vanaf de Mac (tikken, slepen, scrollen, typen, rechterknop is Terug), de kortere deelmelding.
+  De Android-weergave is wel getest op een emulator tegen een nagebootste Mac (`tandemd --pretend-screen`): het beeld speelt,
+  een tik is een klik, slepen beweegt de aanwijzer.
+- Vraag aan Mark: welke knoppen onderin het venster van de telefoon op de Mac werken niet? (Alle knoppen staan in
+  `Live/LiveView.swift`, bij het kopieren en draaien is het beeld nodig.)
+- Windows Rust-job in CI viel eenmaal om op `the_picture_comes_back_tagged_with_the_request` (tijdgevoelig, 20 s time-out):
+  bij herhaling stabieler maken.
 
 ## 1. Audio van de telefoon naar de Mac
 
