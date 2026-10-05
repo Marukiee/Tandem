@@ -268,6 +268,7 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Link<S> {
 
 // ---- Frames that are made often ---------------------------------------------------------------------------------------------
 
+#[allow(deprecated)]
 pub fn connection_response(accept: bool) -> OfflineFrame {
     OfflineFrame {
         version: Some(offline_frame::Version::V1 as i32),

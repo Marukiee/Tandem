@@ -3,4 +3,5 @@
 pub mod crypto;
 pub mod link;
 pub mod proto;
+pub mod service;
 pub mod transfer;
