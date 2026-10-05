@@ -115,6 +115,10 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
 - Icoontjes in de rondjes: de verhouding op Android en Mac nalopen (icoon onder de helft van de cirkel).
 - Meer Material 3 Expressive: golvende voortgang bij overdrachten, de laadindicator, expressieve vormen.
 - Klembordgeschiedenis-scherm op Android.
+- Mac, rij Quick Share in het menubalkpaneel (gevraagd 2026-10-06): de knop Verstuur bestanden is lelijk door het paars, hij moet
+  de vorm en kleur van de andere knoppen in het paneel krijgen. Het Quick Share-icoon in die rij heeft niet dezelfde
+  hover-animatie als de andere iconen (de cirkel die zich vult en het symbool dat wit wordt, zoals bij Invoegen vanaf telefoon
+  en Klembordgeschiedenis): zelfde `RoundIconButton` gebruiken. Zie `UI/QuickShareMenu.swift` en `UI/MenuBarPanel.swift`.
 
 ## 7. Kwaliteit en documentatie
 
