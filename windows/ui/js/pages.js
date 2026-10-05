@@ -373,15 +373,27 @@ function updateText() {
   }
 }
 
-// This PC as the main computer: the mouse and keyboard go on to the computer that sits next to it.
-function SharedPointerSettings({ s, patch }) {
-  const others = state.devices.filter((d) => d.online && (d.platform === "macos" || d.platform === "windows"));
+// One mouse and keyboard for more computers: how it works, where each computer sits, and who may use this PC.
+export function MousePage() {
+  const s = state.settings;
+  const patch = async (change) => set({ settings: await call("set_settings", { patch: change }) });
+  const others = state.devices.filter((d) => d.platform === "macos" || d.platform === "windows");
   const edges = ["left", "right", "top", "bottom"];
-  return html`<div>
-    <h2>${t("share_pointer")}</h2>
+  const step = (icon, text) => html`<div style="display:flex;gap:12px;align-items:center"><span class="glyph" style="width:30px;height:30px;flex:none"><${Icon} name=${icon} size=${16} /></span><span>${text}</span></div>`;
+  return html`<div class="wrap">
+    <div><h1>${t("mouse_title")}</h1><div class="muted">${t("mouse_intro")}</div></div>
+
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div style="font-weight:600">${t("mouse_how")}</div>
+      ${step("devices", t("mouse_step1"))}
+      ${step("pointer", t("mouse_step2"))}
+      ${step("refresh", t("mouse_step3"))}
+    </div>
+
+    <h2>${t("mouse_here")}</h2>
     <div class="card flush">
-      <${SettingRow} icon="pointer" title=${t("share_pointer_next")} sub=${t("share_pointer_sub")}>
-        <select value=${s.shareDevice} onChange=${(e) => patch({ shareDevice: e.target.value, shareEdge: e.target.value && !s.shareEdge ? "right" : s.shareEdge })}>
+      <${SettingRow} icon="pointer" title=${t("share_pointer_next")} sub=${others.length ? t("share_pointer_sub") : t("mouse_pair_first")}>
+        <select disabled=${!others.length} value=${s.shareDevice} onChange=${(e) => patch({ shareDevice: e.target.value, shareEdge: e.target.value && !s.shareEdge ? "right" : s.shareEdge })}>
           <option value="">${t("share_pointer_off")}</option>
           ${others.map((d) => html`<option value=${d.id}>${d.name}</option>`)}
         </select>
@@ -392,6 +404,16 @@ function SharedPointerSettings({ s, patch }) {
         </select>
       <//>`}
     </div>
+    <div class="small muted">${t("mouse_other_must_allow")}</div>
+
+    <h2>${t("mouse_in")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="pointer" title=${t("mouse_in_title")} sub=${t("mouse_in_sub")} on=${s.remoteInput} onChange=${(v) => patch({ remoteInput: v })} />
+    </div>
+    <div class="small muted">${t("mouse_firewall")}</div>
+
+    <h2>${t("mouse_phone")}</h2>
+    <div class="card"><div class="small muted">${t("mouse_phone_text")}</div></div>
   </div>`;
 }
 
@@ -433,8 +455,6 @@ export function SettingsPage() {
         </select>
       <//>
     </div>
-
-    ${state.canShare && html`<${SharedPointerSettings} s=${s} patch=${patch} />`}
 
     <h2>${t("about")}</h2>
     <div class="card">

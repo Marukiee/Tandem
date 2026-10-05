@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.54",
+    "date": "2026-10-05",
+    "en": {
+      "title": "A page for mouse and keyboard on Windows too",
+      "new": [
+        "Windows: a page of its own in the sidebar for one mouse and keyboard over more computers. It explains how it works, lets you pick the computer next to this PC and the side, and holds the switch that lets other computers and your phone use this PC, with a note about the firewall. The choice that was in Settings moved here"
+      ]
+    },
+    "nl": {
+      "title": "Ook op Windows een pagina voor muis en toetsenbord",
+      "new": [
+        "Windows: een eigen pagina in de zijbalk voor één muis en toetsenbord over meer computers. Hij legt uit hoe het werkt, laat je de computer naast deze pc en de kant kiezen, en bevat de schakelaar waarmee andere computers en je telefoon deze pc mogen gebruiken, met een opmerking over de firewall. De keuze die in Instellingen stond is hierheen verhuisd"
+      ]
+    }
+  },
+  {
     "version": "0.1.53",
     "date": "2026-10-05",
     "en": {
