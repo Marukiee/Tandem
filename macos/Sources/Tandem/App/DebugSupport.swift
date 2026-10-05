@@ -7,7 +7,7 @@ import TandemCore
 /// the interface gets checked without needing screen-recording permission.
 ///
 /// A few more variables choose what is on screen, so a snapshot can reach places a
-/// person would click to: `TANDEM_DEBUG_PAGE=shared` or `files` or `files:<device name>`, `TANDEM_DEBUG_SETTINGS=<section>`
+/// person would click to: `TANDEM_DEBUG_PAGE=shared` or `pointer` or `files` or `files:<device name>`, `TANDEM_DEBUG_SETTINGS=<section>`
 /// and `TANDEM_DEBUG_PANEL=1` (the menu bar panel in an ordinary window).
 /// `TANDEM_DEBUG_CLIPBOARD=seed` fills the clipboard history with samples and `=panel` also opens the quick panel,
 /// which then stays open when it loses the focus; `TANDEM_DEBUG_PAGE=clipboard` opens the page of the history.
@@ -100,6 +100,7 @@ enum DebugSupport {
         guard let page = variable("TANDEM_DEBUG_PAGE") else { return nil }
         if page == "shared" { return .shared }
         if page == "clipboard" { return .clipboard }
+        if page == "pointer" { return .pointer }
         // `files` is the files of the first device that has some, `files:Name` the ones of that device.
         if page.hasPrefix("files") {
             let wanted = page.dropFirst("files".count).dropFirst()

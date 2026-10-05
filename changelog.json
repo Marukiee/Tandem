@@ -3,27 +3,33 @@
     "version": "0.1.53",
     "date": "2026-10-05",
     "en": {
-      "title": "A cleaner phone window on the Mac",
+      "title": "A cleaner phone window, and a page for mouse and keyboard",
       "new": [
+        "Mac: a page of its own for one mouse and keyboard over more computers, in the sidebar. It explains how it works, shows what this Mac has to allow (Accessibility, with a button), lets you say where each computer sits, and lets you decide per computer whether it may use this Mac. Before there was one switch for all of them, in Settings. A phone gets its own explanation: show its screen and move the pointer into the window",
         "Mac: the window of your phone screen has no title bar by default, so the phone fills it edge to edge without black edges. Move the pointer to the top and the buttons of the window and the name of the phone come, and go again when you leave",
         "Mac: every button of the phone window shows its name at once when you hover over it, above the buttons where it cannot fall outside the window",
         "Mac: the menu with the three dots is a round button like the others, and the camera menu too. The button for clicking and typing on the phone is always pressable: when the phone does not allow it yet, it tells you how to turn it on, and when it does, it lights up and says so when you switch it",
         "Mac: on the device page the player and the recent files have the same plain surface as the hotspot card and the settings, instead of a tint of their own",
         "Mac: Try again after a dropped connection uses the same window instead of opening a second one",
         "Android: Control this Mac on the device page is the same size as Browse files below it",
-        "Android: for a Mac that is allowed to see your screen for good, the screen capture stays ready for ten minutes after you stop. Showing the screen again in that time needs no tap on the system question. The notification says it is ready and stops it. It has not been tried on a real phone yet"
+        "Android: for a Mac that is allowed to see your screen for good, the screen capture stays ready for ten minutes after you stop. Showing the screen again in that time needs no tap on the system question. The notification says it is ready and stops it. It has not been tried on a real phone yet",
+        "Mac: the app no longer closes when you start Insert from phone with its keyboard shortcut. The card of that panel resized its window in the middle of drawing it, which macOS does not allow",
+        "Mac: in the clipboard settings the Clear button next to Saved now sits in the middle of the two lines instead of level with the first"
       ]
     },
     "nl": {
-      "title": "Een rustiger telefoonvenster op de Mac",
+      "title": "Een rustiger telefoonvenster en een pagina voor muis en toetsenbord",
       "new": [
+        "Mac: een eigen pagina in de zijbalk voor één muis en toetsenbord over meer computers. Hij legt uit hoe het werkt, laat zien wat deze Mac moet toestaan (Toegankelijkheid, met een knop), laat je kiezen waar elke computer staat en per computer of die deze Mac mag gebruiken. Eerst was er één schakelaar voor allemaal, in Instellingen. Een telefoon krijgt zijn eigen uitleg: toon zijn scherm en beweeg de muis in het venster",
         "Mac: het venster met het telefoonscherm heeft standaard geen titelbalk, zodat de telefoon het venster vult zonder zwarte randen. Ga met de muis naar de bovenkant en de knoppen van het venster en de naam van de telefoon komen tevoorschijn, en gaan weer weg als je wegbeweegt",
         "Mac: elke knop van het telefoonvenster toont meteen zijn naam als je eroverheen beweegt, boven de knoppen zodat het nooit buiten het venster valt",
         "Mac: het menu met de drie puntjes is een ronde knop zoals de andere, ook het cameramenu. De knop om op de telefoon te klikken en te typen kun je altijd indrukken: staat de telefoon het nog niet toe, dan zegt hij hoe je het aanzet, en staat het aan dan licht hij op en meldt hij het als je het omzet",
         "Mac: op de apparaatpagina hebben de speler en de recente bestanden hetzelfde effen vlak als de hotspotkaart en de instellingen, in plaats van een eigen tint",
         "Mac: Probeer opnieuw na een verbroken verbinding gebruikt hetzelfde venster in plaats van een tweede te openen",
         "Android: Bedien deze Mac op de apparaatpagina is even groot als Bestanden bekijken eronder",
-        "Android: voor een Mac die je scherm voorgoed mag zien blijft de schermopname na het stoppen tien minuten klaar. Het scherm opnieuw tonen in die tijd vraagt geen tik op de vraag van het systeem. De melding zegt dat hij klaar staat en stopt hem. Het is nog niet op een echte telefoon geprobeerd"
+        "Android: voor een Mac die je scherm voorgoed mag zien blijft de schermopname na het stoppen tien minuten klaar. Het scherm opnieuw tonen in die tijd vraagt geen tik op de vraag van het systeem. De melding zegt dat hij klaar staat en stopt hem. Het is nog niet op een echte telefoon geprobeerd",
+        "Mac: de app sluit niet meer als je Voeg in vanaf telefoon start met de sneltoets. De kaart van dat paneel veranderde de grootte van zijn venster midden in het tekenen, wat macOS niet toestaat",
+        "Mac: bij de klembordinstellingen staat de knop Wis naast Nu bewaard in het midden van de twee regels in plaats van gelijk met de eerste"
       ]
     }
   },

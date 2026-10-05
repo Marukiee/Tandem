@@ -67,14 +67,15 @@ struct ClipboardSettings: View {
                     Text("A year").tag(365)
                 }
                 SettingToggle("Include pictures", subtitle: "They take the most room.", isOn: $history.recordsImages)
-                LabeledContent {
-                    Button("Clear…", role: .destructive) { confirmClear = true }
-                        .disabled(history.items.isEmpty)
-                } label: {
+                // Not a LabeledContent: with two lines of text it puts the button level with the first one.
+                HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Saved now")
                         Text(summary(history)).font(.caption).foregroundStyle(.secondary)
                     }
+                    Spacer(minLength: 12)
+                    Button("Clear…", role: .destructive) { confirmClear = true }
+                        .disabled(history.items.isEmpty)
                 }
             } header: {
                 Text("What is kept")

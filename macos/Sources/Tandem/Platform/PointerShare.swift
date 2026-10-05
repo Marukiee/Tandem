@@ -29,12 +29,27 @@ final class PointerShare {
         }
     }
 
-    /// Whether another computer may use the pointer and keyboard of this Mac. Off until it is turned on here.
-    var allowControl: Bool = UserDefaults.standard.bool(forKey: PointerShare.allowKey) {
+    private static let allowedKey = "pointerShareAllowedDevices"
+
+    /// The computers that may use the pointer and keyboard of this Mac, by device id. Nobody until it is turned on here, per
+    /// computer. (An earlier version had one switch for all of them: it still counts until the page has been opened.)
+    var allowed: Set<String> = Set(UserDefaults.standard.stringArray(forKey: PointerShare.allowedKey) ?? []) {
         didSet {
-            UserDefaults.standard.set(allowControl, forKey: Self.allowKey)
-            if !allowControl, let controlledBy { endControlled(tell: controlledBy) }
+            UserDefaults.standard.set(Array(allowed), forKey: Self.allowedKey)
+            UserDefaults.standard.removeObject(forKey: Self.allowKey)
+            if let controlledBy, !allowed.contains(controlledBy) { endControlled(tell: controlledBy) }
         }
+    }
+
+    private var legacyAllowAll: Bool {
+        UserDefaults.standard.bool(forKey: Self.allowKey) && UserDefaults.standard.object(forKey: Self.allowedKey) == nil
+    }
+
+    func isAllowed(_ device: String) -> Bool { allowed.contains(device) || legacyAllowAll }
+
+    /// Turns the old single switch into a choice per computer, so the page shows what is really the case.
+    func materialize(_ devices: [String]) {
+        if legacyAllowAll { allowed = Set(devices) }
     }
 
     /// The computers that sit next to this one, by device id: on which side.
@@ -263,7 +278,7 @@ final class PointerShare {
     func received(_ message: TandemPointerShare, from device: String) {
         switch message {
         case let .enter(edge, along):
-            guard allowControl, controlledBy == nil || controlledBy == device, model.tandem != nil else {
+            guard isAllowed(device), controlledBy == nil || controlledBy == device, model.tandem != nil else {
                 // Not allowed: the pointer is handed straight back.
                 Task { try? await model.tandem?.sendPointerShare(target: device, msg: .leave(along: along)) }
                 return
@@ -310,45 +325,5 @@ final class PointerShare {
     func deviceGone(_ id: String) {
         if remote?.device == id { comeBack(along: nil) }
         if controlledBy == id { controlledBy = nil }
-    }
-}
-
-/// Settings: which computers sit next to this Mac, and whether others may use it.
-struct PointerShareSettings: View {
-    @Environment(EngineModel.self) private var model
-    @Bindable private var share = PointerShare.shared
-
-    private static let sides = ["left", "right", "top", "bottom"]
-
-    var body: some View {
-        Section("Mouse and keyboard across computers") {
-            DescribedToggle(
-                "Use this Mac's mouse and keyboard on other computers",
-                subtitle: "Move the pointer over the edge of the screen. This Mac needs Accessibility, which Tandem already asks for",
-                isOn: $share.enabled
-            )
-            if share.enabled {
-                ForEach(model.devices.filter { $0.platform != .android }, id: \.id) { device in
-                    Picker(device.name, selection: Binding(
-                        get: { share.neighbours[device.id] ?? "none" },
-                        set: { share.neighbours[device.id] = $0 == "none" ? nil : $0 }
-                    )) {
-                        Text("Not next to this Mac").tag("none")
-                        Text("On the left").tag("left")
-                        Text("On the right").tag("right")
-                        Text("Above").tag("top")
-                        Text("Below").tag("bottom")
-                    }
-                }
-                Text("Press Control, Option and Command with Escape to bring the pointer back at any time.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            DescribedToggle(
-                "Let another computer use this Mac",
-                subtitle: "Its pointer and keyboard come in at the edge where it sits and work here. Only for devices in your circle",
-                isOn: $share.allowControl
-            )
-        }
     }
 }

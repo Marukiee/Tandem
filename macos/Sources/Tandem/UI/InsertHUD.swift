@@ -120,7 +120,16 @@ final class InsertHUDController {
         let host = HUDHostingView(rootView: root)
         host.sizingOptions = []
         host.onPointer = { [weak self] point in self?.interaction.pointerMoved(to: point) }
-        panel.contentView = host
+        // The hosting view is not the content view itself but sits in a plain one. A hosting view that is the content view
+        // of its window follows the size of its content with the window frame, and when the card animates that happens
+        // inside the layout pass of the window, where AppKit raises an exception that ended the app. Inside a plain view it
+        // is only a view, and the panel is sized by `fit` alone.
+        let container = NSView(frame: NSRect(origin: .zero, size: panel.frame.size))
+        container.autoresizesSubviews = true
+        host.frame = container.bounds
+        host.autoresizingMask = [.width, .height]
+        container.addSubview(host)
+        panel.contentView = container
         self.panel = panel
     }
 
@@ -145,7 +154,12 @@ final class InsertHUDController {
         guard let panel, content.width > 0 else { return }
         let size = CGSize(width: content.width + Self.margin * 2, height: content.height + Self.margin * 2)
         if size.height >= panel.frame.height - 0.5 {
-            panel.setFrame(frame(for: size), display: true)
+            // One turn later: the card reports its size while the window is being laid out, and a window must not be
+            // resized in the middle of that.
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let panel = self.panel else { return }
+                panel.setFrame(self.frame(for: size), display: true)
+            }
         }
         settleTask?.cancel()
         settleTask = Task { @MainActor [weak self] in

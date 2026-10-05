@@ -8,6 +8,8 @@ enum SidebarSelection: Hashable {
     case shared
     case notifications
     case clipboard
+    /// One mouse and keyboard over more computers.
+    case pointer
 }
 
 /// Two clearly separate groups: the devices, with how many of them are reachable, and
@@ -23,7 +25,7 @@ struct Sidebar: View {
     @Binding var showPairing: Bool
 
     private var order: [SidebarSelection] {
-        model.devices.map { .device($0.id) } + [.shared, .notifications, .clipboard]
+        model.devices.map { .device($0.id) } + [.shared, .notifications, .clipboard, .pointer]
     }
 
     var body: some View {
@@ -61,6 +63,11 @@ struct Sidebar: View {
                     selection = .clipboard
                 } content: {
                     ClipboardRow()
+                }
+                SidebarButton(selected: selection == .pointer) {
+                    selection = .pointer
+                } content: {
+                    PointerRow()
                 }
             }
             .padding(.horizontal, 10)
@@ -251,6 +258,20 @@ private struct NotificationsRow: View {
             symbol: "bell.fill",
             title: "Notifications",
             subtitle: count == 0 ? String(localized: "Nothing yet") : String(localized: "\(count) from your phones")
+        )
+    }
+}
+
+private struct PointerRow: View {
+    var body: some View {
+        let share = PointerShare.shared
+        let placed = share.neighbours.count
+        SideRow(
+            symbol: "cursorarrow.motionlines",
+            title: "Mouse and keyboard",
+            subtitle: !share.enabled && share.allowed.isEmpty
+                ? String(localized: "Off")
+                : (placed == 0 ? String(localized: "Set up") : String(localized: "\(placed) next to this Mac"))
         )
     }
 }
