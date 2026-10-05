@@ -79,6 +79,8 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
   kijkers, statistieken testen.
 - docs/SCREEN.md bijwerken (cursor in het beeld, capnamen `screen.host`, `screen.view`, `camera.host`,
   `camera.view`) en docs/PROTOCOL.md (`Status.muted`, `MediaOffer`).
+- `what_the_policy_says_no_to_is_refused` (tests/files.rs) viel eenmaal om in CI op Ubuntu met "connection lost" en slaagde bij herhalen:
+  uitzoeken of de verbinding te vroeg sluit nadat het beleid iets weigert, of dat de test te snel leest.
 - Mesh-tests die onder CPU-load soms falen (`sound_travels_as_datagrams_and_arrives_in_order`,
   `status_reaches_the_other_device`): eerst rustig opnieuw draaien, dan eventueel stabieler maken.
 
