@@ -26,6 +26,7 @@ import nl.markmaaktmedia.tandem.audio.AudioDelay
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.Route
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
+import nl.markmaaktmedia.tandem.ui.components.DropdownRow
 import nl.markmaaktmedia.tandem.ui.components.InfoRow
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
 import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
@@ -102,19 +103,12 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                 blocked = if (status.notifications) null else stringResource(R.string.perm_needs_notifications_quickshare), onBlocked = { onOpen(Route.Access) },
             )
             SettingsTarget(FocusKeys.QuickVisible, 1, 5) {
-                ContentRow(1, 5, TandemIcons.QuickShare, stringResource(R.string.settings_quickshare_visible)) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(R.string.settings_quickshare_visible_sub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        SegmentedPillRow(
-                            options = listOf(0, 60, 10),
-                            selected = quickMinutes,
-                            label = { context.getString(when (it) { 60 -> R.string.quickshare_visible_hour; 10 -> R.string.quickshare_visible_10; else -> R.string.quickshare_visible_always }) },
-                            onSelect = { quick.setVisibleMinutes(it) },
-                            modifier = Modifier.fillMaxWidth(),
-                            equalWidth = true,
-                        )
-                    }
-                }
+                DropdownRow(
+                    1, 5, TandemIcons.QuickShare, stringResource(R.string.settings_quickshare_visible), stringResource(R.string.settings_quickshare_visible_sub),
+                    context.getString(when (quickMinutes) { 60 -> R.string.quickshare_visible_hour; 10 -> R.string.quickshare_visible_10; else -> R.string.quickshare_visible_always }),
+                    listOf(0 to context.getString(R.string.quickshare_visible_always), 60 to context.getString(R.string.quickshare_visible_hour), 10 to context.getString(R.string.quickshare_visible_10)),
+                    { quick.setVisibleMinutes(it) },
+                )
             }
             ActionRow(
                 2, 5, TandemIcons.QuickShare, stringResource(R.string.settings_quickshare_tile), stringResource(R.string.settings_quickshare_tile_sub),
@@ -122,19 +116,12 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                 modifier = Modifier.settingsTarget(FocusKeys.QuickTile, 2, 5),
             )
             SettingsTarget(FocusKeys.QuickTap, 3, 5) {
-                ContentRow(3, 5, TandemIcons.QuickShare, stringResource(R.string.settings_quickshare_tap)) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(stringResource(R.string.settings_quickshare_tap_sub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        SegmentedPillRow(
-                            options = listOf(false, true),
-                            selected = tileOpens,
-                            label = { context.getString(if (it) R.string.quickshare_tap_open else R.string.quickshare_tap_toggle) },
-                            onSelect = { quick.setTileOpens(it) },
-                            modifier = Modifier.fillMaxWidth(),
-                            equalWidth = true,
-                        )
-                    }
-                }
+                DropdownRow(
+                    3, 5, TandemIcons.QuickShare, stringResource(R.string.settings_quickshare_tap), stringResource(R.string.settings_quickshare_tap_sub),
+                    context.getString(if (tileOpens) R.string.quickshare_tap_open else R.string.quickshare_tap_toggle),
+                    listOf(true to context.getString(R.string.quickshare_tap_open), false to context.getString(R.string.quickshare_tap_toggle)),
+                    { quick.setTileOpens(it) },
+                )
             }
             ActionRow(
                 4, 5, TandemIcons.Devices, stringResource(R.string.settings_quickshare_page), stringResource(R.string.settings_quickshare_page_sub),

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -103,6 +104,39 @@ fun ActionRow(
             )
             RowText(title, subtitle, Modifier.weight(1f), danger)
             if (trailing != null) trailing() else Icon(TandemIcons.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+/**
+ * A row that picks one of a few things from a menu that drops down under it: the choice is shown on the right, whole, so it can
+ * be read however long it is. For choices whose names do not fit side by side in pills.
+ */
+@Composable
+fun <T> DropdownRow(
+    index: Int,
+    total: Int,
+    icon: Painter,
+    title: String,
+    subtitle: String?,
+    value: String,
+    options: List<Pair<T, String>>,
+    onSelect: (T) -> Unit,
+) {
+    val open = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    Box {
+        GroupedRow(index, total, onClick = { open.value = true }) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                RowIcon(icon)
+                RowText(title, subtitle, Modifier.weight(1f))
+                Text(value, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, maxLines = 2, modifier = Modifier.widthIn(max = 140.dp))
+                Icon(TandemIcons.ChevronDown, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+            }
+        }
+        androidx.compose.material3.DropdownMenu(expanded = open.value, onDismissRequest = { open.value = false }) {
+            options.forEach { (option, label) ->
+                androidx.compose.material3.DropdownMenuItem(text = { Text(label) }, onClick = { onSelect(option); open.value = false })
+            }
         }
     }
 }

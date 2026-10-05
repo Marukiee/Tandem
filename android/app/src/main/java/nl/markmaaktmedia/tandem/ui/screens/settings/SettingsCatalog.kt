@@ -32,7 +32,6 @@ internal enum class SettingsCategory(
 ) {
     Look(R.string.settings_look, { TandemIcons.Palette }, Route.SettingsPage(SettingsPageId.Look)),
     Sharing(R.string.settings_cat_sharing, { TandemIcons.Devices }, Route.SettingsPage(SettingsPageId.Sharing)),
-    QuickShare(R.string.settings_cat_quickshare, { TandemIcons.QuickShare }, Route.SettingsPage(SettingsPageId.QuickShare)),
     Notifications(R.string.settings_notifications, { TandemIcons.Notifications }, Route.SettingsPage(SettingsPageId.Notifications)),
     Trackpad(R.string.settings_cat_trackpad, { TandemIcons.Mouse }, Route.SettingsPage(SettingsPageId.Trackpad)),
     Permissions(R.string.settings_access, { TandemIcons.Shield }, Route.Access),
@@ -170,7 +169,7 @@ internal object SettingsCatalog {
         ),
 
         // Quick Share
-        SettingsEntry("quickshare", R.string.settings_cat_quickshare, R.string.settings_kw_quickshare, SettingsCategory.QuickShare, quickShare, { TandemIcons.QuickShare }),
+        SettingsEntry("quickshare", R.string.settings_cat_quickshare, R.string.settings_kw_quickshare, SettingsCategory.Sharing, quickShare, { TandemIcons.QuickShare }, via = sharing),
 
         // Devices and sharing
         SettingsEntry("sharing", R.string.settings_cat_sharing, R.string.settings_kw_sharing, SettingsCategory.Sharing, sharing, { TandemIcons.Devices }),

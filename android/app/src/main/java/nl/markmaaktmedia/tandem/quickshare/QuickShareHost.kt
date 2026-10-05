@@ -81,7 +81,7 @@ class QuickShareHost(
     val visibleMinutes: StateFlow<Int> = _visibleMinutes.asStateFlow()
 
     /** What a tap on the tile does: opens the page when true, turns Quick Share on or off when false. */
-    private val _tileOpens = MutableStateFlow(prefs.getBoolean(TILE_OPENS, false))
+    private val _tileOpens = MutableStateFlow(prefs.getBoolean(TILE_OPENS, true))
     val tileOpens: StateFlow<Boolean> = _tileOpens.asStateFlow()
 
     private var offJob: Job? = null

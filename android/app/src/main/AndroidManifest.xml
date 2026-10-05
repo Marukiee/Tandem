@@ -175,6 +175,20 @@
             </intent-filter>
         </service>
 
+        <!-- The Quick Share sheet: from the tile, and from a long press on it, which Android sends here. -->
+        <activity
+            android:name=".quickshare.QuickShareSheetActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/quickshare_title"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Tandem.Sheet">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".quickshare.QuickShareTileService"
             android:exported="true"

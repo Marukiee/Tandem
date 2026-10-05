@@ -64,4 +64,25 @@
     <string name="quickshare_how_files_title">Waar het naartoe gaat</string>
     <string name="quickshare_share_label">Quick Share</string>
     <string name="quickshare_turn_on">Zet Quick Share aan</string>
+    <string name="quickshare_receive_as">Je ontvangt als</string>
+    <string name="quickshare_status_off">Uit</string>
+    <string name="quickshare_status_temp">Tijdelijk zichtbaar voor iedereen</string>
+    <string name="quickshare_status_visible">Zichtbaar voor iedereen in de buurt</string>
+    <string name="quickshare_requests">Deelverzoeken</string>
+    <string name="quickshare_no_requests">Geen verzoeken. Anderen kunnen naar deze telefoon sturen zolang Quick Share aan staat.</string>
+    <string name="quickshare_ready">Klaar om te delen</string>
+    <string name="quickshare_pin_value">Pincode: %1$s</string>
+    <string name="quickshare_receiving_state">Ontvangen...</string>
+    <string name="quickshare_received_state">Ontvangen</string>
+    <string name="quickshare_tab_receive">Ontvangen</string>
+    <string name="quickshare_tab_send">Versturen</string>
+    <string name="quickshare_share_as">Je deelt als</string>
+    <string name="quickshare_your_devices">Naar je apparaten</string>
+    <string name="quickshare_send_nearby">Naar apparaten in de buurt</string>
+    <string name="quickshare_type_phone">Telefoon</string>
+    <string name="quickshare_type_computer">Computer</string>
+    <string name="quickshare_type_device">Jouw apparaat</string>
+    <string name="quickshare_sending_state">Versturen...</string>
+    <string name="quickshare_close">Sluiten</string>
+    <string name="quickshare_done">Klaar</string>
 </resources>

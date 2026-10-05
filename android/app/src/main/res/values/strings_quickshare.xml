@@ -64,4 +64,25 @@
     <string name="quickshare_how_files_title">Where it goes</string>
     <string name="quickshare_share_label">Quick Share</string>
     <string name="quickshare_turn_on">Turn on Quick Share</string>
+    <string name="quickshare_receive_as">You\'ll receive as</string>
+    <string name="quickshare_status_off">Off</string>
+    <string name="quickshare_status_temp">Temporarily visible to everyone</string>
+    <string name="quickshare_status_visible">Visible to everyone nearby</string>
+    <string name="quickshare_requests">Share requests</string>
+    <string name="quickshare_no_requests">No requests. Others can send to this phone while Quick Share is on.</string>
+    <string name="quickshare_ready">Ready to share</string>
+    <string name="quickshare_pin_value">PIN: %1$s</string>
+    <string name="quickshare_receiving_state">Receiving...</string>
+    <string name="quickshare_received_state">Received</string>
+    <string name="quickshare_tab_receive">Receive</string>
+    <string name="quickshare_tab_send">Send</string>
+    <string name="quickshare_share_as">You\'ll share as</string>
+    <string name="quickshare_your_devices">Send to your devices</string>
+    <string name="quickshare_send_nearby">Send to nearby devices</string>
+    <string name="quickshare_type_phone">Phone</string>
+    <string name="quickshare_type_computer">Computer</string>
+    <string name="quickshare_type_device">Your device</string>
+    <string name="quickshare_sending_state">Sending...</string>
+    <string name="quickshare_close">Close</string>
+    <string name="quickshare_done">Done</string>
 </resources>
