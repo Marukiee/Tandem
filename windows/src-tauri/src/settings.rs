@@ -23,6 +23,9 @@ pub struct Settings {
     /// The phone's trackpad and keyboard move the pointer and type on this PC. Off until the person turns it on,
     /// because Windows has no permission to ask for: this is the only door.
     pub remote_input: bool,
+    /// The computer whose screen sits next to this one for a shared mouse and keyboard, and on which side (left, right, top, bottom).
+    pub share_device: String,
+    pub share_edge: String,
     /// Look for a newer Tandem now and then, and say so when there is one.
     pub auto_update: bool,
     /// The version whose banner the person sent away with Later.
@@ -41,6 +44,8 @@ impl Default for Settings {
             phone_notifications: true,
             language: "auto".into(),
             remote_input: false,
+            share_device: String::new(),
+            share_edge: String::new(),
             system_media: true,
             auto_update: true,
             dismissed_update: String::new(),

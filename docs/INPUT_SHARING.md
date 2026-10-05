@@ -48,6 +48,15 @@ altijd een toets om de aanwijzer terug te halen, ook als de verbinding wegvalt.
   kant (`pointer_share::enter_at`), speelt de bewegingen onversneld af, en meldt `Leave` bij de rand waar hij binnenkwam. Het gebruikt
   de bestaande schakelaar voor het afspelen van invoer als toestemming.
 
+- Windows als hoofdcomputer (0.1.51): `windows/src-tauri/winsys` heeft de hooks (`WH_MOUSE_LL` en `WH_KEYBOARD_LL`, op een eigen thread met
+  berichtenlus). Zolang de aanwijzer hier is, kijkt `windows/src-tauri/src/capture.rs` of hij de rand raakt van alle schermen samen
+  (het virtuele bureaublad, dus een tweede scherm aan de overkant is geen reden om weg te gaan). Dan gaat `Enter` naar de buur, wordt de
+  aanwijzer in het midden van het scherm vastgezet, worden de bewegingen als verschil gelezen en als `InputMsg` gestuurd, en worden
+  de gebeurtenissen opgeslokt. `Leave` van de buur of Ctrl, Alt en Shift met Escape brengt hem terug (`Release` gaat dan naar de buur).
+  De toetsen gaan als Mac-codes over (de tabel van `input.rs` omgekeerd), met Ctrl als Command, Alt als Option en de Windows-toets als
+  Control, zodat Ctrl+C hier kopieert daar. Instelling: Instellingen, Gedeelde muis en toetsenbord, kies de computer en de kant.
+  Nog niet: een tweede computer als buur van de buur (ketens), en op Linux zien van invoer.
+
 ## Wat er nog moet, per systeem
 
 1. **Mac als hoofdcomputer:** een `CGEventTap` die de muis en de toetsen ziet (heeft Toegankelijkheid en Invoercontrole nodig, de

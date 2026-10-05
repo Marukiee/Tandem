@@ -3,6 +3,7 @@
 //! one and the small panel above the tray icon.
 
 mod browse;
+mod capture;
 mod clip;
 mod commands;
 mod engine;
@@ -59,6 +60,7 @@ pub fn run() {
                 }
             });
             engine::start(handle.clone());
+            capture::configure(&handle);
             clip::start(handle.clone());
             // Started with Windows it waits in the tray; started by hand it shows its window.
             let args: Vec<String> = std::env::args().collect();

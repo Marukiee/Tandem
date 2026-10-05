@@ -11,7 +11,7 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::state::AppState;
-use crate::{clip, events, logfile, media, model, settings, tray, update};
+use crate::{capture, clip, events, logfile, media, model, settings, tray, update};
 
 type Reply<T> = Result<T, String>;
 
@@ -39,6 +39,7 @@ pub fn get_state(app: AppHandle, state: State<'_, AppState>) -> Value {
         "systemLanguage": sys_locale::get_locale().unwrap_or_default(),
         "build": option_env!("TANDEM_BUILD").unwrap_or(""),
         "update": update::current(&app),
+        "canShare": cfg!(windows),
     })
 }
 
@@ -273,6 +274,14 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["remoteInput"].as_bool() {
             current.remote_input = v;
         }
+        if let Some(v) = patch["shareDevice"].as_str() {
+            current.share_device = v.to_string();
+        }
+        if let Some(v) = patch["shareEdge"].as_str() {
+            if ["", "left", "right", "top", "bottom"].contains(&v) {
+                current.share_edge = v.to_string();
+            }
+        }
         if let Some(v) = patch["systemMedia"].as_bool() {
             current.system_media = v;
         }
@@ -291,6 +300,7 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
     settings::save(&app);
     // The switch for the media controls takes effect at once.
     media::refresh(&app);
+    capture::configure(&app);
     json!(settings::get(&app))
 }
 

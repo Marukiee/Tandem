@@ -64,8 +64,11 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
 ## 4. Muis en toetsenbord over computers
 
 - Onderzoek en ontwerp staan in docs/INPUT_SHARING.md (Input Leap, lan-mouse, Universal Control). In de kern staat het bericht
-  `PointerShareMsg` en de rekenlogica (`pointer_share.rs`) met tests. Nog niet: het zien van invoer en het verbergen van de
-  aanwijzer per systeem (Mac `CGEventTap`, Windows hooks, Linux libei), de instellingen en het terughalen met een toets.
+  `PointerShareMsg` en de rekenlogica (`pointer_share.rs`) met tests.
+- Gedaan, nog niet op echte computers naast elkaar gezien: de Mac als hoofd en bestuurd (0.1.49), Windows bestuurd (0.1.50),
+  Windows als hoofd met hooks (0.1.51). Instellingen en een toets om terug te halen staan op Mac en Windows.
+- Nog niet: Linux (zien van invoer via libei of evdev, afspelen via libei of XTest), een gedeeld klembord bij de overgang,
+  ketens van meer dan twee computers, toetsvertaling voor andere indelingen dan US.
 
 ## 5. Uiterlijk
 

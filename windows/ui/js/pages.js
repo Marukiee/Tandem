@@ -373,6 +373,28 @@ function updateText() {
   }
 }
 
+// This PC as the main computer: the mouse and keyboard go on to the computer that sits next to it.
+function SharedPointerSettings({ s, patch }) {
+  const others = state.devices.filter((d) => d.online && (d.platform === "macos" || d.platform === "windows"));
+  const edges = ["left", "right", "top", "bottom"];
+  return html`<div>
+    <h2>${t("share_pointer")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="pointer" title=${t("share_pointer_next")} sub=${t("share_pointer_sub")}>
+        <select value=${s.shareDevice} onChange=${(e) => patch({ shareDevice: e.target.value, shareEdge: e.target.value && !s.shareEdge ? "right" : s.shareEdge })}>
+          <option value="">${t("share_pointer_off")}</option>
+          ${others.map((d) => html`<option value=${d.id}>${d.name}</option>`)}
+        </select>
+      <//>
+      ${s.shareDevice && html`<${SettingRow} icon="devices" title=${t("share_pointer_side")} sub=${t("share_pointer_release")}>
+        <select value=${s.shareEdge} onChange=${(e) => patch({ shareEdge: e.target.value })}>
+          ${edges.map((e) => html`<option value=${e}>${t("edge_" + e)}</option>`)}
+        </select>
+      <//>`}
+    </div>
+  </div>`;
+}
+
 export function SettingsPage() {
   const s = state.settings;
   const [name, setName] = useState(state.self ? state.self.name : "");
@@ -411,6 +433,8 @@ export function SettingsPage() {
         </select>
       <//>
     </div>
+
+    ${state.canShare && html`<${SharedPointerSettings} s=${s} patch=${patch} />`}
 
     <h2>${t("about")}</h2>
     <div class="card">

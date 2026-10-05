@@ -311,3 +311,162 @@ unsafe extern "system" fn clipboard_proc(window: HWND, message: u32, wparam: WPA
     }
     unsafe { DefWindowProcW(window, message, wparam, lparam) }
 }
+
+// ---- Seeing the mouse and the keyboard ---------------------------------------------------------------------------------
+
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+
+use windows::Win32::Foundation::POINT;
+use windows::Win32::UI::WindowsAndMessaging::{
+    CallNextHookEx, GetSystemMetrics, HHOOK, KBDLLHOOKSTRUCT, MSLLHOOKSTRUCT, SM_CXSCREEN,
+    SM_CXVIRTUALSCREEN, SM_CYSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SetCursorPos, SetWindowsHookExW, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP,
+    WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEHWHEEL, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN,
+    WM_RBUTTONUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
+};
+
+use super::Seen;
+
+type Handler = Box<dyn Fn(Seen) -> bool + Send + Sync>;
+
+static HANDLER: OnceLock<Handler> = OnceLock::new();
+static HOLDING: AtomicBool = AtomicBool::new(false);
+static LAST_X: AtomicI32 = AtomicI32::new(i32::MIN);
+static LAST_Y: AtomicI32 = AtomicI32::new(i32::MIN);
+
+/// The size of the primary screen in pixels.
+pub fn screen() -> (i32, i32) {
+    unsafe { (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)) }
+}
+
+/// Everything the screens together cover: where its top left corner is, and how wide and high it is.
+pub fn desktop() -> (i32, i32, i32, i32) {
+    unsafe {
+        (
+            GetSystemMetrics(SM_XVIRTUALSCREEN),
+            GetSystemMetrics(SM_YVIRTUALSCREEN),
+            GetSystemMetrics(SM_CXVIRTUALSCREEN),
+            GetSystemMetrics(SM_CYVIRTUALSCREEN),
+        )
+    }
+}
+
+/// Puts the pointer somewhere.
+pub fn warp(x: i32, y: i32) {
+    unsafe {
+        let _ = SetCursorPos(x, y);
+    }
+}
+
+/// The hooks on the mouse and keyboard, which live on a thread of their own for as long as the program runs.
+pub struct Capture;
+
+impl Capture {
+    /// `handler` is told of everything the hands do and says whether it is for somebody else: true swallows the event, so
+    /// nothing on this PC sees it. It runs inside the hook, so it has to be quick.
+    pub fn start(handler: impl Fn(Seen) -> bool + Send + Sync + 'static) -> Option<Capture> {
+        HANDLER.set(Box::new(handler)).ok()?;
+        std::thread::Builder::new()
+            .name("tandem-hooks".into())
+            .spawn(|| unsafe {
+                let module = GetModuleHandleW(None).ok().map(|m| HINSTANCE(m.0));
+                let mouse: Option<HHOOK> = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook), module, 0).ok();
+                let keyboard: Option<HHOOK> = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook), module, 0).ok();
+                if mouse.is_none() || keyboard.is_none() {
+                    log::warn!("the hooks on the mouse and keyboard were not accepted");
+                }
+                // Hooks of this kind are called by way of the message loop of the thread that set them.
+                let mut message = MSG::default();
+                while GetMessageW(&mut message, None, 0, 0).as_bool() {
+                    let _ = TranslateMessage(&message);
+                    DispatchMessageW(&message);
+                }
+            })
+            .ok()?;
+        Some(Capture)
+    }
+
+    /// While held, the real pointer sits in the middle of the screen and what it would have moved is read from there.
+    pub fn hold(&self, on: bool) {
+        HOLDING.store(on, Ordering::SeqCst);
+        if on {
+            let (w, h) = screen();
+            warp(w / 2, h / 2);
+        }
+        LAST_X.store(i32::MIN, Ordering::SeqCst);
+    }
+}
+
+fn tell(seen: Seen) -> bool {
+    HANDLER.get().is_some_and(|handler| handler(seen))
+}
+
+unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    if code >= 0 {
+        // Mouse events that this program made itself (putting the pointer back in the middle) are not the hands.
+        let info = unsafe { &*(lparam.0 as *const MSLLHOOKSTRUCT) };
+        let injected = info.flags & 0x1 != 0;
+        let swallow = if injected {
+            false
+        } else {
+            match wparam.0 as u32 {
+                WM_MOUSEMOVE => {
+                    let POINT { x, y } = info.pt;
+                    if HOLDING.load(Ordering::SeqCst) {
+                        let (w, h) = screen();
+                        let (cx, cy) = (w / 2, h / 2);
+                        let (dx, dy) = (x - cx, y - cy);
+                        if dx != 0 || dy != 0 {
+                            tell(Seen::Move { dx, dy, x: cx + dx, y: cy + dy });
+                            warp(cx, cy);
+                        }
+                        true
+                    } else {
+                        let (lx, ly) = (LAST_X.swap(x, Ordering::SeqCst), LAST_Y.swap(y, Ordering::SeqCst));
+                        let (dx, dy) = if lx == i32::MIN { (0, 0) } else { (x - lx, y - ly) };
+                        tell(Seen::Move { dx, dy, x, y })
+                    }
+                }
+                WM_LBUTTONDOWN => tell(Seen::Button { button: 0, down: true }),
+                WM_LBUTTONUP => tell(Seen::Button { button: 0, down: false }),
+                WM_RBUTTONDOWN => tell(Seen::Button { button: 1, down: true }),
+                WM_RBUTTONUP => tell(Seen::Button { button: 1, down: false }),
+                WM_MBUTTONDOWN => tell(Seen::Button { button: 2, down: true }),
+                WM_MBUTTONUP => tell(Seen::Button { button: 2, down: false }),
+                WM_MOUSEWHEEL => {
+                    let delta = (info.mouseData >> 16) as i16 as i32;
+                    tell(Seen::Scroll { dx: 0, dy: delta / 10 })
+                }
+                WM_MOUSEHWHEEL => {
+                    let delta = (info.mouseData >> 16) as i16 as i32;
+                    tell(Seen::Scroll { dx: delta / 10, dy: 0 })
+                }
+                _ => false,
+            }
+        };
+        if swallow {
+            return LRESULT(1);
+        }
+    }
+    unsafe { CallNextHookEx(None, code, wparam, lparam) }
+}
+
+unsafe extern "system" fn keyboard_hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    if code >= 0 {
+        let info = unsafe { &*(lparam.0 as *const KBDLLHOOKSTRUCT) };
+        let injected = info.flags.0 & 0x10 != 0;
+        if !injected {
+            let down = match wparam.0 as u32 {
+                WM_KEYDOWN | WM_SYSKEYDOWN => Some(true),
+                WM_KEYUP | WM_SYSKEYUP => Some(false),
+                _ => None,
+            };
+            if let Some(down) = down {
+                if tell(Seen::Key { vk: info.vkCode as u16, down }) {
+                    return LRESULT(1);
+                }
+            }
+        }
+    }
+    unsafe { CallNextHookEx(None, code, wparam, lparam) }
+}

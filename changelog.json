@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.51",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Use the mouse and keyboard of your Windows PC on another computer",
+      "new": [
+        "Windows: the mouse and keyboard of a PC can go on to a Mac or another Windows PC. In Settings, under Shared mouse and keyboard, pick the computer and the side of the screen it sits on, and push the pointer off that edge. The pointer comes back by itself at the edge where it went in, or at once with Ctrl, Alt and Shift together with Escape. Ctrl on the PC becomes Command on the Mac, so Ctrl+C copies there. The other computer has to allow it in its own settings. It has not been tried on real computers next to each other yet"
+      ]
+    },
+    "nl": {
+      "title": "Gebruik de muis en het toetsenbord van je Windows-pc op een andere computer",
+      "new": [
+        "Windows: de muis en het toetsenbord van een pc kunnen doorgaan naar een Mac of een andere Windows-pc. Kies bij Instellingen, Gedeelde muis en toetsenbord, de computer en de kant van het scherm waar hij staat, en duw de muis over die rand. De muis komt vanzelf terug bij de rand waar hij naartoe ging, of meteen met Ctrl, Alt en Shift samen met Escape. Ctrl op de pc wordt Command op de Mac, dus Ctrl+C kopieert daar. De andere computer moet het toestaan in zijn eigen instellingen. Het is nog niet op echte computers naast elkaar geprobeerd"
+      ]
+    }
+  },
+  {
     "version": "0.1.50",
     "date": "2026-10-05",
     "en": {

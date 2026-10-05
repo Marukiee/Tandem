@@ -144,7 +144,14 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                         tauri::async_runtime::spawn(async move { let _ = engine.send_pointer_share(from, Share::Leave { along }).await; });
                     }
                 }
-                Share::Leave { .. } | Share::Release => input::shared_end(&from),
+                Share::Leave { along } => {
+                    input::shared_end(&from);
+                    crate::capture::returned(&from, Some(along));
+                }
+                Share::Release => {
+                    input::shared_end(&from);
+                    crate::capture::returned(&from, None);
+                }
             }
         }
         _ => {}

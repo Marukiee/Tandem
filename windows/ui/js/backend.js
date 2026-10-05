@@ -48,6 +48,7 @@ function apply(snapshot) {
     self: snapshot.self,
     version: snapshot.version,
     build: snapshot.build,
+    canShare: !!snapshot.canShare,
     devices: snapshot.devices,
     transfers: snapshot.transfers,
     offers: snapshot.offers,

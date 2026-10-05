@@ -46,6 +46,19 @@ pub struct Now {
     pub cover: Option<Vec<u8>>,
 }
 
+/// What the hooks on the mouse and keyboard of this PC see.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Seen {
+    /// The pointer moved: by how much, and where it is (the place it would have been, when it is being held still).
+    Move { dx: i32, dy: i32, x: i32, y: i32 },
+    /// 0 left, 1 right, 2 middle.
+    Button { button: u8, down: bool },
+    /// Notches of the wheel times twelve, positive when the content is pushed down (the wheel turned up).
+    Scroll { dx: i32, dy: i32 },
+    /// The Windows virtual-key code, and whether it went down.
+    Key { vk: u16, down: bool },
+}
+
 #[cfg(windows)]
 mod imp;
 #[cfg(not(windows))]
@@ -80,6 +93,27 @@ mod imp {
         false
     }
 
+
+    /// Nothing sees the mouse and keyboard on this system; the pointer cannot be shared from here.
+    pub struct Capture;
+
+    impl Capture {
+        pub fn start(_handler: impl Fn(super::Seen) -> bool + Send + Sync + 'static) -> Option<Capture> {
+            None
+        }
+        pub fn hold(&self, _on: bool) {}
+    }
+
+    pub fn screen() -> (i32, i32) {
+        (0, 0)
+    }
+
+    pub fn desktop() -> (i32, i32, i32, i32) {
+        (0, 0, 0, 0)
+    }
+
+    pub fn warp(_x: i32, _y: i32) {}
+
     pub struct Media;
 
     impl Media {
@@ -91,4 +125,4 @@ mod imp {
     }
 }
 
-pub use imp::{Media, battery, describe, watch_clipboard};
+pub use imp::{Capture, Media, battery, describe, desktop, screen, warp, watch_clipboard};

@@ -32,7 +32,7 @@ function updateFor(kind) {
 }
 
 const state = {
-  ready: true, error: null, self: { id: "me", name: "Laptop van Mark", port: 47820 }, version: "0.1.25", build: "preview",
+  ready: true, error: null, self: { id: "me", name: "Laptop van Mark", port: 47820 }, version: "0.1.25", build: "preview", canShare: true,
   devices,
   transfers: empty ? [] : [
     { id: "1-0-in", peer: "phone", name: "IMG_20261003_141201.jpg", incoming: true, state: "done", done: 4200000, total: 4200000, location: "C:\\Users\\Mark\\Downloads\\Tandem\\IMG_20261003_141201.jpg", updatedAt: now - 60000, startedAt: now - 62000 },
@@ -44,7 +44,7 @@ const state = {
     { device: "phone", deviceName: "Maruks Telefoon", key: "a", appId: "wa", appName: "WhatsApp", title: "Anna", text: "Zie je dat? Ik ben er over tien minuten.", ts: now - 120000, buttons: [] },
     { device: "phone", deviceName: "Maruks Telefoon", key: "b", appId: "bank", appName: "Bank", title: "Code 482913", text: "Gebruik 482913 om in te loggen.", ts: now - 900000, otp: "482913", buttons: [] },
   ],
-  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "" },
+  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "" },
   update: updateFor(new URLSearchParams(location.search).get("update")),
   autostart: true, downloadDir: "C:\\Users\\Mark\\Downloads\\Tandem", systemLanguage: navigator.language, build_: "",
 };
