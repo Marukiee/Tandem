@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.46",
+    "date": "2026-10-05",
+    "en": {
+      "title": "A first Linux app, and a cleaner device page",
+      "new": [
+        "Linux: an experimental app, the same one as on Windows, as a .deb and an AppImage. Pair, send files and clipboard, see phone notifications, the music of the phone, the screen or camera of your phone in a window, and your laptop battery on the phone. It has not been tried on a real Linux desktop yet, so tell me what does not work. It is on the release called Linux preview, until it has its own versions",
+        "Android: the row Settings for this device on the device page has a header Preferences above it, like the other groups on the page"
+      ]
+    },
+    "nl": {
+      "title": "Een eerste Linux-app, en een rustigere apparaatpagina",
+      "new": [
+        "Linux: een experimentele app, dezelfde als op Windows, als .deb en als AppImage. Koppelen, bestanden en klembord sturen, telefoonmeldingen, de muziek van de telefoon, het scherm of de camera van je telefoon in een venster, en de batterij van je laptop op de telefoon. Hij is nog niet op een echt Linux-bureaublad geprobeerd, dus meld wat niet werkt. Hij staat op de release Linux preview, tot hij eigen versies heeft",
+        "Android: de rij Instellingen van dit apparaat op de apparaatpagina heeft een kop Voorkeuren erboven, zoals de andere groepen op de pagina"
+      ]
+    }
+  },
+  {
     "version": "0.1.45",
     "date": "2026-10-05",
     "en": {

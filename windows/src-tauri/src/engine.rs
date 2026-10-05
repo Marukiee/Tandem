@@ -101,12 +101,12 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
     let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
     let store = Store::new(&data_dir).map_err(|e| e.to_string())?;
-    let name = hostname::get().ok().and_then(|h| h.into_string().ok()).unwrap_or_else(|| "Windows PC".to_string());
+    let name = hostname::get().ok().and_then(|h| h.into_string().ok()).unwrap_or_else(|| if cfg!(windows) { "Windows PC".to_string() } else { "Linux PC".to_string() });
     tandem_init_logging(false);
     let config = TandemConfig {
         data_dir: data_dir.to_string_lossy().into_owned(),
         device_name: name,
-        platform: TandemPlatform::Windows,
+        platform: if cfg!(windows) { TandemPlatform::Windows } else { TandemPlatform::Linux },
         model: None,
         app_version: app.package_info().version.to_string(),
         port: 47820,

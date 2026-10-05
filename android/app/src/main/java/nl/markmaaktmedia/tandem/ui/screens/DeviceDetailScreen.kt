@@ -264,7 +264,9 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             }
         }
 
-        // Everything that is set for this device has a page of its own, so this one is for what it does now.
+        // Everything that is set for this device has a page of its own, so this one is for what it does now. It has a
+        // header like the other groups on the page, so it reads as one of them.
+        SectionHeader(stringResource(R.string.section_preferences), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
             ActionRow(
                 0, 1, TandemIcons.Settings, stringResource(R.string.device_settings_title),

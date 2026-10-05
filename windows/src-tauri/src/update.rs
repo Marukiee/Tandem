@@ -81,6 +81,10 @@ pub fn snapshot() -> Value {
 
 /// Looks now and then while Tandem runs, when the person has not switched that off.
 pub fn start(app: AppHandle) {
+    // The updates are the installers of Windows: on another system the package manager or the new download is the way.
+    if !cfg!(windows) {
+        return;
+    }
     std::thread::Builder::new()
         .name("tandem-update".into())
         .spawn(move || {
@@ -98,6 +102,9 @@ pub fn start(app: AppHandle) {
 
 /// Asks GitHub for the newest release. A check nobody asked for stays quiet when it fails: an offline PC is not news.
 pub fn check(app: &AppHandle, manual: bool) {
+    if !cfg!(windows) {
+        return;
+    }
     {
         let busy = matches!(&*STATE.lock().unwrap(), State::Checking | State::Downloading { .. } | State::Installing(_));
         if busy {

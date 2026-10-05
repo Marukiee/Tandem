@@ -52,7 +52,22 @@ mod imp;
 mod imp {
     use super::{Battery, Now, Request};
 
+    /// The first battery the kernel lists, on a laptop; a desktop has none. Linux says it in files, and anything that is not
+    /// there reads as no battery.
     pub fn battery() -> Option<Battery> {
+        let dir = std::fs::read_dir("/sys/class/power_supply").ok()?;
+        for entry in dir.flatten() {
+            let path = entry.path();
+            let Ok(kind) = std::fs::read_to_string(path.join("type")) else { continue };
+            if kind.trim() != "Battery" {
+                continue;
+            }
+            let Some(level) = std::fs::read_to_string(path.join("capacity")).ok().and_then(|t| t.trim().parse::<u8>().ok()) else { continue };
+            let status = std::fs::read_to_string(path.join("status")).unwrap_or_default();
+            // Full on the charger counts as charging: the cable is in.
+            let charging = matches!(status.trim(), "Charging" | "Full");
+            return Some(Battery { level: level.min(100), charging, saver: false });
+        }
         None
     }
 
