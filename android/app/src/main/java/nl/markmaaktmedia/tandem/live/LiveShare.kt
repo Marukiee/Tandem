@@ -106,6 +106,51 @@ class LiveShare(
 
     private val inForeground get() = startedActivities > 0
 
+    // ---- A capture kept for the next time -------------------------------------------------------------------
+
+    /**
+     * Android asks the person for every screen capture, and nothing an app does can answer for them. The way to ask
+     * less is not to end a capture the moment it is over: for a Mac that is allowed for good it is kept alive a while with
+     * nothing drawing on it, and the next request from that Mac is answered with it. The status bar and the notification
+     * say all along that it is there, and the notification stops it.
+     */
+    private var warm: WarmCapture? = null
+    private var warmTimeout: Runnable? = null
+    private val warmCallback = object : MediaProjection.Callback() {
+        override fun onStop() {
+            main.post { dropWarm() }
+        }
+    }
+
+    private fun holdWarm(capture: WarmCapture) {
+        dropWarm()
+        warm = capture
+        runCatching { capture.projection.registerCallback(warmCallback, main) }
+        val timeout = Runnable { dropWarm() }
+        warmTimeout = timeout
+        main.postDelayed(timeout, WARM_MS)
+    }
+
+    private fun takeWarm(): WarmCapture? {
+        val held = warm ?: return null
+        warmTimeout?.let { main.removeCallbacks(it) }
+        warmTimeout = null
+        runCatching { held.projection.unregisterCallback(warmCallback) }
+        warm = null
+        return held
+    }
+
+    /** Ends the capture that was kept, and with it the permission of the system. */
+    fun dropWarm() {
+        val held = takeWarm() ?: return
+        runCatching { held.display.release() }
+        runCatching { held.projection.stop() }
+        service?.refresh()
+    }
+
+    private fun keepsWarm(peer: String): Boolean =
+        runCatching { host.engine?.mediaPolicy(peer)?.screen == TandemMediaPermission.ALWAYS }.getOrDefault(false)
+
     // ---- What the core asks -------------------------------------------------------------------------------
 
     override fun onRequest(from: String, request: TandemMediaRequest, preApproved: Boolean) {
@@ -151,6 +196,16 @@ class LiveShare(
         if (ready != null) {
             ready.start(request)
             return
+        }
+        val running = service
+        if (kind == TandemMediaKind.SCREEN && preApproved && warm != null && running != null) {
+            // Allowed for good, and the capture of the last time is still alive: no question at all.
+            val held = takeWarm()
+            if (held != null) {
+                pending[session] = Pending(from, request, true)
+                begin(running, kind, from, session, held.projection, request.facing, held)
+                return
+            }
         }
         pending[session] = Pending(from, request, preApproved)
         askThePerson(session, from, kind)
@@ -205,10 +260,10 @@ class LiveShare(
     /** From the service, once it runs in the foreground and the permission for the capture is in hand. */
     fun begin(
         service: LiveShareService, kind: TandemMediaKind, peer: String, session: ULong?, projection: MediaProjection?,
-        facing: TandemMediaFacing,
+        facing: TandemMediaFacing, warmCapture: WarmCapture? = null,
     ) {
         this.service = service
-        val share = Share(kind, peer, session, projection, facing, service)
+        val share = Share(kind, peer, session, projection, facing, service, warmCapture)
         // A second share of the same kind to the same Mac replaces the first.
         shares.filter { it.kind == kind && it.peer == peer }.forEach { it.teardown(tellMac = true) }
         shares += share
@@ -227,7 +282,11 @@ class LiveShare(
     }
 
     fun stopAll() {
-        main.post { shares.toList().forEach { it.teardown(tellMac = true) } }
+        main.post {
+            shares.toList().forEach { it.teardown(tellMac = true) }
+            // Stopping by hand is stopping: nothing is kept for the next time.
+            dropWarm()
+        }
     }
 
     fun isSharingAny(): Boolean = shares.isNotEmpty()
@@ -237,11 +296,12 @@ class LiveShare(
     fun serviceGone(gone: LiveShareService) {
         if (service === gone) service = null
         shares.toList().forEach { it.teardown(tellMac = true) }
+        dropWarm()
     }
 
     /** What the notification says. */
     fun summary(): String? {
-        if (shares.isEmpty()) return null
+        if (shares.isEmpty()) return if (warm != null) app.getString(R.string.live_active_ready) else null
         val names = shares.map { host.device(it.peer)?.name ?: app.getString(R.string.live_mac_fallback) }.distinct().joinToString(", ")
         val screen = shares.any { it.kind == TandemMediaKind.SCREEN }
         val camera = shares.any { it.kind == TandemMediaKind.CAMERA }
@@ -269,6 +329,7 @@ class LiveShare(
         private val projection: MediaProjection?,
         private val facing: TandemMediaFacing,
         private val service: LiveShareService,
+        private val warmCapture: WarmCapture? = null,
     ) : PipelineEvents {
         var pipeline: LivePipeline? = null
 
@@ -317,7 +378,7 @@ class LiveShare(
                         fail(TandemMediaEnd.UNAVAILABLE)
                         return
                     }
-                    ScreenPipeline(app, held, limits, this)
+                    ScreenPipeline(app, held, limits, this, warmCapture)
                 }
                 TandemMediaKind.CAMERA -> CameraPipeline(app, service, facing == TandemMediaFacing.FRONT || request.facing == TandemMediaFacing.FRONT, limits, this)
             }
@@ -399,8 +460,14 @@ class LiveShare(
             armedTimeout = null
             accepted = false
             val id = session
-            pipeline?.stop()
+            val ending = pipeline
             pipeline = null
+            if (ending is ScreenPipeline) {
+                val kept = ending.stop(keepWarm = id != null && keepsWarm(peer))
+                if (kept != null) holdWarm(kept)
+            } else {
+                ending?.stop()
+            }
             // A screen that was ready but never shown still holds the permission of the system.
             runCatching { if (id == null) projection?.stop() }
             if (tellMac && id != null) runCatching { host.engine?.mediaStop(id) }
@@ -414,6 +481,9 @@ class LiveShare(
 
         /** How long a screen or camera waits, ready, for the Mac to look after it was offered. */
         private const val ARMED_MS = 30_000L
+
+        /** How long a capture is kept for the next request of a Mac that is allowed for good. */
+        private const val WARM_MS = 10 * 60_000L
 
         /** What this phone can really do, as caps for the hello. Nothing is promised that would fail. */
         fun caps(context: Context): List<String> {

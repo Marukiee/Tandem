@@ -29,6 +29,7 @@
     <string name="live_active_camera">Camera gedeeld met %1$s</string>
     <string name="live_active_both">Scherm en camera gedeeld met %1$s</string>
     <string name="live_active_waiting">Klaar om te delen met %1$s</string>
+    <string name="live_active_ready">Schermopname blijft een paar minuten klaar, zodat het scherm opnieuw tonen geen vraag nodig heeft. Tik op Stop om het te beëindigen</string>
     <string name="live_offer_failed">De computer is nu niet bereikbaar</string>
     <string name="live_offer_unanswered">%1$s opende het venster niet. Probeer het opnieuw vanaf de computer.</string>
 

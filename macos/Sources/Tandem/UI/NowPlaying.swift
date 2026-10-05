@@ -82,7 +82,8 @@ private struct PlayerCard: View {
     private var subtitle: String { [player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · ") }
 
     var body: some View {
-        Card(radius: Metrics.card, padding: 16, tint: player.art == 0 ? nil : model.mediaTint[player.art].map { Color(nsColor: $0) }) {
+        // The same plain surface as the other cards of the page, so none of them is the odd one out.
+        Card(radius: Metrics.card, padding: 16) {
             CoverBeside(spacing: 14) {
                 PlayerCover(player: player, size: nil)
                 VStack(alignment: .leading, spacing: 8) {

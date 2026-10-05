@@ -15,6 +15,9 @@ struct LiveView: View {
     @LocalState private var showMore = false
     @LocalState private var showCamera = false
     @LocalState private var showControlHelp = false
+    /// The name of the button the pointer is on, shown over the toolbar at once (the system tooltip takes a second and can fall outside the window).
+    @LocalState private var hintOwner: String?
+    @LocalState private var hint: LocalizedStringKey?
 
     private var phoneOnline: Bool { model.device(session.peer)?.online ?? (session.peer == "debug") }
 
@@ -149,6 +152,22 @@ struct LiveView: View {
             compactToolbar
         }
         .onHover { overToolbar = $0 }
+        .overlay(alignment: .top) {
+            if let hint {
+                Text(hint)
+                    .font(.caption.weight(.medium))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .frame(maxWidth: 260)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .liveGlass(in: .rect(cornerRadius: 14, style: .continuous))
+                    .alignmentGuide(.top) { $0[.bottom] + 6 }
+                    .allowsHitTesting(false)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            }
+        }
+        .animation(.tandemFade, value: hintOwner)
     }
 
     private var compactToolbar: some View {
@@ -238,7 +257,15 @@ struct LiveView: View {
         .tint(active ? Palette.indigo : nil)
         .buttonBorderShape(.circle)
         .controlSize(.large)
-        .help(help)
+        .onHover { inside in
+            if inside {
+                hintOwner = symbol
+                hint = help
+            } else if hintOwner == symbol {
+                hintOwner = nil
+                hint = nil
+            }
+        }
     }
 
     /// The side of the phone's camera and how sharp the picture is. A change asks the phone again: it is the same window.

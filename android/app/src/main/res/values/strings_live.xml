@@ -29,6 +29,7 @@
     <string name="live_active_camera">Camera shared with %1$s</string>
     <string name="live_active_both">Screen and camera shared with %1$s</string>
     <string name="live_active_waiting">Ready to share with %1$s</string>
+    <string name="live_active_ready">Screen capture is kept ready for a few minutes, so showing the screen again needs no question. Tap Stop to end it</string>
     <string name="live_offer_failed">The computer cannot be reached right now</string>
     <string name="live_offer_unanswered">%1$s did not open the window. Try again from the computer.</string>
 

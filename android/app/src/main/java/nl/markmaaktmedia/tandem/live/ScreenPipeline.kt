@@ -11,6 +11,12 @@ import android.util.Log
 import android.view.Display
 
 /**
+ * A capture that is kept alive between two sessions. Android 14 asks the person for every capture and lets a token make
+ * one virtual display only, so the way to not ask again at once is to keep that display, with nothing drawing on it.
+ */
+class WarmCapture(val projection: MediaProjection, val display: VirtualDisplay, val densityDpi: Int)
+
+/**
  * The screen of the phone, through a virtual display that draws on the surface of the encoder.
  *
  * When the phone turns, the display changes shape and so must the picture: the encoder cannot change size, so a new one
@@ -21,6 +27,7 @@ class ScreenPipeline(
     private val projection: MediaProjection,
     private val limits: LivePlan.Limits,
     private val events: PipelineEvents,
+    private val warm: WarmCapture? = null,
 ) : LivePipeline {
     private val main = Handler(Looper.getMainLooper())
     private val displays = context.getSystemService(DisplayManager::class.java)
@@ -77,10 +84,18 @@ class ScreenPipeline(
             val made = makeEncoder(next) ?: return
             encoder = made
             made.start()
-            virtualDisplay = projection.createVirtualDisplay(
-                "Tandem", next.width, next.height, densityDpi,
-                android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, made.surface, null, null,
-            )
+            virtualDisplay = if (warm != null) {
+                // The display of the last time, pointed at the new encoder.
+                densityDpi = warm.densityDpi
+                warm.display.resize(next.width, next.height, densityDpi)
+                warm.display.surface = made.surface
+                warm.display
+            } else {
+                projection.createVirtualDisplay(
+                    "Tandem", next.width, next.height, densityDpi,
+                    android.hardware.display.DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, made.surface, null, null,
+                )
+            }
             if (virtualDisplay == null) {
                 events.onFailed(PipelineEvents.Failure.NO_CAPTURE)
                 return
@@ -151,16 +166,33 @@ class ScreenPipeline(
     override val bytesOut: Long get() = encoder?.bytesOut ?: 0
 
     override fun stop() {
-        if (stopped) return
+        stop(keepWarm = false)
+    }
+
+    /** Ends the picture. With `keepWarm` the capture itself is handed back alive, for the next time, instead of ended. */
+    fun stop(keepWarm: Boolean): WarmCapture? {
+        if (stopped) return null
         stopped = true
         generation++
         runCatching { displays.unregisterDisplayListener(displayListener) }
-        runCatching { virtualDisplay?.release() }
-        virtualDisplay = null
         encoder?.stop()
         encoder = null
         runCatching { projection.unregisterCallback(projectionCallback) }
+        val display = virtualDisplay
+        virtualDisplay = null
+        if (keepWarm && display != null && ready) {
+            return runCatching {
+                display.surface = null
+                WarmCapture(projection, display, densityDpi)
+            }.getOrElse {
+                runCatching { display.release() }
+                runCatching { projection.stop() }
+                null
+            }
+        }
+        runCatching { display?.release() }
         runCatching { projection.stop() }
+        return null
     }
 
     companion object {

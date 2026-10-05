@@ -446,7 +446,8 @@ struct TransferEntry: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 2)
-        .background(shape.fill(Color.primary.opacity(0.055)))
+        // Plain like the cards around it (the hotspot, the settings), not a grey of its own.
+        .background(shape.fill(Color(nsColor: .controlBackgroundColor)).overlay { shape.strokeBorder(Color.primary.opacity(0.06), lineWidth: 1) })
         .hoverHighlight(radius: 12, tint: focused ? Palette.indigo : .primary, selected: focused)
         .clipShape(shape)
         .contentShape(shape)
