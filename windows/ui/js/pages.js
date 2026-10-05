@@ -196,6 +196,42 @@ export function DevicePage({ device }) {
 
 // ---- Shared, notifications, settings --------------------------------------------------
 
+// ---- Clipboard history ------------------------------------------------------------------
+
+export function ClipboardPage() {
+  const [query, setQuery] = useState("");
+  const [items, setItems] = useState([]);
+  const load = () => call("clip_history_search", { query }).then(setItems).catch(failed);
+  useEffect(() => { load(); }, [query]);
+  useEffect(() => { let off; listen("clip-history", load).then((f) => { off = f; }); return () => off && off(); }, [query]);
+  const ago = (ms) => {
+    const minutes = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    if (minutes < 1) return t("just_now");
+    if (minutes < 60) return t("minutes_ago", minutes);
+    const hours = Math.round(minutes / 60);
+    return hours < 24 ? t("hours_ago", hours) : t("days_ago", Math.round(hours / 24));
+  };
+  const copy = async (item) => { try { await call("clip_history_copy", { id: item.id }); say(t("copied")); } catch (e) { failed(e); } };
+  return html`<div class="wrap">
+    <div style="display:flex;align-items:flex-end;gap:12px">
+      <div class="grow"><h1>${t("title_clipboard")}</h1><p class="lead">${t("lead_clipboard")}</p></div>
+      ${items.length > 0 && html`<button class="btn" onClick=${() => call("clip_history_clear", { keepPinned: true })}><${Icon} name="trash" size=${17} />${t("clear_all_but_kept")}</button>`}
+    </div>
+    <input type="search" placeholder=${t("search")} value=${query} onInput=${(e) => setQuery(e.target.value)}
+      style="margin:10px 0;width:100%;box-sizing:border-box;padding:9px 16px;border-radius:999px;border:1px solid rgba(128,128,128,0.35);background:transparent;color:inherit;font:inherit;outline:none" />
+    ${items.length === 0
+      ? html`<div class="card empty"><${Icon} name="clipboard" size=${34} /><div>${query ? t("nothing_matches") : t("nothing_yet")}</div></div>`
+      : html`<div class="card flush">${items.map((item) => html`<div class="item" key=${item.id}>
+          <div class="grow" style="cursor:pointer;min-width:0" onClick=${() => copy(item)}>
+            <div style="white-space:pre-wrap;word-break:break-word;max-height:4.6em;overflow:hidden">${item.text}</div>
+            <div class="small muted">${[item.from, ago(item.at_ms)].filter(Boolean).join(" · ")}</div>
+          </div>
+          <button class=${"btn small" + (item.pinned ? " accent" : "")} title=${item.pinned ? t("let_go") : t("keep_this")} onClick=${() => call("clip_history_pin", { id: item.id })}><${Icon} name="pin" size=${15} /></button>
+          <button class="btn small" title=${t("remove")} onClick=${() => call("clip_history_remove", { id: item.id })}><${Icon} name="x" size=${15} /></button>
+        </div>`)}</div>`}
+  </div>`;
+}
+
 export function SharedPage() {
   return html`<div class="wrap">
     <div style="display:flex;align-items:flex-end;gap:12px">

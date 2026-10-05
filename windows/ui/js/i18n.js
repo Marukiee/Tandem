@@ -1,5 +1,8 @@
 // The words of the interface, in English and Dutch. Windows picks which one, unless the person chose.
 const en = {
+  clipboard: "Clipboard", title_clipboard: "Clipboard history", lead_clipboard: "What came to the clipboard from your other devices, and what you copied here. Click a text to copy it again.",
+  search: "Search", nothing_matches: "Nothing matches.", copied: "Copied", keep_this: "Keep this one", let_go: "Let this one go", clear_all_but_kept: "Clear all but the ones you keep",
+  just_now: "just now", minutes_ago: "{0} min ago", hours_ago: "{0} h ago", days_ago: "{0} d ago",
   live_show_screen: "Show phone screen", live_show_camera: "Phone camera", live_update_phone: "Update Tandem on the phone to version 0.1.38 or newer",
   live_camera_tip: "Opens in a window. It is not a virtual webcam: share or capture the window in Zoom or OBS.",
   live_waiting_screen: "Waiting for {0} to allow it", live_waiting_camera: "Waiting for {0} to allow the camera", live_first_picture: "Waiting for the first picture",
@@ -53,6 +56,9 @@ const en = {
 };
 
 const nl = {
+  clipboard: "Klembord", title_clipboard: "Klembordgeschiedenis", lead_clipboard: "Wat van je andere apparaten op het klembord kwam, en wat je hier kopieerde. Klik op een tekst om hem opnieuw te kopieren.",
+  search: "Zoeken", nothing_matches: "Niets komt overeen.", copied: "Gekopieerd", keep_this: "Bewaar deze", let_go: "Laat deze los", clear_all_but_kept: "Wis alles behalve wat je bewaart",
+  just_now: "zojuist", minutes_ago: "{0} min geleden", hours_ago: "{0} uur geleden", days_ago: "{0} d geleden",
   live_show_screen: "Telefoonscherm tonen", live_show_camera: "Telefooncamera", live_update_phone: "Werk Tandem op de telefoon bij naar versie 0.1.38 of nieuwer",
   live_camera_tip: "Opent in een venster. Het is geen virtuele webcam: deel of leg het venster vast in Zoom of OBS.",
   live_waiting_screen: "Wachten tot {0} het toestaat", live_waiting_camera: "Wachten tot {0} de camera toestaat", live_first_picture: "Wachten op het eerste beeld",

@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.47",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Clipboard history on Windows and Linux",
+      "new": [
+        "Windows and Linux: a Clipboard page with what came to the clipboard from your other devices and what you copied on the computer. Click a text to copy it again, keep the ones you want, remove the rest and search. It stays on the computer",
+        "The end to end tests wait longer, so a slow build computer no longer fails them now and then"
+      ]
+    },
+    "nl": {
+      "title": "Klembordgeschiedenis op Windows en Linux",
+      "new": [
+        "Windows en Linux: een pagina Klembord met wat van je andere apparaten op het klembord kwam en wat je op de computer kopieerde. Klik op een tekst om hem opnieuw te kopieren, bewaar wat je wilt houden, verwijder de rest en zoek. Het blijft op de computer",
+        "De end-to-end-tests wachten langer, zodat een trage bouwcomputer ze niet meer af en toe laat falen"
+      ]
+    }
+  },
+  {
     "version": "0.1.46",
     "date": "2026-10-05",
     "en": {

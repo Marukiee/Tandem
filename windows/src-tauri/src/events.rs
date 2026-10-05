@@ -76,12 +76,14 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 return;
             }
             clip::apply(app, &text);
+            crate::history::record(app, &text, &device_name(app, &from));
             say(app, &i18n::t1(app, "text_on_clipboard", &device_name(app, &from)));
         }
         TandemEvent::ShareOffered { from, offer, origin, items } => offered(app, &from, offer, origin, &items),
         TandemEvent::ShareText { from, text, is_url, .. } => {
             clip::apply(app, &text);
             let name = device_name(app, &from);
+            crate::history::record(app, &text, &name);
             let key = if is_url { "link_from" } else { "text_from" };
             toast(app, &i18n::t1(app, key, &name), &text.chars().take(200).collect::<String>());
             say(app, &i18n::t1(app, "text_on_clipboard", &name));

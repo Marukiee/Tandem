@@ -50,6 +50,7 @@ pub fn start(app: AppHandle) {
             if state.data.lock().unwrap().applied_clipboard.as_deref() == Some(now.as_str()) {
                 continue;
             }
+            crate::history::record(&app, &now, "");
             let Ok(engine) = state.engine() else { continue };
             let url = model::is_url(&now);
             tauri::async_runtime::spawn(async move { engine.clipboard_changed(now, url).await });

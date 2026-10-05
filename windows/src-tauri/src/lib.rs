@@ -6,6 +6,7 @@ mod clip;
 mod commands;
 mod engine;
 mod events;
+mod history;
 mod i18n;
 mod input;
 mod live;
@@ -105,6 +106,12 @@ pub fn run() {
             commands::install_update,
             commands::dismiss_update,
             commands::quit_app,
+            history::clip_history,
+            history::clip_history_search,
+            history::clip_history_pin,
+            history::clip_history_remove,
+            history::clip_history_clear,
+            history::clip_history_copy,
             live::live_start,
             live::live_attach,
             live::live_keyframe,

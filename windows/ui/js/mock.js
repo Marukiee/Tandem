@@ -76,6 +76,11 @@ export async function call(command, args) {
     case "get_state": return state;
     case "get_players": return { players, art };
     case "live_start": return 1;
+    case "clip_history_search": return [
+      { id: 3, text: "https://example.com/some/long/link", from: "Maruks Telefoon", at_ms: Date.now() - 120000, pinned: true },
+      { id: 2, text: "Meeting at ten, room 4", from: "", at_ms: Date.now() - 3600000, pinned: false },
+    ].filter((i) => !args.query || i.text.toLowerCase().includes(args.query.toLowerCase()));
+    case "clip_history_pin": case "clip_history_remove": case "clip_history_clear": case "clip_history_copy": return null;
     case "create_pairing": return { uri: "tandem://pair?c=PREVIEW", expiresAtMs: Date.now() + 300000, qr };
     case "pair": return "phone";
     case "send_clipboard": return args.ids.length;
