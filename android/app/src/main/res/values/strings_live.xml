@@ -47,4 +47,9 @@
     <string name="live_perm_never">Never</string>
     <string name="live_indicator">Pill on screen while sharing</string>
     <string name="live_indicator_sub">Says who is looking and has a Stop button. Needs permission to show over other apps.</string>
+    <string name="a11y_label">Tandem control</string>
+    <string name="a11y_description">Lets a computer you allowed click and type on this phone while it shows the screen. Nothing happens until you start sharing the screen and the computer asks for control. Tandem reads nothing from the screen except the field that is being typed in.</string>
+    <string name="live_control_title">Let it click and type</string>
+    <string name="live_control_on">On. A computer you allow can click and type while it shows this screen.</string>
+    <string name="live_control_off">Off. It can look at the screen but not touch it. Turn on Tandem control in Accessibility settings.</string>
 </resources>

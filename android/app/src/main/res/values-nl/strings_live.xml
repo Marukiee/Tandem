@@ -47,4 +47,9 @@
     <string name="live_perm_never">Nooit</string>
     <string name="live_indicator">Pil op het scherm tijdens delen</string>
     <string name="live_indicator_sub">Zegt wie er kijkt en heeft een Stop-knop. Vraagt toestemming om over andere apps te tonen.</string>
+    <string name="a11y_label">Tandem-bediening</string>
+    <string name="a11y_description">Laat een computer die je hebt toegestaan op deze telefoon klikken en typen terwijl hij het scherm toont. Er gebeurt niets tot je het scherm deelt en de computer om bediening vraagt. Tandem leest niets van het scherm behalve het veld waarin getypt wordt.</string>
+    <string name="live_control_title">Laat klikken en typen toe</string>
+    <string name="live_control_on">Aan. Een computer die je toestaat kan klikken en typen terwijl hij dit scherm toont.</string>
+    <string name="live_control_off">Uit. Hij kan het scherm bekijken maar niet aanraken. Zet Tandem-bediening aan in de toegankelijkheidsinstellingen.</string>
 </resources>

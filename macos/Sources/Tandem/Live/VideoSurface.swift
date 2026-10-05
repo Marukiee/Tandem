@@ -2,6 +2,7 @@ import AVFoundation
 import AppKit
 import CoreImage
 import SwiftUI
+import TandemCore
 
 /// How the picture is turned for the person: what the phone says (`rotation`, degrees clockwise to look upright), what
 /// the person added by hand, and a mirror for the front camera. Pure, so the sizes and the aspect can be tested.
@@ -27,6 +28,14 @@ final class VideoSurfaceView: NSView {
     private var orientation = VideoOrientation()
     private var lastImage: CVPixelBuffer?
     private let imageLock = NSLock()
+
+    /// Where the mouse and the keys of this Mac go when the phone has let them control it. Nothing is sent while
+    /// [isControlActive] says no, and the view then lets the events pass as usual.
+    var onInput: ((TandemMediaInput) -> Void)?
+    var isControlActive: () -> Bool = { false }
+
+    override var acceptsFirstResponder: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -113,6 +122,77 @@ final class VideoSurfaceView: NSView {
             )
         }
         return sample
+    }
+
+    // MARK: Mouse and keys for the phone
+
+    /// Where in the picture an event is, as a fraction of it, or nil outside it or when the picture is turned (the
+    /// phone does not know about a turn the person made here).
+    private func fraction(of event: NSEvent) -> (x: Float, y: Float)? {
+        guard orientation.degrees == 0, !orientation.mirrored, let image = latestImage else { return nil }
+        let iw = CGFloat(CVPixelBufferGetWidth(image))
+        let ih = CGFloat(CVPixelBufferGetHeight(image))
+        guard iw > 0, ih > 0, bounds.width > 0, bounds.height > 0 else { return nil }
+        let scale = min(bounds.width / iw, bounds.height / ih)
+        let drawn = CGRect(x: (bounds.width - iw * scale) / 2, y: (bounds.height - ih * scale) / 2, width: iw * scale, height: ih * scale)
+        let point = convert(event.locationInWindow, from: nil)
+        guard drawn.contains(point) else { return nil }
+        return (Float((point.x - drawn.minX) / drawn.width), Float(1 - (point.y - drawn.minY) / drawn.height))
+    }
+
+    private func send(_ input: TandemMediaInput) { onInput?(input) }
+
+    override func mouseDown(with event: NSEvent) {
+        guard isControlActive(), let at = fraction(of: event) else { return super.mouseDown(with: event) }
+        window?.makeFirstResponder(self)
+        send(.pointerAbs(x: at.x, y: at.y))
+        send(.button(button: 0, down: true, clicks: UInt8(clamping: max(1, event.clickCount))))
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard isControlActive(), let at = fraction(of: event) else { return super.mouseDragged(with: event) }
+        send(.pointerAbs(x: at.x, y: at.y))
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        guard isControlActive() else { return super.mouseUp(with: event) }
+        if let at = fraction(of: event) { send(.pointerAbs(x: at.x, y: at.y)) }
+        send(.button(button: 0, down: false, clicks: UInt8(clamping: max(1, event.clickCount))))
+    }
+
+    /// The right button is Back on the phone.
+    override func rightMouseDown(with event: NSEvent) {
+        guard isControlActive(), fraction(of: event) != nil else { return super.rightMouseDown(with: event) }
+        send(.button(button: 1, down: true, clicks: 1))
+        send(.button(button: 1, down: false, clicks: 1))
+    }
+
+    /// The scroll wheel and two fingers on the pad move the content the way the fingers do.
+    override func scrollWheel(with event: NSEvent) {
+        guard isControlActive(), let at = fraction(of: event) else { return super.scrollWheel(with: event) }
+        let dx = Int16(clamping: Int(event.scrollingDeltaX * (event.hasPreciseScrollingDeltas ? 1 : 10)))
+        let dy = Int16(clamping: Int(event.scrollingDeltaY * (event.hasPreciseScrollingDeltas ? 1 : 10)))
+        guard dx != 0 || dy != 0 else { return }
+        send(.pointerAbs(x: at.x, y: at.y))
+        send(.scroll(dx: dx, dy: dy))
+    }
+
+    /// Letters and digits are typed; Escape is Back, Delete takes a character off, Return goes in as a line break.
+    override func keyDown(with event: NSEvent) {
+        guard isControlActive() else { return super.keyDown(with: event) }
+        let modifiers = event.modifierFlags.intersection([.command, .control])
+        guard modifiers.isEmpty else { return super.keyDown(with: event) }
+        switch event.keyCode {
+        case 53: send(.key(code: 0x29, down: true, mods: 0, text: ""))
+        case 51: send(.key(code: 0x2A, down: true, mods: 0, text: ""))
+        case 36, 76: send(.key(code: 0x28, down: true, mods: 0, text: ""))
+        default:
+            if let text = event.characters, !text.isEmpty, text.unicodeScalars.allSatisfy({ $0.value >= 32 && $0.value != 127 }) {
+                send(.text(text: text))
+            } else {
+                super.keyDown(with: event)
+            }
+        }
     }
 
     // MARK: Pictures of the picture

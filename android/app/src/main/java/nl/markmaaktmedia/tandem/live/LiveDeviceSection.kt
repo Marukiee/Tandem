@@ -102,9 +102,22 @@ fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
                 )
             }
         }
+        // Clicking and typing from the computer needs the accessibility service, which only the person can turn on.
+        if (canScreen) {
+            var controlOn by remember { mutableStateOf(TandemAccessibilityService.running) }
+            androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+                controlOn = TandemAccessibilityService.running
+                onPauseOrDispose {}
+            }
+            ActionRow(
+                0, 2, TandemIcons.Mouse, stringResource(R.string.live_control_title),
+                stringResource(if (controlOn) R.string.live_control_on else R.string.live_control_off),
+                { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
+            )
+        }
         var wanted by remember { mutableStateOf(live.indicatorWanted && live.indicator.canShow()) }
         SwitchRow(
-            0, 1, TandemIcons.Info, stringResource(R.string.live_indicator), stringResource(R.string.live_indicator_sub), wanted,
+            1, 2, TandemIcons.Info, stringResource(R.string.live_indicator), stringResource(R.string.live_indicator_sub), wanted,
             { on ->
                 live.indicatorWanted = on
                 if (on && !live.indicator.canShow()) {

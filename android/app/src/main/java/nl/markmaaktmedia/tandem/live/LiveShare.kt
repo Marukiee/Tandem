@@ -120,8 +120,12 @@ class LiveShare(
         main.post { shares.firstOrNull { it.session == session }?.pipeline?.setBitrate(bitsPerSecond.toInt()) }
     }
 
-    /** Control of the screen is not part of this: the Mac never gets it, and the core would not deliver it anyway. */
-    override fun onInput(session: ULong, input: TandemMediaInput) = Unit
+    private val remoteInput = RemoteInput(app)
+
+    /** Only comes when control was granted: the core drops it otherwise. It needs the accessibility service to do anything. */
+    override fun onInput(session: ULong, input: TandemMediaInput) {
+        if (shares.any { it.session == session && it.control }) remoteInput.handle(input)
+    }
 
     override fun onStop(session: ULong, reason: TandemMediaEnd) {
         main.post {
@@ -268,6 +272,10 @@ class LiveShare(
 
         @Volatile
         private var accepted = false
+
+        /** Whether the computer may click and type: it asked, and the accessibility service is on. The core clamps it by the policy. */
+        @Volatile
+        var control = false
         private var config: ByteArray? = null
         private var armedTimeout: Runnable? = null
         private var plan: LivePlan.Plan? = null
@@ -295,6 +303,7 @@ class LiveShare(
             armedTimeout?.let { main.removeCallbacks(it) }
             armedTimeout = null
             session = request.session
+            control = request.control && kind == TandemMediaKind.SCREEN && TandemAccessibilityService.running
             publish()
             val limits = LivePlan.Limits(
                 request.maxWidth.toInt(), request.maxHeight.toInt(), request.maxFps.toInt(), request.maxBitrate.toInt(),
@@ -322,7 +331,7 @@ class LiveShare(
                 val engine = host.engine ?: return@post
                 plan = LivePlan.Plan(width, height, fps, bitrate)
                 val answered = runCatching {
-                    engine.mediaAccept(id, TandemMediaAccept(TandemMediaCodec.H264, width.toUInt(), height.toUInt(), fps.toUInt(), bitrate.toUInt(), false))
+                    engine.mediaAccept(id, TandemMediaAccept(TandemMediaCodec.H264, width.toUInt(), height.toUInt(), fps.toUInt(), bitrate.toUInt(), control))
                 }
                 if (answered.isFailure) {
                     Log.w(TAG, "accept failed", answered.exceptionOrNull())

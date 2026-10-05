@@ -189,6 +189,18 @@ struct LiveView: View {
                     .disabled(!session.hasPicture)
                 button("rotate.right", help: "Turn the picture a quarter") { turn() }
                     .disabled(!session.hasPicture)
+                if session.kind == .screen {
+                    // Clicks and keys go to the phone only when it allowed it; until then the button is grey and says why.
+                    button(
+                        "cursorarrow.click.2",
+                        help: session.controlGranted
+                            ? (session.controlOn ? "Stop clicking and typing on the phone" : "Click and type on the phone")
+                            : "The phone does not allow clicking yet. Turn on Tandem control in its Accessibility settings, then show the screen again.",
+                        active: session.controlGranted && session.controlOn
+                    ) { session.controlOn.toggle() }
+                        .disabled(!session.controlGranted)
+                        .opacity(session.controlGranted ? 1 : 0.5)
+                }
                 if session.kind == .camera {
                     button(
                         "arrow.left.and.right.righttriangle.left.righttriangle.right",

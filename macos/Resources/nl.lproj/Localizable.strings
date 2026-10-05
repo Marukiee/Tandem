@@ -727,3 +727,6 @@
 "Allow Tandem to record this Mac's screen in System Settings, under Screen Recording" = "Sta Tandem toe het scherm van deze Mac op te nemen in Systeeminstellingen, onder Schermopname";
 "Update Tandem on the phone to version 0.1.38 or newer" = "Werk Tandem op de telefoon bij naar versie 0.1.38 of nieuwer";
 "Shows your phone's camera in a window. It is a window and not a virtual webcam: share or capture it in Zoom or OBS." = "Toont de camera van je telefoon in een venster. Het is een venster en geen virtuele webcam: deel of leg het vast in Zoom of OBS.";
+"Stop clicking and typing on the phone" = "Stop met klikken en typen op de telefoon";
+"Click and type on the phone" = "Klik en typ op de telefoon";
+"The phone does not allow clicking yet. Turn on Tandem control in its Accessibility settings, then show the screen again." = "De telefoon staat klikken nog niet toe. Zet Tandem-bediening aan in de toegankelijkheidsinstellingen en toon het scherm opnieuw.";

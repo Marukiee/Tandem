@@ -94,7 +94,7 @@ final class LiveManager {
 
         let want = TandemMediaWant(
             kind: kind, codecs: [.h264], maxWidth: quality.box(for: kind).long, maxHeight: quality.box(for: kind).short,
-            maxFps: kind == .screen ? 60 : quality.maxFps, maxBitrate: 0, control: false,
+            maxFps: kind == .screen ? 60 : quality.maxFps, maxBitrate: 0, control: kind == .screen,
             facing: kind == .camera ? facing.facing : .any
         )
         let id: UInt64
@@ -163,6 +163,7 @@ final class LiveManager {
                 guard let session, session.id == id else { return }
                 session.width = Int(accept.width)
                 session.height = Int(accept.height)
+                session.controlGranted = accept.control
                 session.phase = .active
                 self?.windows[ObjectIdentifier(session)]?.contentSizeChanged()
             }
@@ -175,6 +176,7 @@ final class LiveManager {
                     session.height = Int(height)
                 }
                 if let rotation = update.rotation { session.phoneRotation = Int(rotation) % 360 }
+                if let control = update.control { session.controlGranted = control }
                 self?.windows[ObjectIdentifier(session)]?.contentSizeChanged()
             }
         }
@@ -185,7 +187,21 @@ final class LiveManager {
             }
         }
         session.firstPicture.reset()
+        session.surface.isControlActive = { [weak session] in
+            guard let session else { return false }
+            return session.controlGranted && session.controlOn && !session.phase.isEnded
+        }
+        session.surface.onInput = { [weak self, weak session] input in
+            guard let session else { return }
+            self?.sendInput(session, input)
+        }
         router.register(pipeline, for: id)
+    }
+
+    /// A click, a scroll or a key for the phone, when it allowed this.
+    func sendInput(_ session: LiveSession, _ input: TandemMediaInput) {
+        guard session.controlGranted, let engine else { return }
+        try? engine.mediaSendInput(session: session.id, input: input)
     }
 
     private func finish(_ session: LiveSession, reason: TandemMediaEnd) {

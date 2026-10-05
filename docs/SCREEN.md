@@ -353,3 +353,14 @@ their own engine, so stop a running `tandemd run` on that machine first (or give
 
 Capture, encoding, decoding, drawing, input injection and the permissions that go with them (`MediaProjection`,
 `ScreenCaptureKit`, Accessibility, the camera) are the apps. Audio of the camera or the screen is not part of this.
+
+## Android as the host of control
+
+A Mac that asks for the screen of a phone also asks for control (`control` in `MediaRequest`). The phone grants it only when its
+accessibility service (`TandemAccessibilityService`) is running, and the core still clamps it by the policy. Input then arrives
+as `MediaInput` and is turned into gestures by `RemoteInput`: the left button is a finger (press and release in one place is a
+tap, held longer a long press, moved a swipe), the right button is Back, the middle button Home, back and forward are Recents,
+a scroll is a swipe in the direction of the content, text goes into the focused field and Escape is Back.
+
+Capabilities: `screen.host` (can share its screen), `screen.control` (a Mac that has Accessibility on, so a phone can click),
+`screen.view` (can show another device's screen), `camera.host`, `camera.view`.

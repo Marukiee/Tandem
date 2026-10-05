@@ -4,6 +4,13 @@ import SwiftUI
 import TandemCore
 
 /// Where a window of the phone's screen or camera is in its life.
+extension LivePhase {
+    var isEnded: Bool {
+        if case .ended = self { return true }
+        return false
+    }
+}
+
 enum LivePhase: Equatable {
     /// The request is out and the phone has not answered. The person on the phone may still be asked.
     case requesting
@@ -180,6 +187,10 @@ final class LiveSession {
     var notice: String?
     /// True once the person asked to stop, so the end of the session is not reported as the phone's doing.
     var stoppedByMe = false
+    /// The phone let this Mac click and type (it asked, and the phone has its accessibility service on).
+    var controlGranted = false
+    /// The person's own switch: the mouse and keys go to the phone only while it is on.
+    var controlOn = true
 
     let surface = VideoSurfaceView()
     /// Flips when the first picture is drawn, so the decoder's thread can tell the main actor once.

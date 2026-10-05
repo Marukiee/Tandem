@@ -169,6 +169,18 @@
             </intent-filter>
         </service>
 
+        <!-- Lets a computer that shows this phone's screen click and type on it. Off until the person turns it on. -->
+        <service
+            android:name=".live.TandemAccessibilityService"
+            android:exported="true"
+            android:label="@string/a11y_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/tandem_accessibility" />
+        </service>
+
         <receiver android:name=".engine.ActionReceiver" android:exported="false" />
 
         <!-- Hotspot for the Mac: the Stop button, the screen-less opener of the system
