@@ -120,6 +120,30 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
   hover-animatie als de andere iconen (de cirkel die zich vult en het symbool dat wit wordt, zoals bij Invoegen vanaf telefoon
   en Klembordgeschiedenis): zelfde `RoundIconButton` gebruiken. Zie `UI/QuickShareMenu.swift` en `UI/MenuBarPanel.swift`.
 
+## 5b. Android: delen en de Mac bedienen (gevraagd 2026-10-06)
+
+- **Geluid delen zonder scherm delen:** het systeem kan geluid van andere apps alleen opvangen met `MediaProjection`
+  (`AudioPlaybackCapture`), en daar hoort altijd de vraag van Android bij ("begin met opnemen of casten", met de keuze voor een
+  app of het hele scherm). Dat kan Tandem niet omzeilen. Wat wel kan: bij alleen geluid wordt er geen beeld gecodeerd of
+  verstuurd (`SoundShareService` doet dat al apart van `LiveShareService`) en de vraag wordt zo uitgelegd dat het duidelijk is
+  dat alleen geluid gaat; de keuze "een app" boven "hele scherm" voorstellen. Nog te controleren op het toestel of de tekst van
+  het systeem toch over scherm delen gaat en of we een eigen uitleg voor de vraag kunnen tonen.
+- **Deelstatus zichtbaar en stoppen met een tik:** wat de telefoon deelt (scherm, camera, geluid, Control this Mac) krijgt een
+  kleur: groen als het gewoon bezig is, rood als het scherm of de camera live te zien is. Het icoontje in de tegel, de
+  melding en de pagina verandert dan in een stop-icoon, zodat een tik het beeindigt. Eén plek voor die staat (`LiveShare`
+  heeft de toestand al), de tegels in Snelle instellingen en de rijen op de apparaatpagina lezen die.
+- **Control this Mac soepeler:** het beeld (`ScreenViewerScreen.kt`, `VideoSurface`) en de bediening (aanraken, slepen,
+  scrollen, toetsenbord) lopen nu per gebaar door elk een eigen pad; de aanraking moet zonder merkbare vertraging worden
+  doorgegeven (geen herhaalde allocaties, gebaren gebundeld per frame, de pointer-datagrammen direct) en het scherm moet
+  zonder haperen meebewegen.
+- **Knoppen Toetsenbord en Muis:** de ronde hoeken horen dynamisch mee te veranderen met aan of uit, zoals bij de knoppen van
+  de trackpad (de ene wordt een cirkel/pil naast de andere, de aangezette knop vult zich). Zelfde component als de trackpad-rij
+  hergebruiken.
+- **Toetsenbord open in staande stand:** het beeld van de Mac blijft nu in het midden van het scherm staan terwijl het
+  toetsenbord de onderste helft bedekt. Het beeld moet met het toetsenbord omhoog schuiven (en kleiner worden als dat past),
+  zodat het deel waar je op typt in beeld blijft (`WindowInsets.ime`, het beeld in een kolom die de inzet volgt met een
+  veer).
+
 ## 7. Kwaliteit en documentatie
 
 - Remote desktop: adaptieve kwaliteit volledig (nu alleen via bitrate-meldingen), HEVC, meerdere
