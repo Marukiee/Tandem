@@ -16,7 +16,31 @@ if entry is None:
     print(f"Tandem {version}")
     sys.exit(0)
 
+def which_file(version: str) -> str:
+    """A short table at the top of the release: what to download for your device. Only the files with the version in their name
+    are listed. The ones without a number are the same files under a fixed name, which the apps and the links use to update
+    themselves, so they can be ignored."""
+    v = f"v{version}"
+    return f"""## Which file do I need? / Welk bestand heb ik nodig?
+
+| You have / Je hebt | Download |
+| --- | --- |
+| Android phone / Android-telefoon | `Tandem-{v}.apk` |
+| Mac (Apple silicon) | `Tandem-{v}-macOS.zip` |
+| Windows 10 or 11 | `Tandem-{v}-Windows-x64-setup.exe` |
+| Fedora, openSUSE (Linux) | `Tandem-{v}-Linux-x64.rpm`, or the AppImage |
+| Ubuntu, Debian, Mint (Linux) | `Tandem-{v}-Linux-x64.deb`, or the AppImage |
+| Any other Linux / Elke andere Linux | `Tandem-{v}-Linux-x64.AppImage` (make it executable, then run it) |
+| A server or Raspberry Pi without a screen / Zonder scherm | `tandemd-{v}-linux-x86_64.tar.gz` or `tandemd-{v}-linux-aarch64.tar.gz` |
+
+Files without a version number in their name are copies the apps use to update themselves. You do not need them.
+Bestanden zonder versienummer zijn kopieen die de apps gebruiken om zichzelf bij te werken. Die heb je niet nodig.
+
+"""
+
+
 groups = [("new", "New", "Nieuw"), ("better", "Better", "Beter"), ("fixed", "Fixed", "Opgelost")]
+print(which_file(version))
 for lang, label in (("en", "English"), ("nl", "Nederlands")):
     text = entry[lang]
     print(f"## {text['title']} ({label})\n")

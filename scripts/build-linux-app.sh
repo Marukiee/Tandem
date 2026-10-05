@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Builds what people on Linux download: the app as a .deb and as an AppImage, with a checksum each.
+# Builds what people on Linux download: the app as a .deb (Debian, Ubuntu), an .rpm (Fedora, openSUSE) and an AppImage (any), with a
+# checksum each.
 #
 #     scripts/build-linux-app.sh 0.1.46
 #
@@ -21,15 +22,18 @@ conf = json.load(open(path))
 conf["version"] = sys.argv[1]
 json.dump(conf, open(path, "w"), indent=2)
 PY
-npx --yes "@tauri-apps/cli@2" build --ci --bundles deb,appimage
+npx --yes "@tauri-apps/cli@2" build --ci --bundles deb,rpm,appimage
 
 bundle="src-tauri/target/release/bundle"
 deb="$(ls "$bundle"/deb/*.deb | head -n1)"
 appimage="$(ls "$bundle"/appimage/*.AppImage | head -n1)"
+rpm="$(ls "$bundle"/rpm/*.rpm | head -n1)"
 cp "$deb" "$out/Tandem-Linux-x64.deb"
+cp "$rpm" "$out/Tandem-Linux-x64.rpm"
 cp "$appimage" "$out/Tandem-Linux-x64.AppImage"
 cp "$deb" "$out/Tandem-v$version-Linux-x64.deb"
+cp "$rpm" "$out/Tandem-v$version-Linux-x64.rpm"
 cp "$appimage" "$out/Tandem-v$version-Linux-x64.AppImage"
 chmod +x "$out/Tandem-Linux-x64.AppImage" "$out/Tandem-v$version-Linux-x64.AppImage"
-(cd "$out" && for name in Tandem-Linux-x64.deb Tandem-Linux-x64.AppImage; do sha256sum "$name" > "$name.sha256"; done)
+(cd "$out" && for name in Tandem-Linux-x64.deb Tandem-Linux-x64.rpm Tandem-Linux-x64.AppImage; do sha256sum "$name" > "$name.sha256"; done)
 ls -l "$out"

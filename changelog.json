@@ -15,7 +15,8 @@
         "Mac: Scan document is called Scan docs, so it fits on one line in the menu bar panel",
         "Mac: the names that show under a device in the menu bar panel when you hover over a button fit on one line now: Show phone screen and Phone as output",
         "Android: when you call someone, the Mac no longer gets a notification about it again and again. The notification of a call in progress is posted again by the phone every time it changes, and it was mirrored each time, next to the call mirroring itself. It is left out now",
-        "Mac: the symbol of Clipboard history in the menu bar panel reacts to the pointer like the symbols of Insert from phone: the disc fills and the symbol turns white"
+        "Mac: the symbol of Clipboard history in the menu bar panel reacts to the pointer like the symbols of Insert from phone: the disc fills and the symbol turns white",
+        "Downloads: every release page now starts with a table that says which file to download for your device, with only the files that have the version in their name. There is an .rpm for Fedora and openSUSE now, next to the .deb and the AppImage, and a file for the Mac with the version in its name. The files without a version number are copies the apps use to update themselves"
       ]
     },
     "nl": {
@@ -31,7 +32,8 @@
         "Mac: Document scannen heet nu Scan docs, zodat het op een regel past in het menubalkpaneel",
         "Mac: de namen die onder een apparaat in het menubalkpaneel verschijnen als je over een knop beweegt passen nu op een regel: Toon telefoonscherm en Telefoon als uitvoer",
         "Android: als je iemand belt krijgt de Mac niet meer steeds opnieuw een melding daarover. De melding van een gesprek dat bezig is wordt door de telefoon bij elke wijziging opnieuw geplaatst, en die werd elke keer gespiegeld, naast het spiegelen van het gesprek zelf. Dat is nu weggelaten",
-        "Mac: het symbool van Klembordgeschiedenis in het menubalkpaneel reageert op de muis zoals de symbolen van Voeg in vanaf telefoon: de cirkel vult zich en het symbool wordt wit"
+        "Mac: het symbool van Klembordgeschiedenis in het menubalkpaneel reageert op de muis zoals de symbolen van Voeg in vanaf telefoon: de cirkel vult zich en het symbool wordt wit",
+        "Downloads: elke releasepagina begint nu met een tabel die zegt welk bestand je voor je apparaat moet downloaden, met alleen de bestanden die het versienummer in hun naam hebben. Er is nu een .rpm voor Fedora en openSUSE, naast de .deb en de AppImage, en een bestand voor de Mac met het versienummer in de naam. De bestanden zonder versienummer zijn kopieen die de apps gebruiken om zichzelf bij te werken"
       ]
     }
   },

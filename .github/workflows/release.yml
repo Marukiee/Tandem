@@ -178,6 +178,7 @@ jobs:
           ditto -c -k --keepParent macos/dist/Tandem.app dist/Tandem-macOS.zip
           (cd dist && shasum -a 256 Tandem-macOS.zip > Tandem-macOS.zip.sha256)
           swift scripts/sign-update.swift dist/Tandem-macOS.zip > dist/Tandem-macOS.zip.sig
+          cp dist/Tandem-macOS.zip "dist/Tandem-v$VERSION-macOS.zip"
 
       - uses: actions/upload-artifact@v7
         with:
@@ -295,7 +296,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev \
-            patchelf build-essential curl wget file xdg-utils
+            patchelf build-essential curl wget file xdg-utils rpm
 
       - name: Build the packages
         run: ./scripts/build-linux-app.sh "$VERSION"

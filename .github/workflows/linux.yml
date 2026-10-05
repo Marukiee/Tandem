@@ -42,7 +42,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev \
-            patchelf build-essential curl wget file xdg-utils
+            patchelf build-essential curl wget file xdg-utils rpm
 
       # The newest version in the changelog: a preview is a build on the way to the next one.
       - name: Version
@@ -77,4 +77,4 @@ jobs:
           else
             gh release create linux-preview --prerelease --latest=false --title "$title" --notes "$notes"
           fi
-          gh release upload linux-preview dist-linux/Tandem-Linux-x64.deb dist-linux/Tandem-Linux-x64.deb.sha256 dist-linux/Tandem-Linux-x64.AppImage dist-linux/Tandem-Linux-x64.AppImage.sha256 --clobber
+          gh release upload linux-preview dist-linux/Tandem-Linux-x64.deb dist-linux/Tandem-Linux-x64.deb.sha256 dist-linux/Tandem-Linux-x64.rpm dist-linux/Tandem-Linux-x64.rpm.sha256 dist-linux/Tandem-Linux-x64.AppImage dist-linux/Tandem-Linux-x64.AppImage.sha256 --clobber
