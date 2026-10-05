@@ -66,6 +66,8 @@ pub enum Msg {
     Dial { number: String },
     Ring { on: bool },
     Input(InputMsg),
+    /// One mouse and keyboard over several computers: the pointer goes over, and comes back (see `pointer_share`).
+    PointerShare(crate::pointer_share::PointerShareMsg),
     Hotspot(HotspotMsg),
     /// Asks this device to take a picture, scan a document or pick a photo and send it back as a
     /// file share whose origin is `ShareOrigin::Capture` with the same id.

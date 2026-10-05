@@ -63,23 +63,15 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
 
 ## 4. Muis en toetsenbord over computers
 
-- Zoals Universal Control: de aanwijzer loopt over de rand naar een andere computer. Mac en Windows eerst.
-  Een eerdere agent begon eraan en is nooit hervat (branch `worktree-agent-ad011acae226a7aa7`).
+- Onderzoek en ontwerp staan in docs/INPUT_SHARING.md (Input Leap, lan-mouse, Universal Control). In de kern staat het bericht
+  `PointerShareMsg` en de rekenlogica (`pointer_share.rs`) met tests. Nog niet: het zien van invoer en het verbergen van de
+  aanwijzer per systeem (Mac `CGEventTap`, Windows hooks, Linux libei), de instellingen en het terughalen met een toets.
 
 ## 5. Uiterlijk
 
 - Icoontjes in de rondjes: de verhouding op Android en Mac nalopen (icoon onder de helft van de cirkel).
 - Meer Material 3 Expressive: golvende voortgang bij overdrachten, de laadindicator, expressieve vormen.
 - Klembordgeschiedenis-scherm op Android.
-
-## 6. Nog te beslissen of te onderzoeken
-
-- Delen met iedereen (ook mensen buiten je eigen circle): ontwerp nog niet goedgekeurd.
-- Overdracht van een link of tabblad tussen apparaten (handoff): uitgelegd, niet goedgekeurd.
-- Vorssaint (Dynamic Island op de Mac): de telefoonmuziek staat al in Now Playing van macOS. Meer
-  kan alleen met hun plugin-API; documentatie of naam van die API nodig.
-- Telefoon als echte webcam of microfoon: kan niet zonder Xcode en een Apple Developer ID (camera-extensie
-  en audiodriver). Het venster met de telefooncamera is het alternatief dat nu bestaat.
 
 ## 7. Kwaliteit en documentatie
 

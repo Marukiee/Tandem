@@ -806,6 +806,66 @@ impl From<CaptureWhy> for TandemCaptureWhy {
     }
 }
 
+/// A side of a screen, for sharing one mouse and keyboard over several computers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemEdge {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+impl From<TandemEdge> for crate::pointer_share::Edge {
+    fn from(e: TandemEdge) -> Self {
+        match e {
+            TandemEdge::Left => Self::Left,
+            TandemEdge::Right => Self::Right,
+            TandemEdge::Top => Self::Top,
+            TandemEdge::Bottom => Self::Bottom,
+        }
+    }
+}
+
+impl From<crate::pointer_share::Edge> for TandemEdge {
+    fn from(e: crate::pointer_share::Edge) -> Self {
+        match e {
+            crate::pointer_share::Edge::Left => Self::Left,
+            crate::pointer_share::Edge::Right => Self::Right,
+            crate::pointer_share::Edge::Top => Self::Top,
+            crate::pointer_share::Edge::Bottom => Self::Bottom,
+        }
+    }
+}
+
+/// What two computers say about the pointer that goes over and comes back.
+#[derive(Clone, Copy, Debug, PartialEq, uniffi::Enum)]
+pub enum TandemPointerShare {
+    Enter { edge: TandemEdge, along: f32 },
+    Leave { along: f32 },
+    Release,
+}
+
+impl From<TandemPointerShare> for crate::pointer_share::PointerShareMsg {
+    fn from(m: TandemPointerShare) -> Self {
+        match m {
+            TandemPointerShare::Enter { edge, along } => Self::Enter { edge: edge.into(), along },
+            TandemPointerShare::Leave { along } => Self::Leave { along },
+            TandemPointerShare::Release => Self::Release,
+        }
+    }
+}
+
+impl From<crate::pointer_share::PointerShareMsg> for TandemPointerShare {
+    fn from(m: crate::pointer_share::PointerShareMsg) -> Self {
+        use crate::pointer_share::PointerShareMsg as M;
+        match m {
+            M::Enter { edge, along } => Self::Enter { edge: edge.into(), along },
+            M::Leave { along } => Self::Leave { along },
+            M::Release => Self::Release,
+        }
+    }
+}
+
 #[derive(Clone, Debug, uniffi::Enum)]
 pub enum TandemEvent {
     DevicesChanged,
@@ -857,6 +917,8 @@ pub enum TandemEvent {
     MediaBitrate { peer: String, session: u64, bits_per_second: u32 },
     /// The other device is ready to show its screen or camera and asks this one to look. Answer with `media_request`.
     MediaOffered { from: String, kind: TandemMediaKind, facing: TandemMediaFacing },
+    /// The pointer of the other computer goes over to this one, or comes back.
+    PointerShare { from: String, msg: TandemPointerShare },
 }
 
 impl From<Event> for TandemEvent {
@@ -966,6 +1028,7 @@ impl From<Event> for TandemEvent {
             Event::MediaBitrate { peer, session, bits_per_second } => {
                 TandemEvent::MediaBitrate { peer: peer.to_string(), session, bits_per_second }
             }
+            Event::PointerShare { from, msg } => TandemEvent::PointerShare { from: from.to_string(), msg: msg.into() },
             Event::MediaOffered { from, kind, facing } => {
                 TandemEvent::MediaOffered { from: from.to_string(), kind: kind.into(), facing: facing.into() }
             }
@@ -1498,6 +1561,11 @@ impl TandemEngine {
     pub async fn request_capture(&self, target: String, id: u64, kind: TandemCaptureKind) -> Result<(), TandemError> {
         let msg = crate::proto::Msg::CaptureRequest(crate::proto::CaptureRequest { id, kind: kind.into() });
         self.send(vec![target], msg).await.map(|_| ())
+    }
+
+    /// Says to another computer what the pointer does: it goes over, it comes back, or it is taken back.
+    pub async fn send_pointer_share(&self, target: String, msg: TandemPointerShare) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::PointerShare(msg.into())).await.map(|_| ())
     }
 
     pub async fn cancel_capture(&self, target: String, id: u64, why: TandemCaptureWhy) -> Result<(), TandemError> {

@@ -84,4 +84,6 @@ pub enum Event {
     /// The other device is ready to show its screen or camera and asks this one to look (`Engine::media_offer`). Answer
     /// with `media_request` if the person wants to see it.
     MediaOffered { from: DeviceId, kind: crate::live::MediaKind, facing: crate::live::MediaFacing },
+    /// The pointer goes over or comes back (see `pointer_share`).
+    PointerShare { from: DeviceId, msg: crate::pointer_share::PointerShareMsg },
 }

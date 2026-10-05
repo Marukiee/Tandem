@@ -15,6 +15,7 @@ pub mod net;
 pub mod otp;
 pub mod pairing;
 pub mod platform;
+pub mod pointer_share;
 pub mod proto;
 pub mod session;
 pub mod store;

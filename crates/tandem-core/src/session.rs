@@ -417,6 +417,7 @@ impl Inner {
             Msg::Dial { number } => self.emit(Event::Dial { from: id, number }),
             Msg::Ring { on } => self.emit(Event::Ring { from: id, on }),
             Msg::Input(input) => self.emit(Event::Input { from: id, input }),
+            Msg::PointerShare(msg) => self.emit(Event::PointerShare { from: id, msg }),
             Msg::Hotspot(hotspot) => self.emit(Event::Hotspot { from: id, hotspot }),
             Msg::CaptureRequest(request) => {
                 if request.kind == crate::proto::CaptureKind::Other {

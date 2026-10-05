@@ -544,7 +544,7 @@ final class EngineModel {
             }
 
         case .notificationAction, .callAction, .dial, .ring, .captureRequested, .captureCancelled,
-             .mediaRequested, .mediaStarted, .mediaEnded, .mediaBitrate:
+             .mediaRequested, .mediaStarted, .mediaEnded, .mediaBitrate, .pointerShare:
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break
 
