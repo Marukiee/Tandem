@@ -11,7 +11,8 @@
         "Android: to send, you first choose between Photos and videos, with the photo picker of Android, and Files, with the Files app, instead of the old list that opened before",
         "Android: the Quick Share page in Settings has more now: who you receive as, how long it stays on, a button that opens the Quick Share sheet, the tile and what a tap on it does, and the devices nearby with their names",
         "Mac: Send with Quick Share in the Services menu. In Finder, right click files, then Services, then Send with Quick Share, and pick a device. A place in the Share menu itself needs an app extension, which this build does not make",
-        "Mac: with Quick Share on, the menu bar panel no longer lays out the devices at once. They show when you press Send files, and fold away again with Hide devices"
+        "Mac: with Quick Share on, the menu bar panel no longer lays out the devices at once. They show when you press Send files, and fold away again with Hide devices",
+        "Mac: Scan document is called Scan docs, so it fits on one line in the menu bar panel"
       ]
     },
     "nl": {
@@ -23,7 +24,8 @@
         "Android: om te versturen kies je eerst tussen Foto's en video's, met de fotokiezer van Android, en Bestanden, met de Bestanden-app, in plaats van de oude lijst die eerst openging",
         "Android: de Quick Share-pagina bij Instellingen heeft nu meer: als wie je ontvangt, hoe lang het aan blijft, een knop die het Quick Share-blad opent, de tegel en wat een tik erop doet, en de apparaten in de buurt met hun namen",
         "Mac: Verstuur met Quick Share in het menu Diensten. Klik in Finder met rechts op bestanden, dan Diensten, dan Verstuur met Quick Share, en kies een apparaat. Een plek in het deelmenu zelf vraagt een app-extensie, en die maakt deze bouw niet",
-        "Mac: met Quick Share aan legt het menubalkpaneel de apparaten niet meer meteen neer. Ze verschijnen als je op Verstuur bestanden drukt, en klappen weer weg met Verberg apparaten"
+        "Mac: met Quick Share aan legt het menubalkpaneel de apparaten niet meer meteen neer. Ze verschijnen als je op Verstuur bestanden drukt, en klappen weer weg met Verberg apparaten",
+        "Mac: Document scannen heet nu Scan docs, zodat het op een regel past in het menubalkpaneel"
       ]
     }
   },

@@ -21,7 +21,7 @@ enum InsertKind: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .photo: String(localized: "Take photo")
-        case .document: String(localized: "Scan document")
+        case .document: String(localized: "Scan docs")
         case .picture: String(localized: "Choose picture")
         }
     }
