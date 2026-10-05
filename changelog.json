@@ -13,7 +13,9 @@
         "Mac: Send with Quick Share in the Services menu. In Finder, right click files, then Services, then Send with Quick Share, and pick a device. A place in the Share menu itself needs an app extension, which this build does not make",
         "Mac: with Quick Share on, the menu bar panel no longer lays out the devices at once. They show when you press Send files, and fold away again with Hide devices",
         "Mac: Scan document is called Scan docs, so it fits on one line in the menu bar panel",
-        "Mac: the names that show under a device in the menu bar panel when you hover over a button fit on one line now: Show phone screen and Phone as output"
+        "Mac: the names that show under a device in the menu bar panel when you hover over a button fit on one line now: Show phone screen and Phone as output",
+        "Android: when you call someone, the Mac no longer gets a notification about it again and again. The notification of a call in progress is posted again by the phone every time it changes, and it was mirrored each time, next to the call mirroring itself. It is left out now",
+        "Mac: the symbol of Clipboard history in the menu bar panel reacts to the pointer like the symbols of Insert from phone: the disc fills and the symbol turns white"
       ]
     },
     "nl": {
@@ -27,7 +29,9 @@
         "Mac: Verstuur met Quick Share in het menu Diensten. Klik in Finder met rechts op bestanden, dan Diensten, dan Verstuur met Quick Share, en kies een apparaat. Een plek in het deelmenu zelf vraagt een app-extensie, en die maakt deze bouw niet",
         "Mac: met Quick Share aan legt het menubalkpaneel de apparaten niet meer meteen neer. Ze verschijnen als je op Verstuur bestanden drukt, en klappen weer weg met Verberg apparaten",
         "Mac: Document scannen heet nu Scan docs, zodat het op een regel past in het menubalkpaneel",
-        "Mac: de namen die onder een apparaat in het menubalkpaneel verschijnen als je over een knop beweegt passen nu op een regel: Toon telefoonscherm en Telefoon als uitvoer"
+        "Mac: de namen die onder een apparaat in het menubalkpaneel verschijnen als je over een knop beweegt passen nu op een regel: Toon telefoonscherm en Telefoon als uitvoer",
+        "Android: als je iemand belt krijgt de Mac niet meer steeds opnieuw een melding daarover. De melding van een gesprek dat bezig is wordt door de telefoon bij elke wijziging opnieuw geplaatst, en die werd elke keer gespiegeld, naast het spiegelen van het gesprek zelf. Dat is nu weggelaten",
+        "Mac: het symbool van Klembordgeschiedenis in het menubalkpaneel reageert op de muis zoals de symbolen van Voeg in vanaf telefoon: de cirkel vult zich en het symbool wordt wit"
       ]
     }
   },

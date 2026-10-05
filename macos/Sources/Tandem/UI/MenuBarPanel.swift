@@ -147,13 +147,13 @@ private struct MenuClipboardRow: View {
         } label: {
             Hoverable { hovering in
                 HStack(spacing: 10) {
+                    // Like the symbols of Insert from phone: the disc fills and the symbol turns white, in colour only.
                     Image(systemName: "doc.on.clipboard.fill")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Palette.indigo)
+                        .foregroundStyle(hovering ? Color.white : Palette.indigo)
                         .frame(width: 36, height: 36)
-                        .background(Palette.indigo.opacity(0.14), in: Circle())
-                        .scaleEffect(hovering ? 1.06 : 1)
-                        .animation(.tandemSpringy, value: hovering)
+                        .background(hovering ? Palette.indigo : Palette.indigo.opacity(0.14), in: Circle())
+                        .animation(.tandemFade, value: hovering)
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Clipboard history").font(.callout.weight(.semibold))
                         Text(history.enabled ? String(localized: "\(history.items.count) saved") : String(localized: "Off"))

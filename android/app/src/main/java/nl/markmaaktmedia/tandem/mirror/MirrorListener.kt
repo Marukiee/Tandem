@@ -93,8 +93,15 @@ class MirrorListener : NotificationListenerService() {
         val n = sbn.notification
         // Group summaries just repeat their children.
         if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return false
+        // A call has its own mirroring, with answer and hang up, and the notification of a call in progress is posted again every
+        // time it changes: mirrored as well it came up on the Mac over and over. Only when calls are not mirrored is the
+        // notification of a call that rings (not one in progress) worth passing on.
+        if (n.category == Notification.CATEGORY_CALL) {
+            if (n.flags and Notification.FLAG_ONGOING_EVENT != 0) return false
+            if (graph.prefs.callMirror.first()) return false
+        }
         // Ongoing things (music, navigation, downloads) are not worth a banner elsewhere.
-        if (n.flags and Notification.FLAG_ONGOING_EVENT != 0 && n.category != Notification.CATEGORY_CALL) return false
+        if (n.flags and Notification.FLAG_ONGOING_EVENT != 0) return false
         if (n.category == Notification.CATEGORY_TRANSPORT || n.category == Notification.CATEGORY_PROGRESS) return false
         return graph.prefs.mirrors(sbn.packageName)
     }
