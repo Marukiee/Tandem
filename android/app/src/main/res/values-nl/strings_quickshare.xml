@@ -59,4 +59,7 @@
     <string name="perm_needs_notifications_quickshare">Heeft de toestemming voor meldingen nodig, om te laten zien wie je iets wil sturen. Tik om het toe te staan.</string>
     <string name="quickshare_copied">Gekopieerd naar het klembord</string>
     <string name="quickshare_open_link">Open link</string>
+    <string name="quickshare_how_receive_title">Ontvangen</string>
+    <string name="quickshare_how_send_title">Versturen</string>
+    <string name="quickshare_how_files_title">Waar het naartoe gaat</string>
 </resources>

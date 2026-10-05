@@ -59,4 +59,7 @@
     <string name="perm_needs_notifications_quickshare">Needs the permission for notifications, to show who wants to send you something. Tap to allow it.</string>
     <string name="quickshare_copied">Copied to the clipboard</string>
     <string name="quickshare_open_link">Open link</string>
+    <string name="quickshare_how_receive_title">Receiving</string>
+    <string name="quickshare_how_send_title">Sending</string>
+    <string name="quickshare_how_files_title">Where it goes</string>
 </resources>

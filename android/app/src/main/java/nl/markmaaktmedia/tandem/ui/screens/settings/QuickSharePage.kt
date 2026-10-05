@@ -22,6 +22,7 @@ import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.Route
 import nl.markmaaktmedia.tandem.ui.components.ContentRow
 import nl.markmaaktmedia.tandem.ui.components.InfoRow
+import nl.markmaaktmedia.tandem.ui.components.NoteRow
 import nl.markmaaktmedia.tandem.ui.components.PillSpinner
 import nl.markmaaktmedia.tandem.ui.components.SectionHeader
 import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
@@ -56,9 +57,9 @@ internal fun QuickSharePage(onBack: () -> Unit, onOpen: (Route) -> Unit = {}) {
 
         SectionHeader(stringResource(R.string.quickshare_how_title))
         SettingsGroup {
-            ContentRow(0, 3, TandemIcons.Download, stringResource(R.string.quickshare_how_receive)) {}
-            ContentRow(1, 3, TandemIcons.QuickShare, stringResource(R.string.quickshare_how_send)) {}
-            ContentRow(2, 3, TandemIcons.Folder, stringResource(R.string.quickshare_how_files)) {}
+            NoteRow(0, 3, TandemIcons.Download, stringResource(R.string.quickshare_how_receive_title), stringResource(R.string.quickshare_how_receive))
+            NoteRow(1, 3, TandemIcons.QuickShare, stringResource(R.string.quickshare_how_send_title), stringResource(R.string.quickshare_how_send))
+            NoteRow(2, 3, TandemIcons.Folder, stringResource(R.string.quickshare_how_files_title), stringResource(R.string.quickshare_how_files))
         }
 
         if (enabled) {

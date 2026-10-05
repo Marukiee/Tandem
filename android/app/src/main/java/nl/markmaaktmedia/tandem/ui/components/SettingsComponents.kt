@@ -107,6 +107,20 @@ fun ActionRow(
     }
 }
 
+/** A row that explains something: a short title in bold and the words under it in the quiet colour, like the other rows. */
+@Composable
+fun NoteRow(index: Int, total: Int, icon: Painter, title: String, body: String) {
+    GroupedRow(index, total) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            RowIcon(icon)
+            RowText(title, body, Modifier.weight(1f))
+        }
+    }
+}
+
 /** A row that shows a value and does nothing. */
 @Composable
 fun InfoRow(index: Int, total: Int, icon: Painter, title: String, value: String) {
