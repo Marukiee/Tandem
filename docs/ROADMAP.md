@@ -178,6 +178,28 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
   geluid zelf werkt dan alleen met een andere weg: bellen via een VoIP-app (Wi-Fi bellen via Tandem, SIP) of de telefoon als
   Bluetooth-HID/HFP-apparaat, en die wegen zijn per stuk nog niet onderzocht.
 
+- **Wat is er nieuw bij Updates en back-up (gevraagd 2026-10-06):** op Android staat Wat is er nieuw (`ChangelogScreen`) nu onder Over;
+  het hoort in de categorie Updates en back-up van Instellingen (`settings_cat_updates`), bij de updatecontrole. Over houdt alleen
+  versie en licenties. Op de Mac staat het blok Wat is er nieuw (`SettingsView.swift`) bij Over: dezelfde verhuizing naar de
+  sectie Updates. Het sleutelwoordenlijstje in `strings_settings.xml` meeverhuizen.
+- **Alleen tonen wat aanstaat in het menu Diensten (gevraagd 2026-10-06):** Verstuur met Quick Share, Verstuur met Tandem en
+  Voeg in vanaf telefoon horen niet in Diensten te staan als die functie uit staat (Quick Share uit, klembord uit, geen
+  telefoon die het kan). De regels staan vast in `Info.plist` (`NSServices`); een regel kan alleen verborgen worden door hem uit
+  het plist te halen of door de dienst bij het kiezen te weigeren. Plan: Info.plist krijgt alleen de regels van functies die
+  aanstaan, geschreven bij het starten en bij het wisselen van de schakelaar (en `NSUpdateDynamicServices()` aanroepen), of
+  `validRequestor` laten antwoorden met nil zodat macOS de regel grijst of verbergt. Uitzoeken welke van de twee werkt zonder
+  herstart van de app.
+
+## 8. Alles op alle systemen (gevraagd 2026-10-06)
+
+Alle functies die voor de Mac zijn gebouwd moeten ook werken op Windows en Linux, en tussen alle systemen onderling: van Linux naar
+Windows, van Windows naar de Mac, en andersom, niet alleen telefoon naar computer. Aanpak: een tabel in docs/PARITY.md met per
+functie (bestanden, klembord, meldingen, muziek en geluid, bestanden bekijken, Quick Share, gedeelde muis en toetsenbord,
+slepen van bestanden over de rand, scherm delen en bedienen, telefoonscherm en camera, Invoegen vanaf telefoon, ssh-terminal,
+bellen) en per paar systemen of het werkt, grijs is of ontbreekt, en dan afwerken van boven naar onder. Vragen aan Mark als
+iets niet duidelijk is: welke volgorde (eerst Windows of eerst Linux), en welke functies van de Mac horen er niet bij omdat ze
+aan macOS zelf vastzitten (Diensten-menu, Controlecentrum, AirDrop-knop).
+
 ## 7. Kwaliteit en documentatie
 
 - Remote desktop: adaptieve kwaliteit volledig (nu alleen via bitrate-meldingen), HEVC, meerdere
