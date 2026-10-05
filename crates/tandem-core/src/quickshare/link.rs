@@ -1,7 +1,7 @@
 //! One connection of Quick Share: frames with a length in front, plain until the handshake is done and then sealed, and the
 //! frames of Nearby Connections (payloads, keep alives) that carry the messages of the sharing layer.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use prost::Message;
 use ring::rand::{SecureRandom, SystemRandom};
@@ -40,6 +40,8 @@ pub enum Inbound {
     File { id: i64, offset: i64, data: Vec<u8>, last: bool },
     /// The other side asks for an answer to a keep alive.
     KeepAlive { wants_answer: bool },
+    /// A piece of text that was sent along (a link, a note), complete.
+    Text { id: i64, data: Vec<u8> },
     /// The other side is leaving.
     Disconnected,
     /// Something this side does not use.
@@ -52,12 +54,19 @@ pub struct Link<S> {
     channel: Option<Channel>,
     /// Pieces of messages that are still coming, by payload id.
     partial: HashMap<i64, Vec<u8>>,
+    /// The payloads that are text and not messages of the sharing layer, by id: the introduction said which.
+    text_ids: HashSet<i64>,
     keep_alive: u32,
 }
 
 impl<S: AsyncRead + AsyncWrite + Unpin> Link<S> {
     pub fn new(stream: S) -> Link<S> {
-        Link { stream, inbox: Vec::new(), channel: None, partial: HashMap::new(), keep_alive: 0 }
+        Link { stream, inbox: Vec::new(), channel: None, partial: HashMap::new(), text_ids: HashSet::new(), keep_alive: 0 }
+    }
+
+    /// These payloads are text. Without this they would be taken for messages of the sharing layer.
+    pub fn expect_text(&mut self, ids: impl IntoIterator<Item = i64>) {
+        self.text_ids.extend(ids);
     }
 
     pub fn encrypt_with(&mut self, channel: Channel) {
@@ -155,9 +164,13 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Link<S> {
     /// A message of the sharing layer goes as a payload of bytes: the message in one piece, then an empty piece that says it was
     /// the last.
     pub async fn send_sharing(&mut self, frame: &sharing::Frame) -> Result<()> {
-        let body = frame.encode_to_vec();
+        self.send_bytes(random_i64(), frame.encode_to_vec()).await
+    }
+
+    /// A payload of bytes with this id: the bytes in one piece, then an empty piece that says it was the last.
+    pub async fn send_bytes(&mut self, id: i64, body: Vec<u8>) -> Result<()> {
         let header = PayloadHeader {
-            id: Some(random_i64()),
+            id: Some(id),
             r#type: Some(PayloadType::Bytes as i32),
             total_size: Some(body.len() as i64),
             ..Default::default()
@@ -225,6 +238,9 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Link<S> {
                         }
                         if last {
                             let done = self.partial.remove(&id).unwrap_or_default();
+                            if self.text_ids.remove(&id) {
+                                return Ok(Inbound::Text { id, data: done });
+                            }
                             if done.is_empty() {
                                 continue;
                             }

@@ -15,7 +15,7 @@ use super::crypto::{Agreed, Channel, Client, Server};
 use super::link::{CHUNK, Inbound, Link, connection_response, is_accepting, is_type, paired_key_encryption, paired_key_result, random_i64, sharing_frame};
 use super::proto::{
     connections::{ConnectionRequestFrame, OfflineFrame, V1Frame as OfflineV1, connection_request_frame::Medium, offline_frame, v1_frame::FrameType as OfflineType},
-    sharing::{self, file_metadata::Type as FileKind, v1_frame::FrameType as SharingType},
+    sharing::{self, file_metadata::Type as FileKind, text_metadata::Type as TextType, v1_frame::FrameType as SharingType},
 };
 use crate::{Error, Result};
 
@@ -81,6 +81,66 @@ pub struct Offered {
     pub size: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TextKind {
+    Text,
+    Url,
+    Address,
+    Phone,
+}
+
+impl TextKind {
+    fn from_wire(kind: Option<i32>) -> TextKind {
+        match kind.and_then(|k| TextType::try_from(k).ok()) {
+            Some(TextType::Url) => TextKind::Url,
+            Some(TextType::Address) => TextKind::Address,
+            Some(TextType::PhoneNumber) => TextKind::Phone,
+            _ => TextKind::Text,
+        }
+    }
+
+    fn to_wire(self) -> i32 {
+        (match self {
+            TextKind::Text => TextType::Text,
+            TextKind::Url => TextType::Url,
+            TextKind::Address => TextType::Address,
+            TextKind::Phone => TextType::PhoneNumber,
+        }) as i32
+    }
+
+    /// What kind of text this is, by looking at it: a link when it is one address and nothing else.
+    pub fn guess(text: &str) -> TextKind {
+        let trimmed = text.trim();
+        if (trimmed.starts_with("http://") || trimmed.starts_with("https://")) && !trimmed.contains(char::is_whitespace) {
+            TextKind::Url
+        } else {
+            TextKind::Text
+        }
+    }
+}
+
+/// Text that was announced and is still to come.
+#[derive(Clone, Debug)]
+pub struct IncomingText {
+    pub payload_id: i64,
+    /// What the sender says it is: the start of the text, or the whole link.
+    pub title: String,
+    pub kind: TextKind,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ReceivedText {
+    pub kind: TextKind,
+    pub text: String,
+}
+
+/// Everything that came in over one connection.
+#[derive(Clone, Debug, Default)]
+pub struct Received {
+    pub files: Vec<PathBuf>,
+    pub texts: Vec<ReceivedText>,
+}
+
 #[derive(Clone, Debug)]
 pub struct Introduction {
     pub sender: String,
@@ -88,7 +148,7 @@ pub struct Introduction {
     pub pin: String,
     pub files: Vec<Offered>,
     /// Text that was sent along, such as a link.
-    pub texts: Vec<String>,
+    pub texts: Vec<IncomingText>,
 }
 
 pub trait Receiving: Send {
@@ -114,7 +174,7 @@ fn free_name(folder: &Path, wanted: &str) -> PathBuf {
 }
 
 /// Takes one transfer in over a connection that was just accepted. Gives the files that were saved.
-pub async fn receive<S>(stream: S, events: &mut dyn Receiving) -> Result<Vec<PathBuf>>
+pub async fn receive<S>(stream: S, events: &mut dyn Receiving) -> Result<Received>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
@@ -163,8 +223,12 @@ where
             size: f.size.unwrap_or(0).max(0) as u64,
         })
         .collect();
-    let texts: Vec<String> = Vec::new();
-    let intro = Introduction { sender, pin: agreed.pin(), files: offered.clone(), texts };
+    let texts: Vec<IncomingText> = introduction
+        .text_metadata
+        .iter()
+        .map(|t| IncomingText { payload_id: t.payload_id.unwrap_or(0), title: t.text_title.clone().unwrap_or_default(), kind: TextKind::from_wire(t.r#type) })
+        .collect();
+    let intro = Introduction { sender, pin: agreed.pin(), files: offered.clone(), texts: texts.clone() };
 
     // The person decides while the connection is kept alive.
     let folder = {
@@ -180,8 +244,9 @@ where
     let Some(folder) = folder else {
         link.send_sharing(&answer_frame(sharing::connection_response_frame::Status::Reject)).await?;
         link.disconnect().await;
-        return Ok(Vec::new());
+        return Ok(Received::default());
     };
+    link.expect_text(texts.iter().map(|t| t.payload_id));
     link.send_sharing(&answer_frame(sharing::connection_response_frame::Status::Accept)).await?;
 
     // The files.
@@ -198,8 +263,13 @@ where
         let file = File::create(&path).await?;
         open.push(Open { file, path, offered: offered.clone(), written: 0, done: offered.size == 0 });
     }
-    while open.iter().any(|f| !f.done) {
+    let mut got_texts: Vec<ReceivedText> = Vec::new();
+    while open.iter().any(|f| !f.done) || got_texts.len() < texts.len() {
         match link.next().await? {
+            Inbound::Text { id, data } => {
+                let kind = texts.iter().find(|t| t.payload_id == id).map(|t| t.kind).unwrap_or(TextKind::Text);
+                got_texts.push(ReceivedText { kind, text: String::from_utf8_lossy(&data).into_owned() });
+            }
             Inbound::File { id, offset, data, last } => {
                 let Some(target) = open.iter_mut().find(|f| f.offered.payload_id == id) else { continue };
                 if offset as u64 != target.written {
@@ -224,7 +294,7 @@ where
         }
     }
     link.disconnect().await;
-    Ok(open.into_iter().map(|f| f.path).collect())
+    Ok(Received { files: open.into_iter().map(|f| f.path).collect(), texts: got_texts })
 }
 
 fn answer_frame(status: sharing::connection_response_frame::Status) -> sharing::Frame {
@@ -234,6 +304,13 @@ fn answer_frame(status: sharing::connection_response_frame::Status) -> sharing::
 }
 
 // ---- Sending ----------------------------------------------------------------------------------------------------------------
+
+/// A piece of text to send: a link, a note.
+#[derive(Clone, Debug)]
+pub struct OutgoingText {
+    pub kind: TextKind,
+    pub text: String,
+}
 
 #[derive(Clone, Debug)]
 pub struct Outgoing {
@@ -266,7 +343,7 @@ fn file_kind(mime: &str) -> FileKind {
 }
 
 /// Sends files over a connection that was just made. `own_name` is what the other side shows.
-pub async fn send<S>(stream: S, own_name: &str, own_kind: DeviceKind, files: &[Outgoing], events: &mut dyn Sending) -> Result<Outcome>
+pub async fn send<S>(stream: S, own_name: &str, own_kind: DeviceKind, files: &[Outgoing], texts: &[OutgoingText], events: &mut dyn Sending) -> Result<Outcome>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
@@ -320,6 +397,7 @@ where
     }
 
     let ids: Vec<i64> = files.iter().map(|_| random_i64()).collect();
+    let text_ids: Vec<i64> = texts.iter().map(|_| random_i64()).collect();
     link.send_sharing(&sharing_frame(SharingType::Introduction, |v1| {
         v1.introduction = Some(sharing::IntroductionFrame {
             file_metadata: files
@@ -333,6 +411,18 @@ where
                     mime_type: Some(f.mime.clone()),
                     id: Some(*id),
                     ..Default::default()
+                })
+                .collect(),
+            text_metadata: texts
+                .iter()
+                .zip(&text_ids)
+                .map(|(t, id)| sharing::TextMetadata {
+                    text_title: Some(t.text.chars().take(80).collect()),
+                    r#type: Some(t.kind.to_wire()),
+                    payload_id: Some(*id),
+                    size: Some(t.text.len() as i64),
+                    id: Some(*id),
+                    is_sensitive_text: None,
                 })
                 .collect(),
             ..Default::default()
@@ -352,6 +442,9 @@ where
         return Ok(Outcome::Refused);
     }
 
+    for (text, id) in texts.iter().zip(&text_ids) {
+        link.send_bytes(*id, text.text.clone().into_bytes()).await?;
+    }
     let total: u64 = files.iter().map(|f| f.size).sum();
     let mut sent = 0u64;
     for (file, id) in files.iter().zip(&ids) {
@@ -436,9 +529,9 @@ mod tests {
         let (left, right) = tokio::io::duplex(1 << 20);
         let mut saves = Saves { folder: Some(to.path().to_path_buf()), seen: None };
         let mut watches = Watches::default();
-        let (sent, received) = tokio::join!(send(left, "Laptop van Mark", DeviceKind::Laptop, &files, &mut watches), receive(right, &mut saves));
+        let (sent, received) = tokio::join!(send(left, "Laptop van Mark", DeviceKind::Laptop, &files, &[], &mut watches), receive(right, &mut saves));
         assert_eq!(sent.unwrap(), Outcome::Sent);
-        let paths = received.unwrap();
+        let paths = received.unwrap().files;
         assert_eq!(paths.len(), 2);
         assert_eq!(std::fs::read(&paths[0]).unwrap(), a);
         assert_eq!(std::fs::read(&paths[1]).unwrap(), b);
@@ -458,9 +551,40 @@ mod tests {
         let (left, right) = tokio::io::duplex(1 << 16);
         let mut saves = Saves { folder: None, seen: None };
         let mut watches = Watches::default();
-        let (sent, received) = tokio::join!(send(left, "x", DeviceKind::Phone, &files, &mut watches), receive(right, &mut saves));
+        let (sent, received) = tokio::join!(send(left, "x", DeviceKind::Phone, &files, &[], &mut watches), receive(right, &mut saves));
         assert_eq!(sent.unwrap(), Outcome::Refused);
-        assert!(received.unwrap().is_empty());
+        assert!(received.unwrap().files.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_link_and_a_note_arrive_with_their_kind_next_to_a_file() {
+        let from = tempfile::tempdir().unwrap();
+        let to = tempfile::tempdir().unwrap();
+        std::fs::write(from.path().join("a.txt"), b"file").unwrap();
+        let files = vec![Outgoing { path: from.path().join("a.txt"), name: "a.txt".into(), mime: "text/plain".into(), size: 4 }];
+        let texts = vec![
+            OutgoingText { kind: TextKind::guess("https://example.com/a?b=1"), text: "https://example.com/a?b=1".into() },
+            OutgoingText { kind: TextKind::Text, text: "een notitie met é en een regeleinde\nen nog een".into() },
+        ];
+        let (left, right) = tokio::io::duplex(1 << 16);
+        let mut saves = Saves { folder: Some(to.path().to_path_buf()), seen: None };
+        let mut watches = Watches::default();
+        let (sent, received) = tokio::join!(send(left, "Telefoon", DeviceKind::Phone, &files, &texts, &mut watches), receive(right, &mut saves));
+        assert_eq!(sent.unwrap(), Outcome::Sent);
+        let received = received.unwrap();
+        assert_eq!(received.files.len(), 1);
+        assert_eq!(received.texts.len(), 2);
+        assert_eq!(received.texts[0], ReceivedText { kind: TextKind::Url, text: "https://example.com/a?b=1".into() });
+        assert_eq!(received.texts[1].text, "een notitie met é en een regeleinde\nen nog een");
+        assert_eq!(saves.seen.unwrap().texts.len(), 2);
+    }
+
+    #[test]
+    fn a_link_is_one_address_and_nothing_else() {
+        assert_eq!(TextKind::guess("https://example.com"), TextKind::Url);
+        assert_eq!(TextKind::guess("  http://a.nl/x  "), TextKind::Url);
+        assert_eq!(TextKind::guess("see https://example.com"), TextKind::Text);
+        assert_eq!(TextKind::guess("hello"), TextKind::Text);
     }
 
     #[test]

@@ -17,7 +17,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 
-use super::transfer::{self, DeviceKind, Introduction, Offered, Outcome, Outgoing, Receiving, Sending, encode_endpoint_info, parse_endpoint_info};
+use super::transfer::{self, DeviceKind, Introduction, Offered, Outcome, Outgoing, OutgoingText, Received, Receiving, Sending, TextKind, encode_endpoint_info, parse_endpoint_info};
 use crate::{Error, Result};
 
 /// The service type of Quick Share, made from a hash of "NearbySharing".
@@ -42,8 +42,8 @@ pub trait Sink: Send + Sync {
     /// Somebody wants to send files. Answer with `QuickShare::respond` using this id.
     fn incoming(&self, id: u64, introduction: Introduction);
     fn progress(&self, id: u64, done: u64, total: u64);
-    /// All files of an incoming transfer are saved.
-    fn received(&self, id: u64, paths: Vec<PathBuf>);
+    /// Everything of an incoming transfer is in: the files are saved, the texts are here.
+    fn received(&self, id: u64, received: Received);
     /// The four digits for an outgoing transfer, to compare with the screen of the other side.
     fn pin(&self, id: u64, pin: String);
     fn sent(&self, id: u64, outcome: Outcome);
@@ -204,6 +204,16 @@ impl QuickShare {
 
     /// Sends files to a peer that was found. Gives the id of the transfer at once; what happens after comes to the sink.
     pub fn send(&self, peer_id: &str, own_name: &str, own_kind: DeviceKind, files: Vec<Outgoing>) -> Result<u64> {
+        self.send_items(peer_id, own_name, own_kind, files, Vec::new())
+    }
+
+    /// Sends a link or a note.
+    pub fn send_text(&self, peer_id: &str, own_name: &str, own_kind: DeviceKind, text: String) -> Result<u64> {
+        let kind = TextKind::guess(&text);
+        self.send_items(peer_id, own_name, own_kind, Vec::new(), vec![OutgoingText { kind, text }])
+    }
+
+    fn send_items(&self, peer_id: &str, own_name: &str, own_kind: DeviceKind, files: Vec<Outgoing>, texts: Vec<OutgoingText>) -> Result<u64> {
         let peer = self.inner.peers.lock().unwrap().get(peer_id).cloned().ok_or(Error::NotConnected)?;
         let id = self.inner.next.fetch_add(1, Ordering::SeqCst);
         let inner = self.inner.clone();
@@ -213,7 +223,7 @@ impl QuickShare {
             let outcome = match stream {
                 Ok(stream) => {
                     let mut watcher = Watcher { id, inner: inner.clone() };
-                    transfer::send(stream, &own_name, own_kind, &files, &mut watcher).await
+                    transfer::send(stream, &own_name, own_kind, &files, &texts, &mut watcher).await
                 }
                 Err(e) => Err(e),
             };
@@ -260,8 +270,8 @@ impl Inner {
         let id = self.next.fetch_add(1, Ordering::SeqCst);
         let mut bridge = Bridge { id, inner: self.clone(), sizes: HashMap::new(), received: HashMap::new(), total: 0 };
         match transfer::receive(stream, &mut bridge).await {
-            Ok(paths) if paths.is_empty() => {}
-            Ok(paths) => self.sink.received(id, paths),
+            Ok(received) if received.files.is_empty() && received.texts.is_empty() => {}
+            Ok(received) => self.sink.received(id, received),
             Err(e) => self.sink.failed(id, e.to_string()),
         }
     }
@@ -387,8 +397,8 @@ mod network_tests {
             let _ = self.incoming.send((id, introduction));
         }
         fn progress(&self, _id: u64, _done: u64, _total: u64) {}
-        fn received(&self, _id: u64, paths: Vec<PathBuf>) {
-            let _ = self.received.send(paths);
+        fn received(&self, _id: u64, received: Received) {
+            let _ = self.received.send(received.files);
         }
         fn pin(&self, _id: u64, _pin: String) {}
         fn sent(&self, _id: u64, outcome: Outcome) {

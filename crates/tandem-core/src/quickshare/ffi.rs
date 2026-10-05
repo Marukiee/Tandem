@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use super::service::{Peer, QuickShare, Sink};
-use super::transfer::{DeviceKind, Introduction, Outcome, Outgoing};
+use super::transfer::{DeviceKind, Introduction, Outcome, Outgoing, Received, TextKind};
 use crate::ffi::{OwnedRuntime, TandemError};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -52,6 +52,39 @@ impl From<&Peer> for TandemQsPeer {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemQsTextKind {
+    Text,
+    Url,
+    Address,
+    Phone,
+}
+
+impl From<TextKind> for TandemQsTextKind {
+    fn from(kind: TextKind) -> TandemQsTextKind {
+        match kind {
+            TextKind::Text => TandemQsTextKind::Text,
+            TextKind::Url => TandemQsTextKind::Url,
+            TextKind::Address => TandemQsTextKind::Address,
+            TextKind::Phone => TandemQsTextKind::Phone,
+        }
+    }
+}
+
+/// Text that is announced: what it is and the start of it. The whole text comes once the transfer is accepted.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemQsTextInfo {
+    pub kind: TandemQsTextKind,
+    pub title: String,
+}
+
+/// Text that came in: a link, a note.
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct TandemQsText {
+    pub kind: TandemQsTextKind,
+    pub text: String,
+}
+
 #[derive(Clone, Debug, uniffi::Record)]
 pub struct TandemQsFile {
     pub name: String,
@@ -65,10 +98,10 @@ pub trait TandemQuickShareSink: Send + Sync {
     fn peer_found(&self, peer: TandemQsPeer);
     fn peer_lost(&self, id: String);
     /// Somebody wants to send these files. Answer with `respond` and this id; no answer in two minutes is a no.
-    fn incoming(&self, id: u64, sender: String, pin: String, files: Vec<TandemQsFile>);
+    fn incoming(&self, id: u64, sender: String, pin: String, files: Vec<TandemQsFile>, texts: Vec<TandemQsTextInfo>);
     fn progress(&self, id: u64, done: u64, total: u64);
-    /// An incoming transfer is complete; these are the saved files.
-    fn received(&self, id: u64, paths: Vec<String>);
+    /// An incoming transfer is complete; these are the saved files and the texts that came with them.
+    fn received(&self, id: u64, paths: Vec<String>, texts: Vec<TandemQsText>);
     /// The digits to compare with the screen of the other device, for a transfer this device started.
     fn pin(&self, id: u64, pin: String);
     /// An outgoing transfer is over. `refused` when the other side said no.
@@ -87,13 +120,16 @@ impl Sink for Adapter {
     }
     fn incoming(&self, id: u64, introduction: Introduction) {
         let files = introduction.files.iter().map(|f| TandemQsFile { name: f.name.clone(), mime: f.mime.clone(), size: f.size }).collect();
-        self.0.incoming(id, introduction.sender, introduction.pin, files);
+        let texts = introduction.texts.iter().map(|t| TandemQsTextInfo { kind: t.kind.into(), title: t.title.clone() }).collect();
+        self.0.incoming(id, introduction.sender, introduction.pin, files, texts);
     }
     fn progress(&self, id: u64, done: u64, total: u64) {
         self.0.progress(id, done, total);
     }
-    fn received(&self, id: u64, paths: Vec<PathBuf>) {
-        self.0.received(id, paths.iter().map(|p| p.to_string_lossy().into_owned()).collect());
+    fn received(&self, id: u64, received: Received) {
+        let paths = received.files.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+        let texts = received.texts.into_iter().map(|t| TandemQsText { kind: t.kind.into(), text: t.text }).collect();
+        self.0.received(id, paths, texts);
     }
     fn pin(&self, id: u64, pin: String) {
         self.0.pin(id, pin);
@@ -151,6 +187,14 @@ impl TandemQuickShare {
         let service = guard.as_ref().ok_or(TandemError::NotConnected)?;
         let _enter = self.runtime.enter();
         service.send(&peer_id, &own_name, own_kind.into(), files).map_err(TandemError::from)
+    }
+
+    /// Sends a link or a note to a device that was found.
+    pub fn send_text(&self, peer_id: String, own_name: String, own_kind: TandemQsKind, text: String) -> Result<u64, TandemError> {
+        let guard = self.service.lock().unwrap();
+        let service = guard.as_ref().ok_or(TandemError::NotConnected)?;
+        let _enter = self.runtime.enter();
+        service.send_text(&peer_id, &own_name, own_kind.into(), text).map_err(TandemError::from)
     }
 
     /// Stops listening and being found.
