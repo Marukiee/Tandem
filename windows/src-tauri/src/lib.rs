@@ -4,6 +4,7 @@
 
 mod browse;
 mod capture;
+mod quickshare;
 mod clip;
 mod commands;
 mod engine;
@@ -61,6 +62,7 @@ pub fn run() {
             });
             engine::start(handle.clone());
             capture::configure(&handle);
+            quickshare::configure(&handle);
             clip::start(handle.clone());
             // Started with Windows it waits in the tray; started by hand it shows its window.
             let args: Vec<String> = std::env::args().collect();
@@ -86,6 +88,13 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
+            quickshare::qs_state,
+            quickshare::qs_respond,
+            quickshare::qs_dismiss,
+            quickshare::qs_open_link,
+            quickshare::qs_pick_and_send,
+            quickshare::qs_send_paths,
+            quickshare::qs_send_clipboard,
             commands::get_players,
             commands::create_pairing,
             commands::cancel_pairing,

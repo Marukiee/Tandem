@@ -47,6 +47,8 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "remote_off_body") => "Turn on 'Let my phone control this PC' under Settings in Tandem.",
         ("nl", "open_tandem") => "Tandem openen",
         (_, "open_tandem") => "Open Tandem",
+        ("nl", "quick_share") => "Quick Share",
+        (_, "quick_share") => "Quick Share",
         ("nl", "quit_tandem") => "Tandem afsluiten",
         (_, "quit_tandem") => "Quit Tandem",
         _ => "",

@@ -282,6 +282,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
                 current.share_edge = v.to_string();
             }
         }
+        if let Some(v) = patch["quickShare"].as_bool() {
+            current.quick_share = v;
+        }
         if let Some(v) = patch["systemMedia"].as_bool() {
             current.system_media = v;
         }
@@ -301,6 +304,7 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
     // The switch for the media controls takes effect at once.
     media::refresh(&app);
     capture::configure(&app);
+    crate::quickshare::configure(&app);
     json!(settings::get(&app))
 }
 

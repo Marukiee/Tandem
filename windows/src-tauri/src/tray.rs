@@ -39,7 +39,8 @@ static PANEL_CLOSED: AtomicU64 = AtomicU64::new(0);
 pub fn build(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", i18n::t(app, "open_tandem"), true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", i18n::t(app, "quit_tandem"), true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &quit])?;
+    let quick_share = crate::quickshare::tray_item(app)?;
+    let menu = Menu::with_items(app, &[&open, &quick_share, &quit])?;
     TrayIconBuilder::with_id("tandem")
         .icon(Image::from_bytes(include_bytes!("../icons/tray.png"))?)
         .tooltip("Tandem")
@@ -48,6 +49,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => show_main(app),
             "quit" => quit_app(app),
+            "quickshare" => crate::quickshare::toggle(app),
             _ => {}
         })
         .on_tray_icon_event(|tray, event| {

@@ -221,18 +221,19 @@ class ShareTargetActivity : ComponentActivity() {
     private suspend fun sendNearby(
         shared: Shared, peer: nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Peer, quick: nl.markmaaktmedia.tandem.quickshare.QuickShareHost,
     ): SendPhase {
-        val uris = shared.uris.ifEmpty {
-            // Text goes as a small file, which is what the receiving side can take in.
+        val uris = shared.uris
+        val id = if (uris.isEmpty()) {
+            // Text and links go as what they are, not as a file.
             val text = shared.text ?: return SendPhase.Failed(getString(R.string.share_empty))
-            val file = java.io.File(cacheDir, "quickshare/text/${System.currentTimeMillis()}.txt").apply { parentFile?.mkdirs(); writeText(text) }
-            listOf(Uri.fromFile(file))
+            quick.sendText(text, peer).getOrElse { return SendPhase.Failed(it.message ?: it.toString()) }
+        } else {
+            quick.send(uris, peer).getOrElse { return SendPhase.Failed(it.message ?: it.toString()) }
         }
-        val id = quick.send(uris, peer).getOrElse { return SendPhase.Failed(it.message ?: it.toString()) }
         val end = withTimeoutOrNull(10 * 60_000L) {
             quick.outgoing.first { list -> list.any { it.id == id && it.state != nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Outgoing.State.Sending } }
         }?.firstOrNull { it.id == id }
         return when (end?.state) {
-            nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Outgoing.State.Sent -> SendPhase.Done(uris.size)
+            nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Outgoing.State.Sent -> SendPhase.Done(maxOf(uris.size, 1))
             nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Outgoing.State.Refused -> SendPhase.Failed(getString(R.string.quickshare_refused, peer.name))
             else -> SendPhase.Failed(getString(R.string.quickshare_failed))
         }

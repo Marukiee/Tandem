@@ -23,12 +23,20 @@ final class QuickShare {
         let sender: String
         let pin: String
         let files: [TandemQsFile]
+        var texts: [TandemQsTextInfo] = []
         var accepted = false
         var done: UInt64 = 0
         var saved: [String]?
+        /// The texts that came in, once the transfer is done: they are on the clipboard.
+        var receivedTexts: [TandemQsText] = []
         var failure: String?
 
         var total: UInt64 { files.reduce(0) { $0 + $1.size } }
+
+        /// The link that came in, when there is one.
+        var link: URL? {
+            receivedTexts.first { $0.kind == .url }.flatMap { URL(string: $0.text.trimmingCharacters(in: .whitespacesAndNewlines)) }
+        }
     }
 
     struct Outgoing: Identifiable {
@@ -105,6 +113,26 @@ final class QuickShare {
         QuickSharePanel.shared.refresh()
     }
 
+    /// Sends a link or a note to a device that was found.
+    func sendText(_ text: String, to peer: Peer) {
+        guard let service, !text.isEmpty else { return }
+        do {
+            let id = try service.sendText(peerId: peer.id, ownName: ownName, ownKind: .laptop, text: text)
+            outgoing.append(Outgoing(id: id, peerName: peer.name, total: UInt64(text.utf8.count)))
+        } catch {
+            FloatingToast.show(error.localizedDescription, symbol: "exclamationmark.circle.fill")
+        }
+    }
+
+    /// Sends what is on the clipboard, when that is text.
+    func sendClipboard(to peer: Peer) {
+        if let text = NSPasteboard.general.string(forType: .string), !text.isEmpty {
+            sendText(text, to: peer)
+        } else {
+            FloatingToast.show(String(localized: "There is no text on the clipboard"), symbol: "exclamationmark.circle.fill")
+        }
+    }
+
     /// Sends these files to a device that was found.
     func send(_ urls: [URL], to peer: Peer) {
         guard let service, !urls.isEmpty else { return }
@@ -137,6 +165,7 @@ final class QuickShare {
             Incoming(id: 9002, sender: "Galaxy S26 van Sanne", pin: "1093", files: files, accepted: true, done: 3_000_000),
         ]
         peers = [Peer(id: "abcd", name: "Maruks Telefoon", kind: .phone), Peer(id: "efgh", name: "Windows pc", kind: .laptop)]
+        incoming.append(Incoming(id: 9003, sender: "Maruks Telefoon", pin: "7710", files: [], texts: [TandemQsTextInfo(kind: .url, title: "https://tandem.markmaaktmedia.nl")]))
         QuickSharePanel.shared.refresh()
     }
 
@@ -151,8 +180,8 @@ final class QuickShare {
         peers.removeAll { $0.id == id }
     }
 
-    fileprivate func asked(id: UInt64, sender: String, pin: String, files: [TandemQsFile]) {
-        incoming.append(Incoming(id: id, sender: sender, pin: pin, files: files))
+    fileprivate func asked(id: UInt64, sender: String, pin: String, files: [TandemQsFile], texts: [TandemQsTextInfo]) {
+        incoming.append(Incoming(id: id, sender: sender, pin: pin, files: files, texts: texts))
         QuickSharePanel.shared.refresh()
         if !NSApp.isActive { NSSound(named: "Glass")?.play() }
     }
@@ -165,10 +194,16 @@ final class QuickShare {
         }
     }
 
-    fileprivate func received(id: UInt64, paths: [String]) {
+    fileprivate func received(id: UInt64, paths: [String], texts: [TandemQsText]) {
         guard let index = incoming.firstIndex(where: { $0.id == id }) else { return }
         incoming[index].saved = paths
+        incoming[index].receivedTexts = texts
         incoming[index].done = incoming[index].total
+        // What was sent as text is put on the clipboard, so it can be pasted at once.
+        if let last = texts.last {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(last.text, forType: .string)
+        }
         QuickSharePanel.shared.refresh()
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(12))
@@ -214,11 +249,11 @@ private final class Sink: TandemQuickShareSink, @unchecked Sendable {
 
     func peerFound(peer: TandemQsPeer) { Task { @MainActor in owner?.found(peer) } }
     func peerLost(id: String) { Task { @MainActor in owner?.lost(id) } }
-    func incoming(id: UInt64, sender: String, pin: String, files: [TandemQsFile]) {
-        Task { @MainActor in owner?.asked(id: id, sender: sender, pin: pin, files: files) }
+    func incoming(id: UInt64, sender: String, pin: String, files: [TandemQsFile], texts: [TandemQsTextInfo]) {
+        Task { @MainActor in owner?.asked(id: id, sender: sender, pin: pin, files: files, texts: texts) }
     }
     func progress(id: UInt64, done: UInt64, total: UInt64) { Task { @MainActor in owner?.progressed(id: id, done: done, total: total) } }
-    func received(id: UInt64, paths: [String]) { Task { @MainActor in owner?.received(id: id, paths: paths) } }
+    func received(id: UInt64, paths: [String], texts: [TandemQsText]) { Task { @MainActor in owner?.received(id: id, paths: paths, texts: texts) } }
     func pin(id: UInt64, pin: String) { Task { @MainActor in owner?.showedPin(id: id, pin: pin) } }
     func sent(id: UInt64, refused: Bool) { Task { @MainActor in owner?.finished(id: id, refused: refused) } }
     func failed(id: UInt64, reason: String) { Task { @MainActor in owner?.failed(id: id, reason: reason) } }

@@ -19,6 +19,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.markmaaktmedia.tandem.engine.AndroidFiles
 import uniffi.tandem_core.TandemQsFile
+import uniffi.tandem_core.TandemQsText
+import uniffi.tandem_core.TandemQsTextInfo
+import uniffi.tandem_core.TandemQsTextKind
 import uniffi.tandem_core.TandemQsKind
 import uniffi.tandem_core.TandemQsPeer
 import uniffi.tandem_core.TandemQuickShare
@@ -44,12 +47,18 @@ class QuickShareHost(
         val sender: String,
         val pin: String,
         val files: List<TandemQsFile>,
+        val texts: List<TandemQsTextInfo> = emptyList(),
         val accepted: Boolean = false,
         val done: ULong = 0u,
         val saved: List<String>? = null,
+        /** The texts that came in, once the transfer is done: they are on the clipboard. */
+        val receivedTexts: List<TandemQsText> = emptyList(),
         val failure: String? = null,
     ) {
         val total: ULong get() = files.fold(0uL) { sum, file -> sum + file.size }
+
+        /** The link that came in, when there is one. */
+        val link: String? get() = receivedTexts.firstOrNull { it.kind == TandemQsTextKind.URL }?.text?.trim()
     }
 
     data class Outgoing(
@@ -210,6 +219,16 @@ class QuickShareHost(
         }
     }
 
+    /** Sends a link or a note to a device that was found. */
+    suspend fun sendText(text: String, peer: Peer): Result<ULong> = withContext(Dispatchers.IO) {
+        runCatching {
+            val live = service ?: error("Quick Share is off")
+            val id = live.sendText(peer.id, nameOf(), TandemQsKind.PHONE, text)
+            _outgoing.update { it + Outgoing(id, peer.name, total = text.length.toULong()) }
+            id
+        }
+    }
+
     private fun copyToCache(uri: Uri, folder: File): String {
         val name = app.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) cursor.getString(0) else null
@@ -230,8 +249,8 @@ class QuickShareHost(
         _peers.update { list -> list.filterNot { it.id == id } }
     }
 
-    override fun incoming(id: ULong, sender: String, pin: String, files: List<TandemQsFile>) {
-        val item = Incoming(id, sender, pin, files)
+    override fun incoming(id: ULong, sender: String, pin: String, files: List<TandemQsFile>, texts: List<TandemQsTextInfo>) {
+        val item = Incoming(id, sender, pin, files, texts)
         _incoming.update { it + item }
         notifications.ask(item)
     }
@@ -242,15 +261,24 @@ class QuickShareHost(
         _incoming.value.firstOrNull { it.id == id && it.accepted }?.let { notifications.progress(it) }
     }
 
-    override fun received(id: ULong, paths: List<String>) {
+    override fun received(id: ULong, paths: List<String>, texts: List<TandemQsText>) {
         scope.launch(Dispatchers.IO) {
+            // What was sent as text is put on the clipboard, so it can be pasted at once.
+            texts.lastOrNull()?.let { last ->
+                withContext(Dispatchers.Main) {
+                    runCatching {
+                        val clipboard = app.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Quick Share", last.text))
+                    }
+                }
+            }
             val files = AndroidFiles(app)
             val stored = paths.map { path ->
                 val name = File(path).name
                 runCatching { files.storeDownload(path, name, mimeOf(name)) }.getOrDefault(path)
             }
             File(app.cacheDir, "quickshare/$id").deleteRecursively()
-            _incoming.update { list -> list.map { if (it.id == id) it.copy(saved = stored, done = it.total) else it } }
+            _incoming.update { list -> list.map { if (it.id == id) it.copy(saved = stored, receivedTexts = texts, done = it.total) else it } }
             _incoming.value.firstOrNull { it.id == id }?.let { notifications.received(it) }
         }
     }

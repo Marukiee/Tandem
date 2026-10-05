@@ -45,8 +45,8 @@ class QuickShareNotifications(private val app: Application) {
         )
 
     private fun summary(item: QuickShareHost.Incoming): String {
-        val first = item.files.firstOrNull()?.name ?: app.getString(R.string.quickshare_something)
-        val rest = item.files.size - 1
+        val first = item.files.firstOrNull()?.name ?: item.texts.firstOrNull()?.title ?: app.getString(R.string.quickshare_something)
+        val rest = item.files.size + item.texts.size - 1
         return if (rest > 0) app.getString(R.string.quickshare_and_more, first, rest) else first
     }
 
@@ -92,14 +92,21 @@ class QuickShareNotifications(private val app: Application) {
     }
 
     fun received(item: QuickShareHost.Incoming) {
-        val notification = NotificationCompat.Builder(app, PROGRESS)
+        val builder = NotificationCompat.Builder(app, PROGRESS)
             .setSmallIcon(R.drawable.ic_stat_tandem)
             .setContentTitle(app.getString(R.string.quickshare_received_from, item.sender))
-            .setContentText(summary(item))
+            .setContentText(if (item.saved.isNullOrEmpty()) app.getString(R.string.quickshare_copied) else summary(item))
             .setAutoCancel(true)
             .setTimeoutAfter(30_000)
-            .build()
-        post(idOf(item.id), notification)
+        // A link opens from the notification.
+        item.link?.let { link ->
+            val open = PendingIntent.getActivity(
+                app, idOf(item.id), Intent(Intent.ACTION_VIEW, android.net.Uri.parse(link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+            builder.setContentIntent(open).addAction(0, app.getString(R.string.quickshare_open_link), open)
+        }
+        post(idOf(item.id), builder.build())
     }
 
     fun failed(item: QuickShareHost.Incoming) {

@@ -1,6 +1,6 @@
 // The pages of the main window.
 import { html, useEffect, useState } from "../vendor/preact-htm.js";
-import { call, native } from "./backend.js";
+import { call, listen, native } from "./backend.js";
 import { BatteryRing, Chip, DeviceGlyph, PlayerCard, Switch, ago, deviceChips, fmtSize } from "./components.js";
 import { Icon } from "./icons.js";
 import { language, setLanguage, t } from "./i18n.js";
@@ -415,6 +415,35 @@ function MouseSection({ s, patch }) {
   </div>`;
 }
 
+// Quick Share in the settings: the switch, and the devices that were found, to send files or the clipboard to.
+function QuickShareSection({ s, patch }) {
+  const [view, setView] = useState({ enabled: s.quickShare, peers: [], outgoing: [], problem: null });
+  useEffect(() => {
+    call("qs_state").then(setView).catch(() => {});
+    let off;
+    listen("quickshare", setView).then((f) => { off = f; });
+    return () => off && off();
+  }, []);
+  const send = (peer, command) => call(command, { peer }).catch((e) => failed(e === "no-text" ? t("qs_no_text") : e));
+  return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("qs_title")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="send" title=${t("qs_title")} sub=${t("qs_sub")} on=${s.quickShare} onChange=${(v) => patch({ quickShare: v })} />
+    </div>
+    ${view.problem && html`<div class="small" style="color:var(--danger,#c0392b)">${view.problem}</div>`}
+    ${s.quickShare && html`<h3 class="muted" style="margin:6px 0 0;font-size:13px">${t("qs_nearby")}</h3>
+      ${view.peers.length === 0 ? html`<div class="card small muted">${t("qs_searching")}</div>` : html`<div class="card flush">
+        ${view.peers.map((peer) => html`<${SettingRow} key=${peer.id} icon=${peer.kind === "phone" ? "device-mobile" : "device-laptop"} title=${peer.name} sub="">
+          <div style="display:flex;gap:6px">
+            <button class="btn small" onClick=${() => send(peer.id, "qs_pick_and_send")}>${t("qs_send_files")}</button>
+            <button class="btn small" onClick=${() => send(peer.id, "qs_send_clipboard")}>${t("qs_send_clipboard")}</button>
+          </div>
+        <//>`)}
+      </div>`}
+      ${view.outgoing.map((o) => html`<div class="card small" key=${o.id}>${o.state === "sending" ? t("qs_sending_to", o.peerName) + (o.pin ? " \u00b7 " + t("qs_pin_is", o.pin) : "") : o.state === "sent" ? t("qs_sent_to", o.peerName) : o.state === "refused" ? t("qs_said_no", o.peerName) : t("qs_failed")}</div>`)}`}
+  </div>`;
+}
+
 export function SettingsPage() {
   const s = state.settings;
   const [name, setName] = useState(state.self ? state.self.name : "");
@@ -453,6 +482,8 @@ export function SettingsPage() {
         </select>
       <//>
     </div>
+
+    <${QuickShareSection} s=${s} patch=${patch} />
 
     ${state.canShare && html`<${MouseSection} s=${s} patch=${patch} />`}
 

@@ -89,6 +89,10 @@ private struct PeerChip: View {
             QuickShare.shared.send(urls, to: peer)
             return true
         } isTargeted: { targeted = $0 }
+        .contextMenu {
+            Button("Send the clipboard") { QuickShare.shared.sendClipboard(to: peer) }
+            Button("Send files…") { QuickShare.shared.pickAndSend(to: peer) }
+        }
         .help("Send files to \(peer.name)")
     }
 }

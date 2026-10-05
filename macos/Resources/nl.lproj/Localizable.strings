@@ -813,3 +813,9 @@
 "must match the other device" = "moet gelijk zijn op het andere apparaat";
 "Accept" = "Accepteer";
 "Visible to everyone nearby" = "Zichtbaar voor iedereen in de buurt";
+"There is no text on the clipboard" = "Er staat geen tekst op het klembord";
+"Copied to the clipboard" = "Gekopieerd naar het klembord";
+"%@ wants to share a link" = "%@ wil een link delen";
+"%@ wants to share a note" = "%@ wil een notitie delen";
+"Open link" = "Open link";
+"Send the clipboard" = "Verstuur het klembord";

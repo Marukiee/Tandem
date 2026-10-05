@@ -26,6 +26,8 @@ pub struct Settings {
     /// The computer whose screen sits next to this one for a shared mouse and keyboard, and on which side (left, right, top, bottom).
     pub share_device: String,
     pub share_edge: String,
+    /// Quick Share: this PC can be found by other devices on the network and send and receive with them. Off until it is turned on.
+    pub quick_share: bool,
     /// Look for a newer Tandem now and then, and say so when there is one.
     pub auto_update: bool,
     /// The version whose banner the person sent away with Later.
@@ -46,6 +48,7 @@ impl Default for Settings {
             remote_input: false,
             share_device: String::new(),
             share_edge: String::new(),
+            quick_share: false,
             system_media: true,
             auto_update: true,
             dismissed_update: String::new(),

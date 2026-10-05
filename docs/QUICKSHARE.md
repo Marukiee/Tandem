@@ -66,6 +66,8 @@ geschreven (de licenties van rquickshare en Tandem zijn verschillend).
   voortgang), een rij Quick Share in het menubalkpaneel om te versturen (klik of laat bestanden vallen).
 - **Android:** pagina Quick Share bij Instellingen, een melding met Weigeren en Accepteren en de PIN, en een rij "In de buurt, met
   Quick Share" in het deelmenu. Ontvangen bestanden gaan naar Downloads.
+- **Windows en Linux (0.1.59):** dezelfde kern in de Tauri-app: `windows/src-tauri/src/quickshare.rs`, een kaartvenster (`windows/ui/qs.html`), een sectie Quick Share bij Instellingen en een schakelaar in het menu van het tray-icoon.
+- **Links en notities (0.1.59):** als eigen soort inhoud (`TextMetadata` in de introductie en een BYTES-payload met de tekst), op alle platformen.
 - **Nog niet:** Bluetooth-advertentie (telefoon naar telefoon zonder dat de ander al zichtbaar is, en Mac naar telefoon), de
   snelheidsupgrade, Windows en Linux, tekst en links als eigen soort inhoud (nu een .txt-bestand), de PIN is uit het geheugen van de
   Android-code nagemaakt en moet met een echte telefoon worden vergeleken.

@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.1.59",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Quick Share on Windows and Linux, and links and notes",
+      "new": [
+        "Windows and Linux: Quick Share is in the app now. Turn it on in Settings or with the item Quick Share in the menu of the tray icon. A small card in the corner of the screen shows who wants to send you something, with the PIN to compare, Decline and Accept and the progress. Under Quick Share in Settings are the devices that were found, to send files or the clipboard to. It is the same code as on the Mac and the phone and has only been tried between two copies of Tandem, not yet with a real Quick Share device",
+        "Links and notes now go as what they are, not as a file. A link that comes in can be opened from the card or the notification, and text is put on the clipboard. On the Mac a right click on a device in the menu bar panel gives Send the clipboard, on Android the share sheet sends text as text",
+        "Windows and Linux: the clipboard history page listened for changes with a function that was not imported, so it could stay empty. That is fixed"
+      ]
+    },
+    "nl": {
+      "title": "Quick Share op Windows en Linux, en links en notities",
+      "new": [
+        "Windows en Linux: Quick Share zit nu in de app. Zet het aan bij Instellingen of met het onderdeel Quick Share in het menu van het tray-icoon. Een kaartje in de hoek van het scherm laat zien wie je iets wil sturen, met de pincode om te vergelijken, Weiger en Accepteer en de voortgang. Bij Quick Share in Instellingen staan de gevonden apparaten, om bestanden of het klembord naartoe te sturen. Het is dezelfde code als op de Mac en de telefoon en alleen geprobeerd tussen twee exemplaren van Tandem, nog niet met een echt Quick Share-apparaat",
+        "Links en notities gaan nu als wat ze zijn, niet als bestand. Een link die binnenkomt kun je openen vanaf het kaartje of de melding, en tekst komt op het klembord. Op de Mac geeft rechtsklikken op een apparaat in het menubalkpaneel Verstuur het klembord, op Android stuurt het deelmenu tekst als tekst",
+        "Windows en Linux: de klembordgeschiedenis luisterde naar wijzigingen met een functie die niet was geimporteerd, waardoor de pagina leeg kon blijven. Dat is opgelost"
+      ]
+    }
+  },
+  {
     "version": "0.1.58",
     "date": "2026-10-05",
     "en": {

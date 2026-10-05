@@ -57,4 +57,6 @@
     <string name="perm_needs_listener">Heeft toegang tot meldingen nodig. Tik om het toe te staan.</string>
     <string name="perm_needs_phone">Heeft de toestemming voor gesprekken nodig. Tik om het toe te staan.</string>
     <string name="perm_needs_notifications_quickshare">Heeft de toestemming voor meldingen nodig, om te laten zien wie je iets wil sturen. Tik om het toe te staan.</string>
+    <string name="quickshare_copied">Gekopieerd naar het klembord</string>
+    <string name="quickshare_open_link">Open link</string>
 </resources>

@@ -88,11 +88,13 @@ private struct QuickShareCard: View {
     private var share: QuickShare { .shared }
 
     private var summary: String {
-        guard let first = item.files.first else { return String(localized: "Something") }
-        let rest = item.files.count - 1
+        guard let first = item.files.first else { return item.texts.first?.title ?? String(localized: "Something") }
+        let rest = item.files.count + item.texts.count - 1
         if rest <= 0 { return first.name }
         return String(localized: "\(first.name) and \(rest) more")
     }
+
+    private var onlyText: Bool { item.files.isEmpty && !item.texts.isEmpty }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -137,24 +139,36 @@ private struct QuickShareCard: View {
         if item.failure != nil { return String(localized: "The transfer stopped") }
         if item.saved != nil { return String(localized: "Received from \(item.sender)") }
         if item.accepted { return String(localized: "Receiving from \(item.sender)") }
+        if onlyText { return item.texts.first?.kind == .url ? String(localized: "\(item.sender) wants to share a link") : String(localized: "\(item.sender) wants to share a note") }
         return String(localized: "\(item.sender) wants to share")
     }
 
     private var subtitle: String {
         if let failure = item.failure { return failure }
-        if let saved = item.saved { return saved.count == 1 ? URL(fileURLWithPath: saved[0]).lastPathComponent : String(localized: "\(saved.count) files in Downloads") }
-        return "\(summary) · \(formatBytes(item.total))"
+        if let saved = item.saved {
+            if saved.isEmpty { return String(localized: "Copied to the clipboard") }
+            return saved.count == 1 ? URL(fileURLWithPath: saved[0]).lastPathComponent : String(localized: "\(saved.count) files in Downloads")
+        }
+        return onlyText ? summary : "\(summary) · \(formatBytes(item.total))"
     }
 
     @ViewBuilder
     private var buttons: some View {
         HStack(spacing: 10) {
             if item.saved != nil {
-                Button("Show in Finder") {
-                    NSWorkspace.shared.activateFileViewerSelecting((item.saved ?? []).map { URL(fileURLWithPath: $0) })
-                    share.dismiss(item.id)
+                if let link = item.link {
+                    Button("Open link") {
+                        NSWorkspace.shared.open(link)
+                        share.dismiss(item.id)
+                    }
+                    .buttonStyle(.glass)
+                } else if !(item.saved ?? []).isEmpty {
+                    Button("Show in Finder") {
+                        NSWorkspace.shared.activateFileViewerSelecting((item.saved ?? []).map { URL(fileURLWithPath: $0) })
+                        share.dismiss(item.id)
+                    }
+                    .buttonStyle(.glass)
                 }
-                .buttonStyle(.glass)
                 Spacer(minLength: 0)
                 Button("Done") { share.dismiss(item.id) }.buttonStyle(.glassProminent).tint(Palette.indigo)
             } else if item.failure != nil {
