@@ -1109,7 +1109,7 @@ pub fn tandem_init_logging(verbose: bool) {
 
 /// Owns the runtime and shuts it down without blocking, so dropping the engine from
 /// any thread (including one that belongs to another runtime) is safe.
-struct OwnedRuntime(Option<Runtime>);
+pub(crate) struct OwnedRuntime(pub(crate) Option<Runtime>);
 
 impl std::ops::Deref for OwnedRuntime {
     type Target = Runtime;
