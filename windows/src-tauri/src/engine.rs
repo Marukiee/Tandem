@@ -111,7 +111,16 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         app_version: app.package_info().version.to_string(),
         port: 47820,
         enable_mdns: true,
-        caps: vec!["clipboard".into(), "share".into(), "notify".into(), "input".into(), "battery".into(), "media".into()],
+        caps: vec![
+            "clipboard".into(),
+            "share".into(),
+            "notify".into(),
+            "input".into(),
+            "battery".into(),
+            "media".into(),
+            "screen.view".into(),
+            "camera.view".into(),
+        ],
         low_power: false,
     };
     TandemEngine::start(

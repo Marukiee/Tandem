@@ -104,9 +104,13 @@ impl TandemMediaViewer for Viewer {
 
 /// Asks a phone for its screen or its camera and opens the window that shows it.
 #[tauri::command]
-pub async fn live_start(app: AppHandle, state: State<'_, AppState>, id: String, kind: String, name: String) -> Reply<u64> {
-    let engine = state.engine()?;
-    let camera = kind == "camera";
+pub async fn live_start(app: AppHandle, id: String, kind: String, name: String) -> Reply<u64> {
+    start(&app, id, kind == "camera", TandemMediaFacing::Any, name)
+}
+
+/// The request and the window. Also what a phone that starts the sharing itself ends up in.
+pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacing, name: String) -> Reply<u64> {
+    let engine = app.state::<AppState>().engine()?;
     let want = TandemMediaWant {
         kind: if camera { TandemMediaKind::Camera } else { TandemMediaKind::Screen },
         codecs: vec![TandemMediaCodec::H264],
@@ -115,7 +119,7 @@ pub async fn live_start(app: AppHandle, state: State<'_, AppState>, id: String, 
         max_fps: if camera { 30 } else { 60 },
         max_bitrate: 0,
         control: false,
-        facing: TandemMediaFacing::Any,
+        facing: if camera { facing } else { TandemMediaFacing::Any },
     };
     let session = engine.media_request(id, want).map_err(|e| e.to_string())?;
     let label = format!("live-{session}");
@@ -133,7 +137,7 @@ pub async fn live_start(app: AppHandle, state: State<'_, AppState>, id: String, 
         },
     );
     let (width, height) = if camera { (720.0, 560.0) } else { (440.0, 820.0) };
-    let built = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(format!("live.html?session={session}").into()))
+    let built = WebviewWindowBuilder::new(app, &label, WebviewUrl::App(format!("live.html?session={session}").into()))
         .title(name)
         .inner_size(width, height)
         .min_inner_size(240.0, 240.0)

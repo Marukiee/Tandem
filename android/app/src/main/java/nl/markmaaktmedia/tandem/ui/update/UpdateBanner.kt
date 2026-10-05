@@ -143,7 +143,7 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                         if (downloading != null) last.floatValue = downloading.progress
                         val shown by androidx.compose.animation.core.animateFloatAsState(last.floatValue, TandemMotion.spatial(), label = "downloadProgress")
                         Column(Modifier.padding(top = 10.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LinearProgressIndicator(progress = { shown }, modifier = Modifier.fillMaxWidth().height(6.dp).clip(PillShape))
+                            nl.markmaaktmedia.tandem.ui.components.WavyProgress(shown, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.surfaceContainerHighest)
                             Text(stringResource(R.string.update_downloading, (last.floatValue * 100).toInt()), style = MaterialTheme.typography.labelSmall)
                         }
                     }

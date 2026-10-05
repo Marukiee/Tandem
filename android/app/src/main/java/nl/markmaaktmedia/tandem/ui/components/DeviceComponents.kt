@@ -516,9 +516,7 @@ fun TransferRow(
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             if (item.state == TransferItem.State.Active) {
                 val fraction by animateFloatAsState(item.fraction, TandemMotion.spatial(), label = "transferProgress")
-                Box(Modifier.fillMaxWidth().height(5.dp).clip(PillShape).background(MaterialTheme.colorScheme.surfaceContainerHighest)) {
-                    Box(Modifier.fillMaxWidth(fraction.coerceAtLeast(0.02f)).height(5.dp).clip(PillShape).background(tint))
-                }
+                WavyProgress(fraction, tint, MaterialTheme.colorScheme.surfaceContainerHighest)
             }
         }
         Box {

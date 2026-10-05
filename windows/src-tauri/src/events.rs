@@ -53,6 +53,14 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 emit_players(app);
             }
         }
+        // A phone that shows its screen or camera by itself ("Show my screen on this PC") asks this PC to look.
+        TandemEvent::MediaOffered { from, kind, facing } => {
+            let name = device_name(app, &from);
+            let camera = kind == tandem_core::ffi::TandemMediaKind::Camera;
+            if let Err(reason) = crate::live::start(app, from, camera, facing, name) {
+                log::warn!("could not open the window for the offered picture: {reason}");
+            }
+        }
         TandemEvent::Paired { id } => {
             refresh_devices(app);
             let name = device_name(app, &id);

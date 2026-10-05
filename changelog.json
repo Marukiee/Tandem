@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.44",
+    "date": "2026-10-05",
+    "en": {
+      "title": "Share your phone with a PC from the phone, and a wave for what is on its way",
+      "new": [
+        "Windows: a phone can now start sharing its screen or camera with the PC by itself, from Show my screen on the PC on the phone, and the window opens on the PC. The PC says that it can look",
+        "Android: the progress of a file that is on its way, and of an update that is downloading, is a wave in the style of Material 3 Expressive instead of a straight bar. The wave does not move by itself, so it costs nothing while a transfer waits"
+      ]
+    },
+    "nl": {
+      "title": "Je telefoon vanaf de telefoon met een pc delen, en een golf voor wat onderweg is",
+      "new": [
+        "Windows: een telefoon kan nu zelf beginnen met het delen van zijn scherm of camera met de pc, via Mijn scherm tonen op de pc op de telefoon, en het venster opent op de pc. De pc meldt dat hij kan kijken",
+        "Android: de voortgang van een bestand dat onderweg is en van een update die binnenkomt is een golf in de stijl van Material 3 Expressive in plaats van een rechte balk. De golf beweegt niet vanzelf, dus hij kost niets zolang een overdracht wacht"
+      ]
+    }
+  },
+  {
     "version": "0.1.43",
     "date": "2026-10-05",
     "en": {
