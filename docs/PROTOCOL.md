@@ -128,6 +128,22 @@ verlies staan in `SCREEN.md`.
 die de speler van een computer bedient, toont dat op de dempknop en volgt het als de computer op een andere manier weer
 aan gaat. Een oudere versie kent het veld niet en slaat het over.
 
+### Mogelijkheden (`Hello.caps`)
+
+Een apparaat zegt in zijn `Hello` wat het kan, als lijst van woorden. Een onbekend woord wordt genegeerd. Wie iets wil
+vragen, kijkt eerst of het woord er staat.
+
+| Woord | Betekenis |
+| --- | --- |
+| `clipboard`, `share`, `notify`, `call`, `input`, `battery`, `hotspot`, `media` | de oudere onderdelen: klembord, delen, meldingen, gesprekken, muis en toetsenbord, batterij, hotspot, muziek |
+| `files` | laat zijn bestanden bekijken (altijd, het beleid bepaalt wat er te zien is) |
+| `screenshot` | een telefoon die een schermafbeelding meldt |
+| `capture` | een telefoon die een foto, scan of plaatje kan maken op verzoek (invoegen vanaf de telefoon) |
+| `screen.host`, `camera.host` | kan zijn scherm of camera tonen |
+| `screen.control` | een computer die zijn scherm toont en waar een telefoon ook mag klikken en typen (Toegankelijkheid staat aan) |
+| `screen.view`, `camera.view` | kan het scherm of de camera van een ander apparaat tonen |
+| `audio.play` | speelt het geluid van een telefoon af (streamnummer `9`, zie MUSIC_AND_SOUND.md) |
+
 ## De circle
 
 De ledenlijst is een verzameling ondertekende verklaringen (`Add`, `Remove`,
