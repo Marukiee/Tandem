@@ -64,6 +64,10 @@ enum DebugSupport {
             // In a window of its own rather than through the Settings scene, which only opens for an app that is in front.
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSettingsWindow() }
         }
+        // `TANDEM_DEBUG_QUICKSHARE=1`: the cards of an incoming Quick Share transfer.
+        if variable("TANDEM_DEBUG_QUICKSHARE") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { QuickShare.shared.debugShow() }
+        }
         if variable("TANDEM_DEBUG_PANEL") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { showPanelWindow() }
         }

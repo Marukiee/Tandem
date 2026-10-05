@@ -30,6 +30,8 @@ struct MenuBarPanel: View {
 
             MenuInsertFromPhone()
 
+            MenuQuickShare()
+
             if let item = model.transfers.first(where: { $0.state == .active }) {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack {

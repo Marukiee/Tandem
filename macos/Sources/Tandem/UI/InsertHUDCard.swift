@@ -538,7 +538,7 @@ extension View {
 
     /// A shadow that is only outside the shape. Glass lets light through, and an ordinary shadow behind it shows through as
     /// a grey cloud under what is on the card.
-    fileprivate func outerShadow(radius: CGFloat, blur: CGFloat, y: CGFloat, opacity: Double) -> some View {
+    func outerShadow(radius: CGFloat, blur: CGFloat, y: CGFloat, opacity: Double) -> some View {
         background {
             let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
             shape
