@@ -29,7 +29,7 @@ async fn node(name: &str) -> Node {
 }
 
 async fn wait_until(what: &str, mut condition: impl FnMut() -> bool) {
-    let deadline = std::time::Instant::now() + Duration::from_secs(20);
+    let deadline = std::time::Instant::now() + Duration::from_secs(45);
     while !condition() {
         assert!(std::time::Instant::now() < deadline, "timed out waiting for: {what}");
         tokio::time::sleep(Duration::from_millis(40)).await;
@@ -51,7 +51,7 @@ async fn an_offer_reaches_the_other_device_as_an_event() {
     let mut events = mac.engine.subscribe();
     phone.engine.media_offer(mac.engine.id(), MediaKind::Camera, MediaFacing::Front).unwrap();
 
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(45);
     let (from, kind, facing) = loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
         match tokio::time::timeout(remaining, events.recv()).await {

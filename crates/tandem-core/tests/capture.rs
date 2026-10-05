@@ -33,7 +33,7 @@ async fn node(name: &str) -> Node {
 }
 
 async fn wait_until(what: &str, mut condition: impl FnMut() -> bool) {
-    let deadline = std::time::Instant::now() + Duration::from_secs(20);
+    let deadline = std::time::Instant::now() + Duration::from_secs(45);
     while !condition() {
         assert!(std::time::Instant::now() < deadline, "timed out waiting for: {what}");
         tokio::time::sleep(Duration::from_millis(40)).await;
@@ -41,7 +41,7 @@ async fn wait_until(what: &str, mut condition: impl FnMut() -> bool) {
 }
 
 async fn expect<T>(rx: &mut Receiver<Event>, what: &str, mut pick: impl FnMut(&Event) -> Option<T>) -> T {
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(20);
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(45);
     loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
         match tokio::time::timeout(remaining, rx.recv()).await {

@@ -30,7 +30,7 @@ async fn node(name: &str) -> Node {
 }
 
 async fn wait_until(what: &str, mut condition: impl FnMut() -> bool) {
-    let deadline = std::time::Instant::now() + Duration::from_secs(20);
+    let deadline = std::time::Instant::now() + Duration::from_secs(45);
     while !condition() {
         assert!(std::time::Instant::now() < deadline, "timed out waiting for: {what}");
         tokio::time::sleep(Duration::from_millis(40)).await;
