@@ -467,6 +467,8 @@ pub enum TandemShareOrigin {
     Clipboard,
     /// The answer to a capture request, with the id of that request.
     Capture { request: u64 },
+    /// Dropped on the edge of the screen where the other computer sits.
+    Drag,
     Other,
 }
 
@@ -478,6 +480,7 @@ impl From<TandemShareOrigin> for ShareOrigin {
             TandemShareOrigin::Photo => ShareOrigin::Photo,
             TandemShareOrigin::Clipboard => ShareOrigin::Clipboard,
             TandemShareOrigin::Capture { request } => ShareOrigin::Capture(request),
+            TandemShareOrigin::Drag => ShareOrigin::Drag,
             TandemShareOrigin::Other => ShareOrigin::Other,
         }
     }
@@ -491,6 +494,7 @@ impl From<ShareOrigin> for TandemShareOrigin {
             ShareOrigin::Photo => TandemShareOrigin::Photo,
             ShareOrigin::Clipboard => TandemShareOrigin::Clipboard,
             ShareOrigin::Capture(request) => TandemShareOrigin::Capture { request },
+            ShareOrigin::Drag => TandemShareOrigin::Drag,
             ShareOrigin::Other => TandemShareOrigin::Other,
         }
     }

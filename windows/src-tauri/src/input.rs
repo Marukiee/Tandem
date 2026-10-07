@@ -59,16 +59,40 @@ pub fn on_leave(tell: impl Fn(String, f32) + Send + Sync + 'static) {
     let _ = LEAVE.set(Box::new(tell));
 }
 
+static CHANGED: OnceLock<Box<dyn Fn(Option<(String, Edge)>) + Send + Sync>> = OnceLock::new();
+
+/// What to do when another computer starts or stops using the pointer of this one: the computer and the edge of this screen it came in
+/// by, or nothing. The drop zone at that edge shows and goes with it.
+pub fn on_shared_change(told: impl Fn(Option<(String, Edge)>) + Send + Sync + 'static) {
+    let _ = CHANGED.set(Box::new(told));
+}
+
+fn changed(now: Option<(String, Edge)>) {
+    if let Some(told) = CHANGED.get() {
+        told(now);
+    }
+}
+
 /// A computer sends its pointer over: it comes in at the opposite side of this screen.
 pub fn shared_enter(device: String, edge: Edge, along: f32) {
-    *SHARED.lock().unwrap() = Some((device, edge.opposite()));
+    let entered_by = edge.opposite();
+    *SHARED.lock().unwrap() = Some((device.clone(), entered_by));
     let _ = worker().lock().unwrap().send(Msg::Enter { edge, along });
+    changed(Some((device, entered_by)));
 }
 
 pub fn shared_end(device: &str) {
-    let mut guard = SHARED.lock().unwrap();
-    if guard.as_ref().is_some_and(|(d, _)| d == device) {
-        *guard = None;
+    let ended = {
+        let mut guard = SHARED.lock().unwrap();
+        if guard.as_ref().is_some_and(|(d, _)| d == device) {
+            *guard = None;
+            true
+        } else {
+            false
+        }
+    };
+    if ended {
+        changed(None);
     }
 }
 
@@ -326,6 +350,7 @@ fn run(rx: mpsc::Receiver<Msg>) {
                             Edge::Top | Edge::Bottom => x / (w - 1.0).max(1.0),
                         };
                         *SHARED.lock().unwrap() = None;
+                        changed(None);
                         if let Some(tell) = LEAVE.get() {
                             tell(device, along.clamp(0.0, 1.0));
                         }

@@ -25,7 +25,7 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | Scherm van de computer tonen aan andere apparaten en het laten bedienen (zoals TeamViewer) | kijkt en bedient | ja (host en kijker) | ja (host, GDI en OpenH264, kijker) | ja onder X11 (host, nooit gezien), nee onder Wayland, kijker ja |
 | De computer bedienen vanaf de telefoon (trackpad, toetsenbord) | bron | ja | ja | deels (alleen X11) |
 | Een computer bedienen vanaf een andere computer (gedeelde muis) | nee | ja (hoofd en bestuurd) | ja (hoofd en bestuurd) | nee (bestuurd alleen op X11, geen hoofd) |
-| Bestanden slepen over de rand bij de gedeelde muis | nee | deels (dropzones aan de rand, naar een buurcomputer) | nee | nee |
+| Bestanden slepen over de rand bij de gedeelde muis | nee | ja, beide kanten (dropzone aan de rand, bestanden landen in het Finder-venster of op het bureaublad) | ja als bestuurde pc (dropzone, landen op het bureaublad), niet als hoofd | idem als Windows, onder X11 |
 | SSH-terminal naar een computer | ja (JSch en xterm.js, nooit tegen een echte computer geprobeerd) | ja | ja | ja |
 | Hotspot van de telefoon vanaf de computer | bron | ja | nee | nee |
 | Computer wakker maken (Wake on LAN) vanaf de telefoon | ja | doel | doel | doel |

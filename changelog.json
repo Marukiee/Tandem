@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.71",
+    "date": "2026-10-08",
+    "en": {
+      "title": "Drag files between computers",
+      "new": [
+        "Drag files to the edge where the other computer sits, and drop them there, both ways between Mac, Windows and Linux",
+        "Dropped files land in the folder in front, or on the desktop"
+      ]
+    },
+    "nl": {
+      "title": "Bestanden tussen computers slepen",
+      "new": [
+        "Sleep bestanden naar de rand waar de andere computer staat en laat ze daar los, beide kanten tussen Mac, Windows en Linux",
+        "Losgelaten bestanden komen in de map die voorop staat, of op het bureaublad"
+      ]
+    }
+  },
+  {
     "version": "0.1.70",
     "date": "2026-10-07",
     "en": {

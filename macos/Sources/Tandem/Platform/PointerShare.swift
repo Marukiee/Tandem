@@ -73,6 +73,14 @@ final class PointerShare {
 
     private var model: EngineModel { EngineModel.shared }
 
+    /// The edge of this screen where the computer that is using this Mac sits, while it is.
+    var controllerEdge: String? { controlledBy == nil ? nil : enteredBy }
+
+    /// Whether this computer shares its pointer with that device now, either way round or by the setup in Settings.
+    func isPeer(_ device: String) -> Bool {
+        remote?.device == device || controlledBy == device || neighbours[device] != nil
+    }
+
     func start() {
         if enabled { startTap() }
     }

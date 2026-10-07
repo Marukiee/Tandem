@@ -93,7 +93,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             progress(app, offer, index, &peer, incoming, &name, done, total)
         }
         TandemEvent::Finished { offer, index, peer, incoming, name, size, location, error } => {
-            if !(incoming && crate::insert::finished(app, &peer, offer, &location, &error)) {
+            if !(incoming && (crate::drag::finished(app, &peer, offer, &name, &location, &error) || crate::insert::finished(app, &peer, offer, &location, &error))) {
                 finished(app, offer, index, &peer, incoming, &name, size, location, error)
             }
         }
@@ -210,6 +210,10 @@ pub fn art_json(app: &AppHandle) -> Value {
 fn offered(app: &AppHandle, from: &str, offer: u64, origin: TandemShareOrigin, items: &[TandemShareItem]) {
     // What a phone made because this computer asked for it is taken without asking, and goes on the clipboard.
     if crate::insert::offered(app, from, offer, origin) {
+        return;
+    }
+    // Files dropped on the edge by the computer that shares its pointer with this one: taken at once, and put on the desktop.
+    if crate::drag::offered(app, from, offer, origin) {
         return;
     }
     // A device that may send without asking has its files taken by the core. Only the others wait for an answer.

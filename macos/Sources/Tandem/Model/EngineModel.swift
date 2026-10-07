@@ -446,9 +446,11 @@ final class EngineModel {
                 showToast(String(localized: "Text from \(name) is on your clipboard"))
             }
 
-        case let .shareOffered(from, offer, _, items):
+        case let .shareOffered(from, offer, origin, items):
             // The answer to "Insert from phone" is taken without asking and has its own panel.
             if InsertFromPhone.shared.owns(offer: offer) { break }
+            // Files dropped on the edge by the computer that shares its pointer with this one: taken at once, and put where the drop was.
+            if case .drag = origin, DragLanding.shared.take(offer: offer, from: from) { break }
             if let device = device(from), !device.autoAccept {
                 Notifier.shared.post(
                     id: "offer.\(from)",
@@ -461,6 +463,7 @@ final class EngineModel {
             updateTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, done: done, total: total)
 
         case let .finished(offer, index, peer, incoming, name, size, location, error):
+            if incoming, DragLanding.shared.finished(offer: offer, from: peer, name: name, location: location, error: error) { break }
             finishTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, size: size, location: location, error: error)
 
         case let .notification(from, notification):
@@ -922,7 +925,7 @@ final class EngineModel {
 
     // MARK: Sending
 
-    func send(urls: [URL], to ids: [String]) {
+    func send(urls: [URL], to ids: [String], origin: TandemShareOrigin = .files) {
         guard let engine, !urls.isEmpty, !ids.isEmpty else { return }
         Task {
             do {
@@ -938,7 +941,7 @@ final class EngineModel {
                         mime: FileKind.mimeType(for: prepared)
                     ))
                 }
-                let report = try await engine.sendFiles(targets: ids, files: files, origin: .files)
+                let report = try await engine.sendFiles(targets: ids, files: files, origin: origin)
                 if report.sentTo.isEmpty {
                     showToast(String(localized: "That device is not connected right now"))
                 } else if !report.offline.isEmpty {

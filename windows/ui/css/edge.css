@@ -1,0 +1,12 @@
+/* The drop zone at the edge of the screen: a rounded card with the name of the computer, that lights up when files are over it. */
+html, body.edge { background: transparent; margin: 0; height: 100%; overflow: hidden; }
+.zone {
+  position: fixed; inset: 6px; border-radius: 22px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px; text-align: center; background: rgba(30, 30, 36, 0.9); color: #f4f4f7; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  transition: background 0.15s, transform 0.15s;
+}
+.zone.over { background: var(--accent, #5b5bd6); transform: scale(1.03); }
+.zone .icon { color: var(--accent, #8b8bf0); line-height: 0; }
+.zone.over .icon { color: #fff; }
+.zone .name { font: 600 12px var(--font, system-ui); overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.zone .hint { font: 11px var(--font, system-ui); opacity: 0.75; }

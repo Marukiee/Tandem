@@ -234,6 +234,9 @@ pub enum ShareOrigin {
     Clipboard,
     /// The answer to a `CaptureRequest`, with the id of that request.
     Capture(u64),
+    /// Files that were dropped on the edge of the screen where the other computer sits (see `pointer_share`). They were handed over
+    /// on purpose, at that moment, so the other side may take them without asking and put them where the drop was.
+    Drag,
     #[serde(other)]
     Other,
 }
@@ -722,6 +725,9 @@ mod tests {
 
     #[test]
     fn the_answer_to_a_capture_keeps_its_request_id_and_old_origins_still_read() {
+        // Files dropped on the edge survive the trip, and an older version reads the origin as Other.
+        let dropped = ShareOffer { id: 2, origin: ShareOrigin::Drag, items: vec![] };
+        assert_eq!(decode::<ShareOffer>(&encode(&dropped).unwrap()).unwrap().origin, ShareOrigin::Drag);
         let offer = ShareOffer { id: 1, origin: ShareOrigin::Capture(77), items: vec![] };
         let back: ShareOffer = decode(&encode(&offer).unwrap()).unwrap();
         assert_eq!(back.origin, ShareOrigin::Capture(77));

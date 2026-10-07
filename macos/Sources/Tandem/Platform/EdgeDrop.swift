@@ -22,9 +22,18 @@ final class EdgeDrop {
         }
     }
 
-    private func saw(_ type: NSEvent.EventType) {
+    /// Where a computer sits: the ones set up next to this Mac when it is the main computer, and the computer that is using this Mac,
+    /// at the edge it came in by, when it is the other way round.
+    private func targets() -> [String: String] {
         let share = PointerShare.shared
-        guard share.enabled, !share.neighbours.isEmpty else { return }
+        var found: [String: String] = share.enabled ? share.neighbours : [:]
+        if let controller = share.controlledBy, let edge = share.controllerEdge { found[controller] = edge }
+        return found
+    }
+
+    private func saw(_ type: NSEvent.EventType) {
+        let wanted = targets()
+        guard !wanted.isEmpty else { return }
         switch type {
         case .leftMouseDragged:
             let board = NSPasteboard(name: .drag)
@@ -33,7 +42,7 @@ final class EdgeDrop {
                   board.canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
             else { return }
             hideTask?.cancel()
-            if zones.isEmpty { show(for: share.neighbours) }
+            if zones.isEmpty { show(for: wanted) }
         case .leftMouseUp:
             lastCount = NSPasteboard(name: .drag).changeCount
             // A moment's grace: the drop on a zone is dealt with before the zone goes.
@@ -170,7 +179,8 @@ private final class ZoneView: NSVisualEffectView {
         else { return false }
         let device = self.device
         Task { @MainActor in
-            EngineModel.shared.send(urls: urls, to: [device.id])
+            // Handed over on purpose: the other side takes it at once and puts it where the drop was.
+            EngineModel.shared.send(urls: urls, to: [device.id], origin: .drag)
             EngineModel.shared.showToast(String(localized: "Sending to \(device.name)"))
         }
         return true

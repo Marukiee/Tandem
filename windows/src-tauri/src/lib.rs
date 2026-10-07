@@ -7,6 +7,8 @@ mod capture;
 mod quickshare;
 mod clip;
 mod commands;
+mod drag;
+mod edge;
 mod engine;
 mod events;
 mod files_host;
@@ -73,6 +75,9 @@ pub fn run() {
                     });
                 }
             });
+            // While another computer has its pointer here, a drop zone shows at the edge where that computer sits.
+            let zone_app = handle.clone();
+            input::on_shared_change(move |now| edge::changed(&zone_app, now));
             engine::start(handle.clone());
             capture::configure(&handle);
             quickshare::configure(&handle);
@@ -162,6 +167,7 @@ pub fn run() {
             files_host::files_update,
             files_host::files_add_folder,
             host_stop,
+            edge::edge_send,
             ssh::ssh_probe,
             ssh::ssh_open,
             ssh::ssh_start,

@@ -45,6 +45,11 @@ fn edge_of(text: &str) -> Option<Edge> {
     }
 }
 
+/// Whether the pointer of this computer is on that device now.
+pub fn is_remote(device: &str) -> bool {
+    INNER.lock().unwrap().remote.as_ref().is_some_and(|(d, _)| d == device)
+}
+
 /// Reads the settings: which computer sits where. The hooks are put on the first time there is one, and then stay.
 pub fn configure(app: &AppHandle) {
     let current = settings::get(app);

@@ -862,3 +862,5 @@
 "On Windows and Linux: when it asks, choose Allow. Under Wayland Linux does not let an app use the mouse and keyboard: use an X11 session." = "Op Windows en Linux: kies Toestaan als het vraagt. Onder Wayland laat Linux een app de muis en het toetsenbord niet gebruiken: gebruik een X11-sessie.";
 "Then show the screen again from here." = "Toon dan het scherm opnieuw vanaf hier.";
 "Sending to %@" = "Versturen naar %@";
+"A file from %@ did not come in" = "Een bestand van %@ is niet aangekomen";
+"%@ from %@ is in %@" = "%@ van %@ staat in %@";

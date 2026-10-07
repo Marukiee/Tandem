@@ -174,7 +174,11 @@ fn mime_for(path: &std::path::Path) -> String {
     .to_string()
 }
 
-async fn send_paths_to(state: &AppState, ids: Vec<String>, paths: Vec<PathBuf>) -> Reply<Value> {
+pub async fn send_paths_to(state: &AppState, ids: Vec<String>, paths: Vec<PathBuf>) -> Reply<Value> {
+    send_paths_with(state, ids, paths, TandemShareOrigin::Files).await
+}
+
+pub async fn send_paths_with(state: &AppState, ids: Vec<String>, paths: Vec<PathBuf>, origin: TandemShareOrigin) -> Reply<Value> {
     let engine = state.engine()?;
     let mut files = Vec::new();
     let mut folders = 0;
@@ -194,7 +198,7 @@ async fn send_paths_to(state: &AppState, ids: Vec<String>, paths: Vec<PathBuf>) 
     if files.is_empty() {
         return Ok(json!({ "sent": 0, "offline": 0, "folders": folders }));
     }
-    let report = engine.send_files(ids, files, TandemShareOrigin::Files).await.map_err(shown)?;
+    let report = engine.send_files(ids, files, origin).await.map_err(shown)?;
     Ok(json!({ "sent": report.sent_to.len(), "offline": report.offline.len(), "folders": folders }))
 }
 
