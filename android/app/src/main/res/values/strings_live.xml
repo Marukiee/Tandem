@@ -55,7 +55,7 @@
     <string name="live_control_on">On. A computer you allow can click and type while it shows this screen.</string>
     <string name="live_control_off">Off. It can look at the screen but not touch it. Turn on Tandem control in Accessibility settings. If the switch is grey, open App info for Tandem, tap the three dots at the top and choose Allow restricted settings first.</string>
     <string name="sound_send_title">Send this phone\'s sound to %1$s</string>
-    <string name="sound_send_sub">What plays on this phone plays on the computer too. Android asks first, every time</string>
+    <string name="sound_send_sub">What plays on this phone plays on the computer too. Android asks to record or cast, every time, but only the sound is sent, never the screen</string>
     <string name="sound_stop_title">Stop sending sound to %1$s</string>
     <string name="sound_stop_sub">The sound of this phone is playing on the computer now</string>
     <string name="sound_sending">Sending sound to %1$s</string>

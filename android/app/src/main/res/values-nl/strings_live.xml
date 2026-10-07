@@ -55,7 +55,7 @@
     <string name="live_control_on">Aan. Een computer die je toestaat kan klikken en typen terwijl hij dit scherm toont.</string>
     <string name="live_control_off">Uit. Hij kan het scherm bekijken maar niet aanraken. Zet Tandem-bediening aan in de toegankelijkheidsinstellingen. Is de schakelaar grijs, open dan eerst App-info van Tandem, tik rechtsboven op de drie puntjes en kies Beperkte instellingen toestaan.</string>
     <string name="sound_send_title">Stuur het geluid van deze telefoon naar %1$s</string>
-    <string name="sound_send_sub">Wat op deze telefoon speelt, speelt ook op de computer. Android vraagt elke keer eerst</string>
+    <string name="sound_send_sub">Wat op deze telefoon speelt, speelt ook op de computer. Android vraagt elke keer om op te nemen of te casten, maar alleen het geluid wordt verstuurd, nooit het scherm</string>
     <string name="sound_stop_title">Stop met geluid sturen naar %1$s</string>
     <string name="sound_stop_sub">Het geluid van deze telefoon speelt nu op de computer</string>
     <string name="sound_sending">Geluid sturen naar %1$s</string>
