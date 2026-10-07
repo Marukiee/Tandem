@@ -75,7 +75,7 @@ fun ControlComputerCard(device: TandemDevice, onOpen: () -> Unit, modifier: Modi
             }
         } else if (ready && !controls) {
             Text(
-                stringResource(R.string.control_no_access),
+                stringResource(if (mac) R.string.control_no_access else R.string.control_no_access_computer),
                 style = MaterialTheme.typography.bodySmall, color = scheme.error,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             )

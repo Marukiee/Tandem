@@ -18,6 +18,9 @@ export const state = {
   canShare: false,
   // "windows" or "linux": a few words and what is possible differ.
   platform: "windows",
+  // This computer can show its screen to other devices (see host.rs), and who is looking at it now.
+  canHost: false,
+  hosting: [],
   // Whether this system lets Tandem move the pointer and press keys, and if not why (wayland, no-display).
   input: { ok: true, why: "" },
   // How the update stands: idle, checking, up-to-date, available, downloading, installing or failed.

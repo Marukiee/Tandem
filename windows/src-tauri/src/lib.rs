@@ -11,6 +11,13 @@ mod engine;
 mod events;
 mod files_host;
 mod history;
+#[cfg(feature = "screen-host")]
+mod host;
+#[cfg(feature = "screen-host")]
+use host::host_stop;
+#[cfg(not(feature = "screen-host"))]
+#[tauri::command]
+fn host_stop() {}
 mod i18n;
 mod input;
 mod insert;
@@ -149,9 +156,12 @@ pub fn run() {
             live::live_input,
             live::live_stop,
             live::live_pin,
+            live::media_policy,
+            live::media_policy_set,
             files_host::files_policy,
             files_host::files_update,
             files_host::files_add_folder,
+            host_stop,
             ssh::ssh_probe,
             ssh::ssh_open,
             ssh::ssh_start,

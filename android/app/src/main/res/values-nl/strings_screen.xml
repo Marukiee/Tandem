@@ -51,4 +51,5 @@
     <string name="section_control">Bediening</string>
     <string name="screen_hint_trackpad">Beweeg één vinger om de aanwijzer te sturen. Tik om te klikken, tik met twee vingers voor een rechtermuisklik. Houd ingedrukt en beweeg om te slepen. Twee vingers die bewegen scrollen, knijpen zoomt.</string>
     <string name="screen_hint_touch">Raak aan om te klikken waar je aanraakt. Tik met twee vingers voor een rechtermuisklik. Houd ingedrukt en beweeg om te slepen. Twee vingers die bewegen scrollen, knijpen zoomt.</string>
+    <string name="control_no_access_computer">Die computer laat je zijn muis en toetsenbord niet gebruiken, dus je kunt kijken maar niet klikken of typen. Kies Toestaan als hij vraagt. Op Linux werkt dat onder X11, niet onder Wayland.</string>
 </resources>

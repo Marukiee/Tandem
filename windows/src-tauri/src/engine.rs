@@ -76,6 +76,8 @@ pub fn start(app: AppHandle) {
             Ok(engine) => {
                 engine.set_media_viewer(Arc::new(crate::live::Viewer { app: app.clone() }));
                 engine.set_audio_sink(Arc::new(crate::sound::Sink));
+                #[cfg(feature = "screen-host")]
+                engine.set_media_host(Arc::new(crate::host::Host::new(app.clone())));
                 log::info!("the engine runs as {} on port {}", engine.name(), engine.port());
                 *state.engine.write().unwrap() = Some(engine);
                 events::refresh_devices(&app);
@@ -104,6 +106,24 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
     let store = Store::new(&data_dir).map_err(|e| e.to_string())?;
     let name = hostname::get().ok().and_then(|h| h.into_string().ok()).unwrap_or_else(|| if cfg!(windows) { "Windows PC".to_string() } else { "Linux PC".to_string() });
     tandem_init_logging(false);
+    // What this computer can show of itself: its screen where it can be photographed, and the mouse and keyboard where they can be played.
+    let mut caps: Vec<String> = vec![
+        "clipboard".into(),
+        "share".into(),
+        "notify".into(),
+        "input".into(),
+        "battery".into(),
+        "media".into(),
+        "screen.view".into(),
+        "camera.view".into(),
+    ];
+    #[cfg(feature = "screen-host")]
+    if crate::host::available() {
+        caps.push("screen.host".into());
+        if crate::host::control_available() {
+            caps.push("screen.control".into());
+        }
+    }
     let config = TandemConfig {
         data_dir: data_dir.to_string_lossy().into_owned(),
         device_name: name,
@@ -112,16 +132,7 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         app_version: app.package_info().version.to_string(),
         port: 47820,
         enable_mdns: true,
-        caps: vec![
-            "clipboard".into(),
-            "share".into(),
-            "notify".into(),
-            "input".into(),
-            "battery".into(),
-            "media".into(),
-            "screen.view".into(),
-            "camera.view".into(),
-        ],
+        caps,
         low_power: false,
     };
     TandemEngine::start(

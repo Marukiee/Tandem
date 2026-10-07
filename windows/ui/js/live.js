@@ -31,6 +31,8 @@ let lastAsk = 0;
 // Clicking and typing on the phone: the phone says whether it lets this computer, and the person turns it on and off.
 let controlGranted = false;
 let controlOn = false;
+// What is shown is a computer, not a phone: other words for what is needed before it can be used.
+let computerPeer = false;
 // Pictures that were decoded by the app itself (see video.rs) arrive as JPEG, in the order they were made.
 let jpegAsked = 0;
 let jpegShown = 0;
@@ -211,6 +213,7 @@ async function start() {
   const info = await call("live_attach", { session, onFrame: channel });
   setPlatform(info.platform);
   set({ platform: info.platform });
+  computerPeer = Boolean(info.computer);
   if (!info.native && !window.VideoDecoder) {
     say(t("live_cannot_decode"), true);
     return;
@@ -316,7 +319,9 @@ function showControl() {
   controlButton.hidden = false;
   controlButton.classList.toggle("on", controlGranted && controlOn);
   controlButton.classList.toggle("off", !controlGranted);
-  const label = controlGranted ? t(controlOn ? "live_control_stop" : "live_control_start") : t("live_control_not_allowed");
+  const label = controlGranted
+    ? t(controlOn ? (computerPeer ? "live_control_stop_pc" : "live_control_stop") : (computerPeer ? "live_control_start_pc" : "live_control_start"))
+    : t(computerPeer ? "live_control_not_allowed_pc" : "live_control_not_allowed");
   controlButton.title = label;
   controlButton.setAttribute("aria-label", label);
 }
@@ -340,7 +345,10 @@ function fractionOf(event) {
 controlButton.addEventListener("click", () => {
   if (!controlGranted) {
     document.getElementById("helptext").innerHTML = "";
-    for (const line of [t("live_control_help"), t("live_control_step1"), t("live_control_step2"), t("live_control_step3"), t("live_control_wakes")]) {
+    const lines = computerPeer
+      ? [t("live_pc_help"), t("live_pc_step_mac"), t("live_pc_step_other"), t("live_pc_wakes")]
+      : [t("live_control_help"), t("live_control_step1"), t("live_control_step2"), t("live_control_step3"), t("live_control_wakes")];
+    for (const line of lines) {
       const p = document.createElement("div");
       p.textContent = line;
       document.getElementById("helptext").appendChild(p);
@@ -350,7 +358,7 @@ controlButton.addEventListener("click", () => {
   }
   controlOn = !controlOn;
   showControl();
-  say(t(controlOn ? "live_control_is_on" : "live_control_is_off"));
+  say(t(controlOn ? (computerPeer ? "live_control_is_on_pc" : "live_control_is_on") : (computerPeer ? "live_control_is_off_pc" : "live_control_is_off")));
   setTimeout(() => { if (hasPicture) clear(); }, 1800);
 });
 document.getElementById("helpclose").addEventListener("click", () => { help.hidden = true; });

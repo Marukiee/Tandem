@@ -57,3 +57,6 @@ strip = true
 # A picture decoder of its own, for the systems whose web view cannot decode video (the one on Linux, mostly): the phone's screen and
 # camera arrive as H.264, are decoded here and go on to the window as JPEG. Windows has the decoder in its web view.
 native-video = ["dep:openh264", "dep:jpeg-encoder"]
+# This computer as a screen that other devices can look at and use (host.rs). The encoder is OpenH264.
+screen-host = ["dep:openh264"]
+default = ["screen-host"]

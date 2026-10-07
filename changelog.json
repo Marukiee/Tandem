@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.1.69",
+    "date": "2026-10-07",
+    "en": {
+      "title": "Use your computers from each other, like TeamViewer",
+      "new": [
+        "Windows and Linux (under X11) can now show their screen to your other devices and let them use the mouse and keyboard, like TeamViewer. The Mac, the Windows and Linux app and the Android phone have Control this computer on the page of that computer. The computer asks first (or you choose Always for a device on its page), and a banner says who is looking, with a Stop button. The picture is encoded in software, 15 times a second, up to the size the viewer asks for",
+        "On a computer, Settings of a device has Show my screen to this device and Let it use my mouse and keyboard, each Ask me, Always or Never",
+        "Not seen on a real Windows or Linux computer yet. A Linux computer under Wayland cannot show its screen yet: that needs the portal of the desktop, which is not built. A Mac and a Linux computer under Wayland also need the right to use the mouse and keyboard before they can be used from here"
+      ]
+    },
+    "nl": {
+      "title": "Je computers vanaf elkaar gebruiken, zoals TeamViewer",
+      "new": [
+        "Windows en Linux (onder X11) kunnen nu hun scherm tonen aan je andere apparaten en ze de muis en het toetsenbord laten gebruiken, zoals TeamViewer. De Mac, de Windows- en Linux-app en de Android-telefoon hebben Deze computer bedienen op de pagina van die computer. De computer vraagt eerst (of je kiest Altijd voor een apparaat op zijn pagina), en een balk zegt wie er kijkt, met een knop Stop. Het beeld wordt in software gecodeerd, 15 keer per seconde, tot de grootte die de kijker vraagt",
+        "Op een computer heeft Instellingen van een apparaat Mijn scherm tonen aan dit apparaat en Laat het mijn muis en toetsenbord gebruiken, elk Vraag het mij, Altijd of Nooit",
+        "Nog niet gezien op een echte Windows- of Linux-computer. Een Linux-computer onder Wayland kan zijn scherm nog niet tonen: dat vraagt de portal van het bureaublad, en die is niet gebouwd. Een Mac en een Linux-computer onder Wayland hebben ook het recht nodig om de muis en het toetsenbord te gebruiken voordat ze vanaf hier bediend kunnen worden"
+      ]
+    }
+  },
+  {
     "version": "0.1.68",
     "date": "2026-10-07",
     "en": {

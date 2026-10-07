@@ -47,6 +47,18 @@ function UpdateBanner() {
   return null;
 }
 
+/** Who is looking at the screen of this computer now, with a way to stop it. */
+function HostingBanner() {
+  if (!state.hosting.length) return null;
+  const names = state.hosting.map((h) => h.name).join(", ");
+  const control = state.hosting.some((h) => h.control);
+  return html`<div class="update bad">
+    <div class="update-head"><span class="update-icon bad"><${Icon} name="device-desktop" size=${15} /></span>
+      <div class="grow"><div class="t">${t("hosting_title", names)}</div><div class="s">${control ? t("hosting_control") : t("hosting_view")}</div></div></div>
+    <div class="update-actions"><button class="btn small danger" onClick=${() => call("host_stop").catch(() => {})}>${t("hosting_stop")}</button></div>
+  </div>`;
+}
+
 function Nav() {
   const unread = state.notifications.length;
   return html`<nav class="nav">
@@ -72,6 +84,7 @@ function Nav() {
     <div class=${"row" + (state.page === "notifications" ? " selected" : "")} onClick=${() => set({ page: "notifications" })}>
       <${Icon} name="bell" size=${19} /><span class="grow">${t("notifications")}</span>${unread > 0 && html`<span class="badge">${unread > 99 ? "99+" : unread}</span>`}</div>
     <div class=${"row" + (state.page === "settings" ? " selected" : "")} onClick=${() => set({ page: "settings" })}><${Icon} name="settings" size=${19} /><span class="grow">${t("settings")}</span></div>
+    <${HostingBanner} />
     <${UpdateBanner} />
   </nav>`;
 }

@@ -34,6 +34,8 @@ struct Session {
     accepted: Option<Value>,
     rotation: u16,
     ended: Option<String>,
+    /// What is shown is a computer (a remote desktop), not a phone.
+    computer: bool,
     /// The decoder of this app, when the window cannot decode (the feature `native-video`).
     #[cfg(feature = "native-video")]
     decode: Option<std::sync::mpsc::SyncSender<Frame>>,
@@ -196,8 +198,14 @@ impl TandemMediaViewer for Viewer {
 
 /// Asks a phone for its screen or its camera and opens the window that shows it.
 #[tauri::command]
-pub async fn live_start(app: AppHandle, id: String, kind: String, name: String) -> Reply<u64> {
-    start(&app, id, kind == "camera", TandemMediaFacing::Any, name)
+pub async fn live_start(app: AppHandle, id: String, kind: String, name: String, computer: Option<bool>) -> Reply<u64> {
+    let session = start(&app, id, kind == "camera", TandemMediaFacing::Any, name)?;
+    if computer.unwrap_or(false) {
+        if let Some(s) = SESSIONS.lock().unwrap().get_mut(&session) {
+            s.computer = true;
+        }
+    }
+    Ok(session)
 }
 
 /// The request and the window. Also what a phone that starts the sharing itself ends up in.
@@ -228,6 +236,7 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
             accepted: None,
             rotation: 0,
             ended: None,
+            computer: false,
             #[cfg(feature = "native-video")]
             decode: spawn_decoder(app, session, lost.clone()),
             lost,
@@ -260,7 +269,7 @@ pub fn live_attach(session: u64, on_frame: Channel<InvokeResponseBody>) -> Reply
     s.channel = Some(on_frame);
     Ok(json!({
         "name": s.name, "kind": s.kind, "accepted": s.accepted, "rotation": s.rotation, "ended": s.ended,
-        "native": cfg!(feature = "native-video"), "platform": if cfg!(windows) { "windows" } else { "linux" },
+        "native": cfg!(feature = "native-video"), "platform": if cfg!(windows) { "windows" } else { "linux" }, "computer": s.computer,
     }))
 }
 
@@ -307,5 +316,44 @@ pub fn live_stop(state: State<'_, AppState>, session: u64) {
 pub fn live_pin(app: AppHandle, session: u64, on: bool) {
     if let Some(window) = app.get_webview_window(&format!("live-{session}")) {
         let _ = window.set_always_on_top(on);
+    }
+}
+
+/// What this computer lets another device do: show the screen and use the mouse and keyboard, each as `ask`, `always` or `never`.
+#[tauri::command]
+pub fn media_policy(state: State<'_, AppState>, id: String) -> Reply<Value> {
+    let policy = state.engine()?.media_policy(id).map_err(|e| e.to_string())?;
+    Ok(json!({ "screen": permission_text(policy.screen), "control": permission_text(policy.control) }))
+}
+
+#[tauri::command]
+pub fn media_policy_set(state: State<'_, AppState>, id: String, screen: Option<String>, control: Option<String>) -> Reply<Value> {
+    let engine = state.engine()?;
+    let mut policy = engine.media_policy(id.clone()).map_err(|e| e.to_string())?;
+    if let Some(text) = screen {
+        policy.screen = permission_of(&text);
+    }
+    if let Some(text) = control {
+        policy.control = permission_of(&text);
+    }
+    engine.set_media_policy(id, policy.clone()).map_err(|e| e.to_string())?;
+    Ok(json!({ "screen": permission_text(policy.screen), "control": permission_text(policy.control) }))
+}
+
+fn permission_text(p: tandem_core::ffi::TandemMediaPermission) -> &'static str {
+    use tandem_core::ffi::TandemMediaPermission as P;
+    match p {
+        P::Ask => "ask",
+        P::Always => "always",
+        P::Never => "never",
+    }
+}
+
+fn permission_of(text: &str) -> tandem_core::ffi::TandemMediaPermission {
+    use tandem_core::ffi::TandemMediaPermission as P;
+    match text {
+        "always" => P::Always,
+        "never" => P::Never,
+        _ => P::Ask,
     }
 }

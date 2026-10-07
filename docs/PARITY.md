@@ -22,7 +22,7 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | De telefoon bedienen met het getoonde scherm | bron | ja | ja (knop, nooit gezien) | ja (knop, nooit gezien) |
 | Invoegen vanaf telefoon (scan, foto) | bron | ja | ja (op het klembord, nooit gezien) | ja (op het klembord, nooit gezien) |
 | Geluid van de telefoon op de computer | bron | ja | ja (nooit gehoord) | ja (nooit gehoord) |
-| Scherm van de computer tonen op de telefoon en op andere computers | viewer | ja (host) | nee | nee |
+| Scherm van de computer tonen aan andere apparaten en het laten bedienen (zoals TeamViewer) | kijkt en bedient | ja (host en kijker) | ja (host, GDI en OpenH264, kijker) | ja onder X11 (host, nooit gezien), nee onder Wayland, kijker ja |
 | De computer bedienen vanaf de telefoon (trackpad, toetsenbord) | bron | ja | ja | deels (alleen X11) |
 | Een computer bedienen vanaf een andere computer (gedeelde muis) | nee | ja (hoofd en bestuurd) | ja (hoofd en bestuurd) | nee (bestuurd alleen op X11, geen hoofd) |
 | Bestanden slepen over de rand bij de gedeelde muis | nee | nee | nee | nee |
@@ -36,7 +36,7 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 
 - Linux en Windows moeten dezelfde functies als de Mac kunnen **aanbieden**, niet alleen tonen: eigen mappen (host), eigen scherm
   delen (Windows.Graphics.Capture, PipeWire), geluid delen, Invoegen vanaf telefoon als bron voor een andere computer.
-- Linux: invoer onder Wayland (libei), de gedeelde muis als hoofd (X11 `XInput2`, Wayland InputCapture), een eigen updatepad.
+- Linux onder Wayland kan zijn scherm nog niet tonen (de portal van het bureaublad vraagt om PipeWire). Linux: invoer onder Wayland (libei), de gedeelde muis als hoofd (X11 `XInput2`, Wayland InputCapture), een eigen updatepad.
 - Bestanden slepen over de rand: nog nergens.
 - De Mac-functies die aan macOS zelf vastzitten horen er niet bij: het menu Diensten, het Controlecentrum, het AirDrop-knopje.
 

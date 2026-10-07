@@ -139,6 +139,18 @@ function inputWhy() {
   return t(input.why === "no-display" ? "input_no_display" : "input_wayland");
 }
 
+// Whether this device may look at the screen of this computer, and use its mouse and keyboard: ask every time, always, or never.
+function ScreenPolicyRows({ device }) {
+  const [policy, setPolicy] = useState(null);
+  useEffect(() => { call("media_policy", { id: device.id }).then(setPolicy).catch(() => {}); }, [device.id]);
+  if (!policy || !state.canHost) return null;
+  const change = (patch) => call("media_policy_set", { id: device.id, ...patch }).then(setPolicy).catch(failed);
+  const choices = (value, onChange) => html`<select value=${value} onChange=${(e) => onChange(e.target.value)}>
+    <option value="ask">${t("policy_ask")}</option><option value="always">${t("policy_always")}</option><option value="never">${t("policy_never")}</option></select>`;
+  return html`<${SettingRow} icon="device-desktop" title=${t("policy_screen")} sub=${t("policy_screen_sub")}>${choices(policy.screen, (v) => change({ screen: v }))}<//>
+    <${SettingRow} icon="pointer" title=${t("policy_control")} sub=${t("policy_control_sub")}>${choices(policy.control, (v) => change({ control: v }))}<//>`;
+}
+
 export function DevicePage({ device }) {
   const [ringing, setRinging] = useState(false);
   const players = device.online ? state.players[device.id] || [] : [];
@@ -156,7 +168,8 @@ export function DevicePage({ device }) {
   }).catch(failed);
   const battery = device.status && device.status.battery;
   const hasCap = (cap) => Array.isArray(device.caps) && device.caps.includes(cap);
-  const show = (kind) => call("live_start", { id: device.id, kind, name: device.name }).catch(failed);
+  const isComputerEarly = device.platform === "macos" || device.platform === "windows" || device.platform === "linux";
+  const show = (kind) => call("live_start", { id: device.id, kind, name: device.name, computer: isComputerEarly }).catch(failed);
   // A computer that answers on the ssh port can be logged in to from here. The button is grey, with the reason, when it does not.
   const isComputer = device.platform === "macos" || device.platform === "windows" || device.platform === "linux";
   const [sshAddress, setSshAddress] = useState(null);
@@ -194,6 +207,8 @@ export function DevicePage({ device }) {
         <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
       ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("camera.host")} title=${hasCap("camera.host") ? t("live_camera_tip") : t("live_update_phone")} onClick=${() => show("camera")}>
         <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
+      ${isComputer && hasCap("screen.host") && html`<button class="btn" disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => show("screen")}>
+        <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
       ${isComputer && html`<button class="btn" disabled=${!sshAddress} title=${sshAddress ? t("ssh_title") : sshReason} onClick=${() => call("ssh_open", { id: device.id, name: device.name, address: sshAddress }).catch(failed)}>
         <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
       ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
@@ -221,6 +236,7 @@ export function DevicePage({ device }) {
     <div class="card flush">
       <${SettingRow} icon="clipboard" title=${t("sync_clipboard")} sub=${t("sync_clipboard_sub")} on=${device.clipboard} onChange=${(v) => setting({ clipboard: v })} />
       <${SettingRow} icon="bell" title=${t("show_its_notifications")} sub=${t("show_its_notifications_sub")} on=${device.notifications} onChange=${(v) => setting({ notifications: v })} />
+      ${hasCap("screen.view") && html`<${ScreenPolicyRows} device=${device} />`}
       <${SettingRow} icon="download" title=${t("accept_automatically")} sub=${t("accept_automatically_sub")} on=${device.autoAccept} onChange=${(v) => setting({ autoAccept: v })} />
       <${SettingRow} icon="trash" title=${t("remove_device")} sub=${t("remove_device_sub")}>
         <button class="btn danger small" onClick=${() => set({ dialog: { kind: "remove", id: device.id } })}>${t("remove")}</button>

@@ -52,6 +52,7 @@ function apply(snapshot) {
     build: snapshot.build,
     canShare: !!snapshot.canShare,
     platform: snapshot.platform || "windows",
+    canHost: !!snapshot.canHost,
     input: snapshot.input || { ok: true, why: "" },
     devices: snapshot.devices,
     transfers: snapshot.transfers,
@@ -94,6 +95,7 @@ async function follow() {
   await listen("players", (players) => set({ players }));
   await listen("art", ({ key, uri }) => set({ art: { ...state.art, [key]: uri } }));
   await listen("say", (text) => say(text));
+  await listen("hosting", (hosting) => set({ hosting }));
   // The event leaves out what the person decided about it, so that stays.
   await listen("update", (update) => set({ update: { dismissed: state.update.dismissed, ...update } }));
   await listen("engine-ready", async () => apply(await call("get_state")));

@@ -41,6 +41,7 @@ pub fn get_state(app: AppHandle, state: State<'_, AppState>) -> Value {
         "update": update::current(&app),
         "canShare": cfg!(windows),
         "platform": if cfg!(windows) { "windows" } else { "linux" },
+        "canHost": cfg!(feature = "screen-host") && can_host(),
         "input": input_support(),
     })
 }
@@ -60,6 +61,16 @@ pub fn input_blocked() -> Option<&'static str> {
     } else {
         None
     }
+}
+
+#[cfg(feature = "screen-host")]
+fn can_host() -> bool {
+    crate::host::available()
+}
+
+#[cfg(not(feature = "screen-host"))]
+fn can_host() -> bool {
+    false
 }
 
 fn input_support() -> Value {

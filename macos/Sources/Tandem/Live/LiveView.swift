@@ -18,6 +18,9 @@ struct LiveView: View {
     /// The help for clicking on the phone opens by itself once, when the picture is there and the phone does not allow it yet.
     @LocalState private var controlHelpOffered = false
 
+    /// The other side is a computer (a remote desktop) and not a phone, which changes what there is to tell about clicking.
+    private var peerIsComputer: Bool { model.device(session.peer)?.isComputer ?? false }
+
     private var phoneOnline: Bool { model.device(session.peer)?.online ?? (session.peer == "debug") }
 
     var body: some View {
@@ -199,7 +202,7 @@ struct LiveView: View {
                         "cursorarrow.click.2",
                         help: session.controlGranted
                             ? (session.controlOn ? "Stop clicking and typing on the phone" : "Click and type on the phone")
-                            : "The phone does not allow clicking yet",
+                            : (peerIsComputer ? "The computer does not allow clicking yet" : "The phone does not allow clicking yet"),
                         active: session.controlGranted && session.controlOn
                     ) {
                         if session.controlGranted {
@@ -316,6 +319,28 @@ struct LiveView: View {
 
     /// Why the button for clicking on the phone does nothing yet, and what to do about it.
     private var controlHelp: some View {
+        if peerIsComputer { return AnyView(computerControlHelp) }
+        return AnyView(phoneControlHelp)
+    }
+
+    /// Why a computer does not let this Mac use it yet.
+    private var computerControlHelp: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("This computer does not allow control yet", systemImage: "cursorarrow.click.2").font(.headline)
+            Text("It showed its screen, but the mouse and the keyboard have to be allowed there as well.")
+                .font(.callout).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("On a Mac: allow Tandem in System Settings, Privacy and Security, Accessibility, then restart Tandem on it.")
+                Text("On Windows and Linux: when it asks, choose Allow. Under Wayland Linux does not let an app use the mouse and keyboard: use an X11 session.")
+                Text("Then show the screen again from here.").foregroundStyle(.secondary)
+            }
+            .font(.callout)
+        }
+        .padding(16)
+        .frame(width: 320)
+    }
+
+    private var phoneControlHelp: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("One more permission is needed on the phone", systemImage: "cursorarrow.click.2").font(.headline)
             Text("To click and type on the phone from this Mac, Tandem needs its Accessibility control on the phone. Only you can turn that on.")

@@ -470,3 +470,68 @@ unsafe extern "system" fn keyboard_hook(code: i32, wparam: WPARAM, lparam: LPARA
     }
     unsafe { CallNextHookEx(None, code, wparam, lparam) }
 }
+
+// ---- A picture of the screen, for showing it to another device --------------------------------------------------------
+
+/// Takes pictures of the primary screen, one after the other. GDI is not the quickest way to do it, but it works on every
+/// version of Windows and is quick enough for a screen that is looked at over a network.
+pub struct Grabber;
+
+impl Grabber {
+    pub fn new() -> Option<Grabber> {
+        Some(Grabber)
+    }
+
+    /// The size of what `grab` returns.
+    pub fn size(&self) -> (u32, u32) {
+        let (w, h) = screen();
+        (w.max(0) as u32, h.max(0) as u32)
+    }
+
+    /// The width, the height and the pixels as B, G, R, unused, line after line from the top. Nothing when it could not be taken, for
+    /// instance while the screen is locked.
+    pub fn grab(&self) -> Option<(u32, u32, Vec<u8>)> {
+        use windows::Win32::Graphics::Gdi::{
+            BI_RGB, BITMAPINFO, BITMAPINFOHEADER, BitBlt, CAPTUREBLT, CreateCompatibleBitmap, CreateCompatibleDC, DIB_RGB_COLORS,
+            DeleteDC, DeleteObject, GetDC, GetDIBits, ReleaseDC, SRCCOPY, SelectObject,
+        };
+        let (w, h) = screen();
+        if w <= 0 || h <= 0 {
+            return None;
+        }
+        unsafe {
+            let screen_dc = GetDC(None);
+            if screen_dc.is_invalid() {
+                return None;
+            }
+            let memory = CreateCompatibleDC(Some(screen_dc));
+            let bitmap = CreateCompatibleBitmap(screen_dc, w, h);
+            let previous = SelectObject(memory, bitmap.into());
+            let copied = BitBlt(memory, 0, 0, w, h, Some(screen_dc), 0, 0, SRCCOPY | CAPTUREBLT).is_ok();
+            let mut info = BITMAPINFO {
+                bmiHeader: BITMAPINFOHEADER {
+                    biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                    biWidth: w,
+                    // A negative height says the lines go from the top down.
+                    biHeight: -h,
+                    biPlanes: 1,
+                    biBitCount: 32,
+                    biCompression: BI_RGB.0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let mut pixels = vec![0u8; w as usize * h as usize * 4];
+            let lines = if copied {
+                GetDIBits(memory, bitmap, 0, h as u32, Some(pixels.as_mut_ptr().cast()), &mut info, DIB_RGB_COLORS)
+            } else {
+                0
+            };
+            SelectObject(memory, previous);
+            let _ = DeleteObject(bitmap.into());
+            let _ = DeleteDC(memory);
+            ReleaseDC(None, screen_dc);
+            (lines == h).then_some((w as u32, h as u32, pixels))
+        }
+    }
+}

@@ -63,6 +63,8 @@ pub enum Seen {
 mod imp;
 #[cfg(target_os = "linux")]
 mod mpris;
+#[cfg(target_os = "linux")]
+mod x11grab;
 #[cfg(not(windows))]
 mod imp {
     #[cfg_attr(target_os = "linux", allow(unused_imports))]
@@ -132,6 +134,26 @@ mod imp {
 
     #[cfg(target_os = "linux")]
     pub use crate::mpris::Media;
+
+    /// Only Windows and Linux (under X11) can take a picture of the screen here; the Mac app does it in its own way.
+    #[cfg(target_os = "linux")]
+    pub use crate::x11grab::Grabber;
+
+    #[cfg(not(target_os = "linux"))]
+    pub struct Grabber;
+
+    #[cfg(not(target_os = "linux"))]
+    impl Grabber {
+        pub fn new() -> Option<Grabber> {
+            None
+        }
+        pub fn size(&self) -> (u32, u32) {
+            (0, 0)
+        }
+        pub fn grab(&self) -> Option<(u32, u32, Vec<u8>)> {
+            None
+        }
+    }
 }
 
-pub use imp::{Capture, Media, battery, describe, desktop, screen, warp, watch_clipboard};
+pub use imp::{Capture, Grabber, Media, battery, describe, desktop, screen, warp, watch_clipboard};

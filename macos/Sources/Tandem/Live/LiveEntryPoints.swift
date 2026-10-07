@@ -2,8 +2,10 @@ import SwiftUI
 import TandemCore
 
 extension TandemDevice {
-    /// The phone says it can show its screen. Only a phone whose app has the host side announces it.
-    var canShowScreen: Bool { platform == .android && caps.contains("screen.host") }
+    /// A computer: it can show its screen, and be used from here when it allows that.
+    var isComputer: Bool { platform == .macOs || platform == .windows || platform == .linux }
+    /// The device says it can show its screen. Only an app that has the host side announces it.
+    var canShowScreen: Bool { (platform == .android || isComputer) && caps.contains("screen.host") }
     var canShowCamera: Bool { platform == .android && caps.contains("camera.host") }
 }
 
@@ -12,6 +14,17 @@ struct LiveActionRow: View {
     let device: TandemDevice
 
     var body: some View {
+        // A computer that shows its screen, like a remote desktop: look at it, and use it when it allows that.
+        if device.isComputer, device.caps.contains("screen.host") {
+            let ready = device.online
+            let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
+            GlassActionButton(title: "Control this computer", symbol: "display", prominent: running) {
+                LiveManager.shared.start(device: device, kind: .screen)
+            }
+            .disabled(!ready)
+            .opacity(ready ? 1 : 0.5)
+            .help("Shows the screen of this computer in a window. It asks first, and then you can use its mouse and keyboard.")
+        }
         // Always there for a phone, grey while it cannot: a phone with an older Tandem is told what to do in the tooltip.
         if device.platform == .android {
             GlassEffectContainer(spacing: 12) {
@@ -53,7 +66,11 @@ struct LiveMenuButton: View {
                     Button {
                         LiveManager.shared.start(device: device, kind: .screen)
                     } label: {
-                        Label("Show phone screen", systemImage: "iphone.gen3")
+                        if device.isComputer {
+                            Label("Control this computer", systemImage: "display")
+                        } else {
+                            Label("Show phone screen", systemImage: "iphone.gen3")
+                        }
                     }
                 }
                 if device.canShowCamera {

@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Mutex, OnceLock, mpsc};
 
 use enigo::{Axis, Button, Coordinate, Direction, Enigo, Key, Keyboard, Mouse, Settings};
-use tandem_core::ffi::{TandemInput, TandemMediaKey};
+use tandem_core::ffi::{TandemInput, TandemMediaInput, TandemMediaKey};
 use tandem_core::pointer_share::{self, Edge, Screen};
 
 enum Msg {
@@ -18,6 +18,8 @@ enum Msg {
     Shared(TandemInput),
     /// The pointer of such a computer comes in over `edge` of its screen, `along` of the way down.
     Enter { edge: Edge, along: f32 },
+    /// What a device that looks at this screen does with its mouse and keyboard (see `host.rs`).
+    Media(TandemMediaInput),
     /// The phone went away in the middle of something: let go of whatever it was holding.
     ReleaseAll,
 }
@@ -80,6 +82,11 @@ pub fn send_shared(input: TandemInput) {
 
 pub fn send(input: TandemInput) {
     let _ = worker().lock().unwrap().send(Msg::Input(input));
+}
+
+/// The mouse or the keyboard of a device that looks at the screen of this computer.
+pub fn send_media(input: TandemMediaInput) {
+    let _ = worker().lock().unwrap().send(Msg::Media(input));
 }
 
 pub fn release_all() {
@@ -187,6 +194,73 @@ fn modifiers(mods: u8) -> Vec<Key> {
     keys
 }
 
+/// A key by its USB HID usage on the keyboard page, as the viewers of a screen send it. Letters, digits and the keys that are not
+/// printed come from here; what is printed is typed as text.
+fn hid_key(code: u32) -> Option<Key> {
+    Some(match code {
+        0x04..=0x1D => Key::Unicode((b'a' + (code - 0x04) as u8) as char),
+        0x1E..=0x26 => Key::Unicode((b'1' + (code - 0x1E) as u8) as char),
+        0x27 => Key::Unicode('0'),
+        0x28 => Key::Return,
+        0x29 => Key::Escape,
+        0x2A => Key::Backspace,
+        0x2B => Key::Tab,
+        0x2C => Key::Space,
+        0x2D => Key::Unicode('-'),
+        0x2E => Key::Unicode('='),
+        0x2F => Key::Unicode('['),
+        0x30 => Key::Unicode(']'),
+        0x31 => Key::Unicode('\\'),
+        0x33 => Key::Unicode(';'),
+        0x34 => Key::Unicode('\''),
+        0x35 => Key::Unicode('`'),
+        0x36 => Key::Unicode(','),
+        0x37 => Key::Unicode('.'),
+        0x38 => Key::Unicode('/'),
+        0x39 => Key::CapsLock,
+        0x3A => Key::F1,
+        0x3B => Key::F2,
+        0x3C => Key::F3,
+        0x3D => Key::F4,
+        0x3E => Key::F5,
+        0x3F => Key::F6,
+        0x40 => Key::F7,
+        0x41 => Key::F8,
+        0x42 => Key::F9,
+        0x43 => Key::F10,
+        0x44 => Key::F11,
+        0x45 => Key::F12,
+        0x4A => Key::Home,
+        0x4B => Key::PageUp,
+        0x4C => Key::Delete,
+        0x4D => Key::End,
+        0x4E => Key::PageDown,
+        0x4F => Key::RightArrow,
+        0x50 => Key::LeftArrow,
+        0x51 => Key::DownArrow,
+        0x52 => Key::UpArrow,
+        _ => return None,
+    })
+}
+
+/// The modifiers of a media key message: shift 1, control 2, alt 4, meta 8.
+fn hid_modifiers(mods: u16) -> Vec<Key> {
+    let mut keys = Vec::new();
+    if mods & 1 != 0 {
+        keys.push(Key::Shift);
+    }
+    if mods & 2 != 0 {
+        keys.push(Key::Control);
+    }
+    if mods & 4 != 0 {
+        keys.push(Key::Alt);
+    }
+    if mods & 8 != 0 {
+        keys.push(Key::Meta);
+    }
+    keys
+}
+
 fn media_key(key: TandemMediaKey) -> Key {
     match key {
         TandemMediaKey::PlayPause => Key::MediaPlayPause,
@@ -276,6 +350,67 @@ fn run(rx: mpsc::Receiver<Msg>) {
             }
             // Dealt with above.
             Msg::Shared(_) | Msg::Enter { .. } => {}
+            Msg::Media(media) => match media {
+                TandemMediaInput::PointerAbs { x, y } => {
+                    if let Ok((width, height)) = enigo.main_display() {
+                        let _ = enigo.move_mouse((x * width as f32) as i32, (y * height as f32) as i32, Coordinate::Abs);
+                    }
+                }
+                TandemMediaInput::PointerRel { dx, dy } => {
+                    let _ = enigo.move_mouse(i32::from(dx), i32::from(dy), Coordinate::Rel);
+                }
+                TandemMediaInput::Button { button: b, down, .. } => {
+                    let which = match b {
+                        1 => Button::Right,
+                        2 => Button::Middle,
+                        3 => Button::Back,
+                        4 => Button::Forward,
+                        _ => Button::Left,
+                    };
+                    if down {
+                        buttons.insert(b);
+                        let _ = enigo.button(which, Direction::Press);
+                    } else {
+                        buttons.remove(&b);
+                        let _ = enigo.button(which, Direction::Release);
+                    }
+                }
+                TandemMediaInput::Scroll { dx, dy } => {
+                    // Pixels in the natural direction: the content follows the fingers, so up with the fingers is down with the wheel.
+                    rest_y -= f32::from(dy) / PIXELS_PER_CLICK;
+                    rest_x -= f32::from(dx) / PIXELS_PER_CLICK;
+                    let (clicks_y, clicks_x) = (rest_y.trunc(), rest_x.trunc());
+                    if clicks_y != 0.0 {
+                        let _ = enigo.scroll(-(clicks_y as i32), Axis::Vertical);
+                        rest_y -= clicks_y;
+                    }
+                    if clicks_x != 0.0 {
+                        let _ = enigo.scroll(-(clicks_x as i32), Axis::Horizontal);
+                        rest_x -= clicks_x;
+                    }
+                }
+                TandemMediaInput::Key { code, down, mods, .. } => {
+                    let Some(key) = hid_key(code) else { continue };
+                    let wanted = hid_modifiers(mods);
+                    if down {
+                        for m in &wanted {
+                            if !held_mods.contains(m) {
+                                let _ = enigo.key(*m, Direction::Press);
+                                held_mods.push(*m);
+                            }
+                        }
+                        let _ = enigo.key(key, Direction::Press);
+                    } else {
+                        let _ = enigo.key(key, Direction::Release);
+                        for m in held_mods.drain(..) {
+                            let _ = enigo.key(m, Direction::Release);
+                        }
+                    }
+                }
+                TandemMediaInput::Text { text } => {
+                    let _ = enigo.text(&text);
+                }
+            },
             Msg::Input(input) => match input {
                 TandemInput::Pointer { dx, dy } => {
                     // A small boost for quick swipes, so the whole screen is a short stroke away.
@@ -347,6 +482,23 @@ fn run(rx: mpsc::Receiver<Msg>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_hid_usage_gives_the_key_that_is_printed_on_it() {
+        assert_eq!(hid_key(0x04), Some(Key::Unicode('a')));
+        assert_eq!(hid_key(0x1D), Some(Key::Unicode('z')));
+        assert_eq!(hid_key(0x1E), Some(Key::Unicode('1')));
+        assert_eq!(hid_key(0x27), Some(Key::Unicode('0')));
+        assert_eq!(hid_key(0x28), Some(Key::Return));
+        assert_eq!(hid_key(0x52), Some(Key::UpArrow));
+        assert_eq!(hid_key(0x03), None);
+    }
+
+    #[test]
+    fn modifiers_follow_the_bits() {
+        assert_eq!(hid_modifiers(0), Vec::<Key>::new());
+        assert_eq!(hid_modifiers(1 | 8), vec![Key::Shift, Key::Meta]);
+    }
 
     #[test]
     fn keys_of_the_phone_become_keys_of_windows() {
