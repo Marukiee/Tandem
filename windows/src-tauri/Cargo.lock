@@ -5142,6 +5142,7 @@ version = "0.1.0"
 dependencies = [
  "log",
  "windows 0.62.2",
+ "zbus",
 ]
 
 [[package]]
