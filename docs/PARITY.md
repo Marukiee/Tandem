@@ -19,7 +19,7 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | Bestanden van een telefoon bekijken en kopieren | bron | ja | ja | ja |
 | Eigen mappen aanbieden aan andere apparaten (host) | ja | ja | nee | nee |
 | Telefoonscherm en camera tonen | bron | ja, bekeken (emulator) | ja | ja (eigen decoder, nooit gezien) |
-| De telefoon bedienen met het getoonde scherm | bron | ja | nee | nee |
+| De telefoon bedienen met het getoonde scherm | bron | ja | ja (knop, nooit gezien) | ja (knop, nooit gezien) |
 | Invoegen vanaf telefoon (scan, foto) | bron | ja | nee | nee |
 | Geluid van de telefoon op de computer | bron | ja | nee | nee |
 | Scherm van de computer tonen op de telefoon en op andere computers | viewer | ja (host) | nee | nee |
@@ -36,7 +36,6 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 
 - Linux en Windows moeten dezelfde functies als de Mac kunnen **aanbieden**, niet alleen tonen: eigen mappen (host), eigen scherm
   delen (Windows.Graphics.Capture, PipeWire), geluid delen, Invoegen vanaf telefoon als bron voor een andere computer.
-- Windows en Linux moeten een telefoonscherm **kunnen bedienen** (muis en toetsen naar de telefoon): het kijkvenster stuurt nu niets terug.
 - Linux: media via MPRIS, invoer onder Wayland (libei), de gedeelde muis als hoofd (X11 `XInput2`, Wayland InputCapture), een eigen updatepad.
 - Bestanden slepen over de rand: nog nergens.
 - De Mac-functies die aan macOS zelf vastzitten horen er niet bij: het menu Diensten, het Controlecentrum, het AirDrop-knopje.

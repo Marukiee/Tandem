@@ -142,6 +142,7 @@ pub fn run() {
             live::live_start,
             live::live_attach,
             live::live_keyframe,
+            live::live_input,
             live::live_stop,
             live::live_pin,
             ssh::ssh_probe,

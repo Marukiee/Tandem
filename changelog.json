@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.66",
+    "date": "2026-10-07",
+    "en": {
+      "title": "Click and type on the phone from Windows and Linux",
+      "new": [
+        "Windows and Linux: the window with the screen of your phone has a button to click and type on the phone with the mouse and keyboard of the computer, the way the Mac does it: click, drag, scroll with the wheel or two fingers, the right button is Back, letters are typed. The button is grey, with the steps under it, until the phone allows it with its Accessibility control",
+        "Android: the line under Send this phone's sound says that Android asks to record or cast every time, but that only the sound is sent and never the screen"
+      ]
+    },
+    "nl": {
+      "title": "Klikken en typen op de telefoon vanaf Windows en Linux",
+      "new": [
+        "Windows en Linux: het venster met het scherm van je telefoon heeft een knop om met de muis en het toetsenbord van de computer op de telefoon te klikken en te typen, zoals de Mac dat doet: klikken, slepen, scrollen met het wiel of twee vingers, de rechterknop is Terug, letters worden getypt. De knop is grijs, met de stappen eronder, tot de telefoon het toestaat met zijn Toegankelijkheid-bediening",
+        "Android: de regel onder Stuur het geluid van deze telefoon zegt dat Android elke keer vraagt om op te nemen of te casten, maar dat alleen het geluid wordt verstuurd en nooit het scherm"
+      ]
+    }
+  },
+  {
     "version": "0.1.65",
     "date": "2026-10-07",
     "en": {

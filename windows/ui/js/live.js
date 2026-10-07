@@ -28,6 +28,9 @@ let pinned = false;
 let ended = false;
 let hasPicture = false;
 let lastAsk = 0;
+// Clicking and typing on the phone: the phone says whether it lets this computer, and the person turns it on and off.
+let controlGranted = false;
+let controlOn = false;
 // Pictures that were decoded by the app itself (see video.rs) arrive as JPEG, in the order they were made.
 let jpegAsked = 0;
 let jpegShown = 0;
@@ -197,6 +200,8 @@ async function start() {
   round("turn", "refresh", text("live_turn"));
   round("copy", "copy", text("live_copy"));
   round("stop", "x", text("live_stop"));
+  round("control", "pointer", text("live_control_start"));
+  document.getElementById("helpclose").textContent = text("close");
   closeButton.textContent = text("close");
 
   // In a plain browser, which is how this window is tried while it is being made, a recording stands in for the phone.
@@ -219,13 +224,22 @@ async function start() {
   kind = info.kind;
   phoneRotation = info.rotation || 0;
   document.title = name;
+  if (info.accepted) controlGranted = Boolean(info.accepted.control);
+  showControl();
   if (info.ended) return finish(info.ended);
   say(t(kind === "camera" ? "live_waiting_camera" : "live_waiting_screen", name));
   bar.hidden = false;
 }
 
-listen("live-accepted", () => { if (!hasPicture) say(t("live_first_picture")); });
-listen("live-update", (update) => { if (typeof update.rotation === "number") phoneRotation = update.rotation; });
+listen("live-accepted", (accepted) => {
+  controlGranted = Boolean(accepted && accepted.control);
+  showControl();
+  if (!hasPicture) say(t("live_first_picture"));
+});
+listen("live-update", (update) => {
+  if (typeof update.rotation === "number") phoneRotation = update.rotation;
+  if (typeof update.control === "boolean") { controlGranted = update.control; showControl(); }
+});
 listen("live-ended", (event) => finish(event.reason));
 
 document.getElementById("pin").addEventListener("click", (e) => {
@@ -290,5 +304,105 @@ async function preview(url) {
     index++;
   }, 33);
 }
+
+
+// ---- Clicking and typing on the phone ---------------------------------------------------------------
+
+const controlButton = document.getElementById("control");
+const help = document.getElementById("help");
+
+function showControl() {
+  if (kind !== "screen") return;
+  controlButton.hidden = false;
+  controlButton.classList.toggle("on", controlGranted && controlOn);
+  controlButton.classList.toggle("off", !controlGranted);
+  const label = controlGranted ? t(controlOn ? "live_control_stop" : "live_control_start") : t("live_control_not_allowed");
+  controlButton.title = label;
+  controlButton.setAttribute("aria-label", label);
+}
+
+const active = () => controlGranted && controlOn && !ended && phoneRotation + extraRotation === 0;
+const sendInput = (input) => { if (tauri) call("live_input", { session, input }).catch(() => {}); };
+
+/** Where on the picture the pointer is, as fractions of it, or nothing when it is outside it. */
+function fractionOf(event) {
+  const box = canvas.getBoundingClientRect();
+  if (!canvas.width || !canvas.height || !box.width || !box.height) return null;
+  const scale = Math.min(box.width / canvas.width, box.height / canvas.height);
+  const w = canvas.width * scale;
+  const h = canvas.height * scale;
+  const x = (event.clientX - box.left - (box.width - w) / 2) / w;
+  const y = (event.clientY - box.top - (box.height - h) / 2) / h;
+  if (x < 0 || y < 0 || x > 1 || y > 1) return null;
+  return { x, y };
+}
+
+controlButton.addEventListener("click", () => {
+  if (!controlGranted) {
+    document.getElementById("helptext").innerHTML = "";
+    for (const line of [t("live_control_help"), t("live_control_step1"), t("live_control_step2"), t("live_control_step3"), t("live_control_wakes")]) {
+      const p = document.createElement("div");
+      p.textContent = line;
+      document.getElementById("helptext").appendChild(p);
+    }
+    help.hidden = false;
+    return;
+  }
+  controlOn = !controlOn;
+  showControl();
+  say(t(controlOn ? "live_control_is_on" : "live_control_is_off"));
+  setTimeout(() => { if (hasPicture) clear(); }, 1800);
+});
+document.getElementById("helpclose").addEventListener("click", () => { help.hidden = true; });
+
+let pressed = false;
+canvas.addEventListener("mousedown", (e) => {
+  const at = active() && e.button === 0 ? fractionOf(e) : null;
+  if (!at) return;
+  pressed = true;
+  sendInput({ t: "pointer", ...at });
+  sendInput({ t: "button", button: 0, down: true, clicks: Math.max(1, e.detail) });
+});
+canvas.addEventListener("mousemove", (e) => {
+  if (!pressed) return;
+  const at = fractionOf(e);
+  if (at) sendInput({ t: "pointer", ...at });
+});
+window.addEventListener("mouseup", (e) => {
+  if (!pressed || e.button !== 0) return;
+  pressed = false;
+  const at = fractionOf(e);
+  if (at) sendInput({ t: "pointer", ...at });
+  sendInput({ t: "button", button: 0, down: false, clicks: Math.max(1, e.detail) });
+});
+// The right button is Back on the phone.
+canvas.addEventListener("contextmenu", (e) => {
+  if (!active() || !fractionOf(e)) return;
+  e.preventDefault();
+  sendInput({ t: "button", button: 1, down: true, clicks: 1 });
+  sendInput({ t: "button", button: 1, down: false, clicks: 1 });
+});
+// The wheel and two fingers on the pad move the content the way fingers do.
+canvas.addEventListener("wheel", (e) => {
+  const at = active() ? fractionOf(e) : null;
+  if (!at) return;
+  e.preventDefault();
+  const unit = e.deltaMode === 1 ? 16 : 1;
+  const dx = Math.round(-e.deltaX * unit);
+  const dy = Math.round(-e.deltaY * unit);
+  if (!dx && !dy) return;
+  sendInput({ t: "pointer", ...at });
+  sendInput({ t: "scroll", dx, dy });
+}, { passive: false });
+// Letters and digits are typed; Escape is Back, Backspace takes a character off, Enter goes in as a line break.
+window.addEventListener("keydown", (e) => {
+  if (!active() || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === "Escape") sendInput({ t: "key", code: 0x29, down: true });
+  else if (e.key === "Backspace") sendInput({ t: "key", code: 0x2a, down: true });
+  else if (e.key === "Enter") sendInput({ t: "key", code: 0x28, down: true });
+  else if (e.key.length === 1) sendInput({ t: "text", text: e.key });
+  else return;
+  e.preventDefault();
+});
 
 start().catch((e) => say(String(e), true));

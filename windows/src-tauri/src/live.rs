@@ -165,7 +165,7 @@ impl TandemMediaViewer for Viewer {
                 s.rotation = rotation;
             }
         }
-        self.tell(session, "live-update", json!({ "width": update.width, "height": update.height, "rotation": update.rotation }));
+        self.tell(session, "live-update", json!({ "width": update.width, "height": update.height, "rotation": update.rotation, "control": update.control }));
     }
 
     fn on_frame(&self, session: u64, pts_us: u64, keyframe: bool, discontinuity: bool, data: Vec<u8>) {
@@ -210,7 +210,8 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
         max_height: 1080,
         max_fps: if camera { 30 } else { 60 },
         max_bitrate: 0,
-        control: false,
+        // The picture of a phone can be clicked on from here, when the phone allows it (its accessibility service, see live.js).
+        control: !camera,
         facing: if camera { facing } else { TandemMediaFacing::Any },
     };
     let session = engine.media_request(id, want).map_err(|e| e.to_string())?;
@@ -261,6 +262,27 @@ pub fn live_attach(session: u64, on_frame: Channel<InvokeResponseBody>) -> Reply
         "name": s.name, "kind": s.kind, "accepted": s.accepted, "rotation": s.rotation, "ended": s.ended,
         "native": cfg!(feature = "native-video"), "platform": if cfg!(windows) { "windows" } else { "linux" },
     }))
+}
+
+/// A click, a key or a scroll on the picture, for the phone. The window sends them as small objects: `pointer` (x and y as
+/// fractions of the picture), `button`, `scroll`, `key` (a USB HID usage) and `text`.
+#[tauri::command]
+pub fn live_input(state: State<'_, AppState>, session: u64, input: Value) -> Reply<()> {
+    use tandem_core::ffi::TandemMediaInput as Input;
+    let number = |name: &str| input[name].as_f64().unwrap_or(0.0);
+    let event = match input["t"].as_str().unwrap_or_default() {
+        "pointer" => Input::PointerAbs { x: number("x").clamp(0.0, 1.0) as f32, y: number("y").clamp(0.0, 1.0) as f32 },
+        "button" => Input::Button {
+            button: number("button").clamp(0.0, 4.0) as u8,
+            down: input["down"].as_bool().unwrap_or(false),
+            clicks: number("clicks").clamp(1.0, 3.0) as u8,
+        },
+        "scroll" => Input::Scroll { dx: number("dx").clamp(-2000.0, 2000.0) as i16, dy: number("dy").clamp(-2000.0, 2000.0) as i16 },
+        "key" => Input::Key { code: number("code") as u32, down: input["down"].as_bool().unwrap_or(true), mods: 0, text: String::new() },
+        "text" => Input::Text { text: input["text"].as_str().unwrap_or_default().chars().take(200).collect() },
+        _ => return Err("not an input".into()),
+    };
+    state.engine()?.media_send_input(session, event).map_err(|e| e.to_string())
 }
 
 /// The decoder lost the thread of the picture.
