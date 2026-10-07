@@ -278,7 +278,17 @@ mod tests {
 
         // Another program on the same bus asks for what the desktop would ask.
         let client = Connection::session().unwrap();
-        let proxy = zbus::blocking::Proxy::new(&client, NAME, PATH, "org.mpris.MediaPlayer2.Player").unwrap();
+        // Without the cache of properties of the proxy: a value it kept would be one signal behind the player.
+        let proxy = zbus::blocking::proxy::Builder::<zbus::blocking::Proxy>::new(&client)
+            .destination(NAME)
+            .unwrap()
+            .path(PATH)
+            .unwrap()
+            .interface("org.mpris.MediaPlayer2.Player")
+            .unwrap()
+            .cache_properties(zbus::proxy::CacheProperties::No)
+            .build()
+            .unwrap();
         let status: String = proxy.get_property("PlaybackStatus").unwrap();
         assert_eq!(status, "Playing");
         let metadata: HashMap<String, OwnedValue> = proxy.get_property("Metadata").unwrap();
