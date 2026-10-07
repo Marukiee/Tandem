@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.1.72",
+    "date": "2026-10-08",
+    "en": {
+      "title": "Fixes for dropping files and the screen banner",
+      "new": [
+        "Windows and Linux: files dropped on the edge zone are now sent",
+        "Mac: the drop zones go away after a drop",
+        "The banner stays while another computer still looks at your screen"
+      ]
+    },
+    "nl": {
+      "title": "Fixes voor loslaten van bestanden en de schermbalk",
+      "new": [
+        "Windows en Linux: bestanden op de randzone worden nu verstuurd",
+        "Mac: de dropzones verdwijnen na het loslaten",
+        "De balk blijft staan zolang een andere computer nog meekijkt"
+      ]
+    }
+  },
+  {
     "version": "0.1.71",
     "date": "2026-10-08",
     "en": {

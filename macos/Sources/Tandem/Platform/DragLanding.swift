@@ -33,8 +33,9 @@ final class DragLanding {
             return true
         }
         // Asking Finder which folder is in front can take a moment (or a question on the first time), so it is not done on the main thread.
+        let finderInFront = NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.apple.finder"
         Task { @MainActor in
-            let folder = await Task.detached(priority: .userInitiated) { Self.dropFolder() }.value
+            let folder = await Task.detached(priority: .userInitiated) { Self.dropFolder(finderInFront: finderInFront) }.value
             let placed = Self.place(URL(fileURLWithPath: location), in: folder)
             EngineModel.shared.showToast(String(localized: "\(name) from \(from) is in \(placed.deletingLastPathComponent().lastPathComponent)"))
             // Said where it is: the file is shown in Finder, so it is easy to find.
@@ -62,8 +63,11 @@ final class DragLanding {
         }
     }
 
-    /// The folder of the window of Finder that is in front, when there is one that shows a folder, or else the Desktop.
-    nonisolated private static func dropFolder() -> URL {
+    /// The folder of the window of Finder that is in front, when Finder is the app in front and has a window that shows a folder, or else
+    /// the Desktop. With another app in front the files do not go into a window of Finder somewhere behind it.
+    nonisolated private static func dropFolder(finderInFront: Bool) -> URL {
+        let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first ?? FileManager.default.homeDirectoryForCurrentUser
+        guard finderInFront else { return desktop }
         let script = NSAppleScript(source: """
         tell application "Finder"
             if (count of Finder windows) > 0 then
@@ -75,6 +79,6 @@ final class DragLanding {
         var problem: NSDictionary?
         let text = script?.executeAndReturnError(&problem).stringValue ?? ""
         if !text.isEmpty, FileManager.default.fileExists(atPath: text) { return URL(fileURLWithPath: text, isDirectory: true) }
-        return FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first ?? FileManager.default.homeDirectoryForCurrentUser
+        return desktop
     }
 }

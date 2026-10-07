@@ -50,15 +50,20 @@ final class EdgeDrop {
             hideTask?.cancel()
             if zones.isEmpty { show(for: wanted) }
         case .leftMouseUp:
-            lastCount = NSPasteboard(name: .drag).changeCount
-            // A moment's grace: the drop on a zone is dealt with before the zone goes.
-            hideTask?.cancel()
-            hideTask = Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(450))
-                if !Task.isCancelled { self.hide() }
-            }
+            scheduleHide()
         default:
             break
+        }
+    }
+
+    /// The drag is over: the zones go after a moment's grace, so a drop on a zone is dealt with before it goes. Also called by a zone
+    /// itself after a drop, in case the system does not hand this app the mouse-up of a drag that ended on its own window.
+    func scheduleHide() {
+        lastCount = NSPasteboard(name: .drag).changeCount
+        hideTask?.cancel()
+        hideTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(450))
+            if !Task.isCancelled { self.hide() }
         }
     }
 
@@ -188,6 +193,7 @@ private final class ZoneView: NSVisualEffectView {
             // Handed over on purpose: the other side takes it at once and puts it where the drop was.
             EngineModel.shared.send(urls: urls, to: [device.id], origin: .drag)
             EngineModel.shared.showToast(String(localized: "Sending to \(device.name)"))
+            EdgeDrop.shared.scheduleHide()
         }
         return true
     }

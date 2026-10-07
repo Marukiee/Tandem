@@ -61,9 +61,22 @@ struct Sharing {
     control: bool,
 }
 
+type Sessions = Arc<Mutex<HashMap<u64, Sharing>>>;
+
+/// The list of who is looking now, for the banner.
+fn announce(app: &AppHandle, sessions: &Mutex<HashMap<u64, Sharing>>) {
+    let list: Vec<_> = sessions
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|(session, s)| json!({ "session": session.to_string(), "peer": s.peer, "name": events::device_name(app, &s.peer), "control": s.control }))
+        .collect();
+    let _ = app.emit("hosting", list);
+}
+
 pub struct Host {
     pub app: AppHandle,
-    sessions: Arc<Mutex<HashMap<u64, Sharing>>>,
+    sessions: Sessions,
 }
 
 impl Host {
@@ -77,14 +90,7 @@ impl Host {
 
     /// Tells the windows who is looking at this screen, so they can say so and offer to stop it.
     fn announce(&self) {
-        let list: Vec<_> = self
-            .sessions
-            .lock()
-            .unwrap()
-            .iter()
-            .map(|(session, s)| json!({ "session": session.to_string(), "peer": s.peer, "name": events::device_name(&self.app, &s.peer), "control": s.control }))
-            .collect();
-        let _ = self.app.emit("hosting", list);
+        announce(&self.app, &self.sessions);
     }
 
     fn start(&self, from: String, request: &TandemMediaRequest) {
@@ -125,7 +131,8 @@ impl Host {
             .spawn(move || {
                 capture_loop(engine, session, grabber, (width, height), fps, stop, keyframe, rate);
                 sessions.lock().unwrap().remove(&session);
-                let _ = app.emit("hosting", Vec::<serde_json::Value>::new());
+                // What is left, not an empty list: another viewer may still be looking.
+                announce(&app, &sessions);
             })
             .ok();
     }
