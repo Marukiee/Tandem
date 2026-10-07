@@ -224,7 +224,7 @@ scherm delen (kan niet, wel uitleggen), bellen via de Mac.
 ## 8. Alles op alle systemen (gevraagd 2026-10-06)
 
 Alle functies die voor de Mac zijn gebouwd moeten ook werken op Windows en Linux, en tussen alle systemen onderling: van Linux naar
-Windows, van Windows naar de Mac, en andersom, niet alleen telefoon naar computer. Aanpak: een tabel in docs/PARITY.md met per
+Windows, van Windows naar de Mac, en andersom, niet alleen telefoon naar computer. Aanpak: docs/PARITY.md heeft de tabel (geschreven 2026-10-07, bijhouden na elke versie), met per
 functie (bestanden, klembord, meldingen, muziek en geluid, bestanden bekijken, Quick Share, gedeelde muis en toetsenbord,
 slepen van bestanden over de rand, scherm delen en bedienen, telefoonscherm en camera, Invoegen vanaf telefoon, ssh-terminal,
 bellen) en per paar systemen of het werkt, grijs is of ontbreekt, en dan afwerken van boven naar onder. Vragen aan Mark als

@@ -6,6 +6,7 @@
     "main",
     "panel",
     "live-*",
+    "ssh-*",
     "qs-card"
   ],
   "permissions": [

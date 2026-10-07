@@ -13,6 +13,9 @@ struct DeviceDetail: View {
     var onViewAll: () -> Void = {}
 
     @LocalState private var confirmRemoval = false
+    /// The address at which this computer answers for ssh, once looked for, and whether it was looked for.
+    @LocalState private var sshAddress: String?
+    @LocalState private var sshChecked = false
     @LocalState private var showIcons = false
 
     @LocalState private var position = ScrollPosition(edge: .top)
@@ -226,11 +229,30 @@ struct DeviceDetail: View {
                     .disabled(!device.online)
                     .opacity(device.online ? 1 : 0.5)
                 }
+                // A computer can be logged in to from here. The button is there and grey, with the reason under it, when it is not set up.
+                if device.platform == .macOs || device.platform == .windows || device.platform == .linux {
+                    GlassActionButton(title: "Terminal", symbol: "terminal") {
+                        if let sshAddress { SSHAccess.open(device, at: sshAddress) }
+                    }
+                    .disabled(sshAddress == nil)
+                    .opacity(sshAddress == nil ? 0.5 : 1)
+                    .help(sshAddress == nil ? SSHAccess.reason(for: device) : String(localized: "Log in to this computer over SSH"))
+                }
                 Spacer(minLength: 0)
+            }
+            if (device.platform == .macOs || device.platform == .windows || device.platform == .linux), sshChecked, sshAddress == nil {
+                Text(SSHAccess.reason(for: device))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .animation(.tandemFade, value: device.online)
         .animation(.tandemFade, value: device.ble)
+        .task(id: "\(device.id)-\(device.online)") {
+            sshChecked = false
+            sshAddress = await SSHAccess.reachableAddress(of: device)
+            sshChecked = true
+        }
     }
 
     private func pickFiles() {

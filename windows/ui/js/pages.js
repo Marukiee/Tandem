@@ -157,6 +157,22 @@ export function DevicePage({ device }) {
   const battery = device.status && device.status.battery;
   const hasCap = (cap) => Array.isArray(device.caps) && device.caps.includes(cap);
   const show = (kind) => call("live_start", { id: device.id, kind, name: device.name }).catch(failed);
+  // A computer that answers on the ssh port can be logged in to from here. The button is grey, with the reason, when it does not.
+  const isComputer = device.platform === "macos" || device.platform === "windows" || device.platform === "linux";
+  const [sshAddress, setSshAddress] = useState(null);
+  const [sshChecked, setSshChecked] = useState(false);
+  useEffect(() => {
+    let current = true;
+    setSshChecked(false);
+    setSshAddress(null);
+    if (isComputer && device.online) {
+      call("ssh_probe", { id: device.id }).then((address) => { if (current) { setSshAddress(address || null); setSshChecked(true); } }).catch(() => { if (current) setSshChecked(true); });
+    } else {
+      setSshChecked(true);
+    }
+    return () => { current = false; };
+  }, [device.id, device.online]);
+  const sshReason = !device.online ? t("ssh_why_offline") : t("ssh_why_" + device.platform);
 
   return html`<div class="wrap">
     <div class="card head" style=${device.online ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
@@ -178,11 +194,15 @@ export function DevicePage({ device }) {
         <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
       ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("camera.host")} title=${hasCap("camera.host") ? t("live_camera_tip") : t("live_update_phone")} onClick=${() => show("camera")}>
         <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
+      ${isComputer && html`<button class="btn" disabled=${!sshAddress} title=${sshAddress ? t("ssh_title") : sshReason} onClick=${() => call("ssh_open", { id: device.id, name: device.name, address: sshAddress }).catch(failed)}>
+        <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
       ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
         <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}
       ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
         <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}
     </div>
+
+    ${isComputer && sshChecked && !sshAddress && html`<div class="small muted" style="margin:-4px 2px 0">${sshReason}</div>`}
 
     <div class=${"drop" + (state.dropping ? " over" : "")}>
       <${Icon} name="upload" size=${22} /><div style="font-weight:500;margin-top:4px">${t("drop_here")}</div>

@@ -11,6 +11,10 @@ let package = Package(
     products: [
         .executable(name: "Tandem", targets: ["Tandem"]),
     ],
+    dependencies: [
+        // The terminal of the built in ssh window.
+        .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.5.0"),
+    ],
     targets: [
         // The C header and module map that UniFFI generates for the Rust core.
         .target(
@@ -35,7 +39,7 @@ let package = Package(
         ),
         .executableTarget(
             name: "Tandem",
-            dependencies: ["TandemCore"],
+            dependencies: ["TandemCore", .product(name: "SwiftTerm", package: "SwiftTerm")],
             path: "Sources/Tandem",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),

@@ -464,6 +464,22 @@ impl Engine {
         self.inner.session_of(id).is_some()
     }
 
+    /// The network addresses this device was seen at, without the port, the likeliest first. For things that talk to the
+    /// device by themselves, like the terminal of the app, which needs somewhere to log in to.
+    pub fn device_ips(&self, id: &DeviceId) -> Vec<String> {
+        let peers = self.inner.peers.lock().unwrap();
+        let Some(peer) = peers.get(id) else { return Vec::new() };
+        let mut out: Vec<String> = Vec::new();
+        for known in peer.addrs.ordered() {
+            let Ok(addr) = known.addr.parse::<std::net::SocketAddr>() else { continue };
+            let ip = addr.ip().to_canonical().to_string();
+            if !out.contains(&ip) {
+                out.push(ip);
+            }
+        }
+        out
+    }
+
     pub fn round_trip_ms(&self, id: &DeviceId) -> Option<u32> {
         self.inner.session_of(id).map(|s| s.conn.rtt().as_millis() as u32)
     }

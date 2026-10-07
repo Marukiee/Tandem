@@ -1323,6 +1323,11 @@ impl TandemEngine {
         DeviceId::parse(&id).map(|id| self.engine.is_connected(&id)).unwrap_or(false)
     }
 
+    /// The addresses this device was seen at (no port), the likeliest first.
+    pub fn device_ips(&self, id: String) -> Vec<String> {
+        DeviceId::parse(&id).map(|id| self.engine.device_ips(&id)).unwrap_or_default()
+    }
+
     /// Sends a pointer movement without waiting for delivery.
     pub fn send_pointer(&self, id: String, dx: i16, dy: i16) -> Result<(), TandemError> {
         let id = DeviceId::parse(&id)?;

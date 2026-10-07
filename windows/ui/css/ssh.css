@@ -1,0 +1,15 @@
+/* The window of a login to another computer: a terminal that fills it, and a small form first that asks who to log in as. */
+body.ssh { margin: 0; background: #121216; color: #f2f2f6; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
+.ssh .top { height: 36px; flex: none; display: flex; align-items: center; justify-content: flex-end; padding: 0 10px; }
+.ssh .top .chrome .wbtn { color: rgba(255, 255, 255, 0.75); }
+.ssh .top .chrome .wbtn:hover { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.ssh .top .chrome .wbtn.close:hover { background: #e5484d; }
+.ssh .ask { margin: 8vh auto 0; width: min(420px, 86vw); display: flex; flex-direction: column; gap: 10px; }
+.ssh .ask label { font: 600 16px var(--font-display, system-ui); }
+.ssh .ask .row { display: flex; gap: 8px; }
+.ssh .ask input { flex: 1; min-width: 0; padding: 9px 14px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.22); background: transparent; color: inherit; font: inherit; outline: none; }
+.ssh .ask input:focus { border-color: var(--accent, #8b8bf0); }
+.ssh .problem { color: #ff99a4; min-height: 1.2em; font-size: 13px; }
+.ssh .term { flex: 1; min-height: 0; padding: 0 10px 10px 14px; }
+.ssh .term[hidden], .ssh .ask[hidden] { display: none; }
+.ssh .xterm { height: 100%; }

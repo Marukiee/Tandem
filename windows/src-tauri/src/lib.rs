@@ -19,6 +19,7 @@ mod model;
 mod names;
 mod power;
 mod settings;
+mod ssh;
 mod state;
 mod tray;
 mod update;
@@ -143,6 +144,13 @@ pub fn run() {
             live::live_keyframe,
             live::live_stop,
             live::live_pin,
+            ssh::ssh_probe,
+            ssh::ssh_open,
+            ssh::ssh_start,
+            ssh::ssh_write,
+            ssh::ssh_resize,
+            ssh::ssh_close,
+            ssh::ssh_info,
         ])
         .build(tauri::generate_context!())
         .expect("Tandem could not start")

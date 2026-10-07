@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tandem</title>
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="vendor/xterm.css" />
+  <link rel="stylesheet" href="css/ssh.css" />
+</head>
+<body class="ssh">
+  <div id="top" class="top" data-tauri-drag-region><div id="chrome" class="chrome"></div></div>
+  <form id="ask" class="ask">
+    <label id="asklabel" for="user"></label>
+    <div class="row"><input id="user" type="text" autocomplete="username" spellcheck="false" /><button id="go" class="btn accent" type="submit"></button></div>
+    <div id="problem" class="problem"></div>
+  </form>
+  <div id="term" class="term" hidden></div>
+  <div id="edges"></div>
+  <script src="vendor/xterm.js"></script>
+  <script src="vendor/xterm-addon-fit.js"></script>
+  <script type="module" src="js/ssh.js"></script>
+</body>
+</html>

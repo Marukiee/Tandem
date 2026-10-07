@@ -87,6 +87,9 @@ export async function call(command, args) {
       { id: 2, text: "Meeting at ten, room 4", from: "", at_ms: Date.now() - 3600000, pinned: false },
     ].filter((i) => !args.query || i.text.toLowerCase().includes(args.query.toLowerCase()));
     case "clip_history_pin": case "clip_history_remove": case "clip_history_clear": case "clip_history_copy": return null;
+    case "ssh_probe": return args.id === "mac" ? "192.168.1.20" : null;
+    case "ssh_open": return null;
+    case "ssh_info": return { label: "ssh-preview", platform: new URLSearchParams(location.search).get("platform") || "windows" };
     case "create_pairing": return { uri: "tandem://pair?c=PREVIEW", code: "4821 7093", expiresAtMs: Date.now() + 300000, qr };
     case "pair": return "phone";
     case "send_clipboard": return args.ids.length;

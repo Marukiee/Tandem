@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.65",
+    "date": "2026-10-07",
+    "en": {
+      "title": "Log in to your computers from Tandem",
+      "new": [
+        "Terminal: on the page of a Mac, a Windows PC or a Linux computer there is a Terminal button that logs in to it over SSH, in a terminal of the app, with the keys and known hosts you already have. The button is grey, with the reason under it, until the computer answers on the SSH port (Remote Login on a Mac, the OpenSSH Server on Windows, sshd on Linux)",
+        "docs/PARITY.md lists per function and per system what works where, to work through so that everything the Mac does also works on Windows and Linux and between all of them"
+      ]
+    },
+    "nl": {
+      "title": "Inloggen op je computers vanuit Tandem",
+      "new": [
+        "Terminal: op de pagina van een Mac, een Windows-pc of een Linux-computer staat een knop Terminal die er via SSH op inlogt, in een terminal van de app, met de sleutels en bekende computers die je al hebt. De knop is grijs, met de reden eronder, tot de computer antwoordt op de SSH-poort (Externe login op een Mac, de OpenSSH-server op Windows, sshd op Linux)",
+        "docs/PARITY.md zet per functie en per systeem wat waar werkt, om af te werken zodat alles wat de Mac doet ook op Windows en Linux werkt en tussen alle systemen onderling"
+      ]
+    }
+  },
+  {
     "version": "0.1.64",
     "date": "2026-10-07",
     "en": {

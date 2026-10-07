@@ -841,3 +841,15 @@
 "Nothing saved yet" = "Nog niets bewaard";
 "Image" = "Afbeelding";
 "One more permission is needed on the phone" = "Op de telefoon is nog een toestemming nodig";
+"Terminal" = "Terminal";
+"Log in to this computer over SSH" = "Inloggen op deze computer via SSH";
+"The computer has to be online to log in to it" = "De computer moet online zijn om erop in te loggen";
+"Turn on Remote Login on that Mac, in System Settings under General and Sharing, to log in to it here" = "Zet Externe login aan op die Mac, in Systeeminstellingen onder Algemeen en Delen, om er hier op in te loggen";
+"Install the OpenSSH Server on that PC, in Windows under Optional features, to log in to it here" = "Installeer de OpenSSH-server op die pc, in Windows onder Optionele onderdelen, om er hier op in te loggen";
+"Start the SSH server (sshd) on that computer to log in to it here" = "Start de SSH-server (sshd) op die computer om er hier op in te loggen";
+"This device does not offer SSH" = "Dit apparaat biedt geen SSH aan";
+"Log in to %@" = "Inloggen op %@";
+"The name of the account on that computer." = "De naam van het account op die computer.";
+"Log in" = "Inloggen";
+"Cancel" = "Annuleer";
+"The connection ended" = "De verbinding is gesloten";
