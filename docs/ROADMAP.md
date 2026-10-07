@@ -3,7 +3,7 @@
 Alles wat nog niet af is, op volgorde van aanpak. Begin bovenaan. Een punt is pas af als het op echte
 toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze en de agentregels.
 
-## Open lijst voor een grote ronde (bijgewerkt 2026-10-07, na versie 0.1.67)
+## Open lijst voor een grote ronde (bijgewerkt 2026-10-08, na versie 0.1.71)
 
 Een regel per punt wat nog open staat, met waar het uitgewerkt is. Elk nieuw verzoek van Mark komt hier bij en in zijn sectie; een punt
 gaat eruit zodra het op echte toestellen is gezien. Wat per systeem werkt staat in docs/PARITY.md.
@@ -12,7 +12,10 @@ Gedaan en gereleased, nergens op een echt toestel gezien tenzij anders gezegd: Q
 typbare code en uitnodigen vanuit een cirkel (0.1.61, de emulator zag het wel), vegen om te pinnen (emulator), de gedeelde muis
 komt terug (0.1.62), deelstatus met stop-icoon, scrollen, Mac-uiterlijk en Wat is er nieuw bij Updates (0.1.64), een SSH-terminal op
 Mac, Windows en Linux (0.1.65), de telefoon bedienen vanuit het Windows/Linux-venster en Invoegen vanaf telefoon (0.1.66), geluid van de
-telefoon, eigen mappen aanbieden en de mediabediening van het bureaublad op Linux via MPRIS (0.1.67).
+telefoon, eigen mappen aanbieden en de mediabediening van het bureaublad op Linux via MPRIS (0.1.67), Windows en Linux (X11) die hun scherm
+tonen en bediend worden vanaf Mac, telefoon, Windows en Linux (0.1.69, gebouwd en op de Mac en in CI getest, niet op een echte pc), een terminal
+op Android en dropzones op de Mac (0.1.70), bestanden slepen over de rand beide kanten op met landing in het voorste venster of op het
+bureaublad (0.1.71, nergens op twee echte computers gezien).
 
 Open, wacht op toegang tot de Linux-pc (Mark regelt dat na de weekreset, SSH met een sleutel van de Mac):
 - Alles wat hierboven voor Linux staat nalopen op het echte bureaublad (venster, decoder, instellingen, terminal, MPRIS, geluid).
@@ -23,7 +26,8 @@ Open, wacht op een echte Windows-pc: alles van sectie 2 voor Windows (scherm del
 Foundation, hotspot) en alles nalopen.
 
 Open, kan zonder dat die toegang er is, nog niet gedaan:
-- Bestanden slepen over de rand tussen computers: sectie 4 (vraagt twee echte computers om uit te proberen).
+- Bestanden slepen over de rand: loslaten op de plek van de aanwijzer met een systeemsleep op de ontvanger, en Windows of Linux als hoofd met
+  een dropzone (sectie 4); de rest vraagt twee echte computers om uit te proberen.
 - Android (sectie 5b): de deelstatus ook in de tegels en de melding, Control this Mac nog soepeler (eerst meten op het toestel),
   bellen via de Mac (alleen de melding met opnemen en ophangen; het gespreksgeluid kan niet).
 - Mac (sectie 5): het menu Diensten laat alleen zien wat aanstaat kan niet zonder de Info.plist te veranderen; keuze voor Mark.
