@@ -3,24 +3,33 @@
 Alles wat nog niet af is, op volgorde van aanpak. Begin bovenaan. Een punt is pas af als het op echte
 toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze en de agentregels.
 
-## Open lijst voor een grote ronde (bijgewerkt 2026-10-06, na versie 0.1.63)
+## Open lijst voor een grote ronde (bijgewerkt 2026-10-07, na versie 0.1.67)
 
-Hier staat in een regel per punt wat nog open staat, met waar het uitgewerkt is. Elk nieuw verzoek van Mark komt hier bij en in zijn
-sectie; een punt gaat eruit zodra het op echte toestellen is gezien. Gedaan en gereleased: Quick Share (0.1.57 tot 0.1.60), koppelen
-met een typbare code en uitnodigen vanuit een cirkel, vegen om te pinnen, Linux-venster en eigen decoder (0.1.61), de gedeelde muis
-komt terug (0.1.62), laatst gekopieerde in het menubalkpaneel (0.1.63).
+Een regel per punt wat nog open staat, met waar het uitgewerkt is. Elk nieuw verzoek van Mark komt hier bij en in zijn sectie; een punt
+gaat eruit zodra het op echte toestellen is gezien. Wat per systeem werkt staat in docs/PARITY.md.
 
-- Toegang tot de Linux-pc regelen (na de weekreset) en dan alles daar nalopen: sectie 3. Daarna Wayland-invoer via libei, MPRIS,
-  schermopname via PipeWire, het slepen van bestanden en de ssh-terminal op Linux.
-- Alles op alle systemen en tussen alle systemen: sectie 8 (docs/PARITY.md schrijven, dan afwerken).
-- Bestanden slepen over de rand tussen computers: sectie 4. Een ingebouwde ssh-terminal, grijs als het niet staat: sectie 4c.
-- Android delen en de Mac bedienen (sectie 5b): geluid zonder scherm, deelstatus groen of rood met een stop-icoon, Control this Mac
-  soepeler, de knoppen Toetsenbord en Muis met meebewegende ronde hoeken, het beeld dat met het toetsenbord omhoog schuift,
-  uitleg over de extra toestemming, de vraag "keuze onthouden" weg, de hover-uitleg onderin het telefoonvenster op de Mac weg,
-  scrollen met twee vingers, het venster sluiten stopt het delen, bellen via de Mac (met wat wel en niet kan).
-- Uiterlijk (sectie 5): Mac Quick Share-rij (knop Verstuur bestanden zonder paars, dezelfde hover als de andere iconen), Wat is er nieuw
-  naar Updates en back-up, het menu Diensten laat alleen zien wat aanstaat.
-- Windows: sectie 2 (de pc bedienen vanuit Android, Windows als host). Audio, Opus en HEVC: secties 1 en 7.
+Gedaan en gereleased, nergens op een echt toestel gezien tenzij anders gezegd: Quick Share (0.1.57 tot 0.1.60), koppelen met een
+typbare code en uitnodigen vanuit een cirkel (0.1.61, de emulator zag het wel), vegen om te pinnen (emulator), de gedeelde muis
+komt terug (0.1.62), deelstatus met stop-icoon, scrollen, Mac-uiterlijk en Wat is er nieuw bij Updates (0.1.64), een SSH-terminal op
+Mac, Windows en Linux (0.1.65), de telefoon bedienen vanuit het Windows/Linux-venster en Invoegen vanaf telefoon (0.1.66), geluid van de
+telefoon, eigen mappen aanbieden en de mediabediening van het bureaublad op Linux via MPRIS (0.1.67).
+
+Open, wacht op toegang tot de Linux-pc (Mark regelt dat na de weekreset, SSH met een sleutel van de Mac):
+- Alles wat hierboven voor Linux staat nalopen op het echte bureaublad (venster, decoder, instellingen, terminal, MPRIS, geluid).
+- Invoer onder Wayland via libei (pointer en toetsen van een Mac of telefoon op Linux), en de gedeelde muis met Linux als hoofd.
+- Scherm van de Linux-pc delen (PipeWire en een encoder) en Linux als bediend scherm; een eigen updatepad; Flatpak of AUR.
+
+Open, wacht op een echte Windows-pc: alles van sectie 2 voor Windows (scherm delen vanaf de pc, Windows Graphics Capture en Media
+Foundation, hotspot) en alles nalopen.
+
+Open, kan zonder dat die toegang er is, nog niet gedaan:
+- Bestanden slepen over de rand tussen computers: sectie 4 (vraagt twee echte computers om uit te proberen).
+- Android (sectie 5b): de deelstatus ook in de tegels en de melding, Control this Mac nog soepeler (eerst meten op het toestel),
+  bellen via de Mac (alleen de melding met opnemen en ophangen; het gespreksgeluid kan niet).
+- Mac (sectie 5): het menu Diensten laat alleen zien wat aanstaat kan niet zonder de Info.plist te veranderen; keuze voor Mark.
+- Alles op alle systemen (sectie 8): Windows en Linux als host voor het eigen scherm en voor Invoegen vanaf telefoon als bron voor een
+  andere computer, geluid van een computer naar een andere computer, de hotspot vanaf de computer.
+- Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)
 
