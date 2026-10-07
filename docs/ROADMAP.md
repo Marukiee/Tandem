@@ -141,6 +141,14 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
 
 ## 5b. Android: delen en de Mac bedienen (gevraagd 2026-10-06)
 
+Gedaan in 0.1.64, nog niet op een toestel gezien: deelstatus groen of rood met stop-icoon op de apparaatpagina (`LiveDeviceSection`),
+stoppen van de telefoon als het Mac-venster sluit (ook de warme opname), de vraag Altijd toestaan weg, het beeld dat met het
+toetsenbord mee omhoog gaat en de ronde knoppen Aanraken en Toetsenbord (`ScreenViewerScreen`), scrollen met twee vingers als
+gebundelde veegbewegingen (`RemoteInput.playScroll`), de hover-uitleg onderin het Mac-telefoonvenster weg, de uitleg over de
+extra toestemming die zelf opent, de Quick Share-rij op de Mac, Wat is er nieuw bij Updates. Nog open uit deze sectie: de
+deelstatus ook in de tegels en de melding, Control this Mac nog soepeler (meten op een toestel), geluid zonder de vraag naar
+scherm delen (kan niet, wel uitleggen), bellen via de Mac.
+
 - **Geluid delen zonder scherm delen:** het systeem kan geluid van andere apps alleen opvangen met `MediaProjection`
   (`AudioPlaybackCapture`), en daar hoort altijd de vraag van Android bij ("begin met opnemen of casten", met de keuze voor een
   app of het hele scherm). Dat kan Tandem niet omzeilen. Wat wel kan: bij alleen geluid wordt er geen beeld gecodeerd of
@@ -207,7 +215,11 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
   het plist te halen of door de dienst bij het kiezen te weigeren. Plan: Info.plist krijgt alleen de regels van functies die
   aanstaan, geschreven bij het starten en bij het wisselen van de schakelaar (en `NSUpdateDynamicServices()` aanroepen), of
   `validRequestor` laten antwoorden met nil zodat macOS de regel grijst of verbergt. Uitzoeken welke van de twee werkt zonder
-  herstart van de app.
+  herstart van de app. Bevinding 2026-10-07: macOS leest de Diensten uit de `Info.plist` van de app en die staat in de
+  ondertekende bundel, dus een regel verbergen op het moment dat een schakelaar uitgaat kan niet zonder de app opnieuw te
+  ondertekenen of de voorkeuren van de gebruiker voor het menu (`pbs`) te veranderen, en dat laatste is aan de gebruiker. Nu
+  zegt een regel die uit staat dat de functie uit staat (een melding), en dat blijft zo. Keuze voor Mark: de regels Quick Share en
+  Invoegen vanaf telefoon uit het plist halen (dan staan ze er nooit) of laten staan met de melding.
 
 ## 8. Alles op alle systemen (gevraagd 2026-10-06)
 

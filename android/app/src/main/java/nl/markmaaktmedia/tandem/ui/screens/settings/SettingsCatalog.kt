@@ -400,8 +400,8 @@ internal object SettingsCatalog {
         // About and developer
         SettingsEntry("about", R.string.settings_cat_about, R.string.settings_kw_about, SettingsCategory.About, Route.SettingsPage(SettingsPageId.About), { TandemIcons.Info }),
         SettingsEntry(
-            "about_changelog", R.string.changelog_title, R.string.settings_kw_about_changelog, SettingsCategory.About, Route.Changelog,
-            { TandemIcons.Update }, subtitle = R.string.changelog_sub, via = Route.SettingsPage(SettingsPageId.About),
+            "about_changelog", R.string.changelog_title, R.string.settings_kw_about_changelog, SettingsCategory.Updates, Route.Changelog,
+            { TandemIcons.Update }, subtitle = R.string.changelog_sub, via = Route.SettingsPage(SettingsPageId.Updates),
         ),
         SettingsEntry(
             "about_source", R.string.settings_github, R.string.settings_kw_about_source, SettingsCategory.About,

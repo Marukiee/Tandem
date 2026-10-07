@@ -1,5 +1,37 @@
 [
   {
+    "version": "0.1.64",
+    "date": "2026-10-07",
+    "en": {
+      "title": "Sharing you can stop with a tap, and a steadier Control this Mac",
+      "new": [
+        "Android: while this phone shares its sound, its screen or its camera with a computer, the row on the page of that computer turns green (sound) or red (screen, camera) and gets a stop symbol, and one tap stops it",
+        "Android: when you close the window of your screen on the Mac, the phone stops sharing for good, including the screen capture it kept ready for a next time, and the notification goes",
+        "Android: the question Always allow is gone from the dialog that asks to see your screen or camera, because Android asks again every time. What a computer may ask stays under Requests from the computer",
+        "Android: Control this Mac: the picture moves up with the keyboard and fits above it, instead of staying in the middle behind it, and the two buttons for touch and for the keyboard round out while they are on, like the buttons of the trackpad",
+        "Android: scrolling with two fingers on the Mac now scrolls the phone that is shown. The small steps are added up and played as swipes, one after the other. It needs Tandem control to be on, like clicking",
+        "Mac: the labels that came up over the buttons at the bottom of the phone window are gone. The buttons show their name as an ordinary tooltip",
+        "Mac: the window with the phone screen now says by itself, once, that the phone needs one more permission before you can click and type on it, and how to give it",
+        "Mac: the Quick Share rows in the menu bar panel look like the other rows: the round symbol fills when the pointer is on the row, and Send files is in the same style instead of purple",
+        "What's new has moved from About to Updates and backup on Android, and to Updates in the Mac settings"
+      ]
+    },
+    "nl": {
+      "title": "Delen dat je met een tik stopt en een rustiger Deze Mac bedienen",
+      "new": [
+        "Android: zolang deze telefoon zijn geluid, scherm of camera met een computer deelt, wordt de rij op de pagina van die computer groen (geluid) of rood (scherm, camera) met een stopsymbool, en een tik stopt het",
+        "Android: als je het venster met je scherm op de Mac sluit, stopt de telefoon echt met delen, ook met de schermopname die hij klaar hield voor een volgende keer, en de melding verdwijnt",
+        "Android: de vraag Altijd toestaan is weg uit het venster dat vraagt om je scherm of camera te zien, omdat Android toch elke keer opnieuw vraagt. Wat een computer mag vragen blijft staan onder Verzoeken van de computer",
+        "Android: Deze Mac bedienen: het beeld schuift met het toetsenbord omhoog en past erboven, in plaats van in het midden erachter te blijven staan, en de twee knoppen voor aanraken en voor het toetsenbord worden rond zolang ze aan staan, zoals de knoppen van het trackpad",
+        "Android: scrollen met twee vingers op de Mac scrolt nu de telefoon die getoond wordt. De kleine stapjes worden opgeteld en als veegbewegingen afgespeeld, na elkaar. Het heeft Tandem-bediening nodig, net als klikken",
+        "Mac: de labels die opkwamen boven de knoppen onderin het telefoonvenster zijn weg. De knoppen laten hun naam zien als gewone tooltip",
+        "Mac: het venster met het telefoonscherm zegt nu zelf, een keer, dat de telefoon nog een toestemming nodig heeft voordat je erop kunt klikken en typen, en hoe je die geeft",
+        "Mac: de Quick Share-rijen in het menubalkpaneel lijken op de andere rijen: het ronde symbool vult zich als de muis op de rij staat, en Verstuur bestanden heeft dezelfde stijl in plaats van paars",
+        "Wat is er nieuw is verhuisd van Over naar Updates en back-up op Android, en naar Updates in de Mac-instellingen"
+      ]
+    }
+  },
+  {
     "version": "0.1.63",
     "date": "2026-10-06",
     "en": {

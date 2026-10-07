@@ -38,14 +38,22 @@ class TandemAccessibilityService : AccessibilityService() {
     }
 
     /** A finger that goes from one place to another. */
-    fun swipe(fromX: Float, fromY: Float, toX: Float, toY: Float, durationMs: Long) {
+    fun swipe(fromX: Float, fromY: Float, toX: Float, toY: Float, durationMs: Long, done: (() -> Unit)? = null) {
         val path = Path().apply { moveTo(fromX, fromY); lineTo(toX, toY) }
-        dispatch(path, durationMs)
+        dispatch(path, durationMs, done)
     }
 
-    private fun dispatch(path: Path, durationMs: Long) {
+    /** [done] is told when the gesture has been played or was cancelled, so the next one is not dispatched on top of it. */
+    private fun dispatch(path: Path, durationMs: Long, done: (() -> Unit)? = null) {
         val stroke = GestureDescription.StrokeDescription(path, 0, durationMs.coerceIn(10, 3000))
-        runCatching { dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), null, null) }
+        val callback = done?.let {
+            object : GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription?) = it()
+                override fun onCancelled(gestureDescription: GestureDescription?) = it()
+            }
+        }
+        val started = runCatching { dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), callback, null) }.getOrDefault(false)
+        if (!started) done?.invoke()
     }
 
     fun back() = performGlobalAction(GLOBAL_ACTION_BACK)

@@ -15,9 +15,8 @@ struct LiveView: View {
     @LocalState private var showMore = false
     @LocalState private var showCamera = false
     @LocalState private var showControlHelp = false
-    /// The name of the button the pointer is on, shown over the toolbar at once (the system tooltip takes a second and can fall outside the window).
-    @LocalState private var hintOwner: String?
-    @LocalState private var hint: LocalizedStringKey?
+    /// The help for clicking on the phone opens by itself once, when the picture is there and the phone does not allow it yet.
+    @LocalState private var controlHelpOffered = false
 
     private var phoneOnline: Bool { model.device(session.peer)?.online ?? (session.peer == "debug") }
 
@@ -152,22 +151,14 @@ struct LiveView: View {
             compactToolbar
         }
         .onHover { overToolbar = $0 }
-        .overlay(alignment: .top) {
-            if let hint {
-                Text(hint)
-                    .font(.caption.weight(.medium))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .frame(maxWidth: 260)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .liveGlass(in: .rect(cornerRadius: 14, style: .continuous))
-                    .alignmentGuide(.top) { $0[.bottom] + 6 }
-                    .allowsHitTesting(false)
-                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+        .onChange(of: session.hasPicture) { _, has in
+            guard has, session.kind == .screen, !session.controlGranted, !controlHelpOffered else { return }
+            controlHelpOffered = true
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.5))
+                if !session.controlGranted { showControlHelp = true }
             }
         }
-        .animation(.tandemFade, value: hintOwner)
     }
 
     private var compactToolbar: some View {
@@ -257,15 +248,8 @@ struct LiveView: View {
         .tint(active ? Palette.indigo : nil)
         .buttonBorderShape(.circle)
         .controlSize(.large)
-        .onHover { inside in
-            if inside {
-                hintOwner = symbol
-                hint = help
-            } else if hintOwner == symbol {
-                hintOwner = nil
-                hint = nil
-            }
-        }
+        // The name of the button is the system tooltip: no animation of our own over the window.
+        .help(help)
     }
 
     /// The side of the phone's camera and how sharp the picture is. A change asks the phone again: it is the same window.
@@ -333,7 +317,7 @@ struct LiveView: View {
     /// Why the button for clicking on the phone does nothing yet, and what to do about it.
     private var controlHelp: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("The phone does not allow clicking yet", systemImage: "cursorarrow.click.2").font(.headline)
+            Label("One more permission is needed on the phone", systemImage: "cursorarrow.click.2").font(.headline)
             Text("To click and type on the phone from this Mac, Tandem needs its Accessibility control on the phone. Only you can turn that on.")
                 .font(.callout).foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 4) {

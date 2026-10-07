@@ -94,14 +94,21 @@ fun ActionRow(
     danger: Boolean = false,
     trailing: @Composable (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    /** For a row whose state shows in its icon (something is being shared): the colours of the icon and of its disc. */
+    iconTint: Color? = null,
+    iconContainer: Color? = null,
 ) {
     GroupedRow(index, total, modifier = modifier, onClick = onClick) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            RowIcon(
-                icon,
-                tint = if (danger) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
-                container = if (danger) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
+            val tint by androidx.compose.animation.animateColorAsState(
+                iconTint ?: if (danger) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                nl.markmaaktmedia.tandem.ui.theme.TandemMotion.colourSpec(), label = "rowIconTint",
             )
+            val container by androidx.compose.animation.animateColorAsState(
+                iconContainer ?: if (danger) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
+                nl.markmaaktmedia.tandem.ui.theme.TandemMotion.colourSpec(), label = "rowIconContainer",
+            )
+            RowIcon(icon, tint = tint, container = container)
             RowText(title, subtitle, Modifier.weight(1f), danger)
             if (trailing != null) trailing() else Icon(TandemIcons.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }

@@ -33,7 +33,7 @@ fun SettingsPageScreen(page: SettingsPageId, onBack: () -> Unit, onOpen: (Route)
         SettingsPageId.QuickShare -> QuickSharePage(onBack, onOpen)
         SettingsPageId.Notifications -> NotificationsPage(onBack, onOpen)
         SettingsPageId.Trackpad -> TrackpadPage(onBack)
-        SettingsPageId.Updates -> UpdatesPage(onBack)
+        SettingsPageId.Updates -> UpdatesPage(onBack, onOpen)
         SettingsPageId.About -> AboutPage(onBack, onOpen)
     }
 }

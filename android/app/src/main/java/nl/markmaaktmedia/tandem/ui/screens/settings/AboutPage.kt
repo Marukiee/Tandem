@@ -37,13 +37,9 @@ internal fun AboutPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         SectionHeader(stringResource(R.string.settings_about))
         SettingsGroup {
             ActionRow(
-                0, 2, TandemIcons.Update, stringResource(R.string.changelog_title), stringResource(R.string.changelog_sub),
-                { onOpen(Route.Changelog) }, modifier = Modifier.routeBounds(routeKey(Route.Changelog)),
-            )
-            ActionRow(
-                1, 2, TandemIcons.OpenInNew, stringResource(R.string.settings_github), stringResource(R.string.settings_license),
+                0, 1, TandemIcons.OpenInNew, stringResource(R.string.settings_github), stringResource(R.string.settings_license),
                 { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(RepositoryUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) },
-                modifier = Modifier.settingsTarget(FocusKeys.Source, 1, 2),
+                modifier = Modifier.settingsTarget(FocusKeys.Source, 0, 1),
             )
         }
 

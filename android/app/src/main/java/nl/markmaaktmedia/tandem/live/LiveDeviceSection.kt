@@ -27,6 +27,7 @@ import nl.markmaaktmedia.tandem.ui.components.SectionHeader
 import nl.markmaaktmedia.tandem.ui.components.SegmentedPillRow
 import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
 import nl.markmaaktmedia.tandem.ui.components.SwitchRow
+import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemMediaKind
@@ -62,13 +63,17 @@ fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
         )
         if (canSound) {
             val sending = soundTo == device.id
+            val online = LocalTandemExtraColors.current.online
             ActionRow(
-                0, rows.size + soundRow, TandemIcons.VolumeUp,
+                0, rows.size + soundRow, if (sending) TandemIcons.Stop else TandemIcons.VolumeUp,
                 stringResource(if (sending) R.string.sound_stop_title else R.string.sound_send_title, device.name),
                 stringResource(if (sending) R.string.sound_stop_sub else R.string.sound_send_sub),
                 {
                     if (sending) SoundShareService.stop(context) else context.startActivity(SoundShareActivity.forPeer(context, device.id))
                 },
+                // Green while it plays, with a stop symbol: a tap ends it.
+                iconTint = if (sending) online else null,
+                iconContainer = if (sending) online.copy(alpha = 0.2f) else null,
             )
         }
         rows.forEachIndexed { index, kind ->
@@ -76,13 +81,16 @@ fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
             val camera = kind == TandemMediaKind.CAMERA
             ActionRow(
                 index + soundRow, rows.size + soundRow,
-                painterResource(if (camera) R.drawable.sym_videocam else R.drawable.sym_screen_share),
+                if (showing) TandemIcons.Stop else painterResource(if (camera) R.drawable.sym_videocam else R.drawable.sym_screen_share),
                 if (showing) stringResource(if (camera) R.string.live_stop_camera else R.string.live_stop_screen)
                 else stringResource(if (camera) R.string.live_show_camera else R.string.live_show_screen, device.name),
                 stringResource(if (camera) R.string.live_show_camera_sub else R.string.live_show_screen_sub),
                 {
                     if (showing) live.stopAll() else context.startActivity(LiveShareActivity.forStart(context, device.id, kind))
                 },
+                // Red while the screen or camera is on show, with a stop symbol: a tap ends it.
+                iconTint = if (showing) MaterialTheme.colorScheme.onErrorContainer else null,
+                iconContainer = if (showing) MaterialTheme.colorScheme.errorContainer else null,
             )
         }
     }

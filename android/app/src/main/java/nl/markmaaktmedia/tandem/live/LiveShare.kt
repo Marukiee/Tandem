@@ -179,6 +179,10 @@ class LiveShare(
                 app.getSystemService(NotificationManager::class.java).cancel(LiveNotifications.askId(session))
             }
             shares.firstOrNull { it.session == session }?.teardown(tellMac = false)
+            // The window on the computer was closed: nothing is kept ready for a next time, so the phone really stops
+            // (the capture indicator of the system goes, and so does the notification).
+            if (shares.isEmpty()) dropWarm()
+            service?.refresh()
         }
     }
 

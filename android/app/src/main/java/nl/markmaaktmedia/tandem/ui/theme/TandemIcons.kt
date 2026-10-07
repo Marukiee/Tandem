@@ -22,6 +22,7 @@ object TandemIcons {
     // Chrome
     val Back: Painter @Composable get() = painterResource(R.drawable.sym_arrow_back)
     val Close: Painter @Composable get() = painterResource(R.drawable.sym_close)
+    val Stop: Painter @Composable get() = painterResource(R.drawable.sym_stop)
     val More: Painter @Composable get() = painterResource(R.drawable.sym_more_vert)
     val ChevronRight: Painter @Composable get() = painterResource(R.drawable.sym_chevron_right)
     val ChevronDown: Painter @Composable get() = painterResource(R.drawable.sym_keyboard_arrow_down)

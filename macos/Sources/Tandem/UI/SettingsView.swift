@@ -558,6 +558,7 @@ private struct Requirement: View {
 
 private struct UpdateSettings: View {
     @LocalState private var updater = Updater.shared
+    private let entries = Changelog.load()
 
     var body: some View {
         Form {
@@ -604,6 +605,12 @@ private struct UpdateSettings: View {
                     }
                 }
             }
+            // What is new in each version sits with the update, not under About.
+            if !entries.isEmpty {
+                Section("What's new") {
+                    ForEach(entries) { ChangeCard(entry: $0, installed: $0.version == Bundle.main.appVersion) }
+                }
+            }
         }
         .formStyle(.grouped)
         .animation(.tandem, value: updater.state)
@@ -613,8 +620,6 @@ private struct UpdateSettings: View {
 // MARK: About
 
 private struct AboutSettings: View {
-    private let entries = Changelog.load()
-
     var body: some View {
         ScrollView {
             VStack(spacing: 6) {
@@ -634,14 +639,6 @@ private struct AboutSettings: View {
                 Link("github.com/Marukiee/Tandem", destination: URL(string: "https://github.com/Marukiee/Tandem")!)
                     .padding(.top, 10)
 
-                if !entries.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("What's new").font(.title3.weight(.semibold))
-                        ForEach(entries) { ChangeCard(entry: $0, installed: $0.version == Bundle.main.appVersion) }
-                    }
-                    .frame(maxWidth: 520, alignment: .leading)
-                    .padding(.top, 28)
-                }
             }
             .frame(maxWidth: .infinity)
             .multilineTextAlignment(.center)

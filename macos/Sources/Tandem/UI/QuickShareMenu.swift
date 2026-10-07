@@ -7,16 +7,15 @@ import TandemCore
 struct MenuQuickShare: View {
     @Bindable private var share = QuickShare.shared
     @LocalState private var showDevices = false
+    @LocalState private var overRow = false
+    @LocalState private var overSend = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // The switch is always there, so Quick Share goes on and off from the menu bar without opening Settings.
             HStack(spacing: 10) {
-                Image(systemName: "arrow.up.arrow.down.circle.fill")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(share.enabled ? Palette.indigo : Color.secondary)
-                    .frame(width: 36, height: 36)
-                    .background(Circle().fill(share.enabled ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07)))
+                // Like the symbols of the other rows: the disc fills and the symbol turns white when the pointer is on the row.
+                HoverDisc(symbol: "arrow.up.arrow.down.circle.fill", hovering: overRow, enabled: share.enabled)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("Quick Share").font(.callout.weight(.semibold))
                     Text(share.enabled ? "Visible to everyone nearby" : "Off")
@@ -29,24 +28,25 @@ struct MenuQuickShare: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
             .hoverHighlight(radius: 18)
+            .onHover { overRow = $0 }
             if share.enabled {
                 // The devices are not laid out at once: they are there when the person says they want to send.
                 Button {
                     withAnimation(.tandem) { showDevices.toggle() }
                 } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: showDevices ? "chevron.down" : "paperplane")
-                            .font(.system(size: 12, weight: .semibold))
-                            .frame(width: 16)
-                        Text(showDevices ? "Hide devices" : "Send files…").font(.callout.weight(.medium))
+                    // The same row as the others in the panel: a disc with a symbol, the name, and the highlight under the pointer.
+                    HStack(spacing: 10) {
+                        HoverDisc(symbol: showDevices ? "chevron.down" : "paperplane.fill", hovering: overSend, enabled: true)
+                        Text(showDevices ? "Hide devices" : "Send files…").font(.callout.weight(.semibold))
                         Spacer(minLength: 0)
                     }
-                    .foregroundStyle(Palette.indigo)
                     .padding(.horizontal, 10)
-                    .frame(height: 34)
-                    .hoverHighlight(radius: 14)
+                    .padding(.vertical, 4)
+                    .hoverHighlight(radius: 18)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .onHover { overSend = $0 }
                 if showDevices {
                     let named = share.peers
                     if named.isEmpty {
@@ -76,6 +76,24 @@ struct MenuQuickShare: View {
         .animation(.tandem, value: share.enabled)
         .animation(.tandem, value: share.peers.map(\.id))
         .animation(.tandem, value: share.outgoing.map(\.id))
+    }
+}
+
+/// The round symbol at the left of a row in the panel, 36 points: tinted, and filled with white symbol while the pointer is on the row.
+private struct HoverDisc: View {
+    let symbol: String
+    let hovering: Bool
+    let enabled: Bool
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(hovering && enabled ? Color.white : (enabled ? Palette.indigo : Color.secondary))
+            .frame(width: 36, height: 36)
+            .background(
+                Circle().fill(hovering && enabled ? Palette.indigo : (enabled ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07)))
+            )
+            .animation(.tandemFade, value: hovering)
     }
 }
 

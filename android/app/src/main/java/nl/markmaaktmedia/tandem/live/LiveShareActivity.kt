@@ -134,11 +134,6 @@ class LiveShareActivity : ComponentActivity() {
                             actions = {
                                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     PrimaryPillButton(stringResource(R.string.live_allow), { proceed() }, Modifier.fillMaxWidth())
-                                    SecondaryPillButton(
-                                        stringResource(R.string.live_allow_always, name),
-                                        { graph.live.allowAlways(peer, kind, controlWanted); proceed() },
-                                        Modifier.fillMaxWidth(),
-                                    )
                                     SecondaryPillButton(stringResource(R.string.live_deny), { declined() }, Modifier.fillMaxWidth())
                                 }
                             },

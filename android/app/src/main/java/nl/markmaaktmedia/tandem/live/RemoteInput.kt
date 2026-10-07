@@ -1,7 +1,10 @@
 package nl.markmaaktmedia.tandem.live
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
+import kotlin.math.abs
 import kotlin.math.hypot
 import uniffi.tandem_core.TandemMediaInput
 
@@ -21,7 +24,19 @@ class RemoteInput(private val context: Context) {
     private val width get() = context.resources.displayMetrics.widthPixels.toFloat()
     private val height get() = context.resources.displayMetrics.heightPixels.toFloat()
 
+    private val main = Handler(Looper.getMainLooper())
+
+    /** What came in for scrolling and has not been played yet, and whether a swipe is being played now. */
+    private var scrollDx = 0f
+    private var scrollDy = 0f
+    private var scrolling = false
+
+    /** Everything is dealt with on one thread, in the order it came, so a swipe that is under way can be followed by the next. */
     fun handle(input: TandemMediaInput) {
+        main.post { handleNow(input) }
+    }
+
+    private fun handleNow(input: TandemMediaInput) {
         val service = TandemAccessibilityService.instance ?: return
         when (input) {
             is TandemMediaInput.PointerAbs -> {
@@ -34,13 +49,37 @@ class RemoteInput(private val context: Context) {
             }
             is TandemMediaInput.Button -> button(service, input.button.toInt(), input.down)
             is TandemMediaInput.Scroll -> {
-                // The content follows the fingers, so a scroll of the content is a swipe the same way.
-                val dx = input.dx.toFloat().coerceIn(-width / 2, width / 2)
-                val dy = input.dy.toFloat().coerceIn(-height / 2, height / 2)
-                if (dx != 0f || dy != 0f) service.swipe(x, y, (x + dx).coerceIn(0f, width - 1), (y + dy).coerceIn(0f, height - 1), SCROLL_MS)
+                // Two fingers on a trackpad send a stream of small steps. Played one by one they would be taps that
+                // never move, so they are added up and played as one swipe at a time, the next as soon as the last ended.
+                scrollDx += input.dx.toFloat()
+                scrollDy += input.dy.toFloat()
+                if (!scrolling) playScroll(service)
             }
             is TandemMediaInput.Key -> if (input.down) key(service, input.code.toInt(), input.text)
             is TandemMediaInput.Text -> service.type(input.text)
+        }
+    }
+
+    /** The content follows the fingers, so a scroll of the content is a swipe the same way. */
+    private fun playScroll(service: TandemAccessibilityService) {
+        val dx = (scrollDx * SCROLL_GAIN).coerceIn(-width * 0.6f, width * 0.6f)
+        val dy = (scrollDy * SCROLL_GAIN).coerceIn(-height * 0.6f, height * 0.6f)
+        scrollDx = 0f
+        scrollDy = 0f
+        if (abs(dx) < 2f && abs(dy) < 2f) return
+        // The swipe needs room to go in the direction it goes: it starts where the pointer is, moved away from the edge when
+        // the pointer is too close to it.
+        val fromX = (if (dx > 0) minOf(x, width - 1 - dx) else maxOf(x, -dx)).coerceIn(0f, width - 1)
+        val fromY = (if (dy > 0) minOf(y, height - 1 - dy) else maxOf(y, -dy)).coerceIn(0f, height - 1)
+        val toX = (fromX + dx).coerceIn(0f, width - 1)
+        val toY = (fromY + dy).coerceIn(0f, height - 1)
+        val duration = (hypot(toX - fromX, toY - fromY) / SCROLL_PX_PER_MS).toLong().coerceIn(SCROLL_MIN_MS, SCROLL_MAX_MS)
+        scrolling = true
+        service.swipe(fromX, fromY, toX, toY, duration) {
+            main.post {
+                scrolling = false
+                if (abs(scrollDx) >= 1f || abs(scrollDy) >= 1f) playScroll(service)
+            }
         }
     }
 
@@ -80,7 +119,11 @@ class RemoteInput(private val context: Context) {
         const val SLOP = 24f
         const val TAP_MS = 50L
         const val LONG_PRESS_MS = 450L
-        const val SCROLL_MS = 220L
+        /** How far the content goes per pixel the Mac scrolled, how fast the swipe is, and how short or long one may be. */
+        const val SCROLL_GAIN = 1.6f
+        const val SCROLL_PX_PER_MS = 2.2f
+        const val SCROLL_MIN_MS = 60L
+        const val SCROLL_MAX_MS = 260L
         const val HID_ENTER = 0x28
         const val HID_ESCAPE = 0x29
         const val HID_BACKSPACE = 0x2A

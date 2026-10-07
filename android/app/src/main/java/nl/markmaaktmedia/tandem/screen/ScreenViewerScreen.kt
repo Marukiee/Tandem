@@ -327,13 +327,27 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit) {
 
     // ---- The screen ---------------------------------------------------------------------------
 
+    // The keyboard covers the lower part of the screen. The picture is fitted in what is left above it, and moves there with
+    // a spring as the keyboard comes and goes, so what you are typing into stays in sight.
+    var rootWidth by remember { mutableStateOf(0f) }
+    var rootHeight by remember { mutableStateOf(0f) }
+    var panelHeight by remember { mutableStateOf(0f) }
+    val reserved by androidx.compose.animation.core.animateFloatAsState(
+        if (keyboard) panelHeight else 0f, TandemMotion.spatial(), label = "keyboardRoom",
+    )
+    LaunchedEffect(rootWidth, rootHeight, reserved) {
+        if (rootWidth > 0f && rootHeight > 0f) {
+            transform.setView(rootWidth, (rootHeight - reserved).coerceAtLeast(rootHeight / 4f))
+            version++
+        }
+    }
     Box(
         Modifier
             .fillMaxSize()
             .background(Color.Black)
             .onSizeChanged {
-                transform.setView(it.width.toFloat(), it.height.toFloat())
-                version++
+                rootWidth = it.width.toFloat()
+                rootHeight = it.height.toFloat()
             }
             .focusRequester(focus)
             .focusTarget()
@@ -445,6 +459,7 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit) {
         ) {
             Column(
                 Modifier
+                    .onSizeChanged { panelHeight = it.height.toFloat() }
                     .fillMaxWidth()
                     .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.displayCutout))
                     .imePadding()
@@ -576,6 +591,8 @@ private fun ControlBar(
             val keyboardPress = rememberPressState()
             GroupButton(
                 press = modePress, height = 40.dp, joins = Joins.row(0, 2), colors = GroupTone.neutral(),
+                // Round while it is on, like the buttons of the trackpad page: touching directly is the mode that is turned on.
+                round = direct,
                 modifier = Modifier.width(48.dp),
                 description = stringResource(if (direct) R.string.screen_trackpad_mode else R.string.screen_touch_mode),
                 onUp = { inside -> if (inside) onMode() },
@@ -585,6 +602,7 @@ private fun ControlBar(
             GroupButton(
                 press = keyboardPress, height = 40.dp, joins = Joins.row(1, 2),
                 colors = if (keyboardOn) GroupTone.selected() else GroupTone.neutral(),
+                round = keyboardOn,
                 modifier = Modifier.width(48.dp),
                 description = stringResource(R.string.screen_keyboard),
                 onUp = { inside -> if (inside) onKeyboard() },

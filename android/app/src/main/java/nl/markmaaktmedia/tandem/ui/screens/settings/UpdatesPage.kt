@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.markmaaktmedia.tandem.BuildConfig
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.ui.routeBounds
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
 import nl.markmaaktmedia.tandem.ui.components.InfoRow
@@ -31,7 +32,7 @@ import nl.markmaaktmedia.tandem.update.UpdateState
 
 /** Updates and backup: the version, checking for a new one, and saving or restoring the settings in a file. */
 @Composable
-internal fun UpdatesPage(onBack: () -> Unit) {
+internal fun UpdatesPage(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.ui.Route) -> Unit) {
     val context = LocalContext.current
     val graph = context.graph
     val prefs = graph.prefs
@@ -74,14 +75,14 @@ internal fun UpdatesPage(onBack: () -> Unit) {
     SettingsPageFrame(stringResource(R.string.settings_cat_updates), onBack) {
         SectionHeader(stringResource(R.string.settings_updates))
         SettingsGroup {
-            SettingsTarget(FocusKeys.Version, 0, 3) {
-                InfoRow(0, 3, TandemIcons.Info, stringResource(R.string.settings_version), BuildConfig.VERSION_NAME)
+            SettingsTarget(FocusKeys.Version, 0, 4) {
+                InfoRow(0, 4, TandemIcons.Info, stringResource(R.string.settings_version), BuildConfig.VERSION_NAME)
             }
-            SettingsTarget(FocusKeys.AutoUpdate, 1, 3) {
-                SwitchRow(1, 3, TandemIcons.Update, stringResource(R.string.settings_auto_update), stringResource(R.string.settings_auto_update_sub), autoUpdate, { scope.launch { prefs.setAutoUpdateCheck(it) } })
+            SettingsTarget(FocusKeys.AutoUpdate, 1, 4) {
+                SwitchRow(1, 4, TandemIcons.Update, stringResource(R.string.settings_auto_update), stringResource(R.string.settings_auto_update_sub), autoUpdate, { scope.launch { prefs.setAutoUpdateCheck(it) } })
             }
             ActionRow(
-                2, 3, TandemIcons.Refresh, stringResource(R.string.settings_check_update),
+                2, 4, TandemIcons.Refresh, stringResource(R.string.settings_check_update),
                 when (val state = updateState) {
                     is UpdateState.Checking -> stringResource(R.string.settings_checking)
                     is UpdateState.UpToDate -> stringResource(R.string.settings_up_to_date)
@@ -92,7 +93,13 @@ internal fun UpdatesPage(onBack: () -> Unit) {
                     else -> null
                 },
                 { scope.launch { graph.updater.check() } },
-                modifier = Modifier.settingsTarget(FocusKeys.CheckUpdate, 2, 3),
+                modifier = Modifier.settingsTarget(FocusKeys.CheckUpdate, 2, 4),
+            )
+            // What is new in each version lives with the update, not under About.
+            ActionRow(
+                3, 4, TandemIcons.Update, stringResource(R.string.changelog_title), stringResource(R.string.changelog_sub),
+                { onOpen(nl.markmaaktmedia.tandem.ui.Route.Changelog) },
+                modifier = Modifier.routeBounds(nl.markmaaktmedia.tandem.ui.routeKey(nl.markmaaktmedia.tandem.ui.Route.Changelog)),
             )
         }
 
