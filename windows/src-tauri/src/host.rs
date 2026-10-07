@@ -29,12 +29,23 @@ use crate::{events, i18n, input};
 
 /// The pictures a second: a screen that is looked at over a network does not need more, and software encoding is not free.
 const FPS: u32 = 15;
+
+/// Fewer for a large screen, where taking the picture and encoding it cost more than the time between two pictures.
+fn fps_for(width: u32, height: u32) -> u32 {
+    match u64::from(width) * u64::from(height) {
+        0..=2_200_000 => FPS,
+        2_200_001..=4_500_000 => 10,
+        _ => 6,
+    }
+}
 const DEFAULT_BITRATE: u32 = 4_000_000;
 const MAX_BITRATE: u32 = 8_000_000;
 
 /// Whether this system can show its screen at all (Windows, and Linux under X11).
 pub fn available() -> bool {
-    Grabber::new().is_some()
+    // Asked once: on Linux it opens a connection to the X server, and the state is asked for each time a window loads.
+    static AVAILABLE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *AVAILABLE.get_or_init(|| Grabber::new().is_some())
 }
 
 /// Whether the viewers may also use the mouse and keyboard here.
@@ -91,7 +102,8 @@ impl Host {
         let (width, height) = target_size(source_w, source_h, request.max_width, request.max_height);
         let control = request.control && control_available();
         let bitrate = if request.max_bitrate > 0 { request.max_bitrate.min(MAX_BITRATE) } else { DEFAULT_BITRATE };
-        let answer = TandemMediaAccept { codec: TandemMediaCodec::H264, width, height, fps: FPS, bitrate, control };
+        let fps = fps_for(width, height);
+        let answer = TandemMediaAccept { codec: TandemMediaCodec::H264, width, height, fps, bitrate, control };
         if engine.media_accept(session, answer).is_err() {
             return;
         }
@@ -111,7 +123,7 @@ impl Host {
         std::thread::Builder::new()
             .name("tandem-screen".into())
             .spawn(move || {
-                capture_loop(engine, session, grabber, (width, height), stop, keyframe, rate);
+                capture_loop(engine, session, grabber, (width, height), fps, stop, keyframe, rate);
                 sessions.lock().unwrap().remove(&session);
                 let _ = app.emit("hosting", Vec::<serde_json::Value>::new());
             })
@@ -218,32 +230,34 @@ pub fn bgra_to_i420(bgra: &[u8], source_w: usize, source_h: usize, width: usize,
     out.resize(width * height * 3 / 2, 0);
     let (luma, chroma) = out.split_at_mut(width * height);
     let (u_plane, v_plane) = chroma.split_at_mut(width * height / 4);
-    let pixel = |x: usize, y: usize| {
-        let sx = (x * source_w / width).min(source_w - 1);
-        let sy = (y * source_h / height).min(source_h - 1);
-        let at = (sy * source_w + sx) * 4;
-        (i32::from(bgra[at + 2]), i32::from(bgra[at + 1]), i32::from(bgra[at]))
-    };
+    // Where each column and each row of the picture comes from, worked out once instead of for every pixel.
+    let columns: Vec<usize> = (0..width).map(|x| (x * source_w / width).min(source_w - 1) * 4).collect();
+    let rows: Vec<usize> = (0..height).map(|y| (y * source_h / height).min(source_h - 1) * source_w * 4).collect();
     for y in 0..height {
-        for x in 0..width {
-            let (r, g, b) = pixel(x, y);
-            luma[y * width + x] = (((66 * r + 129 * g + 25 * b + 128) >> 8) + 16) as u8;
+        let row = rows[y];
+        let line = &mut luma[y * width..(y + 1) * width];
+        for (x, out_pixel) in line.iter_mut().enumerate() {
+            let at = row + columns[x];
+            let (b, g, r) = (i32::from(bgra[at]), i32::from(bgra[at + 1]), i32::from(bgra[at + 2]));
+            *out_pixel = (((66 * r + 129 * g + 25 * b + 128) >> 8) + 16) as u8;
         }
     }
     for y in 0..height / 2 {
+        let row = rows[y * 2];
         for x in 0..width / 2 {
             // The colour of a block of two by two is taken at its top left pixel, which is as good as the average for a screen.
-            let (r, g, b) = pixel(x * 2, y * 2);
+            let at = row + columns[x * 2];
+            let (b, g, r) = (i32::from(bgra[at]), i32::from(bgra[at + 1]), i32::from(bgra[at + 2]));
             u_plane[y * (width / 2) + x] = (((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128).clamp(0, 255) as u8;
             v_plane[y * (width / 2) + x] = (((112 * r - 94 * g - 18 * b + 128) >> 8) + 128).clamp(0, 255) as u8;
         }
     }
 }
 
-fn make_encoder(bitrate: u32) -> Option<Encoder> {
+fn make_encoder(bitrate: u32, fps: u32) -> Option<Encoder> {
     let config = EncoderConfig::new()
         .bitrate(BitRate::from_bps(bitrate))
-        .max_frame_rate(FrameRate::from_hz(FPS as f32))
+        .max_frame_rate(FrameRate::from_hz(fps as f32))
         .usage_type(UsageType::ScreenContentRealTime)
         .rate_control_mode(RateControlMode::Bitrate);
     Encoder::with_api_config(OpenH264API::from_source(), config).ok()
@@ -254,12 +268,13 @@ fn capture_loop(
     session: u64,
     grabber: Grabber,
     (width, height): (u32, u32),
+    fps: u32,
     stop: Arc<AtomicBool>,
     keyframe: Arc<AtomicBool>,
     bitrate: Arc<AtomicU32>,
 ) {
     let mut rate = bitrate.load(Ordering::Relaxed);
-    let Some(mut encoder) = make_encoder(rate) else {
+    let Some(mut encoder) = make_encoder(rate, fps) else {
         log::warn!("the screen cannot be encoded: the encoder did not start");
         let _ = engine.media_stop(session);
         return;
@@ -269,11 +284,11 @@ fn capture_loop(
     let mut frame = 0u64;
     let mut failures = 0;
     while !stop.load(Ordering::Relaxed) {
-        let due = started + Duration::from_micros(frame * 1_000_000 / u64::from(FPS));
+        let due = started + Duration::from_micros(frame * 1_000_000 / u64::from(fps));
         // The viewer says the link carries less or more: the encoder is made again at that rate, which also starts with a keyframe.
         let wanted = bitrate.load(Ordering::Relaxed);
         if wanted.abs_diff(rate) * 5 > rate {
-            if let Some(fresh) = make_encoder(wanted) {
+            if let Some(fresh) = make_encoder(wanted, fps) {
                 encoder = fresh;
                 rate = wanted;
             }
@@ -285,12 +300,12 @@ fn capture_loop(
                 if keyframe.swap(false, Ordering::Relaxed) {
                     encoder.force_intra_frame();
                 }
-                let yuv = YUVBuffer::from_vec(planes.clone(), width as usize, height as usize);
+                let yuv = YUVBuffer::from_vec(std::mem::take(&mut planes), width as usize, height as usize);
                 if let Ok(stream) = encoder.encode(&yuv) {
                     let kind = stream.frame_type();
                     if !matches!(kind, FrameType::Skip | FrameType::Invalid) {
                         let key = matches!(kind, FrameType::IDR | FrameType::I);
-                        let pts = frame * 1_000_000 / u64::from(FPS);
+                        let pts = frame * 1_000_000 / u64::from(fps);
                         match engine.media_push_frame(session, stream.to_vec(), pts, key) {
                             TandemMediaPush::NoSession => return,
                             TandemMediaPush::Dropped | TandemMediaPush::WaitingForKeyframe => keyframe.store(true, Ordering::Relaxed),
@@ -310,11 +325,12 @@ fn capture_loop(
         }
         frame += 1;
         let now = Instant::now();
-        if due + Duration::from_micros(1_000_000 / u64::from(FPS)) > now {
-            std::thread::sleep((due + Duration::from_micros(1_000_000 / u64::from(FPS))).saturating_duration_since(now));
+        let next = due + Duration::from_micros(1_000_000 / u64::from(fps));
+        if next > now {
+            std::thread::sleep(next.saturating_duration_since(now));
         } else {
             // Behind: do not try to catch up with a burst, start counting again from now.
-            frame = (now - started).as_micros() as u64 * u64::from(FPS) / 1_000_000;
+            frame = (now - started).as_micros() as u64 * u64::from(fps) / 1_000_000;
         }
     }
 }
@@ -333,6 +349,13 @@ mod tests {
         let (w, h) = target_size(1367, 769, 1000, 1000);
         assert!(w % 2 == 0 && h % 2 == 0);
         assert_eq!(target_size(800, 600, 0, 0), (800, 600));
+    }
+
+    #[test]
+    fn a_large_screen_gets_fewer_pictures_a_second() {
+        assert_eq!(fps_for(1920, 1080), 15);
+        assert_eq!(fps_for(2560, 1440), 10);
+        assert_eq!(fps_for(3840, 2160), 6);
     }
 
     #[test]
@@ -368,7 +391,7 @@ mod tests {
     #[test]
     fn what_the_host_sends_is_a_picture_to_a_viewer() {
         let (w, h) = (640usize, 360usize);
-        let mut encoder = make_encoder(2_000_000).unwrap();
+        let mut encoder = make_encoder(2_000_000, 15).unwrap();
         let mut decoder = crate::video::Decoder::new().unwrap();
         let mut planes = Vec::new();
         let mut pictures = 0;
@@ -391,7 +414,7 @@ mod tests {
         let bgra: Vec<u8> = (0..w * h).flat_map(|i| [(i % 256) as u8, ((i / w) % 256) as u8, 120, 0]).collect();
         let mut planes = Vec::new();
         bgra_to_i420(&bgra, w, h, w, h, &mut planes);
-        let mut encoder = make_encoder(1_000_000).unwrap();
+        let mut encoder = make_encoder(1_000_000, 15).unwrap();
         let first = encoder.encode(&YUVBuffer::from_vec(planes.clone(), w, h)).unwrap();
         assert!(matches!(first.frame_type(), FrameType::IDR | FrameType::I));
         let data = first.to_vec();

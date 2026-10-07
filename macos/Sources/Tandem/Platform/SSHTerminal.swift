@@ -12,10 +12,17 @@ enum SSHAccess {
     @MainActor static func reachableAddress(of device: TandemDevice) async -> String? {
         guard device.online, device.platform != .android, device.platform != .ios else { return nil }
         let ips = EngineModel.shared.tandem?.deviceIps(id: device.id) ?? []
-        for ip in ips.prefix(4) {
-            if await portOpen(ip, 22) { return ip }
+        // All at once, so one that does not answer costs a second and a half and not a second and a half each.
+        let candidates = Array(ips.prefix(4))
+        let open = await withTaskGroup(of: (Int, Bool).self) { group in
+            for (index, ip) in candidates.enumerated() {
+                group.addTask { (index, await portOpen(ip, 22)) }
+            }
+            var answered: [Int] = []
+            for await (index, ok) in group where ok { answered.append(index) }
+            return answered.min()
         }
-        return nil
+        return open.map { candidates[$0] }
     }
 
     /// Why the button is grey, in words that say what to do.

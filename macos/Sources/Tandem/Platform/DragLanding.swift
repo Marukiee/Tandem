@@ -32,16 +32,19 @@ final class DragLanding {
             EngineModel.shared.showToast(String(localized: "A file from \(from) did not come in"))
             return true
         }
-        let placed = Self.place(URL(fileURLWithPath: location))
-        EngineModel.shared.showToast(String(localized: "\(name) from \(from) is in \(placed.deletingLastPathComponent().lastPathComponent)"))
-        // Said where it is: the file is shown in Finder, so it is easy to find.
-        NSWorkspace.shared.activateFileViewerSelecting([placed])
+        // Asking Finder which folder is in front can take a moment (or a question on the first time), so it is not done on the main thread.
+        Task { @MainActor in
+            let folder = await Task.detached(priority: .userInitiated) { Self.dropFolder() }.value
+            let placed = Self.place(URL(fileURLWithPath: location), in: folder)
+            EngineModel.shared.showToast(String(localized: "\(name) from \(from) is in \(placed.deletingLastPathComponent().lastPathComponent)"))
+            // Said where it is: the file is shown in Finder, so it is easy to find.
+            NSWorkspace.shared.activateFileViewerSelecting([placed])
+        }
         return true
     }
 
     /// Moves the file to the folder where it was dropped, with a name that is free there.
-    static func place(_ source: URL) -> URL {
-        let folder = dropFolder()
+    static func place(_ source: URL, in folder: URL) -> URL {
         let manager = FileManager.default
         var target = folder.appendingPathComponent(source.lastPathComponent)
         var n = 2
@@ -60,7 +63,7 @@ final class DragLanding {
     }
 
     /// The folder of the window of Finder that is in front, when there is one that shows a folder, or else the Desktop.
-    private static func dropFolder() -> URL {
+    nonisolated private static func dropFolder() -> URL {
         let script = NSAppleScript(source: """
         tell application "Finder"
             if (count of Finder windows) > 0 then

@@ -63,7 +63,8 @@ fn show(app: &AppHandle, device: String, edge: Edge) {
 
 fn hide(app: &AppHandle) {
     if let Some(window) = app.get_webview_window(LABEL) {
-        let _ = window.close();
+        // Gone at once, so a new zone can take the name straight away.
+        let _ = window.destroy();
     }
     *TARGET.lock().unwrap() = None;
 }

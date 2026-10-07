@@ -24,7 +24,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
@@ -35,12 +37,17 @@ import java.net.InetSocketAddress
 import java.net.Socket
 
 /** Whether a computer answers on the SSH port, at one of the addresses it was seen at. Null when it does not. */
-suspend fun sshAddress(addresses: List<String>): String? = withContext(Dispatchers.IO) {
-    for (address in addresses.take(4)) {
-        val open = runCatching { Socket().use { it.connect(InetSocketAddress(address, 22), 1500); true } }.getOrDefault(false)
-        if (open) return@withContext address
-    }
-    null
+suspend fun sshAddress(addresses: List<String>): String? = coroutineScope {
+    // All at once, so one that does not answer costs a second and a half and not a second and a half each.
+    addresses.take(4)
+        .map { address ->
+            async(Dispatchers.IO) {
+                address to runCatching { Socket().use { it.connect(InetSocketAddress(address, 22), 1500); true } }.getOrDefault(false)
+            }
+        }
+        .awaitAll()
+        .firstOrNull { it.second }
+        ?.first
 }
 
 /**

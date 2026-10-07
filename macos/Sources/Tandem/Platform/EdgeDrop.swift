@@ -11,6 +11,9 @@ final class EdgeDrop {
 
     private var monitor: Any?
     private var lastCount = NSPasteboard(name: .drag).changeCount
+    /// The state of the drag pasteboard last looked at, so it is not read for every movement of the mouse.
+    private var checkedCount = -1
+    private var holdsFiles = false
     private var zones: [String: EdgeZone] = [:]
     private var hideTask: Task<Void, Never>?
 
@@ -37,10 +40,13 @@ final class EdgeDrop {
         switch type {
         case .leftMouseDragged:
             let board = NSPasteboard(name: .drag)
-            // A drag that has files in it, started since the last one ended.
-            guard board.changeCount != lastCount || !zones.isEmpty,
-                  board.canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
-            else { return }
+            // A drag that has files in it, started since the last one ended. Looked at once for each drag.
+            guard board.changeCount != lastCount || !zones.isEmpty else { return }
+            if board.changeCount != checkedCount {
+                checkedCount = board.changeCount
+                holdsFiles = board.canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
+            }
+            guard holdsFiles else { return }
             hideTask?.cancel()
             if zones.isEmpty { show(for: wanted) }
         case .leftMouseUp:

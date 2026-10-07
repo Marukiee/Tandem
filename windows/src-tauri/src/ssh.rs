@@ -38,13 +38,22 @@ pub async fn ssh_probe(state: State<'_, AppState>, id: String) -> Reply<Option<S
 
 async fn tokio_probe(ips: Vec<String>) -> Reply<Option<String>> {
     tauri::async_runtime::spawn_blocking(move || {
-        for ip in ips.into_iter().take(4) {
-            let Ok(addr) = format!("{ip}:22").parse::<SocketAddr>().or_else(|_| format!("[{ip}]:22").parse::<SocketAddr>()) else { continue };
-            if TcpStream::connect_timeout(&addr, Duration::from_millis(1500)).is_ok() {
-                return Some(ip);
-            }
-        }
-        None
+        // All at once: one that does not answer costs a second and a half, and that is not paid once for each.
+        let found: Vec<Option<String>> = std::thread::scope(|scope| {
+            let handles: Vec<_> = ips
+                .into_iter()
+                .take(4)
+                .map(|ip| {
+                    scope.spawn(move || {
+                        let addr = format!("{ip}:22").parse::<SocketAddr>().or_else(|_| format!("[{ip}]:22").parse::<SocketAddr>()).ok()?;
+                        TcpStream::connect_timeout(&addr, Duration::from_millis(1500)).ok().map(|_| ip)
+                    })
+                })
+                .collect();
+            handles.into_iter().map(|h| h.join().ok().flatten()).collect()
+        });
+        // The first of the likeliest addresses that answered.
+        found.into_iter().flatten().next()
     })
     .await
     .map_err(|e| e.to_string())
