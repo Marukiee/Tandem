@@ -181,7 +181,8 @@ private fun MainNavigation() {
                         .apply { targetContentZIndex = -1f }
                 }
             },
-            modifier = Modifier.fillMaxSize().padding(top = below),
+            // The spring that moves it overshoots, so it can dip below nothing for a moment, and a padding may not be negative.
+            modifier = Modifier.fillMaxSize().padding(top = below.coerceAtLeast(0.dp)),
         ) { route ->
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
         }

@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.68",
+    "date": "2026-10-07",
+    "en": {
+      "title": "Control this Mac no longer closes the app",
+      "new": [
+        "Android: opening Control this Mac, or any other full screen of a computer, closed the app while the update banner was showing: the page was moved back up with a spring that dipped below zero for a moment, and a negative padding is not allowed. It stays at zero or above now. Found while trying the keyboard under the picture on an emulator, where the picture does move up above the keyboard now"
+      ]
+    },
+    "nl": {
+      "title": "Deze Mac bedienen sluit de app niet meer",
+      "new": [
+        "Android: Deze Mac bedienen openen, of een ander schermvullend scherm van een computer, sloot de app zolang de updatebalk getoond werd: de pagina werd met een veer terug omhoog gezet die even onder nul kwam, en een negatieve marge mag niet. Hij blijft nu op nul of hoger. Gevonden bij het proberen van het toetsenbord onder het beeld op een emulator, waar het beeld nu wel omhoog schuift boven het toetsenbord"
+      ]
+    }
+  },
+  {
     "version": "0.1.67",
     "date": "2026-10-07",
     "en": {
