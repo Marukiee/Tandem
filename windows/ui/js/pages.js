@@ -503,6 +503,7 @@ export function SettingsPage() {
       <${SettingRow} icon="x" title=${t("close_to_tray")} sub=${t("close_to_tray_sub")} on=${s.closeToTray} onChange=${(v) => patch({ closeToTray: v })} />
       <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
       <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
+      <${SettingRow} icon="volume" title=${t("phone_sound")} sub=${t("phone_sound_sub")} on=${s.phoneSound} onChange=${(v) => patch({ phoneSound: v })} />
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
       <${SettingRow} icon="refresh" title=${t("auto_update")} sub=${t("auto_update_sub")} on=${s.autoUpdate} onChange=${(v) => patch({ autoUpdate: v })} />
       <${SettingRow} icon="arrow-down" title=${t("check_now")} sub=${updateText()}>

@@ -47,6 +47,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::DevicesChanged | TandemEvent::CircleChanged | TandemEvent::Connected { .. } => refresh_devices(app),
         TandemEvent::Disconnected { id } => {
             input::release_all();
+            crate::sound::stop(&id);
             let had = app.state::<AppState>().data.lock().unwrap().players.remove(&id).is_some();
             refresh_devices(app);
             if had {
@@ -97,6 +98,10 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             }
         }
         TandemEvent::CaptureCancelled { from, why, .. } => crate::insert::cancelled(app, &from, why),
+        TandemEvent::AudioStart { from, stream, sample_rate, channels } if stream == crate::sound::STREAM => {
+            crate::sound::start(app, from, sample_rate, channels)
+        }
+        TandemEvent::AudioStop { from, stream } if stream == crate::sound::STREAM => crate::sound::stop(&from),
         TandemEvent::Notification { from, notification } => phone_notification(app, &from, &notification),
         TandemEvent::NotificationRemoved { from, key } => {
             app.state::<AppState>()

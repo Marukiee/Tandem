@@ -20,6 +20,7 @@ mod model;
 mod names;
 mod power;
 mod settings;
+mod sound;
 mod ssh;
 mod state;
 mod tray;

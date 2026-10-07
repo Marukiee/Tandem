@@ -296,7 +296,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev \
-            patchelf build-essential curl wget file xdg-utils rpm nasm
+            patchelf build-essential curl wget file xdg-utils rpm nasm libasound2-dev
 
       - name: Build the packages
         run: ./scripts/build-linux-app.sh "$VERSION"

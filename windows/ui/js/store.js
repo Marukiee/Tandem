@@ -13,7 +13,7 @@ export const state = {
   notifications: [],
   players: {},
   art: {},
-  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: false },
+  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, phoneSound: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: false },
   // This PC can be the main computer of a shared mouse and keyboard (Windows only).
   canShare: false,
   // "windows" or "linux": a few words and what is possible differ.

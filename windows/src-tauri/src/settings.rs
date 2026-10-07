@@ -35,6 +35,8 @@ pub struct Settings {
     /// What the phone plays shows in the media controls of Windows (by the volume, on the lock screen), and the media
     /// keys of the keyboard control it.
     pub system_media: bool,
+    /// Play the sound of a phone here when it sends it.
+    pub phone_sound: bool,
 }
 
 impl Default for Settings {
@@ -50,6 +52,7 @@ impl Default for Settings {
             share_edge: String::new(),
             quick_share: false,
             system_media: true,
+            phone_sound: true,
             auto_update: true,
             dismissed_update: String::new(),
         }

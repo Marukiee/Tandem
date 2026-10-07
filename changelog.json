@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.67",
+    "date": "2026-10-07",
+    "en": {
+      "title": "The sound of your phone on Windows and Linux",
+      "new": [
+        "Windows and Linux: when you send the sound of your phone to the computer (Send this phone's sound on the page of the computer in the Android app), it plays on the sound card of the computer, with a small buffer that keeps it close to what the phone plays. A switch in Settings turns it off. It has been tried on a Mac only, with a test of the buffer, and not heard on a real Windows or Linux computer yet"
+      ]
+    },
+    "nl": {
+      "title": "Het geluid van je telefoon op Windows en Linux",
+      "new": [
+        "Windows en Linux: als je het geluid van je telefoon naar de computer stuurt (Stuur het geluid van deze telefoon op de pagina van de computer in de Android-app), speelt het op de geluidskaart van de computer, met een kleine buffer die het dicht bij wat de telefoon speelt houdt. Een schakelaar in Instellingen zet het uit. Het is alleen op een Mac geprobeerd, met een test van de buffer, en nog niet gehoord op een echte Windows- of Linux-computer"
+      ]
+    }
+  },
+  {
     "version": "0.1.66",
     "date": "2026-10-07",
     "en": {

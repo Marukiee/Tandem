@@ -75,6 +75,7 @@ pub fn start(app: AppHandle) {
         match built {
             Ok(engine) => {
                 engine.set_media_viewer(Arc::new(crate::live::Viewer { app: app.clone() }));
+                engine.set_audio_sink(Arc::new(crate::sound::Sink));
                 log::info!("the engine runs as {} on port {}", engine.name(), engine.port());
                 *state.engine.write().unwrap() = Some(engine);
                 events::refresh_devices(&app);

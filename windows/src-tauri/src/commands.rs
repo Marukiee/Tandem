@@ -311,6 +311,12 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["quickShare"].as_bool() {
             current.quick_share = v;
         }
+        if let Some(v) = patch["phoneSound"].as_bool() {
+            current.phone_sound = v;
+            if !v {
+                crate::sound::stop_all();
+            }
+        }
         if let Some(v) = patch["systemMedia"].as_bool() {
             current.system_media = v;
         }
