@@ -33,7 +33,7 @@ fn device(app: &AppHandle, id: &str) -> Option<Value> {
     app.state::<AppState>().data.lock().unwrap().devices.iter().find(|d| d["id"] == id).cloned()
 }
 
-fn device_name(app: &AppHandle, id: &str) -> String {
+pub fn device_name(app: &AppHandle, id: &str) -> String {
     device(app, id).and_then(|d| d["name"].as_str().map(str::to_string)).unwrap_or_else(|| "?".to_string())
 }
 
@@ -92,8 +92,11 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             progress(app, offer, index, &peer, incoming, &name, done, total)
         }
         TandemEvent::Finished { offer, index, peer, incoming, name, size, location, error } => {
-            finished(app, offer, index, &peer, incoming, &name, size, location, error)
+            if !(incoming && crate::insert::finished(app, &peer, offer, &location, &error)) {
+                finished(app, offer, index, &peer, incoming, &name, size, location, error)
+            }
         }
+        TandemEvent::CaptureCancelled { from, why, .. } => crate::insert::cancelled(app, &from, why),
         TandemEvent::Notification { from, notification } => phone_notification(app, &from, &notification),
         TandemEvent::NotificationRemoved { from, key } => {
             app.state::<AppState>()
@@ -200,6 +203,10 @@ pub fn art_json(app: &AppHandle) -> Value {
 }
 
 fn offered(app: &AppHandle, from: &str, offer: u64, origin: TandemShareOrigin, items: &[TandemShareItem]) {
+    // What a phone made because this computer asked for it is taken without asking, and goes on the clipboard.
+    if crate::insert::offered(app, from, offer, origin) {
+        return;
+    }
     // A device that may send without asking has its files taken by the core. Only the others wait for an answer.
     if allowed(app, from, "autoAccept") {
         return;
@@ -303,6 +310,10 @@ fn finished(
     } else if let Some(reason) = error {
         toast(app, &i18n::t1(app, "failed", name), &reason);
     }
+}
+
+pub fn now_ms() -> u64 {
+    chrono_ms()
 }
 
 fn chrono_ms() -> u64 {

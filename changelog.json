@@ -6,14 +6,16 @@
       "title": "Click and type on the phone from Windows and Linux",
       "new": [
         "Windows and Linux: the window with the screen of your phone has a button to click and type on the phone with the mouse and keyboard of the computer, the way the Mac does it: click, drag, scroll with the wheel or two fingers, the right button is Back, letters are typed. The button is grey, with the steps under it, until the phone allows it with its Accessibility control",
-        "Android: the line under Send this phone's sound says that Android asks to record or cast every time, but that only the sound is sent and never the screen"
+        "Android: the line under Send this phone's sound says that Android asks to record or cast every time, but that only the sound is sent and never the screen",
+        "Windows and Linux: on the page of a phone there are Photo from phone and Scan docs. The phone takes the picture or scans the document and it arrives on the clipboard of the computer, ready to paste, as Insert from phone does on the Mac. It stays a picture on the clipboard; a document that is not a picture is saved in the download folder and the message says where"
       ]
     },
     "nl": {
       "title": "Klikken en typen op de telefoon vanaf Windows en Linux",
       "new": [
         "Windows en Linux: het venster met het scherm van je telefoon heeft een knop om met de muis en het toetsenbord van de computer op de telefoon te klikken en te typen, zoals de Mac dat doet: klikken, slepen, scrollen met het wiel of twee vingers, de rechterknop is Terug, letters worden getypt. De knop is grijs, met de stappen eronder, tot de telefoon het toestaat met zijn Toegankelijkheid-bediening",
-        "Android: de regel onder Stuur het geluid van deze telefoon zegt dat Android elke keer vraagt om op te nemen of te casten, maar dat alleen het geluid wordt verstuurd en nooit het scherm"
+        "Android: de regel onder Stuur het geluid van deze telefoon zegt dat Android elke keer vraagt om op te nemen of te casten, maar dat alleen het geluid wordt verstuurd en nooit het scherm",
+        "Windows en Linux: op de pagina van een telefoon staan Foto van telefoon en Scan docs. De telefoon maakt de foto of scant het document en het komt op het klembord van de computer, klaar om te plakken, zoals Voeg in vanaf telefoon dat op de Mac doet. Het blijft een afbeelding op het klembord; een document dat geen afbeelding is wordt in de downloadmap bewaard en de melding zegt waar"
       ]
     }
   },

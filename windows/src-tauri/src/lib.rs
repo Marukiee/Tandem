@@ -12,6 +12,7 @@ mod events;
 mod history;
 mod i18n;
 mod input;
+mod insert;
 mod live;
 mod logfile;
 mod media;
@@ -98,6 +99,7 @@ pub fn run() {
             quickshare::qs_pick_and_send,
             quickshare::qs_send_paths,
             quickshare::qs_send_clipboard,
+            insert::capture_request,
             commands::get_players,
             commands::create_pairing,
             commands::cancel_pairing,

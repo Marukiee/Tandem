@@ -20,7 +20,7 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | Eigen mappen aanbieden aan andere apparaten (host) | ja | ja | nee | nee |
 | Telefoonscherm en camera tonen | bron | ja, bekeken (emulator) | ja | ja (eigen decoder, nooit gezien) |
 | De telefoon bedienen met het getoonde scherm | bron | ja | ja (knop, nooit gezien) | ja (knop, nooit gezien) |
-| Invoegen vanaf telefoon (scan, foto) | bron | ja | nee | nee |
+| Invoegen vanaf telefoon (scan, foto) | bron | ja | ja (op het klembord, nooit gezien) | ja (op het klembord, nooit gezien) |
 | Geluid van de telefoon op de computer | bron | ja | nee | nee |
 | Scherm van de computer tonen op de telefoon en op andere computers | viewer | ja (host) | nee | nee |
 | De computer bedienen vanaf de telefoon (trackpad, toetsenbord) | bron | ja | ja | deels (alleen X11) |

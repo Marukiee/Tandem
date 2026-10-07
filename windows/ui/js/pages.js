@@ -196,6 +196,10 @@ export function DevicePage({ device }) {
         <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
       ${isComputer && html`<button class="btn" disabled=${!sshAddress} title=${sshAddress ? t("ssh_title") : sshReason} onClick=${() => call("ssh_open", { id: device.id, name: device.name, address: sshAddress }).catch(failed)}>
         <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
+      ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
+        <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>
+      <button class="btn" disabled=${!device.online} title=${t("insert_scan_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "document" }).catch(failed)}>
+        <${Icon} name="file" size=${17} />${t("insert_scan")}</button>`}
       ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
         <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}
       ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
