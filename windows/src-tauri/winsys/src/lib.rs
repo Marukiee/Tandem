@@ -61,8 +61,11 @@ pub enum Seen {
 
 #[cfg(windows)]
 mod imp;
+#[cfg(target_os = "linux")]
+mod mpris;
 #[cfg(not(windows))]
 mod imp {
+    #[cfg_attr(target_os = "linux", allow(unused_imports))]
     use super::{Battery, Now, Request};
 
     /// The first battery the kernel lists, on a laptop; a desktop has none. Linux says it in files, and anything that is not
@@ -114,8 +117,11 @@ mod imp {
 
     pub fn warp(_x: i32, _y: i32) {}
 
+    /// Linux has the media controls of the desktop (`mpris.rs`); other systems have none.
+    #[cfg(not(target_os = "linux"))]
     pub struct Media;
 
+    #[cfg(not(target_os = "linux"))]
     impl Media {
         pub fn start(_on_request: impl Fn(Request) + Send + Sync + 'static) -> Media {
             Media
@@ -123,6 +129,9 @@ mod imp {
         pub fn show(&self, _now: Now) {}
         pub fn hide(&self) {}
     }
+
+    #[cfg(target_os = "linux")]
+    pub use crate::mpris::Media;
 }
 
 pub use imp::{Capture, Media, battery, describe, desktop, screen, warp, watch_clipboard};

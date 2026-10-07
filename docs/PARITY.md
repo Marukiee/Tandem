@@ -13,7 +13,7 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | Bestanden, klembord, links, tekst sturen en ontvangen | ja | ja | ja | ja |
 | Meldingen van de telefoon tonen op de computer | bron | ja | ja | ja |
 | Antwoorden op meldingen, bellen en gemiste oproepen tonen | bron | ja | deels (toon) | deels (toon) |
-| Muziek van de telefoon bedienen vanaf de computer | bron | ja | ja (mediatoetsen van het systeem) | nee (MPRIS) |
+| Muziek van de telefoon bedienen vanaf de computer | bron | ja | ja (mediatoetsen van het systeem) | ja (MPRIS, getest op een sessiebus in CI) |
 | Klembordgeschiedenis | ja | ja | ja | ja |
 | Quick Share (ontvangen en versturen, tekst en links) | ja | ja | ja | ja |
 | Bestanden van een telefoon bekijken en kopieren | bron | ja | ja | ja |
@@ -36,7 +36,7 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 
 - Linux en Windows moeten dezelfde functies als de Mac kunnen **aanbieden**, niet alleen tonen: eigen mappen (host), eigen scherm
   delen (Windows.Graphics.Capture, PipeWire), geluid delen, Invoegen vanaf telefoon als bron voor een andere computer.
-- Linux: media via MPRIS, invoer onder Wayland (libei), de gedeelde muis als hoofd (X11 `XInput2`, Wayland InputCapture), een eigen updatepad.
+- Linux: invoer onder Wayland (libei), de gedeelde muis als hoofd (X11 `XInput2`, Wayland InputCapture), een eigen updatepad.
 - Bestanden slepen over de rand: nog nergens.
 - De Mac-functies die aan macOS zelf vastzitten horen er niet bij: het menu Diensten, het Controlecentrum, het AirDrop-knopje.
 

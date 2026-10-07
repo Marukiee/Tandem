@@ -23,3 +23,9 @@ windows = { version = "0.62", features = [
     "Win32_System_WinRT",
     "Win32_UI_WindowsAndMessaging",
 ] }
+
+# Linux: the media controls of the desktop are a service on the session bus (MPRIS), which GNOME, KDE and the media keys of the
+# keyboard talk to.
+[target.'cfg(target_os = "linux")'.dependencies]
+log = "0.4"
+zbus = "5"
