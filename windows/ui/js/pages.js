@@ -477,6 +477,32 @@ function QuickShareSection({ s, patch }) {
   </div>`;
 }
 
+// The folders of this computer that other devices may look at, and what they may do there.
+function FilesHostSection() {
+  const [policy, setPolicy] = useState(null);
+  useEffect(() => { call("files_policy").then(setPolicy).catch(() => {}); }, []);
+  const change = (patch) => call("files_update", { patch }).then(setPolicy).catch(failed);
+  if (!policy) return null;
+  return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("files_host_title")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="folder-open" title=${t("files_host_on")} sub=${t("files_host_on_sub")} on=${policy.enabled} onChange=${(v) => change({ enabled: v })} />
+      ${policy.shares.map((share, index) => html`<${SettingRow} key=${share.path} icon="folder-open" title=${share.name} sub=${share.path}>
+        <div style="display:flex;gap:10px;align-items:center">
+          <label class="small muted" style="display:flex;gap:6px;align-items:center">${t("files_host_may_change")}
+            <${Switch} on=${share.write} onChange=${(v) => change({ shareWrite: { index, write: v } })} label=${t("files_host_may_change")} /></label>
+          <button class="btn small" onClick=${() => change({ removeShare: index })}>${t("remove")}</button>
+        </div>
+      <//>`)}
+      <${SettingRow} icon="plus" title=${t("files_host_add")} sub="">
+        <button class="btn small" onClick=${() => call("files_add_folder").then(setPolicy).catch(failed)}>${t("files_host_choose")}</button>
+      <//>
+      <${SettingRow} icon="trash" title=${t("files_host_delete")} sub=${t("files_host_delete_sub")} on=${policy.delete} onChange=${(v) => change({ delete: v })} disabled=${!policy.enabled} />
+      <${SettingRow} icon="file" title=${t("files_host_hidden")} sub=${t("files_host_hidden_sub")} on=${policy.hidden} onChange=${(v) => change({ hidden: v })} disabled=${!policy.enabled} />
+    </div>
+  </div>`;
+}
+
 export function SettingsPage() {
   const s = state.settings;
   const [name, setName] = useState(state.self ? state.self.name : "");
@@ -517,6 +543,8 @@ export function SettingsPage() {
     </div>
 
     <${QuickShareSection} s=${s} patch=${patch} />
+
+    <${FilesHostSection} />
 
     <${MouseSection} s=${s} patch=${patch} />
 

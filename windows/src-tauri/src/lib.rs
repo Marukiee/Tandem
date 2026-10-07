@@ -9,6 +9,7 @@ mod clip;
 mod commands;
 mod engine;
 mod events;
+mod files_host;
 mod history;
 mod i18n;
 mod input;
@@ -148,6 +149,9 @@ pub fn run() {
             live::live_input,
             live::live_stop,
             live::live_pin,
+            files_host::files_policy,
+            files_host::files_update,
+            files_host::files_add_folder,
             ssh::ssh_probe,
             ssh::ssh_open,
             ssh::ssh_start,

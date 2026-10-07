@@ -3,15 +3,17 @@
     "version": "0.1.67",
     "date": "2026-10-07",
     "en": {
-      "title": "The sound of your phone on Windows and Linux",
+      "title": "The sound of your phone and your folders, on Windows and Linux",
       "new": [
-        "Windows and Linux: when you send the sound of your phone to the computer (Send this phone's sound on the page of the computer in the Android app), it plays on the sound card of the computer, with a small buffer that keeps it close to what the phone plays. A switch in Settings turns it off. It has been tried on a Mac only, with a test of the buffer, and not heard on a real Windows or Linux computer yet"
+        "Windows and Linux: when you send the sound of your phone to the computer (Send this phone's sound on the page of the computer in the Android app), it plays on the sound card of the computer, with a small buffer that keeps it close to what the phone plays. A switch in Settings turns it off. It has been tried on a Mac only, with a test of the buffer, and not heard on a real Windows or Linux computer yet",
+        "Windows and Linux: Settings has Your folders for other devices: you choose folders (and per folder whether they may be changed), and the devices of your circle can look at them, for example in the Files app of the Android phone. It is off until you turn it on"
       ]
     },
     "nl": {
-      "title": "Het geluid van je telefoon op Windows en Linux",
+      "title": "Het geluid van je telefoon en je mappen, op Windows en Linux",
       "new": [
-        "Windows en Linux: als je het geluid van je telefoon naar de computer stuurt (Stuur het geluid van deze telefoon op de pagina van de computer in de Android-app), speelt het op de geluidskaart van de computer, met een kleine buffer die het dicht bij wat de telefoon speelt houdt. Een schakelaar in Instellingen zet het uit. Het is alleen op een Mac geprobeerd, met een test van de buffer, en nog niet gehoord op een echte Windows- of Linux-computer"
+        "Windows en Linux: als je het geluid van je telefoon naar de computer stuurt (Stuur het geluid van deze telefoon op de pagina van de computer in de Android-app), speelt het op de geluidskaart van de computer, met een kleine buffer die het dicht bij wat de telefoon speelt houdt. Een schakelaar in Instellingen zet het uit. Het is alleen op een Mac geprobeerd, met een test van de buffer, en nog niet gehoord op een echte Windows- of Linux-computer",
+        "Windows en Linux: Instellingen heeft Je mappen voor andere apparaten: je kiest mappen (en per map of ze gewijzigd mogen worden), en de apparaten van je circle kunnen erin kijken, bijvoorbeeld in de Bestanden-app van de Android-telefoon. Het staat uit tot je het aanzet"
       ]
     }
   },

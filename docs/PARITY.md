@@ -17,7 +17,7 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | Klembordgeschiedenis | ja | ja | ja | ja |
 | Quick Share (ontvangen en versturen, tekst en links) | ja | ja | ja | ja |
 | Bestanden van een telefoon bekijken en kopieren | bron | ja | ja | ja |
-| Eigen mappen aanbieden aan andere apparaten (host) | ja | ja | nee | nee |
+| Eigen mappen aanbieden aan andere apparaten (host) | ja | ja | ja (instellingen, nooit gezien) | ja (instellingen, nooit gezien) |
 | Telefoonscherm en camera tonen | bron | ja, bekeken (emulator) | ja | ja (eigen decoder, nooit gezien) |
 | De telefoon bedienen met het getoonde scherm | bron | ja | ja (knop, nooit gezien) | ja (knop, nooit gezien) |
 | Invoegen vanaf telefoon (scan, foto) | bron | ja | ja (op het klembord, nooit gezien) | ja (op het klembord, nooit gezien) |
