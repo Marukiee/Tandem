@@ -68,7 +68,7 @@ import uniffi.tandem_core.TandemPlatform
 import uniffi.tandem_core.TandemShareOrigin
 
 @Composable
-fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Unit, onScreen: (String) -> Unit = {}, onSettings: (String) -> Unit = {}) {
+fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Unit, onScreen: (String) -> Unit = {}, onTerminal: (String) -> Unit = {}, onSettings: (String) -> Unit = {}) {
     val context = LocalContext.current
     val host = context.graph.host
     val devices by host.devices.collectAsState()
@@ -233,6 +233,11 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                 device, { onScreen(id) },
                 Modifier.routeBounds(routeKey(Route.Screen(id))),
             )
+        }
+
+        // Logging in to a computer over SSH, in a terminal of the app. There and grey, with the reason, until the computer answers.
+        if (device.platform != TandemPlatform.ANDROID) {
+            nl.markmaaktmedia.tandem.ui.components.TerminalCard(device, { onTerminal(id) })
         }
 
         // Its files, in the Files app of the system, next to the storage of this phone.

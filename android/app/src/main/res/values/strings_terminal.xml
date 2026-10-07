@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terminal_card_title">Terminal</string>
+    <string name="terminal_card_sub">Log in to this computer over SSH</string>
+    <string name="terminal_why_offline">The computer has to be online to log in to it</string>
+    <string name="terminal_why_mac">Turn on Remote Login on that Mac, in System Settings under General and Sharing, to log in to it here</string>
+    <string name="terminal_why_windows">Install the OpenSSH Server on that PC, in Windows under Optional features, to log in to it here</string>
+    <string name="terminal_why_linux">Start the SSH server (sshd) on that computer to log in to it here</string>
+    <string name="terminal_title_for">Terminal on %1$s</string>
+    <string name="terminal_login_to">Log in to %1$s</string>
+    <string name="terminal_user">Name of the account on that computer</string>
+    <string name="terminal_password">Password</string>
+    <string name="terminal_login">Log in</string>
+    <string name="terminal_again">Log in again</string>
+    <string name="terminal_connecting">Logging in</string>
+    <string name="terminal_key_show">Use a key of this phone instead of a password</string>
+    <string name="terminal_key_hint">Put this line in the file .ssh/authorized_keys of the account on the computer. Then the phone logs in without a password.</string>
+    <string name="terminal_key_copy">Copy the key</string>
+    <string name="terminal_ended">The connection ended.</string>
+    <string name="terminal_err_auth">That name or password was not accepted.</string>
+    <string name="terminal_err_changed">This computer shows another key than before. Something may be wrong, so the login was stopped.</string>
+    <string name="terminal_err_timeout">The computer did not answer.</string>
+    <string name="terminal_err_refused">The computer does not take logins right now. Is SSH turned on?</string>
+    <string name="terminal_err_other">The login did not work: %1$s</string>
+</resources>

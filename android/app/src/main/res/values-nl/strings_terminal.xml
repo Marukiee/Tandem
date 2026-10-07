@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="terminal_card_title">Terminal</string>
+    <string name="terminal_card_sub">Inloggen op deze computer via SSH</string>
+    <string name="terminal_why_offline">De computer moet online zijn om erop in te loggen</string>
+    <string name="terminal_why_mac">Zet Externe login aan op die Mac, in Systeeminstellingen onder Algemeen en Delen, om er hier op in te loggen</string>
+    <string name="terminal_why_windows">Installeer de OpenSSH-server op die pc, in Windows onder Optionele onderdelen, om er hier op in te loggen</string>
+    <string name="terminal_why_linux">Start de SSH-server (sshd) op die computer om er hier op in te loggen</string>
+    <string name="terminal_title_for">Terminal op %1$s</string>
+    <string name="terminal_login_to">Inloggen op %1$s</string>
+    <string name="terminal_user">Naam van het account op die computer</string>
+    <string name="terminal_password">Wachtwoord</string>
+    <string name="terminal_login">Inloggen</string>
+    <string name="terminal_again">Opnieuw inloggen</string>
+    <string name="terminal_connecting">Inloggen</string>
+    <string name="terminal_key_show">Een sleutel van deze telefoon gebruiken in plaats van een wachtwoord</string>
+    <string name="terminal_key_hint">Zet deze regel in het bestand .ssh/authorized_keys van het account op de computer. Dan logt de telefoon in zonder wachtwoord.</string>
+    <string name="terminal_key_copy">Kopieer de sleutel</string>
+    <string name="terminal_ended">De verbinding is gesloten.</string>
+    <string name="terminal_err_auth">Die naam of dat wachtwoord is niet geaccepteerd.</string>
+    <string name="terminal_err_changed">Deze computer laat een andere sleutel zien dan eerst. Er kan iets mis zijn, dus het inloggen is gestopt.</string>
+    <string name="terminal_err_timeout">De computer antwoordde niet.</string>
+    <string name="terminal_err_refused">De computer neemt nu geen logins aan. Staat SSH aan?</string>
+    <string name="terminal_err_other">Het inloggen is niet gelukt: %1$s</string>
+</resources>

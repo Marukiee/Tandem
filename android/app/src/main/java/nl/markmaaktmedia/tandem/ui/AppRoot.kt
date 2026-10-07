@@ -220,10 +220,11 @@ private fun RouteContent(route: Route, nav: Nav) {
 private fun RouteBody(route: Route, nav: Nav) {
     when (route) {
         Route.Home -> HomeTabs(nav)
-        is Route.Device -> DeviceDetailScreen(route.id, onBack = { nav.pop() }, onRemote = { nav.push(Route.Remote(it)) }, onScreen = { nav.push(Route.Screen(it)) }, onSettings = { nav.push(Route.DeviceSettings(it)) })
+        is Route.Device -> DeviceDetailScreen(route.id, onBack = { nav.pop() }, onRemote = { nav.push(Route.Remote(it)) }, onScreen = { nav.push(Route.Screen(it)) }, onTerminal = { nav.push(Route.Terminal(it)) }, onSettings = { nav.push(Route.DeviceSettings(it)) })
         Route.Pair -> PairScreen(onBack = { nav.pop() }, onPaired = { nav.pop() })
         is Route.Remote -> RemoteScreen(route.id, onBack = { nav.pop() })
         is Route.Screen -> nl.markmaaktmedia.tandem.screen.ScreenViewerScreen(route.id, onBack = { nav.pop() })
+        is Route.Terminal -> nl.markmaaktmedia.tandem.ui.screens.TerminalScreen(route.id, onBack = { nav.pop() })
         is Route.ClipboardHistory -> nl.markmaaktmedia.tandem.ui.screens.ClipboardHistoryScreen(onBack = { nav.pop() })
         is Route.DeviceSettings -> nl.markmaaktmedia.tandem.ui.screens.DeviceSettingsScreen(route.id, onBack = { nav.pop() })
         Route.Access -> AccessScreen(onBack = { nav.pop() })

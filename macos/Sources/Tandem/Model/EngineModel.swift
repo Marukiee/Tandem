@@ -262,6 +262,7 @@ final class EngineModel {
         ScreenHost.shared.attach(engine: engine, model: self)
         engine.setAudioSink(sink: PhoneSound.shared.sink)
         PointerShare.shared.start()
+        EdgeDrop.shared.start()
         QuickShare.shared.startIfWanted()
         startBleWatch()
         observeSleep()

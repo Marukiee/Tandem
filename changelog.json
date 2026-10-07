@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.70",
+    "date": "2026-10-07",
+    "en": {
+      "title": "A terminal on your phone, and drop files at the edge",
+      "new": [
+        "Android: the page of a computer has a Terminal card that logs in to it over SSH, in a terminal of the app (xterm.js). You give the account and a password, or you copy the key of the phone (made on request) to the .ssh/authorized_keys of the computer and log in without. A row of keys under it has Esc, Tab, Ctrl and the arrows. The card is grey, with the reason, until the computer answers on the SSH port. A computer that is new is trusted the first time and one that shows another key later is refused",
+        "Mac: with the shared mouse on and a computer put next to this one, a drop zone with its name shows at that edge of the screen while you drag files. Let go of the files on it and they are sent to that computer. The other way, and letting go on the spot where the pointer is on the other screen, is not built yet"
+      ]
+    },
+    "nl": {
+      "title": "Een terminal op je telefoon, en bestanden neerzetten aan de rand",
+      "new": [
+        "Android: de pagina van een computer heeft een kaart Terminal die er via SSH op inlogt, in een terminal van de app (xterm.js). Je geeft het account en een wachtwoord, of je kopieert de sleutel van de telefoon (gemaakt op verzoek) naar .ssh/authorized_keys op de computer en logt zonder wachtwoord in. Een rij toetsen eronder heeft Esc, Tab, Ctrl en de pijltjes. De kaart is grijs, met de reden, tot de computer antwoordt op de SSH-poort. Een computer die nieuw is wordt de eerste keer vertrouwd en een die later een andere sleutel laat zien wordt geweigerd",
+        "Mac: met de gedeelde muis aan en een computer naast deze gezet verschijnt aan die rand van het scherm een dropzone met zijn naam zolang je bestanden sleept. Laat de bestanden erop los en ze worden naar die computer gestuurd. De andere kant op, en loslaten op de plek van de aanwijzer op het andere scherm, is nog niet gebouwd"
+      ]
+    }
+  },
+  {
     "version": "0.1.69",
     "date": "2026-10-07",
     "en": {

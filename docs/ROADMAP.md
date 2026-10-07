@@ -102,6 +102,7 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
   Windows als hoofd met hooks (0.1.51). Instellingen en een toets om terug te halen staan op Mac en Windows.
 - Nog niet: Linux (zien van invoer via libei of evdev, afspelen via libei of XTest), een gedeeld klembord bij de overgang,
   ketens van meer dan twee computers, toetsvertaling voor andere indelingen dan US.
+- Gedaan in 0.1.70 voor de Mac als hoofd: tijdens het slepen van bestanden verschijnt aan de rand waar een buurcomputer staat een dropzone (`EdgeDrop.swift`) met zijn naam; loslaten erop stuurt de bestanden. Niet gedaan: de andere kant op (van de buurcomputer naar de Mac), loslaten op de plek van de aanwijzer op het andere scherm, en Windows of Linux als hoofd. Nooit op twee echte computers gezien.
 - **Bestanden slepen over de rand (gevraagd 2026-10-05):** als de muis naar een andere computer is gegaan moet je een bestand
   van het ene scherm naar het andere kunnen slepen, zonder haperen, zoals een Mac dat met Universal Control kan, en tussen alle
   systemen (Mac, Windows, Linux, later Android). Ontwerp: bij het slepen van een bestand (muisknop ingedrukt met een

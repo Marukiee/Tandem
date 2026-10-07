@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <link rel="stylesheet" href="xterm.css" />
+  <style>
+    html, body { margin: 0; height: 100%; background: #121216; overflow: hidden; }
+    #t { position: absolute; inset: 0; padding: 4px 6px; box-sizing: border-box; }
+    .xterm { height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="t"></div>
+  <script src="xterm.js"></script>
+  <script src="xterm-addon-fit.js"></script>
+  <script>
+    // The terminal of the app: what the other computer prints is written here by the app, and what is typed goes back to the app.
+    const term = new Terminal({
+      fontFamily: 'monospace', fontSize: 13, cursorBlink: true, scrollback: 3000,
+      theme: { background: "#121216", foreground: "#ececf2" },
+    });
+    const fit = new FitAddon.FitAddon();
+    term.loadAddon(fit);
+    term.open(document.getElementById("t"));
+    const report = () => { fit.fit(); Android.resize(term.cols, term.rows); };
+    term.onData((data) => Android.input(data));
+    window.addEventListener("resize", report);
+    window.tandemWrite = (b64) => {
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      term.write(bytes);
+    };
+    window.tandemText = (text) => term.write(text);
+    window.tandemFocus = () => term.focus();
+    setTimeout(() => { report(); term.focus(); Android.ready(); }, 60);
+  </script>
+</body>
+</html>

@@ -128,6 +128,7 @@ dependencies {
 
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
+    implementation(libs.jsch)
 
     // Scanning a pairing code: bundled model, so no Google Play services are needed.
     implementation(libs.androidx.camera.camera2)
