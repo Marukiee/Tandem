@@ -3,17 +3,17 @@
     "version": "0.1.70",
     "date": "2026-10-07",
     "en": {
-      "title": "A terminal on your phone, and drop files at the edge",
+      "title": "A terminal on your phone, and drop zones",
       "new": [
-        "Android: the page of a computer has a Terminal card that logs in to it over SSH, in a terminal of the app (xterm.js). You give the account and a password, or you copy the key of the phone (made on request) to the .ssh/authorized_keys of the computer and log in without. A row of keys under it has Esc, Tab, Ctrl and the arrows. The card is grey, with the reason, until the computer answers on the SSH port. A computer that is new is trusted the first time and one that shows another key later is refused",
-        "Mac: with the shared mouse on and a computer put next to this one, a drop zone with its name shows at that edge of the screen while you drag files. Let go of the files on it and they are sent to that computer. The other way, and letting go on the spot where the pointer is on the other screen, is not built yet"
+        "Android: log in to a computer over SSH, in a terminal",
+        "Mac: drop files on the screen edge to send them to the computer there"
       ]
     },
     "nl": {
-      "title": "Een terminal op je telefoon, en bestanden neerzetten aan de rand",
+      "title": "Een terminal op je telefoon, en dropzones",
       "new": [
-        "Android: de pagina van een computer heeft een kaart Terminal die er via SSH op inlogt, in een terminal van de app (xterm.js). Je geeft het account en een wachtwoord, of je kopieert de sleutel van de telefoon (gemaakt op verzoek) naar .ssh/authorized_keys op de computer en logt zonder wachtwoord in. Een rij toetsen eronder heeft Esc, Tab, Ctrl en de pijltjes. De kaart is grijs, met de reden, tot de computer antwoordt op de SSH-poort. Een computer die nieuw is wordt de eerste keer vertrouwd en een die later een andere sleutel laat zien wordt geweigerd",
-        "Mac: met de gedeelde muis aan en een computer naast deze gezet verschijnt aan die rand van het scherm een dropzone met zijn naam zolang je bestanden sleept. Laat de bestanden erop los en ze worden naar die computer gestuurd. De andere kant op, en loslaten op de plek van de aanwijzer op het andere scherm, is nog niet gebouwd"
+        "Android: inloggen op een computer via SSH, in een terminal",
+        "Mac: laat bestanden los op de rand van het scherm om ze naar de computer daar te sturen"
       ]
     }
   },
@@ -21,19 +21,19 @@
     "version": "0.1.69",
     "date": "2026-10-07",
     "en": {
-      "title": "Use your computers from each other, like TeamViewer",
+      "title": "Use computers from each other",
       "new": [
-        "Windows and Linux (under X11) can now show their screen to your other devices and let them use the mouse and keyboard, like TeamViewer. The Mac, the Windows and Linux app and the Android phone have Control this computer on the page of that computer. The computer asks first (or you choose Always for a device on its page), and a banner says who is looking, with a Stop button. The picture is encoded in software, 15 times a second, up to the size the viewer asks for",
-        "On a computer, Settings of a device has Show my screen to this device and Let it use my mouse and keyboard, each Ask me, Always or Never",
-        "Not seen on a real Windows or Linux computer yet. A Linux computer under Wayland cannot show its screen yet: that needs the portal of the desktop, which is not built. A Mac and a Linux computer under Wayland also need the right to use the mouse and keyboard before they can be used from here"
+        "Windows and Linux (X11) can show their screen and be used from the Mac, phone, Windows and Linux, like TeamViewer",
+        "Per device: ask, always or never for screen and control",
+        "A banner shows who is looking, with Stop"
       ]
     },
     "nl": {
-      "title": "Je computers vanaf elkaar gebruiken, zoals TeamViewer",
+      "title": "Computers vanaf elkaar gebruiken",
       "new": [
-        "Windows en Linux (onder X11) kunnen nu hun scherm tonen aan je andere apparaten en ze de muis en het toetsenbord laten gebruiken, zoals TeamViewer. De Mac, de Windows- en Linux-app en de Android-telefoon hebben Deze computer bedienen op de pagina van die computer. De computer vraagt eerst (of je kiest Altijd voor een apparaat op zijn pagina), en een balk zegt wie er kijkt, met een knop Stop. Het beeld wordt in software gecodeerd, 15 keer per seconde, tot de grootte die de kijker vraagt",
-        "Op een computer heeft Instellingen van een apparaat Mijn scherm tonen aan dit apparaat en Laat het mijn muis en toetsenbord gebruiken, elk Vraag het mij, Altijd of Nooit",
-        "Nog niet gezien op een echte Windows- of Linux-computer. Een Linux-computer onder Wayland kan zijn scherm nog niet tonen: dat vraagt de portal van het bureaublad, en die is niet gebouwd. Een Mac en een Linux-computer onder Wayland hebben ook het recht nodig om de muis en het toetsenbord te gebruiken voordat ze vanaf hier bediend kunnen worden"
+        "Windows en Linux (X11) kunnen hun scherm tonen en gebruikt worden vanaf de Mac, telefoon, Windows en Linux, zoals TeamViewer",
+        "Per apparaat: vragen, altijd of nooit voor scherm en bediening",
+        "Een balk toont wie er kijkt, met Stop"
       ]
     }
   },
@@ -41,15 +41,15 @@
     "version": "0.1.68",
     "date": "2026-10-07",
     "en": {
-      "title": "Control this Mac no longer closes the app",
+      "title": "No more crash on the computer screen",
       "new": [
-        "Android: opening Control this Mac, or any other full screen of a computer, closed the app while the update banner was showing: the page was moved back up with a spring that dipped below zero for a moment, and a negative padding is not allowed. It stays at zero or above now. Found while trying the keyboard under the picture on an emulator, where the picture does move up above the keyboard now"
+        "Android: fixed a crash when opening the screen of a computer while the update banner showed"
       ]
     },
     "nl": {
-      "title": "Deze Mac bedienen sluit de app niet meer",
+      "title": "Geen crash meer bij het computerscherm",
       "new": [
-        "Android: Deze Mac bedienen openen, of een ander schermvullend scherm van een computer, sloot de app zolang de updatebalk getoond werd: de pagina werd met een veer terug omhoog gezet die even onder nul kwam, en een negatieve marge mag niet. Hij blijft nu op nul of hoger. Gevonden bij het proberen van het toetsenbord onder het beeld op een emulator, waar het beeld nu wel omhoog schuift boven het toetsenbord"
+        "Android: crash opgelost bij het openen van het scherm van een computer terwijl de updatebalk getoond werd"
       ]
     }
   },
@@ -57,19 +57,19 @@
     "version": "0.1.67",
     "date": "2026-10-07",
     "en": {
-      "title": "The sound of your phone and your folders, on Windows and Linux",
+      "title": "Phone sound and folders on Windows and Linux",
       "new": [
-        "Windows and Linux: when you send the sound of your phone to the computer (Send this phone's sound on the page of the computer in the Android app), it plays on the sound card of the computer, with a small buffer that keeps it close to what the phone plays. A switch in Settings turns it off. It has been tried on a Mac only, with a test of the buffer, and not heard on a real Windows or Linux computer yet",
-        "Windows and Linux: Settings has Your folders for other devices: you choose folders (and per folder whether they may be changed), and the devices of your circle can look at them, for example in the Files app of the Android phone. It is off until you turn it on",
-        "Linux: the music of your phone shows in the media controls of the desktop (GNOME, KDE, the lock screen) as a player called Tandem, with the title, the artist and the cover, and the buttons and the media keys of the keyboard go back to the phone. The player is tried on a session bus in the build, and has not been seen on a real desktop yet"
+        "Windows and Linux: play the sound of your phone",
+        "Windows and Linux: offer folders to other devices",
+        "Linux: phone music in the media controls of the desktop"
       ]
     },
     "nl": {
-      "title": "Het geluid van je telefoon en je mappen, op Windows en Linux",
+      "title": "Telefoongeluid en mappen op Windows en Linux",
       "new": [
-        "Windows en Linux: als je het geluid van je telefoon naar de computer stuurt (Stuur het geluid van deze telefoon op de pagina van de computer in de Android-app), speelt het op de geluidskaart van de computer, met een kleine buffer die het dicht bij wat de telefoon speelt houdt. Een schakelaar in Instellingen zet het uit. Het is alleen op een Mac geprobeerd, met een test van de buffer, en nog niet gehoord op een echte Windows- of Linux-computer",
-        "Windows en Linux: Instellingen heeft Je mappen voor andere apparaten: je kiest mappen (en per map of ze gewijzigd mogen worden), en de apparaten van je circle kunnen erin kijken, bijvoorbeeld in de Bestanden-app van de Android-telefoon. Het staat uit tot je het aanzet",
-        "Linux: de muziek van je telefoon staat in de mediabediening van het bureaublad (GNOME, KDE, het vergrendelscherm) als een speler Tandem, met de titel, de artiest en de hoes, en de knoppen en de mediatoetsen van het toetsenbord gaan terug naar de telefoon. De speler wordt in de build op een eigen sessiebus geprobeerd en is nog niet op een echt bureaublad gezien"
+        "Windows en Linux: speel het geluid van je telefoon af",
+        "Windows en Linux: bied mappen aan andere apparaten aan",
+        "Linux: telefoonmuziek in de mediabediening van het bureaublad"
       ]
     }
   },
@@ -77,19 +77,19 @@
     "version": "0.1.66",
     "date": "2026-10-07",
     "en": {
-      "title": "Click and type on the phone from Windows and Linux",
+      "title": "Use the phone from Windows and Linux",
       "new": [
-        "Windows and Linux: the window with the screen of your phone has a button to click and type on the phone with the mouse and keyboard of the computer, the way the Mac does it: click, drag, scroll with the wheel or two fingers, the right button is Back, letters are typed. The button is grey, with the steps under it, until the phone allows it with its Accessibility control",
-        "Android: the line under Send this phone's sound says that Android asks to record or cast every time, but that only the sound is sent and never the screen",
-        "Windows and Linux: on the page of a phone there are Photo from phone and Scan docs. The phone takes the picture or scans the document and it arrives on the clipboard of the computer, ready to paste, as Insert from phone does on the Mac. It stays a picture on the clipboard; a document that is not a picture is saved in the download folder and the message says where"
+        "Windows and Linux: click and type on the phone from its screen window",
+        "Windows and Linux: Photo from phone and Scan docs",
+        "Android: sound sharing says only the sound is sent"
       ]
     },
     "nl": {
-      "title": "Klikken en typen op de telefoon vanaf Windows en Linux",
+      "title": "De telefoon gebruiken vanaf Windows en Linux",
       "new": [
-        "Windows en Linux: het venster met het scherm van je telefoon heeft een knop om met de muis en het toetsenbord van de computer op de telefoon te klikken en te typen, zoals de Mac dat doet: klikken, slepen, scrollen met het wiel of twee vingers, de rechterknop is Terug, letters worden getypt. De knop is grijs, met de stappen eronder, tot de telefoon het toestaat met zijn Toegankelijkheid-bediening",
-        "Android: de regel onder Stuur het geluid van deze telefoon zegt dat Android elke keer vraagt om op te nemen of te casten, maar dat alleen het geluid wordt verstuurd en nooit het scherm",
-        "Windows en Linux: op de pagina van een telefoon staan Foto van telefoon en Scan docs. De telefoon maakt de foto of scant het document en het komt op het klembord van de computer, klaar om te plakken, zoals Voeg in vanaf telefoon dat op de Mac doet. Het blijft een afbeelding op het klembord; een document dat geen afbeelding is wordt in de downloadmap bewaard en de melding zegt waar"
+        "Windows en Linux: klikken en typen op de telefoon vanuit het schermvenster",
+        "Windows en Linux: Foto van telefoon en Scan docs",
+        "Android: geluid delen zegt dat alleen het geluid wordt verstuurd"
       ]
     }
   },
@@ -97,17 +97,15 @@
     "version": "0.1.65",
     "date": "2026-10-07",
     "en": {
-      "title": "Log in to your computers from Tandem",
+      "title": "A terminal for your computers",
       "new": [
-        "Terminal: on the page of a Mac, a Windows PC or a Linux computer there is a Terminal button that logs in to it over SSH, in a terminal of the app, with the keys and known hosts you already have. The button is grey, with the reason under it, until the computer answers on the SSH port (Remote Login on a Mac, the OpenSSH Server on Windows, sshd on Linux)",
-        "docs/PARITY.md lists per function and per system what works where, to work through so that everything the Mac does also works on Windows and Linux and between all of them"
+        "Mac, Windows and Linux: log in to a computer over SSH from its page"
       ]
     },
     "nl": {
-      "title": "Inloggen op je computers vanuit Tandem",
+      "title": "Een terminal voor je computers",
       "new": [
-        "Terminal: op de pagina van een Mac, een Windows-pc of een Linux-computer staat een knop Terminal die er via SSH op inlogt, in een terminal van de app, met de sleutels en bekende computers die je al hebt. De knop is grijs, met de reden eronder, tot de computer antwoordt op de SSH-poort (Externe login op een Mac, de OpenSSH-server op Windows, sshd op Linux)",
-        "docs/PARITY.md zet per functie en per systeem wat waar werkt, om af te werken zodat alles wat de Mac doet ook op Windows en Linux werkt en tussen alle systemen onderling"
+        "Mac, Windows en Linux: log vanaf zijn pagina in op een computer via SSH"
       ]
     }
   },
@@ -115,31 +113,29 @@
     "version": "0.1.64",
     "date": "2026-10-07",
     "en": {
-      "title": "Sharing you can stop with a tap, and a steadier Control this Mac",
+      "title": "Sharing you can stop with a tap",
       "new": [
-        "Android: while this phone shares its sound, its screen or its camera with a computer, the row on the page of that computer turns green (sound) or red (screen, camera) and gets a stop symbol, and one tap stops it",
-        "Android: when you close the window of your screen on the Mac, the phone stops sharing for good, including the screen capture it kept ready for a next time, and the notification goes",
-        "Android: the question Always allow is gone from the dialog that asks to see your screen or camera, because Android asks again every time. What a computer may ask stays under Requests from the computer",
-        "Android: Control this Mac: the picture moves up with the keyboard and fits above it, instead of staying in the middle behind it, and the two buttons for touch and for the keyboard round out while they are on, like the buttons of the trackpad",
-        "Android: scrolling with two fingers on the Mac now scrolls the phone that is shown. The small steps are added up and played as swipes, one after the other. It needs Tandem control to be on, like clicking",
-        "Mac: the labels that came up over the buttons at the bottom of the phone window are gone. The buttons show their name as an ordinary tooltip",
-        "Mac: the window with the phone screen now says by itself, once, that the phone needs one more permission before you can click and type on it, and how to give it",
-        "Mac: the Quick Share rows in the menu bar panel look like the other rows: the round symbol fills when the pointer is on the row, and Send files is in the same style instead of purple",
-        "What's new has moved from About to Updates and backup on Android, and to Updates in the Mac settings"
+        "Android: sharing rows turn green or red with a stop symbol",
+        "Android: closing the screen window on the Mac stops sharing on the phone",
+        "Android: no Always allow question",
+        "Android: the picture moves up with the keyboard",
+        "Android: scrolling with two fingers on the Mac scrolls the phone",
+        "Mac: no hover labels on the phone window buttons",
+        "Mac: Quick Share rows match the others",
+        "What's new moved to Updates"
       ]
     },
     "nl": {
-      "title": "Delen dat je met een tik stopt en een rustiger Deze Mac bedienen",
+      "title": "Delen dat je met een tik stopt",
       "new": [
-        "Android: zolang deze telefoon zijn geluid, scherm of camera met een computer deelt, wordt de rij op de pagina van die computer groen (geluid) of rood (scherm, camera) met een stopsymbool, en een tik stopt het",
-        "Android: als je het venster met je scherm op de Mac sluit, stopt de telefoon echt met delen, ook met de schermopname die hij klaar hield voor een volgende keer, en de melding verdwijnt",
-        "Android: de vraag Altijd toestaan is weg uit het venster dat vraagt om je scherm of camera te zien, omdat Android toch elke keer opnieuw vraagt. Wat een computer mag vragen blijft staan onder Verzoeken van de computer",
-        "Android: Deze Mac bedienen: het beeld schuift met het toetsenbord omhoog en past erboven, in plaats van in het midden erachter te blijven staan, en de twee knoppen voor aanraken en voor het toetsenbord worden rond zolang ze aan staan, zoals de knoppen van het trackpad",
-        "Android: scrollen met twee vingers op de Mac scrolt nu de telefoon die getoond wordt. De kleine stapjes worden opgeteld en als veegbewegingen afgespeeld, na elkaar. Het heeft Tandem-bediening nodig, net als klikken",
-        "Mac: de labels die opkwamen boven de knoppen onderin het telefoonvenster zijn weg. De knoppen laten hun naam zien als gewone tooltip",
-        "Mac: het venster met het telefoonscherm zegt nu zelf, een keer, dat de telefoon nog een toestemming nodig heeft voordat je erop kunt klikken en typen, en hoe je die geeft",
-        "Mac: de Quick Share-rijen in het menubalkpaneel lijken op de andere rijen: het ronde symbool vult zich als de muis op de rij staat, en Verstuur bestanden heeft dezelfde stijl in plaats van paars",
-        "Wat is er nieuw is verhuisd van Over naar Updates en back-up op Android, en naar Updates in de Mac-instellingen"
+        "Android: delen-rijen worden groen of rood met een stopsymbool",
+        "Android: het schermvenster op de Mac sluiten stopt het delen op de telefoon",
+        "Android: geen vraag Altijd toestaan",
+        "Android: het beeld schuift mee omhoog met het toetsenbord",
+        "Android: scrollen met twee vingers op de Mac scrolt de telefoon",
+        "Mac: geen hover-labels op de knoppen van het telefoonvenster",
+        "Mac: Quick Share-rijen zoals de andere",
+        "Wat is er nieuw staat nu bij Updates"
       ]
     }
   },
@@ -147,15 +143,15 @@
     "version": "0.1.63",
     "date": "2026-10-06",
     "en": {
-      "title": "The last thing you copied in the menu bar panel",
+      "title": "Last copied in the menu bar panel",
       "new": [
-        "Mac: the Clipboard history row in the menu bar panel shows the last thing you copied instead of how many things are saved"
+        "Mac: the Clipboard history row shows the last copied text"
       ]
     },
     "nl": {
-      "title": "Het laatst gekopieerde in het menubalkpaneel",
+      "title": "Laatst gekopieerd in het menubalkpaneel",
       "new": [
-        "Mac: de rij Klembordgeschiedenis in het menubalkpaneel toont het laatst gekopieerde in plaats van hoeveel er bewaard zijn"
+        "Mac: de rij Klembordgeschiedenis toont de laatst gekopieerde tekst"
       ]
     }
   },
@@ -163,17 +159,17 @@
     "version": "0.1.62",
     "date": "2026-10-06",
     "en": {
-      "title": "The shared mouse always comes back",
+      "title": "The shared mouse comes back",
       "new": [
-        "Shared mouse: a computer that cannot play the pointer, like Linux under Wayland, no longer keeps it when it comes over. It hands it straight back, so the Mac pointer cannot get stuck on a screen that does not move",
-        "Mac: when the other computer never gives the pointer back, moving the mouse back past the place where it went over now brings it home by itself, next to the Control, Option and Command with Escape keys that always worked"
+        "A computer that cannot take the pointer hands it back",
+        "Mac: moving back past the entry point brings the pointer home"
       ]
     },
     "nl": {
-      "title": "De gedeelde muis komt altijd terug",
+      "title": "De gedeelde muis komt terug",
       "new": [
-        "Gedeelde muis: een computer die de muisaanwijzer niet kan afspelen, zoals Linux onder Wayland, houdt hem niet meer vast als hij overkomt. Hij geeft hem meteen terug, zodat de aanwijzer van de Mac niet kan blijven hangen op een scherm dat niet beweegt",
-        "Mac: als de andere computer de aanwijzer nooit teruggeeft, haalt terugbewegen voorbij de plek waar hij overging hem nu vanzelf naar huis, naast de toetsen Control, Option en Command met Escape die altijd al werkten"
+        "Een computer die de aanwijzer niet kan overnemen geeft hem terug",
+        "Mac: terugbewegen voorbij de ingang brengt de aanwijzer naar huis"
       ]
     }
   },
@@ -181,51 +177,27 @@
     "version": "0.1.61",
     "date": "2026-10-05",
     "en": {
-      "title": "Smoother Quick Share, with names and better pickers",
+      "title": "Pairing with a code, and Linux polish",
       "new": [
-        "Android: the choice Stay on for opens under the row, at the value you tapped, instead of somewhere else on the screen",
-        "Android: the Quick Share sheet slides between Receive and Send, and its height, the devices and the state of a request (ready, receiving, received) change with a short animation instead of jumping",
-        "Quick Share: devices nearby that do not say who they are, because they are not visible to everyone, are no longer shown as empty circles. They are left out and a line says how many there are and what to set on them. This goes for Android, Mac, Windows and Linux",
-        "Android: to send, you first choose between Photos and videos, with the photo picker of Android, and Files, with the Files app, instead of the old list that opened before",
-        "Android: the Quick Share page in Settings has more now: who you receive as, how long it stays on, a button that opens the Quick Share sheet, the tile and what a tap on it does, and the devices nearby with their names",
-        "Mac: Send with Quick Share in the Services menu. In Finder, right click files, then Services, then Send with Quick Share, and pick a device. A place in the Share menu itself needs an app extension, which this build does not make",
-        "Mac: with Quick Share on, the menu bar panel no longer lays out the devices at once. They show when you press Send files, and fold away again with Hide devices",
-        "Mac: Scan document is called Scan docs, so it fits on one line in the menu bar panel",
-        "Mac: the names that show under a device in the menu bar panel when you hover over a button fit on one line now: Show phone screen and Phone as output",
-        "Android: when you call someone, the Mac no longer gets a notification about it again and again. The notification of a call in progress is posted again by the phone every time it changes, and it was mirrored each time, next to the call mirroring itself. It is left out now",
-        "Mac: the symbol of Clipboard history in the menu bar panel reacts to the pointer like the symbols of Insert from phone: the disc fills and the symbol turns white",
-        "Downloads: every release page now starts with a table that says which file to download for your device, with only the files that have the version in their name. There is an .rpm for Fedora and openSUSE now, next to the .deb and the AppImage, and a file for the Mac with the version in its name. The files without a version number are copies the apps use to update themselves",
-        "Pairing: a device that is in a circle can now take a new device in. On your phone, scan the code of the Linux computer, or type its code, and the Linux computer joins your circle. Before, only a device that was alone could scan a code",
-        "Pairing: next to the QR code there is a code of 8 digits that you can type on the other device instead of a long link. It works for 5 minutes and a few tries, and a device on the same network cannot guess it offline, because the two sides check it with SPAKE2 and never send it. It works on the phone, the Mac, Windows and Linux",
-        "Android: swipe a device on the home screen to the left or right to pin it or let it go, with the same gesture and the same physics as swiping to remove on the Shared page, in yellow. Press and hold no longer pins",
-        "Mac: the round button for folding away the sidebar in the Settings window is gone",
-        "Linux: the window has its own bar with round buttons to minimise, maximise and close, in the style of the app, and the window with the screen or camera of your phone has round buttons too",
-        "Linux: the screen and the camera of your phone are decoded by the app itself now, because the web view of Linux has no video decoder to speak of. It is meant to show a picture where the window stayed empty before, and it has only been tried on a Mac so far",
-        "Linux: Settings no longer says Same as Windows for the language, and uses words that fit Linux for starting at login, desktop notifications, media controls and the firewall. The Mouse and keyboard section is there too, with what does not work greyed out and the reason next to it: sharing the mouse of this computer is not available on Linux yet, and letting your phone or a Mac control this computer does not work under Wayland, only under an X11 session. When a phone tries it anyway, a notification says why"
+        "Pair with a code of 8 digits next to the QR",
+        "A device in a circle can take in a new device",
+        "Android: swipe a device to pin it",
+        "Quick Share: smoother, devices without a name left out",
+        "Mac: Send with Quick Share in the Services menu",
+        "Linux: own window bar, own video decoder, settings with a reason when greyed out",
+        "Releases list which file to download, with an .rpm for Fedora"
       ]
     },
     "nl": {
-      "title": "Soepeler Quick Share, met namen en betere keuzemenu's",
+      "title": "Koppelen met een code, en Linux opgepoetst",
       "new": [
-        "Android: de keuze Blijf aan gedurende klapt onder de rij uit, bij de waarde waarop je tikte, in plaats van ergens anders op het scherm",
-        "Android: het Quick Share-blad schuift tussen Ontvangen en Versturen, en de hoogte, de apparaten en de toestand van een verzoek (klaar, ontvangen, ontvangen) veranderen met een korte animatie in plaats van te springen",
-        "Quick Share: apparaten in de buurt die niet zeggen wie ze zijn, omdat ze niet zichtbaar zijn voor iedereen, staan niet meer als lege cirkels in de lijst. Ze worden weggelaten en een regel zegt hoeveel het er zijn en wat je erop moet instellen. Dat geldt voor Android, Mac, Windows en Linux",
-        "Android: om te versturen kies je eerst tussen Foto's en video's, met de fotokiezer van Android, en Bestanden, met de Bestanden-app, in plaats van de oude lijst die eerst openging",
-        "Android: de Quick Share-pagina bij Instellingen heeft nu meer: als wie je ontvangt, hoe lang het aan blijft, een knop die het Quick Share-blad opent, de tegel en wat een tik erop doet, en de apparaten in de buurt met hun namen",
-        "Mac: Verstuur met Quick Share in het menu Diensten. Klik in Finder met rechts op bestanden, dan Diensten, dan Verstuur met Quick Share, en kies een apparaat. Een plek in het deelmenu zelf vraagt een app-extensie, en die maakt deze bouw niet",
-        "Mac: met Quick Share aan legt het menubalkpaneel de apparaten niet meer meteen neer. Ze verschijnen als je op Verstuur bestanden drukt, en klappen weer weg met Verberg apparaten",
-        "Mac: Document scannen heet nu Scan docs, zodat het op een regel past in het menubalkpaneel",
-        "Mac: de namen die onder een apparaat in het menubalkpaneel verschijnen als je over een knop beweegt passen nu op een regel: Toon telefoonscherm en Telefoon als uitvoer",
-        "Android: als je iemand belt krijgt de Mac niet meer steeds opnieuw een melding daarover. De melding van een gesprek dat bezig is wordt door de telefoon bij elke wijziging opnieuw geplaatst, en die werd elke keer gespiegeld, naast het spiegelen van het gesprek zelf. Dat is nu weggelaten",
-        "Mac: het symbool van Klembordgeschiedenis in het menubalkpaneel reageert op de muis zoals de symbolen van Voeg in vanaf telefoon: de cirkel vult zich en het symbool wordt wit",
-        "Downloads: elke releasepagina begint nu met een tabel die zegt welk bestand je voor je apparaat moet downloaden, met alleen de bestanden die het versienummer in hun naam hebben. Er is nu een .rpm voor Fedora en openSUSE, naast de .deb en de AppImage, en een bestand voor de Mac met het versienummer in de naam. De bestanden zonder versienummer zijn kopieen die de apps gebruiken om zichzelf bij te werken",
-        "Koppelen: een apparaat dat al in een cirkel zit kan nu een nieuw apparaat opnemen. Scan op je telefoon de code van de Linux-computer, of typ zijn code, en de Linux-computer komt in je cirkel. Eerder kon alleen een apparaat dat nog alleen was een code scannen",
-        "Koppelen: naast de QR-code staat een code van 8 cijfers die je op het andere apparaat kunt typen in plaats van een lange link. Hij werkt 5 minuten en een paar pogingen, en een apparaat op hetzelfde netwerk kan hem niet offline raden, omdat de twee kanten hem controleren met SPAKE2 en hem nooit versturen. Het werkt op de telefoon, de Mac, Windows en Linux",
-        "Android: veeg een apparaat op het beginscherm naar links of rechts om het vast te pinnen of los te laten, met hetzelfde gebaar en dezelfde natuurkunde als het vegen om te verwijderen op de pagina Gedeeld, in geel. Lang indrukken pint niet meer",
-        "Mac: het ronde knopje om de zijbalk in te klappen in het Instellingen-venster is weg",
-        "Linux: het venster heeft een eigen balk met ronde knoppen om te minimaliseren, maximaliseren en sluiten, in de stijl van de app, en het venster met het scherm of de camera van je telefoon heeft ook ronde knoppen",
-        "Linux: het scherm en de camera van je telefoon worden nu door de app zelf gedecodeerd, omdat de webview van Linux geen videodecoder heeft die je kunt gebruiken. Het moet een beeld laten zien waar het venster eerst leeg bleef, en het is tot nu toe alleen op een Mac geprobeerd",
-        "Linux: Instellingen zegt niet meer Zoals Windows bij de taal, en gebruikt woorden die bij Linux passen voor starten bij inloggen, bureaubladmeldingen, mediabediening en de firewall. Het onderdeel Muis en toetsenbord is er nu ook, met wat niet werkt grijs en de reden ernaast: de muis van deze computer delen kan op Linux nog niet, en je telefoon of een Mac deze computer laten bedienen werkt niet onder Wayland, alleen onder een X11-sessie. Probeert een telefoon het toch, dan zegt een melding waarom"
+        "Koppel met een code van 8 cijfers naast de QR",
+        "Een apparaat in een cirkel kan een nieuw apparaat opnemen",
+        "Android: veeg een apparaat om het te pinnen",
+        "Quick Share: soepeler, apparaten zonder naam weggelaten",
+        "Mac: Verstuur met Quick Share in het menu Diensten",
+        "Linux: eigen vensterbalk, eigen videodecoder, grijze instellingen met reden",
+        "Releases laten zien welk bestand je moet downloaden, met een .rpm voor Fedora"
       ]
     }
   },
@@ -233,25 +205,21 @@
     "version": "0.1.60",
     "date": "2026-10-05",
     "en": {
-      "title": "Settings with a sidebar on the Mac",
+      "title": "Settings sidebar and a Quick Share sheet",
       "new": [
-        "Mac: Settings has a sidebar with all sections, like System Settings, instead of tabs. With the new sections for Mouse and keyboard and Quick Share the tabs did not fit any more, and the last ones ended up in a menu behind two arrows where they looked greyed out",
-        "Android, Windows and Linux: Quick Share has its own icon, a ring with two arrows, in the tile, the settings and the share sheet. It looks like the Quick Share of Android but is not its logo, which is a mark of Google",
-        "Android: the How it works rows on the Quick Share page have a short title with the words under it in the quiet colour, like the other rows, instead of one long line in bold",
-        "Android: Quick Share is an entry of its own in the share menu, with its own icon, next to Tandem. It opens the sheet with only the devices nearby, and has a button to turn Quick Share on when it is off. The share sheet of Tandem still has the row Nearby, with Quick Share",
-        "Android: tapping the Quick Share tile, or pressing it long, opens a Quick Share sheet (not full screen) with the layout of the Quick Share of Android: under Receive who you receive as with the switch, and the requests with PIN, Decline and Accept, progress and Cancel; under Send the devices of Tandem and the devices nearby. The tile opens it by default now, and can still be set to turn Quick Share on and off",
-        "Android: Quick Share is no longer in the main list of Settings twice: it is under Devices and sharing, with a row to its page. The choices Stay on for and When you tap the tile are drop-down menus now, so the whole text can be read"
+        "Mac: Settings has a sidebar",
+        "Quick Share has its own icon",
+        "Android: Quick Share is its own entry in the share menu",
+        "Android: the Quick Share tile opens a sheet with the devices nearby"
       ]
     },
     "nl": {
-      "title": "Instellingen met een zijbalk op de Mac",
+      "title": "Instellingen met zijbalk en een Quick Share-blad",
       "new": [
-        "Mac: Instellingen heeft een zijbalk met alle onderdelen, zoals de Systeeminstellingen, in plaats van tabbladen. Met de nieuwe onderdelen Muis en toetsenbord en Quick Share pasten de tabbladen niet meer, en de laatste kwamen in een menu achter twee pijltjes waar ze grijs leken",
-        "Android, Windows en Linux: Quick Share heeft een eigen icoon, een cirkel met twee pijlen, in de tegel, de instellingen en het deelmenu. Het lijkt op de Quick Share van Android maar is niet het logo, want dat is een merk van Google",
-        "Android: de rijen Hoe het werkt op de Quick Share-pagina hebben een korte titel met de uitleg eronder in de rustige kleur, zoals de andere rijen, in plaats van één lange regel in vet",
-        "Android: Quick Share is een eigen keuze in het deelmenu, met een eigen icoon, naast Tandem. Het opent het blad met alleen de apparaten in de buurt, en heeft een knop om Quick Share aan te zetten als het uit staat. Het deelblad van Tandem heeft nog steeds de rij In de buurt, met Quick Share",
-        "Android: tikken op de Quick Share-tegel, of lang indrukken, opent een Quick Share-blad (niet schermvullend) met de indeling van de Quick Share van Android: onder Ontvangen als wie je ontvangt met de schakelaar, en de verzoeken met pincode, Weiger en Accepteer, voortgang en Annuleer; onder Versturen de apparaten van Tandem en de apparaten in de buurt. De tegel opent het nu standaard, en kan nog steeds worden ingesteld om Quick Share aan en uit te zetten",
-        "Android: Quick Share staat niet meer dubbel in de hoofdlijst van Instellingen: het staat onder Apparaten en delen, met een rij naar de pagina. De keuzes Blijf aan gedurende en Als je op de tegel tikt zijn nu uitklapmenu's, zodat de hele tekst te lezen is"
+        "Mac: Instellingen heeft een zijbalk",
+        "Quick Share heeft een eigen icoon",
+        "Android: Quick Share is een eigen onderdeel van het deelmenu",
+        "Android: de Quick Share-tegel opent een blad met de apparaten in de buurt"
       ]
     }
   },
@@ -259,19 +227,19 @@
     "version": "0.1.59",
     "date": "2026-10-05",
     "en": {
-      "title": "Quick Share on Windows and Linux, and links and notes",
+      "title": "Quick Share on Windows and Linux",
       "new": [
-        "Windows and Linux: Quick Share is in the app now. Turn it on in Settings or with the item Quick Share in the menu of the tray icon. A small card in the corner of the screen shows who wants to send you something, with the PIN to compare, Decline and Accept and the progress. Under Quick Share in Settings are the devices that were found, to send files or the clipboard to. It is the same code as on the Mac and the phone and has only been tried between two copies of Tandem, not yet with a real Quick Share device",
-        "Links and notes now go as what they are, not as a file. A link that comes in can be opened from the card or the notification, and text is put on the clipboard. On the Mac a right click on a device in the menu bar panel gives Send the clipboard, on Android the share sheet sends text as text",
-        "Windows and Linux: the clipboard history page listened for changes with a function that was not imported, so it could stay empty. That is fixed"
+        "Windows and Linux: Quick Share in the app and the tray menu",
+        "Links and notes are sent as links and notes",
+        "Windows and Linux: clipboard history fixed"
       ]
     },
     "nl": {
-      "title": "Quick Share op Windows en Linux, en links en notities",
+      "title": "Quick Share op Windows en Linux",
       "new": [
-        "Windows en Linux: Quick Share zit nu in de app. Zet het aan bij Instellingen of met het onderdeel Quick Share in het menu van het tray-icoon. Een kaartje in de hoek van het scherm laat zien wie je iets wil sturen, met de pincode om te vergelijken, Weiger en Accepteer en de voortgang. Bij Quick Share in Instellingen staan de gevonden apparaten, om bestanden of het klembord naartoe te sturen. Het is dezelfde code als op de Mac en de telefoon en alleen geprobeerd tussen twee exemplaren van Tandem, nog niet met een echt Quick Share-apparaat",
-        "Links en notities gaan nu als wat ze zijn, niet als bestand. Een link die binnenkomt kun je openen vanaf het kaartje of de melding, en tekst komt op het klembord. Op de Mac geeft rechtsklikken op een apparaat in het menubalkpaneel Verstuur het klembord, op Android stuurt het deelmenu tekst als tekst",
-        "Windows en Linux: de klembordgeschiedenis luisterde naar wijzigingen met een functie die niet was geimporteerd, waardoor de pagina leeg kon blijven. Dat is opgelost"
+        "Windows en Linux: Quick Share in de app en het trayvenster",
+        "Links en notities gaan als links en notities",
+        "Windows en Linux: klembordgeschiedenis hersteld"
       ]
     }
   },
@@ -279,19 +247,19 @@
     "version": "0.1.58",
     "date": "2026-10-05",
     "en": {
-      "title": "A Quick Share tile, and settings that say what they need",
+      "title": "A Quick Share tile",
       "new": [
-        "Android: a Quick Share tile for the quick settings of Android. It is lit while Quick Share is on, and a tap turns it on or off, or opens its page, as you choose. Under Devices and sharing there is a new group Quick Share with the switch, how long it stays on (until you turn it off, 1 hour or 10 minutes), a button that puts the tile in your quick settings, and what a tap on the tile does",
-        "Android: settings that need a permission that is not given yet are grey and say what they need, and a tap takes you to where you can allow it. That goes for the screenshot prompt, Bluetooth messages, mirroring notifications, copying codes, calls and Quick Share. Before only the hotspot did that",
-        "Mac: the menu bar panel has a Quick Share switch that is always there, so you can turn it on and off without opening Settings"
+        "Android: a Quick Share tile for the quick settings",
+        "Android: settings that need a permission are grey and say what they need",
+        "Mac: a Quick Share switch in the menu bar panel"
       ]
     },
     "nl": {
-      "title": "Een Quick Share-tegel, en instellingen die zeggen wat ze nodig hebben",
+      "title": "Een Quick Share-tegel",
       "new": [
-        "Android: een Quick Share-tegel voor de snelle instellingen van Android. Hij licht op zolang Quick Share aan staat, en een tik zet het aan of uit, of opent de pagina, zoals je kiest. Bij Apparaten en delen staat een nieuwe groep Quick Share met de schakelaar, hoe lang het aan blijft (tot je het uitzet, 1 uur of 10 minuten), een knop die de tegel bij je snelle instellingen zet, en wat een tik op de tegel doet",
-        "Android: instellingen die een toestemming nodig hebben die nog niet gegeven is zijn grijs en zeggen wat ze nodig hebben, en een tik brengt je naar waar je het kunt toestaan. Dat geldt voor de screenshotvraag, Bluetooth-berichten, meldingen spiegelen, codes kopieren, gesprekken en Quick Share. Eerder deed alleen de hotspot dat",
-        "Mac: het menubalkpaneel heeft een Quick Share-schakelaar die er altijd is, zodat je het kunt aan- en uitzetten zonder Instellingen te openen"
+        "Android: een Quick Share-tegel voor de snelle instellingen",
+        "Android: instellingen die een toestemming nodig hebben zijn grijs en zeggen wat ze nodig hebben",
+        "Mac: een Quick Share-schakelaar in het menubalkpaneel"
       ]
     }
   },
@@ -301,19 +269,15 @@
     "en": {
       "title": "Quick Share, without Google services",
       "new": [
-        "Mac and Android: Tandem can now send files to and receive files from phones and computers that have Quick Share, with no Google services and no account. It speaks the protocol of Quick Share itself, in the mode Everyone. It is off until you turn it on in Settings, because while it is on the device can be found by everyone on the same Wi-Fi. It has not been tried with a real Quick Share device yet, only between two copies of Tandem, so tell me what you see",
-        "Mac: a Quick Share tab in Settings, cards in the corner of the screen when someone sends you something (with the PIN to compare, Decline and Accept, and the progress), and a Quick Share row in the menu bar panel with the devices nearby: click one to pick files, or drop files on it",
-        "Android: a Quick Share page in Settings, a notification with Decline and Accept when someone sends you something, and a row Nearby, with Quick Share in the share sheet, as round targets like the share menu of Android. What arrives goes to Downloads",
-        "This is Quick Share only. AirDrop to an iPhone is not possible from an app: it needs a radio mode of Apple that apps cannot use"
+        "Mac and Android: send and receive files with phones and computers that have Quick Share, without an account",
+        "Mac and Android: Quick Share page in Settings, cards and notifications for incoming files"
       ]
     },
     "nl": {
       "title": "Quick Share, zonder Google-diensten",
       "new": [
-        "Mac en Android: Tandem kan nu bestanden versturen naar en ontvangen van telefoons en computers met Quick Share, zonder Google-diensten en zonder account. Het spreekt zelf het protocol van Quick Share, in de modus Iedereen. Het staat uit tot je het aanzet bij Instellingen, want zolang het aan staat kan het apparaat door iedereen op hetzelfde wifi worden gevonden. Het is nog niet geprobeerd met een echt Quick Share-apparaat, alleen tussen twee exemplaren van Tandem, dus laat weten wat je ziet",
-        "Mac: een tabblad Quick Share bij de Instellingen, kaarten in de hoek van het scherm als iemand je iets stuurt (met de pincode om te vergelijken, Weiger en Accepteer, en de voortgang), en een rij Quick Share in het menubalkpaneel met de apparaten in de buurt: klik op een apparaat om bestanden te kiezen, of laat bestanden erop vallen",
-        "Android: een pagina Quick Share bij Instellingen, een melding met Weigeren en Accepteren als iemand je iets stuurt, en een rij In de buurt, met Quick Share in het deelmenu, als ronde doelen zoals het deelmenu van Android. Wat binnenkomt gaat naar Downloads",
-        "Dit is alleen Quick Share. AirDrop naar een iPhone kan niet vanuit een app: het vraagt een radiostand van Apple die apps niet kunnen gebruiken"
+        "Mac en Android: bestanden sturen en ontvangen met telefoons en computers met Quick Share, zonder account",
+        "Mac en Android: Quick Share-pagina in Instellingen, kaarten en meldingen voor binnenkomende bestanden"
       ]
     }
   },
