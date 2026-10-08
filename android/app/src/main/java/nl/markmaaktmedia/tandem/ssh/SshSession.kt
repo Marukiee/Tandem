@@ -73,8 +73,11 @@ class SshSession(
 
     fun write(bytes: ByteArray) {
         if (closed) return
-        writer.execute {
-            runCatching { out?.write(bytes); out?.flush() }
+        // The login can end between the check and here, and then the thread of writes is gone: that is not an error.
+        runCatching {
+            writer.execute {
+                runCatching { out?.write(bytes); out?.flush() }
+            }
         }
     }
 

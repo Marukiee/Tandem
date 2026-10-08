@@ -171,6 +171,8 @@ pub fn ssh_resize(login: u64, cols: u16, rows: u16) {
 pub fn ssh_close(login: u64) {
     if let Some(mut l) = LOGINS.lock().unwrap().remove(&login) {
         let _ = l.child.kill();
+        // Collected, so the ended ssh does not stay behind as a process that nobody asked after.
+        let _ = l.child.wait();
     }
 }
 
