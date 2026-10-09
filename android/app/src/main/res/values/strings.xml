@@ -358,6 +358,9 @@
     <string name="settings_ble_messages_sub">Clipboard and notifications still reach your Mac over Bluetooth when there is no Wi-Fi</string>
     <string name="settings_auto_tailscale">Turn on Tailscale when needed</string>
     <string name="settings_auto_tailscale_sub">When a device cannot be reached on this network, Tandem asks Tailscale to connect. Devices on the same network do not need it.</string>
+    <string name="settings_pointer_in">Use a computer\'s mouse on this phone</string>
+    <string name="settings_pointer_in_sub">Push the pointer of your Mac over the edge of its screen and it arrives on this phone</string>
+    <string name="pointer_in_needs_access">Turn on Tandem\'s control under Accessibility first</string>
     <string name="status_bluetooth">Bluetooth</string>
     <string name="status_asleep">Asleep</string>
     <string name="action_wake">Wake up</string>

@@ -24,6 +24,9 @@ class Graph(app: Application) {
     val media = nl.markmaaktmedia.tandem.media.MediaMirror(app, prefs, host, scope)
     val audio = nl.markmaaktmedia.tandem.audio.RemoteAudioPlayer(app, prefs, host, scope).also { host.audioSink = it }
     val live = nl.markmaaktmedia.tandem.live.LiveShare(app, host, scope)
+
+    /** This phone as the next screen of a computer's shared mouse. */
+    val pointerIn = nl.markmaaktmedia.tandem.live.PointerIn(app, host, prefs, scope)
     val clipHistory = nl.markmaaktmedia.tandem.data.ClipHistory(app)
     val quickShare = nl.markmaaktmedia.tandem.quickshare.QuickShareHost(app, scope) { host.myName }
 

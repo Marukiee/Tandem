@@ -160,7 +160,7 @@ class EngineHost(
                     appVersion = BuildConfig.VERSION_NAME,
                     port = 47820.toUShort(),
                     enableMdns = true,
-                    caps = listOf("clipboard", "share", "notify", "call", "input", "battery", "hotspot", "screenshot", "media", "capture", "screen.view") +
+                    caps = listOf("clipboard", "share", "notify", "call", "input", "battery", "hotspot", "screenshot", "media", "capture", "screen.view", "pointer.in") +
                         nl.markmaaktmedia.tandem.live.LiveShare.caps(context),
                     lowPower = true,
                 )
@@ -205,11 +205,15 @@ class EngineHost(
     }
 
     private fun handle(event: TandemEvent) {
+        if (event is TandemEvent.Disconnected) context.graph.pointerIn.deviceGone(event.id)
         when (event) {
             is TandemEvent.DevicesChanged, is TandemEvent.Connected, is TandemEvent.Disconnected,
             is TandemEvent.CircleChanged, is TandemEvent.Paired -> refreshDevices()
 
             is TandemEvent.RemovedFromCircle -> _removed.value = true
+
+            is TandemEvent.PointerShare -> context.graph.pointerIn.onShare(event.from, event.msg)
+            is TandemEvent.Input -> context.graph.pointerIn.onInput(event.from, event.input)
 
             is TandemEvent.TailscaleNeeded -> scope.launch(Dispatchers.IO) {
                 if (context.graph.prefs.autoTailscale.first()) TailscaleAuto.connect(context)

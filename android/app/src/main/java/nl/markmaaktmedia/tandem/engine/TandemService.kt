@@ -121,7 +121,10 @@ class TandemService : LifecycleService() {
 
             is TandemEvent.ShareOffered -> {
                 val device = host.device(event.from)
-                if (device != null && !device.autoAccept) postOffer(device.name, event.from, event.offer.toLong(), event.items.size)
+                // Files that the person dragged over with the mouse of that computer are taken without asking: it was them.
+                val dragged = event.origin == uniffi.tandem_core.TandemShareOrigin.Drag && graph.pointerIn.isPeer(event.from)
+                if (dragged) runCatching { host.engine?.acceptOffer(event.from, event.offer) }
+                else if (device != null && !device.autoAccept) postOffer(device.name, event.from, event.offer.toLong(), event.items.size)
             }
 
             is TandemEvent.Ring -> if (event.on) FindPhone.start(this) else FindPhone.stop()

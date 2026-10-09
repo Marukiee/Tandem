@@ -871,3 +871,5 @@
 "a device" = "een apparaat";
 "The connection to %@ was lost, so the pointer is back" = "De verbinding met %@ is weg, dus de aanwijzer is terug";
 "the other computer" = "de andere computer";
+"Pair a Mac, a PC or a phone to put it next to this one." = "Koppel een Mac, een pc of een telefoon om hem naast deze te zetten.";
+"A phone can sit next to this Mac too, when you turn on \"Use a computer's mouse on this phone\" in its Tandem. Or show its screen in a window here and move the pointer into it: clicks, scrolling and typing go to the phone. Both need Tandem's control under Accessibility on the phone." = "Een telefoon kan ook naast deze Mac staan, als je in zijn Tandem \"Gebruik de muis van een computer op deze telefoon\" aanzet. Of toon zijn scherm hier in een venster en beweeg de aanwijzer erin: klikken, scrollen en typen gaan naar de telefoon. Beide hebben de bediening van Tandem onder Toegankelijkheid op de telefoon nodig.";

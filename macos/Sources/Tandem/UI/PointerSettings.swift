@@ -12,6 +12,8 @@ struct PointerSettings: View {
 
     private var computers: [TandemDevice] { model.devices.filter { $0.platform != .android } }
     private var phones: [TandemDevice] { model.devices.filter { $0.platform == .android } }
+    /// What can sit next to this Mac: the computers, and the phones whose Tandem can take a pointer in.
+    private var neighbourChoices: [TandemDevice] { computers + phones.filter { $0.caps.contains("pointer.in") } }
 
     private static let sides: [(tag: String, label: LocalizedStringKey)] = [
         ("none", "Not next to this Mac"), ("left", "On the left"), ("right", "On the right"), ("top", "Above"), ("bottom", "Below"),
@@ -60,10 +62,10 @@ struct PointerSettings: View {
                 )
                 .disabled(!trusted)
                 if share.enabled && trusted {
-                    if computers.isEmpty {
-                        Text("Pair a Mac or a Windows PC to put it next to this one.").foregroundStyle(.secondary)
+                    if neighbourChoices.isEmpty {
+                        Text("Pair a Mac, a PC or a phone to put it next to this one.").foregroundStyle(.secondary)
                     }
-                    ForEach(computers, id: \.id) { device in
+                    ForEach(neighbourChoices, id: \.id) { device in
                         Picker(device.name, selection: Binding(
                             get: { share.neighbours[device.id] ?? "none" },
                             set: { share.neighbours[device.id] = $0 == "none" ? nil : $0 }
@@ -102,7 +104,7 @@ struct PointerSettings: View {
             }
 
             Section {
-                Text("A phone has no edge to cross. Show its screen in a window here and move the pointer into it: clicks, scrolling and typing go to the phone. The phone has to allow that with Tandem's control under Accessibility.")
+                Text("A phone can sit next to this Mac too, when you turn on \"Use a computer's mouse on this phone\" in its Tandem. Or show its screen in a window here and move the pointer into it: clicks, scrolling and typing go to the phone. Both need Tandem's control under Accessibility on the phone.")
                     .foregroundStyle(.secondary)
                 ForEach(phones, id: \.id) { device in
                     LabeledContent(device.name) {

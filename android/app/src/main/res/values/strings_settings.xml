@@ -41,6 +41,7 @@
     <string name="settings_kw_sharing_screenshot">screenshots, screen capture, share screenshot, photos, quick share, offer</string>
     <string name="settings_kw_sharing_ble">bluetooth, ble, offline, no wifi, no network, low energy, clipboard, notifications</string>
     <string name="settings_kw_sharing_tailscale">tailscale, vpn, remote, away from home, other network, tailnet, connect, reach</string>
+    <string name="settings_kw_sharing_pointer">mouse, keyboard, mac, computer, pointer, cursor, edge, universal control, share mouse, accessibility</string>
     <string name="settings_kw_sharing_tile">quick settings, tile, send clipboard, copy, paste, shortcut</string>
     <string name="settings_kw_sharing_music">music, media, now playing, playback, player, controls, spotify, youtube, sound</string>
     <string name="settings_kw_sharing_media_apps">apps, music apps, media apps, exclude, hide, allow list, which apps</string>

@@ -57,6 +57,7 @@ internal object FocusKeys {
     const val Screenshot = "sharing.screenshot"
     const val Ble = "sharing.ble"
     const val AutoTailscale = "sharing.tailscale"
+    const val PointerIn = "sharing.pointer"
     const val ClipTile = "sharing.tile"
     const val MediaShare = "sharing.music"
     const val Speaker = "sharing.speaker"
@@ -193,6 +194,10 @@ internal object SettingsCatalog {
         SettingsEntry(
             "sharing_tailscale", R.string.settings_auto_tailscale, R.string.settings_kw_sharing_tailscale, SettingsCategory.Sharing, sharing,
             { TandemIcons.Wifi }, subtitle = R.string.settings_auto_tailscale_sub, focus = FocusKeys.AutoTailscale,
+        ),
+        SettingsEntry(
+            "sharing_pointer", R.string.settings_pointer_in, R.string.settings_kw_sharing_pointer, SettingsCategory.Sharing, sharing,
+            { TandemIcons.Mouse }, subtitle = R.string.settings_pointer_in_sub, focus = FocusKeys.PointerIn,
         ),
         SettingsEntry(
             "sharing_tile", R.string.settings_clip_tile, R.string.settings_kw_sharing_tile, SettingsCategory.Sharing, sharing,

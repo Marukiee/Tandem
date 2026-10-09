@@ -334,6 +334,9 @@
     <string name="settings_ble_messages_sub">Klembord en meldingen komen ook zonder wifi bij je Mac aan, via Bluetooth</string>
     <string name="settings_auto_tailscale">Tailscale aanzetten als dat nodig is</string>
     <string name="settings_auto_tailscale_sub">Als een apparaat niet bereikbaar is op dit netwerk, vraagt Tandem Tailscale om te verbinden. Apparaten op hetzelfde netwerk hebben dat niet nodig.</string>
+    <string name="settings_pointer_in">Gebruik de muis van een computer op deze telefoon</string>
+    <string name="settings_pointer_in_sub">Duw de aanwijzer van je Mac over de rand van zijn scherm en hij komt op deze telefoon uit</string>
+    <string name="pointer_in_needs_access">Zet eerst de bediening van Tandem aan onder Toegankelijkheid</string>
     <string name="status_bluetooth">Bluetooth</string>
     <string name="status_asleep">Slaapt</string>
     <string name="action_wake">Wakker maken</string>
