@@ -41,8 +41,8 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   die een eigen aanwijzer als overlay tekent en klikken, slepen en scrollen afspeelt met de toegankelijkheidsservice die er al is voor het bedienen
   vanaf de Mac (`TandemInput` is hetzelfde bericht). Een Bluetooth-muis aan de telefoon als bron voor andere computers is veel moeilijker: Android
   geeft een app buiten zijn eigen venster geen muisbewegingen.
-- Linux onder Wayland (de standaard van Fedora): scherm delen via de portal en PipeWire, en invoer via de RemoteDesktop-portal met een onthouden
-  toestemming (nu vraagt het bureaublad er elke keer opnieuw om, of het werkt niet). Te beslissen na het zien van de Linux-pc (X11 of Wayland).
+- Linux onder Wayland (de standaard van Fedora): invoer via de RemoteDesktop-portal en beeld via de ScreenCast-portal werken met een onthouden toestemming (gezien
+  op een Fedora 44 met GNOME 50, 2026-10-09). Nog niet gezien: een kijker die dat beeld echt krijgt, en dat alles na een herstart van het bureaublad.
 - Scherm delen en bedienen vanaf beide kanten tussen Mac en Linux (en Windows) op echte toestellen nalopen; de code voor beide kanten is er, nooit gezien.
 - Android (sectie 5b): de deelstatus ook in de tegels en de melding, Control this Mac nog soepeler (eerst meten op het toestel),
   bellen via de Mac (alleen de melding met opnemen en ophangen; het gespreksgeluid kan niet).

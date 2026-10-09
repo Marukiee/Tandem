@@ -22,7 +22,7 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | De telefoon bedienen met het getoonde scherm | bron | ja | ja (knop, nooit gezien) | ja (knop, nooit gezien) |
 | Invoegen vanaf telefoon (scan, foto) | bron | ja | ja (op het klembord, nooit gezien) | ja (op het klembord, nooit gezien) |
 | Geluid van de telefoon op de computer | bron | ja | ja (nooit gehoord) | ja (nooit gehoord) |
-| Scherm van de computer tonen aan andere apparaten en het laten bedienen (zoals TeamViewer) | kijkt en bedient | ja (host en kijker) | ja (host, GDI en OpenH264, kijker) | ja onder X11 (host, nooit gezien), nee onder Wayland, kijker ja |
+| Scherm van de computer tonen aan andere apparaten en het laten bedienen (zoals TeamViewer) | kijkt en bedient | ja (host en kijker) | ja (host, GDI en OpenH264, kijker) | ja onder X11 (host, nooit gezien); onder Wayland geeft de portal met GStreamer beeld (op een echte laptop gezien als debugbeeld, delen met een kijker nog niet); kijker ja, het scherm van een Mac gezien in een venster op een echte laptop (0.1.75) |
 | De computer bedienen vanaf de telefoon (trackpad, toetsenbord) | bron | ja | ja | deels (alleen X11) |
 | Een computer bedienen vanaf een andere computer (gedeelde muis) | nee | ja (hoofd en bestuurd) | ja (hoofd en bestuurd) | deels: bestuurd (X11 en Wayland met de RemoteDesktop-portal), hoofd alleen onder Wayland via de InputCapture-portal (nooit gezien), niet onder X11 |
 | Bestanden slepen over de rand bij de gedeelde muis | nee | ja, beide kanten (dropzone aan de rand, bestanden landen in het Finder-venster of op het bureaublad) | ja als bestuurde pc (dropzone, landen op het bureaublad), niet als hoofd | idem als Windows, onder X11 |
