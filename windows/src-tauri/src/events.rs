@@ -64,7 +64,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::MediaOffered { from, kind, facing } => {
             let name = device_name(app, &from);
             let camera = kind == tandem_core::ffi::TandemMediaKind::Camera;
-            if let Err(reason) = crate::live::start(app, from, camera, facing, name) {
+            if let Err(reason) = crate::live::start(app, from, camera, facing, name, false) {
                 log::warn!("could not open the window for the offered picture: {reason}");
             }
         }

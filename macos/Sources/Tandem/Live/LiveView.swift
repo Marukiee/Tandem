@@ -25,7 +25,8 @@ struct LiveView: View {
 
     var body: some View {
         ZStack {
-            Color.black
+            // Black behind a picture (it is the edge of it); a calm dark backdrop while there is none, so a waiting window is not a hole.
+            LiveBackdrop(waiting: !session.hasPicture)
             VideoSurface(surface: session.surface, orientation: session.orientation)
                 .opacity(session.hasPicture ? 1 : 0)
                 .animation(.tandemFade, value: session.hasPicture)
@@ -456,5 +457,28 @@ extension View {
         } else {
             glassEffect(.regular, in: shape)
         }
+    }
+}
+
+
+/// What is behind the picture of a screen or camera: black, so the picture ends cleanly, and while there is no picture yet a dark
+/// backdrop with a little light at the top, which makes the waiting card sit on something.
+struct LiveBackdrop: View {
+    let waiting: Bool
+
+    var body: some View {
+        ZStack {
+            Color.black
+            LinearGradient(
+                colors: [Color(white: 0.16), Color(white: 0.07), Color(white: 0.04)],
+                startPoint: .top, endPoint: .bottom
+            )
+            .opacity(waiting ? 1 : 0)
+            // A soft pool of light under the card, in the grey of the window and not in a colour.
+            RadialGradient(colors: [Color.white.opacity(0.07), Color.white.opacity(0)], center: .center, startRadius: 0, endRadius: 360)
+                .opacity(waiting ? 1 : 0)
+        }
+        .animation(.tandemFade, value: waiting)
+        .ignoresSafeArea()
     }
 }

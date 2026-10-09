@@ -102,10 +102,13 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         return fit(aspect: defaultAspect, in: area)
     }
 
-    /// What the window is shaped like before the phone has said: a phone held upright for the screen, a landscape picture
-    /// for the camera. It is corrected the moment the phone answers.
+    /// What the window is shaped like before the other side has said: a phone held upright for its screen, a wide window for the screen
+    /// of a computer, a landscape picture for the camera. It is corrected the moment the answer comes.
     private var defaultAspect: CGSize {
-        session.kind == .camera ? CGSize(width: 16, height: 9) : CGSize(width: 9, height: 19.5)
+        if session.kind == .camera { return CGSize(width: 16, height: 9) }
+        // A computer has a wide screen; a phone is held upright.
+        let computer = EngineModel.shared.device(session.peer)?.isComputer ?? false
+        return computer ? CGSize(width: 16, height: 10) : CGSize(width: 9, height: 19.5)
     }
 
     /// Largest size with this shape that takes up at most 70% of the height and 60% of the width of the screen.

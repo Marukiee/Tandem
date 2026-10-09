@@ -214,7 +214,7 @@ impl TandemMediaViewer for Viewer {
 /// Asks a phone for its screen or its camera and opens the window that shows it.
 #[tauri::command]
 pub async fn live_start(app: AppHandle, id: String, kind: String, name: String, computer: Option<bool>) -> Reply<String> {
-    let session = start(&app, id, kind == "camera", TandemMediaFacing::Any, name)?;
+    let session = start(&app, id, kind == "camera", TandemMediaFacing::Any, name, computer.unwrap_or(false))?;
     if computer.unwrap_or(false) {
         if let Some(s) = SESSIONS.lock().unwrap().get_mut(&session) {
             s.computer = true;
@@ -224,7 +224,7 @@ pub async fn live_start(app: AppHandle, id: String, kind: String, name: String, 
 }
 
 /// The request and the window. Also what a phone that starts the sharing itself ends up in.
-pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacing, name: String) -> Reply<u64> {
+pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacing, name: String, computer: bool) -> Reply<u64> {
     let engine = app.state::<AppState>().engine()?;
     let want = TandemMediaWant {
         kind: if camera { TandemMediaKind::Camera } else { TandemMediaKind::Screen },
@@ -256,7 +256,8 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
             lost,
         },
     );
-    let (width, height) = if camera { (720.0, 560.0) } else { (440.0, 820.0) };
+    // The shape before the first picture says it (see `live_fit`): wide for a camera or the screen of a computer, tall for a phone.
+    let (width, height) = if camera || computer { (860.0, 560.0) } else { (440.0, 820.0) };
     let built = WebviewWindowBuilder::new(app, &label, WebviewUrl::App(format!("live.html?session={session}").into()))
         .title(name)
         .inner_size(width, height)
