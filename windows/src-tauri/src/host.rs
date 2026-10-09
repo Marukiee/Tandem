@@ -139,6 +139,29 @@ impl Host {
     }
 }
 
+/// The question as a notification with three buttons (Linux). `Some((allowed, remembered))` once it was answered, or turned down for lack of
+/// an answer; `None` when the desktop has no notifications to ask it with.
+#[cfg(target_os = "linux")]
+fn ask_by_notification(title: &str, body: &str, allow: &str, always: &str, deny: &str) -> Option<(bool, bool)> {
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    let buttons = [("allow", allow), ("always", always), ("deny", deny)];
+    let number = tandem_winsys::notify::ask(title, body, &buttons, move |key| {
+        let _ = tx.send(key.to_string());
+    })?;
+    let key = rx.recv_timeout(std::time::Duration::from_secs(120)).ok();
+    tandem_winsys::notify::close(number);
+    Some(match key.as_deref() {
+        Some("allow") => (true, false),
+        Some("always") => (true, true),
+        _ => (false, false),
+    })
+}
+
+#[cfg(not(target_os = "linux"))]
+fn ask_by_notification(_title: &str, _body: &str, _allow: &str, _always: &str, _deny: &str) -> Option<(bool, bool)> {
+    None
+}
+
 impl TandemMediaHost for Host {
     fn on_request(&self, from: String, request: TandemMediaRequest, pre_approved: bool) {
         let Some(engine) = self.engine() else { return };
@@ -167,24 +190,33 @@ impl TandemMediaHost for Host {
             let wants_control = request.control && control_available();
             let body = if wants_control { i18n::t(&this.app, "host_ask_control") } else { i18n::t(&this.app, "host_ask_view") };
             let (allow, always, deny) = (i18n::t(&this.app, "host_allow"), i18n::t(&this.app, "host_always"), i18n::t(&this.app, "host_deny"));
-            let answer = this
-                .app
-                .dialog()
-                .message(body)
-                .title(i18n::t1(&this.app, "host_ask_title", &name))
-                .buttons(MessageDialogButtons::YesNoCancelCustom(allow.clone(), always.clone(), deny))
-                .blocking_show_with_result();
-            let remembered = match &answer {
-                MessageDialogResult::Custom(label) => *label == always,
-                MessageDialogResult::No => true,
-                _ => false,
+            let title = i18n::t1(&this.app, "host_ask_title", &name);
+            // Where a window cannot be put in front (Wayland) the question is a notification with the buttons, which is seen; the window
+            // of the question is for a desktop that has no notifications to offer.
+            let (allowed, remembered) = match ask_by_notification(&title, &body, &allow, &always, &deny) {
+                Some(decision) => decision,
+                None => {
+                    let answer = this
+                        .app
+                        .dialog()
+                        .message(body)
+                        .title(title)
+                        .buttons(MessageDialogButtons::YesNoCancelCustom(allow.clone(), always.clone(), deny))
+                        .blocking_show_with_result();
+                    let remembered = match &answer {
+                        MessageDialogResult::Custom(label) => *label == always,
+                        MessageDialogResult::No => true,
+                        _ => false,
+                    };
+                    let allowed = remembered
+                        || match &answer {
+                            MessageDialogResult::Custom(label) => *label == allow,
+                            MessageDialogResult::Yes | MessageDialogResult::Ok => true,
+                            _ => false,
+                        };
+                    (allowed, remembered)
+                }
             };
-            let allowed = remembered
-                || match &answer {
-                    MessageDialogResult::Custom(label) => *label == allow,
-                    MessageDialogResult::Yes | MessageDialogResult::Ok => true,
-                    _ => false,
-                };
             // "Always": this device asks no more, for the screen and for the mouse and keyboard.
             if remembered {
                 if let Some(engine) = this.engine() {
