@@ -153,7 +153,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 Share::Enter { edge, along } => {
                     // Taken only when it can really be played here: a pointer that comes over and does nothing leaves the person
                     // on the other computer stuck, so what cannot be done is handed straight back.
-                    if settings::get(app).remote_input
+                    if settings::pointer_allowed(app, &from)
                         && crate::commands::input_blocked().is_none()
                         && !crate::lid::blocked(app)
                         && input::ready()
@@ -209,7 +209,7 @@ fn remote_input(app: &AppHandle, from: &str, event: tandem_core::ffi::TandemInpu
     if crate::lid::blocked(app) {
         return;
     }
-    if settings::get(app).remote_input && blocked.is_none() {
+    if settings::pointer_allowed(app, from) && blocked.is_none() {
         input::send(event);
         return;
     }

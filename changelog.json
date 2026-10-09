@@ -15,7 +15,8 @@
         "Linux can control your Mac with its mouse (Wayland)",
         "The pointer pill on the Mac stays and shows the keys to bring it back",
         "Windows and Linux: the screen window closes with the session and says what to allow",
-        "Mac: the purple glow behind the pages is gone"
+        "Mac: the purple glow behind the pages is gone",
+        "Windows and Linux: choose which devices may use this PC's mouse and keyboard"
       ]
     },
     "nl": {
@@ -31,7 +32,8 @@
         "Linux kan je Mac bedienen met zijn muis (Wayland)",
         "De pil op de Mac blijft staan en toont de toetsen om de muis terug te halen",
         "Windows en Linux: het schermvenster sluit met de sessie en zegt wat je moet toestaan",
-        "Mac: de paarse gloed achter de pagina's is weg"
+        "Mac: de paarse gloed achter de pagina's is weg",
+        "Windows en Linux: kies welke apparaten de muis en het toetsenbord van deze pc mogen gebruiken"
       ]
     }
   },

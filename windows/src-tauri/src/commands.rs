@@ -326,6 +326,10 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
             }
             current.remote_input = v;
         }
+        // A list of the devices that may, or nothing at all for everybody.
+        if let Some(v) = patch.get("pointerAllowed") {
+            current.pointer_allowed = v.as_array().map(|list| list.iter().filter_map(|d| d.as_str().map(str::to_string)).collect());
+        }
         if let Some(v) = patch["shareDevice"].as_str() {
             current.share_device = v.to_string();
         }

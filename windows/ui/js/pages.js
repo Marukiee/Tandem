@@ -2,7 +2,7 @@
 import { html, useEffect, useState } from "../vendor/preact-htm.js";
 import { call, listen, native } from "./backend.js";
 import { ArrangementEditor } from "./arrange.js";
-import { BatteryRing, Chip, DeviceGlyph, PlayerCard, Switch, ago, deviceChips, fmtSize } from "./components.js";
+import { BatteryRing, Chip, DeviceGlyph, PlayerCard, Switch, ago, deviceChips, fmtSize, platformIcon } from "./components.js";
 import { Icon } from "./icons.js";
 import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
@@ -437,6 +437,24 @@ function updateText() {
   }
 }
 
+// Which devices may use the mouse and keyboard of this PC: all of them until the person leaves one out.
+function AllowedDevices({ s, patch }) {
+  const people = state.devices.filter((d) => d.platform === "macos" || d.platform === "windows" || d.platform === "linux" || d.platform === "android");
+  if (people.length === 0) return null;
+  const listed = Array.isArray(s.pointerAllowed) ? s.pointerAllowed : null;
+  const isOn = (d) => listed === null || listed.includes(d.id);
+  const toggle = (d, on) => {
+    const base = listed === null ? people.map((p) => p.id) : listed;
+    patch({ pointerAllowed: on ? [...new Set([...base, d.id])] : base.filter((id) => id !== d.id) });
+  };
+  return html`<div style="display:flex;flex-direction:column;gap:8px">
+    <div class="small muted">${t("mouse_who")}</div>
+    <div class="card flush">
+      ${people.map((d) => html`<${SettingRow} icon=${platformIcon(d.platform)} title=${d.name} sub=${d.online ? t("connected") : t("not_connected")} on=${isOn(d)} onChange=${(v) => toggle(d, v)} />`)}
+    </div>
+  </div>`;
+}
+
 // One mouse and keyboard for more computers, in the settings: how it works, where each computer sits, and who may use this PC.
 function MouseSection({ s, patch }) {
   const others = state.devices.filter((d) => d.platform === "macos" || d.platform === "windows");
@@ -463,6 +481,7 @@ function MouseSection({ s, patch }) {
       <${SettingRow} icon="pointer" title=${t("mouse_in_title")} sub=${t("mouse_in_sub")} on=${s.remoteInput} onChange=${(v) => patch({ remoteInput: v })} disabled=${!state.input.ok} why=${inputWhy()} />
       ${state.hasLid && html`<${SettingRow} icon="device-laptop" title=${t("lid_title")} sub=${t("lid_sub")} on=${s.keepWhenLidClosed} onChange=${(v) => patch({ keepWhenLidClosed: v })} />`}
     </div>
+    ${s.remoteInput && state.input.ok && html`<${AllowedDevices} s=${s} patch=${patch} />`}
     <div class="small muted">${t("mouse_firewall")}</div>
 
     <h2>${t("mouse_phone")}</h2>

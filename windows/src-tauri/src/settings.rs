@@ -23,6 +23,9 @@ pub struct Settings {
     /// The phone's trackpad and keyboard move the pointer and type on this PC. Off until the person turns it on,
     /// because Windows has no permission to ask for: this is the only door.
     pub remote_input: bool,
+    /// Which devices may use the mouse and keyboard of this PC when the switch above is on. Not set: all of them (every device of the
+    /// circle is trusted); set: only these.
+    pub pointer_allowed: Option<Vec<String>>,
     /// The computer whose screen sits next to this one for a shared mouse and keyboard, and on which side (left, right, top, bottom).
     /// Only read once, to make the first arrangement (`layout`) of an earlier version.
     pub share_device: String,
@@ -64,6 +67,7 @@ impl Default for Settings {
             phone_notifications: true,
             language: "auto".into(),
             remote_input: false,
+            pointer_allowed: None,
             share_device: String::new(),
             share_edge: String::new(),
             layout: Vec::new(),
@@ -113,6 +117,12 @@ pub fn save(app: &AppHandle) {
 pub fn set_dismissed_update(app: &AppHandle, version: &str) {
     app.state::<AppState>().settings.lock().unwrap().dismissed_update = version.to_string();
     save(app);
+}
+
+/// Whether this device may use the mouse and keyboard of this PC: the switch is on and it was not left out of the list.
+pub fn pointer_allowed(app: &AppHandle, device: &str) -> bool {
+    let settings = get(app);
+    settings.remote_input && settings.pointer_allowed.as_ref().is_none_or(|list| list.iter().any(|d| d == device))
 }
 
 pub fn get(app: &AppHandle) -> Settings {
