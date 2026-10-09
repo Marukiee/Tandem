@@ -161,11 +161,11 @@ final class QuickShare {
             TandemQsFile(name: "Menu.pdf", mime: "application/pdf", size: 880_000),
         ]
         incoming = [
-            Incoming(id: 9001, sender: "Maruks Telefoon", pin: "4821", files: files),
+            Incoming(id: 9001, sender: "Pixel 9", pin: "4821", files: files),
             Incoming(id: 9002, sender: "Galaxy S26 van Sanne", pin: "1093", files: files, accepted: true, done: 3_000_000),
         ]
-        peers = [Peer(id: "abcd", name: "Maruks Telefoon", kind: .phone), Peer(id: "efgh", name: "Windows pc", kind: .laptop)]
-        incoming.append(Incoming(id: 9003, sender: "Maruks Telefoon", pin: "7710", files: [], texts: [TandemQsTextInfo(kind: .url, title: "https://tandem.markmaaktmedia.nl")]))
+        peers = [Peer(id: "abcd", name: "Pixel 9", kind: .phone), Peer(id: "efgh", name: "Windows pc", kind: .laptop)]
+        incoming.append(Incoming(id: 9003, sender: "Pixel 9", pin: "7710", files: [], texts: [TandemQsTextInfo(kind: .url, title: "https://tandem.markmaaktmedia.nl")]))
         QuickSharePanel.shared.refresh()
     }
 

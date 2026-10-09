@@ -8,7 +8,8 @@ import { setPlatform, t } from "./i18n.js";
 import { set } from "./store.js";
 
 const tauri = window.__TAURI__;
-const session = Number(new URLSearchParams(location.search).get("session"));
+// As text: the number is 64 bits long and a number of a web page keeps 53 of them.
+const session = new URLSearchParams(location.search).get("session");
 const canvas = document.getElementById("picture");
 const context = canvas.getContext("2d");
 const stateBox = document.getElementById("state");
@@ -25,7 +26,6 @@ let waitingForKey = true;
 let phoneRotation = 0;
 let extraRotation = 0;
 let pinned = false;
-let ended = false;
 let hasPicture = false;
 let lastAsk = 0;
 // Clicking and typing on the phone: the phone says whether it lets this computer, and the person turns it on and off.
@@ -132,7 +132,6 @@ async function showJpeg(data) {
 }
 
 async function onFrame(buffer) {
-  if (ended) return;
   const bytes = new Uint8Array(buffer);
   const flags = bytes[0];
   if (flags & 4) return showJpeg(bytes.subarray(9));
@@ -175,20 +174,8 @@ async function onFrame(buffer) {
 
 // ---- The window -------------------------------------------------------------------
 
-const reasons = {
-  Denied: "live_denied",
-  Unavailable: "live_unavailable",
-  Unsupported: "live_unsupported",
-  Timeout: "live_timeout",
-};
-
-function finish(reason) {
-  ended = true;
-  hasPicture = false;
-  const key = reasons[reason];
-  say(key ? t(key, name) : t("live_ended"), true);
-  bar.hidden = true;
-}
+/** The window goes when the sharing is over, however it ended: the Rust side closes it and says in the main window what went wrong. */
+const leave = () => { call("live_stop", { session }).catch(() => {}).finally(() => window.close()); };
 
 async function start() {
   const text = (key) => t(key);
@@ -210,7 +197,9 @@ async function start() {
   if (!tauri) return preview(new URLSearchParams(location.search).get("clip"));
   const channel = new tauri.core.Channel();
   channel.onmessage = (buffer) => { onFrame(buffer instanceof ArrayBuffer ? buffer : new Uint8Array(buffer).buffer); };
-  const info = await call("live_attach", { session, onFrame: channel });
+  // A session that is over by the time the window is up has nothing to show: the window just goes.
+  const info = await call("live_attach", { session, onFrame: channel }).catch(() => null);
+  if (!info) return leave();
   setPlatform(info.platform);
   set({ platform: info.platform });
   computerPeer = Boolean(info.computer);
@@ -229,7 +218,6 @@ async function start() {
   document.title = name;
   if (info.accepted) controlGranted = Boolean(info.accepted.control);
   showControl();
-  if (info.ended) return finish(info.ended);
   say(t(kind === "camera" ? "live_waiting_camera" : "live_waiting_screen", name));
   bar.hidden = false;
 }
@@ -243,7 +231,6 @@ listen("live-update", (update) => {
   if (typeof update.rotation === "number") phoneRotation = update.rotation;
   if (typeof update.control === "boolean") { controlGranted = update.control; showControl(); }
 });
-listen("live-ended", (event) => finish(event.reason));
 
 document.getElementById("pin").addEventListener("click", (e) => {
   pinned = !pinned;
@@ -254,8 +241,8 @@ document.getElementById("turn").addEventListener("click", () => { extraRotation 
 document.getElementById("copy").addEventListener("click", () => {
   canvas.toBlob((blob) => { if (blob) navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]).catch(() => {}); });
 });
-document.getElementById("stop").addEventListener("click", () => { call("live_stop", { session }).finally(() => window.close()); });
-closeButton.addEventListener("click", () => { call("live_stop", { session }).finally(() => window.close()); });
+document.getElementById("stop").addEventListener("click", leave);
+closeButton.addEventListener("click", leave);
 window.addEventListener("pagehide", () => { call("live_stop", { session }); });
 
 // The bar steps aside while the pointer is still, so it never sits on the picture.
@@ -326,7 +313,7 @@ function showControl() {
   controlButton.setAttribute("aria-label", label);
 }
 
-const active = () => controlGranted && controlOn && !ended && phoneRotation + extraRotation === 0;
+const active = () => controlGranted && controlOn && phoneRotation + extraRotation === 0;
 const sendInput = (input) => { if (tauri) call("live_input", { session, input }).catch(() => {}); };
 
 /** Where on the picture the pointer is, as fractions of it, or nothing when it is outside it. */

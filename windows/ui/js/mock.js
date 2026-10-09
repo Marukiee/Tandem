@@ -9,7 +9,7 @@ const cover = "data:image/svg+xml;utf8," + encodeURIComponent(
 
 const now = Date.now();
 const devices = empty ? [] : [
-  { id: "phone", name: "Maruks Telefoon", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host"],
+  { id: "phone", name: "Pixel 9", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host"],
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 80, charging: true, powerSave: false }, network: { kind: "cellular", ssid: null, metered: true, roaming: false, signal: 3 }, hotspot: true, dnd: false } },
   { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view"],
@@ -41,8 +41,8 @@ const state = {
   ],
   offers: empty ? [] : [{ from: "mac", fromName: "MacBook Pro", offer: "7", origin: "files", items: [{ name: "Foto's vakantie.zip", size: 48000000, mime: "application/zip" }] }],
   notifications: empty ? [] : [
-    { device: "phone", deviceName: "Maruks Telefoon", key: "a", appId: "wa", appName: "WhatsApp", title: "Anna", text: "Zie je dat? Ik ben er over tien minuten.", ts: now - 120000, buttons: [] },
-    { device: "phone", deviceName: "Maruks Telefoon", key: "b", appId: "bank", appName: "Bank", title: "Code 482913", text: "Gebruik 482913 om in te loggen.", ts: now - 900000, otp: "482913", buttons: [] },
+    { device: "phone", deviceName: "Pixel 9", key: "a", appId: "wa", appName: "WhatsApp", title: "Anna", text: "Zie je dat? Ik ben er over tien minuten.", ts: now - 120000, buttons: [] },
+    { device: "phone", deviceName: "Pixel 9", key: "b", appId: "bank", appName: "Bank", title: "Code 482913", text: "Gebruik 482913 om in te loggen.", ts: now - 900000, otp: "482913", buttons: [] },
   ],
   settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: true, keepWhenLidClosed: false, autoTailscale: true },
   update: updateFor(new URLSearchParams(location.search).get("update")),
@@ -116,7 +116,7 @@ export async function call(command, args) {
       : [{ name: "IMG_0001.jpg", dir: false, size: 3400000, modifiedMs: 1730000000000, readonly: false }, { name: "clip.mp4", dir: false, size: 48200000, modifiedMs: 1730000000000, readonly: false }];
     case "fs_get": return { saved: args.paths, skippedFolders: 0 };
     case "clip_history_search": return [
-      { id: 3, text: "https://example.com/some/long/link", from: "Maruks Telefoon", at_ms: Date.now() - 120000, pinned: true },
+      { id: 3, text: "https://example.com/some/long/link", from: "Pixel 9", at_ms: Date.now() - 120000, pinned: true },
       { id: 2, text: "Meeting at ten, room 4", from: "", at_ms: Date.now() - 3600000, pinned: false },
     ].filter((i) => !args.query || i.text.toLowerCase().includes(args.query.toLowerCase()));
     case "clip_history_pin": case "clip_history_remove": case "clip_history_clear": case "clip_history_copy": return null;
@@ -161,9 +161,9 @@ export async function call(command, args) {
     }
     case "qs_state": return {
       enabled: true,
-      peers: [{ id: "abcd", name: "Maruks Telefoon", kind: "phone" }, { id: "efgh", name: "Galaxy S26 van Sanne", kind: "phone" }],
+      peers: [{ id: "abcd", name: "Pixel 9", kind: "phone" }, { id: "efgh", name: "Galaxy S26 van Sanne", kind: "phone" }],
       incoming: [
-        { id: 1, sender: "Maruks Telefoon", pin: "4821", files: [{ name: "IMG_20261005_141201.jpg", size: 4200000 }, { name: "Menu.pdf", size: 880000 }], texts: [], accepted: false, done: 0, total: 5080000, saved: null, link: null, failure: null },
+        { id: 1, sender: "Pixel 9", pin: "4821", files: [{ name: "IMG_20261005_141201.jpg", size: 4200000 }, { name: "Menu.pdf", size: 880000 }], texts: [], accepted: false, done: 0, total: 5080000, saved: null, link: null, failure: null },
         { id: 2, sender: "Galaxy S26 van Sanne", pin: "1093", files: [], texts: [{ kind: "url", title: "https://tandem.markmaaktmedia.nl" }], accepted: true, done: 0, total: 0, saved: [], link: "https://tandem.markmaaktmedia.nl", failure: null },
       ],
       outgoing: [], problem: null,

@@ -589,8 +589,8 @@ mod tests {
 
     #[test]
     fn endpoint_info_round_trips_and_names_are_kept_short() {
-        let info = encode_endpoint_info("Maruks Telefoon", DeviceKind::Phone);
-        assert_eq!(parse_endpoint_info(&info), Some(("Maruks Telefoon".to_string(), DeviceKind::Phone)));
+        let info = encode_endpoint_info("Pixel 9", DeviceKind::Phone);
+        assert_eq!(parse_endpoint_info(&info), Some(("Pixel 9".to_string(), DeviceKind::Phone)));
         let long = "x".repeat(500);
         let (name, _) = parse_endpoint_info(&encode_endpoint_info(&long, DeviceKind::Laptop)).unwrap();
         assert_eq!(name.len(), 200);

@@ -319,8 +319,8 @@ jobs:
 
   publish:
     name: GitHub Release
-    needs: [meta, android, macos, linux, windows, linux-app]
-    # The release does not wait for Windows to succeed, only for it to be done.
+    # The release does not wait for Windows (it takes the longest): the installer is added to the release when it is ready, by the next job.
+    needs: [meta, android, macos, linux, linux-app]
     if: ${{ !cancelled() && needs.meta.outputs.publish == 'true' && needs.android.result == 'success' && needs.macos.result == 'success' && needs.linux.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -332,6 +332,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           path: dist
+          pattern: "{android,macos,linux-*}"
           merge-multiple: true
 
       - name: List the files
@@ -354,3 +355,28 @@ jobs:
           prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
           fail_on_unmatched_files: true
           files: dist/*
+
+  # The installer of Windows, added to the release when it is built. The other platforms do not wait for it, and the Windows app only
+  # offers an update once its installer is there.
+  publish-windows:
+    name: Windows installer
+    needs: [meta, windows, publish]
+    if: ${{ !cancelled() && needs.meta.outputs.publish == 'true' && needs.windows.result == 'success' && needs.publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows
+          path: dist-windows
+
+      - name: Add it to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.meta.outputs.tag }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -l dist-windows
+          gh release upload "$TAG" dist-windows/* --clobber

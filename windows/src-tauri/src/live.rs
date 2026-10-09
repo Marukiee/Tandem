@@ -33,7 +33,6 @@ struct Session {
     backlog: Vec<Vec<u8>>,
     accepted: Option<Value>,
     rotation: u16,
-    ended: Option<String>,
     /// What is shown is a computer (a remote desktop), not a phone.
     computer: bool,
     /// The decoder of this app, when the window cannot decode (the feature `native-video`).
@@ -188,24 +187,40 @@ impl TandemMediaViewer for Viewer {
     }
 
     fn on_ended(&self, session: u64, reason: TandemMediaEnd) {
-        let why = format!("{reason:?}");
-        if let Some(s) = SESSIONS.lock().unwrap().get_mut(&session) {
-            s.ended = Some(why.clone());
+        // The window goes with the session, whatever the reason: a grey window that says nothing useful is in the way. What went wrong,
+        // when something did, is said in the main window and in a notification, with what there is to do about it.
+        let Some(ended) = SESSIONS.lock().unwrap().remove(&session) else { return };
+        let key = match reason {
+            TandemMediaEnd::Declined => Some("live_end_declined"),
+            TandemMediaEnd::Policy => Some("live_end_policy"),
+            TandemMediaEnd::Unavailable => Some("live_end_unavailable"),
+            TandemMediaEnd::Unsupported => Some("live_end_unsupported"),
+            TandemMediaEnd::Timeout => Some("live_end_timeout"),
+            TandemMediaEnd::Busy => Some("live_end_busy"),
+            TandemMediaEnd::PeerGone => Some("live_end_lost"),
+            _ => None,
+        };
+        if let Some(key) = key {
+            let text = crate::i18n::t1(&self.app, key, &ended.name);
+            crate::events::say(&self.app, &text);
+            crate::events::toast(&self.app, &ended.name, &text);
         }
-        self.tell(session, "live-ended", json!({ "reason": why }));
+        if let Some(window) = self.app.get_webview_window(&ended.label) {
+            let _ = window.destroy();
+        }
     }
 }
 
 /// Asks a phone for its screen or its camera and opens the window that shows it.
 #[tauri::command]
-pub async fn live_start(app: AppHandle, id: String, kind: String, name: String, computer: Option<bool>) -> Reply<u64> {
+pub async fn live_start(app: AppHandle, id: String, kind: String, name: String, computer: Option<bool>) -> Reply<String> {
     let session = start(&app, id, kind == "camera", TandemMediaFacing::Any, name)?;
     if computer.unwrap_or(false) {
         if let Some(s) = SESSIONS.lock().unwrap().get_mut(&session) {
             s.computer = true;
         }
     }
-    Ok(session)
+    Ok(session.to_string())
 }
 
 /// The request and the window. Also what a phone that starts the sharing itself ends up in.
@@ -235,7 +250,6 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
             backlog: Vec::new(),
             accepted: None,
             rotation: 0,
-            ended: None,
             computer: false,
             #[cfg(feature = "native-video")]
             decode: spawn_decoder(app, session, lost.clone()),
@@ -258,9 +272,16 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
     Ok(session)
 }
 
+/// The number of a session as the windows say it. It is a random 64 bit number, and a number in a web page keeps 53 bits of it, so
+/// the windows hold it as text: a session whose number was rounded on the way is a session that "is over".
+fn session_of(text: &str) -> Reply<u64> {
+    text.trim().parse::<u64>().map_err(|_| "that is not a session".to_string())
+}
+
 /// The window is ready for frames. What it missed while it loaded is sent first, from the newest keyframe on.
 #[tauri::command]
-pub fn live_attach(session: u64, on_frame: Channel<InvokeResponseBody>) -> Reply<Value> {
+pub fn live_attach(session: String, on_frame: Channel<InvokeResponseBody>) -> Reply<Value> {
+    let session = session_of(&session)?;
     let mut sessions = SESSIONS.lock().unwrap();
     let s = sessions.get_mut(&session).ok_or("this session is over")?;
     for packet in std::mem::take(&mut s.backlog) {
@@ -268,7 +289,7 @@ pub fn live_attach(session: u64, on_frame: Channel<InvokeResponseBody>) -> Reply
     }
     s.channel = Some(on_frame);
     Ok(json!({
-        "name": s.name, "kind": s.kind, "accepted": s.accepted, "rotation": s.rotation, "ended": s.ended,
+        "name": s.name, "kind": s.kind, "accepted": s.accepted, "rotation": s.rotation,
         "native": cfg!(feature = "native-video"), "platform": if cfg!(windows) { "windows" } else { "linux" }, "computer": s.computer,
     }))
 }
@@ -276,8 +297,9 @@ pub fn live_attach(session: u64, on_frame: Channel<InvokeResponseBody>) -> Reply
 /// A click, a key or a scroll on the picture, for the phone. The window sends them as small objects: `pointer` (x and y as
 /// fractions of the picture), `button`, `scroll`, `key` (a USB HID usage) and `text`.
 #[tauri::command]
-pub fn live_input(state: State<'_, AppState>, session: u64, input: Value) -> Reply<()> {
+pub fn live_input(state: State<'_, AppState>, session: String, input: Value) -> Reply<()> {
     use tandem_core::ffi::TandemMediaInput as Input;
+    let session = session_of(&session)?;
     let number = |name: &str| input[name].as_f64().unwrap_or(0.0);
     let event = match input["t"].as_str().unwrap_or_default() {
         "pointer" => Input::PointerAbs { x: number("x").clamp(0.0, 1.0) as f32, y: number("y").clamp(0.0, 1.0) as f32 },
@@ -296,7 +318,8 @@ pub fn live_input(state: State<'_, AppState>, session: u64, input: Value) -> Rep
 
 /// The decoder lost the thread of the picture.
 #[tauri::command]
-pub fn live_keyframe(state: State<'_, AppState>, session: u64) {
+pub fn live_keyframe(state: State<'_, AppState>, session: String) {
+    let Ok(session) = session_of(&session) else { return };
     if let Ok(engine) = state.engine() {
         let _ = engine.media_request_keyframe(session);
     }
@@ -304,8 +327,13 @@ pub fn live_keyframe(state: State<'_, AppState>, session: u64) {
 
 /// The window is closing or the person pressed stop.
 #[tauri::command]
-pub fn live_stop(state: State<'_, AppState>, session: u64) {
+pub fn live_stop(app: AppHandle, state: State<'_, AppState>, session: String) {
+    let Ok(session) = session_of(&session) else { return };
     SESSIONS.lock().unwrap().remove(&session);
+    // The window goes with the session, wherever the stop came from, also when the session was gone already.
+    if let Some(window) = app.get_webview_window(&format!("live-{session}")) {
+        let _ = window.destroy();
+    }
     if let Ok(engine) = state.engine() {
         let _ = engine.media_stop(session);
     }
@@ -313,7 +341,8 @@ pub fn live_stop(state: State<'_, AppState>, session: u64) {
 
 /// Keeps the window above the others, or lets it go.
 #[tauri::command]
-pub fn live_pin(app: AppHandle, session: u64, on: bool) {
+pub fn live_pin(app: AppHandle, session: String, on: bool) {
+    let Ok(session) = session_of(&session) else { return };
     if let Some(window) = app.get_webview_window(&format!("live-{session}")) {
         let _ = window.set_always_on_top(on);
     }
