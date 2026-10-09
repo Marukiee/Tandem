@@ -62,6 +62,22 @@ altijd een toets om de aanwijzer terug te halen, ook als de verbinding wegvalt.
   schakelaar blijft gelden tot de pagina is geopend). Een telefoon heeft geen rand om over te gaan: zijn scherm tonen in een venster en de
   muis erin bewegen is het bedienen van de telefoon (`docs/SCREEN.md`).
 
+## Wat erbij kwam in 0.1.73 (de gedeelde muis onderweg, nog niet op echte toestellen gezien)
+
+- **Levensteken.** De computer die de aanwijzer heeft stuurt elke halve seconde `Ping`; de ander antwoordt `Pong`. Zwijgt de ander twee
+  seconden (klep dicht, wifi weg), dan haalt de hoofdcomputer de aanwijzer zelf terug (`PING_EVERY_MS`, `PING_PATIENCE_MS`), zonder
+  te wachten tot de verbinding zelf afloopt. De bestuurde kant laat de aanwijzer los na 3,5 seconde stilte en laat alles los wat vastzat.
+- **Schermgrootte.** De bestuurde computer meldt direct na `Enter` zijn schermgrootte (`Size`). De hoofdcomputer volgt daarmee waar de
+  aanwijzer daar is (Mac: `RemoteTracker`, Rust: `Controlled::enter_counting`) en haalt hem naar huis als hij er voorbij de ingang weer uit
+  geduwd wordt, ook als de bestuurde kant de echte plek niet kent of niet meldt. Op Linux zet de bestuurde kant de aanwijzer zelf op de
+  getelde plek (absoluut), want de echte plek is onder Wayland (XWayland) niet te vertrouwen en X versnelt relatieve bewegingen nog eens.
+- **Slepen.** Gaat de aanwijzer over de rand terwijl de linkerknop vastzit (een foto, bestand of geselecteerde tekst), dan gaan de
+  bestanden mee als aanbod met herkomst `Drag` (een afbeelding wordt eerst een bestand) en tekst als `Carry`. De bestuurde kant zet bestanden neer als de
+  knop omhoog komt, en plakt de tekst op de plek van de aanwijzer (Linux: selectie plus middelste klik; elders: klik plus Ctrl+V). De
+  Mac beeindigt zijn eigen sleep met Escape. Een sleep die tegen de ingangsrand komt blijft daar staan (boven de dropzone) tot de knop omhoog is.
+- **Klep.** Op Linux met een klep (`/proc/acpi/button/lid` of systemd `LidClosed`): klep dicht geeft de aanwijzer terug en weigert nieuwe,
+  tenzij de instelling "Bruikbaar houden met de klep dicht" aanstaat (standaard uit). Ook de telefoonbediening volgt dat.
+
 ## Wat er nog moet, per systeem
 
 1. **Mac als hoofdcomputer:** een `CGEventTap` die de muis en de toetsen ziet (heeft Toegankelijkheid en Invoercontrole nodig, de

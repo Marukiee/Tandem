@@ -5,12 +5,13 @@
 //! key that goes down is let go after it and a burst of pointer movements never holds up the engine.
 
 use std::collections::HashSet;
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::{Mutex, OnceLock, mpsc};
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use std::sync::{Mutex, Once, OnceLock, mpsc};
+use std::time::{Duration, Instant};
 
 use enigo::{Axis, Button, Coordinate, Direction, Enigo, Key, Keyboard, Mouse, Settings};
-use tandem_core::ffi::{TandemInput, TandemMediaInput, TandemMediaKey};
-use tandem_core::pointer_share::{self, Edge, Screen};
+use tandem_core::ffi::{TandemInput, TandemMediaInput, TandemMediaKey, TandemPointerShare};
+use tandem_core::pointer_share::{Controlled, Edge, Screen};
 
 enum Msg {
     Input(TandemInput),
@@ -18,6 +19,10 @@ enum Msg {
     Shared(TandemInput),
     /// The pointer of such a computer comes in over `edge` of its screen, `along` of the way down.
     Enter { edge: Edge, along: f32 },
+    /// Text that was being dragged over: it is let go here when the left button comes up.
+    Carry(String),
+    /// The shared pointer is gone (it went back, the link broke, the lid closed): let go of everything it held.
+    End,
     /// What a device that looks at this screen does with its mouse and keyboard (see `host.rs`).
     Media(TandemMediaInput),
     /// The phone went away in the middle of something: let go of whatever it was holding.
@@ -51,12 +56,32 @@ fn worker() -> &'static Mutex<mpsc::Sender<Msg>> {
 }
 
 /// The computer that has the pointer now, and the side of this screen it came in by.
-static SHARED: Mutex<Option<(String, Edge)>> = Mutex::new(None);
-static LEAVE: OnceLock<Box<dyn Fn(String, f32) + Send + Sync>> = OnceLock::new();
+struct Share {
+    device: String,
+    entered_by: Edge,
+    /// When something was last heard from that computer. A link that goes quiet (a lid that closed, a network that went) must not
+    /// keep the pointer of this computer in the hands of one that is not there any more.
+    seen: Instant,
+}
 
-/// What to do when the pointer runs into the edge it came in by: say so to the computer that has it.
-pub fn on_leave(tell: impl Fn(String, f32) + Send + Sync + 'static) {
-    let _ = LEAVE.set(Box::new(tell));
+static SHARED: Mutex<Option<Share>> = Mutex::new(None);
+/// Whether the left button of the shared mouse is down now. While it is, the pointer does not leave: a drag that runs into the edge
+/// ends on the drop zone there, and a drag of text or files that came over ends where it is let go.
+static LEFT_DOWN: AtomicBool = AtomicBool::new(false);
+
+type Say = Box<dyn Fn(String, TandemPointerShare) + Send + Sync>;
+static SAY: OnceLock<Say> = OnceLock::new();
+
+/// What to do to tell the computer that has the pointer something: that the pointer ran into the edge it came in by, how big this
+/// screen is, that the link is still there.
+pub fn on_say(tell: impl Fn(String, TandemPointerShare) + Send + Sync + 'static) {
+    let _ = SAY.set(Box::new(tell));
+}
+
+fn say(device: String, msg: TandemPointerShare) {
+    if let Some(tell) = SAY.get() {
+        tell(device, msg);
+    }
 }
 
 static CHANGED: OnceLock<Box<dyn Fn(Option<(String, Edge)>) + Send + Sync>> = OnceLock::new();
@@ -73,10 +98,57 @@ fn changed(now: Option<(String, Edge)>) {
     }
 }
 
+static LEFT_UP: OnceLock<Box<dyn Fn() + Send + Sync>> = OnceLock::new();
+
+/// What to do when the left button of the shared mouse comes up (files that came over with a drag are put down then).
+pub fn on_left_up(told: impl Fn() + Send + Sync + 'static) {
+    let _ = LEFT_UP.set(Box::new(told));
+}
+
+/// Whether the left button of the shared mouse is down.
+pub fn left_down() -> bool {
+    LEFT_DOWN.load(Ordering::Relaxed)
+}
+
+/// How long the computer that has the pointer may stay silent. It asks twice a second whether this one is still there.
+const LOST_AFTER: Duration = Duration::from_millis(3500);
+
+fn start_watchdog() {
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        std::thread::Builder::new()
+            .name("tandem-share-watch".into())
+            .spawn(|| loop {
+                std::thread::sleep(Duration::from_millis(500));
+                let lost = {
+                    let mut guard = SHARED.lock().unwrap();
+                    if guard.as_ref().is_some_and(|s| s.seen.elapsed() > LOST_AFTER) {
+                        guard.take()
+                    } else {
+                        None
+                    }
+                };
+                if lost.is_some() {
+                    changed(None);
+                    let _ = worker().lock().unwrap().send(Msg::End);
+                }
+            })
+            .ok();
+    });
+}
+
+/// Something came in from that computer, so it is still there.
+pub fn touch(device: &str) {
+    if let Some(share) = SHARED.lock().unwrap().as_mut().filter(|s| s.device == device) {
+        share.seen = Instant::now();
+    }
+}
+
 /// A computer sends its pointer over: it comes in at the opposite side of this screen.
 pub fn shared_enter(device: String, edge: Edge, along: f32) {
     let entered_by = edge.opposite();
-    *SHARED.lock().unwrap() = Some((device.clone(), entered_by));
+    *SHARED.lock().unwrap() = Some(Share { device: device.clone(), entered_by, seen: Instant::now() });
+    start_watchdog();
     let _ = worker().lock().unwrap().send(Msg::Enter { edge, along });
     changed(Some((device, entered_by)));
 }
@@ -84,7 +156,7 @@ pub fn shared_enter(device: String, edge: Edge, along: f32) {
 pub fn shared_end(device: &str) {
     let ended = {
         let mut guard = SHARED.lock().unwrap();
-        if guard.as_ref().is_some_and(|(d, _)| d == device) {
+        if guard.as_ref().is_some_and(|s| s.device == device) {
             *guard = None;
             true
         } else {
@@ -93,14 +165,33 @@ pub fn shared_end(device: &str) {
     };
     if ended {
         changed(None);
+        let _ = worker().lock().unwrap().send(Msg::End);
+    }
+}
+
+/// This computer cannot be used from outside now (the lid was closed): the pointer goes back to the computer that has it.
+pub fn shared_stop_here() {
+    let ended = SHARED.lock().unwrap().take();
+    if let Some(share) = ended {
+        changed(None);
+        say(share.device, TandemPointerShare::Leave { along: 0.5 });
+        let _ = worker().lock().unwrap().send(Msg::End);
     }
 }
 
 pub fn shared_is(device: &str) -> bool {
-    SHARED.lock().unwrap().as_ref().is_some_and(|(d, _)| d == device)
+    SHARED.lock().unwrap().as_ref().is_some_and(|s| s.device == device)
+}
+
+/// Text that was being dragged on the computer that has the pointer: it is let go here when the left button comes up.
+pub fn shared_carry(text: String) {
+    let _ = worker().lock().unwrap().send(Msg::Carry(text));
 }
 
 pub fn send_shared(input: TandemInput) {
+    if let Some(share) = SHARED.lock().unwrap().as_mut() {
+        share.seen = Instant::now();
+    }
     let _ = worker().lock().unwrap().send(Msg::Shared(input));
 }
 
@@ -307,6 +398,92 @@ fn button(number: u8) -> Button {
 /// How many pixels of scrolling on the phone make one click of the mouse wheel.
 const PIXELS_PER_CLICK: f32 = 40.0;
 
+/// The size of the screen the pointer moves on. On Linux it is asked from the X server itself: the library reports the first mode the
+/// screen has, which is often not the one in use, and then the edges would be in the wrong place.
+fn screen_size(enigo: &Enigo) -> Option<(i32, i32)> {
+    #[cfg(target_os = "linux")]
+    {
+        let (w, h) = tandem_winsys::screen();
+        if w > 0 && h > 0 {
+            return Some((w, h));
+        }
+    }
+    enigo.main_display().ok()
+}
+
+/// Moves the pointer for a movement of the shared mouse, and says where it ran into the edge it came in by, if it did (`along` of the
+/// way down that side).
+///
+/// On Linux the pointer is put at the place that is counted, because the real place cannot be trusted there: a Wayland desktop shows
+/// the X server only the part of the screen with old-style windows, and the speed of a move is changed by the X server. Counting and
+/// placing from the same numbers keeps what is drawn and what is counted together.
+#[cfg(target_os = "linux")]
+fn shared_move(enigo: &mut Enigo, tracker: Option<&mut Controlled>, dx: i16, dy: i16) -> Option<f32> {
+    let Some(tracker) = tracker else {
+        let _ = enigo.move_mouse(i32::from(dx), i32::from(dy), Coordinate::Rel);
+        return None;
+    };
+    let leaving = tracker.moved(f32::from(dx), f32::from(dy));
+    if leaving.is_none() {
+        let (x, y) = tracker.at();
+        let _ = enigo.move_mouse(x as i32, y as i32, Coordinate::Abs);
+    }
+    leaving
+}
+
+/// The same on Windows, where the real place of the pointer is known and the move is the one the person made.
+#[cfg(not(target_os = "linux"))]
+fn shared_move(enigo: &mut Enigo, tracker: Option<&mut Controlled>, dx: i16, dy: i16) -> Option<f32> {
+    let _ = enigo.move_mouse(i32::from(dx), i32::from(dy), Coordinate::Rel);
+    let counted = tracker.and_then(|t| t.moved(f32::from(dx), f32::from(dy)));
+    let entered_by = SHARED.lock().unwrap().as_ref().map(|s| s.entered_by)?;
+    let (Ok((x, y)), Some((w, h))) = (enigo.location(), screen_size(enigo)) else { return counted };
+    let (x, y, w, h) = (x as f32, y as f32, w as f32, h as f32);
+    let leaving = match entered_by {
+        Edge::Left => x <= 0.0 && dx < 0,
+        Edge::Right => x >= w - 1.0 && dx > 0,
+        Edge::Top => y <= 0.0 && dy < 0,
+        Edge::Bottom => y >= h - 1.0 && dy > 0,
+    };
+    leaving.then(|| match entered_by {
+        Edge::Left | Edge::Right => y / (h - 1.0).max(1.0),
+        Edge::Top | Edge::Bottom => x / (w - 1.0).max(1.0),
+    })
+}
+
+/// Text that was dragged over is let go at the pointer. On Linux the selection that a middle click pastes is set to it and the middle
+/// button is clicked, which puts the text where the pointer is in nearly every text field and terminal. Elsewhere it goes by a click
+/// to put the cursor there and a paste.
+fn paste_here(enigo: &mut Enigo, text: &str) {
+    #[cfg(target_os = "linux")]
+    {
+        use arboard::{Clipboard, LinuxClipboardKind, SetExtLinux};
+        // The selection is served by the clipboard that set it, so that one stays.
+        static PRIMARY: Mutex<Option<Clipboard>> = Mutex::new(None);
+        let mut held = PRIMARY.lock().unwrap();
+        if held.is_none() {
+            *held = Clipboard::new().ok();
+        }
+        if let Some(clipboard) = held.as_mut() {
+            if clipboard.set().clipboard(LinuxClipboardKind::Primary).text(text.to_string()).is_ok() {
+                let _ = enigo.button(Button::Middle, Direction::Click);
+            }
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        if let Ok(mut clipboard) = arboard::Clipboard::new() {
+            if clipboard.set_text(text.to_string()).is_ok() {
+                let _ = enigo.button(Button::Left, Direction::Click);
+                std::thread::sleep(Duration::from_millis(60));
+                let _ = enigo.key(Key::Control, Direction::Press);
+                let _ = enigo.key(key_of(0x56), Direction::Click);
+                let _ = enigo.key(Key::Control, Direction::Release);
+            }
+        }
+    }
+}
+
 fn run(rx: mpsc::Receiver<Msg>) {
     let mut enigo = match Enigo::new(&Settings::default()) {
         Ok(enigo) => enigo,
@@ -323,36 +500,54 @@ fn run(rx: mpsc::Receiver<Msg>) {
     // What is left of a scroll that did not make a whole click yet.
     let (mut rest_x, mut rest_y) = (0.0f32, 0.0f32);
 
+    // Where the pointer is on this screen while another computer has it, counted from where it came in. On a system where the real
+    // place cannot be asked (or is not worth trusting), this is what says the pointer ran into the edge it came in by.
+    let mut tracker: Option<Controlled> = None;
+    // Text that came over with a drag and waits for the button to come up.
+    let mut carried: Option<String> = None;
+
     while let Ok(msg) = rx.recv() {
         let msg = match msg {
             Msg::Enter { edge, along } => {
-                if let Ok((width, height)) = enigo.main_display() {
-                    let (x, y) = pointer_share::enter_at(Screen { width: width as f32, height: height as f32 }, edge, along);
+                tracker = None;
+                if let Some((width, height)) = screen_size(&enigo) {
+                    let screen = Screen { width: width as f32, height: height as f32 };
+                    let counting = Controlled::enter(screen, edge, along);
+                    let (x, y) = counting.at();
                     let _ = enigo.move_mouse(x as i32, y as i32, Coordinate::Abs);
+                    tracker = Some(counting);
+                    // The other computer follows where its pointer is over here with this, and takes it home by itself if it must.
+                    if let Some(device) = SHARED.lock().unwrap().as_ref().map(|s| s.device.clone()) {
+                        say(device, TandemPointerShare::Size { width: width.max(1) as u32, height: height.max(1) as u32 });
+                    }
                 }
                 continue;
             }
+            Msg::Carry(text) => {
+                carried = Some(text);
+                continue;
+            }
+            Msg::End => {
+                tracker = None;
+                carried = None;
+                LEFT_DOWN.store(false, Ordering::Relaxed);
+                Msg::ReleaseAll
+            }
             Msg::Shared(TandemInput::Pointer { dx, dy }) => {
-                let _ = enigo.move_mouse(i32::from(dx), i32::from(dy), Coordinate::Rel);
-                // At the edge it came in by and moving out: it goes back to the computer that has the real mouse.
-                let shared = SHARED.lock().unwrap().clone();
-                if let (Some((device, entered_by)), Ok((x, y)), Ok((w, h))) = (shared, enigo.location(), enigo.main_display()) {
-                    let (x, y, w, h) = (x as f32, y as f32, w as f32, h as f32);
-                    let leaving = match entered_by {
-                        Edge::Left => x <= 0.0 && dx < 0,
-                        Edge::Right => x >= w - 1.0 && dx > 0,
-                        Edge::Top => y <= 0.0 && dy < 0,
-                        Edge::Bottom => y >= h - 1.0 && dy > 0,
-                    };
-                    if leaving {
-                        let along = match entered_by {
-                            Edge::Left | Edge::Right => y / (h - 1.0).max(1.0),
-                            Edge::Top | Edge::Bottom => x / (w - 1.0).max(1.0),
-                        };
-                        *SHARED.lock().unwrap() = None;
-                        changed(None);
-                        if let Some(tell) = LEAVE.get() {
-                            tell(device, along.clamp(0.0, 1.0));
+                let leaving = shared_move(&mut enigo, tracker.as_mut(), dx, dy);
+                if let Some(along) = leaving {
+                    // A drag runs into the edge: it stays there, over the drop zone, until the button comes up.
+                    if !buttons.contains(&0) {
+                        let ended = SHARED.lock().unwrap().take();
+                        if let Some(share) = ended {
+                            changed(None);
+                            say(share.device, TandemPointerShare::Leave { along: along.clamp(0.0, 1.0) });
+                            tracker = None;
+                            carried = None;
+                            for b in buttons.drain() {
+                                let _ = enigo.button(button(b), Direction::Release);
+                            }
+                            LEFT_DOWN.store(false, Ordering::Relaxed);
                         }
                     }
                 }
@@ -363,6 +558,7 @@ fn run(rx: mpsc::Receiver<Msg>) {
         };
         match msg {
             Msg::ReleaseAll => {
+                LEFT_DOWN.store(false, Ordering::Relaxed);
                 for b in buttons.drain() {
                     let _ = enigo.button(button(b), Direction::Release);
                 }
@@ -374,10 +570,10 @@ fn run(rx: mpsc::Receiver<Msg>) {
                 }
             }
             // Dealt with above.
-            Msg::Shared(_) | Msg::Enter { .. } => {}
+            Msg::Shared(_) | Msg::Enter { .. } | Msg::Carry(_) | Msg::End => {}
             Msg::Media(media) => match media {
                 TandemMediaInput::PointerAbs { x, y } => {
-                    if let Ok((width, height)) = enigo.main_display() {
+                    if let Some((width, height)) = screen_size(&enigo) {
                         let _ = enigo.move_mouse((x * width as f32) as i32, (y * height as f32) as i32, Coordinate::Abs);
                     }
                 }
@@ -466,6 +662,18 @@ fn run(rx: mpsc::Receiver<Msg>) {
                     } else {
                         buttons.remove(&b);
                         let _ = enigo.button(button(b), Direction::Release);
+                    }
+                    if b == 0 {
+                        LEFT_DOWN.store(down, Ordering::Relaxed);
+                        if !down {
+                            // What was dragged over is let go where the pointer is.
+                            if let Some(text) = carried.take() {
+                                paste_here(&mut enigo, &text);
+                            }
+                            if let Some(told) = LEFT_UP.get() {
+                                told();
+                            }
+                        }
                     }
                 }
                 TandemInput::Click { button: b, count } => {

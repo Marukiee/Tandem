@@ -33,7 +33,7 @@ impl Edge {
 
 /// What the two computers say to each other about the pointer. Added to the protocol as [`crate::proto::Msg::PointerShare`];
 /// a device that does not know it skips it.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum PointerShareMsg {
     /// The pointer of the main computer crossed `edge` of its screen and comes in at the opposite side of yours, `along` of
     /// the way down that side (0.0 to 1.0, from the top or from the left).
@@ -42,7 +42,21 @@ pub enum PointerShareMsg {
     Leave { along: f32 },
     /// The main computer takes the pointer back by itself (the release key, or the connection is going).
     Release,
+    /// Sent every half second by the computer that has the pointer, for as long as it has it. The other one answers with
+    /// [`PointerShareMsg::Pong`]. A link that stops answering (a lid that was closed, a network that went) gives the pointer back at once.
+    Ping,
+    Pong,
+    /// How big the screen is that took the pointer in, in the units it moves the pointer in. Sent right after `Enter`, so the main
+    /// computer can follow where its pointer is over there and take it home by itself when the other one cannot say.
+    Size { width: u32, height: u32 },
+    /// Text that was being dragged when the pointer crossed over. It is let go on this computer, at the pointer, when the mouse button
+    /// comes up.
+    Carry { text: String },
 }
+
+/// How many pings in a row may go unanswered before the pointer is taken back, and how often one is sent.
+pub const PING_EVERY_MS: u64 = 500;
+pub const PING_PATIENCE_MS: u64 = 2000;
 
 /// A screen, in the units its system uses for the pointer (points on a Mac, pixels on Windows).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -109,29 +123,38 @@ pub struct Controlled {
     came_in_by: Edge,
     x: f32,
     y: f32,
+    /// How far past the edge the pointer may be pushed before it counts as leaving. Zero where the real position is known; a
+    /// little where it is only counted (the movements of a pointer that could not be placed exactly add up wrong by a few pixels).
+    margin: f32,
 }
 
 impl Controlled {
     /// The pointer arrives over `edge` of the main screen (so it comes in at the opposite side of this one).
     pub fn enter(screen: Screen, edge: Edge, along: f32) -> Controlled {
         let (x, y) = enter_at(screen, edge, along);
-        Controlled { screen, came_in_by: edge.opposite(), x, y }
+        Controlled { screen, came_in_by: edge.opposite(), x, y, margin: 0.0 }
+    }
+
+    /// The same, for a pointer that is only followed by counting: it may be pushed `margin` past the edge before it leaves.
+    pub fn enter_counting(screen: Screen, edge: Edge, along: f32, margin: f32) -> Controlled {
+        Controlled { margin, ..Controlled::enter(screen, edge, along) }
     }
 
     /// Where the pointer is now, to move the real one to.
     pub fn at(&self) -> (f32, f32) {
-        (self.x, self.y)
+        (self.x.clamp(0.0, self.screen.width - 1.0), self.y.clamp(0.0, self.screen.height - 1.0))
     }
 
     /// A movement of the main computer's hands. `Some(along)` when the pointer ran into the edge it came in by and has to
     /// go back, `None` while it stays on this screen.
     pub fn moved(&mut self, dx: f32, dy: f32) -> Option<f32> {
         let (nx, ny) = (self.x + dx, self.y + dy);
+        let m = self.margin;
         let leaving = match self.came_in_by {
-            Edge::Left => nx < 0.0,
-            Edge::Right => nx > self.screen.width - 1.0,
-            Edge::Top => ny < 0.0,
-            Edge::Bottom => ny > self.screen.height - 1.0,
+            Edge::Left => nx < -m,
+            Edge::Right => nx > self.screen.width - 1.0 + m,
+            Edge::Top => ny < -m,
+            Edge::Bottom => ny > self.screen.height - 1.0 + m,
         };
         if leaving {
             let along = match self.came_in_by {
@@ -140,8 +163,11 @@ impl Controlled {
             };
             return Some(along.clamp(0.0, 1.0));
         }
-        self.x = nx.clamp(0.0, self.screen.width - 1.0);
-        self.y = ny.clamp(0.0, self.screen.height - 1.0);
+        // On the axis it came in by the pointer may sit a little outside while it is pushed, so a push is counted from the edge and not lost.
+        let (low_x, high_x) = if matches!(self.came_in_by, Edge::Left | Edge::Right) { (-m, self.screen.width - 1.0 + m) } else { (0.0, self.screen.width - 1.0) };
+        let (low_y, high_y) = if matches!(self.came_in_by, Edge::Top | Edge::Bottom) { (-m, self.screen.height - 1.0 + m) } else { (0.0, self.screen.height - 1.0) };
+        self.x = nx.clamp(low_x, high_x);
+        self.y = ny.clamp(low_y, high_y);
         None
     }
 }
@@ -199,6 +225,25 @@ mod tests {
     }
 
     #[test]
+    fn a_pointer_that_is_only_counted_may_be_pushed_a_little_before_it_leaves() {
+        let mut counted = Controlled::enter_counting(PC, Edge::Right, 0.5, 30.0);
+        assert_eq!(counted.moved(10.0, 0.0), None);
+        // Back to the edge and a little past it: still there.
+        assert_eq!(counted.moved(-25.0, 0.0), None);
+        assert_eq!(counted.at().0, 0.0);
+        // Pushed past the margin: it leaves, where it was.
+        assert!(counted.moved(-20.0, 0.0).is_some());
+    }
+
+    #[test]
+    fn a_push_against_the_edge_adds_up_until_it_leaves() {
+        let mut counted = Controlled::enter_counting(PC, Edge::Right, 0.5, 30.0);
+        assert_eq!(counted.moved(-12.0, 0.0), None);
+        assert_eq!(counted.moved(-12.0, 0.0), None);
+        assert!(counted.moved(-12.0, 0.0).is_some());
+    }
+
+    #[test]
     fn it_comes_back_where_it_left() {
         let (x, y) = back_at(MAC, Edge::Right, 0.5);
         assert_eq!(x, 1511.0);
@@ -207,7 +252,15 @@ mod tests {
 
     #[test]
     fn the_messages_survive_the_wire() {
-        for msg in [PointerShareMsg::Enter { edge: Edge::Left, along: 0.4 }, PointerShareMsg::Leave { along: 0.9 }, PointerShareMsg::Release] {
+        for msg in [
+            PointerShareMsg::Enter { edge: Edge::Left, along: 0.4 },
+            PointerShareMsg::Leave { along: 0.9 },
+            PointerShareMsg::Release,
+            PointerShareMsg::Ping,
+            PointerShareMsg::Pong,
+            PointerShareMsg::Size { width: 2560, height: 1600 },
+            PointerShareMsg::Carry { text: "een stukje tekst".into() },
+        ] {
             let mut bytes = Vec::new();
             ciborium::into_writer(&msg, &mut bytes).unwrap();
             assert_eq!(ciborium::from_reader::<PointerShareMsg, _>(bytes.as_slice()).unwrap(), msg);

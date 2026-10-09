@@ -49,6 +49,7 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
     val deviceName by prefs.deviceName.collectAsState(initial = null)
     val screenshot by prefs.screenshotPrompt.collectAsState(initial = true)
     val bleMessages by prefs.bluetoothMessages.collectAsState(initial = true)
+    val autoTailscale by prefs.autoTailscale.collectAsState(initial = true)
     val mediaShare by prefs.mediaShare.collectAsState(initial = true)
     val audioOutput by prefs.audioOutput.collectAsState(initial = true)
     var renaming by remember { mutableStateOf(false) }
@@ -69,25 +70,31 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
 
         SectionHeader(stringResource(R.string.settings_sharing))
         SettingsGroup {
-            SettingsTarget(FocusKeys.Screenshot, 0, 4) {
+            SettingsTarget(FocusKeys.Screenshot, 0, 5) {
                 SwitchRow(
-                    0, 4, TandemIcons.Screenshot, stringResource(R.string.settings_screenshot), stringResource(R.string.settings_screenshot_sub), screenshot, { scope.launch { prefs.setScreenshotPrompt(it) } },
+                    0, 5, TandemIcons.Screenshot, stringResource(R.string.settings_screenshot), stringResource(R.string.settings_screenshot_sub), screenshot, { scope.launch { prefs.setScreenshotPrompt(it) } },
                     blocked = if (status.photos) null else stringResource(R.string.perm_needs_photos), onBlocked = { onOpen(Route.Access) },
                 )
             }
-            SettingsTarget(FocusKeys.Ble, 1, 4) {
+            SettingsTarget(FocusKeys.Ble, 1, 5) {
                 SwitchRow(
-                    1, 4, TandemIcons.Bluetooth, stringResource(R.string.settings_ble_messages), stringResource(R.string.settings_ble_messages_sub), bleMessages, { scope.launch { prefs.setBluetoothMessages(it) } },
+                    1, 5, TandemIcons.Bluetooth, stringResource(R.string.settings_ble_messages), stringResource(R.string.settings_ble_messages_sub), bleMessages, { scope.launch { prefs.setBluetoothMessages(it) } },
                     blocked = if (status.bluetooth) null else stringResource(R.string.perm_needs_bluetooth), onBlocked = { onOpen(Route.Access) },
                 )
             }
+            SettingsTarget(FocusKeys.AutoTailscale, 2, 5) {
+                SwitchRow(
+                    2, 5, TandemIcons.Wifi, stringResource(R.string.settings_auto_tailscale), stringResource(R.string.settings_auto_tailscale_sub), autoTailscale,
+                    { scope.launch { prefs.setAutoTailscale(it) } },
+                )
+            }
             ActionRow(
-                2, 4, TandemIcons.Paste, stringResource(R.string.settings_clip_tile), stringResource(R.string.settings_clip_tile_sub),
+                3, 5, TandemIcons.Paste, stringResource(R.string.settings_clip_tile), stringResource(R.string.settings_clip_tile_sub),
                 { nl.markmaaktmedia.tandem.share.ClipboardTileService.requestAdd(context) },
-                modifier = Modifier.settingsTarget(FocusKeys.ClipTile, 2, 4),
+                modifier = Modifier.settingsTarget(FocusKeys.ClipTile, 3, 5),
             )
             ActionRow(
-                3, 4, TandemIcons.Paste, stringResource(R.string.clip_history_title), stringResource(R.string.clip_history_row_sub),
+                4, 5, TandemIcons.Paste, stringResource(R.string.clip_history_title), stringResource(R.string.clip_history_row_sub),
                 { onOpen(Route.ClipboardHistory) }, modifier = Modifier.routeBounds(routeKey(Route.ClipboardHistory)),
             )
         }

@@ -51,6 +51,7 @@ class TandemPrefs(private val context: Context) {
         val remoteMouse = booleanPreferencesKey("remote_mouse")
         val deviceIcons = stringPreferencesKey("device_icons")
         val bluetoothMessages = booleanPreferencesKey("bluetooth_messages")
+        val autoTailscale = booleanPreferencesKey("auto_tailscale")
         val mediaShare = booleanPreferencesKey("media_share")
         val mediaExcluded = stringSetPreferencesKey("media_excluded")
         val audioOutput = booleanPreferencesKey("audio_output")
@@ -99,6 +100,9 @@ class TandemPrefs(private val context: Context) {
 
     /** Clipboard and notifications over Bluetooth when there is no network. On by default: it only listens. */
     val bluetoothMessages: Flow<Boolean> = data.map { it[Keys.bluetoothMessages] ?: true }
+
+    /** Turn Tailscale on when a device cannot be reached on this network. On by default: it only happens for a device that is out of reach. */
+    val autoTailscale: Flow<Boolean> = data.map { it[Keys.autoTailscale] ?: true }
 
     /** The devices that were pinned, by id: they stay at the top of the list. */
     /** How fast the pointer follows the finger, in percent: 100 is as it was, 200 twice as far. */
@@ -204,6 +208,8 @@ class TandemPrefs(private val context: Context) {
     }
 
     suspend fun setBluetoothMessages(value: Boolean) = set(Keys.bluetoothMessages, value)
+
+    suspend fun setAutoTailscale(value: Boolean) = set(Keys.autoTailscale, value)
     suspend fun setMediaShare(value: Boolean) = set(Keys.mediaShare, value)
     suspend fun setAudioOutput(value: Boolean) = set(Keys.audioOutput, value)
 

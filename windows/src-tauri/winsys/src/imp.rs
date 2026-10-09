@@ -352,6 +352,11 @@ pub fn desktop() -> (i32, i32, i32, i32) {
 }
 
 /// Puts the pointer somewhere.
+/// Windows tells a lid by the power settings, which this does not read: there the lid is not asked about.
+pub fn lid_closed() -> Option<bool> {
+    None
+}
+
 pub fn warp(x: i32, y: i32) {
     unsafe {
         let _ = SetCursorPos(x, y);

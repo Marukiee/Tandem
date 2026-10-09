@@ -37,6 +37,11 @@ pub struct Settings {
     pub system_media: bool,
     /// Play the sound of a phone here when it sends it.
     pub phone_sound: bool,
+    /// A laptop with its lid closed keeps being used from other computers. Off: a pointer that was sent here goes back the moment
+    /// the lid closes, and does not come over while it is closed.
+    pub keep_when_lid_closed: bool,
+    /// Turn Tailscale on by itself when a device cannot be reached on this network and Tailscale would reach it.
+    pub auto_tailscale: bool,
 }
 
 impl Default for Settings {
@@ -53,6 +58,8 @@ impl Default for Settings {
             quick_share: false,
             system_media: true,
             phone_sound: true,
+            keep_when_lid_closed: false,
+            auto_tailscale: true,
             auto_update: true,
             dismissed_update: String::new(),
         }

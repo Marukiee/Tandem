@@ -70,6 +70,22 @@ final class PointerShare {
     /// How far the pointer has gone over there, in the pixels this Mac sent, counted from the place it came in: negative once it
     /// went back past that place. Only a way out for a computer that never says the pointer came back (see `forward`).
     @ObservationIgnored private var travelled: Double = 0
+    /// Where the pointer is on the other screen, once that computer has said how big its screen is (see `RemoteTracker`).
+    @ObservationIgnored private var remoteTracker: RemoteTracker?
+    @ObservationIgnored private var enterAlong: Double = 0.5
+    /// When the computer that has the pointer last answered. A link that goes quiet gives the pointer back (see `watch`).
+    @ObservationIgnored private var heardAt = Date()
+    @ObservationIgnored private var watchTask: Task<Void, Never>?
+    /// The buttons held down while the pointer is over there, so they are let go over there when the pointer comes home.
+    @ObservationIgnored private var heldButtons: Set<UInt8> = []
+    /// A drag of files or text was carried over the edge: the drag on this Mac is ended when the button comes up.
+    @ObservationIgnored private var carrying = false
+    /// The state of the drag pasteboard when the last drag ended, so a drag that carries something is told from one that does not.
+    @ObservationIgnored private var lastDragCount = NSPasteboard(name: .drag).changeCount
+    /// The same for the computer that uses this Mac: when it last said something, and whether its left button is down.
+    @ObservationIgnored private var controllerHeardAt = Date()
+    @ObservationIgnored private var controllerLeftDown = false
+    @ObservationIgnored private var controllerWatch: Task<Void, Never>?
 
     private var model: EngineModel { EngineModel.shared }
 
@@ -180,7 +196,14 @@ final class PointerShare {
 
     /// The pointer on this screen: does it run into an edge where a computer sits?
     private func watchEdges(_ type: CGEventType, _ event: CGEvent) -> Bool {
-        guard type == .mouseMoved, !neighbours.isEmpty else { return false }
+        if type == .leftMouseUp {
+            lastDragCount = NSPasteboard(name: .drag).changeCount
+            return false
+        }
+        // Also while a button is down, but only with something in the drag: a photo, a file or selected text runs into the edge too,
+        // and that is when it has to go over. Resizing a window or selecting text against the edge does not.
+        let dragged = type == .leftMouseDragged
+        guard type == .mouseMoved || dragged, !neighbours.isEmpty else { return false }
         let at = event.location
         let dx = event.getDoubleValueField(.mouseEventDeltaX)
         let dy = event.getDoubleValueField(.mouseEventDeltaY)
@@ -194,6 +217,7 @@ final class PointerShare {
             case "bottom" where at.y >= area.maxY - 1 && dy > 0: along = (at.x - area.minX) / max(area.width - 1, 1)
             default: continue
             }
+            if dragged, NSPasteboard(name: .drag).changeCount == lastDragCount || dragContents() == nil { continue }
             goOver(to: device, edge: edge, along: along)
             return true
         }
@@ -205,11 +229,77 @@ final class PointerShare {
         savedLocation = CGEvent(source: nil)?.location ?? .zero
         remote = (device, edge)
         heldModifiers = []
+        heldButtons = []
         travelled = 0
+        remoteTracker = nil
+        enterAlong = Double(along)
+        heardAt = Date()
+        // A drag in progress (a photo, a file, selected text) goes over with the pointer.
+        let dragging = NSEvent.pressedMouseButtons & 1 != 0
+        let carried = dragging ? dragContents() : nil
+        carrying = carried != nil
         CGAssociateMouseAndMouseCursorPosition(0)
-        CGDisplayHideCursor(CGMainDisplayID())
-        Task { try? await engine.sendPointerShare(target: device, msg: .enter(edge: tandemEdge(edge), along: Float(along))) }
+        CursorHider.hide()
+        watch(device)
+        Task {
+            try? await engine.sendPointerShare(target: device, msg: .enter(edge: tandemEdge(edge), along: Float(along)))
+            // After the pointer, so the other computer takes it in first and knows these come from the person at the mouse.
+            guard let carried else { return }
+            try? await Task.sleep(for: .milliseconds(250))
+            switch carried {
+            case let .files(urls): EngineModel.shared.send(urls: urls, to: [device], origin: .drag)
+            case let .text(text): try? await engine.sendPointerShare(target: device, msg: .carry(text: text))
+            }
+        }
         FloatingToast.show(String(localized: "The pointer is on \(model.device(device)?.name ?? "another computer"). Press Control, Option and Command with Escape to bring it back."), symbol: "cursorarrow.motionlines")
+    }
+
+    private enum Dragged {
+        case files([URL])
+        case text(String)
+    }
+
+    /// What is being dragged: files (also a picture, which is written to a file), or text.
+    private func dragContents() -> Dragged? {
+        let board = NSPasteboard(name: .drag)
+        if let urls = board.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
+            return .files(urls)
+        }
+        if let text = board.string(forType: .string), !text.isEmpty { return .text(text) }
+        if let image = NSImage(pasteboard: board), let tiff = image.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent("Tandem drag", isDirectory: true)
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let file = folder.appendingPathComponent(String(localized: "Picture") + " \(Int(Date().timeIntervalSince1970)).png")
+            if (try? png.write(to: file)) != nil { return .files([file]) }
+        }
+        if let url = board.string(forType: .URL), !url.isEmpty { return .text(url) }
+        return nil
+    }
+
+    /// Asks the computer that has the pointer every half second whether it is still there. When it says nothing for two seconds (its
+    /// lid was closed, the network went) the pointer comes home at once, so this Mac can be used without waiting for a connection to
+    /// time out.
+    private func watch(_ device: String) {
+        watchTask?.cancel()
+        watchTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard let self, let remote = self.remote, remote.device == device else { return }
+                if self.model.device(device)?.online != true || Date().timeIntervalSince(self.heardAt) > 2.0 {
+                    self.lost(device)
+                    return
+                }
+                try? await self.model.tandem?.sendPointerShare(target: device, msg: .ping)
+            }
+        }
+    }
+
+    private func lost(_ device: String) {
+        guard remote?.device == device else { return }
+        let name = model.device(device)?.name ?? String(localized: "the other computer")
+        Task { try? await model.tandem?.sendPointerShare(target: device, msg: .release) }
+        comeBack(along: nil)
+        FloatingToast.show(String(localized: "The connection to \(name) was lost, so the pointer is back"), symbol: "cursorarrow.motionlines")
     }
 
     /// The pointer returns to this Mac, at the place it left by or, when the other computer says where it came from, there.
@@ -217,9 +307,31 @@ final class PointerShare {
         guard let remote else { return }
         let target = along.map { point(on: remote.edge, along: $0) } ?? savedLocation
         self.remote = nil
+        watchTask?.cancel()
+        watchTask = nil
+        remoteTracker = nil
+        // Without this the system ignores the mouse for a quarter of a second after the pointer is put back.
+        CGEventSource(stateID: .combinedSessionState)?.localEventsSuppressionInterval = 0
         CGWarpMouseCursorPosition(target)
         CGAssociateMouseAndMouseCursorPosition(1)
-        CGDisplayShowCursor(CGMainDisplayID())
+        CursorHider.show()
+        carrying = false
+        heldButtons = []
+    }
+
+    /// A drag that was carried over the edge ends over there, so the drag on this Mac is ended too: Escape cancels it, and the
+    /// mouse button is let go where the pointer sits.
+    private func endLocalDrag() {
+        carrying = false
+        let source = CGEventSource(stateID: .hidSystemState)
+        for down in [true, false] {
+            CGEvent(keyboardEventSource: source, virtualKey: Self.escape, keyDown: down)?.post(tap: .cgSessionEventTap)
+        }
+        let at = CGEvent(source: nil)?.location ?? savedLocation
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(60))
+            CGEvent(mouseEventSource: source, mouseType: .leftMouseUp, mouseCursorPosition: at, mouseButton: .left)?.post(tap: .cgSessionEventTap)
+        }
     }
 
     private static let escape: CGKeyCode = 53
@@ -235,26 +347,46 @@ final class PointerShare {
             let dy = event.getIntegerValueField(.mouseEventDeltaY)
             if dx != 0 || dy != 0 { send(.pointer(dx: Int16(clamping: dx), dy: Int16(clamping: dy))) }
             // The other computer says when the pointer runs into the edge it came in by. One that cannot (it does not move the
-            // pointer, or never answers) would keep it for good, so going back well past where it came in brings it home anyway.
-            if let edge = remote?.edge {
+            // pointer, or never answers) would keep it for good, so this Mac follows the pointer over there by counting, and takes it
+            // home when it has gone back out. A drag with the left button down stays: the drop zone is at that edge.
+            var homeward = false
+            if remoteTracker != nil {
+                homeward = remoteTracker!.moved(dx: Double(dx), dy: Double(dy))
+            } else if let edge = remote?.edge {
                 switch edge {
                 case "right": travelled += Double(dx)
                 case "left": travelled -= Double(dx)
                 case "bottom": travelled += Double(dy)
                 default: travelled -= Double(dy)
                 }
-                if travelled < -Self.wayOut {
-                    Task { try? await engine.sendPointerShare(target: device, msg: .release) }
-                    comeBack(along: nil)
-                    return true
-                }
+                // Without the size of the other screen the count can run far ahead of the real pointer, so it is kept in check.
+                travelled = min(travelled, Self.wayOut * 4)
+                homeward = travelled < -Self.wayOut
             }
-        case .leftMouseDown: send(.button(button: 0, down: true))
-        case .leftMouseUp: send(.button(button: 0, down: false))
-        case .rightMouseDown: send(.button(button: 1, down: true))
-        case .rightMouseUp: send(.button(button: 1, down: false))
-        case .otherMouseDown: send(.button(button: 2, down: true))
-        case .otherMouseUp: send(.button(button: 2, down: false))
+            if homeward, !heldButtons.contains(0) {
+                Task { try? await engine.sendPointerShare(target: device, msg: .release) }
+                comeBack(along: nil)
+                return true
+            }
+        case .leftMouseDown:
+            heldButtons.insert(0)
+            send(.button(button: 0, down: true))
+        case .leftMouseUp:
+            heldButtons.remove(0)
+            send(.button(button: 0, down: false))
+            if carrying { endLocalDrag() }
+        case .rightMouseDown:
+            heldButtons.insert(1)
+            send(.button(button: 1, down: true))
+        case .rightMouseUp:
+            heldButtons.remove(1)
+            send(.button(button: 1, down: false))
+        case .otherMouseDown:
+            heldButtons.insert(2)
+            send(.button(button: 2, down: true))
+        case .otherMouseUp:
+            heldButtons.remove(2)
+            send(.button(button: 2, down: false))
         case .scrollWheel:
             let dy = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
             let dx = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis2)
@@ -305,6 +437,8 @@ final class PointerShare {
 
     /// A message about the pointer from another computer.
     func received(_ message: TandemPointerShare, from device: String) {
+        if remote?.device == device { heardAt = Date() }
+        if controlledBy == device { controllerHeardAt = Date() }
         switch message {
         case let .enter(edge, along):
             guard isAllowed(device), controlledBy == nil || controlledBy == device, model.tandem != nil else {
@@ -314,19 +448,51 @@ final class PointerShare {
             }
             controlledBy = device
             enteredBy = opposite(edgeName(edge))
+            controllerHeardAt = Date()
+            controllerLeftDown = false
+            watchController(device)
             CGWarpMouseCursorPosition(point(on: enteredBy, along: CGFloat(along)))
         case let .leave(along):
             if remote?.device == device { comeBack(along: CGFloat(along)) }
         case .release:
             if remote?.device == device { comeBack(along: nil) }
-            if controlledBy == device { controlledBy = nil }
+            if controlledBy == device { endControlled(tell: nil) }
+        case .ping:
+            Task { try? await model.tandem?.sendPointerShare(target: device, msg: .pong) }
+        case .pong:
+            break
+        case let .size(width, height):
+            // The other computer says how big its screen is: from here this Mac follows the pointer over there.
+            if let remote, remote.device == device {
+                remoteTracker = RemoteTracker(width: Double(width), height: Double(height), edge: remote.edge, along: enterAlong)
+            }
+        case .carry:
+            // Only a Mac or a PC at the mouse sends this, and then to a computer that has its own way of putting text where it is dropped.
+            break
+        }
+    }
+
+    /// A computer that uses this Mac and then goes quiet (its lid closed, the network went) is let go of, with whatever it held.
+    private func watchController(_ device: String) {
+        controllerWatch?.cancel()
+        controllerWatch = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(500))
+                guard let self, self.controlledBy == device else { return }
+                if Date().timeIntervalSince(self.controllerHeardAt) > 3.5 {
+                    self.endControlled(tell: nil)
+                    return
+                }
+            }
         }
     }
 
     /// Input that came from the computer that has the pointer now. True when it was dealt with here.
     func controlled(_ input: TandemInput, from device: String) -> Bool {
         guard controlledBy == device else { return false }
+        controllerHeardAt = Date()
         model.injector.handleShared(input, from: device)
+        if case let .button(button, down) = input, button == 0 { controllerLeftDown = down }
         if case let .pointer(dx, dy) = input, let at = CGEvent(source: nil)?.location {
             let area = screens
             let leaving: Bool
@@ -336,7 +502,8 @@ final class PointerShare {
             case "top": leaving = at.y <= area.minY && dy < 0
             default: leaving = at.y >= area.maxY - 1 && dy > 0
             }
-            if leaving {
+            // With the button down the pointer stays at the edge, over the drop zone, until it comes up.
+            if leaving, !controllerLeftDown {
                 let along: CGFloat = (enteredBy == "left" || enteredBy == "right")
                     ? (at.y - area.minY) / max(area.height - 1, 1)
                     : (at.x - area.minX) / max(area.width - 1, 1)
@@ -346,13 +513,20 @@ final class PointerShare {
         return true
     }
 
-    private func endControlled(tell device: String, along: Float = 0) {
+    /// The computer that used this Mac is done, or gone: what it held down is let go. `tell` is who to say it to, when it can still hear.
+    private func endControlled(tell device: String?, along: Float = 0) {
         controlledBy = nil
-        Task { try? await model.tandem?.sendPointerShare(target: device, msg: .leave(along: along)) }
+        controllerWatch?.cancel()
+        controllerWatch = nil
+        controllerLeftDown = false
+        model.injector.releaseAll()
+        if let device {
+            Task { try? await model.tandem?.sendPointerShare(target: device, msg: .leave(along: along)) }
+        }
     }
 
     func deviceGone(_ id: String) {
         if remote?.device == id { comeBack(along: nil) }
-        if controlledBy == id { controlledBy = nil }
+        if controlledBy == id { endControlled(tell: nil) }
     }
 }

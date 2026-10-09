@@ -62,6 +62,8 @@ pub enum Seen {
 #[cfg(windows)]
 mod imp;
 #[cfg(target_os = "linux")]
+mod lid;
+#[cfg(target_os = "linux")]
 mod mpris;
 #[cfg(target_os = "linux")]
 mod x11grab;
@@ -110,6 +112,12 @@ mod imp {
     }
 
     pub fn screen() -> (i32, i32) {
+        #[cfg(target_os = "linux")]
+        {
+            if let Some((w, h)) = crate::x11grab::root_size() {
+                return (w as i32, h as i32);
+            }
+        }
         (0, 0)
     }
 
@@ -118,6 +126,18 @@ mod imp {
     }
 
     pub fn warp(_x: i32, _y: i32) {}
+
+    /// Whether the lid of this laptop is closed, where that can be known (Linux).
+    pub fn lid_closed() -> Option<bool> {
+        #[cfg(target_os = "linux")]
+        {
+            crate::lid::closed()
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            None
+        }
+    }
 
     /// Linux has the media controls of the desktop (`mpris.rs`); other systems have none.
     #[cfg(not(target_os = "linux"))]
@@ -156,4 +176,4 @@ mod imp {
     }
 }
 
-pub use imp::{Capture, Grabber, Media, battery, describe, desktop, screen, warp, watch_clipboard};
+pub use imp::{Capture, Grabber, Media, battery, describe, desktop, lid_closed, screen, warp, watch_clipboard};

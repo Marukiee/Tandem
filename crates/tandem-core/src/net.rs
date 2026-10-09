@@ -20,6 +20,15 @@ pub enum Route {
     Other,
 }
 
+/// Whether it is time to ask the app to turn Tailscale on for a device that does not answer: it has failed to be reached a few times
+/// in a row, one of its known addresses is a Tailscale one, this device has none of its own, and it was not asked a minute ago.
+pub fn needs_tailscale(fails: u32, addrs: &[KnownAddr], has_own_tailnet_address: bool, since_last_ask: Option<std::time::Duration>) -> bool {
+    fails >= 2
+        && !has_own_tailnet_address
+        && addrs.iter().any(|a| a.route == Route::Tailnet)
+        && since_last_ask.is_none_or(|t| t >= std::time::Duration::from_secs(90))
+}
+
 /// True for an address in Tailscale's range: 100.64.0.0/10 or fd7a:115c:a1e0::/48.
 pub fn is_tailnet(ip: IpAddr) -> bool {
     match ip {
@@ -237,6 +246,23 @@ pub type SharedEndpoint = Arc<quinn::Endpoint>;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tailscale_is_asked_for_only_when_the_device_is_out_of_reach_and_known_by_a_tailnet_address() {
+        let lan = KnownAddr { addr: "192.168.1.5:47820".into(), route: Route::Lan, last_ok: 0, seen: 0 };
+        let tail = KnownAddr { addr: "100.100.1.1:47820".into(), route: Route::Tailnet, last_ok: 0, seen: 0 };
+        let minute = std::time::Duration::from_secs(60);
+        // Not yet, it may only be slow.
+        assert!(!needs_tailscale(1, &[lan.clone(), tail.clone()], false, None));
+        // A device on the same network that answers never gets here; one that fails twice and has a tailnet address does.
+        assert!(needs_tailscale(2, &[lan.clone(), tail.clone()], false, None));
+        // Nothing to turn on when this device already has a tailnet address, or the other one has none.
+        assert!(!needs_tailscale(5, &[lan.clone(), tail.clone()], true, None));
+        assert!(!needs_tailscale(5, &[lan.clone()], false, None));
+        // Not again within a minute and a half.
+        assert!(!needs_tailscale(5, &[tail.clone()], false, Some(minute)));
+        assert!(needs_tailscale(5, &[tail], false, Some(minute * 2)));
+    }
 
     #[test]
     fn tailscale_range_is_recognised() {

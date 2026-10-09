@@ -356,6 +356,8 @@
     <string name="channel_update_desc">Says when a new version of Tandem is ready to install</string>
     <string name="settings_ble_messages">Bluetooth without a network</string>
     <string name="settings_ble_messages_sub">Clipboard and notifications still reach your Mac over Bluetooth when there is no Wi-Fi</string>
+    <string name="settings_auto_tailscale">Turn on Tailscale when needed</string>
+    <string name="settings_auto_tailscale_sub">When a device cannot be reached on this network, Tandem asks Tailscale to connect. Devices on the same network do not need it.</string>
     <string name="status_bluetooth">Bluetooth</string>
     <string name="status_asleep">Asleep</string>
     <string name="action_wake">Wake up</string>

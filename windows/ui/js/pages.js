@@ -456,6 +456,7 @@ function MouseSection({ s, patch }) {
     <h2>${t("mouse_in")}</h2>
     <div class="card flush">
       <${SettingRow} icon="pointer" title=${t("mouse_in_title")} sub=${t("mouse_in_sub")} on=${s.remoteInput} onChange=${(v) => patch({ remoteInput: v })} disabled=${!state.input.ok} why=${inputWhy()} />
+      ${state.hasLid && html`<${SettingRow} icon="device-laptop" title=${t("lid_title")} sub=${t("lid_sub")} on=${s.keepWhenLidClosed} onChange=${(v) => patch({ keepWhenLidClosed: v })} />`}
     </div>
     <div class="small muted">${t("mouse_firewall")}</div>
 
@@ -547,6 +548,7 @@ export function SettingsPage() {
       <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
       <${SettingRow} icon="volume" title=${t("phone_sound")} sub=${t("phone_sound_sub")} on=${s.phoneSound} onChange=${(v) => patch({ phoneSound: v })} />
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
+      <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
       <${SettingRow} icon="refresh" title=${t("auto_update")} sub=${t("auto_update_sub")} on=${s.autoUpdate} onChange=${(v) => patch({ autoUpdate: v })} />
       <${SettingRow} icon="arrow-down" title=${t("check_now")} sub=${updateText()}>
         <button class="btn small" disabled=${state.update.state === "checking" || state.update.state === "downloading" || state.update.state === "installing"} onClick=${() => call("check_update").then((u) => set({ update: { dismissed: state.update.dismissed, ...u } })).catch(failed)}>${t("check_now")}</button>

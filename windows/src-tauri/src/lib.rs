@@ -22,6 +22,7 @@ use host::host_stop;
 fn host_stop() {}
 mod i18n;
 mod input;
+mod lid;
 mod insert;
 mod live;
 mod logfile;
@@ -33,6 +34,7 @@ mod settings;
 mod sound;
 mod ssh;
 mod state;
+mod tailscale;
 mod tray;
 mod update;
 #[cfg(feature = "native-video")]
@@ -65,19 +67,23 @@ pub fn run() {
             tray::build(&handle)?;
             media::start(&handle);
             power::start(handle.clone());
+            lid::start(handle.clone());
             update::start(handle.clone());
             // When the pointer of another computer runs into the edge it came in by, that computer is told.
             let leave_app = handle.clone();
-            input::on_leave(move |device, along| {
+            input::on_say(move |device, msg| {
                 if let Ok(engine) = leave_app.state::<state::AppState>().engine() {
                     tauri::async_runtime::spawn(async move {
-                        let _ = engine.send_pointer_share(device, tandem_core::ffi::TandemPointerShare::Leave { along }).await;
+                        let _ = engine.send_pointer_share(device, msg).await;
                     });
                 }
             });
             // While another computer has its pointer here, a drop zone shows at the edge where that computer sits.
             let zone_app = handle.clone();
             input::on_shared_change(move |now| edge::changed(&zone_app, now));
+            // Files that came over with a drag are put down when the button of the shared mouse comes up.
+            let landing_app = handle.clone();
+            input::on_left_up(move || drag::flush(&landing_app));
             engine::start(handle.clone());
             capture::configure(&handle);
             quickshare::configure(&handle);

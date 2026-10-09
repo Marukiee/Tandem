@@ -35,6 +35,9 @@ pub enum Event {
     DevicesChanged,
     Connected { id: DeviceId },
     Disconnected { id: DeviceId },
+    /// A device cannot be reached on any address of the local network, it is known by a Tailscale address, and this device has no
+    /// Tailscale address of its own: the app may turn Tailscale on (if the person allowed that) so the device can be reached from elsewhere.
+    TailscaleNeeded { id: DeviceId },
     /// A device joined the circle through pairing on this device.
     Paired { id: DeviceId },
     CircleChanged,

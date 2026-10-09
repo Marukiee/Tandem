@@ -864,3 +864,10 @@
 "Sending to %@" = "Versturen naar %@";
 "A file from %@ did not come in" = "Een bestand van %@ is niet aangekomen";
 "%@ from %@ is in %@" = "%@ van %@ staat in %@";
+"Turn on Tailscale when needed" = "Tailscale aanzetten als dat nodig is";
+"When a device cannot be reached on this network, Tandem turns Tailscale on. Devices on the same network do not need it." = "Als een apparaat niet bereikbaar is op dit netwerk, zet Tandem Tailscale aan. Apparaten op hetzelfde netwerk hebben dat niet nodig.";
+"%@ could not be reached on this network, so Tandem turned Tailscale on" = "%@ was niet bereikbaar op dit netwerk, dus Tandem heeft Tailscale aangezet";
+"Sign in to Tailscale to reach %@" = "Log in bij Tailscale om %@ te bereiken";
+"a device" = "een apparaat";
+"The connection to %@ was lost, so the pointer is back" = "De verbinding met %@ is weg, dus de aanwijzer is terug";
+"the other computer" = "de andere computer";

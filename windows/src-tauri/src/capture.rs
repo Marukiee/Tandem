@@ -9,6 +9,7 @@
 use std::collections::HashMap;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use tandem_core::ffi::{TandemInput, TandemPointerShare};
 use tandem_core::pointer_share::{self, Edge, Screen};
@@ -33,6 +34,8 @@ struct Inner {
 
 static INNER: Mutex<Inner> = Mutex::new(Inner { next_to: None, remote: None, saved: (0, 0), mods: 0 });
 static OUT: OnceLock<Sender<Out>> = OnceLock::new();
+/// When the computer that has the pointer last answered. A link that goes quiet gives the pointer back (see `watch`).
+static HEARD: Mutex<Option<Instant>> = Mutex::new(None);
 static HOOKS: OnceLock<Option<Capture>> = OnceLock::new();
 
 fn edge_of(text: &str) -> Option<Edge> {
@@ -88,6 +91,33 @@ pub fn configure(app: &AppHandle) {
             })
             .ok();
         let _ = HOOKS.set(Capture::start(see));
+        watch();
+    }
+}
+
+/// Asks the computer that has the pointer, twice a second, whether it is still there. When it does not answer for two seconds (its
+/// lid closed, the network went) the pointer comes back, so this PC can be used again without waiting for a connection to time out.
+fn watch() {
+    std::thread::Builder::new()
+        .name("tandem-share-ping".into())
+        .spawn(|| loop {
+            std::thread::sleep(Duration::from_millis(pointer_share::PING_EVERY_MS));
+            let Some((device, _)) = INNER.lock().unwrap().remote.clone() else { continue };
+            let quiet = HEARD.lock().unwrap().map_or(true, |t| t.elapsed() > Duration::from_millis(pointer_share::PING_PATIENCE_MS));
+            if quiet {
+                come_back(None);
+                send(Out::Share(device, TandemPointerShare::Release));
+            } else {
+                send(Out::Share(device, TandemPointerShare::Ping));
+            }
+        })
+        .ok();
+}
+
+/// Something came in from that computer, so it is still there.
+pub fn heard(device: &str) {
+    if is_remote(device) {
+        *HEARD.lock().unwrap() = Some(Instant::now());
     }
 }
 
@@ -124,6 +154,7 @@ fn see(seen: Seen) -> bool {
         inner.remote = Some((device.clone(), edge));
         inner.mods = 0;
         drop(inner);
+        *HEARD.lock().unwrap() = Some(Instant::now());
         if let Some(Some(hooks)) = HOOKS.get() {
             hooks.hold(true);
         }

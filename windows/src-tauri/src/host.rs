@@ -17,12 +17,12 @@ use openh264::formats::YUVBuffer;
 use openh264::OpenH264API;
 use serde_json::json;
 use tandem_core::ffi::{
-    TandemMediaAccept, TandemMediaCodec, TandemMediaEnd, TandemMediaHost, TandemMediaInput, TandemMediaKind, TandemMediaPush,
-    TandemMediaRequest,
+    TandemMediaAccept, TandemMediaCodec, TandemMediaEnd, TandemMediaHost, TandemMediaInput, TandemMediaKind, TandemMediaPermission,
+    TandemMediaPush, TandemMediaRequest,
 };
 use tandem_winsys::Grabber;
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons};
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogResult};
 
 use crate::state::AppState;
 use crate::{events, i18n, input};
@@ -160,13 +160,37 @@ impl TandemMediaHost for Host {
             let name = events::device_name(&this.app, &from);
             let wants_control = request.control && control_available();
             let body = if wants_control { i18n::t(&this.app, "host_ask_control") } else { i18n::t(&this.app, "host_ask_view") };
-            let allowed = this
+            let (allow, always, deny) = (i18n::t(&this.app, "host_allow"), i18n::t(&this.app, "host_always"), i18n::t(&this.app, "host_deny"));
+            let answer = this
                 .app
                 .dialog()
                 .message(body)
                 .title(i18n::t1(&this.app, "host_ask_title", &name))
-                .buttons(MessageDialogButtons::OkCancelCustom(i18n::t(&this.app, "host_allow"), i18n::t(&this.app, "host_deny")))
-                .blocking_show();
+                .buttons(MessageDialogButtons::YesNoCancelCustom(allow.clone(), always.clone(), deny))
+                .blocking_show_with_result();
+            let remembered = match &answer {
+                MessageDialogResult::Custom(label) => *label == always,
+                MessageDialogResult::No => true,
+                _ => false,
+            };
+            let allowed = remembered
+                || match &answer {
+                    MessageDialogResult::Custom(label) => *label == allow,
+                    MessageDialogResult::Yes | MessageDialogResult::Ok => true,
+                    _ => false,
+                };
+            // "Always": this device asks no more, for the screen and for the mouse and keyboard.
+            if remembered {
+                if let Some(engine) = this.engine() {
+                    if let Ok(mut policy) = engine.media_policy(from.clone()) {
+                        policy.screen = TandemMediaPermission::Always;
+                        if wants_control {
+                            policy.control = TandemMediaPermission::Always;
+                        }
+                        let _ = engine.set_media_policy(from.clone(), policy);
+                    }
+                }
+            }
             if allowed {
                 this.start(from, &request);
             } else if let Some(engine) = this.engine() {

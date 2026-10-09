@@ -211,6 +211,10 @@ class EngineHost(
 
             is TandemEvent.RemovedFromCircle -> _removed.value = true
 
+            is TandemEvent.TailscaleNeeded -> scope.launch(Dispatchers.IO) {
+                if (context.graph.prefs.autoTailscale.first()) TailscaleAuto.connect(context)
+            }
+
             is TandemEvent.Clipboard -> {
                 applyRemoteClipboard(event.text)
                 context.graph.clipHistory.record(event.text, device(event.from)?.name.orEmpty())

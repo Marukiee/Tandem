@@ -37,12 +37,32 @@ pub fn finished(app: &AppHandle, peer: &str, offer: u64, name: &str, location: &
         events::say(app, &i18n::t1(app, "insert_failed", &from));
         return true;
     };
+    // Still being dragged: the person has not let go yet, so it is put down when the button comes up and not under their hand.
+    if input::left_down() {
+        WAITING.lock().unwrap().push((from, name.to_string(), PathBuf::from(path)));
+    } else {
+        land(app, &from, name, Path::new(path));
+    }
+    true
+}
+
+/// Files that came in while the button was still down.
+static WAITING: Mutex<Vec<(String, String, PathBuf)>> = Mutex::new(Vec::new());
+
+/// The button came up: what arrived during the drag is put down now.
+pub fn flush(app: &AppHandle) {
+    let waiting: Vec<_> = std::mem::take(&mut *WAITING.lock().unwrap());
+    for (from, name, path) in waiting {
+        land(app, &from, &name, &path);
+    }
+}
+
+fn land(app: &AppHandle, from: &str, name: &str, path: &Path) {
     let desktop = app.path().desktop_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let placed = place(Path::new(path), &desktop);
-    events::say(app, &i18n::t2(app, "host_landed", name, &from).replace("{0}", name));
+    let placed = place(path, &desktop);
+    events::say(app, &i18n::t2(app, "host_landed", name, from).replace("{0}", name));
     // Shown in the file manager, so it is easy to find.
     let _ = tauri_plugin_opener::reveal_item_in_dir(&placed);
-    true
 }
 
 /// Moves the file to the folder, under a name that is free there.

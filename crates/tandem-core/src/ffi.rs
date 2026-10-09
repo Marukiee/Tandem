@@ -844,11 +844,18 @@ impl From<crate::pointer_share::Edge> for TandemEdge {
 }
 
 /// What two computers say about the pointer that goes over and comes back.
-#[derive(Clone, Copy, Debug, PartialEq, uniffi::Enum)]
+#[derive(Clone, Debug, PartialEq, uniffi::Enum)]
 pub enum TandemPointerShare {
     Enter { edge: TandemEdge, along: f32 },
     Leave { along: f32 },
     Release,
+    /// Asked now and then by the computer that has the pointer; answered with `Pong`.
+    Ping,
+    Pong,
+    /// The size of the screen that took the pointer in.
+    Size { width: u32, height: u32 },
+    /// Text that was being dragged: let go here, at the pointer, when the mouse button comes up.
+    Carry { text: String },
 }
 
 impl From<TandemPointerShare> for crate::pointer_share::PointerShareMsg {
@@ -857,6 +864,10 @@ impl From<TandemPointerShare> for crate::pointer_share::PointerShareMsg {
             TandemPointerShare::Enter { edge, along } => Self::Enter { edge: edge.into(), along },
             TandemPointerShare::Leave { along } => Self::Leave { along },
             TandemPointerShare::Release => Self::Release,
+            TandemPointerShare::Ping => Self::Ping,
+            TandemPointerShare::Pong => Self::Pong,
+            TandemPointerShare::Size { width, height } => Self::Size { width, height },
+            TandemPointerShare::Carry { text } => Self::Carry { text },
         }
     }
 }
@@ -868,6 +879,10 @@ impl From<crate::pointer_share::PointerShareMsg> for TandemPointerShare {
             M::Enter { edge, along } => Self::Enter { edge: edge.into(), along },
             M::Leave { along } => Self::Leave { along },
             M::Release => Self::Release,
+            M::Ping => Self::Ping,
+            M::Pong => Self::Pong,
+            M::Size { width, height } => Self::Size { width, height },
+            M::Carry { text } => Self::Carry { text },
         }
     }
 }
@@ -877,6 +892,8 @@ pub enum TandemEvent {
     DevicesChanged,
     Connected { id: String },
     Disconnected { id: String },
+    /// A device cannot be reached on the local network and is known by a Tailscale address, while Tailscale is off here. The app may turn it on.
+    TailscaleNeeded { id: String },
     Paired { id: String },
     CircleChanged,
     RemovedFromCircle,
@@ -933,6 +950,7 @@ impl From<Event> for TandemEvent {
             Event::DevicesChanged => TandemEvent::DevicesChanged,
             Event::Connected { id } => TandemEvent::Connected { id: id.to_string() },
             Event::Disconnected { id } => TandemEvent::Disconnected { id: id.to_string() },
+            Event::TailscaleNeeded { id } => TandemEvent::TailscaleNeeded { id: id.to_string() },
             Event::Paired { id } => TandemEvent::Paired { id: id.to_string() },
             Event::CircleChanged => TandemEvent::CircleChanged,
             Event::RemovedFromCircle => TandemEvent::RemovedFromCircle,

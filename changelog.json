@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.1.73",
+    "date": "2026-10-09",
+    "en": {
+      "title": "A steadier shared mouse",
+      "new": [
+        "The pointer comes back at once when the link drops or a laptop lid closes",
+        "Drag photos, files and text to the other computer",
+        "Linux: choose whether it stays usable with the lid closed",
+        "Tailscale turns on by itself when a device is out of reach",
+        "Screen sharing: Always allow"
+      ]
+    },
+    "nl": {
+      "title": "Een stabielere gedeelde muis",
+      "new": [
+        "De muis komt direct terug als de verbinding wegvalt of een laptopklep dichtgaat",
+        "Sleep foto's, bestanden en tekst naar de andere computer",
+        "Linux: kies of hij bruikbaar blijft met de klep dicht",
+        "Tailscale gaat vanzelf aan als een apparaat onbereikbaar is",
+        "Scherm delen: Altijd toestaan"
+      ]
+    }
+  },
+  {
     "version": "0.1.72",
     "date": "2026-10-08",
     "en": {

@@ -26,6 +26,9 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | De computer bedienen vanaf de telefoon (trackpad, toetsenbord) | bron | ja | ja | deels (alleen X11) |
 | Een computer bedienen vanaf een andere computer (gedeelde muis) | nee | ja (hoofd en bestuurd) | ja (hoofd en bestuurd) | nee (bestuurd alleen op X11, geen hoofd) |
 | Bestanden slepen over de rand bij de gedeelde muis | nee | ja, beide kanten (dropzone aan de rand, bestanden landen in het Finder-venster of op het bureaublad) | ja als bestuurde pc (dropzone, landen op het bureaublad), niet als hoofd | idem als Windows, onder X11 |
+| Een sleep van foto, bestand of tekst gaat mee over de rand (Mac als hoofd), op de plek van de aanwijzer | nee | ja, als hoofd (tekst plakt op de plek, bestanden landen na het loslaten) | ja als bestuurde pc (tekst: klik en plakken) | ja als bestuurde pc (tekst: middelste klik, bestanden op het bureaublad) |
+| De aanwijzer komt direct terug als de verbinding wegvalt of de klep dichtgaat (levensteken, standaard 2 seconden) | nee | ja | ja (hoofd en bestuurd) | ja (bestuurd), klep via instelling |
+| Tailscale gaat vanzelf aan als een apparaat niet bereikbaar is en Tailscale het zou bereiken | ja (melding aan de Tailscale-app) | ja (`tailscale up`) | ja (`tailscale up`) | ja (`tailscale up`, vraagt eenmalig `--operator`) |
 | SSH-terminal naar een computer | ja (JSch en xterm.js, nooit tegen een echte computer geprobeerd) | ja | ja | ja |
 | Hotspot van de telefoon vanaf de computer | bron | ja | nee | nee |
 | Computer wakker maken (Wake on LAN) vanaf de telefoon | ja | doel | doel | doel |

@@ -13,13 +13,15 @@ export const state = {
   notifications: [],
   players: {},
   art: {},
-  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, phoneSound: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: false },
+  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, phoneSound: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: false, keepWhenLidClosed: false, autoTailscale: true },
   // This PC can be the main computer of a shared mouse and keyboard (Windows only).
   canShare: false,
   // "windows" or "linux": a few words and what is possible differ.
   platform: "windows",
   // This computer can show its screen to other devices (see host.rs), and who is looking at it now.
   canHost: false,
+  // This computer is a laptop whose lid can be asked about (Linux).
+  hasLid: false,
   hosting: [],
   // Whether this system lets Tandem move the pointer and press keys, and if not why (wayland, no-display).
   input: { ok: true, why: "" },

@@ -45,6 +45,7 @@ fn allowed(app: &AppHandle, id: &str, key: &str) -> bool {
 pub fn handle(app: &AppHandle, event: TandemEvent) {
     match event {
         TandemEvent::DevicesChanged | TandemEvent::CircleChanged | TandemEvent::Connected { .. } => refresh_devices(app),
+        TandemEvent::TailscaleNeeded { id } => crate::tailscale::needed(app, &id),
         TandemEvent::Disconnected { id } => {
             input::release_all();
             crate::sound::stop(&id);
@@ -147,7 +148,11 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 Share::Enter { edge, along } => {
                     // Taken only when it can really be played here: a pointer that comes over and does nothing leaves the person
                     // on the other computer stuck, so what cannot be done is handed straight back.
-                    if settings::get(app).remote_input && crate::commands::input_blocked().is_none() && input::ready() {
+                    if settings::get(app).remote_input
+                        && crate::commands::input_blocked().is_none()
+                        && !crate::lid::blocked(app)
+                        && input::ready()
+                    {
                         input::shared_enter(from, edge.into(), along);
                     } else if let Ok(engine) = app.state::<AppState>().engine() {
                         // Not allowed: the pointer goes straight back.
@@ -162,6 +167,23 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                     input::shared_end(&from);
                     crate::capture::returned(&from, None);
                 }
+                // The computer that has the pointer asks whether this one is still there. Answered at once, which is also what keeps
+                // the watchdog on this side quiet.
+                Share::Ping => {
+                    input::touch(&from);
+                    crate::capture::heard(&from);
+                    if let Ok(engine) = app.state::<AppState>().engine() {
+                        tauri::async_runtime::spawn(async move { let _ = engine.send_pointer_share(from, Share::Pong).await; });
+                    }
+                }
+                Share::Pong => crate::capture::heard(&from),
+                // Only the computers that take a pointer in say how big their screen is, and this one is not the main computer of those.
+                Share::Size { .. } => crate::capture::heard(&from),
+                Share::Carry { text } => {
+                    if input::shared_is(&from) {
+                        input::shared_carry(text);
+                    }
+                }
             }
         }
         _ => {}
@@ -172,6 +194,9 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
 /// why nothing happens, since nothing on the phone says so.
 fn remote_input(app: &AppHandle, from: &str, event: tandem_core::ffi::TandemInput) {
     let blocked = crate::commands::input_blocked();
+    if crate::lid::blocked(app) {
+        return;
+    }
     if settings::get(app).remote_input && blocked.is_none() {
         input::send(event);
         return;

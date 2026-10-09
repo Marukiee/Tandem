@@ -504,6 +504,9 @@ final class EngineModel {
         case let .pointerShare(from, message):
             PointerShare.shared.received(message, from: from)
 
+        case let .tailscaleNeeded(id):
+            TailscaleAuto.shared.needed(for: id)
+
         case let .hotspot(from, message):
             hotspot.handle(from: from, message: message)
 

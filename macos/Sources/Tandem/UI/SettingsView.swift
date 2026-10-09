@@ -143,6 +143,7 @@ private struct GeneralSettings: View {
     @AppStorage("showInDock") private var showInDock = true
     @AppStorage("copyCodes") private var copyCodes = true
     @AppStorage("bleMessages") private var bleMessages = true
+    @AppStorage(TailscaleAuto.enabledKey) private var autoTailscale = true
     @AppStorage("audioMuteLocal") private var audioMuteLocal = true
     @AppStorage(ReceivedImages.copyKey) private var copyImages = true
     @AppStorage(ReceivedImages.pasteKey) private var pasteImages = false
@@ -239,6 +240,11 @@ private struct GeneralSettings: View {
                     "Mute this Mac while a phone is its speaker",
                     subtitle: "Turn this off to hear the sound on both. It takes effect the next time you start it.",
                     isOn: $audioMuteLocal
+                )
+                DescribedToggle(
+                    "Turn on Tailscale when needed",
+                    subtitle: "When a device cannot be reached on this network, Tandem turns Tailscale on. Devices on the same network do not need it.",
+                    isOn: $autoTailscale
                 )
                 DescribedToggle(
                     "Bluetooth without a network",

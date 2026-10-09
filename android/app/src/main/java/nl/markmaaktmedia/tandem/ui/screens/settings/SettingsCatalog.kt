@@ -56,6 +56,7 @@ internal object FocusKeys {
     const val PhoneId = "sharing.id"
     const val Screenshot = "sharing.screenshot"
     const val Ble = "sharing.ble"
+    const val AutoTailscale = "sharing.tailscale"
     const val ClipTile = "sharing.tile"
     const val MediaShare = "sharing.music"
     const val Speaker = "sharing.speaker"
@@ -188,6 +189,10 @@ internal object SettingsCatalog {
         SettingsEntry(
             "sharing_ble", R.string.settings_ble_messages, R.string.settings_kw_sharing_ble, SettingsCategory.Sharing, sharing,
             { TandemIcons.Bluetooth }, subtitle = R.string.settings_ble_messages_sub, focus = FocusKeys.Ble,
+        ),
+        SettingsEntry(
+            "sharing_tailscale", R.string.settings_auto_tailscale, R.string.settings_kw_sharing_tailscale, SettingsCategory.Sharing, sharing,
+            { TandemIcons.Wifi }, subtitle = R.string.settings_auto_tailscale_sub, focus = FocusKeys.AutoTailscale,
         ),
         SettingsEntry(
             "sharing_tile", R.string.settings_clip_tile, R.string.settings_kw_sharing_tile, SettingsCategory.Sharing, sharing,

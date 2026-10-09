@@ -92,6 +92,8 @@ pub(crate) struct Peer {
     pub next_dial: Instant,
     pub status: Status,
     pub hello: Option<Hello>,
+    /// When this device was last seen announcing itself on the local network. Such a device is on the same network and needs no Tailscale.
+    pub lan_seen: Option<Instant>,
 }
 
 pub(crate) struct Inner {
@@ -120,6 +122,8 @@ pub(crate) struct Inner {
     pub cancel: CancellationToken,
     pub boot_id: u64,
     pub addrs_dirty: AtomicBool,
+    /// When the app was last told that Tailscale is needed, and whether it is being waited for.
+    pub tailscale_asked: Mutex<Option<Instant>>,
     pub session_serial: AtomicU64,
     pub discovery: Mutex<Option<Discovery>>,
     pub accept_slots: Arc<Semaphore>,
@@ -193,6 +197,7 @@ impl Engine {
             cancel: CancellationToken::new(),
             boot_id: rand_u64(),
             addrs_dirty: AtomicBool::new(false),
+            tailscale_asked: Mutex::new(None),
             session_serial: AtomicU64::new(1),
             discovery: Mutex::new(None),
             accept_slots: Arc::new(Semaphore::new(16)),
@@ -713,6 +718,7 @@ impl Inner {
                 next_dial: Instant::now(),
                 status: Status::default(),
                 hello: None,
+                lan_seen: None,
             });
         }
         let gone: Vec<DeviceId> = peers.keys().filter(|id| !wanted.contains(id)).copied().collect();
@@ -879,6 +885,7 @@ impl Inner {
                 _ = self.poke.notified() => {}
                 _ = tick.tick() => {}
             }
+            self.notice_tailscale_arriving();
             self.dial_due_peers();
             self.clean_up_offers();
             self.sync_pairing_announcement();
@@ -886,6 +893,18 @@ impl Inner {
                 self.persist_addresses();
             }
             self.refresh_announcement();
+        }
+    }
+
+    /// Tailscale was turned on after it was asked for: devices that were waiting for it are dialled at once and not after their back-off.
+    fn notice_tailscale_arriving(self: &Arc<Self>) {
+        if self.tailscale_asked.lock().unwrap().is_none() {
+            return;
+        }
+        if if_addrs::get_if_addrs().map(|all| all.iter().any(|i| net::is_tailnet(i.ip()))).unwrap_or(false) {
+            // Asked again only after it has gone away again.
+            *self.tailscale_asked.lock().unwrap() = None;
+            self.network_changed();
         }
     }
 
@@ -926,13 +945,36 @@ impl Inner {
             }
             Err(e) => {
                 debug!("could not reach {id}: {e}");
-                let mut peers = self.peers.lock().unwrap();
-                if let Some(peer) = peers.get_mut(&id) {
-                    peer.dialing = false;
-                    peer.fail_count = peer.fail_count.saturating_add(1);
-                    peer.next_dial = Instant::now() + backoff(peer.fail_count);
+                let fails = {
+                    let mut peers = self.peers.lock().unwrap();
+                    peers.get_mut(&id).map(|peer| {
+                        peer.dialing = false;
+                        peer.fail_count = peer.fail_count.saturating_add(1);
+                        peer.next_dial = Instant::now() + backoff(peer.fail_count);
+                        peer.fail_count
+                    })
+                };
+                if let Some(fails) = fails {
+                    self.maybe_need_tailscale(id, fails, &addrs);
                 }
             }
+        }
+    }
+
+    /// A device that does not answer on any address of the local network, and that is known by a Tailscale address, is probably on
+    /// another network. When this device has no Tailscale address of its own it cannot get there, so the app is asked (at most once in
+    /// a while) to turn Tailscale on. Nothing is asked of a device that is on the same network: that one simply answers.
+    fn maybe_need_tailscale(&self, id: DeviceId, fails: u32, addrs: &[net::KnownAddr]) {
+        // Heard on the local network a moment ago: it is right here, only not answering yet.
+        let on_this_network = self.peers.lock().unwrap().get(&id).and_then(|p| p.lan_seen).is_some_and(|t| t.elapsed() < Duration::from_secs(90));
+        if on_this_network {
+            return;
+        }
+        let since_last = self.tailscale_asked.lock().unwrap().map(|t| t.elapsed());
+        let has_own = if_addrs::get_if_addrs().map(|all| all.iter().any(|i| net::is_tailnet(i.ip()))).unwrap_or(true);
+        if net::needs_tailscale(fails, addrs, has_own, since_last) {
+            *self.tailscale_asked.lock().unwrap() = Some(Instant::now());
+            self.emit(Event::TailscaleNeeded { id });
         }
     }
 
@@ -1018,6 +1060,7 @@ impl Inner {
             if let Some(peer) = peers.get_mut(&id) {
                 let before = peer.addrs.ordered().len();
                 let now = now_ms();
+                peer.lan_seen = Some(Instant::now());
                 for addr in &sighting.addrs {
                     peer.addrs.learn(SocketAddr::new(addr.ip().to_canonical(), addr.port()), now);
                 }

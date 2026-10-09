@@ -53,6 +53,7 @@ function apply(snapshot) {
     canShare: !!snapshot.canShare,
     platform: snapshot.platform || "windows",
     canHost: !!snapshot.canHost,
+    hasLid: !!snapshot.hasLid,
     input: snapshot.input || { ok: true, why: "" },
     devices: snapshot.devices,
     transfers: snapshot.transfers,
