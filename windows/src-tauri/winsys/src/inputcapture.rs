@@ -278,6 +278,7 @@ async fn session(rx: &async_channel::Receiver<Cmd>, handler: &Arc<dyn Fn(Capture
     // Which barrier belongs to which stretch.
     let mut placed = apply(&capture, &session, shared).await?;
     shared.state.store(1, Ordering::Relaxed);
+    log::info!("capturing the mouse and keyboard is ready, with {} barrier(s)", placed.len());
 
     while let Some(wake) = wakes.next().await {
         match wake {
@@ -289,15 +290,18 @@ async fn session(rx: &async_channel::Receiver<Cmd>, handler: &Arc<dyn Fn(Capture
                     Some(ActivatedBarrier::Barrier(barrier)) => placed.iter().find(|(b, _)| *b == barrier.get()).map(|(_, s)| *s).unwrap_or(0),
                     _ => 0,
                 };
+                log::info!("the pointer ran into a barrier (stretch {id}) at {x},{y}");
                 handler(Captured::Activated { id, x, y });
             }
             Wake::Deactivated => {
                 *shared.activation.lock().unwrap() = None;
+                log::info!("the desktop took the mouse and keyboard back");
                 handler(Captured::Deactivated);
             }
             Wake::Disabled | Wake::Zones | Wake::Cmd(Cmd::Changed) => {
                 // Zones that changed or a session that was switched off have no barriers any more.
                 placed = apply(&capture, &session, shared).await?;
+                log::info!("the barriers were put again: {}", placed.len());
             }
             Wake::Cmd(Cmd::Release { x, y }) => {
                 let (left, top, _, _) = *shared.zone.lock().unwrap();
