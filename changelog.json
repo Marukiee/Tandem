@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.1.76",
+    "date": "2026-10-09",
+    "en": {
+      "title": "Linux screen",
+      "new": [
+        "Linux on Wayland: the screen can be shown to other devices again",
+        "Windows: a locked screen is not used from another computer",
+        "Quick Share says more when a transfer fails",
+        "Linux: the screen no longer needs a restart after you unlock it"
+      ]
+    },
+    "nl": {
+      "title": "Linux-scherm",
+      "new": [
+        "Linux op Wayland: het scherm kan weer aan andere apparaten worden getoond",
+        "Windows: een vergrendeld scherm wordt niet vanaf een andere computer gebruikt",
+        "Quick Share zegt meer als een overdracht mislukt",
+        "Linux: na het ontgrendelen is geen herstart meer nodig"
+      ]
+    }
+  },
+  {
     "version": "0.1.75",
     "date": "2026-10-09",
     "en": {
