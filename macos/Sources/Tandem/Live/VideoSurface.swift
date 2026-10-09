@@ -33,6 +33,13 @@ final class VideoSurfaceView: NSView {
     /// [isControlActive] says no, and the view then lets the events pass as usual.
     var onInput: ((TandemMediaInput) -> Void)?
     var isControlActive: () -> Bool = { false }
+    /// What is on the other side, which decides what the keys and the right button of this Mac mean there.
+    enum Remote { case phone, mac, pc }
+    var remote: Remote = .phone
+    private var tracking: NSTrackingArea?
+    private var lastMove: TimeInterval = 0
+    /// Keys that went down as a press with modifiers, to be let go when they come up: the key code here, and what was sent.
+    private var held: [UInt16: (usage: UInt32, mods: UInt8)] = [:]
 
     override var acceptsFirstResponder: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -164,11 +171,58 @@ final class VideoSurfaceView: NSView {
         send(.button(button: 0, down: false, clicks: UInt8(clamping: max(1, event.clickCount))))
     }
 
-    /// The right button is Back on the phone.
+    /// The right button is Back on the phone, and the right button on a computer.
     override func rightMouseDown(with event: NSEvent) {
-        guard isControlActive(), fraction(of: event) != nil else { return super.rightMouseDown(with: event) }
-        send(.button(button: 1, down: true, clicks: 1))
+        guard isControlActive(), let at = fraction(of: event) else { return super.rightMouseDown(with: event) }
+        send(.pointerAbs(x: at.x, y: at.y))
+        if remote == .phone {
+            send(.button(button: 1, down: true, clicks: 1))
+            send(.button(button: 1, down: false, clicks: 1))
+        } else {
+            send(.button(button: 1, down: true, clicks: 1))
+        }
+    }
+
+    override func rightMouseUp(with event: NSEvent) {
+        guard isControlActive(), remote != .phone else { return super.rightMouseUp(with: event) }
+        if let at = fraction(of: event) { send(.pointerAbs(x: at.x, y: at.y)) }
         send(.button(button: 1, down: false, clicks: 1))
+    }
+
+    override func rightMouseDragged(with event: NSEvent) { follow(event, force: false) }
+
+    override func otherMouseDown(with event: NSEvent) {
+        guard isControlActive(), remote != .phone, event.buttonNumber == 2, let at = fraction(of: event) else { return super.otherMouseDown(with: event) }
+        send(.pointerAbs(x: at.x, y: at.y))
+        send(.button(button: 2, down: true, clicks: 1))
+    }
+
+    override func otherMouseUp(with event: NSEvent) {
+        guard isControlActive(), remote != .phone, event.buttonNumber == 2 else { return super.otherMouseUp(with: event) }
+        send(.button(button: 2, down: false, clicks: 1))
+    }
+
+    override func otherMouseDragged(with event: NSEvent) { follow(event, force: false) }
+
+    // The pointer moves over there as it moves here, also without a button: otherwise the pointer of the other computer stays where
+    // it was clicked last and the picture is of something that is not where the eye is.
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let tracking { removeTrackingArea(tracking) }
+        let area = NSTrackingArea(rect: bounds, options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect], owner: self, userInfo: nil)
+        addTrackingArea(area)
+        tracking = area
+    }
+
+    override func mouseMoved(with event: NSEvent) { follow(event, force: false) }
+
+    /// Sends where the pointer is, at most about sixty times a second.
+    private func follow(_ event: NSEvent, force: Bool) {
+        guard isControlActive(), remote != .phone, let at = fraction(of: event) else { return }
+        let now = event.timestamp
+        guard force || now - lastMove >= 1.0 / 60.0 else { return }
+        lastMove = now
+        send(.pointerAbs(x: at.x, y: at.y))
     }
 
     /// The scroll wheel and two fingers on the pad move the content the way the fingers do.
@@ -181,21 +235,89 @@ final class VideoSurfaceView: NSView {
         send(.scroll(dx: dx, dy: dy))
     }
 
-    /// Letters and digits are typed; Escape is Back, Delete takes a character off, Return goes in as a line break.
+    // MARK: Keys
+
+    /// The modifiers as the other side wants them (shift 1, control 2, alt or option 4, meta or command 8). On a Mac the keys stand where they
+    /// do here; on Windows and Linux the shortcuts are on Control, so Command here is Control there.
+    private func remoteMods(_ flags: NSEvent.ModifierFlags) -> UInt8 {
+        var mods: UInt8 = 0
+        if flags.contains(.shift) { mods |= 1 }
+        if flags.contains(.control) { mods |= 2 }
+        if flags.contains(.option) { mods |= 4 }
+        if flags.contains(.command) { mods |= remote == .mac ? 8 : 2 }
+        return mods
+    }
+
+    /// A key that is not a letter to be typed: arrows, Tab, Escape, the function keys, Return, Delete and the like.
+    private func isNamedKey(_ event: NSEvent) -> Bool {
+        if [36, 48, 51, 53, 71, 76, 114, 115, 116, 117, 119, 121, 123, 124, 125, 126].contains(event.keyCode) { return true }
+        // F1 to F20 and the keys of the number pad's far side live in the private range of Unicode.
+        if let first = event.charactersIgnoringModifiers?.unicodeScalars.first, (0xF700 ... 0xF8FF).contains(first.value) { return true }
+        return false
+    }
+
+    /// Presses a key that has a place on the keyboard of the other side, with the modifiers held now. True when it was sent.
+    @discardableResult
+    private func sendPress(_ event: NSEvent, release: Bool) -> Bool {
+        guard let usage = HidKeys.usage(forMacKeyCode: event.keyCode) else { return false }
+        let mods = remoteMods(event.modifierFlags)
+        send(.key(code: usage, down: true, mods: UInt16(mods), text: ""))
+        if release {
+            send(.key(code: usage, down: false, mods: UInt16(mods), text: ""))
+        } else {
+            held[event.keyCode] = (usage, mods)
+        }
+        return true
+    }
+
+    /// Shortcuts (Command and Control with a key) are taken before the menus of this app get them, except the few that belong to this
+    /// Mac: closing the window, quitting, hiding, and the stop and the picture of this window.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard isControlActive(), remote != .phone, event.type == .keyDown, !event.modifierFlags.intersection([.command, .control]).isEmpty else {
+            return super.performKeyEquivalent(with: event)
+        }
+        let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
+        let keepsHere = ["w", "q", "m", "h", ".", ","].contains(key) || (key == "c" && event.modifierFlags.contains(.shift))
+        if keepsHere { return super.performKeyEquivalent(with: event) }
+        return sendPress(event, release: true)
+    }
+
     override func keyDown(with event: NSEvent) {
         guard isControlActive() else { return super.keyDown(with: event) }
-        let modifiers = event.modifierFlags.intersection([.command, .control])
-        guard modifiers.isEmpty else { return super.keyDown(with: event) }
-        switch event.keyCode {
-        case 53: send(.key(code: 0x29, down: true, mods: 0, text: ""))
-        case 51: send(.key(code: 0x2A, down: true, mods: 0, text: ""))
-        case 36, 76: send(.key(code: 0x28, down: true, mods: 0, text: ""))
-        default:
-            if let text = event.characters, !text.isEmpty, text.unicodeScalars.allSatisfy({ $0.value >= 32 && $0.value != 127 }) {
-                send(.text(text: text))
-            } else {
-                super.keyDown(with: event)
+        if remote == .phone {
+            // A phone has no keys of its own: letters are typed, Escape is Back, Delete takes a character off, Return is a line break.
+            let modifiers = event.modifierFlags.intersection([.command, .control])
+            guard modifiers.isEmpty else { return super.keyDown(with: event) }
+            switch event.keyCode {
+            case 53: send(.key(code: 0x29, down: true, mods: 0, text: ""))
+            case 51: send(.key(code: 0x2A, down: true, mods: 0, text: ""))
+            case 36, 76: send(.key(code: 0x28, down: true, mods: 0, text: ""))
+            default:
+                if let text = event.characters, !text.isEmpty, text.unicodeScalars.allSatisfy({ $0.value >= 32 && $0.value != 127 }) {
+                    send(.text(text: text))
+                } else {
+                    super.keyDown(with: event)
+                }
             }
+            return
+        }
+        // A computer: keys with a name and anything with Control or Command go as presses; plain letters are typed, so the layout
+        // there does not change what was meant and accents and other alphabets work.
+        let shortcut = !event.modifierFlags.intersection([.command, .control]).isEmpty
+        if shortcut || isNamedKey(event) {
+            if sendPress(event, release: false) { return }
+        } else if let text = event.characters, !text.isEmpty, text.unicodeScalars.allSatisfy({ $0.value >= 32 && $0.value != 127 }) {
+            send(.text(text: text))
+            return
+        }
+        super.keyDown(with: event)
+    }
+
+    override func keyUp(with event: NSEvent) {
+        if let key = held.removeValue(forKey: event.keyCode) {
+            send(.key(code: key.usage, down: false, mods: UInt16(key.mods), text: ""))
+        } else {
+            super.keyUp(with: event)
         }
     }
 

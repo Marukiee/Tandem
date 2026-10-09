@@ -10,6 +10,18 @@ enum HidKeys {
 
     static func isModifier(_ usage: UInt32) -> Bool { (0xE0 ... 0xE7).contains(usage) }
 
+    /// The other way: the usage of a key of this Mac, for sending a press of it to another computer. Nil for a key that has none.
+    static func usage(forMacKeyCode code: UInt16) -> UInt32? {
+        reverse[code]
+    }
+
+    private static let reverse: [UInt16: UInt32] = {
+        var map: [UInt16: UInt32] = [:]
+        // The table has two usages for the same key in a few places (the two backslashes); the lower one is the one that is meant.
+        for (usage, code) in table.sorted(by: { $0.key > $1.key }) { map[code] = usage }
+        return map
+    }()
+
     private static let table: [UInt32: UInt16] = {
         var map: [UInt32: UInt16] = [:]
         let letters: [UInt16] = [

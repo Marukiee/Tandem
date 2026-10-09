@@ -196,6 +196,9 @@ final class LiveManager {
             guard let session else { return false }
             return session.controlGranted && session.controlOn && !session.phase.isEnded
         }
+        // What is on the other side decides what the keys and the right button mean there.
+        let platform = EngineModel.shared.device(session.peer)?.platform
+        session.surface.remote = platform == .android ? .phone : platform == .macOs ? .mac : .pc
         session.surface.onInput = { [weak self, weak session] input in
             guard let session else { return }
             self?.sendInput(session, input)

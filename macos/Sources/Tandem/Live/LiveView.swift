@@ -11,6 +11,8 @@ struct LiveView: View {
     @LocalState private var controlsVisible = true
     @LocalState private var hideTask: Task<Void, Never>?
     @LocalState private var overToolbar = false
+    /// How tall the view is, to tell when the pointer is at the bottom edge where the toolbar lives.
+    @LocalState private var viewHeight: CGFloat = 0
     @LocalState private var showInfo = false
     @LocalState private var showMore = false
     @LocalState private var showCamera = false
@@ -77,9 +79,13 @@ struct LiveView: View {
         }
         .ignoresSafeArea()
         .frame(minWidth: 160, minHeight: 90)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { viewHeight = $0 }
         .onContinuousHover { phase in
             switch phase {
-            case .active: wake()
+            case let .active(point):
+                // The toolbar belongs to the bottom edge. Elsewhere over the picture the pointer is the one of the other computer, and
+                // buttons that follow it around hide the taskbar and the dock that are down there.
+                if !session.hasPicture || viewHeight <= 0 || point.y >= viewHeight - 120 { wake() } else { scheduleHide(after: 0.4) }
             case .ended: scheduleHide()
             }
         }
@@ -97,12 +103,12 @@ struct LiveView: View {
         scheduleHide()
     }
 
-    private func scheduleHide() {
+    private func scheduleHide(after seconds: Double = 2.6) {
         hideTask?.cancel()
         // A snapshot run wants to see the controls.
         guard !DebugSupport.flatGlass else { return }
         hideTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(2.6))
+            try? await Task.sleep(for: .seconds(seconds))
             guard !Task.isCancelled, !overToolbar else { return }
             controlsVisible = false
         }
@@ -168,9 +174,7 @@ struct LiveView: View {
     private var compactToolbar: some View {
         GlassEffectContainer(spacing: 10) {
             HStack(spacing: 10) {
-                if session.isRunning {
-                    button("stop.fill", help: "Stop", tint: Palette.urgent) { LiveManager.shared.stop(session) }
-                }
+                if session.isRunning { stopButton }
                 button("camera.viewfinder", help: "Copy a picture to the clipboard") { controller.copyScreenshot() }
                     .disabled(!session.hasPicture)
                 button("ellipsis", help: "More") { showMore.toggle() }
@@ -178,6 +182,23 @@ struct LiveView: View {
             }
             .padding(8)
         }
+    }
+
+    private var remoteIsMac: Bool { model.device(session.peer)?.platform == .macOs }
+
+    /// Presses a key there with some modifiers and lets go of it.
+    private func pressThere(usage: UInt32, mods: UInt16) {
+        LiveManager.shared.sendInput(session, .key(code: usage, down: true, mods: mods, text: ""))
+        LiveManager.shared.sendInput(session, .key(code: usage, down: false, mods: mods, text: ""))
+    }
+
+    /// The text on the clipboard of this Mac is typed over there, for what does not come over by itself.
+    private func typeClipboard() {
+        guard let text = NSPasteboard.general.string(forType: .string), !text.isEmpty else {
+            FloatingToast.show(String(localized: "There is no text on the clipboard"), symbol: "doc.on.clipboard")
+            return
+        }
+        LiveManager.shared.sendInput(session, .text(text: String(text.prefix(4000))))
     }
 
     private func turn() {
@@ -189,8 +210,7 @@ struct LiveView: View {
         GlassEffectContainer(spacing: 10) {
             HStack(spacing: 10) {
                 if session.isRunning {
-                    button("stop.fill", help: "Stop", tint: Palette.urgent) { LiveManager.shared.stop(session) }
-                        .keyboardShortcut(".", modifiers: .command)
+                    stopButton.keyboardShortcut(".", modifiers: .command)
                 }
                 button("camera.viewfinder", help: "Copy a picture to the clipboard") { controller.copyScreenshot() }
                     .keyboardShortcut("c", modifiers: [.command, .shift])
@@ -202,14 +222,18 @@ struct LiveView: View {
                     button(
                         "cursorarrow.click.2",
                         help: session.controlGranted
-                            ? (session.controlOn ? "Stop clicking and typing on the phone" : "Click and type on the phone")
+                            ? (session.controlOn
+                                ? (peerIsComputer ? "Stop clicking and typing on the computer" : "Stop clicking and typing on the phone")
+                                : (peerIsComputer ? "Click and type on the computer" : "Click and type on the phone"))
                             : (peerIsComputer ? "The computer does not allow clicking yet" : "The phone does not allow clicking yet"),
                         active: session.controlGranted && session.controlOn
                     ) {
                         if session.controlGranted {
                             session.controlOn.toggle()
                             FloatingToast.show(
-                                session.controlOn ? String(localized: "You can click and type on the phone now") : String(localized: "Clicking and typing on the phone is off"),
+                                session.controlOn
+                                    ? (peerIsComputer ? String(localized: "You can click and type on the computer now") : String(localized: "You can click and type on the phone now"))
+                                    : (peerIsComputer ? String(localized: "Clicking and typing on the computer is off") : String(localized: "Clicking and typing on the phone is off")),
                                 symbol: session.controlOn ? "cursorarrow.click.2" : "cursorarrow.slash"
                             )
                         } else {
@@ -237,6 +261,21 @@ struct LiveView: View {
             }
             .padding(8)
         }
+    }
+
+    /// Ends the session: a red pill with the word on it, because a bare square in a window that shows a screen reads as "record".
+    private var stopButton: some View {
+        Button { LiveManager.shared.stop(session) } label: {
+            Label("Stop", systemImage: "xmark")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Palette.urgent)
+                .padding(.horizontal, 4)
+                .frame(height: 20)
+        }
+        .buttonStyle(.glass)
+        .buttonBorderShape(.capsule)
+        .controlSize(.large)
+        .help("Stop showing this screen")
     }
 
     private func button(
@@ -306,6 +345,29 @@ struct LiveView: View {
                 }
                 MenuRow(title: "Keep this window on top", symbol: "pin", checked: session.alwaysOnTop) { controller.setAlwaysOnTop(!session.alwaysOnTop) }
                 MenuRow(title: "Floating window without a frame", symbol: "rectangle.dashed", checked: session.frameless) { showMore = false; controller.setFrameless(!session.frameless) }
+            }
+            // For a computer that is looked at and used from here: what the keys of this Mac cannot say by themselves.
+            if peerIsComputer, session.kind == .screen {
+                MenuRow(title: "Type my clipboard there", symbol: "doc.on.clipboard", disabled: !(session.controlGranted && session.controlOn)) {
+                    showMore = false
+                    typeClipboard()
+                }
+                MenuRow(title: "Switch window there", symbol: "rectangle.2.swap", disabled: !(session.controlGranted && session.controlOn)) {
+                    showMore = false
+                    pressThere(usage: 0x2B, mods: remoteIsMac ? 8 : 4)
+                }
+                if !remoteIsMac {
+                    MenuRow(title: "Ctrl, Alt and Delete", symbol: "keyboard", disabled: !(session.controlGranted && session.controlOn)) {
+                        showMore = false
+                        pressThere(usage: 0x4C, mods: 2 | 4)
+                    }
+                }
+                MenuRow(title: "Lock the screen there", symbol: "lock", disabled: !(session.controlGranted && session.controlOn)) {
+                    showMore = false
+                    // Control and Command with Q on a Mac, the Windows or Super key with L on the others.
+                    if remoteIsMac { pressThere(usage: 0x14, mods: 2 | 8) } else { pressThere(usage: 0x0F, mods: 8) }
+                }
+                Divider().padding(.vertical, 4)
             }
             MenuRow(title: "Show statistics", symbol: "chart.bar", checked: session.showStats) { session.showStats.toggle() }
             if session.kind == .camera {
