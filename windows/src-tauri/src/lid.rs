@@ -32,9 +32,17 @@ pub fn start(app: AppHandle) {
         .name("tandem-lid".into())
         .spawn(move || {
             let mut was_closed = false;
+            let mut was_locked = false;
             loop {
                 std::thread::sleep(Duration::from_millis(600));
                 let closed = tandem_winsys::lid_closed() == Some(true);
+                // The desktop refuses to open the portals for keys and the pointer while the screen is locked, and the first answer
+                // after the unlock is the one to ask for again, not the next time another computer pushes its pointer here.
+                let now_locked = locked();
+                if was_locked && !now_locked && settings::get(&app).remote_input {
+                    crate::input::warm_up();
+                }
+                was_locked = now_locked;
                 if locked() || (closed && !settings::get(&app).keep_when_lid_closed) {
                     crate::input::shared_stop_here();
                     if !was_closed {
