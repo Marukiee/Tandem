@@ -880,3 +880,10 @@
 "Size not known yet" = "Formaat nog niet bekend";
 
 "A Quick Share transfer failed before anything was offered (%@)" = "Een Quick Share-overdracht liep fout voordat er iets werd aangeboden (%@)";
+"That computer asks first. Allow it in Tandem there. A Mac also needs Screen Recording for Tandem, and a Linux desktop with Wayland shows a question about sharing the screen." = "Die computer vraagt eerst. Sta het daar toe in Tandem. Een Mac heeft ook Schermopname voor Tandem nodig, en een Linux-bureaublad met Wayland laat een vraag over het delen van het scherm zien.";
+"Nothing is shown until it is allowed in Tandem on that computer." = "Er wordt niets getoond tot het in Tandem op die computer is toegestaan.";
+"Change it in Tandem on that computer, in its settings under Remote control." = "Verander het in Tandem op die computer, bij de instellingen onder Op afstand bedienen.";
+"Update Tandem on that computer and try again." = "Werk Tandem op die computer bij en probeer het opnieuw.";
+"That computer cannot share its screen yet. On a Mac, allow Screen Recording for Tandem. On Linux with Wayland, answer the question of the desktop about sharing the screen. Then try again." = "Die computer kan zijn scherm nog niet delen. Sta op een Mac Schermopname voor Tandem toe. Beantwoord op Linux met Wayland de vraag van het bureaublad over het delen van het scherm. Probeer het dan opnieuw.";
+"That computer may be asleep, or Tandem is not running there. Wake it up and try again." = "Die computer slaapt misschien, of Tandem draait daar niet. Maak hem wakker en probeer het opnieuw.";
+"Try again. If it keeps happening, restart Tandem on that computer." = "Probeer het opnieuw. Blijft het gebeuren, start dan Tandem op die computer opnieuw.";

@@ -114,7 +114,7 @@ struct LiveView: View {
         let name = session.phoneName
         switch session.phase {
         case .requesting:
-            StateCard(copy: .requesting(name: name, kind: session.kind), busy: true, footnote: footnote)
+            StateCard(copy: .requesting(name: name, kind: session.kind, computer: peerIsComputer), busy: true, footnote: footnote)
         case .active:
             if !session.hasPicture {
                 StateCard(copy: .firstPicture(kind: session.kind), busy: true, footnote: nil)
@@ -130,10 +130,10 @@ struct LiveView: View {
             }
         case let .ended(end):
             StateCard(
-                copy: .ended(end, name: name, kind: session.kind), busy: false, footnote: nil,
+                copy: .ended(end, name: name, kind: session.kind, computer: peerIsComputer), busy: false, footnote: nil,
                 // Close is the one that is coloured: after a stop it is what you came to do, and Try again is the other choice.
                 primary: (String(localized: "Close"), { controller.close() }),
-                secondary: LiveCopy.ended(end, name: name, kind: session.kind).canRetry ? (String(localized: "Try again"), { LiveManager.shared.restart(session) }) : nil
+                secondary: LiveCopy.ended(end, name: name, kind: session.kind, computer: peerIsComputer).canRetry ? (String(localized: "Try again"), { LiveManager.shared.restart(session) }) : nil
             )
         }
     }

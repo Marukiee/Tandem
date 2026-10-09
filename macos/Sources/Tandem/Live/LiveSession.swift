@@ -60,13 +60,15 @@ struct LiveCopy: Equatable {
     var symbol: String
     var canRetry: Bool
 
-    static func requesting(name: String, kind: TandemMediaKind) -> LiveCopy {
+    static func requesting(name: String, kind: TandemMediaKind, computer: Bool = false) -> LiveCopy {
         LiveCopy(
             title: String(localized: "Waiting for \(name)"),
-            detail: kind == .camera
-                ? String(localized: "Your phone asks first. Open the notification on it and allow the camera.")
-                : String(localized: "Your phone asks first. Open the notification on it, allow, and confirm the screen sharing."),
-            symbol: kind == .camera ? "camera" : "iphone.gen3", canRetry: false
+            detail: computer
+                ? String(localized: "That computer asks first. Allow it in Tandem there. A Mac also needs Screen Recording for Tandem, and a Linux desktop with Wayland shows a question about sharing the screen.")
+                : kind == .camera
+                    ? String(localized: "Your phone asks first. Open the notification on it and allow the camera.")
+                    : String(localized: "Your phone asks first. Open the notification on it, allow, and confirm the screen sharing."),
+            symbol: kind == .camera ? "camera" : computer ? "display" : "iphone.gen3", canRetry: false
         )
     }
 
@@ -77,7 +79,7 @@ struct LiveCopy: Equatable {
         )
     }
 
-    static func ended(_ end: LiveEnd, name: String, kind: TandemMediaKind) -> LiveCopy {
+    static func ended(_ end: LiveEnd, name: String, kind: TandemMediaKind, computer: Bool = false) -> LiveCopy {
         let what = kind == .camera ? String(localized: "its camera") : String(localized: "its screen")
         switch end {
         case .stopped:
@@ -87,12 +89,18 @@ struct LiveCopy: Equatable {
         case .declined:
             return LiveCopy(
                 title: String(localized: "\(name) said no"),
-                detail: String(localized: "Nothing is shown until it is allowed on the phone."), symbol: "hand.raised", canRetry: true
+                detail: computer
+                    ? String(localized: "Nothing is shown until it is allowed in Tandem on that computer.")
+                    : String(localized: "Nothing is shown until it is allowed on the phone."),
+                symbol: "hand.raised", canRetry: true
             )
         case .refused:
             return LiveCopy(
                 title: String(localized: "\(name) is set to never show \(what) here"),
-                detail: String(localized: "Change it in Tandem on the phone, on the page of this Mac."), symbol: "hand.raised", canRetry: false
+                detail: computer
+                    ? String(localized: "Change it in Tandem on that computer, in its settings under Remote control.")
+                    : String(localized: "Change it in Tandem on the phone, on the page of this Mac."),
+                symbol: "hand.raised", canRetry: false
             )
         case .busy:
             return LiveCopy(
@@ -102,20 +110,28 @@ struct LiveCopy: Equatable {
         case .unsupported:
             return LiveCopy(
                 title: String(localized: "\(name) cannot show \(what)"),
-                detail: String(localized: "Update Tandem on the phone and try again."), symbol: "exclamationmark.triangle", canRetry: false
+                detail: computer
+                    ? String(localized: "Update Tandem on that computer and try again.")
+                    : String(localized: "Update Tandem on the phone and try again."),
+                symbol: "exclamationmark.triangle", canRetry: false
             )
         case .unavailable:
             return LiveCopy(
                 title: String(localized: "\(name) could not start"),
-                detail: kind == .camera
-                    ? String(localized: "The camera is in use by another app, or Tandem is not allowed to use it.")
-                    : String(localized: "Screen sharing was not confirmed on the phone."),
+                detail: computer
+                    ? String(localized: "That computer cannot share its screen yet. On a Mac, allow Screen Recording for Tandem. On Linux with Wayland, answer the question of the desktop about sharing the screen. Then try again.")
+                    : kind == .camera
+                        ? String(localized: "The camera is in use by another app, or Tandem is not allowed to use it.")
+                        : String(localized: "Screen sharing was not confirmed on the phone."),
                 symbol: "exclamationmark.triangle", canRetry: true
             )
         case .noAnswer:
             return LiveCopy(
                 title: String(localized: "\(name) did not answer"),
-                detail: String(localized: "The phone may be locked or asleep. Unlock it and try again."), symbol: "moon.zzz", canRetry: true
+                detail: computer
+                    ? String(localized: "That computer may be asleep, or Tandem is not running there. Wake it up and try again.")
+                    : String(localized: "The phone may be locked or asleep. Unlock it and try again."),
+                symbol: "moon.zzz", canRetry: true
             )
         case .lost:
             return LiveCopy(
@@ -125,7 +141,10 @@ struct LiveCopy: Equatable {
         case .failed:
             return LiveCopy(
                 title: String(localized: "Something went wrong"),
-                detail: String(localized: "Try again. If it keeps happening, restart Tandem on the phone."), symbol: "exclamationmark.triangle", canRetry: true
+                detail: computer
+                    ? String(localized: "Try again. If it keeps happening, restart Tandem on that computer.")
+                    : String(localized: "Try again. If it keeps happening, restart Tandem on the phone."),
+                symbol: "exclamationmark.triangle", canRetry: true
             )
         }
     }
