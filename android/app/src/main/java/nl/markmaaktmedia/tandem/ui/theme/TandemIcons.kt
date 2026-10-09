@@ -130,6 +130,8 @@ object TandemIcons {
     val DarkMode: Painter @Composable get() = painterResource(R.drawable.sym_dark_mode)
     val Language: Painter @Composable get() = painterResource(R.drawable.sym_language)
     val Key: Painter @Composable get() = painterResource(R.drawable.sym_key)
+    val Visibility: Painter @Composable get() = painterResource(R.drawable.sym_visibility)
+    val VisibilityOff: Painter @Composable get() = painterResource(R.drawable.sym_visibility_off)
     val Shield: Painter @Composable get() = painterResource(R.drawable.sym_shield)
     val Update: Painter @Composable get() = painterResource(R.drawable.sym_system_update)
     val Sync: Painter @Composable get() = painterResource(R.drawable.sym_sync)

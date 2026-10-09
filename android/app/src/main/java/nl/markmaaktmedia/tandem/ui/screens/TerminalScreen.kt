@@ -22,6 +22,33 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.input.VisualTransformation
+import kotlinx.coroutines.delay
+import nl.markmaaktmedia.tandem.ui.components.DeviceGlyph
+import nl.markmaaktmedia.tandem.ui.components.GroupedRow
+import nl.markmaaktmedia.tandem.ui.components.RowIcon
+import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
+import nl.markmaaktmedia.tandem.ui.components.StatusChip
+import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
+import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -85,9 +112,12 @@ fun TerminalScreen(id: String, onBack: () -> Unit) {
     var phase by remember { mutableStateOf<Phase>(Phase.Form) }
     var user by remember { mutableStateOf(preferences.getString("user.$id", "").orEmpty()) }
     var password by remember { mutableStateOf("") }
+    var port by remember { mutableStateOf(preferences.getInt("port.$id", 22).toString()) }
     var problem by remember { mutableStateOf<String?>(null) }
     var showKey by remember { mutableStateOf(false) }
     var ctrl by remember { mutableStateOf(false) }
+    var alt by remember { mutableStateOf(false) }
+    var connectedAs by remember { mutableStateOf("") }
     var session by remember { mutableStateOf<SshSession?>(null) }
 
     // What was printed before the web view was ready is kept and written when it is.
@@ -117,6 +147,10 @@ fun TerminalScreen(id: String, onBack: () -> Unit) {
                     out = (data[0].code and 0x1f).toChar().toString()
                     ctrl = false
                 }
+                if (alt && data.length == 1) {
+                    out = "\u001b" + out
+                    alt = false
+                }
                 session?.write(out.toByteArray())
             }
             @JavascriptInterface fun resize(cols: Int, rows: Int) { session?.resize(cols, rows) }
@@ -132,12 +166,13 @@ fun TerminalScreen(id: String, onBack: () -> Unit) {
     fun connect() {
         val who = user.trim()
         if (who.isEmpty()) return
-        preferences.edit().putString("user.$id", who).apply()
+        val portNumber = port.trim().toIntOrNull()?.takeIf { it in 1..65535 } ?: 22
+        preferences.edit().putString("user.$id", who).putInt("port.$id", portNumber).apply()
         problem = null
         phase = Phase.Connecting
         ready = false
         scope.launch {
-            val address = sshAddress(runCatching { host.engine?.deviceIps(id) }.getOrNull().orEmpty())
+            val address = sshAddress(runCatching { host.engine?.deviceIps(id) }.getOrNull().orEmpty(), portNumber)
             if (address == null) {
                 problem = "refused"
                 phase = Phase.Form
@@ -148,9 +183,10 @@ fun TerminalScreen(id: String, onBack: () -> Unit) {
                 onOutput = { push(it) },
                 onClosed = { reason -> scope.launch { phase = Phase.Ended(reason) } },
             )
-            val failure = withContext(Dispatchers.IO) { made.connect(address, who, password.takeIf { it.isNotEmpty() }, 80, 24) }
+            val failure = withContext(Dispatchers.IO) { made.connect(address, who, password.takeIf { it.isNotEmpty() }, 80, 24, portNumber) }
             if (failure == null) {
                 session = made
+                connectedAs = "$who@$address"
                 phase = Phase.Connected
             } else {
                 problem = failure
@@ -168,17 +204,12 @@ fun TerminalScreen(id: String, onBack: () -> Unit) {
     DisposableEffect(Unit) { onDispose { session?.close(); web?.destroy() } }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding().imePadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), { leave() })
-            Text(
-                stringResource(R.string.terminal_title_for, name), style = MaterialTheme.typography.titleMedium,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 6.dp),
-            )
-        }
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+        TerminalBar(name, phase, connectedAs, onBack = { leave() }, onClose = { leave() })
+        Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = if (phase == Phase.Connecting || phase == Phase.Connected) 8.dp else 0.dp)) {
             when (val now = phase) {
                 Phase.Form, is Phase.Ended -> LoginForm(
-                    name = name, user = user, onUser = { user = it }, password = password, onPassword = { password = it },
+                    name = name, platform = host.device(id)?.platform,
+                    user = user, onUser = { user = it }, password = password, onPassword = { password = it }, port = port, onPort = { port = it.filter(Char::isDigit).take(5) },
                     problem = problem ?: (now as? Phase.Ended)?.let { it.reason ?: "ended" },
                     showKey = showKey, onShowKey = { showKey = !showKey },
                     onLogin = ::connect,
@@ -192,12 +223,12 @@ fun TerminalScreen(id: String, onBack: () -> Unit) {
             // The terminal is made as soon as the login starts, so it has loaded when the first output arrives.
             if (phase == Phase.Connecting || phase == Phase.Connected) {
                 AndroidView(
-                    modifier = Modifier.fillMaxSize().then(if (phase == Phase.Connecting) Modifier.size(1.dp) else Modifier),
+                    modifier = Modifier.fillMaxSize().then(if (phase == Phase.Connecting) Modifier.size(1.dp) else Modifier.clip(RoundedCornerShape(20.dp))),
                     factory = { c ->
                         WebView(c).apply {
                             settings.javaScriptEnabled = true
-                            settings.domStorageEnabled = false
-                            setBackgroundColor(android.graphics.Color.parseColor("#121216"))
+                            settings.domStorageEnabled = true
+                            setBackgroundColor(android.graphics.Color.parseColor("#0E0E13"))
                             addJavascriptInterface(bridge, "Android")
                             loadUrl("file:///android_asset/terminal/index.html")
                             web = this
@@ -207,7 +238,38 @@ fun TerminalScreen(id: String, onBack: () -> Unit) {
             }
         }
         if (phase == Phase.Connected) {
-            KeysRow(ctrl = ctrl, onCtrl = { ctrl = !ctrl }, onKey = { send(it) })
+            KeysPanel(
+                ctrl = ctrl, alt = alt, onCtrl = { ctrl = !ctrl }, onAlt = { alt = !alt }, onKey = { send(it) },
+                onPaste = {
+                    val text = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                        .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+                    if (text.isNotEmpty()) send(text)
+                },
+                onFont = { delta -> web?.evaluateJavascript("tandemFontStep($delta)", null) },
+            )
+        }
+    }
+}
+
+/** The bar at the top: back, what this is and where it is logged in, and while it runs a sign that it does and a button to close it. */
+@Composable
+private fun TerminalBar(name: String, phase: Phase, connectedAs: String, onBack: () -> Unit, onClose: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp, top = 6.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(stringResource(R.string.terminal_card_title), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+            Text(
+                if (phase == Phase.Connected && connectedAs.isNotEmpty()) connectedAs else name,
+                style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (phase == Phase.Connected) {
+            StatusChip(TandemIcons.Check, stringResource(R.string.terminal_connected), tint = LocalTandemExtraColors.current.online)
+            TandemIconButton(TandemIcons.Close, stringResource(R.string.terminal_close), onClose)
         }
     }
 }
@@ -215,10 +277,13 @@ fun TerminalScreen(id: String, onBack: () -> Unit) {
 @Composable
 private fun LoginForm(
     name: String,
+    platform: uniffi.tandem_core.TandemPlatform?,
     user: String,
     onUser: (String) -> Unit,
     password: String,
     onPassword: (String) -> Unit,
+    port: String,
+    onPort: (String) -> Unit,
     problem: String?,
     showKey: Boolean,
     onShowKey: () -> Unit,
@@ -226,34 +291,82 @@ private fun LoginForm(
     again: Boolean,
 ) {
     val context = LocalContext.current
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.terminal_login_to, name), style = MaterialTheme.typography.headlineSmall)
-        OutlinedTextField(
-            value = user, onValueChange = onUser, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.terminal_user)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-            shape = MaterialTheme.shapes.large,
-        )
-        OutlinedTextField(
-            value = password, onValueChange = onPassword, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            label = { Text(stringResource(R.string.terminal_password)) },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            shape = MaterialTheme.shapes.large,
-        )
+    val scheme = MaterialTheme.colorScheme
+    var visible by remember { mutableStateOf(false) }
+    val fieldColors = TextFieldDefaults.colors(
+        focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent, disabledContainerColor = Color.Transparent,
+        focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
+    )
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            Modifier.fillMaxWidth().clip(CardSquircle).background(scheme.surfaceContainer).padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            DeviceGlyph(platform ?: uniffi.tandem_core.TandemPlatform.LINUX, true, size = 52.dp)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(R.string.terminal_login_to, name), style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.terminal_form_sub), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+            }
+        }
+        SettingsGroup {
+            GroupedRow(0, 3) {
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RowIcon(TandemIcons.Person)
+                    TextField(
+                        value = user, onValueChange = onUser, singleLine = true, modifier = Modifier.weight(1f), colors = fieldColors,
+                        label = { Text(stringResource(R.string.terminal_user)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                    )
+                }
+            }
+            GroupedRow(1, 3) {
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RowIcon(TandemIcons.Key)
+                    TextField(
+                        value = password, onValueChange = onPassword, singleLine = true, modifier = Modifier.weight(1f), colors = fieldColors,
+                        label = { Text(stringResource(R.string.terminal_password)) },
+                        visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    )
+                    TandemIconButton(
+                        if (visible) TandemIcons.VisibilityOff else TandemIcons.Visibility,
+                        stringResource(if (visible) R.string.terminal_hide_password else R.string.terminal_show_password), { visible = !visible },
+                    )
+                }
+            }
+            GroupedRow(2, 3) {
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, top = 4.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RowIcon(TandemIcons.Lan)
+                    TextField(
+                        value = port, onValueChange = onPort, singleLine = true, modifier = Modifier.weight(1f), colors = fieldColors,
+                        label = { Text(stringResource(R.string.terminal_port)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+                }
+            }
+        }
         problem?.let {
-            Text(problemText(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            Row(
+                Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(scheme.errorContainer).padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(TandemIcons.Error, null, tint = scheme.onErrorContainer, modifier = Modifier.size(22.dp))
+                Text(problemText(it), color = scheme.onErrorContainer, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+            }
         }
         PrimaryPillButton(stringResource(if (again) R.string.terminal_again else R.string.terminal_login), onLogin, Modifier.fillMaxWidth())
         SecondaryPillButton(stringResource(R.string.terminal_key_show), onShowKey, Modifier.fillMaxWidth())
         if (showKey) {
             val key = remember { SshKeys.ensure(context) }
             Column(
-                Modifier.fillMaxWidth().clip(MaterialTheme.shapes.large).background(MaterialTheme.colorScheme.surfaceContainer).padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                Modifier.fillMaxWidth().clip(CardSquircle).background(scheme.surfaceContainer).padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Text(stringResource(R.string.terminal_key_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(key?.publicLine ?: "", style = MaterialTheme.typography.bodySmall, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                Text(stringResource(R.string.terminal_key_hint), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                Text(
+                    key?.publicLine ?: "", style = MaterialTheme.typography.bodySmall, maxLines = 4, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).background(scheme.surfaceContainerHighest).padding(12.dp),
+                )
                 SecondaryPillButton(stringResource(R.string.terminal_key_copy), {
                     key?.let {
                         (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("ssh key", it.publicLine))
@@ -261,6 +374,7 @@ private fun LoginForm(
                 }, icon = TandemIcons.Copy)
             }
         }
+        androidx.compose.foundation.layout.Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -276,32 +390,84 @@ private fun problemText(code: String): String = stringResource(
     },
 ).let { text -> if (code !in setOf("auth", "changed", "timeout", "refused", "ended")) text.replace("%1\$s", code) else text }
 
-/** What a phone keyboard has no key for. */
+/**
+ * What a phone keyboard has no key for, on a panel that rises from the bottom: the keys of a keyboard that matter to a terminal, the
+ * arrows (which repeat while they are held), a button to paste, and the size of the text.
+ */
 @Composable
-private fun KeysRow(ctrl: Boolean, onCtrl: () -> Unit, onKey: (String) -> Unit) {
-    val keys = listOf(
-        "Esc" to "\u001b", "Tab" to "\t", "↑" to "\u001b[A", "↓" to "\u001b[B", "←" to "\u001b[D", "→" to "\u001b[C",
-        "|" to "|", "/" to "/", "~" to "~", "-" to "-",
-    )
-    Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer).horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+private fun KeysPanel(
+    ctrl: Boolean, alt: Boolean, onCtrl: () -> Unit, onAlt: () -> Unit, onKey: (String) -> Unit, onPaste: () -> Unit, onFont: (Int) -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)).background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        KeyButton("Ctrl", ctrl, onCtrl)
-        keys.forEach { (label, text) -> KeyButton(label, false) { onKey(text) } }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            KeyButton("Esc", false) { onKey("\u001b") }
+            KeyButton("Tab", false) { onKey("\t") }
+            KeyButton("Ctrl", ctrl) { onCtrl() }
+            KeyButton("Alt", alt) { onAlt() }
+            listOf("|", "/", "-", "~", "_", "\\", "$", "&").forEach { sign -> KeyButton(sign, false) { onKey(sign) } }
+        }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            KeyButton("←", false, repeat = true) { onKey("\u001b[D") }
+            KeyButton("↓", false, repeat = true) { onKey("\u001b[B") }
+            KeyButton("↑", false, repeat = true) { onKey("\u001b[A") }
+            KeyButton("→", false, repeat = true) { onKey("\u001b[C") }
+            KeyButton("Home", false) { onKey("\u001b[H") }
+            KeyButton("End", false) { onKey("\u001b[F") }
+            KeyButton("PgUp", false) { onKey("\u001b[5~") }
+            KeyButton("PgDn", false) { onKey("\u001b[6~") }
+            KeyButton(stringResource(R.string.terminal_paste), false, icon = TandemIcons.Paste) { onPaste() }
+            KeyButton("A−", false, repeat = true) { onFont(-1) }
+            KeyButton("A+", false, repeat = true) { onFont(1) }
+        }
     }
 }
 
+/** One key. A tap presses it, a hold on one that [repeat]s presses it again and again, and every press is felt. */
 @Composable
-private fun KeyButton(label: String, on: Boolean, onClick: () -> Unit) {
-    Box(
+private fun KeyButton(
+    label: String, on: Boolean, repeat: Boolean = false, icon: androidx.compose.ui.graphics.painter.Painter? = null, onPress: () -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    val scheme = MaterialTheme.colorScheme
+    var down by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(if (down) 0.92f else 1f, label = "key")
+    val current by androidx.compose.runtime.rememberUpdatedState(onPress)
+    Row(
         Modifier
+            .scale(scale)
+            .heightIn(min = 40.dp)
             .clip(PillShape)
-            .background(if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest)
-            .bouncyClickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
-        contentAlignment = Alignment.Center,
+            .background(if (on) scheme.primary else scheme.surfaceContainerHighest)
+            .pointerInput(repeat) {
+                awaitEachGesture {
+                    awaitFirstDown()
+                    down = true
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    current()
+                    if (repeat) {
+                        // Held: after a pause it goes on until it is let go.
+                        val pause = withTimeoutOrNull(380) { waitForUpOrCancellation() }
+                        if (pause == null) {
+                            val job = kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch {
+                                while (true) { current(); delay(55) }
+                            }
+                            waitForUpOrCancellation()
+                            job.cancel()
+                        }
+                    } else {
+                        waitForUpOrCancellation()
+                    }
+                    down = false
+                }
+            }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Text(label, style = MaterialTheme.typography.labelLarge, color = if (on) MaterialTheme.colorScheme.onPrimary else Color.Unspecified)
+        if (icon != null) Icon(icon, null, tint = if (on) scheme.onPrimary else scheme.onSurface, modifier = Modifier.size(18.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = if (on) scheme.onPrimary else scheme.onSurface)
     }
 }

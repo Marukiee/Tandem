@@ -5,20 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <link rel="stylesheet" href="xterm.css" />
   <style>
-    html, body { margin: 0; height: 100%; background: #121216; overflow: hidden; }
-    #t { position: absolute; inset: 0; padding: 4px 6px; box-sizing: border-box; }
+    /* JetBrains Mono, under the SIL Open Font License (JetBrainsMono-OFL.txt). */
+    @font-face { font-family: "JetBrains Mono"; font-weight: 400; src: url("JetBrainsMono-Regular.woff2") format("woff2"); }
+    @font-face { font-family: "JetBrains Mono"; font-weight: 700; src: url("JetBrainsMono-Bold.woff2") format("woff2"); }
+    html, body { margin: 0; height: 100%; background: #0e0e13; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+    #t { position: absolute; inset: 0; padding: 10px 6px 6px 12px; box-sizing: border-box; }
     .xterm { height: 100%; }
+    .xterm .xterm-viewport { background: transparent !important; scrollbar-width: none; }
+    .xterm .xterm-viewport::-webkit-scrollbar { width: 0; height: 0; }
+    /* A word that shows while the text is zoomed with two fingers. */
+    #zoom { position: absolute; top: 10px; right: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(143, 164, 255, 0.9); color: #10131f;
+            font: 600 12px/1.2 sans-serif; opacity: 0; transition: opacity 0.18s; pointer-events: none; }
+    #zoom.on { opacity: 1; }
   </style>
 </head>
 <body>
   <div id="t"></div>
+  <div id="zoom"></div>
   <script src="xterm.js"></script>
   <script src="xterm-addon-fit.js"></script>
   <script>
     // The terminal of the app: what the other computer prints is written here by the app, and what is typed goes back to the app.
+    const saved = Number(localStorage.getItem("fontSize")) || 14;
     const term = new Terminal({
-      fontFamily: 'monospace', fontSize: 13, cursorBlink: true, scrollback: 3000,
-      theme: { background: "#121216", foreground: "#ececf2" },
+      fontFamily: '"JetBrains Mono", monospace', fontSize: saved, lineHeight: 1.18, cursorBlink: true, cursorStyle: "bar", cursorWidth: 2,
+      scrollback: 5000, allowProposedApi: true, fontWeightBold: "700", drawBoldTextInBrightColors: false,
+      theme: {
+        background: "#0e0e13", foreground: "#e4e5ee", cursor: "#9db0ff", cursorAccent: "#0e0e13", selectionBackground: "rgba(157, 176, 255, 0.30)",
+        black: "#1b1c25", red: "#ff7a90", green: "#8fdc9a", yellow: "#f2cf7a", blue: "#7da2ff", magenta: "#d79bff", cyan: "#6fd7e3", white: "#d8dae6",
+        brightBlack: "#5b5e73", brightRed: "#ff9fb0", brightGreen: "#aef0b8", brightYellow: "#ffe29a", brightBlue: "#a2bdff", brightMagenta: "#e6b8ff",
+        brightCyan: "#9be8f0", brightWhite: "#ffffff",
+      },
     });
     const fit = new FitAddon.FitAddon();
     term.loadAddon(fit);
@@ -34,6 +51,30 @@
     };
     window.tandemText = (text) => term.write(text);
     window.tandemFocus = () => term.focus();
+
+    // The size of the text: two fingers pinch it bigger or smaller, and the app can step it. It is kept for the next time.
+    const label = document.getElementById("zoom");
+    let hideLabel = 0;
+    const setSize = (size) => {
+      size = Math.max(9, Math.min(24, Math.round(size * 2) / 2));
+      if (size === term.options.fontSize) return;
+      term.options.fontSize = size;
+      localStorage.setItem("fontSize", String(size));
+      report();
+      label.textContent = size + " pt";
+      label.classList.add("on");
+      clearTimeout(hideLabel);
+      hideLabel = setTimeout(() => label.classList.remove("on"), 900);
+    };
+    window.tandemFontStep = (delta) => setSize(term.options.fontSize + delta);
+    let pinch = null;
+    const spread = (e) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    document.addEventListener("touchstart", (e) => { if (e.touches.length === 2) pinch = { from: spread(e), size: term.options.fontSize }; }, { passive: true });
+    document.addEventListener("touchmove", (e) => {
+      if (pinch && e.touches.length === 2) { setSize(pinch.size * (spread(e) / pinch.from)); e.preventDefault(); }
+    }, { passive: false });
+    document.addEventListener("touchend", (e) => { if (e.touches.length < 2) pinch = null; }, { passive: true });
+
     setTimeout(() => { report(); term.focus(); Android.ready(); }, 60);
   </script>
 </body>

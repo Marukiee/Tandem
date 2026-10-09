@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="terminal_card_title">Terminal</string>
+    <string name="terminal_port">Port</string>
+    <string name="terminal_connected">Connected</string>
+    <string name="terminal_close">Close</string>
+    <string name="terminal_paste">Paste</string>
+    <string name="terminal_form_sub">Over SSH, in a terminal in this app</string>
+    <string name="terminal_show_password">Show the password</string>
+    <string name="terminal_hide_password">Hide the password</string>
     <string name="terminal_card_sub">Log in to this computer over SSH</string>
     <string name="terminal_why_offline">The computer has to be online to log in to it</string>
     <string name="terminal_why_mac">Turn on Remote Login on that Mac, in System Settings under General and Sharing, to log in to it here</string>

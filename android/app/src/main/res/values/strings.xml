@@ -258,6 +258,13 @@
     <string name="language_restart_confirm">Restart</string>
     <string name="language_restart_cancel">Not now</string>
     <string name="tile_files">Files</string>
+    <string name="section_send">Send</string>
+    <string name="row_send_files">Send files</string>
+    <string name="row_send_clipboard">Send clipboard</string>
+    <string name="send_files_sub">Choose files on this phone</string>
+    <string name="send_clipboard_sub">What you copied last</string>
+    <string name="trackpad_row_sub">Use this phone as a trackpad and keyboard</string>
+    <string name="find_row_sub">Make it ring</string>
     <string name="tile_clipboard">Clipboard</string>
     <string name="tile_trackpad">Trackpad</string>
     <string name="tile_find">Find</string>

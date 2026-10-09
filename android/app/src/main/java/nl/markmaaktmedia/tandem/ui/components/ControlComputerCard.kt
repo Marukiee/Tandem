@@ -1,6 +1,5 @@
 package nl.markmaaktmedia.tandem.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,21 +14,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import nl.markmaaktmedia.tandem.R
-import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemPlatform
 
 /**
- * Seeing and controlling a computer from the phone. It is always on the page, and grey until it can work, with what is
- * missing written under it: a button that is not there tells nobody what to do.
+ * Seeing and controlling a computer from the phone, as a row of the group "Control" on the page of the computer. It is always there,
+ * and grey until it can work, with what is missing written under it: a button that is not there tells nobody what to do.
  */
 @Composable
-fun ControlComputerCard(device: TandemDevice, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun ControlComputerRow(index: Int, total: Int, device: TandemDevice, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     val mac = device.platform == TandemPlatform.MAC_OS
     val hosts = "screen.host" in device.caps
@@ -44,10 +41,9 @@ fun ControlComputerCard(device: TandemDevice, onOpen: () -> Unit, modifier: Modi
             else -> R.string.control_sub_unavailable
         },
     )
-    Column(modifier.fillMaxWidth().clip(CardSquircle).background(scheme.surfaceContainer)) {
-        // The same row as the others on the page (Browse files below it), so the two are the same size.
+    GroupedRow(index, total, modifier = modifier, onClick = if (ready) onOpen else null) {
         Row(
-            Modifier.fillMaxWidth().bouncyClickable(enabled = ready, onClickLabel = title, onClick = onOpen).padding(horizontal = 16.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -79,6 +75,39 @@ fun ControlComputerCard(device: TandemDevice, onOpen: () -> Unit, modifier: Modi
                 style = MaterialTheme.typography.bodySmall, color = scheme.error,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
             )
+        }
+    }
+}
+
+/** One row of the group "Control" on the page of a device: grey and without a chevron while it cannot be used. */
+@Composable
+fun ControlRow(
+    index: Int,
+    total: Int,
+    icon: androidx.compose.ui.graphics.painter.Painter,
+    title: String,
+    subtitle: String,
+    ready: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    GroupedRow(index, total, modifier = modifier, onClick = if (ready) onClick else null) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            RowIcon(
+                icon,
+                tint = if (ready) scheme.onSecondaryContainer else scheme.onSurfaceVariant.copy(alpha = 0.6f),
+                container = if (ready) scheme.secondaryContainer else scheme.surfaceContainerHighest,
+            )
+            Column(Modifier.weight(1f).alpha(if (ready) 1f else 0.6f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+            }
+            if (ready) Icon(TandemIcons.ChevronRight, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
     }
 }

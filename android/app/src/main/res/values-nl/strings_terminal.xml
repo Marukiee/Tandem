@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="terminal_card_title">Terminal</string>
+    <string name="terminal_port">Poort</string>
+    <string name="terminal_connected">Verbonden</string>
+    <string name="terminal_close">Sluiten</string>
+    <string name="terminal_paste">Plakken</string>
+    <string name="terminal_form_sub">Via SSH, in een terminal in deze app</string>
+    <string name="terminal_show_password">Toon het wachtwoord</string>
+    <string name="terminal_hide_password">Verberg het wachtwoord</string>
     <string name="terminal_card_sub">Inloggen op deze computer via SSH</string>
     <string name="terminal_why_offline">De computer moet online zijn om erop in te loggen</string>
     <string name="terminal_why_mac">Zet Externe login aan op die Mac, in Systeeminstellingen onder Algemeen en Delen, om er hier op in te loggen</string>

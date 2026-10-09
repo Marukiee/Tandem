@@ -1,6 +1,6 @@
 package nl.markmaaktmedia.tandem.ui.components
 
-import androidx.compose.foundation.background
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
@@ -19,7 +19,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -29,7 +28,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
-import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemPlatform
@@ -37,12 +35,12 @@ import java.net.InetSocketAddress
 import java.net.Socket
 
 /** Whether a computer answers on the SSH port, at one of the addresses it was seen at. Null when it does not. */
-suspend fun sshAddress(addresses: List<String>): String? = coroutineScope {
+suspend fun sshAddress(addresses: List<String>, port: Int = 22): String? = coroutineScope {
     // All at once, so one that does not answer costs a second and a half and not a second and a half each.
     addresses.take(4)
         .map { address ->
             async(Dispatchers.IO) {
-                address to runCatching { Socket().use { it.connect(InetSocketAddress(address, 22), 1500); true } }.getOrDefault(false)
+                address to runCatching { Socket().use { it.connect(InetSocketAddress(address, port), 1500); true } }.getOrDefault(false)
             }
         }
         .awaitAll()
@@ -50,22 +48,34 @@ suspend fun sshAddress(addresses: List<String>): String? = coroutineScope {
         ?.first
 }
 
+/** What was found the last time a computer was asked about SSH, so the row of the terminal shows the answer at once and not after a moment. */
+private object SshAnswers {
+    private val found = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+    fun last(id: String): Boolean? = found[id]
+    fun remember(id: String, open: Boolean) { found[id] = open }
+}
+
 /**
- * Logging in to a computer from the phone, in a terminal of the app. It is on the page of every computer, and grey until the
- * computer answers on the SSH port, with what has to be done written under it.
+ * Logging in to a computer from the phone, in a terminal of the app: a row of the group "Control" on the page of a computer. Grey
+ * with the reason when the computer does not answer on the SSH port. Until the first answer it is taken to be there, and it is
+ * looked at in the background: a row that starts grey and lights up a moment later reads as broken.
  */
 @Composable
-fun TerminalCard(device: TandemDevice, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+fun TerminalRow(index: Int, total: Int, device: TandemDevice, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
-    val engine = LocalContext.current.graph.host.engine
-    var address by remember(device.id) { mutableStateOf<String?>(null) }
-    var checked by remember(device.id) { mutableStateOf(false) }
+    val context = LocalContext.current
+    val engine = context.graph.host.engine
+    var open by remember(device.id) { mutableStateOf(SshAnswers.last(device.id) ?: true) }
+    var checked by remember(device.id) { mutableStateOf(SshAnswers.last(device.id) != null) }
     LaunchedEffect(device.id, device.online) {
-        checked = false
-        address = if (device.online) sshAddress(runCatching { engine?.deviceIps(device.id) }.getOrNull().orEmpty()) else null
+        if (!device.online) return@LaunchedEffect
+        val port = context.getSharedPreferences("ssh", Context.MODE_PRIVATE).getInt("port.${device.id}", 22)
+        val answer = sshAddress(runCatching { engine?.deviceIps(device.id) }.getOrNull().orEmpty(), port) != null
+        SshAnswers.remember(device.id, answer)
+        open = answer
         checked = true
     }
-    val ready = device.online && address != null
+    val ready = device.online && open
     val title = stringResource(R.string.terminal_card_title)
     val reason = stringResource(
         when {
@@ -75,9 +85,9 @@ fun TerminalCard(device: TandemDevice, onOpen: () -> Unit, modifier: Modifier = 
             else -> R.string.terminal_why_linux
         },
     )
-    Column(modifier.fillMaxWidth().clip(CardSquircle).background(scheme.surfaceContainer)) {
+    GroupedRow(index, total, modifier = modifier, onClick = if (ready) onOpen else null) {
         Row(
-            Modifier.fillMaxWidth().bouncyClickable(enabled = ready, onClickLabel = title, onClick = onOpen).padding(horizontal = 16.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -92,8 +102,8 @@ fun TerminalCard(device: TandemDevice, onOpen: () -> Unit, modifier: Modifier = 
             }
             if (ready) Icon(TandemIcons.ChevronRight, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
-        // What is missing, once it was looked for.
-        if (checked && !ready) {
+        // What is missing, once it was looked for (or when the computer is not there at all).
+        if (!ready && (checked || !device.online)) {
             Text(
                 reason,
                 style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,

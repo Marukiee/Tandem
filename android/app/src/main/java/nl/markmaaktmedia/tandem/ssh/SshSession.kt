@@ -29,13 +29,13 @@ class SshSession(
     @Volatile private var closed = false
 
     /** Blocks until the login worked or failed: call it from a background thread. Returns null on success, otherwise a reason. */
-    fun connect(host: String, user: String, password: String?, cols: Int, rows: Int): String? {
+    fun connect(host: String, user: String, password: String?, cols: Int, rows: Int, port: Int = 22): String? {
         return try {
             val jsch = JSch()
             val known = File(context.filesDir, "ssh/known_hosts").apply { parentFile?.mkdirs(); if (!exists()) createNewFile() }
             jsch.setKnownHosts(known.path)
             SshKeys.load(context)?.let { jsch.addIdentity("tandem", it.privatePem, null, null) }
-            val s = jsch.getSession(user, host, 22)
+            val s = jsch.getSession(user, host, port)
             if (!password.isNullOrEmpty()) s.setPassword(password)
             s.setConfig("StrictHostKeyChecking", "ask")
             s.setConfig("PreferredAuthentications", "publickey,keyboard-interactive,password")
@@ -125,7 +125,7 @@ class SshSession(
 class SshKey(val privatePem: ByteArray, val publicLine: String)
 
 object SshKeys {
-    private fun file(context: Context) = File(context.filesDir, "ssh/id_ed25519")
+    private fun file(context: Context) = File(context.filesDir, "ssh/id_phone")
 
     fun load(context: Context): SshKey? {
         val f = file(context)
@@ -139,16 +139,28 @@ object SshKeys {
         }.getOrNull()
     }
 
-    /** Makes the key when there is none yet, and returns it. */
+    /**
+     * Makes the key when there is none yet, and returns it. Ed25519 first, which is what people expect; a phone whose crypto does not do
+     * it gets an ECDSA key, and failing that an RSA one, so there is always one.
+     */
     fun ensure(context: Context): SshKey? {
         load(context)?.let { return it }
-        return runCatching {
-            val pair = KeyPair.genKeyPair(JSch(), KeyPair.ED25519)
-            val privateOut = ByteArrayOutputStream()
-            pair.writePrivateKey(privateOut)
-            file(context).apply { parentFile?.mkdirs(); writeBytes(privateOut.toByteArray()) }
-            pair.dispose()
-            load(context)
-        }.getOrNull()
+        for (type in intArrayOf(KeyPair.ED25519, KeyPair.ECDSA, KeyPair.RSA)) {
+            val made = runCatching {
+                val pair = when (type) {
+                    KeyPair.ECDSA -> KeyPair.genKeyPair(JSch(), type, 256)
+                    KeyPair.RSA -> KeyPair.genKeyPair(JSch(), type, 3072)
+                    else -> KeyPair.genKeyPair(JSch(), type)
+                }
+                val privateOut = ByteArrayOutputStream()
+                // The format of OpenSSH itself, which every type of key can be written in (the old PEM format has no Ed25519).
+                pair.writeOpenSSHv1PrivateKey(privateOut, null)
+                file(context).apply { parentFile?.mkdirs(); writeBytes(privateOut.toByteArray()) }
+                pair.dispose()
+                load(context)
+            }.onFailure { android.util.Log.w("TandemSsh", "a key of type $type could not be made", it) }.getOrNull()
+            if (made != null) return made
+        }
+        return null
     }
 }

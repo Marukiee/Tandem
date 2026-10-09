@@ -12,6 +12,10 @@
 # The SSH of the terminal finds its ciphers and key types by their names.
 -keep class com.jcraft.jsch.** { *; }
 -dontwarn com.jcraft.jsch.**
+# JSch finds Bouncy Castle by name, for Ed25519.
+-keep class org.bouncycastle.crypto.** { *; }
+-keep class org.bouncycastle.math.ec.rfc8032.** { *; }
+-dontwarn org.bouncycastle.**
 -dontwarn org.slf4j.**
 -dontwarn org.ietf.jgss.**
 -dontwarn javax.naming.**

@@ -209,44 +209,56 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             }
         }
 
-        // Actions
+        // Sending: the two things a phone sends most, as the rows of a group like the rest of the page.
         if (device.online) {
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ActionTile(TandemIcons.Upload, stringResource(R.string.tile_files), { picker.launch(arrayOf("*/*")) }, Modifier.weight(1f).fillMaxHeight(), primary = true)
-                ActionTile(TandemIcons.Paste, stringResource(R.string.tile_clipboard), {
-                    val text = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-                        .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
-                    if (text.isNotEmpty()) scope.launch { host.sendClipboard(listOf(id), text) }
-                }, Modifier.weight(1f).fillMaxHeight())
-                if (device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.LINUX || device.platform == TandemPlatform.WINDOWS) {
-                    ActionTile(TandemIcons.Mouse, stringResource(R.string.tile_trackpad), { onRemote(id) }, Modifier.weight(1f).fillMaxHeight().routeBounds(routeKey(Route.Remote(id))))
-                }
-                if (device.platform == TandemPlatform.ANDROID) {
-                    ActionTile(TandemIcons.Ring, stringResource(R.string.tile_find), { scope.launch { runCatching { host.engine?.ring(id, true) } } }, Modifier.weight(1f).fillMaxHeight())
-                }
+            SectionHeader(stringResource(R.string.section_send), top = 12.dp, bottom = 0.dp)
+            SettingsGroup {
+                ActionRow(
+                    0, 2, TandemIcons.Upload, stringResource(R.string.row_send_files), stringResource(R.string.send_files_sub), { picker.launch(arrayOf("*/*")) },
+                    iconTint = MaterialTheme.colorScheme.onPrimary, iconContainer = MaterialTheme.colorScheme.primary,
+                )
+                ActionRow(
+                    1, 2, TandemIcons.Paste, stringResource(R.string.row_send_clipboard), stringResource(R.string.send_clipboard_sub),
+                    {
+                        val text = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                            .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+                        if (text.isNotEmpty()) scope.launch { host.sendClipboard(listOf(id), text) }
+                    },
+                )
             }
         }
 
-        // Seeing and controlling a computer: always there, grey with the steps until it can work.
-        if (device.platform != TandemPlatform.ANDROID) {
-            nl.markmaaktmedia.tandem.ui.components.ControlComputerCard(
-                device, { onScreen(id) },
-                Modifier.routeBounds(routeKey(Route.Screen(id))),
-            )
-        }
-
-        // Logging in to a computer over SSH, in a terminal of the app. There and grey, with the reason, until the computer answers.
-        if (device.platform != TandemPlatform.ANDROID) {
-            nl.markmaaktmedia.tandem.ui.components.TerminalCard(device, { onTerminal(id) })
-        }
-
-        // Its files, in the Files app of the system, next to the storage of this phone.
-        if (device.online && "files" in device.caps) {
+        // Control: what is done with the other device from here (the trackpad, its screen, a terminal on it, its files). Each row is there
+        // and grey, with what is missing written under it, until it can work.
+        val computer = device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.LINUX || device.platform == TandemPlatform.WINDOWS
+        val showFiles = device.online && "files" in device.caps
+        val controlRows = (if (computer) 3 else if (device.online) 1 else 0) + (if (showFiles) 1 else 0)
+        if (controlRows > 0) {
+            SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
             SettingsGroup {
-                ActionRow(
-                    0, 1, TandemIcons.Folder, stringResource(R.string.files_browse), stringResource(R.string.files_browse_sub),
-                    { nl.markmaaktmedia.tandem.files.TandemDocumentsProvider.open(context, id) },
-                )
+                var row = 0
+                if (computer) {
+                    nl.markmaaktmedia.tandem.ui.components.ControlRow(
+                        row++, controlRows, TandemIcons.Mouse, stringResource(R.string.tile_trackpad), stringResource(R.string.trackpad_row_sub),
+                        ready = device.online, onClick = { onRemote(id) }, modifier = Modifier.routeBounds(routeKey(Route.Remote(id))),
+                    )
+                    nl.markmaaktmedia.tandem.ui.components.ControlComputerRow(
+                        row++, controlRows, device, { onScreen(id) }, Modifier.routeBounds(routeKey(Route.Screen(id))),
+                    )
+                    nl.markmaaktmedia.tandem.ui.components.TerminalRow(row++, controlRows, device, { onTerminal(id) })
+                } else if (device.online) {
+                    nl.markmaaktmedia.tandem.ui.components.ControlRow(
+                        row++, controlRows, TandemIcons.Ring, stringResource(R.string.tile_find), stringResource(R.string.find_row_sub),
+                        ready = true, onClick = { scope.launch { runCatching { host.engine?.ring(id, true) } } },
+                    )
+                }
+                // Its files, in the Files app of the system, next to the storage of this phone.
+                if (showFiles) {
+                    ActionRow(
+                        row++, controlRows, TandemIcons.Folder, stringResource(R.string.files_browse), stringResource(R.string.files_browse_sub),
+                        { nl.markmaaktmedia.tandem.files.TandemDocumentsProvider.open(context, id) },
+                    )
+                }
             }
         }
 

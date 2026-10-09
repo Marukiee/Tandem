@@ -255,6 +255,13 @@
     <string name="language_restart_confirm">Herstarten</string>
     <string name="language_restart_cancel">Niet nu</string>
     <string name="tile_files">Bestanden</string>
+    <string name="section_send">Versturen</string>
+    <string name="row_send_files">Bestanden versturen</string>
+    <string name="row_send_clipboard">Klembord versturen</string>
+    <string name="send_files_sub">Kies bestanden op deze telefoon</string>
+    <string name="send_clipboard_sub">Wat je het laatst hebt gekopieerd</string>
+    <string name="trackpad_row_sub">Gebruik deze telefoon als trackpad en toetsenbord</string>
+    <string name="find_row_sub">Laat hem overgaan</string>
     <string name="tile_clipboard">Klembord</string>
     <string name="tile_trackpad">Trackpad</string>
     <string name="tile_find">Zoek</string>
