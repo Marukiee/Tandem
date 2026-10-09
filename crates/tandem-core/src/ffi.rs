@@ -1399,6 +1399,15 @@ impl TandemEngine {
         self.engine.cancel_pairing_offer();
     }
 
+    /// Whether a device that comes into the circle starts as a guest: clipboard and notifications off, files asked about first.
+    pub fn guests_by_default(&self) -> bool {
+        self.engine.guests_by_default()
+    }
+
+    pub fn set_guests_by_default(&self, on: bool) -> Result<(), TandemError> {
+        self.engine.set_guests_by_default(on).map_err(Into::into)
+    }
+
     pub fn set_device_settings(
         &self,
         id: String,

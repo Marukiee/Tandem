@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.75",
+    "date": "2026-10-09",
+    "en": {
+      "title": "Guests",
+      "new": [
+        "New devices can start as guests: no clipboard, no notifications, files ask first",
+        "Quick Share asks with Accept and Decline in a notification on Linux"
+      ]
+    },
+    "nl": {
+      "title": "Gasten",
+      "new": [
+        "Nieuwe apparaten kunnen als gast beginnen: geen klembord, geen meldingen, bestanden vragen eerst",
+        "Quick Share vraagt op Linux met Accepteren en Weigeren in een melding"
+      ]
+    }
+  },
+  {
     "version": "0.1.74",
     "date": "2026-10-09",
     "en": {

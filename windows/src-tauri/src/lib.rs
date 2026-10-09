@@ -147,6 +147,8 @@ pub fn run() {
             commands::remove_device,
             commands::rename_self,
             commands::set_device_settings,
+            commands::guests_by_default,
+            commands::set_guests_by_default,
             commands::ring,
             commands::send_paths,
             commands::pick_and_send,

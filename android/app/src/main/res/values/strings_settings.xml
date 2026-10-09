@@ -123,6 +123,10 @@
     <string name="clip_history_unpin">Let this one go</string>
     <string name="clip_history_remove">Remove</string>
     <string name="clip_history_clear">Clear all but the ones you keep</string>
+    <string name="settings_guests_header">New devices</string>
+    <string name="settings_guests">New devices start as guests</string>
+    <string name="settings_guests_sub">For family and friends: their clipboard does not come in, no notifications from them, and their files ask first. Devices that are already here keep what they have</string>
+    <string name="settings_kw_sharing_guests">guest, guests, family, friends, new devices, clipboard, notifications, files, accept, pairing</string>
     <string name="settings_kw_sharing_clip_history">clipboard, history, copied, paste, copy again, clips</string>
     <string name="settings_kw_quickshare">quick share nearby share airdrop android share send receive files offline google</string>
     <string name="settings_kw_sharing_quick_tile">quick share tile quick settings shade switch toggle add</string>

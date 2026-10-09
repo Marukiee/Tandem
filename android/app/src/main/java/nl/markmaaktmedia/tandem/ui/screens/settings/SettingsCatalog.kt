@@ -61,6 +61,7 @@ internal object FocusKeys {
     const val ClipTile = "sharing.tile"
     const val MediaShare = "sharing.music"
     const val Speaker = "sharing.speaker"
+    const val Guests = "sharing.guests"
     const val SpeakerDelay = "sharing.speaker.delay"
     const val QuickTile = "sharing.quick.tile"
     const val QuickTap = "sharing.quick.tap"
@@ -218,6 +219,10 @@ internal object SettingsCatalog {
         SettingsEntry(
             "sharing_quick_visible", R.string.settings_quickshare_visible, R.string.settings_kw_sharing_quick_visible, SettingsCategory.Sharing, sharing,
             { TandemIcons.QuickShare }, subtitle = R.string.settings_quickshare_visible_sub, focus = FocusKeys.QuickVisible,
+        ),
+        SettingsEntry(
+            "sharing_guests", R.string.settings_guests, R.string.settings_kw_sharing_guests, SettingsCategory.Sharing, sharing,
+            { TandemIcons.Devices }, subtitle = R.string.settings_guests_sub, focus = FocusKeys.Guests,
         ),
         SettingsEntry(
             "sharing_media_apps", R.string.settings_media_apps, R.string.settings_kw_sharing_media_apps, SettingsCategory.Sharing, Route.MediaApps,

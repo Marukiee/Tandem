@@ -122,6 +122,10 @@
     <string name="clip_history_unpin">Laat deze los</string>
     <string name="clip_history_remove">Verwijder</string>
     <string name="clip_history_clear">Wis alles behalve wat je bewaart</string>
+    <string name="settings_guests_header">Nieuwe apparaten</string>
+    <string name="settings_guests">Nieuwe apparaten beginnen als gast</string>
+    <string name="settings_guests_sub">Voor familie en vrienden: hun klembord komt niet binnen, geen meldingen van hen, en hun bestanden vragen eerst. Apparaten die er al zijn houden wat ze hebben</string>
+    <string name="settings_kw_sharing_guests">gast, gasten, familie, vrienden, nieuwe apparaten, klembord, meldingen, bestanden, accepteren, koppelen</string>
     <string name="settings_kw_sharing_clip_history">klembord, geschiedenis, gekopieerd, plakken, opnieuw kopieren, clips</string>
     <string name="settings_kw_quickshare">quick share nearby share airdrop android delen versturen ontvangen bestanden offline google</string>
     <string name="settings_kw_sharing_quick_tile">quick share tegel snelle instellingen schakelaar toevoegen</string>

@@ -111,15 +111,40 @@ impl Default for DeviceSettings {
     }
 }
 
+impl DeviceSettings {
+    /// What a guest gets: nothing of theirs comes into the clipboard, no notifications, and files are asked about first.
+    pub fn guest() -> DeviceSettings {
+        DeviceSettings { clipboard: false, auto_accept: false, notifications: false }
+    }
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Settings {
     #[serde(default)]
     pub devices: HashMap<String, DeviceSettings>,
+    /// A device that has no settings of its own yet starts as a guest (see [`DeviceSettings::guest`]) instead of as one of your own.
+    /// Turning this on first writes down what each device that is there already has, so none of them changes.
+    #[serde(default)]
+    pub guests_by_default: bool,
 }
 
 impl Settings {
     pub fn for_device(&self, id: &DeviceId) -> DeviceSettings {
-        self.devices.get(&id.to_string()).cloned().unwrap_or_default()
+        match self.devices.get(&id.to_string()) {
+            Some(own) => own.clone(),
+            None if self.guests_by_default => DeviceSettings::guest(),
+            None => DeviceSettings::default(),
+        }
+    }
+
+    /// Switches the guest start on or off. `known` are the devices of the circle now: they keep what they have.
+    pub fn set_guests_by_default(&mut self, on: bool, known: &[DeviceId]) {
+        // What each one has now is what it keeps, whichever way this goes.
+        for id in known {
+            let own = self.for_device(id);
+            self.devices.entry(id.to_string()).or_insert(own);
+        }
+        self.guests_by_default = on;
     }
 
     pub fn set_device(&mut self, id: &DeviceId, settings: DeviceSettings) {
@@ -158,6 +183,22 @@ mod tests {
         let first = load_or_create_identity(&secrets).unwrap();
         let second = load_or_create_identity(&secrets).unwrap();
         assert_eq!(first.id(), second.id());
+    }
+
+    #[test]
+    fn a_guest_start_changes_only_devices_that_come_later() {
+        let mut settings = Settings::default();
+        let mine = DeviceId::from_bytes([1; 16]);
+        let later = DeviceId::from_bytes([2; 16]);
+        settings.set_guests_by_default(true, &[mine]);
+        // The device that was there keeps everything on; the one that comes after starts as a guest.
+        assert_eq!(settings.for_device(&mine), DeviceSettings::default());
+        assert_eq!(settings.for_device(&later), DeviceSettings::guest());
+        assert!(!settings.for_device(&later).clipboard);
+        // Turning it off again leaves a device that got its settings as they are, and the next one back to everything on.
+        settings.set_guests_by_default(false, &[mine, later]);
+        assert_eq!(settings.for_device(&later), DeviceSettings::guest());
+        assert_eq!(settings.for_device(&DeviceId::from_bytes([3; 16])), DeviceSettings::default());
     }
 
     #[test]

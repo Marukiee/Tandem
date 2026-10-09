@@ -74,6 +74,7 @@ const qr = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29"><rect wi
 const MAIN = { width: 1920, height: 1080 };
 let layout = [{ id: "mac", edge: "left", offset: 100 }];
 const SIZES = { mac: [1512, 982], phone: [412, 915] };
+let guestsMock = false;
 function arrangement() {
   return {
     main: MAIN,
@@ -170,6 +171,8 @@ export async function call(command, args) {
       outgoing: [], problem: null,
     };
     case "qs_respond": case "qs_dismiss": case "qs_pick_and_send": case "qs_send_clipboard": case "qs_open_link": case "qs_send_paths": return null;
+    case "guests_by_default": return guestsMock;
+    case "set_guests_by_default": guestsMock = args.on; return null;
     case "set_settings": Object.assign(state.settings, args.patch); return state.settings;
     case "set_autostart": state.autostart = args.enabled; return args.enabled;
     case "check_update": state.update = { state: "up-to-date", dismissed: state.update.dismissed }; return state.update;

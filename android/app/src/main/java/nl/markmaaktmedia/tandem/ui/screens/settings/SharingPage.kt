@@ -69,6 +69,18 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
             }
         }
 
+        // Family and friends: a device that is paired from now on starts without clipboard, without notifications and with files asked about.
+        SectionHeader(stringResource(R.string.settings_guests_header))
+        var guests by remember { mutableStateOf(graph.host.engine?.guestsByDefault() ?: false) }
+        SettingsGroup {
+            SettingsTarget(FocusKeys.Guests, 0, 1) {
+                SwitchRow(
+                    0, 1, TandemIcons.Devices, stringResource(R.string.settings_guests), stringResource(R.string.settings_guests_sub), guests,
+                    { graph.host.engine?.setGuestsByDefault(it); guests = it; graph.host.refreshDevices() },
+                )
+            }
+        }
+
         SectionHeader(stringResource(R.string.settings_sharing))
         SettingsGroup {
             SettingsTarget(FocusKeys.Screenshot, 0, 6) {

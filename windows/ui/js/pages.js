@@ -575,6 +575,14 @@ export function SettingsPage() {
   </div>`;
 }
 
+// New devices start as guests, so family and friends can join without their clipboard coming in.
+function GuestRow() {
+  const [on, setOn] = useState(false);
+  useEffect(() => { call("guests_by_default").then(setOn).catch(() => {}); }, []);
+  return html`<${SettingRow} icon="devices" title=${t("guests_title")} sub=${t("guests_sub")} on=${on}
+    onChange=${(v) => call("set_guests_by_default", { on: v }).then(() => setOn(v)).catch(failed)} />`;
+}
+
 function GeneralSettings({ s, patch }) {
   const [name, setName] = useState(state.self ? state.self.name : "");
   const delays = ["low", "normal", "smooth"];
@@ -596,6 +604,7 @@ function GeneralSettings({ s, patch }) {
       <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
       <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
+      <${GuestRow} />
     </div>
 
     <h2>${t("sound_media")}</h2>

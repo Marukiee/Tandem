@@ -42,6 +42,8 @@ final class EngineModel {
     static let shared = EngineModel()
 
     var devices: [TandemDevice] = []
+    /// A device that is paired from now on starts as a guest: clipboard and notifications off, files asked about first.
+    var guestsByDefault = false
     // What was sent and received outlives the app, so an update (which restarts it) no longer
     // empties the Shared page.
     var transfers: [TransferItem] = EngineModel.loadStoredTransfers() {
@@ -383,6 +385,7 @@ final class EngineModel {
     func refreshDevices() {
         guard let engine else { return }
         devices = engine.devices()
+        guestsByDefault = engine.guestsByDefault()
         clipboard?.setActive(devices.contains { $0.online || $0.ble })
         reconcileSpeakerDevices()
         refreshNowPlaying()
@@ -1016,6 +1019,11 @@ final class EngineModel {
         UserDefaults.standard.set(trimmed, forKey: Self.nameKey)
         myName = trimmed
         Task { try? await engine?.renameSelf(name: trimmed) }
+    }
+
+    func setGuestsByDefault(_ on: Bool) {
+        try? engine?.setGuestsByDefault(on: on)
+        refreshDevices()
     }
 
     func setSettings(_ device: TandemDevice, clipboard: Bool? = nil, autoAccept: Bool? = nil, notifications: Bool? = nil) {

@@ -151,6 +151,19 @@ pub fn set_device_settings(
     Ok(())
 }
 
+/// Whether a device that is paired from now on starts as a guest: clipboard and notifications off, files asked about first.
+#[tauri::command]
+pub fn guests_by_default(state: State<'_, AppState>) -> Reply<bool> {
+    Ok(state.engine()?.guests_by_default())
+}
+
+#[tauri::command]
+pub fn set_guests_by_default(app: AppHandle, state: State<'_, AppState>, on: bool) -> Reply<()> {
+    state.engine()?.set_guests_by_default(on).map_err(shown)?;
+    events::refresh_devices(&app);
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn ring(state: State<'_, AppState>, id: String, on: bool) -> Reply<()> {
     state.engine()?.ring(id, on).await.map_err(shown)

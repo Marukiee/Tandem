@@ -284,6 +284,20 @@ impl Engine {
         self.inner.settings.read().unwrap().for_device(id)
     }
 
+    /// Whether a device that comes into the circle starts as a guest: clipboard and notifications off, files asked about first.
+    pub fn guests_by_default(&self) -> bool {
+        self.inner.settings.read().unwrap().guests_by_default
+    }
+
+    pub fn set_guests_by_default(&self, on: bool) -> Result<()> {
+        let known: Vec<DeviceId> = self.inner.devices().into_iter().map(|d| d.id).collect();
+        self.inner.settings.write().unwrap().set_guests_by_default(on, &known);
+        let snapshot = self.inner.settings.read().unwrap().clone();
+        self.inner.store.write_cbor("settings.cbor", &snapshot)?;
+        self.inner.emit(Event::DevicesChanged);
+        Ok(())
+    }
+
     pub fn set_device_settings(&self, id: &DeviceId, settings: DeviceSettings) -> Result<()> {
         {
             self.inner.settings.write().unwrap().set_device(id, settings);
