@@ -1,6 +1,7 @@
 // The pages of the main window.
 import { html, useEffect, useState } from "../vendor/preact-htm.js";
 import { call, listen, native } from "./backend.js";
+import { ArrangementEditor } from "./arrange.js";
 import { BatteryRing, Chip, DeviceGlyph, PlayerCard, Switch, ago, deviceChips, fmtSize } from "./components.js";
 import { Icon } from "./icons.js";
 import { language, setLanguage, t } from "./i18n.js";
@@ -442,19 +443,9 @@ function MouseSection({ s, patch }) {
     </div>
 
     <h2>${t("mouse_here")}</h2>
-    <div class="card flush">
-      <${SettingRow} icon="pointer" title=${t("share_pointer_next")} disabled=${!state.canShare} why=${!state.canShare ? t("share_pointer_linux") : ""} sub=${others.length ? t("share_pointer_sub") : t("mouse_pair_first")}>
-        <select disabled=${!state.canShare || !others.length} value=${s.shareDevice} onChange=${(e) => patch({ shareDevice: e.target.value, shareEdge: e.target.value && !s.shareEdge ? "right" : s.shareEdge })}>
-          <option value="">${t("share_pointer_off")}</option>
-          ${others.map((d) => html`<option value=${d.id}>${d.name}</option>`)}
-        </select>
-      <//>
-      ${s.shareDevice && html`<${SettingRow} icon="devices" title=${t("share_pointer_side")} sub=${t("share_pointer_release")}>
-        <select value=${s.shareEdge} onChange=${(e) => patch({ shareEdge: e.target.value })}>
-          ${edges.map((e) => html`<option value=${e}>${t("edge_" + e)}</option>`)}
-        </select>
-      <//>`}
-    </div>
+    ${state.canShare
+      ? html`<${ArrangementEditor} />`
+      : html`<div class="card"><div class="small muted">${t("share_pointer_linux")}</div></div>`}
     <div class="small muted">${t("mouse_other_must_allow")}</div>
 
     <h2>${t("mouse_in")}</h2>

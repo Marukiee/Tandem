@@ -38,6 +38,8 @@ fn candidates() -> Vec<PathBuf> {
 fn run(program: &PathBuf, args: &[&str]) -> Option<(bool, String)> {
     let mut command = Command::new(program);
     command.args(args).stdin(Stdio::null());
+    // The libraries of an AppImage must not leak into a program of the system.
+    command.env_remove("LD_LIBRARY_PATH").env_remove("LD_PRELOAD");
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;

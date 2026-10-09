@@ -843,6 +843,82 @@ impl From<crate::pointer_share::Edge> for TandemEdge {
     }
 }
 
+/// Where a screen sits next to the main one: the edge of the main screen it touches, and how far along that edge it starts.
+#[derive(Clone, Debug, PartialEq, uniffi::Record)]
+pub struct TandemPlacement {
+    pub edge: TandemEdge,
+    pub offset: i32,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, uniffi::Record)]
+pub struct TandemRect {
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
+}
+
+/// A screen next to the main one, with the size it reported.
+#[derive(Clone, Debug, PartialEq, uniffi::Record)]
+pub struct TandemNeighbour {
+    pub id: String,
+    pub placement: TandemPlacement,
+    pub width: i32,
+    pub height: i32,
+}
+
+/// Which screen the pointer goes to, and how far along its edge (0 to 1) it comes in.
+#[derive(Clone, Debug, PartialEq, uniffi::Record)]
+pub struct TandemCrossing {
+    pub id: String,
+    pub along: f32,
+}
+
+impl From<TandemPlacement> for crate::layout::Placement {
+    fn from(p: TandemPlacement) -> Self {
+        Self { edge: p.edge.into(), offset: p.offset }
+    }
+}
+
+impl From<crate::layout::Placement> for TandemPlacement {
+    fn from(p: crate::layout::Placement) -> Self {
+        Self { edge: p.edge.into(), offset: p.offset }
+    }
+}
+
+fn neighbours_of(list: Vec<TandemNeighbour>) -> Vec<crate::layout::Neighbour> {
+    list.into_iter()
+        .map(|n| crate::layout::Neighbour { id: n.id, placement: n.placement.into(), width: n.width, height: n.height })
+        .collect()
+}
+
+/// The box of a screen of this size at that place, with the main screen at the origin.
+#[uniffi::export]
+pub fn layout_rect(main_width: i32, main_height: i32, placement: TandemPlacement, width: i32, height: i32) -> TandemRect {
+    let r = crate::layout::rect_of((main_width, main_height), placement.into(), (width, height));
+    TandemRect { x: r.x, y: r.y, width: r.width, height: r.height }
+}
+
+/// The pointer runs into `edge` of the main screen at `position` along it: which screen is there, if any.
+#[uniffi::export]
+pub fn layout_cross(edge: TandemEdge, position: i32, list: Vec<TandemNeighbour>) -> Option<TandemCrossing> {
+    let list = neighbours_of(list);
+    crate::layout::cross(edge.into(), position, &list).map(|(index, along)| TandemCrossing { id: list[index].id.clone(), along })
+}
+
+/// The pointer comes back from a screen: where that is along the edge of the main screen.
+#[uniffi::export]
+pub fn layout_back(main_len: i32, placement: TandemPlacement, width: i32, height: i32, along: f32) -> i32 {
+    crate::layout::back(main_len, placement.into(), (width, height), along)
+}
+
+/// A box was dragged here: the place it snaps to, or nothing when it is too far from the main screen.
+#[uniffi::export]
+pub fn layout_place(main_width: i32, main_height: i32, dragged: TandemRect, others: Vec<TandemNeighbour>, snap: i32) -> Option<TandemPlacement> {
+    let rect = crate::layout::Rect { x: dragged.x, y: dragged.y, width: dragged.width, height: dragged.height };
+    crate::layout::place((main_width, main_height), rect, &neighbours_of(others), snap).map(Into::into)
+}
+
 /// What two computers say about the pointer that goes over and comes back.
 #[derive(Clone, Debug, PartialEq, uniffi::Enum)]
 pub enum TandemPointerShare {

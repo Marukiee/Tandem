@@ -393,7 +393,10 @@ final class EngineModel {
         switch event {
         case .devicesChanged, .connected, .disconnected, .circleChanged:
             refreshDevices()
-            if case let .connected(id) = event { hotspot.deviceConnected(id) }
+            if case let .connected(id) = event {
+                hotspot.deviceConnected(id)
+                PointerShare.shared.announce(to: id)
+            }
             // A phone that drops while a button is held must not leave it held here.
             if case let .disconnected(id) = event {
                 injector.sourceDisconnected(id)

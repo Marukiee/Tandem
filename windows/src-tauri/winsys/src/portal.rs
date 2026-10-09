@@ -91,6 +91,8 @@ pub fn screen_available() -> bool {
         let offered = portal_property("org.freedesktop.portal.ScreenCast", "AvailableSourceTypes").is_some_and(|types| types & 1 != 0);
         offered
             && Command::new("gst-inspect-1.0")
+                .env_remove("LD_LIBRARY_PATH")
+                .env_remove("LD_PRELOAD")
                 .arg("pipewiresrc")
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -265,6 +267,8 @@ impl WaylandGrabber {
 
             let raw = remote.as_raw_fd();
             let mut command = Command::new("gst-launch-1.0");
+            // The libraries of an AppImage must not leak into GStreamer of the system.
+            command.env_remove("LD_LIBRARY_PATH").env_remove("LD_PRELOAD");
             command
                 .args(["-q", "pipewiresrc", "fd=3"])
                 .arg(format!("path={node}"))

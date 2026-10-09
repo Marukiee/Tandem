@@ -12,7 +12,8 @@ use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use tandem_core::ffi::{TandemInput, TandemPointerShare};
-use tandem_core::pointer_share::{self, Edge, Screen};
+use tandem_core::layout;
+use tandem_core::pointer_share::{self, Edge};
 use tandem_winsys::{Capture, Seen};
 use tauri::{AppHandle, Manager};
 
@@ -24,15 +25,15 @@ enum Out {
 }
 
 struct Inner {
-    /// The computer next to this one and the side it sits on, from the settings.
-    next_to: Option<(String, Edge)>,
-    /// The computer that has the pointer now.
+    /// The computer that has the pointer now, and the side of this screen it went out by.
     remote: Option<(String, Edge)>,
     saved: (i32, i32),
     mods: u8,
 }
 
-static INNER: Mutex<Inner> = Mutex::new(Inner { next_to: None, remote: None, saved: (0, 0), mods: 0 });
+static INNER: Mutex<Inner> = Mutex::new(Inner { remote: None, saved: (0, 0), mods: 0 });
+/// For the settings and the sizes of the other screens, which the hooks cannot get at otherwise.
+static APP: OnceLock<AppHandle> = OnceLock::new();
 static OUT: OnceLock<Sender<Out>> = OnceLock::new();
 /// When the computer that has the pointer last answered. A link that goes quiet gives the pointer back (see `watch`).
 static HEARD: Mutex<Option<Instant>> = Mutex::new(None);
@@ -41,33 +42,21 @@ static HEARD: Mutex<Option<Instant>> = Mutex::new(None);
 static PONGED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static HOOKS: OnceLock<Option<Capture>> = OnceLock::new();
 
-fn edge_of(text: &str) -> Option<Edge> {
-    match text {
-        "left" => Some(Edge::Left),
-        "right" => Some(Edge::Right),
-        "top" => Some(Edge::Top),
-        "bottom" => Some(Edge::Bottom),
-        _ => None,
-    }
-}
-
 /// Whether the pointer of this computer is on that device now.
 pub fn is_remote(device: &str) -> bool {
     INNER.lock().unwrap().remote.as_ref().is_some_and(|(d, _)| d == device)
 }
 
-/// Reads the settings: which computer sits where. The hooks are put on the first time there is one, and then stay.
+/// Reads the settings: which screens sit where. The hooks are put on the first time there is one, and then stay.
 pub fn configure(app: &AppHandle) {
+    let _ = APP.set(app.clone());
     let current = settings::get(app);
-    let next_to = edge_of(&current.share_edge).filter(|_| !current.share_device.is_empty()).map(|e| (current.share_device.clone(), e));
-    let wanted = next_to.is_some();
+    let wanted = !current.layout.is_empty();
     {
-        let mut inner = INNER.lock().unwrap();
-        if next_to.is_none() && inner.remote.is_some() {
-            drop(inner);
+        // With no screen next to this one left, a pointer that is over there comes home.
+        let away = INNER.lock().unwrap().remote.is_some();
+        if !wanted && away {
             come_back(None);
-        } else {
-            inner.next_to = next_to;
         }
     }
     if wanted && HOOKS.get().is_none() {
@@ -138,33 +127,35 @@ fn send(out: Out) {
 fn see(seen: Seen) -> bool {
     let mut inner = INNER.lock().unwrap();
     let Some((device, edge)) = inner.remote.clone() else {
-        // The pointer is here: does it run into the edge where a computer sits?
-        let (Seen::Move { dx, dy, x, y }, Some((device, edge))) = (seen, inner.next_to.clone()) else { return false };
+        // The pointer is here: does it run into an edge where a screen sits?
+        let (Seen::Move { dx, dy, x, y }, Some(app)) = (seen, APP.get()) else { return false };
         // The edge is that of all the screens together, so a second screen on the far side is no reason to leave.
         let (left, top, w, h) = tandem_winsys::desktop();
         let (w, h) = (w.max(1), h.max(1));
         let (px, py) = (x - left, y - top);
-        let crossing = match edge {
-            Edge::Right => px >= w - 1 && dx > 0,
-            Edge::Left => px <= 0 && dx < 0,
-            Edge::Top => py <= 0 && dy < 0,
-            Edge::Bottom => py >= h - 1 && dy > 0,
-        };
-        if !crossing {
+        let mut pushes: Vec<(Edge, i32)> = Vec::new();
+        if px >= w - 1 && dx > 0 { pushes.push((Edge::Right, py)); }
+        if px <= 0 && dx < 0 { pushes.push((Edge::Left, py)); }
+        if py <= 0 && dy < 0 { pushes.push((Edge::Top, px)); }
+        if py >= h - 1 && dy > 0 { pushes.push((Edge::Bottom, px)); }
+        if pushes.is_empty() {
             return false;
         }
-        let along = match edge {
-            Edge::Left | Edge::Right => py as f32 / (h - 1).max(1) as f32,
-            Edge::Top | Edge::Bottom => px as f32 / (w - 1).max(1) as f32,
+        // Only where a screen really is next to this one: along the rest of the edge there is a wall.
+        let list = crate::arrange::neighbours(app, true);
+        let Some((edge, found)) = pushes.into_iter().find_map(|(edge, position)| layout::cross(edge, position, &list).map(|(index, along)| (edge, (list[index].id.clone(), along)))) else {
+            return false;
         };
+        let (device, along) = found;
         inner.saved = (x, y);
         inner.remote = Some((device.clone(), edge));
         inner.mods = 0;
         drop(inner);
-        *HEARD.lock().unwrap() = Some(Instant::now());
         if let Some(Some(hooks)) = HOOKS.get() {
             hooks.hold(true);
         }
+        *HEARD.lock().unwrap() = Some(Instant::now());
+        PONGED.store(false, std::sync::atomic::Ordering::Relaxed);
         send(Out::Share(device, TandemPointerShare::Enter { edge: edge.into(), along: along.clamp(0.0, 1.0) }));
         return true;
     };
@@ -184,8 +175,8 @@ fn see(seen: Seen) -> bool {
             if down && vk == 0x1B && inner.mods & 0b111 == 0b111 {
                 inner.remote = None;
                 drop(inner);
-                send(Out::Share(device, TandemPointerShare::Release));
-                restore(None, edge);
+                send(Out::Share(device.clone(), TandemPointerShare::Release));
+                restore(None, &device, edge);
                 return true;
             }
             let bit = match vk {
@@ -221,13 +212,25 @@ fn mac_code(vk: u16) -> Option<u16> {
     TABLE.get_or_init(|| (0u16..128).filter_map(|code| input::mac_to_vk(code).map(|vk| (vk, code))).collect()).get(&vk).copied()
 }
 
-/// The pointer is back on this PC: where it left, or where the other computer says it came from.
-fn restore(along: Option<f32>, edge: Edge) {
+/// The pointer is back on this PC: where it left, or where the other computer says it came from (`along` its own edge, which is
+/// worked out to the place on this screen where the two touch).
+fn restore(along: Option<f32>, device: &str, edge: Edge) {
     let (left, top, w, h) = tandem_winsys::desktop();
     let target = match along {
         Some(along) => {
-            let (x, y) = pointer_share::back_at(Screen { width: w as f32, height: h as f32 }, edge, along);
-            (left + x as i32, top + y as i32)
+            let size = crate::arrange::size_of(device).unwrap_or((w, h));
+            let placement = APP.get().and_then(|app| crate::arrange::neighbours(app, false).into_iter().find(|n| n.id == device).map(|n| n.placement));
+            let main_len = if matches!(edge, Edge::Left | Edge::Right) { h } else { w };
+            let position = match placement {
+                Some(p) => layout::back(main_len, p, size, along),
+                None => (along.clamp(0.0, 1.0) * (main_len - 1).max(0) as f32) as i32,
+            };
+            match edge {
+                Edge::Left => (left, top + position),
+                Edge::Right => (left + w - 1, top + position),
+                Edge::Top => (left + position, top),
+                Edge::Bottom => (left + position, top + h - 1),
+            }
         }
         None => INNER.lock().unwrap().saved,
     };
@@ -239,8 +242,8 @@ fn restore(along: Option<f32>, edge: Edge) {
 
 fn come_back(along: Option<f32>) {
     let remote = INNER.lock().unwrap().remote.take();
-    if let Some((_, edge)) = remote {
-        restore(along, edge);
+    if let Some((device, edge)) = remote {
+        restore(along, &device, edge);
     }
 }
 
@@ -275,7 +278,7 @@ mod tests {
 
     #[test]
     fn the_sides_are_read_from_the_settings() {
-        assert_eq!(edge_of("left"), Some(Edge::Left));
-        assert_eq!(edge_of(""), None);
+        assert_eq!(crate::arrange::edge_of("left"), Some(Edge::Left));
+        assert_eq!(crate::arrange::edge_of(""), None);
     }
 }

@@ -24,8 +24,11 @@ pub struct Settings {
     /// because Windows has no permission to ask for: this is the only door.
     pub remote_input: bool,
     /// The computer whose screen sits next to this one for a shared mouse and keyboard, and on which side (left, right, top, bottom).
+    /// Only read once, to make the first arrangement (`layout`) of an earlier version.
     pub share_device: String,
     pub share_edge: String,
+    /// The screens that sit next to this one, and where (see `arrange.rs`).
+    pub layout: Vec<crate::arrange::Spot>,
     /// Quick Share: this PC can be found by other devices on the network and send and receive with them. Off until it is turned on.
     pub quick_share: bool,
     /// Look for a newer Tandem now and then, and say so when there is one.
@@ -55,6 +58,7 @@ impl Default for Settings {
             remote_input: false,
             share_device: String::new(),
             share_edge: String::new(),
+            layout: Vec::new(),
             quick_share: false,
             system_media: true,
             phone_sound: true,
@@ -73,7 +77,11 @@ fn file(app: &AppHandle) -> Option<PathBuf> {
 pub fn load(app: &AppHandle) {
     let Some(path) = file(app) else { return };
     let Ok(text) = std::fs::read_to_string(path) else { return };
-    if let Ok(settings) = serde_json::from_str::<Settings>(&text) {
+    if let Ok(mut settings) = serde_json::from_str::<Settings>(&text) {
+        // An earlier version had one computer and one side; that is the arrangement it made.
+        if settings.layout.is_empty() && !settings.share_device.is_empty() && !settings.share_edge.is_empty() {
+            settings.layout.push(crate::arrange::Spot { device: settings.share_device.clone(), edge: settings.share_edge.clone(), offset: None });
+        }
         *app.state::<AppState>().settings.lock().unwrap() = settings;
     }
 }

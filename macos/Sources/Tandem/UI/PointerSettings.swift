@@ -22,7 +22,7 @@ struct PointerSettings: View {
     var body: some View {
         Form {
             Section {
-                step("rectangle.2.swap", "Say which computer sits on which side of this one. That is the edge the pointer goes over.")
+                step("rectangle.2.swap", "Drag the screens next to this one, the way they stand on your desk. That is where the pointer goes over.")
                 step("cursorarrow.motionlines", "Push the pointer over that edge. Your mouse and keyboard now work on the other computer.")
                 step("arrow.uturn.backward", "Push it back over the edge it came in by, or press Control, Option and Command with Escape.")
             } header: {
@@ -64,13 +64,18 @@ struct PointerSettings: View {
                 if share.enabled && trusted {
                     if neighbourChoices.isEmpty {
                         Text("Pair a Mac, a PC or a phone to put it next to this one.").foregroundStyle(.secondary)
-                    }
-                    ForEach(neighbourChoices, id: \.id) { device in
-                        Picker(device.name, selection: Binding(
-                            get: { share.neighbours[device.id] ?? "none" },
-                            set: { share.neighbours[device.id] = $0 == "none" ? nil : $0 }
-                        )) {
-                            ForEach(Self.sides, id: \.tag) { Text($0.label).tag($0.tag) }
+                    } else {
+                        ArrangementEditor(share: share, devices: neighbourChoices)
+                            .padding(.vertical, 4)
+                        ForEach(neighbourChoices.filter { share.layout[$0.id] != nil }, id: \.id) { device in
+                            LabeledContent(device.name) {
+                                HStack(spacing: 10) {
+                                    Text(sideText(share.layout[device.id]?.edge ?? ""))
+                                        .foregroundStyle(.secondary)
+                                    Button("Remove") { share.layout[device.id] = nil }
+                                        .buttonStyle(.borderless)
+                                }
+                            }
                         }
                     }
                 }
@@ -130,6 +135,15 @@ struct PointerSettings: View {
         .onReceive(Timer.publish(every: 2, on: .main, in: .common).autoconnect()) { _ in
             let now = AXIsProcessTrusted()
             if now != trusted { trusted = now }
+        }
+    }
+
+    private func sideText(_ edge: String) -> LocalizedStringKey {
+        switch edge {
+        case "left": "On the left"
+        case "right": "On the right"
+        case "top": "Above"
+        default: "Below"
         }
     }
 

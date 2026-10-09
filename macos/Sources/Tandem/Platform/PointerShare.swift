@@ -20,6 +20,7 @@ final class PointerShare {
     private static let enabledKey = "pointerShareEnabled"
     private static let allowKey = "pointerShareAllowControl"
     private static let neighboursKey = "pointerShareNeighbours"
+    private static let layoutKey = "pointerShareLayout"
 
     /// Whether this Mac may be the main computer: its pointer goes over the edge to the computers set in Settings.
     var enabled: Bool = UserDefaults.standard.bool(forKey: PointerShare.enabledKey) {
@@ -52,9 +53,64 @@ final class PointerShare {
         if legacyAllowAll { allowed = Set(devices) }
     }
 
-    /// The computers that sit next to this one, by device id: on which side.
-    var neighbours: [String: String] = UserDefaults.standard.dictionary(forKey: PointerShare.neighboursKey) as? [String: String] ?? [:] {
-        didSet { UserDefaults.standard.set(neighbours, forKey: Self.neighboursKey) }
+    /// Where a screen sits next to this Mac: the edge it touches and how far along that edge it starts, in points from the start of the
+    /// edge (its top, or its left side). Without the second the screen is in the middle of that side, as far as the sizes are known.
+    struct Placement: Codable, Equatable, Hashable {
+        var edge: String
+        var offset: Int?
+    }
+
+    /// The screens that sit next to this one, by device id. Made in the arrangement in Settings.
+    var layout: [String: Placement] = PointerShare.loadLayout() {
+        didSet {
+            if let data = try? JSONEncoder().encode(layout) { UserDefaults.standard.set(data, forKey: Self.layoutKey) }
+        }
+    }
+
+    private static func loadLayout() -> [String: Placement] {
+        if let data = UserDefaults.standard.data(forKey: layoutKey), let found = try? JSONDecoder().decode([String: Placement].self, from: data) {
+            return found
+        }
+        // Before the arrangement there was a side for each computer.
+        let sides = UserDefaults.standard.dictionary(forKey: neighboursKey) as? [String: String] ?? [:]
+        return sides.mapValues { Placement(edge: $0, offset: nil) }
+    }
+
+    /// The side of this screen where each computer sits.
+    var neighbours: [String: String] { layout.mapValues(\.edge) }
+
+    /// How big the screens of the other computers are, as they said (in the units of their own pointer).
+    private(set) var sizes: [String: CGSize] = [:]
+
+    /// The size of all the screens of this Mac together, in points: what the edges and the arrangement are measured in.
+    var mainSize: CGSize { screens.size }
+
+    /// The number of points a screen is along the edge it touches. Not known: as long as this screen is.
+    private func length(of device: String, edge: String) -> Int {
+        let size = sizes[device] ?? mainSize
+        return Int(edge == "left" || edge == "right" ? size.height : size.width)
+    }
+
+    /// The offset of a screen, worked out when it has none: in the middle of the side.
+    func offset(of device: String) -> Int {
+        guard let placement = layout[device] else { return 0 }
+        if let offset = placement.offset { return offset }
+        let main = Int(placement.edge == "left" || placement.edge == "right" ? mainSize.height : mainSize.width)
+        return (main - length(of: device, edge: placement.edge)) / 2
+    }
+
+    private func tandemPlacement(_ device: String) -> TandemPlacement? {
+        guard let placement = layout[device] else { return nil }
+        return TandemPlacement(edge: tandemEdge(placement.edge), offset: Int32(offset(of: device)))
+    }
+
+    /// The computers next to this screen that are there to go to now, as the arithmetic of the core wants them.
+    private func reachable() -> [TandemNeighbour] {
+        layout.keys.compactMap { id in
+            guard model.device(id)?.online == true, let placement = tandemPlacement(id) else { return nil }
+            let size = sizes[id] ?? mainSize
+            return TandemNeighbour(id: id, placement: placement, width: Int32(size.width), height: Int32(size.height))
+        }
     }
 
     /// The computer that has the pointer now, and the side of this screen it went out by.
@@ -99,6 +155,10 @@ final class PointerShare {
 
     func start() {
         if enabled { startTap() }
+        // The other computers draw this Mac's screens in their arrangement, so they are told when the screens change.
+        NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.announceToAll() }
+        }
     }
 
     // MARK: The screen
@@ -120,8 +180,8 @@ final class PointerShare {
         }
     }
 
-    private func tandemEdge(_ edge: String) -> TandemEdge {
-        switch edge {
+    static func edge(_ name: String) -> TandemEdge {
+        switch name {
         case "left": .left
         case "right": .right
         case "top": .top
@@ -129,12 +189,27 @@ final class PointerShare {
         }
     }
 
-    private func edgeName(_ edge: TandemEdge) -> String {
+    static func name(of edge: TandemEdge) -> String {
         switch edge {
         case .left: "left"
         case .right: "right"
         case .top: "top"
         case .bottom: "bottom"
+        }
+    }
+
+    private func tandemEdge(_ edge: String) -> TandemEdge { Self.edge(edge) }
+
+    private func edgeName(_ edge: TandemEdge) -> String { Self.name(of: edge) }
+
+    /// A place on `edge` of the screens, `position` points along that side from its start.
+    private func point(on edge: String, position: CGFloat) -> CGPoint {
+        let area = screens
+        switch edge {
+        case "left": return CGPoint(x: area.minX, y: area.minY + min(max(position, 0), area.height - 1))
+        case "right": return CGPoint(x: area.maxX - 1, y: area.minY + min(max(position, 0), area.height - 1))
+        case "top": return CGPoint(x: area.minX + min(max(position, 0), area.width - 1), y: area.minY)
+        default: return CGPoint(x: area.minX + min(max(position, 0), area.width - 1), y: area.maxY - 1)
         }
     }
 
@@ -208,17 +283,19 @@ final class PointerShare {
         let dx = event.getDoubleValueField(.mouseEventDeltaX)
         let dy = event.getDoubleValueField(.mouseEventDeltaY)
         let area = screens
-        for (device, edge) in neighbours where model.device(device)?.online == true {
-            let along: CGFloat
-            switch edge {
-            case "right" where at.x >= area.maxX - 1 && dx > 0: along = (at.y - area.minY) / max(area.height - 1, 1)
-            case "left" where at.x <= area.minX && dx < 0: along = (at.y - area.minY) / max(area.height - 1, 1)
-            case "top" where at.y <= area.minY && dy < 0: along = (at.x - area.minX) / max(area.width - 1, 1)
-            case "bottom" where at.y >= area.maxY - 1 && dy > 0: along = (at.x - area.minX) / max(area.width - 1, 1)
-            default: continue
-            }
+        // The edges that the pointer is pushing against (two at a corner), and where along each.
+        var pushes: [(edge: String, position: Int)] = []
+        if at.x >= area.maxX - 1 && dx > 0 { pushes.append(("right", Int(at.y - area.minY))) }
+        if at.x <= area.minX && dx < 0 { pushes.append(("left", Int(at.y - area.minY))) }
+        if at.y <= area.minY && dy < 0 { pushes.append(("top", Int(at.x - area.minX))) }
+        if at.y >= area.maxY - 1 && dy > 0 { pushes.append(("bottom", Int(at.x - area.minX))) }
+        guard !pushes.isEmpty else { return false }
+        let list = reachable()
+        for push in pushes {
+            // Only where a screen really is next to this one: along the rest of the edge there is a wall.
+            guard let crossing = layoutCross(edge: tandemEdge(push.edge), position: Int32(push.position), list: list) else { continue }
             if dragged, NSPasteboard(name: .drag).changeCount == lastDragCount || dragContents() == nil { continue }
-            goOver(to: device, edge: edge, along: along)
+            goOver(to: crossing.id, edge: push.edge, along: CGFloat(crossing.along))
             return true
         }
         return false
@@ -234,6 +311,10 @@ final class PointerShare {
         remoteTracker = nil
         enterAlong = Double(along)
         heardAt = Date()
+        // The size of that screen is known from before: the pointer is followed over there from the first movement.
+        if let size = sizes[device] {
+            remoteTracker = RemoteTracker(width: Double(size.width), height: Double(size.height), edge: edge, along: Double(along))
+        }
         // A drag in progress (a photo, a file, selected text) goes over with the pointer.
         let dragging = NSEvent.pressedMouseButtons & 1 != 0
         let carried = dragging ? dragContents() : nil
@@ -311,7 +392,14 @@ final class PointerShare {
     /// The pointer returns to this Mac, at the place it left by or, when the other computer says where it came from, there.
     private func comeBack(along: CGFloat?) {
         guard let remote else { return }
-        let target = along.map { point(on: remote.edge, along: $0) } ?? savedLocation
+        // Where the pointer comes back: along the edge of this Mac, at the place the two screens share.
+        let target = along.map { fraction -> CGPoint in
+            guard let placement = tandemPlacement(remote.device) else { return point(on: remote.edge, along: fraction) }
+            let size = sizes[remote.device] ?? mainSize
+            let main = Int32(remote.edge == "left" || remote.edge == "right" ? mainSize.height : mainSize.width)
+            let position = layoutBack(mainLen: main, placement: placement, width: Int32(size.width), height: Int32(size.height), along: Float(fraction))
+            return point(on: remote.edge, position: CGFloat(position))
+        } ?? savedLocation
         self.remote = nil
         watchTask?.cancel()
         watchTask = nil
@@ -468,6 +556,7 @@ final class PointerShare {
         case .pong:
             break
         case let .size(width, height):
+            sizes[device] = CGSize(width: Double(width), height: Double(height))
             // The other computer says how big its screen is: from here this Mac follows the pointer over there.
             if let remote, remote.device == device {
                 remoteTracker = RemoteTracker(width: Double(width), height: Double(height), edge: remote.edge, along: enterAlong)
@@ -529,6 +618,18 @@ final class PointerShare {
         if let device {
             Task { try? await model.tandem?.sendPointerShare(target: device, msg: .leave(along: along)) }
         }
+    }
+
+    /// Tells a computer how big the screens of this Mac are, so it can draw them next to its own and find its way back.
+    func announce(to device: String) {
+        let size = mainSize
+        guard size.width > 0, let engine = model.tandem else { return }
+        Task { try? await engine.sendPointerShare(target: device, msg: .size(width: UInt32(size.width), height: UInt32(size.height))) }
+    }
+
+    /// The screens of this Mac changed: everybody is told.
+    func announceToAll() {
+        for device in model.devices where device.online { announce(to: device.id) }
     }
 
     func deviceGone(_ id: String) {

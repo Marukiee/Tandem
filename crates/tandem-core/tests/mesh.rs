@@ -521,6 +521,23 @@ async fn the_circle_survives_a_restart() {
     .await;
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_name_that_was_chosen_survives_a_restart() {
+    let laptop = node("maruks-linux-laptop").await;
+    laptop.engine.rename_self("Maruks Linux Laptop").await.unwrap();
+    laptop.engine.shutdown().await;
+
+    // Started again with the name of the machine, as the apps do: the name that was chosen stays.
+    let mut cfg = EngineConfig::new(&laptop.data, "maruks-linux-laptop");
+    cfg.port = 0;
+    cfg.enable_mdns = false;
+    cfg.loopback = true;
+    let secrets = Arc::new(FileSecretStore::new(Store::new(&laptop.data).unwrap()));
+    let files = Arc::new(DesktopFiles { download_dir: laptop.downloads.clone() });
+    let again = Engine::start(cfg, secrets, files).await.unwrap();
+    assert_eq!(again.name(), "Maruks Linux Laptop");
+}
+
 /// A thread pool of its own for one device, so everything that device is doing can be dropped at once.
 struct Lane(Option<tokio::runtime::Runtime>);
 

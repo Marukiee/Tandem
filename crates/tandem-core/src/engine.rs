@@ -164,6 +164,13 @@ impl Engine {
             store.write_cbor("circle.cbor", &circle.statements())?;
         }
 
+        // The name that the person gave this device lives in the circle. The one the app brings (the name of the machine) is only for the
+        // first run: starting again must not undo a rename.
+        let my_name = circle
+            .member(&my_id)
+            .map(|m| m.name.clone())
+            .filter(|n| !n.trim().is_empty())
+            .unwrap_or_else(|| cfg.device_name.clone());
         let settings = store.read_cbor::<Settings>("settings.cbor")?.unwrap_or_default();
         let endpoint = net::make_endpoint(&identity, cfg.port, cfg.tuning)?;
         let port = net::local_port(&endpoint);
@@ -172,7 +179,7 @@ impl Engine {
         let live = crate::live::Live::new(store.clone());
 
         let inner = Arc::new(Inner {
-            my_name: RwLock::new(cfg.device_name.clone()),
+            my_name: RwLock::new(my_name),
             cfg,
             identity: Arc::new(identity),
             my_id,

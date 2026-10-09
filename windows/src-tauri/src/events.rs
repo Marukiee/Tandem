@@ -44,7 +44,12 @@ fn allowed(app: &AppHandle, id: &str, key: &str) -> bool {
 
 pub fn handle(app: &AppHandle, event: TandemEvent) {
     match event {
-        TandemEvent::DevicesChanged | TandemEvent::CircleChanged | TandemEvent::Connected { .. } => refresh_devices(app),
+        TandemEvent::Connected { id } => {
+            refresh_devices(app);
+            // The other computer is told how big this screen is, so it can draw it and find its way back.
+            crate::arrange::announce(app, &id);
+        }
+        TandemEvent::DevicesChanged | TandemEvent::CircleChanged => refresh_devices(app),
         TandemEvent::TailscaleNeeded { id } => crate::tailscale::needed(app, &id),
         TandemEvent::Disconnected { id } => {
             input::release_all();
@@ -178,7 +183,10 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 }
                 Share::Pong => crate::capture::heard(&from, true),
                 // Only the computers that take a pointer in say how big their screen is, and this one is not the main computer of those.
-                Share::Size { .. } => crate::capture::heard(&from, false),
+                Share::Size { width, height } => {
+                    crate::arrange::learned(&from, width as i32, height as i32);
+                    crate::capture::heard(&from, false);
+                }
                 Share::Carry { text } => {
                     if input::shared_is(&from) {
                         input::shared_carry(text);

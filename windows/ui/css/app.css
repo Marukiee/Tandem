@@ -376,3 +376,20 @@ select { cursor: default; }
 .edge-nw, .edge-ne, .edge-sw, .edge-se { width: 9px; height: 9px; }
 .edge-nw { top: 0; left: 0; cursor: nwse-resize; } .edge-se { bottom: 0; right: 0; cursor: nwse-resize; }
 .edge-ne { top: 0; right: 0; cursor: nesw-resize; } .edge-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+
+
+/* The arrangement of the screens next to this one (js/arrange.js). */
+.arrange { position: relative; overflow: hidden; border-radius: 14px; background: var(--card-2); border: 1px solid var(--line); touch-action: none; user-select: none; }
+.screen-box {
+  position: absolute; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  padding: 3px; border-radius: 8px; background: var(--card); border: 1px solid var(--line-strong); color: var(--text); text-align: center;
+  cursor: grab; overflow: hidden; transition: left 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), top 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), width 0.28s, height 0.28s, box-shadow 0.2s;
+}
+.screen-box .n { font-size: 11px; font-weight: 600; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.screen-box .s { font-size: 9px; opacity: 0.7; white-space: nowrap; }
+.screen-box.main { background: var(--accent); border-color: transparent; color: #fff; cursor: default; }
+.screen-box.tray { border-style: dashed; }
+.screen-box.offline { opacity: 0.55; }
+.screen-box.lifted { cursor: grabbing; border: 2px solid var(--accent); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28); z-index: 3; }
+.screen-box.ghost { background: var(--accent-soft); border: 2px dashed var(--accent); pointer-events: none; }
+.arrange-hint { position: absolute; left: 0; right: 0; bottom: 66px; text-align: center; font-size: 11px; color: var(--text-2); pointer-events: none; }

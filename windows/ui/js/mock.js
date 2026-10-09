@@ -70,6 +70,39 @@ const qr = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29"><rect wi
     return on ? `<rect x="${x}" y="${y}" width="1" height="1" fill="#1d1b3a"/>` : "";
   }).join("") + "</svg>";
 
+// The arrangement of the screens, with a simplified version of the snapping the app does, for looking at the interface in a browser.
+const MAIN = { width: 1920, height: 1080 };
+let layout = [{ id: "mac", edge: "left", offset: 100 }];
+const SIZES = { mac: [1512, 982], phone: [412, 915] };
+function arrangement() {
+  return {
+    main: MAIN,
+    devices: devices.filter((d) => d.platform !== "android" || true).map((d) => {
+      const spot = layout.find((s) => s.id === d.id);
+      const size = SIZES[d.id];
+      return { id: d.id, name: d.name, platform: d.platform, online: d.online, width: size && size[0], height: size && size[1], placed: spot ? { edge: spot.edge, offset: spot.offset } : null };
+    }),
+  };
+}
+function rectMock(p, a) {
+  switch (p.edge) {
+    case "left": return { x: -a.width, y: p.offset, width: a.width, height: a.height };
+    case "right": return { x: MAIN.width, y: p.offset, width: a.width, height: a.height };
+    case "top": return { x: p.offset, y: -a.height, width: a.width, height: a.height };
+    default: return { x: p.offset, y: MAIN.height, width: a.width, height: a.height };
+  }
+}
+function snapMock(a) {
+  const gaps = [
+    ["left", Math.abs(a.x + a.width), a.y, a.height, MAIN.height],
+    ["right", Math.abs(a.x - MAIN.width), a.y, a.height, MAIN.height],
+    ["top", Math.abs(a.y + a.height), a.x, a.width, MAIN.width],
+    ["bottom", Math.abs(a.y - MAIN.height), a.x, a.width, MAIN.width],
+  ].filter(([, gap, start, len, main]) => gap <= a.snap && Math.min(start + len, main) - Math.max(start, 0) >= Math.min(len, main) / 4);
+  gaps.sort((x, y) => x[1] - y[1]);
+  return gaps.length ? { edge: gaps[0][0], offset: Math.round(gaps[0][2]) } : null;
+}
+
 export async function call(command, args) {
   await new Promise((r) => setTimeout(r, 40));
   switch (command) {
@@ -89,6 +122,15 @@ export async function call(command, args) {
     case "clip_history_pin": case "clip_history_remove": case "clip_history_clear": case "clip_history_copy": return null;
     case "files_policy": case "files_update": return { enabled: true, write: false, delete: false, hidden: false, shares: [{ name: "Documents", path: "C:\\Users\\Mark\\Documents", write: false }, { name: "Pictures", path: "C:\\Users\\Mark\\Pictures", write: true }] };
     case "files_add_folder": return { enabled: true, write: false, delete: false, hidden: false, shares: [] };
+    case "arrange_state": return arrangement();
+    case "arrange_snap": { const p = snapMock(args); return p ? { ...p, ...rectMock(p, args) } : null; }
+    case "arrange_place": {
+      const p = snapMock(args);
+      layout = layout.filter((s) => s.id !== args.id);
+      if (p) layout.push({ id: args.id, ...p });
+      return arrangement();
+    }
+    case "arrange_remove": layout = layout.filter((s) => s.id !== args.id); return arrangement();
     case "media_policy": case "media_policy_set": return { screen: "ask", control: "ask" };
     case "ssh_probe": return args.id === "mac" ? "192.168.1.20" : null;
     case "ssh_open": return null;

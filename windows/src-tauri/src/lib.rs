@@ -2,7 +2,9 @@
 //! its events into notifications and the lists the interface shows, and hosts the interface in two windows, the main
 //! one and the small panel above the tray icon.
 
+mod arrange;
 mod browse;
+mod debugshot;
 mod capture;
 mod quickshare;
 mod clip;
@@ -78,6 +80,7 @@ pub fn run() {
             media::start(&handle);
             power::start(handle.clone());
             lid::start(handle.clone());
+            debugshot::start();
             update::start(handle.clone());
             // When the pointer of another computer runs into the edge it came in by, that computer is told.
             let leave_app = handle.clone();
@@ -157,6 +160,10 @@ pub fn run() {
             commands::hide_panel,
             commands::resize_panel,
             commands::open_logs,
+            arrange::arrange_state,
+            arrange::arrange_place,
+            arrange::arrange_snap,
+            arrange::arrange_remove,
             commands::check_update,
             commands::open_url,
             commands::install_update,

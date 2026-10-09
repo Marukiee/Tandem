@@ -120,6 +120,9 @@ pub fn ssh_start(
     let mut command = CommandBuilder::new("ssh");
     command.args(["-o", "StrictHostKeyChecking=accept-new", "-o", "ServerAliveInterval=20", &format!("{user}@{address}")]);
     command.env("TERM", "xterm-256color");
+    // The libraries of an AppImage must not leak into the ssh of the system.
+    command.env_remove("LD_LIBRARY_PATH");
+    command.env_remove("LD_PRELOAD");
     let child = pair.slave.spawn_command(command).map_err(|e| format!("ssh could not start: {e}"))?;
     drop(pair.slave);
     let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
