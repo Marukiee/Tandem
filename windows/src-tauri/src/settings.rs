@@ -45,6 +45,14 @@ pub struct Settings {
     pub keep_when_lid_closed: bool,
     /// Turn Tailscale on by itself when a device cannot be reached on this network and Tailscale would reach it.
     pub auto_tailscale: bool,
+    /// Keep a list of what was copied (see `history.rs`), how many texts, and for how many days.
+    pub clip_history: bool,
+    pub clip_limit: u32,
+    pub clip_days: u32,
+    /// Other devices may look at the screen of this computer (when each of them is allowed, see `host.rs`). Off: they are all turned away.
+    pub screen_host: bool,
+    /// How much sound of a phone waits before it plays: "low", "normal" or "smooth".
+    pub sound_delay: String,
 }
 
 impl Default for Settings {
@@ -64,6 +72,11 @@ impl Default for Settings {
             phone_sound: true,
             keep_when_lid_closed: false,
             auto_tailscale: true,
+            clip_history: true,
+            clip_limit: 250,
+            clip_days: 30,
+            screen_host: true,
+            sound_delay: "normal".into(),
             auto_update: true,
             dismissed_update: String::new(),
         }

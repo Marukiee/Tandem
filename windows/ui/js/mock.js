@@ -32,7 +32,7 @@ function updateFor(kind) {
 }
 
 const state = {
-  ready: true, error: null, self: { id: "me", name: "Laptop van Mark", port: 47820 }, version: "0.1.25", build: "preview", canShare: true, platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
+  ready: true, error: null, self: { id: "me", name: "Laptop van Mark", port: 47820 }, version: "0.1.25", build: "preview", canShare: true, canHost: true, platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
   devices,
   transfers: empty ? [] : [
     { id: "1-0-in", peer: "phone", name: "IMG_20261003_141201.jpg", incoming: true, state: "done", done: 4200000, total: 4200000, location: "C:\\Users\\Mark\\Downloads\\Tandem\\IMG_20261003_141201.jpg", updatedAt: now - 60000, startedAt: now - 62000 },
@@ -122,6 +122,15 @@ export async function call(command, args) {
     case "clip_history_pin": case "clip_history_remove": case "clip_history_clear": case "clip_history_copy": return null;
     case "files_policy": case "files_update": return { enabled: true, write: false, delete: false, hidden: false, shares: [{ name: "Documents", path: "C:\\Users\\Mark\\Documents", write: false }, { name: "Pictures", path: "C:\\Users\\Mark\\Pictures", write: true }] };
     case "files_add_folder": return { enabled: true, write: false, delete: false, hidden: false, shares: [] };
+    case "clip_history_info": return { count: 2, pinned: 1, bytes: 62 };
+    case "access_status": return { wayland: new URLSearchParams(location.search).get("platform") === "linux", inputAllowed: true, screenAllowed: false, input: { ok: true, why: "" }, canHost: true };
+    case "portal_forget": return null;
+    case "settings_export": return "C:\\Users\\Mark\\tandem-settings.json";
+    case "settings_import": return state.settings;
+    case "whats_new": return [
+      { version: "0.1.74", date: "2026-10-09", en: { title: "A steadier shared mouse", new: ["Drag screens next to each other", "Linux updates itself"] }, nl: { title: "Een stabielere gedeelde muis", new: ["Sleep schermen naast elkaar", "Linux werkt zichzelf bij"] } },
+      { version: "0.1.73", date: "2026-10-09", en: { title: "Fixes", new: ["The pointer comes back at once"] }, nl: { title: "Fixes", new: ["De muis komt direct terug"] } },
+    ];
     case "arrange_state": return arrangement();
     case "arrange_snap": { const p = snapMock(args); return p ? { ...p, ...rectMock(p, args) } : null; }
     case "arrange_place": {

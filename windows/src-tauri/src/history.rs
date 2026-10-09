@@ -8,7 +8,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager};
 
-/// How many texts are kept. A pinned one stays whatever the number.
+/// How many texts the tests keep. A pinned one stays whatever the number.
+#[cfg(test)]
 const LIMIT: usize = 100;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -28,7 +29,13 @@ fn now_ms() -> u64 {
 }
 
 /// The list with `text` put at the top. The same text again moves up, keeps its pin and its source when no new one is given.
+#[cfg(test)]
 pub fn add(list: &[Item], text: &str, from: &str, now: u64) -> Vec<Item> {
+    add_within(list, text, from, now, LIMIT)
+}
+
+/// The same, with the number of texts that is kept.
+pub fn add_within(list: &[Item], text: &str, from: &str, now: u64, limit: usize) -> Vec<Item> {
     let earlier = list.iter().find(|i| i.text == text);
     let item = Item {
         id: now.max(list.iter().map(|i| i.id).max().unwrap_or(0) + 1),
@@ -39,7 +46,7 @@ pub fn add(list: &[Item], text: &str, from: &str, now: u64) -> Vec<Item> {
     };
     let rest: Vec<Item> = list.iter().filter(|i| i.text != text).cloned().collect();
     let pinned = rest.iter().filter(|i| i.pinned).count();
-    let keep_unpinned = LIMIT.saturating_sub(1 + pinned);
+    let keep_unpinned = limit.saturating_sub(1 + pinned);
     let mut seen = 0;
     let rest: Vec<Item> = rest
         .into_iter()
@@ -91,10 +98,28 @@ fn change(app: &AppHandle, edit: impl FnOnce(Vec<Item>) -> Vec<Item>) -> Vec<Ite
 
 /// A text that was copied here or came from another device.
 pub fn record(app: &AppHandle, text: &str, from: &str) {
-    if text.trim().is_empty() {
+    let current = crate::settings::get(app);
+    if text.trim().is_empty() || !current.clip_history {
         return;
     }
-    change(app, |list| add(&list, text, from, now_ms()));
+    let now = now_ms();
+    let (limit, days) = (current.clip_limit.max(10) as usize, u64::from(current.clip_days.max(1)));
+    change(app, |list| expire(add_within(&list, text, from, now, limit), now, days));
+}
+
+/// What is older than the days that are kept goes, except what is pinned.
+pub fn expire(list: Vec<Item>, now: u64, days: u64) -> Vec<Item> {
+    let oldest = now.saturating_sub(days * 24 * 3600 * 1000);
+    list.into_iter().filter(|i| i.pinned || i.at_ms >= oldest).collect()
+}
+
+/// How much is saved, for the settings.
+#[tauri::command]
+pub fn clip_history_info(app: AppHandle) -> Value {
+    let mut guard = ITEMS.lock().unwrap();
+    let list = guard.get_or_insert_with(|| load(&app));
+    let bytes: usize = list.iter().map(|i| i.text.len()).sum();
+    json!({ "count": list.len(), "pinned": list.iter().filter(|i| i.pinned).count(), "bytes": bytes })
 }
 
 #[tauri::command]
@@ -178,6 +203,28 @@ mod tests {
         assert_eq!(list.len(), LIMIT);
         assert!(list.iter().any(|i| i.text == "keep me"));
         assert_eq!(list[0].text, "item 150");
+    }
+
+    #[test]
+    fn what_is_older_than_the_days_goes_but_a_pin_stays() {
+        let day = 24 * 3600 * 1000;
+        let mut old = item("old", 1);
+        let mut pinned = item("pinned", 2);
+        pinned.pinned = true;
+        let fresh = item("fresh", 40 * day);
+        old.at_ms = 1;
+        let kept = expire(vec![fresh.clone(), pinned.clone(), old], 41 * day, 30);
+        assert_eq!(kept, vec![fresh, pinned]);
+    }
+
+    #[test]
+    fn the_number_that_is_kept_follows_the_setting() {
+        let mut list = Vec::new();
+        for n in 0..30u64 {
+            list = add_within(&list, &format!("text {n}"), "", n, 10);
+        }
+        assert_eq!(list.len(), 10);
+        assert_eq!(list[0].text, "text 29");
     }
 
     #[test]

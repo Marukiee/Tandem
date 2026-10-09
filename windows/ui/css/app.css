@@ -286,7 +286,12 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 .ring > svg { transform: rotate(-90deg); }
 .ring .mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; }
 .ring .num { font: 700 19px var(--font-display); }
-.ring .bolt { color: var(--ok); margin-top: 1px; }
+.ring .bolt { color: var(--ok); }
+/* The bolt is always there and grows in or out: its height goes with it, so the number settles to its new place instead of jumping. */
+.ring .bolt-wrap { display: flex; align-items: center; justify-content: center; height: 0; opacity: 0; transform: scale(0.2); overflow: visible;
+  transition: height 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2), opacity 0.35s ease, transform 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.4), margin 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.ring .bolt-wrap.on { height: var(--h); opacity: 1; transform: scale(1); margin-top: 1px; }
+.ring .num { transition: color 0.4s ease; }
 
 /* ---- Player ---- */
 .player { display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: stretch; }
@@ -393,3 +398,7 @@ select { cursor: default; }
 .screen-box.lifted { cursor: grabbing; border: 2px solid var(--accent); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28); z-index: 3; }
 .screen-box.ghost { background: var(--accent-soft); border: 2px dashed var(--accent); pointer-events: none; }
 .arrange-hint { position: absolute; left: 0; right: 0; bottom: 66px; text-align: center; font-size: 11px; color: var(--text-2); pointer-events: none; }
+
+/* The sections of the settings. */
+.tabs { flex-wrap: wrap; row-gap: 2px; margin-bottom: 4px; }
+.tabs button { white-space: nowrap; }

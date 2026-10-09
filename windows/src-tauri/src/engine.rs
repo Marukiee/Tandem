@@ -120,7 +120,7 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         "pointer.ping".into(),
     ];
     #[cfg(feature = "screen-host")]
-    if crate::host::available() {
+    if settings::get(app).screen_host && crate::host::available() {
         caps.push("screen.host".into());
         if crate::host::control_available() {
             caps.push("screen.control".into());

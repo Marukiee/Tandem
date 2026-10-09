@@ -29,6 +29,10 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | Een sleep van foto, bestand of tekst gaat mee over de rand (Mac als hoofd), op de plek van de aanwijzer | nee | ja, als hoofd (tekst plakt op de plek, bestanden landen na het loslaten) | ja als bestuurde pc (tekst: klik en plakken) | ja als bestuurde pc (tekst: middelste klik, bestanden op het bureaublad) |
 | De aanwijzer komt direct terug als de verbinding wegvalt of de klep dichtgaat (levensteken, standaard 2 seconden) | nee | ja | ja (hoofd en bestuurd) | ja (bestuurd), klep via instelling |
 | Tailscale gaat vanzelf aan als een apparaat niet bereikbaar is en Tailscale het zou bereiken | ja (melding aan de Tailscale-app) | ja (`tailscale up`) | ja (`tailscale up`) | ja (`tailscale up`, vraagt eenmalig `--operator`) |
+| Meerdere schermen naast de hoofdcomputer, te slepen en op schaal (zoals de weergave-instellingen van een desktop) | nee | ja, als hoofd (`ArrangementEditor`) | ja, als hoofd (`arrange.js`) | nee (geen hoofd), wel als bestuurd |
+| De telefoon als scherm voor de muis van een Mac (aanwijzer als overlay, tikken via Toegankelijkheid) | ja (`PointerIn`, nooit op een echte telefoon gezien) | als hoofd ja | nee | nee |
+| Muis, toetsen en scherm onder Wayland via de portals van het bureaublad (eenmalige toestemming die wordt onthouden) | n.v.t. | n.v.t. | n.v.t. | ja: invoer gezien (token bewaard), scherm nog niet afgerond |
+| Zichzelf bijwerken | ja | ja | ja | ja (AppImage) |
 | SSH-terminal naar een computer | ja (JSch en xterm.js, nooit tegen een echte computer geprobeerd) | ja | ja | ja |
 | Hotspot van de telefoon vanaf de computer | bron | ja | nee | nee |
 | Computer wakker maken (Wake on LAN) vanaf de telefoon | ja | doel | doel | doel |

@@ -39,7 +39,31 @@ export function DeviceGlyph({ device, size = 40 }) {
   </span>`;
 }
 
-/** The battery as a ring. The arc only closes at 100, and a bolt (not a word) says it is charging. */
+/** A number that runs to its new value instead of jumping, so a battery that charges up or drains reads as moving. */
+function useCountUp(target, ms = 520) {
+  const [shown, setShown] = useState(target);
+  const from = useRef(target);
+  useEffect(() => {
+    const start = performance.now();
+    const begin = from.current;
+    let frame = 0;
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / ms);
+      // Fast at first and then settling, the way the rest of the interface moves.
+      const eased = 1 - Math.pow(1 - t, 3);
+      const value = Math.round(begin + (target - begin) * eased);
+      from.current = value;
+      setShown(value);
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+  return shown;
+}
+
+/** The battery as a ring. The arc only closes at 100, and a bolt (not a word) says it is charging. Everything that changes moves: the arc
+ *  runs, the colour fades, the number counts, and the bolt grows in (or out) and takes the number with it. */
 export function BatteryRing({ battery, size = 66 }) {
   const level = battery.level;
   const stroke = size * 0.11;
@@ -47,15 +71,18 @@ export function BatteryRing({ battery, size = 66 }) {
   const c = 2 * Math.PI * r;
   const arc = level >= 100 ? 1 : (level / 100) * 0.945;
   const colour = battery.charging ? "var(--ok)" : level <= 15 ? "var(--bad)" : "var(--accent)";
+  const shown = useCountUp(level);
   return html`<div class="ring" style=${`width:${size}px;height:${size}px`} title=${t("battery") + " " + level + "%"}>
     <svg width=${size} height=${size}>
       <circle cx=${size / 2} cy=${size / 2} r=${r} fill="none" stroke="var(--line-strong)" stroke-width=${stroke} />
       <circle cx=${size / 2} cy=${size / 2} r=${r} fill="none" stroke=${colour} stroke-width=${stroke} stroke-linecap="round"
-        stroke-dasharray=${`${c * arc} ${c}`} style="transition: stroke-dasharray 0.7s cubic-bezier(0.2, 0.9, 0.3, 1), stroke 0.3s" />
+        stroke-dasharray=${`${c * arc} ${c}`} style="transition: stroke-dasharray 0.8s cubic-bezier(0.2, 0.9, 0.3, 1), stroke 0.45s ease" />
     </svg>
     <div class="mid">
-      <span class="num" style=${`font-size:${size * 0.29}px`}>${level}</span>
-      ${battery.charging && html`<${Icon} name="bolt" size=${size * 0.22} class="bolt" filled=${true} stroke=${1.5} />`}
+      <span class="num" style=${`font-size:${size * 0.29}px`}>${shown}</span>
+      <span class=${"bolt-wrap" + (battery.charging ? " on" : "")} style=${`--h:${size * 0.2}px`}>
+        <${Icon} name="bolt" size=${size * 0.2} class="bolt" filled=${true} stroke=${1.5} />
+      </span>
     </div>
   </div>`;
 }

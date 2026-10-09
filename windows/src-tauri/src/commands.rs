@@ -346,6 +346,25 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["autoTailscale"].as_bool() {
             current.auto_tailscale = v;
         }
+        if let Some(v) = patch["clipHistory"].as_bool() {
+            current.clip_history = v;
+        }
+        if let Some(v) = patch["clipLimit"].as_u64().filter(|v| [100, 250, 500, 1000].contains(v)) {
+            current.clip_limit = v as u32;
+        }
+        if let Some(v) = patch["clipDays"].as_u64().filter(|v| [7, 30, 90, 365].contains(v)) {
+            current.clip_days = v as u32;
+        }
+        if let Some(v) = patch["screenHost"].as_bool() {
+            current.screen_host = v;
+            if !v {
+                #[cfg(feature = "screen-host")]
+                crate::host::stop_all(&app);
+            }
+        }
+        if let Some(v) = patch["soundDelay"].as_str().filter(|v| ["low", "normal", "smooth"].contains(v)) {
+            current.sound_delay = v.to_string();
+        }
         if let Some(v) = patch["keepWhenLidClosed"].as_bool() {
             current.keep_when_lid_closed = v;
         }
@@ -463,4 +482,95 @@ pub fn open_logs(app: AppHandle) -> Reply<()> {
 #[tauri::command]
 pub fn quit_app(app: AppHandle) {
     tray::quit_app(&app);
+}
+
+
+// ---- Backup, what is new, and what the desktop was asked ---------------------------------------------------------
+
+/// The preferences of this computer into a file the person picks. Not the identity, the circle or the folders that are offered: only
+/// the settings of this window.
+#[tauri::command]
+pub async fn settings_export(app: AppHandle) -> Reply<Option<String>> {
+    let dialog = app.clone();
+    let target = tauri::async_runtime::spawn_blocking(move || {
+        dialog.dialog().file().add_filter("Tandem", &["json"]).set_file_name("tandem-settings.json").blocking_save_file()
+    })
+    .await
+    .map_err(shown)?;
+    let Some(path) = target.and_then(|t| t.into_path().ok()) else { return Ok(None) };
+    let mut value = serde_json::to_value(settings::get(&app)).map_err(shown)?;
+    // What belongs to this machine, not to the person.
+    if let Some(map) = value.as_object_mut() {
+        for key in ["downloadDir", "shareDevice", "shareEdge", "layout", "dismissedUpdate"] {
+            map.remove(key);
+        }
+    }
+    std::fs::write(&path, serde_json::to_string_pretty(&value).map_err(shown)?).map_err(shown)?;
+    Ok(Some(path.to_string_lossy().into_owned()))
+}
+
+/// Settings from a file made by `settings_export`. What is not in the file stays as it is.
+#[tauri::command]
+pub async fn settings_import(app: AppHandle) -> Reply<Value> {
+    let dialog = app.clone();
+    let source = tauri::async_runtime::spawn_blocking(move || dialog.dialog().file().add_filter("Tandem", &["json"]).blocking_pick_file())
+        .await
+        .map_err(shown)?;
+    let Some(path) = source.and_then(|s| s.into_path().ok()) else { return Ok(json!(settings::get(&app))) };
+    let text = std::fs::read_to_string(&path).map_err(shown)?;
+    let incoming: Value = serde_json::from_str(&text).map_err(|_| "that is not a file of Tandem settings".to_string())?;
+    {
+        let state = app.state::<AppState>();
+        let mut current = state.settings.lock().unwrap();
+        let mut merged = serde_json::to_value(&*current).map_err(shown)?;
+        if let (Some(base), Some(new)) = (merged.as_object_mut(), incoming.as_object()) {
+            for (key, value) in new {
+                if base.contains_key(key) && !["downloadDir", "shareDevice", "shareEdge", "layout", "dismissedUpdate"].contains(&key.as_str()) {
+                    base.insert(key.clone(), value.clone());
+                }
+            }
+        }
+        *current = serde_json::from_value(merged).map_err(|_| "that file does not fit these settings".to_string())?;
+    }
+    settings::save(&app);
+    media::refresh(&app);
+    capture::configure(&app);
+    Ok(json!(settings::get(&app)))
+}
+
+const CHANGELOG: &str = include_str!("../../../changelog.json");
+
+/// The newest versions with what was new in each, in both languages: the window picks its own.
+#[tauri::command]
+pub fn whats_new() -> Value {
+    let all: Value = serde_json::from_str(CHANGELOG).unwrap_or(Value::Null);
+    json!(all.as_array().map(|list| list.iter().take(15).cloned().collect::<Vec<_>>()).unwrap_or_default())
+}
+
+/// What the desktop was asked and said (the portals of a Wayland desktop), so the settings can show it and take it back.
+#[tauri::command]
+pub fn access_status(app: AppHandle) -> Value {
+    let dir = app.path().app_data_dir().ok();
+    let has = |name: &str| dir.as_ref().is_some_and(|d| d.join(name).exists());
+    #[cfg(target_os = "linux")]
+    let wayland = tandem_winsys::portal::is_wayland();
+    #[cfg(not(target_os = "linux"))]
+    let wayland = false;
+    json!({
+        "wayland": wayland,
+        "inputAllowed": has("portal-input.token"),
+        "screenAllowed": has("portal-screen.token"),
+        "input": input_support(),
+        "canHost": cfg!(feature = "screen-host") && can_host(),
+    })
+}
+
+/// Takes back what the desktop was told: the next time it asks again.
+#[tauri::command]
+pub fn portal_forget(app: AppHandle) {
+    if let Ok(dir) = app.path().app_data_dir() {
+        for name in ["portal-input.token", "portal-screen.token"] {
+            let _ = std::fs::remove_file(dir.join(name));
+        }
+    }
 }

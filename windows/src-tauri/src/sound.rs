@@ -14,13 +14,32 @@ use crate::{settings, state::AppState};
 
 /// The stream of the sound of a phone, as the phone numbers it.
 pub const STREAM: u8 = 9;
-/// Starts playing once this much sound is in the buffer, and drops down to the lower mark when more than the upper one is.
-const START_MS: usize = 120;
-const MAX_MS: usize = 400;
-const KEEP_MS: usize = 200;
+/// How much sound waits before playing starts, how much may wait at most before the oldest is dropped, and what is kept when that happens.
+/// Less is closer to live and stutters sooner on a poor connection; more is steadier.
+#[derive(Clone, Copy, Debug)]
+pub struct Delay {
+    start_ms: usize,
+    max_ms: usize,
+    keep_ms: usize,
+}
+
+impl Delay {
+    pub const LOW: Delay = Delay { start_ms: 40, max_ms: 160, keep_ms: 80 };
+    pub const NORMAL: Delay = Delay { start_ms: 120, max_ms: 400, keep_ms: 200 };
+    pub const SMOOTH: Delay = Delay { start_ms: 250, max_ms: 700, keep_ms: 350 };
+
+    pub fn named(name: &str) -> Delay {
+        match name {
+            "low" => Delay::LOW,
+            "smooth" => Delay::SMOOTH,
+            _ => Delay::NORMAL,
+        }
+    }
+}
 
 /// What is waiting to be played: stereo frames at the speed of the phone, and how far into them the sound card is.
 struct Buffer {
+    delay: Delay,
     rate: u32,
     frames: VecDeque<[f32; 2]>,
     /// A place between two frames, so a rate that does not match can be turned into the one of the card.
@@ -29,8 +48,8 @@ struct Buffer {
 }
 
 impl Buffer {
-    fn new(rate: u32) -> Buffer {
-        Buffer { rate: rate.max(8000), frames: VecDeque::new(), pos: 0.0, playing: false }
+    fn new(rate: u32, delay: Delay) -> Buffer {
+        Buffer { delay, rate: rate.max(8000), frames: VecDeque::new(), pos: 0.0, playing: false }
     }
 
     fn push(&mut self, pcm: &[u8], channels: usize) {
@@ -41,13 +60,13 @@ impl Buffer {
             let right = if channels > 1 { sample(1) } else { left };
             self.frames.push_back([left, right]);
         }
-        let max = self.rate as usize * MAX_MS / 1000;
+        let max = self.rate as usize * self.delay.max_ms / 1000;
         if self.frames.len() > max {
-            let drop = self.frames.len() - self.rate as usize * KEEP_MS / 1000;
+            let drop = self.frames.len() - self.rate as usize * self.delay.keep_ms / 1000;
             self.frames.drain(..drop);
             self.pos = 0.0;
         }
-        if !self.playing && self.frames.len() >= self.rate as usize * START_MS / 1000 {
+        if !self.playing && self.frames.len() >= self.rate as usize * self.delay.start_ms / 1000 {
             self.playing = true;
         }
     }
@@ -108,7 +127,7 @@ pub fn start(app: &AppHandle, from: String, rate: u32, channels: u8) {
     }
     let _ = app.state::<AppState>();
     stop_all();
-    let buffer = Arc::new(Mutex::new(Buffer::new(rate)));
+    let buffer = Arc::new(Mutex::new(Buffer::new(rate, Delay::named(&settings::get(app).sound_delay))));
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
     let player = buffer.clone();
     let spawned = std::thread::Builder::new().name("tandem-sound".into()).spawn(move || {
@@ -191,10 +210,10 @@ mod tests {
 
     #[test]
     fn it_waits_until_there_is_enough_and_then_plays() {
-        let mut buffer = Buffer::new(48_000);
+        let mut buffer = Buffer::new(48_000, Delay::NORMAL);
         buffer.push(&tone(100, 2), 2);
         assert_eq!(buffer.next(48_000), [0.0, 0.0], "too little to start with");
-        buffer.push(&tone(48_000 * START_MS / 1000, 2), 2);
+        buffer.push(&tone(48_000 * Delay::NORMAL.start_ms / 1000, 2), 2);
         let second = {
             buffer.next(48_000);
             buffer.next(48_000)
@@ -204,14 +223,14 @@ mod tests {
 
     #[test]
     fn a_card_that_runs_slower_takes_fewer_frames_and_one_that_runs_faster_more() {
-        let mut slow = Buffer::new(48_000);
+        let mut slow = Buffer::new(48_000, Delay::NORMAL);
         slow.push(&tone(9_000, 2), 2);
         let before = slow.frames.len();
         for _ in 0..1000 {
             slow.next(24_000);
         }
         let used_slow = before - slow.frames.len();
-        let mut fast = Buffer::new(48_000);
+        let mut fast = Buffer::new(48_000, Delay::NORMAL);
         fast.push(&tone(9_000, 2), 2);
         for _ in 0..1000 {
             fast.next(96_000);
@@ -222,15 +241,15 @@ mod tests {
 
     #[test]
     fn a_buffer_that_grows_too_full_is_cut_back() {
-        let mut buffer = Buffer::new(48_000);
+        let mut buffer = Buffer::new(48_000, Delay::NORMAL);
         buffer.push(&tone(48_000, 1), 1);
-        assert!(buffer.frames.len() <= 48_000 * MAX_MS / 1000 + 1);
-        assert!(buffer.frames.len() >= 48_000 * KEEP_MS / 1000 - 1);
+        assert!(buffer.frames.len() <= 48_000 * Delay::NORMAL.max_ms / 1000 + 1);
+        assert!(buffer.frames.len() >= 48_000 * Delay::NORMAL.keep_ms / 1000 - 1);
     }
 
     #[test]
     fn mono_is_spread_over_both_sides() {
-        let mut buffer = Buffer::new(48_000);
+        let mut buffer = Buffer::new(48_000, Delay::NORMAL);
         buffer.push(&tone(10, 1), 1);
         assert_eq!(buffer.frames[3][0], buffer.frames[3][1]);
     }

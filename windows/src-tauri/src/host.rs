@@ -146,6 +146,11 @@ impl TandemMediaHost for Host {
             let _ = engine.media_deny(request.session, TandemMediaEnd::Unsupported);
             return;
         }
+        // The person turned showing the screen off: every device is turned away, whatever it was allowed.
+        if !crate::settings::get(&self.app).screen_host {
+            let _ = engine.media_deny(request.session, TandemMediaEnd::Policy);
+            return;
+        }
         if !available() {
             let _ = engine.media_deny(request.session, TandemMediaEnd::Unavailable);
             return;

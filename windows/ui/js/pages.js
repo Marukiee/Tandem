@@ -515,20 +515,72 @@ function FilesHostSection() {
   </div>`;
 }
 
+// The settings, in sections like the settings of the Mac: what belongs together is together, and a section is a page of its own.
+const SECTIONS = [
+  ["general", "tab_general"], ["clipboard", "tab_clipboard"], ["files", "tab_files"], ["remote", "tab_remote"],
+  ["mouse", "tab_mouse"], ["quickshare", "tab_quickshare"], ["updates", "tab_updates"], ["about", "about"],
+];
+
+function rememberedSection() {
+  try { return SECTIONS.some(([id]) => id === localStorage.getItem("settingsSection")) ? localStorage.getItem("settingsSection") : "general"; } catch { return "general"; }
+}
+
 export function SettingsPage() {
   const s = state.settings;
-  const [name, setName] = useState(state.self ? state.self.name : "");
+  const [section, setSection] = useState(rememberedSection);
+  const open = (id) => { setSection(id); try { localStorage.setItem("settingsSection", id); } catch { /* the choice is only a convenience */ } };
   const patch = async (change) => { set({ settings: await call("set_settings", { patch: change }) }); setLanguage(state.settings.language, state.systemLanguage); };
   return html`<div class="wrap">
     <div><h1>${t("settings")}</h1></div>
+    <div class="seg tabs">
+      ${SECTIONS.map(([id, label]) => html`<button key=${id} class=${section === id ? "on" : ""} onClick=${() => open(id)}>${t(label)}</button>`)}
+    </div>
+    ${section === "general" && html`<${GeneralSettings} s=${s} patch=${patch} />`}
+    ${section === "clipboard" && html`<${ClipboardSettings} s=${s} patch=${patch} />`}
+    ${section === "files" && html`<${FilesHostSection} />`}
+    ${section === "remote" && html`<${RemoteSettings} s=${s} patch=${patch} />`}
+    ${section === "mouse" && html`<${MouseSection} s=${s} patch=${patch} />`}
+    ${section === "quickshare" && html`<${QuickShareSection} s=${s} patch=${patch} />`}
+    ${section === "updates" && html`<${UpdateSettings} s=${s} patch=${patch} />`}
+    ${section === "about" && html`<${AboutSettings} />`}
+  </div>`;
+}
 
+function GeneralSettings({ s, patch }) {
+  const [name, setName] = useState(state.self ? state.self.name : "");
+  const delays = ["low", "normal", "smooth"];
+  const saved = (text) => say(text);
+  return html`<div style="display:flex;flex-direction:column;gap:12px">
     <h2>${t("this_pc")}</h2>
     <div class="card" style="display:flex;gap:10px;align-items:center">
       <label class="muted" for="pcname">${t("pc_name")}</label>
       <input id="pcname" type="text" class="grow" value=${name} onInput=${(e) => setName(e.target.value)} />
       <button class="btn" disabled=${!name.trim() || (state.self && name === state.self.name)} onClick=${() => call("rename_self", { name: name.trim() }).then(() => set({ self: { ...state.self, name: name.trim() } })).catch(failed)}>${t("save")}</button>
     </div>
+    <div class="small muted">${t("pc_name_sub")}</div>
 
+    <h2>${t("behaviour")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="power" title=${t("start_with_windows")} sub=${t("start_with_windows_sub")} on=${state.autostart}
+        onChange=${async (v) => { try { set({ autostart: await call("set_autostart", { enabled: v }) }); } catch (e) { failed(e); } }} />
+      <${SettingRow} icon="x" title=${t("close_to_tray")} sub=${t("close_to_tray_sub")} on=${s.closeToTray} onChange=${(v) => patch({ closeToTray: v })} />
+      <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
+      <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
+      <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
+    </div>
+
+    <h2>${t("sound_media")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
+      <${SettingRow} icon="volume" title=${t("phone_sound")} sub=${t("phone_sound_sub")} on=${s.phoneSound} onChange=${(v) => patch({ phoneSound: v })} />
+      <${SettingRow} icon="hourglass" title=${t("sound_delay")} sub=${t("sound_delay_sub")} disabled=${!s.phoneSound}>
+        <select value=${s.soundDelay || "normal"} disabled=${!s.phoneSound} onChange=${(e) => patch({ soundDelay: e.target.value })}>
+          ${delays.map((d) => html`<option value=${d}>${t("delay_" + d)}</option>`)}
+        </select>
+      <//>
+    </div>
+
+    <h2>${t("received_files")}</h2>
     <div class="card flush">
       <${SettingRow} icon="download" title=${t("download_folder")} sub=${state.downloadDir}>
         <div style="display:flex;gap:6px">
@@ -536,18 +588,10 @@ export function SettingsPage() {
           <button class="btn small" onClick=${() => call("open_downloads").catch(failed)}>${t("open_folder")}</button>
         </div>
       <//>
-      <${SettingRow} icon="power" title=${t("start_with_windows")} sub=${t("start_with_windows_sub")} on=${state.autostart}
-        onChange=${async (v) => { try { set({ autostart: await call("set_autostart", { enabled: v }) }); } catch (e) { failed(e); } }} />
-      <${SettingRow} icon="x" title=${t("close_to_tray")} sub=${t("close_to_tray_sub")} on=${s.closeToTray} onChange=${(v) => patch({ closeToTray: v })} />
-      <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
-      <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
-      <${SettingRow} icon="volume" title=${t("phone_sound")} sub=${t("phone_sound_sub")} on=${s.phoneSound} onChange=${(v) => patch({ phoneSound: v })} />
-      <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
-      <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
-      <${SettingRow} icon="refresh" title=${t("auto_update")} sub=${t("auto_update_sub")} on=${s.autoUpdate} onChange=${(v) => patch({ autoUpdate: v })} />
-      <${SettingRow} icon="arrow-down" title=${t("check_now")} sub=${updateText()}>
-        <button class="btn small" disabled=${state.update.state === "checking" || state.update.state === "downloading" || state.update.state === "installing"} onClick=${() => call("check_update").then((u) => set({ update: { dismissed: state.update.dismissed, ...u } })).catch(failed)}>${t("check_now")}</button>
-      <//>
+    </div>
+
+    <h2>${t("language")}</h2>
+    <div class="card flush">
       <${SettingRow} icon="info-circle" title=${t("language")}>
         <select value=${s.language} onChange=${(e) => patch({ language: e.target.value })}>
           <option value="auto">${t("language_auto")}</option><option value="en">English</option><option value="nl">Nederlands</option>
@@ -555,18 +599,117 @@ export function SettingsPage() {
       <//>
     </div>
 
-    <${QuickShareSection} s=${s} patch=${patch} />
+    <h2>${t("backup")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="upload" title=${t("backup_export")} sub=${t("backup_sub")}>
+        <button class="btn small" onClick=${() => call("settings_export").then((path) => path && saved(t("backup_saved"))).catch(failed)}>${t("backup_export_button")}</button>
+      <//>
+      <${SettingRow} icon="refresh" title=${t("backup_import")} sub=${t("backup_import_sub")}>
+        <button class="btn small" onClick=${() => call("settings_import").then((now) => { set({ settings: now }); setLanguage(now.language, state.systemLanguage); saved(t("backup_restored")); }).catch(failed)}>${t("backup_import_button")}</button>
+      <//>
+    </div>
+  </div>`;
+}
 
-    <${FilesHostSection} />
+// What is kept of what was copied, for how long, and a way to empty it.
+function ClipboardSettings({ s, patch }) {
+  const [info, setInfo] = useState({ count: 0, pinned: 0, bytes: 0 });
+  const load = () => call("clip_history_info").then(setInfo).catch(() => {});
+  useEffect(() => { load(); let off; listen("clip-history", load).then((f) => { off = f; }); return () => off && off(); }, []);
+  const choose = (value, list, change, label) => html`<select value=${value} onChange=${(e) => change(Number(e.target.value))}>
+    ${list.map((v) => html`<option value=${v}>${label(v)}</option>`)}</select>`;
+  const summary = [t("clip_items", info.count), info.pinned ? t("clip_pinned", info.pinned) : "", info.bytes ? fmtSize(info.bytes) : ""].filter(Boolean).join(", ");
+  return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("tab_clipboard")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="clipboard" title=${t("clip_keep")} sub=${t("clip_keep_sub")} on=${s.clipHistory} onChange=${(v) => patch({ clipHistory: v })} />
+    </div>
+    <div class="small muted">${t("clip_secret_note")}</div>
+    <h2>${t("clip_what_kept")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="files" title=${t("clip_limit")} disabled=${!s.clipHistory}>
+        ${choose(s.clipLimit || 250, [100, 250, 500, 1000], (v) => patch({ clipLimit: v }), (v) => String(v))}
+      <//>
+      <${SettingRow} icon="hourglass" title=${t("clip_days")} disabled=${!s.clipHistory}>
+        ${choose(s.clipDays || 30, [7, 30, 90, 365], (v) => patch({ clipDays: v }), (v) => t("days_" + v))}
+      <//>
+      <${SettingRow} icon="trash" title=${t("clip_saved")} sub=${summary || t("nothing_yet")}>
+        <button class="btn small danger" disabled=${!info.count} onClick=${() => { if (confirm(t("clip_clear_confirm"))) call("clip_history_clear", { keepPinned: false }).then(load).catch(failed); }}>${t("clip_clear")}</button>
+      <//>
+    </div>
+    <div class="small muted">${t("clip_pinned_note")}</div>
+  </div>`;
+}
 
-    <${MouseSection} s=${s} patch=${patch} />
+// This computer as a screen that other devices can look at and use, who may, and what the desktop was asked.
+function RemoteSettings({ s, patch }) {
+  const [access, setAccess] = useState(null);
+  const load = () => call("access_status").then(setAccess).catch(() => {});
+  useEffect(() => { load(); }, []);
+  const people = state.devices.filter((d) => d.platform === "macos" || d.platform === "windows" || d.platform === "linux" || d.platform === "android");
+  const forget = () => call("portal_forget").then(() => { load(); say(t("access_forgotten")); }).catch(failed);
+  return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("tab_remote")}</h2>
+    <div class="muted">${t("remote_intro")}</div>
+    <div class="card flush">
+      <${SettingRow} icon="device-desktop" title=${t("remote_host")} sub=${t("remote_host_sub")} on=${s.screenHost} disabled=${!state.canHost}
+        why=${!state.canHost ? t("remote_unavailable") : ""} onChange=${(v) => patch({ screenHost: v })} />
+    </div>
+    ${state.canHost && html`<h2>${t("remote_per_device")}</h2>`}
+    ${!state.canHost ? null : people.length === 0
+      ? html`<div class="card"><div class="small muted">${t("remote_none")}</div></div>`
+      : people.map((d) => html`<div key=${d.id} style="display:flex;flex-direction:column;gap:6px">
+          <div class="small muted" style="padding-left:4px">${d.name}</div>
+          <div class="card flush"><${ScreenPolicyRows} device=${d} /></div>
+        </div>`)}
+    ${access && access.wayland && html`<h2>${t("access_title")}</h2>
+      <div class="card flush">
+        <${SettingRow} icon="pointer" title=${t("access_input")} sub=${access.inputAllowed ? "" : t("access_not_yet")}>
+          <span class=${"chip " + (access.inputAllowed ? "ok" : "")}>${access.inputAllowed ? t("access_yes") : t("access_no")}</span>
+        <//>
+        <${SettingRow} icon="device-desktop" title=${t("access_screen")} sub=${access.screenAllowed ? "" : t("access_not_yet")}>
+          <span class=${"chip " + (access.screenAllowed ? "ok" : "")}>${access.screenAllowed ? t("access_yes") : t("access_no")}</span>
+        <//>
+        <${SettingRow} icon="x" title=${t("access_forget")} sub=${t("access_forget_sub")}>
+          <button class="btn small" disabled=${!access.inputAllowed && !access.screenAllowed} onClick=${forget}>${t("access_forget_button")}</button>
+        <//>
+      </div>
+      <div class="small muted">${t("access_wayland_note")}</div>`}
+  </div>`;
+}
 
+// Looking for a newer Tandem, and what changed in the versions that came out.
+function UpdateSettings({ s, patch }) {
+  const [news, setNews] = useState([]);
+  useEffect(() => { call("whats_new").then(setNews).catch(() => {}); }, []);
+  const lang = language() === "nl" ? "nl" : "en";
+  const busy = ["checking", "downloading", "installing"].includes(state.update.state);
+  return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("tab_updates")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="refresh" title=${t("auto_update")} sub=${t("auto_update_sub")} on=${s.autoUpdate} onChange=${(v) => patch({ autoUpdate: v })} />
+      <${SettingRow} icon="arrow-down" title=${t("check_now")} sub=${updateText()}>
+        <button class="btn small" disabled=${busy} onClick=${() => call("check_update").then((u) => set({ update: { dismissed: state.update.dismissed, ...u } })).catch(failed)}>${t("check_now")}</button>
+      <//>
+    </div>
+    <h2>${t("whats_new")}</h2>
+    ${news.length === 0
+      ? html`<div class="card"><div class="small muted">${t("nothing_yet")}</div></div>`
+      : news.map((entry) => { const text = entry[lang] || entry.en; return html`<div key=${entry.version} class="card" style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:8px;align-items:baseline"><b>${text.title}</b><span class="small muted">${entry.version}</span><span class="grow"></span><span class="small faint">${entry.date}</span></div>
+          <ul style="margin:0;padding-left:18px">${(text.new || []).map((line) => html`<li>${line}</li>`)}</ul>
+        </div>`; })}
+  </div>`;
+}
+
+function AboutSettings() {
+  return html`<div style="display:flex;flex-direction:column;gap:12px">
     <h2>${t("about")}</h2>
     <div class="card">
       <div>Tandem ${state.version}${state.build ? " (" + state.build + ")" : ""}</div>
       <div class="small muted" style="margin-top:6px">${t("experimental_note")}</div>
       <div class="small muted" style="margin-top:6px">${t("firewall")}</div>
-      <div style="margin-top:10px"><button class="btn small" onClick=${() => call("open_logs").catch(failed)}>${t("open_logs")}</button></div>
+      <div style="margin-top:10px;display:flex;gap:8px"><button class="btn small" onClick=${() => call("open_logs").catch(failed)}>${t("open_logs")}</button></div>
     </div>
   </div>`;
 }

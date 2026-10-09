@@ -1,5 +1,33 @@
 [
   {
+    "version": "0.1.74",
+    "date": "2026-10-09",
+    "en": {
+      "title": "Screens side by side",
+      "new": [
+        "Drag the screens of your computers next to each other, to scale",
+        "Your phone can be a screen for the mouse of your Mac",
+        "Linux on Wayland: mouse, keys and screen sharing, asked once",
+        "Linux updates itself",
+        "Android: the device page in groups, and a nicer terminal",
+        "Windows and Linux: settings in sections, and a clipboard you can open up",
+        "Your device name stays after a restart"
+      ]
+    },
+    "nl": {
+      "title": "Schermen naast elkaar",
+      "new": [
+        "Sleep de schermen van je computers naast elkaar, op schaal",
+        "Je telefoon kan een scherm zijn voor de muis van je Mac",
+        "Linux op Wayland: muis, toetsen en scherm delen, eenmalig gevraagd",
+        "Linux werkt zichzelf bij",
+        "Android: de apparaatpagina in groepen, en een mooiere terminal",
+        "Windows en Linux: instellingen in secties, en een klembord dat open kan",
+        "Je apparaatnaam blijft na een herstart"
+      ]
+    }
+  },
+  {
     "version": "0.1.73",
     "date": "2026-10-09",
     "en": {
