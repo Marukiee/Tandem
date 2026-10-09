@@ -252,6 +252,9 @@ export function DevicePage({ device }) {
 export function ClipboardPage() {
   const [query, setQuery] = useState("");
   const [items, setItems] = useState([]);
+  // The items that are shown in full: a long text is cut after a few lines until it is opened.
+  const [open, setOpen] = useState({});
+  const isLong = (text) => text.length > 160 || text.split("\n").length > 4;
   const load = () => call("clip_history_search", { query }).then(setItems).catch(failed);
   useEffect(() => { load(); }, [query]);
   useEffect(() => { let off; listen("clip-history", load).then((f) => { off = f; }); return () => off && off(); }, [query]);
@@ -274,9 +277,10 @@ export function ClipboardPage() {
       ? html`<div class="card empty"><${Icon} name="clipboard" size=${34} /><div>${query ? t("nothing_matches") : t("nothing_yet")}</div></div>`
       : html`<div class="card flush">${items.map((item) => html`<div class="item" key=${item.id}>
           <div class="grow" style="cursor:pointer;min-width:0" onClick=${() => copy(item)}>
-            <div style="white-space:pre-wrap;word-break:break-word;max-height:4.6em;overflow:hidden">${item.text}</div>
-            <div class="small muted">${[item.from, ago(item.at_ms)].filter(Boolean).join(" · ")}</div>
+            <div style=${"white-space:pre-wrap;word-break:break-word;" + (open[item.id] ? "max-height:60vh;overflow:auto" : "max-height:4.6em;overflow:hidden")}>${item.text}</div>
+            <div class="small muted">${[item.from, ago(item.at_ms), isLong(item.text) ? t("n_characters", item.text.length) : ""].filter(Boolean).join(" · ")}</div>
           </div>
+          ${isLong(item.text) && html`<button class="btn small" title=${open[item.id] ? t("show_less") : t("show_more")} onClick=${() => setOpen({ ...open, [item.id]: !open[item.id] })}><${Icon} name=${open[item.id] ? "arrow-up" : "arrow-down"} size=${15} /></button>`}
           <button class=${"btn small" + (item.pinned ? " accent" : "")} title=${item.pinned ? t("let_go") : t("keep_this")} onClick=${() => call("clip_history_pin", { id: item.id })}><${Icon} name="pin" size=${15} /></button>
           <button class="btn small" title=${t("remove")} onClick=${() => call("clip_history_remove", { id: item.id })}><${Icon} name="x" size=${15} /></button>
         </div>`)}</div>`}
