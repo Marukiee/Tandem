@@ -130,7 +130,11 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Link<S> {
     /// The first frame of a connection, which is not sealed: the request to connect.
     pub async fn recv_offline_plain(&mut self) -> Result<OfflineV1> {
         let bytes = self.read_raw().await?;
-        let frame = OfflineFrame::decode(bytes.as_slice()).map_err(|_| bad("the request to connect does not parse"))?;
+        let frame = OfflineFrame::decode(bytes.as_slice()).map_err(|e| {
+            // What a sender really sends first is the one thing that tells what is wrong, so it is in the message.
+            let head: String = bytes.iter().take(48).map(|b| format!("{b:02x}")).collect();
+            bad(&format!("the request to connect does not parse ({e}; {} bytes: {head})", bytes.len()))
+        })?;
         let v1 = frame.v1.ok_or_else(|| bad("the request to connect is empty"))?;
         if v1.r#type != Some(OfflineType::ConnectionRequest as i32) {
             return Err(bad("the first frame is not a request to connect"));
