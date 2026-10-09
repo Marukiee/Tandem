@@ -161,7 +161,7 @@ fn state_of(app: &AppHandle) -> Value {
             })
         })
         .collect();
-    json!({ "main": { "width": main.0, "height": main.1 }, "devices": devices })
+    json!({ "main": { "width": main.0, "height": main.1 }, "devices": devices, "capture": crate::capture::status() })
 }
 
 #[tauri::command]

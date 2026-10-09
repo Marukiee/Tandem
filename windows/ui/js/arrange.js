@@ -42,11 +42,15 @@ export function ArrangementEditor() {
   const asking = useRef(false);
 
   const load = () => call("arrange_state").then(setView).catch(failed);
+  const dragging = useRef(false);
+  dragging.current = !!drag;
   useEffect(() => {
     load();
     let off;
     listen("devices", load).then((f) => { off = f; });
-    return () => off && off();
+    // The desktop may be asking the person something (see the note under the screens): the state is read again now and then.
+    const timer = setInterval(() => { if (!dragging.current) load(); }, 3000);
+    return () => { clearInterval(timer); if (off) off(); };
   }, []);
   useEffect(() => {
     if (!root.current) return undefined;
@@ -118,7 +122,9 @@ export function ArrangementEditor() {
   const mainStyle = toView({ x: 0, y: 0, w: main.width, h: main.height });
   const ghostStyle = ghost && toView({ x: ghost.x, y: ghost.y, w: ghost.width, h: ghost.height });
 
-  return html`<div ref=${root} class="arrange" style=${{ height: HEIGHT + TRAY + "px" }}>
+  const capture = view.capture || { state: "ready" };
+  return html`<div>
+  <div ref=${root} class="arrange" style=${{ height: HEIGHT + TRAY + "px" }}>
     ${ghostStyle && html`<div class="screen-box ghost" style=${ghostStyle}></div>`}
     <div class="screen-box main" style=${mainStyle}>
       <${Icon} name="device-desktop" size=${15} />
@@ -127,5 +133,8 @@ export function ArrangementEditor() {
     </div>
     ${devices.map((d) => boxFor(d, unplaced.indexOf(d)))}
     ${unplaced.length > 0 && html`<div class="arrange-hint">${t("arrange_hint")}</div>`}
+  </div>
+  ${capture.state === "starting" && html`<div class="small muted" style="margin-top:8px">${t("capture_starting")}</div>`}
+  ${capture.state === "failed" && html`<div class="small muted" style="margin-top:8px">${t("capture_failed", capture.reason || "?")}</div>`}
   </div>`;
 }

@@ -40,12 +40,12 @@ fn token_file(name: &str) -> Option<PathBuf> {
     DATA_DIR.get().map(|dir| dir.join(name))
 }
 
-fn read_token(name: &str) -> Option<String> {
+pub(crate) fn read_token(name: &str) -> Option<String> {
     let text = std::fs::read_to_string(token_file(name)?).ok()?;
     Some(text.trim().to_string()).filter(|t| !t.is_empty())
 }
 
-fn write_token(name: &str, token: &str) {
+pub(crate) fn write_token(name: &str, token: &str) {
     if let Some(path) = token_file(name) {
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
@@ -60,7 +60,7 @@ pub fn is_wayland() -> bool {
         || (std::env::var_os("XDG_SESSION_TYPE").is_none() && std::env::var_os("WAYLAND_DISPLAY").is_some())
 }
 
-fn portal_property(interface: &str, property: &str) -> Option<u32> {
+pub(crate) fn portal_property(interface: &str, property: &str) -> Option<u32> {
     use zbus::blocking::Connection;
     use zbus::blocking::proxy::Builder;
     use zbus::proxy::CacheProperties;

@@ -39,7 +39,7 @@ pub fn get_state(app: AppHandle, state: State<'_, AppState>) -> Value {
         "systemLanguage": sys_locale::get_locale().unwrap_or_default(),
         "build": option_env!("TANDEM_BUILD").unwrap_or(""),
         "update": update::current(&app),
-        "canShare": cfg!(windows),
+        "canShare": capture::can_share(),
         "platform": if cfg!(windows) { "windows" } else { "linux" },
         "canHost": cfg!(feature = "screen-host") && can_host(),
         "input": input_support(),

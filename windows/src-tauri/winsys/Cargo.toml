@@ -32,7 +32,11 @@ zbus = "5"
 x11rb = "0.13"
 # Wayland: the portals of the desktop (a window may not press keys or look at the screen there without asking). One question,
 # remembered, and then the input and the screen come through them.
-ashpd = { version = "0.13", default-features = false, features = ["async-io", "remote_desktop", "screencast"] }
+ashpd = { version = "0.13", default-features = false, features = ["async-io", "remote_desktop", "screencast", "input_capture"] }
 pollster = "0.4"
+# The mouse and keyboard of this computer on their way to another one (InputCapture): the desktop hands them over through libei.
+reis = "0.7"
+futures-util = "0.3"
+async-channel = "2"
 enumflags2 = "0.7"
 libc = "0.2"

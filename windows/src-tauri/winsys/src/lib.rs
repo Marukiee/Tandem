@@ -70,6 +70,9 @@ mod mpris;
 /// The portals of a Wayland desktop: keys, the pointer and the screen.
 #[cfg(target_os = "linux")]
 pub mod portal;
+/// Wayland: the mouse and keyboard of this computer, on their way to another computer.
+#[cfg(target_os = "linux")]
+pub mod inputcapture;
 #[cfg(target_os = "linux")]
 mod x11grab;
 #[cfg(not(windows))]

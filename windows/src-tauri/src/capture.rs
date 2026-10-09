@@ -85,6 +85,33 @@ pub fn configure(app: &AppHandle) {
         let _ = HOOKS.set(Capture::start(see));
         watch();
     }
+    #[cfg(target_os = "linux")]
+    linux::configure(app);
+}
+
+/// Whether the mouse of this computer can be used on the others from here: Windows always can, Linux when the desktop offers to hand it
+/// over (Wayland).
+pub fn can_share() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        linux::supported()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        cfg!(windows)
+    }
+}
+
+/// How the capture of the mouse is doing, for the settings: `ready`, `starting` (the desktop is asking the person), or `failed`.
+pub fn status() -> serde_json::Value {
+    #[cfg(target_os = "linux")]
+    {
+        linux::status()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        serde_json::json!({ "state": "ready", "reason": "" })
+    }
 }
 
 /// Asks the computer that has the pointer, twice a second, whether it is still there. When it does not answer for two seconds (its
@@ -123,6 +150,17 @@ fn send(out: Out) {
     }
 }
 
+/// The pointer went over to `device`, through `edge` of this screen, `along` of the way down it: it is held still here and the other
+/// computer is told to take it in.
+fn started(device: String, edge: Edge, along: f32) {
+    if let Some(Some(hooks)) = HOOKS.get() {
+        hooks.hold(true);
+    }
+    *HEARD.lock().unwrap() = Some(Instant::now());
+    PONGED.store(false, std::sync::atomic::Ordering::Relaxed);
+    send(Out::Share(device, TandemPointerShare::Enter { edge: edge.into(), along: along.clamp(0.0, 1.0) }));
+}
+
 /// What the hands did. True when it is for the other computer and has to go no further on this one.
 fn see(seen: Seen) -> bool {
     let mut inner = INNER.lock().unwrap();
@@ -151,12 +189,7 @@ fn see(seen: Seen) -> bool {
         inner.remote = Some((device.clone(), edge));
         inner.mods = 0;
         drop(inner);
-        if let Some(Some(hooks)) = HOOKS.get() {
-            hooks.hold(true);
-        }
-        *HEARD.lock().unwrap() = Some(Instant::now());
-        PONGED.store(false, std::sync::atomic::Ordering::Relaxed);
-        send(Out::Share(device, TandemPointerShare::Enter { edge: edge.into(), along: along.clamp(0.0, 1.0) }));
+        started(device, edge, along);
         return true;
     };
     let _ = edge;
@@ -215,7 +248,7 @@ fn mac_code(vk: u16) -> Option<u16> {
 /// The pointer is back on this PC: where it left, or where the other computer says it came from (`along` its own edge, which is
 /// worked out to the place on this screen where the two touch).
 fn restore(along: Option<f32>, device: &str, edge: Edge) {
-    let (left, top, w, h) = tandem_winsys::desktop();
+    let (left, top, w, h) = desktop_box();
     let target = match along {
         Some(along) => {
             let size = crate::arrange::size_of(device).unwrap_or((w, h));
@@ -237,7 +270,20 @@ fn restore(along: Option<f32>, device: &str, edge: Edge) {
     if let Some(Some(hooks)) = HOOKS.get() {
         hooks.hold(false);
     }
+    #[cfg(target_os = "linux")]
+    linux::release(target);
+    #[cfg(not(target_os = "linux"))]
     tandem_winsys::warp(target.0, target.1);
+}
+
+/// All the screens of this computer together: where they start, and how big they are.
+fn desktop_box() -> (i32, i32, i32, i32) {
+    if cfg!(target_os = "linux") {
+        let (w, h) = crate::arrange::own_size();
+        (0, 0, w, h)
+    } else {
+        tandem_winsys::desktop()
+    }
 }
 
 fn come_back(along: Option<f32>) {
@@ -252,6 +298,140 @@ pub fn returned(device: &str, along: Option<f32>) {
     let mine = INNER.lock().unwrap().remote.as_ref().is_some_and(|(d, _)| d == device);
     if mine {
         come_back(along);
+    }
+}
+
+/// Linux (Wayland): the desktop watches the edges where another computer sits and hands over the mouse and keyboard when the pointer runs
+/// into one (see `tandem_winsys::inputcapture`). What comes then goes the same way as what the hooks of Windows see.
+#[cfg(target_os = "linux")]
+mod linux {
+    use super::*;
+    use tandem_winsys::inputcapture::{self, Captured, Side, State, Stretch, WaylandCapture};
+
+    static CAPTURE: OnceLock<WaylandCapture> = OnceLock::new();
+    /// Which stretch of an edge is which computer: (stretch, computer, edge).
+    static STRETCHES: Mutex<Vec<(u32, String, Edge)>> = Mutex::new(Vec::new());
+
+    pub fn supported() -> bool {
+        static ANSWER: OnceLock<bool> = OnceLock::new();
+        *ANSWER.get_or_init(|| tandem_winsys::portal::is_wayland() && inputcapture::available())
+    }
+
+    pub fn status() -> serde_json::Value {
+        match CAPTURE.get() {
+            Some(capture) => {
+                let state = match capture.state() {
+                    State::Ready => "ready",
+                    State::Starting => "starting",
+                    State::Failed => "failed",
+                };
+                serde_json::json!({ "state": state, "reason": capture.reason() })
+            }
+            None => serde_json::json!({ "state": "idle", "reason": "" }),
+        }
+    }
+
+    /// Starts the capture when there is a screen next to this one, and keeps the barriers where those screens are.
+    pub fn configure(app: &AppHandle) {
+        if !supported() || settings::get(app).layout.is_empty() {
+            if let Some(capture) = CAPTURE.get() {
+                capture.set_stretches(Vec::new());
+            }
+            return;
+        }
+        if CAPTURE.get().is_none() {
+            let _ = CAPTURE.set(WaylandCapture::start(handle));
+            // The computers come and go and their screens are measured when they say hello, so the barriers follow.
+            let watcher = app.clone();
+            std::thread::Builder::new()
+                .name("tandem-barriers".into())
+                .spawn(move || loop {
+                    std::thread::sleep(Duration::from_secs(2));
+                    sync(&watcher);
+                })
+                .ok();
+        }
+        sync(app);
+    }
+
+    fn sync(app: &AppHandle) {
+        let Some(capture) = CAPTURE.get() else { return };
+        let (w, h) = crate::arrange::own_size();
+        let mut known = Vec::new();
+        let mut stretches = Vec::new();
+        for (index, neighbour) in crate::arrange::neighbours(app, true).into_iter().enumerate() {
+            let id = index as u32 + 1;
+            let edge = neighbour.placement.edge;
+            let (main_len, len) = match edge {
+                Edge::Left | Edge::Right => (h, neighbour.height),
+                Edge::Top | Edge::Bottom => (w, neighbour.width),
+            };
+            let (from, to) = (neighbour.placement.offset.max(0), (neighbour.placement.offset + len).min(main_len));
+            if to <= from {
+                continue;
+            }
+            let side = match edge {
+                Edge::Left => Side::Left,
+                Edge::Right => Side::Right,
+                Edge::Top => Side::Top,
+                Edge::Bottom => Side::Bottom,
+            };
+            stretches.push(Stretch { id, side, from, to });
+            known.push((id, neighbour.id, edge));
+        }
+        *STRETCHES.lock().unwrap() = known;
+        capture.set_stretches(stretches);
+    }
+
+    /// The edge of the screens a place is on, for when the desktop does not say which barrier it was.
+    fn edge_at(x: i32, y: i32) -> Edge {
+        let (w, h) = crate::arrange::own_size();
+        let gaps = [(Edge::Left, x), (Edge::Right, w - 1 - x), (Edge::Top, y), (Edge::Bottom, h - 1 - y)];
+        gaps.into_iter().min_by_key(|(_, gap)| gap.abs()).map(|(edge, _)| edge).unwrap_or(Edge::Right)
+    }
+
+    fn handle(captured: Captured) {
+        match captured {
+            Captured::Activated { id, x, y } => activated(id, x, y),
+            Captured::Deactivated => {
+                // The desktop took the mouse back itself (the screen was locked, say): the other computer is told it has no pointer any more.
+                let remote = INNER.lock().unwrap().remote.take();
+                if let Some((device, _)) = remote {
+                    send(Out::Share(device, TandemPointerShare::Release));
+                }
+            }
+            Captured::Seen(seen) => {
+                let away = INNER.lock().unwrap().remote.is_some();
+                if away {
+                    see(seen);
+                }
+            }
+        }
+    }
+
+    fn activated(id: u32, x: i32, y: i32) {
+        let give_back = || release((x, y));
+        let Some(app) = APP.get() else { return give_back() };
+        let edge = STRETCHES.lock().unwrap().iter().find(|(s, _, _)| *s == id).map(|(_, _, edge)| *edge).unwrap_or_else(|| edge_at(x, y));
+        let position = if matches!(edge, Edge::Left | Edge::Right) { y } else { x };
+        let list = crate::arrange::neighbours(app, true);
+        // The place on the edge says which computer it is, as for the hooks of Windows.
+        let Some((index, along)) = layout::cross(edge, position, &list) else { return give_back() };
+        let device = list[index].id.clone();
+        {
+            let mut inner = INNER.lock().unwrap();
+            inner.saved = (x, y);
+            inner.remote = Some((device.clone(), edge));
+            inner.mods = 0;
+        }
+        started(device, edge, along);
+    }
+
+    /// Gives the mouse and keyboard back to this computer, with the pointer at this place.
+    pub fn release(at: (i32, i32)) {
+        if let Some(capture) = CAPTURE.get() {
+            capture.release(at.0, at.1);
+        }
     }
 }
 

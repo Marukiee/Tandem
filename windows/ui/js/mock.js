@@ -77,6 +77,7 @@ const SIZES = { mac: [1512, 982], phone: [412, 915] };
 function arrangement() {
   return {
     main: MAIN,
+    capture: { state: new URLSearchParams(location.search).get("capture") || "ready", reason: "no permission" },
     devices: devices.filter((d) => d.platform !== "android" || true).map((d) => {
       const spot = layout.find((s) => s.id === d.id);
       const size = SIZES[d.id];
