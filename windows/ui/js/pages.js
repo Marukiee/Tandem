@@ -152,6 +152,9 @@ function ScreenPolicyRows({ device }) {
     <${SettingRow} icon="pointer" title=${t("policy_control")} sub=${t("policy_control_sub")}>${choices(policy.control, (v) => change({ control: v }))}<//>`;
 }
 
+/** The last answer about the ssh port of each computer, so a page that is opened again shows it at once. */
+const sshSeen = new Map();
+
 export function DevicePage({ device }) {
   const [ringing, setRinging] = useState(false);
   const players = device.online ? state.players[device.id] || [] : [];
@@ -173,19 +176,26 @@ export function DevicePage({ device }) {
   const show = (kind) => call("live_start", { id: device.id, kind, name: device.name, computer: isComputerEarly }).catch(failed);
   // A computer that answers on the ssh port can be logged in to from here. The button is grey, with the reason, when it does not.
   const isComputer = device.platform === "macos" || device.platform === "windows" || device.platform === "linux";
-  const [sshAddress, setSshAddress] = useState(null);
-  const [sshChecked, setSshChecked] = useState(false);
+  // What was found the last time is shown at once, and looked at again quietly: a button that starts grey and lights up a moment later
+  // reads as broken. Until it has been looked at once it is taken to be there, and a press finds the address itself.
+  const [sshAddress, setSshAddress] = useState(() => sshSeen.get(device.id) || null);
+  const [sshChecked, setSshChecked] = useState(() => sshSeen.has(device.id));
   useEffect(() => {
     let current = true;
-    setSshChecked(false);
-    setSshAddress(null);
     if (isComputer && device.online) {
-      call("ssh_probe", { id: device.id }).then((address) => { if (current) { setSshAddress(address || null); setSshChecked(true); } }).catch(() => { if (current) setSshChecked(true); });
+      call("ssh_probe", { id: device.id }).then((address) => { sshSeen.set(device.id, address || null); if (current) { setSshAddress(address || null); setSshChecked(true); } }).catch(() => { if (current) setSshChecked(true); });
     } else {
+      setSshAddress(null);
       setSshChecked(true);
     }
     return () => { current = false; };
   }, [device.id, device.online]);
+  const sshReady = device.online && (sshAddress || !sshChecked);
+  const openSsh = async () => {
+    const address = sshAddress || (await call("ssh_probe", { id: device.id }).catch(() => null));
+    if (!address) { setSshChecked(true); return say(sshReason); }
+    call("ssh_open", { id: device.id, name: device.name, address }).catch(failed);
+  };
   const sshReason = !device.online ? t("ssh_why_offline") : t("ssh_why_" + device.platform);
 
   return html`<div class="wrap">
@@ -210,7 +220,7 @@ export function DevicePage({ device }) {
         <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
       ${isComputer && hasCap("screen.host") && html`<button class="btn" disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => show("screen")}>
         <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
-      ${isComputer && html`<button class="btn" disabled=${!sshAddress} title=${sshAddress ? t("ssh_title") : sshReason} onClick=${() => call("ssh_open", { id: device.id, name: device.name, address: sshAddress }).catch(failed)}>
+      ${isComputer && html`<button class="btn" disabled=${!sshReady} title=${sshReady ? t("ssh_title") : sshReason} onClick=${openSsh}>
         <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
       ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
         <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>

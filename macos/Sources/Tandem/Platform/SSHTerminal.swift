@@ -8,6 +8,9 @@ import TandemCore
 /// comes with the system, in a terminal of the app, so keys, the agent and the known hosts are the ones the person already has.
 /// The button is grey, with the reason, until the computer answers on the ssh port.
 enum SSHAccess {
+    /// What was found about each computer the last time (the address, or empty when none answered), so a page shows it at once.
+    @MainActor static var seen: [String: String] = [:]
+
     /// The address of this device that answers on port 22, if any answers.
     @MainActor static func reachableAddress(of device: TandemDevice) async -> String? {
         guard device.online, device.platform != .android, device.platform != .ios else { return nil }

@@ -231,12 +231,24 @@ struct DeviceDetail: View {
                 }
                 // A computer can be logged in to from here. The button is there and grey, with the reason under it, when it is not set up.
                 if device.platform == .macOs || device.platform == .windows || device.platform == .linux {
+                    // Until it has been looked at the button is taken to work (a button that starts grey and lights up a moment later reads as
+                    // broken), and a press finds the address itself.
+                    let missing = !device.online || (sshChecked && sshAddress == nil)
                     GlassActionButton(title: "Terminal", symbol: "terminal") {
-                        if let sshAddress { SSHAccess.open(device, at: sshAddress) }
+                        Task {
+                            var address = sshAddress
+                            if address == nil { address = await SSHAccess.reachableAddress(of: device) }
+                            if let address {
+                                SSHAccess.open(device, at: address)
+                            } else {
+                                sshChecked = true
+                                model.showToast(SSHAccess.reason(for: device))
+                            }
+                        }
                     }
-                    .disabled(sshAddress == nil)
-                    .opacity(sshAddress == nil ? 0.5 : 1)
-                    .help(sshAddress == nil ? SSHAccess.reason(for: device) : String(localized: "Log in to this computer over SSH"))
+                    .disabled(missing)
+                    .opacity(missing ? 0.5 : 1)
+                    .help(missing ? SSHAccess.reason(for: device) : String(localized: "Log in to this computer over SSH"))
                 }
                 Spacer(minLength: 0)
             }
@@ -249,8 +261,14 @@ struct DeviceDetail: View {
         .animation(.tandemFade, value: device.online)
         .animation(.tandemFade, value: device.ble)
         .task(id: "\(device.id)-\(device.online)") {
-            sshChecked = false
-            sshAddress = await SSHAccess.reachableAddress(of: device)
+            // What was found the last time is there at once, and is looked at again quietly.
+            if let known = SSHAccess.seen[device.id] {
+                sshAddress = known.isEmpty ? nil : known
+                sshChecked = true
+            }
+            let found = await SSHAccess.reachableAddress(of: device)
+            SSHAccess.seen[device.id] = found ?? ""
+            sshAddress = found
             sshChecked = true
         }
     }
