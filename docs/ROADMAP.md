@@ -3,7 +3,7 @@
 Alles wat nog niet af is, op volgorde van aanpak. Begin bovenaan. Een punt is pas af als het op echte
 toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze en de agentregels.
 
-## Open lijst voor een grote ronde (bijgewerkt 2026-10-08, na versie 0.1.71)
+## Open lijst voor een grote ronde (bijgewerkt 2026-10-09, na versie 0.1.73)
 
 Een regel per punt wat nog open staat, met waar het uitgewerkt is. Elk nieuw verzoek van Mark komt hier bij en in zijn sectie; een punt
 gaat eruit zodra het op echte toestellen is gezien. Wat per systeem werkt staat in docs/PARITY.md.
@@ -28,6 +28,13 @@ Foundation, hotspot) en alles nalopen.
 Open, kan zonder dat die toegang er is, nog niet gedaan:
 - Bestanden slepen over de rand: loslaten op de plek van de aanwijzer met een systeemsleep op de ontvanger, en Windows of Linux als hoofd met
   een dropzone (sectie 4); de rest vraagt twee echte computers om uit te proberen.
+- De telefoon als scherm voor de gedeelde muis (gevraagd 2026-10-09, in 0.1.73 nog niet gebouwd): de muis van de Mac gaat over de rand naar de telefoon,
+  die een eigen aanwijzer als overlay tekent en klikken, slepen en scrollen afspeelt met de toegankelijkheidsservice die er al is voor het bedienen
+  vanaf de Mac (`TandemInput` is hetzelfde bericht). Een Bluetooth-muis aan de telefoon als bron voor andere computers is veel moeilijker: Android
+  geeft een app buiten zijn eigen venster geen muisbewegingen.
+- Linux onder Wayland (de standaard van Fedora): scherm delen via de portal en PipeWire, en invoer via de RemoteDesktop-portal met een onthouden
+  toestemming (nu vraagt het bureaublad er elke keer opnieuw om, of het werkt niet). Te beslissen na het zien van de Linux-pc (X11 of Wayland).
+- Scherm delen en bedienen vanaf beide kanten tussen Mac en Linux (en Windows) op echte toestellen nalopen; de code voor beide kanten is er, nooit gezien.
 - Android (sectie 5b): de deelstatus ook in de tegels en de melding, Control this Mac nog soepeler (eerst meten op het toestel),
   bellen via de Mac (alleen de melding met opnemen en ophangen; het gespreksgeluid kan niet).
 - Mac (sectie 5): het menu Diensten laat alleen zien wat aanstaat kan niet zonder de Info.plist te veranderen; keuze voor Mark.
