@@ -74,7 +74,7 @@ altijd een toets om de aanwijzer terug te halen, ook als de verbinding wegvalt.
 - **Slepen.** Gaat de aanwijzer over de rand terwijl de linkerknop vastzit (een foto, bestand of geselecteerde tekst), dan gaan de
   bestanden mee als aanbod met herkomst `Drag` (een afbeelding wordt eerst een bestand) en tekst als `Carry`. De bestuurde kant zet bestanden neer als de
   knop omhoog komt, en plakt de tekst op de plek van de aanwijzer (Linux: selectie plus middelste klik; elders: klik plus Ctrl+V). De
-  Mac beeindigt zijn eigen sleep met Escape. Een sleep die tegen de ingangsrand komt blijft daar staan (boven de dropzone) tot de knop omhoog is.
+  Mac beeindigt zijn eigen sleep met Escape, nu meteen bij de rand (0.1.77), zodat het plaatje niet op de rand blijft hangen, en de pill onderin toont wat er meegaat (plaatje of icoon en naam) en daarna dat het is neergezet. Een echte sleep van het ene besturingssysteem naar het andere bestaat niet (dat kan alleen Universal Control tussen Apple-apparaten): de inhoud reist mee als bestand of tekst. Van Linux naar de Mac kan het niet vanzelf, want onder Wayland is niet te zien wat er gesleept wordt; daar werkt de randzone (sleep op de rand) wel. Een sleep die tegen de ingangsrand komt blijft daar staan (boven de dropzone) tot de knop omhoog is.
 - **Klep.** Op Linux met een klep (`/proc/acpi/button/lid` of systemd `LidClosed`): klep dicht geeft de aanwijzer terug en weigert nieuwe,
   tenzij de instelling "Bruikbaar houden met de klep dicht" aanstaat (standaard uit). Ook de telefoonbediening volgt dat.
 

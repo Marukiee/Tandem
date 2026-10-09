@@ -78,7 +78,11 @@ enum DebugSupport {
         }
         // `TANDEM_DEBUG_AWAY=1`: the pill that stays while the pointer is on another computer.
         if variable("TANDEM_DEBUG_AWAY") != nil {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { PointerAwayPill.show(device: "Linux Laptop") }
+            let carried = variable("TANDEM_DEBUG_AWAY") == "carry"
+                ? PointerAwayPill.Carried(title: "IMG_2041.jpg", symbol: "doc", image: NSWorkspace.shared.icon(for: .jpeg))
+                : nil
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { PointerAwayPill.show(device: "Linux Laptop", carrying: carried) }
+            if carried != nil { DispatchQueue.main.asyncAfter(deadline: .now() + 6) { PointerAwayPill.dropped() } }
         }
         if variable("TANDEM_DEBUG_PANEL") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { showPanelWindow() }

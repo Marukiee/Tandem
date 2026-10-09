@@ -338,7 +338,24 @@ final class PointerShare {
             case let .text(text): try? await engine.sendPointerShare(target: device, msg: .carry(text: text))
             }
         }
-        PointerAwayPill.show(device: model.device(device)?.name ?? String(localized: "another computer"))
+        PointerAwayPill.show(device: model.device(device)?.name ?? String(localized: "another computer"), carrying: carried.map(chip))
+        // The drag on this Mac ends at the edge, so its picture does not stay behind on this screen while the pointer is over there.
+        if carrying { endLocalDrag() }
+    }
+
+    /// The chip in the pill for what is carried: a picture or the icon of the file, and its name.
+    private func chip(_ dragged: Dragged) -> PointerAwayPill.Carried {
+        switch dragged {
+        case let .files(urls):
+            let first = urls[0]
+            let isImage = ["png", "jpg", "jpeg", "heic", "gif", "webp", "tiff"].contains(first.pathExtension.lowercased())
+            let image = (isImage ? NSImage(contentsOf: first) : nil) ?? NSWorkspace.shared.icon(forFile: first.path)
+            let title = urls.count == 1 ? first.lastPathComponent : String(localized: "\(urls.count) files")
+            return PointerAwayPill.Carried(title: title, symbol: "doc", image: image)
+        case let .text(text):
+            let line = text.split(whereSeparator: \.isNewline).first.map(String.init) ?? text
+            return PointerAwayPill.Carried(title: line.count > 48 ? String(line.prefix(48)) + "..." : line, symbol: "text.quote", image: nil)
+        }
     }
 
     private enum Dragged {
@@ -475,7 +492,10 @@ final class PointerShare {
         case .leftMouseUp:
             heldButtons.remove(0)
             send(.button(button: 0, down: false))
-            if carrying { endLocalDrag() }
+            if carrying {
+                carrying = false
+                PointerAwayPill.dropped()
+            }
         case .rightMouseDown:
             heldButtons.insert(1)
             send(.button(button: 1, down: true))

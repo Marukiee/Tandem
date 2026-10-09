@@ -755,6 +755,9 @@
 "Its pointer and keyboard come in at the edge where it sits and work here. Only for devices in your circle" = "Zijn aanwijzer en toetsenbord komen binnen bij de rand waar hij staat en werken hier. Alleen voor apparaten in je circle";
 "The pointer is on %@" = "De aanwijzer staat op %@";
 "Bring it back with" = "Haal hem terug met";
+"Let go to put it down on %@" = "Laat los om het neer te zetten op %@";
+"Put down on %@" = "Neergezet op %@";
+"%lld files" = "%lld bestanden";
 "another computer" = "een andere computer";
 "The phone does not allow clicking yet" = "De telefoon staat klikken nog niet toe";
 "You can click and type on the phone now" = "Je kunt nu klikken en typen op de telefoon";
