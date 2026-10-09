@@ -38,17 +38,47 @@ pub fn set_data_dir(dir: PathBuf) {
     let _ = DATA_DIR.set(dir);
 }
 
+/// How this process was started, as the desktop sees it. What a person allowed is kept by the portals per application, and the
+/// application is named after the service or scope the process runs in: starting at login, from the menu and from a terminal are three
+/// different ones. A token from one is no good to another, which made the question come back each time the way of starting changed,
+/// so every way keeps its own token.
+fn launch_identity() -> String {
+    identity_of(&std::fs::read_to_string("/proc/self/cgroup").unwrap_or_default())
+}
+
+pub(crate) fn identity_of(cgroup: &str) -> String {
+    let last = cgroup.lines().filter(|l| !l.trim().is_empty()).last().and_then(|l| l.rsplit('/').next()).unwrap_or("");
+    let stem = last.trim_end_matches(".scope").trim_end_matches(".service");
+    // The numbers in it are a process number, different every time, and not the application.
+    let kept: String = stem.chars().filter(|c| c.is_ascii_alphabetic() || *c == '-' || *c == '_').take(60).collect();
+    let kept = kept.trim_matches('-').to_string();
+    if kept.is_empty() { "default".to_string() } else { kept }
+}
+
+fn scoped(name: &str) -> String {
+    match name.rsplit_once('.') {
+        Some((stem, extension)) => format!("{stem}.{}.{extension}", launch_identity()),
+        None => format!("{name}.{}", launch_identity()),
+    }
+}
+
 fn token_file(name: &str) -> Option<PathBuf> {
     DATA_DIR.get().map(|dir| dir.join(name))
 }
 
+/// The token of this way of starting; when there is none yet, the one from before they were kept apart.
 pub(crate) fn read_token(name: &str) -> Option<String> {
-    let text = std::fs::read_to_string(token_file(name)?).ok()?;
-    Some(text.trim().to_string()).filter(|t| !t.is_empty())
+    for file in [scoped(name), name.to_string()] {
+        let Some(path) = token_file(&file) else { continue };
+        if let Some(token) = std::fs::read_to_string(path).ok().map(|t| t.trim().to_string()).filter(|t| !t.is_empty()) {
+            return Some(token);
+        }
+    }
+    None
 }
 
 pub(crate) fn write_token(name: &str, token: &str) {
-    if let Some(path) = token_file(name) {
+    if let Some(path) = token_file(&scoped(name)) {
         if let Some(parent) = path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
@@ -415,6 +445,17 @@ mod tests {
         assert_eq!(fit((1280, 720), (3000, 3000)), (1280, 720));
         let (w, h) = fit((1367, 769), (1000, 1000));
         assert!(w % 2 == 0 && h % 2 == 0);
+    }
+
+    #[test]
+    fn the_way_of_starting_is_told_from_the_service_without_its_process_number() {
+        assert_eq!(identity_of("0::/user.slice/user-1000.slice/user@1000.service/app.slice/tandem-app.service\n"), "tandem-app");
+        assert_eq!(
+            identity_of("0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-Tandem-4821.scope\n"),
+            identity_of("0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-gnome-Tandem-99.scope\n")
+        );
+        assert_eq!(identity_of(""), "default");
+        assert_ne!(identity_of("0::/a/app-gnome-Tandem-1.scope"), identity_of("0::/a/app-gnome-tandem-1.scope"));
     }
 
     #[test]
