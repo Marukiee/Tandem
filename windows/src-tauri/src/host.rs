@@ -422,7 +422,7 @@ pub fn bench() {
                 let Some(mut encoder) = make_encoder(starting_bitrate(w, h, 30), 30, w, h) else { continue };
                 let mut planes = Vec::new();
                 let mut last: Option<Arc<Vec<u8>>> = None;
-                let (mut delivered, mut work_ms, mut bytes) = (0u32, 0.0f64, 0usize);
+                let (mut delivered, mut work_ms, mut bytes, mut failed) = (0u32, 0.0f64, 0usize, 0u32);
                 let started = Instant::now();
                 while started.elapsed() < Duration::from_secs(10) {
                     if let Some((sw, sh, shot)) = grabber.grab_shared() {
@@ -434,8 +434,14 @@ pub fn bench() {
                                 bgra_to_i420(&shot, sw as usize, sh as usize, w as usize, h as usize, &mut planes);
                                 &planes
                             };
-                            if let Ok(stream) = encoder.encode(&Planes { width: w as usize, height: h as usize, data }) {
-                                bytes += stream.to_vec().len();
+                            match encoder.encode(&Planes { width: w as usize, height: h as usize, data }) {
+                                Ok(stream) => bytes += stream.to_vec().len(),
+                                Err(error) => {
+                                    failed += 1;
+                                    if failed == 1 {
+                                        log::warn!("bench host: the first picture was not encoded ({error}), {} bytes of data for {w}x{h}", data.len());
+                                    }
+                                }
                             }
                             work_ms += work.elapsed().as_secs_f64() * 1000.0;
                             delivered += 1;
@@ -445,7 +451,7 @@ pub fn bench() {
                     std::thread::sleep(Duration::from_millis(2));
                 }
                 log::info!(
-                    "bench host: {} {w}x{h}: {delivered} new pictures in 10 s ({:.1} a second), {:.1} ms of work for each, {:.1} Mbit a second",
+                    "bench host: {} {w}x{h}: {delivered} new pictures in 10 s ({:.1} a second), {:.1} ms of work for each, {:.1} Mbit a second, {failed} not encoded",
                     if i420 { "I420 from GStreamer" } else { "BGRx converted here" },
                     f64::from(delivered) / 10.0,
                     if delivered > 0 { work_ms / f64::from(delivered) } else { 0.0 },
@@ -676,6 +682,24 @@ mod tests {
             }
         }
         assert!(pictures >= 4, "pictures that came out: {pictures}");
+    }
+
+    /// The pictures of the screens that are really used: the encoder takes them, at the sizes it is made for, with the planes of video that
+    /// GStreamer makes (and no copy in between).
+    #[test]
+    fn a_large_screen_in_planes_is_encoded() {
+        for (w, h) in [(1920usize, 1200usize), (1280, 800), (2560, 1440)] {
+            let mut data = vec![0u8; w * h * 3 / 2];
+            for (i, b) in data.iter_mut().enumerate() {
+                *b = ((i * 7 + i / w) % 251) as u8;
+            }
+            let mut encoder = make_encoder(starting_bitrate(w as u32, h as u32, 30), 30, w as u32, h as u32).expect("the encoder starts");
+            for n in 0..4 {
+                data[n * 3] = data[n * 3].wrapping_add(40);
+                let stream = encoder.encode(&Planes { width: w, height: h, data: &data }).unwrap_or_else(|e| panic!("{w}x{h} picture {n}: {e}"));
+                assert!(!stream.to_vec().is_empty(), "{w}x{h} picture {n} came out empty ({:?})", stream.frame_type());
+            }
+        }
     }
 
     /// A screen of blocks goes in and a stream that starts with a keyframe full of parameter sets comes out, which is what the core wants
