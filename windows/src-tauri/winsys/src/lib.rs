@@ -46,6 +46,19 @@ pub struct Now {
     pub cover: Option<Vec<u8>>,
 }
 
+/// How the screen is taken for showing it to somebody.
+#[derive(Clone, Copy, Debug)]
+pub struct GrabOptions {
+    /// The size that the viewer wants at most (0 for no limit).
+    pub max: (u32, u32),
+    /// The pointer of this computer is in the picture. Off for a viewer that has a pointer of its own over the picture: it would be two.
+    pub cursor: bool,
+    /// The most pictures a second that are wanted (0 for as many as the system makes).
+    pub fps: u32,
+    /// The pictures come as I420, which is what the encoder wants (only where the system can make them that way).
+    pub i420: bool,
+}
+
 /// What the hooks on the mouse and keyboard of this PC see.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Seen {
@@ -195,6 +208,15 @@ mod imp {
             false
         }
         pub fn new() -> Option<Grabber> {
+            None
+        }
+        pub fn with_options(_options: super::GrabOptions) -> Option<Grabber> {
+            None
+        }
+        pub fn is_i420(&self) -> bool {
+            false
+        }
+        pub fn grab_shared(&self) -> Option<(u32, u32, std::sync::Arc<Vec<u8>>)> {
             None
         }
         pub fn with_limit(_max_width: u32, _max_height: u32) -> Option<Grabber> {

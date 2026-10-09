@@ -12,7 +12,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -68,7 +70,12 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -174,7 +181,10 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit) {
     var showStats by remember { mutableStateOf(false) }
     var dragging by remember { mutableStateOf(false) }
     var barShownAt by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
+    // The bar is always there: after a few quiet seconds it only dims, so it is never a small handle to find at the top of the screen.
     var barVisible by remember { mutableStateOf(true) }
+    var barBounds by remember { mutableStateOf(Rect.Zero) }
+    var nameBounds by remember { mutableStateOf(Rect.Zero) }
 
     fun touchBar() {
         barShownAt = SystemClock.uptimeMillis()
@@ -390,14 +400,10 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit) {
             onClose = onBack,
         )
 
-        // The slim bar at the top, and the handle that brings it back.
+        // The slim bar at the top. It stays: a quiet bar is dimmed, a touch brings it back to full.
         val insets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
-        AnimatedVisibility(
-            visible = barVisible,
-            modifier = Modifier.align(Alignment.TopCenter),
-            enter = slideInVertically(TandemMotion.spatial()) { -it } + fadeIn(TandemMotion.fadeSpec()),
-            exit = slideOutVertically(TandemMotion.spatial()) { -it } + fadeOut(TandemMotion.fadeSpec()),
-        ) {
+        val barAlpha by androidx.compose.animation.core.animateFloatAsState(if (barVisible) 1f else 0.55f, TandemMotion.fadeSpec(), label = "barAlpha")
+        Box(Modifier.align(Alignment.TopCenter).graphicsLayer { alpha = barAlpha }) {
             ControlBar(
                 name = name,
                 online = online,
@@ -408,7 +414,10 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit) {
                 keyboardOn = keyboard,
                 direct = direct,
                 zoomed = transform.zoom > 1.01f,
+                statsOpen = showStats,
                 modifier = Modifier.windowInsetsPadding(insets).padding(horizontal = 12.dp, vertical = 8.dp),
+                onBarBounds = { barBounds = it },
+                onNameBounds = { nameBounds = it },
                 onClose = onBack,
                 onKeyboard = {
                     keyboard = !keyboard
@@ -424,29 +433,27 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit) {
                     version++
                     touchBar()
                 },
-                onStats = { showStats = !showStats },
+                onStats = {
+                    showStats = !showStats
+                    touchBar()
+                },
             )
         }
-        AnimatedVisibility(
-            visible = !barVisible,
-            modifier = Modifier.align(Alignment.TopCenter).windowInsetsPadding(insets),
-            enter = fadeIn(TandemMotion.fadeSpec()),
-            exit = fadeOut(TandemMotion.fadeSpec()),
-        ) {
-            val label = stringResource(R.string.screen_show_bar)
-            Box(
-                Modifier.size(width = 96.dp, height = 28.dp).bouncyClickable(onClickLabel = label) { touchBar() },
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(Modifier.size(width = 44.dp, height = 5.dp).clip(PillShape).background(Color.White.copy(alpha = 0.35f)))
-            }
-        }
 
+        // The numbers hang under the name, centred on it, and open and close like a drawer.
         AnimatedVisibility(
             visible = showStats,
-            modifier = Modifier.align(Alignment.TopStart).windowInsetsPadding(insets).padding(12.dp).padding(top = 64.dp),
-            enter = fadeIn(TandemMotion.fadeSpec()) + scaleIn(TandemMotion.springy(), initialScale = 0.9f),
-            exit = fadeOut(TandemMotion.fadeSpec()) + scaleOut(TandemMotion.fadeSpec(), targetScale = 0.95f),
+            modifier = Modifier.layout { measurable, constraints ->
+                val panel = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+                val gap = 8.dp.roundToPx()
+                val x = (nameBounds.center.x - panel.width / 2f).roundToInt().coerceIn(gap, (constraints.maxWidth - panel.width - gap).coerceAtLeast(gap))
+                val y = (barBounds.bottom + gap).roundToInt()
+                layout(constraints.maxWidth, constraints.maxHeight) { panel.place(x, y) }
+            },
+            enter = fadeIn(TandemMotion.fadeSpec()) + expandVertically(TandemMotion.spatial(), expandFrom = Alignment.Top) +
+                scaleIn(TandemMotion.springy(), initialScale = 0.92f, transformOrigin = TransformOrigin(0.5f, 0f)),
+            exit = fadeOut(TandemMotion.fadeSpec()) + shrinkVertically(TandemMotion.spatial(), shrinkTowards = Alignment.Top) +
+                scaleOut(TandemMotion.fadeSpec(), targetScale = 0.92f, transformOrigin = TransformOrigin(0.5f, 0f)),
         ) {
             StatsPanel(stats, info)
         }
@@ -544,7 +551,10 @@ private fun ControlBar(
     keyboardOn: Boolean,
     direct: Boolean,
     zoomed: Boolean,
+    statsOpen: Boolean,
     modifier: Modifier,
+    onBarBounds: (Rect) -> Unit,
+    onNameBounds: (Rect) -> Unit,
     onClose: () -> Unit,
     onKeyboard: () -> Unit,
     onMode: () -> Unit,
@@ -554,6 +564,7 @@ private fun ControlBar(
     val scheme = MaterialTheme.colorScheme
     Row(
         modifier
+            .onGloballyPositioned { onBarBounds(it.boundsInRoot()) }
             .clip(PillShape)
             .background(scheme.surfaceContainer.copy(alpha = 0.94f))
             .padding(horizontal = 4.dp, vertical = 4.dp),
@@ -564,9 +575,10 @@ private fun ControlBar(
         Row(
             Modifier
                 .weight(1f, fill = false)
+                .onGloballyPositioned { onNameBounds(it.boundsInRoot()) }
                 .clip(PillShape)
                 .bouncyClickable(onLongClick = onStats, onClick = onStats)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(start = 8.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -580,6 +592,12 @@ private fun ControlBar(
                     maxLines = 1,
                 )
             }
+            // A small arrow says that the name opens something: the numbers of the connection.
+            val arrow by androidx.compose.animation.core.animateFloatAsState(if (statsOpen) 180f else 0f, TandemMotion.springy(), label = "statsArrow")
+            Icon(
+                TandemIcons.ChevronDown, stringResource(R.string.screen_stats_toggle), tint = scheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = arrow },
+            )
         }
         if (zoomed) {
             TandemIconButton(TandemIcons.FitScreen, stringResource(R.string.screen_fit), onFit)

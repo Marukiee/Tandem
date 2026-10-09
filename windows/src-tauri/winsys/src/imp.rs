@@ -513,6 +513,20 @@ impl Grabber {
         Some(Grabber)
     }
 
+    /// The same: GDI makes B, G, R, unused, and does not draw the pointer in the picture.
+    pub fn with_options(_options: super::GrabOptions) -> Option<Grabber> {
+        Some(Grabber)
+    }
+
+    pub fn is_i420(&self) -> bool {
+        false
+    }
+
+    /// The picture as shared bytes, for the same loop that takes them from a source that makes them once for everybody.
+    pub fn grab_shared(&self) -> Option<(u32, u32, std::sync::Arc<Vec<u8>>)> {
+        self.grab().map(|(w, h, pixels)| (w, h, std::sync::Arc::new(pixels)))
+    }
+
     /// The size of what `grab` returns.
     pub fn size(&self) -> (u32, u32) {
         let (w, h) = screen();

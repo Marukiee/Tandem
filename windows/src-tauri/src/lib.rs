@@ -81,6 +81,8 @@ pub fn run() {
             power::start(handle.clone());
             lid::start(handle.clone());
             debugshot::start();
+            #[cfg(feature = "screen-host")]
+            host::bench();
             update::start(handle.clone());
             // When the pointer of another computer runs into the edge it came in by, that computer is told.
             let leave_app = handle.clone();

@@ -25,6 +25,8 @@ use ashpd::desktop::remote_desktop::{
 use ashpd::desktop::screencast::{CursorMode, OpenPipeWireRemoteOptions, Screencast, SelectSourcesOptions, SourceType, StartCastOptions};
 use enumflags2::BitFlags;
 
+use crate::GrabOptions;
+
 fn text<E: std::fmt::Display>(error: E) -> String {
     error.to_string()
 }
@@ -243,10 +245,13 @@ impl Drop for Input {
 
 // ---- The screen -------------------------------------------------------------------------------------------------------------------
 
-/// The screen of a Wayland desktop as raw pictures: B, G, R, unused, line after line.
+/// The screen of a Wayland desktop as raw pictures: B, G, R, unused, line after line, or the planes of I420 when that is what is wanted.
 pub struct WaylandGrabber {
     size: (u32, u32),
-    latest: Arc<Mutex<Option<Vec<u8>>>>,
+    /// The newest picture, shared and not copied: a viewer takes it as often as it likes and nothing is copied for it.
+    latest: Arc<Mutex<Option<Arc<Vec<u8>>>>>,
+    /// Whether the pictures are I420 (the planes of video, a byte and a half to the pixel) and not B, G, R, unused.
+    i420: bool,
     alive: Arc<AtomicBool>,
     child: Child,
     // Kept for as long as the pictures come: closing the session ends the sharing.
@@ -267,7 +272,8 @@ fn fit(source: (u32, u32), max: (u32, u32)) -> (u32, u32) {
 impl WaylandGrabber {
     /// Asks for a monitor (the desktop shows a window for it the first time) and starts reading it. `max` is the size that the viewer
     /// wants at most; a bigger screen is made smaller on the way, which costs far less than doing it afterwards.
-    pub fn start(max: (u32, u32)) -> Result<WaylandGrabber, String> {
+    pub fn start(options: GrabOptions) -> Result<WaylandGrabber, String> {
+        let max = options.max;
         pollster::block_on(async {
             let cast = Screencast::new().await.map_err(text)?;
             let session = cast.create_session(CreateSessionOptions::default()).await.map_err(text)?;
@@ -275,7 +281,7 @@ impl WaylandGrabber {
             cast.select_sources(
                 &session,
                 SelectSourcesOptions::default()
-                    .set_cursor_mode(CursorMode::Embedded)
+                    .set_cursor_mode(if options.cursor { CursorMode::Embedded } else { CursorMode::Hidden })
                     .set_sources(BitFlags::from_flag(SourceType::Monitor))
                     .set_multiple(false)
                     .set_persist_mode(PersistMode::ExplicitlyRevoked)
@@ -299,11 +305,18 @@ impl WaylandGrabber {
             let mut command = Command::new("gst-launch-1.0");
             // The libraries and plugin paths of an AppImage must not leak into GStreamer of the system.
             crate::system_env(&mut command);
+            // Fewer pictures first (a picture that is thrown away should cost nothing), then the size, then the colours: the order in which
+            // the work is the least.
+            let format = if options.i420 { "I420" } else { "BGRx" };
+            command.args(["-q", "pipewiresrc", "fd=3"]).arg(format!("path={node}")).args(["always-copy=true", "do-timestamp=true", "!"]);
+            if options.fps > 0 {
+                command.args(["videorate", "drop-only=true"]).arg(format!("max-rate={}", options.fps)).arg("!");
+            }
             command
-                .args(["-q", "pipewiresrc", "fd=3"])
-                .arg(format!("path={node}"))
-                .args(["always-copy=true", "do-timestamp=true", "!", "videoconvert", "!", "videoscale", "!"])
-                .arg(format!("video/x-raw,format=BGRx,width={},height={}", size.0, size.1))
+                .args(["videoscale", "!"])
+                .arg(format!("video/x-raw,width={},height={}", size.0, size.1))
+                .args(["!", "videoconvert", "!"])
+                .arg(format!("video/x-raw,format={format},width={},height={}", size.0, size.1))
                 .args(["!", "fdsink", "fd=1", "sync=false"])
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
@@ -336,21 +349,24 @@ impl WaylandGrabber {
                     .ok();
             }
 
-            let latest: Arc<Mutex<Option<Vec<u8>>>> = Arc::new(Mutex::new(None));
+            let latest: Arc<Mutex<Option<Arc<Vec<u8>>>>> = Arc::new(Mutex::new(None));
             let alive = Arc::new(AtomicBool::new(true));
             let (store, flag) = (latest.clone(), alive.clone());
-            let length = size.0 as usize * size.1 as usize * 4;
+            let length = if options.i420 { size.0 as usize * size.1 as usize * 3 / 2 } else { size.0 as usize * size.1 as usize * 4 };
             std::thread::Builder::new()
                 .name("tandem-wayland-screen".into())
                 .spawn(move || {
-                    let mut frame = vec![0u8; length];
-                    while pipe.read_exact(&mut frame).is_ok() {
-                        *store.lock().unwrap() = Some(frame.clone());
+                    loop {
+                        let mut frame = vec![0u8; length];
+                        if pipe.read_exact(&mut frame).is_err() {
+                            break;
+                        }
+                        *store.lock().unwrap() = Some(Arc::new(frame));
                     }
                     flag.store(false, Ordering::Relaxed);
                 })
                 .map_err(text)?;
-            Ok(WaylandGrabber { size, latest, alive, child, _cast: cast, session })
+            Ok(WaylandGrabber { size, latest, i420: options.i420, alive, child, _cast: cast, session })
         })
     }
 
@@ -358,12 +374,24 @@ impl WaylandGrabber {
         self.size
     }
 
-    /// The newest picture. The same one again while the screen has not changed.
-    pub fn grab(&self) -> Option<(u32, u32, Vec<u8>)> {
+    /// The newest picture, shared. The same one again (the same `Arc`) while the screen has not changed.
+    pub fn grab_shared(&self) -> Option<(u32, u32, Arc<Vec<u8>>)> {
         if !self.alive.load(Ordering::Relaxed) {
             return None;
         }
         self.latest.lock().unwrap().clone().map(|pixels| (self.size.0, self.size.1, pixels))
+    }
+
+    /// The newest picture as a copy of B, G, R, unused (only for a grabber that was not asked for I420).
+    pub fn grab(&self) -> Option<(u32, u32, Vec<u8>)> {
+        if self.i420 {
+            return None;
+        }
+        self.grab_shared().map(|(w, h, pixels)| (w, h, pixels.as_ref().clone()))
+    }
+
+    pub fn is_i420(&self) -> bool {
+        self.i420
     }
 }
 

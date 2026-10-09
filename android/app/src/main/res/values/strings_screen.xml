@@ -32,6 +32,7 @@
     <string name="screen_fit">Fit to screen</string>
     <string name="screen_show_bar">Show controls</string>
     <string name="screen_stats_hint">Long press for details</string>
+    <string name="screen_stats_toggle">Show the numbers of the connection</string>
     <string name="screen_stats_fps">%1$d fps</string>
     <string name="screen_stats_bitrate">%1$.1f Mbit/s</string>
     <string name="screen_stats_delay">%1$d ms</string>

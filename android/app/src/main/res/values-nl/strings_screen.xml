@@ -32,6 +32,7 @@
     <string name="screen_fit">Passend maken</string>
     <string name="screen_show_bar">Toon knoppen</string>
     <string name="screen_stats_hint">Houd ingedrukt voor details</string>
+    <string name="screen_stats_toggle">Toon de cijfers van de verbinding</string>
     <string name="screen_stats_fps">%1$d fps</string>
     <string name="screen_stats_bitrate">%1$.1f Mbit/s</string>
     <string name="screen_stats_delay">%1$d ms</string>
