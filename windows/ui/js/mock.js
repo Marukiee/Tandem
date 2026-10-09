@@ -32,7 +32,7 @@ function updateFor(kind) {
 }
 
 const state = {
-  ready: true, error: null, self: { id: "me", name: "Laptop van Mark", port: 47820 }, version: "0.1.25", build: "preview", canShare: true, canHost: true, platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
+  ready: true, error: null, self: { id: "me", name: "My Laptop", port: 47820 }, version: "0.1.25", build: "preview", canShare: true, canHost: true, platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
   devices,
   transfers: empty ? [] : [
     { id: "1-0-in", peer: "phone", name: "IMG_20261003_141201.jpg", incoming: true, state: "done", done: 4200000, total: 4200000, location: "C:\\Users\\Mark\\Downloads\\Tandem\\IMG_20261003_141201.jpg", updatedAt: now - 60000, startedAt: now - 62000 },
@@ -161,10 +161,10 @@ export async function call(command, args) {
     }
     case "qs_state": return {
       enabled: true,
-      peers: [{ id: "abcd", name: "Pixel 9", kind: "phone" }, { id: "efgh", name: "Galaxy S26 van Sanne", kind: "phone" }],
+      peers: [{ id: "abcd", name: "Pixel 9", kind: "phone" }, { id: "efgh", name: "Galaxy S26", kind: "phone" }],
       incoming: [
         { id: 1, sender: "Pixel 9", pin: "4821", files: [{ name: "IMG_20261005_141201.jpg", size: 4200000 }, { name: "Menu.pdf", size: 880000 }], texts: [], accepted: false, done: 0, total: 5080000, saved: null, link: null, failure: null },
-        { id: 2, sender: "Galaxy S26 van Sanne", pin: "1093", files: [], texts: [{ kind: "url", title: "https://tandem.markmaaktmedia.nl" }], accepted: true, done: 0, total: 0, saved: [], link: "https://tandem.markmaaktmedia.nl", failure: null },
+        { id: 2, sender: "Galaxy S26", pin: "1093", files: [], texts: [{ kind: "url", title: "https://tandem.markmaaktmedia.nl" }], accepted: true, done: 0, total: 0, saved: [], link: "https://tandem.markmaaktmedia.nl", failure: null },
       ],
       outgoing: [], problem: null,
     };

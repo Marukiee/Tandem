@@ -529,14 +529,14 @@ mod tests {
         let (left, right) = tokio::io::duplex(1 << 20);
         let mut saves = Saves { folder: Some(to.path().to_path_buf()), seen: None };
         let mut watches = Watches::default();
-        let (sent, received) = tokio::join!(send(left, "Laptop van Mark", DeviceKind::Laptop, &files, &[], &mut watches), receive(right, &mut saves));
+        let (sent, received) = tokio::join!(send(left, "Test Laptop", DeviceKind::Laptop, &files, &[], &mut watches), receive(right, &mut saves));
         assert_eq!(sent.unwrap(), Outcome::Sent);
         let paths = received.unwrap().files;
         assert_eq!(paths.len(), 2);
         assert_eq!(std::fs::read(&paths[0]).unwrap(), a);
         assert_eq!(std::fs::read(&paths[1]).unwrap(), b);
         let seen = saves.seen.unwrap();
-        assert_eq!(seen.sender, "Laptop van Mark");
+        assert_eq!(seen.sender, "Test Laptop");
         assert_eq!(seen.files.len(), 2);
         assert_eq!(seen.files[0].size, a.len() as u64);
         assert_eq!(seen.pin, watches.pin);

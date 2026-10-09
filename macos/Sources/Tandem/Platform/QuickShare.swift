@@ -162,7 +162,7 @@ final class QuickShare {
         ]
         incoming = [
             Incoming(id: 9001, sender: "Pixel 9", pin: "4821", files: files),
-            Incoming(id: 9002, sender: "Galaxy S26 van Sanne", pin: "1093", files: files, accepted: true, done: 3_000_000),
+            Incoming(id: 9002, sender: "Galaxy S26", pin: "1093", files: files, accepted: true, done: 3_000_000),
         ]
         peers = [Peer(id: "abcd", name: "Pixel 9", kind: .phone), Peer(id: "efgh", name: "Windows pc", kind: .laptop)]
         incoming.append(Incoming(id: 9003, sender: "Pixel 9", pin: "7710", files: [], texts: [TandemQsTextInfo(kind: .url, title: "https://tandem.markmaaktmedia.nl")]))
@@ -232,6 +232,10 @@ final class QuickShare {
         if let index = outgoing.firstIndex(where: { $0.id == id }) {
             outgoing[index].state = .failed(reason)
             scheduleRemoval(of: id)
+        }
+        // A transfer that broke before anything was offered has no card: say it, or the sender is left wondering why nothing came.
+        if !incoming.contains(where: { $0.id == id }) && !outgoing.contains(where: { $0.id == id }) {
+            FloatingToast.show(String(localized: "A Quick Share transfer failed before anything was offered (\(reason))"), symbol: "exclamationmark.triangle.fill")
         }
     }
 

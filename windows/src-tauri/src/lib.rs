@@ -91,6 +91,13 @@ pub fn run() {
                     });
                 }
             });
+            // When the desktop does not let this app play the input of another computer, the person is told what to allow.
+            let trouble_app = handle.clone();
+            input::on_trouble(move || {
+                let text = i18n::t(&trouble_app, "input_stuck");
+                events::say(&trouble_app, &text);
+                events::toast(&trouble_app, "Tandem", &text);
+            });
             // While another computer has its pointer here, a drop zone shows at the edge where that computer sits.
             let zone_app = handle.clone();
             input::on_shared_change(move |now| edge::changed(&zone_app, now));

@@ -142,7 +142,8 @@ fn card(app: &AppHandle, count: usize) {
                 .resizable(false)
                 .always_on_top(true)
                 .skip_taskbar(true)
-                .focused(false)
+                // Where a window cannot be put in a corner or kept on top (Wayland), it has to be given the focus to be seen at all.
+                .focused(cfg!(target_os = "linux"))
                 .build();
             if let Ok(window) = built {
                 place(app, &window, height);
@@ -201,6 +202,13 @@ impl Sink for Hears {
         };
         VIEW.lock().unwrap().incoming.push(item);
         refresh(&self.app);
+        // A desktop that does not let a window come to the front by itself (Wayland) would leave the card unseen, and the sender
+        // waiting for an answer: a notification says it, too.
+        #[cfg(target_os = "linux")]
+        {
+            let sender = if introduction.sender.trim().is_empty() { "Quick Share".to_string() } else { introduction.sender.clone() };
+            crate::events::toast(&self.app, &sender, &i18n::t(&self.app, "qs_incoming"));
+        }
     }
 
     fn progress(&self, id: u64, done: u64, total: u64) {
@@ -251,14 +259,23 @@ impl Sink for Hears {
     }
 
     fn failed(&self, id: u64, reason: String) {
-        {
+        log::warn!("quick share transfer {id} failed: {reason}");
+        let known = {
             let mut view = VIEW.lock().unwrap();
+            let mut known = false;
             if let Some(item) = view.incoming.iter_mut().find(|i| i.id == id) {
                 item.failure = Some(reason.clone());
+                known = true;
             }
             if let Some(item) = view.outgoing.iter_mut().find(|o| o.id == id) {
                 item.state = "failed";
+                known = true;
             }
+            known
+        };
+        // A transfer that broke before anything was offered has no card: without this the sender is left wondering why nothing came.
+        if !known {
+            crate::events::toast(&self.app, "Quick Share", &i18n::t1(&self.app, "qs_failed_early", &reason));
         }
         refresh(&self.app);
         later(&self.app, id, 8);

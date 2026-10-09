@@ -138,6 +138,9 @@ pub fn logical_screen() -> Option<(i32, i32)> {
 pub struct Input {
     remote: RemoteDesktop,
     session: Session<RemoteDesktop>,
+    /// Cleared when the desktop refuses a key or a move: the session was closed (the desktop does that, for instance after the screen was
+    /// locked), and nothing sent to it does anything any more. The caller starts a new one.
+    healthy: AtomicBool,
 }
 
 impl Input {
@@ -166,42 +169,57 @@ impl Input {
             if let Some(token) = started.restore_token() {
                 write_token("portal-input.token", token);
             }
-            Ok(Input { remote, session })
+            Ok(Input { remote, session, healthy: AtomicBool::new(true) })
         })
     }
 
+    /// Whether the session still takes what is sent to it.
+    pub fn healthy(&self) -> bool {
+        self.healthy.load(Ordering::Relaxed)
+    }
+
+    fn note<T, E: std::fmt::Display>(&self, result: Result<T, E>) -> bool {
+        match result {
+            Ok(_) => true,
+            Err(error) => {
+                if self.healthy.swap(false, Ordering::Relaxed) {
+                    log::warn!("the desktop stopped taking keys and pointer moves: {error}");
+                }
+                false
+            }
+        }
+    }
+
     /// The pointer moves by this much (logical pixels).
-    pub fn motion(&self, dx: f64, dy: f64) {
-        let _ = pollster::block_on(self.remote.notify_pointer_motion(&self.session, dx, dy, NotifyPointerMotionOptions::default()));
+    pub fn motion(&self, dx: f64, dy: f64) -> bool {
+        self.note(pollster::block_on(self.remote.notify_pointer_motion(&self.session, dx, dy, NotifyPointerMotionOptions::default())))
     }
 
     /// A button of the pointer by its Linux code (0x110 left, 0x111 right, 0x112 middle).
-    pub fn button(&self, code: i32, down: bool) {
+    pub fn button(&self, code: i32, down: bool) -> bool {
         let state = if down { KeyState::Pressed } else { KeyState::Released };
-        let _ = pollster::block_on(self.remote.notify_pointer_button(&self.session, code, state, NotifyPointerButtonOptions::default()));
+        self.note(pollster::block_on(self.remote.notify_pointer_button(&self.session, code, state, NotifyPointerButtonOptions::default())))
     }
 
     /// Notches of the wheel: positive goes down (or right).
-    pub fn wheel(&self, vertical: bool, steps: i32) {
+    pub fn wheel(&self, vertical: bool, steps: i32) -> bool {
         let axis = if vertical { Axis::Vertical } else { Axis::Horizontal };
-        let _ = pollster::block_on(self.remote.notify_pointer_axis_discrete(&self.session, axis, steps, NotifyPointerAxisDiscreteOptions::default()));
+        self.note(pollster::block_on(self.remote.notify_pointer_axis_discrete(&self.session, axis, steps, NotifyPointerAxisDiscreteOptions::default())))
     }
 
     /// A key by its X11 keysym, which names what is printed on it, whatever the layout.
-    pub fn key(&self, keysym: i32, down: bool) {
+    pub fn key(&self, keysym: i32, down: bool) -> bool {
         let state = if down { KeyState::Pressed } else { KeyState::Released };
-        let _ = pollster::block_on(self.remote.notify_keyboard_keysym(&self.session, keysym, state, NotifyKeyboardKeysymOptions::default()));
+        self.note(pollster::block_on(self.remote.notify_keyboard_keysym(&self.session, keysym, state, NotifyKeyboardKeysymOptions::default())))
     }
 
     /// Puts the pointer against the edges given: a movement that is far more than the screen is, which the desktop stops at the edge. After
     /// this the place of the pointer is known on that axis, which a count of movements needs.
-    pub fn slam(&self, left: bool, right: bool, top: bool, bottom: bool) {
+    pub fn slam(&self, left: bool, right: bool, top: bool, bottom: bool) -> bool {
         const FAR: f64 = 20_000.0;
         let dx = if left { -FAR } else if right { FAR } else { 0.0 };
         let dy = if top { -FAR } else if bottom { FAR } else { 0.0 };
-        if dx != 0.0 || dy != 0.0 {
-            self.motion(dx, dy);
-        }
+        dx == 0.0 && dy == 0.0 || self.motion(dx, dy)
     }
 }
 

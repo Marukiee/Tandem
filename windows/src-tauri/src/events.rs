@@ -160,6 +160,10 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                     {
                         input::shared_enter(from, edge.into(), along);
                     } else if let Ok(engine) = app.state::<AppState>().engine() {
+                        // The desktop was asked and the question is still open or was answered with no: the person is told what to do.
+                        if settings::get(app).remote_input && crate::commands::input_blocked().is_none() && input::needs_permission() {
+                            input::trouble();
+                        }
                         // Not allowed: the pointer goes straight back.
                         tauri::async_runtime::spawn(async move { let _ = engine.send_pointer_share(from, Share::Leave { along }).await; });
                     }

@@ -30,6 +30,16 @@ impl Driver {
         Enigo::new(&Settings::default()).map(Driver::X).map_err(|e| e.to_string())
     }
 
+    /// Whether this can act on the desktop now. A Wayland desktop closes the session of the portal now and then; this opens a new one
+    /// (it is remembered, so it does not ask again) and says whether that worked.
+    pub fn alive(&mut self) -> bool {
+        match self {
+            Driver::X(_) => true,
+            #[cfg(target_os = "linux")]
+            Driver::Portal(p) => p.ensure().is_ok(),
+        }
+    }
+
     pub fn move_mouse(&mut self, x: i32, y: i32, coordinate: Coordinate) -> InputResult<()> {
         match self {
             Driver::X(e) => e.move_mouse(x, y, coordinate),
@@ -111,6 +121,8 @@ mod portal_driver {
         at: (f64, f64),
         anchored: bool,
         size: (i32, i32),
+        /// When a new session was tried last, so a desktop that says no is not asked in a loop.
+        tried: Option<std::time::Instant>,
     }
 
     /// How far past an edge a move goes when it is meant to land on the edge, so that the desktop stops it exactly there.
@@ -119,7 +131,7 @@ mod portal_driver {
     impl Portal {
         pub fn start() -> Result<Portal, String> {
             let input = Input::start()?;
-            let mut portal = Portal { input, at: (0.0, 0.0), anchored: false, size: (1920, 1080) };
+            let mut portal = Portal { input, at: (0.0, 0.0), anchored: false, size: (1920, 1080), tried: None };
             portal.size = portal.measure();
             Ok(portal)
         }
@@ -133,11 +145,39 @@ mod portal_driver {
             self.size
         }
 
+        /// A session that works: the one there is, or a new one when the desktop closed it. The place of the pointer is not known on a
+        /// new session, so it is counted again from an edge.
+        pub fn ensure(&mut self) -> InputResult<()> {
+            if self.input.healthy() {
+                return Ok(());
+            }
+            if self.tried.is_some_and(|t| t.elapsed() < std::time::Duration::from_secs(2)) {
+                return Err(gone());
+            }
+            self.tried = Some(std::time::Instant::now());
+            match Input::start() {
+                Ok(input) => {
+                    self.input = input;
+                    self.anchored = false;
+                    Ok(())
+                }
+                Err(error) => {
+                    log::warn!("the input session of the desktop could not be opened again: {error}");
+                    Err(gone())
+                }
+            }
+        }
+
+        fn checked(&self) -> InputResult<()> {
+            if self.input.healthy() { Ok(()) } else { Err(gone()) }
+        }
+
         pub fn location(&self) -> (i32, i32) {
             (self.at.0.round() as i32, self.at.1.round() as i32)
         }
 
         pub fn move_mouse(&mut self, x: i32, y: i32, coordinate: Coordinate) -> InputResult<()> {
+            self.ensure()?;
             let (w, h) = (f64::from(self.size.0), f64::from(self.size.1));
             match coordinate {
                 Coordinate::Rel => {
@@ -162,10 +202,11 @@ mod portal_driver {
                     self.at = target;
                 }
             }
-            Ok(())
+            self.checked()
         }
 
         pub fn button(&mut self, button: Button, direction: Direction) -> InputResult<()> {
+            self.ensure()?;
             // The codes of Linux for the buttons of a mouse.
             let code = match button {
                 Button::Left => 0x110,
@@ -183,17 +224,19 @@ mod portal_driver {
                     self.input.button(code, false);
                 }
             }
-            Ok(())
+            self.checked()
         }
 
         pub fn scroll(&mut self, length: i32, axis: Axis) -> InputResult<()> {
+            self.ensure()?;
             if length != 0 {
                 self.input.wheel(matches!(axis, Axis::Vertical), length);
             }
-            Ok(())
+            self.checked()
         }
 
         pub fn key(&mut self, key: Key, direction: Direction) -> InputResult<()> {
+            self.ensure()?;
             let Some(symbol) = keysym(key) else { return Err(InputError::InvalidInput("a key that has no name on this desktop")) };
             match direction {
                 Direction::Press => self.input.key(symbol, true),
@@ -203,17 +246,22 @@ mod portal_driver {
                     self.input.key(symbol, false);
                 }
             }
-            Ok(())
+            self.checked()
         }
 
         pub fn text(&mut self, text: &str) -> InputResult<()> {
+            self.ensure()?;
             for c in text.chars() {
                 let symbol = if c == '\n' { 0xff0d } else { unicode_keysym(c) };
                 self.input.key(symbol, true);
                 self.input.key(symbol, false);
             }
-            Ok(())
+            self.checked()
         }
+    }
+
+    fn gone() -> InputError {
+        InputError::Simulate("the desktop closed the session for keys and the pointer")
     }
 
     /// The keysym of a character: Latin-1 is itself, everything else is the Unicode number with a flag.

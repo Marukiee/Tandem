@@ -753,7 +753,9 @@
 "Press Control, Option and Command with Escape to bring the pointer back at any time." = "Druk op Control, Option en Command met Escape om de aanwijzer altijd terug te halen.";
 "Let another computer use this Mac" = "Laat een andere computer deze Mac gebruiken";
 "Its pointer and keyboard come in at the edge where it sits and work here. Only for devices in your circle" = "Zijn aanwijzer en toetsenbord komen binnen bij de rand waar hij staat en werken hier. Alleen voor apparaten in je circle";
-"The pointer is on %@. Press Control, Option and Command with Escape to bring it back." = "De aanwijzer is op %@. Druk op Control, Option en Command met Escape om hem terug te halen.";
+"The pointer is on %@" = "De aanwijzer staat op %@";
+"Bring it back with" = "Haal hem terug met";
+"another computer" = "een andere computer";
 "The phone does not allow clicking yet" = "De telefoon staat klikken nog niet toe";
 "You can click and type on the phone now" = "Je kunt nu klikken en typen op de telefoon";
 "Clicking and typing on the phone is off" = "Klikken en typen op de telefoon staat uit";
@@ -876,3 +878,5 @@
 "Drag the screens next to this one, the way they stand on your desk. That is where the pointer goes over." = "Sleep de schermen naast dit scherm, zoals ze op je bureau staan. Daar gaat de aanwijzer overheen.";
 "Drag a screen next to this Mac" = "Sleep een scherm naast deze Mac";
 "Size not known yet" = "Formaat nog niet bekend";
+
+"A Quick Share transfer failed before anything was offered (%@)" = "Een Quick Share-overdracht liep fout voordat er iets werd aangeboden (%@)";

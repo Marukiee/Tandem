@@ -68,6 +68,10 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_QUICKSHARE") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { QuickShare.shared.debugShow() }
         }
+        // `TANDEM_DEBUG_AWAY=1`: the pill that stays while the pointer is on another computer.
+        if variable("TANDEM_DEBUG_AWAY") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { PointerAwayPill.show(device: "Linux Laptop") }
+        }
         if variable("TANDEM_DEBUG_PANEL") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { showPanelWindow() }
         }

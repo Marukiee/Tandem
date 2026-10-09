@@ -332,7 +332,7 @@ final class PointerShare {
             case let .text(text): try? await engine.sendPointerShare(target: device, msg: .carry(text: text))
             }
         }
-        FloatingToast.show(String(localized: "The pointer is on \(model.device(device)?.name ?? "another computer"). Press Control, Option and Command with Escape to bring it back."), symbol: "cursorarrow.motionlines")
+        PointerAwayPill.show(device: model.device(device)?.name ?? String(localized: "another computer"))
     }
 
     private enum Dragged {
@@ -409,6 +409,7 @@ final class PointerShare {
         CGWarpMouseCursorPosition(target)
         CGAssociateMouseAndMouseCursorPosition(1)
         CursorHider.show()
+        PointerAwayPill.hide()
         carrying = false
         heldButtons = []
     }

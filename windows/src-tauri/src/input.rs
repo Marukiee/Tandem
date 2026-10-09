@@ -29,6 +29,8 @@ enum Msg {
     Media(TandemMediaInput),
     /// The phone went away in the middle of something: let go of whatever it was holding.
     ReleaseAll,
+    /// Try to get the desktop to take input again (it was refused or the question went unanswered).
+    Retry,
 }
 
 static WORKER: OnceLock<Mutex<mpsc::Sender<Msg>>> = OnceLock::new();
@@ -47,11 +49,47 @@ pub fn ready() -> bool {
     for _ in 0..40 {
         match STATE.load(Ordering::Relaxed) {
             1 => return true,
-            2 => return false,
+            2 => {
+                try_again();
+                return false;
+            }
             _ => std::thread::sleep(std::time::Duration::from_millis(50)),
         }
     }
     false
+}
+
+/// Whether the desktop was asked and did not let the app play input (yet): the person has something to do, and is told what.
+pub fn needs_permission() -> bool {
+    STATE.load(Ordering::Relaxed) == 2
+}
+
+/// Asks the desktop again, at most once in a while: the question may have gone unseen, or been answered with no by mistake.
+fn try_again() {
+    static LAST: Mutex<Option<Instant>> = Mutex::new(None);
+    let mut last = LAST.lock().unwrap();
+    if last.is_none_or(|t| t.elapsed() > Duration::from_secs(20)) {
+        *last = Some(Instant::now());
+        let _ = worker().lock().unwrap().send(Msg::Retry);
+    }
+}
+
+static TROUBLE: OnceLock<Box<dyn Fn() + Send + Sync>> = OnceLock::new();
+
+/// What to do when the desktop does not let this app play input although a computer wants to use it: the person is told what to allow.
+pub fn on_trouble(told: impl Fn() + Send + Sync + 'static) {
+    let _ = TROUBLE.set(Box::new(told));
+}
+
+pub fn trouble() {
+    static LAST: Mutex<Option<Instant>> = Mutex::new(None);
+    let mut last = LAST.lock().unwrap();
+    if last.is_none_or(|t| t.elapsed() > Duration::from_secs(300)) {
+        *last = Some(Instant::now());
+        if let Some(told) = TROUBLE.get() {
+            told();
+        }
+    }
 }
 
 fn worker() -> &'static Mutex<mpsc::Sender<Msg>> {
@@ -500,12 +538,22 @@ fn paste_here(enigo: &mut Driver, text: &str) {
 }
 
 fn run(rx: mpsc::Receiver<Msg>) {
-    let mut enigo = match Driver::new() {
-        Ok(driver) => driver,
-        Err(error) => {
-            log::warn!("the pointer and keyboard cannot be driven: {error}");
-            STATE.store(2, Ordering::Relaxed);
-            return;
+    let mut enigo = loop {
+        match Driver::new() {
+            Ok(driver) => break driver,
+            Err(error) => {
+                log::warn!("the pointer and keyboard cannot be driven: {error}");
+                STATE.store(2, Ordering::Relaxed);
+                // Until there is a reason to ask again, what arrives is not played.
+                loop {
+                    match rx.recv() {
+                        Ok(Msg::Retry) => break,
+                        Ok(Msg::Enter { .. }) => trouble(),
+                        Ok(_) => {}
+                        Err(_) => return,
+                    }
+                }
+            }
         }
     };
     STATE.store(1, Ordering::Relaxed);
@@ -525,6 +573,15 @@ fn run(rx: mpsc::Receiver<Msg>) {
         let msg = match msg {
             Msg::Enter { edge, along } => {
                 tracker = None;
+                if !enigo.alive() {
+                    // The desktop closed the session and would not open another: the pointer goes back at once.
+                    if let Some(share) = SHARED.lock().unwrap().take() {
+                        changed(None);
+                        say(share.device, TandemPointerShare::Leave { along });
+                    }
+                    trouble();
+                    continue;
+                }
                 if let Some((width, height)) = screen_size(&enigo) {
                     let screen = Screen { width: width as f32, height: height as f32 };
                     let counting = Controlled::enter(screen, edge, along);
@@ -549,6 +606,19 @@ fn run(rx: mpsc::Receiver<Msg>) {
                 Msg::ReleaseAll
             }
             Msg::Shared(TandemInput::Pointer { dx, dy }) => {
+                if !enigo.alive() {
+                    // Moves that do nothing leave the person stuck on a screen that does not answer: the pointer goes home.
+                    if let Some(share) = SHARED.lock().unwrap().take() {
+                        changed(None);
+                        say(share.device, TandemPointerShare::Leave { along: 0.5 });
+                        tracker = None;
+                        carried = None;
+                        buttons.clear();
+                        LEFT_DOWN.store(false, Ordering::Relaxed);
+                        trouble();
+                    }
+                    continue;
+                }
                 let leaving = shared_move(&mut enigo, tracker.as_mut(), dx, dy);
                 if let Some(along) = leaving {
                     // A drag runs into the edge: it stays there, over the drop zone, until the button comes up.
@@ -585,7 +655,7 @@ fn run(rx: mpsc::Receiver<Msg>) {
                 }
             }
             // Dealt with above.
-            Msg::Shared(_) | Msg::Enter { .. } | Msg::Carry(_) | Msg::End => {}
+            Msg::Shared(_) | Msg::Enter { .. } | Msg::Carry(_) | Msg::End | Msg::Retry => {}
             Msg::Media(media) => match media {
                 TandemMediaInput::PointerAbs { x, y } => {
                     if let Some((width, height)) = screen_size(&enigo) {

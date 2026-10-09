@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn the_address_in_the_url_is_escaped() {
-        assert_eq!(urlencode("Mac van Mark"), "Mac%20van%20Mark");
+        assert_eq!(urlencode("Mac van Piet"), "Mac%20van%20Piet");
         assert_eq!(urlencode("fe80::1"), "fe80%3A%3A1");
     }
 
