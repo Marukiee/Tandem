@@ -84,6 +84,10 @@ enum DebugSupport {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { PointerAwayPill.show(device: "Linux Laptop", carrying: carried) }
             if carried != nil { DispatchQueue.main.asyncAfter(deadline: .now() + 6) { PointerAwayPill.dropped() } }
         }
+        // `TANDEM_DEBUG_PAIRSHEET=1`: the pairing card over the window, as the button under the devices opens it.
+        if variable("TANDEM_DEBUG_PAIRSHEET") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { NotificationCenter.default.post(name: .tandemShowPairing, object: nil) }
+        }
         if variable("TANDEM_DEBUG_PANEL") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { showPanelWindow() }
         }

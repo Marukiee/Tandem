@@ -284,25 +284,36 @@ struct PairedSuccess: View {
     }
 }
 
+/// The pairing card over the window, with the window dimmed behind it. A click on the dimmed part closes it, as a click outside a
+/// popup does; a sheet cannot do that, it only closes with the button or Escape.
 struct PairingSheet: View {
     @Environment(EngineModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
+    let close: () -> Void
 
     var body: some View {
-        PairingPanel { dismiss() }
-            .frame(width: 460)
-            .overlay(alignment: .topTrailing) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark").font(.callout.weight(.semibold)).frame(width: 14, height: 14)
+        ZStack {
+            Color.black.opacity(0.32)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture(perform: close)
+            PairingPanel(onFinished: close)
+                .frame(width: 460)
+                .padding(.vertical, 14)
+                .glassEffect(.regular, in: .rect(cornerRadius: 30, style: .continuous))
+                .shadow(color: .black.opacity(0.28), radius: 30, y: 12)
+                .overlay(alignment: .topTrailing) {
+                    Button(action: close) {
+                        Image(systemName: "xmark").font(.callout.weight(.semibold)).frame(width: 14, height: 14)
+                    }
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.circle)
+                    .keyboardShortcut(.cancelAction)
+                    .help("Close")
+                    .padding(14)
                 }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .keyboardShortcut(.cancelAction)
-                .help("Close")
-                .padding(14)
-            }
-            .onDisappear { model.endPairing() }
+                .transition(.scale(scale: 0.94).combined(with: .opacity))
+                .onDisappear { model.endPairing() }
+        }
+        .environment(\.hoverEnabled, true)
     }
 }

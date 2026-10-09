@@ -68,7 +68,13 @@ struct MainWindow: View {
             }
         }
         .animation(.tandemSpringy, value: model.toast)
-        .sheet(isPresented: $showPairing) { PairingSheet() }
+        .overlay {
+            if showPairing {
+                PairingSheet { showPairing = false }
+                    .transition(.opacity)
+            }
+        }
+        .animation(.tandemSpringy, value: showPairing)
         .alert("This device was removed", isPresented: Binding(
             get: { model.removedFromCircle },
             set: { model.removedFromCircle = $0 }
