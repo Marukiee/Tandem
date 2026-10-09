@@ -338,13 +338,19 @@ async fn apply(
     let stretches = shared.stretches.lock().unwrap().clone();
     let built = barriers_for(&regions, &stretches);
     let list: Vec<Barrier> = built.iter().filter_map(|(id, _, line)| Some(Barrier::new(std::num::NonZeroU32::new(*id)?, *line))).collect();
-    let response = capture
-        .set_pointer_barriers(session, &list, zones.zone_set(), SetPointerBarriersOptions::default())
-        .await
-        .map_err(text)?
-        .response()
-        .map_err(text)?;
-    let failed: Vec<u32> = response.failed_barriers().iter().map(|b| b.get()).collect();
+    let response = match capture.set_pointer_barriers(session, &list, zones.zone_set(), SetPointerBarriersOptions::default()).await {
+        Ok(request) => request.response().map(|r| r.failed_barriers().iter().map(|b| b.get()).collect::<Vec<u32>>()).map_err(text),
+        Err(error) => Err(text(error)),
+    };
+    let failed: Vec<u32> = match response {
+        Ok(failed) => failed,
+        // With nowhere to go (no other computer is there now) the desktop may find an empty list odd; that is no reason to give up.
+        Err(error) if list.is_empty() => {
+            log::info!("the desktop did not take an empty list of barriers: {error}");
+            Vec::new()
+        }
+        Err(error) => return Err(error),
+    };
     if !failed.is_empty() {
         log::info!("the desktop did not take these barriers: {failed:?}");
     }

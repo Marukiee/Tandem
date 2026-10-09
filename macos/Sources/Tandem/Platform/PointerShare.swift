@@ -82,6 +82,9 @@ final class PointerShare {
     /// How big the screens of the other computers are, as they said (in the units of their own pointer).
     private(set) var sizes: [String: CGSize] = [:]
 
+    /// For the debug window of the arrangement: sizes of made up computers.
+    func debugSizes(_ made: [String: CGSize]) { sizes = made }
+
     /// The size of all the screens of this Mac together, in points: what the edges and the arrangement are measured in.
     var mainSize: CGSize { screens.size }
 

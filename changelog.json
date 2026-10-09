@@ -11,7 +11,10 @@
         "Linux updates itself",
         "Android: the device page in groups, and a nicer terminal",
         "Windows and Linux: settings in sections, and a clipboard you can open up",
-        "Your device name stays after a restart"
+        "Your device name stays after a restart",
+        "Linux can control your Mac with its mouse (Wayland)",
+        "The pointer pill on the Mac stays and shows the keys to bring it back",
+        "Windows and Linux: the screen window closes with the session and says what to allow"
       ]
     },
     "nl": {
@@ -23,7 +26,10 @@
         "Linux werkt zichzelf bij",
         "Android: de apparaatpagina in groepen, en een mooiere terminal",
         "Windows en Linux: instellingen in secties, en een klembord dat open kan",
-        "Je apparaatnaam blijft na een herstart"
+        "Je apparaatnaam blijft na een herstart",
+        "Linux kan je Mac bedienen met zijn muis (Wayland)",
+        "De pil op de Mac blijft staan en toont de toetsen om de muis terug te halen",
+        "Windows en Linux: het schermvenster sluit met de sessie en zegt wat je moet toestaan"
       ]
     }
   },

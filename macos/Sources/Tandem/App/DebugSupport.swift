@@ -68,6 +68,10 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_QUICKSHARE") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { QuickShare.shared.debugShow() }
         }
+        // `TANDEM_DEBUG_ARRANGE=1`: the arrangement of the screens, with made up computers (one placed, two waiting).
+        if variable("TANDEM_DEBUG_ARRANGE") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showArrangementWindow() }
+        }
         // `TANDEM_DEBUG_AWAY=1`: the pill that stays while the pointer is on another computer.
         if variable("TANDEM_DEBUG_AWAY") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { PointerAwayPill.show(device: "Linux Laptop") }
@@ -172,6 +176,24 @@ enum DebugSupport {
 
     static func initialSettingsSection() -> SettingsSection? {
         variable("TANDEM_DEBUG_SETTINGS").flatMap { SettingsSection(rawValue: $0) }
+    }
+
+    private static func showArrangementWindow() {
+        let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
+        func made(_ id: String, _ name: String, _ platform: TandemPlatform, online: Bool = true) -> TandemDevice {
+            TandemDevice(id: id, name: name, platform: platform, online: online, route: nil, rttMs: nil, status: status, appVersion: nil, caps: [],
+                         vouchedByRemoved: false, clipboardEnabled: true, autoAccept: false, notificationsEnabled: true, ble: false)
+        }
+        let devices = [made("a", "Linux Laptop", .linux), made("b", "Windows PC", .windows), made("c", "Old Mac", .macOs, online: false)]
+        let share = PointerShare.shared
+        share.debugSizes(["a": CGSize(width: 1920, height: 1080), "b": CGSize(width: 2560, height: 1440)])
+        share.layout = ["a": PointerShare.Placement(edge: "right", offset: 120)]
+        let host = NSHostingView(rootView: ArrangementEditor(share: share, devices: devices).padding(20).frame(width: 640))
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 640, height: 10), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Arrangement (debug)"
+        window.contentView = host
+        window.setContentSize(host.fittingSize)
+        window.makeKeyAndOrderFront(nil)
     }
 
     private static func showSettingsWindow() {

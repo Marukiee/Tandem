@@ -24,12 +24,12 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | Geluid van de telefoon op de computer | bron | ja | ja (nooit gehoord) | ja (nooit gehoord) |
 | Scherm van de computer tonen aan andere apparaten en het laten bedienen (zoals TeamViewer) | kijkt en bedient | ja (host en kijker) | ja (host, GDI en OpenH264, kijker) | ja onder X11 (host, nooit gezien), nee onder Wayland, kijker ja |
 | De computer bedienen vanaf de telefoon (trackpad, toetsenbord) | bron | ja | ja | deels (alleen X11) |
-| Een computer bedienen vanaf een andere computer (gedeelde muis) | nee | ja (hoofd en bestuurd) | ja (hoofd en bestuurd) | nee (bestuurd alleen op X11, geen hoofd) |
+| Een computer bedienen vanaf een andere computer (gedeelde muis) | nee | ja (hoofd en bestuurd) | ja (hoofd en bestuurd) | deels: bestuurd (X11 en Wayland met de RemoteDesktop-portal), hoofd alleen onder Wayland via de InputCapture-portal (nooit gezien), niet onder X11 |
 | Bestanden slepen over de rand bij de gedeelde muis | nee | ja, beide kanten (dropzone aan de rand, bestanden landen in het Finder-venster of op het bureaublad) | ja als bestuurde pc (dropzone, landen op het bureaublad), niet als hoofd | idem als Windows, onder X11 |
 | Een sleep van foto, bestand of tekst gaat mee over de rand (Mac als hoofd), op de plek van de aanwijzer | nee | ja, als hoofd (tekst plakt op de plek, bestanden landen na het loslaten) | ja als bestuurde pc (tekst: klik en plakken) | ja als bestuurde pc (tekst: middelste klik, bestanden op het bureaublad) |
 | De aanwijzer komt direct terug als de verbinding wegvalt of de klep dichtgaat (levensteken, standaard 2 seconden) | nee | ja | ja (hoofd en bestuurd) | ja (bestuurd), klep via instelling |
 | Tailscale gaat vanzelf aan als een apparaat niet bereikbaar is en Tailscale het zou bereiken | ja (melding aan de Tailscale-app) | ja (`tailscale up`) | ja (`tailscale up`) | ja (`tailscale up`, vraagt eenmalig `--operator`) |
-| Meerdere schermen naast de hoofdcomputer, te slepen en op schaal (zoals de weergave-instellingen van een desktop) | nee | ja, als hoofd (`ArrangementEditor`) | ja, als hoofd (`arrange.js`) | nee (geen hoofd), wel als bestuurd |
+| Meerdere schermen naast de hoofdcomputer, te slepen en op schaal (zoals de weergave-instellingen van een desktop) | nee | ja, als hoofd (`ArrangementEditor`) | ja, als hoofd (`arrange.js`) | ja onder Wayland als hoofd (zelfde `arrange.js`, nooit gezien), niet onder X11 |
 | De telefoon als scherm voor de muis van een Mac (aanwijzer als overlay, tikken via Toegankelijkheid) | ja (`PointerIn`, nooit op een echte telefoon gezien) | als hoofd ja | nee | nee |
 | Muis, toetsen en scherm onder Wayland via de portals van het bureaublad (eenmalige toestemming die wordt onthouden) | n.v.t. | n.v.t. | n.v.t. | ja: invoer gezien (token bewaard), scherm nog niet afgerond |
 | Zichzelf bijwerken | ja | ja | ja | ja (AppImage) |
@@ -43,7 +43,7 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 
 - Linux en Windows moeten dezelfde functies als de Mac kunnen **aanbieden**, niet alleen tonen: eigen mappen (host), eigen scherm
   delen (Windows.Graphics.Capture, PipeWire), geluid delen, Invoegen vanaf telefoon als bron voor een andere computer.
-- Linux onder Wayland kan zijn scherm nog niet tonen (de portal van het bureaublad vraagt om PipeWire). Linux: invoer onder Wayland (libei), de gedeelde muis als hoofd (X11 `XInput2`, Wayland InputCapture), een eigen updatepad.
+- Linux onder Wayland kan zijn scherm nog niet tonen (de portal van het bureaublad vraagt om PipeWire). Linux: invoer onder Wayland (libei), de gedeelde muis als hoofd onder X11 (`XInput2`); onder Wayland is hij er via de InputCapture-portal maar nooit gezien.
 - Bestanden slepen over de rand: nog nergens.
 - De Mac-functies die aan macOS zelf vastzitten horen er niet bij: het menu Diensten, het Controlecentrum, het AirDrop-knopje.
 

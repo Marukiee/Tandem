@@ -19,7 +19,8 @@ bureaublad (0.1.71, nergens op twee echte computers gezien).
 
 Open, wacht op toegang tot de Linux-pc (Mark regelt dat na de weekreset, SSH met een sleutel van de Mac):
 - Alles wat hierboven voor Linux staat nalopen op het echte bureaublad (venster, decoder, instellingen, terminal, MPRIS, geluid).
-- Invoer onder Wayland via libei (pointer en toetsen van een Mac of telefoon op Linux), en de gedeelde muis met Linux als hoofd.
+- De gedeelde muis met Linux als hoofd (gebouwd na 0.1.73 met de InputCapture-portal, nog nooit gezien: of GNOME de vraag toont, of de
+  barrieres bij de randen werken, of de snelheid klopt) en voor X11 (XInput2 met grabs, nog niet gebouwd).
 - Scherm van de Linux-pc delen (PipeWire en een encoder) en Linux als bediend scherm; een eigen updatepad; Flatpak of AUR.
 
 Open, wacht op een echte Windows-pc: alles van sectie 2 voor Windows (scherm delen vanaf de pc, Windows Graphics Capture en Media

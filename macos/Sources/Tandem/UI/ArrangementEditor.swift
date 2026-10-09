@@ -125,7 +125,7 @@ struct ArrangementEditor: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
-                        .position(x: available.width / 2, y: available.height - trayHeight + 6)
+                        .position(x: available.width / 2, y: available.height - trayHeight - 6)
                 }
             }
             .coordinateSpace(name: "arrangement")

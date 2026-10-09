@@ -258,11 +258,14 @@ fn restore(along: Option<f32>, device: &str, edge: Edge) {
                 Some(p) => layout::back(main_len, p, size, along),
                 None => (along.clamp(0.0, 1.0) * (main_len - 1).max(0) as f32) as i32,
             };
+            // Where the desktop watches the edge for the pointer (Wayland), a pointer put on the edge would be taken over again by the
+            // first touch of the mouse, so it is put a little way in.
+            let inset = if cfg!(target_os = "linux") { 4 } else { 0 };
             match edge {
-                Edge::Left => (left, top + position),
-                Edge::Right => (left + w - 1, top + position),
-                Edge::Top => (left + position, top),
-                Edge::Bottom => (left + position, top + h - 1),
+                Edge::Left => (left + inset, top + position),
+                Edge::Right => (left + w - 1 - inset, top + position),
+                Edge::Top => (left + position, top + inset),
+                Edge::Bottom => (left + position, top + h - 1 - inset),
             }
         }
         None => INNER.lock().unwrap().saved,

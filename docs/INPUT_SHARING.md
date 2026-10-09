@@ -78,6 +78,20 @@ altijd een toets om de aanwijzer terug te halen, ook als de verbinding wegvalt.
 - **Klep.** Op Linux met een klep (`/proc/acpi/button/lid` of systemd `LidClosed`): klep dicht geeft de aanwijzer terug en weigert nieuwe,
   tenzij de instelling "Bruikbaar houden met de klep dicht" aanstaat (standaard uit). Ook de telefoonbediening volgt dat.
 
+## Wat erbij kwam na 0.1.73 (Linux als hoofdcomputer, nog niet op echte toestellen gezien)
+
+- **Linux (Wayland) als hoofd.** `windows/src-tauri/winsys/src/inputcapture.rs` gebruikt de InputCapture-portal van het bureaublad (GNOME 45 en
+  nieuwer, KDE Plasma 6.1 en nieuwer): Tandem zet barrieres op de stukken van de randen waar een andere computer zit (`barriers_for`, met tests),
+  en als de aanwijzer er tegenaan loopt geeft het bureaublad de muis en het toetsenbord aan Tandem, via libei (de crate `reis`). Die
+  bewegingen, knoppen, scrollen en toetsen (evdev, vertaald naar Windows-codes en dan naar Mac-codes) gaan dezelfde weg als wat de hooks van
+  Windows zien (`capture.rs`, `see`). Terug gaat met `Leave` van de ander, met Ctrl, Alt en Shift met Escape, of doordat het
+  bureaublad de muis zelf terugneemt. De eerste keer vraagt het bureaublad om toestemming; het antwoord wordt onthouden
+  (`portal-capture.token`). Onder Instellingen, Gedeelde muis staat een regel zolang die vraag openstaat. Niet voor X11.
+- **Wayland-invoer herstelt zichzelf.** Sluit het bureaublad de portal-sessie (scherm op slot, een nieuwe vraag), dan opent
+  de bestuurde kant een nieuwe met het onthouden antwoord. Lukt dat niet, dan geeft hij de aanwijzer meteen terug aan de hoofdcomputer en
+  meldt hij in het venster en met een melding welke toestemming ontbreekt.
+- **Mac.** De pill onderin blijft staan zolang de aanwijzer op een andere computer is en toont de toetsen (control, option, command, esc).
+
 ## Wat er nog moet, per systeem
 
 1. **Mac als hoofdcomputer:** een `CGEventTap` die de muis en de toetsen ziet (heeft Toegankelijkheid en Invoercontrole nodig, de

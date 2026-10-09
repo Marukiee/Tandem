@@ -386,3 +386,18 @@ fn permission_of(text: &str) -> tandem_core::ffi::TandemMediaPermission {
         _ => P::Ask,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_session_number_survives_the_trip_as_text() {
+        // A number this big loses its last digits in a web page, which is how a session came to be "over" the moment it started.
+        let big = u64::MAX - 12;
+        assert_eq!(session_of(&big.to_string()), Ok(big));
+        assert_eq!(session_of(" 42 "), Ok(42));
+        assert!(session_of("not a number").is_err());
+        assert!(session_of("").is_err());
+    }
+}
