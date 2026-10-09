@@ -450,4 +450,22 @@
     <string name="device_settings_sub">Delen, wat het van deze telefoon mag vragen, en verwijderen</string>
     <string name="swipe_pin">Vastpinnen</string>
     <string name="swipe_unpin">Losmaken</string>
+    <string name="filter_type">Soort</string>
+    <string name="filter_device">Apparaat</string>
+    <string name="filter_direction">Richting</string>
+    <string name="filter_failed">Mislukt</string>
+    <string name="filter_clear">Filters wissen</string>
+    <string name="filter_all_devices">Alle apparaten</string>
+    <string name="filter_kind_all">Alle soorten</string>
+    <string name="filter_kind_pictures">Afbeeldingen</string>
+    <string name="filter_kind_videos">Video\'s</string>
+    <string name="filter_kind_audio">Audio</string>
+    <string name="filter_kind_documents">Documenten</string>
+    <string name="filter_kind_archives">Archieven</string>
+    <string name="filter_kind_other">Overig</string>
+    <string name="filter_direction_all">Verstuurd en ontvangen</string>
+    <string name="filter_direction_received">Ontvangen</string>
+    <string name="filter_direction_sent">Verstuurd</string>
+    <string name="filter_nothing_title">Niets gevonden</string>
+    <string name="filter_nothing_body">Geen bestand past bij deze filters. Wis ze om weer alles te zien.</string>
 </resources>

@@ -453,4 +453,22 @@
     <string name="device_settings_sub">Sharing, what it may ask of this phone, and removing it</string>
     <string name="swipe_pin">Pin</string>
     <string name="swipe_unpin">Unpin</string>
+    <string name="filter_type">Type</string>
+    <string name="filter_device">Device</string>
+    <string name="filter_direction">Direction</string>
+    <string name="filter_failed">Failed</string>
+    <string name="filter_clear">Clear filters</string>
+    <string name="filter_all_devices">All devices</string>
+    <string name="filter_kind_all">All types</string>
+    <string name="filter_kind_pictures">Pictures</string>
+    <string name="filter_kind_videos">Videos</string>
+    <string name="filter_kind_audio">Audio</string>
+    <string name="filter_kind_documents">Documents</string>
+    <string name="filter_kind_archives">Archives</string>
+    <string name="filter_kind_other">Other</string>
+    <string name="filter_direction_all">Sent and received</string>
+    <string name="filter_direction_received">Received</string>
+    <string name="filter_direction_sent">Sent</string>
+    <string name="filter_nothing_title">Nothing matches</string>
+    <string name="filter_nothing_body">No file fits these filters. Clear them to see everything again.</string>
 </resources>
