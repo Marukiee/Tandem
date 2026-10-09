@@ -351,12 +351,17 @@ pub fn desktop() -> (i32, i32, i32, i32) {
     }
 }
 
-/// Puts the pointer somewhere.
+/// Not asked on Windows: the lock screen is another desktop there, and the hooks and the hands stop by themselves.
+pub fn screen_locked() -> Option<bool> {
+    None
+}
+
 /// Windows tells a lid by the power settings, which this does not read: there the lid is not asked about.
 pub fn lid_closed() -> Option<bool> {
     None
 }
 
+/// Puts the pointer somewhere.
 pub fn warp(x: i32, y: i32) {
     unsafe {
         let _ = SetCursorPos(x, y);

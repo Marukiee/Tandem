@@ -26,6 +26,28 @@ fn parse_acpi(text: &str) -> Option<bool> {
     }
 }
 
+/// Whether the screen of this session is locked. Nobody can use a locked computer from another one: the desktop refuses to open the
+/// portals that play keys and the pointer, and a pointer sent here would go nowhere. The login service knows (the lock screen of the
+/// desktop tells it); `None` when that cannot be asked.
+pub fn locked() -> Option<bool> {
+    use zbus::blocking::proxy::Builder;
+    use zbus::proxy::CacheProperties;
+    static CONNECTION: OnceLock<Option<zbus::blocking::Connection>> = OnceLock::new();
+    let connection = CONNECTION.get_or_init(|| zbus::blocking::Connection::system().ok()).as_ref()?;
+    // "auto" is the session of the program that asks.
+    let proxy = Builder::<zbus::blocking::Proxy>::new(connection)
+        .destination("org.freedesktop.login1")
+        .ok()?
+        .path("/org/freedesktop/login1/session/auto")
+        .ok()?
+        .interface("org.freedesktop.login1.Session")
+        .ok()?
+        .cache_properties(CacheProperties::No)
+        .build()
+        .ok()?;
+    proxy.get_property::<bool>("LockedHint").ok()
+}
+
 fn logind() -> Option<bool> {
     use zbus::blocking::proxy::Builder;
     use zbus::proxy::CacheProperties;

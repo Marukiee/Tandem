@@ -135,6 +135,7 @@ export function ArrangementEditor() {
     ${unplaced.length > 0 && html`<div class="arrange-hint">${t("arrange_hint")}</div>`}
   </div>
   ${capture.state === "starting" && html`<div class="small muted" style="margin-top:8px">${t("capture_starting")}</div>`}
+  ${capture.state === "locked" && html`<div class="small muted" style="margin-top:8px">${t("capture_locked")}</div>`}
   ${capture.state === "failed" && html`<div class="small muted" style="margin-top:8px">${t("capture_failed", capture.reason || "?")}</div>`}
   </div>`;
 }

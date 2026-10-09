@@ -134,6 +134,8 @@ final class PointerShare {
     @ObservationIgnored private var enterAlong: Double = 0.5
     /// When the computer that has the pointer last answered. A link that goes quiet gives the pointer back (see `watch`).
     @ObservationIgnored private var heardAt = Date()
+    /// When the pointer went over, so a computer that hands it straight back can be told apart from one that was used.
+    @ObservationIgnored private var wentOverAt = Date.distantPast
     @ObservationIgnored private var watchTask: Task<Void, Never>?
     /// The buttons held down while the pointer is over there, so they are let go over there when the pointer comes home.
     @ObservationIgnored private var heldButtons: Set<UInt8> = []
@@ -314,6 +316,7 @@ final class PointerShare {
         remoteTracker = nil
         enterAlong = Double(along)
         heardAt = Date()
+        wentOverAt = Date()
         // The size of that screen is known from before: the pointer is followed over there from the first movement.
         if let size = sizes[device] {
             remoteTracker = RemoteTracker(width: Double(size.width), height: Double(size.height), edge: edge, along: Double(along))
@@ -551,7 +554,15 @@ final class PointerShare {
             watchController(device)
             CGWarpMouseCursorPosition(point(on: enteredBy, along: CGFloat(along)))
         case let .leave(along):
-            if remote?.device == device { comeBack(along: CGFloat(along)) }
+            if remote?.device == device {
+                // Back at once: that computer did not take it. Say why that may be, or the pointer just bounces and nothing explains it.
+                let bounced = Date().timeIntervalSince(wentOverAt) < 1.5
+                comeBack(along: CGFloat(along))
+                if bounced {
+                    let name = model.device(device)?.name ?? String(localized: "The other computer")
+                    FloatingToast.show(String(localized: "\(name) did not take the pointer. It may be locked or asleep, or not allowed to be used from this Mac."), symbol: "lock.fill")
+                }
+            }
         case .release:
             if remote?.device == device { comeBack(along: nil) }
             if controlledBy == device { endControlled(tell: nil) }

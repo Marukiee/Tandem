@@ -135,6 +135,18 @@ mod imp {
 
     pub fn warp(_x: i32, _y: i32) {}
 
+    /// Whether the screen is locked, where that can be known (Linux).
+    pub fn screen_locked() -> Option<bool> {
+        #[cfg(target_os = "linux")]
+        {
+            crate::lid::locked()
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            None
+        }
+    }
+
     /// Whether the lid of this laptop is closed, where that can be known (Linux).
     pub fn lid_closed() -> Option<bool> {
         #[cfg(target_os = "linux")]
@@ -190,4 +202,4 @@ mod imp {
     }
 }
 
-pub use imp::{Capture, Grabber, Media, battery, describe, desktop, lid_closed, screen, warp, watch_clipboard};
+pub use imp::{Capture, Grabber, Media, battery, describe, desktop, lid_closed, screen, screen_locked, warp, watch_clipboard};

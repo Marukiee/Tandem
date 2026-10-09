@@ -1,6 +1,7 @@
-//! The lid of a laptop. With the lid closed nobody is looking at the screen, so nothing may keep using this computer from another one:
-//! a pointer that was sent here comes home at once, and does not come over while the lid is down. A person who works with the lid
-//! closed on purpose (the laptop on a dock, with another screen) turns that on in the settings.
+//! The lid of a laptop, and the lock of the screen. With the lid closed nobody is looking at the screen, so nothing may keep using this
+//! computer from another one: a pointer that was sent here comes home at once, and does not come over while the lid is down. A person
+//! who works with the lid closed on purpose (the laptop on a dock, with another screen) turns that on in the settings. A locked screen
+//! cannot be used from outside at all (the desktop refuses to let a program play keys and the pointer then), so it is the same.
 
 use std::time::Duration;
 
@@ -16,12 +17,18 @@ pub fn present() -> bool {
 
 /// Whether other computers must stay away from this one now.
 pub fn blocked(app: &AppHandle) -> bool {
-    !settings::get(app).keep_when_lid_closed && tandem_winsys::lid_closed() == Some(true)
+    locked() || (!settings::get(app).keep_when_lid_closed && tandem_winsys::lid_closed() == Some(true))
+}
+
+/// Whether the screen is locked now.
+pub fn locked() -> bool {
+    tandem_winsys::screen_locked() == Some(true)
 }
 
 /// Watches the lid. When it closes while another computer has the pointer, the pointer goes back.
 pub fn start(app: AppHandle) {
-    if !present() {
+    // A desktop without a lid still has a lock.
+    if !present() && !cfg!(target_os = "linux") {
         return;
     }
     std::thread::Builder::new()
@@ -31,7 +38,7 @@ pub fn start(app: AppHandle) {
             loop {
                 std::thread::sleep(Duration::from_millis(600));
                 let closed = tandem_winsys::lid_closed() == Some(true);
-                if closed && !settings::get(&app).keep_when_lid_closed {
+                if locked() || (closed && !settings::get(&app).keep_when_lid_closed) {
                     crate::input::shared_stop_here();
                     if !was_closed {
                         #[cfg(feature = "screen-host")]

@@ -887,3 +887,5 @@
 "That computer cannot share its screen yet. On a Mac, allow Screen Recording for Tandem. On Linux with Wayland, answer the question of the desktop about sharing the screen. Then try again." = "Die computer kan zijn scherm nog niet delen. Sta op een Mac Schermopname voor Tandem toe. Beantwoord op Linux met Wayland de vraag van het bureaublad over het delen van het scherm. Probeer het dan opnieuw.";
 "That computer may be asleep, or Tandem is not running there. Wake it up and try again." = "Die computer slaapt misschien, of Tandem draait daar niet. Maak hem wakker en probeer het opnieuw.";
 "Try again. If it keeps happening, restart Tandem on that computer." = "Probeer het opnieuw. Blijft het gebeuren, start dan Tandem op die computer opnieuw.";
+"%@ did not take the pointer. It may be locked or asleep, or not allowed to be used from this Mac." = "%@ nam de aanwijzer niet over. De computer is misschien vergrendeld of in slaap, of mag niet vanaf deze Mac worden gebruikt.";
+"The other computer" = "De andere computer";

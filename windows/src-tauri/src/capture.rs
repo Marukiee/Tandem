@@ -321,6 +321,10 @@ mod linux {
     }
 
     pub fn status() -> serde_json::Value {
+        // A locked screen is the commonest reason that the desktop will not hand anything over, and the one to say first.
+        if tandem_winsys::screen_locked() == Some(true) {
+            return serde_json::json!({ "state": "locked", "reason": "" });
+        }
         match CAPTURE.get() {
             Some(capture) => {
                 let state = match capture.state() {

@@ -40,21 +40,29 @@ static STATE: AtomicU8 = AtomicU8::new(0);
 /// Gets the thing that plays input ready, so what it has to ask the person (a Wayland desktop does) is asked at a quiet moment.
 pub fn warm_up() {
     let _ = worker();
+    if STATE.load(Ordering::Relaxed) == 2 {
+        let _ = try_again();
+    }
 }
 
 /// Whether this system lets the app play pointer and keyboard input. A computer that cannot has to hand a pointer that comes
 /// over straight back, or the person who sent it would be stuck on a screen that does not move.
 pub fn ready() -> bool {
     let _ = worker();
+    let mut asked_again = false;
     for _ in 0..40 {
         match STATE.load(Ordering::Relaxed) {
             1 => return true,
             2 => {
-                try_again();
-                return false;
+                // The desktop said no before (a locked screen, say): it is asked again now, and told a moment later whether it still says no.
+                if asked_again || !try_again() {
+                    return false;
+                }
+                asked_again = true;
             }
-            _ => std::thread::sleep(std::time::Duration::from_millis(50)),
+            _ => {}
         }
+        std::thread::sleep(std::time::Duration::from_millis(50));
     }
     false
 }
@@ -64,13 +72,19 @@ pub fn needs_permission() -> bool {
     STATE.load(Ordering::Relaxed) == 2
 }
 
-/// Asks the desktop again, at most once in a while: the question may have gone unseen, or been answered with no by mistake.
-fn try_again() {
+/// Asks the desktop again, at most once in a few seconds: the question may have gone unseen, or been answered with no by mistake, or
+/// the screen was locked and is not now.
+fn try_again() -> bool {
     static LAST: Mutex<Option<Instant>> = Mutex::new(None);
     let mut last = LAST.lock().unwrap();
-    if last.is_none_or(|t| t.elapsed() > Duration::from_secs(20)) {
+    if last.is_none_or(|t| t.elapsed() > Duration::from_secs(3)) {
         *last = Some(Instant::now());
+        // Not known again until the desktop has answered.
+        STATE.store(0, Ordering::Relaxed);
         let _ = worker().lock().unwrap().send(Msg::Retry);
+        true
+    } else {
+        false
     }
 }
 
