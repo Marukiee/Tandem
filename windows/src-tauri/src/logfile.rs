@@ -17,6 +17,12 @@ struct FileLog {
 
 impl Log for FileLog {
     fn enabled(&self, metadata: &Metadata) -> bool {
+        // The bus library of Linux tells every call it makes and every property it could not read (a harmless thing): that buried the
+        // lines that matter in a few hours. It is heard again when the level is asked for with `TANDEM_LOG`.
+        let chatty = metadata.target().starts_with("zbus") || metadata.target() == "tracing::span";
+        if chatty && self.level < LevelFilter::Debug {
+            return metadata.level() <= log::Level::Error;
+        }
         metadata.level() <= self.level
     }
 
