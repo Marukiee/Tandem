@@ -793,10 +793,12 @@ private fun StatsPanel(stats: ViewStats, info: StreamInfo?) {
             .background(scheme.surfaceContainer.copy(alpha = 0.94f))
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             "${stringResource(R.string.screen_stats_fps, stats.decoder.fps)}  ·  ${stringResource(R.string.screen_stats_bitrate, stats.receivedBps / 1_000_000f)}  ·  ${stringResource(R.string.screen_stats_delay, delay)}",
             style = MaterialTheme.typography.labelLarge,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
         val detail = buildList {
             info?.let { add(stringResource(R.string.screen_stats_size, it.width, it.height)) }
@@ -806,6 +808,8 @@ private fun StatsPanel(stats: ViewStats, info: StreamInfo?) {
             }
             if (stats.decoder.codecName.isNotEmpty()) add(stats.decoder.codecName)
         }
-        detail.forEach { Text(it, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant) }
+        detail.forEach {
+            Text(it, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        }
     }
 }
