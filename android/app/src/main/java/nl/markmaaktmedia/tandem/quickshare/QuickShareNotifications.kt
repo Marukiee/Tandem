@@ -120,6 +120,18 @@ class QuickShareNotifications(private val app: Application) {
         post(idOf(item.id), notification)
     }
 
+    /** A transfer that broke before anything was offered has no card: this says it, or the sender is left wondering why nothing came. */
+    fun failedEarly(id: ULong, reason: String) {
+        val notification = NotificationCompat.Builder(app, PROGRESS)
+            .setSmallIcon(R.drawable.ic_stat_tandem)
+            .setContentTitle(app.getString(R.string.quickshare_stopped))
+            .setContentText(app.getString(R.string.quickshare_failed_early, reason))
+            .setAutoCancel(true)
+            .setTimeoutAfter(20_000)
+            .build()
+        post(idOf(id), notification)
+    }
+
     fun cancel(id: ULong) {
         manager.cancel(idOf(id))
     }

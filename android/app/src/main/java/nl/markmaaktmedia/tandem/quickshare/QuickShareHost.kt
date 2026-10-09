@@ -299,6 +299,7 @@ class QuickShareHost(
         _incoming.update { list -> list.map { if (it.id == id) it.copy(failure = reason) else it } }
         _outgoing.update { list -> list.map { if (it.id == id) it.copy(state = Outgoing.State.Failed) else it } }
         _incoming.value.firstOrNull { it.id == id }?.let { notifications.failed(it) }
+        if (_incoming.value.none { it.id == id } && _outgoing.value.none { it.id == id }) notifications.failedEarly(id, reason)
     }
 
     private fun mimeOf(name: String): String {

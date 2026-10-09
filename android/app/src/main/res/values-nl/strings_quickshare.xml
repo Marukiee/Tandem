@@ -32,6 +32,7 @@
     <string name="quickshare_receiving">Ontvangen van %1$s</string>
     <string name="quickshare_received_from">Ontvangen van %1$s</string>
     <string name="quickshare_stopped">De overdracht is gestopt</string>
+    <string name="quickshare_failed_early">Het ging fout voordat er iets werd aangeboden (%1$s)</string>
     <string name="quickshare_row_on">Aan, zichtbaar voor iedereen in de buurt</string>
     <string name="quickshare_row_off">Uit</string>
     <string name="tile_quickshare_label">Quick Share</string>

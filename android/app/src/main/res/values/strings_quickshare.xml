@@ -32,6 +32,7 @@
     <string name="quickshare_receiving">Receiving from %1$s</string>
     <string name="quickshare_received_from">Received from %1$s</string>
     <string name="quickshare_stopped">The transfer stopped</string>
+    <string name="quickshare_failed_early">It failed before anything was offered (%1$s)</string>
     <string name="quickshare_row_on">On, visible to everyone nearby</string>
     <string name="quickshare_row_off">Off</string>
     <string name="tile_quickshare_label">Quick Share</string>
