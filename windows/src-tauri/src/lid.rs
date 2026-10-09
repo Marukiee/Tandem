@@ -28,9 +28,6 @@ pub fn locked() -> bool {
 /// Watches the lid. When it closes while another computer has the pointer, the pointer goes back.
 pub fn start(app: AppHandle) {
     // A desktop without a lid still has a lock.
-    if !present() && !cfg!(target_os = "linux") {
-        return;
-    }
     std::thread::Builder::new()
         .name("tandem-lid".into())
         .spawn(move || {

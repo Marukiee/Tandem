@@ -351,9 +351,20 @@ pub fn desktop() -> (i32, i32, i32, i32) {
     }
 }
 
-/// Not asked on Windows: the lock screen is another desktop there, and the hooks and the hands stop by themselves.
+/// Whether the screen is locked. The lock screen is another desktop of Windows, and a program of the person's own desktop may not open
+/// the one that has the input now: when that fails, the screen is locked (or the secure desktop of a prompt is up), and nothing sent to the
+/// pointer and keys of this desktop does anything.
 pub fn screen_locked() -> Option<bool> {
-    None
+    use windows::Win32::System::StationsAndDesktops::{CloseDesktop, DESKTOP_CONTROL_FLAGS, DESKTOP_SWITCHDESKTOP, OpenInputDesktop};
+    unsafe {
+        match OpenInputDesktop(DESKTOP_CONTROL_FLAGS(0), false, DESKTOP_SWITCHDESKTOP) {
+            Ok(desktop) => {
+                let _ = CloseDesktop(desktop);
+                Some(false)
+            }
+            Err(_) => Some(true),
+        }
+    }
 }
 
 /// Windows tells a lid by the power settings, which this does not read: there the lid is not asked about.
