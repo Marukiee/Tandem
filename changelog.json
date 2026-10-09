@@ -16,7 +16,8 @@
         "The pointer pill on the Mac stays and shows the keys to bring it back",
         "Windows and Linux: the screen window closes with the session and says what to allow",
         "Mac: the purple glow behind the pages is gone",
-        "Windows and Linux: choose which devices may use this PC's mouse and keyboard"
+        "Windows and Linux: choose which devices may use this PC's mouse and keyboard",
+        "Quick Share: sending to a device that was found connects reliably"
       ]
     },
     "nl": {
@@ -33,7 +34,8 @@
         "De pil op de Mac blijft staan en toont de toetsen om de muis terug te halen",
         "Windows en Linux: het schermvenster sluit met de sessie en zegt wat je moet toestaan",
         "Mac: de paarse gloed achter de pagina's is weg",
-        "Windows en Linux: kies welke apparaten de muis en het toetsenbord van deze pc mogen gebruiken"
+        "Windows en Linux: kies welke apparaten de muis en het toetsenbord van deze pc mogen gebruiken",
+        "Quick Share: sturen naar een gevonden apparaat verbindt betrouwbaar"
       ]
     }
   },

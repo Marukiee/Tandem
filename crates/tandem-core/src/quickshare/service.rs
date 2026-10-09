@@ -93,7 +93,9 @@ fn id_of_instance(label: &str) -> Option<String> {
 fn useful(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => !(v4.is_loopback() || v4.is_unspecified() || v4.is_link_local()),
-        IpAddr::V6(v6) => !(v6.is_loopback() || v6.is_unspecified()),
+        // An address of the link only (fe80::) means nothing without the interface it belongs to, which a name on the network does not
+        // carry: connecting to it ends in "no route to host", after the others have waited.
+        IpAddr::V6(v6) => !(v6.is_loopback() || v6.is_unspecified() || (v6.segments()[0] & 0xffc0) == 0xfe80),
     }
 }
 
@@ -105,6 +107,8 @@ impl QuickShare {
         let own_id = endpoint_id();
 
         let daemon = ServiceDaemon::new().map_err(|e| Error::Connection(format!("mdns: {e}")))?;
+        // The listener above takes IPv4 only: an IPv6 address in the announcement would be one that a sender picks and cannot reach.
+        let _ = daemon.disable_interface(mdns_sd::IfKind::IPv6);
         let instance = instance_name(&own_id);
         let info = encode_endpoint_info(device_name, kind);
         let txt = data_encoding::BASE64URL_NOPAD.encode(&info);
@@ -250,10 +254,18 @@ impl Drop for QuickShare {
     }
 }
 
+/// Tries every address a device gave at once and takes the first that answers: one of them may be a network that cannot be reached from
+/// here (a second adapter, a VPN), and it would only answer with a time-out while the right one waits.
 async fn connect(addrs: &[SocketAddr]) -> Result<TcpStream> {
-    let mut last = Error::NotConnected;
+    use futures_util::StreamExt;
+    let mut pending = futures_util::stream::FuturesUnordered::new();
     for addr in addrs {
-        match tokio::time::timeout(Duration::from_secs(5), TcpStream::connect(addr)).await {
+        let addr = *addr;
+        pending.push(async move { tokio::time::timeout(Duration::from_secs(5), TcpStream::connect(addr)).await });
+    }
+    let mut last = Error::NotConnected;
+    while let Some(result) = pending.next().await {
+        match result {
             Ok(Ok(stream)) => {
                 let _ = stream.set_nodelay(true);
                 return Ok(stream);
