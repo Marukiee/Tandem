@@ -417,8 +417,9 @@ select { cursor: default; }
 .arrange-hint { position: absolute; left: 0; right: 0; bottom: 66px; text-align: center; font-size: 11px; color: var(--text-2); pointer-events: none; }
 
 /* The sections of the settings. */
-.tabs { flex-wrap: wrap; row-gap: 2px; margin-bottom: 4px; }
-.tabs button { white-space: nowrap; }
+/* Two even rows of four, not a row that breaks wherever it runs out of room and leaves one tab alone on the second. */
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; box-sizing: border-box; margin-bottom: 6px; }
+.tabs button { padding: 6px 8px; text-align: center; line-height: 1.25; }
 
 /* The filters of the Shared page: small buttons that open a list, coloured while a choice is on. */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }

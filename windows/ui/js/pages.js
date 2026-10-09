@@ -152,6 +152,17 @@ function ScreenPolicyRows({ device }) {
     <${SettingRow} icon="pointer" title=${t("policy_control")} sub=${t("policy_control_sub")}>${choices(policy.control, (v) => change({ control: v }))}<//>`;
 }
 
+/** The name of a device over its two rows. Nothing at all until the rows are there, so no empty card shows while they load. */
+function PolicyBlock({ device }) {
+  const [policy, setPolicy] = useState(null);
+  useEffect(() => { call("media_policy", { id: device.id }).then(setPolicy).catch(() => {}); }, [device.id]);
+  if (!policy) return null;
+  return html`<div style="display:flex;flex-direction:column;gap:6px">
+    <div class="small muted" style="padding-left:4px">${device.name}</div>
+    <div class="card flush"><${ScreenPolicyRows} device=${device} /></div>
+  </div>`;
+}
+
 /** The last answer about the ssh port of each computer, so a page that is opened again shows it at once. */
 const sshSeen = new Map();
 
@@ -777,10 +788,7 @@ function RemoteSettings({ s, patch }) {
     ${state.canHost && html`<h2>${t("remote_per_device")}</h2>`}
     ${!state.canHost ? null : people.length === 0
       ? html`<div class="card"><div class="small muted">${t("remote_none")}</div></div>`
-      : people.map((d) => html`<div key=${d.id} style="display:flex;flex-direction:column;gap:6px">
-          <div class="small muted" style="padding-left:4px">${d.name}</div>
-          <div class="card flush"><${ScreenPolicyRows} device=${d} /></div>
-        </div>`)}
+      : people.map((d) => html`<${PolicyBlock} key=${d.id} device=${d} />`)}
     ${access && access.wayland && html`<h2>${t("access_title")}</h2>
       <div class="card flush">
         <${SettingRow} icon="pointer" title=${t("access_input")} sub=${access.inputAllowed ? "" : t("access_not_yet")}>

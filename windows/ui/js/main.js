@@ -91,6 +91,13 @@ function Nav() {
 
 function Dialogs() {
   const dialog = state.dialog;
+  // Escape closes the dialog, as a click beside it does.
+  useEffect(() => {
+    if (!dialog) return undefined;
+    const onKey = (e) => { if (e.key === "Escape") set({ dialog: null }); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [dialog]);
   if (!dialog) return null;
   const close = () => set({ dialog: null });
   if (dialog.kind === "pair") {
