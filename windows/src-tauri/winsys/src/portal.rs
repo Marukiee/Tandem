@@ -106,6 +106,21 @@ pub fn screen_available() -> bool {
 /// The size of the area the pointer moves in, which on Wayland is the layout of the screens in logical pixels. GNOME says it
 /// (a scaled screen is smaller than its mode), and nothing else does in a way that is the same everywhere; `None` when it is not asked.
 pub fn logical_screen() -> Option<(i32, i32)> {
+    // Asked for often (every few seconds, from several places) and a screen does not change that fast: the answer is kept a moment, so
+    // this does not open a new connection to the bus every time.
+    static KEPT: Mutex<Option<(std::time::Instant, Option<(i32, i32)>)>> = Mutex::new(None);
+    let mut kept = KEPT.lock().unwrap();
+    if let Some((at, answer)) = *kept {
+        if at.elapsed() < std::time::Duration::from_secs(5) {
+            return answer;
+        }
+    }
+    let answer = ask_logical_screen();
+    *kept = Some((std::time::Instant::now(), answer));
+    answer
+}
+
+fn ask_logical_screen() -> Option<(i32, i32)> {
     use zbus::blocking::Connection;
     use zbus::zvariant::{OwnedValue, Value};
     type Mode = (String, i32, i32, f64, f64, Vec<f64>, std::collections::HashMap<String, OwnedValue>);
