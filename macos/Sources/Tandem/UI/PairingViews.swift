@@ -129,10 +129,10 @@ private struct CodeStage: View {
         VStack(spacing: 14) {
             ZStack {
                 Brackets(inset: ready ? 10 : 0, radius: corner + space - 10)
-                    .stroke(
-                        ready ? AnyShapeStyle(Palette.indigo) : AnyShapeStyle(Color.primary.opacity(0.14)),
-                        style: StrokeStyle(lineWidth: 5, lineCap: .round)
-                    )
+                    // Purple from the start and not there before the code is: a frame that is grey first and turns purple while it
+                    // moves in looks like it is still making up its mind.
+                    .stroke(Palette.indigo, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .opacity(ready ? 1 : 0)
                     .frame(width: side + space * 2, height: side + space * 2)
                     .animation(.tandemSpringy, value: ready)
 
@@ -165,6 +165,7 @@ private struct CodeStage: View {
 
             Countdown(expiresAt: model.pairing.expiresAt)
                 .frame(width: side)
+                .opacity(ready ? 1 : 0)
 
             if let code = model.pairing.code, ready {
                 VStack(spacing: 2) {
