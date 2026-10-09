@@ -360,43 +360,6 @@ struct PillSpinner: View {
     }
 }
 
-/// A slow ambient glow behind the content. It only moves while something is being
-/// transferred, because an animation that always runs stops meaning anything.
-struct AmbientBackdrop: View {
-    let active: Bool
-
-    var body: some View {
-        TimelineView(.animation(minimumInterval: active ? 1 / 30 : 1, paused: !active)) { context in
-            let t = active ? context.date.timeIntervalSinceReferenceDate : 0
-            Canvas { canvas, size in
-                let blobs: [(Color, Double, Double, Double)] = [
-                    (Palette.indigo, 0.25, 0.20, 0.0),
-                    (Palette.rose, 0.85, 0.85, 2.1),
-                    (Palette.indigoLight, 0.75, 0.10, 4.2),
-                ]
-                for (color, fx, fy, phase) in blobs {
-                    let wobble = 0.05
-                    let x = (fx + sin(t / 5 + phase) * wobble) * size.width
-                    let y = (fy + cos(t / 6 + phase) * wobble) * size.height
-                    let radius = max(size.width, size.height) * 0.45
-                    let rect = CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)
-                    canvas.fill(
-                        Path(ellipseIn: rect),
-                        with: .radialGradient(
-                            Gradient(colors: [color.opacity(active ? 0.20 : 0.10), color.opacity(0)]),
-                            center: CGPoint(x: x, y: y),
-                            startRadius: 0,
-                            endRadius: radius
-                        )
-                    )
-                }
-            }
-        }
-        .allowsHitTesting(false)
-        .animation(.tandemFade, value: active)
-    }
-}
-
 // MARK: Transfers
 
 /// What a transfer looks like. Interaction lives in `TransferEntry`.

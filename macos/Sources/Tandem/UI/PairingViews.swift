@@ -128,15 +128,9 @@ private struct CodeStage: View {
         let ready = model.pairing.uri != nil && !expired
         VStack(spacing: 14) {
             ZStack {
-                // A quiet glow so the white tile does not sit on the page like a hole.
-                Circle()
-                    .fill(RadialGradient(colors: [Palette.indigo.opacity(0.20), Palette.indigo.opacity(0)], center: .center, startRadius: 20, endRadius: 230))
-                    .frame(width: 420, height: 420)
-                    .allowsHitTesting(false)
-
                 Brackets(inset: ready ? 10 : 0, radius: corner + space - 10)
                     .stroke(
-                        ready ? AnyShapeStyle(Palette.indigo.gradient) : AnyShapeStyle(Color.primary.opacity(0.14)),
+                        ready ? AnyShapeStyle(Palette.indigo) : AnyShapeStyle(Color.primary.opacity(0.14)),
                         style: StrokeStyle(lineWidth: 5, lineCap: .round)
                     )
                     .frame(width: side + space * 2, height: side + space * 2)

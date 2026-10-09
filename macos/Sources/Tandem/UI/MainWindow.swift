@@ -43,22 +43,18 @@ struct MainWindow: View {
             Sidebar(selection: $selection, showPairing: $showPairing)
                 .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 340)
         } detail: {
-            ZStack {
-                AmbientBackdrop(active: model.isTransferring)
-                    .ignoresSafeArea()
-                detail
-            }
-            .scrollEdgeEffectHidden(settling || sidebarShown, for: .top)
-            .toolbarBackgroundVisibility(sidebarShown ? .hidden : .automatic, for: .windowToolbar)
-            // The sidebar header already says Tandem. What the toolbar shows is the
-            // device you are on, once its card has scrolled away.
-            .toolbar(removing: .title)
-            .animation(.tandem, value: selection)
-            .onChange(of: selection) {
-                MainWindow.remembered = selection
-                settling = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { settling = false }
-            }
+            detail
+                .scrollEdgeEffectHidden(settling || sidebarShown, for: .top)
+                .toolbarBackgroundVisibility(sidebarShown ? .hidden : .automatic, for: .windowToolbar)
+                // The sidebar header already says Tandem. What the toolbar shows is the
+                // device you are on, once its card has scrolled away.
+                .toolbar(removing: .title)
+                .animation(.tandem, value: selection)
+                .onChange(of: selection) {
+                    MainWindow.remembered = selection
+                    settling = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { settling = false }
+                }
         }
         .background(HideWindowTitle(showsBar: !sidebarShown))
         // A sheet or dialog covers the window; nothing behind it should react to the pointer.
