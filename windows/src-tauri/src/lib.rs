@@ -195,6 +195,7 @@ pub fn run() {
             history::clip_history_copy,
             live::live_start,
             live::live_attach,
+            live::live_fit,
             live::live_keyframe,
             live::live_input,
             live::live_stop,

@@ -90,6 +90,8 @@ function draw(frame) {
   if (!hasPicture) {
     hasPicture = true;
     clear();
+    // The window takes the shape of the picture (see live_fit), once.
+    if (tauri) call("live_fit", { session, width, height }).catch(() => {});
   }
 }
 

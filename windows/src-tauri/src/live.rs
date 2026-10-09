@@ -278,6 +278,34 @@ fn session_of(text: &str) -> Reply<u64> {
     text.trim().parse::<u64>().map_err(|_| "that is not a session".to_string())
 }
 
+/// The first picture is there: the window takes the shape of what it shows (a computer is wide, a phone is tall), as big as is
+/// comfortable on this screen, so the picture does not sit in the middle of a black window.
+#[tauri::command]
+pub fn live_fit(app: AppHandle, session: String, width: f64, height: f64) {
+    let Ok(session) = session_of(&session) else { return };
+    if width < 2.0 || height < 2.0 {
+        return;
+    }
+    let Some(window) = app.get_webview_window(&format!("live-{session}")) else { return };
+    let (max_w, max_h) = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .map(|m| (m.size().width as f64 / m.scale_factor() * 0.85, m.size().height as f64 / m.scale_factor() * 0.85))
+        .unwrap_or((1200.0, 800.0));
+    let aspect = width / height;
+    let (mut w, mut h) = if aspect >= 1.0 { (1000.0, 1000.0 / aspect) } else { (440.0, 440.0 / aspect) };
+    if h > max_h {
+        h = max_h;
+        w = h * aspect;
+    }
+    if w > max_w {
+        w = max_w;
+        h = w / aspect;
+    }
+    let _ = window.set_size(tauri::LogicalSize::new(w.round().max(240.0), h.round().max(240.0)));
+}
+
 /// The window is ready for frames. What it missed while it loaded is sent first, from the newest keyframe on.
 #[tauri::command]
 pub fn live_attach(session: String, on_frame: Channel<InvokeResponseBody>) -> Reply<Value> {
