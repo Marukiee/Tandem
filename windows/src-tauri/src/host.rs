@@ -366,6 +366,7 @@ pub fn bench() {
         .name("tandem-bench".into())
         .spawn(|| {
             std::thread::sleep(Duration::from_secs(10));
+            bench_encoder(1920, 1200);
             for i420 in [true, false] {
                 let Some(grabber) = Grabber::with_options(tandem_winsys::GrabOptions { max: (1920, 1200), cursor: false, fps: 60, i420 }) else {
                     log::warn!("bench host: the screen could not be taken");
@@ -414,6 +415,47 @@ pub fn bench() {
             }
         })
         .ok();
+}
+
+/// The encoder alone, on a picture that is made up and moves: how many pictures a second it gives and how many bytes. It needs no screen,
+/// so it also says something when the screen cannot be photographed (a locked one), and whether the encoder gives anything at all.
+fn bench_encoder(w: u32, h: u32) {
+    let Some(mut encoder) = make_encoder(starting_bitrate(w, h, 30), 30, w, h) else {
+        log::warn!("bench host: the encoder did not start for {w}x{h}");
+        return;
+    };
+    let (width, height) = (w as usize, h as usize);
+    let mut data = vec![128u8; width * height * 3 / 2];
+    let (mut frames, mut bytes, mut failed, mut skipped, mut work_ms) = (0u32, 0usize, 0u32, 0u32, 0.0f64);
+    let started = Instant::now();
+    while started.elapsed() < Duration::from_secs(3) {
+        // A bright band that steps down the picture, and the rows it left go dark again.
+        let top = (frames as usize * 8) % (height - 80);
+        data[top.saturating_sub(8) * width..top * width].fill(16);
+        data[top * width..(top + 64) * width].fill(235);
+        let work = Instant::now();
+        match encoder.encode(&Planes { width, height, data: &data }) {
+            Ok(stream) => {
+                if matches!(stream.frame_type(), FrameType::Skip | FrameType::Invalid) {
+                    skipped += 1;
+                }
+                bytes += stream.to_vec().len();
+            }
+            Err(error) => {
+                failed += 1;
+                if failed == 1 {
+                    log::warn!("bench host: the made up picture was not encoded ({error})");
+                }
+            }
+        }
+        work_ms += work.elapsed().as_secs_f64() * 1000.0;
+        frames += 1;
+    }
+    log::info!(
+        "bench host: encoder alone {w}x{h}: {frames} pictures in 3 s, {:.1} ms each, {:.2} Mbit a second, {failed} not encoded, {skipped} skipped",
+        if frames > 0 { work_ms / f64::from(frames) } else { 0.0 },
+        bytes as f64 * 8.0 / 3.0 / 1_000_000.0
+    );
 }
 
 /// How the work of one picture is going, to choose how many a second there can be: when the work takes most of the time between two
