@@ -70,6 +70,10 @@ mod mpris;
 /// The portals of a Wayland desktop: keys, the pointer and the screen.
 #[cfg(target_os = "linux")]
 pub mod portal;
+/// Programs of the system that this one starts (`gst-launch-1.0`, `curl`, `tailscale`, `ssh`) must not see the libraries, plugins and paths of
+/// the AppImage it runs from, or they load the wrong ones or look only there and find nothing.
+#[cfg(target_os = "linux")]
+mod appenv;
 /// Notifications with buttons, for what has to be seen.
 #[cfg(target_os = "linux")]
 pub mod notify;
@@ -206,3 +210,25 @@ mod imp {
 }
 
 pub use imp::{Capture, Grabber, Media, battery, describe, desktop, lid_closed, screen, screen_locked, warp, watch_clipboard};
+
+/// Takes what points into an AppImage out of the environment of a program of the system that is about to be started (nothing on other
+/// systems, where there is no such thing).
+pub fn system_env(command: &mut std::process::Command) {
+    #[cfg(target_os = "linux")]
+    appenv::clean(command);
+    #[cfg(not(target_os = "linux"))]
+    let _ = command;
+}
+
+/// The same changes as a list, for a program that is started some other way than with `std::process::Command` (the terminal): the variable
+/// and its new value, or nothing to take it away.
+pub fn system_env_edits() -> Vec<(String, Option<String>)> {
+    #[cfg(target_os = "linux")]
+    {
+        appenv::edits()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        Vec::new()
+    }
+}

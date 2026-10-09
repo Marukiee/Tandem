@@ -90,14 +90,11 @@ pub fn screen_available() -> bool {
     *ANSWER.get_or_init(|| {
         let offered = portal_property("org.freedesktop.portal.ScreenCast", "AvailableSourceTypes").is_some_and(|types| types & 1 != 0);
         offered
-            && Command::new("gst-inspect-1.0")
-                .env_remove("LD_LIBRARY_PATH")
-                .env_remove("LD_PRELOAD")
-                .arg("pipewiresrc")
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .status()
-                .is_ok_and(|s| s.success())
+            && {
+                let mut inspect = Command::new("gst-inspect-1.0");
+                crate::system_env(&mut inspect);
+                inspect.arg("pipewiresrc").stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s| s.success())
+            }
     })
 }
 
@@ -300,8 +297,8 @@ impl WaylandGrabber {
 
             let raw = remote.as_raw_fd();
             let mut command = Command::new("gst-launch-1.0");
-            // The libraries of an AppImage must not leak into GStreamer of the system.
-            command.env_remove("LD_LIBRARY_PATH").env_remove("LD_PRELOAD");
+            // The libraries and plugin paths of an AppImage must not leak into GStreamer of the system.
+            crate::system_env(&mut command);
             command
                 .args(["-q", "pipewiresrc", "fd=3"])
                 .arg(format!("path={node}"))
@@ -310,7 +307,7 @@ impl WaylandGrabber {
                 .args(["!", "fdsink", "fd=1", "sync=false"])
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
-                .stderr(Stdio::null());
+                .stderr(Stdio::piped());
             // The connection of the portal is handed to the child as its third file: the number it is given in `fd=3` above.
             unsafe {
                 command.pre_exec(move || {
@@ -325,6 +322,19 @@ impl WaylandGrabber {
             let mut child = command.spawn().map_err(|e| format!("GStreamer could not start: {e}"))?;
             drop(remote);
             let mut pipe = child.stdout.take().ok_or("no pipe to GStreamer")?;
+            // What GStreamer says when it cannot do it (a plugin that is missing, say) goes in the log: without it a screen that never
+            // appears gives nothing to go on.
+            if let Some(errors) = child.stderr.take() {
+                std::thread::Builder::new()
+                    .name("tandem-wayland-screen-log".into())
+                    .spawn(move || {
+                        use std::io::BufRead;
+                        for line in std::io::BufReader::new(errors).lines().map_while(Result::ok).take(20) {
+                            log::warn!("gstreamer: {line}");
+                        }
+                    })
+                    .ok();
+            }
 
             let latest: Arc<Mutex<Option<Vec<u8>>>> = Arc::new(Mutex::new(None));
             let alive = Arc::new(AtomicBool::new(true));

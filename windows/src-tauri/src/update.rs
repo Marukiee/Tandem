@@ -317,7 +317,7 @@ fn curl_command() -> Command {
     let mut command = Command::new(curl_program());
     command.args(["--silent", "--show-error", "--location", "--fail", "--user-agent", "Tandem"]);
     // Inside an AppImage the libraries of the package come first, and the curl of the system then finds a library of the wrong age.
-    command.env_remove("LD_LIBRARY_PATH").env_remove("LD_PRELOAD");
+    tandem_winsys::system_env(&mut command);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
