@@ -217,8 +217,12 @@ mod portal_driver {
                 _ => 0x110,
             };
             match direction {
-                Direction::Press => self.input.button(code, true),
-                Direction::Release => self.input.button(code, false),
+                Direction::Press => {
+                    self.input.button(code, true);
+                }
+                Direction::Release => {
+                    self.input.button(code, false);
+                }
                 Direction::Click => {
                     self.input.button(code, true);
                     self.input.button(code, false);
@@ -239,8 +243,12 @@ mod portal_driver {
             self.ensure()?;
             let Some(symbol) = keysym(key) else { return Err(InputError::InvalidInput("a key that has no name on this desktop")) };
             match direction {
-                Direction::Press => self.input.key(symbol, true),
-                Direction::Release => self.input.key(symbol, false),
+                Direction::Press => {
+                    self.input.key(symbol, true);
+                }
+                Direction::Release => {
+                    self.input.key(symbol, false);
+                }
                 Direction::Click => {
                     self.input.key(symbol, true);
                     self.input.key(symbol, false);
