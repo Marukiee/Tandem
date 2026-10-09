@@ -186,7 +186,6 @@ struct DeviceDetail: View {
     private var content: some View {
         VStack(spacing: 18) {
             actions
-            LiveActionRow(device: device)
             DropZone(device: device)
             NowPlayingCard(device: device)
             if device.platform == .android { HotspotCard(device: device) }
@@ -199,63 +198,72 @@ struct DeviceDetail: View {
     // MARK: Actions
 
     private var actions: some View {
-        GlassEffectContainer(spacing: 14) {
-            HStack(spacing: 12) {
-                GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true) { pickFiles() }
+        let isComputer = device.platform == .macOs || device.platform == .windows || device.platform == .linux
+        return VStack(alignment: .leading, spacing: 16) {
+            // What goes between the two devices.
+            actionGroup("Share") {
+                GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true, wide: true) { pickFiles() }
                     .disabled(!device.online)
                     .opacity(device.online ? 1 : 0.5)
                 // Small enough for Bluetooth, so it works with no network as long as a link is up.
-                GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard") {
+                GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard", wide: true) {
                     model.sendClipboard(to: [device.id])
                 }
                 .disabled(!(device.online || device.ble))
                 .opacity(device.online || device.ble ? 1 : 0.5)
                 // Phones are the ones that offer folders for now; a computer offers none until its app can show them.
                 if device.platform == .android && device.caps.contains("files") {
-                    GlassActionButton(title: "Browse files", symbol: "folder") { onBrowse() }
+                    GlassActionButton(title: "Browse files", symbol: "folder", wide: true) { onBrowse() }
                         .disabled(!device.online)
                         .opacity(device.online ? 1 : 0.5)
                 }
-                if device.platform == .android {
-                    let ringing = model.ringing.contains(device.id)
-                    GlassActionButton(
-                        title: ringing ? "Stop ringing" : "Find phone",
-                        symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right",
-                        prominent: ringing
-                    ) {
-                        model.ring(device.id, on: !ringing)
-                        model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
+            }
+            // What this Mac does on the other device: look at it, use it, log in to it, ring it.
+            if isComputer || device.platform == .android {
+                actionGroup(isComputer ? "Use this computer" : "On the phone") {
+                    LiveActionRow(device: device)
+                    if device.platform == .android {
+                        let ringing = model.ringing.contains(device.id)
+                        GlassActionButton(
+                            title: ringing ? "Stop ringing" : "Find phone",
+                            symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right",
+                            prominent: ringing,
+                            wide: true
+                        ) {
+                            model.ring(device.id, on: !ringing)
+                            model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
+                        }
+                        .disabled(!device.online)
+                        .opacity(device.online ? 1 : 0.5)
                     }
-                    .disabled(!device.online)
-                    .opacity(device.online ? 1 : 0.5)
-                }
-                // A computer can be logged in to from here. The button is there and grey, with the reason under it, when it is not set up.
-                if device.platform == .macOs || device.platform == .windows || device.platform == .linux {
-                    // Until it has been looked at the button is taken to work (a button that starts grey and lights up a moment later reads as
-                    // broken), and a press finds the address itself.
-                    let missing = !device.online || (sshChecked && sshAddress == nil)
-                    GlassActionButton(title: "Terminal", symbol: "terminal") {
-                        Task {
-                            var address = sshAddress
-                            if address == nil { address = await SSHAccess.reachableAddress(of: device) }
-                            if let address {
-                                SSHAccess.open(device, at: address)
-                            } else {
-                                sshChecked = true
-                                model.showToast(SSHAccess.reason(for: device))
+                    // A computer can be logged in to from here. The button is there and grey, with the reason under it, when it is not set up.
+                    if isComputer {
+                        // Until it has been looked at the button is taken to work (a button that starts grey and lights up a moment later reads as
+                        // broken), and a press finds the address itself.
+                        let missing = !device.online || (sshChecked && sshAddress == nil)
+                        GlassActionButton(title: "Terminal", symbol: "terminal", wide: true) {
+                            Task {
+                                var address = sshAddress
+                                if address == nil { address = await SSHAccess.reachableAddress(of: device) }
+                                if let address {
+                                    SSHAccess.open(device, at: address)
+                                } else {
+                                    sshChecked = true
+                                    model.showToast(SSHAccess.reason(for: device))
+                                }
                             }
                         }
+                        .disabled(missing)
+                        .opacity(missing ? 0.5 : 1)
+                        .help(missing ? SSHAccess.reason(for: device) : String(localized: "Log in to this computer over SSH"))
                     }
-                    .disabled(missing)
-                    .opacity(missing ? 0.5 : 1)
-                    .help(missing ? SSHAccess.reason(for: device) : String(localized: "Log in to this computer over SSH"))
                 }
-                Spacer(minLength: 0)
             }
-            if (device.platform == .macOs || device.platform == .windows || device.platform == .linux), sshChecked, sshAddress == nil {
+            if isComputer, sshChecked, sshAddress == nil {
                 Text(SSHAccess.reason(for: device))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .padding(.leading, 4)
             }
         }
         .animation(.tandemFade, value: device.online)
@@ -270,6 +278,22 @@ struct DeviceDetail: View {
             SSHAccess.seen[device.id] = found ?? ""
             sshAddress = found
             sshChecked = true
+        }
+    }
+
+    /// A small heading and the buttons under it in a grid: every button as wide as the others in its row, starting at the left, so a row
+    /// that is not full leaves room at the right and not a lonely button in the middle.
+    private func actionGroup<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
+            GlassEffectContainer(spacing: 10) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 170, maximum: 280), spacing: 10)], alignment: .leading, spacing: 10) {
+                    content()
+                }
+            }
         }
     }
 

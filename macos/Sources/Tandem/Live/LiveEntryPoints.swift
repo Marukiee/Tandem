@@ -18,7 +18,7 @@ struct LiveActionRow: View {
         if device.isComputer, device.caps.contains("screen.host") {
             let ready = device.online
             let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
-            GlassActionButton(title: "Control this computer", symbol: "display", prominent: running) {
+            GlassActionButton(title: "Control this computer", symbol: "display", prominent: running, wide: true) {
                 LiveManager.shared.start(device: device, kind: .screen)
             }
             .disabled(!ready)
@@ -27,29 +27,23 @@ struct LiveActionRow: View {
         }
         // Always there for a phone, grey while it cannot: a phone with an older Tandem is told what to do in the tooltip.
         if device.platform == .android {
-            GlassEffectContainer(spacing: 12) {
-                HStack(spacing: 12) {
-                    let screenReady = device.online && device.canShowScreen
-                    let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
-                    GlassActionButton(title: "Show phone screen", symbol: "iphone.gen3", prominent: running) {
-                        LiveManager.shared.start(device: device, kind: .screen)
-                    }
-                    .disabled(!screenReady)
-                    .opacity(screenReady ? 1 : 0.5)
-                    .help(device.canShowScreen ? "Shows your phone's screen in a window. The phone asks first." : "Update Tandem on the phone to version 0.1.38 or newer")
-
-                    let cameraReady = device.online && device.canShowCamera
-                    let cameraRunning = LiveManager.shared.session(of: .camera, on: device.id) != nil
-                    GlassActionButton(title: "Phone camera", symbol: "camera", prominent: cameraRunning) {
-                        LiveManager.shared.start(device: device, kind: .camera)
-                    }
-                    .disabled(!cameraReady)
-                    .opacity(cameraReady ? 1 : 0.5)
-                    .help(device.canShowCamera ? "Shows your phone's camera in a window. It is a window and not a virtual webcam: share or capture it in Zoom or OBS." : "Update Tandem on the phone to version 0.1.38 or newer")
-                    Spacer(minLength: 0)
-                }
+            let screenReady = device.online && device.canShowScreen
+            let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
+            GlassActionButton(title: "Show phone screen", symbol: "iphone.gen3", prominent: running, wide: true) {
+                LiveManager.shared.start(device: device, kind: .screen)
             }
-            .animation(.tandemFade, value: device.online)
+            .disabled(!screenReady)
+            .opacity(screenReady ? 1 : 0.5)
+            .help(device.canShowScreen ? "Shows your phone's screen in a window. The phone asks first." : "Update Tandem on the phone to version 0.1.38 or newer")
+
+            let cameraReady = device.online && device.canShowCamera
+            let cameraRunning = LiveManager.shared.session(of: .camera, on: device.id) != nil
+            GlassActionButton(title: "Phone camera", symbol: "camera", prominent: cameraRunning, wide: true) {
+                LiveManager.shared.start(device: device, kind: .camera)
+            }
+            .disabled(!cameraReady)
+            .opacity(cameraReady ? 1 : 0.5)
+            .help(device.canShowCamera ? "Shows your phone's camera in a window. It is a window and not a virtual webcam: share or capture it in Zoom or OBS." : "Update Tandem on the phone to version 0.1.38 or newer")
         }
     }
 }

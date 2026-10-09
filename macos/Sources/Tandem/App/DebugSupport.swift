@@ -72,6 +72,10 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_ARRANGE") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showArrangementWindow() }
         }
+        // `TANDEM_DEBUG_DEVICEPAGE=linux|android`: the page of a made up device, for the layout of its buttons.
+        if let kind = variable("TANDEM_DEBUG_DEVICEPAGE") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showDevicePageWindow(kind) }
+        }
         // `TANDEM_DEBUG_AWAY=1`: the pill that stays while the pointer is on another computer.
         if variable("TANDEM_DEBUG_AWAY") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { PointerAwayPill.show(device: "Linux Laptop") }
@@ -176,6 +180,21 @@ enum DebugSupport {
 
     static func initialSettingsSection() -> SettingsSection? {
         variable("TANDEM_DEBUG_SETTINGS").flatMap { SettingsSection(rawValue: $0) }
+    }
+
+    private static func showDevicePageWindow(_ kind: String) {
+        let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
+        let phone = kind == "android"
+        let device = TandemDevice(
+            id: "debug", name: phone ? "Pixel 9" : "Linux Laptop", platform: phone ? .android : .linux, online: true, route: nil, rttMs: 7, status: status,
+            appVersion: "0.1.76", caps: phone ? ["files", "media.screen", "media.camera"] : ["screen.host"], vouchedByRemoved: false, clipboardEnabled: true,
+            autoAccept: true, notificationsEnabled: true, ble: false
+        )
+        let host = NSHostingView(rootView: DeviceDetail(device: device).environment(EngineModel.shared).frame(width: 760, height: 640))
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 760, height: 640), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Device page (debug)"
+        window.contentView = host
+        window.makeKeyAndOrderFront(nil)
     }
 
     private static func showArrangementWindow() {
