@@ -3,6 +3,7 @@
 //! one and the small panel above the tray icon.
 
 mod arrange;
+mod ask;
 mod browse;
 mod debugshot;
 mod capture;
@@ -134,6 +135,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
+            ask::ask_state,
+            ask::ask_answer,
             quickshare::qs_state,
             quickshare::qs_respond,
             quickshare::qs_dismiss,

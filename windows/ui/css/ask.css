@@ -1,0 +1,6 @@
+/* The question whether a device may look at this screen: the card of Quick Share, with a text that is allowed to be long. */
+body.ask .qs-sub { white-space: normal; max-width: none; line-height: 1.4; }
+body.ask .qs-head { align-items: flex-start; }
+body.ask .qs-icon { margin-top: 2px; }
+body.ask .qs-buttons { justify-content: flex-end; flex-wrap: wrap; }
+body.ask .qs-buttons .quiet { margin-right: auto; }

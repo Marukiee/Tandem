@@ -170,6 +170,10 @@ export async function call(command, args) {
       ],
       outgoing: [], problem: null,
     };
+    case "ask_state": return [
+      { id: 1, title: "Maruks MacBook Pro wants to see your screen", body: "It sees everything on your screen and can use your mouse and keyboard until you stop it. You can stop it in the window of Tandem.", allow: "Allow", always: "Always allow", deny: "Deny", control: true },
+    ];
+    case "ask_answer": return null;
     case "qs_respond": case "qs_dismiss": case "qs_pick_and_send": case "qs_send_clipboard": case "qs_open_link": case "qs_send_paths": return null;
     case "guests_by_default": return guestsMock;
     case "set_guests_by_default": guestsMock = args.on; return null;

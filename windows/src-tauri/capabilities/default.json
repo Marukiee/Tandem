@@ -8,7 +8,8 @@
     "live-*",
     "ssh-*",
     "edge-zone",
-    "qs-card"
+    "qs-card",
+    "ask-card"
   ],
   "permissions": [
     "core:default",
