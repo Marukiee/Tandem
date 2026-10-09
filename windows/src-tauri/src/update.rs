@@ -274,8 +274,11 @@ fn put_in_place(new: &Path) -> Result<(), String> {
     std::fs::copy(new, &beside).map_err(|e| format!("the new version cannot be put next to the old one: {e}"))?;
     std::fs::set_permissions(&beside, std::fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
     std::fs::rename(&beside, &target).map_err(|e| format!("the new version cannot replace the old one: {e}"))?;
-    // Started on its own, so it outlives this program.
-    Command::new("setsid").arg(&target).arg("--minimized").spawn().map(|_| ()).map_err(|e| format!("the new version could not start: {e}"))
+    // Started on its own, so it outlives this program, and with the environment of a desktop, not the one this AppImage made for itself.
+    let mut restart = Command::new("setsid");
+    restart.arg(&target).arg("--minimized");
+    tandem_winsys::system_env(&mut restart);
+    restart.spawn().map(|_| ()).map_err(|e| format!("the new version could not start: {e}"))
 }
 
 fn fetch_and_check(app: &AppHandle, release: &Release) -> Result<PathBuf, String> {
