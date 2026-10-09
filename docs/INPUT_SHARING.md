@@ -85,8 +85,8 @@ altijd een toets om de aanwijzer terug te halen, ook als de verbinding wegvalt.
   en als de aanwijzer er tegenaan loopt geeft het bureaublad de muis en het toetsenbord aan Tandem, via libei (de crate `reis`). Die
   bewegingen, knoppen, scrollen en toetsen (evdev, vertaald naar Windows-codes en dan naar Mac-codes) gaan dezelfde weg als wat de hooks van
   Windows zien (`capture.rs`, `see`). Terug gaat met `Leave` van de ander, met Ctrl, Alt en Shift met Escape, of doordat het
-  bureaublad de muis zelf terugneemt. De eerste keer vraagt het bureaublad om toestemming; het antwoord wordt onthouden
-  (`portal-capture.token`). Onder Instellingen, Gedeelde muis staat een regel zolang die vraag openstaat. Niet voor X11.
+  bureaublad de muis zelf terugneemt. De eerste keer vraagt het bureaublad om toestemming. Een portal van versie 2 onthoudt het antwoord
+  (`portal-capture.token`); GNOME 50 meldt versie 1 (gezien op een Fedora 44), dan vraagt het bureaublad het bij elke start van Tandem opnieuw. Onder Instellingen, Gedeelde muis staat een regel zolang die vraag openstaat. Niet voor X11.
 - **Wayland-invoer herstelt zichzelf.** Sluit het bureaublad de portal-sessie (scherm op slot, een nieuwe vraag), dan opent
   de bestuurde kant een nieuwe met het onthouden antwoord. Lukt dat niet, dan geeft hij de aanwijzer meteen terug aan de hoofdcomputer en
   meldt hij in het venster en met een melding welke toestemming ontbreekt.
