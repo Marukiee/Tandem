@@ -203,12 +203,9 @@ impl Sink for Hears {
         VIEW.lock().unwrap().incoming.push(item);
         refresh(&self.app);
         // A desktop that does not let a window come to the front by itself (Wayland) would leave the card unseen, and the sender
-        // waiting for an answer: a notification says it, too.
+        // waiting for an answer: a notification with the two buttons asks it, too.
         #[cfg(target_os = "linux")]
-        {
-            let sender = if introduction.sender.trim().is_empty() { "Quick Share".to_string() } else { introduction.sender.clone() };
-            crate::events::toast(&self.app, &sender, &i18n::t(&self.app, "qs_incoming"));
-        }
+        ask_with_notification(&self.app, id, &introduction);
     }
 
     fn progress(&self, id: u64, done: u64, total: u64) {
@@ -282,6 +279,28 @@ impl Sink for Hears {
     }
 }
 
+/// The notifications that ask whether a transfer is welcome, by the transfer.
+#[cfg(target_os = "linux")]
+static ASKS: Mutex<Vec<(u64, u32)>> = Mutex::new(Vec::new());
+
+#[cfg(target_os = "linux")]
+fn ask_with_notification(app: &AppHandle, id: u64, introduction: &Introduction) {
+    let sender = if introduction.sender.trim().is_empty() { "Quick Share".to_string() } else { introduction.sender.clone() };
+    let what = match (introduction.files.len(), introduction.texts.len()) {
+        (0, _) => i18n::t(app, "qs_what_text"),
+        (1, 0) => introduction.files[0].name.clone(),
+        (n, _) => i18n::t1(app, "qs_what_files", &n.to_string()),
+    };
+    let body = format!("{what}\nPIN {}", introduction.pin);
+    let handle = app.clone();
+    let buttons = [("accept", i18n::t(app, "qs_accept")), ("decline", i18n::t(app, "qs_decline"))];
+    let pairs: Vec<(&str, &str)> = buttons.iter().map(|(k, v)| (*k, v.as_str())).collect();
+    let shown = tandem_winsys::notify::ask(&sender, &body, &pairs, move |key| respond(&handle, id, key == "accept"));
+    if let Some(number) = shown {
+        ASKS.lock().unwrap().push((id, number));
+    }
+}
+
 /// Takes a finished transfer off the screen after a while.
 fn later(app: &AppHandle, id: u64, seconds: u64) {
     let app = app.clone();
@@ -292,6 +311,18 @@ fn later(app: &AppHandle, id: u64, seconds: u64) {
 }
 
 fn remove(app: &AppHandle, id: u64) {
+    #[cfg(target_os = "linux")]
+    {
+        let asked: Vec<u32> = {
+            let mut asks = ASKS.lock().unwrap();
+            let found = asks.iter().filter(|(t, _)| *t == id).map(|(_, n)| *n).collect();
+            asks.retain(|(t, _)| *t != id);
+            found
+        };
+        for number in asked {
+            tandem_winsys::notify::close(number);
+        }
+    }
     {
         let mut view = VIEW.lock().unwrap();
         view.incoming.retain(|i| i.id != id);
@@ -370,7 +401,12 @@ pub fn qs_state(app: AppHandle) -> Value {
 /// The answer of the person to an incoming transfer.
 #[tauri::command]
 pub fn qs_respond(app: AppHandle, id: u64, accept: bool) {
-    let folder = if accept { Some(settings::download_dir(&app)) } else { None };
+    respond(&app, id, accept);
+}
+
+/// The answer, from the card or from the buttons of the notification.
+fn respond(app: &AppHandle, id: u64, accept: bool) {
+    let folder = if accept { Some(settings::download_dir(app)) } else { None };
     if let Some(service) = SERVICE.lock().unwrap().as_ref() {
         service.respond(id, folder);
     }
@@ -378,9 +414,9 @@ pub fn qs_respond(app: AppHandle, id: u64, accept: bool) {
         if let Some(item) = VIEW.lock().unwrap().incoming.iter_mut().find(|i| i.id == id) {
             item.accepted = true;
         }
-        refresh(&app);
+        refresh(app);
     } else {
-        remove(&app, id);
+        remove(app, id);
     }
 }
 
