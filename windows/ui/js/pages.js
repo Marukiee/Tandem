@@ -211,31 +211,40 @@ export function DevicePage({ device }) {
 
     <${Offers} device=${device} />
 
-    <div class="actions">
-      <button class="btn accent" disabled=${!device.online} onClick=${send}><${Icon} name="send" size=${17} />${t("send_files")}</button>
-      <button class="btn" disabled=${!device.online} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
-      ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("screen.host")} title=${hasCap("screen.host") ? "" : t("live_update_phone")} onClick=${() => show("screen")}>
-        <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
-      ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("camera.host")} title=${hasCap("camera.host") ? t("live_camera_tip") : t("live_update_phone")} onClick=${() => show("camera")}>
-        <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
-      ${isComputer && hasCap("screen.host") && html`<button class="btn" disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => show("screen")}>
-        <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
-      ${isComputer && html`<button class="btn" disabled=${!sshReady} title=${sshReady ? t("ssh_title") : sshReason} onClick=${openSsh}>
-        <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
-      ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
-        <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>
-      <button class="btn" disabled=${!device.online} title=${t("insert_scan_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "document" }).catch(failed)}>
-        <${Icon} name="file" size=${17} />${t("insert_scan")}</button>`}
-      ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
-        <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}
-      ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
-        <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}
+    <div class="agroup">
+      <div class="agroup-title">${t("group_share")}</div>
+      <div class="actions">
+        <button class="btn" disabled=${!device.online} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
+        ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
+          <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}
+      </div>
     </div>
+    ${(isComputer || device.platform === "android") && html`<div class="agroup">
+      <div class="agroup-title">${t(isComputer ? "group_use_computer" : "group_on_phone")}</div>
+      <div class="actions">
+        ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("screen.host")} title=${hasCap("screen.host") ? "" : t("live_update_phone")} onClick=${() => show("screen")}>
+          <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
+        ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("camera.host")} title=${hasCap("camera.host") ? t("live_camera_tip") : t("live_update_phone")} onClick=${() => show("camera")}>
+          <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
+        ${isComputer && hasCap("screen.host") && html`<button class="btn" disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => show("screen")}>
+          <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
+        ${isComputer && html`<button class="btn" disabled=${!sshReady} title=${sshReady ? t("ssh_title") : sshReason} onClick=${openSsh}>
+          <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
+        ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
+          <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>
+        <button class="btn" disabled=${!device.online} title=${t("insert_scan_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "document" }).catch(failed)}>
+          <${Icon} name="file" size=${17} />${t("insert_scan")}</button>`}
+        ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
+          <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}
+      </div>
+    </div>`}
 
     ${isComputer && sshChecked && !sshAddress && html`<div class="small muted" style="margin:-4px 2px 0">${sshReason}</div>`}
 
-    <div class=${"drop" + (state.dropping ? " over" : "")}>
-      <${Icon} name="upload" size=${22} /><div style="font-weight:500;margin-top:4px">${t("drop_here")}</div>
+    <div class=${"drop" + (state.dropping ? " over" : "") + (device.online ? " click" : " off")} role="button" tabindex="0"
+      title=${t("drop_click")} onClick=${() => device.online && send()}
+      onKeyDown=${(e) => { if ((e.key === "Enter" || e.key === " ") && device.online) { e.preventDefault(); send(); } }}>
+      <${Icon} name="upload" size=${24} /><div class="drop-title">${t("drop_here")}</div>
       <div class="small">${t("drop_hint")}</div>
     </div>
 
@@ -291,9 +300,12 @@ export function ClipboardPage() {
             <div style=${"white-space:pre-wrap;word-break:break-word;" + (open[item.id] ? "max-height:60vh;overflow:auto" : "max-height:4.6em;overflow:hidden")}>${item.text}</div>
             <div class="small muted">${[item.from, ago(item.at_ms), isLong(item.text) ? t("n_characters", item.text.length) : ""].filter(Boolean).join(" · ")}</div>
           </div>
-          ${isLong(item.text) && html`<button class="btn small" title=${open[item.id] ? t("show_less") : t("show_more")} onClick=${() => setOpen({ ...open, [item.id]: !open[item.id] })}><${Icon} name=${open[item.id] ? "arrow-up" : "arrow-down"} size=${15} /></button>`}
-          <button class=${"btn small" + (item.pinned ? " accent" : "")} title=${item.pinned ? t("let_go") : t("keep_this")} onClick=${() => call("clip_history_pin", { id: item.id })}><${Icon} name="pin" size=${15} /></button>
-          <button class="btn small" title=${t("remove")} onClick=${() => call("clip_history_remove", { id: item.id })}><${Icon} name="x" size=${15} /></button>
+          <div class="item-actions">
+            <button class="iconbtn" title=${t("copy_again")} onClick=${() => copy(item)}><${Icon} name="copy" size=${16} /></button>
+            ${isLong(item.text) && html`<button class="iconbtn" title=${open[item.id] ? t("show_less") : t("show_more")} onClick=${() => setOpen({ ...open, [item.id]: !open[item.id] })}><${Icon} name=${open[item.id] ? "arrow-up" : "arrow-down"} size=${16} /></button>`}
+            <button class=${"iconbtn" + (item.pinned ? " on" : "")} title=${item.pinned ? t("let_go") : t("keep_this")} onClick=${() => call("clip_history_pin", { id: item.id })}><${Icon} name="pin" size=${16} /></button>
+            <button class="iconbtn danger" title=${t("remove")} onClick=${() => call("clip_history_remove", { id: item.id })}><${Icon} name="x" size=${16} /></button>
+          </div>
         </div>`)}</div>`}
   </div>`;
 }
@@ -390,7 +402,62 @@ export function FilesPage() {
   </div>`;
 }
 
+// What a file is, by the end of its name.
+const SHARED_KINDS = {
+  pictures: /\.(jpe?g|png|gif|heic|heif|webp|bmp|tiff?|svg|raw|dng|cr2|nef|arw)$/i,
+  videos: /\.(mp4|mov|mkv|avi|webm|m4v|3gp|mts)$/i,
+  audio: /\.(mp3|m4a|wav|flac|aac|ogg|opus|aiff)$/i,
+  documents: /\.(pdf|docx?|xlsx?|pptx?|txt|md|rtf|odt|ods|odp|csv|pages|numbers|key|epub)$/i,
+  archives: /\.(zip|rar|7z|tar|gz|tgz|bz2|xz|dmg|iso|apk|pkg|deb|rpm|appimage)$/i,
+};
+const kindOf = (name) => Object.keys(SHARED_KINDS).find((k) => SHARED_KINDS[k].test(name)) || "other";
+
+/** A small button that opens a list to choose from. It is coloured while something other than "all" is chosen. */
+function FilterChip({ icon, label, active, options, value, onPick }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return undefined;
+    const away = () => setOpen(false);
+    // Closed by a press anywhere else; the press on the chip itself is dealt with by the chip.
+    setTimeout(() => document.addEventListener("click", away), 0);
+    return () => document.removeEventListener("click", away);
+  }, [open]);
+  return html`<div class="chipwrap">
+    <button class=${"chip" + (active ? " on" : "")} onClick=${(e) => { e.stopPropagation(); setOpen(!open); }}>
+      <${Icon} name=${icon} size=${15} /><span>${label}</span><${Icon} name="arrow-down" size=${13} />
+    </button>
+    ${open && html`<div class="chipmenu">
+      ${options.map((o) => html`<button class=${"chipitem" + (o.key === value ? " on" : "")} onClick=${() => { onPick(o.key); setOpen(false); }}>
+        <span class="grow">${o.label}</span>${o.key === value && html`<${Icon} name="check" size=${15} />`}
+      </button>`)}
+    </div>`}
+  </div>`;
+}
+
 export function SharedPage() {
+  const [query, setQuery] = useState("");
+  const [kind, setKind] = useState("all");
+  const [direction, setDirection] = useState("all");
+  const [peer, setPeer] = useState("all");
+  const [period, setPeriod] = useState("always");
+  const [failed, setFailed] = useState(false);
+  const day = 86400000;
+  const within = { today: day, week: 7 * day, month: 30 * day };
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const items = state.transfers.filter((x) =>
+    (kind === "all" || kindOf(x.name) === kind)
+    && (direction === "all" || (direction === "received") === !!x.incoming)
+    && (peer === "all" || x.peer === peer)
+    && (period === "always" || Date.now() - (x.startedAt || 0) < within[period])
+    && (!failed || x.state === "failed")
+    && words.every((w) => x.name.toLowerCase().includes(w)));
+  const filtering = kind !== "all" || direction !== "all" || peer !== "all" || period !== "always" || failed || query;
+  const peers = [...new Set(state.transfers.map((x) => x.peer))].map((id) => ({ key: id, label: (state.devices.find((d) => d.id === id) || {}).name || "?" }));
+  const clear = () => { setQuery(""); setKind("all"); setDirection("all"); setPeer("all"); setPeriod("always"); setFailed(false); };
+  const kinds = ["all", "pictures", "videos", "audio", "documents", "archives", "other"].map((k) => ({ key: k, label: t("kind_" + k) }));
+  const directions = ["all", "received", "sent"].map((k) => ({ key: k, label: t("dir_" + k) }));
+  const periods = ["always", "today", "week", "month"].map((k) => ({ key: k, label: t("period_" + k) }));
+  const nameOf = (list, key, fallback) => (list.find((o) => o.key === key) || { label: fallback }).label;
   return html`<div class="wrap">
     <div style="display:flex;align-items:flex-end;gap:12px">
       <div class="grow"><h1>${t("title_shared")}</h1><p class="lead">${t("lead_shared")}</p></div>
@@ -398,7 +465,21 @@ export function SharedPage() {
     </div>
     ${state.transfers.length === 0
       ? html`<div class="card empty"><${Icon} name="files" size=${34} /><div>${t("nothing_yet")}</div></div>`
-      : html`<div class="card flush">${state.transfers.map((x) => html`<${TransferRow} item=${x} key=${x.id} />`)}</div>`}
+      : html`
+        <input type="search" placeholder=${t("search_name")} value=${query} onInput=${(e) => setQuery(e.target.value)}
+          style="margin:10px 0 8px;width:100%;box-sizing:border-box;padding:9px 16px;border-radius:999px;border:1px solid rgba(128,128,128,0.35);background:transparent;color:inherit;font:inherit;outline:none" />
+        <div class="chips">
+          <${FilterChip} icon="files" label=${nameOf(kinds, kind, t("filter_type"))} active=${kind !== "all"} options=${kinds} value=${kind} onPick=${setKind} />
+          <${FilterChip} icon="devices" label=${peer === "all" ? t("filter_device") : nameOf(peers, peer, "?")} active=${peer !== "all"}
+            options=${[{ key: "all", label: t("all_devices") }, ...peers]} value=${peer} onPick=${setPeer} />
+          <${FilterChip} icon="arrow-down" label=${direction === "all" ? t("filter_direction") : nameOf(directions, direction, "")} active=${direction !== "all"} options=${directions} value=${direction} onPick=${setDirection} />
+          <${FilterChip} icon="hourglass" label=${period === "always" ? t("filter_when") : nameOf(periods, period, "")} active=${period !== "always"} options=${periods} value=${period} onPick=${setPeriod} />
+          <button class=${"chip" + (failed ? " on" : "")} onClick=${() => setFailed(!failed)}><${Icon} name="alert-triangle" size=${15} /><span>${t("failed")}</span></button>
+          ${filtering && html`<button class="chip" onClick=${clear}><${Icon} name="x" size=${15} /><span>${t("clear_filters")}</span></button>`}
+        </div>
+        ${items.length === 0
+          ? html`<div class="card empty"><${Icon} name="files" size=${34} /><div>${t("nothing_matches")}</div></div>`
+          : html`<div class="card flush">${items.map((x) => html`<${TransferRow} item=${x} key=${x.id} />`)}</div>`}`}
   </div>`;
 }
 

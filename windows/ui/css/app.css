@@ -271,7 +271,11 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 .head { display: flex; align-items: center; gap: 18px; }
 .head .info { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .head .title { font: 600 24px var(--font-display); }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/* The buttons of a device page, in groups with a small heading, each button as wide as the others and starting at the left. */
+.agroup { display: flex; flex-direction: column; gap: 8px; }
+.agroup-title { font: 600 12px var(--font); color: var(--text-2); padding-left: 4px; }
+.actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.actions .btn { width: 100%; justify-content: center; box-sizing: border-box; }
 .drop {
   border: 1.5px dashed var(--line-strong);
   border-radius: 12px;
@@ -281,6 +285,10 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
   transition: background 0.15s, border-color 0.15s, transform 0.15s;
 }
 .drop.over { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); transform: scale(1.01); }
+.drop.click { cursor: pointer; }
+.drop.click:hover, .drop.click:focus-visible { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); outline: none; }
+.drop.off { opacity: 0.5; }
+.drop .drop-title { font-weight: 500; margin-top: 4px; }
 
 .ring { position: relative; width: 66px; height: 66px; flex: none; }
 .ring > svg { transform: rotate(-90deg); }
@@ -319,6 +327,15 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 
 /* ---- Transfers, notifications ---- */
 .item { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 8px; }
+/* The buttons of a row of the list: round, quiet until the pointer is on the row, one size, one place. */
+.item-actions { display: flex; align-items: center; gap: 2px; flex: none; }
+.iconbtn { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; border: 0; background: transparent; color: var(--text-2); cursor: pointer; transition: background 0.12s, color 0.12s, opacity 0.12s, transform 0.12s; }
+.iconbtn:hover { background: var(--hover); color: var(--text); }
+.iconbtn:active { transform: scale(0.92); }
+.iconbtn.on { background: var(--accent); color: #fff; }
+.iconbtn.danger:hover { color: var(--bad); }
+.item .item-actions .iconbtn:not(.on) { opacity: 0.55; }
+.item:hover .item-actions .iconbtn, .item .item-actions .iconbtn:focus-visible { opacity: 1; }
 .item + .item { border-top: 1px solid var(--line); border-radius: 0; }
 .prog { height: 4px; border-radius: 2px; background: var(--line-strong); margin-top: 6px; overflow: hidden; }
 .prog > i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.15s linear; }
@@ -402,3 +419,16 @@ select { cursor: default; }
 /* The sections of the settings. */
 .tabs { flex-wrap: wrap; row-gap: 2px; margin-bottom: 4px; }
 .tabs button { white-space: nowrap; }
+
+/* The filters of the Shared page: small buttons that open a list, coloured while a choice is on. */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.chipwrap { position: relative; }
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid transparent; background: var(--hover); color: var(--text); font: 500 13px var(--font); cursor: pointer; transition: background 0.12s, border-color 0.12s, transform 0.12s; }
+.chip:hover { background: var(--press); }
+.chip:active { transform: scale(0.97); }
+.chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.chipmenu { position: absolute; z-index: 20; top: 38px; left: 0; min-width: 190px; padding: 6px; border-radius: 14px; background: var(--surface-2, #232329); border: 1px solid var(--line-strong); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); display: flex; flex-direction: column; gap: 2px; animation: chipin 0.14s ease-out; }
+@keyframes chipin { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+.chipitem { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 9px; background: transparent; color: var(--text); font: 13px var(--font); text-align: left; cursor: pointer; }
+.chipitem:hover { background: var(--hover); }
+.chipitem.on { color: var(--accent); }
