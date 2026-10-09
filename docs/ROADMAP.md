@@ -27,6 +27,12 @@ Open, wacht op een echte Windows-pc: alles van sectie 2 voor Windows (scherm del
 Foundation, hotspot) en alles nalopen.
 
 Open, kan zonder dat die toegang er is, nog niet gedaan:
+- Gasten en familie (gevraagd 2026-10-09): familieleden met de app zonder dat hun klembord bij je binnenkomt. Nu kan dat per apparaat met de
+  schakelaar Klembord (die werkt twee kanten op in de kern: wat jij kopieert gaat er niet heen en wat zij kopieren wordt aan jouw kant
+  weggegooid, `session.rs` bij `Msg::Clipboard`), maar een nieuw gekoppeld apparaat begint met alles aan (klembord, meldingen, bestanden
+  automatisch accepteren). Te bouwen: bij het koppelen kiezen "Mijn eigen apparaat" of "Een gast", waarbij een gast begint met klembord en
+  meldingen uit, bestanden vragen eerst, en scherm en bediening op "nooit"; plus een eigen cirkel per persoon als tweede weg (Quick Share
+  werkt al tussen cirkels, zonder dat er iets automatisch meeloopt).
 - Bestanden slepen over de rand: loslaten op de plek van de aanwijzer met een systeemsleep op de ontvanger, en Windows of Linux als hoofd met
   een dropzone (sectie 4); de rest vraagt twee echte computers om uit te proberen.
 - De telefoon als scherm voor de gedeelde muis (gevraagd 2026-10-09, in 0.1.73 nog niet gebouwd): de muis van de Mac gaat over de rand naar de telefoon,
