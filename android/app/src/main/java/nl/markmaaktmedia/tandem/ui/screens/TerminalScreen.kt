@@ -426,7 +426,7 @@ private fun KeysPanel(
     }
 }
 
-/** One key. A tap presses it, a hold on one that [repeat]s presses it again and again, and every press is felt. */
+/** One key. A tap presses it (when the finger comes up, so a swipe over the row scrolls it and presses nothing), a hold on one that [repeat]s presses it again and again, and every press is felt. */
 @Composable
 private fun KeyButton(
     label: String, on: Boolean, repeat: Boolean = false, icon: androidx.compose.ui.graphics.painter.Painter? = null, onPress: () -> Unit,
@@ -444,22 +444,32 @@ private fun KeyButton(
             .background(if (on) scheme.primary else scheme.surfaceContainerHighest)
             .pointerInput(repeat) {
                 awaitEachGesture {
-                    awaitFirstDown()
+                    // A finger that lands on a key may be about to scroll the row, so nothing is pressed on the way down: a tap presses
+                    // when the finger comes up, and a hold on a key that repeats presses when it has been held a moment.
+                    awaitFirstDown(requireUnconsumed = false)
                     down = true
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    current()
-                    if (repeat) {
-                        // Held: after a pause it goes on until it is let go.
-                        val pause = withTimeoutOrNull(380) { waitForUpOrCancellation() }
-                        if (pause == null) {
+                    var scrolled = false
+                    val up = withTimeoutOrNull(if (repeat) 380 else 60_000) {
+                        val lifted = waitForUpOrCancellation()
+                        if (lifted == null) scrolled = true
+                        lifted
+                    }
+                    when {
+                        up != null -> {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            current()
+                        }
+                        scrolled -> {}
+                        else -> {
+                            // Held: it goes on until it is let go.
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            current()
                             val job = kotlinx.coroutines.CoroutineScope(Dispatchers.Main).launch {
-                                while (true) { current(); delay(55) }
+                                while (true) { delay(55); current() }
                             }
                             waitForUpOrCancellation()
                             job.cancel()
                         }
-                    } else {
-                        waitForUpOrCancellation()
                     }
                     down = false
                 }

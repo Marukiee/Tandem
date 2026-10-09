@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.1.77",
+    "date": "2026-10-10",
+    "en": {
+      "title": "Neater pages",
+      "new": [
+        "Mac: the buttons on a device page in groups, side by side from the left",
+        "Android terminal: swiping over the keys scrolls them and no longer presses one",
+        "Linux: the mouse can go to the Mac again on GNOME",
+        "Linux and Windows: the window of another screen fits the picture"
+      ]
+    },
+    "nl": {
+      "title": "Nettere pagina's",
+      "new": [
+        "Mac: de knoppen op een apparaatpagina in groepen, naast elkaar vanaf links",
+        "Android-terminal: over de toetsen vegen scrolt ze en drukt geen toets meer in",
+        "Linux: de muis kan op GNOME weer naar de Mac",
+        "Linux en Windows: het venster van een ander scherm past bij het beeld"
+      ]
+    }
+  },
+  {
     "version": "0.1.76",
     "date": "2026-10-09",
     "en": {
