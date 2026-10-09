@@ -36,6 +36,9 @@ static INNER: Mutex<Inner> = Mutex::new(Inner { next_to: None, remote: None, sav
 static OUT: OnceLock<Sender<Out>> = OnceLock::new();
 /// When the computer that has the pointer last answered. A link that goes quiet gives the pointer back (see `watch`).
 static HEARD: Mutex<Option<Instant>> = Mutex::new(None);
+/// Whether the computer that has the pointer has answered a ping since it got it. One that never does is an older Tandem, which says nothing
+/// while the pointer is held still, so its silence means nothing.
+static PONGED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static HOOKS: OnceLock<Option<Capture>> = OnceLock::new();
 
 fn edge_of(text: &str) -> Option<Edge> {
@@ -103,7 +106,8 @@ fn watch() {
         .spawn(|| loop {
             std::thread::sleep(Duration::from_millis(pointer_share::PING_EVERY_MS));
             let Some((device, _)) = INNER.lock().unwrap().remote.clone() else { continue };
-            let quiet = HEARD.lock().unwrap().map_or(true, |t| t.elapsed() > Duration::from_millis(pointer_share::PING_PATIENCE_MS));
+            let quiet = PONGED.load(std::sync::atomic::Ordering::Relaxed)
+                && HEARD.lock().unwrap().map_or(true, |t| t.elapsed() > Duration::from_millis(pointer_share::PING_PATIENCE_MS));
             if quiet {
                 come_back(None);
                 send(Out::Share(device, TandemPointerShare::Release));
@@ -114,10 +118,13 @@ fn watch() {
         .ok();
 }
 
-/// Something came in from that computer, so it is still there.
-pub fn heard(device: &str) {
+/// Something came in from that computer, so it is still there. `answered` is for a pong, which is what proves it keeps up with pings.
+pub fn heard(device: &str, answered: bool) {
     if is_remote(device) {
         *HEARD.lock().unwrap() = Some(Instant::now());
+        if answered {
+            PONGED.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
     }
 }
 

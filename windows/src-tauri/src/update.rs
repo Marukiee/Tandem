@@ -1,4 +1,6 @@
-//! Looking for a newer Tandem on GitHub, fetching it and installing it over this one.
+//! Looking for a newer Tandem on GitHub, fetching it and installing it over this one. On Windows that is the installer; on Linux it is
+//! the AppImage, which replaces the file it is run from and starts again (a .deb or .rpm belongs to the package manager, so those only
+//! hear that there is a newer version).
 //!
 //! Fetching goes through curl.exe, which Windows has carried since 2018: it uses the certificates, the proxy and the
 //! other settings of the system, and it keeps a second TLS stack out of this program. What is installed is checked
@@ -19,7 +21,23 @@ use crate::settings;
 
 const LATEST: &str = "https://api.github.com/repos/Marukiee/Tandem/releases/latest";
 const DOWNLOADS: &str = "https://github.com/Marukiee/Tandem/releases/download/";
-const INSTALLER: &str = "Tandem-Windows-x64-setup.exe";
+/// The file of a release that is the program, by system.
+fn installer_name() -> &'static str {
+    if cfg!(windows) { "Tandem-Windows-x64-setup.exe" } else { "Tandem-Linux-x64.AppImage" }
+}
+
+/// Whether this program can replace itself: the installer on Windows, the AppImage on Linux when it was started from one.
+pub fn can_update_itself() -> bool {
+    cfg!(windows) || appimage_path().is_some()
+}
+
+/// The AppImage file that is running, when this is one.
+fn appimage_path() -> Option<PathBuf> {
+    if cfg!(windows) {
+        return None;
+    }
+    std::env::var_os("APPIMAGE").map(PathBuf::from).filter(|p| p.is_file())
+}
 /// The public half of the update key. The Mac app has the same file.
 const PUBLIC_KEY: &str = include_str!("../../../macos/update-public-key.txt");
 
@@ -81,8 +99,8 @@ pub fn snapshot() -> Value {
 
 /// Looks now and then while Tandem runs, when the person has not switched that off.
 pub fn start(app: AppHandle) {
-    // The updates are the installers of Windows: on another system the package manager or the new download is the way.
-    if !cfg!(windows) {
+    // Windows and an AppImage update themselves; a package of the distribution is the package manager's.
+    if !cfg!(windows) && !cfg!(target_os = "linux") {
         return;
     }
     std::thread::Builder::new()
@@ -102,7 +120,7 @@ pub fn start(app: AppHandle) {
 
 /// Asks GitHub for the newest release. A check nobody asked for stays quiet when it fails: an offline PC is not news.
 pub fn check(app: &AppHandle, manual: bool) {
-    if !cfg!(windows) {
+    if !cfg!(windows) && !cfg!(target_os = "linux") {
         return;
     }
     {
@@ -146,11 +164,12 @@ pub fn parse_release(json: &str) -> Result<Release, String> {
     let tag = root["tag_name"].as_str().filter(|t| !t.is_empty()).ok_or("the release feed has no version")?;
     let assets = root["assets"].as_array().cloned().unwrap_or_default();
     let find = |name: &str| assets.iter().find(|a| a["name"] == name);
-    let installer = find(INSTALLER).ok_or("that release has no Windows installer")?;
+    let name = installer_name();
+    let installer = find(name).ok_or("that release has no download for this system")?;
     let url = |asset: Option<&Value>| asset.and_then(|a| a["browser_download_url"].as_str()).map(str::to_string);
-    let installer_url = url(Some(installer)).ok_or("the Windows installer has no address")?;
+    let installer_url = url(Some(installer)).ok_or("the download has no address")?;
     if !is_release_download(&installer_url) {
-        return Err("the Windows installer is not on the Tandem releases page".into());
+        return Err("the download is not on the Tandem releases page".into());
     }
     Ok(Release {
         version: tag.trim_start_matches(['v', 'V']).to_string(),
@@ -158,8 +177,8 @@ pub fn parse_release(json: &str) -> Result<Release, String> {
         page: root["html_url"].as_str().unwrap_or("https://github.com/Marukiee/Tandem/releases/latest").to_string(),
         size: installer["size"].as_u64().unwrap_or(0),
         installer: installer_url,
-        hash_url: url(find(&format!("{INSTALLER}.sha256"))).filter(|u| is_release_download(u)),
-        signature_url: url(find(&format!("{INSTALLER}.sig"))).filter(|u| is_release_download(u)),
+        hash_url: url(find(&format!("{name}.sha256"))).filter(|u| is_release_download(u)),
+        signature_url: url(find(&format!("{name}.sig"))).filter(|u| is_release_download(u)),
     })
 }
 
@@ -204,27 +223,28 @@ pub fn signed_by_the_update_key(bytes: &[u8], signature: &str) -> bool {
 
 // ---- Installing ---------------------------------------------------------------------
 
-/// Downloads the release that is waiting, checks it and hands it to its installer, which replaces this program and
-/// starts it again.
+/// Downloads the release that is waiting, checks it and puts it in place: handed to its installer on Windows, written over the AppImage on
+/// Linux. Either way the new program starts and this one ends.
 pub fn install(app: &AppHandle) {
     let release = match &*STATE.lock().unwrap() {
         State::Available(r) | State::Failed { release: Some(r), .. } => r.clone(),
         _ => return,
     };
+    // A package of the distribution (or a program that is not an AppImage) cannot replace itself: the page of the release is the way.
+    if !can_update_itself() {
+        set(app, State::Failed { reason: "This copy of Tandem comes from a package, so update it with your package manager or download the new version.".into(), release: Some(release) });
+        return;
+    }
     let app = app.clone();
     std::thread::spawn(move || match fetch_and_check(&app, &release) {
-        Ok(installer) => {
-            set(&app, State::Installing(release));
-            log::info!("starting the installer {}", installer.display());
-            // Passive: it shows its own progress. Run: it starts Tandem when it is done. Update: it knows this program
-            // is running and takes it away first.
-            let mut command = Command::new(&installer);
-            command.args(["/P", "/R", "/UPDATE"]);
-            if let Err(error) = command.spawn() {
-                set(&app, State::Failed { reason: format!("the installer could not start: {error}"), release: None });
+        Ok(file) => {
+            set(&app, State::Installing(release.clone()));
+            log::info!("installing {}", file.display());
+            if let Err(reason) = put_in_place(&file) {
+                set(&app, State::Failed { reason, release: Some(release) });
                 return;
             }
-            // Out of the way, so the installer can replace the files.
+            // Out of the way, so the new program can take over.
             std::thread::sleep(Duration::from_millis(800));
             app.exit(0);
         }
@@ -235,11 +255,34 @@ pub fn install(app: &AppHandle) {
     });
 }
 
+#[cfg(windows)]
+fn put_in_place(installer: &Path) -> Result<(), String> {
+    // Passive: it shows its own progress. Run: it starts Tandem when it is done. Update: it knows this program
+    // is running and takes it away first.
+    let mut command = Command::new(installer);
+    command.args(["/P", "/R", "/UPDATE"]);
+    command.spawn().map(|_| ()).map_err(|error| format!("the installer could not start: {error}"))
+}
+
+#[cfg(not(windows))]
+fn put_in_place(new: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+    let target = appimage_path().ok_or("This copy of Tandem is not an AppImage, so it cannot replace itself")?;
+    // Next to the old one, so the swap is a rename inside one folder: the program that runs keeps its file, and the new one is whole
+    // the moment it is there.
+    let beside = target.with_extension("update");
+    std::fs::copy(new, &beside).map_err(|e| format!("the new version cannot be put next to the old one: {e}"))?;
+    std::fs::set_permissions(&beside, std::fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
+    std::fs::rename(&beside, &target).map_err(|e| format!("the new version cannot replace the old one: {e}"))?;
+    // Started on its own, so it outlives this program.
+    Command::new("setsid").arg(&target).arg("--minimized").spawn().map(|_| ()).map_err(|e| format!("the new version could not start: {e}"))
+}
+
 fn fetch_and_check(app: &AppHandle, release: &Release) -> Result<PathBuf, String> {
     let dir = std::env::temp_dir().join("Tandem-update");
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).map_err(|e| format!("no room to download in {}: {e}", dir.display()))?;
-    let target = dir.join(format!("Tandem-{}-setup.exe", release.version));
+    let target = dir.join(format!("Tandem-{}-{}", release.version, installer_name()));
 
     set(app, State::Downloading { release: release.clone(), done: 0 });
     download(&release.installer, &target, |done| {
@@ -347,32 +390,37 @@ mod tests {
 
     use super::*;
 
-    const FEED: &str = r#"{
-        "tag_name": "v0.1.27",
-        "name": "Better panel",
-        "html_url": "https://github.com/Marukiee/Tandem/releases/tag/v0.1.27",
-        "body": "Notes\n\nSomething new",
-        "assets": [
-            { "name": "Tandem.apk", "size": 100, "browser_download_url": "https://github.com/Marukiee/Tandem/releases/download/v0.1.27/Tandem.apk" },
-            { "name": "Tandem-Windows-x64-setup.exe", "size": 4284281, "browser_download_url": "https://github.com/Marukiee/Tandem/releases/download/v0.1.27/Tandem-Windows-x64-setup.exe" },
-            { "name": "Tandem-Windows-x64-setup.exe.sha256", "size": 95, "browser_download_url": "https://github.com/Marukiee/Tandem/releases/download/v0.1.27/Tandem-Windows-x64-setup.exe.sha256" },
-            { "name": "Tandem-Windows-x64-setup.exe.sig", "size": 90, "browser_download_url": "https://github.com/Marukiee/Tandem/releases/download/v0.1.27/Tandem-Windows-x64-setup.exe.sig" }
-        ]
-    }"#;
+    /// A feed with the files of both systems, so the test is the same wherever it runs.
+    fn feed() -> String {
+        let file = |name: &str, size: u64| format!(r#"{{ "name": "{name}", "size": {size}, "browser_download_url": "https://github.com/Marukiee/Tandem/releases/download/v0.1.27/{name}" }}"#);
+        let files = [
+            file("Tandem.apk", 100),
+            file("Tandem-Windows-x64-setup.exe", 4_284_281),
+            file("Tandem-Windows-x64-setup.exe.sha256", 95),
+            file("Tandem-Windows-x64-setup.exe.sig", 90),
+            file("Tandem-Linux-x64.AppImage", 4_284_281),
+            file("Tandem-Linux-x64.AppImage.sha256", 95),
+            file("Tandem-Linux-x64.AppImage.sig", 90),
+        ];
+        format!(
+            r#"{{ "tag_name": "v0.1.27", "name": "Better panel", "html_url": "https://github.com/Marukiee/Tandem/releases/tag/v0.1.27", "body": "Notes\n\nSomething new", "assets": [{}] }}"#,
+            files.join(",")
+        )
+    }
 
     #[test]
     fn the_feed_gives_the_installer_its_hash_and_its_signature() {
-        let release = parse_release(FEED).unwrap();
+        let release = parse_release(&feed()).unwrap();
         assert_eq!(release.version, "0.1.27");
         assert_eq!(release.size, 4_284_281);
-        assert!(release.installer.ends_with("/Tandem-Windows-x64-setup.exe"));
+        assert!(release.installer.ends_with(&format!("/{}", installer_name())));
         assert!(release.hash_url.as_deref().unwrap().ends_with(".sha256"));
         assert!(release.signature_url.as_deref().unwrap().ends_with(".sig"));
         assert!(release.notes.contains("Something new"));
     }
 
     #[test]
-    fn a_release_without_a_windows_installer_is_not_an_update() {
+    fn a_release_without_a_download_for_this_system_is_not_an_update() {
         let feed = r#"{ "tag_name": "v0.2.0", "assets": [ { "name": "Tandem.apk", "browser_download_url": "https://github.com/Marukiee/Tandem/releases/download/v0.2.0/Tandem.apk" } ] }"#;
         assert!(parse_release(feed).is_err());
         assert!(parse_release("not json").is_err());
@@ -380,9 +428,10 @@ mod tests {
 
     #[test]
     fn an_installer_from_somewhere_else_is_refused() {
-        let feed = FEED.replace(
-            "https://github.com/Marukiee/Tandem/releases/download/v0.1.27/Tandem-Windows-x64-setup.exe\"",
-            "https://example.com/Tandem-Windows-x64-setup.exe\"",
+        let name = installer_name();
+        let feed = feed().replace(
+            &format!("https://github.com/Marukiee/Tandem/releases/download/v0.1.27/{name}\""),
+            &format!("https://example.com/{name}\""),
         );
         assert!(parse_release(&feed).is_err());
         assert!(!is_release_download("https://github.com/Someone/Else/releases/download/v1/x.exe"));

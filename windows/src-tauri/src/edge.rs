@@ -26,6 +26,11 @@ pub fn changed(app: &AppHandle, now: Option<(String, Edge)>) {
 }
 
 fn show(app: &AppHandle, device: String, edge: Edge) {
+    // A Wayland desktop does not let a window say where it goes, so a zone at an edge cannot be put there.
+    #[cfg(target_os = "linux")]
+    if tandem_winsys::portal::is_wayland() {
+        return;
+    }
     // First the old zone away (which also forgets its target), then the new target.
     hide(app);
     *TARGET.lock().unwrap() = Some(device.clone());

@@ -62,9 +62,14 @@ pub enum Seen {
 #[cfg(windows)]
 mod imp;
 #[cfg(target_os = "linux")]
+mod grabber;
+#[cfg(target_os = "linux")]
 mod lid;
 #[cfg(target_os = "linux")]
 mod mpris;
+/// The portals of a Wayland desktop: keys, the pointer and the screen.
+#[cfg(target_os = "linux")]
+pub mod portal;
 #[cfg(target_os = "linux")]
 mod x11grab;
 #[cfg(not(windows))]
@@ -157,14 +162,20 @@ mod imp {
 
     /// Only Windows and Linux (under X11) can take a picture of the screen here; the Mac app does it in its own way.
     #[cfg(target_os = "linux")]
-    pub use crate::x11grab::Grabber;
+    pub use crate::grabber::Grabber;
 
     #[cfg(not(target_os = "linux"))]
     pub struct Grabber;
 
     #[cfg(not(target_os = "linux"))]
     impl Grabber {
+        pub fn available() -> bool {
+            false
+        }
         pub fn new() -> Option<Grabber> {
+            None
+        }
+        pub fn with_limit(_max_width: u32, _max_height: u32) -> Option<Grabber> {
             None
         }
         pub fn size(&self) -> (u32, u32) {

@@ -21,6 +21,7 @@ use host::host_stop;
 #[tauri::command]
 fn host_stop() {}
 mod i18n;
+mod hands;
 mod input;
 mod lid;
 mod insert;
@@ -64,6 +65,15 @@ pub fn run() {
             let handle = app.handle().clone();
             logfile::init(&handle);
             settings::load(&handle);
+            // A Wayland desktop remembers what the person allowed through a token, which is kept here.
+            #[cfg(target_os = "linux")]
+            if let Ok(dir) = handle.path().app_data_dir() {
+                tandem_winsys::portal::set_data_dir(dir);
+            }
+            if settings::get(&handle).remote_input && commands::input_blocked().is_none() {
+                // The question of the desktop (Wayland) comes now, once, and not in the middle of the first time the mouse is used.
+                input::warm_up();
+            }
             tray::build(&handle)?;
             media::start(&handle);
             power::start(handle.clone());

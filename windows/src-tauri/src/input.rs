@@ -9,7 +9,9 @@ use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::sync::{Mutex, Once, OnceLock, mpsc};
 use std::time::{Duration, Instant};
 
-use enigo::{Axis, Button, Coordinate, Direction, Enigo, Key, Keyboard, Mouse, Settings};
+use enigo::{Axis, Button, Coordinate, Direction, Key};
+
+use crate::hands::Driver;
 use tandem_core::ffi::{TandemInput, TandemMediaInput, TandemMediaKey, TandemPointerShare};
 use tandem_core::pointer_share::{Controlled, Edge, Screen};
 
@@ -32,6 +34,11 @@ enum Msg {
 static WORKER: OnceLock<Mutex<mpsc::Sender<Msg>>> = OnceLock::new();
 /// Whether the library could connect to what plays the input on this system: 0 not known yet, 1 yes, 2 no.
 static STATE: AtomicU8 = AtomicU8::new(0);
+
+/// Gets the thing that plays input ready, so what it has to ask the person (a Wayland desktop does) is asked at a quiet moment.
+pub fn warm_up() {
+    let _ = worker();
+}
 
 /// Whether this system lets the app play pointer and keyboard input. A computer that cannot has to hand a pointer that comes
 /// over straight back, or the person who sent it would be stuck on a screen that does not move.
@@ -62,6 +69,9 @@ struct Share {
     /// When something was last heard from that computer. A link that goes quiet (a lid that closed, a network that went) must not
     /// keep the pointer of this computer in the hands of one that is not there any more.
     seen: Instant,
+    /// Whether that computer has asked whether this one is still there. Only one that does can be judged by its silence: an older one
+    /// says nothing while the person keeps the mouse still.
+    pings: bool,
 }
 
 static SHARED: Mutex<Option<Share>> = Mutex::new(None);
@@ -122,7 +132,7 @@ fn start_watchdog() {
                 std::thread::sleep(Duration::from_millis(500));
                 let lost = {
                     let mut guard = SHARED.lock().unwrap();
-                    if guard.as_ref().is_some_and(|s| s.seen.elapsed() > LOST_AFTER) {
+                    if guard.as_ref().is_some_and(|s| s.pings && s.seen.elapsed() > LOST_AFTER) {
                         guard.take()
                     } else {
                         None
@@ -137,17 +147,18 @@ fn start_watchdog() {
     });
 }
 
-/// Something came in from that computer, so it is still there.
-pub fn touch(device: &str) {
+/// That computer asked whether this one is still there: from now on its silence counts.
+pub fn pinged(device: &str) {
     if let Some(share) = SHARED.lock().unwrap().as_mut().filter(|s| s.device == device) {
         share.seen = Instant::now();
+        share.pings = true;
     }
 }
 
 /// A computer sends its pointer over: it comes in at the opposite side of this screen.
 pub fn shared_enter(device: String, edge: Edge, along: f32) {
     let entered_by = edge.opposite();
-    *SHARED.lock().unwrap() = Some(Share { device: device.clone(), entered_by, seen: Instant::now() });
+    *SHARED.lock().unwrap() = Some(Share { device: device.clone(), entered_by, seen: Instant::now(), pings: false });
     start_watchdog();
     let _ = worker().lock().unwrap().send(Msg::Enter { edge, along });
     changed(Some((device, entered_by)));
@@ -400,9 +411,13 @@ const PIXELS_PER_CLICK: f32 = 40.0;
 
 /// The size of the screen the pointer moves on. On Linux it is asked from the X server itself: the library reports the first mode the
 /// screen has, which is often not the one in use, and then the edges would be in the wrong place.
-fn screen_size(enigo: &Enigo) -> Option<(i32, i32)> {
+fn screen_size(enigo: &Driver) -> Option<(i32, i32)> {
     #[cfg(target_os = "linux")]
     {
+        // On a Wayland desktop the driver knows (the layout of the screens); on X the server does.
+        if !enigo.knows_location() {
+            return enigo.main_display().ok();
+        }
         let (w, h) = tandem_winsys::screen();
         if w > 0 && h > 0 {
             return Some((w, h));
@@ -418,7 +433,7 @@ fn screen_size(enigo: &Enigo) -> Option<(i32, i32)> {
 /// the X server only the part of the screen with old-style windows, and the speed of a move is changed by the X server. Counting and
 /// placing from the same numbers keeps what is drawn and what is counted together.
 #[cfg(target_os = "linux")]
-fn shared_move(enigo: &mut Enigo, tracker: Option<&mut Controlled>, dx: i16, dy: i16) -> Option<f32> {
+fn shared_move(enigo: &mut Driver, tracker: Option<&mut Controlled>, dx: i16, dy: i16) -> Option<f32> {
     let Some(tracker) = tracker else {
         let _ = enigo.move_mouse(i32::from(dx), i32::from(dy), Coordinate::Rel);
         return None;
@@ -433,7 +448,7 @@ fn shared_move(enigo: &mut Enigo, tracker: Option<&mut Controlled>, dx: i16, dy:
 
 /// The same on Windows, where the real place of the pointer is known and the move is the one the person made.
 #[cfg(not(target_os = "linux"))]
-fn shared_move(enigo: &mut Enigo, tracker: Option<&mut Controlled>, dx: i16, dy: i16) -> Option<f32> {
+fn shared_move(enigo: &mut Driver, tracker: Option<&mut Controlled>, dx: i16, dy: i16) -> Option<f32> {
     let _ = enigo.move_mouse(i32::from(dx), i32::from(dy), Coordinate::Rel);
     let counted = tracker.and_then(|t| t.moved(f32::from(dx), f32::from(dy)));
     let entered_by = SHARED.lock().unwrap().as_ref().map(|s| s.entered_by)?;
@@ -454,7 +469,7 @@ fn shared_move(enigo: &mut Enigo, tracker: Option<&mut Controlled>, dx: i16, dy:
 /// Text that was dragged over is let go at the pointer. On Linux the selection that a middle click pastes is set to it and the middle
 /// button is clicked, which puts the text where the pointer is in nearly every text field and terminal. Elsewhere it goes by a click
 /// to put the cursor there and a paste.
-fn paste_here(enigo: &mut Enigo, text: &str) {
+fn paste_here(enigo: &mut Driver, text: &str) {
     #[cfg(target_os = "linux")]
     {
         use arboard::{Clipboard, LinuxClipboardKind, SetExtLinux};
@@ -485,8 +500,8 @@ fn paste_here(enigo: &mut Enigo, text: &str) {
 }
 
 fn run(rx: mpsc::Receiver<Msg>) {
-    let mut enigo = match Enigo::new(&Settings::default()) {
-        Ok(enigo) => enigo,
+    let mut enigo = match Driver::new() {
+        Ok(driver) => driver,
         Err(error) => {
             log::warn!("the pointer and keyboard cannot be driven: {error}");
             STATE.store(2, Ordering::Relaxed);

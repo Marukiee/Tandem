@@ -285,7 +285,13 @@ final class PointerShare {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(500))
                 guard let self, let remote = self.remote, remote.device == device else { return }
-                if self.model.device(device)?.online != true || Date().timeIntervalSince(self.heardAt) > 2.0 {
+                if self.model.device(device)?.online != true {
+                    self.lost(device)
+                    return
+                }
+                // Only a computer whose Tandem answers pings can be judged by its silence; an older one never says anything.
+                guard self.model.device(device)?.caps.contains("pointer.ping") == true else { continue }
+                if Date().timeIntervalSince(self.heardAt) > 2.0 {
                     self.lost(device)
                     return
                 }

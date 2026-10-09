@@ -301,6 +301,16 @@ jobs:
       - name: Build the packages
         run: ./scripts/build-linux-app.sh "$VERSION"
 
+      # The AppImage is what the app downloads when it updates itself, like the installer on Windows: the .sig is over these exact
+      # bytes and the app checks it with the public key it was built with before it replaces itself.
+      - name: Sign the AppImage
+        env:
+          TANDEM_UPDATE_ED25519_SECRET: ${{ secrets.TANDEM_UPDATE_ED25519_SECRET }}
+        run: |
+          python3 -m pip install --quiet cryptography
+          signature="$(python3 scripts/sign-update.py dist-linux/Tandem-Linux-x64.AppImage)"
+          printf '%s' "$signature" > dist-linux/Tandem-Linux-x64.AppImage.sig
+
       - uses: actions/upload-artifact@v7
         with:
           name: linux-app

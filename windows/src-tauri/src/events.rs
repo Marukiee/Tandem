@@ -170,15 +170,15 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 // The computer that has the pointer asks whether this one is still there. Answered at once, which is also what keeps
                 // the watchdog on this side quiet.
                 Share::Ping => {
-                    input::touch(&from);
-                    crate::capture::heard(&from);
+                    input::pinged(&from);
+                    crate::capture::heard(&from, false);
                     if let Ok(engine) = app.state::<AppState>().engine() {
                         tauri::async_runtime::spawn(async move { let _ = engine.send_pointer_share(from, Share::Pong).await; });
                     }
                 }
-                Share::Pong => crate::capture::heard(&from),
+                Share::Pong => crate::capture::heard(&from, true),
                 // Only the computers that take a pointer in say how big their screen is, and this one is not the main computer of those.
-                Share::Size { .. } => crate::capture::heard(&from),
+                Share::Size { .. } => crate::capture::heard(&from, false),
                 Share::Carry { text } => {
                     if input::shared_is(&from) {
                         input::shared_carry(text);

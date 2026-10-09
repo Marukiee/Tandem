@@ -54,6 +54,13 @@ pub fn input_blocked() -> Option<&'static str> {
     if cfg!(windows) {
         return None;
     }
+    #[cfg(target_os = "linux")]
+    {
+        // A Wayland desktop lets a program press keys and move the pointer through its portal, which asks the person once.
+        if tandem_winsys::portal::is_wayland() {
+            return if tandem_winsys::portal::input_available() { None } else { Some("wayland") };
+        }
+    }
     let session = std::env::var("XDG_SESSION_TYPE").unwrap_or_default().to_lowercase();
     if session == "wayland" || (session.is_empty() && std::env::var_os("WAYLAND_DISPLAY").is_some()) {
         Some("wayland")
@@ -314,6 +321,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
             current.phone_notifications = v;
         }
         if let Some(v) = patch["remoteInput"].as_bool() {
+            if v && !current.remote_input && input_blocked().is_none() {
+                crate::input::warm_up();
+            }
             current.remote_input = v;
         }
         if let Some(v) = patch["shareDevice"].as_str() {

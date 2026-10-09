@@ -483,7 +483,17 @@ unsafe extern "system" fn keyboard_hook(code: i32, wparam: WPARAM, lparam: LPARA
 pub struct Grabber;
 
 impl Grabber {
+    /// Whether the screen can be shown here: always, on Windows.
+    pub fn available() -> bool {
+        true
+    }
+
     pub fn new() -> Option<Grabber> {
+        Some(Grabber)
+    }
+
+    /// The same as `new`: the size is the viewer's to take from the picture.
+    pub fn with_limit(_max_width: u32, _max_height: u32) -> Option<Grabber> {
         Some(Grabber)
     }
 

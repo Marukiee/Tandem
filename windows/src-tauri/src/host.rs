@@ -45,7 +45,7 @@ const MAX_BITRATE: u32 = 8_000_000;
 pub fn available() -> bool {
     // Asked once: on Linux it opens a connection to the X server, and the state is asked for each time a window loads.
     static AVAILABLE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *AVAILABLE.get_or_init(|| Grabber::new().is_some())
+    *AVAILABLE.get_or_init(Grabber::available)
 }
 
 /// Whether the viewers may also use the mouse and keyboard here.
@@ -96,7 +96,8 @@ impl Host {
     fn start(&self, from: String, request: &TandemMediaRequest) {
         let Some(engine) = self.engine() else { return };
         let session = request.session;
-        let Some(grabber) = Grabber::new() else {
+        // On Wayland the desktop asks the person here (once, and then it remembers), so this waits for the answer.
+        let Some(grabber) = Grabber::with_limit(request.max_width, request.max_height) else {
             let _ = engine.media_deny(session, TandemMediaEnd::Unavailable);
             return;
         };
