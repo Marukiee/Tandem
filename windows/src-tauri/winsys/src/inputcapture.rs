@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use ashpd::desktop::PersistMode;
 use ashpd::desktop::input_capture::{
-    ActivatedBarrier, Barrier, Capabilities, ConnectToEISOptions, EnableOptions, GetZonesOptions, InputCapture, ReleaseOptions,
+    ActivatedBarrier, Barrier, Capabilities, ConnectToEISOptions, DisableOptions, EnableOptions, GetZonesOptions, InputCapture, ReleaseOptions,
     SetPointerBarriersOptions, StartOptions,
 };
 use futures_util::StreamExt;
@@ -154,7 +154,9 @@ impl Drop for WaylandCapture {
 const PER_STRETCH: u32 = 16;
 
 /// The barriers for the stretches, given the screens (x, y, width, height): one for every screen the stretch passes along, in the
-/// coordinates of the desktop, as (barrier id, stretch id, x1, y1, x2, y2).
+/// coordinates of the desktop, as (barrier id, stretch id, x1, y1, x2, y2). A barrier lies on the line between the last pixel of a screen
+/// and where the next would be: for the right and bottom edge that is one further than the last pixel, because GNOME turns down a line
+/// that overlaps the screen ("Line overlaps with monitor region").
 fn barriers_for(regions: &[(i32, i32, i32, i32)], stretches: &[Stretch]) -> Vec<(u32, u32, (i32, i32, i32, i32))> {
     if regions.is_empty() {
         return Vec::new();
@@ -175,7 +177,7 @@ fn barriers_for(regions: &[(i32, i32, i32, i32)], stretches: &[Stretch]) -> Vec<
                 }
                 Side::Right if x + w == right => {
                     let (a, b) = (top + stretch.from, top + stretch.to - 1);
-                    (a.max(y) <= b.min(y + h - 1)).then(|| (right - 1, a.max(y), right - 1, b.min(y + h - 1)))
+                    (a.max(y) <= b.min(y + h - 1)).then(|| (right, a.max(y), right, b.min(y + h - 1)))
                 }
                 Side::Top if y == top => {
                     let (a, b) = (left + stretch.from, left + stretch.to - 1);
@@ -183,7 +185,7 @@ fn barriers_for(regions: &[(i32, i32, i32, i32)], stretches: &[Stretch]) -> Vec<
                 }
                 Side::Bottom if y + h == bottom => {
                     let (a, b) = (left + stretch.from, left + stretch.to - 1);
-                    (a.max(x) <= b.min(x + w - 1)).then(|| (a.max(x), bottom - 1, b.min(x + w - 1), bottom - 1))
+                    (a.max(x) <= b.min(x + w - 1)).then(|| (a.max(x), bottom, b.min(x + w - 1), bottom))
                 }
                 _ => None,
             };
@@ -328,6 +330,8 @@ async fn apply(
     session: &ashpd::desktop::Session<InputCapture>,
     shared: &Shared,
 ) -> Result<Vec<(u32, u32)>, String> {
+    // The desktop only takes barriers while the capture is off ("Session already enabled" otherwise).
+    let _ = capture.disable(session, DisableOptions::default()).await;
     let zones = capture.zones(session, GetZonesOptions::default()).await.map_err(text)?.response().map_err(text)?;
     let regions: Vec<(i32, i32, i32, i32)> =
         zones.regions().iter().map(|r| (r.x_offset(), r.y_offset(), r.width() as i32, r.height() as i32)).collect();
@@ -521,7 +525,7 @@ mod tests {
         let barriers = barriers_for(&regions, &[stretch]);
         // Only the right screen is on that edge, and it starts at 100, so the stretch begins there.
         assert_eq!(barriers.len(), 1);
-        assert_eq!(barriers[0].2, (1799, 100, 1799, 399));
+        assert_eq!(barriers[0].2, (1800, 100, 1800, 399));
         // The first screen is not on the right edge of the whole: nothing goes there.
         assert_eq!(barriers_for(&regions, &[Stretch { id: 2, side: Side::Left, from: 0, to: 600 }]).len(), 1);
     }
@@ -539,7 +543,7 @@ mod tests {
         let top = barriers_for(&regions, &[Stretch { id: 1, side: Side::Top, from: 100, to: 300 }]);
         assert_eq!(top[0].2, (100, 0, 299, 0));
         let bottom = barriers_for(&regions, &[Stretch { id: 1, side: Side::Bottom, from: 0, to: 1000 }]);
-        assert_eq!(bottom[0].2, (0, 599, 999, 599));
+        assert_eq!(bottom[0].2, (0, 600, 999, 600));
         // A barrier id says which stretch it is for.
         assert_eq!(bottom[0].0, PER_STRETCH + 1);
     }
