@@ -36,7 +36,12 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   zet je hem op elk apparaat apart). Tweede weg: een eigen cirkel per persoon; Quick Share werkt al tussen cirkels, zonder dat er iets
   automatisch meeloopt.
 - Bestanden slepen over de rand: loslaten op de plek van de aanwijzer met een systeemsleep op de ontvanger, en Windows of Linux als hoofd met
-  een dropzone (sectie 4); de rest vraagt twee echte computers om uit te proberen.
+  een dropzone (sectie 4); de rest vraagt twee echte computers om uit te proberen. In 0.1.77 stopt de sleep op de Mac bij de rand en toont
+  de pill wat er meegaat en dat het is neergezet (gevraagd 2026-10-10: het plaatje bleef op de rand hangen). Een echte systeemsleep tussen twee
+  besturingssystemen bestaat niet; onder Wayland is bovendien niet te zien wat er gesleept wordt, dus van Linux als hoofd werkt alleen de randzone.
+- De vraag om toestemming van de Linux-portals kwam steeds terug (gevraagd 2026-10-10): sinds 0.1.77 heeft elke manier van starten (login, menu,
+  terminal) zijn eigen token (`portal.rs`, `launch_identity`). Nog niet gezien of het daarmee weg is; InputCapture op GNOME 50 (versie 1)
+  blijft het bij elke start vragen, daar is geen token voor.
 - De telefoon als scherm voor de gedeelde muis (gevraagd 2026-10-09, in 0.1.73 nog niet gebouwd): de muis van de Mac gaat over de rand naar de telefoon,
   die een eigen aanwijzer als overlay tekent en klikken, slepen en scrollen afspeelt met de toegankelijkheidsservice die er al is voor het bedienen
   vanaf de Mac (`TandemInput` is hetzelfde bericht). Een Bluetooth-muis aan de telefoon als bron voor andere computers is veel moeilijker: Android
