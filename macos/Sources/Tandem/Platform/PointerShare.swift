@@ -110,10 +110,22 @@ final class PointerShare {
     /// The computers next to this screen that are there to go to now, as the arithmetic of the core wants them.
     private func reachable() -> [TandemNeighbour] {
         layout.keys.compactMap { id in
-            guard model.device(id)?.online == true, let placement = tandemPlacement(id) else { return nil }
+            guard model.device(id)?.online == true, !declined(id), let placement = tandemPlacement(id) else { return nil }
             let size = sizes[id] ?? mainSize
             return TandemNeighbour(id: id, placement: placement, width: Int32(size.width), height: Int32(size.height))
         }
+    }
+
+    /// Computers that gave the pointer straight back, and when. The edge towards one of them is a plain wall for a while, so the pointer does
+    /// not jump over and bounce each time it is pushed there (the other computer is locked, asleep or does not allow this Mac).
+    @ObservationIgnored private var bounced: [String: Date] = [:]
+    private static let bounceWait: TimeInterval = 30
+
+    private func declined(_ id: String) -> Bool {
+        guard let at = bounced[id] else { return false }
+        if Date().timeIntervalSince(at) < Self.bounceWait { return true }
+        bounced[id] = nil
+        return false
     }
 
     /// The computer that has the pointer now, and the side of this screen it went out by.
@@ -575,13 +587,11 @@ final class PointerShare {
             CGWarpMouseCursorPosition(point(on: enteredBy, along: CGFloat(along)))
         case let .leave(along):
             if remote?.device == device {
-                // Back at once: that computer did not take it. Say why that may be, or the pointer just bounces and nothing explains it.
-                let bounced = Date().timeIntervalSince(wentOverAt) < 1.5
+                // Back at once: that computer did not take it. The edge towards it stays closed for a while, without a message: a pointer
+                // that goes there only when that computer can take it is the whole of the explanation.
+                let gaveBack = Date().timeIntervalSince(wentOverAt) < 1.5
                 comeBack(along: CGFloat(along))
-                if bounced {
-                    let name = model.device(device)?.name ?? String(localized: "The other computer")
-                    FloatingToast.show(String(localized: "\(name) did not take the pointer. It may be locked or asleep, or not allowed to be used from this Mac."), symbol: "lock.fill")
-                }
+                if gaveBack { bounced[device] = Date() }
             }
         case .release:
             if remote?.device == device { comeBack(along: nil) }
