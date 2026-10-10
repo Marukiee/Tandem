@@ -120,6 +120,9 @@ final class PointerShare {
     /// edge towards one is a plain wall until it says it can: no jump over and no message. Only for a computer that keeps saying how it
     /// is (the capability `pointer.ready`); one that does not is tried as before.
     @ObservationIgnored private var unready: Set<String> = []
+    /// A drag (a photo, a file, text) that went over with the pointer and has not been let go yet. While the button is down it stays over there,
+    /// and it does not go over a second time.
+    @ObservationIgnored private var carriedDrag = false
 
     private func declined(_ id: String) -> Bool {
         guard unready.contains(id) else { return false }
@@ -340,6 +343,9 @@ final class PointerShare {
         let dragging = NSEvent.pressedMouseButtons & 1 != 0
         let carried = dragging ? dragContents() : nil
         carrying = carried != nil
+        carriedDrag = carrying
+        if carrying { lastDragCount = NSPasteboard(name: .drag).changeCount }
+        PointerLog.write("goes over to \(model.device(device)?.name ?? device) by \(edge), carrying: \(carrying)")
         CGAssociateMouseAndMouseCursorPosition(0)
         CursorHider.hide()
         watch(device)
@@ -438,6 +444,8 @@ final class PointerShare {
             let position = layoutBack(mainLen: main, placement: placement, width: Int32(size.width), height: Int32(size.height), along: Float(fraction))
             return point(on: remote.edge, position: CGFloat(position))
         } ?? savedLocation
+        PointerLog.write("comes back from \(model.device(remote.device)?.name ?? remote.device), button down: \(NSEvent.pressedMouseButtons & 1 != 0), carried drag: \(carriedDrag)")
+        if carriedDrag { lastDragCount = NSPasteboard(name: .drag).changeCount }
         self.remote = nil
         watchTask?.cancel()
         watchTask = nil
@@ -449,6 +457,7 @@ final class PointerShare {
         CursorHider.show()
         PointerAwayPill.hide()
         carrying = false
+        carriedDrag = false
         heldButtons = []
     }
 
@@ -496,7 +505,7 @@ final class PointerShare {
                 travelled = min(travelled, Self.wayOut * 4)
                 homeward = travelled < -Self.wayOut
             }
-            if homeward, !heldButtons.contains(0) {
+            if homeward, !heldButtons.contains(0), !(carriedDrag && NSEvent.pressedMouseButtons & 1 != 0) {
                 Task { try? await engine.sendPointerShare(target: device, msg: .release) }
                 comeBack(along: nil)
                 return true
@@ -507,8 +516,11 @@ final class PointerShare {
         case .leftMouseUp:
             heldButtons.remove(0)
             send(.button(button: 0, down: false))
-            if carrying {
+            if carriedDrag {
+                carriedDrag = false
                 carrying = false
+                lastDragCount = NSPasteboard(name: .drag).changeCount
+                PointerLog.write("the carried drag was let go over there")
                 PointerAwayPill.dropped()
             }
         case .rightMouseDown:
@@ -593,6 +605,7 @@ final class PointerShare {
                 // Back at once: that computer did not take it. One that says how it is (`pointer.ready`) is left alone until it says it can
                 // take the pointer; for one that does not, say why it may be, or the pointer just bounces and nothing explains it.
                 let gaveBack = Date().timeIntervalSince(wentOverAt) < 1.5
+                PointerLog.write("\(model.device(device)?.name ?? device) says the pointer is back (after \(String(format: "%.1f", Date().timeIntervalSince(wentOverAt))) s)")
                 comeBack(along: CGFloat(along))
                 if gaveBack {
                     if model.device(device)?.caps.contains("pointer.ready") == true {

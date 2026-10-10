@@ -154,6 +154,9 @@ pub fn on_say(tell: impl Fn(String, TandemPointerShare) + Send + Sync + 'static)
 }
 
 fn say(device: String, msg: TandemPointerShare) {
+    if matches!(msg, TandemPointerShare::Leave { .. }) {
+        log::info!("pointer: the pointer goes back to the computer that sent it");
+    }
     if let Some(tell) = SAY.get() {
         tell(device, msg);
     }

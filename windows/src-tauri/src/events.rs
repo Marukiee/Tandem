@@ -153,11 +153,12 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 Share::Enter { edge, along } => {
                     // Taken only when it can really be played here: a pointer that comes over and does nothing leaves the person
                     // on the other computer stuck, so what cannot be done is handed straight back.
-                    if settings::pointer_allowed(app, &from)
+                    let taken = settings::pointer_allowed(app, &from)
                         && crate::commands::input_blocked().is_none()
                         && !crate::lid::blocked(app)
-                        && input::ready()
-                    {
+                        && input::ready();
+                    log::info!("pointer: {} comes in ({}), {}", device_name(app, &from), if matches!(edge, tandem_core::ffi::TandemEdge::Left | tandem_core::ffi::TandemEdge::Right) { "side" } else { "top or bottom" }, if taken { "taken" } else { "handed back" });
+                    if taken {
                         input::shared_enter(from, edge.into(), along);
                     } else if let Ok(engine) = app.state::<AppState>().engine() {
                         // The desktop was asked and the question is still open or was answered with no: the person is told what to do.
