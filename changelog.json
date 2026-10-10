@@ -6,18 +6,24 @@
       "title": "Neater pages",
       "new": [
         "Mac: the buttons on a device page in groups, side by side from the left",
+        "Windows and Linux: screen sharing with more pictures a second, and a clear card when a device asks to see your screen",
+        "Shared: filters by type, device, direction and failures on every system",
+        "Mac: a drag to another computer ends at the edge and shows what goes along",
+        "Mac: the pairing card closes with a click outside it",
         "Android terminal: swiping over the keys scrolls them and no longer presses one",
-        "Linux: the mouse can go to the Mac again on GNOME",
-        "Linux and Windows: the window of another screen fits the picture"
+        "Android viewer: the bar stays in view and the stats open under the name"
       ]
     },
     "nl": {
       "title": "Nettere pagina's",
       "new": [
         "Mac: de knoppen op een apparaatpagina in groepen, naast elkaar vanaf links",
+        "Windows en Linux: scherm delen met meer beelden per seconde, en een duidelijke kaart als een apparaat je scherm wil zien",
+        "Gedeeld: filters op type, apparaat, richting en mislukt op elk systeem",
+        "Mac: een sleep naar een andere computer stopt bij de rand en toont wat er meegaat",
+        "Mac: de koppelkaart sluit met een klik erbuiten",
         "Android-terminal: over de toetsen vegen scrolt ze en drukt geen toets meer in",
-        "Linux: de muis kan op GNOME weer naar de Mac",
-        "Linux en Windows: het venster van een ander scherm past bij het beeld"
+        "Android-viewer: de balk blijft in beeld en de statistieken openen onder de naam"
       ]
     }
   },
