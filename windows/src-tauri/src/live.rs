@@ -229,8 +229,9 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
     let want = TandemMediaWant {
         kind: if camera { TandemMediaKind::Camera } else { TandemMediaKind::Screen },
         codecs: vec![TandemMediaCodec::H264],
-        max_width: 1920,
-        max_height: 1080,
+        // The whole screen as it is, up to what a big monitor has: scaled down the text of a screen turns soft.
+        max_width: if camera { 1920 } else { 3840 },
+        max_height: if camera { 1080 } else { 2160 },
         max_fps: if camera { 30 } else { 60 },
         max_bitrate: 0,
         // The picture of a phone can be clicked on from here, when the phone allows it (its accessibility service, see live.js).

@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use openh264::encoder::{BitRate, Complexity, Encoder, EncoderConfig, FrameRate, FrameType, RateControlMode, UsageType};
+use openh264::encoder::{BitRate, Complexity, Encoder, EncoderConfig, FrameRate, FrameType, QpRange, RateControlMode, UsageType};
 use openh264::formats::YUVSource;
 use openh264::OpenH264API;
 use serde_json::json;
@@ -35,11 +35,12 @@ const MAX_FPS: u32 = 60;
 /// A starting bitrate for a picture of this size at this rate: enough for text to stay sharp when little moves, without asking more of
 /// a network than it has.
 fn starting_bitrate(width: u32, height: u32, fps: u32) -> u32 {
-    let wanted = 0.09 * f64::from(width) * f64::from(height) * f64::from(fps.max(1));
-    (wanted as u32).clamp(3_000_000, 14_000_000)
+    // The link may carry less, and then the viewer says so and it comes down (see `on_bitrate`); this is what a good network gets.
+    let wanted = 0.15 * f64::from(width) * f64::from(height) * f64::from(fps.max(1));
+    (wanted as u32).clamp(4_000_000, 24_000_000)
 }
 
-const MAX_BITRATE: u32 = 20_000_000;
+const MAX_BITRATE: u32 = 30_000_000;
 
 /// Whether this system can show its screen at all (Windows, and Linux under X11).
 pub fn available() -> bool {
@@ -350,6 +351,8 @@ fn make_encoder(bitrate: u32, fps: u32, width: u32, height: u32) -> Option<Encod
         .rate_control_mode(RateControlMode::Bitrate)
         // A picture that is held back to save bits is a hitch that the person sees; the rate is held by the bitrate itself.
         .skip_frames(false)
+        // Text has to stay sharp: the encoder may not go below this quality to save bits, whatever the target says.
+        .qp(QpRange::new(0, 36))
         // Slices of the picture are encoded side by side, and the faster setting is what a large screen needs to keep up.
         .num_threads(if u64::from(width) * u64::from(height) > 1_000_000 { 4 } else { 2 })
         .complexity(if u64::from(width) * u64::from(height) > 1_500_000 { Complexity::Low } else { Complexity::Medium });
@@ -610,8 +613,8 @@ mod tests {
     fn a_bigger_picture_at_a_higher_rate_starts_with_more_bits() {
         assert!(starting_bitrate(1920, 1080, 30) > starting_bitrate(1280, 720, 30));
         assert!(starting_bitrate(1920, 1080, 60) >= starting_bitrate(1920, 1080, 30));
-        assert!((3_000_000..=14_000_000).contains(&starting_bitrate(7680, 4320, 60)));
-        assert_eq!(starting_bitrate(320, 200, 10), 3_000_000);
+        assert!((4_000_000..=24_000_000).contains(&starting_bitrate(7680, 4320, 60)));
+        assert_eq!(starting_bitrate(320, 200, 10), 4_000_000);
     }
 
     #[test]

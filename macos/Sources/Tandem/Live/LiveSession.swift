@@ -165,8 +165,10 @@ enum LiveQuality: String, CaseIterable, Identifiable {
     /// The box the phone fits the picture in, long side by short side. Whichever way the phone holds the camera.
     func box(for kind: TandemMediaKind) -> (long: UInt32, short: UInt32) {
         switch (kind, self) {
-        case (.screen, .standard): (1920, 1080)
-        case (.screen, .high): (2560, 1440)
+        // A screen is shown as it is, up to what a big monitor has: scaled down, the text of a screen turns soft. The host sends less when
+        // its link or its processor cannot keep up.
+        case (.screen, .standard): (2560, 1600)
+        case (.screen, .high): (3840, 2400)
         case (.camera, .standard): (1280, 720)
         case (.camera, .high): (1920, 1080)
         }
