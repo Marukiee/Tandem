@@ -364,3 +364,24 @@ a scroll is a swipe in the direction of the content, text goes into the focused 
 
 Capabilities: `screen.host` (can share its screen), `screen.control` (a Mac that has Accessibility on, so a phone can click),
 `screen.view` (can show another device's screen), `camera.host`, `camera.view`.
+
+## Een tweede scherm (0.1.80)
+
+Een apparaat kan een computer vragen om een scherm van zichzelf te maken en dat als tweede scherm te gebruiken: niet een kijkje op het scherm dat
+de computer heeft, maar een beeldscherm erbij, met precies zoveel pixels als het apparaat heeft, waar je vensters naartoe sleept. Het verzoek is
+een gewoon schermverzoek met `extend = true` (in `MediaRequest`, `serde(default)`, dus een oudere computer doet er niets mee en toont zijn eigen
+scherm; daarom meldt een computer die het kan de capability `screen.extend`, en zonder die capability biedt de app de keuze niet aan).
+`max_width` en `max_height` zijn dan de pixels van het apparaat in de stand waarin het wordt gebruikt (liggend).
+
+- **Mac als host** (`ScreenHost`, `VirtualDisplay`, `Sources/TandemVirtualDisplay`): de Mac maakt een beeldscherm van software met de klassen
+  `CGVirtualDisplay` van CoreGraphics (er is geen openbare header, het Objective-C-doel in het pakket declareert wat er is en roept ze alleen aan
+  als `NSClassFromString` ze vindt). Het scherm komt rechts van het hoofdscherm, in de gevraagde grootte (daarvoor wordt de modus met de hand
+  gekozen, want het systeem kiest eerst een kleinere), en verdwijnt als de sessie eindigt. De opname (`ScreenCapturer`) is die van dat scherm in
+  plaats van het hoofdscherm, en de invoer van het apparaat wordt op het gebied van dat scherm gezet (`RemoteGeometry`). Gezien op een echte Mac:
+  het scherm komt op, in de maat, op de plek, en is weg na het stoppen. Niet gezien: de opname ervan (die vraagt het recht Schermopname, dat
+  het testprogramma niet heeft).
+- **Android als kijker**: de rij "Use as second screen" op de pagina van een Mac die `screen.extend` meldt. De telefoon gaat liggen, vraagt zijn eigen
+  pixels, en raakt aan = klikken waar je raakt (direct aanraken). Gezien op de emulator tegen een nagebootste Mac (`tandemd --pretend-screen`, die nu ook
+  `screen.extend` meldt en het verzoek afdrukt).
+- **Nog niet**: Windows, Linux en Mac als kijker (een laptop als tweede scherm; daar moet het decoderen soepel genoeg zijn voor 60 beelden per seconde,
+  wat nu het probleem is op Linux), en Linux (GNOME kan een virtuele monitor maken met de ScreenCast-portal) en Windows (vraagt een stuurprogramma) als host.

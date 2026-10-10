@@ -697,6 +697,7 @@
 "Remote control" = "Op afstand bedienen";
 "A device" = "Een apparaat";
 "%@ wants to control this Mac" = "%@ wil deze Mac bedienen";
+"%@ wants to use a screen of this Mac" = "%@ wil een scherm van deze Mac gebruiken";
 "%@ wants to see this Mac" = "%@ wil deze Mac zien";
 "Choose what to do in Tandem." = "Kies in Tandem wat er moet gebeuren.";
 "It sees everything on your screen until you stop it. A bar at the top of your screen shows when it does, with a Stop button." = "Het ziet alles op je scherm tot je het stopt. Een balk bovenaan je scherm laat zien wanneer dat zo is, met een Stop-knop.";
