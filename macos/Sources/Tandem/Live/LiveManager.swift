@@ -221,17 +221,19 @@ final class LiveManager {
 
     // MARK: Stopping
 
-    /// Ends the session. The window stays until it is closed, with the end said in it.
-    func stop(_ session: LiveSession) {
+    /// Ends the session. Stopped from the window, the window goes with it: there is nothing to say about an end that was asked for.
+    /// An end that was not asked for (the other side stopped, the link went) stays in the window with what happened.
+    func stop(_ session: LiveSession, closingWindow: Bool = true) {
         guard session.isRunning else { return }
         session.stoppedByMe = true
         try? engine?.mediaStop(session: session.id)
         finish(session, reason: .ended)
+        if closingWindow { windows[ObjectIdentifier(session)]?.close() }
     }
 
     /// The window was closed: the session goes with it.
     func windowClosed(_ session: LiveSession) {
-        if session.isRunning { stop(session) }
+        if session.isRunning { stop(session, closingWindow: false) }
         router.remove(session.id)
         windows[ObjectIdentifier(session)] = nil
         sessions.removeAll { $0 === session }
@@ -242,7 +244,7 @@ final class LiveManager {
     }
 
     func stopAll() {
-        for session in sessions where session.isRunning { stop(session) }
+        for session in sessions where session.isRunning { stop(session, closingWindow: false) }
     }
 
     // MARK: A phone that offers

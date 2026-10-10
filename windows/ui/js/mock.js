@@ -120,6 +120,7 @@ export async function call(command, args) {
     case "clip_history_search": return [
       { id: 3, text: "https://example.com/some/long/link", from: "Pixel 9", at_ms: Date.now() - 120000, pinned: true },
       { id: 2, text: "Meeting at ten, room 4", from: "", at_ms: Date.now() - 3600000, pinned: false },
+      { id: 4, text: "Dear all,\nHere are the notes from yesterday.\n1. The new pairing screen is live.\n2. The clipboard page scrolls now.\n3. Long texts can be pulled taller with the corner.\n4. Anything else can wait until Monday.\nThanks, Mark", from: "MacBook Pro", at_ms: Date.now() - 7200000, pinned: false },
     ].filter((i) => !args.query || i.text.toLowerCase().includes(args.query.toLowerCase()));
     case "clip_history_pin": case "clip_history_remove": case "clip_history_clear": case "clip_history_copy": return null;
     case "files_policy": case "files_update": return { enabled: true, write: false, delete: false, hidden: false, shares: [{ name: "Documents", path: "C:\\Users\\Mark\\Documents", write: false }, { name: "Pictures", path: "C:\\Users\\Mark\\Pictures", write: true }] };
