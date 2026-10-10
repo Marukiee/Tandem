@@ -178,6 +178,7 @@ final class PointerShare {
 
     func start() {
         if enabled { startTap() }
+        startReadiness()
         // The other computers draw this Mac's screens in their arrangement, so they are told when the screens change.
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.announceToAll() }
@@ -619,10 +620,11 @@ final class PointerShare {
                 }
             }
         case .release:
+            let usedByIt = controlledBy == device
             if remote?.device == device { comeBack(along: nil) }
-            if controlledBy == device { endControlled(tell: nil) }
-            // From a computer that takes a pointer in, which only says this when it cannot take one now.
-            unready.insert(device)
+            if usedByIt { endControlled(tell: nil) }
+            // From a computer that is not using this Mac it says that it cannot take a pointer now (from one that is, it is taking it back).
+            if !usedByIt, model.device(device)?.caps.contains("pointer.ready") == true { unready.insert(device) }
         case .ping:
             Task { try? await model.tandem?.sendPointerShare(target: device, msg: .pong) }
         case .pong:
@@ -701,6 +703,44 @@ final class PointerShare {
         let size = mainSize
         guard size.width > 0, let engine = model.tandem else { return }
         Task { try? await engine.sendPointerShare(target: device, msg: .size(width: UInt32(size.width), height: UInt32(size.height))) }
+    }
+
+    // MARK: Whether this Mac can take a pointer
+
+    @ObservationIgnored private var toldReady: [String: (ready: Bool, at: Date)] = [:]
+
+    /// A pointer that came over now would be taken: the computer is allowed to use this Mac, this Mac may play input, and its own pointer is here.
+    private func canTake(from device: String) -> Bool {
+        isAllowed(device) && AXIsProcessTrusted() && remote == nil
+    }
+
+    /// Tells the computers that share their pointer whether this Mac can take theirs, so their edge towards this Mac stays a wall until it can
+    /// (see `pointer_ready.rs` on their side). `Size` says yes and `Release` says no; said when it changes, and now and then again.
+    private func startReadiness() {
+        Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(1500))
+                self?.tellReadiness()
+            }
+        }
+    }
+
+    private func tellReadiness() {
+        guard let engine = model.tandem else { return }
+        let peers = model.devices.filter {
+            $0.online && $0.caps.contains("pointer.ping") && [.windows, .linux, .macOs].contains($0.platform) && $0.caps.contains("pointer.ready")
+        }
+        toldReady = toldReady.filter { id, _ in peers.contains { $0.id == id } }
+        let size = mainSize
+        for device in peers where controlledBy != device.id && remote?.device != device.id {
+            let ready = canTake(from: device.id)
+            if let known = toldReady[device.id], known.ready == ready, Date().timeIntervalSince(known.at) < 10 { continue }
+            toldReady[device.id] = (ready, Date())
+            let id = device.id
+            Task {
+                try? await engine.sendPointerShare(target: id, msg: ready && size.width > 0 ? .size(width: UInt32(size.width), height: UInt32(size.height)) : .release)
+            }
+        }
     }
 
     /// The screens of this Mac changed: everybody is told.

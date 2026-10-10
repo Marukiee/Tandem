@@ -174,8 +174,13 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                     crate::capture::returned(&from, Some(along));
                 }
                 Share::Release => {
+                    let used_by_it = input::shared_is(&from);
                     input::shared_end(&from);
                     crate::capture::returned(&from, None);
+                    // From a computer that is not using this one it says that it cannot take a pointer now.
+                    if !used_by_it {
+                        crate::capture::readiness(&from, false);
+                    }
                 }
                 // The computer that has the pointer asks whether this one is still there. Answered at once, which is also what keeps
                 // the watchdog on this side quiet.
@@ -191,6 +196,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 Share::Size { width, height } => {
                     crate::arrange::learned(&from, width as i32, height as i32);
                     crate::capture::heard(&from, false);
+                    crate::capture::readiness(&from, true);
                 }
                 Share::Carry { text } => {
                     if input::shared_is(&from) {

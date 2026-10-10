@@ -6,7 +6,7 @@
 //! computer. When the other computer says the pointer came back, or the keys Control, Alt and Shift with Escape are pressed,
 //! the pointer returns.
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -29,9 +29,37 @@ struct Inner {
     remote: Option<(String, Edge)>,
     saved: (i32, i32),
     mods: u8,
+    /// When the pointer went over, so a pointer that comes straight back can be told from one that was used.
+    entered: Option<Instant>,
 }
 
-static INNER: Mutex<Inner> = Mutex::new(Inner { remote: None, saved: (0, 0), mods: 0 });
+static INNER: Mutex<Inner> = Mutex::new(Inner { remote: None, saved: (0, 0), mods: 0, entered: None });
+/// Computers that say how they are (the capability `pointer.ready`) and say they cannot take the pointer now. The edge towards one is a
+/// wall until it says it can, so the pointer does not go over and come straight back again and again.
+static NOT_READY: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
+
+fn unready(device: &str) -> bool {
+    NOT_READY.lock().unwrap().contains(device)
+}
+
+/// That computer says whether it can take the pointer now. Only believed from one that says so by itself, which also says when it can again.
+pub fn readiness(device: &str, ready: bool) {
+    let Some(app) = APP.get() else { return };
+    let says = app
+        .state::<AppState>()
+        .engine()
+        .ok()
+        .is_some_and(|engine| engine.devices().iter().any(|d| d.id == device && d.caps.iter().any(|c| c == "pointer.ready")));
+    if !says {
+        return;
+    }
+    let mut set = NOT_READY.lock().unwrap();
+    if ready {
+        set.remove(device);
+    } else {
+        set.insert(device.to_string());
+    }
+}
 /// For the settings and the sizes of the other screens, which the hooks cannot get at otherwise.
 static APP: OnceLock<AppHandle> = OnceLock::new();
 static OUT: OnceLock<Sender<Out>> = OnceLock::new();
@@ -216,9 +244,13 @@ fn see(seen: Seen) -> bool {
             return false;
         };
         let (device, along) = found;
+        if unready(&device) {
+            return false;
+        }
         inner.saved = (x, y);
         inner.remote = Some((device.clone(), edge));
         inner.mods = 0;
+        inner.entered = Some(Instant::now());
         drop(inner);
         started(device, edge, along);
         return true;
@@ -329,8 +361,18 @@ fn come_back(along: Option<f32>) {
 
 /// The other computer says the pointer came back, or takes it back.
 pub fn returned(device: &str, along: Option<f32>) {
-    let mine = INNER.lock().unwrap().remote.as_ref().is_some_and(|(d, _)| d == device);
+    let (mine, straight_back) = {
+        let inner = INNER.lock().unwrap();
+        (
+            inner.remote.as_ref().is_some_and(|(d, _)| d == device),
+            inner.entered.is_some_and(|t| t.elapsed() < Duration::from_millis(1500)),
+        )
+    };
     if mine {
+        // Handed back at once: it could not take it. One that says how it is will say when it can.
+        if straight_back && along.is_some() {
+            readiness(device, false);
+        }
         come_back(along);
     }
 }
@@ -462,11 +504,15 @@ mod linux {
         // The place on the edge says which computer it is, as for the hooks of Windows.
         let Some((index, along)) = layout::cross(edge, position, &list) else { return give_back() };
         let device = list[index].id.clone();
+        if unready(&device) {
+            return give_back();
+        }
         {
             let mut inner = INNER.lock().unwrap();
             inner.saved = (x, y);
             inner.remote = Some((device.clone(), edge));
             inner.mods = 0;
+            inner.entered = Some(Instant::now());
         }
         started(device, edge, along);
     }

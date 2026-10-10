@@ -192,7 +192,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "camera.view", "audio.play", "pointer.ping"] + ScreenHost.shared.capabilities(),
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "camera.view", "audio.play", "pointer.ping", "pointer.ready"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
