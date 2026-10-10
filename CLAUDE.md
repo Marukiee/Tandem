@@ -132,8 +132,8 @@ In een verse werkmap (worktree) ontbreken de git-genegeerde bouwresultaten. Eers
   Nooit iets van een netwerkschijf aanraken (macOS laat dan wachten op toestemming), gebruik een alarm:
   `perl -e 'alarm N; exec @ARGV' ...`.
 - **Android:** `export ANDROID_HOME=$HOME/Library/Android/sdk JAVA_HOME=$(/usr/libexec/java_home -v 21)`, dan
-  `cd android && ./gradlew --console=plain :app:testDebugUnitTest :app:assembleDebug`. Emulators (AVD): `tandem_test`,
-  `tandem_colors`, `tandem_onb`, `tandem_remote`. Elke agent gebruikt zijn eigen AVD en `adb -s <serial>`, nooit die
+  `cd android && ./gradlew --console=plain :app:testDebugUnitTest :app:assembleDebug`. Emulators (AVD): `tandem_test`. Een agent die een eigen emulator
+  nodig heeft maakt er een met `avdmanager create avd` (elke is 2 tot 4 GB, ruim hem daarna weer op) en gebruikt `adb -s <serial>`, nooit die
   van een ander. Starten: `$ANDROID_HOME/emulator/emulator -avd <naam> -no-snapshot-save -no-audio`. Rechten geven:
   `adb shell pm grant nl.markmaaktmedia.tandem.debug android.permission.CAMERA`,
   `adb shell appops set nl.markmaaktmedia.tandem.debug MANAGE_EXTERNAL_STORAGE allow`. Een koppellink openen:
