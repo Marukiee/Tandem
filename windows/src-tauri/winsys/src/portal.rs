@@ -116,6 +116,14 @@ pub fn input_available() -> bool {
     *ANSWER.get_or_init(|| portal_property("org.freedesktop.portal.RemoteDesktop", "AvailableDeviceTypes").is_some_and(|types| types & 0b11 == 0b11))
 }
 
+/// Whether the desktop can make a monitor for another computer to use as a second screen (a virtual source of the screen cast portal).
+pub fn virtual_screen_available() -> bool {
+    static ANSWER: OnceLock<bool> = OnceLock::new();
+    *ANSWER.get_or_init(|| {
+        screen_available() && portal_property("org.freedesktop.portal.ScreenCast", "AvailableSourceTypes").is_some_and(|types| types & 4 != 0)
+    })
+}
+
 /// Whether the screen can be shown here: the desktop offers monitors to share, and GStreamer can read them.
 pub fn screen_available() -> bool {
     static ANSWER: OnceLock<bool> = OnceLock::new();
@@ -304,15 +312,18 @@ impl WaylandGrabber {
     /// wants at most; a bigger screen is made smaller on the way, which costs far less than doing it afterwards.
     pub fn start(options: GrabOptions) -> Result<WaylandGrabber, String> {
         let max = options.max;
+        let made = options.virtual_size;
         pollster::block_on(async {
             let cast = Screencast::new().await.map_err(text)?;
             let session = cast.create_session(CreateSessionOptions::default()).await.map_err(text)?;
-            let token = read_token("portal-screen.token");
+            // A monitor made for a viewer has an answer of its own to be remembered, apart from the one for the screen that is there.
+            let token_file = if made.is_some() { "portal-display.token" } else { "portal-screen.token" };
+            let token = read_token(token_file);
             cast.select_sources(
                 &session,
                 SelectSourcesOptions::default()
                     .set_cursor_mode(if options.cursor { CursorMode::Embedded } else { CursorMode::Hidden })
-                    .set_sources(BitFlags::from_flag(SourceType::Monitor))
+                    .set_sources(BitFlags::from_flag(if made.is_some() { SourceType::Virtual } else { SourceType::Monitor }))
                     .set_multiple(false)
                     .set_persist_mode(PersistMode::ExplicitlyRevoked)
                     .set_restore_token(token.as_deref()),
@@ -323,13 +334,14 @@ impl WaylandGrabber {
             .map_err(text)?;
             let streams = cast.start(&session, None, StartCastOptions::default()).await.map_err(text)?.response().map_err(text)?;
             if let Some(token) = streams.restore_token() {
-                write_token("portal-screen.token", token);
+                write_token(token_file, token);
             }
             let stream = streams.streams().first().ok_or("no screen was chosen")?;
             let node = stream.pipe_wire_node_id();
             let source = stream.size().map(|(w, h)| (w.max(2) as u32, h.max(2) as u32)).unwrap_or((1920, 1080));
             let remote = cast.open_pipe_wire_remote(&session, OpenPipeWireRemoteOptions::default()).await.map_err(text)?;
-            let size = fit(source, max);
+            // A monitor made for the viewer is the size that is asked of the stream: the desktop gives it that shape.
+            let size = made.map(|(w, h)| (w & !1, h & !1)).unwrap_or_else(|| fit(source, max));
 
             let raw = remote.as_raw_fd();
             let mut command = Command::new("gst-launch-1.0");
@@ -342,10 +354,14 @@ impl WaylandGrabber {
             if options.fps > 0 {
                 command.args(["videorate", "drop-only=true"]).arg(format!("max-rate={}", options.fps)).arg("!");
             }
+            if made.is_some() {
+                // Asked of the stream in the size of the monitor: the desktop makes the monitor that size, and nothing is scaled after.
+                command.arg(format!("video/x-raw,width={},height={}", size.0, size.1)).arg("!");
+            } else {
+                command.args(["videoscale", "!"]).arg(format!("video/x-raw,width={},height={}", size.0, size.1)).arg("!");
+            }
             command
-                .args(["videoscale", "!"])
-                .arg(format!("video/x-raw,width={},height={}", size.0, size.1))
-                .args(["!", "videoconvert", "!"])
+                .args(["videoconvert", "!"])
                 .arg(format!("video/x-raw,format={format},width={},height={}", size.0, size.1))
                 .args(["!", "fdsink", "fd=1", "sync=false"])
                 .stdin(Stdio::null())

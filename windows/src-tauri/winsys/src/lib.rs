@@ -57,6 +57,9 @@ pub struct GrabOptions {
     pub fps: u32,
     /// The pictures come as I420, which is what the encoder wants (only where the system can make them that way).
     pub i420: bool,
+    /// Not the screen that is there but a monitor that the desktop makes for the viewer, of this size (Wayland, where the portal offers
+    /// virtual monitors): another computer uses it as a second screen. `None` for the screen as it is.
+    pub virtual_size: Option<(u32, u32)>,
 }
 
 /// What the hooks on the mouse and keyboard of this PC see.

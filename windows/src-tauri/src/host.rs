@@ -49,6 +49,31 @@ pub fn available() -> bool {
     *AVAILABLE.get_or_init(Grabber::available)
 }
 
+/// Whether this computer can make a monitor for another one to use as a second screen: Linux under Wayland where the desktop offers it.
+pub fn extend_available() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        available() && tandem_winsys::portal::virtual_screen_available()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        false
+    }
+}
+
+/// The size of a monitor made for a viewer: what it asked for, down to what this computer can encode in time (about as many pixels as
+/// 2560 by 1440 has, since the encoder works on the processor), even numbers.
+fn extended_size(width: u32, height: u32) -> (u32, u32) {
+    let (mut w, mut h) = (f64::from(width.max(640)), f64::from(height.max(360)));
+    let limit = 2560.0 * 1440.0;
+    if w * h > limit {
+        let scale = (limit / (w * h)).sqrt();
+        w *= scale;
+        h *= scale;
+    }
+    (((w as u32) & !1).max(640), ((h as u32) & !1).max(360))
+}
+
 /// Whether the viewers may also use the mouse and keyboard here.
 pub fn control_available() -> bool {
     crate::commands::input_blocked().is_none()
@@ -97,7 +122,8 @@ impl Host {
     fn start(&self, from: String, request: &TandemMediaRequest) {
         let Some(engine) = self.engine() else { return };
         let session = request.session;
-        let control = request.control && control_available();
+        // A monitor made for a viewer has no way for the viewer to use the mouse and keyboard yet: windows are moved to it with the mouse here.
+        let control = request.control && control_available() && !request.extend;
         // A viewer that is a computer shows its own pointer over the picture: the pointer of this one in the picture would be a second one,
         // a little behind. A phone has no pointer over the picture, so it keeps this one.
         let viewer_is_computer = engine.devices().iter().any(|d| {
@@ -108,10 +134,12 @@ impl Host {
         // planes the encoder wants, at the size that is sent and at most as often as is wanted: all that work is done in one place that is
         // good at it, and nothing is thrown away after it was made.
         let Some(grabber) = Grabber::with_options(tandem_winsys::GrabOptions {
-            max: (request.max_width, request.max_height),
-            cursor: !(control && viewer_is_computer),
+            max: if request.extend { (0, 0) } else { (request.max_width, request.max_height) },
+            // The pointer of this computer is in the picture of a monitor made for a viewer: it is the only one there.
+            cursor: request.extend || !(control && viewer_is_computer),
             fps: wanted_fps,
             i420: true,
+            virtual_size: request.extend.then(|| extended_size(request.max_width, request.max_height)),
         }) else {
             let _ = engine.media_deny(session, TandemMediaEnd::Unavailable);
             return;
@@ -169,6 +197,11 @@ impl TandemMediaHost for Host {
             let _ = engine.media_deny(request.session, TandemMediaEnd::Unavailable);
             return;
         }
+        // An older or a different system than the one that can make a monitor: turned away, so the viewer says so and does not wait.
+        if request.extend && !extend_available() {
+            let _ = engine.media_deny(request.session, TandemMediaEnd::Unsupported);
+            return;
+        }
         if pre_approved {
             self.start(from, &request);
             return;
@@ -179,9 +212,15 @@ impl TandemMediaHost for Host {
         std::thread::spawn(move || {
             let name = events::device_name(&this.app, &from);
             let wants_control = request.control && control_available();
-            let body = if wants_control { i18n::t(&this.app, "host_ask_control") } else { i18n::t(&this.app, "host_ask_view") };
+            let body = if request.extend {
+                i18n::t(&this.app, "host_ask_extend")
+            } else if wants_control {
+                i18n::t(&this.app, "host_ask_control")
+            } else {
+                i18n::t(&this.app, "host_ask_view")
+            };
             let (allow, always, deny) = (i18n::t(&this.app, "host_allow"), i18n::t(&this.app, "host_always"), i18n::t(&this.app, "host_deny"));
-            let title = i18n::t1(&this.app, "host_ask_title", &name);
+            let title = i18n::t1(&this.app, if request.extend { "host_ask_extend_title" } else { "host_ask_title" }, &name);
             let question = crate::ask::Question { id: 0, title, body, allow, always, deny, control: wants_control };
             let answer = crate::ask::ask(&this.app, question);
             let remembered = answer == crate::ask::Answer::Always;
@@ -371,7 +410,7 @@ pub fn bench() {
             std::thread::sleep(Duration::from_secs(10));
             bench_encoder(1920, 1200);
             for i420 in [true, false] {
-                let Some(grabber) = Grabber::with_options(tandem_winsys::GrabOptions { max: (1920, 1200), cursor: false, fps: 60, i420 }) else {
+                let Some(grabber) = Grabber::with_options(tandem_winsys::GrabOptions { max: (1920, 1200), cursor: false, fps: 60, i420, virtual_size: None }) else {
                     log::warn!("bench host: the screen could not be taken");
                     continue;
                 };
@@ -607,6 +646,16 @@ mod tests {
             pace.took(4.0);
         }
         assert!(pace.fps >= 55, "{}", pace.fps);
+    }
+
+    #[test]
+    fn a_monitor_made_for_a_viewer_has_its_size_even_and_no_more_than_the_processor_can_encode() {
+        assert_eq!(extended_size(2400, 1080), (2400, 1080));
+        let (w, h) = extended_size(3456, 2234);
+        assert!(w * h <= 2560 * 1440 + 4096 && w % 2 == 0 && h % 2 == 0, "{w}x{h}");
+        // The shape stays.
+        assert!((f64::from(w) / f64::from(h) - 3456.0 / 2234.0).abs() < 0.01);
+        assert_eq!(extended_size(10, 10), (640, 360));
     }
 
     #[test]

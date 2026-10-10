@@ -125,6 +125,10 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
     #[cfg(feature = "screen-host")]
     if settings::get(app).screen_host && crate::host::available() {
         caps.push("screen.host".into());
+        // A second screen made for another computer, where the desktop can make one.
+        if crate::host::extend_available() {
+            caps.push("screen.extend".into());
+        }
         if crate::host::control_available() {
             caps.push("screen.control".into());
         }

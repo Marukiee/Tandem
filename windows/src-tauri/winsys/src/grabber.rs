@@ -25,12 +25,16 @@ impl Grabber {
     /// Starts on the screen. On Wayland the desktop shows a window the first time, and this waits for the answer. `max_width` and
     /// `max_height` (0 for no limit) are what the viewer wants at most.
     pub fn with_limit(max_width: u32, max_height: u32) -> Option<Grabber> {
-        Grabber::with_options(GrabOptions { max: (max_width, max_height), cursor: true, fps: 0, i420: false })
+        Grabber::with_options(GrabOptions { max: (max_width, max_height), cursor: true, fps: 0, i420: false, virtual_size: None })
     }
 
     /// The same with the choices that matter for showing the screen to somebody who also uses it (see [`GrabOptions`]). Under X11 the
     /// pictures are always B, G, R, unused, and the pointer is never in them.
     pub fn with_options(options: GrabOptions) -> Option<Grabber> {
+        // A monitor that is made for the viewer only exists where the desktop can make one.
+        if options.virtual_size.is_some() && !portal::is_wayland() {
+            return None;
+        }
         if portal::is_wayland() {
             match portal::WaylandGrabber::start(options) {
                 Ok(grabber) => Some(Grabber(Source::Wayland(grabber))),

@@ -514,7 +514,11 @@ impl Grabber {
     }
 
     /// The same: GDI makes B, G, R, unused, and does not draw the pointer in the picture.
-    pub fn with_options(_options: super::GrabOptions) -> Option<Grabber> {
+    pub fn with_options(options: super::GrabOptions) -> Option<Grabber> {
+        // Windows cannot add a monitor of its own (that takes a driver): only the screen that is there.
+        if options.virtual_size.is_some() {
+            return None;
+        }
         Some(Grabber)
     }
 

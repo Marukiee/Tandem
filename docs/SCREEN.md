@@ -383,5 +383,21 @@ scherm; daarom meldt een computer die het kan de capability `screen.extend`, en 
 - **Android als kijker**: de rij "Use as second screen" op de pagina van een Mac die `screen.extend` meldt. De telefoon gaat liggen, vraagt zijn eigen
   pixels, en raakt aan = klikken waar je raakt (direct aanraken). Gezien op de emulator tegen een nagebootste Mac (`tandemd --pretend-screen`, die nu ook
   `screen.extend` meldt en het verzoek afdrukt).
-- **Nog niet**: Windows, Linux en Mac als kijker (een laptop als tweede scherm; daar moet het decoderen soepel genoeg zijn voor 60 beelden per seconde,
-  wat nu het probleem is op Linux), en Linux (GNOME kan een virtuele monitor maken met de ScreenCast-portal) en Windows (vraagt een stuurprogramma) als host.
+- **Linux als host** (`host.rs`, `winsys/src/portal.rs`): onder Wayland vraagt de screencast-portal een virtuele bron (`AvailableSourceTypes` heeft
+  dan bit 4; GNOME 50 meldt 7) en GNOME maakt een monitor in de maat die van de stroom wordt gevraagd (`pipewiresrc ! video/x-raw,width=,height=`).
+  De maat gaat omlaag tot wat de processor in tijd kan coderen (zoveel pixels als 2560 bij 1440). De computer meldt `screen.extend`. De eerste
+  keer vraagt GNOME om toestemming (een eigen antwoord, `portal-display.token`). **Nog niet gezien op de echte laptop** (de vraag van GNOME is nog niet
+  beantwoord) en nog zonder invoer: het apparaat kan er niet op klikken, vensters sleep je er met de muis van de laptop naartoe.
+- **Windows als kijker**: een venster van de app dat het scherm vult (`live.rs`, `start` met `extend`); de webview decodeert de video met hardware.
+  **Mac als kijker**: het livevenster op het hele scherm (`LiveManager.start(extend:)`).
+- **Nog niet**: Windows als host (Windows kan een monitor alleen toevoegen met een stuurprogramma voor een virtueel scherm, dat eenmalig met beheerdersrechten
+  moet worden geinstalleerd; daarna kan de opname dat scherm kiezen), en invoer op een scherm dat Linux maakt.
+
+| host maakt het scherm | telefoon | Mac | Linux | Windows |
+| --- | --- | --- | --- | --- |
+| Mac | ja (emulator gezien) | ja | ja (GStreamer-venster) | ja |
+| Linux (Wayland) | ja | ja | ja | ja |
+| Windows | nog niet | nog niet | nog niet | nog niet |
+
+Alles in de tabel is gebouwd en gecompileerd, en de losse stukken zijn gezien (het scherm van de Mac, de telefoon op de emulator, de pijplijn op de
+laptop); een heel pad van maker tot kijker met echte toestellen is nog niet gezien.
