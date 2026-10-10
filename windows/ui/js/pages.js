@@ -184,7 +184,7 @@ export function DevicePage({ device }) {
   const battery = device.status && device.status.battery;
   const hasCap = (cap) => Array.isArray(device.caps) && device.caps.includes(cap);
   const isComputerEarly = device.platform === "macos" || device.platform === "windows" || device.platform === "linux";
-  const show = (kind) => call("live_start", { id: device.id, kind, name: device.name, computer: isComputerEarly }).catch(failed);
+  const show = (kind) => call("live_start", { id: device.id, kind, name: device.name, computer: isComputerEarly, mac: device.platform === "macos" }).catch(failed);
   // A computer that answers on the ssh port can be logged in to from here. The button is grey, with the reason, when it does not.
   const isComputer = device.platform === "macos" || device.platform === "windows" || device.platform === "linux";
   // What was found the last time is shown at once, and looked at again quietly: a button that starts grey and lights up a moment later
@@ -636,8 +636,8 @@ function FilesHostSection() {
 
 // The settings, in sections like the settings of the Mac: what belongs together is together, and a section is a page of its own.
 const SECTIONS = [
-  ["general", "tab_general"], ["clipboard", "tab_clipboard"], ["files", "tab_files"], ["remote", "tab_remote"],
-  ["mouse", "tab_mouse"], ["quickshare", "tab_quickshare"], ["updates", "tab_updates"], ["about", "about"],
+  ["general", "tab_general", "settings"], ["clipboard", "tab_clipboard", "clipboard"], ["files", "tab_files", "files"], ["remote", "tab_remote", "device-desktop"],
+  ["mouse", "tab_mouse", "pointer"], ["quickshare", "tab_quickshare", "quickshare"], ["updates", "tab_updates", "download"], ["about", "about", "info-circle"],
 ];
 
 function rememberedSection() {
@@ -649,19 +649,24 @@ export function SettingsPage() {
   const [section, setSection] = useState(rememberedSection);
   const open = (id) => { setSection(id); try { localStorage.setItem("settingsSection", id); } catch { /* the choice is only a convenience */ } };
   const patch = async (change) => { set({ settings: await call("set_settings", { patch: change }) }); setLanguage(state.settings.language, state.systemLanguage); };
-  return html`<div class="wrap">
+  return html`<div class="wrap settings">
     <div><h1>${t("settings")}</h1></div>
-    <div class="seg tabs">
-      ${SECTIONS.map(([id, label]) => html`<button key=${id} class=${section === id ? "on" : ""} onClick=${() => open(id)}>${t(label)}</button>`)}
+    <div class="settings-body">
+      <nav class="settings-nav" aria-label=${t("settings")}>
+        ${SECTIONS.map(([id, label, icon]) => html`<button key=${id} class=${section === id ? "on" : ""} onClick=${() => open(id)}>
+          <${Icon} name=${icon} size=${17} /><span>${t(label)}</span></button>`)}
+      </nav>
+      <div class="settings-content" key=${section}>
+        ${section === "general" && html`<${GeneralSettings} s=${s} patch=${patch} />`}
+        ${section === "clipboard" && html`<${ClipboardSettings} s=${s} patch=${patch} />`}
+        ${section === "files" && html`<${FilesHostSection} />`}
+        ${section === "remote" && html`<${RemoteSettings} s=${s} patch=${patch} />`}
+        ${section === "mouse" && html`<${MouseSection} s=${s} patch=${patch} />`}
+        ${section === "quickshare" && html`<${QuickShareSection} s=${s} patch=${patch} />`}
+        ${section === "updates" && html`<${UpdateSettings} s=${s} patch=${patch} />`}
+        ${section === "about" && html`<${AboutSettings} />`}
+      </div>
     </div>
-    ${section === "general" && html`<${GeneralSettings} s=${s} patch=${patch} />`}
-    ${section === "clipboard" && html`<${ClipboardSettings} s=${s} patch=${patch} />`}
-    ${section === "files" && html`<${FilesHostSection} />`}
-    ${section === "remote" && html`<${RemoteSettings} s=${s} patch=${patch} />`}
-    ${section === "mouse" && html`<${MouseSection} s=${s} patch=${patch} />`}
-    ${section === "quickshare" && html`<${QuickShareSection} s=${s} patch=${patch} />`}
-    ${section === "updates" && html`<${UpdateSettings} s=${s} patch=${patch} />`}
-    ${section === "about" && html`<${AboutSettings} />`}
   </div>`;
 }
 

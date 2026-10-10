@@ -19,6 +19,8 @@ body.live canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; objec
 }
 .live .top.away { opacity: 0; pointer-events: none; }
 .live .bar {
+  /* The height and centring of the progress bar of the player (`.bar` in app.css) must not apply to this one, or the buttons stand out of it. */
+  height: auto; align-items: stretch;
   display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: rgba(28, 28, 33, 0.78);
   backdrop-filter: blur(14px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }

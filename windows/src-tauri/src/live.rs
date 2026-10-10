@@ -35,6 +35,8 @@ struct Session {
     rotation: u16,
     /// What is shown is a computer (a remote desktop), not a phone.
     computer: bool,
+    /// That computer is a Mac: Control stands for Command there, which is where the shortcuts of a Mac live.
+    mac: bool,
     /// The decoder of this app, when the window cannot decode (the feature `native-video`).
     #[cfg(feature = "native-video")]
     decode: Option<std::sync::mpsc::SyncSender<Frame>>,
@@ -213,11 +215,12 @@ impl TandemMediaViewer for Viewer {
 
 /// Asks a phone for its screen or its camera and opens the window that shows it.
 #[tauri::command]
-pub async fn live_start(app: AppHandle, id: String, kind: String, name: String, computer: Option<bool>) -> Reply<String> {
+pub async fn live_start(app: AppHandle, id: String, kind: String, name: String, computer: Option<bool>, mac: Option<bool>) -> Reply<String> {
     let session = start(&app, id, kind == "camera", TandemMediaFacing::Any, name, computer.unwrap_or(false))?;
     if computer.unwrap_or(false) {
         if let Some(s) = SESSIONS.lock().unwrap().get_mut(&session) {
             s.computer = true;
+            s.mac = mac.unwrap_or(false);
         }
     }
     Ok(session.to_string())
@@ -252,6 +255,7 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
             accepted: None,
             rotation: 0,
             computer: false,
+            mac: false,
             #[cfg(feature = "native-video")]
             decode: spawn_decoder(app, session, lost.clone()),
             lost,
@@ -320,12 +324,12 @@ pub fn live_attach(session: String, on_frame: Channel<InvokeResponseBody>) -> Re
     s.channel = Some(on_frame);
     Ok(json!({
         "name": s.name, "kind": s.kind, "accepted": s.accepted, "rotation": s.rotation,
-        "native": cfg!(feature = "native-video"), "platform": if cfg!(windows) { "windows" } else { "linux" }, "computer": s.computer,
+        "native": cfg!(feature = "native-video"), "platform": if cfg!(windows) { "windows" } else { "linux" }, "computer": s.computer, "mac": s.mac,
     }))
 }
 
 /// A click, a key or a scroll on the picture, for the phone. The window sends them as small objects: `pointer` (x and y as
-/// fractions of the picture), `button`, `scroll`, `key` (a USB HID usage) and `text`.
+/// fractions of the picture), `button`, `scroll`, `key` (a USB HID usage, with the modifiers held: shift 1, control 2, alt 4, meta 8) and `text`.
 #[tauri::command]
 pub fn live_input(state: State<'_, AppState>, session: String, input: Value) -> Reply<()> {
     use tandem_core::ffi::TandemMediaInput as Input;
@@ -339,7 +343,12 @@ pub fn live_input(state: State<'_, AppState>, session: String, input: Value) -> 
             clicks: number("clicks").clamp(1.0, 3.0) as u8,
         },
         "scroll" => Input::Scroll { dx: number("dx").clamp(-2000.0, 2000.0) as i16, dy: number("dy").clamp(-2000.0, 2000.0) as i16 },
-        "key" => Input::Key { code: number("code") as u32, down: input["down"].as_bool().unwrap_or(true), mods: 0, text: String::new() },
+        "key" => Input::Key {
+            code: number("code") as u32,
+            down: input["down"].as_bool().unwrap_or(true),
+            mods: number("mods").clamp(0.0, 15.0) as u16,
+            text: String::new(),
+        },
         "text" => Input::Text { text: input["text"].as_str().unwrap_or_default().chars().take(200).collect() },
         _ => return Err("not an input".into()),
     };

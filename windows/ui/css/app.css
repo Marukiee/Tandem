@@ -417,9 +417,22 @@ select { cursor: default; }
 .arrange-hint { position: absolute; left: 0; right: 0; bottom: 66px; text-align: center; font-size: 11px; color: var(--text-2); pointer-events: none; }
 
 /* The sections of the settings. */
-/* Two even rows of four, not a row that breaks wherever it runs out of room and leaves one tab alone on the second. */
-.tabs { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; box-sizing: border-box; margin-bottom: 6px; }
-.tabs button { padding: 6px 8px; text-align: center; line-height: 1.25; }
+/* The sections of the settings: a list on the left with an icon each, the section itself next to it. Narrow, the list is a row on top. */
+.page > .wrap.settings { max-width: 1020px; }
+.settings-body { display: grid; grid-template-columns: 196px minmax(0, 1fr); gap: 26px; align-items: start; }
+.settings-nav { position: sticky; top: 8px; display: flex; flex-direction: column; gap: 2px; }
+.settings-nav button {
+  display: flex; align-items: center; gap: 10px; text-align: left; padding: 9px 12px; border: 0; border-radius: 10px; background: transparent;
+  color: var(--text-2); font: inherit; cursor: default; transition: background 0.15s, color 0.15s;
+}
+.settings-nav button:hover { background: var(--hover, rgba(128, 128, 128, 0.12)); color: var(--text); }
+.settings-nav button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.settings-content { min-width: 0; animation: fade 0.15s; }
+@media (max-width: 880px) {
+  .settings-body { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .settings-nav { position: static; flex-direction: row; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .settings-nav button { flex: none; white-space: nowrap; }
+}
 
 /* The filters of the Shared page: small buttons that open a list, coloured while a choice is on. */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }

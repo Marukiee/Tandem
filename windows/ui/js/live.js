@@ -33,6 +33,10 @@ let controlGranted = false;
 let controlOn = false;
 // What is shown is a computer, not a phone: other words for what is needed before it can be used.
 let computerPeer = false;
+// That computer is a Mac: Control here is Command there, which is where its shortcuts live.
+let macPeer = false;
+// The person has chosen on or off with the button: from then on it stays as chosen. Before, a computer that allows it is simply used.
+let controlChosen = false;
 // Pictures that were decoded by the app itself (see video.rs) arrive as JPEG, in the order they were made.
 let jpegAsked = 0;
 let jpegShown = 0;
@@ -205,6 +209,7 @@ async function start() {
   setPlatform(info.platform);
   set({ platform: info.platform });
   computerPeer = Boolean(info.computer);
+  macPeer = Boolean(info.mac);
   if (!info.native && !window.VideoDecoder) {
     say(t("live_cannot_decode"), true);
     return;
@@ -305,6 +310,8 @@ const help = document.getElementById("help");
 
 function showControl() {
   if (kind !== "screen") return;
+  // A computer that allows it is used at once: nobody wants to say first that the mouse is wanted.
+  if (computerPeer && controlGranted && !controlChosen) controlOn = true;
   controlButton.hidden = false;
   controlButton.classList.toggle("on", controlGranted && controlOn);
   controlButton.classList.toggle("off", !controlGranted);
@@ -345,6 +352,7 @@ controlButton.addEventListener("click", () => {
     help.hidden = false;
     return;
   }
+  controlChosen = true;
   controlOn = !controlOn;
   showControl();
   say(t(controlOn ? (computerPeer ? "live_control_is_on_pc" : "live_control_is_on") : (computerPeer ? "live_control_is_off_pc" : "live_control_is_off")));
@@ -353,29 +361,46 @@ controlButton.addEventListener("click", () => {
 document.getElementById("helpclose").addEventListener("click", () => { help.hidden = true; });
 
 let pressed = false;
+// The buttons of a mouse here, as the other computer numbers them: left, right, middle.
+const BUTTONS = { 0: 0, 2: 1, 1: 2 };
+let moveFrame = 0;
+let moveAt = null;
 canvas.addEventListener("mousedown", (e) => {
-  const at = active() && e.button === 0 ? fractionOf(e) : null;
+  const button = computerPeer ? BUTTONS[e.button] : e.button === 0 ? 0 : undefined;
+  const at = active() && button !== undefined ? fractionOf(e) : null;
   if (!at) return;
   pressed = true;
   sendInput({ t: "pointer", ...at });
-  sendInput({ t: "button", button: 0, down: true, clicks: Math.max(1, e.detail) });
+  sendInput({ t: "button", button, down: true, clicks: Math.max(1, e.detail) });
+  if (computerPeer) e.preventDefault();
 });
 canvas.addEventListener("mousemove", (e) => {
-  if (!pressed) return;
+  // A phone is touched, so it only has a place where a finger is; a computer has a pointer that is always somewhere, and it follows
+  // this one also with no button down, or what is under it never lights up and a click seems to jump there.
+  if (!pressed && !(computerPeer && active())) return;
   const at = fractionOf(e);
-  if (at) sendInput({ t: "pointer", ...at });
+  if (!at) return;
+  moveAt = at;
+  if (moveFrame) return;
+  moveFrame = requestAnimationFrame(() => {
+    moveFrame = 0;
+    if (moveAt) sendInput({ t: "pointer", ...moveAt });
+    moveAt = null;
+  });
 });
 window.addEventListener("mouseup", (e) => {
-  if (!pressed || e.button !== 0) return;
-  pressed = false;
+  const button = computerPeer ? BUTTONS[e.button] : e.button === 0 ? 0 : undefined;
+  if (!pressed || button === undefined) return;
+  if (!computerPeer || e.buttons === 0) pressed = false;
   const at = fractionOf(e);
   if (at) sendInput({ t: "pointer", ...at });
-  sendInput({ t: "button", button: 0, down: false, clicks: Math.max(1, e.detail) });
+  sendInput({ t: "button", button, down: false, clicks: Math.max(1, e.detail) });
 });
-// The right button is Back on the phone.
+// On a phone the right button is Back; on a computer it is the right button, which the mouse events above already send.
 canvas.addEventListener("contextmenu", (e) => {
   if (!active() || !fractionOf(e)) return;
   e.preventDefault();
+  if (computerPeer) return;
   sendInput({ t: "button", button: 1, down: true, clicks: 1 });
   sendInput({ t: "button", button: 1, down: false, clicks: 1 });
 });
@@ -391,15 +416,64 @@ canvas.addEventListener("wheel", (e) => {
   sendInput({ t: "pointer", ...at });
   sendInput({ t: "scroll", dx, dy });
 }, { passive: false });
-// Letters and digits are typed; Escape is Back, Backspace takes a character off, Enter goes in as a line break.
+
+// USB HID usages for the keys of a keyboard, by the place of the key (`KeyboardEvent.code`), which is the same whatever the layout is.
+const HID = (() => {
+  const table = {
+    Enter: 0x28, Escape: 0x29, Backspace: 0x2a, Tab: 0x2b, Space: 0x2c, Minus: 0x2d, Equal: 0x2e, BracketLeft: 0x2f, BracketRight: 0x30,
+    Backslash: 0x31, Semicolon: 0x33, Quote: 0x34, Backquote: 0x35, Comma: 0x36, Period: 0x37, Slash: 0x38, CapsLock: 0x39,
+    PrintScreen: 0x46, ScrollLock: 0x47, Pause: 0x48, Insert: 0x49, Home: 0x4a, PageUp: 0x4b, Delete: 0x4c, End: 0x4d, PageDown: 0x4e,
+    ArrowRight: 0x4f, ArrowLeft: 0x50, ArrowDown: 0x51, ArrowUp: 0x52, NumLock: 0x53, NumpadDivide: 0x54, NumpadMultiply: 0x55,
+    NumpadSubtract: 0x56, NumpadAdd: 0x57, NumpadEnter: 0x58, Numpad0: 0x62, NumpadDecimal: 0x63, IntlBackslash: 0x64, ContextMenu: 0x65,
+    ControlLeft: 0xe0, ShiftLeft: 0xe1, AltLeft: 0xe2, MetaLeft: 0xe3, ControlRight: 0xe4, ShiftRight: 0xe5, AltRight: 0xe6, MetaRight: 0xe7,
+  };
+  for (let i = 0; i < 26; i++) table["Key" + String.fromCharCode(65 + i)] = 0x04 + i;
+  for (let i = 1; i <= 9; i++) { table["Digit" + i] = 0x1d + i; table["Numpad" + i] = 0x58 + i; }
+  table.Digit0 = 0x27;
+  for (let i = 1; i <= 12; i++) table["F" + i] = 0x39 + i;
+  return table;
+})();
+// On a Mac the key that does what Control does here is Command, and the Windows or Super key is Control; Alt stays Option.
+const MAC_SWAP = { 0xe0: 0xe3, 0xe4: 0xe7, 0xe3: 0xe0, 0xe7: 0xe4 };
+const downKeys = new Set();
+
+function modsOf(e) {
+  const ctrl = e.ctrlKey, meta = e.metaKey;
+  return (e.shiftKey ? 1 : 0) | (macPeer ? (ctrl ? 8 : 0) | (meta ? 2 : 0) : (ctrl ? 2 : 0) | (meta ? 8 : 0)) | (e.altKey ? 4 : 0);
+}
+
+function sendKey(e, down) {
+  let code = HID[e.code] || (/^Numpad[1-9]$/.test(e.code) ? 0x58 + Number(e.code.slice(6)) : 0);
+  if (!code) return false;
+  if (macPeer && MAC_SWAP[code]) code = MAC_SWAP[code];
+  if (down) downKeys.add(code); else downKeys.delete(code);
+  sendInput({ t: "key", code, down, mods: modsOf(e) });
+  return true;
+}
+
+// A computer gets every key as it is pressed and let go, with what is held, so Ctrl+C copies there and Alt+Tab is not lost. A phone gets
+// letters and digits as text; Escape is Back, Backspace takes a character off, Enter goes in as a line break.
 window.addEventListener("keydown", (e) => {
-  if (!active() || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!active()) return;
+  if (computerPeer) {
+    if (sendKey(e, true)) e.preventDefault();
+    return;
+  }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === "Escape") sendInput({ t: "key", code: 0x29, down: true });
   else if (e.key === "Backspace") sendInput({ t: "key", code: 0x2a, down: true });
   else if (e.key === "Enter") sendInput({ t: "key", code: 0x28, down: true });
   else if (e.key.length === 1) sendInput({ t: "text", text: e.key });
   else return;
   e.preventDefault();
+});
+window.addEventListener("keyup", (e) => {
+  if (computerPeer && downKeys.size && sendKey(e, false)) e.preventDefault();
+});
+// Whatever was held when the window lost the focus is let go, or a key would stay down over there.
+window.addEventListener("blur", () => {
+  for (const code of downKeys) sendInput({ t: "key", code, down: false, mods: 0 });
+  downKeys.clear();
 });
 
 start().catch((e) => say(String(e), true));
