@@ -258,6 +258,12 @@ pub fn shared_stop_here() {
     }
 }
 
+/// Whether another computer has the pointer of this one now.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub fn shared_any() -> bool {
+    SHARED.lock().unwrap().is_some()
+}
+
 pub fn shared_is(device: &str) -> bool {
     SHARED.lock().unwrap().as_ref().is_some_and(|s| s.device == device)
 }

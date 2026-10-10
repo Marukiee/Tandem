@@ -589,7 +589,9 @@ final class PointerShare {
         if controlledBy == device { controllerHeardAt = Date() }
         switch message {
         case let .enter(edge, along):
-            guard isAllowed(device), controlledBy == nil || controlledBy == device, model.tandem != nil else {
+            // Not while this Mac's own pointer is over there: a computer that is used from here cannot also use this one.
+            guard isAllowed(device), remote == nil, controlledBy == nil || controlledBy == device, model.tandem != nil else {
+                PointerLog.write("\(model.device(device)?.name ?? device) wants this Mac: handed back (allowed: \(isAllowed(device)), own pointer away: \(remote != nil), used by: \(controlledBy ?? "nobody"))")
                 // Not allowed: the pointer is handed straight back.
                 Task { try? await model.tandem?.sendPointerShare(target: device, msg: .leave(along: along)) }
                 return

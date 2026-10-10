@@ -418,6 +418,12 @@ mod linux {
 
     fn activated(id: u32, x: i32, y: i32) {
         let give_back = || release((x, y));
+        // Another computer has the pointer of this one now, and it was put at an edge of this screen: it is that pointer that ran into the
+        // barrier, not the person here. Taking it would send the pointer back and forth between the two computers.
+        if crate::input::shared_any() {
+            log::info!("pointer: the barrier was run into by the pointer of another computer, not taken");
+            return give_back();
+        }
         let Some(app) = APP.get() else { return give_back() };
         let edge = STRETCHES.lock().unwrap().iter().find(|(s, _, _)| *s == id).map(|(_, _, edge)| *edge).unwrap_or_else(|| edge_at(x, y));
         let position = if matches!(edge, Edge::Left | Edge::Right) { y } else { x };
