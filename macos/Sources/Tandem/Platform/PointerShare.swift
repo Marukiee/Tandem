@@ -116,16 +116,19 @@ final class PointerShare {
         }
     }
 
-    /// Computers that gave the pointer straight back, and when. The edge towards one of them is a plain wall for a while, so the pointer does
-    /// not jump over and bounce each time it is pushed there (the other computer is locked, asleep or does not allow this Mac).
-    @ObservationIgnored private var bounced: [String: Date] = [:]
-    private static let bounceWait: TimeInterval = 30
+    /// Computers that said they cannot take the pointer now (locked, asleep, not allowed, no permission), or gave it straight back. The
+    /// edge towards one is a plain wall until it says it can: no jump over and no message. Only for a computer that keeps saying how it
+    /// is (the capability `pointer.ready`); one that does not is tried as before.
+    @ObservationIgnored private var unready: Set<String> = []
 
     private func declined(_ id: String) -> Bool {
-        guard let at = bounced[id] else { return false }
-        if Date().timeIntervalSince(at) < Self.bounceWait { return true }
-        bounced[id] = nil
-        return false
+        guard unready.contains(id) else { return false }
+        // A computer that went away starts again from nothing when it is back.
+        guard let device = model.device(id), device.online else {
+            unready.remove(id)
+            return false
+        }
+        return device.caps.contains("pointer.ready")
     }
 
     /// The computer that has the pointer now, and the side of this screen it went out by.
@@ -587,23 +590,36 @@ final class PointerShare {
             CGWarpMouseCursorPosition(point(on: enteredBy, along: CGFloat(along)))
         case let .leave(along):
             if remote?.device == device {
-                // Back at once: that computer did not take it. The edge towards it stays closed for a while, without a message: a pointer
-                // that goes there only when that computer can take it is the whole of the explanation.
+                // Back at once: that computer did not take it. One that says how it is (`pointer.ready`) is left alone until it says it can
+                // take the pointer; for one that does not, say why it may be, or the pointer just bounces and nothing explains it.
                 let gaveBack = Date().timeIntervalSince(wentOverAt) < 1.5
                 comeBack(along: CGFloat(along))
-                if gaveBack { bounced[device] = Date() }
+                if gaveBack {
+                    if model.device(device)?.caps.contains("pointer.ready") == true {
+                        unready.insert(device)
+                    } else {
+                        let name = model.device(device)?.name ?? String(localized: "The other computer")
+                        FloatingToast.show(String(localized: "\(name) did not take the pointer. It may be locked or asleep, or not allowed to be used from this Mac."), symbol: "lock.fill")
+                    }
+                }
             }
         case .release:
             if remote?.device == device { comeBack(along: nil) }
             if controlledBy == device { endControlled(tell: nil) }
+            // From a computer that takes a pointer in, which only says this when it cannot take one now.
+            unready.insert(device)
         case .ping:
             Task { try? await model.tandem?.sendPointerShare(target: device, msg: .pong) }
         case .pong:
             break
         case let .size(width, height):
             sizes[device] = CGSize(width: Double(width), height: Double(height))
+            // Said without the pointer being there: that computer can take it now.
+            unready.remove(device)
             // The other computer says how big its screen is: from here this Mac follows the pointer over there.
-            if let remote, remote.device == device {
+            // Only right after the pointer went over: the same news now and then later (that computer says it can take a pointer) must not
+            // put the count of where the pointer is back at the place it came in.
+            if let remote, remote.device == device, Date().timeIntervalSince(wentOverAt) < 2.5 {
                 remoteTracker = RemoteTracker(width: Double(width), height: Double(height), edge: remote.edge, along: enterAlong)
             }
         case .carry:

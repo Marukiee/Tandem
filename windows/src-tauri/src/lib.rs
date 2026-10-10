@@ -33,6 +33,7 @@ mod logfile;
 mod media;
 mod model;
 mod names;
+mod pointer_ready;
 mod power;
 mod settings;
 mod sound;
@@ -81,6 +82,7 @@ pub fn run() {
             media::start(&handle);
             power::start(handle.clone());
             lid::start(handle.clone());
+            pointer_ready::start(handle.clone());
             debugshot::start();
             #[cfg(feature = "screen-host")]
             host::bench();

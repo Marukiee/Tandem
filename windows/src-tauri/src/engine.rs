@@ -118,6 +118,9 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         "camera.view".into(),
         // Answers the pings of a computer that has its pointer (see `pointer_share`), so it can tell a link that went quiet.
         "pointer.ping".into(),
+        // Says by itself whether it can take a pointer right now (see `pointer_ready`), so the main computer does not send one that
+        // would be handed straight back.
+        "pointer.ready".into(),
     ];
     #[cfg(feature = "screen-host")]
     if settings::get(app).screen_host && crate::host::available() {

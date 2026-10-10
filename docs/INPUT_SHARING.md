@@ -92,6 +92,16 @@ altijd een toets om de aanwijzer terug te halen, ook als de verbinding wegvalt.
   meldt hij in het venster en met een melding welke toestemming ontbreekt.
 - **Mac.** De pill onderin blijft staan zolang de aanwijzer op een andere computer is en toont de toetsen (control, option, command, esc).
 
+## Wat erbij kwam in 0.1.78 (de rand weet of de ander klaar is)
+
+- **Klaar-melding.** Een computer met de capability `pointer.ready` (Windows en Linux) meldt zelf of hij nu een aanwijzer kan aannemen: `Size`
+  betekent ja (met zijn schermgrootte), `Release zonder dat hij de aanwijzer heeft` betekent nee (scherm op slot, klep dicht, de portal zei nee,
+  deze Mac niet toegestaan). Gezegd bij elke verandering, zodra een computer online komt en elke tien seconden opnieuw
+  (`windows/src-tauri/src/pointer_ready.rs`). De Mac houdt per computer bij of hij niet klaar is (`PointerShare.unready`) en laat de rand
+  daarheen een muur zijn: geen sprong, geen melding, en zonder timer, want zodra de ander ja zegt gaat de rand open. Een computer zonder die
+  capability werkt als eerder, met de melding als hij de aanwijzer meteen teruggeeft. Na het ontgrendelen vraagt Linux de portal opnieuw
+  (`input::unlocked`).
+
 ## Wat er nog moet, per systeem
 
 1. **Mac als hoofdcomputer:** een `CGEventTap` die de muis en de toetsen ziet (heeft Toegankelijkheid en Invoercontrole nodig, de

@@ -67,6 +67,19 @@ pub fn ready() -> bool {
     false
 }
 
+/// Whether a pointer that came over now would be played, as far as is known without asking the desktop anything: only once it has said
+/// yes, not while it is being asked and not after it said no.
+pub fn could_take() -> bool {
+    STATE.load(Ordering::Relaxed) == 1
+}
+
+/// The screen was locked and is not now. The desktop may have said no only because of that, so it is asked again.
+pub fn unlocked() {
+    if STATE.load(Ordering::Relaxed) == 2 {
+        let _ = try_again();
+    }
+}
+
 /// Whether the desktop was asked and did not let the app play input (yet): the person has something to do, and is told what.
 pub fn needs_permission() -> bool {
     STATE.load(Ordering::Relaxed) == 2
