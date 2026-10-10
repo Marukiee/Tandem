@@ -75,6 +75,8 @@ pub struct MediaWant {
     pub max_bitrate: u32,
     pub control: bool,
     pub facing: MediaFacing,
+    /// An extra screen made by the host for this viewer (see `MediaRequest::extend`).
+    pub extend: bool,
 }
 
 impl MediaWant {
@@ -88,6 +90,7 @@ impl MediaWant {
             max_bitrate: 0,
             control: false,
             facing: MediaFacing::Any,
+            extend: false,
         }
     }
 }
@@ -680,6 +683,7 @@ impl Inner {
                 max_bitrate: want.max_bitrate,
                 control: want.control && want.kind == MediaKind::Screen,
                 facing: want.facing,
+                extend: want.extend && want.kind == MediaKind::Screen,
             };
             let viewer = ViewerSession::new(id, peer, request, boot);
             sessions.insert(id, Entry::Viewer(viewer.clone()));

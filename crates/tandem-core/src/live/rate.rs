@@ -26,15 +26,18 @@ impl RateSample {
     }
 }
 
-const CUT: f64 = 0.75;
+const CUT: f64 = 0.8;
 /// A cut is not repeated before the queue it was meant to drain had time to drain.
 const SETTLE: Duration = Duration::from_millis(1500);
-const HOLD_BASE: Duration = Duration::from_secs(4);
-const QUIET_NEEDED: u32 = 3;
-const RAISE: f64 = 0.08;
+const HOLD_BASE: Duration = Duration::from_secs(3);
+const QUIET_NEEDED: u32 = 2;
+const RAISE: f64 = 0.15;
 const MIN_RAISE: u32 = 50_000;
-/// The link must carry at least this much of the target, otherwise it is the picture that is quiet, not the link.
+/// The link must carry at least this much of the target for what arrived to say what the link can do: a picture that hardly changes
+/// delivers little whatever the link is, and a cut based on that would take the target to nothing, and keep it there.
 const IN_USE: f64 = 0.6;
+/// Where the target does not go below, as a part of the start: a picture that is held down to a tenth is a picture nobody can read.
+const FLOOR_PART: u32 = 5;
 /// Moves smaller than this are not worth telling the encoder about, except downwards.
 const HINT_STEP: f64 = 0.05;
 pub const FLOOR_BPS: u32 = 100_000;
@@ -57,7 +60,7 @@ impl RateController {
         let max = start.max(FLOOR_BPS);
         RateController {
             max,
-            min: (max / 10).max(FLOOR_BPS).min(max),
+            min: (max / FLOOR_PART).max(FLOOR_BPS).min(max),
             current: max,
             last_hint: max,
             quiet: 0,
@@ -82,7 +85,8 @@ impl RateController {
             let settled = self.last_cut.is_none_or(|t| now.duration_since(t) >= SETTLE);
             if settled {
                 let mut next = (self.current as f64 * CUT) as u32;
-                if sample.delivered_bps > 0 {
+                // What arrived only says what the link carries when the link was busy.
+                if sample.delivered_bps as f64 >= self.current as f64 * IN_USE {
                     next = next.min((sample.delivered_bps as f64 * 0.9) as u32);
                 }
                 self.current = next.clamp(self.min, self.current.max(self.min));
@@ -95,7 +99,10 @@ impl RateController {
             self.quiet += 1;
             let held = self.hold_until.is_some_and(|t| now < t);
             let in_use = sample.delivered_bps as f64 >= self.current as f64 * IN_USE;
-            if !held && self.quiet >= QUIET_NEEDED && in_use && self.current < self.max {
+            // A busy link that stays quiet climbs at once; an idle picture says nothing about the link, so it climbs back more slowly, which
+            // costs nothing until the picture moves again.
+            let needed = if in_use { QUIET_NEEDED } else { QUIET_NEEDED * 3 };
+            if !held && self.quiet >= needed && self.current < self.max {
                 let step = ((self.current as f64 * RAISE) as u32).max(MIN_RAISE);
                 self.current = self.current.saturating_add(step).min(self.max);
                 self.quiet = 0;
@@ -145,10 +152,18 @@ mod tests {
     fn trouble_cuts_quickly_and_to_what_arrived() {
         let mut rate = RateController::new(8 * MBIT);
         let t = Instant::now();
-        // 75% of 8 is 6, but only 4 arrived: 90% of that.
-        let hint = rate.update(t, &bad(4 * MBIT)).unwrap();
-        assert_eq!(hint, 3_600_000);
-        assert_eq!(rate.target(), 3_600_000);
+        // 80% of 8 is 6.4, but only 5 arrived, which is most of what was asked for, so the link was busy: 90% of that.
+        let hint = rate.update(t, &bad(5 * MBIT)).unwrap();
+        assert_eq!(hint, 4_500_000);
+        assert_eq!(rate.target(), 4_500_000);
+    }
+
+    #[test]
+    fn a_quiet_picture_does_not_pull_the_target_down_to_what_it_sent() {
+        let mut rate = RateController::new(8 * MBIT);
+        // A drop while almost nothing is being sent: the target goes down by the cut and not to the nothing that arrived.
+        rate.update(Instant::now(), &bad(50_000));
+        assert_eq!(rate.target(), 6_400_000);
     }
 
     #[test]
@@ -157,7 +172,7 @@ mod tests {
         let t = Instant::now();
         rate.update(t, &bad(0));
         let after_first = rate.target();
-        assert_eq!(after_first, 6 * MBIT);
+        assert_eq!(after_first, 6_400_000);
         assert_eq!(rate.update(t + Duration::from_millis(500), &bad(0)), None);
         assert_eq!(rate.target(), after_first);
         // Later it is a new problem.
@@ -166,13 +181,13 @@ mod tests {
     }
 
     #[test]
-    fn it_never_goes_below_a_tenth_of_the_start() {
+    fn it_never_goes_below_a_fifth_of_the_start() {
         let mut rate = RateController::new(8 * MBIT);
         let t = Instant::now();
         for step in 0..60 {
             rate.update(t + Duration::from_secs(2 * step), &bad(1));
         }
-        assert_eq!(rate.target(), 800_000);
+        assert_eq!(rate.target(), 1_600_000);
     }
 
     #[test]
@@ -182,38 +197,46 @@ mod tests {
         rate.update(t, &bad(0));
         let cut = rate.target();
         // Quiet seconds inside the hold change nothing.
-        for second in 1..4 {
+        for second in 1..3 {
             assert_eq!(rate.update(t + Duration::from_secs(second), &clean(cut)), None);
         }
         assert_eq!(rate.target(), cut);
-        // The hold ends at four seconds. Three quiet intervals have gone by then, so the first small step comes at once.
+        // The hold ends at three seconds. Two quiet intervals have gone by then, so the first step comes at once.
         let mut moved = Vec::new();
-        for second in 4..40 {
+        for second in 3..40 {
             if let Some(hint) = rate.update(t + Duration::from_secs(second), &clean(rate.target())) {
                 moved.push((second, hint));
             }
         }
         let (first_at, first) = moved[0];
-        assert!(first_at >= 4, "raised after {first_at} seconds");
-        assert!(first > cut && (first as f64) < cut as f64 * 1.12, "a step of about 8%, got {cut} to {first}");
-        // Steps are spaced by at least three quiet intervals.
+        assert!(first_at >= 3, "raised after {first_at} seconds");
+        assert!(first > cut && (first as f64) < cut as f64 * 1.20, "a step of about 15%, got {cut} to {first}");
+        // Steps are spaced by at least two quiet intervals.
         for pair in moved.windows(2) {
-            assert!(pair[1].0 - pair[0].0 >= 3);
+            assert!(pair[1].0 - pair[0].0 >= 2);
         }
         assert!(rate.target() <= 8 * MBIT);
     }
 
     #[test]
-    fn it_does_not_climb_while_the_picture_is_quiet() {
+    fn a_quiet_picture_climbs_back_slowly_and_not_at_all_inside_the_hold() {
         let mut rate = RateController::new(8 * MBIT);
         let t = Instant::now();
         rate.update(t, &bad(0));
         let cut = rate.target();
-        for second in 5..60 {
-            // A still screen sends almost nothing, which says nothing about what the link can do.
+        let mut steps = 0;
+        for second in 1..13 {
+            // A still screen sends almost nothing, which says nothing about what the link can do: it climbs, but only every sixth quiet second.
+            if rate.update(t + Duration::from_secs(second), &clean(100_000)).is_some() {
+                steps += 1;
+            }
+        }
+        assert!(rate.target() > cut, "it should have started to climb");
+        assert!(steps <= 2, "{steps} steps in twelve quiet seconds");
+        for second in 13..400 {
             rate.update(t + Duration::from_secs(second), &clean(100_000));
         }
-        assert_eq!(rate.target(), cut);
+        assert_eq!(rate.target(), 8 * MBIT, "the whole way back in the end");
     }
 
     #[test]
@@ -223,13 +246,13 @@ mod tests {
         rate.update(t, &bad(0));
         rate.update(t + Duration::from_secs(2), &bad(0));
         let low = rate.target();
-        // Two cuts in a row: eight seconds of hold, counted from the last one, so until second ten.
-        for second in 3..10 {
+        // Two cuts in a row: six seconds of hold, counted from the last one, so until second eight.
+        for second in 3..8 {
             rate.update(t + Duration::from_secs(second), &clean(low));
         }
         assert_eq!(rate.target(), low);
         let mut raised = false;
-        for second in 10..20 {
+        for second in 8..20 {
             raised |= rate.update(t + Duration::from_secs(second), &clean(low)).is_some();
         }
         assert!(raised);

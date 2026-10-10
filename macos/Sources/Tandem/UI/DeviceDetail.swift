@@ -219,22 +219,22 @@ struct DeviceDetail: View {
     private var actions: some View {
         let isComputer = device.platform == .macOs || device.platform == .windows || device.platform == .linux
         return VStack(alignment: .leading, spacing: 10) {
-            // All of it in one row of equal buttons, wrapping on a narrow window: what goes between the two devices first, then what this
+            // All of it in one row of buttons that are as wide as their words, wrapping on a narrow window: what goes between the two devices first, then what this
             // Mac does on the other one (look at it, use it, log in to it, ring it).
             GlassEffectContainer(spacing: 10) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 260), spacing: 10)], alignment: .leading, spacing: 10) {
-                    GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true, wide: true) { pickFiles() }
+                WrapRow(spacing: 10) {
+                    GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true) { pickFiles() }
                         .disabled(!device.online)
                         .opacity(device.online ? 1 : 0.5)
                     // Small enough for Bluetooth, so it works with no network as long as a link is up.
-                    GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard", wide: true) {
+                    GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard") {
                         model.sendClipboard(to: [device.id])
                     }
                     .disabled(!(device.online || device.ble))
                     .opacity(device.online || device.ble ? 1 : 0.5)
                     // Phones are the ones that offer folders for now; a computer offers none until its app can show them.
                     if device.platform == .android && device.caps.contains("files") {
-                        GlassActionButton(title: "Browse files", symbol: "folder", wide: true) { onBrowse() }
+                        GlassActionButton(title: "Browse files", symbol: "folder") { onBrowse() }
                             .disabled(!device.online)
                             .opacity(device.online ? 1 : 0.5)
                     }
@@ -246,8 +246,7 @@ struct DeviceDetail: View {
                         GlassActionButton(
                             title: ringing ? "Stop ringing" : "Find phone",
                             symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right",
-                            prominent: ringing,
-                            wide: true
+                            prominent: ringing
                         ) {
                             model.ring(device.id, on: !ringing)
                             model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
@@ -260,7 +259,7 @@ struct DeviceDetail: View {
                         // Until it has been looked at the button is taken to work (a button that starts grey and lights up a moment later reads as
                         // broken), and a press finds the address itself.
                         let missing = !device.online || (sshChecked && sshAddress == nil)
-                        GlassActionButton(title: "Terminal", symbol: "terminal", wide: true) {
+                        GlassActionButton(title: "Terminal", symbol: "terminal") {
                             Task {
                                 var address = sshAddress
                                 if address == nil { address = await SSHAccess.reachableAddress(of: device) }

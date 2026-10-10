@@ -106,6 +106,10 @@ pub struct MediaRequest {
     pub control: bool,
     #[serde(default)]
     pub facing: MediaFacing,
+    /// The viewer wants to use the host as the maker of an extra screen: not what is on the host's own display, but a display of its own,
+    /// of the size asked for, that the host adds next to its own. Only means something for a screen.
+    #[serde(default)]
+    pub extend: bool,
 }
 
 /// What the host gives. Also what the viewer is told once the host has said yes.

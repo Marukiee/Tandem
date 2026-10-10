@@ -240,6 +240,7 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
         // The picture of a phone can be clicked on from here, when the phone allows it (its accessibility service, see live.js).
         control: !camera,
         facing: if camera { facing } else { TandemMediaFacing::Any },
+        extend: false,
     };
     let session = engine.media_request(id, want).map_err(|e| e.to_string())?;
     let label = format!("live-{session}");

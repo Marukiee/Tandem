@@ -97,7 +97,7 @@ final class LiveManager {
         let want = TandemMediaWant(
             kind: kind, codecs: [.h264], maxWidth: quality.box(for: kind).long, maxHeight: quality.box(for: kind).short,
             maxFps: kind == .screen ? 60 : quality.maxFps, maxBitrate: 0, control: kind == .screen,
-            facing: kind == .camera ? facing.facing : .any
+            facing: kind == .camera ? facing.facing : .any, extend: false
         )
         let id: UInt64
         do {

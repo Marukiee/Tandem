@@ -51,15 +51,22 @@ object LivePlan {
      * About 0.07 bits for every pixel of every frame, which is clean for a screen and a camera at 30 frames, with a
      * floor so a small picture is not starved and a ceiling a phone's radio can carry. The Mac's own maximum wins.
      */
-    fun bitrate(width: Int, height: Int, fps: Int, requestedMax: Int): Int {
-        val wanted = (width.toLong() * height * fps * 0.07).toLong().coerceIn(1_500_000L, 16_000_000L).toInt()
+    fun bitrate(width: Int, height: Int, fps: Int, requestedMax: Int, screen: Boolean = false): Int {
+        // The text of a screen turns to mush at the bits that are plenty for a camera: it gets twice as many, and a higher ceiling for a
+        // network that can carry it. The link says when it cannot, and the target comes down (see the rate controller of the core).
+        val perPixel = if (screen) 0.15 else 0.07
+        val ceiling = if (screen) 24_000_000L else 16_000_000L
+        val floor = if (screen) 3_000_000L else 1_500_000L
+        // The second thirty frames of a second cost less than the first: they differ little from the ones before them.
+        val frames = if (screen) min(fps, 30) + max(fps - 30, 0) * 0.4 else fps.toDouble()
+        val wanted = (width.toLong() * height * frames * perPixel).toLong().coerceIn(floor, ceiling).toInt()
         return if (requestedMax > 0) min(wanted, max(requestedMax, 500_000)) else wanted
     }
 
     fun plan(sourceWidth: Int, sourceHeight: Int, limits: Limits): Plan {
         val size = fit(sourceWidth, sourceHeight, limits.maxWidth, limits.maxHeight)
         val fps = fps(limits.maxFps)
-        return Plan(size.width, size.height, fps, bitrate(size.width, size.height, fps, limits.maxBitrate))
+        return Plan(size.width, size.height, fps, bitrate(size.width, size.height, fps, limits.maxBitrate, screen = true))
     }
 
     /** `Surface.ROTATION_*` for the angle an orientation sensor reports (0 to 359, or -1 when it does not know). */

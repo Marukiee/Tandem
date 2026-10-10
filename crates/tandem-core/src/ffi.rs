@@ -2270,6 +2270,8 @@ pub struct TandemMediaWant {
     /// Only means something for a screen.
     pub control: bool,
     pub facing: TandemMediaFacing,
+    /// An extra screen made by the host for this viewer, of the size asked for, instead of a view of the host's own display.
+    pub extend: bool,
 }
 
 /// A request as the host app gets it.
@@ -2284,6 +2286,7 @@ pub struct TandemMediaRequest {
     pub max_bitrate: u32,
     pub control: bool,
     pub facing: TandemMediaFacing,
+    pub extend: bool,
 }
 
 impl From<crate::live::MediaRequest> for TandemMediaRequest {
@@ -2298,6 +2301,7 @@ impl From<crate::live::MediaRequest> for TandemMediaRequest {
             max_bitrate: request.max_bitrate,
             control: request.control,
             facing: request.facing.into(),
+            extend: request.extend,
         }
     }
 }
@@ -2577,6 +2581,7 @@ impl TandemEngine {
         request.max_bitrate = want.max_bitrate;
         request.control = want.control;
         request.facing = want.facing.into();
+        request.extend = want.extend;
         self.engine.media_request(peer, request).map_err(Into::into)
     }
 

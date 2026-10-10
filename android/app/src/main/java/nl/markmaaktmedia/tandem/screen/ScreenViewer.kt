@@ -247,6 +247,7 @@ class ScreenViewer(
             maxBitrate = bitrate.toUInt(),
             control = true,
             facing = TandemMediaFacing.ANY,
+            extend = false,
         )
     }
 

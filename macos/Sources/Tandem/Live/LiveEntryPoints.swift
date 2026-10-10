@@ -18,7 +18,7 @@ struct LiveActionRow: View {
         if device.isComputer, device.caps.contains("screen.host") {
             let ready = device.online
             let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
-            GlassActionButton(title: "Control computer", symbol: "display", prominent: running, wide: true) {
+            GlassActionButton(title: "Control computer", symbol: "display", prominent: running) {
                 LiveManager.shared.start(device: device, kind: .screen)
             }
             .disabled(!ready)
@@ -29,7 +29,7 @@ struct LiveActionRow: View {
         if device.platform == .android {
             let screenReady = device.online && device.canShowScreen
             let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
-            GlassActionButton(title: "Show phone screen", symbol: "iphone.gen3", prominent: running, wide: true) {
+            GlassActionButton(title: "Show phone screen", symbol: "iphone.gen3", prominent: running) {
                 LiveManager.shared.start(device: device, kind: .screen)
             }
             .disabled(!screenReady)
@@ -38,7 +38,7 @@ struct LiveActionRow: View {
 
             let cameraReady = device.online && device.canShowCamera
             let cameraRunning = LiveManager.shared.session(of: .camera, on: device.id) != nil
-            GlassActionButton(title: "Phone camera", symbol: "camera", prominent: cameraRunning, wide: true) {
+            GlassActionButton(title: "Phone camera", symbol: "camera", prominent: cameraRunning) {
                 LiveManager.shared.start(device: device, kind: .camera)
             }
             .disabled(!cameraReady)

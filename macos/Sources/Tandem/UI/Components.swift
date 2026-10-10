@@ -30,6 +30,10 @@ struct GlassActionButton: View {
     var wide = false
     let action: () -> Void
 
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
     var body: some View {
         let button = Button(action: action) {
             Label(title, systemImage: symbol)
@@ -37,9 +41,67 @@ struct GlassActionButton: View {
                 .frame(maxWidth: wide ? .infinity : nil)
         }
         if prominent {
-            button.buttonStyle(.glassProminent).tint(Palette.indigo).controlSize(.large)
+            // The filled button shows nothing of its own under the pointer, unlike the glass ones next to it, so it lifts a little and
+            // lights up, the way the others answer.
+            let lit = hovering && isEnabled && hoverEnabled
+            button
+                .buttonStyle(.glassProminent)
+                .tint(Palette.indigo)
+                .controlSize(.large)
+                .brightness(lit ? 0.07 : 0)
+                .scaleEffect(lit ? 1.025 : 1)
+                .shadow(color: Palette.indigo.opacity(lit ? 0.35 : 0), radius: lit ? 10 : 0, y: lit ? 4 : 0)
+                .animation(.tandemSpringy, value: lit)
+                .onHover { hovering = $0 }
         } else {
             button.buttonStyle(.glass).controlSize(.large)
+        }
+    }
+}
+
+/// Views side by side, each as wide as it needs to be, on to the next line when the row is full.
+struct WrapRow: Layout {
+    var spacing: CGFloat = 10
+
+    private struct Line {
+        var indices: [Int] = []
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+    }
+
+    private func lines(_ subviews: Subviews, fitting width: CGFloat) -> [Line] {
+        var result: [Line] = [Line()]
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let needed = (result[result.count - 1].indices.isEmpty ? 0 : spacing) + size.width
+            if !result[result.count - 1].indices.isEmpty, result[result.count - 1].width + needed > width {
+                result.append(Line())
+            }
+            let first = result[result.count - 1].indices.isEmpty
+            result[result.count - 1].width += (first ? 0 : spacing) + size.width
+            result[result.count - 1].height = max(result[result.count - 1].height, size.height)
+            result[result.count - 1].indices.append(index)
+        }
+        return result
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .infinity
+        let rows = lines(subviews, fitting: width)
+        let height = rows.reduce(0) { $0 + $1.height } + spacing * CGFloat(max(rows.count - 1, 0))
+        return CGSize(width: width.isFinite ? width : (rows.map(\.width).max() ?? 0), height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for line in lines(subviews, fitting: bounds.width) {
+            var x = bounds.minX
+            for index in line.indices {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: x, y: y + (line.height - size.height) / 2), anchor: .topLeading, proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += line.height + spacing
         }
     }
 }

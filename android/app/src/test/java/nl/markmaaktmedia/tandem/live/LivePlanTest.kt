@@ -75,7 +75,17 @@ class LivePlanTest {
         assertEquals(1080, plan.width)
         assertEquals(2400, plan.height)
         assertEquals(60, plan.fps)
-        assertTrue(plan.bitrate in 1_500_000..16_000_000)
+        // A screen gets more bits than a camera of the same size, and what a phone and a network can carry at sixty frames at most.
+        assertTrue("got ${plan.bitrate}", plan.bitrate in 8_000_000..24_000_000)
+    }
+
+    @Test
+    fun aScreenGetsMoreBitsThanACameraOfTheSameSize() {
+        val camera = LivePlan.bitrate(1920, 1080, 30, 0)
+        val screen = LivePlan.bitrate(1920, 1080, 30, 0, screen = true)
+        assertTrue("$screen against $camera", screen > camera * 2 - 1_000_000)
+        // The Mac's own limit still wins.
+        assertEquals(4_000_000, LivePlan.bitrate(1920, 1080, 30, 4_000_000, screen = true))
     }
 
     @Test
