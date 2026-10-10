@@ -242,6 +242,8 @@ struct ClipRowView: View {
 /// The filters, with one capsule that slides from one to the next.
 struct ClipFilterChips: View {
     @Binding var filter: ClipFilter
+    /// The height of the whole control, for when it stands next to something of a set height (the search field): the pill then fills it.
+    var height: CGFloat?
     @Namespace private var pill
 
     var body: some View {
@@ -253,6 +255,7 @@ struct ClipFilterChips: View {
                         .foregroundStyle(filter == option ? Color.white : Color.secondary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
+                        .frame(maxHeight: height == nil ? nil : .infinity)
                         .background {
                             if filter == option {
                                 Capsule().fill(Palette.indigo).matchedGeometryEffect(id: "pill", in: pill)
@@ -264,6 +267,7 @@ struct ClipFilterChips: View {
             }
         }
         .padding(2)
+        .frame(height: height)
         .background(Color.primary.opacity(0.06), in: .capsule)
         .animation(.tandem, value: filter)
     }

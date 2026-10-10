@@ -17,7 +17,7 @@ struct ClipboardPage: View {
                 if history.enabled {
                     HStack(spacing: 12) {
                         searchField
-                        ClipFilterChips(filter: $filter)
+                        ClipFilterChips(filter: $filter, height: 32)
                     }
                 }
                 content(history: history, shown: shown)
