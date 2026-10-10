@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.1.78",
+    "date": "2026-10-10",
+    "en": {
+      "title": "Sharper screens",
+      "new": [
+        "Screen sharing in higher quality: the whole screen at a higher bitrate",
+        "Linux and Windows: the screen of another computer follows the pointer, has a right button and takes shortcuts (Ctrl is Command on a Mac)",
+        "The pointer no longer jumps back and forth when a photo is dragged over, and the edge stays closed to a computer that cannot take it",
+        "Mac: Stop closes the screen window, the buttons of a device stand in one row, the clipboard search is as tall as its filters",
+        "Linux and Windows: long copied texts scroll and can be pulled taller, settings as a list on the left, dropped files land in Downloads or on the desktop without opening a folder"
+      ]
+    },
+    "nl": {
+      "title": "Scherpere schermen",
+      "new": [
+        "Scherm delen in hogere kwaliteit: het hele scherm met een hogere bitrate",
+        "Linux en Windows: het scherm van een andere computer volgt de muis, heeft een rechtermuisknop en neemt sneltoetsen over (Ctrl is Command op een Mac)",
+        "De muis springt niet meer heen en weer als je een foto naar de andere computer sleept, en de rand blijft dicht naar een computer die hem niet kan aannemen",
+        "Mac: Stop sluit het schermvenster, de knoppen van een apparaat staan in een rij, de zoekbalk van het klembord is even hoog als de filters",
+        "Linux en Windows: lange gekopieerde teksten scrollen en je trekt ze groter, instellingen als lijst links, neergezette bestanden komen in Downloads of op het bureaublad zonder dat er een map opent"
+      ]
+    }
+  },
+  {
     "version": "0.1.77",
     "date": "2026-10-10",
     "en": {

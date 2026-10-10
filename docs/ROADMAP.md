@@ -39,6 +39,10 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   een dropzone (sectie 4); de rest vraagt twee echte computers om uit te proberen. In 0.1.77 stopt de sleep op de Mac bij de rand en toont
   de pill wat er meegaat en dat het is neergezet (gevraagd 2026-10-10: het plaatje bleef op de rand hangen). Een echte systeemsleep tussen twee
   besturingssystemen bestaat niet; onder Wayland is bovendien niet te zien wat er gesleept wordt, dus van Linux als hoofd werkt alleen de randzone.
+- Slepen naar een Linux-computer met een plaatje onder de muis (gevraagd 2026-10-10): onder Wayland kan een app geen venster op de plek van de
+  muis zetten en geen echte sleep starten, dus er is geen icoon onder de aanwijzer en geen loslaten op een map. Wat er is: de Mac toont wat er
+  meegaat (pill) en het bestand komt in Downloads met een melding "Tonen". Een stukje aanwijzer blijft op GNOME zichtbaar aan de rand zolang de muis
+  naar een andere computer is (de aanwijzer van het bureaublad is niet te verbergen). Mogelijk met een XWayland-hulpvenster of een GNOME-extensie.
 - De vraag om toestemming van de Linux-portals kwam steeds terug (gevraagd 2026-10-10): sinds 0.1.77 heeft elke manier van starten (login, menu,
   terminal) zijn eigen token (`portal.rs`, `launch_identity`). Nog niet gezien of het daarmee weg is; InputCapture op GNOME 50 (versie 1)
   blijft het bij elke start vragen, daar is geen token voor.
