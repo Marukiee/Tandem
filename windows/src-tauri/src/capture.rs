@@ -67,7 +67,38 @@ pub fn configure(app: &AppHandle) {
             .name("tandem-share".into())
             .spawn(move || {
                 // One thread, in order: a key that goes down must not be overtaken by the one that lets go.
-                while let Ok(out) = rx.recv() {
+                let mut held_back: Option<Out> = None;
+                loop {
+                    let out = match held_back.take() {
+                        Some(out) => out,
+                        None => match rx.recv() {
+                            Ok(out) => out,
+                            Err(_) => break,
+                        },
+                    };
+                    // A mouse says where it went a few hundred times a second, and each of those is a message that has to be sent before the
+                    // next one. When they pile up (the link has a hiccup) they are added together into one move instead of arriving late
+                    // one by one, which is what makes the pointer on the other computer stutter. With nothing waiting, each goes at once.
+                    let out = match out {
+                        Out::Input(device, TandemInput::Pointer { dx, dy }) => {
+                            let (mut sum_x, mut sum_y) = (i32::from(dx), i32::from(dy));
+                            while let Ok(next) = rx.try_recv() {
+                                match next {
+                                    Out::Input(other, TandemInput::Pointer { dx, dy }) if other == device => {
+                                        sum_x += i32::from(dx);
+                                        sum_y += i32::from(dy);
+                                    }
+                                    other => {
+                                        held_back = Some(other);
+                                        break;
+                                    }
+                                }
+                            }
+                            let clamp = |v: i32| v.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
+                            Out::Input(device, TandemInput::Pointer { dx: clamp(sum_x), dy: clamp(sum_y) })
+                        }
+                        other => other,
+                    };
                     let Ok(engine) = handle.state::<AppState>().engine() else { continue };
                     tauri::async_runtime::block_on(async {
                         match out {

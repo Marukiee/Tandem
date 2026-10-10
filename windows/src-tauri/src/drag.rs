@@ -1,5 +1,6 @@
 //! Files that another computer dropped on the edge of its screen, to this one: that computer shares its pointer with this one, so it
-//! was the person who put them here, at that moment. They are taken without asking and put on the desktop, where the drop was.
+//! was the person who put them here, at that moment. They are taken without asking and put down (the desktop on Windows, the downloads
+//! folder on Linux), and a message says where, with a way to show them on Linux.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -58,11 +59,28 @@ pub fn flush(app: &AppHandle) {
 }
 
 fn land(app: &AppHandle, from: &str, name: &str, path: &Path) {
-    let desktop = app.path().desktop_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let placed = place(path, &desktop);
-    events::say(app, &i18n::t2(app, "host_landed", name, from).replace("{0}", name));
-    // Shown in the file manager, so it is easy to find.
-    let _ = tauri_plugin_opener::reveal_item_in_dir(&placed);
+    // Windows shows its desktop and the file is where the drop was. Linux has no desktop that shows files (GNOME has none), so it goes to
+    // the downloads folder, and is not opened: a window that comes up by itself is not what a drop is.
+    let folder = if cfg!(windows) { app.path().desktop_dir().unwrap_or_else(|_| PathBuf::from(".")) } else { crate::settings::download_dir(app) };
+    let placed = place(path, &folder);
+    let body = i18n::t2(app, if cfg!(windows) { "drop_on_desktop" } else { "drop_in_downloads" }, name, from);
+    #[cfg(target_os = "linux")]
+    {
+        let target = placed.clone();
+        let buttons = [("show", i18n::t(app, "drop_show"))];
+        let pairs: Vec<(&str, &str)> = buttons.iter().map(|(k, v)| (*k, v.as_str())).collect();
+        let shown = tandem_winsys::notify::ask("Tandem", &body, &pairs, move |_| {
+            let _ = tauri_plugin_opener::reveal_item_in_dir(&target);
+        });
+        if shown.is_none() {
+            events::toast(app, "Tandem", &body);
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        events::toast(app, "Tandem", &body);
+        let _ = &placed;
+    }
 }
 
 /// Moves the file to the folder, under a name that is free there.
