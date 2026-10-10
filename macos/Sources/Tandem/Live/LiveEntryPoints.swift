@@ -24,6 +24,16 @@ struct LiveActionRow: View {
             .disabled(!ready)
             .opacity(ready ? 1 : 0.5)
             .help("Shows the screen of this computer in a window. It asks first, and then you can use its mouse and keyboard.")
+            // A screen that computer makes for this one, next to the ones it has: windows are moved to it with the mouse of that computer.
+            if device.caps.contains("screen.extend") {
+                let secondRunning = LiveManager.shared.session(of: .screen, on: device.id)?.extend == true
+                GlassActionButton(title: "Use as second screen", symbol: "rectangle.on.rectangle", prominent: secondRunning) {
+                    LiveManager.shared.start(device: device, kind: .screen, extend: true)
+                }
+                .disabled(!ready)
+                .opacity(ready ? 1 : 0.5)
+                .help("Makes this computer add a screen for this one. Move windows to it with the mouse of that computer.")
+            }
         }
         // Always there for a phone, grey while it cannot: a phone with an older Tandem is told what to do in the tooltip.
         if device.platform == .android {

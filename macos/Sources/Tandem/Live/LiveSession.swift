@@ -198,6 +198,8 @@ final class LiveSession {
     var mirrored: Bool
     var cameraFacing: LiveCameraFacing
     var quality: LiveQuality
+    /// A second screen: the other computer made a display of its own for this one, which fills this screen.
+    var extend = false
     var hasPicture = false
     var stats: LiveStats?
     var alwaysOnTop = false

@@ -66,6 +66,12 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    /// A second screen fills the screen it is on.
+    func enterFullScreen() {
+        guard !window.styleMask.contains(.fullScreen) else { return }
+        window.toggleFullScreen(nil)
+    }
+
     func bringToFront() {
         if window.isMiniaturized { window.deminiaturize(nil) }
         window.makeKeyAndOrderFront(nil)
@@ -124,6 +130,8 @@ final class LiveWindowController: NSObject, NSWindowDelegate {
     /// while the person resizes it.
     func contentSizeChanged() {
         let shown = session.shownSize
+        // A second screen is as big as the screen and is not made to fit its picture: that is the shape of the screen already.
+        guard !session.extend else { return }
         guard shown.width > 0, shown.height > 0, shown != shownSize else { return }
         let first = shownSize == .zero
         shownSize = shown

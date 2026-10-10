@@ -83,7 +83,7 @@ final class LiveManager {
     @discardableResult
     func start(
         device: TandemDevice, kind: TandemMediaKind, facing: LiveCameraFacing = .back, quality: LiveQuality = .standard,
-        reusing: LiveSession? = nil
+        reusing: LiveSession? = nil, extend: Bool = false
     ) -> LiveSession? {
         if let existing = session(of: kind, on: device.id), existing.cameraFacing == facing || kind == .screen {
             windows[ObjectIdentifier(existing)]?.bringToFront()
@@ -94,10 +94,18 @@ final class LiveManager {
         // Try again after an end is the same window asking again: an ended session is not "running", so it has to be named.
         let replaced = reusing ?? session(of: kind, on: device.id)
 
+        // A second screen is as many pixels as the screen it is shown on, lying as it is; the other computer makes it that shape, or smaller
+        // when it cannot encode that much.
+        var box = quality.box(for: kind)
+        if extend, kind == .screen, let screen = NSScreen.main ?? NSScreen.screens.first {
+            let scale = screen.backingScaleFactor
+            let width = UInt32(screen.frame.width * scale), height = UInt32(screen.frame.height * scale)
+            box = (long: max(width, height), short: min(width, height))
+        }
         let want = TandemMediaWant(
-            kind: kind, codecs: [.h264], maxWidth: quality.box(for: kind).long, maxHeight: quality.box(for: kind).short,
+            kind: kind, codecs: [.h264], maxWidth: box.long, maxHeight: box.short,
             maxFps: kind == .screen ? 60 : quality.maxFps, maxBitrate: 0, control: kind == .screen,
-            facing: kind == .camera ? facing.facing : .any, extend: false
+            facing: kind == .camera ? facing.facing : .any, extend: extend && kind == .screen
         )
         let id: UInt64
         do {
@@ -109,6 +117,7 @@ final class LiveManager {
         let session = replaced ?? LiveSession(
             id: id, peer: device.id, phoneName: device.name, kind: kind, cameraFacing: facing, quality: quality
         )
+        session.extend = extend && kind == .screen
         if let replaced {
             reset(replaced, id: id, facing: facing, quality: quality)
         }
@@ -121,6 +130,7 @@ final class LiveManager {
             let controller = LiveWindowController(session: session, manager: self)
             windows[ObjectIdentifier(session)] = controller
             controller.show()
+            if session.extend { controller.enterFullScreen() }
         }
         startStatsTimer()
         return session
@@ -129,7 +139,7 @@ final class LiveManager {
     /// The same window asks again: after an end, or with another camera or quality.
     func restart(_ session: LiveSession) {
         guard let device = EngineModel.shared.device(session.peer) else { return }
-        start(device: device, kind: session.kind, facing: session.cameraFacing, quality: session.quality, reusing: session)
+        start(device: device, kind: session.kind, facing: session.cameraFacing, quality: session.quality, reusing: session, extend: session.extend)
     }
 
     private func reset(_ session: LiveSession, id: UInt64, facing: LiveCameraFacing, quality: LiveQuality) {
