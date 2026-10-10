@@ -59,6 +59,19 @@ struct DeviceDetail: View {
 
     private var reach: Reach { model.reach(of: device) }
 
+    private var deviceSubtitle: String {
+        let system: String = switch device.platform {
+        case .android: "Android"
+        case .macOs: "macOS"
+        case .linux: "Linux"
+        case .windows: "Windows"
+        case .ios: "iOS"
+        case .other: String(localized: "Device")
+        }
+        guard let version = device.appVersion, !version.isEmpty else { return system }
+        return "\(system) \u{00B7} Tandem \(version)"
+    }
+
     private var header: some View {
         Card(radius: 32, padding: 22, tint: device.online ? Palette.indigo : nil) {
             HStack(spacing: 20) {
@@ -100,7 +113,13 @@ struct DeviceDetail: View {
                         .font(.title.weight(.bold))
                         .lineLimit(1)
                         .contentTransition(.opacity)
-                        
+
+                    // What it is: the system and the version of Tandem on it, so the card says who this is and not only how it is reached.
+                    Text(deviceSubtitle)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+
                     HStack(spacing: 8) {
                         Chip(symbol: reach.symbol, text: reach.text, tint: reach.color, strong: reach.reachable)
                         if device.online {
@@ -199,29 +218,29 @@ struct DeviceDetail: View {
 
     private var actions: some View {
         let isComputer = device.platform == .macOs || device.platform == .windows || device.platform == .linux
-        return VStack(alignment: .leading, spacing: 16) {
-            // What goes between the two devices.
-            actionGroup("Share") {
-                GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true, wide: true) { pickFiles() }
-                    .disabled(!device.online)
-                    .opacity(device.online ? 1 : 0.5)
-                // Small enough for Bluetooth, so it works with no network as long as a link is up.
-                GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard", wide: true) {
-                    model.sendClipboard(to: [device.id])
-                }
-                .disabled(!(device.online || device.ble))
-                .opacity(device.online || device.ble ? 1 : 0.5)
-                // Phones are the ones that offer folders for now; a computer offers none until its app can show them.
-                if device.platform == .android && device.caps.contains("files") {
-                    GlassActionButton(title: "Browse files", symbol: "folder", wide: true) { onBrowse() }
+        return VStack(alignment: .leading, spacing: 10) {
+            // All of it in one row of equal buttons, wrapping on a narrow window: what goes between the two devices first, then what this
+            // Mac does on the other one (look at it, use it, log in to it, ring it).
+            GlassEffectContainer(spacing: 10) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 260), spacing: 10)], alignment: .leading, spacing: 10) {
+                    GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true, wide: true) { pickFiles() }
                         .disabled(!device.online)
                         .opacity(device.online ? 1 : 0.5)
-                }
-            }
-            // What this Mac does on the other device: look at it, use it, log in to it, ring it.
-            if isComputer || device.platform == .android {
-                actionGroup(isComputer ? "Use this computer" : "On the phone") {
-                    LiveActionRow(device: device)
+                    // Small enough for Bluetooth, so it works with no network as long as a link is up.
+                    GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard", wide: true) {
+                        model.sendClipboard(to: [device.id])
+                    }
+                    .disabled(!(device.online || device.ble))
+                    .opacity(device.online || device.ble ? 1 : 0.5)
+                    // Phones are the ones that offer folders for now; a computer offers none until its app can show them.
+                    if device.platform == .android && device.caps.contains("files") {
+                        GlassActionButton(title: "Browse files", symbol: "folder", wide: true) { onBrowse() }
+                            .disabled(!device.online)
+                            .opacity(device.online ? 1 : 0.5)
+                    }
+                    if isComputer || device.platform == .android {
+                        LiveActionRow(device: device)
+                    }
                     if device.platform == .android {
                         let ringing = model.ringing.contains(device.id)
                         GlassActionButton(
