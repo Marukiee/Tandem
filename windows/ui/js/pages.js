@@ -232,7 +232,7 @@ export function DevicePage({ device }) {
           <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
         ${isComputer && hasCap("screen.host") && html`<button class="btn" disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => show("screen")}>
           <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
-        ${isComputer && hasCap("screen.extend") && state.platform === "linux" && html`<button class="btn" disabled=${!device.online} title=${t("display_tip")} onClick=${() => call("display_start", { id: device.id, name: device.name }).catch(failed)}>
+        ${isComputer && hasCap("screen.extend") && html`<button class="btn" disabled=${!device.online} title=${t("display_tip")} onClick=${() => call("display_start", { id: device.id, name: device.name, mac: device.platform === "macos" }).catch(failed)}>
           <${Icon} name="device-laptop" size=${17} />${t("display_use")}</button>`}
         ${isComputer && html`<button class="btn" disabled=${!sshReady} title=${sshReady ? t("ssh_title") : sshReason} onClick=${openSsh}>
           <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}

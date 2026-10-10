@@ -45,6 +45,8 @@ struct Session {
     lost: Arc<AtomicBool>,
     /// A second screen (see `display_start`): no window of this app, the pictures go to a program that shows them.
     display: bool,
+    /// A second screen shown in a window of this app that fills the screen (Windows), not one made to fit its picture.
+    extended: bool,
     player: Option<Player>,
 }
 
@@ -275,7 +277,7 @@ impl TandemMediaViewer for Viewer {
 /// Asks a phone for its screen or its camera and opens the window that shows it.
 #[tauri::command]
 pub async fn live_start(app: AppHandle, id: String, kind: String, name: String, computer: Option<bool>, mac: Option<bool>) -> Reply<String> {
-    let session = start(&app, id, kind == "camera", TandemMediaFacing::Any, name, computer.unwrap_or(false))?;
+    let session = start(&app, id, kind == "camera", TandemMediaFacing::Any, name, computer.unwrap_or(false), false)?;
     if computer.unwrap_or(false) {
         if let Some(s) = SESSIONS.lock().unwrap().get_mut(&session) {
             s.computer = true;
@@ -286,20 +288,22 @@ pub async fn live_start(app: AppHandle, id: String, kind: String, name: String, 
 }
 
 /// The request and the window. Also what a phone that starts the sharing itself ends up in.
-pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacing, name: String, computer: bool) -> Reply<u64> {
+pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacing, name: String, computer: bool, extend: bool) -> Reply<u64> {
     let engine = app.state::<AppState>().engine()?;
+    // A second screen is as many pixels as the screen it is shown on, lying as it is; anything else is what a window can usefully show.
+    let (extend_w, extend_h) = if extend { monitor_pixels(app) } else { (0, 0) };
     let want = TandemMediaWant {
         kind: if camera { TandemMediaKind::Camera } else { TandemMediaKind::Screen },
         codecs: vec![TandemMediaCodec::H264],
         // The whole screen as it is, up to what a big monitor has: scaled down the text of a screen turns soft.
-        max_width: if camera { 1920 } else { 3840 },
-        max_height: if camera { 1080 } else { 2160 },
+        max_width: if extend { extend_w.max(extend_h) } else if camera { 1920 } else { 3840 },
+        max_height: if extend { extend_w.min(extend_h) } else if camera { 1080 } else { 2160 },
         max_fps: if camera { 30 } else { 60 },
         max_bitrate: 0,
         // The picture of a phone can be clicked on from here, when the phone allows it (its accessibility service, see live.js).
         control: !camera,
         facing: if camera { facing } else { TandemMediaFacing::Any },
-        extend: false,
+        extend,
     };
     let session = engine.media_request(id, want).map_err(|e| e.to_string())?;
     let label = format!("live-{session}");
@@ -320,6 +324,7 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
             decode: spawn_decoder(app, session, lost.clone()),
             lost,
             display: false,
+            extended: extend,
             player: None,
         },
     );
@@ -329,8 +334,9 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
         .title(name)
         .inner_size(width, height)
         .min_inner_size(240.0, 240.0)
-        // Linux draws no frame of its own: the page does, over the picture (see ui/js/chrome.js).
-        .decorations(cfg!(windows))
+        // A second screen fills the screen it is on; Linux draws no frame of its own: the page does, over the picture (see ui/js/chrome.js).
+        .fullscreen(extend)
+        .decorations(cfg!(windows) && !extend)
         .build();
     if let Err(e) = built {
         SESSIONS.lock().unwrap().remove(&session);
@@ -420,16 +426,29 @@ fn end_display(app: &AppHandle, session: u64) {
     announce_displays(app);
 }
 
-/// Asks a computer for a screen of its own, as big as this one, and shows it over this one when it is made.
-#[tauri::command]
-pub async fn display_start(app: AppHandle, id: String, name: String) -> Reply<String> {
-    let engine = app.state::<AppState>().engine()?;
-    // The pixels of the screen this window is on, lying as it is.
+/// The pixels of the screen the main window is on.
+fn monitor_pixels(app: &AppHandle) -> (u32, u32) {
     let monitor = app
         .get_webview_window("main")
         .and_then(|w| w.current_monitor().ok().flatten())
         .or_else(|| app.primary_monitor().ok().flatten());
-    let (width, height) = monitor.map(|m| (m.size().width, m.size().height)).unwrap_or((1920, 1080));
+    monitor.map(|m| (m.size().width, m.size().height)).unwrap_or((1920, 1080))
+}
+
+/// Asks a computer for a screen of its own, as big as this one, and shows it over this one when it is made. On Windows that is a window of
+/// this app that fills the screen (its webview decodes video in hardware); elsewhere a GStreamer window does.
+#[tauri::command]
+pub async fn display_start(app: AppHandle, id: String, name: String, mac: Option<bool>) -> Reply<String> {
+    if cfg!(windows) {
+        let session = start(&app, id, false, TandemMediaFacing::Any, name, true, true)?;
+        if let Some(s) = SESSIONS.lock().unwrap().get_mut(&session) {
+            s.computer = true;
+            s.mac = mac.unwrap_or(false);
+        }
+        return Ok(session.to_string());
+    }
+    let engine = app.state::<AppState>().engine()?;
+    let (width, height) = monitor_pixels(&app);
     let want = TandemMediaWant {
         kind: TandemMediaKind::Screen,
         codecs: vec![TandemMediaCodec::H264],
@@ -460,6 +479,7 @@ pub async fn display_start(app: AppHandle, id: String, name: String) -> Reply<St
             decode: None,
             lost: Arc::new(AtomicBool::new(false)),
             display: true,
+            extended: false,
             player: None,
         },
     );
@@ -499,6 +519,10 @@ fn session_of(text: &str) -> Reply<u64> {
 pub fn live_fit(app: AppHandle, session: String, width: f64, height: f64) {
     let Ok(session) = session_of(&session) else { return };
     if width < 2.0 || height < 2.0 {
+        return;
+    }
+    // A second screen fills the screen as it is.
+    if SESSIONS.lock().unwrap().get(&session).is_some_and(|s| s.extended) {
         return;
     }
     let Some(window) = app.get_webview_window(&format!("live-{session}")) else { return };
