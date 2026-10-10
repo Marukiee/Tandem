@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.81",
+    "date": "2026-10-11",
+    "en": {
+      "title": "Second screen everywhere",
+      "new": [
+        "Second screen: Windows and Mac can show it too, and a Linux laptop on Wayland can make one for another device",
+        "Mac and Linux: smoother pointer between computers, and the edge stays closed to a computer that cannot take it"
+      ]
+    },
+    "nl": {
+      "title": "Tweede scherm overal",
+      "new": [
+        "Tweede scherm: Windows en Mac kunnen het ook tonen, en een Linux-laptop op Wayland kan er een maken voor een ander apparaat",
+        "Mac en Linux: soepelere muis tussen computers, en de rand blijft dicht naar een computer die hem niet kan aannemen"
+      ]
+    }
+  },
+  {
     "version": "0.1.80",
     "date": "2026-10-10",
     "en": {
