@@ -18,6 +18,9 @@ sealed interface Route {
     /** The screen of a Mac on the phone, with its mouse and keyboard. */
     data class Screen(val id: String) : Route
 
+    /** The phone as a second screen of a Mac: a display of its own, made by the Mac, lying down. */
+    data class Display(val id: String) : Route
+
     /** A login to a computer over SSH, in a terminal. */
     data class Terminal(val id: String) : Route
     data object Access : Route
@@ -94,6 +97,7 @@ private fun routeFromKey(key: String): Route? = when {
     key.startsWith("remote:") -> Route.Remote(key.removePrefix("remote:"))
     key.startsWith("devsettings:") -> Route.DeviceSettings(key.removePrefix("devsettings:"))
     key.startsWith("screen:") -> Route.Screen(key.removePrefix("screen:"))
+    key.startsWith("display:") -> Route.Display(key.removePrefix("display:"))
     key.startsWith("terminal:") -> Route.Terminal(key.removePrefix("terminal:"))
     key == "access" -> Route.Access
     key == "clipboard-history" -> Route.ClipboardHistory

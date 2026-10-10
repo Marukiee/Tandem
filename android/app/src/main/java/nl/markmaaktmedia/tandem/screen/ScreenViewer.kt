@@ -103,6 +103,10 @@ class ScreenViewer(
     @Volatile var peer: String? = null
         private set
 
+    /** This is not a look at the screen of that device but a screen of its own, made by it for this phone, next to the ones it has. */
+    @Volatile var extend = false
+        private set
+
     @Volatile private var session = 0UL
     @Volatile private var control = false
     @Volatile private var lastFrameAt = 0L
@@ -126,13 +130,14 @@ class ScreenViewer(
     // ---- What the screen asks for ----------------------------------------------------------
 
     /** Starts looking at a Mac. Called again for the same one (a rotation, a recomposition), it keeps what runs. */
-    fun open(id: String) {
+    fun open(id: String, extend: Boolean = false) {
         pauseJob?.cancel()
         val running = _state.value
-        if (peer == id && (running is ViewerState.Streaming || running is ViewerState.Connecting ||
+        if (peer == id && this.extend == extend && (running is ViewerState.Streaming || running is ViewerState.Connecting ||
                 running is ViewerState.WaitingForApproval || running is ViewerState.Reconnecting)
         ) return
         shutDown(tell = true)
+        this.extend = extend
         peer = id
         attempt = 0
         decoder.reset()
@@ -163,15 +168,16 @@ class ScreenViewer(
     fun resume() {
         pauseJob?.cancel()
         val id = peer
-        if (id != null && _state.value == ViewerState.Idle) open(id)
+        if (id != null && _state.value == ViewerState.Idle) open(id, extend)
     }
 
     /** After a "no", a stop on the Mac or a lost connection: once more, from the start. */
     fun retry() {
         val id = peer ?: return
+        val again = extend
         shutDown(tell = true)
         peer = null
-        open(id)
+        open(id, again)
     }
 
     fun setSurface(surface: Surface?) = decoder.setSurface(surface)
@@ -235,6 +241,24 @@ class ScreenViewer(
         val long = maxOf(metrics.widthPixels, metrics.heightPixels)
         val short = minOf(metrics.widthPixels, metrics.heightPixels)
         val unmetered = isUnmetered()
+        if (extend) {
+            // A screen of its own, as many pixels as this one has, so every pixel of the phone is one of the other computer. It is used lying
+            // down. What the link cannot carry comes off the rate afterwards, not off the size, which cannot change under the person's hands.
+            val real = context.getSystemService(Context.WINDOW_SERVICE).let { (it as android.view.WindowManager).maximumWindowMetrics.bounds }
+            val realLong = maxOf(real.width(), real.height())
+            val realShort = minOf(real.width(), real.height())
+            return TandemMediaWant(
+                kind = TandemMediaKind.SCREEN,
+                codecs = listOf(TandemMediaCodec.H264),
+                maxWidth = realLong.toUInt(),
+                maxHeight = realShort.toUInt(),
+                maxFps = if (unmetered) 60u else 30u,
+                maxBitrate = 0u,
+                control = true,
+                facing = TandemMediaFacing.ANY,
+                extend = true,
+            )
+        }
         val width = (long * 1.25f).toInt().coerceIn(1280, if (unmetered) 2560 else 1920)
         val height = (short * 1.25f).toInt().coerceIn(720, if (unmetered) 1600 else 1200)
         val bitrate = SessionPolicy.maxBitrate(if (unmetered) 12_000_000 else 4_000_000, attempt)

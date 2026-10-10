@@ -105,7 +105,10 @@ struct Pretend {
 
 impl MediaHost for Pretend {
     fn on_request(&self, from: DeviceId, request: MediaRequest, _pre_approved: bool) {
-        println!("screen requested by {} (session {}, control {})", from.short(), request.session, request.control);
+        println!(
+            "screen requested by {} (session {}, control {}, extend {}, box {}x{})",
+            from.short(), request.session, request.control, request.extend, request.max_width, request.max_height
+        );
         if request.kind != MediaKind::Screen {
             let _ = self.engine.media_deny(request.session, MediaEnd::Unsupported);
             return;

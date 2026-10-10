@@ -180,6 +180,8 @@ async fn start_engine(cli: &Cli) -> Result<(Engine, PathBuf)> {
     cfg.caps = vec!["clipboard".into(), "share".into()];
     if cli.pretend_screen.is_some() {
         cfg.caps.push("screen.host".into());
+        // So the apps show the way to a second screen too, which this host answers with the clip like any other request.
+        cfg.caps.push("screen.extend".into());
     }
     let secrets = Arc::new(FileSecretStore::new(Store::new(&data_dir)?));
     let download_dir = cli.download_dir.clone().unwrap_or_else(default_download_dir);

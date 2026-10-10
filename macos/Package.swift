@@ -37,9 +37,17 @@ let package = Package(
                 .linkedFramework("SystemConfiguration"),
             ]
         ),
+        // The one thing CoreGraphics only offers as private classes: a display made of software, for a device to use as a second screen.
+        .target(
+            name: "TandemVirtualDisplay",
+            path: "Sources/TandemVirtualDisplay",
+            publicHeadersPath: "include",
+            cSettings: [.unsafeFlags(["-fobjc-arc"])],
+            linkerSettings: [.linkedFramework("CoreGraphics"), .linkedFramework("Foundation")]
+        ),
         .executableTarget(
             name: "Tandem",
-            dependencies: ["TandemCore", .product(name: "SwiftTerm", package: "SwiftTerm")],
+            dependencies: ["TandemCore", "TandemVirtualDisplay", .product(name: "SwiftTerm", package: "SwiftTerm")],
             path: "Sources/Tandem",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),

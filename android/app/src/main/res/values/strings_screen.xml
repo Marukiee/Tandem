@@ -2,6 +2,10 @@
 <resources>
     <string name="tile_control_computer">Control computer</string>
     <string name="tile_control_mac">Control this Mac</string>
+    <string name="tile_display">Use as second screen</string>
+    <string name="display_row_sub">A screen next to the ones this computer has, on this phone</string>
+    <string name="display_title">Second screen</string>
+    <string name="display_hint">Move windows to the edge of the screen on that computer to bring them here</string>
     <string name="screen_connecting">Connecting to %1$s</string>
     <string name="screen_waiting_approval">Waiting for %1$s</string>
     <string name="screen_waiting_approval_sub">Choose Allow in the question that appeared on your Mac.</string>

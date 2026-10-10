@@ -96,7 +96,7 @@ private struct ScreenPromptView: View {
                         .frame(width: 40, height: 40)
                         .background(Palette.indigo.opacity(0.14), in: .circle)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(prompt.wantsControl ? "\(prompt.name) wants to control this Mac" : "\(prompt.name) wants to see this Mac")
+                        Text(prompt.extend ? "\(prompt.name) wants to use a screen of this Mac" : prompt.wantsControl ? "\(prompt.name) wants to control this Mac" : "\(prompt.name) wants to see this Mac")
                             .font(.headline)
                         Text("It sees everything on your screen until you stop it. A bar at the top of your screen shows when it does, with a Stop button.")
                             .font(.callout)

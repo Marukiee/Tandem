@@ -59,10 +59,17 @@ final class ScreenCapturer: NSObject, SCStreamOutput, SCStreamDelegate, @uncheck
 
     func start(display: DisplayInfo, width: Int, height: Int, fps: Int) async throws {
         guard Self.hasPermission else { throw Failure.noPermission }
-        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
-        guard let target = content.displays.first(where: { $0.displayID == display.id }) ?? content.displays.first else {
-            throw Failure.noDisplay
+        // A display of software is one of the monitors of the system a moment before the capture can list it: it is looked for for a while,
+        // and no other display stands in for it (the viewer would be shown a screen it did not ask for).
+        let isMain = display.id == CGMainDisplayID()
+        var found: SCDisplay?
+        for attempt in 0..<(isMain ? 1 : 15) {
+            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: false)
+            found = content.displays.first(where: { $0.displayID == display.id }) ?? (isMain ? content.displays.first : nil)
+            if found != nil { break }
+            if attempt < 14 { try? await Task.sleep(for: .milliseconds(200)) }
         }
+        guard let target = found else { throw Failure.noDisplay }
         let configuration = SCStreamConfiguration()
         configuration.width = width
         configuration.height = height

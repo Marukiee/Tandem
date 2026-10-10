@@ -84,6 +84,10 @@ enum DebugSupport {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { PointerAwayPill.show(device: "Linux Laptop", carrying: carried) }
             if carried != nil { DispatchQueue.main.asyncAfter(deadline: .now() + 6) { PointerAwayPill.dropped() } }
         }
+        // `TANDEM_DEBUG_VDISPLAY=<width>x<height>`: makes a display of software for three seconds and writes `vdisplay-report.txt` (it comes up, how big, where).
+        if let spec = variable("TANDEM_DEBUG_VDISPLAY") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { debugVirtualDisplay(spec) }
+        }
         // `TANDEM_DEBUG_PAIRSHEET=1`: the pairing card over the window, as the button under the devices opens it.
         if variable("TANDEM_DEBUG_PAIRSHEET") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { NotificationCenter.default.post(name: .tandemShowPairing, object: nil) }
@@ -188,6 +192,43 @@ enum DebugSupport {
 
     static func initialSettingsSection() -> SettingsSection? {
         variable("TANDEM_DEBUG_SETTINGS").flatMap { SettingsSection(rawValue: $0) }
+    }
+
+    private static func debugVirtualDisplay(_ spec: String) {
+        let parts = spec.split(separator: "x").compactMap { Int($0) }
+        let (width, height) = parts.count == 2 ? (parts[0], parts[1]) : (1280, 720)
+        var report = "available: \(VirtualDisplay.isAvailable)\n"
+        let before = activeDisplays()
+        report += "displays before: \(before.map { "\($0)" }.joined(separator: ", "))\n"
+        guard let display = VirtualDisplay(name: "Tandem test", width: width, height: height, hiDPI: false, refresh: 60) else {
+            report += "the display could not be made\n"
+            write(report, named: "vdisplay-report.txt")
+            return
+        }
+        Task { @MainActor in
+            let ready = await display.prepare()
+            let now = activeDisplays()
+            report += "made: id \(display.displayID), ready: \(ready), active now: \(now.contains(display.displayID))\n"
+            report += "bounds: \(display.bounds), mode: \(CGDisplayCopyDisplayMode(display.displayID).map { "\($0.pixelWidth)x\($0.pixelHeight) at \($0.width)x\($0.height) points" } ?? "none")\n"
+            report += "modes: \(display.modeList)\n"
+            report += "main: \(CGDisplayBounds(CGMainDisplayID()))\n"
+            write(report, named: "vdisplay-report.txt")
+            // Gone again after a moment: the display lives as long as the object.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                display.destroy()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    report += "after destroy, active: \(activeDisplays().contains(display.displayID))\n"
+                    write(report, named: "vdisplay-report.txt")
+                }
+            }
+        }
+    }
+
+    private static func activeDisplays() -> [CGDirectDisplayID] {
+        var ids = [CGDirectDisplayID](repeating: 0, count: 16)
+        var count: UInt32 = 0
+        CGGetActiveDisplayList(16, &ids, &count)
+        return Array(ids.prefix(Int(count)))
     }
 
     private static func showDevicePageWindow(_ kind: String) {

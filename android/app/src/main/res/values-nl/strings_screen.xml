@@ -2,6 +2,10 @@
 <resources>
     <string name="tile_control_computer">Bedien computer</string>
     <string name="tile_control_mac">Bedien deze Mac</string>
+    <string name="tile_display">Gebruik als tweede scherm</string>
+    <string name="display_row_sub">Een scherm naast die van deze computer, op deze telefoon</string>
+    <string name="display_title">Tweede scherm</string>
+    <string name="display_hint">Sleep vensters naar de rand van het scherm op die computer om ze hier te brengen</string>
     <string name="screen_connecting">Verbinden met %1$s</string>
     <string name="screen_waiting_approval">Wachten op %1$s</string>
     <string name="screen_waiting_approval_sub">Kies Sta toe in de vraag die op je Mac is verschenen.</string>

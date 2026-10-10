@@ -205,7 +205,13 @@ enum ScreenDebug {
                      phone.width <= 1600 && phone.height <= 900 && abs(Double(phone.width) / Double(phone.height) - 3024.0 / 1964.0) < 0.01, "\(phone.width)x\(phone.height)")
         let small = ScreenGeometry.fit(source: CGSize(width: 800, height: 600), maxWidth: 4000, maxHeight: 4000)
         report.check("a small display is never blown up", small.width == 800 && small.height == 600)
-        report.check("starting bitrate stays within bounds", ScreenGeometry.startingBitrate(width: 1920, height: 1080, fps: 30, requestedMax: 0) <= 16_000_000
+        let extended = ScreenGeometry.extendedSize(width: 2400, height: 1080)
+        report.check("a screen made for a viewer has the pixels it asked for, even, and stays below 4K",
+            extended.width == 2400 && extended.height == 1080 && !extended.hiDPI
+            && ScreenGeometry.extendedSize(width: 5120, height: 2880).width * ScreenGeometry.extendedSize(width: 5120, height: 2880).height <= 3840 * 2160
+            && ScreenGeometry.extendedSize(width: 2561, height: 1601).width % 2 == 0
+            && ScreenGeometry.extendedSize(width: 2560, height: 1600).hiDPI)
+        report.check("starting bitrate stays within bounds", ScreenGeometry.startingBitrate(width: 1920, height: 1080, fps: 30, requestedMax: 0) <= 24_000_000
             && ScreenGeometry.startingBitrate(width: 1920, height: 1080, fps: 30, requestedMax: 3_000_000) == 3_000_000)
         report.check("frame rate follows the bitrate down", ScreenGeometry.frameRate(for: 400_000, started: 4_000_000, base: 30) == 12
             && ScreenGeometry.frameRate(for: 3_000_000, started: 4_000_000, base: 30) == 30)

@@ -16,10 +16,13 @@ enum ScreenGeometry {
         return (even(sourceWidth * scale), even(sourceHeight * scale))
     }
 
-    /// Enough bits for text to stay sharp when little moves, without asking a phone on Wi-Fi for more than it needs.
+    /// Enough bits for text to stay sharp when little moves. What the link carries less of comes off it later (the core brings the target down
+    /// when the viewer reports trouble), so the start is what a good network can take: the second thirty frames of a second count for less
+    /// than the first, because they differ little from the ones before them.
     static func startingBitrate(width: Int, height: Int, fps: Int, requestedMax: Int) -> Int {
-        let wanted = Int(0.07 * Double(width * height) * Double(max(1, fps)))
-        let bounded = min(max(wanted, 2_000_000), 16_000_000)
+        let frames = Double(min(fps, 30)) + Double(max(fps - 30, 0)) * 0.4
+        let wanted = Int(0.12 * Double(width * height) * max(1, frames))
+        let bounded = min(max(wanted, 3_000_000), 24_000_000)
         return requestedMax > 0 ? max(500_000, min(bounded, requestedMax)) : bounded
     }
 
@@ -47,6 +50,22 @@ enum ScreenGeometry {
     /// Points on the display for one pixel of the streamed picture.
     static func pointsPerPixel(streamWidth: Int, bounds: CGRect) -> Double {
         bounds.width / Double(max(1, streamWidth))
+    }
+
+    /// The size of a screen made for a viewer: the pixels it asked for, even numbers, and no more than a good encoder takes (4K at most). It
+    /// shows hiDPI (twice the points per pixel) where the screen is so large that the system would otherwise draw everything small.
+    static func extendedSize(width: Int, height: Int) -> (width: Int, height: Int, hiDPI: Bool) {
+        var w = max(640, width), h = max(360, height)
+        let limit = 3840.0 * 2160.0
+        let area = Double(w) * Double(h)
+        if area > limit {
+            let scale = (limit / area).squareRoot()
+            w = Int(Double(w) * scale)
+            h = Int(Double(h) * scale)
+        }
+        w &= ~1
+        h &= ~1
+        return (w, h, max(w, h) >= 2400 && min(w, h) >= 1500)
     }
 }
 

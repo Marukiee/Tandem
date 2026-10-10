@@ -68,7 +68,7 @@ import uniffi.tandem_core.TandemPlatform
 import uniffi.tandem_core.TandemShareOrigin
 
 @Composable
-fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Unit, onScreen: (String) -> Unit = {}, onTerminal: (String) -> Unit = {}, onSettings: (String) -> Unit = {}) {
+fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Unit, onScreen: (String) -> Unit = {}, onDisplay: (String) -> Unit = {}, onTerminal: (String) -> Unit = {}, onSettings: (String) -> Unit = {}) {
     val context = LocalContext.current
     val host = context.graph.host
     val devices by host.devices.collectAsState()
@@ -232,7 +232,9 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         // and grey, with what is missing written under it, until it can work.
         val computer = device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.LINUX || device.platform == TandemPlatform.WINDOWS
         val showFiles = device.online && "files" in device.caps
-        val controlRows = (if (computer) 3 else if (device.online) 1 else 0) + (if (showFiles) 1 else 0)
+        // A computer that can make a screen of its own for this phone: the row is there when it says so, and not as a grey one that cannot work.
+        val showDisplay = computer && "screen.extend" in device.caps
+        val controlRows = (if (computer) 3 else if (device.online) 1 else 0) + (if (showFiles) 1 else 0) + (if (showDisplay) 1 else 0)
         if (controlRows > 0) {
             SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
             SettingsGroup {
@@ -245,6 +247,12 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                     nl.markmaaktmedia.tandem.ui.components.ControlComputerRow(
                         row++, controlRows, device, { onScreen(id) }, Modifier.routeBounds(routeKey(Route.Screen(id))),
                     )
+                    if (showDisplay) {
+                        nl.markmaaktmedia.tandem.ui.components.ControlRow(
+                            row++, controlRows, TandemIcons.Desktop, stringResource(R.string.tile_display), stringResource(R.string.display_row_sub),
+                            ready = device.online, onClick = { onDisplay(id) }, modifier = Modifier.routeBounds(routeKey(Route.Display(id))),
+                        )
+                    }
                     nl.markmaaktmedia.tandem.ui.components.TerminalRow(row++, controlRows, device, { onTerminal(id) })
                 } else if (device.online) {
                     nl.markmaaktmedia.tandem.ui.components.ControlRow(

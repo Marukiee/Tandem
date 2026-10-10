@@ -41,6 +41,8 @@ final class ScreenHost {
         let symbol: String
         let wantsControl: Bool
         var allowControl: Bool
+        /// It wants a screen of its own from this Mac, not a view of the one that is here.
+        var extend = false
     }
 
     private(set) var current: Remote?
@@ -77,7 +79,9 @@ final class ScreenHost {
         advertised = enabled && ScreenCapturer.hasPermission
         guard advertised else { return [] }
         // Without Accessibility a phone can look but its clicks and keys go nowhere, which it is told.
-        return AXIsProcessTrusted() ? ["screen.host", "screen.control"] : ["screen.host"]
+        // A second screen needs the system to make a display of software, which it does not on every system.
+        let extend = VirtualDisplay.isAvailable ? ["screen.extend"] : []
+        return (AXIsProcessTrusted() ? ["screen.host", "screen.control"] : ["screen.host"]) + extend
     }
 
     /// Screen Recording was allowed after the app started, so the Hello has to be said again, which is a restart.
@@ -134,12 +138,12 @@ final class ScreenHost {
             start(request: request, peer: peer, name: name, control: controlPossible && again.control)
         } else {
             let symbol = model?.device(peer)?.platform.symbol ?? "iphone"
-            prompt = Prompt(id: id, peer: peer, name: name, symbol: symbol, wantsControl: request.control && controlPolicy != .never, allowControl: true)
+            prompt = Prompt(id: id, peer: peer, name: name, symbol: symbol, wantsControl: request.control && controlPolicy != .never, allowControl: true, extend: request.extend)
             pendingRequest = request
             ScreenPanels.shared.update()
             Notifier.shared.post(
                 id: "screen.\(id)",
-                title: request.control ? String(localized: "\(name) wants to control this Mac") : String(localized: "\(name) wants to see this Mac"),
+                title: request.extend ? String(localized: "\(name) wants to use a screen of this Mac") : request.control ? String(localized: "\(name) wants to control this Mac") : String(localized: "\(name) wants to see this Mac"),
                 body: String(localized: "Choose what to do in Tandem."),
                 sound: true
             )
@@ -207,9 +211,25 @@ final class ScreenHost {
     private func start(request: TandemMediaRequest, peer: String, name: String, control: Bool) {
         guard let engine else { return }
         let id = request.session
-        let display = ScreenCapturer.mainDisplay()
-        let size = ScreenGeometry.fit(source: display.pixels, maxWidth: Int(request.maxWidth), maxHeight: Int(request.maxHeight))
         let fps = ScreenGeometry.frameRate(requested: Int(request.maxFps))
+
+        // A device that wants a screen of its own gets a display of software of exactly its size next to this Mac's own; one that wants to
+        // look gets the main display, scaled to fit.
+        var virtual: VirtualDisplay?
+        var display = ScreenCapturer.mainDisplay()
+        let size: (width: Int, height: Int)
+        if request.extend {
+            let shape = ScreenGeometry.extendedSize(width: Int(request.maxWidth), height: Int(request.maxHeight))
+            guard VirtualDisplay.isAvailable, let made = VirtualDisplay(name: name, width: shape.width, height: shape.height, hiDPI: shape.hiDPI, refresh: min(60, max(30, fps))) else {
+                try? engine.mediaDeny(session: id, reason: .unavailable)
+                return
+            }
+            virtual = made
+            display = ScreenCapturer.DisplayInfo(id: made.displayID, bounds: made.bounds, pixels: made.pixels)
+            size = (shape.width, shape.height)
+        } else {
+            size = ScreenGeometry.fit(source: display.pixels, maxWidth: Int(request.maxWidth), maxHeight: Int(request.maxHeight))
+        }
         let bitrate = ScreenGeometry.startingBitrate(width: size.width, height: size.height, fps: fps, requestedMax: Int(request.maxBitrate))
 
         let live: ScreenHostSession
@@ -217,7 +237,7 @@ final class ScreenHost {
             let encoder = try ScreenEncoder(.init(width: size.width, height: size.height, fps: fps, bitrate: bitrate))
             live = ScreenHostSession(
                 id: id, peer: peer, engine: engine, encoder: encoder, display: display,
-                limits: (Int(request.maxWidth), Int(request.maxHeight)), baseFps: fps, startBitrate: bitrate
+                limits: (Int(request.maxWidth), Int(request.maxHeight)), baseFps: fps, startBitrate: bitrate, virtualDisplay: virtual
             )
         } catch {
             try? engine.mediaDeny(session: id, reason: .unavailable)
@@ -232,6 +252,12 @@ final class ScreenHost {
 
         Task { [weak self] in
             do {
+                // The display of software is a monitor of the system only after a moment, and in the size that was asked for only after
+                // it was told to be.
+                if let virtual {
+                    guard await virtual.prepare() else { throw ScreenCapturer.Failure.noDisplay }
+                    live.displayReady(virtual)
+                }
                 try await live.startCapture(width: size.width, height: size.height)
                 guard let self, self.registry.get(id) != nil else {
                     await live.stop()
@@ -325,6 +351,9 @@ final class ScreenHost {
     /// size that fits now, and the viewer is told the new shape before the first picture of it.
     func displayChanged() {
         guard let running = current, let live = registry.get(running.id), !recovering else { return }
+        // The display of software changes the displays of the system itself, when it comes and when it goes: that is no reason to start
+        // again. Its own capture goes on as long as the display stays what it was made as.
+        if live.isExtended { return }
         recovering = true
         Task { [weak self] in
             // Displays settle for a moment after a change; a restart too early captures the old mode.
@@ -468,9 +497,15 @@ final class ScreenHostSession: @unchecked Sendable {
     private var fps: Int
     private var bitrate: Int
     private var invalidRun = 0
+    /// A second screen for the viewer, made for this session and gone with it.
+    private var virtualDisplay: VirtualDisplay?
+    let startedAt = Date()
+
+    var isExtended: Bool { lock.withLock { virtualDisplay != nil } }
 
     init(id: UInt64, peer: String, engine: TandemEngine, encoder: ScreenEncoder, display: ScreenCapturer.DisplayInfo,
-         limits: (Int, Int), baseFps: Int, startBitrate: Int) {
+         limits: (Int, Int), baseFps: Int, startBitrate: Int, virtualDisplay: VirtualDisplay? = nil) {
+        self.virtualDisplay = virtualDisplay
         self.id = id
         self.peer = peer
         self.engine = engine
@@ -511,6 +546,11 @@ final class ScreenHostSession: @unchecked Sendable {
         try await target.start(display: shown, width: width, height: height, fps: rate)
     }
 
+    /// The display of software is there and in its size: where it sits now is where the pointer and the clicks of the viewer go.
+    func displayReady(_ virtual: VirtualDisplay) {
+        lock.withLock { display = ScreenCapturer.DisplayInfo(id: virtual.displayID, bounds: virtual.bounds, pixels: virtual.pixels) }
+    }
+
     func markAccepted() {
         lock.lock()
         accepted = true
@@ -525,6 +565,12 @@ final class ScreenHostSession: @unchecked Sendable {
         running.onFrame = nil
         await target.stop()
         running.invalidate()
+        // The display of software goes when nothing holds it: the screen the viewer used is gone from this Mac, and its windows with it.
+        let virtual = lock.withLock { () -> VirtualDisplay? in
+            defer { virtualDisplay = nil }
+            return virtualDisplay
+        }
+        virtual?.destroy()
     }
 
     // MARK: From the core
@@ -598,8 +644,11 @@ final class ScreenHostSession: @unchecked Sendable {
     func restart(announce: (Shape) throws -> Void) async throws {
         let (oldCapture, oldEncoder, rate, rateBitrate) = lock.withLock { (capturer, encoder, fps, bitrate) }
 
-        let fresh = ScreenCapturer.mainDisplay()
-        let size = ScreenGeometry.fit(source: fresh.pixels, maxWidth: limits.width, maxHeight: limits.height)
+        // A second screen stays the one that was made for the viewer; only the main display follows the changes of the system.
+        let virtual = lock.withLock { virtualDisplay }
+        let fresh = virtual.map { ScreenCapturer.DisplayInfo(id: $0.displayID, bounds: $0.bounds, pixels: $0.pixels) } ?? ScreenCapturer.mainDisplay()
+        let size = virtual != nil ? (width: Int(fresh.pixels.width), height: Int(fresh.pixels.height))
+            : ScreenGeometry.fit(source: fresh.pixels, maxWidth: limits.width, maxHeight: limits.height)
         let before = oldEncoder.config
         let changed = size.width != before.width || size.height != before.height
 

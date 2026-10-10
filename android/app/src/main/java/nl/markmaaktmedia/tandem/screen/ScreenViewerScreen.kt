@@ -124,9 +124,12 @@ private fun Context.findActivity(): Activity? = when (this) {
     else -> null
 }
 
-/** The screen of a Mac on the phone, with the mouse and keyboard of that Mac under the fingers. */
+/**
+ * The screen of a Mac on the phone, with the mouse and keyboard of that Mac under the fingers. With [extend] it is not the screen the Mac has:
+ * the Mac makes a display of its own for this phone, as many pixels as the phone has and lying down, and the fingers click where they touch.
+ */
 @Composable
-fun ScreenViewerScreen(id: String, onBack: () -> Unit) {
+fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) {
     val context = LocalContext.current
     val graph = context.graph
     val viewer = graph.screen
@@ -147,9 +150,15 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit) {
     val stats by viewer.stats.collectAsState()
 
     // The session outlives the screen being rebuilt for a rotation, and ends when the person leaves.
-    DisposableEffect(id) {
-        viewer.open(id)
+    DisposableEffect(id, extend) {
+        viewer.open(id, extend)
         onDispose { if (activity?.isChangingConfigurations != true) viewer.close() }
+    }
+    // A second screen is used lying down, whichever way the phone was held when it was started; the other computer made it that shape.
+    DisposableEffect(extend) {
+        val before = activity?.requestedOrientation
+        if (extend) activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        onDispose { if (extend && before != null) activity?.requestedOrientation = before }
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewer.pause() }
     LifecycleEventEffect(Lifecycle.Event.ON_START) { viewer.resume() }
@@ -177,7 +186,7 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit) {
 
     var keyboard by remember { mutableStateOf(false) }
     var mods by remember { mutableIntStateOf(0) }
-    var direct by remember { mutableStateOf(viewer.directTouch) }
+    var direct by remember(extend) { mutableStateOf(extend || viewer.directTouch) }
     var showStats by remember { mutableStateOf(false) }
     var dragging by remember { mutableStateOf(false) }
     var barShownAt by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
