@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.1.79",
+    "date": "2026-10-10",
+    "en": {
+      "title": "Sharper phone screen",
+      "new": [
+        "Screen of the phone on the Mac in much higher quality: more bits, and no longer stuck at the lowest rate after a hiccup",
+        "The buttons of a device each take their own width, and Send files lights up under the pointer",
+        "The pointer from a Linux or Windows computer is no longer sent when the Mac cannot take it, and the other way round"
+      ]
+    },
+    "nl": {
+      "title": "Scherper telefoonscherm",
+      "new": [
+        "Scherm van de telefoon op de Mac in veel hogere kwaliteit: meer bits, en niet meer vast op de laagste snelheid na een hapering",
+        "De knoppen van een apparaat hebben ieder hun eigen breedte, en Send files licht op onder de muis",
+        "De muis van een Linux- of Windows-computer gaat niet meer over als de Mac hem niet kan aannemen, en andersom"
+      ]
+    }
+  },
+  {
     "version": "0.1.78",
     "date": "2026-10-10",
     "en": {
