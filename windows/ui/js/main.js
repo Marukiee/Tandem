@@ -59,6 +59,17 @@ function HostingBanner() {
   </div>`;
 }
 
+// A screen of another computer is shown over this one: the way back is Alt+Tab, and here is the button that ends it.
+function DisplayBanner() {
+  if (!state.displays.length) return null;
+  const names = state.displays.map((d) => d.name).join(", ");
+  return html`<div class="update">
+    <div class="update-head"><span class="update-icon"><${Icon} name="device-laptop" size=${15} /></span>
+      <div class="grow"><div class="t">${t("display_shown", names)}</div></div></div>
+    <div class="update-actions"><button class="btn small danger" onClick=${() => call("display_stop").catch(() => {})}>${t("display_stop")}</button></div>
+  </div>`;
+}
+
 function Nav() {
   const unread = state.notifications.length;
   return html`<nav class="nav">
@@ -85,6 +96,7 @@ function Nav() {
       <${Icon} name="bell" size=${19} /><span class="grow">${t("notifications")}</span>${unread > 0 && html`<span class="badge">${unread > 99 ? "99+" : unread}</span>`}</div>
     <div class=${"row" + (state.page === "settings" ? " selected" : "")} onClick=${() => set({ page: "settings" })}><${Icon} name="settings" size=${19} /><span class="grow">${t("settings")}</span></div>
     <${HostingBanner} />
+    <${DisplayBanner} />
     <${UpdateBanner} />
   </nav>`;
 }

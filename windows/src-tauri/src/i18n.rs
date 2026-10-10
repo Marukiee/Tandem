@@ -53,6 +53,8 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "insert_done") => "The picture from {0} is on your clipboard. Paste it where you want it.",
         ("nl", "insert_saved") => "Van {0} is een bestand binnengekomen en opgeslagen: {1}",
         (_, "insert_saved") => "A file came in from {0} and was saved: {1}",
+        ("nl", "display_on") => "Het scherm van {0} staat nu hier. Alt+Tab brengt je terug, en Stop in Tandem beeindigt het.",
+        (_, "display_on") => "A screen of {0} is shown here now. Alt+Tab brings you back, and Stop in Tandem ends it.",
         ("nl", "drop_on_desktop") => "{0} van {1} staat op het bureaublad",
         (_, "drop_on_desktop") => "{0} from {1} is on your desktop",
         ("nl", "drop_in_downloads") => "{0} van {1} staat in je downloads",

@@ -274,8 +274,8 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 /* The buttons of a device page, in groups with a small heading, each button as wide as the others and starting at the left. */
 .agroup { display: flex; flex-direction: column; gap: 8px; }
 .agroup-title { font: 600 12px var(--font); color: var(--text-2); padding-left: 4px; }
-.actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
-.actions .btn { width: 100%; justify-content: center; box-sizing: border-box; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions .btn { width: auto; justify-content: center; box-sizing: border-box; padding-inline: 16px; }
 .drop {
   border: 1.5px dashed var(--line-strong);
   border-radius: 12px;

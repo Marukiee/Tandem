@@ -111,6 +111,8 @@ export async function call(command, args) {
     case "get_state": return state;
     case "get_players": return { players, art };
     case "live_start": return 1;
+    case "display_start": case "display_stop": return null;
+    case "display_state": return [];
     case "fs_roots": return [{ name: "Phone", write: false }];
     case "fs_list": return args.path === "/Phone"
       ? [{ name: "DCIM", dir: true, size: 0, modifiedMs: 1730000000000, readonly: false }, { name: "Download", dir: true, size: 0, modifiedMs: 1730000000000, readonly: false },

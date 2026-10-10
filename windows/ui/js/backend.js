@@ -97,6 +97,7 @@ async function follow() {
   await listen("art", ({ key, uri }) => set({ art: { ...state.art, [key]: uri } }));
   await listen("say", (text) => say(text));
   await listen("hosting", (hosting) => set({ hosting }));
+  await listen("display", (displays) => set({ displays }));
   // The event leaves out what the person decided about it, so that stays.
   await listen("update", (update) => set({ update: { dismissed: state.update.dismissed, ...update } }));
   await listen("engine-ready", async () => apply(await call("get_state")));

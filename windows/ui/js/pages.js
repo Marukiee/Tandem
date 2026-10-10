@@ -222,23 +222,18 @@ export function DevicePage({ device }) {
 
     <${Offers} device=${device} />
 
-    <div class="agroup">
-      <div class="agroup-title">${t("group_share")}</div>
-      <div class="actions">
+    <div class="actions">
         <button class="btn" disabled=${!device.online} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
         ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
           <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}
-      </div>
-    </div>
-    ${(isComputer || device.platform === "android") && html`<div class="agroup">
-      <div class="agroup-title">${t(isComputer ? "group_use_computer" : "group_on_phone")}</div>
-      <div class="actions">
-        ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("screen.host")} title=${hasCap("screen.host") ? "" : t("live_update_phone")} onClick=${() => show("screen")}>
+        ${(isComputer || device.platform === "android") && html`${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("screen.host")} title=${hasCap("screen.host") ? "" : t("live_update_phone")} onClick=${() => show("screen")}>
           <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("camera.host")} title=${hasCap("camera.host") ? t("live_camera_tip") : t("live_update_phone")} onClick=${() => show("camera")}>
           <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
         ${isComputer && hasCap("screen.host") && html`<button class="btn" disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => show("screen")}>
           <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
+        ${isComputer && hasCap("screen.extend") && state.platform === "linux" && html`<button class="btn" disabled=${!device.online} title=${t("display_tip")} onClick=${() => call("display_start", { id: device.id, name: device.name }).catch(failed)}>
+          <${Icon} name="device-laptop" size=${17} />${t("display_use")}</button>`}
         ${isComputer && html`<button class="btn" disabled=${!sshReady} title=${sshReady ? t("ssh_title") : sshReason} onClick=${openSsh}>
           <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
         ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
@@ -246,9 +241,8 @@ export function DevicePage({ device }) {
         <button class="btn" disabled=${!device.online} title=${t("insert_scan_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "document" }).catch(failed)}>
           <${Icon} name="file" size=${17} />${t("insert_scan")}</button>`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
-          <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}
-      </div>
-    </div>`}
+          <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}`}
+    </div>
 
     ${isComputer && sshChecked && !sshAddress && html`<div class="small muted" style="margin:-4px 2px 0">${sshReason}</div>`}
 

@@ -43,6 +43,25 @@ struct Session {
     /// Set when a frame was dropped because the decoder was behind: it waits for the next full picture.
     #[cfg_attr(not(feature = "native-video"), allow(dead_code))]
     lost: Arc<AtomicBool>,
+    /// A second screen (see `display_start`): no window of this app, the pictures go to a program that shows them.
+    display: bool,
+    player: Option<Player>,
+}
+
+/// A program of its own that decodes and shows the pictures of a second screen: the window of this app cannot do that smoothly enough for
+/// sixty pictures a second at the size of a screen (it makes a JPEG of each), and GStreamer decodes and draws straight to the screen.
+struct Player {
+    feed: std::sync::mpsc::SyncSender<Vec<u8>>,
+    child: Arc<Mutex<Option<std::process::Child>>>,
+}
+
+impl Drop for Player {
+    fn drop(&mut self) {
+        if let Some(mut child) = self.child.lock().unwrap().take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
 }
 
 #[cfg(feature = "native-video")]
@@ -156,8 +175,28 @@ impl Viewer {
 impl TandemMediaViewer for Viewer {
     fn on_accepted(&self, session: u64, accept: TandemMediaAccept) {
         let state = json!({ "width": accept.width, "height": accept.height, "fps": accept.fps, "control": accept.control });
-        if let Some(s) = SESSIONS.lock().unwrap().get_mut(&session) {
+        let shows_itself = {
+            let mut sessions = SESSIONS.lock().unwrap();
+            let Some(s) = sessions.get_mut(&session) else { return };
             s.accepted = Some(state.clone());
+            s.display
+        };
+        if shows_itself {
+            // The program that shows the pictures starts now that there is something to show.
+            let player = start_player(&self.app, session);
+            let name = {
+                let mut sessions = SESSIONS.lock().unwrap();
+                match sessions.get_mut(&session) {
+                    Some(s) => {
+                        s.player = player;
+                        s.name.clone()
+                    }
+                    None => return,
+                }
+            };
+            announce_displays(&self.app);
+            crate::events::say(&self.app, &crate::i18n::t1(&self.app, "display_on", &name));
+            return;
         }
         self.tell(session, "live-accepted", state);
     }
@@ -172,6 +211,23 @@ impl TandemMediaViewer for Viewer {
     }
 
     fn on_frame(&self, session: u64, pts_us: u64, keyframe: bool, discontinuity: bool, data: Vec<u8>) {
+        {
+            let sessions = SESSIONS.lock().unwrap();
+            if let Some(s) = sessions.get(&session).filter(|s| s.display) {
+                // A second screen: straight to the program that shows it. When that is behind, the picture is dropped and a full one is
+                // asked for, so what is shown never lags behind more than a few pictures.
+                if let Some(player) = &s.player {
+                    if player.feed.try_send(data).is_err() {
+                        drop(sessions);
+                        if let Ok(engine) = self.app.state::<AppState>().engine() {
+                            let _ = engine.media_request_keyframe(session);
+                        }
+                    }
+                }
+                let _ = (pts_us, keyframe, discontinuity);
+                return;
+            }
+        }
         #[cfg(feature = "native-video")]
         {
             let sessions = SESSIONS.lock().unwrap();
@@ -192,6 +248,9 @@ impl TandemMediaViewer for Viewer {
         // The window goes with the session, whatever the reason: a grey window that says nothing useful is in the way. What went wrong,
         // when something did, is said in the main window and in a notification, with what there is to do about it.
         let Some(ended) = SESSIONS.lock().unwrap().remove(&session) else { return };
+        if ended.display {
+            announce_displays(&self.app);
+        }
         let key = match reason {
             TandemMediaEnd::Declined => Some("live_end_declined"),
             TandemMediaEnd::Policy => Some("live_end_policy"),
@@ -260,6 +319,8 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
             #[cfg(feature = "native-video")]
             decode: spawn_decoder(app, session, lost.clone()),
             lost,
+            display: false,
+            player: None,
         },
     );
     // The shape before the first picture says it (see `live_fit`): wide for a camera or the screen of a computer, tall for a phone.
@@ -277,6 +338,153 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
         return Err(e.to_string());
     }
     Ok(session)
+}
+
+/// Whether GStreamer has this element.
+fn gst_has(element: &str) -> bool {
+    let mut command = std::process::Command::new("gst-inspect-1.0");
+    tandem_winsys::system_env(&mut command);
+    command.arg(element).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).status().is_ok_and(|s| s.success())
+}
+
+/// Starts the program that shows the pictures of a second screen, filling this computer's screen, and the thread that feeds it.
+fn start_player(app: &AppHandle, session: u64) -> Option<Player> {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    let wayland = std::env::var("XDG_SESSION_TYPE").is_ok_and(|s| s.eq_ignore_ascii_case("wayland")) || std::env::var_os("WAYLAND_DISPLAY").is_some();
+    // The decoder of the processor and not the one of the graphics card: the second one would be woken for it on a laptop that has two.
+    let decoder = if gst_has("avdec_h264") {
+        "avdec_h264 max-threads=4"
+    } else if gst_has("openh264dec") {
+        "openh264dec"
+    } else {
+        log::warn!("display: no H.264 decoder for GStreamer");
+        return None;
+    };
+    let sink = if wayland && gst_has("waylandsink") {
+        "waylandsink fullscreen=true sync=false"
+    } else if gst_has("glimagesink") {
+        "glimagesink sync=false"
+    } else {
+        "autovideosink sync=false"
+    };
+    let pipeline = format!(
+        "-q fdsrc fd=0 blocksize=262144 ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 ! h264parse ! {decoder} ! videoconvert ! {sink}"
+    );
+    let mut command = Command::new("gst-launch-1.0");
+    tandem_winsys::system_env(&mut command);
+    for part in pipeline.split_whitespace() {
+        command.arg(part);
+    }
+    let mut child = command.stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().ok()?;
+    let mut stdin = child.stdin.take()?;
+    let (feed, rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(24);
+    let app = app.clone();
+    std::thread::Builder::new()
+        .name("tandem-display-feed".into())
+        .spawn(move || {
+            while let Ok(data) = rx.recv() {
+                if stdin.write_all(&data).is_err() {
+                    break;
+                }
+            }
+            // The program is gone (its window was closed) or the session is: either way the second screen is over.
+            end_display(&app, session);
+        })
+        .ok()?;
+    Some(Player { feed, child: Arc::new(Mutex::new(Some(child))) })
+}
+
+/// Tells the main window which second screens are being shown.
+fn announce_displays(app: &AppHandle) {
+    let list: Vec<Value> = SESSIONS
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|(_, s)| s.display && s.player.is_some())
+        .map(|(id, s)| json!({ "session": id.to_string(), "name": s.name }))
+        .collect();
+    let _ = app.emit("display", list);
+}
+
+/// Ends a second screen: the program that shows it goes, and the other computer is told.
+fn end_display(app: &AppHandle, session: u64) {
+    let removed = SESSIONS.lock().unwrap().remove(&session);
+    if removed.is_none() {
+        return;
+    }
+    drop(removed);
+    if let Ok(engine) = app.state::<AppState>().engine() {
+        let _ = engine.media_stop(session);
+    }
+    announce_displays(app);
+}
+
+/// Asks a computer for a screen of its own, as big as this one, and shows it over this one when it is made.
+#[tauri::command]
+pub async fn display_start(app: AppHandle, id: String, name: String) -> Reply<String> {
+    let engine = app.state::<AppState>().engine()?;
+    // The pixels of the screen this window is on, lying as it is.
+    let monitor = app
+        .get_webview_window("main")
+        .and_then(|w| w.current_monitor().ok().flatten())
+        .or_else(|| app.primary_monitor().ok().flatten());
+    let (width, height) = monitor.map(|m| (m.size().width, m.size().height)).unwrap_or((1920, 1080));
+    let want = TandemMediaWant {
+        kind: TandemMediaKind::Screen,
+        codecs: vec![TandemMediaCodec::H264],
+        max_width: width.max(height),
+        max_height: width.min(height),
+        max_fps: 60,
+        max_bitrate: 0,
+        // The mouse of this computer is not over the picture (it is a window of another program), so there is nothing to control from here:
+        // what moves on the screen is moved with the mouse of the other computer.
+        control: false,
+        facing: TandemMediaFacing::Any,
+        extend: true,
+    };
+    let session = engine.media_request(id, want).map_err(|e| e.to_string())?;
+    SESSIONS.lock().unwrap().insert(
+        session,
+        Session {
+            label: format!("display-{session}"),
+            name,
+            kind: "screen",
+            channel: None,
+            backlog: Vec::new(),
+            accepted: None,
+            rotation: 0,
+            computer: true,
+            mac: false,
+            #[cfg(feature = "native-video")]
+            decode: None,
+            lost: Arc::new(AtomicBool::new(false)),
+            display: true,
+            player: None,
+        },
+    );
+    Ok(session.to_string())
+}
+
+/// Ends every second screen that is shown here.
+#[tauri::command]
+pub fn display_stop(app: AppHandle) {
+    let shown: Vec<u64> = SESSIONS.lock().unwrap().iter().filter(|(_, s)| s.display).map(|(id, _)| *id).collect();
+    for session in shown {
+        end_display(&app, session);
+    }
+}
+
+/// The second screens that are shown here now.
+#[tauri::command]
+pub fn display_state() -> Vec<Value> {
+    SESSIONS
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|(_, s)| s.display && s.player.is_some())
+        .map(|(id, s)| json!({ "session": id.to_string(), "name": s.name }))
+        .collect()
 }
 
 /// The number of a session as the windows say it. It is a random 64 bit number, and a number in a web page keeps 53 bits of it, so

@@ -23,6 +23,7 @@ export const state = {
   // This computer is a laptop whose lid can be asked about (Linux).
   hasLid: false,
   hosting: [],
+  displays: [],
   // Whether this system lets Tandem move the pointer and press keys, and if not why (wayland, no-display).
   input: { ok: true, why: "" },
   // How the update stands: idle, checking, up-to-date, available, downloading, installing or failed.
