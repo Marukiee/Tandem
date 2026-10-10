@@ -18,7 +18,7 @@ struct LiveActionRow: View {
         if device.isComputer, device.caps.contains("screen.host") {
             let ready = device.online
             let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
-            GlassActionButton(title: "Control this computer", symbol: "display", prominent: running, wide: true) {
+            GlassActionButton(title: "Control computer", symbol: "display", prominent: running, wide: true) {
                 LiveManager.shared.start(device: device, kind: .screen)
             }
             .disabled(!ready)
@@ -61,7 +61,7 @@ struct LiveMenuButton: View {
                         LiveManager.shared.start(device: device, kind: .screen)
                     } label: {
                         if device.isComputer {
-                            Label("Control this computer", systemImage: "display")
+                            Label("Control computer", systemImage: "display")
                         } else {
                             Label("Show phone screen", systemImage: "iphone.gen3")
                         }

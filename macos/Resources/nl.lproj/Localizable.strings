@@ -859,6 +859,7 @@
 "Cancel" = "Annuleer";
 "The connection ended" = "De verbinding is gesloten";
 "Control this computer" = "Deze computer bedienen";
+"Control computer" = "Computer bedienen";
 "Shows the screen of this computer in a window. It asks first, and then you can use its mouse and keyboard." = "Toont het scherm van deze computer in een venster. Het vraagt eerst, en dan kun je zijn muis en toetsenbord gebruiken.";
 "The computer does not allow clicking yet" = "De computer staat klikken nog niet toe";
 "This computer does not allow control yet" = "Deze computer staat bediening nog niet toe";
