@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.80",
+    "date": "2026-10-10",
+    "en": {
+      "title": "Second screen",
+      "new": [
+        "A second screen: use a phone or a Linux laptop as an extra screen of a Mac, next to the screen the Mac has",
+        "Screen of the Mac on other devices with a higher starting bitrate"
+      ]
+    },
+    "nl": {
+      "title": "Tweede scherm",
+      "new": [
+        "Een tweede scherm: gebruik een telefoon of een Linux-laptop als extra scherm van een Mac, naast het scherm dat de Mac heeft",
+        "Scherm van de Mac op andere apparaten met een hogere startbitrate"
+      ]
+    }
+  },
+  {
     "version": "0.1.79",
     "date": "2026-10-10",
     "en": {
