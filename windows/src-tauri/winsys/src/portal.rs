@@ -19,8 +19,9 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 use ashpd::desktop::{CreateSessionOptions, PersistMode, Session};
 use ashpd::desktop::remote_desktop::{
-    Axis, DeviceType, KeyState, NotifyKeyboardKeysymOptions, NotifyPointerAxisDiscreteOptions, NotifyPointerButtonOptions,
-    NotifyPointerMotionOptions, RemoteDesktop, SelectDevicesOptions, StartOptions,
+    Axis, DeviceType, KeyState, NotifyKeyboardKeycodeOptions, NotifyKeyboardKeysymOptions, NotifyPointerAxisDiscreteOptions,
+    NotifyPointerAxisOptions, NotifyPointerButtonOptions, NotifyPointerMotionAbsoluteOptions, NotifyPointerMotionOptions, RemoteDesktop,
+    SelectDevicesOptions, StartOptions,
 };
 use ashpd::desktop::screencast::{CursorMode, OpenPipeWireRemoteOptions, Screencast, SelectSourcesOptions, SourceType, StartCastOptions};
 use enumflags2::BitFlags;
@@ -293,8 +294,168 @@ pub struct WaylandGrabber {
     alive: Arc<AtomicBool>,
     child: Child,
     // Kept for as long as the pictures come: closing the session ends the sharing.
-    _cast: Screencast,
-    session: Session<Screencast>,
+    held: Held,
+}
+
+/// The portal session that the pictures come from.
+enum Held {
+    /// Only the screen.
+    Cast { _cast: Screencast, session: Session<Screencast> },
+    /// The screen and the keyboard and pointer, in one session: what the viewer does goes to the monitor that was made for it.
+    Both { _cast: Screencast, input: Arc<StreamInput> },
+}
+
+/// What a start of the portal gives: the session, which stream the pictures are on, how big it says it is, and the connection to read it.
+struct Started {
+    held: Held,
+    node: u32,
+    source: (u32, u32),
+    remote: std::os::fd::OwnedFd,
+}
+
+/// The keyboard and the pointer of the desktop, aimed at the monitor that was made for a viewer. It is the same session as the pictures
+/// come from, which is what lets the desktop take a place on that monitor (a place on a stream) and not only a move by so much.
+pub struct StreamInput {
+    remote: RemoteDesktop,
+    session: Session<RemoteDesktop>,
+    /// The PipeWire node of the monitor's stream, which is how the desktop is told which monitor a place is on.
+    stream: u32,
+    /// The size of the monitor in the coordinates of the desktop, which is what a place on it is counted in.
+    size: (f64, f64),
+    healthy: AtomicBool,
+}
+
+impl StreamInput {
+    fn note<T, E: std::fmt::Display>(&self, result: Result<T, E>) -> bool {
+        match result {
+            Ok(_) => true,
+            Err(error) => {
+                if self.healthy.swap(false, Ordering::Relaxed) {
+                    log::warn!("the desktop stopped taking input for the second screen: {error}");
+                }
+                false
+            }
+        }
+    }
+
+    /// The pointer goes to this place on the monitor, as fractions of it (0.0 to 1.0, the top left corner is the origin).
+    pub fn pointer_to(&self, x: f64, y: f64) -> bool {
+        let (x, y) = (x.clamp(0.0, 1.0) * self.size.0, y.clamp(0.0, 1.0) * self.size.1);
+        self.note(pollster::block_on(self.remote.notify_pointer_motion_absolute(
+            &self.session,
+            self.stream,
+            x,
+            y,
+            NotifyPointerMotionAbsoluteOptions::default(),
+        )))
+    }
+
+    /// A button of the pointer by its Linux code (0x110 left, 0x111 right, 0x112 middle).
+    pub fn button(&self, code: i32, down: bool) -> bool {
+        let state = if down { KeyState::Pressed } else { KeyState::Released };
+        self.note(pollster::block_on(self.remote.notify_pointer_button(&self.session, code, state, NotifyPointerButtonOptions::default())))
+    }
+
+    /// The wheel, smoothly: positive goes down (or right), in pixels. `finish` says that this is the last of a stroke.
+    pub fn scroll(&self, dx: f64, dy: f64, finish: bool) -> bool {
+        self.note(pollster::block_on(self.remote.notify_pointer_axis(&self.session, dx, dy, NotifyPointerAxisOptions::default().set_finish(finish))))
+    }
+
+    /// A key by its evdev code.
+    pub fn key(&self, code: i32, down: bool) -> bool {
+        let state = if down { KeyState::Pressed } else { KeyState::Released };
+        self.note(pollster::block_on(self.remote.notify_keyboard_keycode(&self.session, code, state, NotifyKeyboardKeycodeOptions::default())))
+    }
+
+    /// A key by its X11 keysym, which names what is printed on it, whatever the layout.
+    pub fn keysym(&self, keysym: i32, down: bool) -> bool {
+        let state = if down { KeyState::Pressed } else { KeyState::Released };
+        self.note(pollster::block_on(self.remote.notify_keyboard_keysym(&self.session, keysym, state, NotifyKeyboardKeysymOptions::default())))
+    }
+
+    /// Whether the session still takes what is sent to it.
+    pub fn healthy(&self) -> bool {
+        self.healthy.load(Ordering::Relaxed)
+    }
+}
+
+/// Only the screen: a monitor of the desktop, or one that the desktop makes (`virtual_size`), looked at and nothing more.
+async fn start_plain(options: &GrabOptions) -> Result<Started, String> {
+    let made = options.virtual_size;
+    let cast = Screencast::new().await.map_err(text)?;
+    let session = cast.create_session(CreateSessionOptions::default()).await.map_err(text)?;
+    // A monitor made for a viewer has an answer of its own to be remembered, apart from the one for the screen that is there.
+    let token_file = if made.is_some() { "portal-display.token" } else { "portal-screen.token" };
+    let token = read_token(token_file);
+    cast.select_sources(
+        &session,
+        SelectSourcesOptions::default()
+            .set_cursor_mode(if options.cursor { CursorMode::Embedded } else { CursorMode::Hidden })
+            .set_sources(BitFlags::from_flag(if made.is_some() { SourceType::Virtual } else { SourceType::Monitor }))
+            .set_multiple(false)
+            .set_persist_mode(PersistMode::ExplicitlyRevoked)
+            .set_restore_token(token.as_deref()),
+    )
+    .await
+    .map_err(text)?
+    .response()
+    .map_err(text)?;
+    let streams = cast.start(&session, None, StartCastOptions::default()).await.map_err(text)?.response().map_err(text)?;
+    if let Some(token) = streams.restore_token() {
+        write_token(token_file, token);
+    }
+    let stream = streams.streams().first().ok_or("no screen was chosen")?;
+    let node = stream.pipe_wire_node_id();
+    let source = stream.size().map(|(w, h)| (w.max(2) as u32, h.max(2) as u32)).unwrap_or((1920, 1080));
+    let remote = cast.open_pipe_wire_remote(&session, OpenPipeWireRemoteOptions::default()).await.map_err(text)?;
+    Ok(Started { held: Held::Cast { _cast: cast, session }, node, source, remote })
+}
+
+/// A monitor made for the viewer, in the same session as the keyboard and the pointer, so that a touch on the viewer is a click on the
+/// monitor. The desktop asks once for both (and then remembers it).
+async fn start_with_input(options: &GrabOptions) -> Result<Started, String> {
+    let remote = RemoteDesktop::new().await.map_err(text)?;
+    let cast = Screencast::new().await.map_err(text)?;
+    let session = remote.create_session(CreateSessionOptions::default()).await.map_err(text)?;
+    let token_file = "portal-display-input.token";
+    let token = read_token(token_file);
+    // In a session that has both, the answer to be remembered is asked for with the devices, and covers the monitor too.
+    remote
+        .select_devices(
+            &session,
+            SelectDevicesOptions::default()
+                .set_devices(DeviceType::Keyboard | DeviceType::Pointer)
+                .set_persist_mode(PersistMode::ExplicitlyRevoked)
+                .set_restore_token(token.as_deref()),
+        )
+        .await
+        .map_err(text)?
+        .response()
+        .map_err(text)?;
+    cast.select_sources(
+        &session,
+        SelectSourcesOptions::default()
+            .set_cursor_mode(if options.cursor { CursorMode::Embedded } else { CursorMode::Hidden })
+            .set_sources(BitFlags::from_flag(SourceType::Virtual))
+            .set_multiple(false),
+    )
+    .await
+    .map_err(text)?
+    .response()
+    .map_err(text)?;
+    let started = remote.start(&session, None, StartOptions::default()).await.map_err(text)?.response().map_err(text)?;
+    if let Some(token) = started.restore_token() {
+        write_token(token_file, token);
+    }
+    if !started.devices().contains(DeviceType::Pointer) {
+        return Err("the pointer was not allowed".into());
+    }
+    let stream = started.streams().first().ok_or("no screen was chosen")?;
+    let node = stream.pipe_wire_node_id();
+    let source = stream.size().map(|(w, h)| (w.max(2) as u32, h.max(2) as u32)).unwrap_or((1920, 1080));
+    let fd = cast.open_pipe_wire_remote(&session, OpenPipeWireRemoteOptions::default()).await.map_err(text)?;
+    let input = Arc::new(StreamInput { remote, session, stream: node, size: (f64::from(source.0), f64::from(source.1)), healthy: AtomicBool::new(true) });
+    Ok(Started { held: Held::Both { _cast: cast, input }, node, source, remote: fd })
 }
 
 /// The largest even size that fits in what is wanted, without growing the screen.
@@ -314,32 +475,20 @@ impl WaylandGrabber {
         let max = options.max;
         let made = options.virtual_size;
         pollster::block_on(async {
-            let cast = Screencast::new().await.map_err(text)?;
-            let session = cast.create_session(CreateSessionOptions::default()).await.map_err(text)?;
-            // A monitor made for a viewer has an answer of its own to be remembered, apart from the one for the screen that is there.
-            let token_file = if made.is_some() { "portal-display.token" } else { "portal-screen.token" };
-            let token = read_token(token_file);
-            cast.select_sources(
-                &session,
-                SelectSourcesOptions::default()
-                    .set_cursor_mode(if options.cursor { CursorMode::Embedded } else { CursorMode::Hidden })
-                    .set_sources(BitFlags::from_flag(if made.is_some() { SourceType::Virtual } else { SourceType::Monitor }))
-                    .set_multiple(false)
-                    .set_persist_mode(PersistMode::ExplicitlyRevoked)
-                    .set_restore_token(token.as_deref()),
-            )
-            .await
-            .map_err(text)?
-            .response()
-            .map_err(text)?;
-            let streams = cast.start(&session, None, StartCastOptions::default()).await.map_err(text)?.response().map_err(text)?;
-            if let Some(token) = streams.restore_token() {
-                write_token(token_file, token);
-            }
-            let stream = streams.streams().first().ok_or("no screen was chosen")?;
-            let node = stream.pipe_wire_node_id();
-            let source = stream.size().map(|(w, h)| (w.max(2) as u32, h.max(2) as u32)).unwrap_or((1920, 1080));
-            let remote = cast.open_pipe_wire_remote(&session, OpenPipeWireRemoteOptions::default()).await.map_err(text)?;
+            // With input the monitor and the keyboard and pointer are one session. A desktop that does not do that for a monitor made on
+            // the spot still gives the monitor, to look at.
+            let started = if made.is_some() && options.input {
+                match start_with_input(&options).await {
+                    Ok(started) => started,
+                    Err(error) => {
+                        log::warn!("a second screen that can be used could not be made, it is made to look at only: {error}");
+                        start_plain(&options).await?
+                    }
+                }
+            } else {
+                start_plain(&options).await?
+            };
+            let Started { held, node, source, remote } = started;
             // A monitor made for the viewer is the size that is asked of the stream: the desktop gives it that shape.
             let size = made.map(|(w, h)| (w & !1, h & !1)).unwrap_or_else(|| fit(source, max));
 
@@ -412,7 +561,7 @@ impl WaylandGrabber {
                     flag.store(false, Ordering::Relaxed);
                 })
                 .map_err(text)?;
-            Ok(WaylandGrabber { size, latest, i420: options.i420, alive, child, _cast: cast, session })
+            Ok(WaylandGrabber { size, latest, i420: options.i420, alive, child, held })
         })
     }
 
@@ -439,13 +588,28 @@ impl WaylandGrabber {
     pub fn is_i420(&self) -> bool {
         self.i420
     }
+
+    /// The keyboard and the pointer aimed at the monitor that these pictures are of, when it was made together with them.
+    pub fn stream_input(&self) -> Option<Arc<StreamInput>> {
+        match &self.held {
+            Held::Both { input, .. } => Some(input.clone()),
+            Held::Cast { .. } => None,
+        }
+    }
 }
 
 impl Drop for WaylandGrabber {
     fn drop(&mut self) {
         let _ = self.child.kill();
         let _ = self.child.wait();
-        let _ = pollster::block_on(self.session.close());
+        match &self.held {
+            Held::Cast { session, .. } => {
+                let _ = pollster::block_on(session.close());
+            }
+            Held::Both { input, .. } => {
+                let _ = pollster::block_on(input.session.close());
+            }
+        }
     }
 }
 

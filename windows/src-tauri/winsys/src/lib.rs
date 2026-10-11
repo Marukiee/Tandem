@@ -60,6 +60,9 @@ pub struct GrabOptions {
     /// Not the screen that is there but a monitor that the desktop makes for the viewer, of this size (Wayland, where the portal offers
     /// virtual monitors): another computer uses it as a second screen. `None` for the screen as it is.
     pub virtual_size: Option<(u32, u32)>,
+    /// With a monitor made for the viewer: the same session also takes what the viewer touches and types, onto that monitor (Wayland, where
+    /// the desktop allows it; when it does not, the monitor is made without and is only looked at).
+    pub input: bool,
 }
 
 /// What the hooks on the mouse and keyboard of this PC see.
@@ -75,6 +78,7 @@ pub enum Seen {
     Key { vk: u16, down: bool },
 }
 
+pub mod hid;
 #[cfg(windows)]
 mod imp;
 #[cfg(target_os = "linux")]

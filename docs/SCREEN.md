@@ -387,7 +387,11 @@ scherm; daarom meldt een computer die het kan de capability `screen.extend`, en 
   dan bit 4; GNOME 50 meldt 7) en GNOME maakt een monitor in de maat die van de stroom wordt gevraagd (`pipewiresrc ! video/x-raw,width=,height=`).
   De maat gaat omlaag tot wat de processor in tijd kan coderen (zoveel pixels als 2560 bij 1440). De computer meldt `screen.extend`. De eerste
   keer vraagt GNOME om toestemming (een eigen antwoord, `portal-display.token`). **Nog niet gezien op de echte laptop** (de vraag van GNOME is nog niet
-  beantwoord) en nog zonder invoer: het apparaat kan er niet op klikken, vensters sleep je er met de muis van de laptop naartoe.
+  beantwoord). **Invoer (0.1.83)**: met `control = true` in het verzoek (de telefoon vraagt dat) maakt `start_with_input` het scherm en het toetsenbord en de
+  aanwijzer in een sessie (RemoteDesktop met ScreenCast op dezelfde sessie, `portal-display-input.token`), zodat een aanraking een klik op dat scherm is
+  (`NotifyPointerMotionAbsolute` op de PipeWire-node van het scherm; knoppen, scrollen, toetsen als evdev-code via `hid::evdev_of`, tekst als keysym).
+  Geeft het bureaublad die combinatie niet, dan wordt het scherm gemaakt om alleen naar te kijken (zoals voor 0.1.83) en meldt de telefoon "Alleen kijken".
+  Gebouwd en op Linux-doel gecompileerd (`StreamPlay` in `host.rs`, losse proef erbij), de toetsentabel heeft tests; niet op de echte laptop gezien.
 - **Windows als kijker**: een venster van de app dat het scherm vult (`live.rs`, `start` met `extend`); de webview decodeert de video met hardware.
   **Mac als kijker**: het livevenster op het hele scherm (`LiveManager.start(extend:)`).
 - **Vanaf de computer aanvragen (0.1.82)**: ook de computer zelf kan het tweede scherm vragen, niet alleen het apparaat dat het gaat tonen. De knop "Scherm

@@ -109,6 +109,113 @@ struct Sharing {
     bitrate: Arc<AtomicU32>,
     peer: String,
     control: bool,
+    /// For a monitor made for the viewer: what it touches and types goes to that monitor through this, and not through the general input.
+    play: Option<Arc<StreamPlay>>,
+}
+
+/// The keyboard and the pointer of a monitor made for a viewer (only Wayland makes one), and what is held down on it.
+#[cfg(target_os = "linux")]
+pub struct StreamPlay {
+    input: Arc<tandem_winsys::portal::StreamInput>,
+    /// The modifiers that were pressed for a key and are let go with it, as the bits of `MediaInput::Key::mods`.
+    held_mods: Mutex<u16>,
+    buttons: Mutex<std::collections::HashSet<u8>>,
+}
+
+#[cfg(not(target_os = "linux"))]
+pub struct StreamPlay;
+
+/// The keys that stand for the bits of `mods`: shift, control, alt, meta.
+#[cfg(target_os = "linux")]
+const MODIFIER_KEYS: [(u16, i32); 4] = [(1, 42), (2, 29), (4, 56), (8, 125)];
+
+#[cfg(target_os = "linux")]
+impl StreamPlay {
+    fn new(input: Arc<tandem_winsys::portal::StreamInput>) -> StreamPlay {
+        StreamPlay { input, held_mods: Mutex::new(0), buttons: Mutex::new(std::collections::HashSet::new()) }
+    }
+
+    fn play(&self, event: TandemMediaInput) {
+        use tandem_winsys::hid;
+        match event {
+            TandemMediaInput::PointerAbs { x, y } => {
+                self.input.pointer_to(f64::from(x), f64::from(y));
+            }
+            // A place on the monitor is all a touch has; a move by so much has nothing to be added to.
+            TandemMediaInput::PointerRel { .. } => {}
+            TandemMediaInput::Button { button, down, .. } => {
+                if down {
+                    self.buttons.lock().unwrap().insert(button);
+                } else {
+                    self.buttons.lock().unwrap().remove(&button);
+                }
+                self.input.button(hid::button_code(button), down);
+            }
+            // Pixels, in the direction the content goes with the fingers: the wheel goes the other way.
+            TandemMediaInput::Scroll { dx, dy } => {
+                self.input.scroll(-f64::from(dx), -f64::from(dy), false);
+            }
+            TandemMediaInput::Key { code, down, mods, .. } => {
+                let Some(key) = hid::evdev_of(code) else { return };
+                if down {
+                    let mut held = self.held_mods.lock().unwrap();
+                    for (bit, modifier) in MODIFIER_KEYS {
+                        if mods & bit != 0 && *held & bit == 0 {
+                            self.input.key(modifier, true);
+                            *held |= bit;
+                        }
+                    }
+                    drop(held);
+                    self.input.key(i32::from(key), true);
+                } else {
+                    self.input.key(i32::from(key), false);
+                    self.release_mods();
+                }
+            }
+            TandemMediaInput::Text { text } => {
+                for c in text.chars() {
+                    let symbol = hid::keysym_of_char(c);
+                    self.input.keysym(symbol, true);
+                    self.input.keysym(symbol, false);
+                }
+            }
+        }
+    }
+
+    fn release_mods(&self) {
+        let mut held = self.held_mods.lock().unwrap();
+        for (bit, modifier) in MODIFIER_KEYS {
+            if *held & bit != 0 {
+                self.input.key(modifier, false);
+            }
+        }
+        *held = 0;
+    }
+
+    /// Lets go of everything that is held down, when the viewer goes away.
+    fn release_all(&self) {
+        self.release_mods();
+        for button in self.buttons.lock().unwrap().drain() {
+            self.input.button(tandem_winsys::hid::button_code(button), false);
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+impl StreamPlay {
+    fn play(&self, _event: TandemMediaInput) {}
+    fn release_all(&self) {}
+}
+
+/// The input that goes with the pictures of a monitor made for a viewer, when the desktop gave it with them.
+#[cfg(target_os = "linux")]
+fn stream_play(grabber: &Grabber) -> Option<Arc<StreamPlay>> {
+    grabber.stream_input().map(|input| Arc::new(StreamPlay::new(input)))
+}
+
+#[cfg(not(target_os = "linux"))]
+fn stream_play(_grabber: &Grabber) -> Option<Arc<StreamPlay>> {
+    None
 }
 
 type Sessions = Arc<Mutex<HashMap<u64, Sharing>>>;
@@ -146,7 +253,7 @@ impl Host {
     fn start(&self, from: String, request: &TandemMediaRequest) {
         let Some(engine) = self.engine() else { return };
         let session = request.session;
-        // A monitor made for a viewer has no way for the viewer to use the mouse and keyboard yet: windows are moved to it with the mouse here.
+        // Not a monitor made for a viewer: that one has its own input (below), when the desktop gives it with the monitor.
         let control = request.control && control_available() && !request.extend;
         // A viewer that is a computer shows its own pointer over the picture: the pointer of this one in the picture would be a second one,
         // a little behind. A phone has no pointer over the picture, so it keeps this one.
@@ -164,10 +271,14 @@ impl Host {
             fps: wanted_fps,
             i420: true,
             virtual_size: request.extend.then(|| extended_size(request.max_width, request.max_height)),
+            input: request.extend && request.control,
         }) else {
             let _ = engine.media_deny(session, TandemMediaEnd::Unavailable);
             return;
         };
+        // A monitor made for a viewer that also takes what the viewer touches and types: what is shown is then also used from there.
+        let play = stream_play(&grabber);
+        let control = control || play.is_some();
         let (source_w, source_h) = grabber.size();
         if source_w < 64 || source_h < 64 {
             let _ = engine.media_deny(session, TandemMediaEnd::Unavailable);
@@ -186,6 +297,7 @@ impl Host {
             bitrate: Arc::new(AtomicU32::new(bitrate)),
             peer: from.clone(),
             control,
+            play,
         };
         let (stop, keyframe, rate) = (sharing.stop.clone(), sharing.keyframe.clone(), sharing.bitrate.clone());
         self.sessions.lock().unwrap().insert(session, sharing);
@@ -283,16 +395,23 @@ impl TandemMediaHost for Host {
 
     fn on_input(&self, session: u64, event: TandemMediaInput) {
         // Only what the person allowed gets through: the core drops input when control was refused, and this is the second lock.
-        let allowed = self.sessions.lock().unwrap().get(&session).is_some_and(|s| s.control);
-        if allowed {
-            input::send_media(event);
+        let (allowed, play) = self.sessions.lock().unwrap().get(&session).map(|s| (s.control, s.play.clone())).unwrap_or((false, None));
+        if !allowed {
+            return;
+        }
+        match play {
+            Some(play) => play.play(event),
+            None => input::send_media(event),
         }
     }
 
     fn on_stop(&self, session: u64, _reason: TandemMediaEnd) {
         if let Some(s) = self.sessions.lock().unwrap().remove(&session) {
             s.stop.store(true, Ordering::Relaxed);
-            input::release_all();
+            match &s.play {
+                Some(play) => play.release_all(),
+                None => input::release_all(),
+            }
         }
         self.announce();
     }
@@ -434,7 +553,7 @@ pub fn bench() {
             std::thread::sleep(Duration::from_secs(10));
             bench_encoder(1920, 1200);
             for i420 in [true, false] {
-                let Some(grabber) = Grabber::with_options(tandem_winsys::GrabOptions { max: (1920, 1200), cursor: false, fps: 60, i420, virtual_size: None }) else {
+                let Some(grabber) = Grabber::with_options(tandem_winsys::GrabOptions { max: (1920, 1200), cursor: false, fps: 60, i420, virtual_size: None, input: false }) else {
                     log::warn!("bench host: the screen could not be taken");
                     continue;
                 };

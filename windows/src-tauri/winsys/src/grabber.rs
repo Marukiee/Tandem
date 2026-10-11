@@ -25,7 +25,7 @@ impl Grabber {
     /// Starts on the screen. On Wayland the desktop shows a window the first time, and this waits for the answer. `max_width` and
     /// `max_height` (0 for no limit) are what the viewer wants at most.
     pub fn with_limit(max_width: u32, max_height: u32) -> Option<Grabber> {
-        Grabber::with_options(GrabOptions { max: (max_width, max_height), cursor: true, fps: 0, i420: false, virtual_size: None })
+        Grabber::with_options(GrabOptions { max: (max_width, max_height), cursor: true, fps: 0, i420: false, virtual_size: None, input: false })
     }
 
     /// The same with the choices that matter for showing the screen to somebody who also uses it (see [`GrabOptions`]). Under X11 the
@@ -62,6 +62,14 @@ impl Grabber {
         match &self.0 {
             Source::X(g) => g.grab().map(|(w, h, pixels)| (w, h, Arc::new(pixels))),
             Source::Wayland(g) => g.grab_shared(),
+        }
+    }
+
+    /// The keyboard and the pointer of the monitor that was made together with these pictures, when there is one.
+    pub fn stream_input(&self) -> Option<Arc<portal::StreamInput>> {
+        match &self.0 {
+            Source::X(_) => None,
+            Source::Wayland(g) => g.stream_input(),
         }
     }
 
