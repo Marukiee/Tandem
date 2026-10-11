@@ -215,8 +215,21 @@ private fun NearbySection(peers: List<nl.markmaaktmedia.tandem.quickshare.QuickS
                 Text(stringResource(R.string.quickshare_searching), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
-            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), maxItemsInEachRow = 3) {
-                peers.forEach { peer -> NearbyTile(peer, { onSend(peer) }, Modifier.weight(1f)) }
+            // A device that does not say who it is (visible to its contacts only) cannot be sent to, as on the other screens of Quick Share:
+            // it is counted under the tiles and not drawn as a tile without a name.
+            val named = peers.filter { it.name.isNotBlank() }
+            val unnamed = peers.size - named.size
+            if (named.isNotEmpty()) {
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), maxItemsInEachRow = 3) {
+                    named.forEach { peer -> NearbyTile(peer, { onSend(peer) }, Modifier.weight(1f)) }
+                }
+            }
+            if (unnamed > 0) {
+                Text(
+                    androidx.compose.ui.res.pluralStringResource(R.plurals.quickshare_unnamed, unnamed, unnamed),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 6.dp),
+                )
             }
         }
     }

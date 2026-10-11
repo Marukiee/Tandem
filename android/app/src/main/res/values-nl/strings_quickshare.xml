@@ -98,6 +98,4 @@
     <string name="quickshare_quick_settings">Snelle instellingen</string>
     <string name="quickshare_open_sheet">Quick Share openen</string>
     <string name="quickshare_open_sheet_sub">Verzoeken ontvangen en versturen naar apparaten in de buurt</string>
-    <string name="quickshare_hidden_phone">Verborgen telefoon</string>
-    <string name="quickshare_hidden_computer">Verborgen computer</string>
 </resources>

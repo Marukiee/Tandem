@@ -7,7 +7,8 @@
       "new": [
         "Second screen: ask a phone or computer to show a screen of this computer with Extend screen to this device, from the Mac or the Linux laptop",
         "Second screen from the Linux laptop: touch and type on the phone to use it (needs Wayland and one approval on the laptop)",
-        "Bluetooth shows in blue on Android, the share sheet has equal tiles and names hidden Quick Share devices"
+        "Bluetooth shows in blue on Android, the share sheet has equal tiles and no blank Quick Share tiles",
+        "Bluetooth between Mac and Linux computers when there is no network, for the clipboard and notifications"
       ],
       "fixed": [
         "Mac: starting Tailscale no longer closes the app, and screen sharing from the Mac keeps its quality"
@@ -18,7 +19,8 @@
       "new": [
         "Tweede scherm: vraag een telefoon of computer om een scherm van deze computer te tonen met Scherm uitbreiden naar dit apparaat, vanaf de Mac of de Linux-laptop",
         "Tweede scherm vanaf de Linux-laptop: raak aan en typ op de telefoon om het te bedienen (vraagt Wayland en een keer goedkeuren op de laptop)",
-        "Bluetooth staat in het blauw op Android, het deelmenu heeft even grote tegels en geeft verborgen Quick Share-apparaten een naam"
+        "Bluetooth staat in het blauw op Android, het deelmenu heeft even grote tegels en geen lege Quick Share-tegels meer",
+        "Bluetooth tussen Mac en Linux als er geen netwerk is, voor het klembord en meldingen"
       ],
       "fixed": [
         "Mac: Tailscale aanzetten sluit de app niet meer af, en scherm delen vanaf de Mac houdt zijn kwaliteit"

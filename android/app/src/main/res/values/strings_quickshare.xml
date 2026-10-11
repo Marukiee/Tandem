@@ -98,6 +98,4 @@
     <string name="quickshare_quick_settings">Quick settings</string>
     <string name="quickshare_open_sheet">Open Quick Share</string>
     <string name="quickshare_open_sheet_sub">Receive requests and send to devices nearby</string>
-    <string name="quickshare_hidden_phone">Hidden phone</string>
-    <string name="quickshare_hidden_computer">Hidden computer</string>
 </resources>

@@ -58,6 +58,14 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
 - Mac (sectie 5): het menu Diensten laat alleen zien wat aanstaat kan niet zonder de Info.plist te veranderen; keuze voor Mark.
 - Alles op alle systemen (sectie 8): Windows en Linux als host voor het eigen scherm en voor Invoegen vanaf telefoon als bron voor een
   andere computer, geluid van een computer naar een andere computer, de hotspot vanaf de computer.
+- Tweede scherm (gevraagd 2026-10-11, gebouwd in 0.1.82, nergens op echte toestellen gezien): vanaf de computer aanvragen met "Scherm uitbreiden naar
+  dit apparaat" (Mac en Linux; de telefoon opent het meteen of via een melding), en aanraken op een scherm dat Linux voor de telefoon maakt
+  (een sessie met scherm en invoer via de portal, `StreamPlay` in `host.rs`). Te zien op de laptop: of GNOME de gecombineerde vraag toont, of
+  een aanraking op de goede plek klikt, en of het scherm alleen-kijken wordt als de desktop de combinatie weigert. Windows als host kan nog niet (virtueel
+  beeldschermstuurprogramma).
+- Bluetooth tussen computers (gevraagd 2026-10-11, gebouwd in 0.1.82, nooit op twee echte computers gezien): Mac en Linux wachten en zoeken naar elkaar
+  (docs/BLUETOOTH.md, "Between computers"). Windows heeft er nog geen code voor (WinRT: `GattServiceProvider` om te wachten, een watcher om te zoeken).
+  Ook open: de status van een computer die alleen over Bluetooth bereikbaar is staat nu blauw op Android, Linux en Windows (Mac had het al).
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)
