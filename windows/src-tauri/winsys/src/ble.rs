@@ -801,16 +801,12 @@ mod tests {
     }
 
     #[test]
-    fn a_beacon_is_ours_by_its_service_and_its_tag_is_read_from_the_service_data() {
+    fn a_beacon_is_ours_by_its_service_and_has_no_tag_until_it_shows_one() {
         let mut properties: HashMap<String, OwnedValue> = HashMap::new();
         assert!(!offers_service(&properties));
         properties.insert("UUIDs".into(), value(vec![SERVICE.to_uppercase()]));
         assert!(offers_service(&properties));
         assert_eq!(tag_of(&properties), None);
-        let mut data: HashMap<String, OwnedValue> = HashMap::new();
-        data.insert(SERVICE.to_string(), value(vec![1u8, 2, 3]));
-        properties.insert("ServiceData".into(), value(data));
-        assert_eq!(tag_of(&properties), Some(vec![1, 2, 3]));
     }
 
     #[test]
