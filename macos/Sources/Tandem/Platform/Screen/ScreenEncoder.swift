@@ -121,7 +121,11 @@ final class ScreenEncoder: @unchecked Sendable {
         // is only a safety net.
         set(kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, 8 as CFNumber)
         set(kVTCompressionPropertyKey_MaxKeyFrameInterval, (config.fps * 8) as CFNumber)
-        set(kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality, kCFBooleanTrue)
+        // Not trading quality for speed: the encoder of the chip is far faster than a screen needs (sixty pictures of 4K is within what it
+        // does), and the text of a screen is what turns soft when the encoder hurries. Nothing is held back either: the encoder gives each
+        // picture as soon as it is made.
+        set(kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality, kCFBooleanFalse)
+        set(kVTCompressionPropertyKey_MaxFrameDelayCount, 0 as CFNumber)
         set(kVTCompressionPropertyKey_ColorPrimaries, kCMFormatDescriptionColorPrimaries_ITU_R_709_2)
         set(kVTCompressionPropertyKey_TransferFunction, kCMFormatDescriptionTransferFunction_ITU_R_709_2)
         set(kVTCompressionPropertyKey_YCbCrMatrix, kCMFormatDescriptionYCbCrMatrix_ITU_R_709_2)
