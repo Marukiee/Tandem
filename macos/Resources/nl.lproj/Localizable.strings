@@ -923,3 +923,7 @@
 "Today" = "Vandaag";
 "Last 7 days" = "Laatste 7 dagen";
 "Last 30 days" = "Laatste 30 dagen";
+"Extend screen to this device" = "Scherm uitbreiden naar dit apparaat";
+"Update Tandem on that device to use it as a second screen" = "Update Tandem op dat apparaat om het als tweede scherm te gebruiken";
+"Adds a screen to this Mac and shows it on that device. Move windows to it with your mouse." = "Voegt een scherm toe aan deze Mac en toont het op dat apparaat. Sleep vensters ernaartoe met je muis.";
+"Asked %@ to be a second screen" = "%@ gevraagd om tweede scherm te zijn";

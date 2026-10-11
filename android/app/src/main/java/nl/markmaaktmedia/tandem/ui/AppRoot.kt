@@ -116,6 +116,14 @@ private fun MainNavigation() {
             quickShareFlag.value = false
         }
     }
+    val displayFlag = LocalContext.current.graph.openDisplay
+    val openDisplay by displayFlag.collectAsState()
+    LaunchedEffect(openDisplay) {
+        openDisplay?.let { id ->
+            nav.push(Route.Display(id))
+            displayFlag.value = null
+        }
+    }
     val pairFlag = LocalContext.current.graph.startAtPair
     LaunchedEffect(startAtPair) {
         if (startAtPair) {

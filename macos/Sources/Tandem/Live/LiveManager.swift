@@ -260,10 +260,11 @@ final class LiveManager {
     // MARK: A phone that offers
 
     /// The person started the sharing on the phone itself: open the window and ask. The phone is waiting for exactly this.
-    func handleOffer(from peer: String, kind: TandemMediaKind, facing: TandemMediaFacing) {
+    func handleOffer(from peer: String, kind: TandemMediaKind, facing: TandemMediaFacing, extend: Bool = false) {
         guard let device = EngineModel.shared.device(peer), device.online else { return }
         let camera: LiveCameraFacing = facing == .front ? .front : .back
-        start(device: device, kind: kind, facing: camera, quality: .standard)
+        // A computer whose person pressed "Extend screen to this device": the screen it makes for this Mac fills it.
+        start(device: device, kind: kind, facing: camera, quality: .standard, extend: extend && kind == .screen)
         NSApp.activate(ignoringOtherApps: true)
     }
 

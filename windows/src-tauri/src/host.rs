@@ -61,6 +61,30 @@ pub fn extend_available() -> bool {
     }
 }
 
+/// The computers this one asked to show a screen of its own, and until when their request for it is taken without a question: the
+/// person pressed the button for it here a moment ago, and that was the question.
+fn expected() -> &'static Mutex<HashMap<String, Instant>> {
+    static EXPECTED: std::sync::OnceLock<Mutex<HashMap<String, Instant>>> = std::sync::OnceLock::new();
+    EXPECTED.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn take_expected(id: &str) -> bool {
+    expected().lock().unwrap().remove(id).map(|until| until > Instant::now()).unwrap_or(false)
+}
+
+/// Asks the device `id` to be a second screen of this computer: it is told, and its request for the screen that follows is not asked about.
+pub fn offer_extend(app: &AppHandle, id: &str) -> Result<(), String> {
+    if !extend_available() {
+        return Err(i18n::t(app, "extend_unavailable"));
+    }
+    let engine = app.state::<AppState>().engine()?;
+    expected().lock().unwrap().insert(id.to_string(), Instant::now() + Duration::from_secs(90));
+    engine.media_offer(id.to_string(), TandemMediaKind::Screen, tandem_core::ffi::TandemMediaFacing::Any, true).map_err(|e| {
+        expected().lock().unwrap().remove(id);
+        e.to_string()
+    })
+}
+
 /// The size of a monitor made for a viewer: what it asked for, down to what this computer can encode in time (about as many pixels as
 /// 2560 by 1440 has, since the encoder works on the processor), even numbers.
 fn extended_size(width: u32, height: u32) -> (u32, u32) {
@@ -202,7 +226,7 @@ impl TandemMediaHost for Host {
             let _ = engine.media_deny(request.session, TandemMediaEnd::Unsupported);
             return;
         }
-        if pre_approved {
+        if pre_approved || (request.extend && take_expected(&from)) {
             self.start(from, &request);
             return;
         }

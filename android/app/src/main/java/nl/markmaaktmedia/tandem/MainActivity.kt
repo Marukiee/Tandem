@@ -28,5 +28,22 @@ class MainActivity : AppCompatActivity() {
     private fun handleLink(intent: android.content.Intent?) {
         intent?.data?.toString()?.takeIf { it.startsWith("tandem://") }?.let { graph.pairLink.value = it }
         if (intent?.action == nl.markmaaktmedia.tandem.quickshare.QuickShareTileService.ACTION_OPEN_PAGE) graph.openQuickShare.value = true
+        if (intent?.action == ACTION_OPEN_DISPLAY) intent.getStringExtra(EXTRA_DEVICE)?.let { graph.openDisplay.value = it }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        graph.appVisible = true
+    }
+
+    override fun onStop() {
+        graph.appVisible = false
+        super.onStop()
+    }
+
+    companion object {
+        /** From the notification of a computer that asks this phone to be its second screen. */
+        const val ACTION_OPEN_DISPLAY = "nl.markmaaktmedia.tandem.OPEN_DISPLAY"
+        const val EXTRA_DEVICE = "device"
     }
 }

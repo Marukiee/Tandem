@@ -115,6 +115,8 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         "battery".into(),
         "media".into(),
         "screen.view".into(),
+        // Can show a screen that another computer makes for this one (a request of its person, see `MediaOffered`).
+        "screen.extend.view".into(),
         "camera.view".into(),
         // Answers the pings of a computer that has its pointer (see `pointer_share`), so it can tell a link that went quiet.
         "pointer.ping".into(),

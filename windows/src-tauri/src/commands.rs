@@ -42,6 +42,7 @@ pub fn get_state(app: AppHandle, state: State<'_, AppState>) -> Value {
         "canShare": capture::can_share(),
         "platform": if cfg!(windows) { "windows" } else { "linux" },
         "canHost": cfg!(feature = "screen-host") && can_host(),
+        "canExtend": cfg!(feature = "screen-host") && can_extend(),
         "input": input_support(),
         "hasLid": crate::lid::present(),
     })
@@ -78,6 +79,17 @@ fn can_host() -> bool {
 
 #[cfg(not(feature = "screen-host"))]
 fn can_host() -> bool {
+    false
+}
+
+/// Whether this computer can make a screen for another device to show (Linux under Wayland where the desktop offers it).
+#[cfg(feature = "screen-host")]
+fn can_extend() -> bool {
+    crate::host::extend_available()
+}
+
+#[cfg(not(feature = "screen-host"))]
+fn can_extend() -> bool {
     false
 }
 

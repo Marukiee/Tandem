@@ -377,7 +377,7 @@ impl Engine {
 
     /// Tells `peer` that this device is ready to show its screen or camera and would like it to look. The peer's app
     /// decides and answers with a `media_request`; nothing starts by itself. Does nothing when `peer` is not connected.
-    pub fn media_offer(&self, peer: DeviceId, kind: MediaKind, facing: MediaFacing) -> Result<()> {
+    pub fn media_offer(&self, peer: DeviceId, kind: MediaKind, facing: MediaFacing, extend: bool) -> Result<()> {
         if kind == MediaKind::Other {
             return Err(Error::invalid("that kind of video does not exist"));
         }
@@ -387,7 +387,7 @@ impl Engine {
         if self.inner.session_of(&peer).is_none() {
             return Err(Error::NotConnected);
         }
-        self.inner.live_send(peer, Msg::MediaOffer { kind, facing });
+        self.inner.live_send(peer, Msg::MediaOffer { kind, facing, extend: extend && kind == MediaKind::Screen });
         Ok(())
     }
 
@@ -887,10 +887,10 @@ impl Inner {
                 };
                 self.live_input(&host, input);
             }
-            Msg::MediaOffer { kind, facing } => {
+            Msg::MediaOffer { kind, facing, extend } => {
                 // Only the two kinds this version knows are worth showing a person.
                 if kind != MediaKind::Other {
-                    self.emit(Event::MediaOffered { from: peer, kind, facing });
+                    self.emit(Event::MediaOffered { from: peer, kind, facing, extend: extend && kind == MediaKind::Screen });
                 }
             }
             _ => {}

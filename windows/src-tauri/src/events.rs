@@ -61,10 +61,17 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             }
         }
         // A phone that shows its screen or camera by itself ("Show my screen on this PC") asks this PC to look.
-        TandemEvent::MediaOffered { from, kind, facing } => {
+        TandemEvent::MediaOffered { from, kind, facing, extend } => {
             let name = device_name(app, &from);
             let camera = kind == tandem_core::ffi::TandemMediaKind::Camera;
-            if let Err(reason) = crate::live::start(app, from, camera, facing, name, false, false) {
+            // A computer whose person pressed "Extend screen to this device": the screen it makes for this one fills it.
+            let opened = if extend && !camera {
+                let mac = device(app, &from).map(|d| d["platform"].as_str() == Some("macos")).unwrap_or(false);
+                crate::live::display_open(app, from, name, mac).map(|_| ())
+            } else {
+                crate::live::start(app, from, camera, facing, name, false, false).map(|_| ())
+            };
+            if let Err(reason) = opened {
                 log::warn!("could not open the window for the offered picture: {reason}");
             }
         }

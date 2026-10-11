@@ -9,10 +9,10 @@ const cover = "data:image/svg+xml;utf8," + encodeURIComponent(
 
 const now = Date.now();
 const devices = empty ? [] : [
-  { id: "phone", name: "Pixel 9", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host"],
+  { id: "phone", name: "Pixel 9", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host", "screen.extend.view"],
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 80, charging: true, powerSave: false }, network: { kind: "cellular", ssid: null, metered: true, roaming: false, signal: 3 }, hotspot: true, dnd: false } },
-  { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view"],
+  { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view", "screen.extend.view"],
     clipboard: true, autoAccept: false, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 64, charging: false, powerSave: false }, network: { kind: "wifi", ssid: "Thuis", metered: false, roaming: false } } },
   { id: "old", name: "Xperia test", platform: "android", online: false, route: null, rttMs: null, appVersion: "0.1.20", caps: [],
@@ -32,7 +32,7 @@ function updateFor(kind) {
 }
 
 const state = {
-  ready: true, error: null, self: { id: "me", name: "My Laptop", port: 47820 }, version: "0.1.25", build: "preview", canShare: true, canHost: true, platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
+  ready: true, error: null, self: { id: "me", name: "My Laptop", port: 47820 }, version: "0.1.25", build: "preview", canShare: true, canHost: true, canExtend: new URLSearchParams(location.search).get("platform") === "linux", platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
   devices,
   transfers: empty ? [] : [
     { id: "1-0-in", peer: "phone", name: "IMG_20261003_141201.jpg", incoming: true, state: "done", done: 4200000, total: 4200000, location: "C:\\Users\\Mark\\Downloads\\Tandem\\IMG_20261003_141201.jpg", updatedAt: now - 60000, startedAt: now - 62000 },

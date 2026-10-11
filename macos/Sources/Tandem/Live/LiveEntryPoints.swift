@@ -35,6 +35,17 @@ struct LiveActionRow: View {
                 .help("Makes this computer add a screen for this one. Move windows to it with the mouse of that computer.")
             }
         }
+        // This Mac's own extra screen, shown on that device: it makes the screen, the device is told to look at it. Grey until both can.
+        if device.caps.contains("screen.extend.view") || device.platform == .android {
+            let canHost = VirtualDisplay.isAvailable
+            let ready = device.online && canHost && device.caps.contains("screen.extend.view")
+            GlassActionButton(title: "Extend screen to this device", symbol: "rectangle.on.rectangle") {
+                ScreenHost.shared.offerExtend(to: device)
+            }
+            .disabled(!ready)
+            .opacity(ready ? 1 : 0.5)
+            .help(!device.caps.contains("screen.extend.view") ? "Update Tandem on that device to use it as a second screen" : "Adds a screen to this Mac and shows it on that device. Move windows to it with your mouse.")
+        }
         // Always there for a phone, grey while it cannot: a phone with an older Tandem is told what to do in the tooltip.
         if device.platform == .android {
             let screenReady = device.online && device.canShowScreen

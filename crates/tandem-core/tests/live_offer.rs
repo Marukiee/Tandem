@@ -49,13 +49,13 @@ async fn an_offer_reaches_the_other_device_as_an_event() {
     wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
 
     let mut events = mac.engine.subscribe();
-    phone.engine.media_offer(mac.engine.id(), MediaKind::Camera, MediaFacing::Front).unwrap();
+    phone.engine.media_offer(mac.engine.id(), MediaKind::Camera, MediaFacing::Front, false).unwrap();
 
     let deadline = tokio::time::Instant::now() + Duration::from_secs(45);
     let (from, kind, facing) = loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
         match tokio::time::timeout(remaining, events.recv()).await {
-            Ok(Ok(Event::MediaOffered { from, kind, facing })) => break (from, kind, facing),
+            Ok(Ok(Event::MediaOffered { from, kind, facing, .. })) => break (from, kind, facing),
             Ok(Ok(_)) | Ok(Err(tokio::sync::broadcast::error::RecvError::Lagged(_))) => {}
             other => panic!("no offer arrived: {other:?}"),
         }
@@ -63,7 +63,33 @@ async fn an_offer_reaches_the_other_device_as_an_event() {
     assert_eq!((from, kind, facing), (phone.engine.id(), MediaKind::Camera, MediaFacing::Front));
 
     // A kind nobody knows is refused before it leaves, and a device that is not in the circle cannot be offered anything.
-    assert!(phone.engine.media_offer(mac.engine.id(), MediaKind::Other, MediaFacing::Any).is_err());
+    assert!(phone.engine.media_offer(mac.engine.id(), MediaKind::Other, MediaFacing::Any, false).is_err());
     let stranger = node("Stranger").await;
-    assert!(phone.engine.media_offer(stranger.engine.id(), MediaKind::Screen, MediaFacing::Any).is_err());
+    assert!(phone.engine.media_offer(stranger.engine.id(), MediaKind::Screen, MediaFacing::Any, false).is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn an_offer_for_a_second_screen_says_so_and_only_for_a_screen() {
+    let laptop = node("Laptop").await;
+    let phone = node("Phone").await;
+    let offer = laptop.engine.create_pairing_offer().unwrap();
+    phone.engine.pair_with_uri(&offer.uri).await.unwrap();
+    wait_until("connected", || online(&laptop, phone.engine.id()) && online(&phone, laptop.engine.id())).await;
+
+    let mut events = phone.engine.subscribe();
+    laptop.engine.media_offer(phone.engine.id(), MediaKind::Screen, MediaFacing::Any, true).unwrap();
+    // A camera cannot be a second screen: the flag does not survive for it.
+    laptop.engine.media_offer(phone.engine.id(), MediaKind::Camera, MediaFacing::Back, true).unwrap();
+
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(45);
+    let mut seen = Vec::new();
+    while seen.len() < 2 {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        match tokio::time::timeout(remaining, events.recv()).await {
+            Ok(Ok(Event::MediaOffered { kind, extend, .. })) => seen.push((kind, extend)),
+            Ok(Ok(_)) | Ok(Err(tokio::sync::broadcast::error::RecvError::Lagged(_))) => {}
+            other => panic!("the offers did not arrive: {other:?}"),
+        }
+    }
+    assert_eq!(seen, vec![(MediaKind::Screen, true), (MediaKind::Camera, false)]);
 }

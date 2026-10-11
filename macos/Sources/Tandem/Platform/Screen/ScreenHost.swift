@@ -132,7 +132,9 @@ final class ScreenHost {
         let controlPolicy = (try? engine.mediaPolicy(id: peer))?.control ?? .ask
         let controlPossible = request.control && accessibility && controlPolicy != .never
 
-        if preApproved {
+        // The person pressed the button for this on this Mac a moment ago: that was the question, it is not asked again.
+        let asked = request.extend && (expectedExtend.removeValue(forKey: peer) ?? .distantPast) > Date()
+        if preApproved || asked {
             start(request: request, peer: peer, name: name, control: controlPossible)
         } else if let again = recent[peer], again.until > Date() {
             start(request: request, peer: peer, name: name, control: controlPossible && again.control)
@@ -158,6 +160,30 @@ final class ScreenHost {
     }
 
     @ObservationIgnored private var pendingRequest: TandemMediaRequest?
+
+    /// Devices that this Mac asked to show a screen of its own, and until when their request for it needs no question.
+    @ObservationIgnored private var expectedExtend: [String: Date] = [:]
+
+    /// Asks `device` to be a second screen of this Mac: it is told, and its request for the screen that follows is taken without a prompt.
+    func offerExtend(to device: TandemDevice) {
+        guard let engine else { return }
+        guard device.online else {
+            model?.showToast(String(localized: "\(device.name) cannot be reached right now"))
+            return
+        }
+        guard ScreenCapturer.hasPermission else {
+            FloatingToast.show(String(localized: "Allow Tandem to record this Mac's screen in System Settings, under Screen Recording"), symbol: "rectangle.dashed.badge.record")
+            return
+        }
+        expectedExtend[device.id] = Date().addingTimeInterval(90)
+        do {
+            try engine.mediaOffer(peer: device.id, kind: .screen, facing: .any, extend: true)
+            model?.showToast(String(localized: "Asked \(device.name) to be a second screen"))
+        } catch {
+            expectedExtend[device.id] = nil
+            model?.showToast(String(localized: "\(device.name) cannot be reached right now"))
+        }
+    }
 
     enum Answer { case allowOnce, always, deny, never }
 

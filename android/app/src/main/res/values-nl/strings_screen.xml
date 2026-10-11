@@ -60,4 +60,6 @@
     <string name="offline_control">De computer moet online zijn om hem te zien en te bedienen</string>
     <string name="offline_trackpad">De computer moet online zijn om dit als trackpad te gebruiken</string>
     <string name="offline_display">De computer moet online zijn om deze telefoon als scherm te gebruiken</string>
+    <string name="display_offer_title">%1$s wil deze telefoon als tweede scherm gebruiken</string>
+    <string name="display_offer_text">Tik om het te openen</string>
 </resources>

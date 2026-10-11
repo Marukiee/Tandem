@@ -202,6 +202,7 @@ pub fn run() {
             history::clip_history_copy,
             live::live_start,
             live::display_start,
+            live::display_offer,
             live::display_stop,
             live::display_state,
             live::live_attach,

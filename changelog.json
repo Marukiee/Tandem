@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.1.82",
+    "date": "2026-10-11",
+    "en": {
+      "title": "Second screen from the computer",
+      "new": [
+        "Second screen: ask a phone or computer to show a screen of this computer with Extend screen to this device, from the Mac or the Linux laptop",
+        "Bluetooth shows in blue on Android, the share sheet has equal tiles and names hidden Quick Share devices"
+      ],
+      "fixed": [
+        "Mac: starting Tailscale no longer closes the app, and screen sharing from the Mac keeps its quality"
+      ]
+    },
+    "nl": {
+      "title": "Tweede scherm vanaf de computer",
+      "new": [
+        "Tweede scherm: vraag een telefoon of computer om een scherm van deze computer te tonen met Scherm uitbreiden naar dit apparaat, vanaf de Mac of de Linux-laptop",
+        "Bluetooth staat in het blauw op Android, het deelmenu heeft even grote tegels en geeft verborgen Quick Share-apparaten een naam"
+      ],
+      "fixed": [
+        "Mac: Tailscale aanzetten sluit de app niet meer af, en scherm delen vanaf de Mac houdt zijn kwaliteit"
+      ]
+    }
+  },
+  {
     "version": "0.1.81",
     "date": "2026-10-11",
     "en": {

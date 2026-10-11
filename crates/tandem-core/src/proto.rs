@@ -117,6 +117,10 @@ pub enum Msg {
         kind: crate::live::MediaKind,
         #[serde(default)]
         facing: crate::live::MediaFacing,
+        /// The offer is for a second screen: the host makes a screen of its own for the viewer instead of showing the one it has.
+        /// Only sent to devices that say `screen.extend.view`, because one that does not know it would show the main screen.
+        #[serde(default)]
+        extend: bool,
     },
     /// The key two devices seal Bluetooth frames with. Made by the one with the lower id and
     /// sent over the authenticated connection, never over the air.

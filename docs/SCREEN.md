@@ -390,6 +390,13 @@ scherm; daarom meldt een computer die het kan de capability `screen.extend`, en 
   beantwoord) en nog zonder invoer: het apparaat kan er niet op klikken, vensters sleep je er met de muis van de laptop naartoe.
 - **Windows als kijker**: een venster van de app dat het scherm vult (`live.rs`, `start` met `extend`); de webview decodeert de video met hardware.
   **Mac als kijker**: het livevenster op het hele scherm (`LiveManager.start(extend:)`).
+- **Vanaf de computer aanvragen (0.1.82)**: ook de computer zelf kan het tweede scherm vragen, niet alleen het apparaat dat het gaat tonen. De knop "Scherm
+  uitbreiden naar dit apparaat" (Mac en Linux) stuurt `MediaOffer { kind: Screen, extend: true }` (`Engine::media_offer(.., extend)`); het apparaat
+  meldt hiervoor `screen.extend.view`, want een apparaat dat de vlag niet kent zou het hoofdscherm tonen. Het apparaat antwoordt met een gewoon verzoek
+  met `extend = true`, en de computer stelt daar geen vraag meer bij: de persoon drukte net op de knop (90 seconden lang, `expectedExtend` op de Mac,
+  `host::expected` op Linux). Android toont het scherm meteen als de app open staat, anders als melding om op te tikken (`TandemService.offerDisplay`),
+  want een app mag het scherm niet zomaar van achteren overnemen. Mac, Windows en Linux openen hun kijker zonder vraag. Gebouwd en getest in de kern
+  (`live_offer.rs`); de knoppen en de melding zijn niet op echte toestellen gezien.
 - **Nog niet**: Windows als host (Windows kan een monitor alleen toevoegen met een stuurprogramma voor een virtueel scherm, dat eenmalig met beheerdersrechten
   moet worden geinstalleerd; daarna kan de opname dat scherm kiezen), en invoer op een scherm dat Linux maakt.
 

@@ -153,7 +153,11 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                             else -> R.string.status_offline
                         },
                     ),
-                    tint = if (device.online) LocalTandemExtraColors.current.online else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = when {
+                        device.online -> LocalTandemExtraColors.current.online
+                        device.ble -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
                 if (nl.markmaaktmedia.tandem.ui.components.rememberViaHotspot(device)) {
                     StatusChip(TandemIcons.Hotspot, stringResource(R.string.route_hotspot_long), tint = MaterialTheme.colorScheme.primary)

@@ -192,7 +192,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "camera.view", "audio.play", "pointer.ping", "pointer.ready"] + ScreenHost.shared.capabilities(),
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "audio.play", "pointer.ping", "pointer.ready"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
@@ -569,8 +569,8 @@ final class EngineModel {
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break
 
-        case let .mediaOffered(from, kind, facing):
-            LiveManager.shared.handleOffer(from: from, kind: kind, facing: facing)
+        case let .mediaOffered(from, kind, facing, extend):
+            LiveManager.shared.handleOffer(from: from, kind: kind, facing: facing, extend: extend)
         }
     }
 

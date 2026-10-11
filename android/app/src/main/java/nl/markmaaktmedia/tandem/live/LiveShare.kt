@@ -367,7 +367,7 @@ class LiveShare(
         /** Ready and waiting for the Mac to look. */
         fun arm() {
             val engine = host.engine
-            val offered = runCatching { engine?.mediaOffer(peer, kind, if (kind == TandemMediaKind.CAMERA) facing else TandemMediaFacing.ANY) }.isSuccess && engine != null
+            val offered = runCatching { engine?.mediaOffer(peer, kind, if (kind == TandemMediaKind.CAMERA) facing else TandemMediaFacing.ANY, false) }.isSuccess && engine != null
             if (!offered) {
                 Toast.makeText(app, R.string.live_offer_failed, Toast.LENGTH_LONG).show()
                 teardown(tellMac = false)

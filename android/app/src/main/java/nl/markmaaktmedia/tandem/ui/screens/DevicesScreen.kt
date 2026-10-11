@@ -241,7 +241,7 @@ fun DeviceCard(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(device.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    PresenceDot(device.online)
+                    PresenceDot(device.online, bluetooth = device.ble)
                     val route = device.route
                     Text(
                         if (device.online) {
@@ -324,7 +324,7 @@ private fun CompactDeviceCard(
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(device.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PresenceDot(device.online)
+                PresenceDot(device.online, bluetooth = device.ble)
                 Text(
                     when {
                         device.online -> stringResource(R.string.status_online)
@@ -333,7 +333,7 @@ private fun CompactDeviceCard(
                         else -> stringResource(R.string.status_offline)
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (!device.online && device.ble) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                 )
             }

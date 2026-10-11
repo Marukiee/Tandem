@@ -439,11 +439,17 @@ fn monitor_pixels(app: &AppHandle) -> (u32, u32) {
 /// this app that fills the screen (its webview decodes video in hardware); elsewhere a GStreamer window does.
 #[tauri::command]
 pub async fn display_start(app: AppHandle, id: String, name: String, mac: Option<bool>) -> Reply<String> {
+    display_open(&app, id, name, mac.unwrap_or(false))
+}
+
+/// What `display_start` does, also for a computer whose person asked this one to be a second screen (`TandemEvent::MediaOffered`).
+pub fn display_open(app: &AppHandle, id: String, name: String, mac: bool) -> Reply<String> {
+    let app = app.clone();
     if cfg!(windows) {
         let session = start(&app, id, false, TandemMediaFacing::Any, name, true, true)?;
         if let Some(s) = SESSIONS.lock().unwrap().get_mut(&session) {
             s.computer = true;
-            s.mac = mac.unwrap_or(false);
+            s.mac = mac;
         }
         return Ok(session.to_string());
     }
@@ -484,6 +490,20 @@ pub async fn display_start(app: AppHandle, id: String, name: String, mac: Option
         },
     );
     Ok(session.to_string())
+}
+
+/// Asks another device to be a second screen of this computer: this one makes the screen, that one is told to show it.
+#[tauri::command]
+pub fn display_offer(app: AppHandle, id: String) -> Reply<()> {
+    #[cfg(feature = "screen-host")]
+    {
+        crate::host::offer_extend(&app, &id)
+    }
+    #[cfg(not(feature = "screen-host"))]
+    {
+        let _ = (app, id);
+        Err("this computer cannot make a screen".to_string())
+    }
 }
 
 /// Ends every second screen that is shown here.

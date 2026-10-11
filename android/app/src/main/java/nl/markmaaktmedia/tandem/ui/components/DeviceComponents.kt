@@ -280,9 +280,14 @@ fun DeviceIconPicker(
 
 /** A dot that breathes a few times when it shows up online, and then rests. */
 @Composable
-fun PresenceDot(online: Boolean, modifier: Modifier = Modifier) {
+fun PresenceDot(online: Boolean, modifier: Modifier = Modifier, bluetooth: Boolean = false) {
     val color by animateColorAsState(
-        if (online) LocalTandemExtraColors.current.online else MaterialTheme.colorScheme.outline,
+        when {
+            online -> LocalTandemExtraColors.current.online
+            // Reached over Bluetooth only: blue and not grey, so it reads as a link that is there, and which one.
+            bluetooth -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.outline
+        },
         TandemMotion.colourSpec(), label = "presence",
     )
     Box(modifier.size(14.dp), contentAlignment = Alignment.Center) {

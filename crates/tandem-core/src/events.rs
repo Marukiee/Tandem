@@ -86,7 +86,7 @@ pub enum Event {
     MediaBitrate { peer: DeviceId, session: u64, bits_per_second: u32 },
     /// The other device is ready to show its screen or camera and asks this one to look (`Engine::media_offer`). Answer
     /// with `media_request` if the person wants to see it.
-    MediaOffered { from: DeviceId, kind: crate::live::MediaKind, facing: crate::live::MediaFacing },
+    MediaOffered { from: DeviceId, kind: crate::live::MediaKind, facing: crate::live::MediaFacing, extend: bool },
     /// The pointer goes over or comes back (see `pointer_share`).
     PointerShare { from: DeviceId, msg: crate::pointer_share::PointerShareMsg },
 }

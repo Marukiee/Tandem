@@ -72,6 +72,8 @@ fn text(lang: &str, key: &str) -> &'static str {
         ("nl", "host_ask_title") => "{0} wil je scherm zien",
         (_, "host_ask_title") => "{0} wants to see your screen",
         ("nl", "host_ask_extend_title") => "{0} wil een scherm van je computer gebruiken",
+        ("nl", "extend_unavailable") => "Deze computer kan geen scherm voor een ander apparaat maken. Dat kan nu alleen onder Wayland, op een bureaublad dat het aanbiedt.",
+        (_, "extend_unavailable") => "This computer cannot make a screen for another device. For now that works only under Wayland, on a desktop that offers it.",
         (_, "host_ask_extend_title") => "{0} wants to use a screen of your computer",
         ("nl", "host_ask_extend") => "Er komt een extra scherm bij op je computer, dat op dat apparaat wordt getoond. Je sleept er vensters naartoe met je muis. Het stopt als dat apparaat stopt.",
         (_, "host_ask_extend") => "An extra screen is added to your computer and shown on that device. You move windows to it with your mouse. It stops when that device stops.",
