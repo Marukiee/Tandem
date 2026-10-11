@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -127,14 +129,21 @@ fun SharePickerSheet(
                             )
                         }
                     } else {
-                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp), maxItemsInEachRow = 2) {
-                            devices.forEach { device ->
-                                DeviceTile(
-                                    device = device,
-                                    selected = device.id in selected,
-                                    onClick = { if (device.online) selected = if (device.id in selected) selected - device.id else selected + device.id },
-                                    modifier = Modifier.weight(1f),
-                                )
+                        // Two to a row, every tile the same size: a last tile on its own keeps half the width, and the tiles of a
+                        // row are as high as the highest one.
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            devices.chunked(2).forEach { pair ->
+                                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    pair.forEach { device ->
+                                        DeviceTile(
+                                            device = device,
+                                            selected = device.id in selected,
+                                            onClick = { if (device.online) selected = if (device.id in selected) selected - device.id else selected + device.id },
+                                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                                        )
+                                    }
+                                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                                }
                             }
                         }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -245,10 +254,8 @@ private fun DeviceTile(device: TandemDevice, selected: Boolean, onClick: () -> U
         if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
         TandemMotion.colourSpec(), label = "tile",
     )
-    val scale by animateFloatAsState(if (selected) 1f else 0.98f, TandemMotion.springy(), label = "tileScale")
     Column(
         modifier
-            .scale(scale)
             .clip(SquircleShape(26.dp))
             .background(container)
             .bouncyClickable(enabled = device.online, onClick = onClick)
@@ -263,7 +270,8 @@ private fun DeviceTile(device: TandemDevice, selected: Boolean, onClick: () -> U
             }
         }
         Text(device.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, color = if (device.online) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // A fixed height, so the battery badge of one device does not make its tile taller than the one next to it.
+        Row(Modifier.height(26.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             PresenceDot(device.online)
             Text(
                 stringResource(if (device.online) R.string.status_online else R.string.status_offline),

@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.AndroidFiles
 import uniffi.tandem_core.TandemQsFile
 import uniffi.tandem_core.TandemQsText
@@ -241,7 +242,11 @@ class QuickShareHost(
     // ---- What the service says -----------------------------------------------------------------------------------------------
 
     override fun peerFound(peer: TandemQsPeer) {
-        val found = Peer(peer.id, peer.name, peer.kind)
+        // A device that is visible to its contacts only does not send its name along, so the tile says what it is instead of being blank.
+        val name = peer.name.ifBlank {
+            app.getString(if (peer.kind == TandemQsKind.PHONE) R.string.quickshare_hidden_phone else R.string.quickshare_hidden_computer)
+        }
+        val found = Peer(peer.id, name, peer.kind)
         _peers.update { list -> list.filterNot { it.id == found.id } + found }
     }
 
