@@ -243,6 +243,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                     nl.markmaaktmedia.tandem.ui.components.ControlRow(
                         row++, controlRows, TandemIcons.Mouse, stringResource(R.string.tile_trackpad), stringResource(R.string.trackpad_row_sub),
                         ready = device.online, onClick = { onRemote(id) }, modifier = Modifier.routeBounds(routeKey(Route.Remote(id))),
+                        whyNot = R.string.offline_trackpad,
                     )
                     nl.markmaaktmedia.tandem.ui.components.ControlComputerRow(
                         row++, controlRows, device, { onScreen(id) }, Modifier.routeBounds(routeKey(Route.Screen(id))),
@@ -251,6 +252,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                         nl.markmaaktmedia.tandem.ui.components.ControlRow(
                             row++, controlRows, TandemIcons.Desktop, stringResource(R.string.tile_display), stringResource(R.string.display_row_sub),
                             ready = device.online, onClick = { onDisplay(id) }, modifier = Modifier.routeBounds(routeKey(Route.Display(id))),
+                            whyNot = R.string.offline_display,
                         )
                     }
                     nl.markmaaktmedia.tandem.ui.components.TerminalRow(row++, controlRows, device, { onTerminal(id) })

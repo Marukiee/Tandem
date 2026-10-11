@@ -11,11 +11,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.annotation.StringRes
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemDevice
@@ -28,6 +30,7 @@ import uniffi.tandem_core.TandemPlatform
 @Composable
 fun ControlComputerRow(index: Int, total: Int, device: TandemDevice, onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
     val mac = device.platform == TandemPlatform.MAC_OS
     val hosts = "screen.host" in device.caps
     val controls = "screen.control" in device.caps
@@ -41,7 +44,7 @@ fun ControlComputerRow(index: Int, total: Int, device: TandemDevice, onOpen: () 
             else -> R.string.control_sub_unavailable
         },
     )
-    GroupedRow(index, total, modifier = modifier, onClick = if (ready) onOpen else null) {
+    GroupedRow(index, total, modifier = modifier, onClick = if (ready) onOpen else offlineHint(context, device.online, R.string.offline_control)) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -90,9 +93,11 @@ fun ControlRow(
     ready: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    @StringRes whyNot: Int? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
-    GroupedRow(index, total, modifier = modifier, onClick = if (ready) onClick else null) {
+    val context = LocalContext.current
+    GroupedRow(index, total, modifier = modifier, onClick = if (ready) onClick else whyNot?.let { offlineHint(context, false, it) }) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -111,3 +116,7 @@ fun ControlRow(
         }
     }
 }
+
+/** What a grey row says when it is tapped while the computer is not there, as a toast and not as a line under the row. */
+fun offlineHint(context: android.content.Context, online: Boolean, @StringRes text: Int): (() -> Unit)? =
+    if (online) null else { { android.widget.Toast.makeText(context, text, android.widget.Toast.LENGTH_SHORT).show() } }

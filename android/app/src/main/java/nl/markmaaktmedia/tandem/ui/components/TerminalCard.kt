@@ -85,7 +85,7 @@ fun TerminalRow(index: Int, total: Int, device: TandemDevice, onOpen: () -> Unit
             else -> R.string.terminal_why_linux
         },
     )
-    GroupedRow(index, total, modifier = modifier, onClick = if (ready) onOpen else null) {
+    GroupedRow(index, total, modifier = modifier, onClick = if (ready) onOpen else offlineHint(context, device.online, R.string.terminal_why_offline)) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -103,7 +103,7 @@ fun TerminalRow(index: Int, total: Int, device: TandemDevice, onOpen: () -> Unit
             if (ready) Icon(TandemIcons.ChevronRight, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
         // What is missing, once it was looked for (or when the computer is not there at all).
-        if (!ready && (checked || !device.online)) {
+        if (!ready && device.online && checked) {
             Text(
                 reason,
                 style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
