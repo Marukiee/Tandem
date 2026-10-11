@@ -6,6 +6,7 @@
       "title": "Second screen from the computer",
       "new": [
         "Second screen: ask a phone or computer to show a screen of this computer with Extend screen to this device, from the Mac or the Linux laptop",
+        "Second screen from the Linux laptop: touch and type on the phone to use it (needs Wayland and one approval on the laptop)",
         "Bluetooth shows in blue on Android, the share sheet has equal tiles and names hidden Quick Share devices"
       ],
       "fixed": [
@@ -16,6 +17,7 @@
       "title": "Tweede scherm vanaf de computer",
       "new": [
         "Tweede scherm: vraag een telefoon of computer om een scherm van deze computer te tonen met Scherm uitbreiden naar dit apparaat, vanaf de Mac of de Linux-laptop",
+        "Tweede scherm vanaf de Linux-laptop: raak aan en typ op de telefoon om het te bedienen (vraagt Wayland en een keer goedkeuren op de laptop)",
         "Bluetooth staat in het blauw op Android, het deelmenu heeft even grote tegels en geeft verborgen Quick Share-apparaten een naam"
       ],
       "fixed": [
