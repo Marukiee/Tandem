@@ -58,12 +58,32 @@ final class TailscaleAuto {
         process.standardError = pipe
         process.standardInput = FileHandle.nullDevice
         do { try process.run() } catch { return nil }
+        // What the tool prints is read while it runs: a tailnet with many devices makes `status --json` longer than the pipe holds, and a tool
+        // whose output nobody reads waits for ever, until the time limit below.
+        let collected = Collected()
+        let reading = DispatchGroup()
+        reading.enter()
+        DispatchQueue.global(qos: .utility).async {
+            collected.set(pipe.fileHandleForReading.readDataToEndOfFile())
+            reading.leave()
+        }
         // A time limit: a sign-in that is asked for must not keep this waiting for ever.
         let deadline = Date().addingTimeInterval(20)
         while process.isRunning, Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
-        if process.isRunning { process.terminate() }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        return (process.terminationStatus == 0, String(decoding: data, as: UTF8.self))
+        if process.isRunning {
+            process.terminate()
+            // `terminate` only asks. Asking for the exit status of a program that has not stopped yet is an exception, and it ended this app.
+            process.waitUntilExit()
+        }
+        _ = reading.wait(timeout: .now() + 2)
+        return (process.terminationStatus == 0, String(decoding: collected.get(), as: UTF8.self))
+    }
+
+    private final class Collected: @unchecked Sendable {
+        private let lock = NSLock()
+        private var data = Data()
+        func set(_ value: Data) { lock.lock(); data = value; lock.unlock() }
+        func get() -> Data { lock.lock(); defer { lock.unlock() }; return data }
     }
 
     /// What `tailscale status --json` says about the state of Tailscale.
