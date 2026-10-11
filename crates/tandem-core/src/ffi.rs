@@ -1351,6 +1351,12 @@ impl TandemEngine {
         DeviceId::parse(&id).map(|id| self.engine.ble_ready(&id)).unwrap_or(false)
     }
 
+    /// Whether this computer is the one that looks for `id` over Bluetooth and connects to it, when both are computers: the one with the
+    /// lower id, which is also the one that makes the key. The other advertises and waits, so there is one link and not two.
+    pub fn ble_is_central_for(&self, id: String) -> bool {
+        DeviceId::parse(&id).map(|id| self.engine.id() < id).unwrap_or(false)
+    }
+
     /// The first writes to send on a new link, so the other end learns who this is.
     pub fn ble_hello(&self, id: String, chunk_size: u32) -> Vec<Vec<u8>> {
         DeviceId::parse(&id).map(|id| self.engine.ble_hello(&id, chunk_size as usize)).unwrap_or_default()

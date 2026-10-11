@@ -100,9 +100,12 @@ const routeText = { lan: "local_network", tailnet: "tailscale", other: "internet
 /** What is known of how this device is connected, as small labels under its name. */
 export function deviceChips(d) {
   const chips = [];
+  // Reached over Bluetooth only: blue and not grey, so it reads as a link that is there, and which one.
   chips.push(d.online
     ? html`<${Chip} icon="circle-check" tone="ok">${t("connected")}<//>`
-    : html`<${Chip} icon="cloud-off">${t("not_connected")}<//>`);
+    : d.ble
+      ? html`<${Chip} icon="bluetooth" tone="accent">${t("over_bluetooth")}<//>`
+      : html`<${Chip} icon="cloud-off">${t("not_connected")}<//>`);
   if (!d.online) return chips;
   if (d.route) chips.push(html`<${Chip} icon=${d.route === "lan" ? "wifi" : "link"}>${t(routeText[d.route])}<//>`);
   if (d.rttMs != null) chips.push(html`<${Chip}>${d.rttMs} ms<//>`);

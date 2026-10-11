@@ -4,6 +4,7 @@
 
 mod arrange;
 mod ask;
+mod bluetooth;
 mod browse;
 mod debugshot;
 mod capture;

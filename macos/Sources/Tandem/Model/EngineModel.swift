@@ -88,6 +88,9 @@ final class EngineModel {
     @ObservationIgnored private var toastTask: Task<Void, Never>?
     @ObservationIgnored let hotspot = HotspotCoordinator()
     @ObservationIgnored let bleMessenger = BleMessenger()
+    /// Waits for other computers over Bluetooth, and looks for them: one `BleMessenger` for each computer that this Mac is the one to connect to.
+    @ObservationIgnored let bleHub = BlePeripheralHub()
+    @ObservationIgnored private var bleComputers: [String: BleMessenger] = [:]
     @ObservationIgnored private let outputMute = OutputMuteWatcher()
 
     // Music: what the phones play (with the time it was said, to count on from), their covers, and
@@ -192,7 +195,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "audio.play", "pointer.ping", "pointer.ready"] + ScreenHost.shared.capabilities(),
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "audio.play", "pointer.ping", "pointer.ready"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
@@ -1192,6 +1195,7 @@ final class EngineModel {
         bleWatch?.cancel()
         bleWatch = Task { @MainActor [weak self] in
             var lastOffline: String?
+            var lastComputers: Set<String> = []
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(3))
                 guard let self, let engine = self.engine else { continue }
@@ -1205,7 +1209,26 @@ final class EngineModel {
                     canLink: messages && stable.map { engine.bleReady(id: $0) } == true,
                     engine: engine
                 )
-                if stable == nil, !self.bleNearby.isEmpty { self.bleNearby.removeAll() }
+                // Other computers that are out of reach on the network and say they take messages over Bluetooth. The one with the lower
+                // id looks for the other (it also made the key), so a pair has one link and not two.
+                let away = looking ? Set(self.devices.filter { $0.platform != .android && $0.caps.contains("ble.link") && !$0.online }.map(\.id)) : []
+                let steady = away.intersection(lastComputers)
+                let toFind = steady.filter { engine.bleIsCentralFor(id: $0) }
+                for id in toFind {
+                    let messenger = self.bleComputers[id] ?? BleMessenger()
+                    messenger.onNearby = self.bleMessenger.onNearby
+                    self.bleComputers[id] = messenger
+                    messenger.want(phoneId: id, canLink: messages && engine.bleReady(id: id), engine: engine)
+                }
+                for (id, messenger) in self.bleComputers where !toFind.contains(id) {
+                    messenger.want(phoneId: nil, canLink: false, engine: engine)
+                    self.bleComputers[id] = nil
+                    self.bleNearby.remove(id)
+                }
+                // Waiting for the ones that look for this Mac, as long as one of them is out of reach.
+                self.bleHub.setEnabled(messages && steady.contains { !engine.bleIsCentralFor(id: $0) }, engine: engine)
+                lastComputers = away
+                if stable == nil, !self.bleNearby.isEmpty { self.bleNearby = self.bleNearby.filter { toFind.contains($0) } }
                 lastOffline = candidate
             }
         }

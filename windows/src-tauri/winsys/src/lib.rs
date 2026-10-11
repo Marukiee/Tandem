@@ -84,6 +84,8 @@ mod imp;
 #[cfg(target_os = "linux")]
 mod grabber;
 #[cfg(target_os = "linux")]
+pub mod ble;
+#[cfg(target_os = "linux")]
 mod lid;
 #[cfg(target_os = "linux")]
 mod mpris;

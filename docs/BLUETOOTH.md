@@ -70,3 +70,25 @@ message id throws away a half-finished older one.
 
 The sealing, chunking, replay refusal and key exchange are covered by the core's tests. The GATT
 and CoreBluetooth code has only been compiled: it has not run between a phone and a Mac.
+
+## Between computers (0.1.82)
+
+A phone is the one that waits, as above. Two computers (Mac and Linux so far; Windows has no Bluetooth code yet) do the same with
+each other, and a Linux computer also looks for a phone like the Mac does. Of two computers the one with the **lower id looks and
+connects**, the other advertises the service and waits: the lower id is also the one that makes the key (`Msg::BleKey`), so there is one
+link and not two. The core has `ble_is_central_for(id)` for it. A computer that can take part says `ble.link`, so nobody looks for an
+older version that does not wait.
+
+- **Mac**: `BlePeripheralHub` (CBPeripheralManager) serves the service and advertises it, `BleMessenger` looks (one for each computer that
+  this Mac is the one to connect to, started by `startBleWatch` once the computer has been out of reach for two looks in a row).
+- **Linux**: `winsys/src/ble.rs` talks to BlueZ on the system bus (zbus): it scans with a filter on the service, connects, switches on
+  the notifications of `msg_out` and writes to `msg_in`; and it serves the same service as a GATT application with an advertisement.
+  `src/bluetooth.rs` decides when, like the Mac does, and the setting "Messages over Bluetooth" turns it off.
+- **No tag from a computer.** CoreBluetooth cannot put service data in an advertisement, and BlueZ has no room for it next to the service
+  (31 bytes), so a computer advertises only the service. The one that looks takes it for a candidate after five seconds and believes it
+  only when a frame from the right device opens; one that does not is left alone for ten minutes. A phone still has its tag.
+- A notification goes to everybody who switched them on (BlueZ has no way to aim one); frames are sealed for one device, so the others
+  cannot open them and drop them.
+
+Not tested on hardware: none of this has run between two real computers. The core's tests cover the sealing and the roles, the BlueZ
+helpers have tests, and the Mac and Linux code compile; a link between a Mac and a Linux laptop has not been seen.

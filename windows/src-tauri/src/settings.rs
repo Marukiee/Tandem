@@ -48,6 +48,8 @@ pub struct Settings {
     pub keep_when_lid_closed: bool,
     /// Turn Tailscale on by itself when a device cannot be reached on this network and Tailscale would reach it.
     pub auto_tailscale: bool,
+    /// Messages over Bluetooth with devices that cannot be reached on the network (clipboard, notifications), where this computer can.
+    pub ble_messages: bool,
     /// Keep a list of what was copied (see `history.rs`), how many texts, and for how many days.
     pub clip_history: bool,
     pub clip_limit: u32,
@@ -76,6 +78,7 @@ impl Default for Settings {
             phone_sound: true,
             keep_when_lid_closed: false,
             auto_tailscale: true,
+            ble_messages: true,
             clip_history: true,
             clip_limit: 250,
             clip_days: 30,

@@ -106,6 +106,7 @@ button { font: inherit; color: inherit; }
 .row .name { font-weight: 600; }
 .row .sub { font-size: 12px; color: var(--text-2); }
 .row .sub.ok { color: var(--ok); }
+.row .sub.ble { color: var(--accent); }
 .badge {
   min-width: 18px;
   height: 18px;

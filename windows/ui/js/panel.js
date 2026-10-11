@@ -19,7 +19,7 @@ function Row({ device }) {
     <${DeviceGlyph} device=${device} size=${34} />
     <div class="grow">
       <div class="name ellipsis">${device.name}</div>
-      <div class=${"sub" + (device.online ? " ok" : "")}>${device.online ? t("connected") : t("not_connected")}${battery ? " · " + battery.level + "%" : ""}</div>
+      <div class=${"sub" + (device.online ? " ok" : device.ble ? " ble" : "")}>${device.online ? t("connected") : device.ble ? t("over_bluetooth") : t("not_connected")}${battery ? " · " + battery.level + "%" : ""}</div>
     </div>
     <button class="ib solid" title=${t("send_files")} disabled=${!device.online} onClick=${send}><${Icon} name="send" size=${16} /></button>
     <button class="ib solid" title=${t("send_clipboard")} disabled=${!device.online} onClick=${clipboard}><${Icon} name="clipboard" size=${16} /></button>

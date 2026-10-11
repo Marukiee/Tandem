@@ -42,6 +42,7 @@ pub fn get_state(app: AppHandle, state: State<'_, AppState>) -> Value {
         "canShare": capture::can_share(),
         "platform": if cfg!(windows) { "windows" } else { "linux" },
         "canHost": cfg!(feature = "screen-host") && can_host(),
+        "canBluetooth": crate::bluetooth::available(),
         "canExtend": cfg!(feature = "screen-host") && can_extend(),
         "input": input_support(),
         "hasLid": crate::lid::present(),
@@ -371,6 +372,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
             if !v {
                 crate::sound::stop_all();
             }
+        }
+        if let Some(v) = patch["bleMessages"].as_bool() {
+            current.ble_messages = v;
         }
         if let Some(v) = patch["autoTailscale"].as_bool() {
             current.auto_tailscale = v;

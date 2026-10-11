@@ -80,6 +80,7 @@ pub fn start(app: AppHandle) {
                 engine.set_media_host(Arc::new(crate::host::Host::new(app.clone())));
                 log::info!("the engine runs as {} on port {}", engine.name(), engine.port());
                 *state.engine.write().unwrap() = Some(engine);
+                crate::bluetooth::start(&app);
                 events::refresh_devices(&app);
                 let _ = app.emit("engine-ready", ());
             }
@@ -124,6 +125,10 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         // would be handed straight back.
         "pointer.ready".into(),
     ];
+    // Takes messages over Bluetooth from a computer that has no network to this one (the Linux app, where BlueZ is).
+    if settings::get(app).ble_messages && crate::bluetooth::available() {
+        caps.push("ble.link".into());
+    }
     #[cfg(feature = "screen-host")]
     if settings::get(app).screen_host && crate::host::available() {
         caps.push("screen.host".into());

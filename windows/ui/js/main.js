@@ -82,7 +82,7 @@ function Nav() {
         <${DeviceGlyph} device=${d} size=${36} />
         <div class="grow">
           <div class="name ellipsis">${d.name}</div>
-          <div class=${"sub" + (d.online ? " ok" : "")}>${d.online ? t("connected") + (d.rttMs != null ? " · " + d.rttMs + " ms" : "") : t("not_connected")}</div>
+          <div class=${"sub" + (d.online ? " ok" : d.ble ? " ble" : "")}>${d.online ? t("connected") + (d.rttMs != null ? " · " + d.rttMs + " ms" : "") : d.ble ? t("over_bluetooth") : t("not_connected")}</div>
         </div>
         ${battery && html`<span class="small muted" style="display:flex;align-items:center;gap:2px">
           ${battery.charging && html`<${Icon} name="bolt" size=${13} filled=${true} class="ok-text" />`}${battery.level}%</span>`}

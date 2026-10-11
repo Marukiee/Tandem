@@ -32,7 +32,7 @@ function updateFor(kind) {
 }
 
 const state = {
-  ready: true, error: null, self: { id: "me", name: "My Laptop", port: 47820 }, version: "0.1.25", build: "preview", canShare: true, canHost: true, canExtend: new URLSearchParams(location.search).get("platform") === "linux", platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
+  ready: true, error: null, self: { id: "me", name: "My Laptop", port: 47820 }, version: "0.1.25", build: "preview", canShare: true, canHost: true, canBluetooth: true, canExtend: new URLSearchParams(location.search).get("platform") === "linux", platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
   devices,
   transfers: empty ? [] : [
     { id: "1-0-in", peer: "phone", name: "IMG_20261003_141201.jpg", incoming: true, state: "done", done: 4200000, total: 4200000, location: "C:\\Users\\Mark\\Downloads\\Tandem\\IMG_20261003_141201.jpg", updatedAt: now - 60000, startedAt: now - 62000 },

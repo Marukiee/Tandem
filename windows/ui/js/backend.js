@@ -54,6 +54,7 @@ function apply(snapshot) {
     platform: snapshot.platform || "windows",
     canHost: !!snapshot.canHost,
     canExtend: !!snapshot.canExtend,
+    canBluetooth: !!snapshot.canBluetooth,
     hasLid: !!snapshot.hasLid,
     input: snapshot.input || { ok: true, why: "" },
     devices: snapshot.devices,
