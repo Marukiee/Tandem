@@ -72,6 +72,8 @@ fn text(lang: &str, key: &str) -> &'static str {
         ("nl", "host_ask_title") => "{0} wil je scherm zien",
         (_, "host_ask_title") => "{0} wants to see your screen",
         ("nl", "host_ask_extend_title") => "{0} wil een scherm van je computer gebruiken",
+        ("nl", "link_poor") => "Slechte verbinding met {0}, het beeld kan haperen",
+        (_, "link_poor") => "Poor connection to {0}, the picture may stutter",
         ("nl", "extend_unavailable") => "Deze computer kan geen scherm voor een ander apparaat maken. Dat kan nu alleen onder Wayland, op een bureaublad dat het aanbiedt.",
         (_, "extend_unavailable") => "This computer cannot make a screen for another device. For now that works only under Wayland, on a desktop that offers it.",
         (_, "host_ask_extend_title") => "{0} wants to use a screen of your computer",

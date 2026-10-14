@@ -134,6 +134,13 @@ class TandemService : LifecycleService() {
             is TandemEvent.Dial -> calls.dial(event.number)
             is TandemEvent.Hotspot -> hotspot.onEvent(event)
 
+            // The link of a screen that is looked at got poor: said once, over the picture, and nothing when it is good again.
+            is TandemEvent.MediaQuality -> if (event.poor) {
+                val name = graph.host.device(event.peer)?.name ?: getString(R.string.capture_mac_fallback)
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    android.widget.Toast.makeText(this, getString(R.string.link_poor, name), android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
             is TandemEvent.MediaOffered -> if (event.extend && event.kind == TandemMediaKind.SCREEN) offerDisplay(event.from)
             is TandemEvent.CaptureRequested -> postCaptureRequest(event)
             is TandemEvent.CaptureCancelled -> getSystemService(NotificationManager::class.java).cancel(captureNotificationId(event.id.toLong()))

@@ -1014,6 +1014,7 @@ pub enum TandemEvent {
     MediaEnded { peer: String, session: u64, kind: TandemMediaKind, role: TandemMediaRole, reason: TandemMediaEnd },
     /// The bitrate the encoder of a host session should move to.
     MediaBitrate { peer: String, session: u64, bits_per_second: u32 },
+    MediaQuality { peer: String, session: u64, poor: bool },
     /// The other device is ready to show its screen or camera and asks this one to look. Answer with `media_request`.
     MediaOffered { from: String, kind: TandemMediaKind, facing: TandemMediaFacing, extend: bool },
     /// The pointer of the other computer goes over to this one, or comes back.
@@ -1125,6 +1126,7 @@ impl From<Event> for TandemEvent {
                 role: role.into(),
                 reason: reason.into(),
             },
+            Event::MediaQuality { peer, session, poor } => TandemEvent::MediaQuality { peer: peer.to_string(), session, poor },
             Event::MediaBitrate { peer, session, bits_per_second } => {
                 TandemEvent::MediaBitrate { peer: peer.to_string(), session, bits_per_second }
             }

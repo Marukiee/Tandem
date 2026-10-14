@@ -65,6 +65,9 @@ pub struct ViewerState {
     jitter: Jitter,
     last_frame: Option<Instant>,
     last_report: Instant,
+    /// Whether the link is poor, as said to the app, and how many reports in a row said the opposite of that.
+    poor: bool,
+    streak: u32,
     /// Set when the session ends, so the delivery task can say why as its last act.
     pub end_reason: Option<MediaEnd>,
 }
@@ -107,6 +110,8 @@ impl ViewerSession {
                 jitter: Jitter { arrival: None, pts: 0, value_us: 0.0 },
                 last_frame: None,
                 last_report: now,
+                poor: false,
+                streak: 0,
                 end_reason: None,
             }),
             wake: Notify::new(),
@@ -367,6 +372,32 @@ async fn run_delivery(inner: Arc<Inner>, viewer: Arc<ViewerSession>) {
     }
 }
 
+/// Reports in a row that must agree before the app is told that the link got poor, or that it is good again.
+const POOR_AFTER: u32 = 3;
+const GOOD_AFTER: u32 = 5;
+/// A tenth of the frames of a second lost, or this much time for a packet to go there and back.
+const POOR_LOSS: f64 = 0.1;
+const POOR_RTT: Duration = Duration::from_millis(400);
+
+/// Whether this second says the link is poor, kept apart from one bad second: `Some(poor)` only when the answer changes.
+fn judge(st: &mut ViewerState, counters: &Counters, rtt: Duration) -> Option<bool> {
+    let total = counters.frames + counters.lost;
+    let lossy = counters.lost >= 2 && total > 0 && f64::from(counters.lost) / f64::from(total) >= POOR_LOSS;
+    let bad = lossy || rtt >= POOR_RTT;
+    if bad == st.poor {
+        // What this second says is what was already said: nothing to count.
+        st.streak = 0;
+        return None;
+    }
+    st.streak += 1;
+    if st.streak >= if bad { POOR_AFTER } else { GOOD_AFTER } {
+        st.poor = bad;
+        st.streak = 0;
+        return Some(bad);
+    }
+    None
+}
+
 /// The timers of a session: the wait for a missing frame, asking again for a keyframe, and the report every second.
 async fn run_driver(inner: Arc<Inner>, viewer: Arc<ViewerSession>) {
     loop {
@@ -382,6 +413,8 @@ async fn run_driver(inner: Arc<Inner>, viewer: Arc<ViewerSession>) {
             _ = tokio::time::sleep_until(wake_at.into()) => {}
         }
         let now = Instant::now();
+        let rtt = inner.session_of(&viewer.peer).map(|s| s.conn.rtt()).unwrap_or_default();
+        let mut quality = None;
         let (ask, report) = {
             let mut st = viewer.st.lock().unwrap();
             if st.phase != Phase::Active {
@@ -393,6 +426,7 @@ async fn run_driver(inner: Arc<Inner>, viewer: Arc<ViewerSession>) {
                 let interval_ms = now.duration_since(st.last_report).as_millis() as u32;
                 st.last_report = now;
                 let counters = std::mem::take(&mut st.since);
+                quality = judge(&mut st, &counters, rtt);
                 Some(MediaReport {
                     session: viewer.id,
                     interval_ms,
@@ -407,12 +441,61 @@ async fn run_driver(inner: Arc<Inner>, viewer: Arc<ViewerSession>) {
             };
             (ask, report)
         };
+        if let Some(poor) = quality {
+            inner.emit(crate::events::Event::MediaQuality { peer: viewer.peer, session: viewer.id, poor });
+        }
         if ask {
             inner.live_send(viewer.peer, Msg::MediaKeyframe { session: viewer.id });
         }
         if let Some(report) = report {
             debug!(session = viewer.id, frames = report.frames, lost = report.lost, "report");
             inner.live_send(viewer.peer, Msg::MediaReport(report));
+        }
+    }
+}
+
+#[cfg(test)]
+mod quality_tests {
+    use super::*;
+
+    fn state() -> ViewerState {
+        let now = Instant::now();
+        ViewerState {
+            phase: Phase::Active, suspended: None, accept: None, control: false, asm: Assembler::new(now), queue: VecDeque::new(),
+            stats: MediaStats::default(), since: Counters::default(), jitter: Jitter { arrival: None, pts: 0, value_us: 0.0 },
+            last_frame: None, last_report: now, poor: false, streak: 0, end_reason: None,
+        }
+    }
+
+    fn second(frames: u32, lost: u32) -> Counters {
+        Counters { frames, bytes: 0, lost, dropped: 0 }
+    }
+
+    #[test]
+    fn one_bad_second_is_not_a_poor_link_but_three_in_a_row_are_and_five_good_ones_clear_it() {
+        let mut st = state();
+        let fine = Duration::from_millis(20);
+        assert_eq!(judge(&mut st, &second(30, 8), fine), None);
+        assert_eq!(judge(&mut st, &second(30, 0), fine), None);
+        assert_eq!(judge(&mut st, &second(30, 8), fine), None);
+        assert_eq!(judge(&mut st, &second(30, 8), fine), None);
+        assert_eq!(judge(&mut st, &second(30, 8), fine), Some(true));
+        for _ in 0..4 {
+            assert_eq!(judge(&mut st, &second(30, 0), fine), None);
+        }
+        assert_eq!(judge(&mut st, &second(30, 0), fine), Some(false));
+    }
+
+    #[test]
+    fn a_slow_round_trip_is_poor_too_and_a_still_picture_is_not() {
+        let mut st = state();
+        for _ in 0..2 {
+            assert_eq!(judge(&mut st, &second(30, 0), Duration::from_millis(900)), None);
+        }
+        assert_eq!(judge(&mut st, &second(30, 0), Duration::from_millis(900)), Some(true));
+        let mut still = state();
+        for _ in 0..10 {
+            assert_eq!(judge(&mut still, &second(0, 0), Duration::from_millis(10)), None);
         }
     }
 }

@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.84",
+    "date": "2026-10-15",
+    "en": {
+      "title": "Poor connection notice",
+      "new": [
+        "A notice over the picture when the connection to a screen you look at gets poor, on Mac, Android, Linux and Windows"
+      ]
+    },
+    "nl": {
+      "title": "Melding bij slechte verbinding",
+      "new": [
+        "Een melding over het beeld als de verbinding met een scherm waar je naar kijkt slecht wordt, op Mac, Android, Linux en Windows"
+      ]
+    }
+  },
+  {
     "version": "0.1.83",
     "date": "2026-10-14",
     "en": {

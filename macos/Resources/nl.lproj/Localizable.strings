@@ -927,3 +927,5 @@
 "Update Tandem on that device to use it as a second screen" = "Update Tandem op dat apparaat om het als tweede scherm te gebruiken";
 "Adds a screen to this Mac and shows it on that device. Move windows to it with your mouse." = "Voegt een scherm toe aan deze Mac en toont het op dat apparaat. Sleep vensters ernaartoe met je muis.";
 "Asked %@ to be a second screen" = "%@ gevraagd om tweede scherm te zijn";
+"Poor connection to %@, the picture may stutter" = "Slechte verbinding met %@, het beeld kan haperen";
+"that device" = "dat apparaat";

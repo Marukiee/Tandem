@@ -405,6 +405,20 @@ fn start_player(app: &AppHandle, session: u64) -> Option<Player> {
     Some(Player { feed, child: Arc::new(Mutex::new(Some(child))) })
 }
 
+/// The link of a session that is looked at got poor, or is good again: the window of it says so over the picture; a second screen has no window
+/// of this app (Linux), so it is said in the main window.
+pub fn quality(app: &AppHandle, session: u64, poor: bool) {
+    let (label, name, windowed) = match SESSIONS.lock().unwrap().get(&session) {
+        Some(s) => (s.label.clone(), s.name.clone(), !s.display),
+        None => return,
+    };
+    if windowed {
+        let _ = app.emit_to(label, "live-quality", json!({ "poor": poor }));
+    } else if poor {
+        crate::events::say(app, &crate::i18n::t1(app, "link_poor", &name));
+    }
+}
+
 /// Tells the main window which second screens are being shown.
 fn announce_displays(app: &AppHandle) {
     let list: Vec<Value> = SESSIONS

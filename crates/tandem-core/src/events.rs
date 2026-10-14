@@ -84,6 +84,8 @@ pub enum Event {
     },
     /// The bitrate the encoder of a host session should move to.
     MediaBitrate { peer: DeviceId, session: u64, bits_per_second: u32 },
+    /// The link of a session that this device looks at got poor (frames are lost, or a packet takes long), or is good again.
+    MediaQuality { peer: DeviceId, session: u64, poor: bool },
     /// The other device is ready to show its screen or camera and asks this one to look (`Engine::media_offer`). Answer
     /// with `media_request` if the person wants to see it.
     MediaOffered { from: DeviceId, kind: crate::live::MediaKind, facing: crate::live::MediaFacing, extend: bool },

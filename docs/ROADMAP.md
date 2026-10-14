@@ -73,9 +73,10 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   telefoon ziet (GDI laat hem weg, `draw_pointer` in `winsys/src/imp.rs` tekent hem erin); de Mac heeft een knop "Telefoon als uitvoer" bovenaan de
   pagina van een telefoon; het vinkje in de filtermenu's van Android staat achter de tekst; de hotspot-teksten op Android zeggen computer in plaats
   van Mac; de computer bedienen vanaf de telefoon onder Wayland gaat nu door dezelfde sessie als het beeld (een vraag, klikken op de aanraakplek).
-- Gevraagd 2026-10-12, nog niet gedaan (de vraag was het op de lijst te zetten): een melding in beeld als de verbinding slecht is, op elk systeem
-  bij scherm delen, tweede scherm en bediening (hoge vertraging, verlies of een bitrate die nauwelijks nog beeld geeft). De snelheidsregelaar
-  (`live/rate.rs`) en de statistieken (`mediaStats`) weten het al; Android toont `stalled` al als het beeld stilstaat.
+- Melding bij een slechte verbinding (gevraagd 2026-10-12, gebouwd in 0.1.84, nergens gezien): de kern (`judge` in `live/viewer.rs`) zegt
+  `MediaQuality` als drie rapporten van een seconde achter elkaar een tiende van de frames kwijt zijn of een pakket 400 ms of meer duurt, en weer
+  goed na vijf goede. Mac en Android tonen een melding met de naam, het venster van Linux en Windows een pil over het beeld, en een tweede scherm
+  op Linux een bericht in het hoofdvenster. Alleen voor wat deze computer bekijkt; de computer die het beeld maakt krijgt niets te zien.
 - Windows: Bluetooth tussen computers, een scherm voor een ander apparaat maken (stuurprogramma voor een virtueel beeldscherm), en alles nalopen op
   een echte Windows-pc (nooit gedaan, zie docs/PARITY.md).
 - Nog te controleren op echte toestellen: sectie 0.

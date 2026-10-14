@@ -46,5 +46,12 @@ body.live canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; objec
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; gap: 10px;
 }
 .live .help[hidden] { display: none; }
+/* A poor link, over the picture, until it is good again. */
+.live .poor {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); padding: 8px 16px; border-radius: 999px;
+  background: rgba(28, 28, 33, 0.9); color: #ffb454; font: 600 13px/1 var(--font, system-ui); pointer-events: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.live .poor[hidden] { display: none; }
 .live .round[hidden] { display: none; }
 .live .round.off { opacity: 0.5; }

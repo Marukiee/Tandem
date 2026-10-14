@@ -572,6 +572,13 @@ final class EngineModel {
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break
 
+        case let .mediaQuality(peer, _, poor):
+            // Only said when the link got poor: it is good again without a word.
+            if poor {
+                let name = device(peer)?.name ?? String(localized: "that device")
+                FloatingToast.show(String(localized: "Poor connection to \(name), the picture may stutter"), symbol: "wifi.exclamationmark")
+            }
+
         case let .mediaOffered(from, kind, facing, extend):
             LiveManager.shared.handleOffer(from: from, kind: kind, facing: facing, extend: extend)
         }

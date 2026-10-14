@@ -62,4 +62,5 @@
     <string name="offline_display">De computer moet online zijn om deze telefoon als scherm te gebruiken</string>
     <string name="display_offer_title">%1$s wil deze telefoon als tweede scherm gebruiken</string>
     <string name="display_offer_text">Tik om het te openen</string>
+    <string name="link_poor">Slechte verbinding met %1$s, het beeld kan haperen</string>
 </resources>

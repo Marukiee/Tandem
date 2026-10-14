@@ -234,6 +234,11 @@ listen("live-accepted", (accepted) => {
   showControl();
   if (!hasPicture) say(t("live_first_picture"));
 });
+listen("live-quality", ({ poor }) => {
+  const pill = document.getElementById("poor");
+  pill.textContent = t("live_poor");
+  pill.hidden = !poor;
+});
 listen("live-update", (update) => {
   if (typeof update.rotation === "number") phoneRotation = update.rotation;
   if (typeof update.control === "boolean") { controlGranted = update.control; showControl(); }
