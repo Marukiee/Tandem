@@ -19,7 +19,7 @@
     <string name="dev_tone_sub">Speelt twintig seconden een toon af, zoals het geluid van je Mac via deze telefoon zou klinken. Vergrendel de telefoon en luister of hij doorgaat</string>
     <string name="dev_hotspot">Hotspot</string>
     <string name="dev_hotspot_today">500 MB bij vandaag optellen</string>
-    <string name="dev_hotspot_today_sub">Alsof je Mac het via de hotspot gebruikte. Vandaag en deze maand gaan omhoog</string>
+    <string name="dev_hotspot_today_sub">Alsof je computer het via de hotspot gebruikte. Vandaag en deze maand gaan omhoog</string>
     <string name="dev_hotspot_months">De laatste vijf maanden vullen</string>
     <string name="dev_hotspot_months_sub">Zet wat gebruik op een paar dagen van elke maand, om de lijst met maanden en de balken te zien</string>
     <string name="dev_hotspot_open">De hotspotpagina openen</string>

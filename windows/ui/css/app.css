@@ -164,6 +164,8 @@ h2 { font: 600 16px var(--font-display); margin: 6px 2px 0; }
 .btn.accent { background: var(--accent); border-color: transparent; color: #fff; }
 .btn.accent:hover { filter: brightness(1.08); }
 .btn.danger { color: var(--bad); }
+/* Something this button started is going on: it is the one that stops it. */
+.btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .btn[disabled] { opacity: 0.45; pointer-events: none; }
 .btn.small { min-height: 26px; padding: 2px 10px; font-size: 12px; }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--text-2); }

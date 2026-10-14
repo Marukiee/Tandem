@@ -95,6 +95,8 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
     }
 
     var keyboard by rememberSaveable { mutableStateOf(false) }
+    // The pointer speed is within reach of the pad itself: a slider that changes how far the pointer goes for a finger, to try it right there.
+    var speedOpen by rememberSaveable { mutableStateOf(false) }
     val prefs = graph.prefs
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val mouseButtons by prefs.remoteMouse.collectAsState(initial = true)
@@ -217,6 +219,8 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
             onMouse = { scope.launch { prefs.setRemoteMouse(!mouseButtons) } },
             mediaOn = mediaOn,
             onMedia = { scope.launch { prefs.setRemoteMedia(!mediaOn) } },
+            speedOn = speedOpen,
+            onSpeed = { speedOpen = !speedOpen },
         )
 
         // While the left button is held the pad says so where the finger is looking: the edge lights up in the accent, the
@@ -261,6 +265,17 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
 
         // Each block that comes and goes brings its own gap with it, so the gap grows and
         // shrinks with the block and nothing is left standing between two neighbours.
+        AnimatedVisibility(
+            visible = speedOpen,
+            enter = fadeIn(TandemMotion.fadeSpec()) + expandVertically(TandemMotion.sizeSpring(), expandFrom = Alignment.Top),
+            exit = fadeOut(TandemMotion.fadeSpec()) + shrinkVertically(TandemMotion.sizeSpring(), shrinkTowards = Alignment.Top),
+        ) {
+            Column {
+                Spacer(Modifier.height(Gap))
+                PointerSpeed(padSpeed) { scope.launch { prefs.setPadSpeed(it) } }
+            }
+        }
+
         AnimatedVisibility(
             visible = keyboard,
             enter = fadeIn(TandemMotion.fadeSpec()) + expandVertically(TandemMotion.sizeSpring(), expandFrom = Alignment.Top),
@@ -314,10 +329,12 @@ private fun TopBar(
     keyboardOn: Boolean,
     mouseOn: Boolean,
     mediaOn: Boolean,
+    speedOn: Boolean,
     onBack: () -> Unit,
     onKeyboard: () -> Unit,
     onMouse: () -> Unit,
     onMedia: () -> Unit,
+    onSpeed: () -> Unit,
 ) {
     Row(
         Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -344,8 +361,47 @@ private fun TopBar(
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             GroupToggle(TandemIcons.Keyboard, stringResource(R.string.remote_keyboard), keyboardOn, GroupEnd.Start, onKeyboard)
             GroupToggle(TandemIcons.Mouse, stringResource(R.string.remote_mouse_buttons), mouseOn, GroupEnd.Middle, onMouse)
-            GroupToggle(TandemIcons.VolumeUp, stringResource(R.string.remote_media), mediaOn, GroupEnd.End, onMedia)
+            GroupToggle(TandemIcons.VolumeUp, stringResource(R.string.remote_media), mediaOn, GroupEnd.Middle, onMedia)
+            GroupToggle(TandemIcons.Settings, stringResource(R.string.remote_speed), speedOn, GroupEnd.End, onSpeed)
         }
+    }
+}
+
+/** How far the pointer goes for a finger, as a slider under the pad. It is the same value as the one on the page of the trackpad in the settings. */
+@Composable
+private fun PointerSpeed(speed: Int, onCommit: (Int) -> Unit) {
+    val haptics = LocalHapticFeedback.current
+    val range = 30..300
+    val step = 10
+    var moved by remember(speed) { androidx.compose.runtime.mutableFloatStateOf(speed.toFloat()) }
+    var last by remember(speed) { androidx.compose.runtime.mutableFloatStateOf(speed.toFloat()) }
+    fun snap(raw: Float) = ((raw / step).let { kotlin.math.round(it).toInt() } * step).coerceIn(range.first, range.last)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(SquircleShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(stringResource(R.string.remote_speed), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Text(stringResource(R.string.pad_percent, snap(moved)), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        }
+        androidx.compose.material3.Slider(
+            value = moved,
+            onValueChange = {
+                moved = it
+                val now = snap(it).toFloat()
+                if (now != last) {
+                    last = now
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
+                    // The pad follows at once, so a speed can be tried while the finger is still on the slider.
+                    onCommit(snap(it))
+                }
+            },
+            onValueChangeFinished = { haptics.performHapticFeedback(HapticFeedbackType.Confirm) },
+            valueRange = range.first.toFloat()..range.last.toFloat(),
+        )
     }
 }
 

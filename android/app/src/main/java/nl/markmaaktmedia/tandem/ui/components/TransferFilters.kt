@@ -132,7 +132,8 @@ private fun MenuPill(label: String, icon: Painter, active: Boolean, options: Lis
             options.forEachIndexed { index, text ->
                 DropdownMenuItem(
                     text = { Text(text) },
-                    leadingIcon = { if (index == selected) Icon(TandemIcons.Check, null, modifier = Modifier.size(18.dp)) else Box(Modifier.size(18.dp)) },
+                    // The tick stands after the words, like the menus of the system: the words keep their place, and the choice is at the end.
+                    trailingIcon = { if (index == selected) Icon(TandemIcons.Check, null, modifier = Modifier.size(18.dp)) },
                     onClick = {
                         open = false
                         onPick(index)

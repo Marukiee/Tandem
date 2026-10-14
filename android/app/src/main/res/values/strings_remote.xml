@@ -25,4 +25,5 @@
     <string name="remote_key_right">Arrow right</string>
     <string name="remote_key_delete">Delete</string>
     <string name="remote_key_enter">Enter</string>
+    <string name="remote_speed">Pointer speed</string>
 </resources>

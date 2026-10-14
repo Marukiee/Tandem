@@ -28,6 +28,8 @@ const BACKLOG: usize = 90;
 struct Session {
     label: String,
     name: String,
+    /// The device on the other side, so a page can say that its second screen is the one that is shown.
+    peer: String,
     kind: &'static str,
     channel: Option<Channel<InvokeResponseBody>>,
     backlog: Vec<Vec<u8>>,
@@ -305,6 +307,7 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
         facing: if camera { facing } else { TandemMediaFacing::Any },
         extend,
     };
+    let peer = id.clone();
     let session = engine.media_request(id, want).map_err(|e| e.to_string())?;
     let label = format!("live-{session}");
     let lost = Arc::new(AtomicBool::new(false));
@@ -313,6 +316,7 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
         Session {
             label: label.clone(),
             name: name.clone(),
+            peer,
             kind: if camera { "camera" } else { "screen" },
             channel: None,
             backlog: Vec::new(),
@@ -407,8 +411,8 @@ fn announce_displays(app: &AppHandle) {
         .lock()
         .unwrap()
         .iter()
-        .filter(|(_, s)| s.display && s.player.is_some())
-        .map(|(id, s)| json!({ "session": id.to_string(), "name": s.name }))
+        .filter(|(_, s)| (s.display && s.player.is_some()) || s.extended)
+        .map(|(id, s)| json!({ "session": id.to_string(), "name": s.name, "peer": s.peer }))
         .collect();
     let _ = app.emit("display", list);
 }
@@ -420,6 +424,10 @@ fn end_display(app: &AppHandle, session: u64) {
         return;
     }
     drop(removed);
+    // On Windows a second screen is a window of this app, which goes with it.
+    if let Some(window) = app.get_webview_window(&format!("live-{session}")) {
+        let _ = window.destroy();
+    }
     if let Ok(engine) = app.state::<AppState>().engine() {
         let _ = engine.media_stop(session);
     }
@@ -468,12 +476,14 @@ pub fn display_open(app: &AppHandle, id: String, name: String, mac: bool) -> Rep
         facing: TandemMediaFacing::Any,
         extend: true,
     };
+    let peer = id.clone();
     let session = engine.media_request(id, want).map_err(|e| e.to_string())?;
     SESSIONS.lock().unwrap().insert(
         session,
         Session {
             label: format!("display-{session}"),
             name,
+            peer,
             kind: "screen",
             channel: None,
             backlog: Vec::new(),
@@ -506,10 +516,19 @@ pub fn display_offer(app: AppHandle, id: String) -> Reply<()> {
     }
 }
 
+/// Stops the screen that this computer made for one device (see `display_offer`).
+#[tauri::command]
+pub fn display_offer_stop(app: AppHandle, id: String) {
+    #[cfg(feature = "screen-host")]
+    crate::host::stop_peer(&app, &id);
+    #[cfg(not(feature = "screen-host"))]
+    let _ = (app, id);
+}
+
 /// Ends every second screen that is shown here.
 #[tauri::command]
 pub fn display_stop(app: AppHandle) {
-    let shown: Vec<u64> = SESSIONS.lock().unwrap().iter().filter(|(_, s)| s.display).map(|(id, _)| *id).collect();
+    let shown: Vec<u64> = SESSIONS.lock().unwrap().iter().filter(|(_, s)| s.display || s.extended).map(|(id, _)| *id).collect();
     for session in shown {
         end_display(&app, session);
     }
@@ -522,8 +541,8 @@ pub fn display_state() -> Vec<Value> {
         .lock()
         .unwrap()
         .iter()
-        .filter(|(_, s)| s.display && s.player.is_some())
-        .map(|(id, s)| json!({ "session": id.to_string(), "name": s.name }))
+        .filter(|(_, s)| (s.display && s.player.is_some()) || s.extended)
+        .map(|(id, s)| json!({ "session": id.to_string(), "name": s.name, "peer": s.peer }))
         .collect()
 }
 
@@ -622,6 +641,7 @@ pub fn live_keyframe(state: State<'_, AppState>, session: String) {
 pub fn live_stop(app: AppHandle, state: State<'_, AppState>, session: String) {
     let Ok(session) = session_of(&session) else { return };
     SESSIONS.lock().unwrap().remove(&session);
+    announce_displays(&app);
     // The window goes with the session, wherever the stop came from, also when the session was gone already.
     if let Some(window) = app.get_webview_window(&format!("live-{session}")) {
         let _ = window.destroy();

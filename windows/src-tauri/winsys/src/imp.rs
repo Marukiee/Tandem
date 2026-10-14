@@ -496,7 +496,10 @@ unsafe extern "system" fn keyboard_hook(code: i32, wparam: WPARAM, lparam: LPARA
 
 /// Takes pictures of the primary screen, one after the other. GDI is not the quickest way to do it, but it works on every
 /// version of Windows and is quick enough for a screen that is looked at over a network.
-pub struct Grabber;
+pub struct Grabber {
+    /// The pointer of this PC is drawn in the picture. Off for a viewer that has a pointer of its own over the picture, which would see two.
+    cursor: bool,
+}
 
 impl Grabber {
     /// Whether the screen can be shown here: always, on Windows.
@@ -505,21 +508,22 @@ impl Grabber {
     }
 
     pub fn new() -> Option<Grabber> {
-        Some(Grabber)
+        Some(Grabber { cursor: true })
     }
 
     /// The same as `new`: the size is the viewer's to take from the picture.
     pub fn with_limit(_max_width: u32, _max_height: u32) -> Option<Grabber> {
-        Some(Grabber)
+        Some(Grabber { cursor: true })
     }
 
-    /// The same: GDI makes B, G, R, unused, and does not draw the pointer in the picture.
+    /// The same: GDI makes B, G, R, unused. It leaves the pointer out of the picture, so it is drawn in afterwards when it is wanted (a phone
+    /// that looks at this PC has no pointer of its own to show).
     pub fn with_options(options: super::GrabOptions) -> Option<Grabber> {
         // Windows cannot add a monitor of its own (that takes a driver): only the screen that is there.
         if options.virtual_size.is_some() {
             return None;
         }
-        Some(Grabber)
+        Some(Grabber { cursor: options.cursor })
     }
 
     pub fn is_i420(&self) -> bool {
@@ -557,6 +561,9 @@ impl Grabber {
             let bitmap = CreateCompatibleBitmap(screen_dc, w, h);
             let previous = SelectObject(memory, bitmap.into());
             let copied = BitBlt(memory, 0, 0, w, h, Some(screen_dc), 0, 0, SRCCOPY | CAPTUREBLT).is_ok();
+            if copied && self.cursor {
+                draw_pointer(memory);
+            }
             let mut info = BITMAPINFO {
                 bmiHeader: BITMAPINFOHEADER {
                     biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
@@ -583,4 +590,33 @@ impl Grabber {
             (lines == h).then_some((w as u32, h as u32, pixels))
         }
     }
+}
+
+/// Draws the pointer as it is on the screen right now into the picture (GDI copies the screen without it). Nothing when the pointer is
+/// hidden, as it is while a video plays full screen or text is typed.
+unsafe fn draw_pointer(dc: windows::Win32::Graphics::Gdi::HDC) {
+    use windows::Win32::Graphics::Gdi::DeleteObject;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        CURSOR_SHOWING, CURSORINFO, DI_NORMAL, DrawIconEx, GetCursorInfo, GetIconInfo, HICON, ICONINFO,
+    };
+    let mut cursor = CURSORINFO { cbSize: std::mem::size_of::<CURSORINFO>() as u32, ..Default::default() };
+    if unsafe { GetCursorInfo(&mut cursor) }.is_err() || cursor.flags.0 & CURSOR_SHOWING.0 == 0 {
+        return;
+    }
+    let icon = HICON(cursor.hCursor.0);
+    // The point of the arrow is not the corner of its picture: it is drawn so that the point lands where the pointer is.
+    let (mut hotspot_x, mut hotspot_y) = (0, 0);
+    let mut parts = ICONINFO::default();
+    if unsafe { GetIconInfo(icon, &mut parts) }.is_ok() {
+        hotspot_x = parts.xHotspot as i32;
+        hotspot_y = parts.yHotspot as i32;
+        // The two bitmaps that this makes are the caller's to delete.
+        if !parts.hbmMask.is_invalid() {
+            let _ = unsafe { DeleteObject(parts.hbmMask.into()) };
+        }
+        if !parts.hbmColor.is_invalid() {
+            let _ = unsafe { DeleteObject(parts.hbmColor.into()) };
+        }
+    }
+    let _ = unsafe { DrawIconEx(dc, cursor.ptScreenPos.x - hotspot_x, cursor.ptScreenPos.y - hotspot_y, icon, 0, 0, 0, None, DI_NORMAL) };
 }

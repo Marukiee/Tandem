@@ -1,5 +1,31 @@
 [
   {
+    "version": "0.1.83",
+    "date": "2026-10-14",
+    "en": {
+      "title": "Smaller things",
+      "new": [
+        "Android: a pointer speed slider on the trackpad screen, the pointer shows when you control a Windows PC, and the bar of a second screen goes away by itself",
+        "Mac: Phone as output at the top of the phone's page, and the notice that someone is watching is no longer cut off",
+        "Linux and Windows: the second screen buttons turn into Stop while they run, and controlling Linux from the phone clicks where you touch"
+      ],
+      "better": [
+        "The hotspot texts on Android say computer instead of Mac, and the filter menus put the tick after the words"
+      ]
+    },
+    "nl": {
+      "title": "Kleinere dingen",
+      "new": [
+        "Android: een schuifbalk voor de snelheid van de aanwijzer op het trackpadscherm, de aanwijzer staat in beeld als je een Windows-pc bedient, en de balk van een tweede scherm verdwijnt vanzelf",
+        "Mac: Telefoon als uitvoer bovenaan de pagina van de telefoon, en de melding dat iemand meekijkt wordt niet meer afgesneden",
+        "Linux en Windows: de knoppen voor een tweede scherm worden Stop zolang het loopt, en Linux bedienen vanaf de telefoon klikt waar je aanraakt"
+      ],
+      "better": [
+        "De hotspot-teksten op Android zeggen computer in plaats van Mac, en in de filtermenu's staat het vinkje achter de tekst"
+      ]
+    }
+  },
+  {
     "version": "0.1.82",
     "date": "2026-10-11",
     "en": {

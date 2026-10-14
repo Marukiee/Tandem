@@ -122,7 +122,8 @@ private struct ScreenPromptView: View {
             .frame(width: 420)
             .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
             .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
-            .padding(10)
+            // Room for the whole shadow inside the panel: a shadow that reaches past the edge of the window is cut off in a straight line.
+            .padding(EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28))
         }
     }
 
@@ -181,7 +182,7 @@ private struct ScreenIndicatorView: View {
             .padding(.vertical, 8)
             .glassEffect(.regular, in: .capsule)
             .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
-            .padding(10)
+            .padding(EdgeInsets(top: 12, leading: 24, bottom: 30, trailing: 24))
             .animation(.tandem, value: running.control)
         }
     }

@@ -204,6 +204,7 @@ pub fn run() {
             live::live_start,
             live::display_start,
             live::display_offer,
+            live::display_offer_stop,
             live::display_stop,
             live::display_state,
             live::live_attach,

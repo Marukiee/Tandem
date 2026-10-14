@@ -109,6 +109,8 @@ struct Sharing {
     bitrate: Arc<AtomicU32>,
     peer: String,
     control: bool,
+    /// The screen that is shown is a monitor made for the viewer (a second screen), not the one that is there.
+    extend: bool,
     /// For a monitor made for the viewer: what it touches and types goes to that monitor through this, and not through the general input.
     play: Option<Arc<StreamPlay>>,
 }
@@ -141,8 +143,9 @@ impl StreamPlay {
             TandemMediaInput::PointerAbs { x, y } => {
                 self.input.pointer_to(f64::from(x), f64::from(y));
             }
-            // A place on the monitor is all a touch has; a move by so much has nothing to be added to.
-            TandemMediaInput::PointerRel { .. } => {}
+            TandemMediaInput::PointerRel { dx, dy } => {
+                self.input.motion(f64::from(dx), f64::from(dy));
+            }
             TandemMediaInput::Button { button, down, .. } => {
                 if down {
                     self.buttons.lock().unwrap().insert(button);
@@ -226,7 +229,7 @@ fn announce(app: &AppHandle, sessions: &Mutex<HashMap<u64, Sharing>>) {
         .lock()
         .unwrap()
         .iter()
-        .map(|(session, s)| json!({ "session": session.to_string(), "peer": s.peer, "name": events::device_name(app, &s.peer), "control": s.control }))
+        .map(|(session, s)| json!({ "session": session.to_string(), "peer": s.peer, "name": events::device_name(app, &s.peer), "control": s.control, "extend": s.extend }))
         .collect();
     let _ = app.emit("hosting", list);
 }
@@ -271,14 +274,16 @@ impl Host {
             fps: wanted_fps,
             i420: true,
             virtual_size: request.extend.then(|| extended_size(request.max_width, request.max_height)),
-            input: request.extend && request.control,
+            // On Wayland the screen and the keyboard and pointer are asked for together, which is one question for the person and a click at
+            // the place that was touched. Where that is not possible the general input of this computer is used, as before.
+            input: request.control,
         }) else {
             let _ = engine.media_deny(session, TandemMediaEnd::Unavailable);
             return;
         };
-        // A monitor made for a viewer that also takes what the viewer touches and types: what is shown is then also used from there.
+        // A screen that also takes what the viewer touches and types: what is shown is then also used from there.
         let play = stream_play(&grabber);
-        let control = control || play.is_some();
+        let control = control || (request.control && play.is_some());
         let (source_w, source_h) = grabber.size();
         if source_w < 64 || source_h < 64 {
             let _ = engine.media_deny(session, TandemMediaEnd::Unavailable);
@@ -297,6 +302,7 @@ impl Host {
             bitrate: Arc::new(AtomicU32::new(bitrate)),
             peer: from.clone(),
             control,
+            extend: request.extend,
             play,
         };
         let (stop, keyframe, rate) = (sharing.stop.clone(), sharing.keyframe.clone(), sharing.bitrate.clone());
@@ -421,6 +427,17 @@ impl TandemMediaHost for Host {
 #[tauri::command]
 pub fn host_stop(app: AppHandle) {
     stop_all(&app);
+}
+
+/// Ends what is shown to one device, and leaves the others who look.
+pub fn stop_peer(app: &AppHandle, peer: &str) {
+    if let Ok(engine) = app.state::<AppState>().engine() {
+        for session in engine.media_sessions() {
+            if session.role == tandem_core::ffi::TandemMediaRole::Host && session.peer == peer {
+                let _ = engine.media_stop(session.session);
+            }
+        }
+    }
 }
 
 pub fn stop_all(app: &AppHandle) {

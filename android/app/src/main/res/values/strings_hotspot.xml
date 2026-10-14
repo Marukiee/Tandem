@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="hotspot_channel_request">Hotspot requests</string>
-    <string name="hotspot_channel_request_desc">When your Mac asks for your hotspot and you have to turn it on yourself</string>
-    <string name="hotspot_request_title">Your Mac wants your hotspot</string>
+    <string name="hotspot_channel_request_desc">When your computer asks for your hotspot and you have to turn it on yourself</string>
+    <string name="hotspot_request_title">Your computer wants your hotspot</string>
     <string name="hotspot_request_text">Tap to turn it on</string>
-    <string name="hotspot_in_use_title">Your Mac is using your hotspot</string>
+    <string name="hotspot_in_use_title">Your computer is using your hotspot</string>
     <string name="hotspot_in_use_today">%1$s today</string>
     <string name="hotspot_in_use_session">%1$s this session</string>
     <string name="hotspot_in_use_auto">It turns off by itself after 5 minutes without devices</string>
@@ -24,7 +24,7 @@
     <string name="hotspot_test_sub">Turns it on for 20 seconds</string>
     <string name="hotspot_test_busy">Testing</string>
     <string name="hotspot_test_needs_pref">Turn on the switch above first</string>
-    <string name="hotspot_test_needs_bluetooth">Allow Bluetooth under Permissions, or your Mac cannot reach this phone</string>
+    <string name="hotspot_test_needs_bluetooth">Allow Bluetooth under Permissions, or your computer cannot reach this phone</string>
     <string name="hotspot_test_manual">Tap the notification to turn the hotspot on</string>
     <string name="hotspot_test_ok">The hotspot came on</string>
     <string name="hotspot_test_failed">The hotspot did not come on</string>
@@ -35,7 +35,7 @@
     <string name="hotspot_roaming">Also while roaming</string>
     <string name="hotspot_roaming_sub">Off by default, data abroad can be expensive</string>
     <string name="hotspot_setup">Setup guide</string>
-    <string name="hotspot_setup_sub">Shizuku, Bluetooth and the Mac side, step by step</string>
+    <string name="hotspot_setup_sub">Shizuku, Bluetooth and the computer side, step by step</string>
     <string name="hotspot_test_shizuku_failed">Shizuku could not start it (%1$s). Tap the notification to turn it on.</string>
     <string name="hotspot_last_attempt">Last attempt</string>
     <string name="hotspot_attempt_auto_ok">%1$s, it turned on by itself</string>

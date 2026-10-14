@@ -25,4 +25,5 @@
     <string name="remote_key_right">Pijl rechts</string>
     <string name="remote_key_delete">Wissen</string>
     <string name="remote_key_enter">Enter</string>
+    <string name="remote_speed">Snelheid van de aanwijzer</string>
 </resources>

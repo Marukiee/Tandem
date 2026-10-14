@@ -183,6 +183,9 @@ export function DevicePage({ device }) {
   }).catch(failed);
   const battery = device.status && device.status.battery;
   const hasCap = (cap) => Array.isArray(device.caps) && device.caps.includes(cap);
+  // A second screen that is shown here from this device, and a screen that this computer made for it: each button then says how to stop.
+  const displayOn = state.displays.some((d) => d.peer === device.id);
+  const extendOn = state.hosting.some((h) => h.peer === device.id && h.extend);
   const isComputerEarly = device.platform === "macos" || device.platform === "windows" || device.platform === "linux";
   const show = (kind) => call("live_start", { id: device.id, kind, name: device.name, computer: isComputerEarly, mac: device.platform === "macos" }).catch(failed);
   // A computer that answers on the ssh port can be logged in to from here. The button is grey, with the reason, when it does not.
@@ -232,12 +235,13 @@ export function DevicePage({ device }) {
           <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
         ${isComputer && hasCap("screen.host") && html`<button class="btn" disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => show("screen")}>
           <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
-        ${isComputer && hasCap("screen.extend") && html`<button class="btn" disabled=${!device.online} title=${t("display_tip")} onClick=${() => call("display_start", { id: device.id, name: device.name, mac: device.platform === "macos" }).catch(failed)}>
-          <${Icon} name="device-laptop" size=${17} />${t("display_use")}</button>`}
-        ${(isComputer || device.platform === "android") && html`<button class="btn" disabled=${!device.online || !state.canExtend || !hasCap("screen.extend.view")}
+        ${isComputer && hasCap("screen.extend") && html`<button class=${"btn" + (displayOn ? " on" : "")} disabled=${!device.online && !displayOn} title=${t("display_tip")}
+          onClick=${() => (displayOn ? call("display_stop") : call("display_start", { id: device.id, name: device.name, mac: device.platform === "macos" })).catch(failed)}>
+          <${Icon} name="device-laptop" size=${17} />${displayOn ? t("display_stop_screen") : t("display_use")}</button>`}
+        ${(isComputer || device.platform === "android") && html`<button class=${"btn" + (extendOn ? " on" : "")} disabled=${(!device.online || !state.canExtend || !hasCap("screen.extend.view")) && !extendOn}
           title=${!hasCap("screen.extend.view") ? t("extend_update") : !state.canExtend ? t("extend_cant_here") : t("extend_tip")}
-          onClick=${() => call("display_offer", { id: device.id }).then(() => say(t("extend_asked", device.name))).catch(failed)}>
-          <${Icon} name="device-laptop" size=${17} />${t("extend_to")}</button>`}
+          onClick=${() => (extendOn ? call("display_offer_stop", { id: device.id }) : call("display_offer", { id: device.id }).then(() => say(t("extend_asked", device.name)))).catch(failed)}>
+          <${Icon} name="device-laptop" size=${17} />${extendOn ? t("extend_stop") : t("extend_to")}</button>`}
         ${isComputer && html`<button class="btn" disabled=${!sshReady} title=${sshReady ? t("ssh_title") : sshReason} onClick=${openSsh}>
           <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
         ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>

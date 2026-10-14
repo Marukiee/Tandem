@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="hotspot_channel_request">Hotspotverzoeken</string>
-    <string name="hotspot_channel_request_desc">Als je Mac om je hotspot vraagt en je die zelf moet aanzetten</string>
-    <string name="hotspot_request_title">Je Mac wil je hotspot</string>
+    <string name="hotspot_channel_request_desc">Als je computer om je hotspot vraagt en je die zelf moet aanzetten</string>
+    <string name="hotspot_request_title">Je computer wil je hotspot</string>
     <string name="hotspot_request_text">Tik om hem aan te zetten</string>
-    <string name="hotspot_in_use_title">Je Mac gebruikt je hotspot</string>
+    <string name="hotspot_in_use_title">Je computer gebruikt je hotspot</string>
     <string name="hotspot_in_use_today">%1$s vandaag</string>
     <string name="hotspot_in_use_session">%1$s deze sessie</string>
     <string name="hotspot_in_use_auto">Hij gaat vanzelf uit na 5 minuten zonder apparaten</string>
@@ -24,7 +24,7 @@
     <string name="hotspot_test_sub">Zet hem 20 seconden aan</string>
     <string name="hotspot_test_busy">Bezig met testen</string>
     <string name="hotspot_test_needs_pref">Zet eerst de schakelaar hierboven aan</string>
-    <string name="hotspot_test_needs_bluetooth">Sta Bluetooth toe onder Rechten, anders kan je Mac deze telefoon niet bereiken</string>
+    <string name="hotspot_test_needs_bluetooth">Sta Bluetooth toe onder Rechten, anders kan je computer deze telefoon niet bereiken</string>
     <string name="hotspot_test_manual">Tik op de melding om de hotspot aan te zetten</string>
     <string name="hotspot_test_ok">De hotspot ging aan</string>
     <string name="hotspot_test_failed">De hotspot ging niet aan</string>
@@ -35,7 +35,7 @@
     <string name="hotspot_roaming">Ook in roaming</string>
     <string name="hotspot_roaming_sub">Standaard uit, data in het buitenland kan duur zijn</string>
     <string name="hotspot_setup">Installatiegids</string>
-    <string name="hotspot_setup_sub">Shizuku, Bluetooth en de Mac-kant, stap voor stap</string>
+    <string name="hotspot_setup_sub">Shizuku, Bluetooth en de kant van de computer, stap voor stap</string>
     <string name="hotspot_test_shizuku_failed">Shizuku kon hem niet aanzetten (%1$s). Tik op de melding om hem aan te zetten.</string>
     <string name="hotspot_last_attempt">Laatste poging</string>
     <string name="hotspot_attempt_auto_ok">%1$s, hij ging vanzelf aan</string>

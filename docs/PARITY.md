@@ -35,6 +35,8 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | Zichzelf bijwerken | ja | ja | ja | ja (AppImage) |
 | SSH-terminal naar een computer | ja (JSch en xterm.js, nooit tegen een echte computer geprobeerd) | ja | ja | ja |
 | Hotspot van de telefoon vanaf de computer | bron | ja | nee | nee |
+| Tweede scherm (een computer maakt een scherm voor een ander apparaat, ook aan te vragen vanaf de computer) | kijker (raakt aan = klikken) | host (virtueel beeldscherm) en kijker | kijker, geen host (stuurprogramma nodig) | host onder Wayland (met aanraken, nooit gezien) en kijker |
+| Bluetooth tussen apparaten zonder netwerk (klembord, meldingen) | wacht (telefoon) | wacht en zoekt | nee | wacht en zoekt (BlueZ, nooit tussen twee computers gezien) |
 | Computer wakker maken (Wake on LAN) vanaf de telefoon | ja | doel | doel | doel |
 | Zoek mijn telefoon | bron | ja | ja | ja |
 | Bijwerken | ja | ja | ja | nee (eigen pad) |

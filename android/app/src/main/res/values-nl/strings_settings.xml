@@ -59,7 +59,7 @@
     <string name="settings_kw_perm_bluetooth">bluetooth, apparaten in de buurt, ble, draadloos</string>
     <string name="settings_kw_perm_camera">camera, scannen, qr, koppelcode, qr-code</string>
     <string name="settings_kw_perm_install">apps installeren, onbekende bronnen, bijwerken, apk, sideload</string>
-    <string name="settings_kw_hotspot">tethering, wifi delen, internet, mobiele data, verbinding delen, mac</string>
+    <string name="settings_kw_hotspot">tethering, wifi delen, internet, mobiele data, verbinding delen, mac, computer, windows, laptop</string>
     <string name="settings_kw_hotspot_setup">checklist, instellen, vereisten, klaar, bluetooth, meldingen</string>
     <string name="settings_kw_hotspot_share">hotspot aanzetten, tethering, inschakelen, mac internet, delen, hotspot gebruiken</string>
     <string name="settings_kw_hotspot_roaming">roaming, buitenland, reizen, mobiele data</string>

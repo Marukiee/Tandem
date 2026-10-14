@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
@@ -190,7 +191,9 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
     var showStats by remember { mutableStateOf(false) }
     var dragging by remember { mutableStateOf(false) }
     var barShownAt by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
-    // The bar is always there: after a few quiet seconds it only dims, so it is never a small handle to find at the top of the screen.
+    // The bar of a screen that is looked at stays: after a few quiet seconds it only dims, so it is never a small handle to find at the top of the
+    // screen. On a second screen the top of the picture belongs to the computer (its menu bar, the title bars of its windows), so there the bar goes
+    // away altogether and a swipe down from the top edge, which also brings the bars of the system, brings it back.
     var barVisible by remember { mutableStateOf(true) }
     var barBounds by remember { mutableStateOf(Rect.Zero) }
     var nameBounds by remember { mutableStateOf(Rect.Zero) }
@@ -199,6 +202,9 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
         barShownAt = SystemClock.uptimeMillis()
         barVisible = true
     }
+
+    val systemBarsShown = WindowInsets.statusBars.getTop(density) > 0
+    LaunchedEffect(systemBarsShown) { if (systemBarsShown && extend) touchBar() }
 
     // The bar steps aside after a few seconds, but stays while there is something to read in it or the keyboard is up.
     val settled = state is ViewerState.Streaming && picture && !stalled
@@ -396,7 +402,8 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
         Box(
             Modifier
                 .fillMaxSize()
-                .viewerTouch(gestures) { touchBar() },
+                // On a second screen a touch is a click and nothing else: it does not bring the bar back.
+                .viewerTouch(gestures) { if (!extend) touchBar() },
         )
 
         Overlay(
@@ -411,8 +418,11 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
 
         // The slim bar at the top. It stays: a quiet bar is dimmed, a touch brings it back to full.
         val insets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
-        val barAlpha by androidx.compose.animation.core.animateFloatAsState(if (barVisible) 1f else 0.55f, TandemMotion.fadeSpec(), label = "barAlpha")
-        Box(Modifier.align(Alignment.TopCenter).graphicsLayer { alpha = barAlpha }) {
+        val barAlpha by androidx.compose.animation.core.animateFloatAsState(
+            if (barVisible) 1f else if (extend) 0f else 0.55f, TandemMotion.fadeSpec(), label = "barAlpha",
+        )
+        // Gone for good when it has faded out on a second screen: an invisible bar would still take the touches.
+        if (!extend || barVisible || barAlpha > 0.02f) Box(Modifier.align(Alignment.TopCenter).graphicsLayer { alpha = barAlpha }) {
             ControlBar(
                 name = name,
                 online = online,

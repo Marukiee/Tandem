@@ -60,7 +60,7 @@
     <string name="settings_kw_perm_bluetooth">bluetooth, nearby devices, ble, wireless</string>
     <string name="settings_kw_perm_camera">camera, scan, qr, pairing code, qr code</string>
     <string name="settings_kw_perm_install">install apps, unknown sources, update, apk, sideload</string>
-    <string name="settings_kw_hotspot">tethering, wifi sharing, internet, mobile data, share connection, mac</string>
+    <string name="settings_kw_hotspot">tethering, wifi sharing, internet, mobile data, share connection, mac, computer, windows, laptop</string>
     <string name="settings_kw_hotspot_setup">checklist, setup, requirements, ready, bluetooth, notifications</string>
     <string name="settings_kw_hotspot_share">let my mac use my hotspot, turn on hotspot, tethering, enable, mac internet</string>
     <string name="settings_kw_hotspot_roaming">roaming, abroad, travel, foreign, mobile data</string>

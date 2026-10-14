@@ -66,6 +66,18 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
 - Bluetooth tussen computers (gevraagd 2026-10-11, gebouwd in 0.1.82, nooit op twee echte computers gezien): Mac en Linux wachten en zoeken naar elkaar
   (docs/BLUETOOTH.md, "Between computers"). Windows heeft er nog geen code voor (WinRT: `GattServiceProvider` om te wachten, een watcher om te zoeken).
   Ook open: de status van een computer die alleen over Bluetooth bereikbaar is staat nu blauw op Android, Linux en Windows (Mac had het al).
+- Gevraagd 2026-10-12 tot 2026-10-14, gebouwd in 0.1.83, nergens op echte toestellen gezien: de melding "kijkt mee" op de Mac wordt niet meer afgesneden
+  (de schaduw had geen ruimte in het paneel); op Linux en Windows wordt "Gebruik als tweede scherm" en "Scherm uitbreiden naar dit apparaat" een
+  Stop-knop zolang het loopt; de balk van een tweede scherm op Android verdwijnt vanzelf en komt terug met een veeg van de bovenrand; een
+  schuifbalk voor de snelheid van de aanwijzer in het trackpadscherm van Android; de aanwijzer van een Windows-pc staat in het beeld dat een
+  telefoon ziet (GDI laat hem weg, `draw_pointer` in `winsys/src/imp.rs` tekent hem erin); de Mac heeft een knop "Telefoon als uitvoer" bovenaan de
+  pagina van een telefoon; het vinkje in de filtermenu's van Android staat achter de tekst; de hotspot-teksten op Android zeggen computer in plaats
+  van Mac; de computer bedienen vanaf de telefoon onder Wayland gaat nu door dezelfde sessie als het beeld (een vraag, klikken op de aanraakplek).
+- Gevraagd 2026-10-12, nog niet gedaan (de vraag was het op de lijst te zetten): een melding in beeld als de verbinding slecht is, op elk systeem
+  bij scherm delen, tweede scherm en bediening (hoge vertraging, verlies of een bitrate die nauwelijks nog beeld geeft). De snelheidsregelaar
+  (`live/rate.rs`) en de statistieken (`mediaStats`) weten het al; Android toont `stalled` al als het beeld stilstaat.
+- Windows: Bluetooth tussen computers, een scherm voor een ander apparaat maken (stuurprogramma voor een virtueel beeldscherm), en alles nalopen op
+  een echte Windows-pc (nooit gedaan, zie docs/PARITY.md).
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)

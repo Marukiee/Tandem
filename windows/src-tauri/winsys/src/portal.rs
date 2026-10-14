@@ -350,6 +350,11 @@ impl StreamInput {
         )))
     }
 
+    /// The pointer moves by this much (logical pixels), for a viewer that uses its finger as a trackpad.
+    pub fn motion(&self, dx: f64, dy: f64) -> bool {
+        self.note(pollster::block_on(self.remote.notify_pointer_motion(&self.session, dx, dy, NotifyPointerMotionOptions::default())))
+    }
+
     /// A button of the pointer by its Linux code (0x110 left, 0x111 right, 0x112 middle).
     pub fn button(&self, code: i32, down: bool) -> bool {
         let state = if down { KeyState::Pressed } else { KeyState::Released };
@@ -411,13 +416,14 @@ async fn start_plain(options: &GrabOptions) -> Result<Started, String> {
     Ok(Started { held: Held::Cast { _cast: cast, session }, node, source, remote })
 }
 
-/// A monitor made for the viewer, in the same session as the keyboard and the pointer, so that a touch on the viewer is a click on the
-/// monitor. The desktop asks once for both (and then remembers it).
+/// The screen (the one that is there, or a monitor made for the viewer) in the same session as the keyboard and the pointer, so that a touch
+/// on the viewer is a click on that screen, at the place that was touched. The desktop asks once for both (and then remembers it).
 async fn start_with_input(options: &GrabOptions) -> Result<Started, String> {
+    let made = options.virtual_size.is_some();
     let remote = RemoteDesktop::new().await.map_err(text)?;
     let cast = Screencast::new().await.map_err(text)?;
     let session = remote.create_session(CreateSessionOptions::default()).await.map_err(text)?;
-    let token_file = "portal-display-input.token";
+    let token_file = if made { "portal-display-input.token" } else { "portal-screen-input.token" };
     let token = read_token(token_file);
     // In a session that has both, the answer to be remembered is asked for with the devices, and covers the monitor too.
     remote
@@ -436,7 +442,7 @@ async fn start_with_input(options: &GrabOptions) -> Result<Started, String> {
         &session,
         SelectSourcesOptions::default()
             .set_cursor_mode(if options.cursor { CursorMode::Embedded } else { CursorMode::Hidden })
-            .set_sources(BitFlags::from_flag(SourceType::Virtual))
+            .set_sources(BitFlags::from_flag(if made { SourceType::Virtual } else { SourceType::Monitor }))
             .set_multiple(false),
     )
     .await
@@ -477,7 +483,7 @@ impl WaylandGrabber {
         pollster::block_on(async {
             // With input the monitor and the keyboard and pointer are one session. A desktop that does not do that for a monitor made on
             // the spot still gives the monitor, to look at.
-            let started = if made.is_some() && options.input {
+            let started = if options.input {
                 match start_with_input(&options).await {
                     Ok(started) => started,
                     Err(error) => {

@@ -253,6 +253,16 @@ struct DeviceDetail: View {
                         }
                         .disabled(!device.online)
                         .opacity(device.online ? 1 : 0.5)
+                        // This Mac's sound on the phone, one press from the top, as the button in the menu bar has it. It is the same as picking the
+                        // phone in the sound menu.
+                        let speaking = model.speaker.device == device.id
+                        GlassActionButton(
+                            title: speaking ? "Stop phone output" : "Phone as output",
+                            symbol: speaking ? "speaker.wave.3.fill" : "speaker.wave.2",
+                            prominent: speaking
+                        ) { model.toggleSpeaker(for: device.id) }
+                        .disabled(!device.online && !speaking)
+                        .opacity(device.online || speaking ? 1 : 0.5)
                     }
                     // A computer can be logged in to from here. The button is there and grey, with the reason under it, when it is not set up.
                     if isComputer {
