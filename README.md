@@ -17,25 +17,25 @@ Bedoeld als het alternatief voor KDE Connect voor wie op een Mac zit: dezelfde
 gedachte, maar met een eigen protocol dat snel, betrouwbaar en veilig is, en dat
 ook met Linux blijft werken.
 
-> **Status: in aanbouw.** De Rust-core komt eerst, daarna de Android-app en de
-> Mac-app. Wat hieronder staat is het plan, niet wat er al is. Zodra iets werkt
-> staat het in de changelog van de release.
+> **Status: werkt, en wordt snel uitgebreid.** Android en Mac zijn het meest gebruikt. Windows en Linux zijn
+> experimenteel en op echte toestellen nog weinig gezien. Per versie staat wat er nieuw is in de changelog van de
+> release, en `docs/PARITY.md` zegt per functie wat op welk systeem werkt.
 
-## Wat het gaat doen
+## Wat het doet
 
-- 📤 **Delen met één tik**. Maak een screenshot, tik op delen en al je
-  apparaten staan als doel in het deelmenu, ook als er drie tegelijk verbonden zijn
-- 📋 **Klembord dat meebeweegt**. Tekst, links en afbeeldingen, en wachtwoorden uit
-  een wachtwoordmanager blijven eruit
-- 🔔 **Meldingen op je Mac**, met antwoorden vanaf je bureaublad. Een code uit een
-  sms staat meteen op je klembord
-- 📞 **Oproepen** zien op je Mac, opnemen of weigeren
-- 📶 **Automatische hotspot**. Heeft je Mac geen verbinding, dan zet je telefoon
-  zijn hotspot aan en de Mac meldt dat hij die gebruikt
-- 🖱️ **Telefoon als trackpad, toetsenbord en afstandsbediening**
-- 🔋 **Batterij en status** van je telefoon in de menubalk
-- 🔁 **Bijwerken zonder verwijderen**. De app controleert zelf op updates en
-  installeert ze over de vorige heen
+- 📤 **Delen met één tik**. Maak een screenshot, tik op delen en al je apparaten staan als doel in het deelmenu
+- 📋 **Klembord dat meebeweegt**, met geschiedenis. Wachtwoorden uit een wachtwoordmanager blijven eruit
+- 🔔 **Meldingen van je telefoon op je computer**, met antwoorden vanaf je bureaublad en oproepen opnemen of weigeren
+- 🖥️ **Scherm delen en bedienen** tussen telefoon, Mac, Windows en Linux, zoals een remote desktop
+- 🪟 **Tweede scherm**. Een telefoon of computer wordt een extra scherm voor een andere computer, aan te vragen vanaf beide kanten
+- 🖱️ **Eén muis en toetsenbord over meerdere computers**, met slepen van bestanden over de rand
+- 📱 **Telefoon als trackpad, toetsenbord en afstandsbediening**, met instelbare snelheid
+- 📶 **Automatische hotspot** en **Bluetooth** voor klembord en meldingen als er geen netwerk is
+- 🔊 **Geluid van de telefoon** op de computer en andersom
+- 🖧 **SSH-terminal**, Quick Share, bestanden van je telefoon bekijken, Tailscale als het nodig is
+- 🔁 **Bijwerken zonder verwijderen**. De app controleert zelf op updates
+
+Alles gaat direct tussen je eigen apparaten, versleuteld, zonder account.
 
 ## Installeren
 
