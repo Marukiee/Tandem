@@ -5,7 +5,7 @@ er voor de Mac is moet ook op Windows en Linux werken, en tussen alle systemen o
 andersom), niet alleen telefoon naar computer. Een kruisje betekent dat het er nog niet is, een streepje dat het niet past bij dat systeem.
 
 Betekenis: `ja` gebouwd (en nergens op een echt toestel gezien tenzij er `bekeken` staat), `deels` er is een stuk van, `nee` ontbreekt.
-Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijgewerkt worden.
+Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en moet na elke versie bijgewerkt worden. Van Windows en Linux is bijna niets op een echt toestel gezien.
 
 | Functie | Android | Mac | Windows | Linux |
 | --- | --- | --- | --- | --- |
@@ -23,30 +23,31 @@ Deze tabel is gemaakt vanuit de code van 2026-10-07 en moet na elke versie bijge
 | Invoegen vanaf telefoon (scan, foto) | bron | ja | ja (op het klembord, nooit gezien) | ja (op het klembord, nooit gezien) |
 | Geluid van de telefoon op de computer | bron | ja | ja (nooit gehoord) | ja (nooit gehoord) |
 | Scherm van de computer tonen aan andere apparaten en het laten bedienen (zoals TeamViewer) | kijkt en bedient | ja (host en kijker) | ja (host, GDI en OpenH264, kijker) | ja onder X11 (host, nooit gezien); onder Wayland geeft de portal met GStreamer beeld (op een echte laptop gezien als debugbeeld, delen met een kijker nog niet); kijker ja, het scherm van een Mac gezien in een venster op een echte laptop (0.1.75) |
-| De computer bedienen vanaf de telefoon (trackpad, toetsenbord) | bron | ja | ja | deels (alleen X11) |
+| De computer bedienen vanaf de telefoon (trackpad, toetsenbord, aanraken) | bron | ja | ja | ja: X11, en onder Wayland via een portalsessie met het beeld (0.1.83, nooit gezien) |
 | Een computer bedienen vanaf een andere computer (gedeelde muis) | nee | ja (hoofd en bestuurd) | ja (hoofd en bestuurd) | deels: bestuurd (X11 en Wayland met de RemoteDesktop-portal), hoofd alleen onder Wayland via de InputCapture-portal (nooit gezien), niet onder X11 |
 | Bestanden slepen over de rand bij de gedeelde muis | nee | ja, beide kanten (dropzone aan de rand, bestanden landen in het Finder-venster of op het bureaublad) | ja als bestuurde pc (dropzone, landen op het bureaublad), niet als hoofd | idem als Windows, onder X11 |
 | Een sleep van foto, bestand of tekst gaat mee over de rand (Mac als hoofd), op de plek van de aanwijzer | nee | ja, als hoofd (tekst plakt op de plek, bestanden landen na het loslaten) | ja als bestuurde pc (tekst: klik en plakken) | ja als bestuurde pc (tekst: middelste klik, bestanden op het bureaublad) |
 | De aanwijzer komt direct terug als de verbinding wegvalt of de klep dichtgaat (levensteken, standaard 2 seconden) | nee | ja | ja (hoofd en bestuurd) | ja (bestuurd), klep via instelling |
 | Tailscale gaat vanzelf aan als een apparaat niet bereikbaar is en Tailscale het zou bereiken | ja (melding aan de Tailscale-app) | ja (`tailscale up`) | ja (`tailscale up`) | ja (`tailscale up`, vraagt eenmalig `--operator`) |
 | Meerdere schermen naast de hoofdcomputer, te slepen en op schaal (zoals de weergave-instellingen van een desktop) | nee | ja, als hoofd (`ArrangementEditor`) | ja, als hoofd (`arrange.js`) | ja onder Wayland als hoofd (zelfde `arrange.js`, nooit gezien), niet onder X11 |
-| De telefoon als scherm voor de muis van een Mac (aanwijzer als overlay, tikken via Toegankelijkheid) | ja (`PointerIn`, nooit op een echte telefoon gezien) | als hoofd ja | nee | nee |
-| Muis, toetsen en scherm onder Wayland via de portals van het bureaublad (eenmalige toestemming die wordt onthouden) | n.v.t. | n.v.t. | n.v.t. | ja: invoer gezien (token bewaard), scherm nog niet afgerond |
-| Zichzelf bijwerken | ja | ja | ja | ja (AppImage) |
+| De telefoon als scherm voor de gedeelde muis (aanwijzer als overlay, tikken via Toegankelijkheid) | ja (`PointerIn`, nooit op een echte telefoon gezien) | als hoofd ja | als hoofd ja (`arrange.js`, nooit gezien) | als hoofd ja onder Wayland (nooit gezien) |
+| Muis, toetsen en scherm onder Wayland via de portals van het bureaublad (eenmalige toestemming die wordt onthouden) | n.v.t. | n.v.t. | n.v.t. | invoer gezien (token bewaard); beeld, tweede scherm en bediening in een sessie sinds 0.1.82 en 0.1.83, nooit gezien |
 | SSH-terminal naar een computer | ja (JSch en xterm.js, nooit tegen een echte computer geprobeerd) | ja | ja | ja |
-| Hotspot van de telefoon vanaf de computer | bron | ja | nee | nee |
+| Hotspot van de telefoon vanaf de computer | bron | ja | nee (heeft geen Bluetooth-code) | nee (Bluetooth is er sinds 0.1.82, het verzoek niet) |
 | Tweede scherm (een computer maakt een scherm voor een ander apparaat, ook aan te vragen vanaf de computer) | kijker (raakt aan = klikken) | host (virtueel beeldscherm) en kijker | kijker, geen host (stuurprogramma nodig) | host onder Wayland (met aanraken, nooit gezien) en kijker |
 | Bluetooth tussen apparaten zonder netwerk (klembord, meldingen) | wacht (telefoon) | wacht en zoekt | nee | wacht en zoekt (BlueZ, nooit tussen twee computers gezien) |
 | Computer wakker maken (Wake on LAN) vanaf de telefoon | ja | doel | doel | doel |
 | Zoek mijn telefoon | bron | ja | ja | ja |
-| Bijwerken | ja | ja | ja | nee (eigen pad) |
+| Bijwerken | ja | ja | ja | ja als AppImage; een pakket van de distributie werkt de pakketbeheerder bij |
 
-## Wat tussen computers onderling nog moet
+## Wat er nog mist
 
-- Linux en Windows moeten dezelfde functies als de Mac kunnen **aanbieden**, niet alleen tonen: eigen mappen (host), eigen scherm
-  delen (Windows.Graphics.Capture, PipeWire), geluid delen, Invoegen vanaf telefoon als bron voor een andere computer.
-- Linux onder Wayland kan zijn scherm nog niet tonen (de portal van het bureaublad vraagt om PipeWire). Linux: invoer onder Wayland (libei), de gedeelde muis als hoofd onder X11 (`XInput2`); onder Wayland is hij er via de InputCapture-portal maar nooit gezien.
-- Bestanden slepen over de rand: nog nergens.
+Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een echte test:
+
+- **Windows**: een scherm voor een ander apparaat maken (een stuurprogramma voor een virtueel beeldscherm, eenmalig met beheerdersrechten), Bluetooth
+  tussen apparaten (WinRT), het hotspotverzoek aan de telefoon. En alles nalopen op een echte Windows-pc: dat is nooit gedaan.
+- **Linux**: het hotspotverzoek aan de telefoon (de Bluetooth-kant is er), de gedeelde muis als hoofd onder X11 (`XInput2` met grabs), en
+  Bluetooth, tweede scherm, bediening onder Wayland en de melding bij slechte verbinding nalopen op de echte laptop.
+- **Overal**: Windows en Linux moeten dezelfde functies als de Mac kunnen aanbieden, niet alleen tonen: geluid van een computer naar een andere
+  computer en Invoegen vanaf telefoon als bron voor een andere computer.
 - De Mac-functies die aan macOS zelf vastzitten horen er niet bij: het menu Diensten, het Controlecentrum, het AirDrop-knopje.
-
-Alles op Linux en Windows moet na het regelen van toegang tot de Linux-pc van Mark nagelopen worden, en op een echte Windows-pc.
