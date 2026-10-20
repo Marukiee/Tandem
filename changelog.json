@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.86",
+    "date": "2026-10-20",
+    "en": {
+      "title": "Cancel transfers",
+      "new": [
+        "Cancel a file transfer while it runs, on Android, Mac, Linux and Windows, from either side",
+        "Android: photos that arrive together are one notification that counts up"
+      ]
+    },
+    "nl": {
+      "title": "Overdrachten annuleren",
+      "new": [
+        "Een bestandsoverdracht annuleren terwijl hij loopt, op Android, Mac, Linux en Windows, vanaf beide kanten",
+        "Android: foto's die samen aankomen zijn een melding die optelt"
+      ]
+    }
+  },
+  {
     "version": "0.1.85",
     "date": "2026-10-20",
     "en": {

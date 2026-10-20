@@ -611,6 +611,11 @@ struct TransferMenu: View {
 
     var body: some View {
         let available = model.canOpen(item)
+        // While it runs the one thing to do is stop it.
+        if item.state == .active {
+            Button("Cancel transfer", role: .destructive) { model.cancelTransfer(item) }
+            Divider()
+        }
         Button("Open") { model.open(item) }
             .disabled(!available)
         Button("Open File Location") { model.reveal(item) }

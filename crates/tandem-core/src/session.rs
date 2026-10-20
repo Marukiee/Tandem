@@ -403,6 +403,7 @@ impl Inner {
                     }
                 }
             }
+            Msg::ShareCancel { id: offer } => self.on_share_cancel(id, offer),
             Msg::ShareText(text) => {
                 self.emit(Event::ShareText { from: id, text: text.text, is_url: text.is_url, open: text.open });
             }

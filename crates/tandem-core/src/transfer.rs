@@ -17,6 +17,7 @@ use std::time::{Duration, Instant};
 use quinn::{RecvStream, SendStream};
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 use tokio::sync::Semaphore;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, info};
 
 use crate::engine::{Inner, rand_u64};
@@ -55,11 +56,15 @@ pub(crate) struct OutOffer {
     pub targets: HashSet<DeviceId>,
     pub items: Vec<OutgoingFile>,
     pub created: Instant,
+    /// Set when the person on either side stops the transfer: what is being served stops at the next piece.
+    pub cancel: CancellationToken,
 }
 
 pub(crate) struct InOffer {
     pub offer: ShareOffer,
     pub started: std::sync::atomic::AtomicBool,
+    /// Set when the person on either side stops the transfer: every file of it stops and its partial files go.
+    pub cancel: CancellationToken,
 }
 
 enum PullError {
@@ -96,7 +101,7 @@ impl Inner {
 
         self.out_offers.lock().unwrap().insert(
             offer_id,
-            OutOffer { targets: online.iter().copied().collect(), items: files, created: Instant::now() },
+            OutOffer { targets: online.iter().copied().collect(), items: files, created: Instant::now(), cancel: CancellationToken::new() },
         );
 
         let offer = ShareOffer { id: offer_id, origin, items };
@@ -112,12 +117,37 @@ impl Inner {
     pub(crate) fn on_share_offer(self: Arc<Self>, from: DeviceId, offer: ShareOffer) {
         let auto = self.settings.read().unwrap().for_device(&from).auto_accept;
         let event = Event::ShareOffered { from, offer: offer.clone() };
-        let entry = Arc::new(InOffer { offer, started: std::sync::atomic::AtomicBool::new(false) });
+        let entry = Arc::new(InOffer { offer, started: std::sync::atomic::AtomicBool::new(false), cancel: CancellationToken::new() });
         self.in_offers.lock().unwrap().insert((from, entry.offer.id), entry.clone());
         // After the insert: an app that accepts straight from the event must find the offer.
         self.emit(event);
         if auto {
             self.begin_receive(from, entry);
+        }
+    }
+
+    /// Stops a transfer, from either side, and tells the other device so it stops too. The files already done stay.
+    pub(crate) async fn cancel_transfer(&self, peer: DeviceId, offer: u64, incoming: bool) {
+        if incoming {
+            if let Some(entry) = self.in_offers.lock().unwrap().get(&(peer, offer)) {
+                entry.cancel.cancel();
+            }
+        } else if let Some(out) = self.out_offers.lock().unwrap().get_mut(&offer) {
+            out.targets.remove(&peer);
+            out.cancel.cancel();
+        }
+        let _ = self.send_to(&peer, Msg::ShareCancel { id: offer }).await;
+    }
+
+    /// The other device stopped a transfer.
+    pub(crate) fn on_share_cancel(&self, peer: DeviceId, offer: u64) {
+        if let Some(entry) = self.in_offers.lock().unwrap().get(&(peer, offer)) {
+            entry.cancel.cancel();
+        }
+        if let Some(out) = self.out_offers.lock().unwrap().get_mut(&offer) {
+            if out.targets.remove(&peer) && out.targets.is_empty() {
+                out.cancel.cancel();
+            }
         }
     }
 
@@ -156,17 +186,19 @@ impl Inner {
             let this = self.clone();
             let item = item.clone();
             let offer_id = entry.offer.id;
+            let cancel = entry.cancel.clone();
             tasks.spawn(async move {
                 let _permit = permit;
-                this.receive_item(peer, offer_id, index as u32, item).await;
+                this.receive_item(peer, offer_id, index as u32, item, cancel).await;
             });
         }
         while tasks.join_next().await.is_some() {}
         self.in_offers.lock().unwrap().remove(&(peer, entry.offer.id));
     }
 
-    async fn receive_item(self: Arc<Self>, peer: DeviceId, offer: u64, index: u32, item: ShareItem) {
+    async fn receive_item(self: Arc<Self>, peer: DeviceId, offer: u64, index: u32, item: ShareItem, cancel: CancellationToken) {
         let temp = self.partial_path(peer, offer, index);
+        let attempt = async {
         let mut attempts = 0u32;
         let outcome: std::result::Result<(), String> = loop {
             let Some(session) = self.wait_for_session(peer, Duration::from_secs(600)).await else {
@@ -184,6 +216,13 @@ impl Inner {
                     tokio::time::sleep(Duration::from_millis(400 * attempts as u64)).await;
                 }
             }
+        };
+        outcome
+        };
+        // Stopped by the person: the file in the making goes with it.
+        let outcome = tokio::select! {
+            outcome = attempt => outcome,
+            _ = cancel.cancelled() => Err("cancelled".to_string()),
         };
 
         let done = match outcome {
@@ -358,12 +397,12 @@ impl Inner {
     ) -> Result<()> {
         let request: FileRequest = proto::recv(&mut recv, MAX_SMALL_FRAME).await?;
 
-        let item = {
+        let (item, cancel) = {
             let offers = self.out_offers.lock().unwrap();
-            offers
-                .get(&request.offer)
-                .filter(|o| o.targets.contains(&peer))
-                .and_then(|o| o.items.get(request.index as usize).cloned())
+            match offers.get(&request.offer).filter(|o| o.targets.contains(&peer)) {
+                Some(o) => (o.items.get(request.index as usize).cloned(), Some(o.cancel.clone())),
+                None => (None, None),
+            }
         };
         let Some(item) = item else {
             let reply = FileResponse { ok: false, error: Some("that offer is no longer available".into()), size: 0 };
@@ -412,6 +451,19 @@ impl Inner {
         self.progress(peer, request.offer, request.index, false, &item.name, done, size);
         while done < size {
             let want = (size - done).min(buf.len() as u64) as usize;
+            if cancel.as_ref().is_some_and(|c| c.is_cancelled()) {
+                self.emit(Event::Finished(TransferDone {
+                    offer: request.offer,
+                    index: request.index,
+                    peer,
+                    incoming: false,
+                    name: item.name.clone(),
+                    size,
+                    location: None,
+                    error: Some("cancelled".into()),
+                }));
+                return Err(Error::transfer("cancelled"));
+            }
             let n = file.read(&mut buf[..want]).await?;
             if n == 0 {
                 return Err(Error::transfer("file changed while sending"));

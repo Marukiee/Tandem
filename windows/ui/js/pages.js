@@ -111,7 +111,7 @@ export function TransferRow({ item }) {
   const pct = item.total ? Math.min(100, Math.round((item.done / item.total) * 100)) : 0;
   const detail = active
     ? fmtSize(item.done) + " / " + fmtSize(item.total) + (item.speed ? " · " + fmtSize(item.speed) + "/s" : "")
-    : item.state === "failed" ? (item.error || t("failed")) : fmtSize(item.total);
+    : item.state === "failed" ? (item.error === "cancelled" ? t("cancelled") : item.error || t("failed")) : fmtSize(item.total);
   return html`<div class="item">
     <${Icon} name=${item.incoming ? "arrow-down" : "arrow-up"} size=${18} class=${item.state === "failed" ? "bad" : ""} />
     <div class="grow">
@@ -119,6 +119,7 @@ export function TransferRow({ item }) {
       <div class="small muted ellipsis" style=${item.state === "failed" ? "color:var(--bad)" : ""}>${peer ? peer.name + " · " : ""}${detail}${!active && item.updatedAt ? " · " + ago(item.updatedAt) : ""}</div>
       ${active && html`<div class="prog"><i style=${`width:${pct}%`}></i></div>`}
     </div>
+    ${active && html`<button class="ib" title=${t("cancel_transfer")} onClick=${() => call("transfer_cancel", { id: item.id, peer: item.peer, incoming: Boolean(item.incoming) }).catch(failed)}><${Icon} name="x" size=${18} /></button>`}
     ${item.state === "done" && item.incoming && item.location && html`
       <button class="ib" title=${t("show_in_folder")} onClick=${() => call("reveal_path", { path: item.location }).catch(failed)}><${Icon} name="folder-open" size=${18} /></button>`}
   </div>`;

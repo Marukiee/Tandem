@@ -1696,6 +1696,15 @@ impl TandemEngine {
         self.send(vec![target], msg).await.map(|_| ())
     }
 
+    /// Stops a transfer that is running: the files in the making are dropped and the other device is told. `incoming` is whether this
+    /// device is the one receiving it.
+    pub async fn cancel_transfer(&self, peer: String, offer: u64, incoming: bool) -> Result<(), TandemError> {
+        let peer = DeviceId::parse(&peer)?;
+        let engine = self.engine.clone();
+        self.runtime.spawn(async move { engine.cancel_transfer(peer, offer, incoming).await }).await.ok();
+        Ok(())
+    }
+
     pub async fn decline_offer(&self, from: String, offer: u64) -> Result<(), TandemError> {
         let from = DeviceId::parse(&from)?;
         let engine = self.engine.clone();

@@ -177,6 +177,13 @@ pub fn set_guests_by_default(app: AppHandle, state: State<'_, AppState>, on: boo
     Ok(())
 }
 
+/// Stops a transfer that is running, here and on the other device. `id` is the id of the row: "offer-index-in|out".
+#[tauri::command]
+pub async fn transfer_cancel(state: State<'_, AppState>, id: String, peer: String, incoming: bool) -> Reply<()> {
+    let offer = id.split('-').next().and_then(|n| n.parse::<u64>().ok()).ok_or("that transfer is not known")?;
+    state.engine()?.cancel_transfer(peer, offer, incoming).await.map_err(shown)
+}
+
 #[tauri::command]
 pub async fn ring(state: State<'_, AppState>, id: String, on: bool) -> Reply<()> {
     state.engine()?.ring(id, on).await.map_err(shown)

@@ -918,6 +918,12 @@ final class EngineModel {
         showToast(String(localized: "Path copied"))
     }
 
+    /// Stops a transfer that is running, here and on the other device. The files that were done stay.
+    func cancelTransfer(_ item: TransferItem) {
+        guard let engine, item.state == .active, let offer = UInt64(item.id.split(separator: "-").first ?? "") else { return }
+        Task { try? await engine.cancelTransfer(peer: item.peer, offer: offer, incoming: item.incoming) }
+    }
+
     /// Takes transfers off the list. A transfer that is still running stays.
     func removeFromList(_ ids: Set<String>) {
         transfers.removeAll { ids.contains($0.id) && $0.state != .active }

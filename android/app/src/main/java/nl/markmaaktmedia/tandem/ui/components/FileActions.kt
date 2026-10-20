@@ -9,7 +9,9 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.graph
 
 /**
  * What can be done with a file in the list of shared things: open it, find it in the Files app, copy where it is, take
@@ -24,6 +26,8 @@ class TransferActions(
     val remove: (() -> Unit)?,
     /** Deletes the file from this phone, true when it is gone. Only for what was received here. */
     val deleteFile: (() -> Boolean)?,
+    /** Stops the transfer, on both devices. Only while it runs. */
+    val cancel: (() -> Unit)? = null,
 )
 
 object FileActions {
@@ -93,6 +97,12 @@ fun rememberTransferActions(item: nl.markmaaktmedia.tandem.engine.TransferItem, 
             copyPath = where?.takeIf { done }?.let { { FileActions.copyPath(context, it) } },
             remove = if (item.state != nl.markmaaktmedia.tandem.engine.TransferItem.State.Active) ({ onRemoveNow() }) else null,
             deleteFile = item.location?.takeIf { received }?.let { { FileActions.delete(context, it) } },
+            cancel = if (item.state == nl.markmaaktmedia.tandem.engine.TransferItem.State.Active) ({
+                // The id of the item is "offer-index-in|out"; the offer is what the core stops.
+                val offer = item.id.substringBefore('-').toULongOrNull()
+                val graph = context.graph
+                if (offer != null) graph.scope.launch { runCatching { graph.host.engine?.cancelTransfer(item.peer, offer, item.incoming) } }
+            }) else null,
         )
     }
 }

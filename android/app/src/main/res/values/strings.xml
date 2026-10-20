@@ -471,4 +471,10 @@
     <string name="filter_direction_sent">Sent</string>
     <string name="filter_nothing_title">Nothing matches</string>
     <string name="filter_nothing_body">No file fits these filters. Clear them to see everything again.</string>
+    <plurals name="received_many">
+        <item quantity="one">Received %1$d file</item>
+        <item quantity="other">Received %1$d files</item>
+    </plurals>
+    <string name="transfer_menu_cancel">Cancel transfer</string>
+    <string name="transfer_cancelled">Cancelled</string>
 </resources>

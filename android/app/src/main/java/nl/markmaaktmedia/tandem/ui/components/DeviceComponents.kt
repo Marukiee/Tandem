@@ -516,7 +516,7 @@ fun TransferRow(
                 TransferItem.State.Active -> "${formatBytes(item.done)} / ${formatBytes(item.total)}" +
                     if (item.speed > 1) "  ${formatBytes(item.speed.toLong())}/s" else ""
                 TransferItem.State.Done -> stringResource(if (item.incoming) R.string.transfer_from else R.string.transfer_to, peerName)
-                TransferItem.State.Failed -> item.error ?: stringResource(R.string.transfer_failed)
+                TransferItem.State.Failed -> if (item.error == "cancelled") stringResource(R.string.transfer_cancelled) else item.error ?: stringResource(R.string.transfer_failed)
             }
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             if (item.state == TransferItem.State.Active) {
@@ -536,6 +536,8 @@ fun TransferRow(
                         onClick = { menu = false; action?.invoke() },
                     )
                 }
+                // While it runs the one thing to do is stop it; the rest waits for it to be done.
+                if (actions.cancel != null) entry(R.string.transfer_menu_cancel, TandemIcons.Close, actions.cancel)
                 entry(R.string.transfer_menu_open, TandemIcons.OpenInNew, actions.open)
                 entry(R.string.transfer_menu_show, TandemIcons.Folder, actions.showFolder)
                 entry(R.string.transfer_menu_copy_path, TandemIcons.Copy, actions.copyPath)

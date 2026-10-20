@@ -482,6 +482,11 @@ impl Engine {
         self.inner.accept_offer(from, offer_id)
     }
 
+    /// Stops a transfer that is running, as the sender (`incoming` false) or as the receiver.
+    pub async fn cancel_transfer(&self, peer: DeviceId, offer_id: u64, incoming: bool) {
+        self.inner.cancel_transfer(peer, offer_id, incoming).await;
+    }
+
     pub async fn decline_offer(&self, from: DeviceId, offer_id: u64) {
         self.inner.decline_offer(from, offer_id).await;
     }

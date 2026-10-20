@@ -468,4 +468,10 @@
     <string name="filter_direction_sent">Verstuurd</string>
     <string name="filter_nothing_title">Niets gevonden</string>
     <string name="filter_nothing_body">Geen bestand past bij deze filters. Wis ze om weer alles te zien.</string>
+    <plurals name="received_many">
+        <item quantity="one">%1$d bestand ontvangen</item>
+        <item quantity="other">%1$d bestanden ontvangen</item>
+    </plurals>
+    <string name="transfer_menu_cancel">Overdracht annuleren</string>
+    <string name="transfer_cancelled">Geannuleerd</string>
 </resources>

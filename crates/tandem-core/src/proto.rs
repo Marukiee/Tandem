@@ -56,6 +56,8 @@ pub enum Msg {
     Clipboard(ClipboardMsg),
     ShareOffer(ShareOffer),
     ShareReply(ShareReply),
+    /// The person on one side stopped a transfer: the other side stops too. Devices that do not know it skip it.
+    ShareCancel { id: u64 },
     ShareText(ShareText),
     Notification(NotificationMsg),
     NotificationRemoved { key: String },

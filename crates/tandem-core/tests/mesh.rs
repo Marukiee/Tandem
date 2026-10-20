@@ -917,3 +917,42 @@ async fn sound_travels_as_datagrams_and_arrives_in_order() {
     .is_ok();
     assert!(!junk, "an impossible format was passed on");
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_cancelled_transfer_ends_as_cancelled_and_leaves_no_file() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+    mac.engine.set_device_settings(&phone.engine.id(), DeviceSettings { auto_accept: false, ..Default::default() }).unwrap();
+
+    let source_dir = tempfile::tempdir().unwrap();
+    let path = source_dir.path().join("photo.bin");
+    std::fs::write(&path, random_bytes(2 * 1024 * 1024, 5)).unwrap();
+    let mut mac_events = mac.engine.subscribe();
+    phone
+        .engine
+        .send_files(
+            &[mac.engine.id()],
+            vec![OutgoingFile { source: path.to_string_lossy().into_owned(), name: "photo.bin".into(), size: 0, mime: "image/png".into() }],
+            ShareOrigin::Files,
+        )
+        .await
+        .unwrap();
+    let offer_id = expect(&mut mac_events, "offer", |e| match e {
+        Event::ShareOffered { offer, .. } => Some(offer.id),
+        _ => None,
+    })
+    .await;
+
+    // The person stops it on the receiving side, and then the files are not taken.
+    mac.engine.cancel_transfer(phone.engine.id(), offer_id, true).await;
+    mac.engine.accept_offer(phone.engine.id(), offer_id).unwrap();
+    let done = expect(&mut mac_events, "finished as cancelled", |e| match e {
+        Event::Finished(done) if done.incoming => Some(done.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(done.error.as_deref(), Some("cancelled"));
+    assert!(!mac.downloads.join("photo.bin").exists());
+}

@@ -268,13 +268,44 @@ class TandemService : LifecycleService() {
         )
     }
 
+    /** What arrived from each device in the last while, so a batch of photos is one notification that counts up and not one for each. */
+    private val arrived = HashMap<String, MutableList<String>>()
+    private val arrivedAt = HashMap<String, Long>()
+
     private fun postReceived(name: String, from: String, location: String) {
         if (!Channels.canPost(this)) return
+        val now = System.currentTimeMillis()
+        val names = synchronized(arrived) {
+            // A new batch starts after a quiet minute.
+            if (now - (arrivedAt[from] ?: 0L) > 60_000L) arrived[from] = mutableListOf()
+            arrivedAt[from] = now
+            arrived.getOrPut(from) { mutableListOf() }.also { it.add(name) }.toList()
+        }
+        if (names.size > 1) {
+            val manager = getSystemService(NotificationManager::class.java)
+            val style = NotificationCompat.InboxStyle()
+            names.takeLast(6).forEach { style.addLine(it) }
+            manager.notify(
+                from.hashCode(),
+                NotificationCompat.Builder(this, Channels.INCOMING)
+                    .setSmallIcon(R.drawable.ic_stat_tandem)
+                    .setContentTitle(resources.getQuantityString(R.plurals.received_many, names.size, names.size))
+                    .setContentText(getString(R.string.received_from, from))
+                    .setStyle(style)
+                    .setContentIntent(open())
+                    .setOnlyAlertOnce(true)
+                    .setAutoCancel(true)
+                    .setDeleteIntent(null)
+                    .build(),
+            )
+            // The ones that came before in this batch are not shown on their own any more.
+            return
+        }
         val uri = Uri.parse(location)
         val view = Intent(Intent.ACTION_VIEW).setDataAndType(uri, contentResolver.getType(uri) ?: "*/*")
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         getSystemService(NotificationManager::class.java).notify(
-            location.hashCode(),
+            from.hashCode(),
             NotificationCompat.Builder(this, Channels.INCOMING)
                 .setSmallIcon(R.drawable.ic_stat_tandem)
                 .setContentTitle(getString(R.string.received_title, name))
