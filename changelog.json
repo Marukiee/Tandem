@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.85",
+    "date": "2026-10-20",
+    "en": {
+      "title": "Tandem in the Share menu",
+      "new": [
+        "Tandem is in the Share menu of Finder and other Mac apps: pick files, share, and choose the device"
+      ]
+    },
+    "nl": {
+      "title": "Tandem in het deelmenu",
+      "new": [
+        "Tandem staat in het deelmenu van Finder en andere Mac-apps: kies bestanden, deel, en kies het apparaat"
+      ]
+    }
+  },
+  {
     "version": "0.1.84",
     "date": "2026-10-15",
     "en": {

@@ -84,10 +84,11 @@ cmd_ci() {
 
 cmd_sign() {
   local app="${1:?usage: sign <app>}"
+  local entitlements="${2:-$ENTITLEMENTS}"
   [ -f "$KEYCHAIN" ] || cmd_setup
   security unlock-keychain -p "$(password)" "$KEYCHAIN"
   codesign --force --options runtime --timestamp=none \
-    --entitlements "$ENTITLEMENTS" --keychain "$KEYCHAIN" --sign "$IDENTITY" "$app"
+    --entitlements "$entitlements" --keychain "$KEYCHAIN" --sign "$IDENTITY" "$app"
   codesign --verify --strict "$app"
   echo "signed $app"
 }

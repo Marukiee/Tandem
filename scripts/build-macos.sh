@@ -53,5 +53,14 @@ for lproj in macos/Resources/*.lproj; do
   [ -d "$lproj" ] && cp -R "$lproj" "$APP/Contents/Resources/"
 done
 
+# The Share menu: an app extension, built without an Xcode project. It is signed first, with its own (sandbox) entitlements.
+EXT="$APP/Contents/PlugIns/TandemShare.appex"
+mkdir -p "$EXT/Contents/MacOS"
+swiftc -O -parse-as-library -module-name TandemShare -application-extension -target arm64-apple-macos26.0 \
+  -framework AppKit -Xlinker -e -Xlinker _NSExtensionMain \
+  -o "$EXT/Contents/MacOS/TandemShare" macos/ShareExtension/ShareViewController.swift
+sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" -e "s|@BUNDLE_ID@|$BUNDLE_ID|" macos/ShareExtension/Info.plist >"$EXT/Contents/Info.plist"
+./scripts/mac-signing.sh sign "$EXT" macos/Resources/TandemShare.entitlements
+
 ./scripts/mac-signing.sh sign "$APP"
 echo "built $APP ($CONFIG, $VERSION)"

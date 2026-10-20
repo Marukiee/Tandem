@@ -79,6 +79,11 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   op Linux een bericht in het hoofdvenster. Alleen voor wat deze computer bekijkt; de computer die het beeld maakt krijgt niets te zien.
 - Windows: Bluetooth tussen computers, een scherm voor een ander apparaat maken (stuurprogramma voor een virtueel beeldscherm), en alles nalopen op
   een echte Windows-pc (nooit gedaan, zie docs/PARITY.md).
+- Tandem in het deelmenu van de Mac (gevraagd 2026-10-20, gebouwd in 0.1.85, niet gezien in Finder): een deelextensie (`macos/ShareExtension`, gebouwd met
+  `swiftc` in `scripts/build-macos.sh`, ondertekend met eigen rechten) geeft de bestanden door aan de app met een `tandem://send`-adres, en de app
+  vraagt welk apparaat. Het systeem toont hem als deeldienst (`pluginkit`); de gebruiker moet hem mogelijk aanzetten onder Systeeminstellingen,
+  Extensies, Delen. Nog niet: tekst en links delen, een regel per apparaat ("Stuur naar Maruks telefoon" kan in het deelmenu niet, daar staat een regel
+  per extensie), en een knop in het Controlecentrum (een WidgetKit-besturing, nu met Xcode mogelijk) voor Quick Share en het klembord sturen.
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)

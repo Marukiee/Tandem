@@ -98,8 +98,8 @@ final class ServiceProvider: NSObject {
         Task { @MainActor in DevicePicker.send(urls) }
     }
 
-    /// "Send with Quick Share" in the Services menu (in Finder: right click, Services). A real entry in the Share menu needs an
-    /// app extension, which this build does not make; the Services menu is the way in that does not.
+    /// "Send with Quick Share" in the Services menu (in Finder: right click, Services). The Share menu has "Tandem" too (the app extension in
+    /// `macos/ShareExtension`), which sends with Tandem and not with Quick Share.
     @objc func sendQuickShare(_ pasteboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString>) {
         guard let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
               !urls.isEmpty
