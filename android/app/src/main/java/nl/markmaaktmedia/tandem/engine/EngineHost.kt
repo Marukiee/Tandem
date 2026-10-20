@@ -39,6 +39,16 @@ import uniffi.tandem_core.tandemInitLogging
 import java.io.File
 import nl.markmaaktmedia.tandem.graph
 
+/** A set of files that go over together (one offer): how many there are and how many are done, so a screen can say "5 of 23" and not only what runs now. */
+data class TransferBatch(
+    val key: String,
+    val peer: String,
+    val incoming: Boolean,
+    val total: Int,
+    val done: Int = 0,
+    val updatedAt: Long = System.currentTimeMillis(),
+)
+
 data class TransferItem(
     val id: String,
     val peer: String,
@@ -87,6 +97,29 @@ class EngineHost(
     private val historyFile = File(context.filesDir, "transfers.json")
     private val _transfers = MutableStateFlow(loadHistory())
     val transfers: StateFlow<List<TransferItem>> = _transfers.asStateFlow()
+    private val _batches = MutableStateFlow<Map<String, TransferBatch>>(emptyMap())
+    val batches: StateFlow<Map<String, TransferBatch>> = _batches.asStateFlow()
+
+    private fun batchStarted(offer: ULong, peer: String, incoming: Boolean, total: Int) {
+        if (total < 2) return
+        val key = "$offer-${if (incoming) "in" else "out"}"
+        _batches.update { it + (key to TransferBatch(key, peer, incoming, total)) }
+    }
+
+    private fun batchProgressed(offer: ULong, incoming: Boolean) {
+        val key = "$offer-${if (incoming) "in" else "out"}"
+        _batches.update { map ->
+            val batch = map[key] ?: return@update map
+            val next = batch.copy(done = batch.done + 1, updatedAt = System.currentTimeMillis())
+            if (next.done >= next.total) map - key else map + (key to next)
+        }
+    }
+
+    /** A batch nobody finished (it was cancelled, or the other device went away) does not stay on the screen for ever. */
+    fun dropStaleBatches() {
+        val old = System.currentTimeMillis() - 90_000L
+        _batches.update { map -> map.filterValues { it.updatedAt >= old || transfers.value.any { t -> t.state == TransferItem.State.Active && t.peer == it.peer } } }
+    }
 
     init {
         @OptIn(kotlinx.coroutines.FlowPreview::class)
@@ -237,8 +270,12 @@ class EngineHost(
                 }
             }
 
+            is TandemEvent.ShareOffered -> batchStarted(event.offer, event.from, true, event.items.size)
             is TandemEvent.Progress -> updateTransfer(event)
-            is TandemEvent.Finished -> finishTransfer(event)
+            is TandemEvent.Finished -> {
+                finishTransfer(event)
+                batchProgressed(event.offer, event.incoming)
+            }
             else -> Unit
         }
     }
@@ -311,7 +348,9 @@ class EngineHost(
         val engine = engine ?: return 0
         val files = uris.mapNotNull { describe(it, hold) }
         if (files.isEmpty() || targets.isEmpty()) return 0
-        return engine.sendFiles(targets, files, origin).sentTo.size
+        val report = engine.sendFiles(targets, files, origin)
+        report.sentTo.firstOrNull()?.let { batchStarted(report.offer, it, false, files.size * report.sentTo.size) }
+        return report.sentTo.size
     }
 
     /** Sends what another device asked for, tagged with its request so it knows what the file answers. */

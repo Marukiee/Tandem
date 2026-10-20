@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.87",
+    "date": "2026-10-21",
+    "en": {
+      "title": "Files in a batch",
+      "new": [
+        "Android: sending or receiving many files shows how far it is (5 of 23) in the notification and on the card of the device"
+      ]
+    },
+    "nl": {
+      "title": "Bestanden in een reeks",
+      "new": [
+        "Android: veel bestanden versturen of ontvangen laat zien hoe ver het is (5 van 23), in de melding en op de kaart van het apparaat"
+      ]
+    }
+  },
+  {
     "version": "0.1.86",
     "date": "2026-10-20",
     "en": {

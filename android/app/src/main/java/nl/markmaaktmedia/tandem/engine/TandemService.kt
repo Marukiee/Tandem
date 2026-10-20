@@ -244,7 +244,8 @@ class TandemService : LifecycleService() {
     }
 
     private fun postProgress() {
-        val active = graph.host.transfers.value.filter { it.state == TransferItem.State.Active }
+        val host = graph.host
+        val active = host.transfers.value.filter { it.state == TransferItem.State.Active }
         val manager = getSystemService(NotificationManager::class.java)
         if (active.isEmpty()) {
             manager.cancel(PROGRESS_ID)
@@ -253,14 +254,26 @@ class TandemService : LifecycleService() {
         val total = active.sumOf { it.total }
         val done = active.sumOf { it.done }
         val incoming = active.any { it.incoming }
-        val title = if (active.size == 1) active[0].name else getString(R.string.transfer_many, active.size)
+        // The whole set, when it is known: "5 of 23" and not only the few that run at this moment.
+        host.dropStaleBatches()
+        val batch = host.batches.value.values.firstOrNull { it.incoming == incoming }
+        val title = when {
+            batch != null -> getString(R.string.transfer_batch, minOf(batch.done + 1, batch.total), batch.total)
+            active.size == 1 -> active[0].name
+            else -> getString(R.string.transfer_many, active.size)
+        }
         manager.notify(
             PROGRESS_ID,
             NotificationCompat.Builder(this, Channels.TRANSFERS)
                 .setSmallIcon(if (incoming) android.R.drawable.stat_sys_download else android.R.drawable.stat_sys_upload)
                 .setContentTitle(title)
                 .setContentText(getString(if (incoming) R.string.transfer_receiving else R.string.transfer_sending))
-                .setProgress(100, if (total > 0) (done * 100 / total).toInt() else 0, total <= 0)
+                .setProgress(
+                    100,
+                    if (batch != null) ((batch.done + active.sumOf { it.fraction.toDouble() } / active.size) * 100 / batch.total).toInt().coerceIn(0, 100)
+                    else if (total > 0) (done * 100 / total).toInt() else 0,
+                    batch == null && total <= 0,
+                )
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
                 .setContentIntent(open())
@@ -289,7 +302,11 @@ class TandemService : LifecycleService() {
                 from.hashCode(),
                 NotificationCompat.Builder(this, Channels.INCOMING)
                     .setSmallIcon(R.drawable.ic_stat_tandem)
-                    .setContentTitle(resources.getQuantityString(R.plurals.received_many, names.size, names.size))
+                    .setContentTitle(
+                        graph.host.batches.value.values.firstOrNull { it.incoming && it.total > names.size }
+                            ?.let { getString(R.string.received_of, names.size, it.total) }
+                            ?: resources.getQuantityString(R.plurals.received_many, names.size, names.size),
+                    )
                     .setContentText(getString(R.string.received_from, from))
                     .setStyle(style)
                     .setContentIntent(open())

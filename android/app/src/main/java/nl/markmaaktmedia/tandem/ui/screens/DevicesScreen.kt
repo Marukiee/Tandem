@@ -267,6 +267,8 @@ fun DeviceCard(
             device.status.battery?.let { BatteryBadge(it) }
         }
 
+        BatchStrip(device.id)
+
         AnimatedVisibility(
             visible = device.online || device.ble || canWake,
             enter = fadeIn() + expandVertically(),
@@ -277,6 +279,28 @@ fun DeviceCard(
                 if (device.online || device.ble) QuickAction(TandemIcons.Paste, stringResource(R.string.action_clipboard), onSendClipboard)
                 if (canWake) QuickAction(TandemIcons.Power, stringResource(R.string.action_wake), onWake)
             }
+        }
+    }
+}
+
+/** "Receiving 5 of 23 files" with a bar, on the card of the device they come from (or go to), for as long as the set is under way. */
+@Composable
+private fun BatchStrip(peer: String) {
+    val host = androidx.compose.ui.platform.LocalContext.current.graph.host
+    val batches by host.batches.collectAsState()
+    val transfers by host.transfers.collectAsState()
+    val batch = batches.values.firstOrNull { it.peer == peer }
+    AnimatedVisibility(visible = batch != null, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+        val shown = batch ?: return@AnimatedVisibility
+        val running = transfers.filter { it.peer == peer && it.state == nl.markmaaktmedia.tandem.engine.TransferItem.State.Active }
+        val fraction = ((shown.done + if (running.isEmpty()) 0.0 else running.sumOf { it.fraction.toDouble() } / running.size) / shown.total).toFloat().coerceIn(0f, 1f)
+        val animated by androidx.compose.animation.core.animateFloatAsState(fraction, nl.markmaaktmedia.tandem.ui.theme.TandemMotion.spatial(), label = "batchProgress")
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                stringResource(if (shown.incoming) R.string.batch_receiving else R.string.batch_sending, minOf(shown.done + 1, shown.total), shown.total),
+                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
+            )
+            nl.markmaaktmedia.tandem.ui.components.WavyProgress(animated, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.surfaceContainerHighest)
         }
     }
 }
@@ -321,6 +345,7 @@ private fun CompactDeviceCard(
             if (pinned) Icon(TandemIcons.Pin, stringResource(R.string.device_pinned), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
             device.status.battery?.let { BatteryBadge(it) }
         }
+        BatchStrip(device.id)
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(device.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

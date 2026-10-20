@@ -477,4 +477,8 @@
     </plurals>
     <string name="transfer_menu_cancel">Cancel transfer</string>
     <string name="transfer_cancelled">Cancelled</string>
+    <string name="transfer_batch">%1$d of %2$d files</string>
+    <string name="batch_receiving">Receiving file %1$d of %2$d</string>
+    <string name="batch_sending">Sending file %1$d of %2$d</string>
+    <string name="received_of">Received %1$d of %2$d files</string>
 </resources>

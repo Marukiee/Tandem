@@ -474,4 +474,8 @@
     </plurals>
     <string name="transfer_menu_cancel">Overdracht annuleren</string>
     <string name="transfer_cancelled">Geannuleerd</string>
+    <string name="transfer_batch">%1$d van %2$d bestanden</string>
+    <string name="batch_receiving">Bestand %1$d van %2$d ontvangen</string>
+    <string name="batch_sending">Bestand %1$d van %2$d versturen</string>
+    <string name="received_of">%1$d van %2$d bestanden ontvangen</string>
 </resources>
