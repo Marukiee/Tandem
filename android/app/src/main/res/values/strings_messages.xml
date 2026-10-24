@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Messages: the text messages of this phone, read and sent on a computer. -->
+    <string name="messages_picture">Photo</string>
+    <string name="messages_ask_title">%1$s wants your messages</string>
+    <string name="messages_ask_text">Tap to let it read and send your text messages.</string>
+    <string name="messages_allow_title">Let %1$s use your messages?</string>
+    <string name="messages_allow_body">%1$s can then show your text messages and send new ones from this phone. You can turn this off again on the page of %1$s in Tandem.</string>
+    <string name="messages_not_now">Not now</string>
+    <string name="messages_permission_title">Allow your text messages</string>
+    <string name="messages_permission_body">Tandem reads your text messages only to show them on your own computers, and sends a text only when you write one there. Nothing goes through a server.</string>
+    <string name="messages_blocked_title">Android holds this back</string>
+    <string name="messages_blocked_body">Android only lets apps from a store read text messages until you allow it. Open app info, tap the three dots at the top right and choose Allow restricted settings. Then come back and tap Try again.</string>
+    <string name="messages_ready_on">Your messages now show on %1$s</string>
+    <string name="messages_ready">Tandem can now read and send your messages</string>
+    <string name="setting_messages">Messages</string>
+    <string name="setting_messages_sub">Read and send your text messages on this computer</string>
+    <string name="feature_messages">Messages on your computers</string>
+    <string name="feature_messages_why">Tandem may not read the text messages on this phone yet</string>
+    <string name="perm_messages">Text messages</string>
+    <string name="perm_messages_why">To show your conversations on your computers and send texts from there.</string>
+</resources>

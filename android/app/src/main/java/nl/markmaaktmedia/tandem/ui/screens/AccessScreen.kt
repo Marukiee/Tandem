@@ -66,7 +66,8 @@ fun AccessScreen(onBack: () -> Unit) {
     val lastSent by MirrorListener.lastSent.collectAsState()
     val stopped = status.notificationAccess && !listening
 
-    val total = 11
+    val messages = nl.markmaaktmedia.tandem.messages.SmsAccess.available(context)
+    val total = if (messages) 12 else 11
 
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
@@ -215,6 +216,15 @@ fun AccessScreen(onBack: () -> Unit) {
                 index = 10, total = total,
                 modifier = Modifier.staggeredEntry(12).settingsTarget(FocusKeys.PermInstall, 10, total),
             )
+            if (messages) {
+                PermissionCard(
+                    androidx.compose.ui.res.painterResource(R.drawable.sym_sms), stringResource(R.string.perm_messages), stringResource(R.string.perm_messages_why),
+                    granted = status.sms,
+                    onGrant = { context.startActivity(nl.markmaaktmedia.tandem.messages.MessagesAccessActivity.intent(context, null)) },
+                    index = 11, total = total,
+                    modifier = Modifier.staggeredEntry(13),
+                )
+            }
         }
         Spacer(Modifier.height(24.dp))
     }

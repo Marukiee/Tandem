@@ -56,6 +56,9 @@ object FeatureReport {
         add("background", Permissions.batteryUnrestricted(context), R.string.feature_background, R.string.feature_background_why, "battery")
         add("bluetooth", Permissions.bluetooth(context), R.string.feature_bluetooth, R.string.feature_bluetooth_why, "access")
         add("alerts", Permissions.notifications(context), R.string.feature_alerts, R.string.feature_alerts_why, "app-notifications")
+        if (nl.markmaaktmedia.tandem.messages.SmsAccess.available(context)) {
+            add("messages", nl.markmaaktmedia.tandem.messages.SmsAccess.granted(context), R.string.feature_messages, R.string.feature_messages_why, "messages")
+        }
         return list
     }
 
@@ -77,6 +80,7 @@ object FeatureReport {
             "all-files" -> Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, pkg)
             "battery" -> Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg)
             "app-notifications" -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            "messages" -> nl.markmaaktmedia.tandem.messages.MessagesAccessActivity.intent(context, null)
             // Single top: with Tandem already open, Android otherwise only brings it to the front and never hands it the intent, so the
             // page of the setting was not opened.
             "sharing" -> Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_SHARING).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
