@@ -76,6 +76,9 @@ pub struct Settings {
     pub side_check: bool,
     /// How often, in minutes, the side of a device next to this screen is checked while it is there.
     pub side_check_minutes: u32,
+    /// Which sweeps "Find by sound" plays: `quiet` (too high to hear, first choice) or `audible` (for a device whose microphone does not
+    /// pick up the quiet ones).
+    pub side_sound: String,
     /// Downloads, Documents and Desktop were offered once (see `engine::offer_usual_folders`).
     pub usual_folders_offered: bool,
 }
@@ -116,6 +119,7 @@ impl Default for Settings {
             side_check: true,
             side_check_minutes: 2,
             usual_folders_offered: false,
+            side_sound: "quiet".into(),
         }
     }
 }

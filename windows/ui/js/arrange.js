@@ -145,11 +145,17 @@ export function ArrangementEditor() {
 /** Finding by sound on which side a device stands: this computer plays a short sweep from its left and right speaker, the device listens. */
 function SideFinder({ devices }) {
   const [busy, setBusy] = useState(null);
+  // The device that did not hear the quiet sweeps, for the question whether to try the audible ones.
+  const [louder, setLouder] = useState(null);
   const listening = devices.filter((d) => d.listens);
-  const find = (d) => {
+  const find = (d, audible = false) => {
     setBusy(d.id);
-    call("side_find", { id: d.id })
-      .then((side) => say(t(side === "left" ? "side_left" : side === "right" ? "side_right" : side === "unsure" ? "side_unsure" : "side_not_heard", d.name)))
+    setLouder(null);
+    call("side_find", { id: d.id, audible })
+      .then((side) => {
+        if (side.startsWith("quiet-")) { setLouder(d.id); return; }
+        say(t(side === "left" ? "side_left" : side === "right" ? "side_right" : side === "unsure" ? "side_unsure" : "side_not_heard", d.name));
+      })
       .catch(failed)
       .finally(() => setBusy(null));
   };
@@ -161,6 +167,11 @@ function SideFinder({ devices }) {
     ${listening.map((d) => html`<div class="row-line" key=${d.id}>
       <div class="grow">${d.name}</div>
       <button class="btn small" disabled=${!d.online || busy !== null} onClick=${() => find(d)}>${busy === d.id ? t("side_listening") : t("side_find")}</button>
-    </div>`)}
+    </div>
+    ${louder === d.id && html`<div class="row-line" key=${d.id + "-louder"}>
+      <div class="grow small muted">${t("side_quiet_missed", d.name)}</div>
+      <button class="btn small" onClick=${() => setLouder(null)}>${t("side_not_now")}</button>
+      <button class="btn accent small" onClick=${() => find(d, true)}>${t("side_try_audible")}</button>
+    </div>`}`)}
   </div>`;
 }

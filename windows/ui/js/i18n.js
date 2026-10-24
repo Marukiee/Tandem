@@ -183,7 +183,7 @@ const en = {
   output_use: "Use as speaker", output_stop: "Stop speaker", output_tip: "Play the sound of this computer on {0}",
   output_started: "The sound of this computer plays on {0}. It keeps playing here too.",
   side_auto: "Check the side by itself", side_auto_sub: "With a sound too high to hear: when a second screen starts, the shared mouse goes on, a computer comes back, and every few minutes. Only when this computer plays through its own speakers.",
-  side_every: "Check every", side_every_one: "Minute", side_every_n: "{0} minutes", side_every_never: "Never",
+  side_every: "Check every", side_every_one: "Minute", side_every_n: "{0} minutes", side_every_never: "Never", side_sound: "Sound for finding the side", side_sound_sub: "Quiet is too high to hear. Audible only helps with a device whose microphone does not pick up the quiet one.", side_sound_quiet: "Quiet (recommended)", side_sound_audible: "Audible", side_quiet_missed: "{0} did not hear the quiet sound. Try the audible one?", side_not_now: "Not now", side_try_audible: "Use audible sound",
 };
 
 const nl = {
@@ -369,7 +369,7 @@ const nl = {
   output_use: "Gebruik als speaker", output_stop: "Stop speaker", output_tip: "Speel het geluid van deze computer af op {0}",
   output_started: "Het geluid van deze computer speelt op {0}. Het speelt hier ook gewoon door.",
   side_auto: "De kant vanzelf controleren", side_auto_sub: "Met een geluid dat te hoog is om te horen: als een tweede scherm start, de gedeelde muis aangaat, een computer terugkomt, en om de paar minuten. Alleen als deze computer via zijn eigen speakers speelt.",
-  side_every: "Controleer elke", side_every_one: "Minuut", side_every_n: "{0} minuten", side_every_never: "Nooit",
+  side_every: "Controleer elke", side_every_one: "Minuut", side_every_n: "{0} minuten", side_every_never: "Nooit", side_sound: "Geluid om de kant te vinden", side_sound_sub: "Stil is te hoog om te horen. Hoorbaar helpt alleen bij een apparaat waarvan de microfoon het stille geluid niet oppikt.", side_sound_quiet: "Stil (aanbevolen)", side_sound_audible: "Hoorbaar", side_quiet_missed: "{0} hoorde het stille geluid niet. Het hoorbare proberen?", side_not_now: "Nu niet", side_try_audible: "Hoorbaar geluid",
 };
 
 const tables = { en, nl };

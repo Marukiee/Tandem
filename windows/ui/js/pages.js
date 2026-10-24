@@ -606,6 +606,11 @@ function MouseSection({ s, patch }) {
       ? html`<${ArrangementEditor} />
         <div class="card flush">
           <${SettingRow} icon="device-laptop" title=${t("side_auto")} sub=${t("side_auto_sub")} on=${s.sideCheck} onChange=${(v) => patch({ sideCheck: v })} />
+          <${SettingRow} icon="volume" title=${t("side_sound")} sub=${t("side_sound_sub")}>
+            <select value=${s.sideSound || "quiet"} onChange=${(e) => patch({ sideSound: e.target.value })}>
+              <option value="quiet">${t("side_sound_quiet")}</option><option value="audible">${t("side_sound_audible")}</option>
+            </select>
+          <//>
           ${s.sideCheck && html`<${SettingRow} icon="refresh" title=${t("side_every")}>
             <select value=${String(s.sideCheckMinutes ?? 2)} onChange=${(e) => patch({ sideCheckMinutes: Number(e.target.value) })}>
               ${[1, 2, 5, 10].map((m) => html`<option value=${String(m)}>${m === 1 ? t("side_every_one") : t("side_every_n", m)}</option>`)}
