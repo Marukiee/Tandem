@@ -1122,3 +1122,10 @@
 "Number" = "Nummer";
 "%@ is calling %@" = "%1$@ belt %2$@";
 "%@ could not be reached" = "%@ is niet bereikbaar";
+"%@ did not hear the quiet sound" = "%@ hoorde het stille geluid niet";
+"Some microphones hear less up high. The audible sound is a short sweep you can hear." = "Sommige microfoons horen minder in de hoogte. Het hoorbare geluid is een korte sweep die je kunt horen.";
+"Use audible sound" = "Hoorbaar geluid";
+"Sound for finding the side" = "Geluid om de kant te vinden";
+"Quiet (recommended)" = "Stil (aanbevolen)";
+"Audible" = "Hoorbaar";
+"Quiet is too high to hear. Audible only helps with a device whose microphone does not pick up the quiet one." = "Stil is te hoog om te horen. Hoorbaar helpt alleen bij een apparaat waarvan de microfoon het stille geluid niet oppikt.";

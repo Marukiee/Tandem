@@ -130,8 +130,14 @@ private enum SpeakerTurn {
 enum SideFinder {
     @MainActor private static var busy: Set<String> = []
 
-    /// Asks the device to listen, plays the sweeps once it does, and reads its answer. Soft first, so a quiet room is not startled; when it
-    /// was not heard well, once more at full loudness. Applies the side when it is clear; `remember` keeps it for next time.
+    /// Which sweeps "Find by sound" plays: `quiet` (too high to hear, the first choice) or `audible`, for a device whose microphone does
+    /// not pick up the quiet ones.
+    static let soundKey = "sideSound"
+    static var audibleChosen: Bool { UserDefaults.standard.string(forKey: soundKey) == "audible" }
+
+    /// "Find by sound": the quiet sweeps first, which nobody hears and most devices pick up well. When they were not heard, it asks
+    /// whether to play the audible ones, soft first and then at full loudness; with "Audible" chosen in Settings it plays those at once.
+    /// Applies the side when it is clear; `remember` keeps it for next time.
     @MainActor
     static func find(_ device: TandemDevice, remember: Bool = true) async -> TandemSide {
         guard let engine = EngineModel.shared.tandem, !busy.contains(device.id) else { return .notHeard }
@@ -140,11 +146,24 @@ enum SideFinder {
         await SpeakerTurn.take()
         defer { SpeakerTurn.give() }
         var side = TandemSide.notHeard
-        for loudness in [tandemSideFirstLoudness(), 1] {
-            guard let id = try? await engine.sideStart(target: device.id) else { return .notHeard }
-            await SideTone.play(loudness: loudness)
-            side = await engine.sideResult(id: id)
-            if side == .left || side == .right { break }
+        var audible = audibleChosen
+        if !audible {
+            if AudioRoute.speakersCanPlay(), let id = try? await engine.sideCheckStart(target: device.id) {
+                let played = await SideTone.playQuiet()
+                let heard = await engine.sideCheckResult(id: id)
+                if played { side = heard }
+            }
+            if side != .left && side != .right {
+                audible = await askForAudible(name: device.name)
+            }
+        }
+        if audible {
+            for loudness in [tandemSideFirstLoudness(), 1] {
+                guard let id = try? await engine.sideStart(target: device.id) else { return .notHeard }
+                await SideTone.play(loudness: loudness)
+                side = await engine.sideResult(id: id)
+                if side == .left || side == .right { break }
+            }
         }
         switch side {
         case .left: DeviceSides.set("left", for: device.id, remember: remember)
@@ -152,6 +171,33 @@ enum SideFinder {
         default: break
         }
         return side
+    }
+
+    /// The quiet sweeps were not heard: may the audible ones play? Not now when nobody answers.
+    @MainActor
+    private static func askForAudible(name: String) async -> Bool {
+        await withCheckedContinuation { continuation in
+            var answered = false
+            let answer: (Bool) -> Void = { yes in
+                guard !answered else { return }
+                answered = true
+                continuation.resume(returning: yes)
+            }
+            GlassQuestion.shared.ask(
+                symbol: "speaker.wave.2",
+                title: String(localized: "\(name) did not hear the quiet sound"),
+                body: String(localized: "Some microphones hear less up high. The audible sound is a short sweep you can hear."),
+                answers: [
+                    GlassQuestion.Answer(title: "Not now") { answer(false) },
+                    GlassQuestion.Answer(title: "Use audible sound", prominent: true) { answer(true) },
+                ],
+                closeAfter: .seconds(30)
+            )
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(31))
+                answer(false)
+            }
+        }
     }
 
     /// Once, with the quiet sweeps, for a check by itself: nothing is applied, and nothing is played when this Mac's sound would not come

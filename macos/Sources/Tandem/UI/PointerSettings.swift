@@ -12,6 +12,7 @@ struct PointerSettings: View {
     @LocalState private var finding: String?
     @AppStorage(SideWatch.enabledKey) private var checkByItself = true
     @AppStorage(SideWatch.everyKey) private var checkEvery = SideWatch.defaultEvery
+    @AppStorage(SideFinder.soundKey) private var sideSound = "quiet"
 
     private func findSide(_ device: TandemDevice) {
         finding = device.id
@@ -107,6 +108,13 @@ struct PointerSettings: View {
                     subtitle: "When a second screen starts, the shared mouse goes on, a computer comes back, and every few minutes. With a sound too high to hear, and only when this Mac plays through its own speakers.",
                     isOn: $checkByItself
                 )
+                Picker("Sound for finding the side", selection: $sideSound) {
+                    Text("Quiet (recommended)").tag("quiet")
+                    Text("Audible").tag("audible")
+                }
+                Text("Quiet is too high to hear. Audible only helps with a device whose microphone does not pick up the quiet one.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 if checkByItself {
                     Picker("Check every", selection: $checkEvery) {
                         ForEach([1, 2, 5, 10], id: \.self) { minutes in
