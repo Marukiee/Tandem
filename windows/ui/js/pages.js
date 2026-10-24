@@ -576,7 +576,10 @@ function MouseSection({ s, patch }) {
 
     <h2>${t("mouse_here")}</h2>
     ${state.canShare
-      ? html`<${ArrangementEditor} />`
+      ? html`<${ArrangementEditor} />
+        <div class="card flush">
+          <${SettingRow} icon="device-laptop" title=${t("side_auto")} sub=${t("side_auto_sub")} on=${s.sideCheck} onChange=${(v) => patch({ sideCheck: v })} />
+        </div>`
       : html`<div class="card"><div class="small muted">${t("share_pointer_linux")}</div></div>`}
     <div class="small muted">${t("mouse_other_must_allow")}</div>
 

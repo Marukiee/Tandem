@@ -178,6 +178,7 @@ const en = {
   focus_share_sub_send: "Do Not Disturb on this PC turns on Focus on your other devices",
   focus_direction: "Direction", focus_direction_sub: "Only follow keeps the Do Not Disturb of this computer to itself",
   focus_both: "Both ways", focus_follow_only: "Only follow", focus_unsupported: "This desktop has no Do Not Disturb that Tandem can use. GNOME and KDE Plasma have one.",
+  side_auto: "Check the side by itself", side_auto_sub: "Now and then, with a sound too high to hear: when a second screen starts, a computer comes back or the pointer goes there again after a while. Only when this computer plays through its own speakers.",
 };
 
 const nl = {
@@ -358,6 +359,7 @@ const nl = {
   focus_share_sub_send: "Niet storen op deze pc zet Focus aan op je andere apparaten",
   focus_direction: "Richting", focus_direction_sub: "Alleen volgen houdt Niet storen van deze computer voor zichzelf",
   focus_both: "Beide kanten op", focus_follow_only: "Alleen volgen", focus_unsupported: "Dit bureaublad heeft geen Niet storen dat Tandem kan gebruiken. GNOME en KDE Plasma hebben het wel.",
+  side_auto: "De kant vanzelf controleren", side_auto_sub: "Af en toe, met een geluid dat te hoog is om te horen: als een tweede scherm start, een computer terugkomt of de muis er na een tijdje weer heen gaat. Alleen als deze computer via zijn eigen speakers speelt.",
 };
 
 const tables = { en, nl };

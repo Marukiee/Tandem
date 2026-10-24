@@ -440,6 +440,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["focusFollowOnly"].as_bool() {
             current.focus_follow_only = v;
         }
+        if let Some(v) = patch["sideCheck"].as_bool() {
+            current.side_check = v;
+        }
     }
     settings::save(&app);
     // The switch for the media controls takes effect at once.

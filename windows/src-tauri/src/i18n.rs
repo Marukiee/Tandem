@@ -215,6 +215,10 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "wifi_old") => "{0} uses an old kind of security that cannot be shared.",
         ("nl", "wifi_unreachable") => "{0} is nu niet bereikbaar.",
         (_, "wifi_unreachable") => "{0} cannot be reached right now.",
+        ("nl", "side_now_left") => "{0} staat nu links",
+        (_, "side_now_left") => "{0} is now on the left",
+        ("nl", "side_now_right") => "{0} staat nu rechts",
+        (_, "side_now_right") => "{0} is now on the right",
         _ => "",
     }
 }

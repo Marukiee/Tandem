@@ -372,11 +372,24 @@ fn made_monitor(app: &AppHandle, peer: &str, before: Vec<String>) {
                             log::info!("the second screen could not be put on the left: {error}");
                         }
                     }
+                    crate::side::screen_started(&app, &peer);
                     return;
                 }
             }
         })
         .ok();
+}
+
+/// The viewers that have a monitor made for them now.
+pub fn extending() -> Vec<String> {
+    #[cfg(target_os = "linux")]
+    {
+        made_monitors().lock().unwrap().keys().cloned().collect()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        Vec::new()
+    }
 }
 
 /// The side of a viewer was found while a monitor made for it is there: it moves to that side.

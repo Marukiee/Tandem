@@ -80,7 +80,7 @@ pub fn view_ended(app: &AppHandle, peer: &str) {
 }
 
 /// Whether what this computer plays goes to headphones now: a Bluetooth device, or the jack or a headset port of the sound card.
-fn headphones() -> bool {
+pub fn headphones() -> bool {
     #[cfg(target_os = "linux")]
     {
         let run = |args: &[&str]| -> Option<String> {
@@ -128,6 +128,11 @@ static SENDING: LazyLock<Mutex<Option<Sending>>> = LazyLock::new(|| Mutex::new(N
 
 const RATE: u32 = 48_000;
 const CHANNELS: u8 = 2;
+
+/// Whether this computer sends what it plays to a viewer now.
+pub fn sending() -> bool {
+    SENDING.lock().unwrap().is_some()
+}
 
 /// A viewer asks for the sound of this computer, or no longer.
 pub fn requested(app: &AppHandle, from: String, on: bool) {

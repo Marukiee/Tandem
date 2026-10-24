@@ -72,6 +72,8 @@ pub struct Settings {
     pub focus_share: Option<bool>,
     /// Only follow the other devices, and keep the Do Not Disturb of this computer to itself.
     pub focus_follow_only: bool,
+    /// Check by itself, with sweeps too high to hear, on which side the devices next to this screen stand (see `side.rs`).
+    pub side_check: bool,
 }
 
 impl Default for Settings {
@@ -107,6 +109,7 @@ impl Default for Settings {
             ring_sound: String::new(),
             focus_share: None,
             focus_follow_only: false,
+            side_check: true,
         }
     }
 }
