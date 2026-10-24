@@ -5,13 +5,15 @@
     "en": {
       "title": "Every permission in one place",
       "new": [
-        "Android: Permissions also has Accessibility and All files, with a button to each"
+        "Android: Permissions also has Accessibility and All files, with a button to each",
+        "Mac: on hover the glass of a button grows evenly around its words, which stay in the middle"
       ]
     },
     "nl": {
       "title": "Alle rechten op één plek",
       "new": [
-        "Android: Rechten heeft nu ook Toegankelijkheid en Alle bestanden, met een knop naar elk"
+        "Android: Rechten heeft nu ook Toegankelijkheid en Alle bestanden, met een knop naar elk",
+        "Mac: bij hover groeit het glas van een knop gelijkmatig rond de tekst, die in het midden blijft"
       ]
     }
   },

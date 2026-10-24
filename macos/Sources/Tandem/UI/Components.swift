@@ -80,19 +80,25 @@ private struct TandemGlassPill: View {
     var body: some View {
         let lit = hovering && isEnabled && hoverEnabled
         let ink: Color = prominent ? .white : .primary
+        // On hover the glass grows the same on every side around words that stay where they are, by a real size and not by a scale:
+        // the glass is drawn in a layer of its own that a scale grew from its corner while the words grew from the middle, so they
+        // looked pinned to the left. The size of the button itself does not change, so nothing next to it moves. A row of these sits
+        // in a `GlassEffectContainer` with a spacing of 0, so a grown pill never flows towards its neighbour.
+        let grow: CGFloat = configuration.isPressed ? -1.5 : (lit ? 3 : 0)
         configuration.label
             .font(metrics.font)
             .foregroundStyle(ink.opacity(isEnabled ? 1 : 0.45))
             .padding(.horizontal, metrics.horizontal)
             .padding(.vertical, metrics.vertical)
             .contentShape(.capsule)
-            .glassEffect(prominent ? .regular.tint(tint) : .regular, in: .capsule)
-            .brightness(lit ? (prominent ? 0.07 : 0.03) : 0)
-            .shadow(color: prominent ? tint.opacity(lit ? 0.35 : 0) : .black.opacity(lit ? 0.12 : 0), radius: lit ? 10 : 0, y: lit ? 4 : 0)
-            // From the middle, the words with the pill. A row of these sits in a `GlassEffectContainer` with a spacing of 0: with the spacing
-            // of the gap between them, a pill that grew on hover came close enough to its neighbour for the glass to flow towards it, which
-            // stretched the glass to one side while the words stayed, and they looked pinned there.
-            .scaleEffect(configuration.isPressed ? 0.96 : (lit ? 1.03 : 1), anchor: .center)
+            .background {
+                Capsule()
+                    .fill(.clear)
+                    .glassEffect(prominent ? .regular.tint(tint) : .regular, in: .capsule)
+                    .brightness(lit ? (prominent ? 0.07 : 0.03) : 0)
+                    .shadow(color: prominent ? tint.opacity(lit ? 0.35 : 0) : .black.opacity(lit ? 0.12 : 0), radius: lit ? 10 : 0, y: lit ? 4 : 0)
+                    .padding(-grow)
+            }
             .animation(.tandemSpringy, value: lit)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
             .onHover { hovering = $0 }
