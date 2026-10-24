@@ -81,6 +81,16 @@ class SmsBridge(
     private suspend fun answer(from: String, req: ULong, request: TandemSmsRequest) {
         val engine = host.engine ?: return
         runCatching {
+            // The list for the search of a computer is about calling, so it needs the contacts and not the messages of the phone.
+            if (request is TandemSmsRequest.ListContacts) {
+                if (!SmsAccess.contacts(context)) {
+                    engine.smsRefuse(from, req, TandemSmsRefusal.NO_PERMISSION)
+                } else {
+                    val page = safely { reader.allContacts(request.after.toLong(), request.limit.toInt()) } ?: SmsReader.Page(emptyList(), false)
+                    engine.smsAnswerContactPage(from, req, page.items, page.more)
+                }
+                return
+            }
             if (!SmsAccess.granted(context)) {
                 engine.smsRefuse(from, req, TandemSmsRefusal.NO_PERMISSION)
                 return
@@ -102,6 +112,7 @@ class SmsBridge(
                 is TandemSmsRequest.FindContacts -> engine.smsAnswerContacts(from, req, safely { reader.contacts(request.query) }.orEmpty())
                 // Nothing back is a picture that cannot be shown; the computer keeps its placeholder.
                 is TandemSmsRequest.Picture -> engine.smsAnswerPicture(from, req, safely { reader.picture(request.part.toLong()) } ?: ByteArray(0))
+                is TandemSmsRequest.ListContacts -> Unit
             }
         }.onFailure { Log.w(TAG, "could not answer a question about messages", it) }
     }
@@ -227,6 +238,6 @@ class SmsBridge(
         private val WATCHED = listOf(Uri.parse("content://sms"), Uri.parse("content://mms"), Uri.parse("content://mms-sms/"))
 
         /** What this phone says it can do: messages, when it has a SIM slot to have them. */
-        fun caps(context: Context): List<String> = if (SmsAccess.available(context)) listOf("sms") else emptyList()
+        fun caps(context: Context): List<String> = if (SmsAccess.available(context)) listOf("sms", "sms.contacts") else emptyList()
     }
 }

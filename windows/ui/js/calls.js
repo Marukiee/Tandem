@@ -4,7 +4,7 @@ import { html, useEffect, useState } from "../vendor/preact-htm.js";
 import { call } from "./backend.js";
 import { Icon } from "./icons.js";
 import { t } from "./i18n.js";
-import { say } from "./store.js";
+import { say, set, useStore } from "./store.js";
 
 /** What a phone can dial: digits, a plus in front, and the star and hash of a keypad. */
 const clean = (text) => text.replace(/[^0-9+*#]/g, "");
@@ -13,6 +13,16 @@ export function CallButton({ device }) {
   const [open, setOpen] = useState(false);
   const [number, setNumber] = useState("");
   const [found, setFound] = useState([]);
+  const state = useStore();
+  // Picked in the search of the desktop, with more than one number: the box opens with the name, so the numbers show to choose from.
+  useEffect(() => {
+    const ask = state.callAsk;
+    if (!ask || ask.id !== device.id) return;
+    set({ callAsk: null });
+    call("call_ask_taken").catch(() => {});
+    setNumber(ask.name);
+    setOpen(true);
+  }, [state.callAsk && state.callAsk.at, device.id]);
   // A name typed instead of a number: the contacts of the phone that match, as they are typed.
   useEffect(() => {
     const query = number.trim();
@@ -42,7 +52,8 @@ export function CallButton({ device }) {
       <button class="btn accent small" disabled=${clean(number).length < 3} onClick=${() => dial()}>${t("call")}</button>
       ${found.length > 0 && html`<div class="call-found">
         ${found.map((c) => html`<button class="call-contact" onClick=${() => dial(c.number)}>
-          <span class="t">${c.name}</span><span class="s">${c.label ? c.label + " " : ""}${c.number}</span></button>`)}
+          <span class="who"><span class="t">${c.name}</span>${c.label && html`<span class="s">${c.label}</span>`}</span>
+          <span class="n">${c.number}</span></button>`)}
       </div>`}
     </div>`}
   </span>`;

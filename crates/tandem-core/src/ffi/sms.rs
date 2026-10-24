@@ -2,7 +2,7 @@
 //! the question as `TandemEvent::Sms` and answers with one of the `sms_answer_` calls.
 
 use crate::ids::DeviceId;
-use crate::sms::{SmsContact, SmsConversation, SmsMessage, SmsMsg, SmsRefusal, SmsStatus};
+use crate::sms::{PhoneContact, PhoneNumber, SmsContact, SmsConversation, SmsMessage, SmsMsg, SmsRefusal, SmsStatus};
 
 use super::{TandemEngine, TandemError, join_error};
 
@@ -49,6 +49,24 @@ pub struct TandemSmsContact {
     pub label: String,
 }
 
+/// One number of a person in the whole list of contacts of a phone.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemPhoneNumber {
+    pub number: String,
+    /// In the language of the phone, only for showing.
+    pub label: String,
+    /// The one to call without asking (the default number, or the only mobile one). At most one per person.
+    pub preferred: bool,
+}
+
+/// A person in the contacts of a phone, with all their numbers. `id` stays the same while they are in the contacts.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemPhoneContact {
+    pub id: u64,
+    pub name: String,
+    pub numbers: Vec<TandemPhoneNumber>,
+}
+
 #[derive(Clone, Debug, uniffi::Record)]
 pub struct TandemSmsConversationPage {
     pub items: Vec<TandemSmsConversation>,
@@ -73,6 +91,8 @@ pub enum TandemSmsRequest {
     FindContacts { query: String },
     /// One picture of an MMS, as a small JPEG.
     Picture { part: u64 },
+    /// The people with a number whose contact id is above `after`, by that id, at most `limit`. Answer with `sms_answer_contact_page`.
+    ListContacts { after: u64, limit: u32 },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -196,6 +216,7 @@ impl From<SmsMsg> for TandemSmsEvent {
             SmsMsg::Send { req, to, text } => request(req, TandemSmsRequest::Send { to, text }),
             SmsMsg::FindContacts { req, query } => request(req, TandemSmsRequest::FindContacts { query }),
             SmsMsg::Picture { req, part } => request(req, TandemSmsRequest::Picture { part }),
+            SmsMsg::ListContacts { req, after, limit } => request(req, TandemSmsRequest::ListContacts { after, limit }),
             SmsMsg::AskAccess => TandemSmsEvent::AskAccess,
             SmsMsg::Changed { conversations, messages } => TandemSmsEvent::Changed {
                 conversations: conversations.into_iter().map(Into::into).collect(),
@@ -206,8 +227,23 @@ impl From<SmsMsg> for TandemSmsEvent {
             | SmsMsg::Sent { .. }
             | SmsMsg::Contacts { .. }
             | SmsMsg::PictureData { .. }
+            | SmsMsg::ContactPage { .. }
             | SmsMsg::Refused { .. } => TandemSmsEvent::Answered,
         }
+    }
+}
+
+impl From<PhoneContact> for TandemPhoneContact {
+    fn from(p: PhoneContact) -> Self {
+        let numbers = p.numbers.into_iter().map(|n| TandemPhoneNumber { number: n.number, label: n.label, preferred: n.preferred }).collect();
+        TandemPhoneContact { id: p.id, name: p.name, numbers }
+    }
+}
+
+impl From<TandemPhoneContact> for PhoneContact {
+    fn from(p: TandemPhoneContact) -> Self {
+        let numbers = p.numbers.into_iter().map(|n| PhoneNumber { number: n.number, label: n.label, preferred: n.preferred }).collect();
+        PhoneContact { id: p.id, name: p.name, numbers }
     }
 }
 
@@ -218,6 +254,14 @@ impl From<TandemSmsRefusal> for SmsRefusal {
             TandemSmsRefusal::NoPermission => SmsRefusal::NoPermission,
             TandemSmsRefusal::Unavailable => SmsRefusal::Unavailable,
         }
+    }
+}
+
+fn refused(why: SmsRefusal) -> TandemSmsError {
+    match why {
+        SmsRefusal::Off => TandemSmsError::Off,
+        SmsRefusal::NoPermission => TandemSmsError::NoPermission,
+        SmsRefusal::Unavailable | SmsRefusal::Other => TandemSmsError::Unavailable,
     }
 }
 
@@ -273,6 +317,24 @@ impl TandemEngine {
         }
     }
 
+    /// Every person with a number in the contacts of the phone `target`, by contact id, for the search of this computer. Only a phone
+    /// that says `sms.contacts` answers; ask no other, because an older one stays quiet until the wait runs out.
+    pub async fn sms_all_contacts(&self, target: String) -> Result<Vec<TandemPhoneContact>, TandemSmsError> {
+        let peer = DeviceId::parse(&target).map_err(|e| TandemSmsError::Failed { reason: e.to_string() })?;
+        let engine = self.engine.clone();
+        let answer = self
+            .runtime
+            .spawn(async move { engine.sms_all_contacts(peer).await })
+            .await
+            .map_err(|e| TandemSmsError::Failed { reason: e.to_string() })?;
+        match answer {
+            Ok(Ok(people)) => Ok(people.into_iter().map(Into::into).collect()),
+            Ok(Err(why)) => Err(refused(why)),
+            Err(crate::Error::NotConnected) => Err(TandemSmsError::NotConnected),
+            Err(e) => Err(TandemSmsError::Failed { reason: e.to_string() }),
+        }
+    }
+
     /// One picture of an MMS, as a small JPEG.
     pub async fn sms_picture(&self, target: String, part: u64) -> Result<Vec<u8>, TandemSmsError> {
         match self.sms_ask(target, move |req| SmsMsg::Picture { req, part }).await? {
@@ -310,6 +372,11 @@ impl TandemEngine {
     pub async fn sms_answer_contacts(&self, target: String, req: u64, items: Vec<TandemSmsContact>) -> Result<(), TandemError> {
         let items = items.into_iter().map(|c| SmsContact { name: c.name, number: c.number, label: c.label }).collect();
         self.sms_reply(target, SmsMsg::Contacts { req, items }).await
+    }
+
+    /// A page of the whole list of contacts, for `ListContacts`. `more` when there are people after the last one here.
+    pub async fn sms_answer_contact_page(&self, target: String, req: u64, items: Vec<TandemPhoneContact>, more: bool) -> Result<(), TandemError> {
+        self.sms_reply(target, SmsMsg::ContactPage { req, items: items.into_iter().map(Into::into).collect(), more }).await
     }
 
     pub async fn sms_answer_picture(&self, target: String, req: u64, jpeg: Vec<u8>) -> Result<(), TandemError> {
@@ -355,11 +422,7 @@ impl TandemEngine {
             .await
             .map_err(|e| TandemSmsError::Failed { reason: e.to_string() })?;
         match answer {
-            Ok(SmsMsg::Refused { why, .. }) => Err(match why {
-                SmsRefusal::Off => TandemSmsError::Off,
-                SmsRefusal::NoPermission => TandemSmsError::NoPermission,
-                SmsRefusal::Unavailable | SmsRefusal::Other => TandemSmsError::Unavailable,
-            }),
+            Ok(SmsMsg::Refused { why, .. }) => Err(refused(why)),
             Ok(msg) => Ok(msg),
             Err(crate::Error::NotConnected) => Err(TandemSmsError::NotConnected),
             Err(e) => Err(TandemSmsError::Failed { reason: e.to_string() }),

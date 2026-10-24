@@ -122,7 +122,7 @@ pub fn refresh(app: &AppHandle) {
 
 /// Writes a file only when it is new or different, so a file manager that watches its folder is not woken for nothing.
 #[cfg_attr(not(any(target_os = "linux", windows)), allow(dead_code))]
-fn put(path: &Path, text: &str, executable: bool) {
+pub(crate) fn put(path: &Path, text: &str, executable: bool) {
     if std::fs::read_to_string(path).ok().as_deref() == Some(text) {
         return;
     }

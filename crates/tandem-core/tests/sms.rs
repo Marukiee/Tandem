@@ -9,7 +9,7 @@ use std::time::Duration;
 use tandem_core::events::Event;
 use tandem_core::platform::DesktopFiles;
 use tandem_core::proto::Msg;
-use tandem_core::sms::{SmsConversation, SmsMessage, SmsMsg, SmsRefusal, SmsStatus};
+use tandem_core::sms::{PhoneContact, PhoneNumber, SmsConversation, SmsMessage, SmsMsg, SmsRefusal, SmsStatus};
 use tandem_core::store::{DeviceSettings, FileSecretStore, Store};
 use tandem_core::{DeviceId, Engine, EngineConfig};
 use tokio::sync::broadcast::Receiver;
@@ -136,6 +136,37 @@ async fn the_computer_gets_the_answer_to_its_own_question() {
         .await
         .unwrap();
     assert!(matches!(sent, SmsMsg::Sent { thread: Some(7), error: None, .. }));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_whole_list_of_contacts_comes_page_after_page() {
+    let (phone, mac) = paired(&["sms.view"]).await;
+    // A phone with 450 people, ids with gaps as on a real phone, that hands out pages from the cursor it is given.
+    let people: Vec<PhoneContact> = (0..450u64)
+        .map(|i| PhoneContact {
+            id: 3 + i * 2,
+            name: format!("Person {i}"),
+            numbers: vec![PhoneNumber { number: format!("+316{i:08}"), label: "Mobile".into(), preferred: true }],
+        })
+        .collect();
+    let engine = phone.engine.clone();
+    let mut events = phone.engine.subscribe();
+    let book = people.clone();
+    tokio::spawn(async move {
+        while let Ok(event) = events.recv().await {
+            let Event::Sms { from, msg: SmsMsg::ListContacts { req, after, limit } } = event else { continue };
+            let rest: Vec<_> = book.iter().filter(|p| p.id > after).cloned().collect();
+            let more = rest.len() > limit as usize;
+            let items = rest.into_iter().take(limit as usize).collect();
+            engine.sms_answer(from, SmsMsg::ContactPage { req, items, more }).await.unwrap();
+        }
+    });
+    let all = mac.engine.sms_all_contacts(phone.engine.id()).await.unwrap().unwrap();
+    assert_eq!(all, people);
+
+    // Switched off on the phone, the core of the phone says no.
+    phone.engine.set_device_settings(&mac.engine.id(), DeviceSettings { messages: false, ..Default::default() }).unwrap();
+    assert_eq!(mac.engine.sms_all_contacts(phone.engine.id()).await.unwrap(), Err(SmsRefusal::Off));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

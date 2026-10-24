@@ -22,6 +22,14 @@
     "longDescription": "Tandem connects your phone, Mac and PC over your own network: files, clipboard, notifications and music, with nothing in between.",
     "copyright": "AGPL-3.0-only",
     "category": "Utility",
+    "linux": {
+      "deb": {
+        "files": { "/usr/share/gnome-shell/search-providers/nl.markmaaktmedia.tandem.search-provider.ini": "linux/nl.markmaaktmedia.tandem.search-provider.ini" }
+      },
+      "rpm": {
+        "files": { "/usr/share/gnome-shell/search-providers/nl.markmaaktmedia.tandem.search-provider.ini": "linux/nl.markmaaktmedia.tandem.search-provider.ini" }
+      }
+    },
     "windows": {
       "nsis": {
         "installMode": "currentUser",
