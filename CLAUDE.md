@@ -113,6 +113,10 @@ ondertekend.
 
 - Fase 1 vragen stellen, fase 2 doorbouwen zonder tussentijds te stoppen.
 - Bij twijfel over een keuze: kies, bouw door, en zeg achteraf wat je koos.
+- **Elke functie werkt op elk apparaat** (Mac, Android, Linux, Windows), in elke rol (zender, ontvanger, hoofdcomputer,
+  bediende). Een functie of verbetering die voor één systeem gebouwd wordt, wordt in dezelfde ronde ook voor de andere gebouwd,
+  ook kleine dingen als volumeknoppen, sneltoetsen of meldingen. Kan iets op een systeem echt niet, dan staat dat met de reden in
+  `docs/PARITY.md`, en zegt de app het pas als iemand de functie gebruikt.
 
 ## Bouwen, testen en werken met agents
 
