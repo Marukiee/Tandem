@@ -230,20 +230,22 @@ export function DevicePage({ device }) {
         <button class="btn" disabled=${!device.online} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
         ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
           <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}
-        ${(isComputer || device.platform === "android") && html`${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("screen.host")} title=${hasCap("screen.host") ? "" : t("live_update_phone")} onClick=${() => show("screen")}>
+        ${(isComputer || device.platform === "android") && html`${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${() => (hasCap("screen.host") ? show("screen") : say(t("live_update_phone")))}>
           <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
-        ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("camera.host")} title=${hasCap("camera.host") ? t("live_camera_tip") : t("live_update_phone")} onClick=${() => show("camera")}>
+        ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} title=${t("live_camera_tip")} onClick=${() => (hasCap("camera.host") ? show("camera") : say(t("live_update_phone")))}>
           <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
         ${isComputer && hasCap("screen.host") && html`<button class="btn" disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => show("screen")}>
           <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
         ${isComputer && hasCap("screen.extend") && html`<button class=${"btn" + (displayOn ? " on" : "")} disabled=${!device.online && !displayOn} title=${t("display_tip")}
           onClick=${() => (displayOn ? call("display_stop") : call("display_start", { id: device.id, name: device.name, mac: device.platform === "macos" })).catch(failed)}>
           <${Icon} name=${displayOn ? "circle-x" : "device-laptop"} size=${17} />${displayOn ? t("display_stop_screen") : t("display_use")}</button>`}
-        ${(isComputer || device.platform === "android") && html`<button class=${"btn" + (extendOn ? " on" : "")} disabled=${(!device.online || !state.canExtend || !hasCap("screen.extend.view")) && !extendOn}
-          title=${!hasCap("screen.extend.view") ? t("extend_update") : !state.canExtend ? t("extend_cant_here") : t("extend_tip")}
-          onClick=${() => (extendOn ? call("display_offer_stop", { id: device.id }) : call("display_offer", { id: device.id }).then(() => say(t("extend_asked", device.name)))).catch(failed)}>
+        ${(isComputer || device.platform === "android") && html`<button class=${"btn" + (extendOn ? " on" : "")} disabled=${!device.online && !extendOn} title=${t("extend_tip")}
+          onClick=${() => (extendOn ? call("display_offer_stop", { id: device.id }).catch(failed)
+            : !hasCap("screen.extend.view") ? say(t("extend_update"))
+            : !state.canExtend ? say(t("extend_cant_here"))
+            : call("display_offer", { id: device.id }).then(() => say(t("extend_asked", device.name))).catch(failed))}>
           <${Icon} name=${extendOn ? "circle-x" : "device-desktop"} size=${17} />${extendOn ? t("extend_stop") : t("extend_to")}</button>`}
-        ${isComputer && html`<button class="btn" disabled=${!sshReady} title=${sshReady ? t("ssh_title") : sshReason} onClick=${openSsh}>
+        ${isComputer && html`<button class="btn" disabled=${!device.online} title=${t("ssh_title")} onClick=${() => (sshReady ? openSsh() : say(sshReason))}>
           <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
         ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
           <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>
@@ -573,7 +575,7 @@ function MouseSection({ s, patch }) {
 
     <h2>${t("mouse_in")}</h2>
     <div class="card flush">
-      <${SettingRow} icon="pointer" title=${t("mouse_in_title")} sub=${t("mouse_in_sub")} on=${s.remoteInput} onChange=${(v) => patch({ remoteInput: v })} disabled=${!state.input.ok} why=${inputWhy()} />
+      <${SettingRow} icon="pointer" title=${t("mouse_in_title")} sub=${t("mouse_in_sub")} on=${s.remoteInput} onChange=${(v) => (v && !state.input.ok ? say(inputWhy()) : patch({ remoteInput: v }))} />
       ${state.hasLid && html`<${SettingRow} icon="device-laptop" title=${t("lid_title")} sub=${t("lid_sub")} on=${s.keepWhenLidClosed} onChange=${(v) => patch({ keepWhenLidClosed: v })} />`}
     </div>
     ${s.remoteInput && state.input.ok && html`<${AllowedDevices} s=${s} patch=${patch} />`}
@@ -854,8 +856,8 @@ function RemoteSettings({ s, patch }) {
     <h2>${t("tab_remote")}</h2>
     <div class="muted">${t("remote_intro")}</div>
     <div class="card flush">
-      <${SettingRow} icon="device-desktop" title=${t("remote_host")} sub=${t("remote_host_sub")} on=${s.screenHost} disabled=${!state.canHost}
-        why=${!state.canHost ? t("remote_unavailable") : ""} onChange=${(v) => patch({ screenHost: v })} />
+      <${SettingRow} icon="device-desktop" title=${t("remote_host")} sub=${t("remote_host_sub")} on=${s.screenHost && state.canHost}
+        onChange=${(v) => (v && !state.canHost ? say(t("remote_unavailable")) : patch({ screenHost: v }))} />
     </div>
     <h2>${t("screen_sound")}</h2>
     <div class="card flush">
