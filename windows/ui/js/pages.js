@@ -289,8 +289,6 @@ export function DevicePage({ device }) {
     ${isComputer && sshChecked && !sshAddress && html`<div class="small muted" style="margin:-4px 2px 0">${sshReason}</div>`}
     ${isComputer && html`<${LastSeen} device=${device} />`}
 
-    <${FeatureNotice} device=${device} />
-
     <div class=${"drop" + (state.dropping ? " over" : "") + (device.online ? " click" : " off")} role="button" tabindex="0"
       title=${t("drop_click")} onClick=${() => device.online && send()}
       onKeyDown=${(e) => { if ((e.key === "Enter" || e.key === " ") && device.online) { e.preventDefault(); send(); } }}>
@@ -739,17 +737,6 @@ function FeatureRow({ feature, action, enabled = true, open }) {
     <span class=${"feature-mark " + (feature.ready ? "ok" : "bad")}><${Icon} name=${feature.ready ? "circle-check" : "alert-triangle"} size=${18} /></span>
     <div class="grow"><div class="t">${feature.name}</div>${!feature.ready && feature.why && html`<div class="s">${feature.why}</div>`}</div>
     ${!feature.ready && feature.page && html`<button class="btn accent small" disabled=${!enabled} onClick=${() => open(feature.page)}>${action}</button>`}
-  </div>`;
-}
-
-/** On a device's page: what does not work there now, and the button that opens the setting on that device. Nothing when all works. */
-function FeatureNotice({ device }) {
-  // Messages says what it needs when it is opened: someone who never uses it is not reminded here.
-  const missing = device.online ? (device.features || []).filter((f) => !f.ready && f.id !== "messages") : [];
-  if (missing.length === 0) return null;
-  return html`<div class="card flush feature-notice">
-    <div class="feature-notice-title"><${Icon} name="alert-triangle" size=${17} />${t("features_notice", device.name)}</div>
-    ${missing.map((f) => html`<${FeatureRow} key=${f.id} feature=${f} action=${t("features_open_on", device.name)} open=${(page) => openOn(device, page)} />`)}
   </div>`;
 }
 

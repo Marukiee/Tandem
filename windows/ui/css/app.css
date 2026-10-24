@@ -272,7 +272,6 @@ h2 { font: 600 16px var(--font-display); margin: 6px 2px 0; }
 .feature-mark.ok { background: var(--ok-soft); color: var(--ok); }
 .feature-mark.bad { background: var(--bad-soft); color: var(--bad); }
 .feature-mark .icon { color: inherit; }
-.feature-notice-title { display: flex; align-items: center; gap: 8px; padding: 12px 14px 4px; font-weight: 600; color: var(--bad); }
 .setting.disabled select { opacity: 0.5; }
 .switch:disabled { opacity: 0.45; cursor: not-allowed; }
 
