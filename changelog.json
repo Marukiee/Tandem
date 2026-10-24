@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.2.9",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Find your computer, share Wi-Fi",
+      "new": [
+        "Play a sound on a computer to find it, with the sound of your own system, and see where it was last",
+        "Share your computer's Wi-Fi with your phone in one tap",
+        "Send with Tandem from Files, Dolphin, Nemo and Windows Explorer",
+        "Mac: a calmer design that follows Apple's rules"
+      ]
+    },
+    "nl": {
+      "title": "Vind je computer, deel je wifi",
+      "new": [
+        "Laat een computer een geluid afspelen om hem te vinden, met het geluid van je eigen systeem, en zie waar hij het laatst was",
+        "Deel de wifi van je computer met één tik met je telefoon",
+        "Sturen met Tandem vanuit Bestanden, Dolphin, Nemo en Windows Verkenner",
+        "Mac: een rustiger ontwerp volgens de regels van Apple"
+      ]
+    }
+  },
+  {
     "version": "0.2.8",
     "date": "2026-10-24",
     "en": {
