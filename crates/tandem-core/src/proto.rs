@@ -68,7 +68,13 @@ pub enum Msg {
     Dial { number: String },
     Ring { on: bool },
     /// Asks the device to record for `side::LISTEN_MS`: this one is about to play the tones of `side::pattern` (see `side.rs`).
-    SideListen { id: u64 },
+    /// `quiet`: the quiet sweeps of a check that nobody asked for. The device then does not ask for its microphone, and does not listen
+    /// while it is in use. An older device does not know the field and listens as it always did.
+    SideListen {
+        id: u64,
+        #[serde(default)]
+        quiet: bool,
+    },
     /// The device listens now (its microphone is on): the sound can be played.
     SideReady { id: u64 },
     /// What the device heard of those tones. `heard` is false when it could not listen (no microphone, not allowed) or heard nothing.
@@ -914,6 +920,30 @@ mod tests {
             Msg::Focus(got) => assert_eq!(got, FocusChange { on: false, name: String::new(), seq: 0, origin: None }),
             other => panic!("wrong message: {other:?}"),
         }
+    }
+
+    #[test]
+    fn a_quiet_side_check_reads_on_old_and_new_devices() {
+        match decode_msg(&encode(&Msg::SideListen { id: 5, quiet: true }).unwrap()).unwrap() {
+            Msg::SideListen { id: 5, quiet: true } => {}
+            other => panic!("wrong message: {other:?}"),
+        }
+        // From an older device, without the field: the audible one, as before.
+        let old = ciborium::Value::Map(vec![(
+            ciborium::Value::Text("SideListen".into()),
+            ciborium::Value::Map(vec![(ciborium::Value::Text("id".into()), ciborium::Value::Integer(9.into()))]),
+        )]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&old, &mut bytes).unwrap();
+        assert!(matches!(decode_msg(&bytes).unwrap(), Msg::SideListen { id: 9, quiet: false }));
+        // And what an older device makes of the new one: the same message with a field it does not know, which it skips.
+        #[derive(serde::Deserialize)]
+        enum Old {
+            SideListen { id: u64 },
+        }
+        let new = encode(&Msg::SideListen { id: 7, quiet: true }).unwrap();
+        let Old::SideListen { id } = ciborium::from_reader(&new[..]).unwrap();
+        assert_eq!(id, 7);
     }
 
     #[tokio::test]

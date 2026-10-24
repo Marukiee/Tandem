@@ -431,7 +431,7 @@ impl Inner {
                 self.find.asked(id, on);
                 self.emit(Event::Ring { from: id, on });
             }
-            Msg::SideListen { id: probe } => self.emit(Event::SideListen { from: id, id: probe }),
+            Msg::SideListen { id: probe, quiet } => self.emit(Event::SideListen { from: id, id: probe, quiet }),
             Msg::SideReady { id: probe } => self.emit(Event::SideReady { from: id, id: probe }),
             Msg::SideMoved => self.emit(Event::SideMoved { from: id }),
             Msg::OpenSettings { page } => self.emit(Event::OpenSettings { from: id, page }),

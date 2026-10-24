@@ -60,7 +60,8 @@ pub enum Event {
     Dial { from: DeviceId, number: String },
     Ring { from: DeviceId, on: bool },
     /// Another device is about to play tones to find out on which side of it this one stands: record and answer with `side_heard`.
-    SideListen { from: DeviceId, id: u64 },
+    /// `quiet` when it checks by itself, without the person asking.
+    SideListen { from: DeviceId, id: u64, quiet: bool },
     SideReady { from: DeviceId, id: u64 },
     SideHeard { from: DeviceId, id: u64, left: f32, right: f32, heard: bool },
     SideMoved { from: DeviceId },
