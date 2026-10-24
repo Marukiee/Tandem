@@ -18,6 +18,7 @@ mod edge;
 mod engine;
 mod events;
 mod files_host;
+mod find;
 mod history;
 #[cfg(feature = "screen-host")]
 mod host;
@@ -93,6 +94,7 @@ pub fn run() {
             tray::build(&handle)?;
             media::start(&handle);
             power::start(handle.clone());
+            find::start_whereabouts(&handle);
             lid::start(handle.clone());
             pointer_ready::start(handle.clone());
             debugshot::start();
@@ -259,6 +261,11 @@ pub fn run() {
             ssh::ssh_resize,
             ssh::ssh_close,
             ssh::ssh_info,
+            find::find_card,
+            find::find_stop,
+            find::find_sounds,
+            find::find_choose,
+            find::find_preview,
         ])
         .build(tauri::generate_context!())
         .expect("Tandem could not start")

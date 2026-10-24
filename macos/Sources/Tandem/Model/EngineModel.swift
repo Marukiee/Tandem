@@ -197,7 +197,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready"] + ScreenHost.shared.capabilities(),
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "ring"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
@@ -597,7 +597,7 @@ final class EngineModel {
                 screenSoundTo = nil
             }
 
-        case .notificationAction, .callAction, .dial, .ring, .captureRequested, .captureCancelled,
+        case .notificationAction, .callAction, .dial, .captureRequested, .captureCancelled,
              .mediaRequested, .mediaBitrate:
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break
@@ -639,6 +639,14 @@ final class EngineModel {
 
         case let .mediaOffered(from, kind, facing, extend):
             LiveManager.shared.handleOffer(from: from, kind: kind, facing: facing, extend: extend)
+
+        case let .ring(from, on):
+            FindThisMac.shared.ring(from: from, on: on)
+
+        case let .ringing(from, on):
+            FindOthers.shared.reported(from, on: on)
+            // A phone that says it stopped (on the phone itself) turns the Find phone button back.
+            if !on { ringing.remove(from) }
         }
     }
 
@@ -1226,7 +1234,11 @@ final class EngineModel {
            let free = values.volumeAvailableCapacityForImportantUsage {
             status.freeStorage = UInt64(free)
         }
-        Task { await engine.updateStatus(status: status) }
+        Task {
+            var status = status
+            status.network?.ssid = await WiFiName.current()
+            await engine.updateStatus(status: status)
+        }
     }
 
     /// Forgets the identity and every pairing, then starts fresh.

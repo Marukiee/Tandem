@@ -38,6 +38,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Bluetooth tussen apparaten zonder netwerk (klembord, meldingen) | wacht (telefoon) | wacht en zoekt | nee | wacht en zoekt (BlueZ, nooit tussen twee computers gezien) |
 | Computer wakker maken (Wake on LAN) vanaf de telefoon | ja | doel | doel | doel |
 | Zoek mijn telefoon | bron | ja | ja | ja |
+| Zoek mijn computer (geluid uit de eigen systeemgeluiden, laatst gezien met wifinaam) | ja (vraagt, met laatst gezien) | ja, beide kanten | ja, beide kanten | ja, beide kanten |
 | Bijwerken | ja | ja | ja | ja als AppImage; een pakket van de distributie werkt de pakketbeheerder bij |
 
 ## Wat er nog mist

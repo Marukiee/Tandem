@@ -151,6 +151,9 @@ pub enum Msg {
     Ping { nonce: u64 },
     Pong { nonce: u64 },
     Bye { reason: String },
+    /// This device plays a sound now because another one asked with `Ring`, or it stopped (the person stopped it here, it ran out, or
+    /// it was asked to stop). Sent to the devices that asked, so their button shows what really happens. Devices that do not know it skip it.
+    Ringing { on: bool },
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,
@@ -883,5 +886,20 @@ mod tests {
         let (mut a, mut b) = tokio::io::duplex(1024);
         write_frame(&mut a, &vec![0u8; 200]).await.unwrap();
         assert!(read_frame(&mut b, 100).await.is_err());
+    }
+
+    #[test]
+    fn a_ringing_report_travels_and_an_old_app_skips_it_without_stopping_its_own_ring() {
+        let bytes = encode(&Msg::Ringing { on: true }).unwrap();
+        assert!(matches!(decode_msg(&bytes).unwrap(), Msg::Ringing { on: true }));
+        // How `Msg` looked before the report existed: the report must not read as a `Ring`, which would stop or start a sound.
+        #[derive(Debug, Deserialize)]
+        #[allow(dead_code)]
+        enum OldMsg {
+            Ring { on: bool },
+            Ping { nonce: u64 },
+        }
+        assert!(ciborium::from_reader::<OldMsg, _>(bytes.as_slice()).is_err());
+        assert!(ciborium::from_reader::<ciborium::Value, _>(bytes.as_slice()).is_ok());
     }
 }

@@ -196,6 +196,8 @@ private struct GeneralSettings: View {
 
             PhoneSoundSettings()
 
+            FindSoundSettings()
+
             Section("Behaviour") {
                 Toggle("Start at login", isOn: $startAtLogin)
                     .onChange(of: startAtLogin) { _, on in

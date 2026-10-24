@@ -66,6 +66,8 @@ pub struct Settings {
     pub pointer_share: bool,
     /// "Send with Tandem" in the menus of the file manager (see `sendwith.rs`).
     pub file_manager_send: bool,
+    /// The sound of the system that plays when another device looks for this computer. Empty is the one `find.rs` picks.
+    pub ring_sound: String,
 }
 
 impl Default for Settings {
@@ -98,6 +100,7 @@ impl Default for Settings {
             file_manager_send: true,
             auto_update: true,
             dismissed_update: String::new(),
+            ring_sound: String::new(),
         }
     }
 }

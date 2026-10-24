@@ -71,6 +71,7 @@ pub fn device(d: &TandemDevice) -> Value {
         "notifications": d.notifications_enabled,
         "ble": d.ble,
         "features": crate::features::list_json(&d.features),
+        "lastSeen": d.last_seen.as_ref().map(|s| json!({ "atMs": s.at_ms, "ssid": s.ssid, "route": s.route.map(route) })),
     })
 }
 

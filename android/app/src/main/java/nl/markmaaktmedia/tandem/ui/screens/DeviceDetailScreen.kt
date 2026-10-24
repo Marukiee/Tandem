@@ -274,6 +274,9 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             }
         }
 
+        // A sound to find a computer by, and where it was last seen.
+        if (computer) nl.markmaaktmedia.tandem.ui.components.FindComputerSection(device)
+
         // What does not work on it now, and the button that turns it on there.
         FeatureNotice(device)
 

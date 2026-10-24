@@ -171,7 +171,8 @@ struct DeviceDetail: View {
     @ViewBuilder
     private var phoneNetworkChips: some View {
         let hotspotOn = device.status.hotspot == true
-        if let network = device.status.network {
+        // A computer sends its network too (for where it was last seen), and these words are about a phone.
+        if let network = device.status.network, !device.isComputer {
             if hotspotOn && network.kind == .cellular {
                 Chip(symbol: "personalhotspot", text: "Hotspot on, sharing mobile data", tint: Palette.indigo)
             } else {
@@ -289,6 +290,7 @@ struct DeviceDetail: View {
                         .disabled(missing)
                         .opacity(missing ? 0.5 : 1)
                         .help(missing ? SSHAccess.reason(for: device) : String(localized: "Log in to this computer over SSH"))
+                        PlaySoundButton(device: device)
                     }
                 }
             }
@@ -298,6 +300,7 @@ struct DeviceDetail: View {
                     .foregroundStyle(.secondary)
                     .padding(.leading, 4)
             }
+            if isComputer { LastSeenText(device: device) }
         }
         .animation(.tandemFade, value: device.online)
         .animation(.tandemFade, value: device.ble)
@@ -320,7 +323,7 @@ struct DeviceDetail: View {
     private var liveState: String {
         let host = ScreenHost.shared.running.map { "\($0.peer)\($0.extend)" }.joined()
         let live = LiveManager.shared.sessions.filter { $0.peer == device.id }.map { "\($0.kind)\($0.extend)" }.joined()
-        return host + live + "\(model.ringing.contains(device.id))\(model.speaker.device == device.id)"
+        return host + live + "\(model.ringing.contains(device.id))\(model.speaker.device == device.id)\(FindOthers.shared.ringing.contains(device.id))"
     }
 
     /// A small heading and the buttons under it in a grid: every button as wide as the others in its row, starting at the left, so a row

@@ -179,7 +179,8 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   6. Goedkeuren met de telefoon: geschrapt door Mark (2026-10-24), ziet het nut niet.
   7. De computer laten piepen en zien waar hij is vanaf de telefoon (Find My voor laptops), met het netwerk waar hij laatst was. Het geluid komt uit
      de eigen systeemgeluiden van elk apparaat en is in de instellingen te kiezen (Mac `/System/Library/Sounds`, Linux het geluidsthema, Windows
-     `C:\Windows\Media`, Android de kiezer van het systeem). Gekozen door Mark.
+     `C:\Windows\Media`, Android de kiezer van het systeem). Gekozen door Mark. Gebouwd (2026-10-24): Speel geluid af op de pagina van elke
+     computer met laatst gezien en wifinaam (`Ring`, `Ringing`, cap `ring`, `seen.cbor`), nog niet op echte toestellen geprobeerd.
   8. Focus en Niet storen gelijk op alle apparaten. Android: een eigen modus (Android 15 Modi, `AutomaticZenRule`) "Focus van je MacBook", zodat je
      zelf instelt wat er door mag. Mac: aanzetten met een kant-en-klare opdracht die je met één klik toevoegt (`shortcuts run`); lezen kan niet zonder
      Volledige schijftoegang (`~/Library/DoNotDisturb` is afgeschermd) of de Focus-status-API (vraagt een recht dat mogelijk een profiel van Apple

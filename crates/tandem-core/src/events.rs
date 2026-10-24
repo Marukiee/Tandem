@@ -98,4 +98,6 @@ pub enum Event {
     MediaOffered { from: DeviceId, kind: crate::live::MediaKind, facing: crate::live::MediaFacing, extend: bool },
     /// The pointer goes over or comes back (see `pointer_share`).
     PointerShare { from: DeviceId, msg: crate::pointer_share::PointerShareMsg },
+    /// The device that this one asked to ring plays its sound now, or stopped.
+    Ringing { from: DeviceId, on: bool },
 }

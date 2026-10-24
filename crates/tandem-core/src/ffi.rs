@@ -337,6 +337,9 @@ pub struct TandemDevice {
     pub ble: bool,
     /// What it can do for the others and whether it is ready for it, as it last said.
     pub features: Vec<TandemFeature>,
+    /// When and on which network it was last connected to this device; now, while it is connected.
+    #[uniffi(default = None)]
+    pub last_seen: Option<TandemLastSeen>,
 }
 
 /// See `proto::Feature`.
@@ -380,7 +383,23 @@ impl From<DeviceInfo> for TandemDevice {
             notifications_enabled: d.settings.notifications,
             ble: d.ble,
             features,
+            last_seen: d.last_seen.map(Into::into),
         }
+    }
+}
+
+/// See `find::LastSeen`.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemLastSeen {
+    /// Milliseconds since 1970.
+    pub at_ms: u64,
+    pub ssid: Option<String>,
+    pub route: Option<TandemRoute>,
+}
+
+impl From<crate::find::LastSeen> for TandemLastSeen {
+    fn from(s: crate::find::LastSeen) -> Self {
+        TandemLastSeen { at_ms: s.at_ms, ssid: s.ssid, route: s.route.map(Into::into) }
     }
 }
 
@@ -1057,6 +1076,8 @@ pub enum TandemEvent {
     MediaOffered { from: String, kind: TandemMediaKind, facing: TandemMediaFacing, extend: bool },
     /// The pointer of the other computer goes over to this one, or comes back.
     PointerShare { from: String, msg: TandemPointerShare },
+    /// A device that this one asked to `ring` plays its sound now, or stopped (there, by itself, or because it was asked).
+    Ringing { from: String, on: bool },
 }
 
 impl From<Event> for TandemEvent {
@@ -1191,6 +1212,7 @@ impl From<Event> for TandemEvent {
                 };
                 TandemEvent::MediaCommand { from: from.to_string(), player, action, position_ms }
             }
+            Event::Ringing { from, on } => TandemEvent::Ringing { from: from.to_string(), on },
         }
     }
 }
@@ -1762,6 +1784,11 @@ impl TandemEngine {
 
     pub async fn ring(&self, target: String, on: bool) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::Ring { on }).await.map(|_| ())
+    }
+
+    /// This device plays its sound because of `Ring` (`on`), or stopped: the devices that asked are told.
+    pub async fn ringing(&self, on: bool) {
+        self.engine.ringing(on).await;
     }
 
     pub async fn send_input(&self, target: String, input: TandemInput) -> Result<(), TandemError> {

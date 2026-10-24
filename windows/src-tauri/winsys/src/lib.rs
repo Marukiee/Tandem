@@ -185,6 +185,8 @@ mod uri_tests {
         assert_eq!(uri_list_paths("file:///tmp/%zz"), vec!["/tmp/%zz".to_string()]);
     }
 }
+/// The sounds of the system, ringing until found, and the Wi-Fi this computer is on.
+pub mod find;
 #[cfg(not(windows))]
 mod imp {
     #[cfg_attr(target_os = "linux", allow(unused_imports))]

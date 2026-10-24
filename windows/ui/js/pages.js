@@ -4,6 +4,7 @@ import { call, listen, native } from "./backend.js";
 import { ArrangementEditor } from "./arrange.js";
 import { BatteryRing, Chip, DeviceGlyph, PlayerCard, Switch, ago, deviceChips, fmtSize, platformIcon } from "./components.js";
 import { Icon } from "./icons.js";
+import { FindSoundRow, LastSeen, PlaySoundButton } from "./find.js";
 import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
 
@@ -247,6 +248,7 @@ export function DevicePage({ device }) {
           <${Icon} name=${extendOn ? "circle-x" : "device-desktop"} size=${17} />${extendOn ? t("extend_stop") : t("extend_to")}</button>`}
         ${isComputer && html`<button class="btn" disabled=${!device.online} title=${t("ssh_title")} onClick=${() => (sshReady ? openSsh() : say(sshReason))}>
           <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
+        ${isComputer && html`<${PlaySoundButton} device=${device} />`}
         ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
           <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>
         <button class="btn" disabled=${!device.online} title=${t("insert_scan_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "document" }).catch(failed)}>
@@ -256,6 +258,7 @@ export function DevicePage({ device }) {
     </div>
 
     ${isComputer && sshChecked && !sshAddress && html`<div class="small muted" style="margin:-4px 2px 0">${sshReason}</div>`}
+    ${isComputer && html`<${LastSeen} device=${device} />`}
 
     <${FeatureNotice} device=${device} />
 
@@ -782,6 +785,7 @@ function GeneralSettings({ s, patch }) {
           ${delays.map((d) => html`<option value=${d}>${t("delay_" + d)}</option>`)}
         </select>
       <//>
+      <${FindSoundRow} SettingRow=${SettingRow} />
     </div>
 
     <h2>${t("received_files")}</h2>

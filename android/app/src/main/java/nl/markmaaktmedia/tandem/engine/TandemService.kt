@@ -140,6 +140,7 @@ class TandemService : LifecycleService() {
             }
 
             is TandemEvent.Ring -> if (event.on) FindPhone.start(this) else FindPhone.stop()
+            is TandemEvent.Ringing -> FindDevices.reported(this, event.from, event.on)
 
             is TandemEvent.CallAction -> calls.handle(event)
             is TandemEvent.Dial -> calls.dial(event.number)

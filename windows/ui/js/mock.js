@@ -20,6 +20,9 @@ const devices = empty ? [] : [
     ],
     clipboard: true, autoAccept: false, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 64, charging: false, powerSave: false }, network: { kind: "wifi", ssid: "Thuis", metered: false, roaming: false } } },
+  { id: "linux", name: "ThinkPad", platform: "linux", online: false, route: null, rttMs: null, appVersion: "0.1.80", caps: ["ring"],
+    clipboard: true, autoAccept: false, notifications: true, ble: false, vouchedByRemoved: false, status: {},
+    lastSeen: { atMs: now - 2 * 3600000, ssid: "Thuis", route: "lan" } },
   { id: "old", name: "Xperia test", platform: "android", online: false, route: null, rttMs: null, appVersion: "0.1.20", caps: [],
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false, status: {} },
 ];
@@ -158,6 +161,10 @@ export async function call(command, args) {
     case "media_policy": case "media_policy_set": return { screen: "ask", control: "ask" };
     case "ssh_probe": return args.id === "mac" ? "192.168.1.20" : null;
     case "ssh_open": return null;
+    case "find_sounds": return { chosen: "C:\\Windows\\Media\\Alarm01.wav", ready: true, sounds: [
+      { path: "C:\\Windows\\Media\\Alarm01.wav", name: "Alarm01", group: "Windows" }, { path: "C:\\Windows\\Media\\Ring01.wav", name: "Ring01", group: "Windows" },
+      { path: "C:\\Windows\\Media\\Afternoon\\Windows Ding.wav", name: "Windows Ding", group: "Afternoon" }] };
+    case "find_choose": case "find_preview": case "find_stop": case "ring": return null;
     case "ssh_info": return { label: "ssh-preview", platform: new URLSearchParams(location.search).get("platform") || "windows" };
     case "create_pairing": return { uri: "tandem://pair?c=PREVIEW", code: "4821 7093", expiresAtMs: Date.now() + 300000, qr };
     case "pair": return "phone";

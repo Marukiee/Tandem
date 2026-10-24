@@ -194,6 +194,7 @@ impl Inner {
         }
 
         info!(peer = %id, name = %hello.name, dialer, "connected");
+        self.note_seen(id, true);
         self.emit(Event::Connected { id });
         self.emit(Event::DevicesChanged);
         self.sessions_changed.notify_waiters();
@@ -331,6 +332,7 @@ impl Inner {
 
     fn session_ended(self: &Arc<Self>, session: &Arc<Session>) {
         let id = session.peer;
+        self.note_seen(id, true);
         let mut was_current = false;
         {
             let mut peers = self.peers.lock().unwrap();
@@ -385,6 +387,7 @@ impl Inner {
                 if let Some(peer) = self.peers.lock().unwrap().get_mut(&id) {
                     peer.status.merge(&status);
                 }
+                self.note_seen(id, false);
                 self.emit(Event::DevicesChanged);
             }
             Msg::Clipboard(clip) => {
@@ -416,7 +419,10 @@ impl Inner {
             Msg::Call(call) => self.emit(Event::Call { from: id, call }),
             Msg::CallAction(action) => self.emit(Event::CallAction { from: id, action }),
             Msg::Dial { number } => self.emit(Event::Dial { from: id, number }),
-            Msg::Ring { on } => self.emit(Event::Ring { from: id, on }),
+            Msg::Ring { on } => {
+                self.find.asked(id, on);
+                self.emit(Event::Ring { from: id, on });
+            }
             Msg::SideListen { id: probe } => self.emit(Event::SideListen { from: id, id: probe }),
             Msg::SideReady { id: probe } => self.emit(Event::SideReady { from: id, id: probe }),
             Msg::SideMoved => self.emit(Event::SideMoved { from: id }),
@@ -495,6 +501,7 @@ impl Inner {
                     session.pong.notify_waiters();
                 }
             }
+            Msg::Ringing { on } => self.emit(Event::Ringing { from: id, on }),
             Msg::Bye { .. } | Msg::Unknown => {}
         }
     }

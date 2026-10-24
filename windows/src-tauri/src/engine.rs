@@ -125,6 +125,8 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         // Says by itself whether it can take a pointer right now (see `pointer_ready`), so the main computer does not send one that
         // would be handed straight back.
         "pointer.ready".into(),
+        // Plays a sound when another device looks for it, and says when it rings and stops (see `find.rs`).
+        "ring".into(),
     ];
     // Listens to the sound of another computer that wants to know on which side this one stands (see `side.rs`).
     if crate::side::can_listen() {

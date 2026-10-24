@@ -111,6 +111,8 @@ internal object FocusKeys {
 
     const val Source = "about.source"
     const val Reset = "about.reset"
+
+    const val FindSound = "notif.find.sound"
 }
 
 /**
@@ -435,6 +437,11 @@ internal object SettingsCatalog {
         SettingsEntry(
             "about_reset", R.string.settings_reset, R.string.settings_kw_about_reset, SettingsCategory.About,
             Route.SettingsPage(SettingsPageId.About), { TandemIcons.Restart }, subtitle = R.string.settings_reset_sub, focus = FocusKeys.Reset,
+        ),
+
+        SettingsEntry(
+            "notif_find_sound", R.string.find_sound_title, R.string.settings_kw_notif_find_sound, SettingsCategory.Notifications, notifications,
+            { TandemIcons.Ring }, focus = FocusKeys.FindSound,
         ),
     )
 

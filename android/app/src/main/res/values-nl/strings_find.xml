@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Een computer zoeken vanaf zijn pagina: een geluid, en waar hij het laatst was -->
+    <string name="find_section">Zoeken</string>
+    <string name="find_play">Speel geluid af</string>
+    <string name="find_stop_sound">Stop geluid</string>
+    <string name="find_play_sub">Hij speelt een geluid tot je hem vindt</string>
+    <string name="find_playing">%1$s speelt een geluid af</string>
+    <string name="find_connected_on">Verbonden op %1$s</string>
+    <string name="find_last_seen_on">Laatst gezien %1$s op %2$s</string>
+    <string name="find_last_seen_lan">Laatst gezien %1$s op het lokale netwerk</string>
+    <string name="find_last_seen_tailnet">Laatst gezien %1$s via Tailscale</string>
+    <string name="find_last_seen">Laatst gezien %1$s</string>
+    <string name="find_offline_title">%1$s is offline</string>
+    <string name="find_offline_body">Hij kan weer een geluid afspelen zodra hij verbonden is.</string>
+    <string name="find_old_title">Werk Tandem bij op %1$s</string>
+    <string name="find_old_body">De Tandem daarop kan nog geen geluid afspelen. Werk hem daar bij en probeer het opnieuw.</string>
+
+    <!-- Het geluid waarmee deze telefoon overgaat als een ander apparaat hem zoekt -->
+    <string name="find_sound_section">Deze telefoon zoeken</string>
+    <string name="find_sound_title">Geluid als hij gezocht wordt</string>
+    <string name="find_sound_default">Standaard wekkergeluid</string>
+
+    <string name="feature_ring">Overgaan om gevonden te worden</string>
+    <string name="feature_ring_why">Niet storen staat op totale stilte, en dat maakt hem ook stil</string>
+</resources>

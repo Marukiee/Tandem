@@ -9,7 +9,8 @@
     "ssh-*",
     "edge-zone",
     "qs-card",
-    "ask-card"
+    "ask-card",
+    "find-card"
   ],
   "permissions": [
     "core:default",
