@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+# Answers every pkg-config question for a Linux type check on a Mac: every library exists, at a recent version, with nothing to link.
+import sys
+args = sys.argv[1:]
+if "--version" in args: print("1.9.5"); sys.exit(0)
+if "--modversion" in args: print("99.0.0"); sys.exit(0)
+if any(a.startswith("--variable") for a in args): print(""); sys.exit(0)
+print(""); sys.exit(0)
