@@ -251,6 +251,9 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
     sleutels die via iCloud tussen apparaten van hetzelfde account gaan, AirDrop heeft AWDL nodig (een wifi-modus die Android niet
     heeft), en Apple blokkeerde Beeper Mini binnen twee dagen. Tandem doet klembord, bestanden en meldingen al met een eigen protocol.
   - De hover van de knoppen hapert.
+- Het geluid van telefoongesprekken (praten via de microfoon en speakers van een computer) valt buiten Tandem (besloten 2026-10-25). Tandem
+  doet alles rond een gesprek: het belscherm, opnemen, weigeren, ophangen, bellen en contacten zoeken. Op Windows doet Phone Link het
+  geluid, op Linux kan de laptop via de Bluetooth-instellingen van GNOME zelf de headset van de telefoon zijn, los van Tandem.
 - Later, als Mark een betaalde Apple Developer-account neemt (gezegd 2026-10-25): de telefoon als webcam op de Mac (een camera-extensie
   vraagt een Developer ID), notarisatie zodat "Toch openen" bij de eerste installatie weg is, de Focus-status van macOS lezen zonder de
   snelkoppeling in Opdrachten (en dus zonder iCloud), en meldingen als echte communicatiemeldingen. Webcam op Linux en Windows nu al bouwen.
