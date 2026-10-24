@@ -264,7 +264,7 @@ private struct ChooseKind: View {
             .padding(.leading, 10)
             .padding(.trailing, 2)
 
-            GlassEffectContainer(spacing: 10) {
+            GlassEffectContainer(spacing: 0) {
                 HStack(spacing: 10) {
                     ForEach(Array(InsertKind.allCases.enumerated()), id: \.element.id) { index, kind in
                         KindTile(kind: kind, index: index) {
@@ -351,7 +351,7 @@ private struct WhichPhone: View {
                 .hudLit(10)
             }
             .padding(.leading, 10)
-            GlassEffectContainer(spacing: 8) {
+            GlassEffectContainer(spacing: 0) {
                 VStack(spacing: 8) {
                     ForEach(Array(model.phones.enumerated()), id: \.element.id) { index, phone in
                         let id = 11 + index

@@ -132,8 +132,30 @@ final class PointerShare {
     @ObservationIgnored private var carriedDrag = false
     /// When a device that did not take the pointer was last asked to open the setting it misses.
     @ObservationIgnored private var openedSettingsAt: [String: Date] = [:]
+    /// When a device last handed the pointer straight back.
+    @ObservationIgnored private var bouncedAt: [String: Date] = [:]
+    /// When the person was last told why the pointer stays at an edge.
+    @ObservationIgnored private var wallToldAt: [String: Date] = [:]
+
+    private func refusesPointer(_ id: String) -> Bool {
+        model.device(id)?.features.contains { $0.id == "pointer" && !$0.ready } ?? false
+    }
+
+    /// The pointer was pushed against an edge where a device sits that does not take it: why, now and then.
+    private func tellWall(edge: String) {
+        guard let id = layout.first(where: { $0.value.edge == edge && refusesPointer($0.key) })?.key,
+              let missing = model.device(id)?.features.first(where: { $0.id == "pointer" && !$0.ready }),
+              Date().timeIntervalSince(wallToldAt[id] ?? .distantPast) > 30
+        else { return }
+        wallToldAt[id] = Date()
+        FloatingToast.show(missing.why, symbol: "cursorarrow.slash")
+    }
 
     private func declined(_ id: String) -> Bool {
+        // A device that says it does not take a computer's mouse now (a phone with the switch off) is a wall, without trying.
+        if refusesPointer(id) { return true }
+        // One that handed the pointer straight back is left alone for a while, so pushing the edge again does not bounce it each time.
+        if let at = bouncedAt[id], Date().timeIntervalSince(at) < 20 { return true }
         guard unready.contains(id) else { return false }
         // A computer that went away starts again from nothing when it is back.
         guard let device = model.device(id), device.online else {
@@ -326,7 +348,10 @@ final class PointerShare {
         let list = reachable()
         for push in pushes {
             // Only where a screen really is next to this one: along the rest of the edge there is a wall.
-            guard let crossing = layoutCross(edge: tandemEdge(push.edge), position: Int32(push.position), list: list) else { continue }
+            guard let crossing = layoutCross(edge: tandemEdge(push.edge), position: Int32(push.position), list: list) else {
+                tellWall(edge: push.edge)
+                continue
+            }
             if dragged, NSPasteboard(name: .drag).changeCount == lastDragCount || dragContents() == nil { continue }
             goOver(to: crossing.id, edge: push.edge, along: CGFloat(crossing.along))
             return true
@@ -369,7 +394,15 @@ final class PointerShare {
             case let .text(text): try? await engine.sendPointerShare(target: device, msg: .carry(text: text))
             }
         }
-        PointerAwayPill.show(device: model.device(device)?.name ?? String(localized: "another computer"), carrying: carried.map(chip))
+        // Only once the pointer stayed over there: a device that hands it straight back (see `.leave`) showed the pill for a moment,
+        // as if the pointer had gone, every time the edge was pushed.
+        let name = model.device(device)?.name ?? String(localized: "another computer")
+        let chipped = carried.map(chip)
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(350))
+            guard self?.remote?.device == device else { return }
+            PointerAwayPill.show(device: name, carrying: chipped)
+        }
         // The drag on this Mac ends at the edge, so its picture does not stay behind on this screen while the pointer is over there.
         if carrying { endLocalDrag() }
     }
@@ -620,6 +653,7 @@ final class PointerShare {
                 PointerLog.write("\(model.device(device)?.name ?? device) says the pointer is back (after \(String(format: "%.1f", Date().timeIntervalSince(wentOverAt))) s)")
                 comeBack(along: CGFloat(along))
                 if gaveBack {
+                    bouncedAt[device] = Date()
                     if model.device(device)?.caps.contains("pointer.ready") == true {
                         unready.insert(device)
                     } else if let missing = model.device(device)?.features.first(where: { $0.id == "pointer" && !$0.ready }) {

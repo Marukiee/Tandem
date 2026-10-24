@@ -48,7 +48,7 @@ struct PairingPanel: View {
                 CodeStage()
 
                 VStack(spacing: 10) {
-                    GlassEffectContainer(spacing: 10) {
+                    GlassEffectContainer(spacing: 0) {
                         HStack(spacing: 10) {
                             GlassActionButton(title: "Copy link", symbol: "link", wide: true) {
                                 if let uri = model.pairing.uri {

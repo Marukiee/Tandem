@@ -3,15 +3,19 @@
     "version": "0.2.2",
     "date": "2026-10-24",
     "en": {
-      "title": "The best decoder on every Linux laptop",
+      "title": "Steadier mouse, better decoder, centred buttons",
       "new": [
-        "Linux: Tandem measures which video decoder of the computer shows a second screen fastest, hardware or not, and uses that one"
+        "Linux: Tandem measures which video decoder of the computer shows a second screen fastest, hardware or not, and uses that one",
+        "Mac: the pointer no longer flashes over to a device that does not take it, and says why now and then",
+        "Mac: buttons grow from the middle on hover, also next to each other"
       ]
     },
     "nl": {
-      "title": "De beste decoder op elke Linux-laptop",
+      "title": "Rustiger muis, betere decoder, knoppen in het midden",
       "new": [
-        "Linux: Tandem meet welke videodecoder van de computer een tweede scherm het snelst toont, hardware of niet, en gebruikt die"
+        "Linux: Tandem meet welke videodecoder van de computer een tweede scherm het snelst toont, hardware of niet, en gebruikt die",
+        "Mac: de aanwijzer flitst niet meer naar een apparaat dat hem niet aanneemt, en zegt af en toe waarom",
+        "Mac: knoppen groeien bij hover vanuit het midden, ook naast elkaar"
       ]
     }
   },

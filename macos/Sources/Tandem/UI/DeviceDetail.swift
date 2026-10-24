@@ -225,7 +225,7 @@ struct DeviceDetail: View {
         return VStack(alignment: .leading, spacing: 10) {
             // All of it in one row of buttons that are as wide as their words, wrapping on a narrow window: what goes between the two devices first, then what this
             // Mac does on the other one (look at it, use it, log in to it, ring it).
-            GlassEffectContainer(spacing: 10) {
+            GlassEffectContainer(spacing: 0) {
                 WrapRow(spacing: 10) {
                     GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true) { pickFiles() }
                         .disabled(!device.online)
@@ -330,7 +330,7 @@ struct DeviceDetail: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .padding(.leading, 4)
-            GlassEffectContainer(spacing: 10) {
+            GlassEffectContainer(spacing: 0) {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 170, maximum: 280), spacing: 10)], alignment: .leading, spacing: 10) {
                     content()
                 }

@@ -33,7 +33,9 @@ enum DeviceSides {
     /// Puts the device on that side: a computer next to this screen for the shared mouse, and a second screen that runs for it.
     private static func apply(_ side: String, to id: String) {
         let share = PointerShare.shared
-        if let device = EngineModel.shared.device(id), device.isComputer || device.caps.contains("pointer.in") {
+        // A computer goes next to this screen for the shared mouse. A phone only moves when it was put there before: finding its side is
+        // for a second screen, and a phone that never asked for the mouse should not become a wall the pointer bounces off.
+        if let device = EngineModel.shared.device(id), device.isComputer || share.layout[id] != nil {
             // The offset along the edge stays when the edge does not change.
             let offset = share.layout[id]?.edge == side ? share.layout[id]?.offset : nil
             share.layout[id] = PointerShare.Placement(edge: side, offset: offset)

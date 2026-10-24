@@ -184,7 +184,7 @@ struct FilesView: View {
     @ViewBuilder
     private var actions: some View {
         let chosen = browser.chosen
-        GlassEffectContainer(spacing: 10) {
+        GlassEffectContainer(spacing: 0) {
             HStack(spacing: 10) {
                 if picking {
                     GlassActionButton(title: "Done", symbol: "checkmark", prominent: true) { stopPicking() }

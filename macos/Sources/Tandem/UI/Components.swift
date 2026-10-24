@@ -89,7 +89,9 @@ private struct TandemGlassPill: View {
             .glassEffect(prominent ? .regular.tint(tint) : .regular, in: .capsule)
             .brightness(lit ? (prominent ? 0.07 : 0.03) : 0)
             .shadow(color: prominent ? tint.opacity(lit ? 0.35 : 0) : .black.opacity(lit ? 0.12 : 0), radius: lit ? 10 : 0, y: lit ? 4 : 0)
-            // From the middle, the words with the pill: a scale without an anchor is about the centre.
+            // From the middle, the words with the pill. A row of these sits in a `GlassEffectContainer` with a spacing of 0: with the spacing
+            // of the gap between them, a pill that grew on hover came close enough to its neighbour for the glass to flow towards it, which
+            // stretched the glass to one side while the words stayed, and they looked pinned there.
             .scaleEffect(configuration.isPressed ? 0.96 : (lit ? 1.03 : 1), anchor: .center)
             .animation(.tandemSpringy, value: lit)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
