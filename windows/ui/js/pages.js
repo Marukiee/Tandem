@@ -230,6 +230,8 @@ export function DevicePage({ device }) {
         <button class="btn" disabled=${!device.online} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
         ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
           <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}
+        ${hasCap("sms") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "messages", selected: device.id })}>
+          <${Icon} name="message" size=${17} />${t("sms_messages")}</button>`}
         ${(isComputer || device.platform === "android") && html`${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("screen.host")} title=${hasCap("screen.host") ? "" : t("live_update_phone")} onClick=${() => show("screen")}>
           <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("camera.host")} title=${hasCap("camera.host") ? t("live_camera_tip") : t("live_update_phone")} onClick=${() => show("camera")}>
@@ -697,7 +699,8 @@ function FeatureRow({ feature, action, enabled = true, open }) {
 
 /** On a device's page: what does not work there now, and the button that opens the setting on that device. Nothing when all works. */
 function FeatureNotice({ device }) {
-  const missing = device.online ? (device.features || []).filter((f) => !f.ready) : [];
+  // Messages says what it needs when it is opened: someone who never uses it is not reminded here.
+  const missing = device.online ? (device.features || []).filter((f) => !f.ready && f.id !== "messages") : [];
   if (missing.length === 0) return null;
   return html`<div class="card flush feature-notice">
     <div class="feature-notice-title"><${Icon} name="alert-triangle" size=${17} />${t("features_notice", device.name)}</div>

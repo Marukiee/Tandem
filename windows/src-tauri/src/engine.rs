@@ -125,6 +125,8 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         // Says by itself whether it can take a pointer right now (see `pointer_ready`), so the main computer does not send one that
         // would be handed straight back.
         "pointer.ready".into(),
+        // Shows the text messages of a phone (see `messages`), so the phone tells this computer what changes.
+        "sms.view".into(),
     ];
     // Listens to the sound of another computer that wants to know on which side this one stands (see `side.rs`).
     if crate::side::can_listen() {
