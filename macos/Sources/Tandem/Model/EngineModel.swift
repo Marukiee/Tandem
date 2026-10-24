@@ -197,7 +197,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready"] + ScreenHost.shared.capabilities(),
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "wifi.share", "wifi.join"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
@@ -274,6 +274,7 @@ final class EngineModel {
         PointerShare.shared.start()
         QuickShare.shared.startIfWanted()
         startBleWatch()
+        WifiShare.shared.start(engine: engine)
         observeSleep()
         startMedia()
         speakerDevices.onSelect = { [weak self] phone, uid in self?.outputChosen(phone: phone, uid: uid) }
@@ -639,6 +640,9 @@ final class EngineModel {
 
         case let .mediaOffered(from, kind, facing, extend):
             LiveManager.shared.handleOffer(from: from, kind: kind, facing: facing, extend: extend)
+
+        case let .wifi(from, message):
+            WifiShare.shared.handle(from: from, message: message)
         }
     }
 

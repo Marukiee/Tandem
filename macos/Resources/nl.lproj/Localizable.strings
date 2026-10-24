@@ -1030,3 +1030,26 @@
 /* Clipboard with pictures and files */
 "%@ from %@ is on your clipboard" = "%@ van %@ staat op je klembord";
 "%lld files from %@ are on your clipboard" = "%lld bestanden van %@ staan op je klembord";
+
+/* Sharing Wi-Fi */
+"Share Wi-Fi" = "Wifi delen";
+"Send the name and password of this Mac's Wi-Fi to %@" = "Stuur de naam en het wachtwoord van de wifi van deze Mac naar %@";
+"Share the password of %@ with %@?" = "Het wachtwoord van %1$@ delen met %2$@?";
+"%@ is not on this network. macOS may ask you to allow Tandem to read the password." = "%@ zit niet op dit netwerk. macOS kan je vragen of Tandem het wachtwoord mag lezen.";
+"Don't Share" = "Niet delen";
+"macOS did not hand over the password of %@" = "macOS gaf het wachtwoord van %@ niet vrij";
+"Wi-Fi sent to %@" = "Wifi gestuurd naar %@";
+"This Mac is not on Wi-Fi" = "Deze Mac zit niet op wifi";
+"%@ has a sign-in for each person, which cannot be shared" = "%@ heeft een aanmelding per persoon, en die kan niet gedeeld worden";
+"%@ uses an old kind of security that cannot be shared" = "%@ gebruikt een oude beveiliging die niet gedeeld kan worden";
+"Tandem needs Location for the name of your Wi-Fi" = "Tandem heeft Locatie nodig voor de naam van je wifi";
+"macOS only names the Wi-Fi network to apps that may see the location. Tandem never reads your position." = "macOS noemt het wifinetwerk alleen aan apps die de locatie mogen zien. Tandem leest nooit je positie.";
+"Not Now" = "Niet nu";
+"Join %@?" = "Verbinden met %@?";
+"%@ shared its Wi-Fi with this Mac." = "%@ deelt zijn wifi met deze Mac.";
+"Join Network" = "Verbinden";
+"Joined %@" = "Verbonden met %@";
+"Could not join %@" = "Kon niet verbinden met %@";
+"Share this Mac's Wi-Fi" = "De wifi van deze Mac delen";
+"Location has not been allowed yet, and macOS only names the Wi-Fi network to apps that may see it" = "Locatie is nog niet toegestaan, en macOS noemt het wifinetwerk alleen aan apps die de locatie mogen zien";
+"Location is off for Tandem on this Mac, and macOS only names the Wi-Fi network to apps that may see it" = "Locatie staat uit voor Tandem op deze Mac, en macOS noemt het wifinetwerk alleen aan apps die de locatie mogen zien";

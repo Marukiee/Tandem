@@ -29,9 +29,9 @@
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>Tandem uses Bluetooth to ask your phone to turn on its hotspot when this Mac has no connection.</string>
     <key>NSLocationUsageDescription</key>
-    <string>macOS only tells Tandem the name of your Wi-Fi network if it may see your location. Tandem uses the name to set up your phone's hotspot, and never your position.</string>
+    <string>macOS only tells Tandem the name of your Wi-Fi network if it may see your location. Tandem uses the name to share your Wi-Fi with your other devices and to set up your phone's hotspot, and never your position.</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>macOS only tells Tandem the name of your Wi-Fi network if it may see your location. Tandem uses the name to set up your phone's hotspot, and never your position.</string>
+    <string>macOS only tells Tandem the name of your Wi-Fi network if it may see your location. Tandem uses the name to share your Wi-Fi with your other devices and to set up your phone's hotspot, and never your position.</string>
     <key>NSAppleEventsUsageDescription</key>
     <string>Tandem presses play, pause and skip in Spotify and Music when you do it from your phone.</string>
     <key>NSAudioCaptureUsageDescription</key>
