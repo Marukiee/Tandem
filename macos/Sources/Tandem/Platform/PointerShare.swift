@@ -113,10 +113,12 @@ final class PointerShare {
         return TandemPlacement(edge: tandemEdge(placement.edge), offset: Int32(offset(of: device)))
     }
 
-    /// The computers next to this screen that are there to go to now, as the arithmetic of the core wants them.
-    private func reachable() -> [TandemNeighbour] {
+    /// The computers next to this screen that are there to go to now, as the arithmetic of the core wants them. With `offline`, the ones
+    /// that are away instead.
+    private func reachable(offline: Bool = false) -> [TandemNeighbour] {
         layout.keys.compactMap { id in
-            guard model.device(id)?.online == true, !declined(id), !Self.isExtendedScreen(id), let placement = tandemPlacement(id) else { return nil }
+            guard let device = model.device(id), device.online != offline, !declined(id), !Self.isExtendedScreen(id),
+                  let placement = tandemPlacement(id) else { return nil }
             let size = sizes[id] ?? mainSize
             return TandemNeighbour(id: id, placement: placement, width: Int32(size.width), height: Int32(size.height))
         }
@@ -135,6 +137,8 @@ final class PointerShare {
     @ObservationIgnored private var bouncedAt: [String: Date] = [:]
     /// When the person was last told why the pointer stays at an edge.
     @ObservationIgnored private var wallToldAt: [String: Date] = [:]
+    /// When a push towards a device that is away last had Tandem try it again.
+    @ObservationIgnored private var reconnectedAt = Date.distantPast
 
     private func refusesPointer(_ id: String) -> Bool {
         model.device(id)?.features.contains { $0.id == "pointer" && !$0.ready } ?? false
@@ -353,6 +357,7 @@ final class PointerShare {
             // Only where a screen really is next to this one: along the rest of the edge there is a wall.
             guard let crossing = layoutCross(edge: tandemEdge(push.edge), position: Int32(push.position), list: list) else {
                 tellWall(edge: push.edge)
+                reconnectAway(edge: push.edge, position: push.position)
                 continue
             }
             if dragged, NSPasteboard(name: .drag).changeCount == lastDragCount || dragContents() == nil { continue }
@@ -360,6 +365,17 @@ final class PointerShare {
             return true
         }
         return false
+    }
+
+    /// The pointer pushes where a device sits that is away (a phone whose screen went off, a laptop that just woke). Tandem would try it
+    /// again only after its wait between tries; this tries all of them now, without a word, so the next push goes over once it is back.
+    private func reconnectAway(edge: String, position: Int) {
+        guard Date().timeIntervalSince(reconnectedAt) > 3,
+              layoutCross(edge: tandemEdge(edge), position: Int32(position), list: reachable(offline: true)) != nil
+        else { return }
+        reconnectedAt = Date()
+        PointerLog.write("pushes towards a device that is away: trying it again")
+        model.tandem?.networkChanged()
     }
 
     private func goOver(to device: String, edge: String, along: CGFloat) {

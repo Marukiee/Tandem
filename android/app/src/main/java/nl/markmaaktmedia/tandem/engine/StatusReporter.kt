@@ -37,7 +37,12 @@ class StatusReporter(
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
 
     private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) = schedule()
+        override fun onReceive(context: Context, intent: Intent) {
+            // A phone that slept was away for the others, who only try it again after a while: it tries them itself as soon as it is
+            // in a hand again, so a computer's pointer can come over at once.
+            if (intent.action == Intent.ACTION_SCREEN_ON || intent.action == Intent.ACTION_USER_PRESENT) host.onNetworkChanged()
+            schedule()
+        }
     }
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -53,6 +58,7 @@ class StatusReporter(
             addAction(NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED)
             addAction(Intent.ACTION_USER_PRESENT)
             addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
         }
         context.registerReceiver(receiver, filter)
         connectivity.registerDefaultNetworkCallback(networkCallback)
