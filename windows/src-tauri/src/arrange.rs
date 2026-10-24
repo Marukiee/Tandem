@@ -220,6 +220,21 @@ pub fn put(app: &AppHandle, id: &str, edge: &str) {
     crate::host::place_made(id, edge);
 }
 
+/// A check by itself found a device on the other side: its spot moves there at the same height (left and right both count along the
+/// height of this screen). Nothing else changes, and a device without a spot left or right gets none.
+pub fn flip(app: &AppHandle, id: &str, edge: &str) {
+    let mut changed = false;
+    save(app, |list| {
+        if let Some(spot) = list.iter_mut().find(|s| s.device == id && (s.edge == "left" || s.edge == "right")) {
+            changed = spot.edge != edge;
+            spot.edge = edge.to_string();
+        }
+    });
+    if changed {
+        let _ = app.emit("arrangement", state_of(app));
+    }
+}
+
 #[tauri::command]
 pub fn arrange_remove(app: AppHandle, id: String) -> Value {
     save(&app, |list| list.retain(|s| s.device != id));

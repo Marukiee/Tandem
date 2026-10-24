@@ -421,6 +421,8 @@ final class PointerShare {
         CGAssociateMouseAndMouseCursorPosition(0)
         CursorHider.hide()
         watch(device)
+        // After the event that crossed: whether a check is due asks the sound system, which is no work for the tap.
+        Task { @MainActor in SideWatch.shared.pointerWentOver(device) }
         Task {
             try? await engine.sendPointerShare(target: device, msg: .enter(edge: tandemEdge(edge), along: Float(along)))
             // After the pointer, so the other computer takes it in first and knows these come from the person at the mouse.

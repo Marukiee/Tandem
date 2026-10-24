@@ -77,7 +77,7 @@ pub fn view_ended(app: &AppHandle, peer: &str) {
 }
 
 /// Whether what this computer plays goes to headphones now: a Bluetooth device, or the jack or a headset port of the sound card.
-fn headphones() -> bool {
+pub fn headphones() -> bool {
     #[cfg(target_os = "linux")]
     {
         let run = |args: &[&str]| -> Option<String> {

@@ -50,6 +50,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             refresh_devices(app);
             // The other computer is told how big this screen is, so it can draw it and find its way back.
             crate::arrange::announce(app, &id);
+            crate::side::connected(app, id);
         }
         TandemEvent::DevicesChanged | TandemEvent::CircleChanged => refresh_devices(app),
         TandemEvent::TailscaleNeeded { id } => crate::tailscale::needed(app, &id),
@@ -65,7 +66,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         }
         // A phone that shows its screen or camera by itself ("Show my screen on this PC") asks this PC to look.
         TandemEvent::MediaQuality { session, poor, .. } => crate::live::quality(app, session, poor),
-        TandemEvent::SideListen { from, id } => crate::side::listen(app, from, id),
+        TandemEvent::SideListen { from, id, quiet } => crate::side::listen(app, from, id, quiet),
         TandemEvent::SideMoved { from } => crate::side::moved(app, from),
         TandemEvent::SoundRequested { from, on } => crate::screen_sound::requested(app, from, on),
         TandemEvent::MediaStarted { peer, kind: tandem_core::ffi::TandemMediaKind::Screen, role: tandem_core::ffi::TandemMediaRole::Viewer, .. } => crate::screen_sound::view_started(app, peer),

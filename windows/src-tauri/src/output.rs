@@ -62,6 +62,11 @@ const CHANNELS: u8 = 2;
 /// What the person is told when nothing can be recorded: what is missing differs per system.
 const NO_CAPTURE: &str = if cfg!(windows) { "output_no_capture_windows" } else { "output_no_capture_linux" };
 
+/// Whether this computer's sound goes to another device now, as its speaker or to a viewer of its screen.
+pub fn sending() -> bool {
+    SENDING.lock().unwrap().is_some()
+}
+
 /// Whether this computer's sound goes to `peer` now.
 pub fn sending_to(peer: &str) -> bool {
     SENDING.lock().unwrap().as_ref().is_some_and(|s| s.to == peer)

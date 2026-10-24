@@ -23,6 +23,7 @@ pub mod quickshare;
 pub mod proto;
 pub mod session;
 pub mod side;
+pub mod side_check;
 pub mod sms;
 pub mod store;
 pub mod tls;

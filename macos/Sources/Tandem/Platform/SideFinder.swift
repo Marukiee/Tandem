@@ -14,6 +14,28 @@ enum DeviceSides {
         (UserDefaults.standard.dictionary(forKey: key) as? [String: String])?[id]
     }
 
+    /// The person wanted to be asked each time a second screen starts (Remember was off).
+    static func asksEachTime(_ id: String) -> Bool {
+        UserDefaults.standard.stringArray(forKey: askKey)?.contains(id) == true
+    }
+
+    /// A check by itself found the device on `side`: what already stands left or right of this Mac moves there, and it is kept for next
+    /// time unless the person wants to be asked. Nothing is put anywhere it was not: a computer that is not next to this screen stays
+    /// away, and one put above or below stays there.
+    static func moved(to side: String, for id: String) {
+        if !asksEachTime(id) {
+            var all = (UserDefaults.standard.dictionary(forKey: key) as? [String: String]) ?? [:]
+            all[id] = side
+            UserDefaults.standard.set(all, forKey: key)
+        }
+        let share = PointerShare.shared
+        if let placement = share.layout[id], ["left", "right"].contains(placement.edge), placement.edge != side {
+            // Left and right both count along the height of this screen, so it stays at the same height on the other side.
+            share.layout[id] = PointerShare.Placement(edge: side, offset: placement.offset)
+        }
+        ScreenHost.shared.placeExtended(for: id, onLeft: side == "left")
+    }
+
     /// Puts the device on that side now; `remember` keeps it for next time, otherwise the next second screen asks again.
     static func set(_ side: String, for id: String, remember: Bool = true) {
         var all = (UserDefaults.standard.dictionary(forKey: key) as? [String: String]) ?? [:]
@@ -27,6 +49,7 @@ enum DeviceSides {
         }
         UserDefaults.standard.set(all, forKey: key)
         UserDefaults.standard.set(Array(ask), forKey: askKey)
+        SideWatch.shared.chosen(side, for: id)
         apply(side, to: id)
     }
 
@@ -47,27 +70,60 @@ enum DeviceSides {
 /// Plays the sweeps of `side.rs` once, from the left and the right speaker.
 enum SideTone {
     static func play(loudness: Float = 1) async {
-        let rate = 48_000.0
-        let samples = tandemSidePattern(rate: UInt32(rate), loudness: loudness)
-        guard let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 2),
+        _ = await play { tandemSidePattern(rate: $0, loudness: loudness) }
+    }
+
+    /// The quiet sweeps of a check by itself. False when there was nothing to play them with.
+    static func playQuiet() async -> Bool {
+        await play { tandemSideQuietPattern(rate: $0) }
+    }
+
+    /// Made at the rate the sound card runs at: a resampler on the way cuts off near the top of what it carries, where the quiet sweeps are.
+    private static func play(_ make: (UInt32) -> [Float]) async -> Bool {
+        let engine = AVAudioEngine()
+        let rate = engine.outputNode.outputFormat(forBus: 0).sampleRate
+        guard rate > 0 else { return false }
+        let samples = make(UInt32(rate))
+        guard !samples.isEmpty,
+              let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 2),
               let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count / 2)),
               let channels = buffer.floatChannelData
-        else { return }
+        else { return false }
         let frames = samples.count / 2
         buffer.frameLength = AVAudioFrameCount(frames)
         for i in 0..<frames {
             channels[0][i] = samples[i * 2]
             channels[1][i] = samples[i * 2 + 1]
         }
-        let engine = AVAudioEngine()
         let player = AVAudioPlayerNode()
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: format)
-        do { try engine.start() } catch { return }
+        do { try engine.start() } catch { return false }
         player.play()
         await player.scheduleBuffer(buffer, completionCallbackType: .dataPlayedBack)
         player.stop()
         engine.stop()
+        return true
+    }
+}
+
+/// One sound at a time from these speakers: a check by itself and a search the person started that played over each other would leave
+/// both listeners hearing the other's sweeps.
+@MainActor
+private enum SpeakerTurn {
+    private static var taken = false
+    private static var waiting: [CheckedContinuation<Void, Never>] = []
+
+    static func take() async {
+        guard taken else {
+            taken = true
+            return
+        }
+        await withCheckedContinuation { waiting.append($0) }
+    }
+
+    static func give() {
+        if waiting.isEmpty { taken = false } else { waiting.removeFirst().resume() }
     }
 }
 
@@ -81,6 +137,8 @@ enum SideFinder {
         guard let engine = EngineModel.shared.tandem, !busy.contains(device.id) else { return .notHeard }
         busy.insert(device.id)
         defer { busy.remove(device.id) }
+        await SpeakerTurn.take()
+        defer { SpeakerTurn.give() }
         var side = TandemSide.notHeard
         for loudness in [tandemSideFirstLoudness(), 1] {
             guard let id = try? await engine.sideStart(target: device.id) else { return .notHeard }
@@ -94,6 +152,22 @@ enum SideFinder {
         default: break
         }
         return side
+    }
+
+    /// Once, with the quiet sweeps, for a check by itself: nothing is applied, and nothing is played when this Mac's sound would not come
+    /// out of its own speakers (see `AudioRoute`).
+    @MainActor
+    static func check(_ device: TandemDevice) async -> TandemSide {
+        guard let engine = EngineModel.shared.tandem, !busy.contains(device.id) else { return .notHeard }
+        busy.insert(device.id)
+        defer { busy.remove(device.id) }
+        await SpeakerTurn.take()
+        defer { SpeakerTurn.give() }
+        guard AudioRoute.speakersCanPlay(), let id = try? await engine.sideCheckStart(target: device.id) else { return .notHeard }
+        let played = await SideTone.playQuiet()
+        // Read either way, so the core lets go of the answer it waits for.
+        let side = await engine.sideCheckResult(id: id)
+        return played ? side : .notHeard
     }
 
     /// What to tell the person after `find`.
@@ -110,25 +184,30 @@ enum SideFinder {
 
 /// The other side of it: another computer plays, this Mac records and says how loud each side was.
 enum SideListener {
-    static func listen(from peer: String, id: UInt64, engine: TandemEngine) {
+    /// `quiet`: the other computer checks by itself. Then the microphone is not asked for, and not used while something else has it on;
+    /// without a word that it listens, the other one plays nothing.
+    static func listen(from peer: String, id: UInt64, quiet: Bool, engine: TandemEngine) {
         Task.detached(priority: .userInitiated) {
-            let levels = await record { try? await engine.sideReady(target: peer, id: id) }
+            let levels = await record(quiet: quiet) { try? await engine.sideReady(target: peer, id: id) }
             try? await engine.sideHeard(target: peer, id: id, levels: levels)
         }
     }
 
     /// Records for as long as the core says, after telling the other side that the microphone is on (`ready`).
-    private static func record(ready: @escaping @Sendable () async -> Void) async -> TandemSideLevels? {
+    private static func record(quiet: Bool, ready: @escaping @Sendable () async -> Void) async -> TandemSideLevels? {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized: break
         case .notDetermined:
-            guard await AVCaptureDevice.requestAccess(for: .audio) else { return nil }
+            guard !quiet, await AVCaptureDevice.requestAccess(for: .audio) else { return nil }
         default: return nil
         }
+        if quiet, AudioRoute.microphoneInUse() { return nil }
         let engine = AVAudioEngine()
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { return nil }
+        // Too low a rate cannot hold the quiet sweeps.
+        if quiet, format.sampleRate < Double(tandemSideQuietMinRate()) { return nil }
         let collected = Collected()
         input.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
             guard let data = buffer.floatChannelData else { return }
@@ -145,7 +224,8 @@ enum SideListener {
         try? await Task.sleep(for: .milliseconds(Int(tandemSideListenMs())))
         input.removeTap(onBus: 0)
         engine.stop()
-        return tandemSideAnalyze(samples: collected.all(), rate: UInt32(format.sampleRate))
+        let rate = UInt32(format.sampleRate)
+        return quiet ? tandemSideAnalyzeQuiet(samples: collected.all(), rate: rate) : tandemSideAnalyze(samples: collected.all(), rate: rate)
     }
 
     private final class Collected: @unchecked Sendable {

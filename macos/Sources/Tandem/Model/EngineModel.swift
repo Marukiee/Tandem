@@ -408,6 +408,7 @@ final class EngineModel {
             if case let .connected(id) = event {
                 hotspot.deviceConnected(id)
                 PointerShare.shared.announce(to: id)
+                SideWatch.shared.connected(id)
             }
             // A phone that drops while a button is held must not leave it held here.
             if case let .disconnected(id) = event {
@@ -612,9 +613,9 @@ final class EngineModel {
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break
 
-        case let .sideListen(from, id):
+        case let .sideListen(from, id, quiet):
             // Another computer plays its sound to find out on which side of it this Mac stands: listen, and say what was heard.
-            if let engine { SideListener.listen(from: from, id: id, engine: engine) }
+            if let engine { SideListener.listen(from: from, id: id, quiet: quiet, engine: engine) }
 
         case .sideReady, .sideHeard:
             // Read by `sideStart` itself.
@@ -634,16 +635,7 @@ final class EngineModel {
         case let .sideMoved(from):
             // A phone was picked up and put down again: when it is a second screen here, or sits next to this screen, its side is found
             // again, quietly, and only said when it changed.
-            if let device = device(from), ScreenHost.shared.remote(of: from) != nil || PointerShare.shared.layout[from] != nil,
-               DeviceSides.side(of: from) != nil {
-                let before = DeviceSides.side(of: from)
-                Task { @MainActor in
-                    let side = await SideFinder.find(device)
-                    if (side == .left || side == .right), DeviceSides.side(of: from) != before {
-                        self.showToast(SideFinder.message(side, name: device.name))
-                    }
-                }
-            }
+            SideWatch.shared.moved(from)
 
         case let .mediaQuality(peer, _, poor):
             // Only said when the link got poor: it is good again without a word.

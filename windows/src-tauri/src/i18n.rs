@@ -227,6 +227,10 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "output_stopped_there") => "{0} stopped playing the sound",
         ("nl", "output_gone") => "Het geluid gaat niet meer naar {0}: de verbinding is weg",
         (_, "output_gone") => "The sound no longer goes to {0}: the connection is gone",
+        ("nl", "side_now_left") => "{0} staat nu links",
+        (_, "side_now_left") => "{0} is now on the left",
+        ("nl", "side_now_right") => "{0} staat nu rechts",
+        (_, "side_now_right") => "{0} is now on the right",
         _ => "",
     }
 }

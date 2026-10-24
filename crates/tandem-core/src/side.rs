@@ -9,6 +9,12 @@
 //! bell and a beep were tried too, and could not tell a small difference apart in a room with echoes). The device says when it listens,
 //! and only then is the sound played, so there is no silence to wait through. The apps only play and record; the sound and the reading of
 //! it are here, so every system does it the same way.
+//!
+//! The sweeps come in two kinds. The one the person asks for covers what a voice covers and is heard. The one for a check that runs by
+//! itself (`QUIET`) sweeps between 18.5 and 20 kHz, above what most grown-ups hear, softly and with long fades: a sound that starts or
+//! stops at once clicks, and a click has every pitch in it. Laptop speakers still play that high and microphones that record at 44.1 or
+//! 48 kHz still take it in (measured on a MacBook Pro, see docs/SIDE.md). The listener is told which kind comes and reads only that one:
+//! a room sound (music, a voice) can look more like the audible sweeps than the quiet ones do from across a desk.
 
 use std::f32::consts::PI;
 use std::sync::Arc;
@@ -16,16 +22,52 @@ use std::sync::Arc;
 use rustfft::num_complex::Complex32;
 use rustfft::{Fft, FftPlanner};
 
-/// A moment of silence before the sound, for the sound card to open.
-const LEAD_S: f32 = 0.12;
-const SWEEP_S: f32 = 0.2;
-const LOW_HZ: f32 = 400.0;
-const HIGH_HZ: f32 = 6000.0;
-/// Between two sweeps, for the echoes of a room to die down enough.
-const GAP_S: f32 = 0.15;
-/// The sound comes this many times, so one spoilt by a noise in the room does not decide it.
-const REPEATS: usize = 3;
+/// The shape of one kind of sound: where it sweeps, how long, how often, and how loud.
+struct Signal {
+    /// A moment of silence before the sound, for the sound card to open.
+    lead_s: f32,
+    sweep_s: f32,
+    low_hz: f32,
+    high_hz: f32,
+    /// Between two sweeps, for the echoes of a room to die down enough.
+    gap_s: f32,
+    /// The sound comes this many times, so one spoilt by a noise in the room does not decide it.
+    repeats: usize,
+    amplitude: f32,
+    fade_s: f32,
+}
+
 const AMPLITUDE: f32 = 0.45;
+
+const AUDIBLE: Signal = Signal {
+    lead_s: 0.12,
+    sweep_s: 0.2,
+    low_hz: 400.0,
+    high_hz: 6000.0,
+    gap_s: 0.15,
+    repeats: 3,
+    amplitude: AMPLITUDE,
+    fade_s: 0.01,
+};
+
+/// Longer sweeps than the audible ones: a narrow band needs more time for the matched filter to lift it as far out of the noise. The fades
+/// take a fifth of each sweep, which keeps what is left below 15 kHz far under anything a person hears. Soft: a MacBook Pro still heard it
+/// with its own microphone at a fifty times lower level (docs/SIDE.md), which leaves room for distance, a turned away microphone and a lower
+/// volume.
+const QUIET: Signal = Signal {
+    lead_s: 0.12,
+    sweep_s: 0.25,
+    low_hz: 18_500.0,
+    high_hz: 20_000.0,
+    gap_s: 0.12,
+    repeats: 3,
+    amplitude: 0.04,
+    fade_s: 0.05,
+};
+
+/// Below this the quiet sweeps do not fit in a recording (nor in what a sound card plays): their highest pitch is too close to half the
+/// rate, where every sound card filters.
+pub const QUIET_MIN_RATE: u32 = 44_100;
 
 /// How long the device that listens records, from the moment it said it listens: the sound, the time it takes to arrive, and the echoes.
 pub const LISTEN_MS: u32 = 2000;
@@ -33,26 +75,32 @@ pub const LISTEN_MS: u32 = 2000;
 /// A difference smaller than this (in decibels) does not say which side is nearer.
 pub const SURE_DB: f32 = 1.5;
 
+/// The same for a check that nobody asked for: it moves a screen without a word first, so it has to be surer. High pitches are blocked
+/// more by the body of the computer, so the difference between the sides is larger for the quiet sweeps anyway.
+pub const QUIET_SURE_DB: f32 = 3.0;
+
 /// The sweep of one side (0 left, 1 right), once: up on the left, down on the right. An exponential sweep gives every octave the same
 /// time, so the low and the high end both come through a small speaker.
-fn sweep(side: usize, rate: f32) -> Vec<f32> {
-    let n = (SWEEP_S * rate) as usize;
-    let k = (HIGH_HZ / LOW_HZ).ln();
+fn sweep(signal: &Signal, side: usize, rate: f32) -> Vec<f32> {
+    let n = (signal.sweep_s * rate) as usize;
+    let (low, length, rate) = (f64::from(signal.low_hz), f64::from(signal.sweep_s), f64::from(rate));
+    let k = (f64::from(signal.high_hz) / low).ln();
     let samples: Vec<f32> = (0..n)
         .map(|i| {
-            let t = i as f32 / rate;
-            (2.0 * PI * LOW_HZ * SWEEP_S / k * ((t / SWEEP_S * k).exp() - 1.0)).sin()
+            let t = i as f64 / rate;
+            // In f64: at 20 kHz the phase runs to thousands of radians, where an f32 loses the fraction that makes the pitch.
+            (2.0 * std::f64::consts::PI * low * length / k * ((t / length * k).exp() - 1.0)).sin() as f32
         })
         .collect();
-    let mut samples = shape(samples, rate, 0.01);
+    let mut samples = shape(samples, rate as f32, signal.fade_s, signal.amplitude);
     if side == 1 {
         samples.reverse();
     }
     samples
 }
 
-/// A soft start and end, or the speaker clicks, and a click is heard by both sides; and the loudness of the whole to `AMPLITUDE`.
-fn shape(mut samples: Vec<f32>, rate: f32, fade_s: f32) -> Vec<f32> {
+/// A soft start and end, or the speaker clicks, and a click is heard by both sides; and the loudness of the whole to `amplitude`.
+fn shape(mut samples: Vec<f32>, rate: f32, fade_s: f32, amplitude: f32) -> Vec<f32> {
     let n = samples.len();
     let fade = ((fade_s * rate) as usize).min(n / 2).max(1);
     for i in 0..fade {
@@ -61,13 +109,17 @@ fn shape(mut samples: Vec<f32>, rate: f32, fade_s: f32) -> Vec<f32> {
         samples[n - 1 - i] *= ramp;
     }
     let peak = samples.iter().fold(0.0f32, |m, s| m.max(s.abs())).max(1e-6);
-    samples.iter_mut().for_each(|s| *s *= AMPLITUDE / peak);
+    samples.iter_mut().for_each(|s| *s *= amplitude / peak);
     samples
+}
+
+fn duration_of(signal: &Signal) -> f32 {
+    signal.lead_s + signal.repeats as f32 * (signal.sweep_s + signal.gap_s)
 }
 
 /// How long the pattern lasts, in seconds.
 pub fn duration() -> f32 {
-    LEAD_S + REPEATS as f32 * (SWEEP_S + GAP_S)
+    duration_of(&AUDIBLE)
 }
 
 /// The pattern as stereo samples, left and right after each other, at `rate` samples a second.
@@ -78,14 +130,25 @@ pub fn pattern(rate: u32) -> Vec<f32> {
 /// The same, at `loudness` (0 to 1) of the full level. A first try is soft, so a quiet room is not startled; when the device did not hear
 /// it well, the second try is at full loudness.
 pub fn pattern_at(rate: u32, loudness: f32) -> Vec<f32> {
+    stereo(&AUDIBLE, rate, loudness.clamp(0.05, 1.0))
+}
+
+/// The quiet pattern, for a check that nobody asked for, as stereo samples like `pattern`. Empty at a rate too low to play it.
+pub fn quiet_pattern(rate: u32) -> Vec<f32> {
+    if rate < QUIET_MIN_RATE {
+        return Vec::new();
+    }
+    stereo(&QUIET, rate, 1.0)
+}
+
+fn stereo(signal: &Signal, rate: u32, gain: f32) -> Vec<f32> {
     let rate_f = rate as f32;
-    let gain = loudness.clamp(0.05, 1.0);
-    let (left, right) = (sweep(0, rate_f), sweep(1, rate_f));
-    let frames = (duration() * rate_f) as usize;
+    let (left, right) = (sweep(signal, 0, rate_f), sweep(signal, 1, rate_f));
+    let frames = (duration_of(signal) * rate_f) as usize;
     let mut out = vec![0.0f32; frames * 2];
-    let step = ((SWEEP_S + GAP_S) * rate_f) as usize;
-    let lead = (LEAD_S * rate_f) as usize;
-    for repeat in 0..REPEATS {
+    let step = ((signal.sweep_s + signal.gap_s) * rate_f) as usize;
+    let lead = (signal.lead_s * rate_f) as usize;
+    for repeat in 0..signal.repeats {
         let at = lead + repeat * step;
         for i in 0..left.len().min(frames.saturating_sub(at)) {
             out[(at + i) * 2] = left[i] * gain;
@@ -112,11 +175,16 @@ pub enum Side {
 
 /// Which side the device stands on, from what it heard.
 pub fn decide(heard: Heard) -> Side {
+    decide_with(heard, SURE_DB)
+}
+
+/// The same, sure only from a difference of `sure_db` decibels.
+pub fn decide_with(heard: Heard, sure_db: f32) -> Side {
     let floor = 1e-9;
     let db = 20.0 * ((heard.left + floor) / (heard.right + floor)).log10();
-    if db >= SURE_DB {
+    if db >= sure_db {
         Side::Left
-    } else if db <= -SURE_DB {
+    } else if db <= -sure_db {
         Side::Right
     } else {
         Side::Unsure
@@ -179,24 +247,36 @@ fn median(mut values: Vec<f32>) -> f32 {
 
 /// Reads a recording (one channel, `rate` samples a second) for the pattern. Nothing when it was not heard at all.
 pub fn analyze(samples: &[f32], rate: u32) -> Option<Heard> {
-    let rate_f = rate as f32;
-    if samples.len() < (duration() * rate_f) as usize / 2 {
+    analyze_for(&AUDIBLE, samples, rate, &mut FftPlanner::new()).map(|(heard, _)| heard)
+}
+
+/// The same for the quiet pattern. Nothing at a rate too low to hold it.
+pub fn analyze_quiet(samples: &[f32], rate: u32) -> Option<Heard> {
+    if rate < QUIET_MIN_RATE {
         return None;
     }
-    let mut planner = FftPlanner::new();
-    let left_env = envelope(samples, &sweep(0, rate_f), &mut planner);
-    let right_env = envelope(samples, &sweep(1, rate_f), &mut planner);
+    analyze_for(&QUIET, samples, rate, &mut FftPlanner::new()).map(|(heard, _)| heard)
+}
+
+/// What was heard of one kind of sound, and how far it stands out above the room.
+fn analyze_for(signal: &Signal, samples: &[f32], rate: u32, planner: &mut FftPlanner<f32>) -> Option<(Heard, f32)> {
+    let rate_f = rate as f32;
+    if samples.len() < (duration_of(signal) * rate_f) as usize / 2 {
+        return None;
+    }
+    let left_env = envelope(samples, &sweep(signal, 0, rate_f), planner);
+    let right_env = envelope(samples, &sweep(signal, 1, rate_f), planner);
     // The sweeps come three times; the middle of the three is the loudness, so one spoilt by a noise in the room does not decide it. Two
     // moments that are closer than most of a step are one sweep and its echo.
-    let apart = ((SWEEP_S + GAP_S) * 0.8 * rate_f) as usize;
-    let left = median(peaks(&left_env, REPEATS, apart));
-    let right = median(peaks(&right_env, REPEATS, apart));
+    let apart = ((signal.sweep_s + signal.gap_s) * 0.8 * rate_f) as usize;
+    let left = median(peaks(&left_env, signal.repeats, apart));
+    let right = median(peaks(&right_env, signal.repeats, apart));
     // What the room gives at any moment, to tell a sound from no sound.
-    let room = median(left_env.iter().chain(right_env.iter()).step_by(7).copied().collect());
+    let room = median(left_env.iter().chain(right_env.iter()).step_by(7).copied().collect()).max(1e-12);
     if left.max(right) < room * 6.0 {
         return None;
     }
-    Some(Heard { left, right })
+    Some((Heard { left, right }, left.max(right) / room))
 }
 
 #[cfg(test)]
@@ -208,9 +288,18 @@ mod tests {
     /// What a microphone hears: each side at its own loudness, late by `late` seconds, with the echoes of a room and noise. The two
     /// speakers stand in different places, so their echoes come at other moments, which makes some pitches louder from one than the other.
     fn recording(left_gain: f32, right_gain: f32, late: f32, noise: f32, room: bool, seed: u32) -> Vec<f32> {
-        let stereo = pattern(RATE);
-        let pad = (late * RATE as f32) as usize;
-        let tail = (LISTEN_MS as usize * RATE as usize / 1000).saturating_sub(pad + stereo.len() / 2);
+        recording_of(&pattern(RATE), RATE, left_gain, right_gain, late, noise, room, seed)
+    }
+
+    /// The same for the quiet pattern, at `rate`.
+    fn quiet_recording(rate: u32, left_gain: f32, right_gain: f32, late: f32, noise: f32, room: bool, seed: u32) -> Vec<f32> {
+        recording_of(&quiet_pattern(rate), rate, left_gain, right_gain, late, noise, room, seed)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn recording_of(stereo: &[f32], rate: u32, left_gain: f32, right_gain: f32, late: f32, noise: f32, room: bool, seed: u32) -> Vec<f32> {
+        let pad = (late * rate as f32) as usize;
+        let tail = (LISTEN_MS as usize * rate as usize / 1000).saturating_sub(pad + stereo.len() / 2);
         let channel = |c: usize, gain: f32| -> Vec<f32> {
             let mut v = vec![0.0f32; pad];
             v.extend(stereo.chunks_exact(2).map(|s| s[c] * gain));
@@ -226,7 +315,7 @@ mod tests {
             ];
             for (dry, list) in echoes {
                 for (delay_ms, gain) in list {
-                    let d = (delay_ms / 1000.0 * RATE as f32) as usize;
+                    let d = (delay_ms / 1000.0 * rate as f32) as usize;
                     for i in d..out.len() {
                         out[i] += dry[i - d] * gain;
                     }
@@ -241,6 +330,22 @@ mod tests {
             *s += (state as f32 / u32::MAX as f32 - 0.5) * 2.0 * noise;
         }
         out
+    }
+
+    /// A microphone that hears less of the highest pitches: a low-pass of the second order (Butterworth) at `corner` Hz.
+    fn rolled_off(samples: &[f32], rate: u32, corner: f32) -> Vec<f32> {
+        let w = 2.0 * PI * corner / rate as f32;
+        let alpha = w.sin() / (2.0 * std::f32::consts::FRAC_1_SQRT_2);
+        let (b0, b1, a0, a1, a2) = ((1.0 - w.cos()) / 2.0, 1.0 - w.cos(), 1.0 + alpha, -2.0 * w.cos(), 1.0 - alpha);
+        let (mut x1, mut x2, mut y1, mut y2) = (0.0f32, 0.0f32, 0.0f32, 0.0f32);
+        samples
+            .iter()
+            .map(|&x| {
+                let y = (b0 * x + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2) / a0;
+                (x2, x1, y2, y1) = (x1, x, y1, y);
+                y
+            })
+            .collect()
     }
 
     #[test]
@@ -308,6 +413,81 @@ mod tests {
         assert_eq!(decide(analyze(&mono, rate).unwrap()), Side::Right);
     }
 
+    #[test]
+    fn the_quiet_sound_is_soft_short_and_only_where_it_is_not_heard() {
+        let p = quiet_pattern(RATE);
+        assert_eq!(p.len() % 2, 0);
+        assert!(p.iter().all(|s| s.abs() <= QUIET.amplitude + 1e-4));
+        assert!(duration_of(&QUIET) + 0.6 < LISTEN_MS as f32 / 1000.0, "{}", duration_of(&QUIET));
+        // A click would be heard: what the fades leave below 15 kHz has to be far under what is in the band.
+        let left: Vec<f32> = p.chunks_exact(2).map(|s| s[0]).collect();
+        let size = left.len().next_power_of_two();
+        let mut spectrum: Vec<Complex32> = left.iter().map(|&s| Complex32::new(s, 0.0)).collect();
+        spectrum.resize(size, Complex32::new(0.0, 0.0));
+        FftPlanner::new().plan_fft_forward(size).process(&mut spectrum);
+        let hz = |bin: usize| bin as f32 * RATE as f32 / size as f32;
+        let energy = |from: f32, to: f32| -> f32 {
+            spectrum[..size / 2].iter().enumerate().filter(|(k, _)| hz(*k) >= from && hz(*k) < to).map(|(_, c)| c.norm_sqr()).sum()
+        };
+        let band = energy(QUIET.low_hz, QUIET.high_hz);
+        let below = energy(20.0, 15_000.0);
+        let db = 10.0 * (below / band).log10();
+        assert!(db < -70.0, "below 15 kHz: {db:.1} dB");
+        // Nothing to play at a rate that cannot carry it.
+        assert!(quiet_pattern(32_000).is_empty());
+    }
+
+    #[test]
+    fn the_quiet_sweeps_are_told_apart_and_found_whenever_they_arrive() {
+        let only_left = analyze_quiet(&quiet_recording(RATE, 1.0, 0.0, 0.1, 0.0, false, 1), RATE).unwrap();
+        assert!(only_left.right < only_left.left * 0.1, "{only_left:?}");
+        for late in [0.0, 0.2, 0.45] {
+            let left = analyze_quiet(&quiet_recording(RATE, 1.0, 0.5, late, 0.005, false, 7), RATE).unwrap();
+            assert_eq!(decide_with(left, QUIET_SURE_DB), Side::Left, "late {late}: {left:?}");
+            let right = analyze_quiet(&quiet_recording(RATE, 0.3, 0.9, late, 0.005, false, 9), RATE).unwrap();
+            assert_eq!(decide_with(right, QUIET_SURE_DB), Side::Right, "late {late}: {right:?}");
+        }
+        assert_eq!(analyze_quiet(&quiet_recording(RATE, 0.0, 0.0, 0.2, 0.005, false, 13), RATE), None);
+    }
+
+    #[test]
+    fn the_quiet_sweeps_hold_up_in_a_room_with_echoes_and_noise() {
+        // 6 dB nearer to the left, heard at a tenth of what was played, with noise over the whole band louder than the sound itself.
+        for seed in 0..8 {
+            let rec = quiet_recording(RATE, 0.1, 0.05, 0.05 + seed as f32 * 0.05, 0.02, true, 40 + seed);
+            let heard = analyze_quiet(&rec, RATE).unwrap();
+            assert_eq!(decide_with(heard, QUIET_SURE_DB), Side::Left, "seed {seed}: {heard:?}");
+        }
+    }
+
+    #[test]
+    fn the_quiet_sweeps_read_at_44_1_khz_and_through_a_microphone_that_hears_less_up_high() {
+        let rate = 44_100;
+        let rec = quiet_recording(rate, 0.4, 0.9, 0.1, 0.002, true, 3);
+        assert_eq!(decide_with(analyze_quiet(&rec, rate).unwrap(), QUIET_SURE_DB), Side::Right);
+        // A microphone that is 3 dB down at 19 kHz and more above it: both sides sweep the same pitches, so both lose the same.
+        for corner in [19_000.0, 18_000.0] {
+            let rec = rolled_off(&quiet_recording(RATE, 1.0, 0.4, 0.1, 0.002, true, 5), RATE, corner);
+            let got = analyze_quiet(&rec, RATE).map(|h| decide_with(h, QUIET_SURE_DB));
+            assert!(matches!(got, Some(Side::Left) | None), "corner {corner}: {got:?}");
+        }
+    }
+
+    #[test]
+    fn a_rate_too_low_for_the_quiet_sweeps_hears_nothing_of_them() {
+        // The same samples said to be at 32 kHz: the quiet sweeps cannot be in there.
+        let rec = quiet_recording(RATE, 1.0, 0.5, 0.1, 0.002, false, 21);
+        assert_eq!(analyze_quiet(&rec, 32_000), None);
+    }
+
+    #[test]
+    fn each_kind_is_read_as_itself() {
+        // The audible sweeps leave nothing that the quiet ones would find, and the other way round.
+        let mut planner = FftPlanner::new();
+        assert!(analyze_for(&QUIET, &recording(1.0, 0.5, 0.1, 0.01, true, 2), RATE, &mut planner).is_none());
+        assert!(analyze_for(&AUDIBLE, &quiet_recording(RATE, 1.0, 0.5, 0.1, 0.002, true, 2), RATE, &mut planner).is_none());
+    }
+
     /// How it holds up: in a room with echoes, with more and more noise, how often it finds the side that is 3 dB nearer.
     /// `cargo test -p tandem-core --release --lib how_it_holds_up -- --ignored --nocapture`
     #[test]
@@ -328,5 +508,55 @@ mod tests {
             line += &format!("  noise {noise}: {right}/{tries}");
         }
         println!("{line}");
+        // The quiet one, 6 dB nearer, at the stricter margin; and how often it moved the screen the wrong way.
+        let mut line = String::from("quiet, 6 dB:");
+        for noise in [0.005f32, 0.02, 0.05, 0.1, 0.2] {
+            let (mut right, mut wrong) = (0, 0);
+            let tries = 40;
+            for seed in 0..tries {
+                let near_left = seed % 2 == 0;
+                let (l, r) = if near_left { (0.1, 0.05) } else { (0.05, 0.1) };
+                let rec = quiet_recording(RATE, l, r, 0.03 + (seed % 10) as f32 * 0.04, noise, true, 100 + seed);
+                match analyze_quiet(&rec, RATE).map(|h| decide_with(h, QUIET_SURE_DB)) {
+                    Some(Side::Left) if near_left => right += 1,
+                    Some(Side::Right) if !near_left => right += 1,
+                    Some(Side::Left) | Some(Side::Right) => wrong += 1,
+                    _ => {}
+                }
+            }
+            line += &format!("  noise {noise}: {right}/{tries} ({wrong} wrong)");
+        }
+        println!("{line}");
+    }
+
+    /// For measuring in a real room: with `TANDEM_SIDE_WRITE=<file>` it writes the quiet pattern (stereo, 32-bit floats, 48 kHz) to play;
+    /// with `TANDEM_SIDE_READ=<file>` it reads a recording of one channel at 48 kHz in the same format and says what it heard.
+    /// `TANDEM_SIDE_READ=rec.f32 cargo test -p tandem-core --release --lib a_real_room -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn a_real_room() {
+        if let Ok(path) = std::env::var("TANDEM_SIDE_WRITE") {
+            let bytes: Vec<u8> = quiet_pattern(RATE).iter().flat_map(|s| s.to_le_bytes()).collect();
+            std::fs::write(&path, bytes).unwrap();
+            println!("wrote {path}");
+        }
+        if let Ok(path) = std::env::var("TANDEM_SIDE_READ") {
+            let bytes = std::fs::read(&path).unwrap();
+            let samples: Vec<f32> = bytes.chunks_exact(4).map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]])).collect();
+            let mut planner = FftPlanner::new();
+            for (name, signal) in [("audible", &AUDIBLE), ("quiet", &QUIET)] {
+                match analyze_for(signal, &samples, RATE, &mut planner) {
+                    Some((h, stands_out)) => println!(
+                        "{name}: left {:.5} right {:.5}, {:+.1} dB, {:.1} dB above the room, {:?}",
+                        h.left,
+                        h.right,
+                        20.0 * (h.left / h.right).log10(),
+                        20.0 * stands_out.log10(),
+                        decide_with(h, QUIET_SURE_DB)
+                    ),
+                    None => println!("{name}: not heard"),
+                }
+            }
+        }
     }
 }

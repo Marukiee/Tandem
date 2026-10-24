@@ -180,6 +180,7 @@ const en = {
   focus_both: "Both ways", focus_follow_only: "Only follow", focus_unsupported: "This desktop has no Do Not Disturb that Tandem can use. GNOME and KDE Plasma have one.",
   output_use: "Use as speaker", output_stop: "Stop speaker", output_tip: "Play the sound of this computer on {0}",
   output_started: "The sound of this computer plays on {0}. It keeps playing here too.",
+  side_auto: "Check the side by itself", side_auto_sub: "Now and then, with a sound too high to hear: when a second screen starts, a computer comes back or the pointer goes there again after a while. Only when this computer plays through its own speakers.",
 };
 
 const nl = {
@@ -362,6 +363,7 @@ const nl = {
   focus_both: "Beide kanten op", focus_follow_only: "Alleen volgen", focus_unsupported: "Dit bureaublad heeft geen Niet storen dat Tandem kan gebruiken. GNOME en KDE Plasma hebben het wel.",
   output_use: "Gebruik als speaker", output_stop: "Stop speaker", output_tip: "Speel het geluid van deze computer af op {0}",
   output_started: "Het geluid van deze computer speelt op {0}. Het speelt hier ook gewoon door.",
+  side_auto: "De kant vanzelf controleren", side_auto_sub: "Af en toe, met een geluid dat te hoog is om te horen: als een tweede scherm start, een computer terugkomt of de muis er na een tijdje weer heen gaat. Alleen als deze computer via zijn eigen speakers speelt.",
 };
 
 const tables = { en, nl };

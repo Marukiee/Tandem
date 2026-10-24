@@ -217,7 +217,17 @@ fn started(device: String, edge: Edge, along: f32) {
     }
     *HEARD.lock().unwrap() = Some(Instant::now());
     PONGED.store(false, std::sync::atomic::Ordering::Relaxed);
+    // Away from the hooks: finding out whether a check is due asks the sound system.
+    if let Some(app) = APP.get() {
+        let (app, device) = (app.clone(), device.clone());
+        tauri::async_runtime::spawn_blocking(move || crate::side::consider(&app, &device, tandem_core::ffi::side_check::TandemSideReason::PointerOver));
+    }
     send(Out::Share(device, TandemPointerShare::Enter { edge: edge.into(), along: along.clamp(0.0, 1.0) }));
+}
+
+/// The computer that has the pointer now.
+pub fn pointer_at() -> Option<String> {
+    INNER.lock().unwrap().remote.as_ref().map(|(device, _)| device.clone())
 }
 
 /// What the hands did. True when it is for the other computer and has to go no further on this one.

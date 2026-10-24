@@ -99,6 +99,10 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   scherm vraagt de Mac waar het apparaat staat (zoeken, links of rechts, met Onthouden). Een telefoon die bewogen wordt (bewegingssensor, alleen met
   Tandem open) laat de kant opnieuw bepalen. Nog niet: de vraag bij het eerste keer op Linux en Windows, en de Mac zelf heeft geen bewegingssensor
   die een app mag lezen.
+  Vanzelf controleren (gevraagd 2026-10-24, gebouwd, nergens op echte toestellen gehoord): met sweeps tussen 18,5 en 20 kHz die je niet hoort, bij een
+  tweede scherm dat start, een apparaat dat terugkomt of bewogen is, de Mac die wakker wordt, de muis die er na 5 minuten weer heen gaat en elke 5
+  minuten tijdens een tweede scherm (`side_check.rs`, metingen in docs/SIDE.md). Alleen via de eigen speakers, verschuift pas als twee controles na
+  elkaar dezelfde andere kant horen, met een toast. Instelling "De kant vanzelf controleren" op de Mac (Muis) en op Linux en Windows. Nog niet: op Windows zien of het geluid gedempt is.
 - Wat werkt per apparaat (gevraagd 2026-10-24, gebouwd in 0.1.92, nog niet op echte toestellen gezien): elk apparaat meldt in zijn status welke
   functies klaarstaan en wat er anders mist (`Feature` in de kern: id, klaar, naam, waarom, pagina), in zijn eigen taal. Mac: bedienen en gedeelde muis
   (Toegankelijkheid), scherm (Schermopname, of herstart nodig), mediaknoppen (Automatisering voor Spotify en Muziek, gevraagd zonder vraag aan de persoon
