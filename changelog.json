@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.2.2",
+    "date": "2026-10-24",
+    "en": {
+      "title": "The best decoder on every Linux laptop",
+      "new": [
+        "Linux: Tandem measures which video decoder of the computer shows a second screen fastest, hardware or not, and uses that one"
+      ]
+    },
+    "nl": {
+      "title": "De beste decoder op elke Linux-laptop",
+      "new": [
+        "Linux: Tandem meet welke videodecoder van de computer een tweede scherm het snelst toont, hardware of niet, en gebruikt die"
+      ]
+    }
+  },
+  {
     "version": "0.2.1",
     "date": "2026-10-24",
     "en": {

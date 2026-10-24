@@ -38,6 +38,8 @@ mod pointer_ready;
 mod power;
 mod settings;
 mod side;
+#[cfg(all(target_os = "linux", feature = "screen-host"))]
+mod decoder_probe;
 mod screen_sound;
 mod features;
 mod sound;
@@ -115,6 +117,9 @@ pub fn run() {
             input::on_left_up(move || drag::flush(&landing_app));
             engine::start(handle.clone());
             capture::configure(&handle);
+            // Which decoder shows a second screen best here, found once in the background.
+            #[cfg(all(target_os = "linux", feature = "screen-host"))]
+            decoder_probe::warm_up();
             quickshare::configure(&handle);
             clip::start(handle.clone());
             // Started with Windows it waits in the tray; started by hand it shows its window.

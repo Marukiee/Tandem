@@ -397,7 +397,7 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
 }
 
 /// What `gst-inspect-1.0` says about an element (its properties among it), or nothing when GStreamer does not have it.
-fn gst_inspect(element: &str) -> Option<String> {
+pub(crate) fn gst_inspect(element: &str) -> Option<String> {
     let mut command = std::process::Command::new("gst-inspect-1.0");
     tandem_winsys::system_env(&mut command);
     let out = command.arg(element).stderr(std::process::Stdio::null()).output().ok()?;
@@ -425,7 +425,12 @@ fn gst() -> &'static Gst {
         // two. Threads of its own per picture (what it does when the input is not live, and a pipe is not) hold a picture back for each
         // thread: three pictures late while things move, and the last ones of a movement only shown when the next pictures come, which on
         // a still screen is up to a second later. Threads per slice cost no delay.
-        let decoder = chosen.or_else(|| match gst_inspect("avdec_h264") {
+        // Which one is best differs per computer: measured there (see `decoder_probe`), where the app can make a stream to try.
+        #[cfg(all(target_os = "linux", feature = "screen-host"))]
+        let measured = crate::decoder_probe::choice;
+        #[cfg(not(all(target_os = "linux", feature = "screen-host")))]
+        let measured = || None::<String>;
+        let decoder = chosen.or_else(measured).or_else(|| match gst_inspect("avdec_h264") {
             Some(about) if about.contains("thread-type") => Some(format!("avdec_h264 thread-type=slice max-threads={threads}")),
             Some(_) => Some("avdec_h264 max-threads=1".into()),
             None => gst_inspect("openh264dec").map(|_| "openh264dec".into()),
@@ -454,14 +459,14 @@ fn gst() -> &'static Gst {
 /// every picture waited for the next: on the laptop (GStreamer 1.28) 17 ms while things move, and the last picture of a movement on a
 /// still screen until the next one came, half a second in the test. With this the parser hands a picture on in 0.1 ms. The next picture
 /// goes without its own start code, so all that is written stays one valid stream: delimiter and SEI are the start of the next picture.
-const AU_END: [u8; 34] = [
+pub(crate) const AU_END: [u8; 34] = [
     0, 0, 0, 1, 0x09, 0xF0, //
     0, 0, 0, 1, 0x06, 0x05, 0x10, b'T', b'a', b'n', b'd', b'e', b'm', b'.', b's', b'c', b'r', b'e', b'e', b'n', b'.', b'v', b'1', 0x80, //
     0, 0, 0, 1,
 ];
 
 /// The part of an access unit that is written to GStreamer; `AU_END` goes after it.
-fn framed(data: &[u8], first: bool) -> &[u8] {
+pub(crate) fn framed(data: &[u8], first: bool) -> &[u8] {
     let code = |d: &[u8]| if d.starts_with(&[0, 0, 0, 1]) { 4 } else if d.starts_with(&[0, 0, 1]) { 3 } else { 0 };
     let mut rest = data;
     // A delimiter of its own would make two in one picture.

@@ -151,6 +151,10 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   op te lossen in code: de wifi van de laptop haperde (energiebesparing aan, pieken tot 128 ms), uit te zetten met NetworkManager `802-11-wireless.powersave 2`.
   Hardware-decoderen op de laptop kan niet zonder RPM Fusion (`mesa-va-drivers-freeworld`); software is 4,6 ms per beeld bij 2560x1600. Nog niet gezien op
   de echte toestellen: of het beeld precies 1:1 staat, en de soepelheid. Gewone kijkvensters op Linux gebruiken nog het JPEG-pad met een maximum van 1280.
+  In 0.2.2 voor elke Linux-laptop (gevraagd 2026-10-24, "beste compatibiliteit"): `decoder_probe.rs` probeert bij de start elke H.264-decoder die er is
+  (VA-API nieuw en oud, V4L2 voor ARM, avdec, openh264, en de NVIDIA-kaart alleen als niets anders werkt) met 40 zelfgemaakte beelden in het tempo van een
+  scherm, kiest de snelste (hardware als die binnen 3 ms zit) en bewaart dat in `~/.cache/tandem/decoder.txt` tot GStreamer verandert. Op de laptop van Mark
+  met dezelfde meting: avdec_h264 2,9 ms, openh264dec 37 ms, nvh264dec 101 ms. `TANDEM_DISPLAY_DECODER` gaat nog steeds voor.
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)
