@@ -333,9 +333,12 @@ fn window(app: &AppHandle, count: usize) {
         let _ = window.set_size(size);
         return;
     }
+    let (x, y) = place(app);
+    // Placed and shown by the builder itself: on Windows a later `show()` activates the window and takes the keys from what is typed.
     let built = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("call.html".into()))
         .title("Tandem")
         .inner_size(size.width, size.height)
+        .position(x, y)
         .decorations(false)
         .transparent(true)
         .shadow(false)
@@ -344,32 +347,32 @@ fn window(app: &AppHandle, count: usize) {
         .visible_on_all_workspaces(true)
         .skip_taskbar(true)
         .focused(wayland())
-        .visible(false)
         .build();
-    let window = match built {
-        Ok(window) => window,
-        Err(error) => {
-            log::warn!("the window of a call could not be made: {error}");
-            return;
-        }
-    };
-    let saved = *PLACE.lock().unwrap();
-    let on_a_screen = |p: PhysicalPosition<i32>| {
-        app.available_monitors().unwrap_or_default().iter().any(|m| {
+    if let Err(error) = built {
+        log::warn!("the window of a call could not be made: {error}");
+    }
+}
+
+/// Where the window goes, in points: where the cards were dragged to before, if that is still on a screen, or else the top right of the
+/// main screen, the cards 12 points from its right edge and just under its top.
+fn place(app: &AppHandle) -> (f64, f64) {
+    let monitors = app.available_monitors().unwrap_or_default();
+    if let Some(p) = *PLACE.lock().unwrap() {
+        let screen = monitors.iter().find(|m| {
             let (at, size) = (m.position(), m.size());
             p.x >= at.x && p.y >= at.y && p.x < at.x + size.width as i32 && p.y < at.y + size.height as i32
-        })
-    };
-    if let Some(place) = saved.filter(|p| on_a_screen(*p)) {
-        let _ = window.set_position(place);
-    } else if let Ok(Some(monitor)) = app.primary_monitor() {
-        let area = monitor.work_area();
-        let scale = monitor.scale_factor();
-        let x = area.position.x as f64 + area.size.width as f64 - (12.0 + CARD_WIDTH + MARGIN) * scale;
-        let y = area.position.y as f64 + (12.0 - MARGIN) * scale;
-        let _ = window.set_position(PhysicalPosition::new(x.round() as i32, y.round().max(area.position.y as f64) as i32));
+        });
+        if let Some(screen) = screen {
+            let scale = screen.scale_factor();
+            return (p.x as f64 / scale, p.y as f64 / scale);
+        }
     }
-    let _ = window.show();
+    let Ok(Some(monitor)) = app.primary_monitor() else { return (0.0, 0.0) };
+    let area = monitor.work_area();
+    let scale = monitor.scale_factor();
+    let right = (area.position.x as f64 + area.size.width as f64) / scale;
+    let top = area.position.y as f64 / scale;
+    (right - 12.0 - CARD_WIDTH - MARGIN, (top + 12.0 - MARGIN).max(top))
 }
 
 // ---- What the page asks ----------------------------------------------------------------------------------------------------------

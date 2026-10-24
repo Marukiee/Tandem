@@ -96,7 +96,8 @@ function update(cards) {
 const snapshot = await call("get_state").catch(() => ({}));
 setPlatform(snapshot.platform);
 setLanguage(snapshot.settings?.language, "");
+// Listening first: a call that changes while the cards are fetched would otherwise be missed until the next change.
+await listen("call-cards", update);
 update(await call("call_cards"));
-listen("call-cards", update);
 // The timer of a call that goes on.
 setInterval(() => { if (shown.some((c) => c.phase === "active")) draw(); }, 1000);

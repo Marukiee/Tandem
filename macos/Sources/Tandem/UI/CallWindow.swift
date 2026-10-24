@@ -187,7 +187,8 @@ final class CallWindow {
                 let slot = CallSlot(card: card)
                 let panel = makePanel(slot)
                 shown[card.id] = (panel, slot)
-                FloatingStack.shared.show(panel)
+                // The room the panel keeps around its card, so the column lines up the cards and not their shadows.
+                FloatingStack.shared.show(panel, room: FloatingStack.Room(top: Self.insets.top, bottom: Self.insets.bottom, side: Self.insets.trailing))
                 // One turn later, so the panel is on screen and laid out before the card springs in.
                 DispatchQueue.main.async { withAnimation(.tandemSpringy) { slot.shown = true } }
             }
