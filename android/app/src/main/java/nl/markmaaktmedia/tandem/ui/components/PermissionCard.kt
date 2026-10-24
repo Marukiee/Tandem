@@ -121,6 +121,7 @@ class PermissionStatus internal constructor(private val context: Context) {
     val battery get() = read { Permissions.batteryUnrestricted(context) }
     val photos get() = read { Permissions.photos(context) }
     val camera get() = read { Permissions.camera(context) }
+    val microphone get() = read { Permissions.isGranted(context, Manifest.permission.RECORD_AUDIO) }
     val notificationAccess get() = read { Permissions.notificationAccess(context) }
     val bluetooth get() = read { Permissions.bluetooth(context) }
     val installApps get() = read { Permissions.installApps(context) }
@@ -217,6 +218,8 @@ class PermissionRequests internal constructor(
     fun photos() = askOrOpenSettings(listOf(Manifest.permission.READ_MEDIA_IMAGES))
 
     fun camera() = askOrOpenSettings(listOf(Manifest.permission.CAMERA))
+
+    fun microphone() = askOrOpenSettings(listOf(Manifest.permission.RECORD_AUDIO))
 
     fun bluetooth() = askOrOpenSettings(Permissions.bluetoothPermissions.toList())
 

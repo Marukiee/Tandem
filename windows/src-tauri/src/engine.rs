@@ -81,6 +81,7 @@ pub fn start(app: AppHandle) {
                 log::info!("the engine runs as {} on port {}", engine.name(), engine.port());
                 *state.engine.write().unwrap() = Some(engine);
                 crate::bluetooth::start(&app);
+                crate::features::start(&app);
                 events::refresh_devices(&app);
                 let _ = app.emit("engine-ready", ());
             }

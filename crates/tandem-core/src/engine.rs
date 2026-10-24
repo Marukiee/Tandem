@@ -394,6 +394,11 @@ impl Engine {
         self.inner.send_clipboard(targets, text, is_url).await
     }
 
+    /// What this device reports about itself now.
+    pub fn my_status(&self) -> Status {
+        self.inner.my_status.lock().unwrap().clone()
+    }
+
     /// Updates what this device reports about itself and sends the change on.
     pub async fn update_status(&self, change: Status) {
         {

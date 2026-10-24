@@ -140,6 +140,9 @@ fun PlayerControls(
     onKey: (TandemMediaKey) -> Unit,
     modifier: Modifier = Modifier,
     muted: Boolean = false,
+    /** The player may be pressed (the computer allows it), and the computer's own keys may be (volume, and play with no player). */
+    canPlay: Boolean = true,
+    canKeys: Boolean = true,
 ) {
     val items = listOf(
         MediaItem(TandemMediaKey.MUTE, { TandemIcons.VolumeOff }, R.string.remote_media_mute),
@@ -156,7 +159,8 @@ fun PlayerControls(
             val enabled = when (item.key) {
                 TandemMediaKey.PREVIOUS -> canPrevious
                 TandemMediaKey.NEXT -> canNext
-                else -> true
+                TandemMediaKey.PLAY_PAUSE -> canPlay
+                else -> canKeys
             }
             val dim by animateFloatAsState(if (enabled) 1f else 0.38f, TandemMotion.fadeSpec(), label = "buttonDim")
             GroupButton(

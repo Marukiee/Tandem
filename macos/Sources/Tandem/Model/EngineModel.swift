@@ -246,6 +246,7 @@ final class EngineModel {
         }
         ready = true
         refreshDevices()
+        FeatureReport.start()
 
         let monitor = ClipboardMonitor { [weak self] text, isURL in
             self?.localClipboardChanged(text, isURL: isURL)
@@ -579,6 +580,12 @@ final class EngineModel {
         case .sideReady, .sideHeard:
             // Read by `sideStart` itself.
             break
+
+        case let .openSettings(from, page):
+            // Another device of the person shows what this Mac is missing and was asked to open the place where it is turned on.
+            FeatureReport.open(page)
+            let name = device(from)?.name ?? String(localized: "Another device")
+            Notifier.shared.post(id: "open-settings", title: String(localized: "\(name) opened a setting"), body: String(localized: "Turn on Tandem here, then go back to \(name)."))
 
         case let .sideMoved(from):
             // A phone was picked up and put down again: when it is a second screen here, or sits next to this screen, its side is found
@@ -1299,6 +1306,20 @@ final class EngineModel {
     func setIcon(_ symbol: String?, for id: String) {
         if let symbol { deviceIcons[id] = symbol } else { deviceIcons.removeValue(forKey: id) }
         UserDefaults.standard.set(deviceIcons, forKey: "deviceIcons")
+    }
+
+    /// Asks a device to open the page of its settings where a feature it is missing is turned on, and says where to look.
+    func openSettings(on id: String, page: String) {
+        guard let engine else { return }
+        let name = device(id)?.name ?? String(localized: "that device")
+        Task {
+            do {
+                try await engine.openSettingsOn(target: id, page: page)
+                showToast(String(localized: "Look at \(name): the setting is open there"))
+            } catch {
+                showToast(String(localized: "\(name) cannot be reached right now"))
+            }
+        }
     }
 
     func showToast(_ text: String) {

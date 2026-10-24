@@ -36,6 +36,7 @@ object TandemIcons {
     val Help: Painter @Composable get() = painterResource(R.drawable.sym_question_mark)
     val Info: Painter @Composable get() = painterResource(R.drawable.sym_info)
     val Error: Painter @Composable get() = painterResource(R.drawable.sym_error)
+    val Mic: Painter @Composable get() = painterResource(R.drawable.sym_mic)
     val OpenInNew: Painter @Composable get() = painterResource(R.drawable.sym_open_in_new)
     val Idea: Painter @Composable get() = painterResource(R.drawable.sym_info)
     val Copy: Painter @Composable get() = painterResource(R.drawable.sym_content_copy)

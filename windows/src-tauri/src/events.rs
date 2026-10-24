@@ -64,6 +64,12 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::MediaQuality { session, poor, .. } => crate::live::quality(app, session, poor),
         TandemEvent::SideListen { from, id } => crate::side::listen(app, from, id),
         TandemEvent::SideMoved { from } => crate::side::moved(app, from),
+        // Another device shows what this computer is missing and was asked to open the place where it is turned on.
+        TandemEvent::OpenSettings { from, page } => {
+            crate::features::open(&page);
+            let name = device_name(app, &from);
+            toast(app, &crate::i18n::t1(app, "settings_opened_title", &name), &crate::i18n::t1(app, "settings_opened_body", &name));
+        }
         TandemEvent::MediaOffered { from, kind, facing, extend } => {
             let name = device_name(app, &from);
             let camera = kind == tandem_core::ffi::TandemMediaKind::Camera;

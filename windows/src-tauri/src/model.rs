@@ -70,6 +70,7 @@ pub fn device(d: &TandemDevice) -> Value {
         "autoAccept": d.auto_accept,
         "notifications": d.notifications_enabled,
         "ble": d.ble,
+        "features": crate::features::list_json(&d.features),
     })
 }
 

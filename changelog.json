@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.1.92",
+    "date": "2026-10-24",
+    "en": {
+      "title": "What works",
+      "new": [
+        "Settings show what works on each device, what is missing and why",
+        "Open the right setting on another device with one button",
+        "Media buttons are grey when the computer may not press them, with the reason",
+        "A device's page says what does not work there"
+      ]
+    },
+    "nl": {
+      "title": "Wat werkt",
+      "new": [
+        "De instellingen tonen per apparaat wat werkt, wat er mist en waarom",
+        "Open de goede instelling op een ander apparaat met één knop",
+        "Mediaknoppen zijn grijs als de computer ze niet mag bedienen, met de reden",
+        "De pagina van een apparaat zegt wat daar niet werkt"
+      ]
+    }
+  },
+  {
     "version": "0.1.91",
     "date": "2026-10-24",
     "en": {

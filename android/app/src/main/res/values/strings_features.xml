@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- What this phone does for the other devices (sent to them, see FeatureReport) -->
+    <string name="feature_control">Control this phone</string>
+    <string name="feature_control_why">The accessibility service of Tandem is off on this phone</string>
+    <string name="feature_notifications">Phone notifications on your computers</string>
+    <string name="feature_media">Phone music on your computers</string>
+    <string name="feature_listener_why">Notification access is off for Tandem on this phone</string>
+    <string name="feature_calls">Calls on your computers</string>
+    <string name="feature_calls_why">Tandem may not see calls and contacts on this phone</string>
+    <string name="feature_files">Browse the files of this phone</string>
+    <string name="feature_files_why">Access to all files is off for Tandem on this phone</string>
+    <string name="feature_camera">Use the camera of this phone</string>
+    <string name="feature_camera_why">The camera is off for Tandem on this phone</string>
+    <string name="feature_microphone">Find the side by sound</string>
+    <string name="feature_microphone_why">The microphone is off for Tandem on this phone</string>
+    <string name="feature_background">Stay connected in the background</string>
+    <string name="feature_background_why">Battery optimisation can stop Tandem on this phone</string>
+    <string name="feature_bluetooth">Bluetooth link</string>
+    <string name="feature_bluetooth_why">Bluetooth is off for Tandem on this phone</string>
+    <string name="feature_alerts">Notifications on this phone</string>
+    <string name="feature_alerts_why">Notifications are off for Tandem on this phone</string>
+    <string name="feature_open_title">%1$s asks you to turn something on</string>
+    <string name="feature_open_text">Tap to open the setting, then go back</string>
+    <string name="feature_device_fallback">another device</string>
+
+    <!-- The overview -->
+    <string name="features_title">What works</string>
+    <string name="features_all_good">Everything works on your devices.</string>
+    <plurals name="features_missing">
+        <item quantity="one">One thing needs a permission or a setting. It says what, and opens the right place.</item>
+        <item quantity="other">%1$d things need a permission or a setting. Each one says what, and opens the right place.</item>
+    </plurals>
+    <string name="features_this_phone">This phone</string>
+    <string name="features_open_here">Open</string>
+    <string name="features_open_on">Open on %1$s</string>
+    <string name="features_offline">Not connected. What works there shows up when it connects.</string>
+    <string name="features_old">Update Tandem on %1$s to see what works there.</string>
+    <string name="features_opened">Look at %1$s: the setting is open there</string>
+    <string name="features_unreachable">%1$s cannot be reached right now</string>
+    <string name="features_notice">Not everything works on %1$s</string>
+    <string name="features_row">What works</string>
+    <string name="features_row_sub">What each device can do, and what it still needs</string>
+    <string name="settings_kw_features">features permissions works working broken missing allowed</string>
+    <string name="perm_microphone">Microphone</string>
+    <string name="perm_microphone_why">Only to hear on which side of a computer the phone stands, with Tandem open.</string>
+    <string name="media_not_allowed">%1$s cannot press these buttons yet</string>
+</resources>

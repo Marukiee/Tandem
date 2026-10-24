@@ -66,7 +66,7 @@ fun AccessScreen(onBack: () -> Unit) {
     val lastSent by MirrorListener.lastSent.collectAsState()
     val stopped = status.notificationAccess && !listening
 
-    val total = 8
+    val total = 9
 
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
@@ -189,10 +189,17 @@ fun AccessScreen(onBack: () -> Unit) {
                 modifier = Modifier.staggeredEntry(8).settingsTarget(FocusKeys.PermCamera, 6, total),
             )
             PermissionCard(
+                TandemIcons.Mic, stringResource(R.string.perm_microphone), stringResource(R.string.perm_microphone_why),
+                granted = status.microphone, onGrant = requests::microphone,
+                note = blockedNote(!status.microphone && status.isBlocked(Manifest.permission.RECORD_AUDIO), requests),
+                index = 7, total = total,
+                modifier = Modifier.staggeredEntry(9),
+            )
+            PermissionCard(
                 TandemIcons.Update, stringResource(R.string.perm_install), stringResource(R.string.perm_install_why),
                 granted = status.installApps, onGrant = { Permissions.openInstallSettings(context) },
-                index = 7, total = total,
-                modifier = Modifier.staggeredEntry(9).settingsTarget(FocusKeys.PermInstall, 7, total),
+                index = 8, total = total,
+                modifier = Modifier.staggeredEntry(10).settingsTarget(FocusKeys.PermInstall, 8, total),
             )
         }
         Spacer(Modifier.height(24.dp))

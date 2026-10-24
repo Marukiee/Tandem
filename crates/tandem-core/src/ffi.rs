@@ -312,6 +312,8 @@ impl From<TandemStatus> for Status {
             asleep: s.asleep,
             wake_mac: s.wake_mac,
             muted: s.muted,
+            // The features go their own way, with `set_features`.
+            features: None,
         }
     }
 }
@@ -333,10 +335,35 @@ pub struct TandemDevice {
     pub notifications_enabled: bool,
     /// Reachable over Bluetooth right now, though not over the network.
     pub ble: bool,
+    /// What it can do for the others and whether it is ready for it, as it last said.
+    pub features: Vec<TandemFeature>,
+}
+
+/// See `proto::Feature`.
+#[derive(Clone, Debug, PartialEq, uniffi::Record)]
+pub struct TandemFeature {
+    pub id: String,
+    pub ready: bool,
+    pub name: String,
+    pub why: String,
+    pub page: Option<String>,
+}
+
+impl From<crate::proto::Feature> for TandemFeature {
+    fn from(f: crate::proto::Feature) -> Self {
+        TandemFeature { id: f.id, ready: f.ready, name: f.name, why: f.why, page: f.page }
+    }
+}
+
+impl From<TandemFeature> for crate::proto::Feature {
+    fn from(f: TandemFeature) -> Self {
+        crate::proto::Feature { id: f.id, ready: f.ready, name: f.name, why: f.why, page: f.page }
+    }
 }
 
 impl From<DeviceInfo> for TandemDevice {
     fn from(d: DeviceInfo) -> Self {
+        let features = d.status.features.clone().unwrap_or_default().into_iter().map(Into::into).collect();
         TandemDevice {
             id: d.id.to_string(),
             name: d.name,
@@ -352,6 +379,7 @@ impl From<DeviceInfo> for TandemDevice {
             auto_accept: d.settings.auto_accept,
             notifications_enabled: d.settings.notifications,
             ble: d.ble,
+            features,
         }
     }
 }
@@ -1001,6 +1029,8 @@ pub enum TandemEvent {
     SideHeard { from: String, id: u64 },
     /// The device was moved: find its side again if it matters (a second screen, the shared mouse).
     SideMoved { from: String },
+    /// Another device asks to open this page of the settings here (one of the `page`s of `set_features`).
+    OpenSettings { from: String, page: String },
     Input { from: String, input: TandemInput },
     Hotspot { from: String, hotspot: TandemHotspot },
     /// The other device wants a picture. Answer with `send_files` and origin `Capture { request: id }`,
@@ -1102,6 +1132,7 @@ impl From<Event> for TandemEvent {
             Event::SideReady { from, id } => TandemEvent::SideReady { from: from.to_string(), id },
             Event::SideHeard { from, id, .. } => TandemEvent::SideHeard { from: from.to_string(), id },
             Event::SideMoved { from } => TandemEvent::SideMoved { from: from.to_string() },
+            Event::OpenSettings { from, page } => TandemEvent::OpenSettings { from: from.to_string(), page },
             Event::Input { from, input } => TandemEvent::Input { from: from.to_string(), input: input.into() },
             Event::Hotspot { from, hotspot } => TandemEvent::Hotspot { from: from.to_string(), hotspot: hotspot.into() },
             Event::CaptureRequested { from, id, kind } => {
@@ -1808,6 +1839,23 @@ impl TandemEngine {
     /// Tells the computers this device is a screen for or sits next to that it was moved, so they can find its side again.
     pub async fn side_moved(&self, targets: Vec<String>) -> Result<(), TandemError> {
         self.send(targets, crate::proto::Msg::SideMoved).await.map(|_| ())
+    }
+
+    /// What this device can do for the others and whether it is ready for it, the whole list. Sent on when it changed, and to each
+    /// device that connects.
+    pub async fn set_features(&self, features: Vec<TandemFeature>) {
+        let list: Vec<crate::proto::Feature> = features.into_iter().map(Into::into).collect();
+        if self.engine.my_status().features.as_ref() == Some(&list) {
+            return;
+        }
+        let change = Status { features: Some(list), ..Status::default() };
+        let engine = self.engine.clone();
+        let _ = self.runtime.spawn(async move { engine.update_status(change).await }).await;
+    }
+
+    /// Asks a device to open a page of its settings, one it named in its features.
+    pub async fn open_settings_on(&self, target: String, page: String) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::OpenSettings { page }).await.map(|_| ())
     }
 
     /// The answer to `TandemEvent::SideListen`: what this device heard, or `levels` empty when it could not listen.

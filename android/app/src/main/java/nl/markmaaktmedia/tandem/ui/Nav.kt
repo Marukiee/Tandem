@@ -24,6 +24,9 @@ sealed interface Route {
     /** A login to a computer over SSH, in a terminal. */
     data class Terminal(val id: String) : Route
     data object Access : Route
+
+    /** What works on each device, and what it still needs. */
+    data object Features : Route
     data object FileAccess : Route
     data object MirrorApps : Route
     data object Appearance : Route
@@ -100,6 +103,7 @@ private fun routeFromKey(key: String): Route? = when {
     key.startsWith("display:") -> Route.Display(key.removePrefix("display:"))
     key.startsWith("terminal:") -> Route.Terminal(key.removePrefix("terminal:"))
     key == "access" -> Route.Access
+    key == "features" -> Route.Features
     key == "clipboard-history" -> Route.ClipboardHistory
     key == "files" -> Route.FileAccess
     key == "mirror" -> Route.MirrorApps

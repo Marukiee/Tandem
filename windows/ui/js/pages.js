@@ -255,6 +255,8 @@ export function DevicePage({ device }) {
 
     ${isComputer && sshChecked && !sshAddress && html`<div class="small muted" style="margin:-4px 2px 0">${sshReason}</div>`}
 
+    <${FeatureNotice} device=${device} />
+
     <div class=${"drop" + (state.dropping ? " over" : "") + (device.online ? " click" : " off")} role="button" tabindex="0"
       title=${t("drop_click")} onClick=${() => device.online && send()}
       onKeyDown=${(e) => { if ((e.key === "Enter" || e.key === " ") && device.online) { e.preventDefault(); send(); } }}>
@@ -639,7 +641,7 @@ function FilesHostSection() {
 
 // The settings, in sections like the settings of the Mac: what belongs together is together, and a section is a page of its own.
 const SECTIONS = [
-  ["general", "tab_general", "settings"], ["clipboard", "tab_clipboard", "clipboard"], ["files", "tab_files", "files"], ["remote", "tab_remote", "device-desktop"],
+  ["general", "tab_general", "settings"], ["features", "tab_features", "circle-check"], ["clipboard", "tab_clipboard", "clipboard"], ["files", "tab_files", "files"], ["remote", "tab_remote", "device-desktop"],
   ["mouse", "tab_mouse", "pointer"], ["quickshare", "tab_quickshare", "quickshare"], ["updates", "tab_updates", "download"], ["about", "about", "info-circle"],
 ];
 
@@ -661,6 +663,7 @@ export function SettingsPage() {
       </nav>
       <div class="settings-content" key=${section}>
         ${section === "general" && html`<${GeneralSettings} s=${s} patch=${patch} />`}
+        ${section === "features" && html`<${FeaturesSettings} />`}
         ${section === "clipboard" && html`<${ClipboardSettings} s=${s} patch=${patch} />`}
         ${section === "files" && html`<${FilesHostSection} />`}
         ${section === "remote" && html`<${RemoteSettings} s=${s} patch=${patch} />`}
@@ -670,6 +673,63 @@ export function SettingsPage() {
         ${section === "about" && html`<${AboutSettings} />`}
       </div>
     </div>
+  </div>`;
+}
+
+// ---- What works --------------------------------------------------------------------------
+
+/** What needs something first, then what works. */
+const ordered = (features) => [...features.filter((f) => !f.ready), ...features.filter((f) => f.ready)];
+
+/** Asks a device to open the page of its settings where a feature it is missing is turned on, and says where to look. */
+const openOn = (device, page) => call("features_open_on", { id: device.id, page })
+  .then(() => say(t("features_opened", device.name)))
+  .catch(() => say(t("features_unreachable", device.name)));
+
+/** One feature: a tick when it works, or what is missing and a button to the place where it is turned on. */
+function FeatureRow({ feature, action, enabled = true, open }) {
+  return html`<div class="setting feature">
+    <span class=${"feature-mark " + (feature.ready ? "ok" : "bad")}><${Icon} name=${feature.ready ? "circle-check" : "alert-triangle"} size=${18} /></span>
+    <div class="grow"><div class="t">${feature.name}</div>${!feature.ready && feature.why && html`<div class="s">${feature.why}</div>`}</div>
+    ${!feature.ready && feature.page && html`<button class="btn accent small" disabled=${!enabled} onClick=${() => open(feature.page)}>${action}</button>`}
+  </div>`;
+}
+
+/** On a device's page: what does not work there now, and the button that opens the setting on that device. Nothing when all works. */
+function FeatureNotice({ device }) {
+  const missing = device.online ? (device.features || []).filter((f) => !f.ready) : [];
+  if (missing.length === 0) return null;
+  return html`<div class="card flush feature-notice">
+    <div class="feature-notice-title"><${Icon} name="alert-triangle" size=${17} />${t("features_notice", device.name)}</div>
+    ${missing.map((f) => html`<${FeatureRow} key=${f.id} feature=${f} action=${t("features_open_on", device.name)} open=${(page) => openOn(device, page)} />`)}
+  </div>`;
+}
+
+/** What works on each device and what does not, and why, with a button that opens the place where it is turned on. */
+function FeaturesSettings() {
+  const [mine, setMine] = useState([]);
+  useEffect(() => {
+    // Permissions and devices change outside the app, so this computer's own list is looked at again while the page is open.
+    const load = () => call("features_local").then(setMine).catch(() => {});
+    load();
+    const timer = setInterval(load, 2000);
+    return () => clearInterval(timer);
+  }, []);
+  const others = state.devices.filter((d) => !state.self || d.id !== state.self.id)
+    .sort((a, b) => (a.online === b.online ? a.name.localeCompare(b.name) : a.online ? -1 : 1));
+  const missing = mine.filter((f) => !f.ready).length + others.filter((d) => d.online).reduce((n, d) => n + (d.features || []).filter((f) => !f.ready).length, 0);
+  return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("tab_features")}</h2>
+    <div class="muted">${missing === 0 ? t("features_all_good") : t("features_missing", missing)}</div>
+    <h2>${state.self ? state.self.name : t("this_pc")}</h2>
+    <div class="card flush">${ordered(mine).map((f) => html`<${FeatureRow} key=${f.id} feature=${f} action=${t("features_open_here")} open=${(page) => call("features_open_here", { page })} />`)}</div>
+    ${others.map((d) => html`<div key=${d.id} style="display:flex;flex-direction:column;gap:6px">
+      <h2 style="display:flex;align-items:center;gap:8px"><${Icon} name=${platformIcon(d.platform)} size=${16} />${d.name}${!d.online && html`<span class="small muted" style="font-weight:400">${t("features_offline_label")}</span>`}</h2>
+      ${(d.features || []).length === 0
+        ? html`<div class="card"><div class="small muted">${d.online ? t("features_old", d.name) : t("features_offline")}</div></div>`
+        : html`<div class="card flush" style=${d.online ? "" : "opacity:.6"}>${ordered(d.features).map((f) => html`<${FeatureRow} key=${f.id} feature=${f}
+            action=${t("features_open_on", d.name)} enabled=${d.online || d.ble} open=${(page) => openOn(d, page)} />`)}</div>`}
+    </div>`)}
   </div>`;
 }
 

@@ -37,6 +37,7 @@ fun routeKey(route: Route): String = when (route) {
     is Route.DeviceSettings -> "devsettings:${route.id}"
     is Route.ClipboardHistory -> "clipboard-history"
     Route.Access -> "access"
+    Route.Features -> "features"
     Route.FileAccess -> "files"
     Route.MirrorApps -> "mirror"
     Route.Appearance -> "appearance"

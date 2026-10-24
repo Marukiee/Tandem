@@ -34,6 +34,7 @@ internal enum class SettingsCategory(
     Sharing(R.string.settings_cat_sharing, { TandemIcons.Devices }, Route.SettingsPage(SettingsPageId.Sharing)),
     Notifications(R.string.settings_notifications, { TandemIcons.Notifications }, Route.SettingsPage(SettingsPageId.Notifications)),
     Trackpad(R.string.settings_cat_trackpad, { TandemIcons.Mouse }, Route.SettingsPage(SettingsPageId.Trackpad)),
+    Features(R.string.features_title, { TandemIcons.CheckCircle }, Route.Features),
     Permissions(R.string.settings_access, { TandemIcons.Shield }, Route.Access),
     Hotspot(R.string.settings_hotspot, { TandemIcons.Hotspot }, Route.Hotspot),
     Files(R.string.files_title, { TandemIcons.Folder }, Route.FileAccess),
@@ -273,6 +274,11 @@ internal object SettingsCatalog {
         SettingsEntry(
             "pad_hold", R.string.pad_hold, R.string.settings_kw_pad_hold, SettingsCategory.Trackpad, trackpad,
             { TandemIcons.Mouse }, subtitle = R.string.pad_hold_sub, focus = FocusKeys.PadHold,
+        ),
+
+        SettingsEntry(
+            "features", R.string.features_row, R.string.settings_kw_features, SettingsCategory.Features, Route.Features,
+            { TandemIcons.CheckCircle }, subtitle = R.string.features_row_sub,
         ),
 
         // Permissions

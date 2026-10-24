@@ -237,7 +237,7 @@ enum DebugSupport {
         let device = TandemDevice(
             id: "debug", name: phone ? "Pixel 9" : "Linux Laptop", platform: phone ? .android : .linux, online: true, route: nil, rttMs: 7, status: status,
             appVersion: "0.1.76", caps: phone ? ["files", "media.screen", "media.camera"] : ["screen.host"], vouchedByRemoved: false, clipboardEnabled: true,
-            autoAccept: true, notificationsEnabled: true, ble: false
+            autoAccept: true, notificationsEnabled: true, ble: false, features: []
         )
         let host = NSHostingView(rootView: DeviceDetail(device: device).environment(EngineModel.shared).frame(width: 760, height: 640))
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 760, height: 640), styleMask: [.titled, .closable], backing: .buffered, defer: false)
@@ -250,7 +250,7 @@ enum DebugSupport {
         let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
         func made(_ id: String, _ name: String, _ platform: TandemPlatform, online: Bool = true) -> TandemDevice {
             TandemDevice(id: id, name: name, platform: platform, online: online, route: nil, rttMs: nil, status: status, appVersion: nil, caps: [],
-                         vouchedByRemoved: false, clipboardEnabled: true, autoAccept: false, notificationsEnabled: true, ble: false)
+                         vouchedByRemoved: false, clipboardEnabled: true, autoAccept: false, notificationsEnabled: true, ble: false, features: [])
         }
         let devices = [made("a", "Linux Laptop", .linux), made("b", "Windows PC", .windows), made("c", "Old Mac", .macOs, online: false)]
         let share = PointerShare.shared

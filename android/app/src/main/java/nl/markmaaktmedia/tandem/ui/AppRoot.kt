@@ -116,6 +116,14 @@ private fun MainNavigation() {
             quickShareFlag.value = false
         }
     }
+    val accessFlag = LocalContext.current.graph.openAccess
+    val openAccess by accessFlag.collectAsState()
+    LaunchedEffect(openAccess) {
+        if (openAccess) {
+            nav.push(Route.Access)
+            accessFlag.value = false
+        }
+    }
     val displayFlag = LocalContext.current.graph.openDisplay
     val openDisplay by displayFlag.collectAsState()
     LaunchedEffect(openDisplay) {
@@ -237,6 +245,7 @@ private fun RouteBody(route: Route, nav: Nav) {
         is Route.ClipboardHistory -> nl.markmaaktmedia.tandem.ui.screens.ClipboardHistoryScreen(onBack = { nav.pop() })
         is Route.DeviceSettings -> nl.markmaaktmedia.tandem.ui.screens.DeviceSettingsScreen(route.id, onBack = { nav.pop() })
         Route.Access -> AccessScreen(onBack = { nav.pop() })
+        Route.Features -> nl.markmaaktmedia.tandem.ui.screens.FeaturesScreen(onBack = { nav.pop() })
         Route.FileAccess -> nl.markmaaktmedia.tandem.ui.screens.FileAccessScreen(onBack = { nav.pop() })
         Route.MirrorApps -> MirrorAppsScreen(onBack = { nav.pop() })
         Route.Appearance -> AppearanceScreen(onBack = { nav.pop() })

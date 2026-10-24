@@ -953,3 +953,35 @@
 "Find automatically" = "Automatisch bepalen";
 "Remember for this device" = "Onthoud voor dit apparaat";
 "A short sweep from low to high on the left and from high to low on the right, at the same time. Soft first, louder when it was not heard." = "Een korte sweep van laag naar hoog links en van hoog naar laag rechts, tegelijk. Eerst zacht, harder als het niet gehoord werd.";
+
+/* What works */
+"What works" = "Wat werkt";
+"Control this Mac" = "Deze Mac bedienen";
+"Accessibility is off for Tandem on this Mac" = "Toegankelijkheid staat uit voor Tandem op deze Mac";
+"See this Mac's screen" = "Het scherm van deze Mac zien";
+"Screen Recording is off for Tandem on this Mac" = "Schermopname staat uit voor Tandem op deze Mac";
+"Tandem has to restart on this Mac to use Screen Recording" = "Tandem moet op deze Mac opnieuw starten om Schermopname te gebruiken";
+"Shared mouse and keyboard" = "Gedeelde muis en toetsenbord";
+"Tandem has not been allowed to control %@ yet" = "Tandem mag %@ nog niet bedienen";
+"Tandem is not allowed to control %@" = "Tandem mag %@ niet bedienen";
+"Media buttons for Spotify and Music" = "Mediaknoppen voor Spotify en Muziek";
+"Notifications on this Mac" = "Meldingen op deze Mac";
+"Notifications have not been allowed yet" = "Meldingen zijn nog niet toegestaan";
+"Notifications are off for Tandem on this Mac" = "Meldingen staan uit voor Tandem op deze Mac";
+"Find the side by sound" = "De kant vinden met geluid";
+"The microphone has not been allowed yet" = "De microfoon is nog niet toegestaan";
+"The microphone is off for Tandem on this Mac" = "De microfoon staat uit voor Tandem op deze Mac";
+"Bluetooth link" = "Bluetooth-verbinding";
+"Bluetooth is off for Tandem on this Mac" = "Bluetooth staat uit voor Tandem op deze Mac";
+"Another device" = "Een ander apparaat";
+"%@ opened a setting" = "%@ heeft een instelling geopend";
+"Turn on Tandem here, then go back to %@." = "Zet Tandem hier aan en ga dan terug naar %@.";
+"Look at %@: the setting is open there" = "Kijk op %@: daar staat de instelling open";
+"%@ cannot be reached right now" = "%@ is nu niet bereikbaar";
+"Everything works on your devices." = "Alles werkt op je apparaten.";
+"%lld things need a permission or a setting. Each one says what, and opens the right place." = "%lld dingen hebben een toestemming of instelling nodig. Bij elk staat wat er mist, met een knop naar de goede plek.";
+"Update Tandem on %@ to see what works there." = "Werk Tandem bij op %@ om te zien wat daar werkt.";
+"Not connected. What works there shows up when it connects." = "Niet verbonden. Wat daar werkt verschijnt zodra er verbinding is.";
+"Open on %@" = "Open op %@";
+"Offline" = "Offline";
+"Not everything works on %@" = "Niet alles werkt op %@";

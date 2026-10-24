@@ -1,5 +1,6 @@
 package nl.markmaaktmedia.tandem.ui.components
 
+import nl.markmaaktmedia.tandem.ui.screens.missing
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,8 +62,14 @@ fun ControlComputerRow(index: Int, total: Int, device: TandemDevice, onOpen: () 
             }
             if (ready) Icon(TandemIcons.ChevronRight, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
         }
-        // What is missing, only while the computer is reachable: offline there is nothing to set up yet.
-        if (device.online && mac && !hosts) {
+        // What is missing, only while the computer is reachable: offline there is nothing to set up yet. A computer that says what it is
+        // missing gets that, with the button that opens it there; an older one gets the steps.
+        val missing = listOfNotNull(device.missing("screen"), device.missing("control"))
+        if (device.online && missing.isNotEmpty()) {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                missing.forEach { nl.markmaaktmedia.tandem.ui.screens.FeatureFix(device, it) }
+            }
+        } else if (device.online && mac && !hosts) {
             Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(stringResource(R.string.control_setup_title), style = MaterialTheme.typography.labelLarge, color = scheme.primary)
                 listOf(R.string.control_setup_1, R.string.control_setup_2, R.string.control_setup_3, R.string.control_setup_4).forEachIndexed { index, text ->

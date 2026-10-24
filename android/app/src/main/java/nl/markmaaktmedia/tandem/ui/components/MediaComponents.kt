@@ -78,6 +78,7 @@ import kotlin.math.PI
 import kotlin.math.sin
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
+import nl.markmaaktmedia.tandem.ui.screens.missing
 import nl.markmaaktmedia.tandem.media.RemotePlayers
 import nl.markmaaktmedia.tandem.ui.remote.PlayerControls
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
@@ -214,6 +215,12 @@ private fun SmallCover(cover: Bitmap?, hasArt: Boolean) {
 @Composable
 private fun PlayerCard(deviceId: String, player: TandemMediaPlayer?, entry: RemotePlayers?, cover: Bitmap?, muted: Boolean) {
     val media = LocalContext.current.graph.media
+    // What the computer said it may not do: its players' buttons (Automation on a Mac), and its own keys (Accessibility).
+    val devices by LocalContext.current.graph.host.devices.collectAsState()
+    val device = devices.firstOrNull { it.id == deviceId }
+    val playerBlocked = device?.missing("media.control")
+    val keysBlocked = device?.missing("control")
+    val canPlayer = playerBlocked == null
     // The side padding is on the rows, not on the card: the seek bar takes the whole width, because its touch area
     // reaches past the bar to the edges of the card.
     Column(Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).padding(vertical = 16.dp)) {
@@ -271,7 +278,7 @@ private fun PlayerCard(deviceId: String, player: TandemMediaPlayer?, entry: Remo
         SeekBar(
             fraction = natural,
             duration = duration,
-            enabled = seekable && player!!.canSeek,
+            enabled = seekable && player!!.canSeek && canPlayer,
             playing = playingNow,
             report = entry?.at ?: 0L,
             onSeek = { target -> if (player != null) media.commandMac(deviceId, player.id, TandemMediaAction.SEEK, (target * duration).toLong()) },
@@ -283,8 +290,10 @@ private fun PlayerCard(deviceId: String, player: TandemMediaPlayer?, entry: Remo
             modifier = Modifier.padding(horizontal = 16.dp),
             playing = player?.playing == true,
             muted = muted,
-            canPrevious = player?.canPrev == true,
-            canNext = player?.canNext == true,
+            canPrevious = player?.canPrev == true && canPlayer,
+            canNext = player?.canNext == true && canPlayer,
+            canPlay = if (player != null) canPlayer else keysBlocked == null,
+            canKeys = keysBlocked == null,
             onPrevious = { if (player != null) media.commandMac(deviceId, player.id, TandemMediaAction.PREVIOUS) },
             // Nothing playing: the play key of the computer, which starts whatever played last.
             onToggle = {
@@ -294,6 +303,13 @@ private fun PlayerCard(deviceId: String, player: TandemMediaPlayer?, entry: Remo
             onNext = { if (player != null) media.commandMac(deviceId, player.id, TandemMediaAction.NEXT) },
             onKey = { media.pressMacKey(deviceId, it) },
         )
+        // Why some of them are grey, and the button that turns it on there.
+        val blocked = listOfNotNull(if (player != null) playerBlocked else null, keysBlocked)
+        if (device != null && blocked.isNotEmpty()) {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                blocked.forEach { nl.markmaaktmedia.tandem.ui.screens.FeatureFix(device, it) }
+            }
+        }
     }
 }
 

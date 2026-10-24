@@ -75,6 +75,8 @@ pub enum Msg {
     SideHeard { id: u64, left: f32, right: f32, heard: bool },
     /// This device was moved (picked up and put down again): the computer it is a screen for or sits next to may find its side again.
     SideMoved,
+    /// Opens a page of the settings of this device, one it named in its `Feature::page`, so the person can turn on what a feature needs.
+    OpenSettings { page: String },
     Input(InputMsg),
     /// One mouse and keyboard over several computers: the pointer goes over, and comes back (see `pointer_share`).
     PointerShare(crate::pointer_share::PointerShareMsg),
@@ -217,6 +219,23 @@ pub struct Status {
     /// of a computer shows it on the mute button, and follows it when the computer is unmuted by other means.
     #[serde(default)]
     pub muted: Option<bool>,
+    /// What this device can do for the others and whether it is ready for it: the whole list each time it changes.
+    #[serde(default)]
+    pub features: Option<Vec<Feature>>,
+}
+
+/// Something a device does for the others, and whether it can right now. When it cannot, `why` says what is missing (a permission, a
+/// setting) in the words of the device's own language, and `page` names a page of its settings that `Msg::OpenSettings` opens for it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Feature {
+    pub id: String,
+    pub ready: bool,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub why: String,
+    #[serde(default)]
+    pub page: Option<String>,
 }
 
 impl Status {
@@ -226,7 +245,7 @@ impl Status {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted);
+        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, features);
     }
 }
 
@@ -831,6 +850,19 @@ mod tests {
         known.merge(&Status { hotspot: Some(true), ..Default::default() });
         assert_eq!(known.battery.unwrap().level, 80);
         assert_eq!(known.hotspot, Some(true));
+    }
+
+    #[test]
+    fn features_travel_in_the_status_and_stay_when_something_else_changes() {
+        let feature = Feature { id: "control".into(), ready: false, name: "Control".into(), why: "Accessibility is off".into(), page: Some("accessibility".into()) };
+        let sent = Msg::Status(Status { features: Some(vec![feature.clone()]), ..Default::default() });
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&sent, &mut bytes).unwrap();
+        let Msg::Status(got) = decode_msg(&bytes).unwrap() else { panic!("not a status") };
+        let mut known = Status::default();
+        known.merge(&got);
+        known.merge(&Status { muted: Some(true), ..Default::default() });
+        assert_eq!(known.features, Some(vec![feature]));
     }
 
     #[tokio::test]

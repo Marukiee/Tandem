@@ -254,6 +254,11 @@ h2 { font: 600 16px var(--font-display); margin: 6px 2px 0; }
 .setting .t { font-weight: 500; }
 .setting .s { font-size: 12px; color: var(--text-2); }
 .setting.disabled .icon, .setting.disabled .t { opacity: 0.5; }
+.feature-mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; flex: none; }
+.feature-mark.ok { background: var(--ok-soft); color: var(--ok); }
+.feature-mark.bad { background: var(--bad-soft); color: var(--bad); }
+.feature-mark .icon { color: inherit; }
+.feature-notice-title { display: flex; align-items: center; gap: 8px; padding: 12px 14px 4px; font-weight: 600; color: var(--bad); }
 .setting.disabled select { opacity: 0.5; }
 .switch:disabled { opacity: 0.45; cursor: not-allowed; }
 

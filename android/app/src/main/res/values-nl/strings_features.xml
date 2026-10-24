@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_control">Deze telefoon bedienen</string>
+    <string name="feature_control_why">De toegankelijkheidsdienst van Tandem staat uit op deze telefoon</string>
+    <string name="feature_notifications">Telefoonmeldingen op je computers</string>
+    <string name="feature_media">Muziek van de telefoon op je computers</string>
+    <string name="feature_listener_why">Meldingstoegang staat uit voor Tandem op deze telefoon</string>
+    <string name="feature_calls">Gesprekken op je computers</string>
+    <string name="feature_calls_why">Tandem mag gesprekken en contacten op deze telefoon niet zien</string>
+    <string name="feature_files">De bestanden van deze telefoon bekijken</string>
+    <string name="feature_files_why">Toegang tot alle bestanden staat uit voor Tandem op deze telefoon</string>
+    <string name="feature_camera">De camera van deze telefoon gebruiken</string>
+    <string name="feature_camera_why">De camera staat uit voor Tandem op deze telefoon</string>
+    <string name="feature_microphone">De kant vinden met geluid</string>
+    <string name="feature_microphone_why">De microfoon staat uit voor Tandem op deze telefoon</string>
+    <string name="feature_background">Verbonden blijven op de achtergrond</string>
+    <string name="feature_background_why">Batterijoptimalisatie kan Tandem op deze telefoon stoppen</string>
+    <string name="feature_bluetooth">Bluetooth-verbinding</string>
+    <string name="feature_bluetooth_why">Bluetooth staat uit voor Tandem op deze telefoon</string>
+    <string name="feature_alerts">Meldingen op deze telefoon</string>
+    <string name="feature_alerts_why">Meldingen staan uit voor Tandem op deze telefoon</string>
+    <string name="feature_open_title">%1$s vraagt je iets aan te zetten</string>
+    <string name="feature_open_text">Tik om de instelling te openen en ga dan terug</string>
+    <string name="feature_device_fallback">een ander apparaat</string>
+
+    <string name="features_title">Wat werkt</string>
+    <string name="features_all_good">Alles werkt op je apparaten.</string>
+    <plurals name="features_missing">
+        <item quantity="one">Eén ding heeft een toestemming of instelling nodig. Er staat bij wat, met een knop naar de goede plek.</item>
+        <item quantity="other">%1$d dingen hebben een toestemming of instelling nodig. Bij elk staat wat, met een knop naar de goede plek.</item>
+    </plurals>
+    <string name="features_this_phone">Deze telefoon</string>
+    <string name="features_open_here">Openen</string>
+    <string name="features_open_on">Open op %1$s</string>
+    <string name="features_offline">Niet verbonden. Wat daar werkt verschijnt zodra er verbinding is.</string>
+    <string name="features_old">Werk Tandem bij op %1$s om te zien wat daar werkt.</string>
+    <string name="features_opened">Kijk op %1$s: daar staat de instelling open</string>
+    <string name="features_unreachable">%1$s is nu niet bereikbaar</string>
+    <string name="features_notice">Niet alles werkt op %1$s</string>
+    <string name="features_row">Wat werkt</string>
+    <string name="features_row_sub">Wat elk apparaat kan, en wat het nog nodig heeft</string>
+    <string name="settings_kw_features">functies rechten toestemming werkt werken kapot mist toegestaan</string>
+    <string name="perm_microphone">Microfoon</string>
+    <string name="perm_microphone_why">Alleen om te horen aan welke kant van een computer de telefoon staat, met Tandem open.</string>
+    <string name="media_not_allowed">%1$s kan deze knoppen nog niet bedienen</string>
+</resources>

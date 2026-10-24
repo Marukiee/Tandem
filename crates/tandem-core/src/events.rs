@@ -64,6 +64,7 @@ pub enum Event {
     SideReady { from: DeviceId, id: u64 },
     SideHeard { from: DeviceId, id: u64, left: f32, right: f32, heard: bool },
     SideMoved { from: DeviceId },
+    OpenSettings { from: DeviceId, page: String },
     Input { from: DeviceId, input: InputMsg },
     Hotspot { from: DeviceId, hotspot: HotspotMsg },
     /// The other device wants a picture. Open the camera, then answer with a file share whose origin is

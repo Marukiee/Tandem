@@ -64,6 +64,7 @@ class TandemService : LifecycleService() {
         hotspot = HotspotModule.get(this).also { it.start { status.resend() } }
         graph.media.start()
         listenerWatchdog = ListenerWatchdog(this, graph.scope).also { it.start() }
+        FeatureReport.start(this, lifecycleScope)
 
         lifecycleScope.launch {
             host.devices.collectLatest { devices ->
@@ -142,6 +143,7 @@ class TandemService : LifecycleService() {
                 }
             }
             is TandemEvent.SideListen -> nl.markmaaktmedia.tandem.live.SideListener.listen(this, event.from, event.id)
+            is TandemEvent.OpenSettings -> FeatureReport.open(this, event.page, event.from)
             is TandemEvent.MediaOffered -> if (event.extend && event.kind == TandemMediaKind.SCREEN) offerDisplay(event.from)
             is TandemEvent.CaptureRequested -> postCaptureRequest(event)
             is TandemEvent.CaptureCancelled -> getSystemService(NotificationManager::class.java).cancel(captureNotificationId(event.id.toLong()))

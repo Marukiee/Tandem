@@ -99,9 +99,20 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   scherm vraagt de Mac waar het apparaat staat (zoeken, links of rechts, met Onthouden). Een telefoon die bewogen wordt (bewegingssensor, alleen met
   Tandem open) laat de kant opnieuw bepalen. Nog niet: de vraag bij het eerste keer op Linux en Windows, en de Mac zelf heeft geen bewegingssensor
   die een app mag lezen.
-- Mediaknoppen grijs als ze niet bediend kunnen worden, overal duidelijke meldingen als iets niet werkt (zoals geen toestemming op het apparaat), en in de
-  instellingen een overzicht per apparaat van wat wel en niet werkt en waarom, met hoe je het oplost en het liefst een knop die de goede pagina van de
-  instellingen op dat apparaat opent (gevraagd 2026-10-24).
+- Wat werkt per apparaat (gevraagd 2026-10-24, gebouwd in 0.1.92, nog niet op echte toestellen gezien): elk apparaat meldt in zijn status welke
+  functies klaarstaan en wat er anders mist (`Feature` in de kern: id, klaar, naam, waarom, pagina), in zijn eigen taal. Mac: bedienen en gedeelde muis
+  (Toegankelijkheid), scherm (Schermopname, of herstart nodig), mediaknoppen (Automatisering voor Spotify en Muziek, gevraagd zonder vraag aan de persoon
+  met `AEDeterminePermissionToAutomateTarget`), meldingen, microfoon, Bluetooth. Android: bedienen (toegankelijkheidsdienst), meldingen en muziek
+  (meldingstoegang), gesprekken, bestanden, camera, microfoon, achtergrond (batterij), Bluetooth, eigen meldingen. Linux en Windows: bedienen, scherm,
+  microfoon, Bluetooth (Linux). Een knop "Open op <apparaat>" stuurt `OpenSettings`: de Mac opent de goede pagina van Systeeminstellingen (of stelt de
+  vraag van macOS als die nog nooit gesteld is), Android opent de pagina direct met Tandem in beeld en anders via een melding om op te tikken, Linux opent
+  GNOME- of KDE-instellingen, Windows `ms-settings:`. Overzicht "Wat werkt" in de instellingen van alle apps, een melding op de apparaatpagina, de
+  mediaknoppen op Android grijs met uitleg als de Mac ze niet mag bedienen, en de rij Mac bedienen op Android toont wat er mist met de knop.
+  Nog niet: meer knoppen elders grijs maken op basis hiervan (bijvoorbeeld Telefoon bedienen op de Mac), en Windows-meldingen en microfoonprivacy meten.
+- Geluid bij scherm bekijken en bedienen (gevraagd 2026-10-24): nu gaat er bij scherm delen geen geluid mee (alleen telefoon naar Mac, apart, sinds
+  0.1.42). Een instelling: het geluid blijft op het bediende apparaat, of komt naar het eigen apparaat. En als er bij het starten een koptelefoon aan het
+  eigen apparaat hangt (Bluetooth of aux), vragen of het geluid daarheen moet. Opvangen kan op de Mac met ScreenCaptureKit (geluid van het systeem), op
+  Android met `AudioPlaybackCapture` (dezelfde vraag van het systeem als het scherm), op Linux met een monitor-bron van PipeWire, op Windows met loopback.
 - Alleen Engels in de release-teksten op GitHub en in de update-melding van de apps (gevraagd 2026-10-24).
 - Linux: Bijwerken en herstarten herstart niet, en het lettertype oogt van boven ingedrukt (gevraagd 2026-10-24).
 - Een bestand over de rand slepen en neerzetten waar de aanwijzer is, ook in een veld op een website (gevraagd 2026-10-24): op een Mac en Windows als
