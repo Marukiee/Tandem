@@ -91,18 +91,18 @@ import uniffi.tandem_core.TandemMediaPlayer
 import uniffi.tandem_core.TandemPlatform
 import uniffi.tandem_core.tandemMediaVisible
 
-/** What is on the other device, kept after it stops so the card can leave the way it came. */
+/** What is on the other device, kept after it stops so the player can leave the way it came. */
 private class Playing(val players: List<TandemMediaPlayer>, val entry: RemotePlayers)
 
 /**
- * What the other device is playing, with the buttons to control it. Players that play what this
- * phone already plays are left out, so a phone that only remote controls the Mac's Spotify does
- * not show it twice.
+ * What the other device is playing, with the buttons to control it, at the bottom of the header card of its page.
+ * Players that play what this phone already plays are left out, so a phone that only remote controls the Mac's
+ * Spotify does not show it twice.
  *
- * A computer that can be reached always has its player here, also when nothing plays: the bar and
- * the buttons stay, and play then presses the play key of the computer, which starts whatever played
- * last. For other devices the section opens when something starts and closes when it stops, and keeps
- * the last thing it showed while it closes, so the card fades out whole instead of emptying first.
+ * A computer that can be reached always has its player here, also when nothing plays: the bar and the buttons stay,
+ * and play then presses the play key of the computer, which starts whatever played last. For other devices the player
+ * opens when something starts and closes when it stops, and keeps the last thing it showed while it closes, so it
+ * fades out whole instead of emptying first. The card grows and shrinks with it.
  */
 @Composable
 fun NowPlayingSection(device: TandemDevice) {
@@ -117,36 +117,34 @@ fun NowPlayingSection(device: TandemDevice) {
         if (share && entry != null && reachable) tandemMediaVisible(local, entry.players) else emptyList()
     }
     val current = if (entry != null && shown.isNotEmpty()) Playing(shown, entry) else null
+    val computer = device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.WINDOWS
+    val visible = (computer && reachable) || current != null
 
-    if (reachable && (device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.WINDOWS)) {
-        val muted = device.status.muted == true
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SectionHeader(stringResource(R.string.media_now_playing), top = 12.dp, bottom = 0.dp)
-            if (current == null) {
-                PlayerCard(device.id, null, null, null, muted)
-            } else {
-                PlayerStack(device.id, current.players, current.entry, covers, muted)
-            }
-        }
-        return
-    }
-
-    val last = remember { mutableStateOf<Playing?>(null) }
-    if (current != null) last.value = current
-    val open = remember { MutableTransitionState(false) }
-    SideEffect { open.targetState = current != null }
-    val content = last.value
-    // Once it has closed nothing is composed at all, so the page does not keep a gap where it was.
-    if (content == null || (current == null && !open.currentState && !open.targetState)) return
+    // A plain holder and not a state: it is only read while composing, and that happens anyway when [visible] changes.
+    val held = remember { arrayOfNulls<Playing>(1) }
+    if (visible) held[0] = current
+    // Already open when the page opens with something playing, so a start or a stop is animated and the page itself is not.
+    val open = remember { MutableTransitionState(visible) }
+    SideEffect { open.targetState = visible }
+    val content = held[0]
+    val muted = device.status.muted == true
 
     AnimatedVisibility(
         visibleState = open,
-        enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
-        exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
+        // From the top: the card grows downward from under the chips, the way it reads, and shrinks back up to them.
+        enter = expandVertically(TandemMotion.sizeSpring(), expandFrom = Alignment.Top) + fadeIn(TandemMotion.fadeSpec()) +
+            slideInVertically(TandemMotion.spatial()) { -it / 6 },
+        exit = shrinkVertically(TandemMotion.sizeSpring(), shrinkTowards = Alignment.Top) + fadeOut(TandemMotion.fadeSpec()) +
+            slideOutVertically(TandemMotion.spatial()) { -it / 6 },
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            SectionHeader(stringResource(R.string.media_now_playing), top = 12.dp, bottom = 0.dp)
-            PlayerStack(device.id, content.players, content.entry, covers, device.status.muted == true)
+        // The gap to the chips is inside, so it opens and closes with the player instead of snapping. The sides are 4dp
+        // because the rows bring 16dp of their own, which lines them up with the 20dp of the card.
+        Column(Modifier.padding(start = 4.dp, end = 4.dp, top = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (content == null) {
+                PlayerCard(device.id, null, null, null, muted)
+            } else {
+                PlayerStack(device.id, content.players, content.entry, covers, muted)
+            }
         }
     }
 }
@@ -163,7 +161,11 @@ private fun PlayerStack(deviceId: String, players: List<TandemMediaPlayer>, entr
     val others = players.filter { it.id != main.id }
     if (others.isNotEmpty()) {
         val media = LocalContext.current.graph.media
-        Column(Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).padding(vertical = 6.dp)) {
+        // One step up the ladder of greys, since it sits on the header card. The 16dp lines it up with the rows above.
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(CardSquircle)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(vertical = 6.dp),
+        ) {
             others.forEach { player ->
                 key(player.id) {
                     Row(
@@ -221,9 +223,9 @@ private fun PlayerCard(deviceId: String, player: TandemMediaPlayer?, entry: Remo
     val playerBlocked = device?.missing("media.control")
     val keysBlocked = device?.missing("control")
     val canPlayer = playerBlocked == null
-    // The side padding is on the rows, not on the card: the seek bar takes the whole width, because its touch area
-    // reaches past the bar to the edges of the card.
-    Column(Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).padding(vertical = 16.dp)) {
+    // No surface of its own: it is part of the header card. The side padding is on the rows, not on the column: the seek
+    // bar takes the whole width, because its touch area reaches past the bar toward the edges of the card.
+    Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier.padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,

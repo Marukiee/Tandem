@@ -292,6 +292,15 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 .head { display: flex; align-items: center; gap: 18px; }
 .head .info { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .head .title { font: 600 24px var(--font-display); }
+/* What the device plays, in its header card. A grid row from 0fr to 1fr animates the real height both ways, so the card
+   grows and shrinks around it; the gap above it is inside, so it opens and closes along. No overshoot on the height. */
+.head-players { display: grid; grid-template-rows: 0fr; opacity: 0;
+  transition: grid-template-rows 0.45s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.22s ease; }
+.head-players.open { grid-template-rows: 1fr; opacity: 1; }
+.head-players > .in { min-height: 0; overflow: hidden; }
+.head-players .list { display: flex; flex-direction: column; gap: 16px; padding-top: 16px;
+  transform: translateY(-8px); transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.head-players.open .list { transform: none; }
 /* The buttons of a device page, in groups with a small heading, each button as wide as the others and starting at the left. */
 .agroup { display: flex; flex-direction: column; gap: 8px; }
 .agroup-title { font: 600 12px var(--font); color: var(--text-2); padding-left: 4px; }

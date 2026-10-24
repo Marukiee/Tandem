@@ -124,6 +124,30 @@ export function deviceChips(d) {
   return chips;
 }
 
+/**
+ * The players of a device at the bottom of its header card. The box is always there, at no height while nothing plays,
+ * so a start opens it and a stop closes it with the same transition. While it closes it keeps what it showed last, so
+ * the player fades out whole instead of emptying first, and lets go of it once it is shut.
+ */
+export function HeadPlayers({ device, players }) {
+  const live = players.length > 0;
+  const last = useRef(players);
+  const [, cleared] = useState(0);
+  if (live) last.current = players;
+  const shown = live ? players : last.current;
+  const shut = (e) => {
+    // Only the box itself: the cover and the bar inside it have transitions of their own that bubble up to here.
+    if (live || e.target !== e.currentTarget || e.propertyName !== "grid-template-rows") return;
+    last.current = [];
+    cleared((n) => n + 1);
+  };
+  return html`<div class=${"head-players" + (live ? " open" : "")} onTransitionEnd=${shut}>
+    <div class="in" inert=${!live}><div class="list">
+      ${shown.map((p) => html`<${PlayerCard} key=${p.id} device=${device} player=${p} />`)}
+    </div></div>
+  </div>`;
+}
+
 /** The player of a device: cover, what plays, the buttons, and a thin bar that can be dragged. */
 export function PlayerCard({ device, player, compact = false }) {
   const cover = player.art !== "0" ? state.art[player.art] : null;

@@ -106,79 +106,80 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
         }
 
-        // Header
-        Column(
-            Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                DeviceGlyph(
-                    device.platform, device.online, size = 68.dp, deviceId = device.id,
-                    onClick = { choosingIcon = !choosingIcon },
-                    onClickLabel = stringResource(R.string.icon_change),
-                )
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(device.name, style = MaterialTheme.typography.headlineSmall, maxLines = 2)
-                    Text(
-                        listOfNotNull(device.appVersion?.let { "Tandem $it" }, platformName(device.platform)).joinToString(" · "),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        // Header. The sides are padded inside, because the player at the bottom lets its seek bar reach further out.
+        Column(Modifier.fillMaxWidth().clip(CardSquircle).background(MaterialTheme.colorScheme.surfaceContainer).padding(vertical = 20.dp)) {
+            Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    DeviceGlyph(
+                        device.platform, device.online, size = 68.dp, deviceId = device.id,
+                        onClick = { choosingIcon = !choosingIcon },
+                        onClickLabel = stringResource(R.string.icon_change),
+                    )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(device.name, style = MaterialTheme.typography.headlineSmall, maxLines = 2)
+                        Text(
+                            listOfNotNull(device.appVersion?.let { "Tandem $it" }, platformName(device.platform)).joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    nl.markmaaktmedia.tandem.ui.components.ArrivingBattery(device.status.battery) { BatteryRing(it, size = 68.dp) }
+                }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = choosingIcon,
+                    enter = androidx.compose.animation.fadeIn(TandemMotion.fadeSpec()) + androidx.compose.animation.expandVertically(TandemMotion.sizeSpring()),
+                    exit = androidx.compose.animation.fadeOut(TandemMotion.fadeSpec()) + androidx.compose.animation.shrinkVertically(TandemMotion.sizeSpring()),
+                ) {
+                    DeviceIconPicker(
+                        picked = pickedIcon,
+                        onPick = { scope.launch { context.graph.prefs.setDeviceIcon(device.id, it) } },
                     )
                 }
-                nl.markmaaktmedia.tandem.ui.components.ArrivingBattery(device.status.battery) { BatteryRing(it, size = 68.dp) }
-            }
-            androidx.compose.animation.AnimatedVisibility(
-                visible = choosingIcon,
-                enter = androidx.compose.animation.fadeIn(TandemMotion.fadeSpec()) + androidx.compose.animation.expandVertically(TandemMotion.sizeSpring()),
-                exit = androidx.compose.animation.fadeOut(TandemMotion.fadeSpec()) + androidx.compose.animation.shrinkVertically(TandemMotion.sizeSpring()),
-            ) {
-                DeviceIconPicker(
-                    picked = pickedIcon,
-                    onPick = { scope.launch { context.graph.prefs.setDeviceIcon(device.id, it) } },
-                )
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatusChip(
-                    when {
-                        device.online -> TandemIcons.Check
-                        device.ble -> TandemIcons.Bluetooth
-                        asleep -> TandemIcons.Sleep
-                        else -> TandemIcons.Close
-                    },
-                    stringResource(
-                        when {
-                            device.online -> R.string.status_online
-                            device.ble -> R.string.status_bluetooth
-                            asleep -> R.string.status_asleep
-                            else -> R.string.status_offline
-                        },
-                    ),
-                    tint = when {
-                        device.online -> LocalTandemExtraColors.current.online
-                        device.ble -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-                if (nl.markmaaktmedia.tandem.ui.components.rememberViaHotspot(device)) {
-                    StatusChip(TandemIcons.Hotspot, stringResource(R.string.route_hotspot_long), tint = MaterialTheme.colorScheme.primary)
-                } else {
-                    device.route?.takeIf { device.online }?.let { StatusChip(TandemIcons.Lan, routeName(it)) }
-                }
-                device.rttMs?.takeIf { device.online }?.let { StatusChip(TandemIcons.Sync, "$it ms") }
-                device.status.network?.takeIf { device.online }?.let { n ->
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     StatusChip(
-                        if (n.kind == TandemNetKind.CELLULAR) TandemIcons.Cellular else TandemIcons.Wifi,
-                        when (n.kind) {
-                            TandemNetKind.WIFI -> "Wi-Fi"
-                            TandemNetKind.CELLULAR -> stringResource(R.string.net_mobile)
-                            TandemNetKind.ETHERNET -> "Ethernet"
-                            TandemNetKind.NONE -> stringResource(R.string.net_none)
-                            TandemNetKind.OTHER -> stringResource(R.string.net_other)
+                        when {
+                            device.online -> TandemIcons.Check
+                            device.ble -> TandemIcons.Bluetooth
+                            asleep -> TandemIcons.Sleep
+                            else -> TandemIcons.Close
+                        },
+                        stringResource(
+                            when {
+                                device.online -> R.string.status_online
+                                device.ble -> R.string.status_bluetooth
+                                asleep -> R.string.status_asleep
+                                else -> R.string.status_offline
+                            },
+                        ),
+                        tint = when {
+                            device.online -> LocalTandemExtraColors.current.online
+                            device.ble -> MaterialTheme.colorScheme.primary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                     )
+                    if (nl.markmaaktmedia.tandem.ui.components.rememberViaHotspot(device)) {
+                        StatusChip(TandemIcons.Hotspot, stringResource(R.string.route_hotspot_long), tint = MaterialTheme.colorScheme.primary)
+                    } else {
+                        device.route?.takeIf { device.online }?.let { StatusChip(TandemIcons.Lan, routeName(it)) }
+                    }
+                    device.rttMs?.takeIf { device.online }?.let { StatusChip(TandemIcons.Sync, "$it ms") }
+                    device.status.network?.takeIf { device.online }?.let { n ->
+                        StatusChip(
+                            if (n.kind == TandemNetKind.CELLULAR) TandemIcons.Cellular else TandemIcons.Wifi,
+                            when (n.kind) {
+                                TandemNetKind.WIFI -> "Wi-Fi"
+                                TandemNetKind.CELLULAR -> stringResource(R.string.net_mobile)
+                                TandemNetKind.ETHERNET -> "Ethernet"
+                                TandemNetKind.NONE -> stringResource(R.string.net_none)
+                                TandemNetKind.OTHER -> stringResource(R.string.net_other)
+                            },
+                        )
+                    }
+                    if (device.status.dnd == true) StatusChip(TandemIcons.Dnd, stringResource(R.string.status_dnd))
+                    if (device.status.hotspot == true) StatusChip(TandemIcons.Hotspot, stringResource(R.string.status_hotspot_on), tint = MaterialTheme.colorScheme.primary)
                 }
-                if (device.status.dnd == true) StatusChip(TandemIcons.Dnd, stringResource(R.string.status_dnd))
-                if (device.status.hotspot == true) StatusChip(TandemIcons.Hotspot, stringResource(R.string.status_hotspot_on), tint = MaterialTheme.colorScheme.primary)
             }
+            // What the device is playing, with the buttons for it: the card grows when it starts and shrinks when it stops.
+            nl.markmaaktmedia.tandem.ui.components.NowPlayingSection(device)
         }
 
         // Without a network: the clipboard still goes over Bluetooth, and a sleeping device on a cable may be woken.
@@ -281,9 +282,6 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         FeatureNotice(device)
 
         nl.markmaaktmedia.tandem.wifi.WifiDeviceSection(device)
-
-        // What the device is playing, with the buttons for it.
-        nl.markmaaktmedia.tandem.ui.components.NowPlayingSection(device)
 
         // Showing this phone's screen or camera on it, and what it may ask for.
         nl.markmaaktmedia.tandem.live.LiveDeviceSection(device)
