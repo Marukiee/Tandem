@@ -384,10 +384,11 @@ persoon, en de kern zegt de laatste vorm opnieuw na een herverbinding. Een draai
   `arrange` zet de schermen weer tegen elkaar, de encoder komt in de nieuwe maat, en de kijker hoort de maat met `MediaUpdate` voor de keyframe
   (`ScreenHost.resize`, `ScreenHostSession.restart(size:reshape:)`). Twee draaien vlak na elkaar eindigen in de laatste. Gezien op een echte Mac met
   `TANDEM_DEBUG_VDISPLAY=2340x1080:turn`: zelfde id, modus 1080x2340, rechts van het hoofdscherm. Het gebied van de gedeelde aanwijzer
-  (`PointerShare.screens`) wordt door een extra scherm breder maar niet hoger, anders liepen de linker- en rechterrand ver onder de echte schermen door.
+  (`PointerShare.screens`) wordt door een extra scherm breder maar niet hoger, anders liepen de linker- en rechterrand ver onder de echte schermen door; boven en onder gaat de aanwijzer alleen over bij de rand van het scherm
+  waar hij op staat.
 - Linux: GStreamer legt de maat van de monitor vast bij het begin van de stroom, dus de opname maakt de monitor opnieuw in de nieuwe vorm, binnen
   dezelfde sessie, met het onthouden antwoord van de portal (`capture_loop`, `Turning`). De invoer gaat mee naar de nieuwe monitor en hij komt weer
-  aan de kant van het apparaat. De vensters die erop stonden gaan naar de andere monitoren, zoals bij een monitor die je loskoppelt. Niet gezien op de
+  aan de kant van het apparaat. Lukt de nieuwe vorm niet, dan komt hij terug in de oude. De vensters die erop stonden gaan naar de andere monitoren, zoals bij een monitor die je loskoppelt. Niet gezien op de
   laptop.
 - Computers als kijker (`lying` in `live.rs` voor Linux en Windows) vragen nog steeds liggend en sturen geen `MediaResize`.
 
