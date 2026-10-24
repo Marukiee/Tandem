@@ -14,11 +14,13 @@ final class VirtualDisplay {
 
     static var isAvailable: Bool { TandemVirtualDisplayAvailable() != 0 }
 
-    /// Adds the display. `nil` when the system would not make one. Call `prepare()` before using it.
-    init?(name: String, width: Int, height: Int, hiDPI: Bool, refresh: Int) {
+    /// Adds the display. `nil` when the system would not make one. Call `prepare()` before using it. `key` is what tells the displays of
+    /// two devices apart (the device id), `name` is what the system shows.
+    init?(name: String, key: String? = nil, width: Int, height: Int, hiDPI: Bool, refresh: Int) {
         var id: CGDirectDisplayID = 0
-        // The same serial for the same name, so the system recognises the display and puts it where it was.
-        let serial = UInt32(truncatingIfNeeded: abs(name.hashValue) % 1_000_000) + 1
+        // The same serial for the same device, so the system recognises the display, and two devices that are extra screens at once are two
+        // monitors to it even when they have the same name. Not `hashValue`, which is different every launch.
+        let serial = Self.serial(for: key ?? name)
         guard let made = TandemVirtualDisplayCreate(name, Int32(width), Int32(height), hiDPI ? 1 : 0, Int32(refresh), serial, &id), id != 0 else { return nil }
         handle = made
         displayID = id
@@ -27,6 +29,12 @@ final class VirtualDisplay {
     }
 
     deinit { destroy() }
+
+    private static func serial(for key: String) -> UInt32 {
+        var hash: UInt32 = 2_166_136_261
+        for byte in key.utf8 { hash = (hash ^ UInt32(byte)) &* 16_777_619 }
+        return hash % 1_000_000 + 1
+    }
 
     func destroy() {
         guard let handle else { return }
@@ -38,27 +46,30 @@ final class VirtualDisplay {
     var bounds: CGRect { CGDisplayBounds(displayID) }
 
     /// The system needs a moment before the display is one of its monitors, and picks a mode of its own, which may be smaller than the one
-    /// asked for. This waits until the display is there, chooses the mode of the right size by hand and puts the display to the right of the
-    /// main one. False when it did not come up as it was asked.
+    /// asked for. This waits until the display is there and chooses the mode of the right size by hand; `arrange` puts it in its place.
+    /// False when it did not come up as it was asked.
     @discardableResult
     func prepare() async -> Bool {
         let width = Int(pixels.width), height = Int(pixels.height)
         for _ in 0..<20 {
-            if isActive, selectMode(width: width, height: height) {
-                place()
-                return true
-            }
+            if isActive, selectMode(width: width, height: height) { return true }
             try? await Task.sleep(for: .milliseconds(150))
         }
         return false
     }
 
-    private var isActive: Bool {
+    private static func activeDisplays() -> [CGDirectDisplayID] {
         var ids = [CGDirectDisplayID](repeating: 0, count: 16)
         var count: UInt32 = 0
         CGGetActiveDisplayList(16, &ids, &count)
-        return ids.prefix(Int(count)).contains(displayID)
+        return Array(ids.prefix(Int(count)))
     }
+
+    private var isActive: Bool { Self.activeDisplays().contains(displayID) }
+
+    /// Made by Tandem, by the vendor number `TandemVirtualDisplay.m` gives every display it makes, so one that is still going away is not
+    /// taken for a monitor that is really there.
+    private static func isTandem(_ id: CGDirectDisplayID) -> Bool { CGDisplayVendorNumber(id) == 0x7A4E }
 
     /// True when the display shows the size now: the pixels and the points, since a hiDPI display that the system put in the mode of the
     /// same pixels at one point each draws everything at half the size the viewer's screen does.
@@ -80,19 +91,35 @@ final class VirtualDisplay {
         return wanted != nil ? right(now) : now.pixelWidth == width && now.pixelHeight == height
     }
 
-    /// Where the other screens are is where the person put them; a new one goes to the right of the main one.
-    /// On which side of the main display it goes: the side the device stands on, when that is known (see `DeviceSides`), else the right.
-    var onLeft = false {
-        didSet { if oldValue != onLeft { place() } }
-    }
+    /// On which side it goes: the side the device stands on, when that is known (see `DeviceSides`), else the right. Applied by `arrange`.
+    var onLeft = false
 
-    private func place() {
+    /// Puts these displays beside the monitors that are really there, top edges in line with the main one: each on its own side, the first
+    /// one of a side closest and the next ones further out. Two on the same side would otherwise be put on top of each other, and the
+    /// system moves one of them wherever it likes. Where the real monitors are is where the person put them.
+    static func arrange(_ displays: [VirtualDisplay]) {
+        let active = activeDisplays()
+        let placed = displays.filter { active.contains($0.displayID) }
+        guard !placed.isEmpty else { return }
         let main = CGDisplayBounds(CGMainDisplayID())
-        let own = CGDisplayBounds(displayID)
+        // Only the monitors in the row of the main one: past one that stands above it, the extra screen would touch nothing.
+        let real = active.filter { !isTandem($0) }.map { CGDisplayBounds($0) }.filter { $0.maxY > main.minY && $0.minY < main.maxY }
+        var right = real.map(\.maxX).max() ?? main.maxX
+        var left = real.map(\.minX).min() ?? main.minX
         var config: CGDisplayConfigRef?
         guard CGBeginDisplayConfiguration(&config) == .success, let config else { return }
-        let x = onLeft ? Int32(main.minX - own.width) : Int32(main.maxX)
-        CGConfigureDisplayOrigin(config, displayID, x, 0)
+        for display in placed {
+            let width = CGDisplayBounds(display.displayID).width
+            let x: CGFloat
+            if display.onLeft {
+                left -= width
+                x = left
+            } else {
+                x = right
+                right += width
+            }
+            CGConfigureDisplayOrigin(config, display.displayID, Int32(x), Int32(main.minY))
+        }
         CGCompleteDisplayConfiguration(config, .forSession)
     }
 

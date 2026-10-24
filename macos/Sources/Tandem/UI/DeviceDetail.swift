@@ -317,7 +317,7 @@ struct DeviceDetail: View {
 
     /// What runs between this Mac and the device, as one value that changes whenever a button of the row turns on or off.
     private var liveState: String {
-        let host = ScreenHost.shared.current.map { "\($0.peer)\($0.extend)" } ?? ""
+        let host = ScreenHost.shared.running.map { "\($0.peer)\($0.extend)" }.joined()
         let live = LiveManager.shared.sessions.filter { $0.peer == device.id }.map { "\($0.kind)\($0.extend)" }.joined()
         return host + live + "\(model.ringing.contains(device.id))\(model.speaker.device == device.id)"
     }

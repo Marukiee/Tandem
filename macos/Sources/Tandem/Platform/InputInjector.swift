@@ -338,8 +338,10 @@ extension InputInjector {
         armWatchdog()
     }
 
-    /// The viewer is gone or was stopped: let go of whatever it held.
-    func endRemote() {
+    /// The viewer is gone or was stopped: let go of whatever it held. Several devices can use this Mac at once (one on its display, others
+    /// on extra screens), and what is held belongs to the one that sent last, so another one's end leaves that alone.
+    func endRemote(from device: String) {
+        guard device == lastSource else { return }
         releaseAll()
         remoteScroll.reset()
     }

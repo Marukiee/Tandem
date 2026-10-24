@@ -207,6 +207,7 @@ enum DebugSupport {
         }
         Task { @MainActor in
             let ready = await display.prepare()
+            VirtualDisplay.arrange([display])
             let now = activeDisplays()
             report += "made: id \(display.displayID), ready: \(ready), active now: \(now.contains(display.displayID))\n"
             report += "bounds: \(display.bounds), mode: \(CGDisplayCopyDisplayMode(display.displayID).map { "\($0.pixelWidth)x\($0.pixelHeight) at \($0.width)x\($0.height) points" } ?? "none")\n"

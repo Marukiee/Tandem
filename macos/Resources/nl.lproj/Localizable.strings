@@ -1024,3 +1024,6 @@
 "%@ is looking at this Mac" = "%@ kijkt mee op deze Mac";
 "Move it to %@? %@ stops showing it." = "Verplaatsen naar %@? %@ toont het dan niet meer.";
 "Move it" = "Verplaatsen";
+
+/* Several extra screens at once */
+"Extra screen on %@" = "Extra scherm op %@";
