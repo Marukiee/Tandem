@@ -128,6 +128,16 @@ verlies staan in `SCREEN.md`.
 die de speler van een computer bedient, toont dat op de dempknop en volgt het als de computer op een andere manier weer
 aan gaat. Een oudere versie kent het veld niet en slaat het over.
 
+### Wifi delen
+
+`Wifi(WifiMsg)` op de controlestream, en ook over Bluetooth (zie BLUETOOTH.md), want een apparaat dat niet op het netwerk van
+de computer zit is vaak alleen zo te bereiken. Een computer met `wifi.share` stuurt `Network { network }` (naam, beveiliging,
+verborgen, of niets) bij elke verbinding, bij elke nieuwe Bluetooth-link en bij elke wijziging. Een apparaat dat er niet op zit
+vraagt `Ask { ssid }`; de persoon bij de computer beslist, en het antwoord is `Share { network, password }` of
+`Refuse { ssid, why }` (`declined`, `not_on_it`, `cannot_share`, `unreadable`). Een computer die op de knop Wifi delen drukt
+stuurt `Share` zonder vraag; de ontvanger vraagt zijn eigen persoon voordat hij verbindt. Een naam langer dan 32 bytes of een
+wachtwoord langer dan 64 tekens gaat niet verder dan de core, en `Debug` toont het wachtwoord nooit.
+
 ### Mogelijkheden (`Hello.caps`)
 
 Een apparaat zegt in zijn `Hello` wat het kan, als lijst van woorden. Een onbekend woord wordt genegeerd. Wie iets wil
@@ -143,6 +153,8 @@ vragen, kijkt eerst of het woord er staat.
 | `screen.control` | een computer die zijn scherm toont en waar een telefoon ook mag klikken en typen (Toegankelijkheid staat aan) |
 | `screen.view`, `camera.view` | kan het scherm of de camera van een ander apparaat tonen |
 | `audio.play` | speelt het geluid van een telefoon af (streamnummer `9`, zie MUSIC_AND_SOUND.md) |
+| `wifi.share` | een computer die zegt op welk wifi hij zit en het wachtwoord geeft als zijn persoon ja zegt |
+| `wifi.join` | verbindt met een wifi dat een ander apparaat geeft (een telefoon via het blad van het systeem) |
 
 ## De circle
 
