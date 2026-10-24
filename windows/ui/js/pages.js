@@ -799,9 +799,6 @@ function FocusSettings({ s, patch }) {
     </div>`;
 }
 
-    onChange=${(v) => call("set_guests_by_default", { on: v }).then(() => setOn(v)).catch(failed)} />`;
-}
-
 function GeneralSettings({ s, patch }) {
   const [name, setName] = useState(state.self ? state.self.name : "");
   const delays = ["low", "normal", "smooth"];
