@@ -87,14 +87,16 @@ async fn a_phone_hears_the_network_when_it_connects_and_when_it_changes() {
     let heard = expect(&mut phone_events, "the network on connect", |e| network_from(e, mac_id)).await;
     assert_eq!(heard, Some(home()));
 
+    // Two devices that find each other can have two connections for a moment, and a connection that starts says the network again: the
+    // one said last may come once more. One said before it may not.
     let office = WifiNetwork { ssid: "Office".into(), security: WifiSecurity::Wpa3, hidden: true };
     mac.engine.set_wifi_network(Some(office.clone())).await;
-    let heard = expect(&mut phone_events, "the new network", |e| network_from(e, mac_id)).await;
-    assert_eq!(heard, Some(office));
+    let heard = expect(&mut phone_events, "the new network", |e| network_from(e, mac_id).filter(|n| *n != Some(home()))).await;
+    assert_eq!(heard, Some(office.clone()));
 
     // Off Wi-Fi: the phone must forget the old one, or it would offer a network the Mac has left.
     mac.engine.set_wifi_network(None).await;
-    let heard = expect(&mut phone_events, "no network", |e| network_from(e, mac_id)).await;
+    let heard = expect(&mut phone_events, "no network", |e| network_from(e, mac_id).filter(|n| *n != Some(office.clone()))).await;
     assert_eq!(heard, None);
 }
 
