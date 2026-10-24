@@ -15,13 +15,13 @@ body.call { background: transparent; margin: 0; padding: 24px; overflow: hidden;
   --call-state: #4b4bc8;
   box-sizing: border-box;
   width: 320px;
-  height: 112px;
+  height: 78px;
   margin-bottom: 10px;
-  padding: 0 14px;
+  padding: 0 16px;
   display: flex;
   align-items: center;
   gap: 10px;
-  border-radius: 26px;
+  border-radius: 22px;
   background: var(--call-bg);
   border: 1px solid rgba(0, 0, 0, 0.07);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26), 0 1px 3px rgba(0, 0, 0, 0.12);
@@ -68,8 +68,8 @@ body.call { background: transparent; margin: 0; padding: 24px; overflow: hidden;
 
 .call-buttons { flex: none; display: flex; gap: 8px; }
 .call-button {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 50%;
   display: grid;

@@ -18,7 +18,7 @@ use crate::{events, i18n, state::AppState};
 
 const LABEL: &str = "call-card";
 const CARD_WIDTH: f64 = 320.0;
-const CARD_HEIGHT: f64 = 112.0;
+const CARD_HEIGHT: f64 = 78.0;
 const GAP: f64 = 10.0;
 /// Room around the cards for their shadow, which the window would otherwise cut off in a straight line.
 const MARGIN: f64 = 24.0;
