@@ -160,6 +160,10 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   Stop per apparaat (zie SCREEN.md). Bewezen met bouwen en een kerntest (`two_devices_each_have_a_second_screen_at_once_and_stop_on_their_own`). Nog
   te zien op echte toestellen: twee schermen links en rechts op hun plek, de balk met twee rijen, het ene stoppen terwijl het andere doorgaat. De vraag
   "verhuizen" komt nu pas bij het vijfde extra scherm. Nog niet: dezelfde vraag op het apparaat dat "bezet" te horen krijgt (`take_over`).
+- Scherm uitbreiden naar Android ook staand (gevraagd 2026-10-24): gebouwd. Een Mac of Linux die `screen.extend.turn` meldt draait het extra scherm
+  mee met de telefoon, binnen dezelfde sessie (`MediaResize`, zonder nieuwe vraag); de Mac draait het scherm van software op zijn plek met zijn
+  vensters (`applySettings:`, gezien op de echte Mac met `TANDEM_DEBUG_VDISPLAY=2340x1080:turn`), Linux maakt de monitor opnieuw in de nieuwe vorm.
+  Oudere computers houden het liggend. Nog te zien op echte toestellen: draaien met een Mac en met de Linux, de vensters en de kant (zie SCREEN.md).
 - De muis bij bedienen van de Linux vanaf de Mac staat niet op dezelfde plek als op de Linux (gezien 2026-10-24). De code rekent in theorie goed (Mutter
   deelt de plek op de stream door de schaal), dus eerst meten: sinds 0.2.3 schrijft de Linux bij het begin van een sessie de maat en plaats van de stream,
   de schermen met hun schaal en welke invoer gebruikt wordt (`screen with input:` en `screen for ...:` in tandem.log). Vragen: verschuift het meer naar
