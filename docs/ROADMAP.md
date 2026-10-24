@@ -90,6 +90,11 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   `ControlBridge`) en doet een druk door `tandem://control?action=...` te openen zonder de app naar voren te halen. Het systeem toont hem als extensie
   (`pluginkit`); toevoegen gaat via Controlecentrum, Bewerken. Nog niet: Klembord sturen en Telefoon als uitvoer als knop, en een keuze van het apparaat
   voor Scherm uitbreiden (nu het laatst gebruikte, anders het eerste dat het kan).
+- Automatisch bepalen aan welke kant een tweede scherm staat (gevraagd 2026-10-24, nog niet gedaan): de computer die het scherm maakt speelt een toon om en
+  om uit de linker en de rechter luidspreker, het apparaat dat het scherm wordt luistert met zijn microfoon en meldt welke kant harder klonk, en het
+  scherm komt aan die kant (op de Mac `placeRightOfMain` met een kant, onder GNOME via de monitorinstellingen). Het verschil in luidheid is bruikbaar als het
+  apparaat duidelijk aan een kant staat en dichtbij (binnen een meter of twee, in een stille kamer), niet als het midden of achter staat. Daarom eerst een
+  keuze links of rechts met de hand, en de toon als knop "Kant bepalen" die bij twijfel terugvalt op die keuze. Vraagt het microfoonrecht op het andere apparaat.
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)
