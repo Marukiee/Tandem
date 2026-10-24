@@ -14,6 +14,7 @@ use tandem_core::events::Event;
 use tandem_core::files::{FilePolicy, Share, default_shares};
 use tandem_core::platform::DesktopFiles;
 use tandem_core::proto::ShareOrigin;
+use tandem_core::sms::SmsMsg;
 use tandem_core::store::{FileSecretStore, Store};
 use tandem_core::transfer::OutgoingFile;
 use tandem_core::{DeviceId, Engine, EngineConfig};
@@ -110,6 +111,10 @@ enum Command {
     },
     /// Move or rename something on another device.
     Mv { device: String, from: String, to: String },
+    /// The text messages of a phone: its conversations, or with a thread the newest messages of that one.
+    Sms { device: String, thread: Option<u64> },
+    /// Send a text message from a phone.
+    SmsSend { device: String, number: String, text: Vec<String> },
     /// What other devices may do with the files of this machine. Without an action, what is allowed now.
     Files {
         /// Change the choices for one device instead of the ones for all.
@@ -177,6 +182,8 @@ async fn start_engine(cli: &Cli) -> Result<(Engine, PathBuf)> {
     cfg.port = cli.port;
     cfg.loopback = cli.loopback;
     cfg.enable_mdns = !cli.no_mdns;
+    // No `sms.view`: the text messages of a phone are only asked for (`sms`), never sent here by themselves, so a Hub never
+    // keeps or prints them.
     cfg.caps = vec!["clipboard".into(), "share".into()];
     if cli.pretend_screen.is_some() {
         cfg.caps.push("screen.host".into());
@@ -292,6 +299,23 @@ async fn execute(engine: &Engine, command: &Command) -> Result<String> {
             engine.remove_device(id).await?;
             Ok("removed\n".to_string())
         }
+        Command::Sms { device, thread } => {
+            let id = resolve(engine, device)?;
+            let answer = match *thread {
+                None => engine.sms_ask(id, |req| SmsMsg::ListConversations { req, before: 0, limit: 0 }).await?,
+                Some(thread) => engine.sms_ask(id, |req| SmsMsg::ListMessages { req, thread, before: 0, limit: 0 }).await?,
+            };
+            sms_text(answer)
+        }
+        Command::SmsSend { device, number, text } => {
+            let id = resolve(engine, device)?;
+            let text = text.join(" ");
+            match engine.sms_ask(id, |req| SmsMsg::Send { req, to: vec![number.clone()], text }).await? {
+                SmsMsg::Sent { error: Some(error), .. } => bail!("the phone could not send it: {error}"),
+                SmsMsg::Sent { thread, .. } => Ok(format!("sent{}\n", thread.map(|t| format!(" (thread {t})")).unwrap_or_default())),
+                other => sms_text(other),
+            }
+        }
         Command::Ls { device, path } => {
             let id = resolve(engine, device)?;
             let mut out = String::new();
@@ -406,6 +430,30 @@ fn files_policy(engine: &Engine, device: Option<&str>, action: Option<&FilesActi
     Ok(describe_policy(engine, target.as_ref(), &policy))
 }
 
+/// The answer of a phone about its messages, as lines: conversations newest first, the messages of one oldest first.
+fn sms_text(answer: SmsMsg) -> Result<String> {
+    let mut out = String::new();
+    match answer {
+        SmsMsg::Conversations { items, .. } => {
+            for c in items {
+                let who = if c.name.is_empty() { c.addresses.join(", ") } else { c.name };
+                let unread = if c.unread > 0 { format!(" ({} new)", c.unread) } else { String::new() };
+                out.push_str(&format!("{:>8}  {who}{unread}: {}\n", c.thread, c.snippet));
+            }
+        }
+        SmsMsg::Messages { items, .. } => {
+            for m in items.iter().rev() {
+                let pictures = if m.pictures.is_empty() { String::new() } else { format!(" [{} picture(s)]", m.pictures.len()) };
+                let side = if m.from_me() { "me" } else { m.address.as_str() };
+                out.push_str(&format!("{side}: {}{pictures} ({:?})\n", m.body, m.status));
+            }
+        }
+        SmsMsg::Refused { why, .. } => bail!("the phone says no: {why:?}"),
+        other => bail!("an answer this does not know: {other:?}"),
+    }
+    Ok(out)
+}
+
 fn describe_policy(engine: &Engine, target: Option<&DeviceId>, policy: &FilePolicy) -> String {
     let yes = |on: bool| if on { "on" } else { "off" };
     let mut out = match target {
@@ -442,6 +490,8 @@ fn command_line(command: &Command) -> Option<String> {
         Command::Remove { device } => vec!["remove".into(), device.clone()],
         Command::PairShow => vec!["pair-show".into()],
         Command::Ls { device, path } => vec!["ls".into(), device.clone(), path.clone()],
+        Command::Sms { device, thread } => vec!["sms".into(), device.clone(), thread.map(|t| t.to_string()).unwrap_or_default()],
+        Command::SmsSend { device, number, text } => vec!["sms-send".into(), device.clone(), number.clone(), text.join(" ")],
         Command::Get { device, remote, local } => {
             vec!["get".into(), device.clone(), remote.clone(), absolute(local).to_string_lossy().into_owned()]
         }
@@ -496,6 +546,8 @@ fn parse_line(line: &str) -> Option<Command> {
         "clip" => Some(Command::Clip { device: rest.first()?.clone(), text: vec![rest.get(1)?.clone()] }),
         "remove" => Some(Command::Remove { device: rest.first()?.clone() }),
         "ls" => Some(Command::Ls { device: rest.first()?.clone(), path: rest.get(1)?.clone() }),
+        "sms" => Some(Command::Sms { device: rest.first()?.clone(), thread: rest.get(1).and_then(|t| t.parse().ok()) }),
+        "sms-send" => Some(Command::SmsSend { device: rest.first()?.clone(), number: rest.get(1)?.clone(), text: vec![rest.get(2)?.clone()] }),
         "get" => Some(Command::Get { device: rest.first()?.clone(), remote: rest.get(1)?.clone(), local: PathBuf::from(rest.get(2)?) }),
         "put" => Some(Command::Put {
             device: rest.first()?.clone(),
@@ -680,6 +732,8 @@ async fn main() -> Result<()> {
                 Command::Send { .. }
                     | Command::Clip { .. }
                     | Command::Ls { .. }
+                    | Command::Sms { .. }
+                    | Command::SmsSend { .. }
                     | Command::Get { .. }
                     | Command::Put { .. }
                     | Command::Mkdir { .. }
