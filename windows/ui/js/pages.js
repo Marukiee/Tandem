@@ -733,6 +733,24 @@ function FeaturesSettings() {
   </div>`;
 }
 
+// Focus the same on every device. The switch looks the same whatever the desktop can do; a desktop without a Do Not Disturb is only
+// mentioned when the person turns it on, and then the switch stays off.
+function FocusSettings({ s, patch }) {
+  const [info, setInfo] = useState(null);
+  useEffect(() => { call("focus_info").then(setInfo).catch(() => {}); }, []);
+  if (!info) return null;
+  const change = (v) => (v && !info.read ? say(t("focus_unsupported")) : patch({ focusShare: v }));
+  return html`<h2>${t("focus")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="moon" title=${t("focus_share")} sub=${t(info.read && !info.set ? "focus_share_sub_send" : "focus_share_sub")} on=${s.focusShare ?? info.read} onChange=${change} />
+      ${info.read && info.set && html`<${SettingRow} icon="refresh" title=${t("focus_direction")} sub=${t("focus_direction_sub")}>
+        <select value=${s.focusFollowOnly ? "follow" : "both"} onChange=${(e) => patch({ focusFollowOnly: e.target.value === "follow" })}>
+          <option value="both">${t("focus_both")}</option><option value="follow">${t("focus_follow_only")}</option>
+        </select>
+      <//>`}
+    </div>`;
+}
+
 // New devices start as guests, so family and friends can join without their clipboard coming in.
 function GuestRow() {
   const [on, setOn] = useState(false);
@@ -765,6 +783,8 @@ function GeneralSettings({ s, patch }) {
       ${state.canBluetooth && html`<${SettingRow} icon="bluetooth" title=${t("ble_messages")} sub=${t("ble_messages_sub")} on=${s.bleMessages !== false} onChange=${(v) => patch({ bleMessages: v })} />`}
       <${GuestRow} />
     </div>
+
+    <${FocusSettings} s=${s} patch=${patch} />
 
     <h2>${t("sound_media")}</h2>
     <div class="card flush">

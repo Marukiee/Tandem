@@ -227,6 +227,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 }
             }
         }
+        TandemEvent::Focus { on, .. } => crate::focus::follow(on),
         _ => {}
     }
 }

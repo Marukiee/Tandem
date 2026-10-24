@@ -138,6 +138,8 @@ export async function call(command, args) {
     case "files_policy": case "files_update": return { enabled: true, write: false, delete: false, hidden: false, shares: [{ name: "Documents", path: "C:\\Users\\Mark\\Documents", write: false }, { name: "Pictures", path: "C:\\Users\\Mark\\Pictures", write: true }] };
     case "files_add_folder": return { enabled: true, write: false, delete: false, hidden: false, shares: [] };
     case "clip_history_info": return { count: 2, pinned: 1, bytes: 62 };
+    // `?focus=none` is a desktop without a Do Not Disturb; Windows only reads it.
+    case "focus_info": return { read: new URLSearchParams(location.search).get("focus") !== "none", set: new URLSearchParams(location.search).get("platform") === "linux" };
     case "access_status": return { wayland: new URLSearchParams(location.search).get("platform") === "linux", inputAllowed: true, screenAllowed: false, input: { ok: true, why: "" }, canHost: true };
     case "portal_forget": return null;
     case "settings_export": return "C:\\Users\\Mark\\tandem-settings.json";

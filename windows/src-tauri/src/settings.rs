@@ -64,6 +64,10 @@ pub struct Settings {
     pub screen_sound_ask: bool,
     /// The shared mouse: the pointer goes over to the screens that are arranged next to this one. Off keeps the arrangement.
     pub pointer_share: bool,
+    /// Focus the same on every device. Not chosen yet: on where the desktop has a Do Not Disturb (see `focus::on`).
+    pub focus_share: Option<bool>,
+    /// Only follow the other devices, and keep the Do Not Disturb of this computer to itself.
+    pub focus_follow_only: bool,
 }
 
 impl Default for Settings {
@@ -95,6 +99,8 @@ impl Default for Settings {
             pointer_share: true,
             auto_update: true,
             dismissed_update: String::new(),
+            focus_share: None,
+            focus_follow_only: false,
         }
     }
 }

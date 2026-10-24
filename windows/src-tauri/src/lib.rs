@@ -43,6 +43,7 @@ mod side;
 mod decoder_probe;
 mod screen_sound;
 mod features;
+mod focus;
 mod sound;
 mod ssh;
 mod state;
@@ -247,6 +248,7 @@ pub fn run() {
             ssh::ssh_resize,
             ssh::ssh_close,
             ssh::ssh_info,
+            focus::focus_info,
         ])
         .build(tauri::generate_context!())
         .expect("Tandem could not start")

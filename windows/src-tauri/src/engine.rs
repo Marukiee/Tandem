@@ -82,6 +82,7 @@ pub fn start(app: AppHandle) {
                 *state.engine.write().unwrap() = Some(engine);
                 crate::bluetooth::start(&app);
                 crate::features::start(&app);
+                crate::focus::start(&app);
                 events::refresh_devices(&app);
                 let _ = app.emit("engine-ready", ());
             }
@@ -145,6 +146,7 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
             caps.push("screen.control".into());
         }
     }
+    caps.extend(crate::focus::caps());
     let config = TandemConfig {
         data_dir: data_dir.to_string_lossy().into_owned(),
         device_name: name,

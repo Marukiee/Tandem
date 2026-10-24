@@ -154,6 +154,10 @@ const en = {
   input_wayland: "Needs permission this session does not give: under Wayland an app cannot move the pointer or press keys. Log in with an X11 session instead (the gear at the login screen).",
   input_no_display: "No screen was found to send the pointer and keys to.",
   mac: "Mac", phone: "Phone", pc: "PC", unknown: "Device", quit: "Quit",
+  focus: "Focus", focus_share: "Share Focus", focus_share_sub: "Turn on Do Not Disturb or Focus on one of your devices, and the others follow",
+  focus_share_sub_send: "Do Not Disturb on this PC turns on Focus on your other devices",
+  focus_direction: "Direction", focus_direction_sub: "Only follow keeps the Do Not Disturb of this computer to itself",
+  focus_both: "Both ways", focus_follow_only: "Only follow", focus_unsupported: "This desktop has no Do Not Disturb that Tandem can use. GNOME and KDE Plasma have one.",
 };
 
 const nl = {
@@ -310,6 +314,10 @@ const nl = {
   input_wayland: "Heeft een toestemming nodig die deze sessie niet geeft: onder Wayland mag een app de muis niet bewegen of toetsen indrukken. Log in met een X11-sessie (het tandwiel op het inlogscherm).",
   input_no_display: "Er is geen scherm gevonden om de muis en toetsen naartoe te sturen.",
   mac: "Mac", phone: "Telefoon", pc: "Pc", unknown: "Apparaat", quit: "Afsluiten",
+  focus: "Focus", focus_share: "Focus delen", focus_share_sub: "Zet Niet storen of Focus aan op een van je apparaten, en de andere volgen",
+  focus_share_sub_send: "Niet storen op deze pc zet Focus aan op je andere apparaten",
+  focus_direction: "Richting", focus_direction_sub: "Alleen volgen houdt Niet storen van deze computer voor zichzelf",
+  focus_both: "Beide kanten op", focus_follow_only: "Alleen volgen", focus_unsupported: "Dit bureaublad heeft geen Niet storen dat Tandem kan gebruiken. GNOME en KDE Plasma hebben het wel.",
 };
 
 const tables = { en, nl };

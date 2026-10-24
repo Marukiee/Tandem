@@ -52,6 +52,18 @@ pub fn current(app: &AppHandle) -> Vec<TandemFeature> {
         t("This computer has no microphone that Tandem can use", "Deze computer heeft geen microfoon die Tandem kan gebruiken"),
         Some("sound"),
     ));
+    let focus = tandem_winsys::focus::abilities();
+    list.push(feature(
+        "focus",
+        focus.read && crate::focus::on(app),
+        t("Focus on all your devices", "Focus op al je apparaten"),
+        if !focus.read {
+            t("This desktop has no Do Not Disturb that Tandem can use", "Dit bureaublad heeft geen Niet storen dat Tandem kan gebruiken")
+        } else {
+            t("Share Focus is off in Tandem on this computer", "Focus delen staat uit in Tandem op deze computer")
+        },
+        None,
+    ));
     if cfg!(target_os = "linux") {
         list.push(feature(
             "bluetooth",

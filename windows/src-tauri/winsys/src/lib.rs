@@ -79,6 +79,7 @@ pub enum Seen {
 }
 
 pub mod hid;
+pub mod focus;
 #[cfg(windows)]
 mod imp;
 #[cfg(target_os = "linux")]
