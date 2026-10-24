@@ -5,13 +5,15 @@
     "en": {
       "title": "Open there opens the setting",
       "new": [
-        "Android: Open there from another device opens the setting itself, also with Tandem already open"
+        "Android: Open there from another device opens the setting itself, also with Tandem already open",
+        "A device's page has its settings above the list of recent files"
       ]
     },
     "nl": {
       "title": "Daar openen opent de instelling",
       "new": [
-        "Android: Daar openen vanaf een ander apparaat opent de instelling zelf, ook als Tandem al open staat"
+        "Android: Daar openen vanaf een ander apparaat opent de instelling zelf, ook als Tandem al open staat",
+        "De pagina van een apparaat heeft de instellingen boven de lijst met recente bestanden"
       ]
     }
   },

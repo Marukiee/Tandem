@@ -266,8 +266,6 @@ export function DevicePage({ device }) {
 
     ${players.map((p) => html`<div class="card" key=${p.id}><${PlayerCard} device=${device} player=${p} /></div>`)}
 
-    ${transfers.length > 0 && html`<h2>${t("recent")}</h2><div class="card flush">${transfers.map((x) => html`<${TransferRow} item=${x} key=${x.id} />`)}</div>`}
-
     <h2>${t("settings")}</h2>
     <div class="card flush">
       <${SettingRow} icon="clipboard" title=${t("sync_clipboard")} sub=${t("sync_clipboard_sub")} on=${device.clipboard} onChange=${(v) => setting({ clipboard: v })} />
@@ -278,6 +276,8 @@ export function DevicePage({ device }) {
         <button class="btn danger small" onClick=${() => set({ dialog: { kind: "remove", id: device.id } })}>${t("remove")}</button>
       <//>
     </div>
+
+    ${transfers.length > 0 && html`<h2>${t("recent")}</h2><div class="card flush">${transfers.map((x) => html`<${TransferRow} item=${x} key=${x.id} />`)}</div>`}
   </div>`;
 }
 

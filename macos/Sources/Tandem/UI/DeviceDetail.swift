@@ -213,8 +213,9 @@ struct DeviceDetail: View {
             NowPlayingCard(device: device)
             if device.platform == .android { HotspotCard(device: device) }
             RemoteControlCard()
-            recentTransfers
+            // What is set comes before what was sent: the list grows, and the settings should not move further down the more is sent.
             settings
+            recentTransfers
         }
     }
 

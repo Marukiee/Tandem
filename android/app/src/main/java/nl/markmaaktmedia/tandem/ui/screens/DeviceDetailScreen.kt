@@ -285,7 +285,17 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         // Showing this phone's screen or camera on it, and what it may ask for.
         nl.markmaaktmedia.tandem.live.LiveDeviceSection(device)
 
-        // Recent transfers with this device
+        // Everything that is set for this device has a page of its own, so this one is for what it does now. It has a
+        // header like the other groups on the page, so it reads as one of them.
+        SectionHeader(stringResource(R.string.section_preferences), top = 12.dp, bottom = 0.dp)
+        SettingsGroup {
+            ActionRow(
+                0, 1, TandemIcons.Settings, stringResource(R.string.device_settings_title),
+                stringResource(R.string.device_settings_sub), { onSettings(id) },
+            )
+        }
+
+        // Recent transfers with this device, under its settings: the list grows, and the settings should not move further down.
         val recent = transfers.filter { it.peer == id }.take(5)
         if (recent.isNotEmpty()) {
             SectionHeader(stringResource(R.string.section_recent), top = 12.dp, bottom = 0.dp)
@@ -296,16 +306,6 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                     }
                 }
             }
-        }
-
-        // Everything that is set for this device has a page of its own, so this one is for what it does now. It has a
-        // header like the other groups on the page, so it reads as one of them.
-        SectionHeader(stringResource(R.string.section_preferences), top = 12.dp, bottom = 0.dp)
-        SettingsGroup {
-            ActionRow(
-                0, 1, TandemIcons.Settings, stringResource(R.string.device_settings_title),
-                stringResource(R.string.device_settings_sub), { onSettings(id) },
-            )
         }
         Spacer(Modifier.height(24.dp))
     }
