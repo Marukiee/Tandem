@@ -1051,5 +1051,3 @@
 "Joined %@" = "Verbonden met %@";
 "Could not join %@" = "Kon niet verbinden met %@";
 "Share this Mac's Wi-Fi" = "De wifi van deze Mac delen";
-"Location has not been allowed yet, and macOS only names the Wi-Fi network to apps that may see it" = "Locatie is nog niet toegestaan, en macOS noemt het wifinetwerk alleen aan apps die de locatie mogen zien";
-"Location is off for Tandem on this Mac, and macOS only names the Wi-Fi network to apps that may see it" = "Locatie staat uit voor Tandem op deze Mac, en macOS noemt het wifinetwerk alleen aan apps die de locatie mogen zien";

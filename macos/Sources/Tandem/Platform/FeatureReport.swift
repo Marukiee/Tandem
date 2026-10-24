@@ -70,11 +70,9 @@ enum FeatureReport {
         let bluetoothAllowed = CBCentralManager.authorization == .allowedAlways
         add("bluetooth", bluetoothAllowed, String(localized: "Bluetooth link"),
             String(localized: "Bluetooth is off for Tandem on this Mac"), "bluetooth")
-        add("wifi.share", LocationAccess.allowed, String(localized: "Share this Mac's Wi-Fi"),
-            LocationAccess.status == .notDetermined
-                ? String(localized: "Location has not been allowed yet, and macOS only names the Wi-Fi network to apps that may see it")
-                : String(localized: "Location is off for Tandem on this Mac, and macOS only names the Wi-Fi network to apps that may see it"),
-            "location")
+        // Only listed when it works: Location is a choice, and a missing one would stand on the other devices as a lasting notice. Share
+        // Wi-Fi says what it needs when it is pressed.
+        if WifiShare.shared.locationAllowed { add("wifi.share", true, String(localized: "Share this Mac's Wi-Fi"), "", nil) }
         return list
     }
 
@@ -139,8 +137,6 @@ enum FeatureReport {
             } else {
                 settings("com.apple.preference.security?Privacy_Bluetooth")
             }
-        case "location":
-            if LocationAccess.status == .notDetermined { LocationAccess.ask() } else { LocationAccess.openSettings() }
         default:
             settings("com.apple.preference.security")
         }

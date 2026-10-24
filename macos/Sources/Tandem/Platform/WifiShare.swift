@@ -18,6 +18,8 @@ final class WifiShare: NSObject {
     private var location: CLLocationManager?
     /// The devices whose question is on screen, so asking twice does not stack questions.
     private var asking: Set<String> = []
+    /// Whether macOS lets Tandem see the name of the network, kept from the callback so nobody has to ask the location service again.
+    private(set) var locationAllowed = false
 
     func start(engine: TandemEngine) {
         guard self.engine == nil else { return }
@@ -261,7 +263,10 @@ extension WifiShare: CWEventDelegate {
 
 extension WifiShare: CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        Task { @MainActor in WifiShare.shared.refresh() }
+        Task { @MainActor in
+            WifiShare.shared.locationAllowed = LocationAccess.allowed
+            WifiShare.shared.refresh()
+        }
     }
 }
 
