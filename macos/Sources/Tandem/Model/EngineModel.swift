@@ -732,7 +732,11 @@ final class EngineModel {
             var seq: UInt32 = 0
         }
         let pending = Pending()
+        OutputVolume.shared.start()
         return { pcm in
+            // The volume keys of this Mac turn the other device up and down.
+            var pcm = pcm
+            OutputVolume.apply(OutputVolume.shared.gain, to: &pcm)
             pending.bytes.append(pcm)
             while pending.bytes.count >= chunk {
                 let packet = Data(pending.bytes.prefix(chunk))
