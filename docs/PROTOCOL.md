@@ -128,6 +128,17 @@ verlies staan in `SCREEN.md`.
 die de speler van een computer bedient, toont dat op de dempknop en volgt het als de computer op een andere manier weer
 aan gaat. Een oudere versie kent het veld niet en slaat het over.
 
+### Apparaat zoeken
+
+`Ring { on }` vraagt een apparaat om zijn geluid te laten horen (`on: true`) of ermee te stoppen. Een apparaat dat `ring`
+in zijn `caps` heeft, antwoordt de vragers met `Ringing { on }`: `true` zodra het geluid speelt, `false` als het stopt
+(op dat apparaat zelf, na een paar minuten, of op verzoek). Zo laat de knop bij de vrager zien wat er echt gebeurt. Een
+oudere versie kent `Ringing` niet en slaat het over; het leest het nooit als `Ring`.
+
+Elk apparaat onthoudt per ander apparaat wanneer het er het laatst mee verbonden was en op welk netwerk (`seen.cbor`): de
+wifinaam die het andere apparaat in `Status.network.ssid` noemde, of, als het niets zegt en de twee op hetzelfde lokale
+netwerk zitten, de eigen wifinaam. Dat reist niet over de lijn, het is wat dit apparaat zelf zag.
+
 ### Mogelijkheden (`Hello.caps`)
 
 Een apparaat zegt in zijn `Hello` wat het kan, als lijst van woorden. Een onbekend woord wordt genegeerd. Wie iets wil
@@ -143,6 +154,7 @@ vragen, kijkt eerst of het woord er staat.
 | `screen.control` | een computer die zijn scherm toont en waar een telefoon ook mag klikken en typen (Toegankelijkheid staat aan) |
 | `screen.view`, `camera.view` | kan het scherm of de camera van een ander apparaat tonen |
 | `audio.play` | speelt het geluid van een telefoon af (streamnummer `9`, zie MUSIC_AND_SOUND.md) |
+| `ring` | laat zijn geluid horen op `Ring` en meldt met `Ringing` wanneer het speelt en stopt |
 
 ## De circle
 

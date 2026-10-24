@@ -81,6 +81,8 @@ pub struct DeviceInfo {
     pub settings: DeviceSettings,
     /// A Bluetooth link to this device is up, whether or not there is a network connection.
     pub ble: bool,
+    /// When and where it was last connected to this device; now, for one that is connected.
+    pub last_seen: Option<crate::find::LastSeen>,
 }
 
 pub(crate) struct Peer {
@@ -131,6 +133,7 @@ pub(crate) struct Inner {
     pub ble: Mutex<crate::ble::BleHub>,
     pub audio: RwLock<Option<Arc<dyn AudioSink>>>,
     pub ble_msg_id: std::sync::atomic::AtomicU8,
+    pub find: crate::find::Find,
 }
 
 /// Where the sound of the other device goes. Called on the connection's own task for every
@@ -177,6 +180,7 @@ impl Engine {
         let (events, _) = broadcast::channel(2048);
         let file_service = crate::files::FileService::new(store.clone());
         let live = crate::live::Live::new(store.clone());
+        let find = crate::find::Find::load(&store);
 
         let inner = Arc::new(Inner {
             my_name: RwLock::new(my_name),
@@ -212,6 +216,7 @@ impl Engine {
             ble: Mutex::new(Default::default()),
             audio: RwLock::new(None),
             ble_msg_id: std::sync::atomic::AtomicU8::new(0),
+            find,
         });
 
         // The peers must exist before their saved addresses can be attached to them.
@@ -579,6 +584,7 @@ impl Engine {
     pub async fn shutdown(&self) {
         let inner = &self.inner;
         inner.cancel.cancel();
+        inner.note_all_seen();
         let sessions: Vec<Arc<Session>> = inner
             .peers
             .lock()
@@ -716,6 +722,7 @@ impl Inner {
                 vouched_by_removed: member.vouched_by_removed,
                 settings: settings.for_device(&member.id),
                 ble: self.ble_linked(&member.id),
+                last_seen: self.find.last_seen(&member.id).map(|seen| if session.is_some() { crate::find::LastSeen { at_ms: now_ms(), ..seen } } else { seen }),
             });
         }
         out.sort_by(|a, b| b.online.cmp(&a.online).then(a.name.cmp(&b.name)));
@@ -735,6 +742,7 @@ impl Inner {
         } else {
             HashSet::new()
         };
+        self.find.forget_others(&wanted);
         let mut peers = self.peers.lock().unwrap();
         for member in &members {
             if member.id == self.my_id || !wanted.contains(&member.id) {
