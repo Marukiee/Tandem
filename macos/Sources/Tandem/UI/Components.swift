@@ -155,14 +155,21 @@ struct Pill<Content: View>: View {
             .background {
                 Capsule()
                     .fill(fill)
-                    .overlay { Capsule().fill(wash).animation(.tandemFade, value: pressed) }
                     .overlay { if onGlass && !prominent { Capsule().strokeBorder(Color.primary.opacity(0.06), lineWidth: 1) } }
             }
             .contentShape(.capsule)
             .modifier(PillGlass(enabled: !onGlass, prominent: prominent, tint: tint))
+            // The light lies on top of the glass and fades there on its own. Inside the glass every change of it had the glass drawn
+            // again in the middle of the fade, which showed as a stutter under the pointer.
+            .overlay {
+                Capsule()
+                    .fill(wash)
+                    .allowsHitTesting(false)
+                    .animation(.tandemFade, value: lit)
+                    .animation(.tandemFade, value: pressed)
+            }
             .padding(inset)
             .opacity(isEnabled ? 1 : 0.5)
-            .animation(.tandemFade, value: lit)
             .animation(.tandemFade, value: prominent)
             .animation(.tandemFade, value: isEnabled)
             .animation(.tandemBouncy, value: pressed)
