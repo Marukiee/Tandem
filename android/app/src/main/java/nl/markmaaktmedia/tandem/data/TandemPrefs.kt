@@ -56,6 +56,8 @@ class TandemPrefs(private val context: Context) {
         val mediaShare = booleanPreferencesKey("media_share")
         val mediaExcluded = stringSetPreferencesKey("media_excluded")
         val audioOutput = booleanPreferencesKey("audio_output")
+        val screenSound = stringPreferencesKey("screen_sound")
+        val screenSoundAsk = booleanPreferencesKey("screen_sound_ask")
         val pinnedDevices = stringSetPreferencesKey("pinned_devices")
         val padSpeed = longPreferencesKey("pad_speed")
         val audioDelay = longPreferencesKey("audio_delay")
@@ -95,6 +97,11 @@ class TandemPrefs(private val context: Context) {
 
     /** The Mac may play its sound through this phone. On by default: it only plays while the Mac asks, with a notification. */
     val audioOutput: Flow<Boolean> = data.map { it[Keys.audioOutput] ?: true }
+
+    /** Where the sound of a screen that is looked at from here plays: "there" (on that device) or "here". */
+    val screenSound: Flow<String> = data.map { it[Keys.screenSound] ?: "there" }
+    /** With "there": ask, when headphones are in, whether it should come here this time. */
+    val screenSoundAsk: Flow<Boolean> = data.map { it[Keys.screenSoundAsk] ?: true }
 
     /** Apps whose playback is never shared. Everything else is. */
     val mediaExcluded: Flow<Set<String>> = data.map { it[Keys.mediaExcluded] ?: emptySet() }
@@ -218,6 +225,8 @@ class TandemPrefs(private val context: Context) {
     suspend fun setPointerIn(value: Boolean) = set(Keys.pointerIn, value)
     suspend fun setMediaShare(value: Boolean) = set(Keys.mediaShare, value)
     suspend fun setAudioOutput(value: Boolean) = set(Keys.audioOutput, value)
+    suspend fun setScreenSound(value: String) = set(Keys.screenSound, value)
+    suspend fun setScreenSoundAsk(value: Boolean) = set(Keys.screenSoundAsk, value)
 
     suspend fun setMediaApp(packageName: String, allowed: Boolean) {
         context.store.edit { p ->

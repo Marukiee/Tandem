@@ -38,6 +38,7 @@ mod pointer_ready;
 mod power;
 mod settings;
 mod side;
+mod screen_sound;
 mod features;
 mod sound;
 mod ssh;

@@ -186,6 +186,29 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                 }
             }
         }
+
+        SectionHeader(stringResource(R.string.screen_sound_section))
+        SettingsGroup {
+            val screenSound by prefs.screenSound.collectAsState(initial = "there")
+            val screenSoundAsk by prefs.screenSoundAsk.collectAsState(initial = true)
+            ContentRow(0, 2, TandemIcons.VolumeUp, stringResource(R.string.screen_sound_section)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.screen_sound_where_sub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    SegmentedPillRow(
+                        options = listOf("there", "here"),
+                        selected = screenSound,
+                        label = { context.getString(if (it == "here") R.string.screen_sound_choice_here else R.string.screen_sound_choice_there) },
+                        onSelect = { scope.launch { prefs.setScreenSound(it) } },
+                        modifier = Modifier.fillMaxWidth(),
+                        equalWidth = true,
+                    )
+                }
+            }
+            SwitchRow(
+                1, 2, TandemIcons.VolumeUp, stringResource(R.string.screen_sound_ask), stringResource(R.string.screen_sound_ask_sub),
+                screenSoundAsk && screenSound == "there", { scope.launch { prefs.setScreenSoundAsk(it) } }, enabled = screenSound == "there",
+            )
+        }
     }
 
     if (renaming) {

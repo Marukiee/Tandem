@@ -116,6 +116,7 @@ private fun MainNavigation() {
             quickShareFlag.value = false
         }
     }
+    ScreenSoundQuestion()
     val accessFlag = LocalContext.current.graph.openAccess
     val openAccess by accessFlag.collectAsState()
     LaunchedEffect(openAccess) {
@@ -302,5 +303,35 @@ private fun HomeTabs(nav: Nav) {
             },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 20.dp, vertical = 12.dp),
         )
+    }
+}
+
+/** With headphones in, when a screen of a computer opens here: play its sound here this time, always, or leave it there. */
+@Composable
+private fun ScreenSoundQuestion() {
+    val context = LocalContext.current
+    val sound = nl.markmaaktmedia.tandem.audio.ScreenSound
+    val peer by sound.question.collectAsState()
+    val asking = peer ?: return
+    val name = context.graph.host.device(asking)?.name ?: asking
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    nl.markmaaktmedia.tandem.ui.components.TandemDialog(
+        title = androidx.compose.ui.res.stringResource(R.string.screen_sound_title, name),
+        onDismiss = { sound.question.value = null },
+        icon = TandemIcons.VolumeUp,
+        body = androidx.compose.ui.res.stringResource(R.string.screen_sound_body),
+        actions = {
+            nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton(androidx.compose.ui.res.stringResource(R.string.screen_sound_there), { sound.question.value = null })
+            nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton(androidx.compose.ui.res.stringResource(R.string.screen_sound_here), {
+                sound.question.value = null
+                sound.ask(context, asking, true)
+            })
+        },
+    ) {
+        androidx.compose.material3.TextButton(onClick = {
+            sound.question.value = null
+            sound.ask(context, asking, true)
+            scope.launch { context.graph.prefs.setScreenSound("here") }
+        }) { androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(R.string.screen_sound_always)) }
     }
 }

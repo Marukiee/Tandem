@@ -44,4 +44,19 @@
     <string name="perm_microphone">Microphone</string>
     <string name="perm_microphone_why">Only to hear on which side of a computer the phone stands, with Tandem open.</string>
     <string name="media_not_allowed">%1$s cannot press these buttons yet</string>
+
+    <!-- The sound of a screen -->
+    <string name="screen_sound_title">Play the sound of %1$s on your headphones?</string>
+    <string name="screen_sound_body">Your headphones are in. The sound can play here instead of there.</string>
+    <string name="screen_sound_here">Play here</string>
+    <string name="screen_sound_always">Always play it here</string>
+    <string name="screen_sound_there">Leave it there</string>
+    <string name="screen_sound_request_title">%1$s wants the sound of this phone</string>
+    <string name="screen_sound_request_text">Tap to share it, with the screen</string>
+    <string name="screen_sound_section">Sound of a screen you look at</string>
+    <string name="screen_sound_where_sub">Where the sound plays when you look at or control a computer from this phone</string>
+    <string name="screen_sound_choice_there">There</string>
+    <string name="screen_sound_choice_here">On this phone</string>
+    <string name="screen_sound_ask">Ask when headphones are in</string>
+    <string name="screen_sound_ask_sub">With Bluetooth headphones or something in the jack, asks whether the sound should come here this time</string>
 </resources>

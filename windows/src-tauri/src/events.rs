@@ -64,6 +64,10 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::MediaQuality { session, poor, .. } => crate::live::quality(app, session, poor),
         TandemEvent::SideListen { from, id } => crate::side::listen(app, from, id),
         TandemEvent::SideMoved { from } => crate::side::moved(app, from),
+        TandemEvent::SoundRequested { from, on } => crate::screen_sound::requested(app, from, on),
+        TandemEvent::MediaStarted { peer, kind: tandem_core::ffi::TandemMediaKind::Screen, role: tandem_core::ffi::TandemMediaRole::Viewer, .. } => crate::screen_sound::view_started(app, peer),
+        TandemEvent::MediaEnded { peer, role: tandem_core::ffi::TandemMediaRole::Viewer, .. } => crate::screen_sound::view_ended(app, &peer),
+        TandemEvent::MediaEnded { peer, role: tandem_core::ffi::TandemMediaRole::Host, .. } => crate::screen_sound::host_ended(&peer),
         // Another device shows what this computer is missing and was asked to open the place where it is turned on.
         TandemEvent::OpenSettings { from, page } => {
             crate::features::open(&page);

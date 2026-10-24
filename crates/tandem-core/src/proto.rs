@@ -77,6 +77,9 @@ pub enum Msg {
     SideMoved,
     /// Opens a page of the settings of this device, one it named in its `Feature::page`, so the person can turn on what a feature needs.
     OpenSettings { page: String },
+    /// The device that looks at this one's screen wants its sound too (`on`), or no longer. The sound goes as `AudioStart` and datagrams;
+    /// the sender stops by itself when the screen session ends.
+    SoundRequest { on: bool },
     Input(InputMsg),
     /// One mouse and keyboard over several computers: the pointer goes over, and comes back (see `pointer_share`).
     PointerShare(crate::pointer_share::PointerShareMsg),

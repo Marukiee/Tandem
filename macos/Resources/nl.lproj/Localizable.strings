@@ -994,3 +994,15 @@
 "Open on %@" = "Open op %@";
 "Offline" = "Offline";
 "Not everything works on %@" = "Niet alles werkt op %@";
+
+/* Sound of a screen */
+"Sound of a screen you look at" = "Geluid van een scherm dat je bekijkt";
+"Plays on that device" = "Speelt op dat apparaat";
+"Comes to this Mac" = "Komt naar deze Mac";
+"Ask when headphones are in" = "Vragen als er een koptelefoon in zit";
+"With Bluetooth headphones or something in the jack, asks whether the sound should come here this time." = "Met een Bluetooth-koptelefoon of iets in de aansluiting vraagt het of het geluid deze keer hierheen moet.";
+"Play the sound of %@ on your headphones?" = "Het geluid van %@ op je koptelefoon?";
+"Your headphones are in. The sound can play here instead of there." = "Je koptelefoon is aangesloten. Het geluid kan hier spelen in plaats van daar.";
+"Play here" = "Hier afspelen";
+"Always here" = "Altijd hier";
+"Leave it there" = "Daar laten";

@@ -109,12 +109,16 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   GNOME- of KDE-instellingen, Windows `ms-settings:`. Overzicht "Wat werkt" in de instellingen van alle apps, een melding op de apparaatpagina, de
   mediaknoppen op Android grijs met uitleg als de Mac ze niet mag bedienen, en de rij Mac bedienen op Android toont wat er mist met de knop.
   Nog niet: meer knoppen elders grijs maken op basis hiervan (bijvoorbeeld Telefoon bedienen op de Mac), en Windows-meldingen en microfoonprivacy meten.
-- Geluid bij scherm bekijken en bedienen (gevraagd 2026-10-24): nu gaat er bij scherm delen geen geluid mee (alleen telefoon naar Mac, apart, sinds
-  0.1.42). Een instelling: het geluid blijft op het bediende apparaat, of komt naar het eigen apparaat. En als er bij het starten een koptelefoon aan het
-  eigen apparaat hangt (Bluetooth of aux), vragen of het geluid daarheen moet. Opvangen kan op de Mac met ScreenCaptureKit (geluid van het systeem), op
-  Android met `AudioPlaybackCapture` (dezelfde vraag van het systeem als het scherm), op Linux met een monitor-bron van PipeWire, op Windows met loopback.
-- Alleen Engels in de release-teksten op GitHub en in de update-melding van de apps (gevraagd 2026-10-24).
-- Linux: Bijwerken en herstarten herstart niet, en het lettertype oogt van boven ingedrukt (gevraagd 2026-10-24).
+- Geluid bij scherm bekijken en bedienen (gevraagd 2026-10-24, gebouwd in 0.1.96, nog niet op echte toestellen gehoord): de kijker vraagt het geluid
+  op met `SoundRequest` als de instelling op "hierheen" staat, of na een vraag als er een koptelefoon in zit (Bluetooth, de aansluiting of USB; met
+  "Altijd hier"). De bron stuurt het zoals een telefoon zijn geluid stuurt (stroom 9) en stopt als de schermsessie eindigt. Mac: de bestaande opname
+  van het systeemgeluid (Telefoon als uitvoer). Linux: `parec` van de monitor van de standaarduitvoer, anders GStreamer `pulsesrc`. Windows: loopback
+  van cpal. Android: delen met `SoundShareService`, met de vraag van Android erbij (direct met Tandem in beeld, anders via een melding). Elke kijker
+  speelt het af, ook als geluid van een telefoon uit staat. Nog niet: de vraag van Android overslaan met de projectie van het scherm dat al gedeeld wordt,
+  en een koptelefoon herkennen op Windows.
+- Alleen Engels in de release-teksten op GitHub en in de update-melding van de apps (gevraagd 2026-10-24, gedaan in 0.1.95 en de README).
+- Linux: Bijwerken en herstarten herstart niet, en het lettertype oogt van boven ingedrukt (gevraagd 2026-10-24, gedaan in 0.1.95: de nieuwe versie
+  start pas als de oude weg is, en de app gebruikt Google Sans Flex zoals Android).
 - Een bestand over de rand slepen en neerzetten waar de aanwijzer is, ook in een veld op een website (gevraagd 2026-10-24): op een Mac en Windows als
   ontvanger kan dat met een echte systeemsleep die Tandem start onder de aanwijzer (op de Mac een sleep vanuit een klein venster op de plek van de
   aanwijzer, met de muis die toch al door Tandem wordt bewogen; op Windows met OLE). Wordt het nergens neergezet, dan gaat de map met het bestand open.

@@ -66,7 +66,8 @@ final class PhoneSound {
 
     /// A phone asks to play. Refused (and told so) when sound from phones is off or another phone is playing.
     func start(from id: String, name: String, sampleRate: UInt32, channels: UInt8, engineModel: EngineModel) {
-        guard enabled, device == nil || device == id else {
+        // The sound of a screen this Mac looks at and asked for plays also when sound from phones is off.
+        guard enabled || ScreenSound.asked.contains(id), device == nil || device == id else {
             Task { try? await engineModel.tandem?.sendAudioStop(target: id, stream: Self.stream) }
             return
         }

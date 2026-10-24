@@ -150,6 +150,8 @@ final class EngineModel {
     @ObservationIgnored private var speakerViaOutput = false
     @ObservationIgnored private var tap: SystemAudioTap?
     @ObservationIgnored private var speakerStream: UInt8 = 0
+    /// The device that looks at this Mac's screen and asked for its sound.
+    @ObservationIgnored private var screenSoundTo: String?
     @ObservationIgnored private var speakerStartedAt = Date.distantPast
     @ObservationIgnored private var speakerWatch: Task<Void, Never>?
     var mediaShare = UserDefaults.standard.object(forKey: "mediaShare") as? Bool ?? true {
@@ -554,7 +556,8 @@ final class EngineModel {
             PhoneSound.shared.start(from: from, name: device(from)?.name ?? "?", sampleRate: sampleRate, channels: channels, engineModel: self)
 
         case let .audioStop(from, stream):
-            if stream == PhoneSound.stream {
+            // The sound of this Mac for a screen goes on the stream of a phone's sound: a stop for it is a stop of what this Mac sends.
+            if stream == PhoneSound.stream, !(speaker.device == from && speakerStream == stream) {
                 PhoneSound.shared.stop(device: from)
                 return
             }
@@ -568,8 +571,30 @@ final class EngineModel {
                 showToast(String(localized: "Your phone stopped playing the sound"))
             }
 
+        case let .mediaStarted(peer, _, kind, role):
+            // A screen of another device opens here: its sound comes along when that is the choice, or after a question with headphones in.
+            if role == .viewer, kind == .screen { ScreenSound.viewStarted(peer) }
+
+        case let .mediaEnded(peer, _, _, role, _):
+            if role == .viewer { ScreenSound.viewEnded(peer) }
+            // The device that looked at this Mac and had its sound is gone: the sound stops too.
+            if role == .host, screenSoundTo == peer, speaker.device == peer {
+                stopSpeaker(tellPhone: true, state: .off)
+                screenSoundTo = nil
+            }
+
+        case let .soundRequested(from, on):
+            // A device that looks at this Mac's screen wants its sound, or no longer.
+            if on {
+                screenSoundTo = from
+                startSpeaker(on: from, forScreen: true)
+            } else if speaker.device == from {
+                stopSpeaker(tellPhone: true, state: .off)
+                screenSoundTo = nil
+            }
+
         case .notificationAction, .callAction, .dial, .ring, .captureRequested, .captureCancelled,
-             .mediaRequested, .mediaStarted, .mediaEnded, .mediaBitrate:
+             .mediaRequested, .mediaBitrate:
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break
 
@@ -623,13 +648,14 @@ final class EngineModel {
 
     /// Plays this Mac's sound on a phone. The tap is opened first to learn the format, the phone is told,
     /// and only then does sound flow, so the phone's speaker is ready when the first packet arrives.
-    func startSpeaker(on id: String) {
+    /// `forScreen`: for a device that looks at this Mac's screen, on the stream of a phone's sound, which every app plays.
+    func startSpeaker(on id: String, forScreen: Bool = false) {
         guard let engine, device(id)?.online == true else {
             showToast(String(localized: "That device is not connected right now"))
             return
         }
         stopSpeaker(tellPhone: true, state: .off)
-        speakerStream &+= 1
+        if forScreen { speakerStream = PhoneSound.stream } else { speakerStream &+= 1 }
         let stream = speakerStream
         speaker = .starting(id)
         // Chosen as an output, it stops again when another is chosen.

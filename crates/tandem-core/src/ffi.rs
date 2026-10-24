@@ -1031,6 +1031,8 @@ pub enum TandemEvent {
     SideMoved { from: String },
     /// Another device asks to open this page of the settings here (one of the `page`s of `set_features`).
     OpenSettings { from: String, page: String },
+    /// The device that looks at this one's screen wants its sound (`on`), or no longer: send it with `send_audio_start` and `send_audio`.
+    SoundRequested { from: String, on: bool },
     Input { from: String, input: TandemInput },
     Hotspot { from: String, hotspot: TandemHotspot },
     /// The other device wants a picture. Answer with `send_files` and origin `Capture { request: id }`,
@@ -1133,6 +1135,7 @@ impl From<Event> for TandemEvent {
             Event::SideHeard { from, id, .. } => TandemEvent::SideHeard { from: from.to_string(), id },
             Event::SideMoved { from } => TandemEvent::SideMoved { from: from.to_string() },
             Event::OpenSettings { from, page } => TandemEvent::OpenSettings { from: from.to_string(), page },
+            Event::SoundRequested { from, on } => TandemEvent::SoundRequested { from: from.to_string(), on },
             Event::Input { from, input } => TandemEvent::Input { from: from.to_string(), input: input.into() },
             Event::Hotspot { from, hotspot } => TandemEvent::Hotspot { from: from.to_string(), hotspot: hotspot.into() },
             Event::CaptureRequested { from, id, kind } => {
@@ -1851,6 +1854,11 @@ impl TandemEngine {
         let change = Status { features: Some(list), ..Status::default() };
         let engine = self.engine.clone();
         let _ = self.runtime.spawn(async move { engine.update_status(change).await }).await;
+    }
+
+    /// Asks the device whose screen this one looks at for its sound, or to stop it.
+    pub async fn request_sound(&self, target: String, on: bool) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::SoundRequest { on }).await.map(|_| ())
     }
 
     /// Asks a device to open a page of its settings, one it named in its features.

@@ -27,6 +27,7 @@ import nl.markmaaktmedia.tandem.share.ScreenshotWatcher
 import nl.markmaaktmedia.tandem.share.ShareShortcuts
 import uniffi.tandem_core.TandemCaptureKind
 import uniffi.tandem_core.TandemEvent
+import uniffi.tandem_core.TandemMediaRole
 import uniffi.tandem_core.TandemMediaKind
 
 /**
@@ -144,6 +145,14 @@ class TandemService : LifecycleService() {
             }
             is TandemEvent.SideListen -> nl.markmaaktmedia.tandem.live.SideListener.listen(this, event.from, event.id)
             is TandemEvent.OpenSettings -> FeatureReport.open(this, event.page, event.from)
+            is TandemEvent.SoundRequested -> nl.markmaaktmedia.tandem.audio.ScreenSound.requested(this, event.from, event.on)
+            is TandemEvent.MediaStarted -> if (event.role == TandemMediaRole.VIEWER && event.kind == TandemMediaKind.SCREEN) {
+                nl.markmaaktmedia.tandem.audio.ScreenSound.viewStarted(this, event.peer)
+            }
+            is TandemEvent.MediaEnded -> when (event.role) {
+                TandemMediaRole.VIEWER -> nl.markmaaktmedia.tandem.audio.ScreenSound.viewEnded(this, event.peer)
+                TandemMediaRole.HOST -> nl.markmaaktmedia.tandem.audio.ScreenSound.hostEnded(this, event.peer)
+            }
             is TandemEvent.MediaOffered -> if (event.extend && event.kind == TandemMediaKind.SCREEN) offerDisplay(event.from)
             is TandemEvent.CaptureRequested -> postCaptureRequest(event)
             is TandemEvent.CaptureCancelled -> getSystemService(NotificationManager::class.java).cancel(captureNotificationId(event.id.toLong()))

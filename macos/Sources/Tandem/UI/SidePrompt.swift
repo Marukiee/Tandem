@@ -118,6 +118,6 @@ private struct SidePromptView: View {
 }
 
 /// A panel that can take the keyboard without activating the app.
-private final class KeyPanel: NSPanel {
+final class KeyPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }

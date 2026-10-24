@@ -421,6 +421,7 @@ impl Inner {
             Msg::SideReady { id: probe } => self.emit(Event::SideReady { from: id, id: probe }),
             Msg::SideMoved => self.emit(Event::SideMoved { from: id }),
             Msg::OpenSettings { page } => self.emit(Event::OpenSettings { from: id, page }),
+            Msg::SoundRequest { on } => self.emit(Event::SoundRequested { from: id, on }),
             Msg::SideHeard { id: probe, left, right, heard } => self.emit(Event::SideHeard { from: id, id: probe, left, right, heard }),
             Msg::Input(input) => self.emit(Event::Input { from: id, input }),
             Msg::PointerShare(msg) => self.emit(Event::PointerShare { from: id, msg }),

@@ -852,6 +852,16 @@ function RemoteSettings({ s, patch }) {
       <${SettingRow} icon="device-desktop" title=${t("remote_host")} sub=${t("remote_host_sub")} on=${s.screenHost} disabled=${!state.canHost}
         why=${!state.canHost ? t("remote_unavailable") : ""} onChange=${(v) => patch({ screenHost: v })} />
     </div>
+    <h2>${t("screen_sound")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="volume" title=${t("screen_sound_where")} sub=${t("screen_sound_where_sub")}>
+        <select value=${s.screenSound || "there"} onChange=${(e) => patch({ screenSound: e.target.value })}>
+          <option value="there">${t("screen_sound_there")}</option><option value="here">${t("screen_sound_here")}</option>
+        </select>
+      <//>
+      <${SettingRow} icon="volume" title=${t("screen_sound_ask")} sub=${t("screen_sound_ask_sub")} on=${s.screenSoundAsk !== false}
+        disabled=${s.screenSound === "here"} onChange=${(v) => patch({ screenSoundAsk: v })} />
+    </div>
     ${state.canHost && html`<h2>${t("remote_per_device")}</h2>`}
     ${!state.canHost ? null : people.length === 0
       ? html`<div class="card"><div class="small muted">${t("remote_none")}</div></div>`

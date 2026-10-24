@@ -224,6 +224,24 @@ struct ScreenSettings: View {
     var body: some View {
         _ = tick
         return Form {
+            Section("Sound") {
+                Picker("Sound of a screen you look at", selection: Binding(
+                    get: { UserDefaults.standard.string(forKey: ScreenSound.whereKey) ?? "there" },
+                    set: { UserDefaults.standard.set($0, forKey: ScreenSound.whereKey); tick += 1 }
+                )) {
+                    Text("Plays on that device").tag("there")
+                    Text("Comes to this Mac").tag("here")
+                }
+                DescribedToggle(
+                    "Ask when headphones are in",
+                    subtitle: "With Bluetooth headphones or something in the jack, asks whether the sound should come here this time.",
+                    isOn: Binding(
+                        get: { ScreenSound.askWithHeadphones },
+                        set: { UserDefaults.standard.set($0, forKey: ScreenSound.askKey); tick += 1 }
+                    )
+                )
+                .disabled(ScreenSound.choice == "here")
+            }
             Section {
                 DescribedToggle(
                     "Let my other devices see and control this Mac",

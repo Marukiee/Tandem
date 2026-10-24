@@ -72,7 +72,10 @@ class RemoteAudioPlayer(
 
     fun onEvent(event: TandemEvent) {
         when (event) {
-            is TandemEvent.AudioStart -> scope.launch { start(event.from, event.stream.toInt(), event.sampleRate.toInt(), event.channels.toInt()) }
+            // The sound of a screen this phone looks at and asked for plays also when Speaker for your computer is off.
+            is TandemEvent.AudioStart -> scope.launch {
+                start(event.from, event.stream.toInt(), event.sampleRate.toInt(), event.channels.toInt(), force = ScreenSound.asked(event.from))
+            }
             is TandemEvent.AudioStop -> synchronized(lock) { session }?.takeIf { it.device == event.from && it.stream == event.stream.toInt() }?.let { stop(tell = false) }
             // The Mac went away: nothing more will come, so do not sit in silence.
             is TandemEvent.Disconnected -> synchronized(lock) { session }?.takeIf { it.device == event.id }?.let { stop(tell = false) }

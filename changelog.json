@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.96",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Sound with the screen",
+      "new": [
+        "The sound of a screen you look at can come to you, chosen in the settings",
+        "With headphones in, Tandem asks whether the sound should come to you this time"
+      ]
+    },
+    "nl": {
+      "title": "Geluid bij het scherm",
+      "new": [
+        "Het geluid van een scherm dat je bekijkt kan naar jou komen, te kiezen in de instellingen",
+        "Met een koptelefoon in vraagt Tandem of het geluid deze keer naar jou moet komen"
+      ]
+    }
+  },
+  {
     "version": "0.1.95",
     "date": "2026-10-24",
     "en": {

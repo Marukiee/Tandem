@@ -405,6 +405,12 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["soundDelay"].as_str().filter(|v| ["low", "normal", "smooth"].contains(v)) {
             current.sound_delay = v.to_string();
         }
+        if let Some(v) = patch["screenSound"].as_str().filter(|v| ["there", "here"].contains(v)) {
+            current.screen_sound = v.to_string();
+        }
+        if let Some(v) = patch["screenSoundAsk"].as_bool() {
+            current.screen_sound_ask = v;
+        }
         if let Some(v) = patch["keepWhenLidClosed"].as_bool() {
             current.keep_when_lid_closed = v;
         }

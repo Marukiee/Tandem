@@ -122,7 +122,8 @@ impl TandemAudioSink for Sink {
 
 /// A phone says it is going to send its sound. Only when the person allows it, and only one phone at a time.
 pub fn start(app: &AppHandle, from: String, rate: u32, channels: u8) {
-    if !settings::get(app).phone_sound {
+    // The sound of a screen that this computer looks at and asked for plays also when the sound of a phone is switched off.
+    if !settings::get(app).phone_sound && !crate::screen_sound::asked(&from) {
         return;
     }
     let _ = app.state::<AppState>();

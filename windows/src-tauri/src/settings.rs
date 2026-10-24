@@ -58,6 +58,10 @@ pub struct Settings {
     pub screen_host: bool,
     /// How much sound of a phone waits before it plays: "low", "normal" or "smooth".
     pub sound_delay: String,
+    /// Where the sound of a screen that is looked at from here plays: "there" (on that device) or "here".
+    pub screen_sound: String,
+    /// With "there": ask, when headphones are in, whether it should come here this time.
+    pub screen_sound_ask: bool,
 }
 
 impl Default for Settings {
@@ -84,6 +88,8 @@ impl Default for Settings {
             clip_days: 30,
             screen_host: true,
             sound_delay: "normal".into(),
+            screen_sound: "there".into(),
+            screen_sound_ask: true,
             auto_update: true,
             dismissed_update: String::new(),
         }
@@ -115,6 +121,12 @@ pub fn save(app: &AppHandle) {
     if let Ok(text) = serde_json::to_string_pretty(&settings) {
         let _ = std::fs::write(path, text);
     }
+}
+
+/// Changes the settings from inside the app (not from the window) and keeps them.
+pub fn update(app: &AppHandle, change: impl FnOnce(&mut Settings)) {
+    change(&mut app.state::<AppState>().settings.lock().unwrap());
+    save(app);
 }
 
 pub fn set_dismissed_update(app: &AppHandle, version: &str) {
