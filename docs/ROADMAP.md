@@ -229,11 +229,11 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   - Scherm uitbreiden van Mac naar Linux heeft de verhouding van de Mac, niet schermvullend op Linux. Linux vraagt wel zijn eigen maat
     (2560x1600 pixels, 1920x1200 logisch). Sinds 0.2.11 schrijft de Mac de gevraagde en echte maat in `pointer-share.log`, en haalt hij
     een extra scherm uit een spiegelset (macOS onthoudt een scherm aan zijn serienummer, ook als spiegel).
-  - Scherm uitbreiden naar Android ook staand, en het volgt de draaiing van de telefoon.
+  - Scherm uitbreiden naar Android ook staand, en het volgt de draaiing van de telefoon (gebouwd, zie hierboven).
   - Bij elk uitbreiden en elke keer dat de muis overgaat even controleren aan welke kant een apparaat staat (zonder hoorbare piep, als dat
     kan).
   - De zoekbalk van Bestanden gelijk aan die van Klembord.
-  - Elk apparaat moet de geluidsuitvoer van elk ander kunnen zijn, niet alleen een telefoon voor de Mac.
+  - Elk apparaat moet de geluidsuitvoer van elk ander kunnen zijn, niet alleen een telefoon voor de Mac (gebouwd, zie hierboven).
   - Een telefoon die uit stond: de muis zegt één keer dat hij weg is en daarna niets meer (ongeveer 10 minuten). Op de achtergrond blijven
     proberen en de muis laten doorgaan zodra hij er weer is, zonder meldingen.
   - Onderzocht: de Mac wakker maken of gebruiken met de klep dicht (in de tas). Uitkomst: in een tas op batterij lukt wakker maken niet
