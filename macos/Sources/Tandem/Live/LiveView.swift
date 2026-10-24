@@ -15,7 +15,6 @@ struct LiveView: View {
     @LocalState private var viewHeight: CGFloat = 0
     @LocalState private var showInfo = false
     @LocalState private var showMore = false
-    @LocalState private var showCamera = false
     @LocalState private var showControlHelp = false
     /// The help for clicking on the phone opens by itself once, when the picture is there and the phone does not allow it yet.
     @LocalState private var controlHelpOffered = false
@@ -294,20 +293,12 @@ struct LiveView: View {
         .help(help)
     }
 
-    /// The side of the phone's camera and how sharp the picture is. A change asks the phone again: it is the same window.
+    /// The other camera of the phone, at once: the button turns from the back to the front and back. How sharp it is, is in the menu
+    /// under the three dots, where it is looked for less often.
     private var cameraMenu: some View {
-        button("arrow.triangle.2.circlepath.camera", help: "Camera and quality") { showCamera.toggle() }
-            .popover(isPresented: $showCamera, arrowEdge: .top) {
-                VStack(alignment: .leading, spacing: 2) {
-                    MenuRow(title: "Back camera", checked: session.cameraFacing == .back) { choose(facing: .back, quality: session.quality); showCamera = false }
-                    MenuRow(title: "Front camera", checked: session.cameraFacing == .front) { choose(facing: .front, quality: session.quality); showCamera = false }
-                    Divider().padding(.vertical, 4)
-                    MenuRow(title: "720p", checked: session.quality == .standard) { choose(facing: session.cameraFacing, quality: .standard); showCamera = false }
-                    MenuRow(title: "1080p", checked: session.quality == .high) { choose(facing: session.cameraFacing, quality: .high); showCamera = false }
-                }
-                .padding(8)
-                .frame(width: 220)
-            }
+        button("arrow.triangle.2.circlepath.camera", help: session.cameraFacing == .back ? "Front camera" : "Back camera") {
+            choose(facing: session.cameraFacing == .back ? .front : .back, quality: session.quality)
+        }
     }
 
     private func choose(facing: LiveCameraFacing, quality: LiveQuality) {
@@ -344,6 +335,11 @@ struct LiveView: View {
                 }
                 MenuRow(title: "Keep this window on top", symbol: "pin", checked: session.alwaysOnTop) { controller.setAlwaysOnTop(!session.alwaysOnTop) }
                 MenuRow(title: "Floating window without a frame", symbol: "rectangle.dashed", checked: session.frameless) { showMore = false; controller.setFrameless(!session.frameless) }
+            }
+            if session.kind == .camera && !everything {
+                MenuRow(title: "720p", checked: session.quality == .standard) { choose(facing: session.cameraFacing, quality: .standard); showMore = false }
+                MenuRow(title: "1080p", checked: session.quality == .high) { choose(facing: session.cameraFacing, quality: .high); showMore = false }
+                Divider().padding(.vertical, 4)
             }
             // For a computer that is looked at and used from here: what the keys of this Mac cannot say by themselves.
             if peerIsComputer, session.kind == .screen {

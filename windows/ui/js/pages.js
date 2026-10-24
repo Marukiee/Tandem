@@ -308,12 +308,15 @@ export function DevicePage({ device }) {
       <${SettingRow} icon="bell" title=${t("show_its_notifications")} sub=${t("show_its_notifications_sub")} on=${device.notifications} onChange=${(v) => setting({ notifications: v })} />
       ${hasCap("screen.view") && html`<${ScreenPolicyRows} device=${device} />`}
       <${SettingRow} icon="download" title=${t("accept_automatically")} sub=${t("accept_automatically_sub")} on=${device.autoAccept} onChange=${(v) => setting({ autoAccept: v })} />
+    </div>
+
+    ${transfers.length > 0 && html`<h2>${t("recent")}</h2><div class="card flush">${transfers.map((x) => html`<${TransferRow} item=${x} key=${x.id} />`)}</div>`}
+
+    <div class="card flush" style="margin-top:18px">
       <${SettingRow} icon="trash" title=${t("remove_device")} sub=${t("remove_device_sub")}>
         <button class="btn danger small" onClick=${() => set({ dialog: { kind: "remove", id: device.id } })}>${t("remove")}</button>
       <//>
     </div>
-
-    ${transfers.length > 0 && html`<h2>${t("recent")}</h2><div class="card flush">${transfers.map((x) => html`<${TransferRow} item=${x} key=${x.id} />`)}</div>`}
   </div>`;
 }
 

@@ -198,14 +198,23 @@ class LiveShare(
             runCatching { engine.mediaDeny(session, TandemMediaEnd.UNSUPPORTED) }
             return
         }
+        // The other camera while one is shown: the person said yes to this computer's camera a moment ago, so it switches at once
+        // instead of asking again on the phone, where nobody may be looking.
+        val running = service
+        val showing = shares.filter { it.kind == kind && it.peer == from && it.session != null }
+        if (kind == TandemMediaKind.CAMERA && showing.isNotEmpty() && running != null) {
+            showing.forEach { it.teardown(tellMac = false, keepService = true) }
+            pending[session] = Pending(from, request, true)
+            begin(running, kind, from, session, null, request.facing)
+            return
+        }
         // The Mac asking again for what it already shows replaces it: the old picture is over, whatever the core says.
-        shares.filter { it.kind == kind && it.peer == from && it.session != null }.forEach { it.teardown(tellMac = false) }
+        showing.forEach { it.teardown(tellMac = false) }
         val ready = shares.firstOrNull { it.kind == kind && it.peer == from && it.session == null }
         if (ready != null) {
             ready.start(request)
             return
         }
-        val running = service
         if (kind == TandemMediaKind.SCREEN && preApproved && warm != null && running != null) {
             // Allowed for good, and the capture of the last time is still alive: no question at all.
             val held = takeWarm()
@@ -493,7 +502,8 @@ class LiveShare(
             }
         }
 
-        fun teardown(tellMac: Boolean) {
+        /** [keepService]: another share takes over at once (the other camera), so the service must not stop in between. */
+        fun teardown(tellMac: Boolean, keepService: Boolean = false) {
             if (!shares.remove(this)) return
             armedTimeout?.let { main.removeCallbacks(it) }
             armedTimeout = null
@@ -511,7 +521,7 @@ class LiveShare(
             runCatching { if (id == null) projection?.stop() }
             if (tellMac && id != null) runCatching { host.engine?.mediaStop(id) }
             publish()
-            service.refresh()
+            if (!keepService) service.refresh()
         }
     }
 
