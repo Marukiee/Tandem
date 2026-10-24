@@ -25,6 +25,9 @@ struct Carried {
 static CARRIED: Mutex<Option<Carried>> = Mutex::new(None);
 /// Offers of a drag that went back without being let go: what still comes in of them is thrown away.
 static DROPPED: Mutex<Vec<(String, u64)>> = Mutex::new(Vec::new());
+/// Windows: the drag of the system went back to the other computer with the pointer, so its file is not put down.
+#[cfg(windows)]
+static ABANDONED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// An offer of files came in. Taken here when it has the drag origin and comes from the computer that shares its pointer with this one.
 pub fn offered(app: &AppHandle, from: &str, offer: u64, origin: TandemShareOrigin) -> bool {
@@ -70,6 +73,26 @@ pub fn finished(app: &AppHandle, peer: &str, offer: u64, name: &str, location: &
         return true;
     };
     if let Some(carried) = CARRIED.lock().unwrap().as_mut().filter(|c| c.from == peer && c.offers.contains(&offer)) {
+        // Windows: the drag goes on as a drag of the system, so the file lands wherever the button comes up (a folder, a field of a
+        // website). Not dropped anywhere: it is put away as before.
+        #[cfg(windows)]
+        {
+            let (handle, who, label, file) = (app.clone(), from.clone(), name.to_string(), PathBuf::from(path));
+            ABANDONED.store(false, std::sync::atomic::Ordering::SeqCst);
+            let started = tandem_winsys::dragsource::start(vec![file.clone()], move |dropped| {
+                if dropped {
+                    return;
+                }
+                if ABANDONED.load(std::sync::atomic::Ordering::SeqCst) {
+                    let _ = std::fs::remove_file(&file);
+                } else {
+                    land(&handle, &who, &label, &file);
+                }
+            });
+            if started {
+                return true;
+            }
+        }
         carried.waiting.push((from, name.to_string(), PathBuf::from(path)));
         return true;
     }
@@ -87,6 +110,9 @@ static WAITING: Mutex<Vec<(String, String, PathBuf)>> = Mutex::new(Vec::new());
 
 /// The button came up: what arrived during the drag is put down now.
 pub fn flush(app: &AppHandle) {
+    // The button came up before the drag of the system had the press that was played for it: that press is let go too.
+    #[cfg(windows)]
+    tandem_winsys::dragsource::release();
     let mut waiting: Vec<_> = std::mem::take(&mut *WAITING.lock().unwrap());
     if let Some(carried) = CARRIED.lock().unwrap().take() {
         waiting.extend(carried.waiting);
@@ -99,6 +125,12 @@ pub fn flush(app: &AppHandle) {
 /// The pointer of the other computer went back. A drag that came with it and was not let go here goes back with it: its files are
 /// thrown away, and what is still coming of them is stopped.
 pub fn shared_ended(app: &AppHandle) {
+    #[cfg(windows)]
+    if tandem_winsys::dragsource::active() {
+        // The file of the drag of the system is thrown away too, not put down.
+        ABANDONED.store(true, std::sync::atomic::Ordering::SeqCst);
+        tandem_winsys::dragsource::cancel();
+    }
     let Some(carried) = CARRIED.lock().unwrap().take() else { return };
     for (_, _, path) in &carried.waiting {
         let _ = std::fs::remove_file(path);

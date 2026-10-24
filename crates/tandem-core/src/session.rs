@@ -165,7 +165,7 @@ impl Inner {
                     if new_dialer > old_dialer {
                         kept = Some(existing.clone());
                     } else {
-                        existing.conn.close(2u32.into(), b"duplicate connection");
+                        retire(existing.conn.clone());
                     }
                 }
             }
@@ -185,7 +185,11 @@ impl Inner {
         }
 
         if let Some(existing) = kept {
-            conn.close(2u32.into(), b"duplicate connection");
+            // The other side may already have sent on this one before it saw the other: what it sent is still read, and the
+            // connection goes after a moment. Its session is not the one of the device, so nothing new goes out on it.
+            retire(conn.clone());
+            let this = self.clone();
+            tokio::spawn(async move { this.run_session(session, send, recv, rx).await });
             // The connection that stays may be a dead one, of an app that was killed or updated
             // a moment ago. Ask it, so it goes within seconds and the next attempt gets in,
             // instead of after the idle timeout.
@@ -574,4 +578,14 @@ mod tests {
         assert_eq!(parse_datagram(&[9, 0, 0, 0, 0]), None);
         assert_eq!(parse_datagram(&[1, 0]), None);
     }
+}
+
+/// A connection that lost to another one between the same two devices (both dialed at once). Closing it at once lost what was
+/// already on its way on it, a message sent the moment the devices met; so it is still read for a moment, then closed. Both ends
+/// make the same choice, so the other end stops sending on it too.
+fn retire(conn: quinn::Connection) {
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        conn.close(2u32.into(), b"duplicate connection");
+    });
 }

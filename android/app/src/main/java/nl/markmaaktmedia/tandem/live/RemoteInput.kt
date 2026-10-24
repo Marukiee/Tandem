@@ -18,7 +18,8 @@ import uniffi.tandem_core.TandemMediaInput
  * The right button is Back, the middle one Home. Scrolling with two fingers on a trackpad is a finger of its own: it goes down
  * where the pointer is, moves with the scroll (the run-out of the trackpad too) and comes up a moment after the scrolling stops,
  * so the content follows it and flings as under a real finger. The steps of a trackpad are small: played one by one as swipes
- * they were too short for Android to see a swipe in them, and were taken for taps.
+ * they were too short for Android to see a swipe in them, and were taken for taps. The steps also come in bursts, as the network
+ * hands them on, so the finger is not moved by each step but runs at the speed the trackpad goes, catching up on what is left.
  */
 class RemoteInput(private val context: Context) {
     private var x = 0f
@@ -45,10 +46,25 @@ class RemoteInput(private val context: Context) {
     private var waitingDy = 0f
     private var fingerX = 0f
     private var fingerY = 0f
-    /** The scrolling stopped: its finger comes up. */
-    private val scrollStopped = Runnable {
-        val service = TandemAccessibilityService.instance ?: return@Runnable
-        endScrollTouch(service)
+    /** Where the trackpad has taken the finger so far, how fast it goes (pixels a millisecond), and when the last step came. */
+    private var scrollTargetX = 0f
+    private var scrollTargetY = 0f
+    private var scrollSpeed = 0f
+    private var lastScrollAt = 0L
+    private var waitingSince = 0L
+    /** How long one piece of the touch took from start to start, which is more than its length while Android hands it on. */
+    private var pieceCycle = PIECE_MS.toFloat()
+    private var pieceStartedAt = 0L
+    /** The scrolling stopped: its finger comes up once it has caught up with where the trackpad took it. */
+    private val scrollStopped: Runnable = object : Runnable {
+        override fun run() {
+            val service = TandemAccessibilityService.instance ?: return
+            if (scrollTouch && hypot(scrollTargetX - fingerX, scrollTargetY - fingerY) > 2f) {
+                main.postDelayed(this, PIECE_MS)
+                return
+            }
+            endScrollTouch(service)
+        }
     }
 
     /** Everything is dealt with on one thread, in the order it came, so a swipe that is under way can be followed by the next. */
@@ -85,16 +101,19 @@ class RemoteInput(private val context: Context) {
             if (!scrolling) playScroll(service)
             return
         }
+        val now = SystemClock.uptimeMillis()
         var stepX = dx
         var stepY = dy
         if (live == null || !scrollTouch) {
             // The first steps of a trackpad are tiny: a finger that went down with them would stand nearly still long enough for Android
-            // to take it for a press of what is under it. It goes down once the scroll is clearly a scroll, and moves that far at once.
+            // to take it for a press of what is under it. It goes down once the scroll is clearly a scroll, and moves that far quickly.
+            if (waitingDx == 0f && waitingDy == 0f) waitingSince = now
             waitingDx += dx
             waitingDy += dy
             main.removeCallbacks(scrollStopped)
             main.postDelayed(scrollStopped, SCROLL_STOP_MS)
-            if (hypot(waitingDx, waitingDy) * SCROLL_GAIN < SCROLL_START) return
+            val waited = hypot(waitingDx, waitingDy) * SCROLL_GAIN
+            if (waited < SCROLL_START) return
             stepX = waitingDx
             stepY = waitingDy
             waitingDx = 0f
@@ -102,20 +121,42 @@ class RemoteInput(private val context: Context) {
             scrollTouch = true
             fingerX = x.coerceIn(SCROLL_EDGE, width - SCROLL_EDGE)
             fingerY = y.coerceIn(SCROLL_EDGE, height - SCROLL_EDGE)
+            scrollTargetX = fingerX
+            scrollTargetY = fingerY
+            scrollSpeed = waited / (now - waitingSince).coerceAtLeast(PIECE_MS).toFloat()
+            lastScrollAt = now
             startLive(service, fingerX, fingerY)
+        } else {
+            // The speed of the trackpad, smoothed: steps that come in a burst after a pause do not make the finger jump.
+            val dt = (now - lastScrollAt).coerceIn(4L, 100L).toFloat()
+            scrollSpeed = scrollSpeed * 0.6f + hypot(dx, dy) * SCROLL_GAIN / dt * 0.4f
+            lastScrollAt = now
         }
-        val nx = fingerX + stepX * SCROLL_GAIN
-        val ny = fingerY + stepY * SCROLL_GAIN
+        val nx = scrollTargetX + stepX * SCROLL_GAIN
+        val ny = scrollTargetY + stepY * SCROLL_GAIN
         main.removeCallbacks(scrollStopped)
         if (nx !in SCROLL_EDGE..width - SCROLL_EDGE || ny !in SCROLL_EDGE..height - SCROLL_EDGE) {
-            // The finger ran out of screen: it comes up where it is, and the next step puts it down again at the pointer.
+            // The finger ran out of screen: it comes up at the edge, and the next step puts it down again at the pointer.
+            scrollTargetX = nx.coerceIn(SCROLL_EDGE, width - SCROLL_EDGE)
+            scrollTargetY = ny.coerceIn(SCROLL_EDGE, height - SCROLL_EDGE)
             endScrollTouch(service)
             return
         }
-        fingerX = nx
-        fingerY = ny
+        scrollTargetX = nx
+        scrollTargetY = ny
         follow(service)
         main.postDelayed(scrollStopped, SCROLL_STOP_MS)
+    }
+
+    /** The next place of the finger of a scroll: as far as the trackpad goes in one piece, and at least a part of what is still behind. */
+    private fun advanceScrollFinger() {
+        val rx = scrollTargetX - fingerX
+        val ry = scrollTargetY - fingerY
+        val remaining = hypot(rx, ry)
+        if (remaining < 0.5f) return
+        val step = if (ending) remaining else maxOf(scrollSpeed * pieceCycle, remaining * SCROLL_CATCH_UP).coerceAtMost(remaining)
+        fingerX += rx / remaining * step
+        fingerY += ry / remaining * step
     }
 
     private fun endScrollTouch(service: TandemAccessibilityService) {
@@ -180,6 +221,8 @@ class RemoteInput(private val context: Context) {
 
     private fun startLive(service: TandemAccessibilityService, atX: Float = x, atY: Float = y) {
         val first = GestureDescription.StrokeDescription(point(atX, atY, atX, atY), 0, PIECE_MS, true)
+        // The time between two touches is no piece of a touch.
+        pieceStartedAt = 0L
         live = first
         liveX = atX
         liveY = atY
@@ -193,6 +236,7 @@ class RemoteInput(private val context: Context) {
 
     private fun next(service: TandemAccessibilityService) {
         val current = live ?: return
+        if (scrollTouch) advanceScrollFinger()
         val end = ending
         // A piece that does not move keeps the finger where it is: that is how a press is held long.
         val (toX, toY) = aimX to aimY
@@ -215,6 +259,9 @@ class RemoteInput(private val context: Context) {
 
     private fun play(service: TandemAccessibilityService, piece: GestureDescription.StrokeDescription) {
         playing = true
+        val started = SystemClock.uptimeMillis()
+        if (pieceStartedAt != 0L) pieceCycle = pieceCycle * 0.7f + (started - pieceStartedAt).coerceIn(PIECE_MS, 60L).toFloat() * 0.3f
+        pieceStartedAt = started
         val touch = ++touches
         service.stroke(piece) { played ->
             main.post {
@@ -304,6 +351,8 @@ class RemoteInput(private val context: Context) {
         const val SCROLL_EDGE = 60f
         /** How far a scroll goes before its finger goes down: past the distance at which Android stops taking a touch for a tap. */
         const val SCROLL_START = 40f
+        /** The part of what the finger of a scroll is behind that it makes up in one piece, at least. */
+        const val SCROLL_CATCH_UP = 0.3f
         const val HID_ENTER = 0x28
         const val HID_ESCAPE = 0x29
         const val HID_BACKSPACE = 0x2A

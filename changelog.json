@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.2.10",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Messages and Focus",
+      "new": [
+        "Messages: read and send the texts of your phone on your computer",
+        "Focus and Do Not Disturb follow you on every device",
+        "Smoother scrolling on your phone, with the universal mouse and in its window",
+        "A message sent the moment two devices meet no longer gets lost"
+      ]
+    },
+    "nl": {
+      "title": "Berichten en Focus",
+      "new": [
+        "Berichten: lees en stuur de sms'jes van je telefoon op je computer",
+        "Focus en Niet storen volgen je op elk apparaat",
+        "Soepeler scrollen op je telefoon, met de universele muis en in zijn venster",
+        "Een bericht dat net bij het verbinden verstuurd wordt, raakt niet meer kwijt"
+      ]
+    }
+  },
+  {
     "version": "0.2.9",
     "date": "2026-10-24",
     "en": {

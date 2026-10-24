@@ -35,8 +35,9 @@ struct MainWindow: View {
     @LocalState private var settling = false
     /// Whether the sidebar is shown. The bar along the top of the page is only wanted when it is not.
     @LocalState private var columnVisibility: NavigationSplitViewVisibility = .all
-
-    private var sidebarShown: Bool { columnVisibility != .detailOnly }
+    /// The bar along the top, which goes once the sidebar is all the way in: taken away as it starts to slide, it moved the page in the
+    /// middle of the slide and the sidebar came in two jerks. When the sidebar goes it comes at once, which is not seen.
+    @LocalState private var barShown = false
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -44,8 +45,8 @@ struct MainWindow: View {
                 .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 340)
         } detail: {
             detail
-                .scrollEdgeEffectHidden(settling || sidebarShown, for: .top)
-                .toolbarBackgroundVisibility(sidebarShown ? .hidden : .automatic, for: .windowToolbar)
+                .scrollEdgeEffectHidden(settling || !barShown, for: .top)
+                .toolbarBackgroundVisibility(barShown ? .automatic : .hidden, for: .windowToolbar)
                 // The sidebar header already says Tandem. What the toolbar shows is the
                 // device you are on, once its card has scrolled away.
                 .toolbar(removing: .title)
@@ -56,7 +57,16 @@ struct MainWindow: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { settling = false }
                 }
         }
-        .background(HideWindowTitle(showsBar: !sidebarShown))
+        .background(HideWindowTitle(showsBar: barShown))
+        .onChange(of: columnVisibility) { _, visibility in
+            if visibility == .detailOnly {
+                barShown = true
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    if columnVisibility != .detailOnly { barShown = false }
+                }
+            }
+        }
         // A sheet or dialog covers the window; nothing behind it should react to the pointer.
         // Set before the sheet is attached, so the sheet itself is not affected.
         .environment(\.hoverEnabled, !(showPairing || model.pendingTrash != nil || model.removedFromCircle))

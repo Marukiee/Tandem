@@ -63,6 +63,7 @@ object FeatureReport {
         list += TandemFeature("wifi.join", true, context.getString(R.string.feature_wifi_join), "", null)
         if (nl.markmaaktmedia.tandem.messages.SmsAccess.available(context)) {
             add("messages", nl.markmaaktmedia.tandem.messages.SmsAccess.granted(context), R.string.feature_messages, R.string.feature_messages_why, "messages")
+        }
         // Focus: the switch in Tandem, and access to Do Not Disturb for the mode of its own that follows the other devices.
         if (!context.graph.prefs.focusShare.first()) {
             list += TandemFeature("focus", false, context.getString(R.string.feature_focus), context.getString(R.string.feature_focus_off), null)
