@@ -365,6 +365,10 @@ final class ScreenHost {
                     guard await virtual.prepare() else { throw ScreenCapturer.Failure.noDisplay }
                     self?.arrangeExtended()
                     live.displayReady(virtual)
+                    // Kept in a file: the log of the system does not keep these, and a screen of the wrong shape is found by them.
+                    PointerLog.write(
+                        "extra screen for \(name): asked \(request.maxWidth)x\(request.maxHeight) pixels, \(request.logicalWidth)x\(request.logicalHeight) logical; shows \(virtual.modeDescription); sent as \(size.width)x\(size.height)"
+                    )
                 }
                 try await live.startCapture(width: size.width, height: size.height)
                 guard let self, self.registry.get(id) != nil else {

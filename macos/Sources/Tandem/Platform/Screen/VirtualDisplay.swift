@@ -52,10 +52,30 @@ final class VirtualDisplay {
     func prepare() async -> Bool {
         let width = Int(pixels.width), height = Int(pixels.height)
         for _ in 0..<20 {
-            if isActive, selectMode(width: width, height: height) { return true }
+            if isActive, selectMode(width: width, height: height) {
+                unmirror()
+                return true
+            }
             try? await Task.sleep(for: .milliseconds(150))
         }
         return false
+    }
+
+    /// macOS remembers a display by its serial, and one that was once set to mirror this Mac comes back mirroring it: the device then
+    /// shows this Mac's own screen in this Mac's shape, not a screen of its own. An extra screen is never a mirror.
+    private func unmirror() {
+        guard CGDisplayIsInMirrorSet(displayID) != 0 else { return }
+        var config: CGDisplayConfigRef?
+        guard CGBeginDisplayConfiguration(&config) == .success, let config else { return }
+        CGConfigureDisplayMirrorOfDisplay(config, displayID, kCGNullDirectDisplay)
+        CGCompleteDisplayConfiguration(config, .forSession)
+        PointerLog.write("the extra screen \(displayID) was a mirror of this Mac, made a screen of its own")
+    }
+
+    /// What the system shows on the display now, for the log: points and pixels.
+    var modeDescription: String {
+        guard let mode = CGDisplayCopyDisplayMode(displayID) else { return "no mode" }
+        return "\(mode.width)x\(mode.height) points in \(mode.pixelWidth)x\(mode.pixelHeight) pixels\(CGDisplayIsInMirrorSet(displayID) != 0 ? ", mirrored" : "")"
     }
 
     private static func activeDisplays() -> [CGDirectDisplayID] {

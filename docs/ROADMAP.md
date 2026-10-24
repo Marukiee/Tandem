@@ -210,6 +210,27 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
     nooit meer gemeld, ook niet voor de muis van de Mac. Sinds 0.2.10 schrijft `inputcapture` de schermen en lijnen van de barrières in het
     logboek; na het bijwerken eerst opnieuw proberen en dan dat logboek lezen. Daarna: slepen vanaf Linux als hoofd met dezelfde
     onzichtbare strook (die moet er dan altijd zijn aan de kant van de buur, de knop van Linux zelf is onder Wayland niet te zien).
+- Nieuwe wensen van Mark (2026-10-24 avond):
+  - Scherm uitbreiden van Mac naar Linux heeft de verhouding van de Mac, niet schermvullend op Linux. Linux vraagt wel zijn eigen maat
+    (2560x1600 pixels, 1920x1200 logisch). Sinds 0.2.11 schrijft de Mac de gevraagde en echte maat in `pointer-share.log`, en haalt hij
+    een extra scherm uit een spiegelset (macOS onthoudt een scherm aan zijn serienummer, ook als spiegel).
+  - Scherm uitbreiden naar Android ook staand, en het volgt de draaiing van de telefoon.
+  - Bij elk uitbreiden en elke keer dat de muis overgaat even controleren aan welke kant een apparaat staat (zonder hoorbare piep, als dat
+    kan).
+  - De zoekbalk van Bestanden gelijk aan die van Klembord.
+  - Elk apparaat moet de geluidsuitvoer van elk ander kunnen zijn, niet alleen een telefoon voor de Mac.
+  - Een telefoon die uit stond: de muis zegt één keer dat hij weg is en daarna niets meer (ongeveer 10 minuten). Op de achtergrond blijven
+    proberen en de muis laten doorgaan zodra hij er weer is, zonder meldingen.
+  - Onderzocht: de Mac wakker maken of gebruiken met de klep dicht (in de tas). Uitkomst: in een tas op batterij lukt wakker maken niet
+    betrouwbaar (`womp` staat op batterij uit, na standby slaapt hij diep). Thuis aan de lader met een Apple TV of HomePod als Sleep Proxy
+    wel. Klep dicht en wakker blijven kan alleen met beheerdersrechten (`pmset disablesleep`), riskant door warmte in een tas. Eerst te
+    bouwen: een kaartje op de Mac dat laat zien wat aan staat voor wakker maken (lader, Wake for network access, Sleep Proxy). Klep dicht
+    wakker houden pas als laatste, alleen aan te zetten, met timer en uit bij warmte of lage batterij.
+  - Onderzocht: NFC zoals NameDrop. Android Beam is weg sinds Android 14, iPhone laat apps geen NFC delen. Kan wel: twee Android-telefoons
+    met Tandem tegen elkaar (een knipper via HCE en reader mode, de rest gaat over de gewone verbinding), 3 tot 5 dagen werk. Macs en laptops
+    hebben geen NFC; een NFC-sticker van een euro op de laptop kan koppelen of iets starten (1 tot 2 dagen). Google werkt mogelijk zelf aan
+    Tap to share in Android 17, dus eerst de sticker en wachten met telefoon tegen telefoon.
+  - De hover van de knoppen hapert.
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)
