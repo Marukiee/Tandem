@@ -76,6 +76,10 @@ enum DebugSupport {
         if let kind = variable("TANDEM_DEBUG_DEVICEPAGE") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showDevicePageWindow(kind) }
         }
+        // `TANDEM_DEBUG_MESSAGES=1`: the Messages page of a made up phone, filled with made up conversations.
+        if variable("TANDEM_DEBUG_MESSAGES") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showMessagesWindow() }
+        }
         // `TANDEM_DEBUG_AWAY=1`: the pill that stays while the pointer is on another computer.
         if variable("TANDEM_DEBUG_AWAY") != nil {
             let carried = variable("TANDEM_DEBUG_AWAY") == "carry"
@@ -243,6 +247,21 @@ enum DebugSupport {
         let host = NSHostingView(rootView: DeviceDetail(device: device).environment(EngineModel.shared).frame(width: 760, height: 640))
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 760, height: 640), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Device page (debug)"
+        window.contentView = host
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private static func showMessagesWindow() {
+        let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
+        // Not online, so the page does not ask a phone that is not there and shows what it was given.
+        let device = TandemDevice(
+            id: "debug-phone", name: "Pixel 9", platform: .android, online: false, route: nil, rttMs: nil, status: status, appVersion: "0.1.76",
+            caps: ["sms"], vouchedByRemoved: false, clipboardEnabled: true, autoAccept: true, notificationsEnabled: true, ble: false, features: []
+        )
+        MessagesStore.shared.phone(device.id).fillForDebug()
+        let host = NSHostingView(rootView: MessagesView(device: device, onBack: {}).environment(EngineModel.shared).frame(width: 900, height: 620))
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 900, height: 620), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Messages (debug)"
         window.contentView = host
         window.makeKeyAndOrderFront(nil)
     }

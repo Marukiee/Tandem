@@ -146,6 +146,7 @@ struct FeatureRow: View {
         case "files": "folder"
         case "camera": "camera"
         case "background": "battery.75percent"
+        case "messages": "message"
         default: "exclamationmark"
         }
     }
@@ -158,7 +159,8 @@ struct FeatureNotice: View {
     let device: TandemDevice
 
     var body: some View {
-        let missing = device.online ? device.features.filter { !$0.ready } : []
+        // Messages says what it needs when it is opened: someone who never uses it is not reminded here.
+        let missing = device.online ? device.features.filter { !$0.ready && $0.id != "messages" } : []
         if !missing.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Needs a setting there").font(.headline).padding(.horizontal, 6)
