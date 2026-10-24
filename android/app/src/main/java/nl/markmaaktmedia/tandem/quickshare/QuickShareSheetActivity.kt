@@ -93,6 +93,18 @@ class QuickShareSheetActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Android sends the long press on every tile of this app here, as the only place that says it takes one: the tiles of the
+        // shared mouse and the clipboard go on to the page of the app where they are set.
+        val tile = androidx.core.content.IntentCompat.getParcelableExtra(intent, android.content.Intent.EXTRA_COMPONENT_NAME, android.content.ComponentName::class.java)
+        if (tile != null && tile.className != QuickShareTileService::class.java.name) {
+            startActivity(
+                android.content.Intent(this, nl.markmaaktmedia.tandem.MainActivity::class.java)
+                    .setAction(nl.markmaaktmedia.tandem.MainActivity.ACTION_OPEN_SHARING)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            )
+            finish()
+            return
+        }
         enableEdgeToEdge()
         nl.markmaaktmedia.tandem.engine.TandemService.start(this)
         setContent {
