@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.2.13",
+    "date": "2026-10-25",
+    "en": {
+      "title": "Volume and sides",
+      "new": [
+        "The volume keys turn a device that is your speaker up and down, on every device",
+        "Choose how often the side of your devices is checked",
+        "Dragging from Linux to the Mac works again"
+      ]
+    },
+    "nl": {
+      "title": "Volume en kanten",
+      "new": [
+        "De volumeknoppen regelen een apparaat dat je speaker is, op elk apparaat",
+        "Kies hoe vaak de kant van je apparaten wordt gecontroleerd",
+        "Slepen van Linux naar de Mac werkt weer"
+      ]
+    }
+  },
+  {
     "version": "0.2.12",
     "date": "2026-10-24",
     "en": {
