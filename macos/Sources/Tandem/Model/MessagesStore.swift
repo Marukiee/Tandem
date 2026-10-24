@@ -112,7 +112,8 @@ final class PhoneMessages {
     /// The first page of a conversation, when it has none yet.
     func openThread(_ thread: UInt64) async {
         open = thread
-        if threads[thread]?.messages.isEmpty ?? true { await reloadThread(thread) }
+        // A conversation the phone said is empty is not asked for again; one that failed or was never asked is.
+        if threads[thread].map({ $0.messages.isEmpty && $0.more }) ?? true { await reloadThread(thread) }
     }
 
     private func reloadThread(_ thread: UInt64) async {
@@ -300,11 +301,24 @@ extension PhoneMessages {
             conversation(3, "Bob, Carla", "+31611111111, +31622222222", "Wie neemt de taart mee?", 26 * hour),
             conversation(4, "Mam", "+31633333333", "Bel je me straks even?", 50 * hour, mine: true),
             conversation(5, "Tandarts", "+31201234567", "Herinnering: uw afspraak is op dinsdag om 09:30.", 9 * 24 * hour),
+            conversation(6, "Lotte Bakker", "+31644444444", "", 12 * 24 * hour),
+            conversation(7, "", "StripeLink", "Uw code is 482913", 14 * 24 * hour),
         ]
-        func message(_ id: UInt64, _ body: String, _ ago: UInt64, mine: Bool, status: TandemSmsStatus? = nil, pictures: [UInt64] = []) -> TandemSmsMessage {
-            TandemSmsMessage(id: id, mms: !pictures.isEmpty, thread: 1, address: mine ? "" : "+31612345678", body: body, date: now - ago,
+        func message(_ id: UInt64, _ body: String, _ ago: UInt64, mine: Bool, status: TandemSmsStatus? = nil, pictures: [UInt64] = [],
+                     thread: UInt64 = 1, from: String = "+31612345678") -> TandemSmsMessage {
+            TandemSmsMessage(id: id, mms: !pictures.isEmpty, thread: thread, address: mine ? "" : from, body: body, date: now - ago,
                              status: status ?? (mine ? .sent : .received), read: true, pictures: pictures)
         }
+        threads[2] = Thread(messages: [
+            message(21, "Uw pakket wordt vandaag tussen 14:00 en 16:00 bezorgd.", 3 * hour, mine: false, thread: 2, from: "+31687654321"),
+        ], more: false)
+        threads[3] = Thread(messages: [
+            message(33, "Ik!", 26 * hour - 60_000, mine: true, thread: 3),
+            message(32, "Wie neemt de taart mee?", 26 * hour, mine: false, thread: 3, from: "+31622222222"),
+            message(31, "En wie de kaarsjes?", 26 * hour + 30_000, mine: false, thread: 3, from: "+31622222222"),
+            message(30, "Ik neem de slingers mee", 27 * hour, mine: false, thread: 3, from: "+31611111111"),
+        ], more: false)
+        threads[6] = Thread(messages: [], more: false)
         threads[1] = Thread(messages: [
             message(9, "Zie je morgen bij het station!", hour / 6, mine: false),
             message(8, "Om half negen?", hour / 5, mine: false),

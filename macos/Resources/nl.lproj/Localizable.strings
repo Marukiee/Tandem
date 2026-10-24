@@ -1078,6 +1078,11 @@
 "Messages is off for this Mac on the phone" = "Berichten staat uit voor deze Mac op de telefoon";
 "The phone has not allowed Tandem to read its messages" = "De telefoon heeft Tandem nog geen toegang tot de berichten gegeven";
 "The phone is not connected" = "De telefoon is niet verbonden";
+"No conversations found" = "Geen gesprekken gevonden";
+"No messages yet. Write the first one below." = "Nog geen berichten. Schrijf hieronder het eerste.";
+"Pick one on the left, or start a new one." = "Kies er links een, of begin een nieuw gesprek.";
+"Call %@" = "%@ bellen";
+"Calling from %@" = "Bellen vanaf %@";
 /* Focus on all your devices */
 "Focus" = "Focus";
 "Share Focus" = "Focus delen";

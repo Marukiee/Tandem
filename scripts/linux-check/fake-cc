@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+# A C compiler for a Linux type check on a Mac: the C parts are never run or linked by `cargo check`, so an empty object will do.
+import sys
+
+args = sys.argv[1:]
+if "-o" in args:
+    open(args[args.index("-o") + 1], "wb").close()
+elif any(a.startswith("-Fo") for a in args):
+    open(next(a for a in args if a.startswith("-Fo"))[3:], "wb").close()
+elif any(a.startswith("-o") and len(a) > 2 for a in args):
+    open(next(a for a in args if a.startswith("-o"))[2:], "wb").close()
+elif any(a in ("--version", "-v", "-dumpversion", "-dumpmachine") for a in args):
+    print("clang version 18.0.0")
+sys.exit(0)

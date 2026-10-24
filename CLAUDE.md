@@ -147,6 +147,8 @@ In een verse werkmap (worktree) ontbreken de git-genegeerde bouwresultaten. Eers
   systeemdialoog van de emulator (stylus) kan de app laten lijken te hangen. Schermfoto's: `adb exec-out screencap -p`.
 - **Windows:** de UI staat in `windows/ui` en draait ook in een gewone browser met `mock.js`
   (`python3 -m http.server`). De hele app laat zich alleen in CI bouwen.
+- **Linux-code controleren op de Mac:** `scripts/check-linux.sh` doet `cargo check` van de Tauri-app voor Linux, met een nep-pkg-config
+  en een nep-C-compiler (er wordt niets gelinkt). Zo compileert de Linux-code hier ook; of hij werkt, blijkt pas op een echte Linux-pc.
 - **Schijfruimte:** een agent-werkmap met zijn eigen `target/` is gauw 5 GB, en de debug-mappen van `target/` en `windows/src-tauri/target/` groeien tot 30 GB zonder dat cargo ooit opruimt (het project stond op 150 GB). Draai `scripts/clean-build.sh` na een ronde met agents en af en toe tussendoor; `--check` laat zien wat het zou doen.
 - **Agents:** werken in een eigen werkmap met eigen `target/`. Nooit pushen, taggen of `changelog.json` aanpassen,
   dat doet degene die de agents aanstuurt. Committen met expliciete paden (`git add <pad>`, nooit `-A`) en de

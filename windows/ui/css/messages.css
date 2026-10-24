@@ -2,35 +2,65 @@
 /* The page fills the window to its edges and scrolls in its own columns, not as a whole. */
 .page:has(> .sms) { padding: 0; overflow: hidden; }
 
-.sms { --bubble: #5b5bd6; display: grid; grid-template-columns: minmax(240px, 300px) 1fr; height: 100%; min-height: 0; }
+.sms {
+  /* The accent of the dark scheme is too light under white letters; the bubbles and the button keep the deep one. */
+  --bubble: #5b5bd6;
+  --received: #ebebf0;
+  --head: 56px;
+  display: grid;
+  grid-template-columns: minmax(250px, 310px) 1fr;
+  height: 100%;
+  min-height: 0;
+}
+@media (prefers-color-scheme: dark) {
+  .sms { --received: #3a3a42; }
+}
 .sms.sms-alone { display: flex; flex-direction: column; }
 
+/* The list: the way back, the search and a new message in one row at the top, the conversations straight under it. */
 .sms-list { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--card-2); }
-.sms-head { display: flex; align-items: center; gap: 8px; padding: 14px 12px 8px; }
-.sms-title { font: 600 18px var(--font-display); line-height: 1.2; }
+.sms-head { flex: none; display: flex; align-items: center; gap: 6px; height: var(--head); padding: 0 10px; }
+.sms-head .ib.on { background: var(--accent-soft); color: var(--accent); }
 
 .sms-search {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 2px 12px 8px;
-  padding: 0 4px 0 10px;
-  border-radius: 8px;
+  height: 32px;
+  padding: 0 4px 0 11px;
+  border-radius: 999px;
   background: var(--hover);
   color: var(--text-3);
+  transition: background 0.15s, box-shadow 0.15s;
 }
-.sms-search input[type="text"] { flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 0; }
+.sms-search:focus-within { background: var(--card); box-shadow: inset 0 0 0 1px var(--accent); }
+.sms-search input[type="text"] { flex: 1; min-width: 0; border: 0; background: transparent; padding: 0; color: var(--text); }
 .sms-clear { width: 22px; height: 22px; }
 
-.sms-rows { flex: 1; overflow: auto; padding: 0 8px 10px; display: flex; flex-direction: column; gap: 2px; }
-.sms-row { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px 8px 4px; border-radius: 10px; cursor: default; transition: background 0.12s; }
+.sms-rows { flex: 1; overflow: auto; padding: 2px 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.sms-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px 9px 0; border-radius: 12px; cursor: default; transition: background 0.12s; }
 .sms-row:hover { background: var(--hover); }
 .sms-row.selected { background: var(--accent-soft); }
 .sms-row-top { display: flex; align-items: baseline; gap: 6px; }
 .sms-row-name { font-weight: 600; flex: 1; min-width: 0; }
-.sms-snippet { color: var(--text-2); font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.sms-dot { flex: none; width: 8px; height: 8px; margin-top: 16px; border-radius: 50%; background: var(--accent); opacity: 0; transition: opacity 0.2s; }
-.sms-dot.on { opacity: 1; }
+.sms-row-time { flex: none; font-size: 12px; color: var(--text-3); }
+.sms-row.unread .sms-row-time { color: var(--accent); font-weight: 600; }
+.sms-snippet {
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.35;
+  min-height: 2.7em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.sms-dot { flex: none; width: 8px; height: 8px; margin: 0 -4px 0 4px; border-radius: 50%; background: var(--accent); opacity: 0; transition: opacity 0.2s; }
+.sms-row.unread .sms-dot { opacity: 1; }
+.sms-suggestions .sms-dot { display: none; }
+.sms-empty-list { text-align: center; padding: 30px 10px; font-size: 13px; }
 
 .sms-avatar {
   flex: none;
@@ -39,62 +69,83 @@
   place-items: center;
   color: #fff;
   font-weight: 600;
-  background: linear-gradient(#a8a8b0, #85858d);
+  letter-spacing: 0.01em;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08);
 }
 
+/* The conversation: a header as tall as the row beside it, the messages from the bottom up, and the field. */
 .sms-chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--card); }
-.sms-chat-head { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
-.sms-chat-name { font-weight: 600; font-size: 15px; }
+.sms-chat-head { flex: none; display: flex; align-items: center; gap: 10px; height: var(--head); padding: 0 16px; border-bottom: 1px solid var(--line); }
+.sms-chat-name { font-weight: 600; font-size: 14px; line-height: 1.25; }
+.sms-chat-head .small { line-height: 1.25; }
 .sms-to input[type="text"] { border: 0; background: transparent; padding: 4px 0; }
 .sms-to .chip { gap: 2px; padding-right: 2px; font-size: 13px; }
-.sms-empty { margin: auto; padding: 30px; text-align: center; }
 
 /* Drawn from the bottom up, so the newest message is in view and older pages grow above without moving it. */
-.sms-scroll { flex: 1; overflow: auto; display: flex; flex-direction: column-reverse; padding: 12px 18px; }
-.sms-day { text-align: center; font-size: 12px; font-weight: 500; color: var(--text-3); padding: 14px 0 6px; }
-.sms-line { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-top: 12px; max-width: 72%; animation: rise 0.25s ease-out; }
-.sms-line.close { margin-top: 3px; }
+.sms-scroll { flex: 1; overflow: auto; display: flex; flex-direction: column-reverse; padding: 10px 16px 6px; }
+.sms-day { text-align: center; font-size: 12px; color: var(--text-3); padding: 16px 0 4px; }
+.sms-day b { font-weight: 600; color: var(--text-2); }
+.sms-line { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-top: 10px; max-width: min(72%, 520px); animation: rise 0.25s ease-out; }
+.sms-line.joined { margin-top: 2px; }
 .sms-line.mine { align-self: flex-end; align-items: flex-end; }
 .sms-line.waiting .sms-bubble { opacity: 0.6; }
 .sms-bubble {
   padding: 7px 12px;
   border-radius: 18px;
-  background: rgba(127, 127, 140, 0.16);
+  background: var(--received);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   user-select: text;
   line-height: 1.35;
 }
+/* A run of messages reads as one block: the corners on the side of the sender are small where two of them meet. */
+.sms-line.joined:not(.mine) .sms-bubble { border-top-left-radius: 6px; }
+.sms-line.continues:not(.mine) .sms-bubble { border-bottom-left-radius: 6px; }
+.sms-line.mine.joined .sms-bubble { border-top-right-radius: 6px; }
+.sms-line.mine.continues .sms-bubble { border-bottom-right-radius: 6px; }
 .sms-line.mine .sms-bubble { background: var(--bubble); color: #fff; }
 .sms-bubble.blank { font-style: italic; }
-.sms-sender { font-size: 11px; color: var(--text-3); padding: 0 10px; }
+.sms-sender { font-size: 11px; color: var(--text-3); padding: 0 12px; }
 .sms-picture { max-width: 260px; max-height: 260px; border-radius: 16px; display: block; }
-.sms-picture.empty { width: 180px; height: 130px; display: grid; place-items: center; background: rgba(127, 127, 140, 0.12); color: var(--text-3); }
-.sms-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); flex-wrap: wrap; justify-content: flex-end; }
+.sms-picture.empty { width: 180px; height: 130px; display: grid; place-items: center; background: var(--received); color: var(--text-3); }
+.sms-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); flex-wrap: wrap; justify-content: flex-end; padding: 0 6px; }
 .sms-status.bad, .bad-text { color: var(--bad); }
 
 .sms-note { text-align: center; padding: 0 18px 4px; }
-.sms-compose { display: flex; align-items: flex-end; gap: 8px; padding: 10px 14px 14px; }
-.sms-compose textarea {
+
+/* The field: one rounded field with the send button inside it, as in Messages. */
+.sms-compose { flex: none; padding: 8px 16px 14px; }
+.sms-field {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 20px;
+  background: var(--card-2);
+  border: 1px solid var(--line-strong);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.sms-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.sms-field textarea {
   flex: 1;
   resize: none;
-  min-height: 36px;
+  min-height: 30px;
   max-height: 140px;
-  border-radius: 18px;
-  border-bottom-width: 1px;
-  padding: 7px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 5px 4px 5px 10px;
   line-height: 1.4;
   overflow-y: auto;
 }
 .sms-send {
   flex: none;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   border: 0;
   display: grid;
   place-items: center;
-  /* The accent of the dark scheme is too light under white letters; the bubbles and the button keep the deep one. */
   background: var(--bubble);
   color: #fff;
   cursor: default;
@@ -102,15 +153,21 @@
 }
 .sms-send:hover { transform: scale(1.06); }
 .sms-send:active { transform: scale(0.94); }
-.sms-send[disabled] { background: rgba(127, 127, 140, 0.35); pointer-events: none; }
+.sms-send[disabled] { background: var(--line-strong); pointer-events: none; }
 
 .sms-suggestions { flex: 1; overflow: auto; padding: 8px; }
-.sms-suggestions .sms-row { align-items: center; padding-left: 10px; }
+.sms-suggestions .sms-row { padding-left: 10px; }
 
 .sms-more { display: grid; place-items: center; padding: 12px; }
 .sms-spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--accent-soft); border-top-color: var(--accent); animation: sms-spin 0.8s linear infinite; }
 .sms-spinner.big { width: 34px; height: 34px; border-width: 3px; }
 @keyframes sms-spin { to { transform: rotate(360deg); } }
+
+/* What stands in the right column when there is no conversation to show, or nothing in it yet. */
+.sms-hero { margin: auto; max-width: 340px; padding: 30px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+.sms-hero h2 { margin: 8px 0 0; font: 600 18px var(--font-display); }
+.sms-hero p { margin: 0; }
+.sms-hero .btn { margin-top: 10px; }
 
 .sms-notice { margin: auto; max-width: 420px; padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
 .sms-notice h2 { margin: 8px 0 0; }

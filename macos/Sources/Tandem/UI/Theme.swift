@@ -135,10 +135,14 @@ struct FloatingCard: ViewModifier {
     var width: CGFloat = 440
 
     func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Metrics.panel, style: .continuous)
         content
             .padding(18)
             .frame(width: width)
-            .floatingGlass(in: RoundedRectangle(cornerRadius: Metrics.panel, style: .continuous))
+            // A card floats over anything: plain glass over a light page let the grey lines all but vanish. A layer of the colour of a
+            // window under the glass, light or dark with the appearance, keeps the words on a calm ground, as the banners of macOS do.
+            .background(shape.fill(Color(nsColor: .windowBackgroundColor).opacity(0.62)))
+            .floatingGlass(in: shape)
             .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
             .padding(EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28))
     }

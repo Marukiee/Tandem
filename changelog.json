@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.2.15",
+    "date": "2026-10-25",
+    "en": {
+      "title": "Messages, redone",
+      "new": [
+        "Messages looks and works like Messages, with a call button in each conversation",
+        "Now playing sits in the card at the top of a device",
+        "On Linux a call rings with Answer and Decline"
+      ]
+    },
+    "nl": {
+      "title": "Berichten, opnieuw",
+      "new": [
+        "Berichten ziet eruit en werkt als Berichten, met een belknop in elk gesprek",
+        "Nu speelt staat in de kaart bovenaan een apparaat",
+        "Op Linux komt een oproep binnen met Opnemen en Weigeren"
+      ]
+    }
+  },
+  {
     "version": "0.2.14",
     "date": "2026-10-25",
     "en": {
