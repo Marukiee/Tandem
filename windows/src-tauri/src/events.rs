@@ -170,6 +170,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 remote_input(app, &from, input);
             }
         }
+        TandemEvent::Sms { from, msg } => crate::messages::event(app, &from, msg),
         TandemEvent::PointerShare { from, msg } => {
             use tandem_core::ffi::TandemPointerShare as Share;
             match msg {

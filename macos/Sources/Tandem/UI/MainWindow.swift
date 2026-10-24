@@ -100,6 +100,7 @@ struct MainWindow: View {
         .onChange(of: model.devices.map(\.id)) { _, ids in
             if case let .device(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
             if case let .files(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
+            if case let .messages(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
             chooseDebugPage()
             if selection == nil, let first = ids.first { selection = .device(first) }
         }
@@ -156,6 +157,7 @@ struct MainWindow: View {
                     DeviceDetail(
                         device: device,
                         onBrowse: { selection = .files(device.id) },
+                        onMessages: { selection = .messages(device.id) },
                         onViewAll: {
                             model.sharedDeviceFilter = device.id
                             selection = .shared
@@ -167,6 +169,12 @@ struct MainWindow: View {
             case let .files(id):
                 if let device = model.device(id) {
                     FilesView(device: device, onBack: { selection = .device(id) }).transition(.page)
+                } else {
+                    Color.clear
+                }
+            case let .messages(id):
+                if let device = model.device(id) {
+                    MessagesView(device: device, onBack: { selection = .device(id) }).transition(.page)
                 } else {
                     Color.clear
                 }

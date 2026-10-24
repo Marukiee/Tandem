@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="messages_picture">Foto</string>
+    <string name="messages_ask_title">%1$s wil je berichten</string>
+    <string name="messages_ask_text">Tik om het je sms\'jes te laten lezen en sturen.</string>
+    <string name="messages_allow_title">%1$s je berichten laten gebruiken?</string>
+    <string name="messages_allow_body">%1$s kan dan je sms\'jes tonen en vanaf deze telefoon nieuwe sturen. Je zet dit weer uit op de pagina van %1$s in Tandem.</string>
+    <string name="messages_not_now">Niet nu</string>
+    <string name="messages_permission_title">Toegang tot je sms\'jes geven</string>
+    <string name="messages_permission_body">Tandem leest je sms\'jes alleen om ze op je eigen computers te tonen, en stuurt alleen een sms als je die daar schrijft. Er gaat niets via een server.</string>
+    <string name="messages_blocked_title">Android houdt dit tegen</string>
+    <string name="messages_blocked_body">Android laat alleen apps uit een winkel sms\'jes lezen tot jij het toestaat. Open de app-info, tik rechtsboven op de drie puntjes en kies Beperkte instellingen toestaan. Kom dan terug en tik op Probeer opnieuw.</string>
+    <string name="messages_ready_on">Je berichten staan nu op %1$s</string>
+    <string name="messages_ready">Tandem kan nu je berichten lezen en sturen</string>
+    <string name="setting_messages">Berichten</string>
+    <string name="setting_messages_sub">Je sms\'jes lezen en sturen op deze computer</string>
+    <string name="feature_messages">Berichten op je computers</string>
+    <string name="feature_messages_why">Tandem mag de sms\'jes op deze telefoon nog niet lezen</string>
+    <string name="perm_messages">Sms\'jes</string>
+    <string name="perm_messages_why">Om je gesprekken op je computers te tonen en daarvandaan sms\'jes te sturen.</string>
+</resources>

@@ -115,6 +115,26 @@ galerij. De telefoon opent zijn camera, de computer toont dat hij wacht.
 Een oudere versie leest `origin` `capture` niet als bekende waarde en slaat het bod over,
 maar die kan ook geen vraag gesteld hebben.
 
+### Berichten (SMS)
+
+Een computer leest en stuurt de sms'jes van een telefoon met `Sms(...)` op de controlestream (zie `sms.rs`). Alleen naar een
+telefoon die `sms` zegt; een computer die ze toont zegt `sms.view`.
+
+1. De computer kiest een willekeurig `req` en vraagt `ListConversations { before, limit }`, `ListMessages { thread, before,
+   limit }`, `Send { to, text }`, `FindContacts { query }` of `Picture { part }`. Lijsten komen in pagina's, nieuwste eerst,
+   met alles op of vóór `before` (milliseconden, `0` voor het nieuwste); de vrager laat weg wat hij al heeft. Een pagina is
+   hoogstens 100 lang.
+2. De telefoon antwoordt met hetzelfde `req`: `Conversations`, `Messages`, `Sent { thread, error }`, `Contacts`,
+   `PictureData` of `Refused { why }`. `why` is `off` (Berichten staat uit voor die computer), `no_permission` (Android
+   gaf Tandem geen toegang) of `unavailable`.
+3. Uit zichzelf stuurt de telefoon `Changed { conversations, messages }` voor elk bericht dat nieuw is of veranderde, ook
+   wat op de telefoon zelf verstuurd werd, naar elke verbonden computer met `sms.view` die het mag.
+4. `AskAccess` vraagt de persoon op de telefoon om de computer toe te laten. Het is de enige vraag die een computer mag
+   stellen als hij uit staat, zonder antwoord, en hooguit eens per halve minuut.
+
+De schakelaar per apparaat (`DeviceSettings.messages`) staat in de core van de telefoon, die een vraag van een computer die
+uit staat weigert voordat de app er iets van hoort. Een gast staat uit.
+
 ### Live video
 
 Een scherm of een camera van het ene apparaat in een venster op het andere, en besturing van een scherm op afstand, gaat
@@ -166,6 +186,7 @@ vragen, kijkt eerst of het woord er staat.
 | `ring` | laat zijn geluid horen op `Ring` en meldt met `Ringing` wanneer het speelt en stopt |
 | `wifi.share` | een computer die zegt op welk wifi hij zit en het wachtwoord geeft als zijn persoon ja zegt |
 | `wifi.join` | verbindt met een wifi dat een ander apparaat geeft (een telefoon via het blad van het systeem) |
+| `sms`, `sms.view` | een telefoon die zijn sms'jes laat lezen en sturen, en een computer die ze toont (Berichten) |
 
 ## De circle
 

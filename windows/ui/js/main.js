@@ -7,6 +7,7 @@ import { ResizeEdges, Titlebar, framed } from "./chrome.js";
 import { setLanguage, t } from "./i18n.js";
 import { ClipboardPage, DevicePage, FilesPage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
 import { say, selectedDevice, set, state, useStore } from "./store.js";
+import { MessagesPage } from "./messages.js";
 
 /** The update, at the foot of the sidebar: what is out, how far the download is, and what went wrong. */
 function UpdateBanner() {
@@ -140,6 +141,7 @@ function Page() {
   else if (state.page === "files") body = html`<${FilesPage} />`;
   else if (state.page === "notifications") body = html`<${NotificationsPage} />`;
   else if (state.page === "settings") body = html`<${SettingsPage} />`;
+  else if (state.page === "messages" && selectedDevice()) body = html`<${MessagesPage} device=${selectedDevice()} key=${state.selected} />`;
   else if (state.devices.length === 0) body = html`<${Welcome} />`;
   else {
     const device = selectedDevice();

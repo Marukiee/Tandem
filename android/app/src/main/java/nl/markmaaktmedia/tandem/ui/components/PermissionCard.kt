@@ -127,6 +127,7 @@ class PermissionStatus internal constructor(private val context: Context) {
     val notificationAccess get() = read { Permissions.notificationAccess(context) }
     val bluetooth get() = read { Permissions.bluetooth(context) }
     val installApps get() = read { Permissions.installApps(context) }
+    val sms get() = read { nl.markmaaktmedia.tandem.messages.SmsAccess.granted(context) }
 
     /** On means everything, Partly means calls work but an extra is still missing. */
     val phone: PermissionLevel

@@ -35,6 +35,7 @@ mod insert;
 mod live;
 mod logfile;
 mod media;
+mod messages;
 mod model;
 mod names;
 mod pointer_ready;
@@ -268,6 +269,12 @@ pub fn run() {
             find::find_choose,
             find::find_preview,
             wifi::wifi_share,
+            messages::sms_conversations,
+            messages::sms_messages,
+            messages::sms_send,
+            messages::sms_contacts,
+            messages::sms_picture,
+            messages::sms_ask_access,
         ])
         .build(tauri::generate_context!())
         .expect("Tandem could not start")

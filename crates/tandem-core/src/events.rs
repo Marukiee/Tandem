@@ -102,4 +102,6 @@ pub enum Event {
     Ringing { from: DeviceId, on: bool },
     /// About the Wi-Fi of the other device: which network it is on, a question for its password, or the answer (see `wifi`).
     Wifi { from: DeviceId, msg: crate::wifi::WifiMsg },
+    /// Messages: on a phone a question of a computer to answer, on a computer an answer or a change (see `sms`).
+    Sms { from: DeviceId, msg: crate::sms::SmsMsg },
 }

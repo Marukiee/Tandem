@@ -3,5 +3,7 @@
     <application>
         <!-- Debug builds only: checks the encoder without a Mac (see LiveSelfCheck). -->
         <receiver android:name="nl.markmaaktmedia.tandem.live.LiveSelfCheck" android:exported="true" />
+        <!-- Debug builds only: reads the message store without a computer (see SmsSelfCheck). -->
+        <receiver android:name="nl.markmaaktmedia.tandem.messages.SmsSelfCheck" android:exported="true" />
     </application>
 </manifest>

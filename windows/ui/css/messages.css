@@ -1,0 +1,119 @@
+/* ---- Messages: the conversations of a phone, in two columns ---- */
+/* The page fills the window to its edges and scrolls in its own columns, not as a whole. */
+.page:has(> .sms) { padding: 0; overflow: hidden; }
+
+.sms { --bubble: #5b5bd6; display: grid; grid-template-columns: minmax(240px, 300px) 1fr; height: 100%; min-height: 0; }
+.sms.sms-alone { display: flex; flex-direction: column; }
+
+.sms-list { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--card-2); }
+.sms-head { display: flex; align-items: center; gap: 8px; padding: 14px 12px 8px; }
+.sms-title { font: 600 18px var(--font-display); line-height: 1.2; }
+
+.sms-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 12px 8px;
+  padding: 0 4px 0 10px;
+  border-radius: 8px;
+  background: var(--hover);
+  color: var(--text-3);
+}
+.sms-search input[type="text"] { flex: 1; min-width: 0; border: 0; background: transparent; padding: 6px 0; }
+.sms-clear { width: 22px; height: 22px; }
+
+.sms-rows { flex: 1; overflow: auto; padding: 0 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.sms-row { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px 8px 4px; border-radius: 10px; cursor: default; transition: background 0.12s; }
+.sms-row:hover { background: var(--hover); }
+.sms-row.selected { background: var(--accent-soft); }
+.sms-row-top { display: flex; align-items: baseline; gap: 6px; }
+.sms-row-name { font-weight: 600; flex: 1; min-width: 0; }
+.sms-snippet { color: var(--text-2); font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sms-dot { flex: none; width: 8px; height: 8px; margin-top: 16px; border-radius: 50%; background: var(--accent); opacity: 0; transition: opacity 0.2s; }
+.sms-dot.on { opacity: 1; }
+
+.sms-avatar {
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 600;
+  background: linear-gradient(#a8a8b0, #85858d);
+}
+
+.sms-chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--card); }
+.sms-chat-head { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+.sms-chat-name { font-weight: 600; font-size: 15px; }
+.sms-to input[type="text"] { border: 0; background: transparent; padding: 4px 0; }
+.sms-to .chip { gap: 2px; padding-right: 2px; font-size: 13px; }
+.sms-empty { margin: auto; padding: 30px; text-align: center; }
+
+/* Drawn from the bottom up, so the newest message is in view and older pages grow above without moving it. */
+.sms-scroll { flex: 1; overflow: auto; display: flex; flex-direction: column-reverse; padding: 12px 18px; }
+.sms-day { text-align: center; font-size: 12px; font-weight: 500; color: var(--text-3); padding: 14px 0 6px; }
+.sms-line { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-top: 12px; max-width: 72%; animation: rise 0.25s ease-out; }
+.sms-line.close { margin-top: 3px; }
+.sms-line.mine { align-self: flex-end; align-items: flex-end; }
+.sms-line.waiting .sms-bubble { opacity: 0.6; }
+.sms-bubble {
+  padding: 7px 12px;
+  border-radius: 18px;
+  background: rgba(127, 127, 140, 0.16);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  line-height: 1.35;
+}
+.sms-line.mine .sms-bubble { background: var(--bubble); color: #fff; }
+.sms-bubble.blank { font-style: italic; }
+.sms-sender { font-size: 11px; color: var(--text-3); padding: 0 10px; }
+.sms-picture { max-width: 260px; max-height: 260px; border-radius: 16px; display: block; }
+.sms-picture.empty { width: 180px; height: 130px; display: grid; place-items: center; background: rgba(127, 127, 140, 0.12); color: var(--text-3); }
+.sms-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-3); flex-wrap: wrap; justify-content: flex-end; }
+.sms-status.bad, .bad-text { color: var(--bad); }
+
+.sms-note { text-align: center; padding: 0 18px 4px; }
+.sms-compose { display: flex; align-items: flex-end; gap: 8px; padding: 10px 14px 14px; }
+.sms-compose textarea {
+  flex: 1;
+  resize: none;
+  min-height: 36px;
+  max-height: 140px;
+  border-radius: 18px;
+  border-bottom-width: 1px;
+  padding: 7px 14px;
+  line-height: 1.4;
+  overflow-y: auto;
+}
+.sms-send {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  display: grid;
+  place-items: center;
+  /* The accent of the dark scheme is too light under white letters; the bubbles and the button keep the deep one. */
+  background: var(--bubble);
+  color: #fff;
+  cursor: default;
+  transition: transform 0.12s, opacity 0.15s, background 0.15s;
+}
+.sms-send:hover { transform: scale(1.06); }
+.sms-send:active { transform: scale(0.94); }
+.sms-send[disabled] { background: rgba(127, 127, 140, 0.35); pointer-events: none; }
+
+.sms-suggestions { flex: 1; overflow: auto; padding: 8px; }
+.sms-suggestions .sms-row { align-items: center; padding-left: 10px; }
+
+.sms-more { display: grid; place-items: center; padding: 12px; }
+.sms-spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--accent-soft); border-top-color: var(--accent); animation: sms-spin 0.8s linear infinite; }
+.sms-spinner.big { width: 34px; height: 34px; border-width: 3px; }
+@keyframes sms-spin { to { transform: rotate(360deg); } }
+
+.sms-notice { margin: auto; max-width: 420px; padding: 20px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; }
+.sms-notice h2 { margin: 8px 0 0; }
+.sms-notice p { margin: 0; }
+.sms-notice-mark { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.sms-notice-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }

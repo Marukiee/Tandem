@@ -9,6 +9,8 @@ struct DeviceDetail: View {
     let device: TandemDevice
     /// Opens the files of this device. Only offered for devices that know how to show them.
     var onBrowse: () -> Void = {}
+    /// Opens the text messages of this phone.
+    var onMessages: () -> Void = {}
     /// Opens the Shared page, narrowed to this device.
     var onViewAll: () -> Void = {}
 
@@ -221,6 +223,11 @@ struct DeviceDetail: View {
                     if device.platform == .android && device.caps.contains("files") {
                         GlassActionButton(title: "Browse files", symbol: "folder") { onBrowse() }
                             .disabled(!device.online)
+                    }
+                    if device.caps.contains("sms") {
+                        GlassActionButton(title: "Messages", symbol: "message") { onMessages() }
+                            .disabled(!device.online)
+                            .opacity(device.online ? 1 : 0.5)
                     }
                     if isComputer || device.platform == .android {
                         LiveActionRow(device: device)

@@ -117,7 +117,7 @@ async fn the_answer_waits_for_a_yes_when_auto_accept_is_off_for_the_phone() {
     // that can be accepted by hand, with its request id intact.
     let (phone, mac) = paired().await;
     mac.engine
-        .set_device_settings(&phone.engine.id(), DeviceSettings { clipboard: true, auto_accept: false, notifications: true })
+        .set_device_settings(&phone.engine.id(), DeviceSettings { auto_accept: false, ..Default::default() })
         .unwrap();
     let mut mac_events = mac.engine.subscribe();
 

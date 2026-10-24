@@ -128,6 +128,8 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         "pointer.ready".into(),
         // Plays a sound when another device looks for it, and says when it rings and stops (see `find.rs`).
         "ring".into(),
+        // Shows the text messages of a phone (see `messages`), so the phone tells this computer what changes.
+        "sms.view".into(),
     ];
     // Listens to the sound of another computer that wants to know on which side this one stands (see `side.rs`).
     if crate::side::can_listen() {

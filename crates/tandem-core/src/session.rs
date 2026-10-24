@@ -508,6 +508,7 @@ impl Inner {
                 }
             }
             Msg::Ringing { on } => self.emit(Event::Ringing { from: id, on }),
+            Msg::Sms(msg) => self.on_sms(id, msg).await,
             Msg::Bye { .. } | Msg::Unknown => {}
         }
     }

@@ -21,6 +21,8 @@ use crate::proto::{
 use crate::store::{DeviceSettings, SecretStore};
 use crate::transfer::OutgoingFile;
 
+pub mod sms;
+
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum TandemError {
     #[error("{reason}")]
@@ -1080,6 +1082,8 @@ pub enum TandemEvent {
     Ringing { from: String, on: bool },
     /// About the Wi-Fi of the other device: the network it is on, a question for the password of this one's, or the answer.
     Wifi { from: String, msg: TandemWifi },
+    /// Messages: on a phone a question to answer, on a computer the messages that changed there (see `sms`).
+    Sms { from: String, msg: sms::TandemSmsEvent },
 }
 
 impl From<Event> for TandemEvent {
@@ -1216,6 +1220,7 @@ impl From<Event> for TandemEvent {
             }
             Event::Ringing { from, on } => TandemEvent::Ringing { from: from.to_string(), on },
             Event::Wifi { from, msg } => TandemEvent::Wifi { from: from.to_string(), msg: msg.into() },
+            Event::Sms { from, msg } => TandemEvent::Sms { from: from.to_string(), msg: msg.into() },
         }
     }
 }
@@ -1543,7 +1548,7 @@ impl TandemEngine {
     ) -> Result<(), TandemError> {
         let id = DeviceId::parse(&id)?;
         self.engine
-            .set_device_settings(&id, DeviceSettings { clipboard, auto_accept, notifications })
+            .set_device_settings(&id, DeviceSettings { clipboard, auto_accept, notifications, ..self.engine.device_settings(&id) })
             .map_err(Into::into)
     }
 

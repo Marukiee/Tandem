@@ -99,6 +99,9 @@ pub struct DeviceSettings {
     pub auto_accept: bool,
     #[serde(default = "yes")]
     pub notifications: bool,
+    /// May read the text messages of this phone and send them from it (see `sms`).
+    #[serde(default = "yes")]
+    pub messages: bool,
 }
 
 fn yes() -> bool {
@@ -107,14 +110,14 @@ fn yes() -> bool {
 
 impl Default for DeviceSettings {
     fn default() -> Self {
-        DeviceSettings { clipboard: true, auto_accept: true, notifications: true }
+        DeviceSettings { clipboard: true, auto_accept: true, notifications: true, messages: true }
     }
 }
 
 impl DeviceSettings {
-    /// What a guest gets: nothing of theirs comes into the clipboard, no notifications, and files are asked about first.
+    /// What a guest gets: nothing of theirs comes into the clipboard, no notifications, files are asked about first, and no messages.
     pub fn guest() -> DeviceSettings {
-        DeviceSettings { clipboard: false, auto_accept: false, notifications: false }
+        DeviceSettings { clipboard: false, auto_accept: false, notifications: false, messages: false }
     }
 }
 
@@ -206,5 +209,16 @@ mod tests {
         let settings = Settings::default();
         let id = DeviceId::from_bytes([1; 16]);
         assert!(settings.for_device(&id).clipboard);
+    }
+
+    #[test]
+    fn messages_are_on_for_a_device_from_before_they_existed_and_off_for_a_guest() {
+        // What an older version wrote for a device: no `messages` in it.
+        let old = ciborium::Value::Map(vec![(ciborium::Value::Text("clipboard".into()), ciborium::Value::Bool(false))]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&old, &mut bytes).unwrap();
+        let read: DeviceSettings = crate::proto::decode(&bytes).unwrap();
+        assert!(!read.clipboard && read.messages);
+        assert!(!DeviceSettings::guest().messages);
     }
 }

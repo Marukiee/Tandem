@@ -61,6 +61,9 @@ object FeatureReport {
         list += TandemFeature("ring", !silent, context.getString(R.string.feature_ring), if (silent) context.getString(R.string.feature_ring_why) else "", null)
         // The sheet of the system saves what a computer hands over, on every phone: nothing here can be missing for it.
         list += TandemFeature("wifi.join", true, context.getString(R.string.feature_wifi_join), "", null)
+        if (nl.markmaaktmedia.tandem.messages.SmsAccess.available(context)) {
+            add("messages", nl.markmaaktmedia.tandem.messages.SmsAccess.granted(context), R.string.feature_messages, R.string.feature_messages_why, "messages")
+        }
         return list
     }
 
@@ -82,6 +85,7 @@ object FeatureReport {
             "all-files" -> Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, pkg)
             "battery" -> Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg)
             "app-notifications" -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            "messages" -> nl.markmaaktmedia.tandem.messages.MessagesAccessActivity.intent(context, null)
             // Single top: with Tandem already open, Android otherwise only brings it to the front and never hands it the intent, so the
             // page of the setting was not opened.
             "sharing" -> Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_SHARING).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)

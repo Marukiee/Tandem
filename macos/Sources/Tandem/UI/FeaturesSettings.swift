@@ -145,6 +145,7 @@ struct FeatureRow: View {
         case "files": "folder"
         case "camera": "camera"
         case "background": "battery.75percent"
+        case "messages": "message"
         default: "exclamationmark"
         }
     }

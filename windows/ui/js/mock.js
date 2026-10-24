@@ -9,7 +9,7 @@ const cover = "data:image/svg+xml;utf8," + encodeURIComponent(
 
 const now = Date.now();
 const devices = empty ? [] : [
-  { id: "phone", name: "Pixel 9", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host", "screen.extend.view", "wifi.join"],
+  { id: "phone", name: "Pixel 9", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host", "screen.extend.view", "wifi.join", "sms"],
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 80, charging: true, powerSave: false }, network: { kind: "cellular", ssid: null, metered: true, roaming: false, signal: 3 }, hotspot: true, dnd: false } },
   { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view", "screen.extend.view"],
@@ -61,6 +61,77 @@ const players = empty ? {} : {
   phone: [{ id: "pixel", app: "PixelPlayer", title: "I Only Watch It For The Weather", artist: "The Delegates", album: "", playing: true, positionMs: 78000, durationMs: 213000, canPrev: true, canNext: true, canSeek: true, art: "1" }],
 };
 const art = { 1: cover };
+
+// Messages of the phone. ?sms=off, no_permission, offline or unavailable shows what the page says when it cannot.
+const smsRefusal = new URLSearchParams(location.search).get("sms");
+const hour = 3600000;
+const smsConversations = [
+  { thread: 1, addresses: ["+31612345678"], name: "Anna de Vries", snippet: "Zie je morgen bij het station!", date: now - hour / 6, unread: 2, fromMe: false },
+  { thread: 2, addresses: ["+31687654321"], name: "", snippet: "Uw pakket wordt vandaag tussen 14:00 en 16:00 bezorgd.", date: now - 3 * hour, unread: 0, fromMe: false },
+  { thread: 3, addresses: ["+31611111111", "+31622222222"], name: "Bob, Carla", snippet: "Wie neemt de taart mee?", date: now - 26 * hour, unread: 0, fromMe: false },
+  { thread: 4, addresses: ["+31633333333"], name: "Mam", snippet: "Bel je me straks even?", date: now - 50 * hour, unread: 0, fromMe: true },
+  { thread: 5, addresses: ["+31201234567"], name: "Tandarts", snippet: "Herinnering: uw afspraak is op dinsdag om 09:30.", date: now - 9 * 24 * hour, unread: 0, fromMe: false },
+];
+const smsMessage = (id, thread, body, ago, mine, extra = {}) => ({
+  id, mms: false, thread, address: mine ? "" : (smsConversations.find((c) => c.thread === thread) || {}).addresses?.[0] || "", body, date: now - ago,
+  status: mine ? "sent" : "received", read: true, pictures: [], ...extra,
+});
+const smsThreads = {
+  1: [
+    smsMessage(9, 1, "Zie je morgen bij het station!", hour / 6, false),
+    smsMessage(8, 1, "Om half negen?", hour / 5, false),
+    smsMessage(7, 1, "Top, ik neem de trein van 8:12. Dan ben ik er ruim op tijd en kunnen we nog even koffie halen voordat het begint.", hour / 3, true),
+    smsMessage(6, 1, "", 2 * hour, false, { mms: true, pictures: [11] }),
+    smsMessage(5, 1, "Kijk wat ik vond", 2 * hour + 60000, false),
+    smsMessage(4, 1, "Lukt het morgen?", 25 * hour, true, { status: "failed" }),
+    smsMessage(3, 1, "Ja hoor, prima", 26 * hour, false),
+    smsMessage(2, 1, "Zullen we morgen samen gaan?", 26 * hour + 120000, true),
+  ],
+  2: [smsMessage(21, 2, "Uw pakket wordt vandaag tussen 14:00 en 16:00 bezorgd.", 3 * hour, false)],
+  3: [
+    smsMessage(31, 3, "Wie neemt de taart mee?", 26 * hour, false, { address: "+31622222222" }),
+    smsMessage(30, 3, "Ik neem de slingers mee", 27 * hour, false, { address: "+31611111111" }),
+  ],
+  4: [smsMessage(41, 4, "Bel je me straks even?", 50 * hour, true)],
+  5: [smsMessage(51, 5, "Herinnering: uw afspraak is op dinsdag om 09:30.", 9 * 24 * hour, false)],
+};
+const smsPicture = "data:image/svg+xml;utf8," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180"><rect width="240" height="180" fill="#7fb3d5"/><circle cx="180" cy="50" r="24" fill="#f7dc6f"/><path d="M0 180 L80 90 L140 150 L190 110 L240 160 L240 180 Z" fill="#1e8449"/></svg>',
+);
+let smsNext = 100;
+
+function smsAnswer(command, args) {
+  if (command === "sms_ask_access") return null;
+  if (smsRefusal) throw smsRefusal;
+  switch (command) {
+    case "sms_conversations": return { items: smsConversations.filter((c) => !args.before || c.date <= args.before).slice(0, args.limit), more: false };
+    case "sms_messages": return { thread: args.thread, items: smsThreads[args.thread] || [], more: false };
+    case "sms_contacts": return [
+      { name: "Anna de Vries", number: "+31612345678", label: "Mobiel" },
+      { name: "Anne Jansen", number: "+31698765432", label: "Werk" },
+    ].filter((c) => c.name.toLowerCase().includes(args.query.toLowerCase()) || c.number.includes(args.query));
+    case "sms_picture": return smsPicture;
+    case "sms_send": {
+      let conversation = smsConversations.find((c) => c.addresses.join() === args.to.join());
+      if (!conversation) {
+        conversation = { thread: smsNext++, addresses: args.to, name: "", snippet: args.text, date: Date.now(), unread: 0, fromMe: true };
+        smsConversations.unshift(conversation);
+        smsThreads[conversation.thread] = [];
+      }
+      // The phone shows what it sent a moment later, and an answer comes in after that.
+      setTimeout(() => {
+        const sent = smsMessage(smsNext++, conversation.thread, args.text, 0, true, { date: Date.now() });
+        emit("sms", { device: "phone", conversations: [{ ...conversation, snippet: args.text, date: sent.date, fromMe: true }], messages: [sent] });
+      }, 700);
+      setTimeout(() => {
+        const reply = smsMessage(smsNext++, conversation.thread, "Helemaal goed!", 0, false, { date: Date.now(), read: false });
+        emit("sms", { device: "phone", conversations: [{ ...conversation, snippet: reply.body, date: reply.date, fromMe: false, unread: 1 }], messages: [reply] });
+      }, 3000);
+      return conversation.thread;
+    }
+    default: return null;
+  }
+}
 
 export function listen(event, handler) {
   (listeners[event] ||= []).push(handler);
@@ -115,6 +186,7 @@ function snapMock(a) {
 
 export async function call(command, args) {
   await new Promise((r) => setTimeout(r, 40));
+  if (command.startsWith("sms_")) return smsAnswer(command, args);
   switch (command) {
     case "get_state": return state;
     case "get_players": return { players, art };

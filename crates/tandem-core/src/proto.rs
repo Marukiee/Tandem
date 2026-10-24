@@ -156,6 +156,8 @@ pub enum Msg {
     Ringing { on: bool },
     /// Handing the Wi-Fi a computer is on to another device (see `wifi`). Devices that do not know it skip it.
     Wifi(crate::wifi::WifiMsg),
+    /// The text messages of a phone, read and sent from a computer (see `sms`). Devices that do not know it skip it.
+    Sms(crate::sms::SmsMsg),
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,

@@ -197,7 +197,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "ring", "wifi.share", "wifi.join"] + ScreenHost.shared.capabilities(),
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "ring", "wifi.share", "wifi.join", "sms.view"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
@@ -610,6 +610,9 @@ final class EngineModel {
         case .sideReady, .sideHeard:
             // Read by `sideStart` itself.
             break
+
+        case let .sms(from, msg):
+            MessagesStore.shared.handle(from: from, event: msg)
 
         case let .openSettings(from, page):
             // Another device of the person shows what this Mac is missing and was asked to open the place where it is turned on.

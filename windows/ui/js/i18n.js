@@ -160,6 +160,20 @@ const en = {
   find_sound: "Sound when this PC is looked for", find_sound_sub: "Plays loudly until you stop it, for two minutes at most", find_preview: "Play it",
   "find_sound@linux": "Sound when this computer is looked for",
   wifi_share: "Share Wi-Fi", wifi_share_tip: "Send the name and password of this computer's Wi-Fi to {0}",
+  sms_messages: "Messages", sms_new: "New message", sms_you: "You: {0}", sms_none: "No messages yet", sms_choose: "Choose a conversation",
+  sms_placeholder: "Text message", sms_send: "Send", sms_sending: "Sending", sms_not_sent: "Not sent", sms_no_text: "Message without text", sms_picture: "Photo",
+  sms_group_note: "A group conversation can only be answered on the phone for now.", sms_unknown: "Unknown number",
+  sms_to: "To:", sms_name_or_number: "Name or number", sms_someone_else: "Someone else", sms_pick_someone: "Choose someone from the list, or type a number",
+  sms_today: "Today {0}", sms_yesterday: "Yesterday", sms_yesterday_at: "Yesterday {0}",
+  sms_ask: "Ask {0}", sms_ask_again: "Ask again", sms_look: "Look at {0}",
+  sms_off_title: "Messages is off for this PC", "sms_off_title@linux": "Messages is off for this computer",
+  sms_off_body: "It was turned off on {0}. Ask from here and allow it there, or turn on Messages for this PC in Tandem on the phone.",
+  "sms_off_body@linux": "It was turned off on {0}. Ask from here and allow it there, or turn on Messages for this computer in Tandem on the phone.",
+  sms_permission_title: "Allow Tandem on {0}", sms_permission_body: "{0} has not let Tandem read text messages yet. Ask from here, and allow it on the phone.",
+  sms_unavailable_title: "{0} has no text messages", sms_unavailable_body: "This device has no SIM to send and receive text messages with.",
+  sms_offline_title: "{0} is not connected", sms_offline_body: "Your messages show up here as soon as it can be reached.",
+  sms_failed_title: "Your messages could not be loaded",
+  sms_err_off: "Messages is off for this computer on the phone", sms_err_permission: "The phone has not allowed Tandem to read its messages", sms_err_offline: "The phone is not connected",
 };
 
 const nl = {
@@ -322,6 +336,20 @@ const nl = {
   find_sound: "Geluid als deze pc gezocht wordt", find_sound_sub: "Speelt hard tot je het stopt, hooguit twee minuten", find_preview: "Laat horen",
   "find_sound@linux": "Geluid als deze computer gezocht wordt",
   wifi_share: "Wifi delen", wifi_share_tip: "Stuur de naam en het wachtwoord van de wifi van deze computer naar {0}",
+  sms_messages: "Berichten", sms_new: "Nieuw bericht", sms_you: "Jij: {0}", sms_none: "Nog geen berichten", sms_choose: "Kies een gesprek",
+  sms_placeholder: "Sms-bericht", sms_send: "Versturen", sms_sending: "Wordt verstuurd", sms_not_sent: "Niet verstuurd", sms_no_text: "Bericht zonder tekst", sms_picture: "Foto",
+  sms_group_note: "Een groepsgesprek beantwoord je voorlopig alleen op de telefoon.", sms_unknown: "Onbekend nummer",
+  sms_to: "Aan:", sms_name_or_number: "Naam of nummer", sms_someone_else: "Iemand anders", sms_pick_someone: "Kies iemand uit de lijst, of typ een nummer",
+  sms_today: "Vandaag {0}", sms_yesterday: "Gisteren", sms_yesterday_at: "Gisteren {0}",
+  sms_ask: "Vraag het {0}", sms_ask_again: "Vraag opnieuw", sms_look: "Kijk op {0}",
+  sms_off_title: "Berichten staat uit voor deze pc", "sms_off_title@linux": "Berichten staat uit voor deze computer",
+  sms_off_body: "Het is uitgezet op {0}. Vraag het vanaf hier en sta het daar toe, of zet Berichten voor deze pc aan in Tandem op de telefoon.",
+  "sms_off_body@linux": "Het is uitgezet op {0}. Vraag het vanaf hier en sta het daar toe, of zet Berichten voor deze computer aan in Tandem op de telefoon.",
+  sms_permission_title: "Geef Tandem toegang op {0}", sms_permission_body: "{0} laat Tandem nog geen sms'jes lezen. Vraag het vanaf hier en sta het toe op de telefoon.",
+  sms_unavailable_title: "{0} heeft geen sms'jes", sms_unavailable_body: "Dit apparaat heeft geen simkaart om sms'jes mee te sturen en te ontvangen.",
+  sms_offline_title: "{0} is niet verbonden", sms_offline_body: "Je berichten verschijnen hier zodra het bereikbaar is.",
+  sms_failed_title: "Je berichten konden niet worden geladen",
+  sms_err_off: "Berichten staat uit voor deze computer op de telefoon", sms_err_permission: "De telefoon heeft Tandem nog geen toegang tot de berichten gegeven", sms_err_offline: "De telefoon is niet verbonden",
 };
 
 const tables = { en, nl };
