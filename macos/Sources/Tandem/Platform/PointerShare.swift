@@ -77,7 +77,14 @@ final class PointerShare {
     }
 
     /// The side of this screen where each computer sits.
-    var neighbours: [String: String] { layout.mapValues(\.edge) }
+    var neighbours: [String: String] { layout.filter { !Self.isExtendedScreen($0.key) }.mapValues(\.edge) }
+
+    /// A device that shows an extra screen of this Mac right now: that screen is where the pointer goes on that side, a part of this
+    /// Mac, so the device is no neighbour of the shared pointer and gets no drop zone until the extra screen ends.
+    static func isExtendedScreen(_ id: String) -> Bool {
+        guard let current = ScreenHost.shared.current else { return false }
+        return current.extend && current.peer == id
+    }
 
     /// How big the screens of the other computers are, as they said (in the units of their own pointer).
     private(set) var sizes: [String: CGSize] = [:]
@@ -110,7 +117,7 @@ final class PointerShare {
     /// The computers next to this screen that are there to go to now, as the arithmetic of the core wants them.
     private func reachable() -> [TandemNeighbour] {
         layout.keys.compactMap { id in
-            guard model.device(id)?.online == true, !declined(id), let placement = tandemPlacement(id) else { return nil }
+            guard model.device(id)?.online == true, !declined(id), !Self.isExtendedScreen(id), let placement = tandemPlacement(id) else { return nil }
             let size = sizes[id] ?? mainSize
             return TandemNeighbour(id: id, placement: placement, width: Int32(size.width), height: Int32(size.height))
         }

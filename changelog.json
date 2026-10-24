@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.99",
+    "date": "2026-10-24",
+    "en": {
+      "title": "An extended screen is no neighbour",
+      "new": [
+        "Mac: a device that shows your extended screen gets no drop zone and no shared mouse while it does"
+      ]
+    },
+    "nl": {
+      "title": "Een uitgebreid scherm is geen buur",
+      "new": [
+        "Mac: een apparaat dat je uitgebreide scherm toont krijgt zolang geen dropzone en geen gedeelde muis"
+      ]
+    }
+  },
+  {
     "version": "0.1.98",
     "date": "2026-10-24",
     "en": {
