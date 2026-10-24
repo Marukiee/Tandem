@@ -41,7 +41,6 @@
     <string name="features_notice">Not everything works on %1$s</string>
     <string name="features_row">What works</string>
     <string name="features_row_sub">What each device can do, and what it still needs</string>
-    <string name="settings_kw_features">features permissions works working broken missing allowed</string>
     <string name="perm_microphone">Microphone</string>
     <string name="perm_microphone_why">Only to hear on which side of a computer the phone stands, with Tandem open.</string>
     <string name="media_not_allowed">%1$s cannot press these buttons yet</string>

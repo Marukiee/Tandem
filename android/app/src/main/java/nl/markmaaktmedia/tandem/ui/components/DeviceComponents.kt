@@ -357,11 +357,12 @@ fun RollingNumber(
 fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp = 64.dp) {
     val level = battery.level.toInt()
     val extras = LocalTandemExtraColors.current
-    // Only a full battery closes the ring: at 97 percent a closed circle with a flaw would read as full.
-    val sweep by animateFloatAsState(
-        if (level >= 100) 1f else level / 100f * 0.945f,
-        TandemMotion.spatial(), label = "batterySweep",
-    )
+    // Only a full battery closes the ring: at 97 percent a closed circle with a flaw would read as full. It fills from nothing when it
+    // comes on screen, so a battery that arrives is seen arriving.
+    val target = if (level >= 100) 1f else level / 100f * 0.945f
+    val fill = remember { Animatable(0f) }
+    LaunchedEffect(target) { fill.animateTo(target, TandemMotion.spatial()) }
+    val sweep = fill.value
     val tint by animateColorAsState(
         when {
             battery.charging -> extras.charging
@@ -404,6 +405,26 @@ fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp 
                 Icon(TandemIcons.BoltFilled, null, tint = tint, modifier = Modifier.size(size * 0.18f).graphicsLayer { alpha = pulse.value })
             }
         }
+    }
+}
+
+/**
+ * The battery of a device, coming and going. It arrives a moment after the device connects, in a status of its own, and grows in then
+ * instead of being there at once; when the device goes it shrinks away with the last level it had. Already there when the page opens, it
+ * is simply there.
+ */
+@Composable
+fun ArrivingBattery(battery: TandemBattery?, content: @Composable (TandemBattery) -> Unit) {
+    val last = remember { androidx.compose.runtime.mutableStateOf(battery) }
+    if (battery != null) last.value = battery
+    AnimatedVisibility(
+        visible = battery != null,
+        enter = fadeIn(TandemMotion.fadeSpec()) + scaleIn(TandemMotion.bouncy(), initialScale = 0.4f) +
+            androidx.compose.animation.expandHorizontally(TandemMotion.sizeSpring(), expandFrom = Alignment.End),
+        exit = fadeOut(TandemMotion.fadeSpec()) + scaleOut(TandemMotion.spatial(), targetScale = 0.4f) +
+            androidx.compose.animation.shrinkHorizontally(TandemMotion.sizeSpring(), shrinkTowards = Alignment.End),
+    ) {
+        last.value?.let { content(it) }
     }
 }
 

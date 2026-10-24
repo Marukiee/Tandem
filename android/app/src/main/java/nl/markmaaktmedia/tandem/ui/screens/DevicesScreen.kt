@@ -47,6 +47,7 @@ import nl.markmaaktmedia.tandem.ui.routeBounds
 import nl.markmaaktmedia.tandem.ui.routeKey
 import nl.markmaaktmedia.tandem.engine.EngineState
 import nl.markmaaktmedia.tandem.graph
+import nl.markmaaktmedia.tandem.ui.components.ArrivingBattery
 import nl.markmaaktmedia.tandem.ui.components.BatteryBadge
 import nl.markmaaktmedia.tandem.ui.components.DeviceGlyph
 import nl.markmaaktmedia.tandem.ui.components.EmptyState
@@ -264,7 +265,7 @@ fun DeviceCard(
             if (pinned) {
                 Icon(TandemIcons.Pin, stringResource(R.string.device_pinned), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
             }
-            device.status.battery?.let { BatteryBadge(it) }
+            ArrivingBattery(device.status.battery) { BatteryBadge(it) }
         }
 
         BatchStrip(device.id)
@@ -343,7 +344,7 @@ private fun CompactDeviceCard(
             DeviceGlyph(device.platform, device.online, size = 44.dp, deviceId = device.id)
             Spacer(Modifier.weight(1f))
             if (pinned) Icon(TandemIcons.Pin, stringResource(R.string.device_pinned), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-            device.status.battery?.let { BatteryBadge(it) }
+            ArrivingBattery(device.status.battery) { BatteryBadge(it) }
         }
         BatchStrip(device.id)
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {

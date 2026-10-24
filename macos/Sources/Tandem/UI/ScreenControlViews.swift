@@ -74,6 +74,11 @@ final class ScreenPanels {
         return panel
     }
 
+    /// Where the lowest of these panels starts, when one is showing: another panel at the top of the screen goes below it, not over it.
+    var lowestEdge: CGFloat? {
+        [promptPanel, indicatorPanel].compactMap { $0 }.filter(\.isVisible).map(\.frame.minY).min()
+    }
+
     private func place(_ panel: NSPanel, row: Int) {
         guard let screen = NSScreen.main else { return }
         let area = screen.visibleFrame

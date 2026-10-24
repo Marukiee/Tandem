@@ -470,8 +470,14 @@ fn fit(source: (u32, u32), max: (u32, u32)) -> (u32, u32) {
     let max_w = if max.0 == 0 { sw } else { max.0 as f64 };
     let max_h = if max.1 == 0 { sh } else { max.1 as f64 };
     let scale = (max_w / sw).min(max_h / sh).min(1.0);
-    let even = |n: f64| (((n as u32).max(16)) & !1).max(16);
-    (even(sw * scale), even(sh * scale))
+    packed((sw * scale) as u32, (sh * scale) as u32)
+}
+
+/// A size whose pictures GStreamer hands over without padding, so that one picture is exactly width times height times one and a half
+/// bytes in I420. It pads every row of a plane to a multiple of 4 bytes: a width that is not a multiple of 8 made the reader fall out of
+/// step with the pictures (stripes and wrong colours), which happened with a monitor made in the size of a viewer, such as 2382 wide.
+fn packed(width: u32, height: u32) -> (u32, u32) {
+    ((width.max(16)) & !7, (height.max(16)) & !1)
 }
 
 impl WaylandGrabber {
@@ -496,7 +502,7 @@ impl WaylandGrabber {
             };
             let Started { held, node, source, remote } = started;
             // A monitor made for the viewer is the size that is asked of the stream: the desktop gives it that shape.
-            let size = made.map(|(w, h)| (w & !1, h & !1)).unwrap_or_else(|| fit(source, max));
+            let size = made.map(|(w, h)| packed(w, h)).unwrap_or_else(|| fit(source, max));
 
             let raw = remote.as_raw_fd();
             let mut command = Command::new("gst-launch-1.0");
@@ -630,7 +636,23 @@ mod tests {
         // Never larger than the screen.
         assert_eq!(fit((1280, 720), (3000, 3000)), (1280, 720));
         let (w, h) = fit((1367, 769), (1000, 1000));
-        assert!(w % 2 == 0 && h % 2 == 0);
+        assert!(w % 8 == 0 && h % 2 == 0);
+    }
+
+    #[test]
+    fn a_picture_in_i420_has_no_padding_at_any_size_that_is_asked() {
+        // How GStreamer lays out I420 (video-info.c): rows of 4 bytes, planes after an even number of rows.
+        fn gstreamer_size(w: u32, h: u32) -> u32 {
+            let up4 = |n: u32| (n + 3) & !3;
+            let up2 = |n: u32| (n + 1) & !1;
+            let luma = up4(w) * up2(h);
+            let chroma = up4(up2(w) / 2) * (up2(h) / 2);
+            luma + 2 * chroma
+        }
+        for (w, h) in [(2382, 1546), (1170, 540), (2340, 1080), (1512, 982), (1366, 768), (641, 361)] {
+            let (pw, ph) = packed(w, h);
+            assert_eq!(gstreamer_size(pw, ph), pw * ph * 3 / 2, "{w} by {h} became {pw} by {ph}");
+        }
     }
 
     #[test]

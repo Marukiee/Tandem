@@ -131,4 +131,5 @@
     <string name="settings_kw_sharing_quick_tile">quick share tegel snelle instellingen schakelaar toevoegen</string>
     <string name="settings_kw_sharing_quick_tap">quick share tegel tik openen aan uit actie</string>
     <string name="settings_kw_sharing_quick_visible">quick share zichtbaar aan blijven timer minuten uur uit</string>
+    <string name="settings_kw_features">functies rechten toestemming werkt werken kapot mist toegestaan</string>
 </resources>

@@ -11,7 +11,7 @@ final class SidePrompt {
 
     func ask(_ device: TandemDevice) {
         close()
-        let panel = NSPanel(
+        let panel = KeyPanel(
             contentRect: NSRect(x: 0, y: 0, width: 440, height: 200),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
@@ -29,9 +29,13 @@ final class SidePrompt {
         panel.setContentSize(view.fittingSize)
         if let screen = NSScreen.main {
             let area = screen.visibleFrame
-            panel.setFrameOrigin(NSPoint(x: area.midX - panel.frame.width / 2, y: area.maxY - panel.frame.height - 10))
+            // Under the bar that says a device is looking at this Mac, when that is there: over it, the question had no title. Both
+            // panels have clear room for their shadows (30 under the bar, 12 above this one), which may overlap: 12 points between the glass.
+            let top = ScreenPanels.shared.lowestEdge.map { $0 + 30 } ?? area.maxY - 10
+            panel.setFrameOrigin(NSPoint(x: area.midX - panel.frame.width / 2, y: top - panel.frame.height))
         }
-        panel.orderFrontRegardless()
+        // Key, without bringing Tandem to the front: the buttons of a panel that is not key are drawn grey, as if they could not be pressed.
+        panel.makeKeyAndOrderFront(nil)
         self.panel = panel
     }
 
@@ -111,4 +115,9 @@ private struct SidePromptView: View {
             }
         }
     }
+}
+
+/// A panel that can take the keyboard without activating the app.
+private final class KeyPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
 }

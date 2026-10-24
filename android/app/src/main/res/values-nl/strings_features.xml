@@ -39,7 +39,6 @@
     <string name="features_notice">Niet alles werkt op %1$s</string>
     <string name="features_row">Wat werkt</string>
     <string name="features_row_sub">Wat elk apparaat kan, en wat het nog nodig heeft</string>
-    <string name="settings_kw_features">functies rechten toestemming werkt werken kapot mist toegestaan</string>
     <string name="perm_microphone">Microfoon</string>
     <string name="perm_microphone_why">Alleen om te horen aan welke kant van een computer de telefoon staat, met Tandem open.</string>
     <string name="media_not_allowed">%1$s kan deze knoppen nog niet bedienen</string>

@@ -448,6 +448,8 @@ private struct MenuRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // The first row of a list that opens would otherwise wear the blue ring of keyboard focus: the hover is what marks a row here.
+        .focusEffectDisabled()
         .disabled(disabled)
         .opacity(disabled ? 0.4 : 1)
         .onHover { hovering = $0 }

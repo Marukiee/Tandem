@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.1.93",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Clean second screens",
+      "new": [
+        "A second screen made by Linux no longer shows stripes and wrong colours",
+        "The battery of a device grows in when it connects again",
+        "The side question on the Mac no longer hides under the control bar",
+        "No blue ring around the first item of a menu"
+      ]
+    },
+    "nl": {
+      "title": "Schone tweede schermen",
+      "new": [
+        "Een tweede scherm dat Linux maakt toont geen strepen en verkeerde kleuren meer",
+        "De batterij van een apparaat groeit in beeld als het weer verbindt",
+        "De vraag over de kant op de Mac valt niet meer onder de bedieningsbalk",
+        "Geen blauwe rand meer om het eerste item van een menu"
+      ]
+    }
+  },
+  {
     "version": "0.1.92",
     "date": "2026-10-24",
     "en": {

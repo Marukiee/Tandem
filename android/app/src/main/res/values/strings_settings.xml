@@ -132,4 +132,5 @@
     <string name="settings_kw_sharing_quick_tile">quick share tile quick settings shade switch toggle add</string>
     <string name="settings_kw_sharing_quick_tap">quick share tile tap open toggle action</string>
     <string name="settings_kw_sharing_quick_visible">quick share visible stay on timer minutes hour off</string>
+    <string name="settings_kw_features">features permissions works working broken missing allowed</string>
 </resources>

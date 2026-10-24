@@ -358,6 +358,9 @@ enum DeviceIconChoice: CaseIterable {
 struct BatteryRing: View {
     let battery: TandemBattery
     var size: CGFloat = 64
+    /// False until it is on screen: the ring then fills from nothing and the number counts up, so a device that connects again
+    /// brings its battery in, instead of a full ring that is suddenly there.
+    @LocalState private var shown = false
 
     private var tint: Color {
         if battery.charging { return .green }
@@ -376,14 +379,14 @@ struct BatteryRing: View {
         ZStack {
             Circle().stroke(Color.primary.opacity(0.08), lineWidth: size * 0.11)
             Circle()
-                .trim(from: 0, to: arc)
+                .trim(from: 0, to: shown ? arc : 0)
                 .stroke(tint, style: StrokeStyle(lineWidth: size * 0.11, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.tandem, value: battery.level)
             VStack(spacing: 0) {
-                Text("\(battery.level)")
+                Text("\(shown ? battery.level : 0)")
                     .font(.system(size: size * 0.28, weight: .bold, design: .rounded))
-                    .contentTransition(.numericText(value: Double(battery.level)))
+                    .contentTransition(.numericText(value: Double(shown ? battery.level : 0)))
                     .animation(.tandem, value: battery.level)
                 if battery.charging {
                     PulsingSymbol(name: "bolt.fill", pointSize: size * 0.16, color: .systemGreen)
@@ -392,7 +395,10 @@ struct BatteryRing: View {
             }
         }
         .frame(width: size, height: size)
+        .scaleEffect(shown ? 1 : 0.8)
+        .opacity(shown ? 1 : 0)
         .animation(.tandemFade, value: tint)
+        .onAppear { withAnimation(.tandem.delay(0.05)) { shown = true } }
     }
 }
 

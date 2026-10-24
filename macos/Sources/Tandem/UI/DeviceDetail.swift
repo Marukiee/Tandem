@@ -39,6 +39,8 @@ struct DeviceDetail: View {
         .scrollPosition($position)
         .animation(.tandem, value: device.id)
         .animation(.tandem, value: device.online)
+        // The battery comes a moment after the connection, in a status of its own: the space it takes is made smoothly too.
+        .animation(.tandem, value: device.status.battery != nil)
         .onChange(of: device.id) {
             confirmRemoval = false
             position.scrollTo(edge: .top)
@@ -106,6 +108,7 @@ struct DeviceDetail: View {
                     }
                     .padding(8)
                     .frame(width: 210)
+                    .focusEffectDisabled()
                 }
 
                 VStack(alignment: .leading, spacing: 8) {

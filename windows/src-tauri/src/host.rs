@@ -95,7 +95,8 @@ fn extended_size(width: u32, height: u32) -> (u32, u32) {
         w *= scale;
         h *= scale;
     }
-    (((w as u32) & !1).max(640), ((h as u32) & !1).max(360))
+    // A width that is a multiple of 8: see `packed` in the grabber, which would cut it to that anyway.
+    (((w as u32) & !7).max(640), ((h as u32) & !1).max(360))
 }
 
 /// Whether the viewers may also use the mouse and keyboard here.
