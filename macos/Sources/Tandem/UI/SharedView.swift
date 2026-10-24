@@ -24,7 +24,8 @@ struct SharedView: View {
     }
 
     private var filtering: Bool {
-        kind != .all || direction != .all || period != .always || onlyProblems || model.sharedDeviceFilter != nil || !query.isEmpty
+        // Not the search: that has its own cross, and a button that came while typing would push the row about.
+        kind != .all || direction != .all || period != .always || onlyProblems || model.sharedDeviceFilter != nil
     }
 
     /// The devices that something was sent to or received from, for the menu of devices.
@@ -48,7 +49,17 @@ struct SharedView: View {
                     )
                     .frame(maxWidth: .infinity, minHeight: 260)
                 } else {
-                    filterBar
+                    // The search and the filters on one row, like the other pages; the filters go under it when the window is narrow.
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 10) {
+                            PageSearchField(text: $query, prompt: "Search by name").frame(minWidth: 200)
+                            filterPills.fixedSize()
+                        }
+                        VStack(alignment: .leading, spacing: 10) {
+                            PageSearchField(text: $query, prompt: "Search by name")
+                            ScrollView(.horizontal, showsIndicators: false) { filterPills }.scrollClipDisabled()
+                        }
+                    }
                     if items.isEmpty {
                         ContentUnavailableView.search.frame(maxWidth: .infinity, minHeight: 200)
                     } else {
@@ -68,9 +79,8 @@ struct SharedView: View {
             .frame(maxWidth: .infinity)
             .animation(.tandem, value: items.map(\.id))
         }
-        .searchable(text: $query, placement: .toolbar, prompt: Text("Search by name"))
         .toolbar {
-            // The buttons and the search at the trailing end, where the system's own apps have them.
+            // The buttons at the trailing end, where the system's own apps have them.
             ToolbarSpacer(.flexible)
             if model.transfers.contains(where: { $0.state != .active }) {
                 ToolbarItem(placement: .primaryAction) {
@@ -86,71 +96,68 @@ struct SharedView: View {
     }
 
     /// The filters: what kind of file, who it was with, which way it went, when, and whether it went wrong. A filter that is on is
-    /// coloured, and one press on "Clear filters" lets all of them go. The search is in the toolbar, where the system puts it.
-    private var filterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            GlassEffectContainer(spacing: 0) {
-                HStack(spacing: 8) {
-                    FilterMenu(title: Text(kind == .all ? "Type" : kind.title), symbol: kind.symbol, active: kind != .all) {
-                        ForEach(SharedKind.allCases) { option in
-                            Button { withAnimation(.tandem) { kind = option } } label: {
-                                Label(option.title, systemImage: kind == option ? "checkmark" : option.symbol)
-                            }
+    /// coloured, and one press on "Clear filters" lets all of them go.
+    private var filterPills: some View {
+        GlassEffectContainer(spacing: 0) {
+            HStack(spacing: 8) {
+                FilterMenu(title: Text(kind == .all ? "Type" : kind.title), symbol: kind.symbol, active: kind != .all) {
+                    ForEach(SharedKind.allCases) { option in
+                        Button { withAnimation(.tandem) { kind = option } } label: {
+                            Label(option.title, systemImage: kind == option ? "checkmark" : option.symbol)
                         }
-                    }
-                    FilterMenu(
-                        title: model.sharedDeviceFilter.flatMap { model.device($0)?.name }.map { Text(verbatim: $0) } ?? Text("Device"),
-                        symbol: "laptopcomputer.and.iphone", active: model.sharedDeviceFilter != nil
-                    ) {
-                        Button { withAnimation(.tandem) { model.sharedDeviceFilter = nil } } label: {
-                            Label("All devices", systemImage: model.sharedDeviceFilter == nil ? "checkmark" : "circle.dashed")
-                        }
-                        Divider()
-                        ForEach(peers, id: \.id) { peer in
-                            Button { withAnimation(.tandem) { model.sharedDeviceFilter = peer.id } } label: {
-                                Label(peer.name, systemImage: model.sharedDeviceFilter == peer.id ? "checkmark" : "circle")
-                            }
-                        }
-                    }
-                    FilterMenu(title: Text(direction == .all ? "Direction" : direction.title), symbol: direction.symbol, active: direction != .all) {
-                        ForEach(SharedDirection.allCases) { option in
-                            Button { withAnimation(.tandem) { direction = option } } label: {
-                                Label(option.title, systemImage: direction == option ? "checkmark" : option.symbol)
-                            }
-                        }
-                    }
-                    FilterMenu(title: Text(period == .always ? "When" : period.title), symbol: "calendar", active: period != .always) {
-                        ForEach(SharedPeriod.allCases) { option in
-                            Button { withAnimation(.tandem) { period = option } } label: {
-                                Label(option.title, systemImage: period == option ? "checkmark" : "calendar")
-                            }
-                        }
-                    }
-                    Button { withAnimation(.tandem) { onlyProblems.toggle() } } label: {
-                        Label("Failed", systemImage: "exclamationmark.triangle")
-                    }
-                    .buttonStyle(TandemGlassStyle(prominent: onlyProblems))
-                    if filtering {
-                        Button {
-                            withAnimation(.tandem) {
-                                query = ""
-                                kind = .all
-                                direction = .all
-                                period = .always
-                                onlyProblems = false
-                                model.sharedDeviceFilter = nil
-                            }
-                        } label: {
-                            Label("Clear filters", systemImage: "xmark")
-                        }
-                        .buttonStyle(.tandemGlass)
-                        .transition(.opacity)
                     }
                 }
-                .padding(.vertical, 2)
+                FilterMenu(
+                    title: model.sharedDeviceFilter.flatMap { model.device($0)?.name }.map { Text(verbatim: $0) } ?? Text("Device"),
+                    symbol: "laptopcomputer.and.iphone", active: model.sharedDeviceFilter != nil
+                ) {
+                    Button { withAnimation(.tandem) { model.sharedDeviceFilter = nil } } label: {
+                        Label("All devices", systemImage: model.sharedDeviceFilter == nil ? "checkmark" : "circle.dashed")
+                    }
+                    Divider()
+                    ForEach(peers, id: \.id) { peer in
+                        Button { withAnimation(.tandem) { model.sharedDeviceFilter = peer.id } } label: {
+                            Label(peer.name, systemImage: model.sharedDeviceFilter == peer.id ? "checkmark" : "circle")
+                        }
+                    }
+                }
+                FilterMenu(title: Text(direction == .all ? "Direction" : direction.title), symbol: direction.symbol, active: direction != .all) {
+                    ForEach(SharedDirection.allCases) { option in
+                        Button { withAnimation(.tandem) { direction = option } } label: {
+                            Label(option.title, systemImage: direction == option ? "checkmark" : option.symbol)
+                        }
+                    }
+                }
+                FilterMenu(title: Text(period == .always ? "When" : period.title), symbol: "calendar", active: period != .always) {
+                    ForEach(SharedPeriod.allCases) { option in
+                        Button { withAnimation(.tandem) { period = option } } label: {
+                            Label(option.title, systemImage: period == option ? "checkmark" : "calendar")
+                        }
+                    }
+                }
+                Button { withAnimation(.tandem) { onlyProblems.toggle() } } label: {
+                    Label("Failed", systemImage: "exclamationmark.triangle")
+                }
+                .buttonStyle(TandemGlassStyle(prominent: onlyProblems))
+                if filtering {
+                    Button {
+                        withAnimation(.tandem) {
+                            query = ""
+                            kind = .all
+                            direction = .all
+                            period = .always
+                            onlyProblems = false
+                            model.sharedDeviceFilter = nil
+                        }
+                    } label: {
+                        Label("Clear filters", systemImage: "xmark")
+                    }
+                    .buttonStyle(.tandemGlass)
+                    .transition(.opacity)
+                }
             }
+            .padding(.vertical, 2)
         }
-        .scrollClipDisabled()
     }
 }
 

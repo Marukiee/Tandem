@@ -199,6 +199,39 @@ struct FilterMenu<Content: View>: View {
     }
 }
 
+/// The search of a page: a capsule of glass in the page, on the row of its filters, the same on every page. Not the system's search in the
+/// toolbar, which stood far from the list it narrows and looked different on every page.
+struct PageSearchField: View {
+    @Binding var text: String
+    var prompt: LocalizedStringKey = "Search"
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.secondary)
+            TextField(prompt, text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .focused($focused)
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 30)
+        .contentShape(.capsule)
+        .onTapGesture { focused = true }
+        .modifier(PillGlass(enabled: true, prominent: false, tint: Palette.indigo))
+        .animation(.tandemFade, value: text.isEmpty)
+    }
+}
+
 /// The glass of a pill, only where it does not sit on glass already.
 private struct PillGlass: ViewModifier {
     let enabled: Bool

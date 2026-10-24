@@ -15,7 +15,13 @@ struct ClipboardPage: View {
             VStack(alignment: .leading, spacing: 16) {
                 header(history)
                 if history.enabled {
-                    ClipFilterChips(filter: $filter)
+                    // Spacing 0: two pieces of glass side by side, not one that flows into the other.
+                    GlassEffectContainer(spacing: 0) {
+                        HStack(spacing: 10) {
+                            PageSearchField(text: $query)
+                            ClipFilterChips(filter: $filter).fixedSize()
+                        }
+                    }
                 }
                 content(history: history, shown: shown)
             }
@@ -25,10 +31,8 @@ struct ClipboardPage: View {
             .animation(.tandem, value: shown.map(\.id))
             .animation(.tandem, value: history.enabled)
         }
-        // In the toolbar, where the system's own apps have their search.
-        .searchable(text: $query, placement: .toolbar, prompt: Text("Search"))
         .toolbar {
-            // The buttons and the search at the trailing end, where the system's own apps have them.
+            // The buttons at the trailing end, where the system's own apps have them.
             ToolbarSpacer(.flexible)
             ToolbarItem(placement: .primaryAction) {
                 Button { ClipboardPanelController.shared.show() } label: {

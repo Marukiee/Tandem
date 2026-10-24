@@ -35,9 +35,6 @@ struct FilesView: View {
             .frame(maxWidth: 900)
             .frame(maxWidth: .infinity)
         }
-        // In the toolbar, where the system's own apps have their search.
-        .searchable(text: $browser.query, placement: .toolbar, prompt: Text("Search in this folder"))
-        .toolbar { ToolbarSpacer(.flexible) }
         .task(id: device.id) {
             browser.attach(device: device, model: model)
             if DebugSupport.mountDrive, let engine = model.tandem { model.drives.mount(device: device, engine: engine) }
@@ -260,10 +257,11 @@ struct FilesView: View {
 
     // MARK: Looking for something
 
-    /// What kind of file to show, above the list like the filters of the other pages. The search is in the toolbar.
+    /// The search and what kind of file to show, above the list like on the other pages.
     private var kindFilter: some View {
         @Bindable var browser = browser
-        return HStack {
+        return HStack(spacing: 10) {
+            PageSearchField(text: $browser.query, prompt: "Search in this folder")
             FilterMenu(title: Text(browser.kind.title), symbol: browser.kind.symbol, active: browser.kind != .all) {
                 ForEach(FilesBrowser.FileKind.allCases) { kind in
                     Button { browser.kind = kind } label: {
@@ -271,7 +269,6 @@ struct FilesView: View {
                     }
                 }
             }
-            Spacer(minLength: 0)
         }
     }
 
