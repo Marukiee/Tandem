@@ -140,6 +140,9 @@
 "Incoming call" = "Inkomend gesprek";
 "Calling" = "Bellen";
 "Missed call" = "Gemist gesprek";
+"Calling…" = "Bellen…";
+"Hang up" = "Ophangen";
+"via %@" = "via %@";
 "Clipboard from %@" = "Klembord van %@";
 "Text from %@ is on your clipboard" = "Tekst van %@ staat op je klembord";
 "%@ wants to send %lld file(s)" = "%@ wil %lld bestand(en) sturen";

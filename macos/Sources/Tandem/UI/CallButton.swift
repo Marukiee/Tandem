@@ -75,9 +75,12 @@ struct CallButton: View {
         guard !dialed.isEmpty, let engine = model.tandem else { return }
         asking = false
         let name = device.name
+        let id = device.id
+        let contact = found.first { Self.clean($0.number) == dialed }?.name
         Task {
             do {
-                try await engine.dial(target: device.id, number: dialed)
+                try await engine.dial(target: id, number: dialed)
+                CallWindow.shared.dialed(device: id, number: dialed, name: contact)
                 model.showToast(String(localized: "\(name) is calling \(dialed)"))
             } catch {
                 model.showToast(String(localized: "\(name) could not be reached"))

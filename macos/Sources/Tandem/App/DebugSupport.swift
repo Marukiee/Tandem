@@ -104,6 +104,13 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_PAIRSHEET") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { NotificationCenter.default.post(name: .tandemShowPairing, object: nil) }
         }
+        // `TANDEM_DEBUG_CALL=ringing|dialing|active|missed|stack|cycle`: the floating window of a call, with a made up call.
+        if let stage = variable("TANDEM_DEBUG_CALL") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { CallWindow.shared.debugShow(stage) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                try? CallWindow.shared.debugHitReport().write(to: directory.appendingPathComponent("call-window.txt"), atomically: true, encoding: .utf8)
+            }
+        }
         if variable("TANDEM_DEBUG_PANEL") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { showPanelWindow() }
         }
