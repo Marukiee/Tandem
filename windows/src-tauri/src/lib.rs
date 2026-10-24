@@ -140,6 +140,7 @@ pub fn run() {
             input::on_left_down(move || edge::left_down(&catching_app));
             engine::start(handle.clone());
             capture::configure(&handle);
+            side::watch(&handle);
             // Which decoder shows a second screen best here, found once in the background.
             #[cfg(all(target_os = "linux", feature = "screen-host"))]
             decoder_probe::warm_up();

@@ -604,6 +604,11 @@ function MouseSection({ s, patch }) {
       ? html`<${ArrangementEditor} />
         <div class="card flush">
           <${SettingRow} icon="device-laptop" title=${t("side_auto")} sub=${t("side_auto_sub")} on=${s.sideCheck} onChange=${(v) => patch({ sideCheck: v })} />
+          ${s.sideCheck && html`<${SettingRow} icon="refresh" title=${t("side_every")}>
+            <select value=${String(s.sideCheckMinutes || 2)} onChange=${(e) => patch({ sideCheckMinutes: Number(e.target.value) })}>
+              ${[1, 2, 5, 10].map((m) => html`<option value=${String(m)}>${m === 1 ? t("side_every_one") : t("side_every_n", m)}</option>`)}
+            </select>
+          <//>`}
         </div>`
       : html`<div class="card"><div class="small muted">${t("share_pointer_linux")}</div></div>`}
     <div class="small muted">${t("mouse_other_must_allow")}</div>

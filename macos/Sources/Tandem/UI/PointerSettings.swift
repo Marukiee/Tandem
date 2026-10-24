@@ -11,6 +11,7 @@ struct PointerSettings: View {
     @LocalState private var trusted = AXIsProcessTrusted()
     @LocalState private var finding: String?
     @AppStorage(SideWatch.enabledKey) private var checkByItself = true
+    @AppStorage(SideWatch.everyKey) private var checkEvery = SideWatch.defaultEvery
 
     private func findSide(_ device: TandemDevice) {
         finding = device.id
@@ -111,9 +112,16 @@ struct PointerSettings: View {
             Section {
                 DescribedToggle(
                     "Check the side by itself",
-                    subtitle: "When a second screen starts, a computer comes back and now and then while you use them. With a sound too high to hear, and only when this Mac plays through its own speakers.",
+                    subtitle: "When a second screen starts, the shared mouse goes on, a computer comes back, and every few minutes. With a sound too high to hear, and only when this Mac plays through its own speakers.",
                     isOn: $checkByItself
                 )
+                if checkByItself {
+                    Picker("Check every", selection: $checkEvery) {
+                        ForEach([1, 2, 5, 10], id: \.self) { minutes in
+                            Text(minutes == 1 ? String(localized: "Minute") : String(localized: "\(minutes) minutes")).tag(minutes)
+                        }
+                    }
+                }
                 HStack {
                     Text("A short sweep from low to high on the left and from high to low on the right, at the same time. Soft first, louder when it was not heard.")
                         .font(.caption)

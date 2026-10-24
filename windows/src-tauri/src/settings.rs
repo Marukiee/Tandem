@@ -10,7 +10,7 @@ use crate::state::AppState;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
-    /// Where received files go. Empty is the Tandem folder inside Downloads.
+    /// Where received files go. Empty is Downloads itself.
     pub download_dir: String,
     /// The close button hides the window and leaves Tandem in the tray.
     pub close_to_tray: bool,
@@ -74,6 +74,8 @@ pub struct Settings {
     pub focus_follow_only: bool,
     /// Check by itself, with sweeps too high to hear, on which side the devices next to this screen stand (see `side.rs`).
     pub side_check: bool,
+    /// How often, in minutes, the side of a device next to this screen is checked while it is there.
+    pub side_check_minutes: u32,
 }
 
 impl Default for Settings {
@@ -110,6 +112,7 @@ impl Default for Settings {
             focus_share: None,
             focus_follow_only: false,
             side_check: true,
+            side_check_minutes: 2,
         }
     }
 }

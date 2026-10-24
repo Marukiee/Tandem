@@ -234,25 +234,30 @@ pub fn connected(app: &AppHandle, id: String) {
     });
 }
 
-/// A second screen for `peer` is on: a check now, and every minute the schedule is asked again while one runs. Only Linux makes one.
+/// A second screen for `peer` is on: a check now (see `watch` for the ones after). Only Linux makes one.
 #[cfg(target_os = "linux")]
 pub fn screen_started(app: &AppHandle, peer: &str) {
     consider(app, peer, TandemSideReason::ScreenStarted);
-    static TICK: std::sync::OnceLock<()> = std::sync::OnceLock::new();
-    TICK.get_or_init(|| {
-        let app = app.clone();
-        std::thread::Builder::new()
-            .name("tandem-side-tick".into())
-            .spawn(move || {
-                loop {
-                    std::thread::sleep(Duration::from_secs(60));
-                    for peer in crate::host::extending() {
-                        consider(&app, &peer, TandemSideReason::InUse);
-                    }
-                }
-            })
-            .ok();
-    });
+}
+
+/// Every minute each device that counts is offered to the schedule, which lets one go as often as the setting says.
+pub fn watch(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::Builder::new()
+        .name("tandem-side-tick".into())
+        .spawn(move || loop {
+            std::thread::sleep(Duration::from_secs(60));
+            let chosen = settings::get(&app);
+            SCHEDULE.set_every_minutes(chosen.side_check_minutes.max(1));
+            let mut ids: Vec<String> = chosen.layout.iter().map(|s| s.device.clone()).collect();
+            ids.extend(crate::host::extending());
+            ids.sort();
+            ids.dedup();
+            for id in ids {
+                consider(&app, &id, TandemSideReason::InUse);
+            }
+        })
+        .ok();
 }
 
 /// The side matters for a device that has a second screen of this computer, or sits left or right of this screen for the shared mouse.

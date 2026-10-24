@@ -46,9 +46,20 @@ struct Entry {
 #[derive(Default, Debug)]
 pub struct Schedule {
     devices: HashMap<String, Entry>,
+    /// How often a device in use is checked, when the person chose that; `IN_USE_MS` otherwise.
+    every_ms: Option<u64>,
 }
 
 impl Schedule {
+    /// How often a device in use is checked: the setting of the person, a minute at least.
+    pub fn set_every(&mut self, ms: u64) {
+        self.every_ms = Some(ms.max(60_000));
+    }
+
+    fn every(&self) -> u64 {
+        self.every_ms.unwrap_or(IN_USE_MS)
+    }
+
     /// Whether to check `device` now for `reason`; when it says yes, the check counts as started, so a second reason a moment later does
     /// not start another one.
     pub fn start(&mut self, device: &str, reason: Reason, now_ms: u64) -> bool {
@@ -66,8 +77,8 @@ impl Schedule {
         let wait = match reason {
             // The person just did something with that device: it is worth a check even when the last ones heard nothing.
             Reason::ScreenStarted | Reason::Moved => TOGETHER_MS,
-            Reason::Connected | Reason::Woke => AGAIN_MS.max(backoff(entry.misses)),
-            Reason::PointerOver | Reason::InUse => IN_USE_MS.max(backoff(entry.misses)),
+            Reason::Connected | Reason::Woke => AGAIN_MS.max(backoff(self.every(), entry.misses)),
+            Reason::PointerOver | Reason::InUse => self.every().max(backoff(self.every(), entry.misses)),
         };
         since >= wait
     }
@@ -81,11 +92,11 @@ impl Schedule {
 }
 
 /// Twice as long after each miss, from the time while in use, up to `AT_MOST_MS`.
-fn backoff(misses: u32) -> u64 {
+fn backoff(every: u64, misses: u32) -> u64 {
     if misses == 0 {
         return 0;
     }
-    IN_USE_MS.saturating_mul(1 << (misses - 1).min(8)).min(AT_MOST_MS)
+    every.saturating_mul(1 << (misses - 1).min(8)).min(AT_MOST_MS)
 }
 
 #[cfg(test)]
@@ -111,6 +122,21 @@ mod tests {
         assert!(!s.start("phone", Reason::PointerOver, T0 + 5_000));
         // Another device is on its own.
         assert!(s.start("laptop", Reason::PointerOver, T0 + 5_000));
+    }
+
+    #[test]
+    fn the_person_chooses_how_often() {
+        let mut s = Schedule::default();
+        s.set_every(5 * MIN);
+        assert!(s.start("laptop", Reason::InUse, T0));
+        s.done("laptop", true, T0);
+        assert!(!s.start("laptop", Reason::InUse, T0 + 4 * MIN));
+        assert!(s.start("laptop", Reason::InUse, T0 + 5 * MIN));
+        // Not more often than once a minute.
+        s.set_every(1_000);
+        s.done("laptop", true, T0 + 5 * MIN);
+        assert!(!s.start("laptop", Reason::InUse, T0 + 5 * MIN + 30_000));
+        assert!(s.start("laptop", Reason::InUse, T0 + 6 * MIN));
     }
 
     #[test]

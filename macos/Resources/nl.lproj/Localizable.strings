@@ -1104,7 +1104,10 @@
 "%@ disconnected, so the sound plays on this Mac again" = "%@ verbrak de verbinding, dus het geluid speelt weer op deze Mac";
 "The sound of %@ plays here now. Stop that first, or the sound would go back and forth." = "Het geluid van %@ speelt nu hier. Stop dat eerst, anders gaat het geluid heen en weer.";
 "Check the side by itself" = "De kant vanzelf controleren";
-"When a second screen starts, a computer comes back and now and then while you use them. With a sound too high to hear, and only when this Mac plays through its own speakers." = "Als een tweede scherm start, een computer terugkomt en af en toe terwijl je ze gebruikt. Met een geluid dat te hoog is om te horen, en alleen als deze Mac via zijn eigen speakers speelt.";
+"When a second screen starts, the shared mouse goes on, a computer comes back, and every few minutes. With a sound too high to hear, and only when this Mac plays through its own speakers." = "Als een tweede scherm start, de gedeelde muis aangaat, een computer terugkomt, en om de paar minuten. Met een geluid dat te hoog is om te horen, en alleen als deze Mac via zijn eigen speakers speelt.";
+"Check every" = "Controleer elke";
+"Minute" = "Minuut";
+"%lld minutes" = "%lld minuten";
 "%@ is now on the left" = "%@ staat nu links";
 "%@ is now on the right" = "%@ staat nu rechts";
 "The device" = "Het apparaat";

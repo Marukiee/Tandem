@@ -5,13 +5,17 @@ import TandemCore
 
 /// Checks by itself, with sweeps too high to hear, on which side of this Mac a device stands, each time that matters: an extra screen
 /// starts, a device was moved, a computer next to this screen connects or this Mac wakes, the pointer goes over to a device that was not
-/// checked for a while, and every few minutes while an extra screen runs. When it is checked is up to `side_check.rs` in the core. A side
-/// that changed moves the extra screen and the edge of the shared mouse, with one quiet toast; nothing ever asks or waits for an answer.
+/// checked for a while, and every few minutes (the setting, 2 by default) while it is there. When it is checked is up to `side_check.rs`
+/// in the core. A side that changed moves the extra screen and the edge of the shared mouse, with one quiet toast; nothing ever asks or
+/// waits for an answer.
 @MainActor
 final class SideWatch {
     static let shared = SideWatch()
     /// The setting "Check the side by itself", on unless the person turned it off.
     static let enabledKey = "sideCheckByItself"
+    /// How often, in minutes, a device next to this screen is checked while it is there.
+    static let everyKey = "sideCheckEveryMinutes"
+    static let defaultEvery = 2
 
     private var enabled: Bool { UserDefaults.standard.object(forKey: Self.enabledKey) as? Bool ?? true }
     private let schedule = TandemSideSchedule()
@@ -28,11 +32,14 @@ final class SideWatch {
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in MainActor.assumeIsolated { self?.woke() } })
+        // Every minute each device that counts is offered to the schedule, which lets one go as often as the setting says.
         tick = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(60))
                 guard let self else { return }
-                for running in ScreenHost.shared.extended { self.consider(running.peer, .inUse) }
+                let every = UserDefaults.standard.object(forKey: Self.everyKey) as? Int ?? Self.defaultEvery
+                self.schedule.setEveryMinutes(minutes: UInt32(max(every, 1)))
+                for device in EngineModel.shared.devices { self.consider(device.id, .inUse) }
             }
         }
     }
