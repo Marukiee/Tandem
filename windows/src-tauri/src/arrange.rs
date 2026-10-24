@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use tandem_core::ffi::TandemPointerShare;
 use tandem_core::layout::{self, Neighbour, Placement, Rect};
 use tandem_core::pointer_share::Edge;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{settings, state::AppState};
 
@@ -155,6 +155,7 @@ fn state_of(app: &AppHandle) -> Value {
                 "name": d["name"],
                 "platform": d["platform"],
                 "online": d["online"],
+                "listens": d["caps"].as_array().is_some_and(|caps| caps.iter().any(|c| c == "side.listen")),
                 "width": size.map(|s| s.0),
                 "height": size.map(|s| s.1),
                 "placed": spot.and_then(placement_of).map(|p| json!({ "edge": edge_text(p.edge), "offset": p.offset })),
@@ -206,6 +207,16 @@ pub fn arrange_snap(app: AppHandle, id: String, x: i32, y: i32, width: i32, heig
         }
         None => Value::Null,
     }
+}
+
+/// Puts a device on the left or the right of this screen (found by sound, see `side.rs`). The offset along the edge stays when the edge does.
+pub fn put(app: &AppHandle, id: &str, edge: &str) {
+    save(app, |list| {
+        let offset = list.iter().find(|s| s.device == id && s.edge == edge).and_then(|s| s.offset);
+        list.retain(|s| s.device != id);
+        list.push(Spot { device: id.to_string(), edge: edge.to_string(), offset });
+    });
+    let _ = app.emit("arrangement", state_of(app));
 }
 
 #[tauri::command]

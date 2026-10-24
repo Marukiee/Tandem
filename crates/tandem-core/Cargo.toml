@@ -38,6 +38,7 @@ prost-types = "0.14"
 quinn = { version = "0.11.12", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
 rcgen = { version = "0.14.10", default-features = false, features = ["ring", "pem", "crypto"] }
 ring = "0.17.14"
+rustfft = "6"
 rustls = { version = "0.23.45", default-features = false, features = ["ring", "std", "logging"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_bytes = "0.11.19"

@@ -141,6 +141,7 @@ class TandemService : LifecycleService() {
                     android.widget.Toast.makeText(this, getString(R.string.link_poor, name), android.widget.Toast.LENGTH_LONG).show()
                 }
             }
+            is TandemEvent.SideListen -> nl.markmaaktmedia.tandem.live.SideListener.listen(this, event.from, event.id, event.sound)
             is TandemEvent.MediaOffered -> if (event.extend && event.kind == TandemMediaKind.SCREEN) offerDisplay(event.from)
             is TandemEvent.CaptureRequested -> postCaptureRequest(event)
             is TandemEvent.CaptureCancelled -> getSystemService(NotificationManager::class.java).cancel(captureNotificationId(event.id.toLong()))

@@ -405,6 +405,10 @@ struct DeviceDetail: View {
                     speakerRow
                 }
                 Divider().opacity(0.4).padding(.horizontal, 14)
+                if device.isComputer || device.platform == .android {
+                    SideRow(device: device)
+                    Divider().opacity(0.4).padding(.horizontal, 14)
+                }
                 SettingRow(symbol: "trash", title: "Remove this device", subtitle: device.vouchedByRemoved ? "It was added by a device that has since been removed" : "It leaves the circle everywhere") {
                     Button("Remove") { confirmRemoval = true }
                         .buttonStyle(.glass)
@@ -675,5 +679,41 @@ struct HotspotCard: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             bluetooth = CBManager.authorization
         }
+    }
+}
+
+/// On which side of this Mac the device stands: chosen by hand, or found by sound. A second screen goes on that side, and a computer is put
+/// there for the shared mouse.
+private struct SideRow: View {
+    @Environment(EngineModel.self) private var model
+    let device: TandemDevice
+    @LocalState private var side: String?
+    @LocalState private var finding = false
+
+    var body: some View {
+        SettingRow(symbol: "rectangle.lefthalf.inset.filled.arrow.left", title: "Where it stands", subtitle: "A second screen goes on this side, and so does this computer for the shared mouse") {
+            HStack(spacing: 10) {
+                if device.caps.contains("side.listen") {
+                    Button(finding ? "Listening…" : "Find by sound") {
+                        finding = true
+                        Task {
+                            let found = await SideFinder.find(device)
+                            finding = false
+                            side = DeviceSides.side(of: device.id)
+                            model.showToast(SideFinder.message(found, name: device.name))
+                        }
+                    }
+                    .buttonStyle(.glass)
+                    .disabled(!device.online || finding)
+                }
+                Picker("", selection: Binding(get: { side ?? "right" }, set: { side = $0; DeviceSides.set($0, for: device.id) })) {
+                    Text("Left").tag("left")
+                    Text("Right").tag("right")
+                }
+                .pickerStyle(.segmented)
+                .fixedSize()
+            }
+        }
+        .onAppear { side = DeviceSides.side(of: device.id) }
     }
 }

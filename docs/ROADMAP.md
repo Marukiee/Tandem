@@ -90,11 +90,14 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   `ControlBridge`) en doet een druk door `tandem://control?action=...` te openen zonder de app naar voren te halen. Het systeem toont hem als extensie
   (`pluginkit`); toevoegen gaat via Controlecentrum, Bewerken. Nog niet: Klembord sturen en Telefoon als uitvoer als knop, en een keuze van het apparaat
   voor Scherm uitbreiden (nu het laatst gebruikte, anders het eerste dat het kan).
-- Automatisch bepalen aan welke kant een tweede scherm staat (gevraagd 2026-10-24, nog niet gedaan): de computer die het scherm maakt speelt een toon om en
-  om uit de linker en de rechter luidspreker, het apparaat dat het scherm wordt luistert met zijn microfoon en meldt welke kant harder klonk, en het
-  scherm komt aan die kant (op de Mac `placeRightOfMain` met een kant, onder GNOME via de monitorinstellingen). Het verschil in luidheid is bruikbaar als het
-  apparaat duidelijk aan een kant staat en dichtbij (binnen een meter of twee, in een stille kamer), niet als het midden of achter staat. Daarom eerst een
-  keuze links of rechts met de hand, en de toon als knop "Kant bepalen" die bij twijfel terugvalt op die keuze. Vraagt het microfoonrecht op het andere apparaat.
+- De kant vinden met geluid (gevraagd 2026-10-24, gebouwd in 0.1.90, nergens op echte toestellen gehoord): de computer die plaatst speelt links en
+  rechts een ander geluid (`side.rs` in de kern: een sweep omhoog en omlaag zoals Sonos bij het afstemmen, een belletje of een piep, te kiezen, met de sweep
+  als aanrader), het andere apparaat neemt op en vergelijkt de opname met beide geluiden (een matched filter, geen getraind model: voor een bekend geluid
+  is dat het beste). De kant gaat naar de gedeelde muis (Mac en Linux/Windows als hoofd) en naar een tweede scherm dat de Mac maakt. Luisteren kan op
+  Mac, Linux, Windows en Android (die laatste alleen met Tandem open, Android geeft de microfoon niet aan een app op de achtergrond). In een simulatie met
+  galm en ruis vindt de sweep de kant ook bij 3 dB verschil; het belletje en de piep pas bij een duidelijk verschil.
+  Nog niet: een tweede scherm dat Linux maakt op de goede kant zetten (GNOME plaatst het zelf), en vanzelf opnieuw bepalen als een apparaat verplaatst
+  wordt (kan bij een telefoon met zijn bewegingssensor; bij laptops alleen op een vast moment, zoals het openen van de klep).
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)

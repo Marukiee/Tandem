@@ -6,7 +6,7 @@ import { call, listen } from "./backend.js";
 import { Icon } from "./icons.js";
 import { platformIcon } from "./components.js";
 import { t } from "./i18n.js";
-import { say } from "./store.js";
+import { say, set, state } from "./store.js";
 
 const failed = (e) => say(String(e && e.message ? e.message : e));
 
@@ -48,6 +48,7 @@ export function ArrangementEditor() {
     load();
     let off;
     listen("devices", load).then((f) => { off = f; });
+    listen("arrangement", setView);
     // The desktop may be asking the person something (see the note under the screens): the state is read again now and then.
     const timer = setInterval(() => { if (!dragging.current) load(); }, 3000);
     return () => { clearInterval(timer); if (off) off(); };
@@ -134,8 +135,39 @@ export function ArrangementEditor() {
     ${devices.map((d) => boxFor(d, unplaced.indexOf(d)))}
     ${unplaced.length > 0 && html`<div class="arrange-hint">${t("arrange_hint")}</div>`}
   </div>
+  <${SideFinder} devices=${devices} />
   ${capture.state === "starting" && html`<div class="small muted" style="margin-top:8px">${t("capture_starting")}</div>`}
   ${capture.state === "locked" && html`<div class="small muted" style="margin-top:8px">${t("capture_locked")}</div>`}
   ${capture.state === "failed" && html`<div class="small muted" style="margin-top:8px">${t("capture_failed", capture.reason || "?")}</div>`}
+  </div>`;
+}
+
+/** Finding by sound on which side a device stands: this computer plays a short sound from its left and right speaker, the device listens. */
+function SideFinder({ devices }) {
+  const [busy, setBusy] = useState(null);
+  const sound = (state.settings && state.settings.sideSound) || "sweep";
+  const listening = devices.filter((d) => d.listens);
+  const find = (d) => {
+    setBusy(d.id);
+    call("side_find", { id: d.id })
+      .then((side) => say(t(side === "left" ? "side_left" : side === "right" ? "side_right" : side === "unsure" ? "side_unsure" : "side_not_heard", d.name)))
+      .catch(failed)
+      .finally(() => setBusy(null));
+  };
+  const choose = (value) => call("set_settings", { patch: { sideSound: value } }).then((settings) => set({ settings })).catch(failed);
+  return html`<div class="side-finder">
+    <div class="row-line">
+      <div class="grow"><div class="t">${t("side_title")}</div><div class="s">${t("side_sub")}</div></div>
+      <select value=${sound} onChange=${(e) => choose(e.currentTarget.value)}>
+        <option value="sweep">${t("side_sweep")}</option>
+        <option value="chime">${t("side_chime")}</option>
+        <option value="beep">${t("side_beep")}</option>
+      </select>
+      <button class="btn small" onClick=${() => call("side_preview", { sound }).catch(failed)}>${t("side_play")}</button>
+    </div>
+    ${listening.map((d) => html`<div class="row-line" key=${d.id}>
+      <div class="grow">${d.name}</div>
+      <button class="btn small" disabled=${!d.online || busy !== null} onClick=${() => find(d)}>${busy === d.id ? t("side_listening") : t("side_find")}</button>
+    </div>`)}
   </div>`;
 }

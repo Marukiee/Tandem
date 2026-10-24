@@ -163,6 +163,15 @@ final class ScreenHost {
 
     @ObservationIgnored private var pendingRequest: TandemMediaRequest?
 
+    /// The display of software made for a device that uses it as a second screen, to move it to the other side when the side is found.
+    @ObservationIgnored private weak var extendDisplay: VirtualDisplay?
+    @ObservationIgnored private var extendPeer: String?
+
+    func placeExtended(for peer: String, onLeft: Bool) {
+        guard extendPeer == peer, let display = extendDisplay else { return }
+        display.onLeft = onLeft
+    }
+
     /// Devices that this Mac asked to show a screen of its own, and until when their request for it needs no question.
     @ObservationIgnored private var expectedExtend: [String: Date] = [:]
 
@@ -253,6 +262,14 @@ final class ScreenHost {
                 return
             }
             virtual = made
+            // On the side the device stands on. Found by ear the first time, when the device can listen and the side is not known yet.
+            if let known = DeviceSides.side(of: peer) {
+                made.onLeft = known == "left"
+            } else if let device = model?.device(peer), device.caps.contains("side.listen") {
+                Task { @MainActor in _ = await SideFinder.find(device) }
+            }
+            extendDisplay = made
+            extendPeer = peer
             display = ScreenCapturer.DisplayInfo(id: made.displayID, bounds: made.bounds, pixels: made.pixels)
             size = (shape.width, shape.height)
         } else {

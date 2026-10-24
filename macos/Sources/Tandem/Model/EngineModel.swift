@@ -195,7 +195,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "audio.play", "pointer.ping", "pointer.ready"] + ScreenHost.shared.capabilities(),
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
@@ -570,6 +570,14 @@ final class EngineModel {
         case .notificationAction, .callAction, .dial, .ring, .captureRequested, .captureCancelled,
              .mediaRequested, .mediaStarted, .mediaEnded, .mediaBitrate:
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
+            break
+
+        case let .sideListen(from, id, sound):
+            // Another computer plays its sound to find out on which side of it this Mac stands: listen, and say what was heard.
+            if let engine { SideListener.listen(from: from, id: id, sound: sound, engine: engine) }
+
+        case .sideHeard:
+            // Read by `sideProbe` itself.
             break
 
         case let .mediaQuality(peer, _, poor):

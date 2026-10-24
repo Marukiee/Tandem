@@ -20,6 +20,7 @@ pub mod pointer_share;
 pub mod quickshare;
 pub mod proto;
 pub mod session;
+pub mod side;
 pub mod store;
 pub mod tls;
 pub mod transfer;

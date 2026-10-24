@@ -37,6 +37,7 @@ mod names;
 mod pointer_ready;
 mod power;
 mod settings;
+mod side;
 mod sound;
 mod ssh;
 mod state;
@@ -206,6 +207,8 @@ pub fn run() {
             live::display_offer,
             live::display_offer_stop,
             commands::transfer_cancel,
+            side::side_find,
+            side::side_preview,
             live::display_stop,
             live::display_state,
             live::live_attach,

@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.90",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Find the side by sound",
+      "new": [
+        "Find on which side a device stands by sound: a second screen and the shared mouse go on that side, on Mac, Linux and Windows, with a phone or a computer listening",
+        "The Extend screen button has a shorter name"
+      ]
+    },
+    "nl": {
+      "title": "De kant vinden met geluid",
+      "new": [
+        "Vind met geluid aan welke kant een apparaat staat: een tweede scherm en de gedeelde muis gaan aan die kant, op Mac, Linux en Windows, met een telefoon of computer die luistert",
+        "De knop Scherm uitbreiden heeft een kortere naam"
+      ]
+    }
+  },
+  {
     "version": "0.1.89",
     "date": "2026-10-24",
     "en": {

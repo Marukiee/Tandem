@@ -125,6 +125,10 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         // would be handed straight back.
         "pointer.ready".into(),
     ];
+    // Listens to the sound of another computer that wants to know on which side this one stands (see `side.rs`).
+    if crate::side::can_listen() {
+        caps.push("side.listen".into());
+    }
     // Takes messages over Bluetooth from a computer that has no network to this one (the Linux app, where BlueZ is).
     if settings::get(app).ble_messages && crate::bluetooth::available() {
         caps.push("ble.link".into());

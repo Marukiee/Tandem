@@ -995,6 +995,9 @@ pub enum TandemEvent {
     CallAction { from: String, id: String, action: TandemCallAction },
     Dial { from: String, number: String },
     Ring { from: String, on: bool },
+    SideListen { from: String, id: u64, sound: TandemSideSound },
+    /// The answer of a device to `side_probe`; `side_probe` reads it itself, the apps can let it go by.
+    SideHeard { from: String, id: u64 },
     Input { from: String, input: TandemInput },
     Hotspot { from: String, hotspot: TandemHotspot },
     /// The other device wants a picture. Answer with `send_files` and origin `Capture { request: id }`,
@@ -1092,6 +1095,8 @@ impl From<Event> for TandemEvent {
             }
             Event::Dial { from, number } => TandemEvent::Dial { from: from.to_string(), number },
             Event::Ring { from, on } => TandemEvent::Ring { from: from.to_string(), on },
+            Event::SideListen { from, id, sound } => TandemEvent::SideListen { from: from.to_string(), id, sound: sound.into() },
+            Event::SideHeard { from, id, .. } => TandemEvent::SideHeard { from: from.to_string(), id },
             Event::Input { from, input } => TandemEvent::Input { from: from.to_string(), input: input.into() },
             Event::Hotspot { from, hotspot } => TandemEvent::Hotspot { from: from.to_string(), hotspot: hotspot.into() },
             Event::CaptureRequested { from, id, kind } => {
@@ -1174,6 +1179,69 @@ pub fn tandem_find_code(text: String) -> Option<String> {
 #[uniffi::export]
 pub fn tandem_hotspot_auth_message(challenge: Vec<u8>, device_id: String, action: u8, timestamp_ms: u64) -> Vec<u8> {
     crate::hotspot::auth_message(&challenge, &device_id, action, timestamp_ms)
+}
+
+/// On which side of this computer a device stands (see `side.rs`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemSide {
+    Left,
+    Right,
+    /// About as loud on both sides: it stands in front, behind, or too far away.
+    Unsure,
+    /// It could not listen or heard nothing (no microphone, not allowed, the sound of this computer off or too soft).
+    NotHeard,
+}
+
+/// Which sound is played to find the side (see `side::Sound`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemSideSound {
+    Sweep,
+    Chime,
+    Beep,
+}
+
+impl From<TandemSideSound> for crate::side::Sound {
+    fn from(s: TandemSideSound) -> Self {
+        match s {
+            TandemSideSound::Sweep => crate::side::Sound::Sweep,
+            TandemSideSound::Chime => crate::side::Sound::Chime,
+            TandemSideSound::Beep => crate::side::Sound::Beep,
+        }
+    }
+}
+
+impl From<crate::side::Sound> for TandemSideSound {
+    fn from(s: crate::side::Sound) -> Self {
+        match s {
+            crate::side::Sound::Sweep => TandemSideSound::Sweep,
+            crate::side::Sound::Chime => TandemSideSound::Chime,
+            crate::side::Sound::Beep => TandemSideSound::Beep,
+        }
+    }
+}
+
+/// The sounds to play for `side_probe`, as stereo samples (left, right, left, ...) at `rate` samples a second.
+#[uniffi::export]
+pub fn tandem_side_pattern(sound: TandemSideSound, rate: u32) -> Vec<f32> {
+    crate::side::pattern(sound.into(), rate)
+}
+
+/// How long a device asked with `SideListen` records, in milliseconds.
+#[uniffi::export]
+pub fn tandem_side_listen_ms() -> u32 {
+    crate::side::LISTEN_MS
+}
+
+/// How loud the left and the right tones were in a recording of one channel; `None` when they were not heard.
+#[derive(Clone, Copy, Debug, uniffi::Record)]
+pub struct TandemSideLevels {
+    pub left: f32,
+    pub right: f32,
+}
+
+#[uniffi::export]
+pub fn tandem_side_analyze(sound: TandemSideSound, samples: Vec<f32>, rate: u32) -> Option<TandemSideLevels> {
+    crate::side::analyze(sound.into(), &samples, rate).map(|h| TandemSideLevels { left: h.left, right: h.right })
 }
 
 /// The rotating tag in a phone's Bluetooth advertisement for `hour` (Unix time in
@@ -1673,6 +1741,49 @@ impl TandemEngine {
 
     pub async fn send_input(&self, target: String, input: TandemInput) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::Input(input.into())).await.map(|_| ())
+    }
+
+    /// Finds on which side of this computer `target` stands: asks it to listen, and waits for what it heard. The app plays
+    /// `tandem_side_pattern` right after calling this (the pattern starts with a moment of silence, for the other side to start recording).
+    pub async fn side_probe(&self, target: String, sound: TandemSideSound) -> Result<TandemSide, TandemError> {
+        let peer = DeviceId::parse(&target)?;
+        let id = crate::engine::rand_u64();
+        let mut events = self.engine.subscribe();
+        let sound = crate::side::Sound::from(sound).code();
+        self.send(vec![target], crate::proto::Msg::SideListen { id, sound }).await?;
+        let wait = std::time::Duration::from_millis(u64::from(crate::side::LISTEN_MS) + 5000);
+        let answer = self
+            .runtime
+            .spawn(async move {
+                tokio::time::timeout(wait, async move {
+                    loop {
+                        match events.recv().await {
+                            Ok(Event::SideHeard { from, id: got, left, right, heard }) if from == peer && got == id => break Some((left, right, heard)),
+                            Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                            Err(_) => break None,
+                        }
+                    }
+                })
+                .await
+                .ok()
+                .flatten()
+            })
+            .await
+            .map_err(join_error)?;
+        Ok(match answer {
+            Some((left, right, true)) => match crate::side::decide(crate::side::Heard { left, right }) {
+                crate::side::Side::Left => TandemSide::Left,
+                crate::side::Side::Right => TandemSide::Right,
+                crate::side::Side::Unsure => TandemSide::Unsure,
+            },
+            _ => TandemSide::NotHeard,
+        })
+    }
+
+    /// The answer to `TandemEvent::SideListen`: what this device heard, or `levels` empty when it could not listen.
+    pub async fn side_heard(&self, target: String, id: u64, levels: Option<TandemSideLevels>) -> Result<(), TandemError> {
+        let (left, right, heard) = levels.map(|l| (l.left, l.right, true)).unwrap_or((0.0, 0.0, false));
+        self.send(vec![target], crate::proto::Msg::SideHeard { id, left, right, heard }).await.map(|_| ())
     }
 
     pub async fn send_hotspot(&self, target: String, hotspot: TandemHotspot) -> Result<(), TandemError> {

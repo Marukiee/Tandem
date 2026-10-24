@@ -45,7 +45,7 @@ final class VirtualDisplay {
         let width = Int(pixels.width), height = Int(pixels.height)
         for _ in 0..<20 {
             if isActive, selectMode(width: width, height: height) {
-                placeRightOfMain()
+                place()
                 return true
             }
             try? await Task.sleep(for: .milliseconds(150))
@@ -77,11 +77,18 @@ final class VirtualDisplay {
     }
 
     /// Where the other screens are is where the person put them; a new one goes to the right of the main one.
-    private func placeRightOfMain() {
+    /// On which side of the main display it goes: the side the device stands on, when that is known (see `DeviceSides`), else the right.
+    var onLeft = false {
+        didSet { if oldValue != onLeft { place() } }
+    }
+
+    private func place() {
         let main = CGDisplayBounds(CGMainDisplayID())
+        let own = CGDisplayBounds(displayID)
         var config: CGDisplayConfigRef?
         guard CGBeginDisplayConfiguration(&config) == .success, let config else { return }
-        CGConfigureDisplayOrigin(config, displayID, Int32(main.maxX), 0)
+        let x = onLeft ? Int32(main.minX - own.width) : Int32(main.maxX)
+        CGConfigureDisplayOrigin(config, displayID, x, 0)
         CGCompleteDisplayConfiguration(config, .forSession)
     }
 

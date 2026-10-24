@@ -155,6 +155,18 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
         viewer.open(id, extend)
         onDispose { if (activity?.isChangingConfigurations != true) viewer.close() }
     }
+    // A second screen goes on the side of the computer that this phone lies on, which the computer finds by playing a sound that the phone
+    // hears: the microphone is asked for once, here, where it is clear what it is for.
+    val micAsk = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(extend) {
+        val granted = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        val prefs = context.getSharedPreferences("side", android.content.Context.MODE_PRIVATE)
+        if (extend && !granted && !prefs.getBoolean("asked", false)) {
+            prefs.edit().putBoolean("asked", true).apply()
+            micAsk.launch(android.Manifest.permission.RECORD_AUDIO)
+        }
+    }
     // A second screen is used lying down, whichever way the phone was held when it was started; the other computer made it that shape.
     DisposableEffect(extend) {
         val before = activity?.requestedOrientation

@@ -9,6 +9,17 @@ struct PointerSettings: View {
     @Environment(EngineModel.self) private var model
     @Bindable private var share = PointerShare.shared
     @LocalState private var trusted = AXIsProcessTrusted()
+    @LocalState private var sound = DeviceSides.sound
+    @LocalState private var finding: String?
+
+    private func findSide(_ device: TandemDevice) {
+        finding = device.id
+        Task {
+            let side = await SideFinder.find(device)
+            finding = nil
+            model.showToast(SideFinder.message(side, name: device.name))
+        }
+    }
 
     private var computers: [TandemDevice] { model.devices.filter { $0.platform != .android } }
     private var phones: [TandemDevice] { model.devices.filter { $0.platform == .android } }
@@ -67,13 +78,23 @@ struct PointerSettings: View {
                     } else {
                         ArrangementEditor(share: share, devices: neighbourChoices)
                             .padding(.vertical, 4)
-                        ForEach(neighbourChoices.filter { share.layout[$0.id] != nil }, id: \.id) { device in
+                        ForEach(neighbourChoices, id: \.id) { device in
                             LabeledContent(device.name) {
                                 HStack(spacing: 10) {
-                                    Text(sideText(share.layout[device.id]?.edge ?? ""))
-                                        .foregroundStyle(.secondary)
-                                    Button("Remove") { share.layout[device.id] = nil }
-                                        .buttonStyle(.borderless)
+                                    Group {
+                                        if share.layout[device.id] == nil { Text("Not placed") } else { Text(sideText(share.layout[device.id]?.edge ?? "")) }
+                                    }
+                                    .foregroundStyle(.secondary)
+                                    // This Mac plays a sound and the other one says which speaker was louder: it is then put on that side.
+                                    if device.caps.contains("side.listen") {
+                                        Button(finding == device.id ? "Listening…" : "Find by sound") { findSide(device) }
+                                            .buttonStyle(.borderless)
+                                            .disabled(!device.online || finding != nil)
+                                    }
+                                    if share.layout[device.id] != nil {
+                                        Button("Remove") { share.layout[device.id] = nil }
+                                            .buttonStyle(.borderless)
+                                    }
                                 }
                             }
                         }
@@ -83,6 +104,25 @@ struct PointerSettings: View {
                 Text("Use this Mac's mouse and keyboard on other computers")
             } footer: {
                 if share.enabled { Text("The other computer has to allow it too: in its Tandem, under Mouse and keyboard.") }
+            }
+
+            Section {
+                Picker("Sound", selection: Binding(get: { sound }, set: { sound = $0; DeviceSides.sound = $0 })) {
+                    Text("Sweep (works best)").tag(TandemSideSound.sweep)
+                    Text("Bell").tag(TandemSideSound.chime)
+                    Text("Beep").tag(TandemSideSound.beep)
+                }
+                HStack {
+                    Text("The sweep is heard best in a room with echoes. The bell and the beep only tell the side when the other device stands clearly nearer to one speaker.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 12)
+                    Button("Play") { Task { await SideTone.play(sound) } }
+                }
+            } header: {
+                Text("Finding the side by sound")
+            } footer: {
+                Text("This Mac plays a short sound from its left and its right speaker, and the other device listens with its microphone. A second screen goes on that side too.")
             }
 
             Section {

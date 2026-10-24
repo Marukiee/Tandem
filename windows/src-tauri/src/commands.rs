@@ -380,6 +380,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
                 crate::sound::stop_all();
             }
         }
+        if let Some(v) = patch["sideSound"].as_str().filter(|v| ["sweep", "chime", "beep"].contains(v)) {
+            current.side_sound = v.to_string();
+        }
         if let Some(v) = patch["bleMessages"].as_bool() {
             current.ble_messages = v;
         }

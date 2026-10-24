@@ -39,6 +39,9 @@
     <key>NSCameraUsageDescription</key>
     <string>Tandem scans the pairing code shown on another device.</string>
 
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Tandem listens for a few seconds to the sound another computer plays, to find out on which side of it this Mac stands.</string>
+
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
