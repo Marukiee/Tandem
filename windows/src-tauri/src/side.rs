@@ -248,7 +248,7 @@ pub fn watch(app: &AppHandle) {
         .spawn(move || loop {
             std::thread::sleep(Duration::from_secs(60));
             let chosen = settings::get(&app);
-            SCHEDULE.set_every_minutes(chosen.side_check_minutes.max(1));
+            SCHEDULE.set_every_minutes(chosen.side_check_minutes);
             let mut ids: Vec<String> = chosen.layout.iter().map(|s| s.device.clone()).collect();
             ids.extend(crate::host::extending());
             ids.sort();

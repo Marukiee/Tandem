@@ -183,7 +183,7 @@ const en = {
   output_use: "Use as speaker", output_stop: "Stop speaker", output_tip: "Play the sound of this computer on {0}",
   output_started: "The sound of this computer plays on {0}. It keeps playing here too.",
   side_auto: "Check the side by itself", side_auto_sub: "With a sound too high to hear: when a second screen starts, the shared mouse goes on, a computer comes back, and every few minutes. Only when this computer plays through its own speakers.",
-  side_every: "Check every", side_every_one: "Minute", side_every_n: "{0} minutes",
+  side_every: "Check every", side_every_one: "Minute", side_every_n: "{0} minutes", side_every_never: "Never",
 };
 
 const nl = {
@@ -369,7 +369,7 @@ const nl = {
   output_use: "Gebruik als speaker", output_stop: "Stop speaker", output_tip: "Speel het geluid van deze computer af op {0}",
   output_started: "Het geluid van deze computer speelt op {0}. Het speelt hier ook gewoon door.",
   side_auto: "De kant vanzelf controleren", side_auto_sub: "Met een geluid dat te hoog is om te horen: als een tweede scherm start, de gedeelde muis aangaat, een computer terugkomt, en om de paar minuten. Alleen als deze computer via zijn eigen speakers speelt.",
-  side_every: "Controleer elke", side_every_one: "Minuut", side_every_n: "{0} minuten",
+  side_every: "Controleer elke", side_every_one: "Minuut", side_every_n: "{0} minuten", side_every_never: "Nooit",
 };
 
 const tables = { en, nl };

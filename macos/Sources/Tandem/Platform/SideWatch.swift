@@ -38,7 +38,7 @@ final class SideWatch {
                 try? await Task.sleep(for: .seconds(60))
                 guard let self else { return }
                 let every = UserDefaults.standard.object(forKey: Self.everyKey) as? Int ?? Self.defaultEvery
-                self.schedule.setEveryMinutes(minutes: UInt32(max(every, 1)))
+                self.schedule.setEveryMinutes(minutes: UInt32(max(every, 0)))
                 for device in EngineModel.shared.devices { self.consider(device.id, .inUse) }
             }
         }

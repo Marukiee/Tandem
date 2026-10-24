@@ -150,7 +150,7 @@ impl TandemSideSchedule {
         Arc::new(Self { inner: Mutex::new(Schedule::default()) })
     }
 
-    /// How often a device in use is checked, in minutes (the setting "Check every"). One at least.
+    /// How often a device in use is checked, in minutes (the setting "Check every"); 0 is never.
     pub fn set_every_minutes(&self, minutes: u32) {
         self.inner.lock().unwrap().set_every(u64::from(minutes) * 60_000);
     }

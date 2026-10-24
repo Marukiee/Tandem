@@ -120,6 +120,9 @@ struct PointerSettings: View {
                         ForEach([1, 2, 5, 10], id: \.self) { minutes in
                             Text(minutes == 1 ? String(localized: "Minute") : String(localized: "\(minutes) minutes")).tag(minutes)
                         }
+                        Divider()
+                        // Never: only a screen that starts, the mouse turned on, a device that connects or wakes.
+                        Text("Never").tag(0)
                     }
                 }
                 HStack {
