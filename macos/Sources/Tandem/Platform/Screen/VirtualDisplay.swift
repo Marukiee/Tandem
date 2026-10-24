@@ -60,20 +60,24 @@ final class VirtualDisplay {
         return ids.prefix(Int(count)).contains(displayID)
     }
 
-    /// True when the display shows the size now.
+    /// True when the display shows the size now: the pixels and the points, since a hiDPI display that the system put in the mode of the
+    /// same pixels at one point each draws everything at half the size the viewer's screen does.
     private func selectMode(width: Int, height: Int) -> Bool {
-        if let current = CGDisplayCopyDisplayMode(displayID), current.pixelWidth == width, current.pixelHeight == height { return true }
+        let points = hiDPI ? (width / 2, height / 2) : (width, height)
+        func right(_ mode: CGDisplayMode) -> Bool {
+            mode.pixelWidth == width && mode.pixelHeight == height && mode.width == points.0 && mode.height == points.1
+        }
+        if let current = CGDisplayCopyDisplayMode(displayID), right(current) { return true }
         let options = [kCGDisplayShowDuplicateLowResolutionModes: true] as CFDictionary
         guard let modes = CGDisplayCopyAllDisplayModes(displayID, options) as? [CGDisplayMode] else { return false }
-        let points = hiDPI ? (width / 2, height / 2) : (width, height)
-        guard let mode = modes.first(where: { $0.pixelWidth == width && $0.pixelHeight == height && $0.width == points.0 && $0.height == points.1 })
-            ?? modes.first(where: { $0.pixelWidth == width && $0.pixelHeight == height }) else { return false }
+        let wanted = modes.first(where: right)
+        guard let mode = wanted ?? modes.first(where: { $0.pixelWidth == width && $0.pixelHeight == height }) else { return false }
         var config: CGDisplayConfigRef?
         guard CGBeginDisplayConfiguration(&config) == .success, let config else { return false }
         CGConfigureDisplayWithDisplayMode(config, displayID, mode, nil)
         CGCompleteDisplayConfiguration(config, .forSession)
-        if let now = CGDisplayCopyDisplayMode(displayID) { return now.pixelWidth == width && now.pixelHeight == height }
-        return false
+        guard let now = CGDisplayCopyDisplayMode(displayID) else { return false }
+        return wanted != nil ? right(now) : now.pixelWidth == width && now.pixelHeight == height
     }
 
     /// Where the other screens are is where the person put them; a new one goes to the right of the main one.

@@ -211,6 +211,23 @@ enum ScreenDebug {
             && ScreenGeometry.extendedSize(width: 5120, height: 2880).width * ScreenGeometry.extendedSize(width: 5120, height: 2880).height <= 3840 * 2160
             && ScreenGeometry.extendedSize(width: 2561, height: 1601).width % 2 == 0
             && ScreenGeometry.extendedSize(width: 2560, height: 1600).hiDPI)
+        // The laptop: 2560x1600 at 133%, a desktop of 1920x1200.
+        let laptop = ScreenGeometry.extendedShape(width: 2560, height: 1600, logicalWidth: 1920, logicalHeight: 1200)
+        report.check("a screen for a scaled viewer has its logical size in points and its pixels in the picture",
+            laptop == .init(pointsWidth: 1920, pointsHeight: 1200, hiDPI: true, pixelsWidth: 3840, pixelsHeight: 2400, streamWidth: 2560, streamHeight: 1600),
+            "\(laptop)")
+        let plain = ScreenGeometry.extendedShape(width: 1920, height: 1080, logicalWidth: 1920, logicalHeight: 1080)
+        let double = ScreenGeometry.extendedShape(width: 2560, height: 1600, logicalWidth: 1280, logicalHeight: 800)
+        let older = ScreenGeometry.extendedShape(width: 2560, height: 1600, logicalWidth: 0, logicalHeight: 0)
+        report.check("100% is drawn as it is, 200% is hiDPI without scaling, and a viewer that says no logical size gets what it did",
+            !plain.hiDPI && plain.pointsWidth == 1920 && plain.streamWidth == 1920
+            && double.hiDPI && double.pointsWidth == 1280 && double.pixelsWidth == 2560 && double.streamWidth == 2560
+            && older.hiDPI && older.pointsWidth == 1280 && older.streamWidth == 2560)
+        let dense = ScreenGeometry.extendedShape(width: 3840, height: 2400, logicalWidth: 1536, logicalHeight: 960)
+        let huge = ScreenGeometry.extendedShape(width: 3840, height: 2160, logicalWidth: 3200, logicalHeight: 1800)
+        report.check("a viewer above 200% gets no more pixels than are drawn, and a backing stays within 6K",
+            dense.streamWidth == 3072 && dense.streamHeight == 1920
+            && Double(huge.pixelsWidth * huge.pixelsHeight) <= ScreenGeometry.maxBackingArea && huge.hiDPI && huge.streamWidth <= huge.pixelsWidth)
         report.check("starting bitrate stays within bounds", ScreenGeometry.startingBitrate(width: 1920, height: 1080, fps: 30, requestedMax: 0) <= 24_000_000
             && ScreenGeometry.startingBitrate(width: 1920, height: 1080, fps: 30, requestedMax: 3_000_000) == 3_000_000)
         report.check("frame rate follows the bitrate down", ScreenGeometry.frameRate(for: 400_000, started: 4_000_000, base: 30) == 12

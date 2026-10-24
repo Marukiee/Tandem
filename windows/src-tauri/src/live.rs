@@ -5,10 +5,9 @@
 //! frames get there.
 
 use std::collections::HashMap;
-use std::sync::atomic::AtomicBool;
-#[cfg(feature = "native-video")]
-use std::sync::atomic::Ordering;
-use std::sync::{Arc, LazyLock, Mutex};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, LazyLock, Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
 use tandem_core::ffi::{
@@ -50,6 +49,8 @@ struct Session {
     /// A second screen shown in a window of this app that fills the screen (Windows), not one made to fit its picture.
     extended: bool,
     player: Option<Player>,
+    /// The Wayland output a second screen fills: the one whose size was asked for.
+    output: Option<String>,
 }
 
 /// A program of its own that decodes and shows the pictures of a second screen: the window of this app cannot do that smoothly enough for
@@ -57,6 +58,48 @@ struct Session {
 struct Player {
     feed: std::sync::mpsc::SyncSender<Vec<u8>>,
     child: Arc<Mutex<Option<std::process::Child>>>,
+    /// Nothing was sent yet, or a picture was dropped: only a keyframe may go next, or the decoder shows damage until the next one.
+    waiting: bool,
+    asked: Option<Instant>,
+    counts: Arc<FeedCounts>,
+}
+
+/// What became of the pictures of a second screen, for the line in the log every few seconds.
+#[derive(Default)]
+struct FeedCounts {
+    dropped: AtomicU64,
+    skipped: AtomicU64,
+    asked: AtomicU64,
+}
+
+impl Player {
+    /// One picture from the core. True when a keyframe should be asked for.
+    fn take(&mut self, data: Vec<u8>, keyframe: bool) -> bool {
+        if keyframe {
+            self.waiting = false;
+        }
+        if self.waiting {
+            self.counts.skipped.fetch_add(1, Ordering::Relaxed);
+            return self.ask();
+        }
+        if self.feed.try_send(data).is_err() {
+            // GStreamer is behind. What follows refers to this picture, so nothing goes until a full one.
+            self.counts.dropped.fetch_add(1, Ordering::Relaxed);
+            self.waiting = true;
+            return self.ask();
+        }
+        false
+    }
+
+    fn ask(&mut self) -> bool {
+        let now = Instant::now();
+        if self.asked.is_some_and(|at| now.duration_since(at) < Duration::from_millis(500)) {
+            return false;
+        }
+        self.asked = Some(now);
+        self.counts.asked.fetch_add(1, Ordering::Relaxed);
+        true
+    }
 }
 
 impl Drop for Player {
@@ -187,7 +230,8 @@ impl TandemMediaViewer for Viewer {
         };
         if shows_itself {
             // The program that shows the pictures starts now that there is something to show.
-            let player = start_player(&self.app, session);
+            let output = SESSIONS.lock().unwrap().get(&session).and_then(|s| s.output.clone());
+            let player = start_player(&self.app, session, output.as_deref());
             let name = {
                 let mut sessions = SESSIONS.lock().unwrap();
                 match sessions.get_mut(&session) {
@@ -216,19 +260,18 @@ impl TandemMediaViewer for Viewer {
 
     fn on_frame(&self, session: u64, pts_us: u64, keyframe: bool, discontinuity: bool, data: Vec<u8>) {
         {
-            let sessions = SESSIONS.lock().unwrap();
-            if let Some(s) = sessions.get(&session).filter(|s| s.display) {
+            let mut sessions = SESSIONS.lock().unwrap();
+            if let Some(s) = sessions.get_mut(&session).filter(|s| s.display) {
                 // A second screen: straight to the program that shows it. When that is behind, the picture is dropped and a full one is
                 // asked for, so what is shown never lags behind more than a few pictures.
-                if let Some(player) = &s.player {
-                    if player.feed.try_send(data).is_err() {
-                        drop(sessions);
-                        if let Ok(engine) = self.app.state::<AppState>().engine() {
-                            let _ = engine.media_request_keyframe(session);
-                        }
+                let ask = s.player.as_mut().is_some_and(|player| player.take(data, keyframe));
+                drop(sessions);
+                if ask {
+                    if let Ok(engine) = self.app.state::<AppState>().engine() {
+                        let _ = engine.media_request_keyframe(session);
                     }
                 }
-                let _ = (pts_us, keyframe, discontinuity);
+                let _ = (pts_us, discontinuity);
                 return;
             }
         }
@@ -293,19 +336,21 @@ pub async fn live_start(app: AppHandle, id: String, kind: String, name: String, 
 pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacing, name: String, computer: bool, extend: bool) -> Reply<u64> {
     let engine = app.state::<AppState>().engine()?;
     // A second screen is as many pixels as the screen it is shown on, lying as it is; anything else is what a window can usefully show.
-    let (extend_w, extend_h) = if extend { monitor_pixels(app) } else { (0, 0) };
+    let ((extend_w, extend_h), (logical_w, logical_h), _) = if extend { screen_shape(app) } else { ((0, 0), (0, 0), None) };
     let want = TandemMediaWant {
         kind: if camera { TandemMediaKind::Camera } else { TandemMediaKind::Screen },
         codecs: vec![TandemMediaCodec::H264],
         // The whole screen as it is, up to what a big monitor has: scaled down the text of a screen turns soft.
-        max_width: if extend { extend_w.max(extend_h) } else if camera { 1920 } else { 3840 },
-        max_height: if extend { extend_w.min(extend_h) } else if camera { 1080 } else { 2160 },
+        max_width: if extend { extend_w } else if camera { 1920 } else { 3840 },
+        max_height: if extend { extend_h } else if camera { 1080 } else { 2160 },
         max_fps: if camera { 30 } else { 60 },
         max_bitrate: 0,
         // The picture of a phone can be clicked on from here, when the phone allows it (its accessibility service, see live.js).
         control: !camera,
         facing: if camera { facing } else { TandemMediaFacing::Any },
         extend,
+        logical_width: logical_w,
+        logical_height: logical_h,
     };
     let peer = id.clone();
     let session = engine.media_request(id, want).map_err(|e| e.to_string())?;
@@ -330,6 +375,7 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
             display: false,
             extended: extend,
             player: None,
+            output: None,
         },
     );
     // The shape before the first picture says it (see `live_fit`): wide for a camera or the screen of a computer, tall for a phone.
@@ -350,59 +396,170 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
     Ok(session)
 }
 
-/// Whether GStreamer has this element.
-fn gst_has(element: &str) -> bool {
+/// What `gst-inspect-1.0` says about an element (its properties among it), or nothing when GStreamer does not have it.
+fn gst_inspect(element: &str) -> Option<String> {
     let mut command = std::process::Command::new("gst-inspect-1.0");
     tandem_winsys::system_env(&mut command);
-    command.arg(element).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null()).status().is_ok_and(|s| s.success())
+    let out = command.arg(element).stderr(std::process::Stdio::null()).output().ok()?;
+    out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// The elements of the pipeline that shows a second screen, found out once: every `gst-inspect-1.0` costs a moment, and the first
+/// picture should not wait for them.
+struct Gst {
+    decoder: Option<String>,
+    convert: String,
+    sink: String,
+    /// The sink can be told which output to fill.
+    choose_output: bool,
+}
+
+fn gst() -> &'static Gst {
+    static GST: OnceLock<Gst> = OnceLock::new();
+    GST.get_or_init(|| {
+        let wayland = std::env::var("XDG_SESSION_TYPE").is_ok_and(|s| s.eq_ignore_ascii_case("wayland")) || std::env::var_os("WAYLAND_DISPLAY").is_some();
+        let threads = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(2).clamp(1, 4);
+        // To try another decoder on a real computer without a new build: `TANDEM_DISPLAY_DECODER=vah264dec`, say.
+        let chosen = std::env::var("TANDEM_DISPLAY_DECODER").ok().filter(|d| !d.trim().is_empty());
+        // The decoder of the processor and not the one of the graphics card: the second one would be woken for it on a laptop that has
+        // two. Threads of its own per picture (what it does when the input is not live, and a pipe is not) hold a picture back for each
+        // thread: three pictures late while things move, and the last ones of a movement only shown when the next pictures come, which on
+        // a still screen is up to a second later. Threads per slice cost no delay.
+        let decoder = chosen.or_else(|| match gst_inspect("avdec_h264") {
+            Some(about) if about.contains("thread-type") => Some(format!("avdec_h264 thread-type=slice max-threads={threads}")),
+            Some(_) => Some("avdec_h264 max-threads=1".into()),
+            None => gst_inspect("openh264dec").map(|_| "openh264dec".into()),
+        });
+        // Turning the pictures of the decoder into what the screen takes is a pass over every pixel, which one thread does not do sixty
+        // times a second at the size of a laptop screen.
+        let convert = match gst_inspect("videoconvert") {
+            Some(about) if about.contains("n-threads") => format!("videoconvert n-threads={threads}"),
+            _ => "videoconvert".into(),
+        };
+        let wayland_sink = if wayland { gst_inspect("waylandsink") } else { None };
+        let choose_output = wayland_sink.as_ref().is_some_and(|about| about.contains("fullscreen-output"));
+        let sink = if wayland_sink.is_some() {
+            "waylandsink fullscreen=true sync=false"
+        } else if gst_inspect("glimagesink").is_some() {
+            "glimagesink sync=false"
+        } else {
+            "autovideosink sync=false"
+        };
+        Gst { decoder, convert, sink: sink.into(), choose_output }
+    })
+}
+
+/// What is written after every picture: an access unit delimiter, an SEI that holds nothing but a name (user data, which decoders skip),
+/// and a start code. The parser of GStreamer only knows that a picture is complete when it has read two whole units of the next one, so
+/// every picture waited for the next: on the laptop (GStreamer 1.28) 17 ms while things move, and the last picture of a movement on a
+/// still screen until the next one came, half a second in the test. With this the parser hands a picture on in 0.1 ms. The next picture
+/// goes without its own start code, so all that is written stays one valid stream: delimiter and SEI are the start of the next picture.
+const AU_END: [u8; 34] = [
+    0, 0, 0, 1, 0x09, 0xF0, //
+    0, 0, 0, 1, 0x06, 0x05, 0x10, b'T', b'a', b'n', b'd', b'e', b'm', b'.', b's', b'c', b'r', b'e', b'e', b'n', b'.', b'v', b'1', 0x80, //
+    0, 0, 0, 1,
+];
+
+/// The part of an access unit that is written to GStreamer; `AU_END` goes after it.
+fn framed(data: &[u8], first: bool) -> &[u8] {
+    let code = |d: &[u8]| if d.starts_with(&[0, 0, 0, 1]) { 4 } else if d.starts_with(&[0, 0, 1]) { 3 } else { 0 };
+    let mut rest = data;
+    // A delimiter of its own would make two in one picture.
+    let at = code(rest);
+    if at > 0 && rest.get(at).is_some_and(|nal| nal & 0x1F == 9) {
+        rest = match rest[at..].windows(3).position(|w| w == [0, 0, 1]).map(|p| at + p) {
+            Some(p) if rest[p - 1] == 0 => &rest[p - 1..],
+            Some(p) => &rest[p..],
+            None => &[],
+        };
+    }
+    if !first {
+        rest = &rest[code(rest)..];
+    }
+    rest
 }
 
 /// Starts the program that shows the pictures of a second screen, filling this computer's screen, and the thread that feeds it.
-fn start_player(app: &AppHandle, session: u64) -> Option<Player> {
-    use std::io::Write;
+fn start_player(app: &AppHandle, session: u64, output: Option<&str>) -> Option<Player> {
+    use std::io::{BufRead, Write};
     use std::process::{Command, Stdio};
-    let wayland = std::env::var("XDG_SESSION_TYPE").is_ok_and(|s| s.eq_ignore_ascii_case("wayland")) || std::env::var_os("WAYLAND_DISPLAY").is_some();
-    // The decoder of the processor and not the one of the graphics card: the second one would be woken for it on a laptop that has two.
-    let decoder = if gst_has("avdec_h264") {
-        "avdec_h264 max-threads=4"
-    } else if gst_has("openh264dec") {
-        "openh264dec"
-    } else {
+    let gst = gst();
+    let Some(decoder) = &gst.decoder else {
         log::warn!("display: no H.264 decoder for GStreamer");
         return None;
     };
-    let sink = if wayland && gst_has("waylandsink") {
-        "waylandsink fullscreen=true sync=false"
-    } else if gst_has("glimagesink") {
-        "glimagesink sync=false"
-    } else {
-        "autovideosink sync=false"
+    // No queue in front of the parser: one that lets go of bytes when it is full cuts pictures in half, and the decoder shows damage until
+    // the next keyframe. Pictures are dropped whole, before the pipe (`Player::take`). The queue behind the decoder may drop decoded
+    // pictures, and lets the decoder go on with the next one while the last is turned into colours and shown.
+    // The screen whose size was asked for, when there are more than one.
+    let fill = match output {
+        Some(name) if gst.choose_output && !name.is_empty() && !name.contains(char::is_whitespace) => format!(" fullscreen-output={name}"),
+        _ => String::new(),
     };
     let pipeline = format!(
-        "-q fdsrc fd=0 blocksize=262144 ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 ! h264parse ! {decoder} ! videoconvert ! {sink}"
+        "-q fdsrc fd=0 blocksize=262144 ! h264parse ! {decoder} ! queue max-size-buffers=2 max-size-bytes=0 max-size-time=0 leaky=downstream ! {} ! {}{fill}",
+        gst.convert, gst.sink
     );
+    log::info!("display {session}: gst-launch-1.0 {pipeline}");
     let mut command = Command::new("gst-launch-1.0");
     tandem_winsys::system_env(&mut command);
     for part in pipeline.split_whitespace() {
         command.arg(part);
     }
-    let mut child = command.stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::null()).spawn().ok()?;
+    let mut child = command.stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::piped()).spawn().ok()?;
     let mut stdin = child.stdin.take()?;
-    let (feed, rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(24);
+    // What GStreamer says when it cannot do it goes in the log: without it a second screen that stays black gives nothing to go on.
+    if let Some(errors) = child.stderr.take() {
+        let _ = std::thread::Builder::new().name("tandem-display-log".into()).spawn(move || {
+            for line in std::io::BufReader::new(errors).lines().map_while(Result::ok).take(40) {
+                log::warn!("display {session}: gstreamer: {line}");
+            }
+        });
+    }
+    // A few pictures at most: more is a delay that only grows while GStreamer is behind, and pictures are better dropped then.
+    let (feed, rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(4);
+    let counts = Arc::new(FeedCounts::default());
+    let seen = counts.clone();
     let app = app.clone();
+    let started = Instant::now();
     std::thread::Builder::new()
         .name("tandem-display-feed".into())
         .spawn(move || {
+            let mut first = true;
+            let (mut pictures, mut bytes, mut longest, mut since) = (0u64, 0u64, Duration::ZERO, Instant::now());
             while let Ok(data) = rx.recv() {
-                if stdin.write_all(&data).is_err() {
+                let picture = framed(&data, first);
+                let at = Instant::now();
+                if stdin.write_all(picture).and_then(|_| stdin.write_all(&AU_END)).is_err() {
                     break;
+                }
+                if first {
+                    log::info!("display {session}: first picture written {} ms after GStreamer was started", started.elapsed().as_millis());
+                }
+                first = false;
+                // A write that waits is GStreamer that has not taken what came before: its decoder or the screen is behind.
+                longest = longest.max(at.elapsed());
+                pictures += 1;
+                bytes += (picture.len() + AU_END.len()) as u64;
+                let span = since.elapsed();
+                if span >= Duration::from_secs(10) {
+                    log::info!(
+                        "display {session}: {:.1} pictures a second, {:.1} Mbit/s, longest write {} ms; since the start {} dropped while GStreamer was behind, {} skipped until a keyframe, {} keyframes asked",
+                        pictures as f64 / span.as_secs_f64(),
+                        bytes as f64 * 8.0 / span.as_secs_f64() / 1e6,
+                        longest.as_millis(),
+                        seen.dropped.load(Ordering::Relaxed),
+                        seen.skipped.load(Ordering::Relaxed),
+                        seen.asked.load(Ordering::Relaxed),
+                    );
+                    (pictures, bytes, longest, since) = (0, 0, Duration::ZERO, Instant::now());
                 }
             }
             // The program is gone (its window was closed) or the session is: either way the second screen is over.
             end_display(&app, session);
         })
         .ok()?;
-    Some(Player { feed, child: Arc::new(Mutex::new(Some(child))) })
+    Some(Player { feed, child: Arc::new(Mutex::new(Some(child))), waiting: true, asked: None, counts })
 }
 
 /// The link of a session that is looked at got poor, or is good again: the window of it says so over the picture; a second screen has no window
@@ -449,12 +606,44 @@ fn end_display(app: &AppHandle, session: u64) {
 }
 
 /// The pixels of the screen the main window is on.
-fn monitor_pixels(app: &AppHandle) -> (u32, u32) {
+/// The screen the main window is on: its pixels and its logical size (what windows are laid out in), lying as a landscape screen does, as
+/// a second screen is asked for. Windows says the pixels and the real scale. The toolkit of Linux says the logical size times a whole
+/// scale, which for a screen at 125% or 150% is far more than its pixels (3072 by 1728 for 1920 by 1080 at 125%), so the pixels and the
+/// real scale come from the desktop when it says them.
+fn screen_shape(app: &AppHandle) -> ((u32, u32), (u32, u32), Option<String>) {
     let monitor = app
         .get_webview_window("main")
         .and_then(|w| w.current_monitor().ok().flatten())
         .or_else(|| app.primary_monitor().ok().flatten());
-    monitor.map(|m| (m.size().width, m.size().height)).unwrap_or((1920, 1080))
+    let Some(monitor) = monitor else { return ((1920, 1080), (1920, 1080), None) };
+    let scale = if monitor.scale_factor().is_finite() && monitor.scale_factor() >= 0.5 { monitor.scale_factor() } else { 1.0 };
+    let (size, position) = (monitor.size(), monitor.position());
+    let logical = ((f64::from(size.width) / scale).round() as u32, (f64::from(size.height) / scale).round() as u32);
+    let mut shape = ((size.width, size.height), logical);
+    let mut output = None;
+    if cfg!(target_os = "linux") {
+        let at = ((f64::from(position.x) / scale).round() as i32, (f64::from(position.y) / scale).round() as i32);
+        if let Some(found) = tandem_winsys::pick_monitor(&tandem_winsys::monitors(), at, (position.x, position.y), logical) {
+            shape = (found.pixels, found.logical());
+            output = Some(found.connector);
+        }
+    }
+    log::info!(
+        "second screen: {} is {}x{} pixels, {}x{} logical (the toolkit says {}x{} at scale {scale})",
+        output.as_deref().unwrap_or("this screen"),
+        shape.0.0,
+        shape.0.1,
+        shape.1.0,
+        shape.1.1,
+        size.width,
+        size.height
+    );
+    let (pixels, logical) = lying(shape);
+    (pixels, logical, output)
+}
+
+fn lying(((pw, ph), (lw, lh)): ((u32, u32), (u32, u32))) -> ((u32, u32), (u32, u32)) {
+    if pw < ph { ((ph, pw), (lh, lw)) } else { ((pw, ph), (lw, lh)) }
 }
 
 /// Asks a computer for a screen of its own, as big as this one, and shows it over this one when it is made. On Windows that is a window of
@@ -476,12 +665,16 @@ pub fn display_open(app: &AppHandle, id: String, name: String, mac: bool) -> Rep
         return Ok(session.to_string());
     }
     let engine = app.state::<AppState>().engine()?;
-    let (width, height) = monitor_pixels(&app);
+    // What the player needs is looked up while the other computer makes its screen, not after.
+    let _ = std::thread::Builder::new().name("tandem-display-probe".into()).spawn(|| {
+        gst();
+    });
+    let ((width, height), (logical_width, logical_height), output) = screen_shape(&app);
     let want = TandemMediaWant {
         kind: TandemMediaKind::Screen,
         codecs: vec![TandemMediaCodec::H264],
-        max_width: width.max(height),
-        max_height: width.min(height),
+        max_width: width,
+        max_height: height,
         max_fps: 60,
         max_bitrate: 0,
         // The mouse of this computer is not over the picture (it is a window of another program), so there is nothing to control from here:
@@ -489,6 +682,8 @@ pub fn display_open(app: &AppHandle, id: String, name: String, mac: bool) -> Rep
         control: false,
         facing: TandemMediaFacing::Any,
         extend: true,
+        logical_width,
+        logical_height,
     };
     let peer = id.clone();
     let session = engine.media_request(id, want).map_err(|e| e.to_string())?;
@@ -511,6 +706,7 @@ pub fn display_open(app: &AppHandle, id: String, name: String, mac: bool) -> Rep
             display: true,
             extended: false,
             player: None,
+            output,
         },
     );
     Ok(session.to_string())
@@ -725,5 +921,62 @@ mod tests {
         assert_eq!(session_of(" 42 "), Ok(42));
         assert!(session_of("not a number").is_err());
         assert!(session_of("").is_err());
+    }
+
+    /// The NAL units of an Annex B stream, by type and payload.
+    fn nals(stream: &[u8]) -> Vec<(u8, Vec<u8>)> {
+        let mut starts = Vec::new();
+        let mut i = 0;
+        while i + 3 <= stream.len() {
+            if stream[i..i + 3] == [0, 0, 1] {
+                starts.push(i + 3);
+                i += 3;
+            } else {
+                i += 1;
+            }
+        }
+        starts
+            .iter()
+            .enumerate()
+            .filter_map(|(n, &start)| {
+                let mut end = starts.get(n + 1).map_or(stream.len(), |next| next - 3);
+                while end > start && stream[end - 1] == 0 {
+                    end -= 1;
+                }
+                (end > start).then(|| (stream[start] & 0x1F, stream[start..end].to_vec()))
+            })
+            .collect()
+    }
+
+    #[test]
+    fn what_goes_to_gstreamer_is_one_stream_with_a_delimiter_after_every_picture() {
+        let key = [&[0, 0, 0, 1, 0x67, 0x64, 0x00, 0x2A][..], &[0, 0, 0, 1, 0x68, 0xEE, 0x3C], &[0, 0, 0, 1, 0x65, 0x88, 0x84, 0x21]].concat();
+        let delta = vec![0, 0, 0, 1, 0x41, 0x9A, 0x22];
+        // A picture with a delimiter of its own and short start codes, as another encoder may write it.
+        let other = [&[0, 0, 1, 0x09, 0x10][..], &[0, 0, 1, 0x41, 0x9A, 0x33]].concat();
+        let mut stream = Vec::new();
+        for (n, unit) in [&key, &delta, &other].into_iter().enumerate() {
+            stream.extend_from_slice(framed(unit, n == 0));
+            stream.extend_from_slice(&AU_END);
+        }
+        let types: Vec<u8> = nals(&stream).iter().map(|(t, _)| *t).collect();
+        assert_eq!(types, vec![7, 8, 5, 9, 6, 1, 9, 6, 1, 9, 6]);
+        let payloads = nals(&stream);
+        assert_eq!(payloads[2].1, vec![0x65, 0x88, 0x84, 0x21]);
+        assert_eq!(payloads[5].1, vec![0x41, 0x9A, 0x22]);
+        assert_eq!(payloads[8].1, vec![0x41, 0x9A, 0x33]);
+        // The SEI is user data (type 5) of 16 bytes and ends in its stop bit: a valid message that a decoder passes over.
+        assert_eq!(&payloads[4].1[..3], &[0x06, 0x05, 0x10]);
+        assert_eq!(payloads[4].1.len(), 3 + 16 + 1);
+        assert_eq!(payloads[4].1.last(), Some(&0x80));
+        // What is written last ends in a start code, which the next picture continues.
+        assert!(stream.ends_with(&[0x80, 0, 0, 0, 1]));
+        assert!(stream.starts_with(&[0, 0, 0, 1, 0x67]));
+    }
+
+    #[test]
+    fn a_screen_on_its_side_is_asked_for_lying() {
+        assert_eq!(lying(((1800, 2880), (1200, 1920))), ((2880, 1800), (1920, 1200)));
+        assert_eq!(lying(((2880, 1800), (1920, 1200))), ((2880, 1800), (1920, 1200)));
     }
 }

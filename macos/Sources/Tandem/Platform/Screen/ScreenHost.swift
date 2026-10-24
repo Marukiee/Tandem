@@ -256,11 +256,19 @@ final class ScreenHost {
         var display = ScreenCapturer.mainDisplay()
         let size: (width: Int, height: Int)
         if request.extend {
-            let shape = ScreenGeometry.extendedSize(width: Int(request.maxWidth), height: Int(request.maxHeight))
-            guard VirtualDisplay.isAvailable, let made = VirtualDisplay(name: name, width: shape.width, height: shape.height, hiDPI: shape.hiDPI, refresh: min(60, max(30, fps))) else {
+            let shape = ScreenGeometry.extendedShape(
+                width: Int(request.maxWidth), height: Int(request.maxHeight),
+                logicalWidth: Int(request.logicalWidth), logicalHeight: Int(request.logicalHeight)
+            )
+            guard VirtualDisplay.isAvailable, let made = VirtualDisplay(name: name, width: shape.pixelsWidth, height: shape.pixelsHeight, hiDPI: shape.hiDPI, refresh: min(60, max(30, fps))) else {
                 try? engine.mediaDeny(session: id, reason: .unavailable)
                 return
             }
+            NSLog(
+                "Tandem: second screen for %@, which asked %ldx%ld pixels and %ldx%ld logical: %ldx%ld points%@ drawn in %ldx%ld, sent as %ldx%ld",
+                name, Int(request.maxWidth), Int(request.maxHeight), Int(request.logicalWidth), Int(request.logicalHeight),
+                shape.pointsWidth, shape.pointsHeight, shape.hiDPI ? " (hiDPI)" : "", shape.pixelsWidth, shape.pixelsHeight, shape.streamWidth, shape.streamHeight
+            )
             virtual = made
             // On the side the device stands on. When that is not known (or the person wanted to be asked each time), the question comes up:
             // found by sound, or chosen.
@@ -272,7 +280,7 @@ final class ScreenHost {
             extendDisplay = made
             extendPeer = peer
             display = ScreenCapturer.DisplayInfo(id: made.displayID, bounds: made.bounds, pixels: made.pixels)
-            size = (shape.width, shape.height)
+            size = (shape.streamWidth, shape.streamHeight)
         } else {
             size = ScreenGeometry.fit(source: display.pixels, maxWidth: Int(request.maxWidth), maxHeight: Int(request.maxHeight))
         }
@@ -543,6 +551,10 @@ final class ScreenHostSession: @unchecked Sendable {
     private var fps: Int
     private var bitrate: Int
     private var invalidRun = 0
+    /// For the line in the log every ten seconds: what the encoder had counted the last time, and when.
+    private var logged = (at: Date(), counters: ScreenEncoder.Counters(), sent: 0, refused: 0)
+    private var sent = 0
+    private var refused = 0
     /// A second screen for the viewer, made for this session and gone with it.
     private var virtualDisplay: VirtualDisplay?
     let startedAt = Date()
@@ -671,8 +683,29 @@ final class ScreenHostSession: @unchecked Sendable {
         case .sent, .dropped, .waitingForKeyframe:
             lock.lock()
             invalidRun = 0
+            if result == .sent { sent += 1 } else { refused += 1 }
             lock.unlock()
         }
+        report()
+    }
+
+    /// Where the time goes on this side, for a real run to say: pictures captured and encoded a second, the time in the encoder, and what
+    /// the core sent or turned away (a link that is behind). `log show --predicate 'process == "Tandem"' --info` reads it back.
+    private func report() {
+        let now = Date()
+        let (target, last, total, turned) = lock.withLock { (encoder, logged, sent, refused) }
+        let span = now.timeIntervalSince(last.at)
+        guard span >= 10 else { return }
+        let counters = target.stats
+        lock.withLock { logged = (now, counters, total, turned) }
+        let encoded = counters.encoded - last.counters.encoded
+        let average = encoded > 0 ? Double(counters.encodeMicros - last.counters.encodeMicros) / Double(encoded) / 1000 : 0
+        NSLog(
+            "Tandem: screen %llu: %.1f captured and %.1f encoded a second (%ld dropped in the encoder), %.1f ms in the encoder (longest so far %.1f), %.1f Mbit/s, %ld keyframes, %ld sent and %ld turned away by the core",
+            id, Double(counters.captured - last.counters.captured) / span, Double(encoded) / span, counters.dropped - last.counters.dropped,
+            average, Double(counters.longestMicros) / 1000, Double(counters.bytes - last.counters.bytes) * 8 / span / 1e6,
+            counters.keyframes - last.counters.keyframes, total - last.sent, turned - last.refused
+        )
     }
 
     // MARK: The display changed
@@ -693,9 +726,10 @@ final class ScreenHostSession: @unchecked Sendable {
         // A second screen stays the one that was made for the viewer; only the main display follows the changes of the system.
         let virtual = lock.withLock { virtualDisplay }
         let fresh = virtual.map { ScreenCapturer.DisplayInfo(id: $0.displayID, bounds: $0.bounds, pixels: $0.pixels) } ?? ScreenCapturer.mainDisplay()
-        let size = virtual != nil ? (width: Int(fresh.pixels.width), height: Int(fresh.pixels.height))
-            : ScreenGeometry.fit(source: fresh.pixels, maxWidth: limits.width, maxHeight: limits.height)
         let before = oldEncoder.config
+        // The picture of a second screen stays the size it was made for, which can be smaller than the pixels it is drawn in.
+        let size = virtual != nil ? (width: before.width, height: before.height)
+            : ScreenGeometry.fit(source: fresh.pixels, maxWidth: limits.width, maxHeight: limits.height)
         let changed = size.width != before.width || size.height != before.height
 
         await oldCapture.stop()

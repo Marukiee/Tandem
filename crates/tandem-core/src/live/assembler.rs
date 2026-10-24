@@ -108,7 +108,13 @@ impl Assembler {
         if self.is_old(seq) {
             return false;
         }
-        !self.waiting_key || keyframe
+        !self.waiting_key || keyframe || self.behind_a_coming_key(seq)
+    }
+
+    /// A keyframe before this frame is arriving. The frames that follow a keyframe start to arrive before its last bytes are in, a
+    /// large keyframe more so; turned away, the first of them leaves a hole that breaks the chain the keyframe was sent to start.
+    fn behind_a_coming_key(&self, seq: u32) -> bool {
+        self.keys_in_progress.iter().any(|key| seq_before(*key, seq))
     }
 
     /// A frame has started to arrive.
@@ -139,6 +145,9 @@ impl Assembler {
         if self.waiting_key {
             if frame.keyframe() {
                 self.accept_key(now, frame, &mut step);
+            } else if self.behind_a_coming_key(seq) && self.pending.len() < MAX_PENDING && !self.pending.iter().any(|p| p.seq == seq) {
+                // Kept for the keyframe it follows, which hands it on when it is whole (`accept_key`).
+                self.pending.push(frame);
             } else {
                 step.discarded = 1;
             }
@@ -174,6 +183,11 @@ impl Assembler {
         if self.waiting_key {
             if was_key {
                 self.key_request_at = Some(now);
+                // What was kept for this keyframe can only be used when another one before it is still coming.
+                let before = self.pending.len();
+                let keys = &self.keys_in_progress;
+                self.pending.retain(|p| keys.iter().any(|key| seq_before(*key, p.seq)));
+                step.discarded += (before - self.pending.len()) as u32;
             }
             return step;
         }
@@ -474,6 +488,43 @@ mod tests {
         let a = Assembler::new(t);
         assert!(!a.key_due(t + Duration::from_secs(1)));
         assert!(a.key_due(t + KEY_START_WAIT));
+    }
+
+    #[test]
+    fn a_frame_that_overtakes_the_keyframe_it_follows_waits_for_it() {
+        let t = Instant::now();
+        let mut a = Assembler::new(t);
+        a.begin(0, true);
+        // The first frame after the keyframe is wanted while the keyframe is still on its way, and is handed on after it.
+        assert!(a.wants(1, false));
+        a.begin(1, false);
+        assert!(a.complete(t, frame(1, false)).deliver.is_empty());
+        a.begin(2, false);
+        assert!(a.complete(t, frame(2, false)).deliver.is_empty());
+        let step = a.complete(t, frame(0, true));
+        assert_eq!(seqs(&step), vec![0, 1, 2]);
+        assert_eq!((step.lost, step.discarded), (0, 0));
+        assert!(!a.waiting_for_keyframe());
+        // With no keyframe coming, a frame of a broken chain is still of no use.
+        let mut b = Assembler::new(t);
+        assert!(!b.wants(1, false));
+        assert_eq!(b.complete(t, frame(1, false)).discarded, 1);
+    }
+
+    #[test]
+    fn frames_kept_for_a_keyframe_that_fails_go_with_it() {
+        let t = Instant::now();
+        let mut a = Assembler::new(t);
+        a.begin(0, true);
+        a.begin(1, false);
+        a.complete(t, frame(1, false));
+        let step = a.abort(t, 0);
+        assert_eq!(step.discarded, 1);
+        assert_eq!(a.pending(), 0);
+        assert!(a.waiting_for_keyframe());
+        assert!(a.key_due(t));
+        // A later keyframe starts the chain on its own.
+        assert_eq!(seqs(&a.complete(t, frame(5, true))), vec![5]);
     }
 
     #[test]

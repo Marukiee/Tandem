@@ -77,6 +77,9 @@ pub struct MediaWant {
     pub facing: MediaFacing,
     /// An extra screen made by the host for this viewer (see `MediaRequest::extend`).
     pub extend: bool,
+    /// The size of the viewer's screen in logical pixels, for an extra screen (see `MediaRequest::logical_width`). Zero when not known.
+    pub logical_width: u32,
+    pub logical_height: u32,
 }
 
 impl MediaWant {
@@ -91,6 +94,8 @@ impl MediaWant {
             control: false,
             facing: MediaFacing::Any,
             extend: false,
+            logical_width: 0,
+            logical_height: 0,
         }
     }
 }
@@ -684,6 +689,8 @@ impl Inner {
                 control: want.control && want.kind == MediaKind::Screen,
                 facing: want.facing,
                 extend: want.extend && want.kind == MediaKind::Screen,
+                logical_width: want.logical_width,
+                logical_height: want.logical_height,
             };
             let viewer = ViewerSession::new(id, peer, request, boot);
             sessions.insert(id, Entry::Viewer(viewer.clone()));
@@ -741,6 +748,8 @@ impl Inner {
         }
         request.max_width = request.max_width.min(16384);
         request.max_height = request.max_height.min(16384);
+        request.logical_width = request.logical_width.min(16384);
+        request.logical_height = request.logical_height.min(16384);
         request.max_fps = request.max_fps.min(240);
         request.control = request.control && request.kind == MediaKind::Screen;
 

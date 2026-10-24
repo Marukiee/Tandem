@@ -2486,6 +2486,11 @@ pub struct TandemMediaWant {
     pub facing: TandemMediaFacing,
     /// An extra screen made by the host for this viewer, of the size asked for, instead of a view of the host's own display.
     pub extend: bool,
+    /// For an extra screen: the size of the viewer's screen in points or logical pixels (its pixels divided by its scale). Zero when not known.
+    #[uniffi(default = 0)]
+    pub logical_width: u32,
+    #[uniffi(default = 0)]
+    pub logical_height: u32,
 }
 
 /// A request as the host app gets it.
@@ -2501,6 +2506,10 @@ pub struct TandemMediaRequest {
     pub control: bool,
     pub facing: TandemMediaFacing,
     pub extend: bool,
+    #[uniffi(default = 0)]
+    pub logical_width: u32,
+    #[uniffi(default = 0)]
+    pub logical_height: u32,
 }
 
 impl From<crate::live::MediaRequest> for TandemMediaRequest {
@@ -2516,6 +2525,8 @@ impl From<crate::live::MediaRequest> for TandemMediaRequest {
             control: request.control,
             facing: request.facing.into(),
             extend: request.extend,
+            logical_width: request.logical_width,
+            logical_height: request.logical_height,
         }
     }
 }
@@ -2796,6 +2807,8 @@ impl TandemEngine {
         request.control = want.control;
         request.facing = want.facing.into();
         request.extend = want.extend;
+        request.logical_width = want.logical_width;
+        request.logical_height = want.logical_height;
         self.engine.media_request(peer, request).map_err(Into::into)
     }
 
