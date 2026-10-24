@@ -42,7 +42,7 @@ pub fn current(app: &AppHandle) -> Vec<TandemFeature> {
             } else {
                 t("Showing this screen is off in Tandem on this computer", "Het scherm tonen staat uit in Tandem op deze computer")
             },
-            None,
+            (!on).then_some("switch:screen"),
         ));
     }
     list.push(feature(
@@ -78,7 +78,7 @@ pub fn current(app: &AppHandle) -> Vec<TandemFeature> {
         } else {
             t("Share Focus is off in Tandem on this computer", "Focus delen staat uit in Tandem op deze computer")
         },
-        None,
+        (focus.read && !crate::focus::on(app)).then_some("switch:focus"),
     ));
     if cfg!(target_os = "linux") {
         list.push(feature(
@@ -107,6 +107,18 @@ pub fn start(app: &AppHandle) {
 }
 
 /// Opens the page of the system settings for `page`.
+/// A page that is a switch of Tandem itself and not a setting of the system: another device turns it on from afar instead of opening a
+/// page here. A permission of the system can only be given here, by the person. True when it was one.
+pub fn turn_on(app: &AppHandle, page: &str) -> bool {
+    let Some(feature) = page.strip_prefix("switch:") else { return false };
+    match feature {
+        "screen" => crate::settings::update(app, |s| s.screen_host = true),
+        "focus" => crate::settings::update(app, |s| s.focus_share = Some(true)),
+        _ => {}
+    }
+    true
+}
+
 pub fn open(page: &str) {
     #[cfg(windows)]
     {
@@ -159,7 +171,10 @@ pub fn features_local(app: AppHandle) -> Value {
 }
 
 #[tauri::command]
-pub fn features_open_here(page: String) {
+pub fn features_open_here(app: AppHandle, page: String) {
+    if turn_on(&app, &page) {
+        return;
+    }
     open(&page);
 }
 

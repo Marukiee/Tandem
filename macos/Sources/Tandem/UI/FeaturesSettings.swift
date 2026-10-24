@@ -122,7 +122,7 @@ struct FeatureRow: View {
             }
             Spacer(minLength: 12)
             if !feature.ready, let page = feature.page {
-                Button(action) { open(page) }
+                Button(page.hasPrefix(FeatureReport.switchPage) ? String(localized: "Turn on") : action) { open(page) }
                     .buttonStyle(.borderedProminent).tint(Palette.indigo)
                     .disabled(!enabled)
             }

@@ -125,6 +125,8 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "screen_sound_always") => "Always here",
         ("nl", "screen_sound_there") => "Daar laten",
         (_, "screen_sound_there") => "Leave it there",
+        ("nl", "settings_switched_title") => "{0} heeft iets aangezet in Tandem",
+        (_, "settings_switched_title") => "{0} turned something on in Tandem",
         ("nl", "settings_opened_title") => "{0} heeft een instelling geopend",
         (_, "settings_opened_title") => "{0} opened a setting",
         ("nl", "settings_opened_body") => "Zet Tandem hier aan en ga dan terug naar {0}.",

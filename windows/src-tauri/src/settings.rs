@@ -76,6 +76,8 @@ pub struct Settings {
     pub side_check: bool,
     /// How often, in minutes, the side of a device next to this screen is checked while it is there.
     pub side_check_minutes: u32,
+    /// Downloads, Documents and Desktop were offered once (see `engine::offer_usual_folders`).
+    pub usual_folders_offered: bool,
 }
 
 impl Default for Settings {
@@ -113,6 +115,7 @@ impl Default for Settings {
             focus_follow_only: false,
             side_check: true,
             side_check_minutes: 2,
+            usual_folders_offered: false,
         }
     }
 }

@@ -64,4 +64,7 @@
     <string name="perm_accessibility_why">Om deze telefoon vanaf een computer te bedienen, en de muis van een computer erop te gebruiken. Zet Tandem aan onder Geïnstalleerde apps.</string>
     <string name="perm_all_files">Alle bestanden</string>
     <string name="perm_all_files_why">Zodat je computers de bestanden van deze telefoon kunnen bekijken, en in elke map ervan kunnen opslaan.</string>
+    <string name="features_turn_on">Aanzetten</string>
+    <string name="features_turned_on">Aangezet op %1$s</string>
+    <string name="feature_switched_title">%1$s heeft dit aangezet</string>
 </resources>

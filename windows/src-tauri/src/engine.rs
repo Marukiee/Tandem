@@ -27,6 +27,24 @@ impl TandemVault for Vault {
     }
 }
 
+/// The first time: Downloads, Documents and Desktop are offered to the other devices, as a phone offers its storage, so "Browse files"
+/// is not empty. The core starts a computer with nothing offered (a machine without a screen should share nothing unseen); this app shows
+/// what is offered in its settings, where it is changed. Only once, and only when nothing was chosen.
+fn offer_usual_folders(app: &AppHandle, engine: &tandem_core::ffi::TandemEngine) {
+    if settings::get(app).usual_folders_offered {
+        return;
+    }
+    let mut policy = engine.file_default_policy();
+    if policy.shares.is_empty() {
+        policy.shares = tandem_core::ffi::tandem_default_shares();
+        if let Err(error) = engine.set_file_default_policy(policy) {
+            log::warn!("the usual folders could not be offered: {error}");
+            return;
+        }
+    }
+    settings::update(app, |s| s.usual_folders_offered = true);
+}
+
 struct Files {
     app: AppHandle,
 }
@@ -85,6 +103,7 @@ pub fn start(app: AppHandle) {
                 #[cfg(feature = "screen-host")]
                 engine.set_media_host(Arc::new(crate::host::Host::new(app.clone())));
                 log::info!("the engine runs as {} on port {}", engine.name(), engine.port());
+                offer_usual_folders(&app, &engine);
                 *state.engine.write().unwrap() = Some(engine);
                 crate::bluetooth::start(&app);
                 crate::features::start(&app);

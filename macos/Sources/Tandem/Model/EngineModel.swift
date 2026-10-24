@@ -239,6 +239,7 @@ final class EngineModel {
 
     private func engineStarted(_ engine: TandemEngine) {
         self.engine = engine
+        Self.offerUsualFolders(engine)
         myId = engine.id()
         myName = engine.name()
         // A name chosen in Settings wins over whatever the engine kept.
@@ -402,6 +403,20 @@ final class EngineModel {
         clipboard?.setActive(devices.contains { $0.online || $0.ble })
         reconcileSpeakerDevices()
         refreshNowPlaying()
+    }
+
+    /// The first time: Downloads, Documents and Desktop are offered to the other devices, as a phone offers its storage, so "Browse files"
+    /// is not empty. The core starts a computer with nothing offered; Settings shows what is offered and changes it. Only once, and only
+    /// when nothing was chosen.
+    private static func offerUsualFolders(_ engine: TandemEngine) {
+        let key = "usualFoldersOffered"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        var policy = engine.fileDefaultPolicy()
+        if policy.shares.isEmpty {
+            policy.shares = tandemDefaultShares()
+            guard (try? engine.setFileDefaultPolicy(policy: policy)) != nil else { return }
+        }
+        UserDefaults.standard.set(true, forKey: key)
     }
 
     private static func takesPointer(_ device: TandemDevice) -> Bool {
@@ -638,7 +653,11 @@ final class EngineModel {
             // Another device of the person shows what this Mac is missing and was asked to open the place where it is turned on.
             FeatureReport.open(page)
             let name = device(from)?.name ?? String(localized: "Another device")
-            Notifier.shared.post(id: "open-settings", title: String(localized: "\(name) opened a setting"), body: String(localized: "Turn on Tandem here, then go back to \(name)."))
+            if page.hasPrefix(FeatureReport.switchPage) {
+                Notifier.shared.post(id: "open-settings", title: String(localized: "\(name) turned something on"), body: page == FeatureReport.switchPage + "focus" ? String(localized: "Focus on all your devices") : "")
+            } else {
+                Notifier.shared.post(id: "open-settings", title: String(localized: "\(name) opened a setting"), body: String(localized: "Turn on Tandem here, then go back to \(name)."))
+            }
 
         case let .sideMoved(from):
             // A phone was picked up and put down again: when it is a second screen here, or sits next to this screen, its side is found

@@ -45,7 +45,8 @@ object FeatureReport {
         add("control", accessibility(context), R.string.feature_control, R.string.feature_control_why, "accessibility")
         // The pointer of a computer pushed over to this phone: the switch in Tandem, and the accessibility service that plays it.
         val pointerOn = context.graph.prefs.pointerIn.first()
-        if (!pointerOn) add("pointer", false, R.string.feature_pointer, R.string.feature_pointer_off, "sharing")
+        // Off in Tandem itself: another device can turn it on from afar (see [SWITCH]).
+        if (!pointerOn) add("pointer", false, R.string.feature_pointer, R.string.feature_pointer_off, SWITCH + "pointer")
         else add("pointer", accessibility(context), R.string.feature_pointer, R.string.feature_control_why, "accessibility")
         add("notifications", listener, R.string.feature_notifications, R.string.feature_listener_why, "notification-access")
         add("media", listener, R.string.feature_media, R.string.feature_listener_why, "notification-access")
@@ -66,7 +67,7 @@ object FeatureReport {
         }
         // Focus: the switch in Tandem, and access to Do Not Disturb for the mode of its own that follows the other devices.
         if (!context.graph.prefs.focusShare.first()) {
-            list += TandemFeature("focus", false, context.getString(R.string.feature_focus), context.getString(R.string.feature_focus_off), null)
+            list += TandemFeature("focus", false, context.getString(R.string.feature_focus), context.getString(R.string.feature_focus_off), SWITCH + "focus")
         } else {
             add("focus", FocusMode.canUse(context), R.string.feature_focus, R.string.feature_focus_why, "dnd-access")
         }
@@ -102,8 +103,42 @@ object FeatureReport {
         return if (intent.resolveActivity(context.packageManager) != null) intent else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg)
     }
 
+    /**
+     * A page that is a switch of Tandem itself and not a setting of Android: `switch:` and the feature. Another device turns it on from
+     * afar instead of opening a page here, and this phone says so. A permission of Android can only be given here, by the person.
+     */
+    const val SWITCH = "switch:"
+
+    /** Turns on the switch of Tandem behind `page` (see [SWITCH]). True when it was one. */
+    private fun turnOn(context: Context, page: String, from: String?): Boolean {
+        val feature = page.removePrefix(SWITCH)
+        if (feature == page) return false
+        val name = when (feature) {
+            "pointer" -> R.string.feature_pointer
+            "focus" -> R.string.feature_focus
+            else -> return true
+        }
+        context.graph.scope.launch {
+            when (feature) {
+                "pointer" -> context.graph.prefs.setPointerIn(true)
+                "focus" -> context.graph.prefs.setFocusShare(true)
+            }
+        }
+        val who = from?.let { context.graph.host.device(it)?.name } ?: context.getString(R.string.feature_device_fallback)
+        val notification = NotificationCompat.Builder(context, Channels.CAPTURE)
+            .setSmallIcon(R.drawable.ic_stat_tandem)
+            .setContentTitle(context.getString(R.string.feature_switched_title, who))
+            .setContentText(context.getString(name))
+            .setAutoCancel(true)
+            .setTimeoutAfter(60_000)
+            .build()
+        context.getSystemService(NotificationManager::class.java).notify(0x5355, notification)
+        return true
+    }
+
     /** Opens `page` here: at once with Tandem in front, otherwise as a heads-up to tap, since an app may not open a screen from behind. */
     fun open(context: Context, page: String, from: String?) {
+        if (turnOn(context, page, from)) return
         val target = intent(context, page).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (context.graph.appVisible) {
             runCatching { context.startActivity(target) }

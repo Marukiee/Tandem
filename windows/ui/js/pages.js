@@ -728,7 +728,7 @@ const ordered = (features) => [...features.filter((f) => !f.ready), ...features.
 
 /** Asks a device to open the page of its settings where a feature it is missing is turned on, and says where to look. */
 const openOn = (device, page) => call("features_open_on", { id: device.id, page })
-  .then(() => say(t("features_opened", device.name)))
+  .then(() => say(t(page.startsWith("switch:") ? "features_turned_on" : "features_opened", device.name)))
   .catch(() => say(t("features_unreachable", device.name)));
 
 /** One feature: a tick when it works, or what is missing and a button to the place where it is turned on. */
@@ -736,7 +736,7 @@ function FeatureRow({ feature, action, enabled = true, open }) {
   return html`<div class="setting feature">
     <span class=${"feature-mark " + (feature.ready ? "ok" : "bad")}><${Icon} name=${feature.ready ? "circle-check" : "alert-triangle"} size=${18} /></span>
     <div class="grow"><div class="t">${feature.name}</div>${!feature.ready && feature.why && html`<div class="s">${feature.why}</div>`}</div>
-    ${!feature.ready && feature.page && html`<button class="btn accent small" disabled=${!enabled} onClick=${() => open(feature.page)}>${action}</button>`}
+    ${!feature.ready && feature.page && html`<button class="btn accent small" disabled=${!enabled} onClick=${() => open(feature.page)}>${feature.page.startsWith("switch:") ? t("features_turn_on") : action}</button>`}
   </div>`;
 }
 

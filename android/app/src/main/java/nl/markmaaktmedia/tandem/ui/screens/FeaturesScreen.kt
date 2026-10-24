@@ -119,10 +119,16 @@ fun openOn(context: Context, device: TandemDevice, page: String) {
     val engine = context.graph.host.engine ?: return
     context.graph.scope.launch {
         val sent = runCatching { engine.openSettingsOn(device.id, page) }.isSuccess
-        val text = context.getString(if (sent) R.string.features_opened else R.string.features_unreachable, device.name)
+        val switch = page.startsWith(nl.markmaaktmedia.tandem.engine.FeatureReport.SWITCH)
+        val text = context.getString(if (!sent) R.string.features_unreachable else if (switch) R.string.features_turned_on else R.string.features_opened, device.name)
         android.os.Handler(android.os.Looper.getMainLooper()).post { Toast.makeText(context, text, Toast.LENGTH_SHORT).show() }
     }
 }
+
+/** "Turn on" for a switch of Tandem itself, which goes on from afar; the action that opens a page otherwise. */
+@Composable
+private fun label(page: String, action: String) =
+    if (page.startsWith(nl.markmaaktmedia.tandem.engine.FeatureReport.SWITCH)) stringResource(R.string.features_turn_on) else action
 
 /** What needs something first, then what works. */
 private fun ordered(features: List<TandemFeature>) = features.filter { !it.ready } + features.filter { it.ready }
@@ -158,7 +164,7 @@ private fun FeatureRow(index: Int, total: Int, feature: TandemFeature, action: S
                 }
             }
             val page = feature.page
-            if (!feature.ready && page != null) OpenPill(action, enabled) { open(page) }
+            if (!feature.ready && page != null) OpenPill(label(page, action), enabled) { open(page) }
         }
     }
 }
@@ -188,7 +194,7 @@ fun FeatureFix(device: TandemDevice, feature: TandemFeature, modifier: Modifier 
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(feature.why.ifEmpty { feature.name }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
         val page = feature.page
-        if (page != null) OpenPill(stringResource(R.string.features_open_there), device.online || device.ble) { openOn(context, device, page) }
+        if (page != null) OpenPill(label(page, stringResource(R.string.features_open_there)), device.online || device.ble) { openOn(context, device, page) }
     }
 }
 

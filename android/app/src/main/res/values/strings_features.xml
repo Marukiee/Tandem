@@ -67,4 +67,7 @@
     <string name="perm_accessibility_why">To control this phone from a computer, and to use a computer\'s mouse on it. Turn on Tandem under Installed apps.</string>
     <string name="perm_all_files">All files</string>
     <string name="perm_all_files_why">So your computers can browse the files of this phone, and save in any folder of it.</string>
+    <string name="features_turn_on">Turn on</string>
+    <string name="features_turned_on">Turned on on %1$s</string>
+    <string name="feature_switched_title">%1$s turned this on</string>
 </resources>

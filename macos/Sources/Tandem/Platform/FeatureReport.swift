@@ -79,7 +79,7 @@ enum FeatureReport {
         let focus = FocusShare.shared
         add("focus", focus.share && focus.installed, String(localized: "Focus on all your devices"),
             focus.share ? String(localized: "The Tandem Focus shortcut has not been added on this Mac") : String(localized: "Share Focus is off in Tandem on this Mac"),
-            focus.share ? "focus" : nil)
+            focus.share ? "focus" : switchPage + "focus")
         return list
     }
 
@@ -103,6 +103,10 @@ enum FeatureReport {
     }
 
     /// Opens what turns `page` on: the question of macOS when it was never asked, otherwise its page in System Settings.
+    /// A page that is a switch of Tandem itself and not a setting of macOS: another device turns it on from afar instead of opening a page
+    /// here. A permission of macOS can only be given here, by the person.
+    static let switchPage = "switch:"
+
     static func open(_ page: String) {
         switch page {
         case "accessibility":
@@ -148,6 +152,8 @@ enum FeatureReport {
             settings("com.apple.Sound-Settings.extension")
         case "focus":
             FocusShare.shared.addOrSignIn()
+        case switchPage + "focus":
+            UserDefaults.standard.set(true, forKey: FocusShare.shareKey)
         default:
             settings("com.apple.preference.security")
         }
