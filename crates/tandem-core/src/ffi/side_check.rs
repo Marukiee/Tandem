@@ -17,6 +17,12 @@ pub fn tandem_side_quiet_pattern(rate: u32) -> Vec<f32> {
     crate::side::quiet_pattern(rate)
 }
 
+/// The lowest rate a microphone can record the quiet sweeps at: a listener that records lower says nothing, so nothing is played.
+#[uniffi::export]
+pub fn tandem_side_quiet_min_rate() -> u32 {
+    crate::side::QUIET_MIN_RATE
+}
+
 #[uniffi::export(async_runtime = "tokio")]
 impl TandemEngine {
     /// Like `side_start`, for a check that nobody asked for: the device listens only when its microphone is free and allowed, and the app
