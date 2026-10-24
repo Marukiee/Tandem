@@ -17,7 +17,7 @@ use openh264::OpenH264API;
 use serde_json::json;
 use tandem_core::ffi::{
     TandemMediaAccept, TandemMediaCodec, TandemMediaEnd, TandemMediaHost, TandemMediaInput, TandemMediaKind, TandemMediaPermission,
-    TandemMediaPush, TandemMediaRequest,
+    TandemMediaPush, TandemMediaRequest, TandemMediaResize, TandemMediaUpdate,
 };
 use tandem_winsys::Grabber;
 use tauri::{AppHandle, Emitter, Manager};
@@ -114,6 +114,8 @@ struct Sharing {
     extend: bool,
     /// For a monitor made for the viewer: what it touches and types goes to that monitor through this, and not through the general input.
     play: Option<Arc<StreamPlay>>,
+    /// For a monitor made for the viewer: the shape it was asked for last after the viewer was turned, until the capture made it.
+    turn: Option<Arc<Mutex<Option<(u32, u32)>>>>,
 }
 
 /// The keyboard and the pointer of a monitor made for a viewer (only Wayland makes one), and what is held down on it.
@@ -273,7 +275,7 @@ impl Host {
         // On Wayland the desktop asks the person here (once, and then it remembers), so this waits for the answer. The pictures come as the
         // planes the encoder wants, at the size that is sent and at most as often as is wanted: all that work is done in one place that is
         // good at it, and nothing is thrown away after it was made.
-        let Some(grabber) = Grabber::with_options(tandem_winsys::GrabOptions {
+        let options = tandem_winsys::GrabOptions {
             max: if request.extend { (0, 0) } else { (request.max_width, request.max_height) },
             // The pointer of this computer is in the picture of a monitor made for a viewer: it is the only one there.
             cursor: request.extend || !(control && viewer_is_computer),
@@ -283,7 +285,8 @@ impl Host {
             // On Wayland the screen and the keyboard and pointer are asked for together, which is one question for the person and a click at
             // the place that was touched. Where that is not possible the general input of this computer is used, as before.
             input: request.control,
-        }) else {
+        };
+        let Some(grabber) = Grabber::with_options(options) else {
             let _ = engine.media_deny(session, TandemMediaEnd::Unavailable);
             return;
         };
@@ -316,8 +319,10 @@ impl Host {
             control,
             extend: request.extend,
             play,
+            turn: request.extend.then(|| Arc::new(Mutex::new(None))),
         };
         let (stop, keyframe, rate) = (sharing.stop.clone(), sharing.keyframe.clone(), sharing.bitrate.clone());
+        let turning = sharing.turn.clone().map(|wanted| Turning { wanted, options, sessions: self.sessions.clone(), app: self.app.clone(), peer: from.clone() });
         self.sessions.lock().unwrap().insert(session, sharing);
         self.announce();
         #[cfg(target_os = "linux")]
@@ -330,7 +335,7 @@ impl Host {
         std::thread::Builder::new()
             .name("tandem-screen".into())
             .spawn(move || {
-                capture_loop(engine, session, grabber, (width, height), fps, stop, keyframe, rate);
+                capture_loop(engine, session, grabber, (width, height), fps, stop, keyframe, rate, turning);
                 let peer = sessions.lock().unwrap().remove(&session).map(|s| s.peer);
                 #[cfg(target_os = "linux")]
                 if let Some(peer) = peer {
@@ -479,6 +484,14 @@ impl TandemMediaHost for Host {
         match play {
             Some(play) => play.play(event),
             None => input::send_media(event),
+        }
+    }
+
+    /// The viewer of a monitor made for it was turned. Making the monitor again waits for the desktop, so the capture does it, between
+    /// two pictures.
+    fn on_resize(&self, session: u64, resize: TandemMediaResize) {
+        if let Some(turn) = self.sessions.lock().unwrap().get(&session).and_then(|s| s.turn.clone()) {
+            *turn.lock().unwrap() = Some((resize.max_width, resize.max_height));
         }
     }
 
@@ -758,15 +771,50 @@ impl Pace {
     }
 }
 
+/// A monitor made for a viewer, and what it takes to make it again in the other shape when the viewer is turned. GStreamer fixes the size of
+/// the stream when it starts, and with it the size of the monitor, so the monitor is made anew within the same session: the answer the
+/// desktop remembered covers it and nothing is asked. The windows that were on it go to the other monitors, as with a monitor unplugged.
+struct Turning {
+    wanted: Arc<Mutex<Option<(u32, u32)>>>,
+    options: tandem_winsys::GrabOptions,
+    sessions: Sessions,
+    app: AppHandle,
+    peer: String,
+}
+
+impl Turning {
+    /// What the viewer touches and types goes to the new monitor: the input of the old one closed with its session.
+    fn follow(&self, session: u64, grabber: &Grabber) {
+        if let Some(sharing) = self.sessions.lock().unwrap().get_mut(&session) {
+            sharing.play = stream_play(grabber);
+        }
+    }
+
+    /// On the side where the viewer stands, as the first one was.
+    fn place(&self) {
+        #[cfg(target_os = "linux")]
+        {
+            let before = made_monitors().lock().unwrap().get(&self.peer).cloned();
+            if let Some(before) = before {
+                made_monitor(&self.app, &self.peer, before);
+            }
+        }
+        #[cfg(not(target_os = "linux"))]
+        let _ = (&self.app, &self.peer);
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn capture_loop(
     engine: Arc<tandem_core::ffi::TandemEngine>,
     session: u64,
-    grabber: Grabber,
-    (width, height): (u32, u32),
+    mut grabber: Grabber,
+    (mut width, mut height): (u32, u32),
     fps: u32,
     stop: Arc<AtomicBool>,
     keyframe: Arc<AtomicBool>,
     bitrate: Arc<AtomicU32>,
+    turning: Option<Turning>,
 ) {
     let mut rate = bitrate.load(Ordering::Relaxed);
     let Some(mut encoder) = make_encoder(rate, fps, width, height) else {
@@ -783,6 +831,39 @@ fn capture_loop(
     let mut failures = 0;
     let mut next = Instant::now();
     while !stop.load(Ordering::Relaxed) {
+        let turned = turning.as_ref().and_then(|turn| turn.wanted.lock().unwrap().take().map(|wanted| (turn, wanted)));
+        if let Some((turn, (max_w, max_h))) = turned {
+            let made = extended_size(max_w, max_h);
+            if made != grabber.size() {
+                // The old monitor goes first: the remembered answer is for one at a time.
+                let before = grabber.size();
+                drop(grabber);
+                let fresh = Grabber::with_options(tandem_winsys::GrabOptions { virtual_size: Some(made), ..turn.options }).or_else(|| {
+                    log::warn!("the second screen could not be made again in its new shape, it is made in the old one");
+                    Grabber::with_options(tandem_winsys::GrabOptions { virtual_size: Some(before), ..turn.options })
+                });
+                let Some(fresh) = fresh else {
+                    let _ = engine.media_stop(session);
+                    return;
+                };
+                grabber = fresh;
+                // A monitor made for the viewer is already the size that is sent.
+                let (source_w, source_h) = grabber.size();
+                (width, height) = target_size(source_w, source_h, 0, 0);
+                let Some(fresh) = make_encoder(rate, current_fps, width, height) else {
+                    let _ = engine.media_stop(session);
+                    return;
+                };
+                encoder = fresh;
+                turn.follow(session, &grabber);
+                // Told before the first picture of the new shape, which is a keyframe.
+                let _ = engine.media_update(session, TandemMediaUpdate { width: Some(width), height: Some(height), rotation: Some(0), fps: Some(fps), control: None });
+                keyframe.store(true, Ordering::Relaxed);
+                last = None;
+                turn.place();
+                log::info!("second screen for {} turned: {width}x{height}", events::device_name(&turn.app, &turn.peer));
+            }
+        }
         // The viewer says the link carries less or more: the encoder is made again at that rate, which also starts with a keyframe.
         let wanted = bitrate.load(Ordering::Relaxed);
         if wanted.abs_diff(rate) * 5 > rate {

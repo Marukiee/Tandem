@@ -96,7 +96,7 @@ enum DebugSupport {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { PointerAwayPill.show(device: "Linux Laptop", carrying: carried) }
             if carried != nil { DispatchQueue.main.asyncAfter(deadline: .now() + 6) { PointerAwayPill.dropped() } }
         }
-        // `TANDEM_DEBUG_VDISPLAY=<width>x<height>`: makes a display of software for three seconds and writes `vdisplay-report.txt` (it comes up, how big, where).
+        // `TANDEM_DEBUG_VDISPLAY=<width>x<height>[:turn]`: makes a display of software for three seconds and writes `vdisplay-report.txt` (it comes up, how big, where).
         if let spec = variable("TANDEM_DEBUG_VDISPLAY") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { debugVirtualDisplay(spec) }
         }
@@ -207,7 +207,7 @@ enum DebugSupport {
     }
 
     private static func debugVirtualDisplay(_ spec: String) {
-        let parts = spec.split(separator: "x").compactMap { Int($0) }
+        let parts = (spec.split(separator: ":").first ?? "").split(separator: "x").compactMap { Int($0) }
         let (width, height) = parts.count == 2 ? (parts[0], parts[1]) : (1280, 720)
         var report = "available: \(VirtualDisplay.isAvailable)\n"
         let before = activeDisplays()
@@ -225,6 +225,12 @@ enum DebugSupport {
             report += "bounds: \(display.bounds), mode: \(CGDisplayCopyDisplayMode(display.displayID).map { "\($0.pixelWidth)x\($0.pixelHeight) at \($0.width)x\($0.height) points" } ?? "none")\n"
             report += "modes: \(display.modeList)\n"
             report += "main: \(CGDisplayBounds(CGMainDisplayID()))\n"
+            // `<width>x<height>:turn`: then stood on its side in place, as for a phone that is turned upright.
+            if spec.hasSuffix(":turn") {
+                let turned = await display.resize(width: height, height: width, hiDPI: false)
+                VirtualDisplay.arrange([display])
+                report += "turned: \(turned), same id active: \(activeDisplays().contains(display.displayID)), bounds: \(display.bounds), mode: \(CGDisplayCopyDisplayMode(display.displayID).map { "\($0.pixelWidth)x\($0.pixelHeight) at \($0.width)x\($0.height) points" } ?? "none")\n"
+            }
             write(report, named: "vdisplay-report.txt")
             // Gone again after a moment: the display lives as long as the object.
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {

@@ -90,6 +90,7 @@ A person can store a choice per device and kind, in the core, so a screen in the
 | `MediaReport` | viewer to host | `session`, `interval_ms`, `frames`, `bytes`, `lost`, `dropped`, `jitter_us`: once a second |
 | `MediaInput` | viewer to host | `session`, `input` (see below) |
 | `MediaOffer` | host to viewer | `kind`, `facing`: the person started the sharing on the host itself and asks the viewer to look. Not a session: the viewer's app answers with an ordinary `MediaRequest`. A device that does not know it skips it |
+| `MediaResize` | viewer to host | `session`, `max_width`, `max_height`, `logical_width`, `logical_height` (as in `MediaRequest`): the viewer of an extra screen was turned and wants it in this shape. Only to a host that says `screen.extend.turn`; the host answers with a `MediaUpdate` before the keyframe of the new shape. A device that does not know it skips it |
 
 `MediaEnd` is the one list of reasons for `MediaDeny` and `MediaStop`: `ended` (a person stopped it), `declined`, `policy`,
 `busy`, `unsupported` (kind or codec not available), `unavailable` (no permission to capture, no camera), `timeout`,
@@ -371,7 +372,25 @@ Een apparaat kan een computer vragen om een scherm van zichzelf te maken en dat 
 de computer heeft, maar een beeldscherm erbij, met precies zoveel pixels als het apparaat heeft, waar je vensters naartoe sleept. Het verzoek is
 een gewoon schermverzoek met `extend = true` (in `MediaRequest`, `serde(default)`, dus een oudere computer doet er niets mee en toont zijn eigen
 scherm; daarom meldt een computer die het kan de capability `screen.extend`, en zonder die capability biedt de app de keuze niet aan).
-`max_width` en `max_height` zijn dan de pixels van het apparaat in de stand waarin het wordt gebruikt (liggend).
+`max_width` en `max_height` zijn dan de pixels van het apparaat in de stand waarin het wordt gebruikt.
+
+**Staand en liggend (draaien).** Een computer die `screen.extend.turn` meldt draait zijn scherm mee met het apparaat. De telefoon vraagt het scherm
+dan in de stand waarin hij wordt vastgehouden (staand 1080x2340, liggend 2340x1080) en volgt de sensor (`FULL_SENSOR`, zoals het liggen voorheen
+ook de draaivergrendeling negeerde); bij een computer zonder die capability blijft hij liggen zoals voorheen. Draait de telefoon, dan vraagt hij
+300 ms later (`ScreenViewer.turned`) met `MediaResize` om de nieuwe vorm, binnen dezelfde sessie: geen nieuw verzoek, dus geen nieuwe vraag aan de
+persoon, en de kern zegt de laatste vorm opnieuw na een herverbinding. Een draai in de hand telt niet als verplaatsen voor het zoeken van de kant.
+- Mac: het scherm van software wordt gemaakt met ruimte voor beide standen (`maxPixelsWide` en `maxPixelsHigh` zijn allebei de lange kant) en krijgt
+  de nieuwe modus met `applySettings:` (`VirtualDisplay.resize`). Het blijft hetzelfde beeldscherm (zelfde id) met zijn vensters. De opname stopt even,
+  `arrange` zet de schermen weer tegen elkaar, de encoder komt in de nieuwe maat, en de kijker hoort de maat met `MediaUpdate` voor de keyframe
+  (`ScreenHost.resize`, `ScreenHostSession.restart(size:reshape:)`). Twee draaien vlak na elkaar eindigen in de laatste. Gezien op een echte Mac met
+  `TANDEM_DEBUG_VDISPLAY=2340x1080:turn`: zelfde id, modus 1080x2340, rechts van het hoofdscherm. Het gebied van de gedeelde aanwijzer
+  (`PointerShare.screens`) wordt door een extra scherm breder maar niet hoger, anders liepen de linker- en rechterrand ver onder de echte schermen door; boven en onder gaat de aanwijzer alleen over bij de rand van het scherm
+  waar hij op staat.
+- Linux: GStreamer legt de maat van de monitor vast bij het begin van de stroom, dus de opname maakt de monitor opnieuw in de nieuwe vorm, binnen
+  dezelfde sessie, met het onthouden antwoord van de portal (`capture_loop`, `Turning`). De invoer gaat mee naar de nieuwe monitor en hij komt weer
+  aan de kant van het apparaat. Lukt de nieuwe vorm niet, dan komt hij terug in de oude. De vensters die erop stonden gaan naar de andere monitoren, zoals bij een monitor die je loskoppelt. Niet gezien op de
+  laptop.
+- Computers als kijker (`lying` in `live.rs` voor Linux en Windows) vragen nog steeds liggend en sturen geen `MediaResize`.
 
 - **Mac als host** (`ScreenHost`, `VirtualDisplay`, `Sources/TandemVirtualDisplay`): de Mac maakt een beeldscherm van software met de klassen
   `CGVirtualDisplay` van CoreGraphics (er is geen openbare header, het Objective-C-doel in het pakket declareert wat er is en roept ze alleen aan

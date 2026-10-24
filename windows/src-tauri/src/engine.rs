@@ -151,6 +151,8 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         // A second screen made for another computer, where the desktop can make one.
         if crate::host::extend_available() {
             caps.push("screen.extend".into());
+            // Made again in the other shape when the device is turned (see `host::capture_loop`).
+            caps.push("screen.extend.turn".into());
         }
         if crate::host::control_available() {
             caps.push("screen.control".into());

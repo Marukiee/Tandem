@@ -227,6 +227,9 @@ pub trait MediaHost: Send + Sync {
     fn on_input(&self, session: u64, input: MediaInput);
     /// The session is over, for whatever reason, including a stop by this very app.
     fn on_stop(&self, session: u64, reason: MediaEnd);
+    /// The viewer of an extra screen was turned: make the screen this shape, then `media_update` and a keyframe. Only comes to a
+    /// host that says `screen.extend.turn`.
+    fn on_resize(&self, _resize: MediaResize) {}
 }
 
 /// The app that shows the picture. `on_frame` is called one frame at a time, in order, from a task of the session's own;
@@ -492,6 +495,28 @@ impl Engine {
             }
         }
         self.inner.live_send(viewer.peer, Msg::MediaInput { session, input });
+        Ok(())
+    }
+
+    /// The viewer of an extra screen was turned: asks the host for the screen in this shape. The picture changes when the host's
+    /// `MediaUpdate` comes, and stays as it was with a host that does not say `screen.extend.turn`.
+    pub fn media_resize(&self, resize: MediaResize) -> Result<()> {
+        let _rt = self.inner.live.handle.enter();
+        let viewer = self.inner.live_viewer_session_any(resize.session)?;
+        if !viewer.request.extend {
+            return Err(Error::invalid("only a screen made for this device changes shape"));
+        }
+        if resize.max_width == 0 || resize.max_height == 0 {
+            return Err(Error::invalid("a screen needs a size"));
+        }
+        {
+            let mut st = viewer.st.lock().unwrap();
+            if st.phase != Phase::Active {
+                return Err(Error::invalid("that session is not running"));
+            }
+            st.resize = Some(resize);
+        }
+        self.inner.live_send(viewer.peer, Msg::MediaResize(resize));
         Ok(())
     }
 
@@ -902,6 +927,24 @@ impl Inner {
                     self.emit(Event::MediaOffered { from: peer, kind, facing, extend: extend && kind == MediaKind::Screen });
                 }
             }
+            Msg::MediaResize(resize) => {
+                let Some(host) = self.live_host_session(resize.session, &peer) else {
+                    return self.live_tell_unknown(peer, resize.session);
+                };
+                if !host.request.extend || host.st.lock().unwrap().phase != Phase::Active || resize.max_width == 0 || resize.max_height == 0 {
+                    return;
+                }
+                let resize = MediaResize {
+                    session: resize.session,
+                    max_width: resize.max_width.min(16384),
+                    max_height: resize.max_height.min(16384),
+                    logical_width: resize.logical_width.min(16384),
+                    logical_height: resize.logical_height.min(16384),
+                };
+                if let Some(app) = self.live_host_cb() {
+                    guarded("on_resize", || app.on_resize(resize));
+                }
+            }
             _ => {}
         }
     }
@@ -1059,8 +1102,15 @@ impl Inner {
                     let pending = viewer.st.lock().unwrap().phase == Phase::Pending;
                     if pending {
                         self.live_send(peer, Msg::MediaRequest(viewer.request.clone()));
-                    } else if viewer.connection_changed() {
-                        self.live_send(peer, Msg::MediaKeyframe { session: viewer.id });
+                    } else {
+                        if viewer.connection_changed() {
+                            self.live_send(peer, Msg::MediaKeyframe { session: viewer.id });
+                        }
+                        // A turn while the connection was gone is not lost; a host already in that shape does nothing with it.
+                        let resize = viewer.st.lock().unwrap().resize;
+                        if let Some(resize) = resize {
+                            self.live_send(peer, Msg::MediaResize(resize));
+                        }
                     }
                 }
             }

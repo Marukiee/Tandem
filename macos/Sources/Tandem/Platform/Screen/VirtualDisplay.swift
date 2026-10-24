@@ -8,8 +8,11 @@ import TandemVirtualDisplay
 final class VirtualDisplay {
     let displayID: CGDirectDisplayID
     /// The size in pixels, which is what the picture that goes over is.
-    let pixels: CGSize
-    private let hiDPI: Bool
+    private(set) var pixels: CGSize
+    private var hiDPI: Bool
+    private let refresh: Int
+    /// The most pixels on either side, both ways, which is what it was made with.
+    private let longSide: Int
     private var handle: UnsafeMutableRawPointer?
 
     static var isAvailable: Bool { TandemVirtualDisplayAvailable() != 0 }
@@ -26,6 +29,8 @@ final class VirtualDisplay {
         displayID = id
         pixels = CGSize(width: width, height: height)
         self.hiDPI = hiDPI
+        self.refresh = refresh
+        longSide = max(width, height)
     }
 
     deinit { destroy() }
@@ -78,6 +83,16 @@ final class VirtualDisplay {
         return "\(mode.width)x\(mode.height) points in \(mode.pixelWidth)x\(mode.pixelHeight) pixels\(CGDisplayIsInMirrorSet(displayID) != 0 ? ", mirrored" : "")"
     }
 
+    /// Another shape for the same display, for a viewer that was turned: the system keeps it as the monitor it was, where it was, with the
+    /// windows on it. Waits like `prepare()` until it shows the new size. False when the system would not, and then it keeps the old one.
+    func resize(width: Int, height: Int, hiDPI: Bool) async -> Bool {
+        guard let handle, max(width, height) <= longSide,
+              TandemVirtualDisplayResize(handle, Int32(width), Int32(height), hiDPI ? 1 : 0, Int32(refresh)) != 0 else { return false }
+        pixels = CGSize(width: width, height: height)
+        self.hiDPI = hiDPI
+        return await prepare()
+    }
+
     private static func activeDisplays() -> [CGDirectDisplayID] {
         var ids = [CGDirectDisplayID](repeating: 0, count: 16)
         var count: UInt32 = 0
@@ -89,7 +104,7 @@ final class VirtualDisplay {
 
     /// Made by Tandem, by the vendor number `TandemVirtualDisplay.m` gives every display it makes, so one that is still going away is not
     /// taken for a monitor that is really there.
-    private static func isTandem(_ id: CGDirectDisplayID) -> Bool { CGDisplayVendorNumber(id) == 0x7A4E }
+    static func isTandem(_ id: CGDirectDisplayID) -> Bool { CGDisplayVendorNumber(id) == 0x7A4E }
 
     /// True when the display shows the size now: the pixels and the points, since a hiDPI display that the system put in the mode of the
     /// same pixels at one point each draws everything at half the size the viewer's screen does.

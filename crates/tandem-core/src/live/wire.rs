@@ -156,6 +156,23 @@ pub struct MediaUpdate {
     pub control: Option<bool>,
 }
 
+/// The viewer of an extra screen was turned (or its screen changed size): it wants the screen made for it in this shape from now on,
+/// in the units of `MediaRequest`. Only sent to a host that says `screen.extend.turn`. The host makes its screen that shape within the
+/// same session, so nothing is asked again and the windows stay where they are, and says the new picture with a `MediaUpdate` before
+/// the first keyframe of it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MediaResize {
+    pub session: u64,
+    #[serde(default)]
+    pub max_width: u32,
+    #[serde(default)]
+    pub max_height: u32,
+    #[serde(default)]
+    pub logical_width: u32,
+    #[serde(default)]
+    pub logical_height: u32,
+}
+
 /// What the viewer saw in the last interval, once a second.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MediaReport {
@@ -542,5 +559,37 @@ mod tests {
         let mut bytes = Vec::new();
         ciborium::into_writer(&request, &mut bytes).unwrap();
         assert_eq!(crate::proto::decode::<MediaRequest>(&bytes).unwrap(), request);
+    }
+
+    #[test]
+    fn a_turned_screen_travels_and_a_resize_without_a_logical_size_reads() {
+        let resize = MediaResize { session: 9, max_width: 1080, max_height: 2340, logical_width: 412, logical_height: 892 };
+        let bytes = crate::proto::encode(&crate::proto::Msg::MediaResize(resize)).unwrap();
+        match crate::proto::decode_msg(&bytes).unwrap() {
+            crate::proto::Msg::MediaResize(got) => assert_eq!(got, resize),
+            other => panic!("wrong message: {other:?}"),
+        }
+        let short = ciborium::Value::Map(vec![
+            (ciborium::Value::Text("session".into()), ciborium::Value::Integer(9.into())),
+            (ciborium::Value::Text("max_width".into()), ciborium::Value::Integer(1080.into())),
+            (ciborium::Value::Text("max_height".into()), ciborium::Value::Integer(2340.into())),
+        ]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&short, &mut bytes).unwrap();
+        let got: MediaResize = crate::proto::decode(&bytes).unwrap();
+        assert_eq!((got.max_width, got.max_height, got.logical_width, got.logical_height), (1080, 2340, 0, 0));
+    }
+
+    #[test]
+    fn a_version_without_turning_skips_the_resize() {
+        // How the messages looked before `MediaResize`: a host of then reads it as a message it does not know, and goes on.
+        #[derive(Debug, Deserialize)]
+        #[allow(dead_code)]
+        enum OldMsg {
+            MediaKeyframe { session: u64 },
+        }
+        let bytes = crate::proto::encode(&crate::proto::Msg::MediaResize(MediaResize { session: 3, max_width: 1080, max_height: 2340, ..Default::default() })).unwrap();
+        assert!(ciborium::from_reader::<OldMsg, _>(bytes.as_slice()).is_err());
+        assert!(ciborium::from_reader::<ciborium::Value, _>(bytes.as_slice()).is_ok());
     }
 }

@@ -298,4 +298,21 @@ class ScreenViewerTest {
         assertTrue(SessionPolicy.maxBitrate(12_000_000, 3) < 7_000_000)
         assertEquals(SessionPolicy.MIN_BITRATE, SessionPolicy.maxBitrate(2_000_000, 8))
     }
+
+    @Test fun aSecondScreenStandsAsThePhoneIsHeldOnlyWhenTheComputerTurnsIt() {
+        assertEquals(1080 to 2340, SessionPolicy.extendSize(1080, 2340, turns = true))
+        assertEquals(2340 to 1080, SessionPolicy.extendSize(2340, 1080, turns = true))
+        // An older computer made it once, lying down, whichever way the phone was held.
+        assertEquals(2340 to 1080, SessionPolicy.extendSize(1080, 2340, turns = false))
+        assertEquals(2340 to 1080, SessionPolicy.extendSize(2340, 1080, turns = false))
+    }
+
+    @Test fun aTurnIsAskedForOnlyWhenThePictureStandsTheOtherWay() {
+        assertTrue(SessionPolicy.needsTurn(2340, 1080, 1080, 2340))
+        assertTrue(SessionPolicy.needsTurn(1080, 2340, 2340, 1080))
+        // A picture made smaller than the phone but standing the same way is fine, and so is turning upside down.
+        assertFalse(SessionPolicy.needsTurn(1080, 2340, 1080, 2340))
+        assertFalse(SessionPolicy.needsTurn(1600, 738, 2340, 1080))
+        assertFalse(SessionPolicy.needsTurn(1000, 1000, 1080, 2340))
+    }
 }

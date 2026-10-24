@@ -35,6 +35,7 @@ import uniffi.tandem_core.TandemMediaKind
 import uniffi.tandem_core.TandemMediaPermission
 import uniffi.tandem_core.TandemMediaPush
 import uniffi.tandem_core.TandemMediaRequest
+import uniffi.tandem_core.TandemMediaResize
 import uniffi.tandem_core.TandemMediaUpdate
 import java.util.concurrent.ConcurrentHashMap
 
@@ -185,6 +186,9 @@ class LiveShare(
             service?.refresh()
         }
     }
+
+    /** A phone never makes a screen of its own for another device, and does not say `screen.extend.turn`, so this does not come. */
+    override fun onResize(session: ULong, resize: TandemMediaResize) = Unit
 
     private fun handleRequest(from: String, request: TandemMediaRequest, preApproved: Boolean) {
         val engine = host.engine ?: return

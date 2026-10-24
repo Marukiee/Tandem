@@ -78,6 +78,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -128,7 +129,8 @@ private fun Context.findActivity(): Activity? = when (this) {
 
 /**
  * The screen of a Mac on the phone, with the mouse and keyboard of that Mac under the fingers. With [extend] it is not the screen the Mac has:
- * the Mac makes a display of its own for this phone, as many pixels as the phone has and lying down, and the fingers click where they touch.
+ * the Mac makes a display of its own for this phone, as many pixels as the phone has and standing the way the phone does, and the fingers
+ * click where they touch.
  */
 @Composable
 fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) {
@@ -172,19 +174,27 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
     DisposableEffect(extend, id) {
         val watcher = if (extend) {
             nl.markmaaktmedia.tandem.live.MoveWatcher(context) {
-                graph.scope.launch { runCatching { graph.host.engine?.sideMoved(listOf(id)) } }
+                // Turned in the hand and put down where it was: the side is the same.
+                if (!viewer.turnedLately()) graph.scope.launch { runCatching { graph.host.engine?.sideMoved(listOf(id)) } }
             }.also { it.start() }
         } else {
             null
         }
         onDispose { watcher?.stop() }
     }
-    // A second screen is used lying down, whichever way the phone was held when it was started; the other computer made it that shape.
-    DisposableEffect(extend) {
+    // A second screen stands the way the phone is held when the other computer turns its screen along, and the phone is turned the way it
+    // stands, whatever the lock of the rotation says, as before. A computer that cannot turn it made it lying down, so it is used that way.
+    val turns = extend && device?.caps?.contains(SessionPolicy.TURN_CAP) == true
+    DisposableEffect(extend, turns) {
         val before = activity?.requestedOrientation
-        if (extend) activity?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        if (extend) {
+            activity?.requestedOrientation = if (turns) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+            else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
         onDispose { if (extend && before != null) activity?.requestedOrientation = before }
     }
+    val orientation = LocalConfiguration.current.orientation
+    LaunchedEffect(turns, orientation) { if (turns) viewer.turned() }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewer.pause() }
     LifecycleEventEffect(Lifecycle.Event.ON_START) { viewer.resume() }
 

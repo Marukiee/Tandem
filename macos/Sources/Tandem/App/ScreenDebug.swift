@@ -228,6 +228,16 @@ enum ScreenDebug {
         report.check("a viewer above 200% gets no more pixels than are drawn, and a backing stays within 6K",
             dense.streamWidth == 3072 && dense.streamHeight == 1920
             && Double(huge.pixelsWidth * huge.pixelsHeight) <= ScreenGeometry.maxBackingArea && huge.hiDPI && huge.streamWidth <= huge.pixelsWidth)
+        // A phone that is turned upright, and a laptop on its side: the same screen, standing, with the same sharpness.
+        func turned(_ s: ScreenGeometry.ExtendedShape) -> ScreenGeometry.ExtendedShape {
+            .init(pointsWidth: s.pointsHeight, pointsHeight: s.pointsWidth, hiDPI: s.hiDPI, pixelsWidth: s.pixelsHeight, pixelsHeight: s.pixelsWidth,
+                  streamWidth: s.streamHeight, streamHeight: s.streamWidth)
+        }
+        let lying = ScreenGeometry.extendedShape(width: 2340, height: 1080, logicalWidth: 0, logicalHeight: 0)
+        let upright = ScreenGeometry.extendedShape(width: 1080, height: 2340, logicalWidth: 0, logicalHeight: 0)
+        let standing = ScreenGeometry.extendedShape(width: 1600, height: 2560, logicalWidth: 1200, logicalHeight: 1920)
+        report.check("a screen that is turned is the same screen on its side",
+            upright == turned(lying) && upright.pixelsHeight > upright.pixelsWidth && standing == turned(laptop), "\(upright), \(standing)")
         report.check("starting bitrate stays within bounds", ScreenGeometry.startingBitrate(width: 1920, height: 1080, fps: 30, requestedMax: 0) <= 24_000_000
             && ScreenGeometry.startingBitrate(width: 1920, height: 1080, fps: 30, requestedMax: 3_000_000) == 3_000_000)
         report.check("frame rate follows the bitrate down", ScreenGeometry.frameRate(for: 400_000, started: 4_000_000, base: 30) == 12

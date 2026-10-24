@@ -24,6 +24,7 @@ import uniffi.tandem_core.TandemMediaEnd
 import uniffi.tandem_core.TandemMediaFacing
 import uniffi.tandem_core.TandemMediaInput
 import uniffi.tandem_core.TandemMediaKind
+import uniffi.tandem_core.TandemMediaResize
 import uniffi.tandem_core.TandemMediaStats
 import uniffi.tandem_core.TandemMediaUpdate
 import uniffi.tandem_core.TandemMediaViewer
@@ -115,6 +116,8 @@ class ScreenViewer(
     private var tickJob: Job? = null
     private var retryJob: Job? = null
     private var pauseJob: Job? = null
+    private var turnJob: Job? = null
+    @Volatile private var turnedAt = 0L
     private var lastKeyframeAsk = 0L
     private var lastBytes = 0L
     private val heldButtons = HashSet<Int>()
@@ -242,16 +245,15 @@ class ScreenViewer(
         val short = minOf(metrics.widthPixels, metrics.heightPixels)
         val unmetered = isUnmetered()
         if (extend) {
-            // A screen of its own, as many pixels as this one has, so every pixel of the phone is one of the other computer. It is used lying
-            // down. What the link cannot carry comes off the rate afterwards, not off the size, which cannot change under the person's hands.
-            val real = context.getSystemService(Context.WINDOW_SERVICE).let { (it as android.view.WindowManager).maximumWindowMetrics.bounds }
-            val realLong = maxOf(real.width(), real.height())
-            val realShort = minOf(real.width(), real.height())
+            // A screen of its own, as many pixels as this one has, so every pixel of the phone is one of the other computer. It stands the way
+            // the phone is held when the computer turns it along (see `turned`), and lies down when it cannot. What the link cannot carry comes
+            // off the rate afterwards, not off the size, which cannot change under the person's hands.
+            val (width, height) = extendSize()
             return TandemMediaWant(
                 kind = TandemMediaKind.SCREEN,
                 codecs = listOf(TandemMediaCodec.H264),
-                maxWidth = realLong.toUInt(),
-                maxHeight = realShort.toUInt(),
+                maxWidth = width.toUInt(),
+                maxHeight = height.toUInt(),
                 maxFps = if (unmetered) 60u else 30u,
                 maxBitrate = 0u,
                 control = true,
@@ -273,6 +275,42 @@ class ScreenViewer(
             facing = TandemMediaFacing.ANY,
             extend = false,
         )
+    }
+
+    /** The computer turns the screen it made for this phone along with the phone. */
+    val turns: Boolean
+        get() = extend && peer.let { id -> host.devices.value.firstOrNull { it.id == id }?.caps?.contains(SessionPolicy.TURN_CAP) == true }
+
+    private fun extendSize(): Pair<Int, Int> {
+        val real = (context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager).maximumWindowMetrics.bounds
+        return SessionPolicy.extendSize(real.width(), real.height(), turns)
+    }
+
+    /**
+     * The screen was built again, which is what a turn of the phone does. A computer that turns its screen along is asked for the new shape,
+     * a moment later, so a phone turned there and back again asks nothing.
+     */
+    fun turned() {
+        if (!turns) return
+        turnJob?.cancel()
+        turnJob = main.launch {
+            delay(TURN_SETTLE_MS)
+            askTurn()
+        }
+    }
+
+    /** Lately turned, so a movement that the turn was is not taken for the phone being put somewhere else. */
+    fun turnedLately(): Boolean = SystemClock.elapsedRealtime() - turnedAt < TURN_MOVE_MS
+
+    private fun askTurn() {
+        val current = session
+        val shown = _info.value ?: return
+        if (current == 0UL || !turns) return
+        val (width, height) = extendSize()
+        if (!SessionPolicy.needsTurn(shown.width, shown.height, width, height)) return
+        turnedAt = SystemClock.elapsedRealtime()
+        runCatching { host.engine?.mediaResize(current, TandemMediaResize(width.toUInt(), height.toUInt(), 0u, 0u)) }
+            .onFailure { Log.w(TAG, "the turn was not asked for", it) }
     }
 
     private fun isUnmetered(): Boolean {
@@ -317,6 +355,7 @@ class ScreenViewer(
         requestJob?.cancel()
         retryJob?.cancel()
         tickJob?.cancel()
+        turnJob?.cancel()
         val current = session
         session = 0UL
         control = false
@@ -342,6 +381,8 @@ class ScreenViewer(
             _info.value = StreamInfo(accept.width.toInt(), accept.height.toInt(), accept.fps.toInt(), accept.bitrate.toInt(), accept.control)
             lastFrameAt = SystemClock.elapsedRealtime()
             _state.value = ViewerState.Streaming
+            // Turned while the computer was still asking its person: the screen it made stands the old way.
+            askTurn()
         }
     }
 
@@ -356,6 +397,8 @@ class ScreenViewer(
                 fps = update.fps?.takeIf { it > 0u }?.toInt() ?: old.fps,
                 control = update.control ?: old.control,
             )
+            // Turned back while the computer was still making the first turn: its new shape is already the wrong way.
+            askTurn()
         }
     }
 
@@ -427,6 +470,10 @@ class ScreenViewer(
         const val PAUSE_LIMIT_MS = 20_000L
         const val NUDGE_MS = 2500L
         const val STALL_MS = 4000L
+        const val TURN_SETTLE_MS = 300L
+
+        /** A little longer than `MoveWatcher` waits for a phone to lie still, after a turn in the hand. */
+        const val TURN_MOVE_MS = 4000L
     }
 }
 
