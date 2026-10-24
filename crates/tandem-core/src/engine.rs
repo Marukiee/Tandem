@@ -131,6 +131,7 @@ pub(crate) struct Inner {
     pub ble: Mutex<crate::ble::BleHub>,
     pub audio: RwLock<Option<Arc<dyn AudioSink>>>,
     pub ble_msg_id: std::sync::atomic::AtomicU8,
+    pub(crate) focus: Mutex<crate::focus::FocusSync>,
 }
 
 /// Where the sound of the other device goes. Called on the connection's own task for every
@@ -177,6 +178,7 @@ impl Engine {
         let (events, _) = broadcast::channel(2048);
         let file_service = crate::files::FileService::new(store.clone());
         let live = crate::live::Live::new(store.clone());
+        let focus = Mutex::new(crate::focus::FocusSync::load(&store));
 
         let inner = Arc::new(Inner {
             my_name: RwLock::new(my_name),
@@ -212,6 +214,7 @@ impl Engine {
             ble: Mutex::new(Default::default()),
             audio: RwLock::new(None),
             ble_msg_id: std::sync::atomic::AtomicU8::new(0),
+            focus,
         });
 
         // The peers must exist before their saved addresses can be attached to them.

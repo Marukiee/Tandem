@@ -98,4 +98,6 @@ pub enum Event {
     MediaOffered { from: DeviceId, kind: crate::live::MediaKind, facing: crate::live::MediaFacing, extend: bool },
     /// The pointer goes over or comes back (see `pointer_share`).
     PointerShare { from: DeviceId, msg: crate::pointer_share::PointerShareMsg },
+    /// A Focus was turned on or off on `origin` and this device follows: turn its own on or off (see `focus`). `from` passed it on.
+    Focus { from: DeviceId, origin: DeviceId, on: bool, name: String },
 }

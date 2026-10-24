@@ -128,6 +128,16 @@ verlies staan in `SCREEN.md`.
 die de speler van een computer bedient, toont dat op de dempknop en volgt het als de computer op een andere manier weer
 aan gaat. Een oudere versie kent het veld niet en slaat het over.
 
+### Focus
+
+`Focus { on, name, seq, origin }` is de nieuwste wijziging van Focus of Niet storen die een apparaat kent: aan of uit, gedaan door
+de persoon op het apparaat `origin` (ontbreekt het, dan de afzender). `seq` is een Lamport-teller; van twee wijzigingen is die met
+het hogere getal de nieuwste, en bij een gelijk getal die van het hogere apparaat-id, zodat elk apparaat dezelfde kiest. Een
+apparaat bewaart de nieuwste en stuurt die aan een apparaat dat verbinding maakt, zodat een apparaat dat weg was hem alsnog hoort.
+Het gaat alleen naar apparaten met `focus.share` of `focus.follow`. Een apparaat dat volgt, zet zijn eigen Focus aan of uit en
+stuurt dat niet terug: alleen een wijziging van wat het apparaat zelf leest, die verschilt van de nieuwste, is nieuws. Zie
+`crates/tandem-core/src/focus.rs`.
+
 ### Mogelijkheden (`Hello.caps`)
 
 Een apparaat zegt in zijn `Hello` wat het kan, als lijst van woorden. Een onbekend woord wordt genegeerd. Wie iets wil
@@ -143,6 +153,8 @@ vragen, kijkt eerst of het woord er staat.
 | `screen.control` | een computer die zijn scherm toont en waar een telefoon ook mag klikken en typen (Toegankelijkheid staat aan) |
 | `screen.view`, `camera.view` | kan het scherm of de camera van een ander apparaat tonen |
 | `audio.play` | speelt het geluid van een telefoon af (streamnummer `9`, zie MUSIC_AND_SOUND.md) |
+| `focus.share` | leest zijn eigen Focus of Niet storen en stuurt een wijziging door (`Focus`) |
+| `focus.follow` | kan een eigen Focus aan- en uitzetten als een ander apparaat dat doet |
 
 ## De circle
 

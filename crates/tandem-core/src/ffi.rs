@@ -1057,6 +1057,9 @@ pub enum TandemEvent {
     MediaOffered { from: String, kind: TandemMediaKind, facing: TandemMediaFacing, extend: bool },
     /// The pointer of the other computer goes over to this one, or comes back.
     PointerShare { from: String, msg: TandemPointerShare },
+    /// A Focus was turned on or off on the device `origin` (passed on by `from`): turn this device's own on or off. `name` is what it
+    /// is called there, empty when that device cannot tell. Only sent while `set_focus_sharing` says this device follows.
+    Focus { from: String, origin: String, on: bool, name: String },
 }
 
 impl From<Event> for TandemEvent {
@@ -1177,6 +1180,9 @@ impl From<Event> for TandemEvent {
             Event::PointerShare { from, msg } => TandemEvent::PointerShare { from: from.to_string(), msg: msg.into() },
             Event::MediaOffered { from, kind, facing, extend } => {
                 TandemEvent::MediaOffered { from: from.to_string(), kind: kind.into(), facing: facing.into(), extend }
+            }
+            Event::Focus { from, origin, on, name } => {
+                TandemEvent::Focus { from: from.to_string(), origin: origin.to_string(), on, name }
             }
             Event::MediaCommand { from, player, action, position_ms } => {
                 use crate::proto::MediaAction as M;
@@ -1907,6 +1913,19 @@ impl TandemEngine {
         let engine = self.engine.clone();
         self.runtime.spawn(async move { engine.decline_offer(from, offer).await }).await.map_err(join_error)?;
         Ok(())
+    }
+
+    /// What this device does with Focus now: `send` the changes its person makes, `follow` those of the other devices. Both come
+    /// from the setting and from what the system lets the app do; say it again when either changes.
+    pub fn set_focus_sharing(&self, send: bool, follow: bool) {
+        self.engine.set_focus_sharing(send, follow);
+    }
+
+    /// The Focus of this device as the app reads it now, and its name when the system tells. Call it at start and whenever it may
+    /// have changed, also after following another device: the core works out what is news for the others.
+    pub async fn focus_local(&self, on: bool, name: String) {
+        let engine = self.engine.clone();
+        let _ = self.runtime.spawn(async move { engine.focus_local(on, &name).await }).await;
     }
 
     pub async fn shutdown(&self) {

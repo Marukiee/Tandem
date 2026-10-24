@@ -20,6 +20,10 @@ struct Node {
 }
 
 async fn node(name: &str) -> Node {
+    node_with_caps(name, &[]).await
+}
+
+async fn node_with_caps(name: &str, caps: &[&str]) -> Node {
     let dir = tempfile::tempdir().unwrap();
     let data = dir.path().join("data");
     let downloads = dir.path().join("downloads");
@@ -27,6 +31,7 @@ async fn node(name: &str) -> Node {
     cfg.port = 0;
     cfg.enable_mdns = false;
     cfg.loopback = true;
+    cfg.caps.extend(caps.iter().map(|c| c.to_string()));
     let secrets = Arc::new(FileSecretStore::new(Store::new(&data).unwrap()));
     let files = Arc::new(DesktopFiles { download_dir: downloads.clone() });
     let engine = Engine::start(cfg, secrets, files).await.unwrap();
@@ -955,4 +960,57 @@ async fn a_cancelled_transfer_ends_as_cancelled_and_leaves_no_file() {
     .await;
     assert_eq!(done.error.as_deref(), Some("cancelled"));
     assert!(!mac.downloads.join("photo.bin").exists());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn focus_is_followed_without_an_echo_and_reaches_a_device_that_comes_later() {
+    use tandem_core::focus::{CAP_FOLLOW, CAP_SHARE};
+    let caps = [CAP_SHARE, CAP_FOLLOW];
+    let phone = node_with_caps("Phone", &caps).await;
+    let mac = node_with_caps("Mac", &caps).await;
+    for node in [&phone, &mac] {
+        node.engine.set_focus_sharing(true, true);
+        node.engine.focus_local(false, "").await;
+    }
+    pair(&phone, &mac).await;
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+
+    let mut phone_events = phone.engine.subscribe();
+    let mut mac_events = mac.engine.subscribe();
+    mac.engine.focus_local(true, "Work").await;
+    let (origin, on, name) = expect(&mut phone_events, "the focus of the mac", |e| match e {
+        Event::Focus { origin, on, name, .. } => Some((*origin, *on, name.clone())),
+        _ => None,
+    })
+    .await;
+    assert_eq!((origin, on, name.as_str()), (mac.engine.id(), true, "Work"));
+
+    // The phone turns its own mode on, which its app reads back as a change: that must not travel back.
+    phone.engine.focus_local(true, "").await;
+    let echoed = tokio::time::timeout(Duration::from_millis(600), async {
+        loop {
+            if let Ok(Event::Focus { .. }) = mac_events.recv().await {
+                return;
+            }
+        }
+    })
+    .await;
+    assert!(echoed.is_err(), "the phone sent the focus back");
+    // Each one shows the other as in Do Not Disturb.
+    wait_until("the mac sees the phone's do not disturb", || {
+        mac.engine.devices().iter().any(|d| d.id == phone.engine.id() && d.status.dnd == Some(true))
+    })
+    .await;
+
+    // A laptop that joins afterwards hears the newest change when it connects, and follows the Mac.
+    let laptop = node_with_caps("Laptop", &caps).await;
+    laptop.engine.set_focus_sharing(true, true);
+    let mut laptop_events = laptop.engine.subscribe();
+    pair(&phone, &laptop).await;
+    let (origin, on) = expect(&mut laptop_events, "the focus on joining", |e| match e {
+        Event::Focus { origin, on, .. } => Some((*origin, *on)),
+        _ => None,
+    })
+    .await;
+    assert_eq!((origin, on), (mac.engine.id(), true));
 }

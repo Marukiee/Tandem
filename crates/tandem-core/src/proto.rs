@@ -151,6 +151,9 @@ pub enum Msg {
     Ping { nonce: u64 },
     Pong { nonce: u64 },
     Bye { reason: String },
+    /// The newest change of Focus (or Do Not Disturb) this device knows of, its own or one it heard. Only sent to devices that
+    /// say `focus.share` or `focus.follow`. See `focus`.
+    Focus(FocusChange),
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,
@@ -519,6 +522,21 @@ pub enum HotspotMsg {
     Stop,
 }
 
+/// A Focus was turned on or off by the person on the device `origin`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FocusChange {
+    pub on: bool,
+    /// What the Focus is called on that device, such as "Work". Empty when its system does not tell.
+    #[serde(default)]
+    pub name: String,
+    /// A Lamport counter: of two changes, the one with the higher number is the newer.
+    #[serde(default)]
+    pub seq: u64,
+    /// Missing means the device that sent it.
+    #[serde(default)]
+    pub origin: Option<DeviceId>,
+}
+
 // Frames for the file stream. The receiver asks, the sender answers.
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -866,6 +884,29 @@ mod tests {
         known.merge(&got);
         known.merge(&Status { muted: Some(true), ..Default::default() });
         assert_eq!(known.features, Some(vec![feature]));
+    }
+
+    #[test]
+    fn a_focus_change_round_trips_and_a_bare_one_from_a_newer_app_still_reads() {
+        let change = FocusChange { on: true, name: "Work".into(), seq: 4, origin: Some(DeviceId::from_bytes([7; 16])) };
+        match decode_msg(&encode(&Msg::Focus(change.clone())).unwrap()).unwrap() {
+            Msg::Focus(got) => assert_eq!(got, change),
+            other => panic!("wrong message: {other:?}"),
+        }
+        // Only `on`, and a field this version does not know: the rest takes its default.
+        let bare = ciborium::Value::Map(vec![(
+            ciborium::Value::Text("Focus".into()),
+            ciborium::Value::Map(vec![
+                (ciborium::Value::Text("on".into()), ciborium::Value::Bool(false)),
+                (ciborium::Value::Text("until".into()), ciborium::Value::Integer(9.into())),
+            ]),
+        )]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&bare, &mut bytes).unwrap();
+        match decode_msg(&bytes).unwrap() {
+            Msg::Focus(got) => assert_eq!(got, FocusChange { on: false, name: String::new(), seq: 0, origin: None }),
+            other => panic!("wrong message: {other:?}"),
+        }
     }
 
     #[tokio::test]

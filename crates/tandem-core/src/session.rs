@@ -202,6 +202,9 @@ impl Inner {
         // Bring the other side up to date.
         let status = self.my_status.lock().unwrap().clone();
         let _ = session.tx.send(Msg::Status(status)).await;
+        if let Some(focus) = self.focus_catch_up(&hello.caps) {
+            let _ = session.tx.send(focus).await;
+        }
         self.ble_on_connected(id).await;
         let known = self.introductions(&id);
         if !known.is_empty() {
@@ -495,6 +498,7 @@ impl Inner {
                     session.pong.notify_waiters();
                 }
             }
+            Msg::Focus(change) => self.focus_received(id, change),
             Msg::Bye { .. } | Msg::Unknown => {}
         }
     }
