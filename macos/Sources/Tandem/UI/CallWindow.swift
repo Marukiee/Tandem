@@ -27,49 +27,51 @@ struct CallCard: Identifiable, Equatable {
     var title: String { name ?? number ?? String(localized: "Unknown number") }
 }
 
+/// What one panel shows: its card, and whether the card is in, apart from whether the panel exists, so it can come and go with a spring.
 @MainActor
 @Observable
-final class CallCards {
-    var cards: [CallCard] = []
+final class CallSlot {
+    var card: CallCard
+    var shown = false
+
+    init(card: CallCard) { self.card = card }
 }
 
 /// The small floating window of a call on a phone, like the call popup of WhatsApp: who it is, which phone, and Answer and Decline while
-/// it rings, Hang up while it goes on. The talking stays on the phone or its headset. One card per call, stacked, in the top right corner
-/// of the screen until it is dragged somewhere else.
+/// it rings, Hang up while it goes on. The talking stays on the phone or its headset. One card per call, each a panel of its own in the
+/// column of floating cards at the top right (`FloatingStack`). A card that is dragged leaves the column and stays where it was put.
 ///
-/// The panel never activates the app or takes the keyboard, so a call coming in does not take the cursor out of what is being typed.
+/// The panels never activate the app or take the keyboard, so a call coming in does not take the cursor out of what is being typed.
 @MainActor
 final class CallWindow {
     static let shared = CallWindow()
 
     static let cardWidth: CGFloat = 320
     static let cardHeight: CGFloat = 112
-    static let gap: CGFloat = 10
-    /// Room around the cards for their shadow: a shadow that reaches past the edge of a window is cut off in a straight line.
-    static let margin: CGFloat = 32
+    /// Room around the card for its shadow, the same as the other floating cards (`FloatingCard`): a shadow that reaches past the edge of
+    /// a window is cut off in a straight line.
+    static let insets = EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28)
 
     /// Set by the model: sends Answer, Decline or Hang up to the phone.
     var onAction: ((_ device: String, _ callId: String, _ action: TandemCallAction) -> Void)?
 
-    let model = CallCards()
-    private var panel: CallPanel?
-    private var hideTask: Task<Void, Never>?
-    private var shrinkTask: Task<Void, Never>?
+    /// The calls as the phones last told them, oldest first.
+    private var cards: [CallCard] = []
+    private var shown: [String: (panel: CallPanel, slot: CallSlot)] = [:]
     /// What takes a card away by itself: a ringing that never ended (the phone went away) or a missed call that was shown.
     private var expiry: [String: Task<Void, Never>] = [:]
     /// Calls declined or hung up here. The phone reports a declined call as missed, and that is no news to whoever declined it.
     private var closedHere: [String: Date] = [:]
     /// The number this Mac asked a phone to call. Android does not say whom it is calling, so the card takes it from here.
     private var dialed: (device: String, number: String, name: String?, at: Date)?
-    /// Where the person dragged the cards to, for as long as the app runs.
-    private var topLeft: NSPoint?
     private var debugKeep = false
 
     // MARK: What the phone says
 
     func received(_ call: TandemCall, from device: String, deviceName: String) {
+        defer { sync() }
         let key = "\(device)/\(call.id)"
-        let index = model.cards.firstIndex { $0.id == key }
+        let index = cards.firstIndex { $0.id == key }
         switch call.state {
         case .ringing, .dialing:
             guard closedHere[key] == nil else { return }
@@ -77,11 +79,9 @@ final class CallWindow {
             if let index {
                 // Ringing is sent again once the phone has looked up the name: the same card, with the name.
                 fill(index, from: call, deviceName: deviceName)
-                if model.cards[index].phase != phase, !model.cards[index].isActive {
-                    withAnimation(.tandem) { model.cards[index].phase = phase }
-                }
+                if !cards[index].isActive { cards[index].phase = phase }
             } else {
-                insert(card(for: call, device: device, deviceName: deviceName, phase: phase))
+                cards.append(card(for: call, device: device, deviceName: deviceName, phase: phase))
             }
             // A phone that stops ringing says so. One that is gone says nothing, and its card should not stay forever.
             expire(key, after: .seconds(120))
@@ -91,11 +91,9 @@ final class CallWindow {
             expiry.removeValue(forKey: key)?.cancel()
             if let index {
                 fill(index, from: call, deviceName: deviceName)
-                if !model.cards[index].isActive {
-                    withAnimation(.tandem) { model.cards[index].phase = .active(since: Date()) }
-                }
+                if !cards[index].isActive { cards[index].phase = .active(since: Date()) }
             } else {
-                insert(card(for: call, device: device, deviceName: deviceName, phase: .active(since: Date())))
+                cards.append(card(for: call, device: device, deviceName: deviceName, phase: .active(since: Date())))
             }
 
         case .ended:
@@ -106,13 +104,15 @@ final class CallWindow {
                 remove(key)
                 return
             }
-            let missed = index.map { model.cards[$0] } ?? card(for: call, device: device, deviceName: deviceName, phase: .missed)
+            let missed = index.map { cards[$0] } ?? card(for: call, device: device, deviceName: deviceName, phase: .missed)
             // The card goes after a few seconds; the notification stays, so the call can be found later.
             Notifier.shared.post(id: "missed.\(call.id)", title: String(localized: "Missed call"), body: missed.title, thread: "calls")
             if let index {
-                withAnimation(.tandem) { model.cards[index].phase = .missed }
+                cards[index].phase = .missed
             } else {
-                insert(missed)
+                var shownMissed = missed
+                shownMissed.phase = .missed
+                cards.append(shownMissed)
             }
             expire(key, after: debugKeep ? .seconds(600) : .seconds(4))
         }
@@ -136,11 +136,9 @@ final class CallWindow {
     }
 
     private func fill(_ index: Int, from call: TandemCall, deviceName: String) {
-        var card = model.cards[index]
-        card.deviceName = deviceName
-        if let name = call.name { card.name = name }
-        if let number = call.number { card.number = number }
-        if card != model.cards[index] { model.cards[index] = card }
+        cards[index].deviceName = deviceName
+        if let name = call.name { cards[index].name = name }
+        if let number = call.number { cards[index].number = number }
     }
 
     // MARK: Buttons
@@ -153,6 +151,7 @@ final class CallWindow {
             closedHere[card.id] = Date()
             closedHere = closedHere.filter { Date().timeIntervalSince($0.value) < 600 }
             remove(card.id)
+            sync()
         case .answer, .silence:
             break
         }
@@ -160,60 +159,57 @@ final class CallWindow {
 
     // MARK: Coming and going
 
-    private func insert(_ card: CallCard) {
-        hideTask?.cancel()
-        shrinkTask?.cancel()
-        let panel = panel ?? makePanel()
-        self.panel = panel
-        if !panel.isVisible {
-            place(panel, count: model.cards.count + 1)
-            panel.orderFrontRegardless()
-        } else {
-            resize(count: model.cards.count + 1)
-        }
-        // One turn later, so the window is on screen and laid out before the card springs in.
-        DispatchQueue.main.async { [weak self] in
-            guard let self, !self.model.cards.contains(where: { $0.id == card.id }) else { return }
-            withAnimation(.tandemSpringy) { self.model.cards.append(card) }
-        }
-    }
-
     private func remove(_ key: String) {
         expiry.removeValue(forKey: key)?.cancel()
-        guard model.cards.contains(where: { $0.id == key }) else { return }
-        withAnimation(.tandem) { model.cards.removeAll { $0.id == key } }
-        if model.cards.isEmpty {
-            hideTask?.cancel()
-            hideTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .milliseconds(450))
-                guard !Task.isCancelled, let self, self.model.cards.isEmpty, let panel = self.panel else { return }
-                self.topLeft = NSPoint(x: panel.frame.minX, y: panel.frame.maxY)
-                panel.orderOut(nil)
-            }
-        } else {
-            // The window keeps its size until the card has faded, or the fade would be cut off.
-            shrinkTask?.cancel()
-            shrinkTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .milliseconds(450))
-                guard !Task.isCancelled, let self else { return }
-                self.resize(count: self.model.cards.count)
-            }
-        }
+        cards.removeAll { $0.id == key }
     }
 
     private func expire(_ key: String, after delay: Duration) {
         expiry[key]?.cancel()
         expiry[key] = Task { @MainActor [weak self] in
             try? await Task.sleep(for: delay)
-            guard !Task.isCancelled else { return }
-            self?.remove(key)
+            guard !Task.isCancelled, let self else { return }
+            self.remove(key)
+            self.sync()
+        }
+    }
+
+    /// Makes the panels match the calls: a new call springs in at the top of the column, a changed one changes in place, a gone one fades
+    /// while the others slide up into its place.
+    private func sync() {
+        for card in cards {
+            if let existing = shown[card.id] {
+                if existing.slot.card != card { withAnimation(.tandem) { existing.slot.card = card } }
+            } else {
+                let slot = CallSlot(card: card)
+                let panel = makePanel(slot)
+                shown[card.id] = (panel, slot)
+                FloatingStack.shared.show(panel)
+                // One turn later, so the panel is on screen and laid out before the card springs in.
+                DispatchQueue.main.async { withAnimation(.tandemSpringy) { slot.shown = true } }
+            }
+        }
+        for (key, gone) in shown where !cards.contains(where: { $0.id == key }) {
+            shown.removeValue(forKey: key)
+            FloatingStack.shared.remove(gone.panel)
+            withAnimation(.tandem) { gone.slot.shown = false }
+            let panel = gone.panel
+            Task { @MainActor in
+                // Long enough for the fade.
+                try? await Task.sleep(for: .milliseconds(450))
+                panel.orderOut(nil)
+            }
         }
     }
 
     // MARK: The window
 
-    private func makePanel() -> CallPanel {
-        let size = Self.size(count: 1)
+    static var panelSize: CGSize {
+        CGSize(width: cardWidth + insets.leading + insets.trailing, height: cardHeight + insets.top + insets.bottom)
+    }
+
+    private func makePanel(_ slot: CallSlot) -> CallPanel {
+        let size = Self.panelSize
         let panel = CallPanel(
             contentRect: NSRect(origin: .zero, size: size),
             styleMask: [.borderless, .nonactivatingPanel],
@@ -224,7 +220,7 @@ final class CallWindow {
         panel.level = .statusBar
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        // The cards draw their own shadow, which follows the glass.
+        // The card draws its own shadow, which follows the glass.
         panel.hasShadow = false
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
@@ -232,7 +228,13 @@ final class CallWindow {
         panel.animationBehavior = .none
         panel.title = "Call"
 
-        let host = CallHostingView(rootView: CallStack(model: model) { [weak self] card, action in self?.act(card, action) })
+        let root = CallSlotView(
+            slot: slot,
+            act: { [weak self] card, action in self?.act(card, action) },
+            // Put somewhere by hand: out of the column, so the column does not move it back.
+            onDragged: { [weak panel] in if let panel { FloatingStack.shared.remove(panel) } }
+        )
+        let host = CallHostingView(rootView: root)
         host.sizingOptions = []
         // In a plain view and not as the content view itself, for the reason InsertHUD gives: a hosting view that is the content view
         // follows its content with the window frame, and AppKit does not allow that during the window's layout.
@@ -243,37 +245,6 @@ final class CallWindow {
         container.addSubview(host)
         panel.contentView = container
         return panel
-    }
-
-    static func size(count: Int) -> CGSize {
-        let cards = CGFloat(max(1, count))
-        return CGSize(
-            width: cardWidth + margin * 2,
-            height: cards * cardHeight + (cards - 1) * gap + margin * 2
-        )
-    }
-
-    /// Top right of the screen the pointer is on, just under the menu bar, unless the cards were dragged somewhere else before.
-    private func place(_ panel: NSPanel, count: Int) {
-        let size = Self.size(count: count)
-        if let topLeft, NSScreen.screens.contains(where: { $0.visibleFrame.insetBy(dx: -Self.margin, dy: -Self.margin).contains(NSPoint(x: topLeft.x + size.width / 2, y: topLeft.y - Self.margin - 1)) }) {
-            panel.setFrame(NSRect(x: topLeft.x, y: topLeft.y - size.height, width: size.width, height: size.height), display: true)
-            return
-        }
-        let mouse = NSEvent.mouseLocation
-        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main ?? NSScreen.screens[0]
-        let area = screen.visibleFrame
-        let x = area.maxX - 14 - Self.cardWidth - Self.margin
-        let top = area.maxY - 10 + Self.margin
-        panel.setFrame(NSRect(x: x, y: top - size.height, width: size.width, height: size.height), display: true)
-    }
-
-    /// The top edge stays where it is, wherever the cards were dragged, and the stack grows or shrinks downwards.
-    private func resize(count: Int) {
-        guard let panel else { return }
-        let size = Self.size(count: count)
-        let frame = panel.frame
-        panel.setFrame(NSRect(x: frame.minX, y: frame.maxY - size.height, width: size.width, height: size.height), display: true)
     }
 
     // MARK: Debug
@@ -310,22 +281,26 @@ final class CallWindow {
         }
     }
 
-    /// What is under a point of the first card, for the debug report: the drag area on the words, the buttons on the buttons.
+    /// Where the panels are and what is under a point of each card, for the debug report: the drag area on the words, the buttons on the
+    /// buttons.
     func debugHitReport() -> String {
-        guard let panel, let container = panel.contentView, let host = container.subviews.first else { return "no window\n" }
-        var lines = ["frame \(panel.frame)", "cards \(model.cards.count)"]
-        let points: [(String, CGPoint)] = [
-            ("name", CGPoint(x: Self.margin + 100, y: Self.margin + 30)),
-            ("right button", CGPoint(x: Self.margin + Self.cardWidth - 14 - 20, y: Self.margin + Self.cardHeight / 2)),
-            ("margin", CGPoint(x: 4, y: 4)),
-        ]
-        for (label, point) in points {
-            // From the top left, as SwiftUI lays out, to the bottom left of AppKit.
-            let inHost = NSPoint(x: point.x, y: host.isFlipped ? point.y : host.bounds.height - point.y)
-            let hit = host.hitTest(host.convert(inHost, to: host.superview))
-            lines.append("\(label): \(hit.map { String(describing: type(of: $0)) } ?? "nothing")")
+        var lines: [String] = []
+        for card in cards {
+            guard let panel = shown[card.id]?.panel, let host = panel.contentView?.subviews.first else { continue }
+            lines.append("\(card.id) phase \(card.phase.kind) frame \(panel.frame) visible \(panel.isVisible)")
+            let points: [(String, CGPoint)] = [
+                ("name", CGPoint(x: Self.insets.leading + 100, y: Self.insets.top + 30)),
+                ("right button", CGPoint(x: Self.insets.leading + Self.cardWidth - 14 - 20, y: Self.insets.top + Self.cardHeight / 2)),
+                ("margin", CGPoint(x: 4, y: 4)),
+            ]
+            for (label, point) in points {
+                // From the top left, as SwiftUI lays out, to the bottom left of AppKit.
+                let inHost = NSPoint(x: point.x, y: host.isFlipped ? point.y : host.bounds.height - point.y)
+                let hit = host.hitTest(host.convert(inHost, to: host.superview))
+                lines.append("  \(label): \(hit.map { String(describing: type(of: $0)) } ?? "nothing")")
+            }
         }
-        return lines.joined(separator: "\n") + "\n"
+        return (lines.isEmpty ? ["no calls"] : lines).joined(separator: "\n") + "\n"
     }
 }
 
@@ -339,34 +314,36 @@ private final class CallPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-private final class CallHostingView: NSHostingView<CallStack> {
+private final class CallHostingView: NSHostingView<CallSlotView> {
     // A click on Answer should answer, also while another app is in front, and not first bring this window forward.
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
-// MARK: The cards
+// MARK: The card
 
-struct CallStack: View {
-    let model: CallCards
+struct CallSlotView: View {
+    let slot: CallSlot
     let act: (CallCard, TandemCallAction) -> Void
+    let onDragged: () -> Void
 
     var body: some View {
-        VStack(spacing: CallWindow.gap) {
-            ForEach(model.cards) { card in
-                CallCardView(card: card) { act(card, $0) }
+        ZStack(alignment: .top) {
+            if slot.shown {
+                CallCardView(card: slot.card, onDragged: onDragged) { act(slot.card, $0) }
                     .transition(.asymmetric(
                         insertion: .scale(scale: 0.85, anchor: .topTrailing).combined(with: .opacity),
                         removal: .opacity
                     ))
             }
         }
-        .padding(CallWindow.margin)
+        .padding(CallWindow.insets)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
 private struct CallCardView: View {
     let card: CallCard
+    let onDragged: () -> Void
     let act: (TandemCallAction) -> Void
     @Environment(\.colorScheme) private var colorScheme
 
@@ -391,7 +368,7 @@ private struct CallCardView: View {
         .padding(.horizontal, 14)
         .frame(width: CallWindow.cardWidth, height: CallWindow.cardHeight)
         // Under the words and the picture, so the card can be dragged by anything that is not a button.
-        .background(WindowDragArea())
+        .background(WindowDragArea(onDragged: onDragged))
         // Plain glass takes on the desktop behind it, and a light desktop under a dark card (or the other way round) washes the words
         // out. A fill in the colour of the appearance under the words keeps them readable on any wallpaper.
         .background(
@@ -432,7 +409,6 @@ private struct CallCardView: View {
                 EmptyView()
             }
         }
-        .transition(.scale(scale: 0.8).combined(with: .opacity))
     }
 }
 
@@ -448,7 +424,7 @@ private extension CallCard.Phase {
 }
 
 /// The person as a coloured disc with their initials, or a figure for a number without a name. The colour comes from the name, so the
-/// same person always gets the same one.
+/// same person always gets the same one (on the other computers too: `callcard.js` does the same sum).
 private struct CallAvatar: View {
     let name: String?
     let size: CGFloat
@@ -499,20 +475,49 @@ private struct RoundCallButton: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.bouncy)
+        .focusEffectDisabled()
         .help(Text(label))
         .accessibilityLabel(Text(label))
         .transition(.scale(scale: 0.6).combined(with: .opacity))
     }
 }
 
-/// Moves the window when it is dragged, under everything on the card that is not a button.
+/// Moves the window when it is dragged, under everything on the card that is not a button. By hand and not with `performDrag`, so it is
+/// known when the card was moved and it can leave the column.
 private struct WindowDragArea: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { DragView() }
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    let onDragged: () -> Void
+
+    func makeNSView(context: Context) -> DragView { DragView() }
+    func updateNSView(_ nsView: DragView, context: Context) { nsView.onDragged = onDragged }
 
     final class DragView: NSView {
+        var onDragged: (() -> Void)?
+        private var grab: NSPoint?
+        private var moved = false
+
         override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-        override var mouseDownCanMoveWindow: Bool { true }
-        override func mouseDown(with event: NSEvent) { window?.performDrag(with: event) }
+
+        override func mouseDown(with event: NSEvent) {
+            grab = NSEvent.mouseLocation
+            moved = false
+        }
+
+        override func mouseDragged(with event: NSEvent) {
+            guard let window, let grab else { return }
+            let now = NSEvent.mouseLocation
+            let step = NSPoint(x: now.x - grab.x, y: now.y - grab.y)
+            // A click that wobbles a pixel is not a drag.
+            if !moved, abs(step.x) + abs(step.y) < 3 { return }
+            if !moved {
+                moved = true
+                onDragged?()
+            }
+            window.setFrameOrigin(NSPoint(x: window.frame.minX + step.x, y: window.frame.minY + step.y))
+            self.grab = now
+        }
+
+        override func mouseUp(with event: NSEvent) {
+            grab = nil
+        }
     }
 }
