@@ -116,6 +116,7 @@ function smsAnswer(command, args) {
     case "sms_messages": return { thread: args.thread, items: smsThreads[args.thread] || [], more: false };
     case "sms_contacts": return [
       { name: "Anna de Vries", number: "+31612345678", label: "Mobiel" },
+      { name: "Anna de Vries", number: "+31201234567", label: "Werk" },
       { name: "Anne Jansen", number: "+31698765432", label: "Werk" },
     ].filter((c) => c.name.toLowerCase().includes(args.query.toLowerCase()) || c.number.includes(args.query));
     case "sms_picture": return smsPicture;

@@ -95,6 +95,8 @@ pub mod ble;
 mod lid;
 #[cfg(target_os = "linux")]
 mod mpris;
+#[cfg(target_os = "linux")]
+pub mod searchprovider;
 /// The portals of a Wayland desktop: keys, the pointer and the screen.
 #[cfg(target_os = "linux")]
 pub mod portal;

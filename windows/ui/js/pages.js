@@ -789,9 +789,6 @@ function FocusSettings({ s, patch }) {
     </div>`;
 }
 
-    onChange=${(v) => call("set_guests_by_default", { on: v }).then(() => setOn(v)).catch(failed)} />`;
-}
-
 function GeneralSettings({ s, patch }) {
   const [name, setName] = useState(state.self ? state.self.name : "");
   const delays = ["low", "normal", "smooth"];
@@ -813,6 +810,7 @@ function GeneralSettings({ s, patch }) {
       <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
       <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
+      ${state.platform === "linux" && html`<${SettingRow} icon="phone" title=${t("contacts_search")} sub=${t("contacts_search_sub")} on=${s.contactsSearch !== false} onChange=${(v) => patch({ contactsSearch: v })} />`}
       ${state.canBluetooth && html`<${SettingRow} icon="bluetooth" title=${t("ble_messages")} sub=${t("ble_messages_sub")} on=${s.bleMessages !== false} onChange=${(v) => patch({ bleMessages: v })} />`}
     </div>
 

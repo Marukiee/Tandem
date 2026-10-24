@@ -8,6 +8,7 @@ mod bluetooth;
 mod browse;
 mod debugshot;
 mod calls;
+mod contactsearch;
 mod capture;
 mod quickshare;
 mod clip;
@@ -147,6 +148,7 @@ pub fn run() {
             decoder_probe::warm_up();
             quickshare::configure(&handle);
             clip::start(handle.clone());
+            contactsearch::start(handle.clone());
             // Started with Windows it waits in the tray; started by hand it shows its window.
             let args: Vec<String> = std::env::args().collect();
             if sendwith::handle_args(&handle, &args) {
@@ -184,6 +186,8 @@ pub fn run() {
             quickshare::qs_send_clipboard,
             insert::capture_request,
             calls::dial,
+            contactsearch::call_ask_pending,
+            contactsearch::call_ask_taken,
             commands::get_players,
             commands::create_pairing,
             commands::cancel_pairing,

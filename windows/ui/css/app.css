@@ -492,8 +492,15 @@ select { cursor: default; }
 .call-anchor { position: relative; display: inline-flex; }
 .call-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; display: flex; gap: 8px; align-items: center; padding: 10px; }
 .call-pop input { width: 170px; }
-.call-pop { flex-wrap: wrap; width: 280px; }
+.call-pop { flex-wrap: wrap; width: 320px; }
 .call-found { flex-basis: 100%; display: flex; flex-direction: column; gap: 2px; }
-.call-contact { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 8px; border: 0; border-radius: 10px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+/* One row per number: who and what kind on the left, the number on the right on one line, as the chooser of the Mac. */
+.call-contact { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 44px; padding: 4px 10px; border: 0; border-radius: 10px; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background 0.2s ease-out; }
 .call-contact:hover { background: var(--hover, rgba(127, 127, 127, 0.12)); }
-.call-contact .s { font-size: 12px; opacity: 0.7; }
+.call-contact:first-child { background: var(--accent-soft); }
+.call-contact:first-child:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+.call-contact .who { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.call-contact .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.call-contact .s { font-size: 12px; color: var(--muted, inherit); opacity: 0.75; }
+.call-contact .n { font-variant-numeric: tabular-nums; font-weight: 500; white-space: nowrap; }
+.call-contact:first-child .n { color: var(--accent); }
