@@ -69,7 +69,7 @@ final class VirtualDisplay {
 
     /// Made by Tandem, by the vendor number `TandemVirtualDisplay.m` gives every display it makes, so one that is still going away is not
     /// taken for a monitor that is really there.
-    private static func isTandem(_ id: CGDirectDisplayID) -> Bool { CGDisplayVendorNumber(id) == 0x7A4E }
+    static func isTandem(_ id: CGDirectDisplayID) -> Bool { CGDisplayVendorNumber(id) == 0x7A4E }
 
     /// True when the display shows the size now: the pixels and the points, since a hiDPI display that the system put in the mode of the
     /// same pixels at one point each draws everything at half the size the viewer's screen does.

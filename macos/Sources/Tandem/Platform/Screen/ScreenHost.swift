@@ -324,10 +324,10 @@ final class ScreenHost {
             )
             virtual = made
             // On the side the device stands on. When that is not known (or the person wanted to be asked each time), the question comes up:
-            // found by sound, or chosen.
+            // found by sound, or chosen. A device that can listen is first checked by ear once its screen is on (see `SideWatch`).
             if let known = DeviceSides.side(of: peer) {
                 made.onLeft = known == "left"
-            } else if let device = model?.device(peer) {
+            } else if let device = model?.device(peer), !SideWatch.shared.findsFirst(device) {
                 SidePrompt.shared.ask(device)
             }
             displays[id] = made
@@ -379,6 +379,7 @@ final class ScreenHost {
                 // Pictures that came before the accept were not sent, and a still screen sends no new one: the first
                 // frame the viewer gets must be a keyframe made from what is on the display right now.
                 live.requestKeyframe(force: true)
+                if request.extend { SideWatch.shared.screenStarted(peer) }
             } catch {
                 self?.failed(session: id, error: error)
             }
