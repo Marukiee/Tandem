@@ -52,9 +52,14 @@ class RemoteInput(private val context: Context) {
     private var scrollSpeed = 0f
     private var lastScrollAt = 0L
     private var waitingSince = 0L
+    /** Until when a scroll whose finger ran out of screen goes on without waiting to be clearly a scroll again. */
+    private var resumeUntil = 0L
     /** How long one piece of the touch took from start to start, which is more than its length while Android hands it on. */
     private var pieceCycle = PIECE_MS.toFloat()
     private var pieceStartedAt = 0L
+    /** How long Android takes between the end of one piece and the start of the next, and how long the last piece was. */
+    private var pieceWait = 8f
+    private var lastPieceMs = PIECE_MS
     /** The scrolling stopped: its finger comes up once it has caught up with where the trackpad took it. */
     private val scrollStopped: Runnable = object : Runnable {
         override fun run() {
@@ -107,20 +112,29 @@ class RemoteInput(private val context: Context) {
         if (live == null || !scrollTouch) {
             // The first steps of a trackpad are tiny: a finger that went down with them would stand nearly still long enough for Android
             // to take it for a press of what is under it. It goes down once the scroll is clearly a scroll, and moves that far quickly.
+            // A scroll that only ran out of screen is clearly one already: its finger goes down again at once.
+            val resuming = now < resumeUntil
             if (waitingDx == 0f && waitingDy == 0f) waitingSince = now
             waitingDx += dx
             waitingDy += dy
             main.removeCallbacks(scrollStopped)
             main.postDelayed(scrollStopped, SCROLL_STOP_MS)
             val waited = hypot(waitingDx, waitingDy) * SCROLL_GAIN
-            if (waited < SCROLL_START) return
+            if (waited < SCROLL_START && !resuming) return
             stepX = waitingDx
             stepY = waitingDy
             waitingDx = 0f
             waitingDy = 0f
             scrollTouch = true
+            // Room to go in the direction it goes, so a long scroll runs out of screen, lifts and goes down again (which stops the
+            // content for a moment) as seldom as possible. Not too near the edges, where Android has gestures of its own.
             fingerX = x.coerceIn(SCROLL_EDGE, width - SCROLL_EDGE)
             fingerY = y.coerceIn(SCROLL_EDGE, height - SCROLL_EDGE)
+            if (abs(stepY) >= abs(stepX)) {
+                fingerY = if (stepY < 0) maxOf(fingerY, height * SCROLL_ROOM) else minOf(fingerY, height * (1 - SCROLL_ROOM))
+            } else {
+                fingerX = if (stepX < 0) maxOf(fingerX, width * SCROLL_ROOM) else minOf(fingerX, width * (1 - SCROLL_ROOM))
+            }
             scrollTargetX = fingerX
             scrollTargetY = fingerY
             scrollSpeed = waited / (now - waitingSince).coerceAtLeast(PIECE_MS).toFloat()
@@ -136,9 +150,10 @@ class RemoteInput(private val context: Context) {
         val ny = scrollTargetY + stepY * SCROLL_GAIN
         main.removeCallbacks(scrollStopped)
         if (nx !in SCROLL_EDGE..width - SCROLL_EDGE || ny !in SCROLL_EDGE..height - SCROLL_EDGE) {
-            // The finger ran out of screen: it comes up at the edge, and the next step puts it down again at the pointer.
+            // The finger ran out of screen: it comes up at the edge, and the next step puts it down again with room to go.
             scrollTargetX = nx.coerceIn(SCROLL_EDGE, width - SCROLL_EDGE)
             scrollTargetY = ny.coerceIn(SCROLL_EDGE, height - SCROLL_EDGE)
+            resumeUntil = now + SCROLL_STOP_MS
             endScrollTouch(service)
             return
         }
@@ -240,7 +255,8 @@ class RemoteInput(private val context: Context) {
         val end = ending
         // A piece that does not move keeps the finger where it is: that is how a press is held long.
         val (toX, toY) = aimX to aimY
-        val piece = runCatching { current.continueStroke(point(liveX, liveY, toX, toY), 0, PIECE_MS, !end) }.getOrNull()
+        val length = if (scrollTouch && !end) scrollPieceMs() else PIECE_MS
+        val piece = runCatching { current.continueStroke(point(liveX, liveY, toX, toY), 0, length, !end) }.getOrNull()
         if (piece == null) {
             giveUpLive()
             return
@@ -257,11 +273,25 @@ class RemoteInput(private val context: Context) {
         play(service, piece)
     }
 
+    /**
+     * How long one piece of the finger of a scroll is. Each piece waits for Android to say the last one was played, which takes a while
+     * on top of the piece itself (some 20 ms on an emulator, measured with `ScrollSelfCheck`): with pieces of a frame the finger stood
+     * still half the time and the content went in jerks. Twice that wait, so the finger moves most of the time; a little behind the
+     * trackpad on a slow phone, a frame on a quick one.
+     */
+    private fun scrollPieceMs(): Long = (pieceWait * 2).toLong().coerceIn(PIECE_MS, MAX_SCROLL_PIECE_MS)
+
     private fun play(service: TandemAccessibilityService, piece: GestureDescription.StrokeDescription) {
         playing = true
         val started = SystemClock.uptimeMillis()
-        if (pieceStartedAt != 0L) pieceCycle = pieceCycle * 0.7f + (started - pieceStartedAt).coerceIn(PIECE_MS, 60L).toFloat() * 0.3f
+        if (pieceStartedAt != 0L) {
+            val cycle = (started - pieceStartedAt).coerceIn(PIECE_MS, 120L).toFloat()
+            pieceCycle = pieceCycle * 0.7f + cycle * 0.3f
+            pieceWait = pieceWait * 0.7f + (cycle - lastPieceMs).coerceIn(0f, 60f) * 0.3f
+        }
         pieceStartedAt = started
+        lastPieceMs = piece.duration
+        trace?.invoke(started, liveX, liveY, piece.duration)
         val touch = ++touches
         service.stroke(piece) { played ->
             main.post {
@@ -333,9 +363,15 @@ class RemoteInput(private val context: Context) {
         }
     }
 
-    private companion object {
+    companion object {
+        /** Debug only (see `ScrollSelfCheck`): told when each piece starts, where its finger ends up and how long it is. */
+        @Volatile var trace: ((Long, Float, Float, Long) -> Unit)? = null
+
+
         /** How long one piece of a live touch is: about a frame of the screen. */
         const val PIECE_MS = 16L
+        /** The longest piece of the finger of a scroll: longer, and it trails the trackpad visibly. */
+        const val MAX_SCROLL_PIECE_MS = 40L
         /** How long the whole taps and swipes are kept after Android cancelled a live touch (the person touched the phone, say). */
         const val LIVE_RETRY_MS = 10_000L
         const val SLOP = 24f
@@ -351,6 +387,8 @@ class RemoteInput(private val context: Context) {
         const val SCROLL_EDGE = 60f
         /** How far a scroll goes before its finger goes down: past the distance at which Android stops taking a touch for a tap. */
         const val SCROLL_START = 40f
+        /** The part of the screen a finger of a scroll has at least before it, in the direction it goes. */
+        const val SCROLL_ROOM = 0.7f
         /** The part of what the finger of a scroll is behind that it makes up in one piece, at least. */
         const val SCROLL_CATCH_UP = 0.3f
         const val HID_ENTER = 0x28

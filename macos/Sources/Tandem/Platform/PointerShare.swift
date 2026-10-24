@@ -137,6 +137,8 @@ final class PointerShare {
     @ObservationIgnored private var bouncedAt: [String: Date] = [:]
     /// When the person was last told why the pointer stays at an edge.
     @ObservationIgnored private var wallToldAt: [String: Date] = [:]
+    /// What is left of the scrolling after whole points went over.
+    @ObservationIgnored private var scrollCarry = ScrollCarry()
     /// When a push towards a device that is away last had Tandem try it again.
     @ObservationIgnored private var reconnectedAt = Date.distantPast
 
@@ -618,9 +620,7 @@ final class PointerShare {
             heldButtons.remove(2)
             send(.button(button: 2, down: false))
         case .scrollWheel:
-            let dy = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
-            let dx = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis2)
-            if dx != 0 || dy != 0 { send(.scroll(dx: Int16(clamping: dx), dy: Int16(clamping: dy))) }
+            if let scrolled = NSEvent(cgEvent: event), let (dx, dy) = scrollCarry.take(scrolled) { send(.scroll(dx: dx, dy: dy)) }
         case .keyDown, .keyUp:
             let code = CGKeyCode(event.getIntegerValueField(.keyboardEventKeycode))
             let down = type == .keyDown

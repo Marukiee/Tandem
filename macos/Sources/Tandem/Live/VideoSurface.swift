@@ -228,12 +228,17 @@ final class VideoSurfaceView: NSView {
     /// The scroll wheel and two fingers on the pad move the content the way the fingers do.
     override func scrollWheel(with event: NSEvent) {
         guard isControlActive(), let at = fraction(of: event) else { return super.scrollWheel(with: event) }
-        let dx = Int16(clamping: Int(event.scrollingDeltaX * (event.hasPreciseScrollingDeltas ? 1 : 10)))
-        let dy = Int16(clamping: Int(event.scrollingDeltaY * (event.hasPreciseScrollingDeltas ? 1 : 10)))
-        guard dx != 0 || dy != 0 else { return }
-        send(.pointerAbs(x: at.x, y: at.y))
+        guard let (dx, dy) = scrollCarry.take(event) else { return }
+        // Where the scroll is only matters for its first step: a finger that goes down there. Sent with every step, it was as much
+        // traffic again for nothing.
+        if event.phase == .began || event.phase == .mayBegin || !event.hasPreciseScrollingDeltas || event.timestamp - lastScrollAt > 0.3 {
+            send(.pointerAbs(x: at.x, y: at.y))
+        }
+        lastScrollAt = event.timestamp
         send(.scroll(dx: dx, dy: dy))
     }
+    private var scrollCarry = ScrollCarry()
+    private var lastScrollAt: TimeInterval = 0
 
     // MARK: Keys
 
