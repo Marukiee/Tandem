@@ -16,6 +16,10 @@ void *TandemVirtualDisplayCreate(const char *name, int width, int height, int hi
 
 void TandemVirtualDisplayDestroy(void *handle);
 
+/// Gives the display another size (no larger on either side than the long side it was made with) and keeps it: the system keeps it where it
+/// is, with its windows. 1 when the system took it.
+int TandemVirtualDisplayResize(void *handle, int width, int height, int hiDPI, int refresh);
+
 #ifdef __cplusplus
 }
 #endif

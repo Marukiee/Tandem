@@ -226,7 +226,15 @@ final class PointerShare {
         var ids = [CGDirectDisplayID](repeating: 0, count: 8)
         var count: UInt32 = 0
         guard CGGetActiveDisplayList(8, &ids, &count) == .success, count > 0 else { return CGDisplayBounds(CGMainDisplayID()) }
-        return ids.prefix(Int(count)).map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) }
+        let active = ids.prefix(Int(count))
+        let real = active.filter { !VirtualDisplay.isTandem($0) }.map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) }
+        guard !real.isNull else { return active.map { CGDisplayBounds($0) }.reduce(CGRect.null) { $0.union($1) } }
+        // An extra screen of another device makes the area wider, not taller: a phone that stands upright beside this Mac would otherwise
+        // stretch the left and right edges far below the screens that are really there, and a pointer that comes in along them would land
+        // where no screen is.
+        return active.filter { VirtualDisplay.isTandem($0) }.map { CGDisplayBounds($0) }.reduce(real) { area, made in
+            area.union(CGRect(x: made.minX, y: area.minY, width: made.width, height: area.height))
+        }
     }
 
     private func opposite(_ edge: String) -> String {

@@ -100,7 +100,8 @@ final class ScreenHost {
         guard advertised else { return [] }
         // Without Accessibility a phone can look but its clicks and keys go nowhere, which it is told.
         // A second screen needs the system to make a display of software, which it does not on every system.
-        let extend = VirtualDisplay.isAvailable ? ["screen.extend"] : []
+        // That display takes another shape when the device is turned (see `resize`).
+        let extend = VirtualDisplay.isAvailable ? ["screen.extend", "screen.extend.turn"] : []
         return (AXIsProcessTrusted() ? ["screen.host", "screen.control"] : ["screen.host"]) + extend
     }
 
@@ -432,6 +433,7 @@ final class ScreenHost {
         let live = registry.remove(session)
         if tell { try? engine?.mediaStop(session: session) }
         let hadDisplay = displays.removeValue(forKey: session) != nil
+        wantedShapes[session] = nil
         if let running = remotes.removeValue(forKey: session) {
             // A viewer that was lost, and not stopped, may come back from a network blip without being asked again.
             if !tell, [.peerGone, .error, .timeout].contains(reason) {
@@ -467,6 +469,67 @@ final class ScreenHost {
         remotes[session] = running
         if !granted { model?.injector.endRemote(from: running.peer) }
         ScreenPanels.shared.update()
+    }
+
+    // MARK: A device that is turned
+
+    /// The shape asked for last, by session, while that session's screen is changing: a phone turned and turned back within a second ends
+    /// in the shape it was left in, one change at a time.
+    @ObservationIgnored private var wantedShapes: [UInt64: TandemMediaResize] = [:]
+    @ObservationIgnored private var reshaping: Set<UInt64> = []
+
+    /// The device that uses an extra screen was turned. The display changes shape in place, not made again: the system keeps it where
+    /// it is with its windows, and nothing is asked of the person. The capture stops for that moment and starts in the new shape, and
+    /// the viewer is told before the first picture of it.
+    func resize(session id: UInt64, to shape: TandemMediaResize) {
+        guard remotes[id]?.extend == true, displays[id] != nil else { return }
+        wantedShapes[id] = shape
+        guard reshaping.insert(id).inserted else { return }
+        Task { [weak self] in
+            await self?.reshape(session: id)
+            self?.reshaping.remove(id)
+        }
+    }
+
+    private func reshape(session id: UInt64) async {
+        while let wanted = wantedShapes.removeValue(forKey: id) {
+            guard let engine, let display = displays[id], let live = registry.get(id), let running = remotes[id] else { return }
+            let shape = ScreenGeometry.extendedShape(
+                width: Int(wanted.maxWidth), height: Int(wanted.maxHeight),
+                logicalWidth: Int(wanted.logicalWidth), logicalHeight: Int(wanted.logicalHeight)
+            )
+            let pixels = CGSize(width: shape.pixelsWidth, height: shape.pixelsHeight)
+            if display.pixels == pixels, running.width == shape.streamWidth, running.height == shape.streamHeight { continue }
+            NSLog("Tandem: second screen for %@ turned: %ldx%ld points drawn in %ldx%ld, sent as %ldx%ld",
+                  running.name, shape.pointsWidth, shape.pointsHeight, shape.pixelsWidth, shape.pixelsHeight, shape.streamWidth, shape.streamHeight)
+            do {
+                try await live.restart(size: (shape.streamWidth, shape.streamHeight), reshape: { [weak self] in
+                    guard await display.resize(width: shape.pixelsWidth, height: shape.pixelsHeight, hiDPI: shape.hiDPI) else {
+                        NSLog("Tandem: the second screen for %@ kept its shape, the system would not change it", running.name)
+                        return false
+                    }
+                    // Narrower or wider than it was: the screens beside it move up to it again, each still on the side of its device.
+                    self?.arrangeExtended()
+                    live.displayReady(display)
+                    return true
+                }) { next in
+                    guard next.changed else { return }
+                    try engine.mediaUpdate(session: id, update: TandemMediaUpdate(
+                        width: UInt32(next.width), height: UInt32(next.height), rotation: 0, fps: UInt32(live.baseFps), control: nil
+                    ))
+                    if var now = self.remotes[id] {
+                        now.width = next.width
+                        now.height = next.height
+                        self.remotes[id] = now
+                    }
+                }
+                live.requestKeyframe(force: true)
+            } catch {
+                // A display that cannot be captured any more ends the session; the device asks again when it can.
+                teardown(session: id, tell: true, reason: .error)
+                return
+            }
+        }
     }
 
     // MARK: Input
@@ -577,6 +640,12 @@ final class ScreenHostBridge: TandemMediaHost, @unchecked Sendable {
     func onStop(session: UInt64, reason: TandemMediaEnd) {
         DispatchQueue.main.async { [weak host] in
             MainActor.assumeIsolated { host?.ended(session: session, reason: reason) }
+        }
+    }
+
+    func onResize(session: UInt64, resize: TandemMediaResize) {
+        DispatchQueue.main.async { [weak host] in
+            MainActor.assumeIsolated { host?.resize(session: session, to: resize) }
         }
     }
 }
@@ -804,19 +873,25 @@ final class ScreenHostSession: @unchecked Sendable {
     /// size is different, because that is the only case where the viewer has to be told something new. `announce` runs
     /// after the old pictures have stopped and before the first picture of the new shape can exist, which is the order
     /// the contract wants.
-    func restart(announce: (Shape) throws -> Void) async throws {
+    ///
+    /// For a second screen that is turned, `reshape` gives the display its new shape while nothing captures it (a capture whose display
+    /// changes under it stops, and the session with it), and `size` is the picture of that shape. When `reshape` says the display would
+    /// not change, the picture stays as it was.
+    func restart(size wanted: (width: Int, height: Int)? = nil, reshape: (@MainActor () async -> Bool)? = nil, announce: (Shape) throws -> Void) async throws {
         let (oldCapture, oldEncoder, rate, rateBitrate) = lock.withLock { (capturer, encoder, fps, bitrate) }
+        await oldCapture.stop()
+        let reshaped = await reshape?() ?? true
 
         // A second screen stays the one that was made for the viewer; only the main display follows the changes of the system.
         let virtual = lock.withLock { virtualDisplay }
         let fresh = virtual.map { ScreenCapturer.DisplayInfo(id: $0.displayID, bounds: $0.bounds, pixels: $0.pixels) } ?? ScreenCapturer.mainDisplay()
         let before = oldEncoder.config
         // The picture of a second screen stays the size it was made for, which can be smaller than the pixels it is drawn in.
-        let size = virtual != nil ? (width: before.width, height: before.height)
+        let kept = virtual != nil ? (width: before.width, height: before.height)
             : ScreenGeometry.fit(source: fresh.pixels, maxWidth: limits.width, maxHeight: limits.height)
+        let size = (reshaped ? wanted : nil) ?? kept
         let changed = size.width != before.width || size.height != before.height
 
-        await oldCapture.stop()
         var nextEncoder = oldEncoder
         if changed {
             oldEncoder.onFrame = nil
