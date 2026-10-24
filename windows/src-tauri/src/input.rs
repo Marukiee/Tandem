@@ -143,6 +143,9 @@ static SHARED: Mutex<Option<Share>> = Mutex::new(None);
 /// Whether the left button of the shared mouse is down now. While it is, the pointer does not leave: a drag that runs into the edge
 /// ends on the drop zone there, and a drag of text or files that came over ends where it is let go.
 static LEFT_DOWN: AtomicBool = AtomicBool::new(false);
+/// Whether the left button came up here since the pointer of the other computer came in: a drag that came over with it was let go on
+/// this computer then.
+static LEFT_UP_HERE: AtomicBool = AtomicBool::new(false);
 
 type Say = Box<dyn Fn(String, TandemPointerShare) + Send + Sync>;
 static SAY: OnceLock<Say> = OnceLock::new();
@@ -188,6 +191,10 @@ pub fn left_down() -> bool {
     LEFT_DOWN.load(Ordering::Relaxed)
 }
 
+pub fn left_up_since_enter() -> bool {
+    LEFT_UP_HERE.load(Ordering::Relaxed)
+}
+
 /// How long the computer that has the pointer may stay silent. It asks twice a second whether this one is still there.
 const LOST_AFTER: Duration = Duration::from_millis(3500);
 
@@ -227,6 +234,7 @@ pub fn pinged(device: &str) {
 pub fn shared_enter(device: String, edge: Edge, along: f32) {
     let entered_by = edge.opposite();
     *SHARED.lock().unwrap() = Some(Share { device: device.clone(), entered_by, seen: Instant::now(), pings: false });
+    LEFT_UP_HERE.store(false, Ordering::Relaxed);
     start_watchdog();
     let _ = worker().lock().unwrap().send(Msg::Enter { edge, along });
     changed(Some((device, entered_by)));
@@ -787,6 +795,7 @@ fn run(rx: mpsc::Receiver<Msg>) {
                     if b == 0 {
                         LEFT_DOWN.store(down, Ordering::Relaxed);
                         if !down {
+                            LEFT_UP_HERE.store(true, Ordering::Relaxed);
                             // What was dragged over is let go where the pointer is.
                             if let Some(text) = carried.take() {
                                 paste_here(&mut enigo, &text);

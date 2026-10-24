@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.2.7",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Pictures on the clipboard",
+      "new": [
+        "Copy a picture or files and they are on the clipboard of your other devices too",
+        "Dragging a file to Linux or Windows: it only lands when you let go there"
+      ]
+    },
+    "nl": {
+      "title": "Plaatjes op het klembord",
+      "new": [
+        "Kopieer een plaatje of bestanden en ze staan ook op het klembord van je andere apparaten",
+        "Een bestand naar Linux of Windows slepen: het komt pas als je daar loslaat"
+      ]
+    }
+  },
+  {
     "version": "0.2.6",
     "date": "2026-10-24",
     "en": {

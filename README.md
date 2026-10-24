@@ -9,7 +9,7 @@
 [![Windows](https://img.shields.io/badge/Windows-experimental-0078D4?logo=windows&logoColor=white)](windows/README.md)
 [![Linux](https://img.shields.io/badge/Linux-experimental-FCC624?logo=linux&logoColor=black)](#linux)
 
-**The Apple ecosystem, on every device.** Tandem gives an Android phone, a Mac, a Linux laptop and a Windows PC what
+**The Apple ecosystem, on every device.** Tandem gives an Android phone, a Mac, a Linux device and a Windows device what
 Apple's devices give each other: a second screen, one mouse for all of them, a shared clipboard, your phone on your
 desktop, a hotspot that turns on by itself. Straight between your own devices, encrypted, with no account and no cloud.
 
@@ -21,7 +21,7 @@ It started as the KDE Connect alternative for people on a Mac, and grew into Con
 
 ## Highlights
 
-- 🪟 **Any device as an extra screen, several at once.** Your Mac's screen extends to a Linux laptop on the left and
+- 🪟 **Any device as an extra screen, several at once.** Your Mac's screen extends to a Linux device on the left and
   an Android phone on the right, each at its real sharpness. Tandem even **finds which side a device stands on by
   sound**: the computer plays a short sweep from its left and right speaker and the other device listens.
 - 🖱️ **One mouse and keyboard for all your computers.** Push the pointer over the edge of the screen and it is on the

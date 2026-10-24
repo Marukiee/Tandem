@@ -397,6 +397,32 @@ class EngineHost(
         return TandemOutgoingFile(source = source, name = name, size = size.toULong(), mime = mime)
     }
 
+    /** What is on this phone's clipboard. Android only lets it be read while a window of the app has focus. */
+    sealed interface LocalClip {
+        data class Text(val text: String) : LocalClip
+        /** A picture or files that were copied, as the content they point to. */
+        data class Files(val uris: List<Uri>) : LocalClip
+    }
+
+    fun readClipboard(): LocalClip? {
+        val clip = context.getSystemService(android.content.ClipboardManager::class.java).primaryClip ?: return null
+        val uris = (0 until clip.itemCount).mapNotNull { clip.getItemAt(it).uri }.filter { it.scheme == "content" || it.scheme == "file" }
+        if (uris.isNotEmpty()) return LocalClip.Files(uris)
+        return clip.getItemAt(0)?.coerceToText(context)?.toString()?.takeIf { it.isNotBlank() }?.let { LocalClip.Text(it) }
+    }
+
+    /** Sends the clipboard as it is: text as text, a picture or files as files that land on the other clipboard. */
+    suspend fun sendClipboard(targets: List<String>, clip: LocalClip): Int = when (clip) {
+        is LocalClip.Text -> sendClipboard(targets, clip.text)
+        is LocalClip.Files -> {
+            val size = clip.uris.sumOf { uri ->
+                runCatching { context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } }.getOrNull() ?: 0L
+            }
+            // The other side takes a clipboard without asking, so only what is small enough; larger goes as files it is asked about.
+            sendUris(clip.uris, targets, if (size <= CLIPBOARD_FILES_LIMIT) TandemShareOrigin.Clipboard else TandemShareOrigin.Files)
+        }
+    }
+
     /** Sends the clipboard to the chosen devices. */
     suspend fun sendClipboard(targets: List<String>, text: String): Int {
         val engine = engine ?: return 0
@@ -422,6 +448,8 @@ class EngineHost(
 
     companion object {
         private const val TAG = "EngineHost"
+        /** The same as on the Mac: what a copy may send by itself. */
+        const val CLIPBOARD_FILES_LIMIT = 50L * 1024 * 1024
         fun markSensitive(clip: ClipData) {
             clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
         }

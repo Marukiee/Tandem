@@ -1,7 +1,5 @@
 package nl.markmaaktmedia.tandem.share
 
-import android.content.ClipboardManager
-import android.content.Context
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -20,6 +18,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.collectAsState
@@ -40,6 +41,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.engine.EngineHost
 import nl.markmaaktmedia.tandem.engine.EngineState
 import nl.markmaaktmedia.tandem.engine.TandemService
 import nl.markmaaktmedia.tandem.graph
@@ -68,9 +70,8 @@ class ClipboardSendActivity : ComponentActivity() {
         super.onWindowFocusChanged(hasFocus)
         if (!hasFocus || handled) return
         handled = true
-        val text = (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-            .primaryClip?.getItemAt(0)?.coerceToText(this)?.toString().orEmpty()
-        if (text.isBlank()) {
+        val clip = graph.host.readClipboard()
+        if (clip == null) {
             Toast.makeText(this, R.string.share_clipboard_empty, Toast.LENGTH_SHORT).show()
             finish()
             return
@@ -80,7 +81,7 @@ class ClipboardSendActivity : ComponentActivity() {
             withTimeoutOrNull(5000) { host.state.first { it == EngineState.Running } }
             val online = host.devices.value.filter { it.online }
             if (online.size <= 1) {
-                val reached = if (online.isEmpty()) 0 else host.sendClipboard(online.map { it.id }, text)
+                val reached = if (online.isEmpty()) 0 else host.sendClipboard(online.map { it.id }, clip)
                 Toast.makeText(
                     this@ClipboardSendActivity,
                     if (reached > 0) resources.getQuantityString(R.plurals.share_done_n, reached, reached) else getString(R.string.share_none_online),
@@ -88,12 +89,12 @@ class ClipboardSendActivity : ComponentActivity() {
                 ).show()
                 finish()
             } else {
-                showPicker(text)
+                showPicker(clip)
             }
         }
     }
 
-    private fun showPicker(text: String) {
+    private fun showPicker(clip: EngineHost.LocalClip) {
         setContent {
             val appearance = graph.prefs.appearance.collectAppearance()
             TandemTheme(appearance, applySystemBarStyle = false) {
@@ -112,16 +113,32 @@ class ClipboardSendActivity : ComponentActivity() {
                     AnimatedVisibility(visible, enter = slideInVertically(TandemMotion.spatial()) { it } + fadeIn(), exit = slideOutVertically(TandemMotion.spatial()) { it } + fadeOut()) {
                         SharePickerSheet(
                             devices = devices, phase = phase,
-                            summary = text.take(80),
+                            summary = when (clip) {
+                                is EngineHost.LocalClip.Text -> clip.text.take(80)
+                                is EngineHost.LocalClip.Files -> getString(R.string.share_summary_clipboard)
+                            },
                             preview = {
-                                Box(Modifier.size(64.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-                                    Icon(TandemIcons.Paste, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(28.dp))
+                                val first = (clip as? EngineHost.LocalClip.Files)?.uris?.firstOrNull()
+                                val picture by androidx.compose.runtime.produceState<android.graphics.Bitmap?>(null, first) {
+                                    if (first != null) value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                        runCatching { contentResolver.loadThumbnail(first, android.util.Size(256, 256), null) }.getOrNull()
+                                    }
+                                }
+                                val bitmap = picture
+                                if (bitmap != null) {
+                                    androidx.compose.foundation.Image(
+                                        bitmap.asImageBitmap(), null, Modifier.size(64.dp).clip(RoundedCornerShape(18.dp)), contentScale = ContentScale.Crop,
+                                    )
+                                } else {
+                                    Box(Modifier.size(64.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                                        Icon(TandemIcons.Paste, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(28.dp))
+                                    }
                                 }
                             },
                             onSend = { targets ->
                                 phase = SendPhase.Sending
                                 scope.launch {
-                                    val reached = runCatching { host.sendClipboard(targets, text) }.getOrDefault(0)
+                                    val reached = runCatching { host.sendClipboard(targets, clip) }.getOrDefault(0)
                                     phase = if (reached > 0) SendPhase.Done(reached) else SendPhase.Failed(getString(R.string.share_none_online))
                                     if (reached > 0) { delay(900); finish() }
                                 }

@@ -169,22 +169,32 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   Oppo, Honor, Xiaomi), zonder toegang voor andere apps. Shizuku komt niet bij de firmware; root alleen met een losse wifistick. Doorsturen via de Mac
   wil Mark niet.
 - Het Apple-ecosysteem op alle apparaten: wat nog mist (gevraagd 2026-10-24, het doel van Mark). Op volgorde van wat het meeste geeft:
-  1. Handoff: verdergaan waar je was. Het tabblad van de browser of het document van het ene apparaat met een tik openen op het andere. Mac: de voorste
-     tab van Safari, Chrome of Arc lezen met AppleScript (Automatisering); Android: de adresbalk van Chrome lezen met de toegankelijkheidsdienst; Linux:
-     de browser via de extensie of `xdg` niet; een rij "Verdergaan" bovenaan het paneel. Haalbaar.
+  1. Handoff: geschrapt door Mark (2026-10-24), de browser doet dit al.
   2. Berichten op de computer: hele sms-gesprekken lezen en nieuwe sturen, zoals Berichten op de Mac (nu alleen een melding met antwoorden). Android:
      `Telephony` lezen met READ_SMS en sturen met SEND_SMS (beperkt zonder winkel, zie de rechten). Haalbaar.
   3. Klembord met plaatjes en bestanden, niet alleen tekst. Haalbaar.
-  4. Wifi-wachtwoord delen: de Mac geeft het netwerk waar hij op zit aan de telefoon (`WifiNetworkSuggestion`, de telefoon vraagt het één keer). Haalbaar.
+  4. Wifi delen: zit de telefoon niet op het netwerk van de computer maar wel met hem verbonden (Bluetooth), dan vraagt de telefoon "Het wifi van je
+     MacBook overnemen?" en krijgt hij het netwerk (`WifiNetworkSuggestion`). Ook andersom. Gekozen door Mark.
   5. Foto's van de telefoon vanzelf op de computer, zoals iCloud-foto's maar lokaal (schermafbeeldingen gaan al). Haalbaar.
-  6. Ontgrendelen en goedkeuren met de telefoon, zoals met een Apple Watch: een sudo of wachtwoordvraag goedkeuren op de telefoon (PAM op Linux,
-     `pam_tid`-achtig op de Mac voor sudo); het vergrendelscherm van de Mac ontgrendelen kan een app niet. Deels haalbaar.
-  7. De computer laten piepen en zien waar hij is vanaf de telefoon (Find My voor laptops), met het netwerk waar hij laatst was. Haalbaar.
-  8. Focus en Niet storen gelijk op alle apparaten. Haalbaar (Android: `NotificationManager` met de toegang tot Niet storen).
+  6. Goedkeuren met de telefoon: geschrapt door Mark (2026-10-24), ziet het nut niet.
+  7. De computer laten piepen en zien waar hij is vanaf de telefoon (Find My voor laptops), met het netwerk waar hij laatst was. Het geluid komt uit
+     de eigen systeemgeluiden van elk apparaat en is in de instellingen te kiezen (Mac `/System/Library/Sounds`, Linux het geluidsthema, Windows
+     `C:\Windows\Media`, Android de kiezer van het systeem). Gekozen door Mark.
+  8. Focus en Niet storen gelijk op alle apparaten. Android: een eigen modus (Android 15 Modi, `AutomaticZenRule`) "Focus van je MacBook", zodat je
+     zelf instelt wat er door mag. Mac: aanzetten met een kant-en-klare opdracht die je met één klik toevoegt (`shortcuts run`); lezen kan niet zonder
+     Volledige schijftoegang (`~/Library/DoNotDisturb` is afgeschermd) of de Focus-status-API (vraagt een recht dat mogelijk een profiel van Apple
+     nodig heeft, eerst proberen). Mark vroeg om een betere weg dan een zelfgemaakte opdracht.
   9. Een tablet met pen als tekentablet voor de Mac (druk en kanteling, zoals de Apple Pencil bij Sidecar). Haalbaar met de invoer van een tweede scherm.
-  10. Bellen met het geluid op de computer (microfoon en luidspreker van de Mac): Android geeft het gesprek niet aan een app en macOS kan geen
-      Bluetooth-headset zijn. Niet haalbaar zonder de standaard telefoon-app te worden.
+  10. Bellen met het geluid op de computer (microfoon en luidspreker van de Mac). Via Bluetooth kan het niet (macOS geeft het gespreksgeluid niet aan
+      een app), maar wel via de telefoon zelf: Android 13+ heeft `AudioManager.getCallDownlinkExtractionAudioRecord` en
+      `getCallUplinkInjectionAudioTrack` (systeem-API, recht `CALL_AUDIO_INTERCEPTION`, dat de shell heeft en dus Shizuku). Of het toestel het kan
+      zegt `isPstnCallAudioInterceptable`. Terugvallen: `VOICE_DOWNLINK` opnemen met `CAPTURE_AUDIO_OUTPUT` (zoals scrcpy) en afspelen naar het
+      apparaat `TYPE_TELEPHONY` met `MODIFY_PHONE_STATE` (in-call music). Het geluid gaat dan over wifi naar Mac, Linux of Windows. Eerst een test
+      in de app die zegt wat het toestel kan. Gevraagd door Mark ("kan de mac echt helemaal niet met een omweg bellen?").
   11. AirDrop zelf: niet te bouwen (zie het punt over AirDrop hierboven).
+- Sturen met Tandem vanuit de bestandsbeheerder op Linux en Windows, zoals de deelknop op de Mac (gevraagd 2026-10-24): rechtsklik op bestanden en
+  kies het apparaat. Linux: Bestanden (Nautilus, een script of een extensie als `nautilus-python` er is), Dolphin (servicemenu), Nemo (actie), Thunar
+  (eigen actie). Windows: Verkenner "Sturen naar" en een eigen regel in het menu. Alles roept de draaiende app aan met de bestanden.
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)

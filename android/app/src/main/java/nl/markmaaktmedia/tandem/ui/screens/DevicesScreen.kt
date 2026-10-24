@@ -1,6 +1,5 @@
 package nl.markmaaktmedia.tandem.ui.screens
 
-import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -191,11 +190,8 @@ fun DevicesScreen(
                 onOpen = { onOpenDevice(device.id) },
                 onSendFiles = { pickerTarget = device.id; picker.launch(arrayOf("*/*")) },
                 onSendClipboard = {
-                    val text = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-                        .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
-                    scope.launch {
-                        if (text.isNotEmpty()) host.sendClipboard(listOf(device.id), text)
-                    }
+                    val clip = host.readClipboard()
+                    if (clip != null) scope.launch { host.sendClipboard(listOf(device.id), clip) }
                 },
                 onWake = {
                     val mac = device.status.wakeMac ?: return@DeviceCard

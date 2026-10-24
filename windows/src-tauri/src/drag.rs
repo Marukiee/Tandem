@@ -1,6 +1,8 @@
 //! Files that another computer dropped on the edge of its screen, to this one: that computer shares its pointer with this one, so it
 //! was the person who put them here, at that moment. They are taken without asking and put down (the desktop on Windows, the downloads
-//! folder on Linux), and a message says where, with a way to show them on Linux.
+//! folder on Linux), and a message says where, with a way to show them on Linux. Files that came over in a drag that is still going
+//! (the button held while the pointer crossed) are put down only when the button comes up here; when the pointer goes back first they
+//! are thrown away, since they were never let go on this computer. They may come over in the meantime, so a drop is quick.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -14,6 +16,16 @@ use crate::{capture, events, i18n, input};
 
 static OFFERS: Mutex<Option<HashSet<(String, u64)>>> = Mutex::new(None);
 
+/// A drag that came over with the pointer and has not been let go here yet: its offers and the files of them that are in.
+struct Carried {
+    from: String,
+    offers: HashSet<u64>,
+    waiting: Vec<(String, String, PathBuf)>,
+}
+static CARRIED: Mutex<Option<Carried>> = Mutex::new(None);
+/// Offers of a drag that went back without being let go: what still comes in of them is thrown away.
+static DROPPED: Mutex<Vec<(String, u64)>> = Mutex::new(Vec::new());
+
 /// An offer of files came in. Taken here when it has the drag origin and comes from the computer that shares its pointer with this one.
 pub fn offered(app: &AppHandle, from: &str, offer: u64, origin: TandemShareOrigin) -> bool {
     if !matches!(origin, TandemShareOrigin::Drag) || !(input::shared_is(from) || capture::is_remote(from)) {
@@ -24,6 +36,15 @@ pub fn offered(app: &AppHandle, from: &str, offer: u64, origin: TandemShareOrigi
         return false;
     }
     OFFERS.lock().unwrap().get_or_insert_with(HashSet::new).insert((from.to_string(), offer));
+    if input::shared_is(from) && !input::left_up_since_enter() {
+        let mut carried = CARRIED.lock().unwrap();
+        match carried.as_mut().filter(|c| c.from == from) {
+            Some(c) => {
+                c.offers.insert(offer);
+            }
+            None => *carried = Some(Carried { from: from.to_string(), offers: HashSet::from([offer]), waiting: Vec::new() }),
+        }
+    }
     true
 }
 
@@ -33,11 +54,25 @@ pub fn finished(app: &AppHandle, peer: &str, offer: u64, name: &str, location: &
     if !ours {
         return false;
     }
+    {
+        let mut dropped = DROPPED.lock().unwrap();
+        if let Some(at) = dropped.iter().position(|(d, o)| d == peer && *o == offer) {
+            if let Some(path) = location {
+                let _ = std::fs::remove_file(path);
+            }
+            dropped.remove(at);
+            return true;
+        }
+    }
     let from = events::device_name(app, peer);
     let (Some(path), None) = (location, error) else {
         events::say(app, &i18n::t1(app, "insert_failed", &from));
         return true;
     };
+    if let Some(carried) = CARRIED.lock().unwrap().as_mut().filter(|c| c.from == peer && c.offers.contains(&offer)) {
+        carried.waiting.push((from, name.to_string(), PathBuf::from(path)));
+        return true;
+    }
     // Still being dragged: the person has not let go yet, so it is put down when the button comes up and not under their hand.
     if input::left_down() {
         WAITING.lock().unwrap().push((from, name.to_string(), PathBuf::from(path)));
@@ -52,9 +87,35 @@ static WAITING: Mutex<Vec<(String, String, PathBuf)>> = Mutex::new(Vec::new());
 
 /// The button came up: what arrived during the drag is put down now.
 pub fn flush(app: &AppHandle) {
-    let waiting: Vec<_> = std::mem::take(&mut *WAITING.lock().unwrap());
+    let mut waiting: Vec<_> = std::mem::take(&mut *WAITING.lock().unwrap());
+    if let Some(carried) = CARRIED.lock().unwrap().take() {
+        waiting.extend(carried.waiting);
+    }
     for (from, name, path) in waiting {
         land(app, &from, &name, &path);
+    }
+}
+
+/// The pointer of the other computer went back. A drag that came with it and was not let go here goes back with it: its files are
+/// thrown away, and what is still coming of them is stopped.
+pub fn shared_ended(app: &AppHandle) {
+    let Some(carried) = CARRIED.lock().unwrap().take() else { return };
+    for (_, _, path) in &carried.waiting {
+        let _ = std::fs::remove_file(path);
+    }
+    log::info!("pointer: a drag went back without being let go here, {} file(s) thrown away", carried.waiting.len());
+    let mut dropped = DROPPED.lock().unwrap();
+    if dropped.len() > 50 {
+        dropped.clear();
+    }
+    dropped.extend(carried.offers.iter().map(|o| (carried.from.clone(), *o)));
+    drop(dropped);
+    let Ok(engine) = app.state::<AppState>().engine() else { return };
+    for offer in carried.offers {
+        let (engine, from) = (engine.clone(), carried.from.clone());
+        tauri::async_runtime::spawn(async move {
+            let _ = engine.cancel_transfer(from, offer, true).await;
+        });
     }
 }
 

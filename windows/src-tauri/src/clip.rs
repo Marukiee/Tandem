@@ -1,5 +1,5 @@
 //! Keeps the clipboard of this PC and the clipboards of the other devices in step: what is copied here is sent, and
-//! what arrives is put on the clipboard without being sent back.
+//! what arrives is put on the clipboard without being sent back. Pictures and files are in `clipfiles`.
 
 use std::time::Duration;
 
@@ -38,7 +38,18 @@ pub fn start(app: AppHandle) {
             } else {
                 std::thread::sleep(Duration::from_millis(1500));
             }
-            let Some(now) = read_text(&mut board) else { continue };
+            // Files copied in the file manager also put their names on the clipboard as text: they go as files. Only when told of a
+            // change, since reading a picture every second and a half would cost too much.
+            if listening && crate::clipfiles::copied_files(&app, &mut board) {
+                last = None;
+                continue;
+            }
+            let Some(now) = read_text(&mut board) else {
+                if listening && crate::clipfiles::copied_picture(&app, &mut board) {
+                    last = None;
+                }
+                continue;
+            };
             if last.as_deref() == Some(now.as_str()) {
                 continue;
             }

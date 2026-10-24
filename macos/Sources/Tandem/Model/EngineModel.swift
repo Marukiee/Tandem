@@ -254,6 +254,7 @@ final class EngineModel {
         let monitor = ClipboardMonitor { [weak self] text, isURL in
             self?.localClipboardChanged(text, isURL: isURL)
         }
+        monitor.onFilesOrPicture = { ClipboardFiles.shared.copied($0) }
         clipboard = monitor
         monitor.setActive(devices.contains { $0.online || $0.ble })
 
@@ -464,6 +465,8 @@ final class EngineModel {
             if InsertFromPhone.shared.owns(offer: offer) { break }
             // Files dropped on the edge by the computer that shares its pointer with this one: taken at once, and put where the drop was.
             if case .drag = origin, DragLanding.shared.take(offer: offer, from: from) { break }
+            // A picture or files copied on a device that shares the clipboard with this Mac: on the pasteboard, without asking.
+            if case .clipboard = origin, ClipboardFiles.shared.take(offer: offer, from: from, size: items.reduce(0) { $0 + $1.size }) { break }
             if let device = device(from), !device.autoAccept {
                 Notifier.shared.post(
                     id: "offer.\(from)",
@@ -477,6 +480,7 @@ final class EngineModel {
 
         case let .finished(offer, index, peer, incoming, name, size, location, error):
             if incoming, DragLanding.shared.finished(offer: offer, from: peer, name: name, location: location, error: error) { break }
+            if incoming, ClipboardFiles.shared.finished(offer: offer, from: peer, location: location, error: error) { break }
             finishTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, size: size, location: location, error: error)
 
         case let .notification(from, notification):
@@ -1043,6 +1047,11 @@ final class EngineModel {
             let reached = (try? await engine.sendClipboard(targets: ids, text: text, isUrl: ClipboardMonitor.looksLikeURL(text))) ?? []
             showToast(reached.isEmpty ? String(localized: "Not connected") : String(localized: "Clipboard sent"))
         }
+    }
+
+    /// Something from another device was put on the pasteboard: the watcher should not send it back.
+    func clipboardWritten() {
+        clipboard?.written()
     }
 
     private func localClipboardChanged(_ text: String, isURL: Bool) {

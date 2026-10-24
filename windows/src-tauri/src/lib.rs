@@ -10,6 +10,7 @@ mod debugshot;
 mod capture;
 mod quickshare;
 mod clip;
+mod clipfiles;
 mod commands;
 mod drag;
 mod edge;
@@ -111,7 +112,12 @@ pub fn run() {
             });
             // While another computer has its pointer here, a drop zone shows at the edge where that computer sits.
             let zone_app = handle.clone();
-            input::on_shared_change(move |now| edge::changed(&zone_app, now));
+            input::on_shared_change(move |now| {
+                if now.is_none() {
+                    drag::shared_ended(&zone_app);
+                }
+                edge::changed(&zone_app, now)
+            });
             // Files that came over with a drag are put down when the button of the shared mouse comes up.
             let landing_app = handle.clone();
             input::on_left_up(move || drag::flush(&landing_app));

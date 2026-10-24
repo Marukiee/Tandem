@@ -1,6 +1,5 @@
 package nl.markmaaktmedia.tandem.ui.screens
 
-import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -188,9 +187,9 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (device.ble) {
                     ActionTile(TandemIcons.Paste, stringResource(R.string.tile_clipboard), {
-                        val text = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-                            .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
-                        if (text.isNotEmpty()) scope.launch { host.sendClipboard(listOf(id), text) }
+                        // Over Bluetooth only text fits.
+                        val text = (host.readClipboard() as? nl.markmaaktmedia.tandem.engine.EngineHost.LocalClip.Text)?.text
+                        if (text != null) scope.launch { host.sendClipboard(listOf(id), text) }
                     }, Modifier.weight(1f).fillMaxHeight(), primary = true)
                 }
                 if (asleep && wakeMac != null) {
@@ -224,9 +223,8 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                 ActionRow(
                     1, 2, TandemIcons.Paste, stringResource(R.string.row_send_clipboard), stringResource(R.string.send_clipboard_sub),
                     {
-                        val text = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-                            .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
-                        if (text.isNotEmpty()) scope.launch { host.sendClipboard(listOf(id), text) }
+                        val clip = host.readClipboard()
+                        if (clip != null) scope.launch { host.sendClipboard(listOf(id), clip) }
                     },
                 )
             }

@@ -9,6 +9,8 @@ final class ClipboardMonitor {
     private var lastCount = NSPasteboard.general.changeCount
     private var timer: Timer?
     private let onChange: (String, Bool) -> Void
+    /// Files or a picture that were copied (see `ClipboardFiles`): true when that is what the pasteboard held.
+    var onFilesOrPicture: ((NSPasteboard) -> Bool)?
 
     /// Pasteboard types that mean "do not copy this anywhere": password managers and
     /// other apps mark secrets and transient data with them.
@@ -52,9 +54,18 @@ final class ClipboardMonitor {
 
         let types = Set((pasteboard.types ?? []).map(\.rawValue))
         guard types.isDisjoint(with: Self.concealed) else { return }
+        // Files copied in Finder come with their names as text: the files are what was meant. A picture comes without text.
+        if types.contains(NSPasteboard.PasteboardType.fileURL.rawValue) || pasteboard.string(forType: .string) == nil {
+            if onFilesOrPicture?(pasteboard) == true { return }
+        }
         guard let text = pasteboard.string(forType: .string), !text.isEmpty else { return }
         guard text.utf8.count <= 1_000_000 else { return }
         onChange(text, Self.looksLikeURL(text))
+    }
+
+    /// Something from another device was put on the pasteboard by someone else here: not sent back.
+    func written() {
+        lastCount = NSPasteboard.general.changeCount
     }
 
     /// Puts text from another device on the pasteboard without echoing it back.

@@ -1027,3 +1027,7 @@
 
 /* Several extra screens at once */
 "Extra screen on %@" = "Extra scherm op %@";
+
+/* Clipboard with pictures and files */
+"%@ from %@ is on your clipboard" = "%@ van %@ staat op je klembord";
+"%lld files from %@ are on your clipboard" = "%lld bestanden van %@ staan op je klembord";

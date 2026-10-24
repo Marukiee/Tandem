@@ -30,7 +30,7 @@ windows = { version = "0.62", features = [
 [target.'cfg(target_os = "linux")'.dependencies]
 log = "0.4"
 zbus = "5"
-x11rb = "0.13"
+x11rb = { version = "0.13", features = ["xfixes"] }
 # Wayland: the portals of the desktop (a window may not press keys or look at the screen there without asking). One question,
 # remembered, and then the input and the screen come through them.
 ashpd = { version = "0.13", default-features = false, features = ["async-io", "remote_desktop", "screencast", "input_capture"] }

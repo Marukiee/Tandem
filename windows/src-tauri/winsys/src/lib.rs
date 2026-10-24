@@ -104,6 +104,8 @@ pub mod notify;
 pub mod inputcapture;
 #[cfg(target_os = "linux")]
 mod x11grab;
+#[cfg(target_os = "linux")]
+mod clipwatch;
 #[cfg(not(windows))]
 mod imp {
     #[cfg_attr(target_os = "linux", allow(unused_imports))]
@@ -132,9 +134,17 @@ mod imp {
         String::new()
     }
 
-    /// Nothing tells this system when the clipboard changes, so the caller has to look by itself.
-    pub fn watch_clipboard(_on_change: impl Fn() + Send + Sync + 'static) -> bool {
-        false
+    /// Linux has the X server tell it (`clipwatch.rs`); elsewhere the caller has to look by itself.
+    pub fn watch_clipboard(on_change: impl Fn() + Send + Sync + 'static) -> bool {
+        #[cfg(target_os = "linux")]
+        {
+            crate::clipwatch::watch(on_change)
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = on_change;
+            false
+        }
     }
 
 

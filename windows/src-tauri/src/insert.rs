@@ -63,7 +63,7 @@ pub fn finished(app: &AppHandle, peer: &str, offer: u64, location: &Option<Strin
         events::say(app, &i18n::t1(app, "insert_failed", &name));
         return true;
     };
-    match picture_to_clipboard(path) {
+    match crate::clipfiles::picture_to_clipboard(std::path::Path::new(path)) {
         Ok(()) => events::say(app, &i18n::t1(app, "insert_done", &name)),
         Err(_) => events::say(app, &i18n::t2(app, "insert_saved", &name, path)),
     }
@@ -79,14 +79,4 @@ pub fn cancelled(app: &AppHandle, from: &str, why: TandemCaptureWhy) {
         _ => "insert_cancelled",
     };
     events::say(app, &i18n::t1(app, key, &events::device_name(app, from)));
-}
-
-fn picture_to_clipboard(path: &str) -> Result<(), String> {
-    let decoded = image::open(path).map_err(|e| e.to_string())?.to_rgba8();
-    let (width, height) = decoded.dimensions();
-    arboard::Clipboard::new()
-        .and_then(|mut board| {
-            board.set_image(arboard::ImageData { width: width as usize, height: height as usize, bytes: std::borrow::Cow::Owned(decoded.into_raw()) })
-        })
-        .map_err(|e| e.to_string())
 }

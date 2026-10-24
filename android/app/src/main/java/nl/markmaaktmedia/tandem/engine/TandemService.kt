@@ -117,7 +117,10 @@ class TandemService : LifecycleService() {
 
             is TandemEvent.Finished -> {
                 postProgress()
-                if (event.incoming && event.error == null && event.location != null) {
+                if (event.incoming && event.offer in clipboardOffers) {
+                    // A picture or files copied on that device: on this phone's clipboard, not as a file that came in.
+                    event.location?.takeIf { event.error == null }?.let { clipboardFile(event.offer, it) }
+                } else if (event.incoming && event.error == null && event.location != null) {
                     postReceived(event.name, host.device(event.peer)?.name ?: "?", event.location!!)
                 }
             }
@@ -126,7 +129,13 @@ class TandemService : LifecycleService() {
                 val device = host.device(event.from)
                 // Files that the person dragged over with the mouse of that computer are taken without asking: it was them.
                 val dragged = event.origin == uniffi.tandem_core.TandemShareOrigin.Drag && graph.pointerIn.isPeer(event.from)
-                if (dragged) runCatching { host.engine?.acceptOffer(event.from, event.offer) }
+                // A picture or files copied on a device that shares the clipboard with this phone: taken without asking, for the clipboard.
+                val copied = event.origin == uniffi.tandem_core.TandemShareOrigin.Clipboard && device?.clipboardEnabled == true &&
+                    event.items.sumOf { it.size.toLong() } <= EngineHost.CLIPBOARD_FILES_LIMIT
+                if (copied) {
+                    clipboardOffers += event.offer
+                    runCatching { host.engine?.acceptOffer(event.from, event.offer) }
+                } else if (dragged) runCatching { host.engine?.acceptOffer(event.from, event.offer) }
                 else if (device != null && !device.autoAccept) postOffer(device.name, event.from, event.offer.toLong(), event.items.size)
             }
 
@@ -161,6 +170,22 @@ class TandemService : LifecycleService() {
 
             else -> Unit
         }
+    }
+
+    // ---- The clipboard for pictures and files ----------------------------------------------------------------------------------
+
+    /** Offers that came in as a clipboard, with the files of each that are in so far. */
+    private val clipboardOffers = mutableSetOf<ULong>()
+    private val clipboardFiles = mutableMapOf<ULong, MutableList<android.net.Uri>>()
+
+    /** Everything of the offer that is in so far goes on the clipboard together, so several files are pasted as one. */
+    private fun clipboardFile(offer: ULong, location: String) {
+        val uris = clipboardFiles.getOrPut(offer) { mutableListOf() }.apply { add(android.net.Uri.parse(location)) }
+        val clip = android.content.ClipData.newUri(contentResolver, getString(R.string.app_name), uris.first())
+        uris.drop(1).forEach { clip.addItem(android.content.ClipData.Item(it)) }
+        runCatching { getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(clip) }
+        if (clipboardOffers.size > 20) clipboardOffers.remove(clipboardOffers.first())
+        if (clipboardFiles.size > 20) clipboardFiles.remove(clipboardFiles.keys.first())
     }
 
     // ---- Notifications ---------------------------------------------------------
