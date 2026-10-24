@@ -244,6 +244,21 @@ private struct MenuDeviceRow: View {
     @LocalState private var targeted = false
     /// What the button under the pointer does, shown in the place of the status line while the pointer is on it.
     @LocalState private var hint: LocalizedStringKey?
+    /// Counts the times the pointer left a button, so a later one cancels the way back to the status line.
+    @LocalState private var left = 0
+
+    /// On the way from one button to the next the pointer crosses the gap: the status line comes back only when it stays off them a moment.
+    private func hover(_ inside: Bool, _ text: LocalizedStringKey) {
+        left += 1
+        if inside {
+            hint = text
+            return
+        }
+        let mark = left
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            if left == mark { hint = nil }
+        }
+    }
 
     var body: some View {
         let reach = model.reach(of: device)
@@ -275,18 +290,18 @@ private struct MenuDeviceRow: View {
             }
             Spacer(minLength: 4)
             HStack(spacing: 4) {
-                RoundIconButton(symbol: "paperplane.fill", size: 28, onHover: { hint = $0 ? "Send files" : nil }) { pickFiles() }
+                RoundIconButton(symbol: "paperplane.fill", size: 28, onHover: { hover($0, "Send files") }) { pickFiles() }
                     .disabled(!device.online)
-                RoundIconButton(symbol: "doc.on.clipboard", size: 28, onHover: { hint = $0 ? "Send clipboard" : nil }) {
+                RoundIconButton(symbol: "doc.on.clipboard", size: 28, onHover: { hover($0, "Send clipboard") }) {
                     model.sendClipboard(to: [device.id])
                 }
                 .disabled(!(device.online || device.ble))
-                LiveMenuButton(device: device, onHover: { hint = $0 ? "Show phone screen" : nil })
+                LiveMenuButton(device: device, onHover: { hover($0, "Show phone screen") })
                 if device.platform == .android {
                     let on = model.speaker.device == device.id
                     RoundIconButton(
                         symbol: on ? "speaker.wave.3.fill" : "speaker.wave.2", tint: on ? Palette.indigo : nil, size: 28,
-                        onHover: { hint = $0 ? (on ? "Stop phone output" : "Phone as output") : nil }
+                        onHover: { hover($0, on ? "Stop phone output" : "Phone as output") }
                     ) { model.toggleSpeaker(for: device.id) }
                     .disabled(!device.online)
                 }

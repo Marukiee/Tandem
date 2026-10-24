@@ -10,6 +10,8 @@ struct MenuInsertFromPhone: View {
     @Environment(EngineModel.self) private var model
     /// The tile under the pointer: its explanation takes the place of the title above the tiles.
     @LocalState private var hovered: InsertKind?
+    /// Counts the times the pointer left a tile, so a later one cancels the way back to the title.
+    @LocalState private var left = 0
 
     var body: some View {
         // Only phones that say they can answer: until an app version does, there is nothing to show.
@@ -30,7 +32,18 @@ struct MenuInsertFromPhone: View {
                 HStack(spacing: 8) {
                     ForEach(InsertKind.allCases.filter { $0 != .picture }) { kind in
                         MenuKindTile(kind: kind, onHover: { inside in
-                            if inside { hovered = kind } else if hovered == kind { hovered = nil }
+                            if inside {
+                                left += 1
+                                hovered = kind
+                            } else {
+                                // On the way from one tile to the other the pointer crosses the gap between them: the title comes back
+                                // only when it stays off the tiles a moment, so it does not flash in between.
+                                left += 1
+                                let mark = left
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                    if left == mark { hovered = nil }
+                                }
+                            }
                         }) { InsertFromPhone.shared.begin(kind: kind) }
                     }
                 }
