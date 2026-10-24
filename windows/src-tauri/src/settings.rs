@@ -162,11 +162,14 @@ pub fn get(app: &AppHandle) -> Settings {
     app.state::<AppState>().settings.lock().unwrap().clone()
 }
 
-/// Where a file that arrives is put.
+/// Where a file that arrives is put: Downloads itself unless the person chose a folder, where people look for a download, not in a
+/// folder of Tandem's own.
 pub fn download_dir(app: &AppHandle) -> PathBuf {
+    let downloads = app.path().download_dir().unwrap_or_else(|_| PathBuf::from("."));
     let chosen = get(app).download_dir;
-    if !chosen.trim().is_empty() {
+    // The folder of Tandem's own that earlier versions used, kept in the settings by a few: that was no choice of the person.
+    if !chosen.trim().is_empty() && PathBuf::from(&chosen) != downloads.join("Tandem") {
         return PathBuf::from(chosen);
     }
-    app.path().download_dir().unwrap_or_else(|_| PathBuf::from(".")).join("Tandem")
+    downloads
 }

@@ -63,9 +63,9 @@ never puts a device somewhere it was not.
 |---|---|
 | An extra screen starts, the device was moved | 20 s ago |
 | The device connects, the computer wakes | 2 min ago |
-| The pointer goes over to it, every minute while its extra screen runs | 5 min ago |
+| The pointer goes over to it, every minute while its extra screen runs | 2 min ago |
 
-After a check that found no side (not heard, unsure, the device did not get ready) the wait doubles from 5 minutes up to 40, except
+After a check that found no side (not heard, unsure, the device did not get ready) the wait doubles from 2 minutes up to 40, except
 for a screen that starts or a move. There is no check when this computer's sound is off, goes to headphones, Bluetooth or AirPlay, or
 is sent to another device, nor when the microphone on the other side is in use or not allowed (the listener then never says it is
 ready, so nothing is played). A side that changed moves the screen and the edge of the mouse once the pointer is not on that device,

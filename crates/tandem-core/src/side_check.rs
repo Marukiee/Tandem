@@ -30,8 +30,9 @@ pub enum Reason {
 pub const TOGETHER_MS: u64 = 20_000;
 /// After a connect or a wake: a device that drops off the network for a moment and comes back is not checked twice.
 pub const AGAIN_MS: u64 = 2 * 60_000;
-/// While it is in use: "every few minutes".
-pub const IN_USE_MS: u64 = 5 * 60_000;
+/// While it is in use: every couple of minutes. A check costs next to no power; what it does cost is the microphone light on the device
+/// that listens, which the owner said does not bother him.
+pub const IN_USE_MS: u64 = 2 * 60_000;
 /// The longest wait after checks that did not hear anything.
 pub const AT_MOST_MS: u64 = 40 * 60_000;
 
@@ -117,7 +118,7 @@ mod tests {
         let mut s = Schedule::default();
         assert!(s.start("laptop", Reason::PointerOver, T0));
         s.done("laptop", true, T0 + 2_000);
-        for at in [10_000, MIN, 4 * MIN] {
+        for at in [10_000, MIN, IN_USE_MS] {
             assert!(!s.start("laptop", Reason::PointerOver, T0 + at), "{at}");
         }
         assert!(s.start("laptop", Reason::PointerOver, T0 + 2_000 + IN_USE_MS));
@@ -168,7 +169,7 @@ mod tests {
             }
             waits.push((now - from) / MIN);
         }
-        assert_eq!(waits, vec![5, 10, 20, 40, 40, 40, 40]);
+        assert_eq!(waits, vec![2, 4, 8, 16, 32, 40, 40]);
         // A connect after misses waits as long as the pointer does.
         s.done("phone", false, now);
         assert!(!s.start("phone", Reason::Connected, now + AGAIN_MS));

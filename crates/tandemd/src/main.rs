@@ -175,7 +175,7 @@ fn default_data_dir() -> PathBuf {
 }
 
 fn default_download_dir() -> PathBuf {
-    dirs::download_dir().unwrap_or_else(|| PathBuf::from(".")).join("Tandem")
+    dirs::download_dir().unwrap_or_else(|| PathBuf::from("."))
 }
 
 async fn start_engine(cli: &Cli) -> Result<(Engine, PathBuf)> {
