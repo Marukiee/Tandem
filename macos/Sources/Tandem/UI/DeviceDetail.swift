@@ -271,6 +271,18 @@ struct DeviceDetail: View {
                         .help("Log in to this computer over SSH")
                         PlaySoundButton(device: device)
                     }
+                    // This Mac's sound on a computer that plays the sound of other devices. What can go wrong there is said when it is
+                    // pressed.
+                    if isComputer, device.caps.contains("audio.play") {
+                        let speaking = model.speaker.device == device.id
+                        GlassActionButton(
+                            title: speaking ? "Stop speaker" : "Use as speaker",
+                            symbol: speaking ? "speaker.wave.3.fill" : "speaker.wave.2",
+                            prominent: speaking
+                        ) { model.toggleSpeaker(for: device.id) }
+                        .disabled(!device.online && !speaking)
+                        .help("Play the sound of this Mac on \(device.name)")
+                    }
                 }
             }
             if isComputer { LastSeenText(device: device) }

@@ -197,7 +197,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "ring", "wifi.share", "wifi.join", "sms.view", "focus.share", "focus.follow"] + ScreenHost.shared.capabilities(),
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "ring", "wifi.share", "wifi.join", "sms.view", "focus.share", "focus.follow", "audio.send"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
@@ -421,7 +421,11 @@ final class EngineModel {
                 // again by itself when the phone is back (below), which is also what happens after the Mac sleeps.
                 if speaker.device == id {
                     stopSpeaker(tellPhone: false, state: .off)
-                    showToast(String(localized: "Your phone disconnected, so the sound plays on this Mac until it is back"))
+                    if device(id)?.platform == .android {
+                        showToast(String(localized: "Your phone disconnected, so the sound plays on this Mac until it is back"))
+                    } else {
+                        showToast(String(localized: "\(device(id)?.name ?? String(localized: "that device")) disconnected, so the sound plays on this Mac again"))
+                    }
                 }
             }
             // A phone that just connected knows nothing of what this Mac plays.
@@ -557,24 +561,28 @@ final class EngineModel {
             }
 
         case let .audioStart(from, stream, sampleRate, channels):
-            // A phone that wants its sound to play here. Anything else that starts is not for this Mac to play.
-            guard stream == PhoneSound.stream else { return }
-            PhoneSound.shared.start(from: from, name: device(from)?.name ?? "?", sampleRate: sampleRate, channels: channels, engineModel: self)
+            // Another device that wants its sound to play here.
+            PhoneSound.shared.start(from: from, name: device(from)?.name ?? "?", stream: stream, sampleRate: sampleRate, channels: channels, engineModel: self)
 
         case let .audioStop(from, stream):
-            // The sound of this Mac for a screen goes on the stream of a phone's sound: a stop for it is a stop of what this Mac sends.
-            if stream == PhoneSound.stream, !(speaker.device == from && speakerStream == stream) {
-                PhoneSound.shared.stop(device: from)
+            // From the device this Mac sends its sound to, a stop is a no to that; from any other, its own sound ends.
+            guard speaker.device == from, stream == speakerStream else {
+                PhoneSound.shared.stopped(device: from, stream: stream)
                 return
             }
-            guard speaker.device == from, stream == speakerStream else { return }
-            // A stop right after the start is a no: the phone does not allow it. Later it is the person
-            // pressing Stop on the phone, or another app taking the speaker.
+            let phone = device(from)?.platform == .android
+            let name = device(from)?.name ?? String(localized: "that device")
+            // A stop right after the start is a no: the device does not allow it. Later it is the person
+            // pressing Stop there, or another app taking the speaker.
             if Date().timeIntervalSince(speakerStartedAt) < 3 {
-                stopSpeaker(tellPhone: false, state: .failed(String(localized: "Your phone does not allow this. Turn on Speaker for your Mac in the settings of Tandem on your phone.")))
+                let text = phone ? String(localized: "Your phone does not allow this. Turn on Speaker for your Mac in the settings of Tandem on your phone.")
+                    : String(localized: "\(name) does not play sound from other devices. Turn it on in Tandem there.")
+                stopSpeaker(tellPhone: false, state: .failed(text))
+                // A phone says it on the row of its page; a computer has no such row.
+                if !phone { showToast(text) }
             } else {
                 stopSpeaker(tellPhone: false, state: .off)
-                showToast(String(localized: "Your phone stopped playing the sound"))
+                showToast(phone ? String(localized: "Your phone stopped playing the sound") : String(localized: "\(name) stopped playing the sound"))
             }
 
         case let .mediaStarted(peer, _, kind, role):
@@ -675,8 +683,19 @@ final class EngineModel {
             showToast(String(localized: "That device is not connected right now"))
             return
         }
+        // A device never plays and sends with the same other device at once, so a stop from it always says which of the two it ends.
+        if PhoneSound.shared.isPlaying(from: id) {
+            if !forScreen { showToast(String(localized: "The sound of \(device(id)?.name ?? "?") plays here now. Stop that first, or the sound would go back and forth.")) }
+            return
+        }
         stopSpeaker(tellPhone: true, state: .off)
-        if forScreen { speakerStream = PhoneSound.stream } else { speakerStream &+= 1 }
+        // A computer plays only the stream a device's own sound uses. A phone takes any, and a new number each time keeps late
+        // packets of the last start out; it skips that one, which is what the phone itself sends on.
+        if forScreen || device(id)?.platform != .android {
+            speakerStream = PhoneSound.stream
+        } else {
+            speakerStream &+= speakerStream &+ 1 == PhoneSound.stream ? 2 : 1
+        }
         let stream = speakerStream
         speaker = .starting(id)
         // Chosen as an output, it stops again when another is chosen.
@@ -700,6 +719,8 @@ final class EngineModel {
             } catch {
                 guard let self, self.tap === tap else { tap.stop(); return }
                 self.stopSpeaker(tellPhone: true, state: .failed(error.localizedDescription))
+                // A phone says it on the row of its page; a computer has no such row.
+                if self.device(id)?.platform != .android { self.showToast(error.localizedDescription) }
             }
         }
     }
