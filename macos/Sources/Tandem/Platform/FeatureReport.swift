@@ -70,6 +70,11 @@ enum FeatureReport {
         let bluetoothAllowed = CBCentralManager.authorization == .allowedAlways
         add("bluetooth", bluetoothAllowed, String(localized: "Bluetooth link"),
             String(localized: "Bluetooth is off for Tandem on this Mac"), "bluetooth")
+        // Focus: the switch, and the shortcut that sets and reads it (macOS lets no app do either by itself).
+        let focus = FocusShare.shared
+        add("focus", focus.share && focus.installed, String(localized: "Focus on all your devices"),
+            focus.share ? String(localized: "The Tandem Focus shortcut has not been added on this Mac") : String(localized: "Share Focus is off in Tandem on this Mac"),
+            focus.share ? "focus" : nil)
         return list
     }
 
@@ -134,6 +139,8 @@ enum FeatureReport {
             } else {
                 settings("com.apple.preference.security?Privacy_Bluetooth")
             }
+        case "focus":
+            FocusShare.shared.addOrSignIn()
         default:
             settings("com.apple.preference.security")
         }

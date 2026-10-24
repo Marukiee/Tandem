@@ -1030,3 +1030,23 @@
 /* Clipboard with pictures and files */
 "%@ from %@ is on your clipboard" = "%@ van %@ staat op je klembord";
 "%lld files from %@ are on your clipboard" = "%lld bestanden van %@ staan op je klembord";
+
+/* Focus on all your devices */
+"Focus" = "Focus";
+"Share Focus" = "Focus delen";
+"Turn on Focus on one of your devices, and the others follow." = "Zet Focus aan op een van je apparaten, en de andere volgen.";
+"Both ways" = "Beide kanten op";
+"Only follow" = "Alleen volgen";
+"macOS lets apps neither turn on a Focus nor see one, so Tandem does both with a shortcut of its own, Tandem Focus, that you add with one click." = "macOS laat apps geen Focus aanzetten en ook niet zien, dus doet Tandem beide met een eigen opdracht, Tandem Focus, die je met één klik toevoegt.";
+"Add the Tandem Focus shortcut" = "De opdracht Tandem Focus toevoegen";
+"Add Shortcut" = "Opdracht toevoegen";
+"Not Now" = "Niet nu";
+"Shortcuts asks you once to add it. After that this Mac follows your other devices and they follow this Mac." = "Opdrachten vraagt je één keer om hem toe te voegen. Daarna volgt deze Mac je andere apparaten en volgen zij deze Mac.";
+"Sign in to iCloud" = "Log in bij iCloud";
+"Open Apple Account" = "Apple-account openen";
+"macOS only adds a shortcut that an app brings when this Mac is signed in to iCloud." = "macOS voegt een opdracht die een app meebrengt alleen toe als deze Mac is ingelogd bij iCloud.";
+"%@ turned on Focus" = "%@ zette Focus aan";
+"Click to add the Tandem Focus shortcut, so this Mac follows." = "Klik om de opdracht Tandem Focus toe te voegen, dan volgt deze Mac.";
+"Focus on all your devices" = "Focus op al je apparaten";
+"The Tandem Focus shortcut has not been added on this Mac" = "De opdracht Tandem Focus is op deze Mac nog niet toegevoegd";
+"Share Focus is off in Tandem on this Mac" = "Focus delen staat uit in Tandem op deze Mac";
