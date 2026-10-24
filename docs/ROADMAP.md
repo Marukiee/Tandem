@@ -163,6 +163,11 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   deelt de plek op de stream door de schaal), dus eerst meten: sinds 0.2.3 schrijft de Linux bij het begin van een sessie de maat en plaats van de stream,
   de schermen met hun schaal en welke invoer gebruikt wordt (`screen with input:` en `screen for ...:` in tandem.log). Vragen: verschuift het meer naar
   rechtsonder, of loopt het alleen achter?
+- AirDrop naar de telefoon (gevraagd 2026-10-24): een tweede AirDrop-naam op de Mac ("Maruks telefoon") kan alleen met een namaak van AirDrop (zoals
+  OpenDrop, met AWDL en eigen certificaten), wat niet via openbare API's gaat en bij updates breekt; iPhones tonen onbekende ontvangers sinds iOS 16.2
+  alleen bij "Iedereen (10 minuten)". Het betrouwbare alternatief: AirDrop doorsturen. Bestanden die via AirDrop binnenkomen hebben in hun quarantaine-
+  kenmerk `sharingd` als bron; een FSEvents-wacht op Downloads ziet ze, en Tandem stuurt ze door naar de telefoon (een instelling "altijd", of een
+  melding met "Naar telefoon").
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)
