@@ -8,6 +8,7 @@ struct CallButton: View {
     let device: TandemDevice
     @LocalState private var asking = false
     @LocalState private var number = ""
+    @LocalState private var found: [TandemSmsContact] = []
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -22,24 +23,55 @@ struct CallButton: View {
         }
         .disabled(!device.online)
         .popover(isPresented: $asking, arrowEdge: .bottom) {
-            HStack(spacing: 8) {
-                TextField("Number", text: $number)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 180)
-                    .focused($focused)
-                    .onSubmit(call)
-                Button("Call", action: call)
-                    .buttonStyle(.borderedProminent)
-                    .tint(Palette.indigo)
-                    .disabled(Self.clean(number).isEmpty)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    TextField("Name or number", text: $number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 200)
+                        .focused($focused)
+                        .onSubmit { call() }
+                    Button("Call") { call() }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Palette.indigo)
+                        .disabled(Self.clean(number).isEmpty)
+                }
+                ForEach(found, id: \.number) { contact in
+                    Button { call(contact.number) } label: {
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(verbatim: contact.name).font(.callout.weight(.medium))
+                            Text(verbatim: contact.label.isEmpty ? contact.number : "\(contact.label) \(contact.number)")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, 3)
+                }
             }
             .padding(12)
+            .frame(width: 290, alignment: .leading)
             .onAppear { focused = true }
+            // A name typed instead of a number: the contacts of the phone that match, as they are typed.
+            .task(id: number) { await search() }
+            .animation(.tandemFade, value: found.map(\.number))
         }
     }
 
-    private func call() {
-        let dialed = Self.clean(number)
+    private func search() async {
+        let query = number.trimmingCharacters(in: .whitespaces)
+        guard query.count >= 2, query.contains(where: \.isLetter), let engine = model.tandem else {
+            found = []
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(250))
+        guard !Task.isCancelled else { return }
+        found = Array(((try? await engine.smsContacts(target: device.id, query: query)) ?? []).prefix(6))
+    }
+
+    private func call(_ chosen: String? = nil) {
+        // Return on a name calls the first contact found for it.
+        let dialed = Self.clean(chosen ?? (Self.clean(number).isEmpty ? found.first?.number ?? "" : number))
         guard !dialed.isEmpty, let engine = model.tandem else { return }
         asking = false
         let name = device.name
