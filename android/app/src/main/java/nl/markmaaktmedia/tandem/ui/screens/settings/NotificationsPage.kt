@@ -57,5 +57,6 @@ internal fun NotificationsPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                 )
             }
         }
+        FindSoundGroup()
     }
 }

@@ -7,17 +7,20 @@ import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioManager
 import android.media.MediaPlayer
-import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.graph
 
 /**
  * Makes the phone ring loudly, even when it is on silent, until someone stops it.
- * Used when you press "Find phone" on another device.
+ * Used when you press "Find phone" on another device. The sound is the one picked in Settings ([FindSound]), and the devices that
+ * asked hear when it starts and stops.
  */
 object FindPhone {
     private var player: MediaPlayer? = null
@@ -48,22 +51,17 @@ object FindPhone {
     }
 
     fun start(context: Context) {
-        if (ringing) return
+        // Another device that asks while it already rings is told so too.
+        if (ringing) return report(context, true)
         appContext = context.applicationContext
         val audio = context.getSystemService(AudioManager::class.java)
         originalVolume = audio.getStreamVolume(AudioManager.STREAM_ALARM)
         audio.setStreamVolume(AudioManager.STREAM_ALARM, audio.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0)
 
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-        player = MediaPlayer().apply {
-            setAudioAttributes(alarmAttributes)
-            setDataSource(context, uri)
-            isLooping = true
-            prepare()
-            start()
-        }
+        // A picked sound that is gone (deleted, or not readable any more) falls back to the alarm, so it always rings.
+        player = play(context, FindSound.picked(context)) ?: play(context, FindSound.fallback())
         ringing = true
+        report(context, true)
         main.post(buzz)
 
         val stop = PendingIntent.getBroadcast(
@@ -83,7 +81,29 @@ object FindPhone {
         )
     }
 
+    private fun play(context: Context, uri: Uri?): MediaPlayer? {
+        uri ?: return null
+        val player = MediaPlayer()
+        return try {
+            player.setAudioAttributes(alarmAttributes)
+            player.setDataSource(context, uri)
+            player.isLooping = true
+            player.prepare()
+            player.start()
+            player
+        } catch (e: Exception) {
+            player.release()
+            null
+        }
+    }
+
+    private fun report(context: Context, on: Boolean) {
+        val graph = context.graph
+        graph.scope.launch { runCatching { graph.host.engine?.ringing(on) } }
+    }
+
     fun stop() {
+        if (ringing) appContext?.let { report(it, false) }
         ringing = false
         main.removeCallbacks(buzz)
         player?.let { p -> runCatching { p.stop() }; runCatching { p.release() } }

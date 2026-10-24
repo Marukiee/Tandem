@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Finding a computer from its page: a sound, and where it was last seen -->
+    <string name="find_section">Find</string>
+    <string name="find_play">Play sound</string>
+    <string name="find_stop_sound">Stop sound</string>
+    <string name="find_play_sub">It plays a sound until you find it</string>
+    <string name="find_playing">%1$s plays a sound</string>
+    <string name="find_connected_on">Connected on %1$s</string>
+    <string name="find_last_seen_on">Last seen %1$s on %2$s</string>
+    <string name="find_last_seen_lan">Last seen %1$s on the local network</string>
+    <string name="find_last_seen_tailnet">Last seen %1$s over Tailscale</string>
+    <string name="find_last_seen">Last seen %1$s</string>
+    <string name="find_offline_title">%1$s is offline</string>
+    <string name="find_offline_body">It can play a sound again as soon as it is connected.</string>
+    <string name="find_old_title">Update Tandem on %1$s</string>
+    <string name="find_old_body">The Tandem on it cannot play a sound yet. Update it there, then try again.</string>
+
+    <!-- The sound this phone rings with when another device looks for it -->
+    <string name="find_sound_section">Find this phone</string>
+    <string name="find_sound_title">Sound when it is looked for</string>
+    <string name="find_sound_default">Default alarm sound</string>
+
+    <string name="feature_ring">Ring to be found</string>
+    <string name="feature_ring_why">Do not disturb is on total silence, which silences it too</string>
+</resources>

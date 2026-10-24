@@ -56,6 +56,9 @@ object FeatureReport {
         add("background", Permissions.batteryUnrestricted(context), R.string.feature_background, R.string.feature_background_why, "battery")
         add("bluetooth", Permissions.bluetooth(context), R.string.feature_bluetooth, R.string.feature_bluetooth_why, "access")
         add("alerts", Permissions.notifications(context), R.string.feature_alerts, R.string.feature_alerts_why, "app-notifications")
+        // Total silence also silences alarms, which is what it rings as. Turned off on the phone itself, so nothing to open from elsewhere.
+        val silent = context.getSystemService(NotificationManager::class.java).currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE
+        list += TandemFeature("ring", !silent, context.getString(R.string.feature_ring), if (silent) context.getString(R.string.feature_ring_why) else "", null)
         return list
     }
 
