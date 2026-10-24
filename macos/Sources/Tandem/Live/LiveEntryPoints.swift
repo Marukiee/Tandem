@@ -44,7 +44,7 @@ struct LiveActionRow: View {
             let ready = device.online && canHost && device.caps.contains("screen.extend.view")
             // On while this Mac shows a screen of its own on that device; pressing it then ends it.
             let extending = ScreenHost.shared.current?.extend == true && ScreenHost.shared.current?.peer == device.id
-            GlassActionButton(title: "Extend screen to this device", symbol: "rectangle.on.rectangle", prominent: extending) {
+            GlassActionButton(title: "Extend screen", symbol: "rectangle.on.rectangle", prominent: extending) {
                 if extending { ScreenHost.shared.stopCurrent() } else { ScreenHost.shared.offerExtend(to: device) }
             }
             .disabled(!ready && !extending)
