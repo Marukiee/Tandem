@@ -98,4 +98,6 @@ pub enum Event {
     MediaOffered { from: DeviceId, kind: crate::live::MediaKind, facing: crate::live::MediaFacing, extend: bool },
     /// The pointer goes over or comes back (see `pointer_share`).
     PointerShare { from: DeviceId, msg: crate::pointer_share::PointerShareMsg },
+    /// Messages: on a phone a question of a computer to answer, on a computer an answer or a change (see `sms`).
+    Sms { from: DeviceId, msg: crate::sms::SmsMsg },
 }

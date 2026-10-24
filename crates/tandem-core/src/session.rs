@@ -495,6 +495,7 @@ impl Inner {
                     session.pong.notify_waiters();
                 }
             }
+            Msg::Sms(msg) => self.on_sms(id, msg).await,
             Msg::Bye { .. } | Msg::Unknown => {}
         }
     }

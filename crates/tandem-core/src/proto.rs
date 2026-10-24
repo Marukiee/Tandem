@@ -151,6 +151,8 @@ pub enum Msg {
     Ping { nonce: u64 },
     Pong { nonce: u64 },
     Bye { reason: String },
+    /// The text messages of a phone, read and sent from a computer (see `sms`). Devices that do not know it skip it.
+    Sms(crate::sms::SmsMsg),
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,

@@ -21,6 +21,8 @@ use crate::proto::{
 use crate::store::{DeviceSettings, SecretStore};
 use crate::transfer::OutgoingFile;
 
+pub mod sms;
+
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum TandemError {
     #[error("{reason}")]
@@ -1057,6 +1059,8 @@ pub enum TandemEvent {
     MediaOffered { from: String, kind: TandemMediaKind, facing: TandemMediaFacing, extend: bool },
     /// The pointer of the other computer goes over to this one, or comes back.
     PointerShare { from: String, msg: TandemPointerShare },
+    /// Messages: on a phone a question to answer, on a computer the messages that changed there (see `sms`).
+    Sms { from: String, msg: sms::TandemSmsEvent },
 }
 
 impl From<Event> for TandemEvent {
@@ -1191,6 +1195,7 @@ impl From<Event> for TandemEvent {
                 };
                 TandemEvent::MediaCommand { from: from.to_string(), player, action, position_ms }
             }
+            Event::Sms { from, msg } => TandemEvent::Sms { from: from.to_string(), msg: msg.into() },
         }
     }
 }
@@ -1518,7 +1523,7 @@ impl TandemEngine {
     ) -> Result<(), TandemError> {
         let id = DeviceId::parse(&id)?;
         self.engine
-            .set_device_settings(&id, DeviceSettings { clipboard, auto_accept, notifications })
+            .set_device_settings(&id, DeviceSettings { clipboard, auto_accept, notifications, ..self.engine.device_settings(&id) })
             .map_err(Into::into)
     }
 
