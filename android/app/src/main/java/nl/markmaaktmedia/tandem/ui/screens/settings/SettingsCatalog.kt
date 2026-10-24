@@ -71,6 +71,7 @@ internal object FocusKeys {
     const val Mirror = "notif.mirror"
     const val Codes = "notif.codes"
     const val Calls = "notif.calls"
+    const val FocusShare = "notif.focus"
 
     const val PadSpeed = "pad.speed"
     const val PadScroll = "pad.scroll"
@@ -261,6 +262,10 @@ internal object SettingsCatalog {
         SettingsEntry(
             "notif_calls", R.string.settings_calls, R.string.settings_kw_notif_calls, SettingsCategory.Notifications, notifications,
             { TandemIcons.Call }, subtitle = R.string.settings_calls_sub, focus = FocusKeys.Calls,
+        ),
+        SettingsEntry(
+            "notif_focus", R.string.focus_share, R.string.settings_kw_notif_focus, SettingsCategory.Notifications, notifications,
+            { TandemIcons.Dnd }, subtitle = R.string.focus_share_sub, focus = FocusKeys.FocusShare,
         ),
 
         // Trackpad

@@ -44,6 +44,7 @@ class TandemService : LifecycleService() {
     private lateinit var hotspot: HotspotModule
     private lateinit var listenerWatchdog: ListenerWatchdog
     private lateinit var sms: nl.markmaaktmedia.tandem.messages.SmsBridge
+    private lateinit var focus: FocusShare
     private var multicast: WifiManager.MulticastLock? = null
     private var lastProgressPost = 0L
 
@@ -69,6 +70,7 @@ class TandemService : LifecycleService() {
         sms = nl.markmaaktmedia.tandem.messages.SmsBridge(this, host, graph.scope).also { it.start() }
         FeatureReport.start(this, lifecycleScope)
         nl.markmaaktmedia.tandem.wifi.WifiShare.get(this).start()
+        focus = FocusShare(this, host, graph.prefs, lifecycleScope).also { it.start() }
 
         lifecycleScope.launch {
             host.devices.collectLatest { devices ->
@@ -99,6 +101,7 @@ class TandemService : LifecycleService() {
         hotspot.stop()
         listenerWatchdog.stop()
         sms.stop()
+        focus.stop()
         graph.media.stop()
         graph.audio.stop(tell = true)
         multicast?.takeIf { it.isHeld }?.release()
@@ -175,6 +178,7 @@ class TandemService : LifecycleService() {
             is TandemEvent.Notification -> Unit
             is TandemEvent.Wifi -> nl.markmaaktmedia.tandem.wifi.WifiShare.get(this).onEvent(event)
             is TandemEvent.Sms -> sms.onEvent(event)
+            is TandemEvent.Focus -> focus.follow(event)
 
             else -> Unit
         }

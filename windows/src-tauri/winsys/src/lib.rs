@@ -81,6 +81,7 @@ pub enum Seen {
 pub mod hid;
 /// The Wi-Fi this computer is on, its password, and joining one that another device handed over.
 pub mod wifi;
+pub mod focus;
 #[cfg(windows)]
 mod imp;
 /// Windows: a drag of files of the system, started under the pointer for files that came over with a drag.

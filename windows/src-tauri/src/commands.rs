@@ -434,6 +434,12 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["downloadDir"].as_str() {
             current.download_dir = v.to_string();
         }
+        if let Some(v) = patch["focusShare"].as_bool() {
+            current.focus_share = Some(v);
+        }
+        if let Some(v) = patch["focusFollowOnly"].as_bool() {
+            current.focus_follow_only = v;
+        }
     }
     settings::save(&app);
     // The switch for the media controls takes effect at once.
@@ -442,6 +448,7 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
     crate::quickshare::configure(&app);
     // The language is in the menus of the file manager too.
     crate::sendwith::refresh(&app);
+    crate::focus::configure(&app);
     json!(settings::get(&app))
 }
 

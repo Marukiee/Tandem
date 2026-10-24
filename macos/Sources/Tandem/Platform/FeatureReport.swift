@@ -75,6 +75,11 @@ enum FeatureReport {
         // Only listed when it works: Location is a choice, and a missing one would stand on the other devices as a lasting notice. Share
         // Wi-Fi says what it needs when it is pressed.
         if WifiShare.shared.locationAllowed { add("wifi.share", true, String(localized: "Share this Mac's Wi-Fi"), "", nil) }
+        // Focus: the switch, and the shortcut that sets and reads it (macOS lets no app do either by itself).
+        let focus = FocusShare.shared
+        add("focus", focus.share && focus.installed, String(localized: "Focus on all your devices"),
+            focus.share ? String(localized: "The Tandem Focus shortcut has not been added on this Mac") : String(localized: "Share Focus is off in Tandem on this Mac"),
+            focus.share ? "focus" : nil)
         return list
     }
 
@@ -141,6 +146,8 @@ enum FeatureReport {
             }
         case "sound":
             settings("com.apple.Sound-Settings.extension")
+        case "focus":
+            FocusShare.shared.addOrSignIn()
         default:
             settings("com.apple.preference.security")
         }

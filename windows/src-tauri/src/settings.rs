@@ -68,6 +68,10 @@ pub struct Settings {
     pub file_manager_send: bool,
     /// The sound of the system that plays when another device looks for this computer. Empty is the one `find.rs` picks.
     pub ring_sound: String,
+    /// Focus the same on every device. Not chosen yet: on where the desktop has a Do Not Disturb (see `focus::on`).
+    pub focus_share: Option<bool>,
+    /// Only follow the other devices, and keep the Do Not Disturb of this computer to itself.
+    pub focus_follow_only: bool,
 }
 
 impl Default for Settings {
@@ -101,6 +105,8 @@ impl Default for Settings {
             auto_update: true,
             dismissed_update: String::new(),
             ring_sound: String::new(),
+            focus_share: None,
+            focus_follow_only: false,
         }
     }
 }

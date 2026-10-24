@@ -196,6 +196,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
                 guard let device = info["device"], let call = info["call"] else { return }
                 if action == "answer" { onCallAction?(device, call, .answer) }
                 if action == "reject" { onCallAction?(device, call, .reject) }
+            case FocusShare.notificationCategory:
+                FocusShare.shared.addOrSignIn()
             default:
                 guard let device = info["device"], let key = info["key"] else { return }
                 if action == Self.copyCodeAction {

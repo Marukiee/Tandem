@@ -133,4 +133,5 @@
     <string name="settings_kw_sharing_quick_visible">quick share zichtbaar aan blijven timer minuten uur uit</string>
     <string name="settings_kw_features">functies rechten toestemming werkt werken kapot mist toegestaan</string>
     <string name="settings_kw_notif_find_sound">telefoon zoeken kwijt overgaan beltoon wekker geluid hard</string>
+    <string name="settings_kw_notif_focus">focus, niet storen, stil, modus, slapen, werk, volgen, alle apparaten, dnd</string>
 </resources>

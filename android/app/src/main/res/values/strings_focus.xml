@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Focus the same on every device (see FocusShare) -->
+    <string name="focus_section">Focus</string>
+    <string name="focus_share">Share Focus</string>
+    <string name="focus_share_sub">Turn on Focus or Do Not Disturb on one of your devices, and the others follow</string>
+    <string name="focus_direction">Direction</string>
+    <string name="focus_direction_sub">Only follow keeps the Do Not Disturb of this phone to itself</string>
+    <string name="focus_both">Both ways</string>
+    <string name="focus_follow_only">Only follow</string>
+    <string name="focus_mode_settings">What comes through</string>
+    <string name="focus_mode_settings_sub">Choose in the settings of Android what still reaches you while another device has Focus on</string>
+    <string name="focus_access_dialog">Allow Do Not Disturb</string>
+    <string name="focus_access_body">When another device turns on Focus, Tandem turns on a mode of its own on this phone, and you choose in the settings of Android what still comes through. Android asks you to allow that once.</string>
+    <string name="focus_later">Not now</string>
+    <string name="focus_access_title">%1$s turned on Focus</string>
+    <string name="focus_access_text">Allow Tandem to use Do Not Disturb, so this phone follows</string>
+
+    <!-- The mode of its own, as it shows in the settings of Android -->
+    <string name="focus_mode_name">Focus from %1$s</string>
+    <string name="focus_mode_name_any">Focus from your devices</string>
+    <string name="focus_mode_trigger">Turns on with the Focus of your other devices</string>
+    <string name="focus_mode_summary">Focus on %1$s</string>
+    <string name="focus_mode_summary_named">%1$s on %2$s</string>
+
+    <!-- What this phone does for the other devices (see FeatureReport) -->
+    <string name="feature_focus">Focus on all your devices</string>
+    <string name="feature_focus_why">Tandem may not use Do Not Disturb on this phone</string>
+    <string name="feature_focus_off">Share Focus is off in Tandem on this phone</string>
+</resources>

@@ -5,5 +5,7 @@
         <receiver android:name="nl.markmaaktmedia.tandem.live.LiveSelfCheck" android:exported="true" />
         <!-- Debug builds only: reads the message store without a computer (see SmsSelfCheck). -->
         <receiver android:name="nl.markmaaktmedia.tandem.messages.SmsSelfCheck" android:exported="true" />
+        <!-- Debug builds only: turns Tandem's own Focus mode on and off without another device (see FocusSelfCheck). -->
+        <receiver android:name="nl.markmaaktmedia.tandem.engine.FocusSelfCheck" android:exported="true" />
     </application>
 </manifest>

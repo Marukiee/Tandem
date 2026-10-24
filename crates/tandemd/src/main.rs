@@ -123,6 +123,13 @@ enum Command {
         #[command(subcommand)]
         action: Option<FilesAction>,
     },
+    /// Turn Focus on or off on the devices that share it, as if it was turned on here: `tandemd focus on Work`. Needs `tandemd run`.
+    Focus {
+        /// `on` or `off`.
+        state: String,
+        /// What the Focus is called, shown on the devices that follow.
+        name: Option<String>,
+    },
 }
 
 #[derive(Subcommand, Clone)]
@@ -184,7 +191,7 @@ async fn start_engine(cli: &Cli) -> Result<(Engine, PathBuf)> {
     cfg.enable_mdns = !cli.no_mdns;
     // No `sms.view`: the text messages of a phone are only asked for (`sms`), never sent here by themselves, so a Hub never
     // keeps or prints them.
-    cfg.caps = vec!["clipboard".into(), "share".into()];
+    cfg.caps = vec!["clipboard".into(), "share".into(), tandem_core::focus::CAP_SHARE.into(), tandem_core::focus::CAP_FOLLOW.into()];
     if cli.pretend_screen.is_some() {
         cfg.caps.push("screen.host".into());
         // So the apps show the way to a second screen too, which this host answers with the clip like any other request.
@@ -263,6 +270,15 @@ async fn execute(engine: &Engine, command: &Command) -> Result<String> {
             Ok(format!("{}\ncode: {}\n", offer.uri, offer.code))
         }
         Command::Whoami => Ok(format!("{} {}\n", engine.id(), engine.name())),
+        Command::Focus { state, name } => {
+            let on = match state.as_str() {
+                "on" => true,
+                "off" => false,
+                _ => bail!("say on or off"),
+            };
+            engine.focus_local(on, name.as_deref().unwrap_or_default()).await;
+            Ok(format!("focus {state}\n"))
+        }
         Command::Devices => Ok(describe(engine)),
         Command::Pair { uri } => {
             let id = engine.pair_with_uri(uri).await?;
@@ -525,6 +541,7 @@ fn command_line(command: &Command) -> Option<String> {
             }
             parts
         }
+        Command::Focus { state, name } => vec!["focus".into(), state.clone(), name.clone().unwrap_or_default()],
         Command::Run => return None,
     };
     Some(parts.join("\t"))
@@ -586,6 +603,7 @@ fn parse_line(line: &str) -> Option<Command> {
             };
             Some(Command::Files { device, action })
         }
+        "focus" => Some(Command::Focus { state: rest.first()?.clone(), name: rest.get(1).filter(|n| !n.is_empty()).cloned() }),
         _ => None,
     }
 }
@@ -620,6 +638,9 @@ fn print_event(engine: &Engine, event: &Event) {
             (None, Some(location)) if done.incoming => println!("received {} -> {location}", done.name),
             (None, _) => println!("sent {}", done.name),
         },
+        Event::Focus { origin, on, name, .. } => {
+            println!("focus {} on {}{}", if *on { "on" } else { "off" }, name_of(origin), if name.is_empty() { String::new() } else { format!(": {name}") })
+        }
         _ => {}
     }
 }
@@ -668,6 +689,9 @@ async fn main() -> Result<()> {
                     engine.update_status(tandem_core::proto::Status { battery: Some(battery), ..Default::default() }).await;
                 }
             }
+            // A machine without a screen has no Do Not Disturb of its own: its Focus is what `tandemd focus` says, and what it follows.
+            engine.set_focus_sharing(true, true);
+            engine.focus_local(false, "").await;
             let mut events = engine.subscribe();
             let control_dir = data_dir.clone();
             let control = tokio::spawn({
@@ -695,6 +719,9 @@ async fn main() -> Result<()> {
                                     art: 0,
                                 };
                                 let _ = engine.send_msg(&[*id], tandem_core::proto::Msg::MediaPlayers { players: vec![player] }).await;
+                            }
+                            if let Event::Focus { on, name, .. } = &event {
+                                engine.focus_local(*on, name).await;
                             }
                             print_event(&engine, &event)
                         }
@@ -725,6 +752,7 @@ async fn main() -> Result<()> {
                 Err(_) => bail!("nobody paired in time"),
             }
         }
+        Command::Focus { .. } => bail!("start the daemon first (tandemd run): Focus is the state of a device that stays online"),
         other => {
             // Give a fresh engine a moment to reach the devices it already knows.
             let needs_a_device = matches!(

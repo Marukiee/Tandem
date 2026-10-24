@@ -46,6 +46,7 @@ mod side;
 mod decoder_probe;
 mod screen_sound;
 mod features;
+mod focus;
 mod sound;
 mod ssh;
 mod state;
@@ -275,6 +276,7 @@ pub fn run() {
             messages::sms_contacts,
             messages::sms_picture,
             messages::sms_ask_access,
+            focus::focus_info,
         ])
         .build(tauri::generate_context!())
         .expect("Tandem could not start")

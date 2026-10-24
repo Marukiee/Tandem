@@ -197,7 +197,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "ring", "wifi.share", "wifi.join", "sms.view"] + ScreenHost.shared.capabilities(),
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "ring", "wifi.share", "wifi.join", "sms.view", "focus.share", "focus.follow"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
@@ -272,6 +272,7 @@ final class EngineModel {
         ScreenHost.shared.attach(engine: engine, model: self)
         engine.setAudioSink(sink: PhoneSound.shared.sink)
         PointerShare.shared.start()
+        FocusShare.shared.start(engine: engine)
         QuickShare.shared.startIfWanted()
         startBleWatch()
         WifiShare.shared.start(engine: engine)
@@ -613,6 +614,8 @@ final class EngineModel {
 
         case let .sms(from, msg):
             MessagesStore.shared.handle(from: from, event: msg)
+        case let .focus(_, origin, on, _):
+            FocusShare.shared.follow(origin: origin, on: on)
 
         case let .openSettings(from, page):
             // Another device of the person shows what this Mac is missing and was asked to open the place where it is turned on.

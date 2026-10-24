@@ -104,4 +104,6 @@ pub enum Event {
     Wifi { from: DeviceId, msg: crate::wifi::WifiMsg },
     /// Messages: on a phone a question of a computer to answer, on a computer an answer or a change (see `sms`).
     Sms { from: DeviceId, msg: crate::sms::SmsMsg },
+    /// A Focus was turned on or off on `origin` and this device follows: turn its own on or off (see `focus`). `from` passed it on.
+    Focus { from: DeviceId, origin: DeviceId, on: bool, name: String },
 }

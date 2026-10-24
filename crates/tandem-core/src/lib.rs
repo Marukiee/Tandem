@@ -7,6 +7,7 @@ pub mod events;
 pub mod files;
 pub mod ffi;
 pub mod find;
+pub mod focus;
 pub mod hotspot;
 pub mod identity;
 pub mod ids;

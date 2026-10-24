@@ -63,6 +63,11 @@ object FeatureReport {
         list += TandemFeature("wifi.join", true, context.getString(R.string.feature_wifi_join), "", null)
         if (nl.markmaaktmedia.tandem.messages.SmsAccess.available(context)) {
             add("messages", nl.markmaaktmedia.tandem.messages.SmsAccess.granted(context), R.string.feature_messages, R.string.feature_messages_why, "messages")
+        // Focus: the switch in Tandem, and access to Do Not Disturb for the mode of its own that follows the other devices.
+        if (!context.graph.prefs.focusShare.first()) {
+            list += TandemFeature("focus", false, context.getString(R.string.feature_focus), context.getString(R.string.feature_focus_off), null)
+        } else {
+            add("focus", FocusMode.canUse(context), R.string.feature_focus, R.string.feature_focus_why, "dnd-access")
         }
         return list
     }
@@ -86,6 +91,7 @@ object FeatureReport {
             "battery" -> Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg)
             "app-notifications" -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
             "messages" -> nl.markmaaktmedia.tandem.messages.MessagesAccessActivity.intent(context, null)
+            "dnd-access" -> FocusMode.accessIntent()
             // Single top: with Tandem already open, Android otherwise only brings it to the front and never hands it the intent, so the
             // page of the setting was not opened.
             "sharing" -> Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_SHARING).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)

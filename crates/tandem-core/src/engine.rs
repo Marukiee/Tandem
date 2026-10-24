@@ -136,6 +136,7 @@ pub(crate) struct Inner {
     pub find: crate::find::Find,
     /// The Wi-Fi network this device is on, as the app last said (see `wifi`).
     pub wifi: Mutex<Option<crate::wifi::WifiNetwork>>,
+    pub(crate) focus: Mutex<crate::focus::FocusSync>,
 }
 
 /// Where the sound of the other device goes. Called on the connection's own task for every
@@ -183,6 +184,7 @@ impl Engine {
         let file_service = crate::files::FileService::new(store.clone());
         let live = crate::live::Live::new(store.clone());
         let find = crate::find::Find::load(&store);
+        let focus = Mutex::new(crate::focus::FocusSync::load(&store));
 
         let inner = Arc::new(Inner {
             my_name: RwLock::new(my_name),
@@ -220,6 +222,7 @@ impl Engine {
             ble_msg_id: std::sync::atomic::AtomicU8::new(0),
             find,
             wifi: Mutex::new(None),
+            focus,
         });
 
         // The peers must exist before their saved addresses can be attached to them.

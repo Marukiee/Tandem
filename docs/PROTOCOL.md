@@ -167,6 +167,15 @@ vraagt `Ask { ssid }`; de persoon bij de computer beslist, en het antwoord is `S
 `Refuse { ssid, why }` (`declined`, `not_on_it`, `cannot_share`, `unreadable`). Een computer die op de knop Wifi delen drukt
 stuurt `Share` zonder vraag; de ontvanger vraagt zijn eigen persoon voordat hij verbindt. Een naam langer dan 32 bytes of een
 wachtwoord langer dan 64 tekens gaat niet verder dan de core, en `Debug` toont het wachtwoord nooit.
+### Focus
+
+`Focus { on, name, seq, origin }` is de nieuwste wijziging van Focus of Niet storen die een apparaat kent: aan of uit, gedaan door
+de persoon op het apparaat `origin` (ontbreekt het, dan de afzender). `seq` is een Lamport-teller; van twee wijzigingen is die met
+het hogere getal de nieuwste, en bij een gelijk getal die van het hogere apparaat-id, zodat elk apparaat dezelfde kiest. Een
+apparaat bewaart de nieuwste en stuurt die aan een apparaat dat verbinding maakt, zodat een apparaat dat weg was hem alsnog hoort.
+Het gaat alleen naar apparaten met `focus.share` of `focus.follow`. Een apparaat dat volgt, zet zijn eigen Focus aan of uit en
+stuurt dat niet terug: alleen een wijziging van wat het apparaat zelf leest, die verschilt van de nieuwste, is nieuws. Zie
+`crates/tandem-core/src/focus.rs`.
 
 ### Mogelijkheden (`Hello.caps`)
 
@@ -187,6 +196,8 @@ vragen, kijkt eerst of het woord er staat.
 | `wifi.share` | een computer die zegt op welk wifi hij zit en het wachtwoord geeft als zijn persoon ja zegt |
 | `wifi.join` | verbindt met een wifi dat een ander apparaat geeft (een telefoon via het blad van het systeem) |
 | `sms`, `sms.view` | een telefoon die zijn sms'jes laat lezen en sturen, en een computer die ze toont (Berichten) |
+| `focus.share` | leest zijn eigen Focus of Niet storen en stuurt een wijziging door (`Focus`) |
+| `focus.follow` | kan een eigen Focus aan- en uitzetten als een ander apparaat dat doet |
 
 ## De circle
 

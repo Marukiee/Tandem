@@ -174,6 +174,10 @@ const en = {
   sms_offline_title: "{0} is not connected", sms_offline_body: "Your messages show up here as soon as it can be reached.",
   sms_failed_title: "Your messages could not be loaded",
   sms_err_off: "Messages is off for this computer on the phone", sms_err_permission: "The phone has not allowed Tandem to read its messages", sms_err_offline: "The phone is not connected",
+  focus: "Focus", focus_share: "Share Focus", focus_share_sub: "Turn on Do Not Disturb or Focus on one of your devices, and the others follow",
+  focus_share_sub_send: "Do Not Disturb on this PC turns on Focus on your other devices",
+  focus_direction: "Direction", focus_direction_sub: "Only follow keeps the Do Not Disturb of this computer to itself",
+  focus_both: "Both ways", focus_follow_only: "Only follow", focus_unsupported: "This desktop has no Do Not Disturb that Tandem can use. GNOME and KDE Plasma have one.",
 };
 
 const nl = {
@@ -350,6 +354,10 @@ const nl = {
   sms_offline_title: "{0} is niet verbonden", sms_offline_body: "Je berichten verschijnen hier zodra het bereikbaar is.",
   sms_failed_title: "Je berichten konden niet worden geladen",
   sms_err_off: "Berichten staat uit voor deze computer op de telefoon", sms_err_permission: "De telefoon heeft Tandem nog geen toegang tot de berichten gegeven", sms_err_offline: "De telefoon is niet verbonden",
+  focus: "Focus", focus_share: "Focus delen", focus_share_sub: "Zet Niet storen of Focus aan op een van je apparaten, en de andere volgen",
+  focus_share_sub_send: "Niet storen op deze pc zet Focus aan op je andere apparaten",
+  focus_direction: "Richting", focus_direction_sub: "Alleen volgen houdt Niet storen van deze computer voor zichzelf",
+  focus_both: "Beide kanten op", focus_follow_only: "Alleen volgen", focus_unsupported: "Dit bureaublad heeft geen Niet storen dat Tandem kan gebruiken. GNOME en KDE Plasma hebben het wel.",
 };
 
 const tables = { en, nl };

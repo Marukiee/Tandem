@@ -203,6 +203,9 @@ impl Inner {
         // Bring the other side up to date.
         let status = self.my_status.lock().unwrap().clone();
         let _ = session.tx.send(Msg::Status(status)).await;
+        if let Some(focus) = self.focus_catch_up(&hello.caps) {
+            let _ = session.tx.send(focus).await;
+        }
         self.ble_on_connected(id).await;
         self.wifi_on_connected(id).await;
         let known = self.introductions(&id);
@@ -509,6 +512,7 @@ impl Inner {
             }
             Msg::Ringing { on } => self.emit(Event::Ringing { from: id, on }),
             Msg::Sms(msg) => self.on_sms(id, msg).await,
+            Msg::Focus(change) => self.focus_received(id, change),
             Msg::Bye { .. } | Msg::Unknown => {}
         }
     }

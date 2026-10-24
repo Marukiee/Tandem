@@ -261,6 +261,8 @@ private struct GeneralSettings: View {
 
             InsertSettingsSection()
 
+            FocusSettingsSection()
+
             Section {
                 LabeledContent("Folder") {
                     Text(folder.path)
