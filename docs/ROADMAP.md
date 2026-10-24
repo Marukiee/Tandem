@@ -230,6 +230,9 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
     met Tandem tegen elkaar (een knipper via HCE en reader mode, de rest gaat over de gewone verbinding), 3 tot 5 dagen werk. Macs en laptops
     hebben geen NFC; een NFC-sticker van een euro op de laptop kan koppelen of iets starten (1 tot 2 dagen). Google werkt mogelijk zelf aan
     Tap to share in Android 17, dus eerst de sticker en wachten met telefoon tegen telefoon.
+  - Onderzocht: Android laten doen alsof hij een iPhone is (voor wakker maken, NameDrop, AirDrop). Niet haalbaar: Continuity gebruikt
+    sleutels die via iCloud tussen apparaten van hetzelfde account gaan, AirDrop heeft AWDL nodig (een wifi-modus die Android niet
+    heeft), en Apple blokkeerde Beeper Mini binnen twee dagen. Tandem doet klembord, bestanden en meldingen al met een eigen protocol.
   - De hover van de knoppen hapert.
 - Nog te controleren op echte toestellen: sectie 0.
 
