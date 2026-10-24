@@ -117,6 +117,14 @@ private fun MainNavigation() {
         }
     }
     ScreenSoundQuestion()
+    val sharingFlag = LocalContext.current.graph.openSharing
+    val openSharing by sharingFlag.collectAsState()
+    LaunchedEffect(openSharing) {
+        if (openSharing) {
+            nav.push(Route.SettingsPage(nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId.Sharing))
+            sharingFlag.value = false
+        }
+    }
     val accessFlag = LocalContext.current.graph.openAccess
     val openAccess by accessFlag.collectAsState()
     LaunchedEffect(openAccess) {

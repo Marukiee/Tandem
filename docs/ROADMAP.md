@@ -131,10 +131,12 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   herkennen in de app (een `NWBrowser` op `_tandem._udp` die wacht met `kDNSServiceErr_PolicyDenied`) en het zeggen, in Wat werkt en als melding, met een
   knop naar die pagina; en uitzoeken waarom het bij een update wegvalt. Vermoeden: zonder Team ID kent macOS de app aan de UUID's van zijn programma's (de
   hoofdapp en de twee extensies, `com.apple.networkextension.uuidcache.plist`), en die zijn bij elke build nieuw. Mogelijke oplossing: een vaste LC_UUID
-  in de build zetten (gevolg: de berichten in het systeemlogboek kunnen verkeerd gelezen worden), of telkens na een update zelf vragen.
-- Android: een tegel in de snelle instellingen om de muis van een computer te ontvangen aan en uit te zetten, zoals op de Mac (gevraagd 2026-10-24).
-  En de melding op de Mac "did not take the pointer" moet zeggen wat er uit staat (de schakelaar op de telefoon of de toegankelijkheidsdienst), met
-  een knop "Open op telefoon": de telefoon kan dat melden als functie `pointer` in Wat werkt.
+  in de build zetten (gevolg: de berichten in het systeemlogboek kunnen verkeerd gelezen worden), of telkens na een update zelf vragen. Gedaan in
+  0.2.0: `LocalNetwork` herkent het met een `NWBrowser` en toont een glazen melding met Open Instellingen, en Wat werkt zegt het (functie `network`).
+  Nog open: de vaste LC_UUID, als het na de volgende update weer gebeurt.
+- Android: een tegel in de snelle instellingen om de muis van een computer te ontvangen aan en uit te zetten, zoals op de Mac (gevraagd 2026-10-24,
+  gebouwd in 0.2.0: `PointerTileService`). De telefoon meldt de functie `pointer` (de schakelaar of de toegankelijkheidsdienst), en de Mac zegt bij
+  een terugkaatsende aanwijzer wat er uit staat en opent die instelling op de telefoon, hooguit eens per tien minuten.
 - Windows en Linux: dezelfde snelle knoppen als het Controlecentrum van de Mac (Quick Share, Scherm uitbreiden, Gedeelde muis, Telefoon zoeken), gevraagd
   2026-10-24. Windows 11 laat apps niets aan de snelle instellingen toevoegen: het menu van het pictogram in het systeemvak en een jumplist. Linux: GNOME
   alleen met een extensie van GNOME Shell (Quick Settings), KDE met een plasmoid; anders het menu van het pictogram.

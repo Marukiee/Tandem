@@ -130,6 +130,8 @@ final class PointerShare {
     /// A drag (a photo, a file, text) that went over with the pointer and has not been let go yet. While the button is down it stays over there,
     /// and it does not go over a second time.
     @ObservationIgnored private var carriedDrag = false
+    /// When a device that did not take the pointer was last asked to open the setting it misses.
+    @ObservationIgnored private var openedSettingsAt: [String: Date] = [:]
 
     private func declined(_ id: String) -> Bool {
         guard unready.contains(id) else { return false }
@@ -620,6 +622,14 @@ final class PointerShare {
                 if gaveBack {
                     if model.device(device)?.caps.contains("pointer.ready") == true {
                         unready.insert(device)
+                    } else if let missing = model.device(device)?.features.first(where: { $0.id == "pointer" && !$0.ready }) {
+                        // The device says what is off (a phone: the switch for a computer's mouse, or its accessibility service).
+                        FloatingToast.show(missing.why, symbol: "cursorarrow.slash")
+                        // The page opens on that device once in a while, not at every push against the edge.
+                        if let page = missing.page, Date().timeIntervalSince(openedSettingsAt[device] ?? .distantPast) > 600 {
+                            openedSettingsAt[device] = Date()
+                            model.openSettings(on: device, page: page)
+                        }
                     } else {
                         let name = model.device(device)?.name ?? String(localized: "The other computer")
                         FloatingToast.show(String(localized: "\(name) did not take the pointer. It may be locked or asleep, or not allowed to be used from this Mac."), symbol: "lock.fill")

@@ -39,6 +39,8 @@ enum FeatureReport {
         func add(_ id: String, _ ready: Bool, _ name: String, _ why: String, _ page: String?) {
             list.append(TandemFeature(id: id, ready: ready, name: name, why: ready ? "" : why, page: ready ? nil : page))
         }
+        add("network", LocalNetwork.allowed != false, String(localized: "Find your devices on the network"),
+            String(localized: "Local Network is off for Tandem on this Mac. Turn it off and on again."), "localnetwork")
         add("control", accessibility, String(localized: "Control this Mac"),
             String(localized: "Accessibility is off for Tandem on this Mac"), "accessibility")
         if !screenAllowed {
@@ -101,6 +103,8 @@ enum FeatureReport {
             settings("com.apple.preference.security?Privacy_ScreenCapture")
         case "restart":
             ScreenHost.shared.relaunch()
+        case "localnetwork":
+            LocalNetwork.openSettings()
         case "automation":
             let unasked = MacMedia.sources.filter { automation[$0.bundleID] == -1744 }
             if unasked.isEmpty {

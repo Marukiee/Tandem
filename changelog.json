@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.2.0",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Local network and the mouse on your phone",
+      "new": [
+        "Mac: says when macOS keeps Tandem off the local network, with a button to fix it",
+        "Android: a Quick Settings tile to take a computer's mouse",
+        "The Mac says why the phone did not take the pointer, and opens that setting on it"
+      ]
+    },
+    "nl": {
+      "title": "Lokaal netwerk en de muis op je telefoon",
+      "new": [
+        "Mac: zegt het als macOS Tandem van het lokale netwerk houdt, met een knop om het op te lossen",
+        "Android: een tegel in de snelle instellingen om de muis van een computer te ontvangen",
+        "De Mac zegt waarom de telefoon de aanwijzer niet nam, en opent die instelling erop"
+      ]
+    }
+  },
+  {
     "version": "0.1.99",
     "date": "2026-10-24",
     "en": {

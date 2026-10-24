@@ -12,6 +12,7 @@ import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.MainActivity
 import nl.markmaaktmedia.tandem.R
@@ -35,13 +36,17 @@ object FeatureReport {
         }
     }
 
-    fun current(context: Context): List<TandemFeature> {
+    suspend fun current(context: Context): List<TandemFeature> {
         val list = mutableListOf<TandemFeature>()
         fun add(id: String, ready: Boolean, name: Int, why: Int, page: String) {
             list += TandemFeature(id, ready, context.getString(name), if (ready) "" else context.getString(why), if (ready) null else page)
         }
         val listener = Permissions.notificationAccess(context)
         add("control", accessibility(context), R.string.feature_control, R.string.feature_control_why, "accessibility")
+        // The pointer of a computer pushed over to this phone: the switch in Tandem, and the accessibility service that plays it.
+        val pointerOn = context.graph.prefs.pointerIn.first()
+        if (!pointerOn) add("pointer", false, R.string.feature_pointer, R.string.feature_pointer_off, "sharing")
+        else add("pointer", accessibility(context), R.string.feature_pointer, R.string.feature_control_why, "accessibility")
         add("notifications", listener, R.string.feature_notifications, R.string.feature_listener_why, "notification-access")
         add("media", listener, R.string.feature_media, R.string.feature_listener_why, "notification-access")
         add("calls", Permissions.phone(context), R.string.feature_calls, R.string.feature_calls_why, "access")
@@ -72,6 +77,7 @@ object FeatureReport {
             "all-files" -> Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, pkg)
             "battery" -> Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg)
             "app-notifications" -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            "sharing" -> Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_SHARING)
             else -> Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_ACCESS)
         }
         // A page that this phone does not have falls back to the app's own settings.

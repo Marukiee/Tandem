@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity() {
         if (intent?.action == nl.markmaaktmedia.tandem.quickshare.QuickShareTileService.ACTION_OPEN_PAGE) graph.openQuickShare.value = true
         if (intent?.action == ACTION_OPEN_DISPLAY) intent.getStringExtra(EXTRA_DEVICE)?.let { graph.openDisplay.value = it }
         if (intent?.action == ACTION_OPEN_ACCESS) graph.openAccess.value = true
+        if (intent?.action == ACTION_OPEN_SHARING) graph.openSharing.value = true
     }
 
     override fun onStart() {
@@ -49,5 +50,8 @@ class MainActivity : AppCompatActivity() {
 
         /** From another device that shows what this phone is missing: Tandem's page of permissions. */
         const val ACTION_OPEN_ACCESS = "nl.markmaaktmedia.tandem.OPEN_ACCESS"
+
+        /** From another device: the page of Settings with sharing, where the mouse of a computer is switched on. */
+        const val ACTION_OPEN_SHARING = "nl.markmaaktmedia.tandem.OPEN_SHARING"
     }
 }

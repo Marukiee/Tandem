@@ -57,7 +57,7 @@ fun FeaturesScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val graph = context.graph
     val devices by graph.host.devices.collectAsState()
-    var mine by remember { mutableStateOf(FeatureReport.current(context)) }
+    var mine by remember { mutableStateOf(emptyList<TandemFeature>()) }
     // Permissions change in the settings, so this phone's own list is looked at again while the page is open.
     LaunchedEffect(Unit) {
         while (true) {

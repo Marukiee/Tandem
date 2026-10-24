@@ -59,4 +59,7 @@
     <string name="screen_sound_choice_here">On this phone</string>
     <string name="screen_sound_ask">Ask when headphones are in</string>
     <string name="screen_sound_ask_sub">With Bluetooth headphones or something in the jack, asks whether the sound should come here this time</string>
+    <string name="tile_pointer_label">Computer mouse</string>
+    <string name="feature_pointer">Use a computer\'s mouse on this phone</string>
+    <string name="feature_pointer_off">It is switched off in Tandem on this phone</string>
 </resources>

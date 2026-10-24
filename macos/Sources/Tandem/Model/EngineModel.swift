@@ -249,6 +249,7 @@ final class EngineModel {
         ready = true
         refreshDevices()
         FeatureReport.start()
+        LocalNetwork.start()
 
         let monitor = ClipboardMonitor { [weak self] text, isURL in
             self?.localClipboardChanged(text, isURL: isURL)

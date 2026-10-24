@@ -64,6 +64,9 @@ class Graph(app: Application) {
     /** Set when another device asks this phone to open Tandem's page of permissions. */
     val openAccess = kotlinx.coroutines.flow.MutableStateFlow(false)
 
+    /** Set when another device asks this phone to open the sharing page of its settings. */
+    val openSharing = kotlinx.coroutines.flow.MutableStateFlow(false)
+
     /** Set when a computer asks this phone to be its second screen: the id of that computer, for the screen to open on. */
     val openDisplay = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
