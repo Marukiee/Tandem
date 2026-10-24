@@ -109,7 +109,7 @@ class SmsBridge(
     private fun <T> safely(read: () -> T): T? = runCatching(read).onFailure { Log.w(TAG, "the message store would not answer", it) }.getOrNull()
 
     /** Sends the text as SMS, in as many parts as it takes, over the default SIM for messages. Returns its conversation, or why not. */
-    private fun send(to: List<String>, text: String): Pair<Long?, String?> {
+    internal fun send(to: List<String>, text: String): Pair<Long?, String?> {
         val numbers = to.map { it.trim() }.filter { it.isNotEmpty() }
         // A group is an MMS, which Android only lets the messages app send.
         if (numbers.size != 1) return null to "a group conversation can only be answered on the phone"
@@ -157,7 +157,7 @@ class SmsBridge(
     private fun unwatch() {
         observer?.let { runCatching { context.contentResolver.unregisterContentObserver(it) } }
         observer = null
-        primed = false
+        scope.launch(work) { primed = false }
     }
 
     /** One message comes with several notices of the store; one look after they settle is enough. */
@@ -170,16 +170,17 @@ class SmsBridge(
     }
 
     private suspend fun look() {
-        val engine = host.engine ?: return
         if (!SmsAccess.granted(context)) return
         val newest = safely { reader.newest(60, 20) } ?: return
         val changed = newest.filter { seen[key(it)] != signature(it) }
         seen.clear()
         newest.forEach { seen[key(it)] = signature(it) }
+        // The first look only learns what is there, also while the engine is still starting, so the first message after it counts.
         if (!primed) {
             primed = true
             return
         }
+        val engine = host.engine ?: return
         if (changed.isEmpty() || !anyReader()) return
         val conversations = safely { reader.conversations(changed.map { it.thread.toLong() }.toSet()) }.orEmpty()
         runCatching { engine.smsChanged(conversations, changed) }
