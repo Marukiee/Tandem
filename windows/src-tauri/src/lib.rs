@@ -38,6 +38,7 @@ mod media;
 mod messages;
 mod model;
 mod names;
+mod output;
 mod pointer_ready;
 mod power;
 mod settings;
@@ -277,6 +278,9 @@ pub fn run() {
             messages::sms_picture,
             messages::sms_ask_access,
             focus::focus_info,
+            output::output_start,
+            output::output_stop,
+            output::output_state,
         ])
         .build(tauri::generate_context!())
         .expect("Tandem could not start")

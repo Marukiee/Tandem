@@ -12,7 +12,7 @@ const devices = empty ? [] : [
   { id: "phone", name: "Pixel 9", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host", "screen.extend.view", "wifi.join", "sms"],
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 80, charging: true, powerSave: false }, network: { kind: "cellular", ssid: null, metered: true, roaming: false, signal: 3 }, hotspot: true, dnd: false } },
-  { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view", "screen.extend.view"],
+  { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view", "screen.extend.view", "audio.play"],
     features: [
       { id: "control", ready: false, name: "Control this Mac", why: "Accessibility is off for Tandem on this Mac", page: "accessibility" },
       { id: "screen", ready: true, name: "See this Mac's screen", why: "", page: null },
@@ -239,6 +239,9 @@ export async function call(command, args) {
       { path: "C:\\Windows\\Media\\Alarm01.wav", name: "Alarm01", group: "Windows" }, { path: "C:\\Windows\\Media\\Ring01.wav", name: "Ring01", group: "Windows" },
       { path: "C:\\Windows\\Media\\Afternoon\\Windows Ding.wav", name: "Windows Ding", group: "Afternoon" }] };
     case "find_choose": case "find_preview": case "find_stop": case "ring": return null;
+    case "output_state": return null;
+    case "output_start": emit("output", args.id); return null;
+    case "output_stop": emit("output", null); return null;
     case "ssh_info": return { label: "ssh-preview", platform: new URLSearchParams(location.search).get("platform") || "windows" };
     case "create_pairing": return { uri: "tandem://pair?c=PREVIEW", code: "4821 7093", expiresAtMs: Date.now() + 300000, qr };
     case "pair": return "phone";

@@ -65,7 +65,7 @@ const en = {
   features_old: "Update Tandem on {0} to see what works there.", features_offline: "Not connected. What works there shows up when it connects.",
   tab_general: "General", tab_clipboard: "Clipboard", tab_files: "Files", tab_remote: "Remote control", tab_mouse: "Mouse and keyboard", tab_quickshare: "Quick Share", tab_updates: "Updates",
   pc_name_sub: "This is how your other devices see it.", behaviour: "Behaviour", sound_media: "Sound and music", received_files: "Received files",
-  sound_delay: "Delay of the sound of a phone", sound_delay_sub: "Low plays closer to live and can stutter on a poor connection. Smooth waits a little longer to stay steady.",
+  sound_delay: "Delay of the sound of other devices", sound_delay_sub: "Low plays closer to live and can stutter on a poor connection. Smooth waits a little longer to stay steady.",
   delay_low: "Low", delay_normal: "Normal", delay_smooth: "Smooth",
   backup: "Backup", backup_export: "Save the preferences", backup_sub: "Only preferences are saved. Your identity, your pairings and the folders you offer stay on this computer.",
   backup_export_button: "Save…", backup_import: "Restore preferences", backup_import_sub: "From a file that was saved before. Everything else stays as it is.", backup_import_button: "Restore…",
@@ -113,7 +113,7 @@ const en = {
   live_control_wakes: "The button here wakes up by itself once the phone allows it.",
   insert_photo: "Photo from phone", insert_photo_tip: "Takes a picture with the phone and puts it on the clipboard of this computer",
   insert_scan: "Scan docs", insert_scan_tip: "Scans a document with the phone and puts it on the clipboard of this computer",
-  phone_sound: "Play the sound of a phone here", phone_sound_sub: "When you send the sound of a phone to this computer, it plays here. Android asks first, every time",
+  phone_sound: "Play the sound of other devices here", phone_sound_sub: "When another device uses this computer as its speaker, its sound plays here. Several can play at once. Android asks first, every time",
   send_with_title: "Send with Tandem", send_with_sub: "Your devices in the menu of files in the file manager: Files, Dolphin and Nemo on Linux, Send to on Windows",
   files_host_title: "Your folders for other devices", files_host_on: "Let other devices look at my folders", files_host_on_sub: "Only the folders below, only devices of your circle. Off until you turn it on",
   files_host_may_change: "May change", files_host_add: "Offer a folder", files_host_choose: "Choose folder",
@@ -178,6 +178,8 @@ const en = {
   focus_share_sub_send: "Do Not Disturb on this PC turns on Focus on your other devices",
   focus_direction: "Direction", focus_direction_sub: "Only follow keeps the Do Not Disturb of this computer to itself",
   focus_both: "Both ways", focus_follow_only: "Only follow", focus_unsupported: "This desktop has no Do Not Disturb that Tandem can use. GNOME and KDE Plasma have one.",
+  output_use: "Use as speaker", output_stop: "Stop speaker", output_tip: "Play the sound of this computer on {0}",
+  output_started: "The sound of this computer plays on {0}. It keeps playing here too.",
 };
 
 const nl = {
@@ -246,7 +248,7 @@ const nl = {
   features_old: "Werk Tandem bij op {0} om te zien wat daar werkt.", features_offline: "Niet verbonden. Wat daar werkt verschijnt zodra er verbinding is.",
   tab_general: "Algemeen", tab_clipboard: "Klembord", tab_files: "Bestanden", tab_remote: "Op afstand", tab_mouse: "Muis en toetsenbord", tab_quickshare: "Quick Share", tab_updates: "Updates",
   pc_name_sub: "Zo zien je andere apparaten deze computer.", behaviour: "Gedrag", sound_media: "Geluid en muziek", received_files: "Ontvangen bestanden",
-  sound_delay: "Vertraging van het geluid van een telefoon", sound_delay_sub: "Laag speelt dichter bij live en kan haperen bij een slechte verbinding. Soepel wacht iets langer om stabiel te blijven.",
+  sound_delay: "Vertraging van het geluid van andere apparaten", sound_delay_sub: "Laag speelt dichter bij live en kan haperen bij een slechte verbinding. Soepel wacht iets langer om stabiel te blijven.",
   delay_low: "Laag", delay_normal: "Normaal", delay_smooth: "Soepel",
   backup: "Back-up", backup_export: "De voorkeuren bewaren", backup_sub: "Alleen voorkeuren worden bewaard. Je identiteit, je koppelingen en de mappen die je aanbiedt blijven op deze computer.",
   backup_export_button: "Bewaren…", backup_import: "Voorkeuren terugzetten", backup_import_sub: "Uit een bestand dat je eerder bewaarde. De rest blijft zoals het is.", backup_import_button: "Terugzetten…",
@@ -294,7 +296,7 @@ const nl = {
   live_control_wakes: "De knop hier wordt vanzelf actief zodra de telefoon het toestaat.",
   insert_photo: "Foto van telefoon", insert_photo_tip: "Maakt een foto met de telefoon en zet hem op het klembord van deze computer",
   insert_scan: "Scan docs", insert_scan_tip: "Scant een document met de telefoon en zet het op het klembord van deze computer",
-  phone_sound: "Het geluid van een telefoon hier afspelen", phone_sound_sub: "Als je het geluid van een telefoon naar deze computer stuurt, speelt het hier. Android vraagt elke keer eerst",
+  phone_sound: "Het geluid van andere apparaten hier afspelen", phone_sound_sub: "Als een ander apparaat deze computer als speaker gebruikt, speelt zijn geluid hier. Er kunnen er meer tegelijk spelen. Android vraagt elke keer eerst",
   send_with_title: "Sturen met Tandem", send_with_sub: "Je apparaten in het menu van bestanden in de bestandsbeheerder: Bestanden, Dolphin en Nemo op Linux, Sturen naar op Windows",
   files_host_title: "Je mappen voor andere apparaten", files_host_on: "Laat andere apparaten in mijn mappen kijken", files_host_on_sub: "Alleen de mappen hieronder, alleen apparaten van je circle. Uit tot je het aanzet",
   files_host_may_change: "Mag wijzigen", files_host_add: "Een map aanbieden", files_host_choose: "Kies map",
@@ -358,6 +360,8 @@ const nl = {
   focus_share_sub_send: "Niet storen op deze pc zet Focus aan op je andere apparaten",
   focus_direction: "Richting", focus_direction_sub: "Alleen volgen houdt Niet storen van deze computer voor zichzelf",
   focus_both: "Beide kanten op", focus_follow_only: "Alleen volgen", focus_unsupported: "Dit bureaublad heeft geen Niet storen dat Tandem kan gebruiken. GNOME en KDE Plasma hebben het wel.",
+  output_use: "Gebruik als speaker", output_stop: "Stop speaker", output_tip: "Speel het geluid van deze computer af op {0}",
+  output_started: "Het geluid van deze computer speelt op {0}. Het speelt hier ook gewoon door.",
 };
 
 const tables = { en, nl };

@@ -131,6 +131,9 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         "ring".into(),
         // Shows the text messages of a phone (see `messages`), so the phone tells this computer what changes.
         "sms.view".into(),
+        // Plays the sound another device sends it (see `sound`), and sends its own to one it is told to (see `output`).
+        "audio.play".into(),
+        "audio.send".into(),
     ];
     // Listens to the sound of another computer that wants to know on which side this one stands (see `side.rs`).
     if crate::side::can_listen() {

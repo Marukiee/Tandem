@@ -56,6 +56,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::Disconnected { id } => {
             input::release_all();
             crate::sound::stop(&id);
+            crate::output::stop_for(app, &id, None);
             let had = app.state::<AppState>().data.lock().unwrap().players.remove(&id).is_some();
             refresh_devices(app);
             if had {
@@ -69,7 +70,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::SoundRequested { from, on } => crate::screen_sound::requested(app, from, on),
         TandemEvent::MediaStarted { peer, kind: tandem_core::ffi::TandemMediaKind::Screen, role: tandem_core::ffi::TandemMediaRole::Viewer, .. } => crate::screen_sound::view_started(app, peer),
         TandemEvent::MediaEnded { peer, role: tandem_core::ffi::TandemMediaRole::Viewer, .. } => crate::screen_sound::view_ended(app, &peer),
-        TandemEvent::MediaEnded { peer, role: tandem_core::ffi::TandemMediaRole::Host, .. } => crate::screen_sound::host_ended(&peer),
+        TandemEvent::MediaEnded { peer, role: tandem_core::ffi::TandemMediaRole::Host, .. } => crate::screen_sound::host_ended(app, &peer),
         // Another device shows what this computer is missing and was asked to open the place where it is turned on.
         TandemEvent::OpenSettings { from, page } => {
             crate::features::open(&page);
@@ -127,10 +128,13 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             }
         }
         TandemEvent::CaptureCancelled { from, why, .. } => crate::insert::cancelled(app, &from, why),
-        TandemEvent::AudioStart { from, stream, sample_rate, channels } if stream == crate::sound::STREAM => {
-            crate::sound::start(app, from, sample_rate, channels)
+        TandemEvent::AudioStart { from, stream, sample_rate, channels } => crate::sound::start(app, from, stream, sample_rate, channels),
+        // From the device this computer sends its sound to, a stop is a no to that; from any other, its own sound ends.
+        TandemEvent::AudioStop { from, stream } => {
+            if !crate::output::refused(app, &from, stream) {
+                crate::sound::stopped(&from, stream)
+            }
         }
-        TandemEvent::AudioStop { from, stream } if stream == crate::sound::STREAM => crate::sound::stop(&from),
         TandemEvent::Notification { from, notification } => phone_notification(app, &from, &notification),
         TandemEvent::NotificationRemoved { from, key } => {
             app.state::<AppState>()

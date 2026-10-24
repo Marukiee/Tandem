@@ -377,7 +377,7 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["phoneSound"].as_bool() {
             current.phone_sound = v;
             if !v {
-                crate::sound::stop_all();
+                crate::sound::stop_all(&app);
             }
         }
         if let Some(v) = patch["bleMessages"].as_bool() {
