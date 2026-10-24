@@ -1114,3 +1114,9 @@
 "Number" = "Nummer";
 "%@ is calling %@" = "%1$@ belt %2$@";
 "%@ could not be reached" = "%@ is niet bereikbaar";
+"Phone contacts in Spotlight" = "Contacten van de telefoon in Spotlight";
+"Type a name in Spotlight and pick the person: your phone calls them. Turned off, the contacts are taken out of Spotlight." = "Typ een naam in Spotlight en kies de persoon: je telefoon belt ze. Staat het uit, dan gaan de contacten uit Spotlight.";
+"Call %@" = "%@ bellen";
+"Which number?" = "Welk nummer?";
+"That contact is no longer on the phone" = "Dat contact staat niet meer op de telefoon";
+"That phone is no longer paired" = "Die telefoon is niet meer gekoppeld";

@@ -403,6 +403,7 @@ final class EngineModel {
         clipboard?.setActive(devices.contains { $0.online || $0.ble })
         reconcileSpeakerDevices()
         refreshNowPlaying()
+        PhoneSpotlight.shared.devicesChanged(devices, engine: engine)
     }
 
     /// The first time: Downloads, Documents and Desktop are offered to the other devices, as a phone offers its storage, so "Browse files"

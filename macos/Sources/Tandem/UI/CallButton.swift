@@ -35,22 +35,14 @@ struct CallButton: View {
                         .tint(Palette.indigo)
                         .disabled(Self.clean(number).isEmpty)
                 }
-                ForEach(found, id: \.number) { contact in
-                    Button { call(contact.number) } label: {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(verbatim: contact.name).font(.callout.weight(.medium))
-                            Text(verbatim: contact.label.isEmpty ? contact.number : "\(contact.label) \(contact.number)")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
+                VStack(spacing: 2) {
+                    ForEach(found, id: \.number) { contact in
+                        NumberRow(title: contact.name, label: contact.label, number: contact.number) { call(contact.number) }
                     }
-                    .buttonStyle(.plain)
-                    .padding(.vertical, 3)
                 }
             }
             .padding(12)
-            .frame(width: 290, alignment: .leading)
+            .frame(width: 330, alignment: .leading)
             .onAppear { focused = true }
             // A name typed instead of a number: the contacts of the phone that match, as they are typed.
             .task(id: number) { await search() }
@@ -72,15 +64,23 @@ struct CallButton: View {
     private func call(_ chosen: String? = nil) {
         // Return on a name calls the first contact found for it.
         let dialed = Self.clean(chosen ?? (Self.clean(number).isEmpty ? found.first?.number ?? "" : number))
-        guard !dialed.isEmpty, let engine = model.tandem else { return }
+        guard !dialed.isEmpty else { return }
         asking = false
+        Self.dial(dialed, on: device) { model.showToast($0) }
+    }
+
+    /// The phone dials `number`, and `say` gets what to show. Also what a contact picked in Spotlight uses (`PhoneSpotlight`).
+    @MainActor
+    static func dial(_ number: String, on device: TandemDevice, say: @escaping @MainActor (String) -> Void) {
+        let dialed = clean(number)
+        guard !dialed.isEmpty, let engine = EngineModel.shared.tandem else { return }
         let name = device.name
-        Task {
+        Task { @MainActor in
             do {
                 try await engine.dial(target: device.id, number: dialed)
-                model.showToast(String(localized: "\(name) is calling \(dialed)"))
+                say(String(localized: "\(name) is calling \(dialed)"))
             } catch {
-                model.showToast(String(localized: "\(name) could not be reached"))
+                say(String(localized: "\(name) could not be reached"))
             }
         }
     }
