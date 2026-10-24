@@ -364,13 +364,6 @@ private struct DevicesSettings: View {
 
     var body: some View {
         Form {
-            Section {
-                DescribedToggle(
-                    "New devices start as guests",
-                    subtitle: "For family and friends: their clipboard does not come in, no notifications from them, and their files ask first. Devices that are already here keep what they have",
-                    isOn: Binding(get: { model.guestsByDefault }, set: { model.setGuestsByDefault($0) })
-                )
-            }
             if model.devices.isEmpty {
                 Section {
                     ContentUnavailableView(

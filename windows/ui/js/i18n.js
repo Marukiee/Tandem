@@ -146,7 +146,7 @@ const en = {
   search_name: "Search by name", filter_type: "Type", filter_device: "Device", filter_direction: "Direction", filter_when: "When", all_devices: "All devices", clear_filters: "Clear filters",
   kind_all: "All types", kind_pictures: "Pictures", kind_videos: "Videos", kind_audio: "Audio", kind_documents: "Documents", kind_archives: "Archives", kind_other: "Other",
   dir_all: "Sent and received", dir_received: "Received", dir_sent: "Sent", period_always: "Any time", period_today: "Today", period_week: "Last 7 days", period_month: "Last 30 days",
-  guests_title: "New devices start as guests", guests_sub: "For family and friends: their clipboard does not come in, no notifications from them, and their files ask first. Devices that are already here keep what they have.",
+ 
   mouse_who: "Who may use the mouse and keyboard of this PC",
   capture_locked: "This computer is locked. Unlock it: a locked screen cannot hand the mouse and keyboard to another computer.",
   capture_starting: "Waiting for you: answer the question of your desktop about taking over the mouse and keyboard. Until you do, the pointer cannot go over.",
@@ -330,7 +330,7 @@ const nl = {
   search_name: "Zoek op naam", filter_type: "Soort", filter_device: "Apparaat", filter_direction: "Richting", filter_when: "Wanneer", all_devices: "Alle apparaten", clear_filters: "Filters wissen",
   kind_all: "Alle soorten", kind_pictures: "Afbeeldingen", kind_videos: "Video's", kind_audio: "Audio", kind_documents: "Documenten", kind_archives: "Archieven", kind_other: "Overig",
   dir_all: "Verstuurd en ontvangen", dir_received: "Ontvangen", dir_sent: "Verstuurd", period_always: "Altijd", period_today: "Vandaag", period_week: "Laatste 7 dagen", period_month: "Laatste 30 dagen",
-  guests_title: "Nieuwe apparaten beginnen als gast", guests_sub: "Voor familie en vrienden: hun klembord komt niet binnen, geen meldingen van hen, en hun bestanden vragen eerst. Apparaten die er al zijn houden wat ze hebben.",
+ 
   mouse_who: "Wie de muis en het toetsenbord van deze pc mag gebruiken",
   capture_locked: "Deze computer is vergrendeld. Ontgrendel hem: een vergrendeld scherm kan de muis en het toetsenbord niet aan een andere computer geven.",
   capture_starting: "Wachten op jou: beantwoord de vraag van je bureaublad over het overnemen van de muis en het toetsenbord. Tot die tijd kan de aanwijzer niet overgaan.",

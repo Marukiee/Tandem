@@ -786,11 +786,6 @@ function FocusSettings({ s, patch }) {
     </div>`;
 }
 
-// New devices start as guests, so family and friends can join without their clipboard coming in.
-function GuestRow() {
-  const [on, setOn] = useState(false);
-  useEffect(() => { call("guests_by_default").then(setOn).catch(() => {}); }, []);
-  return html`<${SettingRow} icon="devices" title=${t("guests_title")} sub=${t("guests_sub")} on=${on}
     onChange=${(v) => call("set_guests_by_default", { on: v }).then(() => setOn(v)).catch(failed)} />`;
 }
 
@@ -816,7 +811,6 @@ function GeneralSettings({ s, patch }) {
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
       <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
       ${state.canBluetooth && html`<${SettingRow} icon="bluetooth" title=${t("ble_messages")} sub=${t("ble_messages_sub")} on=${s.bleMessages !== false} onChange=${(v) => patch({ bleMessages: v })} />`}
-      <${GuestRow} />
     </div>
 
     <${FocusSettings} s=${s} patch=${patch} />

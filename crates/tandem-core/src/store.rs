@@ -125,8 +125,9 @@ impl DeviceSettings {
 pub struct Settings {
     #[serde(default)]
     pub devices: HashMap<String, DeviceSettings>,
-    /// A device that has no settings of its own yet starts as a guest (see [`DeviceSettings::guest`]) instead of as one of your own.
-    /// Turning this on first writes down what each device that is there already has, so none of them changes.
+    /// Once a device without settings of its own started as a guest when this was on. Taken out (2026-10-25): a circle is the person's
+    /// own devices, family on the same network have a circle of their own and never see these. Still read so an old file loads, and
+    /// no longer used.
     #[serde(default)]
     pub guests_by_default: bool,
 }
@@ -135,7 +136,6 @@ impl Settings {
     pub fn for_device(&self, id: &DeviceId) -> DeviceSettings {
         match self.devices.get(&id.to_string()) {
             Some(own) => own.clone(),
-            None if self.guests_by_default => DeviceSettings::guest(),
             None => DeviceSettings::default(),
         }
     }
@@ -186,22 +186,6 @@ mod tests {
         let first = load_or_create_identity(&secrets).unwrap();
         let second = load_or_create_identity(&secrets).unwrap();
         assert_eq!(first.id(), second.id());
-    }
-
-    #[test]
-    fn a_guest_start_changes_only_devices_that_come_later() {
-        let mut settings = Settings::default();
-        let mine = DeviceId::from_bytes([1; 16]);
-        let later = DeviceId::from_bytes([2; 16]);
-        settings.set_guests_by_default(true, &[mine]);
-        // The device that was there keeps everything on; the one that comes after starts as a guest.
-        assert_eq!(settings.for_device(&mine), DeviceSettings::default());
-        assert_eq!(settings.for_device(&later), DeviceSettings::guest());
-        assert!(!settings.for_device(&later).clipboard);
-        // Turning it off again leaves a device that got its settings as they are, and the next one back to everything on.
-        settings.set_guests_by_default(false, &[mine, later]);
-        assert_eq!(settings.for_device(&later), DeviceSettings::guest());
-        assert_eq!(settings.for_device(&DeviceId::from_bytes([3; 16])), DeviceSettings::default());
     }
 
     #[test]
