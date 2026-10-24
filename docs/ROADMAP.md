@@ -116,6 +116,17 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   van cpal. Android: delen met `SoundShareService`, met de vraag van Android erbij (direct met Tandem in beeld, anders via een melding). Elke kijker
   speelt het af, ook als geluid van een telefoon uit staat. Nog niet: de vraag van Android overslaan met de projectie van het scherm dat al gedeeld wordt,
   en een koptelefoon herkennen op Windows.
+- Elk apparaat moet de geluidsuitvoer van elk ander kunnen zijn (gevraagd 2026-10-24, gebouwd, alleen gecompileerd en nergens gehoord): op de pagina
+  van elk apparaat dat geluid afspeelt (`audio.play`, nu ook Android, Linux en Windows; `audio.send` zegt dat een apparaat zijn eigen geluid kan sturen)
+  staat een knop: Mac "Gebruik als speaker" bij een computer (en Telefoon als uitvoer zoals al), Linux en Windows "Gebruik als speaker", Android "Stuur
+  het geluid van deze telefoon naar". Een druk stopt het weer. Een zender heeft een uitvoer tegelijk (een nieuwe neemt de plaats in), een speler speelt
+  er meer tegelijk (Mac een audio-engine per zender, Android een `AudioTrack` per zender onder een audiofocus en een melding, Linux en Windows een
+  cpal-stroom per zender; het systeem mengt). Opnemen: Mac de tap, nu zonder Tandem zelf (geen echo, en het geluid van anderen blijft hoorbaar als de Mac
+  stil staat); Linux `parec` of GStreamer van de monitor; Windows WASAPI-loopback; Android de playback capture met `excludeUid` van Tandem. Stil bij de
+  zender: alleen de Mac (de tap dempt). Linux, Windows en Android spelen door, met die mededeling bij het starten. Een apparaat speelt en stuurt nooit
+  tegelijk met hetzelfde andere apparaat, dus een stop zegt altijd wat hij beëindigt; een nee van de speler komt bij de zender als melding met de reden.
+  Geen nieuw bericht in het protocol. Nog niet: stil maken op Linux (een null-sink), Windows en Android; een kring van drie apparaten via Linux of Windows
+  kan rondzingen.
 - Alleen Engels in de release-teksten op GitHub en in de update-melding van de apps (gevraagd 2026-10-24, gedaan in 0.1.95 en de README).
 - Linux: Bijwerken en herstarten herstart niet, en het lettertype oogt van boven ingedrukt (gevraagd 2026-10-24, gedaan in 0.1.95: de nieuwe versie
   start pas als de oude weg is, en de app gebruikt Google Sans Flex zoals Android).

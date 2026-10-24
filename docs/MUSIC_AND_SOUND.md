@@ -55,7 +55,8 @@ is `media::visible` in the core, used by both apps, with its own tests.
 
 ## Speaker
 
-The Mac can play its sound on a phone, which then is its speaker.
+The Mac can play its sound on a phone, which then is its speaker. Every other pair works too, see "Every device the speaker of
+every other" below.
 
 - **Control** goes over the normal connection: `Msg::AudioStart` (sample rate, channels, a stream
   number) and `Msg::AudioStop`, which either side may send. The phone refuses by sending a stop.
@@ -122,4 +123,41 @@ niet toestaan blijven stil). Op de Mac speelt `PhoneSound` het af: een korte buf
 stilte op de plaats van een verloren pakket, oud geluid weg als de klokken uit elkaar lopen, en een audio-engine die
 op het tempo van de luidsprekers trekt. De vertraging heeft drie standen (laag, normaal, soepel) zoals op de telefoon.
 De buffer heeft een zelftest: `TANDEM_DEBUG_SOUNDRING=1` met `TANDEM_DEBUG_DIR` schrijft `soundring.txt`.
+
+## Every device the speaker of every other
+
+Any device can send its sound to any other that plays sound, and a device can play the sound of several at once. The
+messages are the ones above (`AudioStart`, datagrams, `AudioStop`); nothing new goes over the wire but two capabilities:
+`audio.play` (plays what others send, any stream number, now on every app) and `audio.send` (can record and send its own).
+
+- **The button** is on the page of the device that should play, on the sender: Mac "Use as speaker" for a computer (a phone
+  keeps Phone as output and its sound menu entry), Linux and Windows "Use as speaker" for any device, Android "Send this
+  phone's sound to". Pressed again it stops. It shows for a device that announces `audio.play`, and for any phone, since
+  older phones play it without saying so. One output per sender: a new one takes the place of the last, and so does a
+  device that looks at the screen and asks for the sound.
+- **Stream numbers.** A computer that sends uses `9`, the number every player so far takes (older Macs and Linux play
+  only that one). The Mac towards a phone keeps a new number for each start, skipping `9`.
+- **Never both ways with the same device.** A device does not play the sound of a device it sends to, and does not send
+  to one whose sound it plays: it says no with a stop, or tells its person why. That keeps a stop unambiguous (it ends
+  the one direction there is) and keeps two computers from sending each other's sound round and round.
+- **A no from the player** is a stop right after the start: the sender ends and tells its person that the other device
+  does not play sound from other devices (or, later, that it was stopped there). Players say no when their switch is
+  off (Mac: Sound from other devices; Android: Speaker for your other devices; Linux and Windows: Play the sound of other
+  devices here), or when the sound card cannot be opened.
+- **Recording.** Mac: the process tap, now on every process but Tandem, so what Tandem plays for other devices is not
+  sent on, and is not muted with the rest. Linux: `parec` of the monitor of the default output, else GStreamer
+  `pulsesrc` (PulseAudio or PipeWire with its Pulse server); a recorder that ends before it delivered anything is told to
+  the person as "cannot record". Windows: WASAPI loopback of the default output through cpal. Android: playback capture
+  with the screen recording question each time, Tandem's own uid left out; only apps that allow capture are heard, which
+  the phone says when it starts.
+- **Quiet at the sender.** Only the Mac goes quiet (the tap mutes what it records, Settings, General). Linux, Windows and
+  Android keep playing and say so when it starts: muting the output may silence the monitor or the loopback too, and
+  whether it does differs per sound system and could not be tried here. A null sink on Linux, which takes the streams
+  away from the speakers, is the way to add it there.
+- **Playing several.** Mac: an audio engine per sender, each with its own `SoundRing`. Android: an `AudioTrack` and a
+  `JitterBuffer` per sender, one audio focus and one notification with all the names. Linux and Windows: a cpal stream
+  and buffer per sender, with the same delay setting (`sound_delay`). The system mixes them; without a sound server on
+  Linux a second stream may find the card taken, and that sender gets a no.
+- **Not tried on hardware.** Everything here is compiled and the existing buffer tests pass; no sound went between real
+  devices. A ring of three devices through Linux or Windows (which record their own playback) could still echo.
 
