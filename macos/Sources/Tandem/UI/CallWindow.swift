@@ -47,7 +47,10 @@ final class CallWindow {
     static let shared = CallWindow()
 
     static let cardWidth: CGFloat = 320
-    static let cardHeight: CGFloat = 112
+    /// Tight, like the call banner of FaceTime: 14 above and under the avatar and the three lines.
+    static let cardHeight: CGFloat = 78
+    /// Nested in the height of the card, which is much lower than the other floating cards.
+    static let cardRadius: CGFloat = 22
     /// Room around the card for its shadow, the same as the other floating cards (`FloatingCard`): a shadow that reaches past the edge of
     /// a window is cut off in a straight line.
     static let insets = EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28)
@@ -289,8 +292,11 @@ final class CallWindow {
             guard let panel = shown[card.id]?.panel, let host = panel.contentView?.subviews.first else { continue }
             lines.append("\(card.id) phase \(card.phase.kind) frame \(panel.frame) visible \(panel.isVisible)")
             let points: [(String, CGPoint)] = [
-                ("name", CGPoint(x: Self.insets.leading + 100, y: Self.insets.top + 30)),
-                ("right button", CGPoint(x: Self.insets.leading + Self.cardWidth - 14 - 20, y: Self.insets.top + Self.cardHeight / 2)),
+                ("name", CGPoint(x: Self.insets.leading + 100, y: Self.insets.top + 24)),
+                ("avatar", CGPoint(x: Self.insets.leading + 38, y: Self.insets.top + Self.cardHeight / 2)),
+                ("top edge", CGPoint(x: Self.insets.leading + 180, y: Self.insets.top + 6)),
+                ("between", CGPoint(x: Self.insets.leading + 190, y: Self.insets.top + Self.cardHeight / 2)),
+                ("right button", CGPoint(x: Self.insets.leading + Self.cardWidth - 16 - 22, y: Self.insets.top + Self.cardHeight / 2)),
                 ("margin", CGPoint(x: 4, y: 4)),
             ]
             for (label, point) in points {
@@ -349,7 +355,9 @@ private struct CallCardView: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            // The picture and the words let the mouse through to the drag area under them; otherwise they would swallow the drag.
             CallAvatar(name: card.name, size: 44)
+                .allowsHitTesting(false)
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: card.title)
                     .font(.headline)
@@ -362,20 +370,21 @@ private struct CallCardView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            .allowsHitTesting(false)
             Spacer(minLength: 8)
             buttons
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         .frame(width: CallWindow.cardWidth, height: CallWindow.cardHeight)
         // Under the words and the picture, so the card can be dragged by anything that is not a button.
         .background(WindowDragArea(onDragged: onDragged))
         // Plain glass takes on the desktop behind it, and a light desktop under a dark card (or the other way round) washes the words
         // out. A fill in the colour of the appearance under the words keeps them readable on any wallpaper.
         .background(
-            RoundedRectangle(cornerRadius: Metrics.panel, style: .continuous)
+            RoundedRectangle(cornerRadius: CallWindow.cardRadius, style: .continuous)
                 .fill(Color(nsColor: .windowBackgroundColor).opacity(colorScheme == .dark ? 0.7 : 0.62))
         )
-        .floatingGlass(in: RoundedRectangle(cornerRadius: Metrics.panel, style: .continuous))
+        .floatingGlass(in: RoundedRectangle(cornerRadius: CallWindow.cardRadius, style: .continuous))
         .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
     }
 
@@ -470,7 +479,7 @@ private struct RoundCallButton: View {
             Image(systemName: symbol)
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(.white)
-                .frame(width: 40, height: 40)
+                .frame(width: 44, height: 44)
                 .background(Circle().fill(color))
                 .contentShape(Circle())
         }
