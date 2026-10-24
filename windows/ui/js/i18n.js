@@ -313,6 +313,8 @@ let platform = "windows";
 /** "windows" or "linux": a few words differ, and a key can have a version for one system, written "key@linux". */
 export function setPlatform(name) {
   platform = name === "linux" ? "linux" : "windows";
+  // The style sheet picks the letter by it: see the font of Linux in app.css.
+  if (typeof document !== "undefined") document.documentElement.dataset.platform = platform;
 }
 
 /** Picks the language from the choice of the person, or else from Windows. */

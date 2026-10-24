@@ -1,3 +1,17 @@
+/* Linux has no letter of its own that every desktop shares: what system-ui gave there looked pressed down from the top. It gets the
+   letter of the Android app instead, rounded the same way, so the two read as one family. Windows keeps Segoe UI. */
+@font-face {
+  font-family: "Tandem Sans";
+  src: url("../fonts/gflex_variable.ttf") format("truetype");
+  font-weight: 100 1000;
+  font-display: swap;
+}
+:root[data-platform="linux"] {
+  --font: "Tandem Sans", system-ui, sans-serif;
+  --font-display: "Tandem Sans", system-ui, sans-serif;
+}
+:root[data-platform="linux"] * { font-variation-settings: "ROND" 100; }
+
 :root {
   --accent: #5b5bd6;
   --accent-soft: rgba(91, 91, 214, 0.14);

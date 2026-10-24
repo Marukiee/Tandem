@@ -13,6 +13,11 @@ const devices = empty ? [] : [
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 80, charging: true, powerSave: false }, network: { kind: "cellular", ssid: null, metered: true, roaming: false, signal: 3 }, hotspot: true, dnd: false } },
   { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view", "screen.extend.view"],
+    features: [
+      { id: "control", ready: false, name: "Control this Mac", why: "Accessibility is off for Tandem on this Mac", page: "accessibility" },
+      { id: "screen", ready: true, name: "See this Mac's screen", why: "", page: null },
+      { id: "media.control", ready: false, name: "Media buttons for Spotify and Music", why: "Tandem has not been allowed to control Spotify yet", page: "automation" },
+    ],
     clipboard: true, autoAccept: false, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 64, charging: false, powerSave: false }, network: { kind: "wifi", ssid: "Thuis", metered: false, roaming: false } } },
   { id: "old", name: "Xperia test", platform: "android", online: false, route: null, rttMs: null, appVersion: "0.1.20", caps: [],
@@ -110,6 +115,11 @@ export async function call(command, args) {
   switch (command) {
     case "get_state": return state;
     case "get_players": return { players, art };
+    case "features_local": return [
+      { id: "control", ready: true, name: "Control this computer", why: "", page: null },
+      { id: "microphone", ready: false, name: "Find the side by sound", why: "This computer has no microphone that Tandem can use", page: "sound" },
+    ];
+    case "features_open_here": case "features_open_on": return null;
     case "live_start": return 1;
     case "display_start": case "display_stop": return null;
     case "display_state": return [];

@@ -275,8 +275,13 @@ fn put_in_place(new: &Path) -> Result<(), String> {
     std::fs::set_permissions(&beside, std::fs::Permissions::from_mode(0o755)).map_err(|e| e.to_string())?;
     std::fs::rename(&beside, &target).map_err(|e| format!("the new version cannot replace the old one: {e}"))?;
     // Started on its own, so it outlives this program, and with the environment of a desktop, not the one this AppImage made for itself.
+    // Only once this program is gone: started next to it, the new one found it running and handed over to it (one Tandem at a time),
+    // and then this one quit, which left none. The window opens, since the person just pressed the button in it.
     let mut restart = Command::new("setsid");
-    restart.arg(&target).arg("--minimized");
+    restart
+        .args(["sh", "-c", r#"pid=$1; shift; while kill -0 "$pid" 2>/dev/null; do sleep 0.2; done; exec "$@""#, "tandem-restart"])
+        .arg(std::process::id().to_string())
+        .arg(&target);
     tandem_winsys::system_env(&mut restart);
     restart.spawn().map(|_| ()).map_err(|e| format!("the new version could not start: {e}"))
 }

@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.1.95",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Linux restarts after an update",
+      "new": [
+        "Update and restart on Linux opens the new version again",
+        "The Linux app uses the letter of the Android app"
+      ]
+    },
+    "nl": {
+      "title": "Linux start opnieuw na een update",
+      "new": [
+        "Bijwerken en herstarten op Linux opent de nieuwe versie weer",
+        "De Linux-app gebruikt de letter van de Android-app"
+      ]
+    }
+  },
+  {
     "version": "0.1.94",
     "date": "2026-10-24",
     "en": {
