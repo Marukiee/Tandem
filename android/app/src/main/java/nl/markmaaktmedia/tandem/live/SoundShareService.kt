@@ -12,7 +12,10 @@ import android.media.AudioRecord
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.IBinder
+import android.os.Process
+import android.os.SystemClock
 import android.util.Log
+import android.widget.Toast
 import androidx.core.app.ServiceCompat
 import androidx.core.content.IntentCompat
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,18 +27,26 @@ import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 
 /**
- * Sends what this phone plays to a computer, which plays it there. The sound is taken from the apps through the system's
+ * Sends what this phone plays to another device, which plays it there. The sound is taken from the apps through the system's
  * playback capture, which needs the permission to record the screen (the system's own question, every time) and the
  * permission to record audio. Apps that do not allow their sound to be captured stay silent, and that is theirs to decide.
+ * It goes to one device at a time: a new one takes the place of the last.
  *
  * The sound goes as it is: 16 bit, 48 kHz, two channels, in packets that fit one datagram, the way the computer's own
- * sound goes to the phone.
+ * sound goes to the phone. It keeps playing on the phone too: the capture is a copy of what plays, and the system gives an
+ * app no way to silence the original.
  */
 class SoundShareService : Service() {
-    private var projection: MediaProjection? = null
-    private var thread: Thread? = null
+    /** One capture for one device. A new one replaces it, so what ends an old one must not end the service. */
+    private class Sending(val peer: String, val projection: MediaProjection) {
+        val since = SystemClock.elapsedRealtime()
+        @Volatile var running = true
+        /** The device said no: it is not sent a stop of its own. */
+        @Volatile var refused = false
+        var thread: Thread? = null
+    }
 
-    @Volatile private var running = false
+    @Volatile private var sending: Sending? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -43,8 +54,22 @@ class SoundShareService : Service() {
         when (intent?.action) {
             ACTION_STOP -> finish()
             ACTION_BEGIN -> begin(intent)
+            ACTION_REFUSED -> refused(intent.getStringExtra(EXTRA_PEER).orEmpty())
         }
         return START_NOT_STICKY
+    }
+
+    /**
+     * The device the sound goes to sent a stop: it does not play the sound of other devices (right after the start), or its
+     * person stopped it there. The sending ends and the person here is told which.
+     */
+    private fun refused(from: String) {
+        val s = sending?.takeIf { it.peer == from } ?: return
+        s.refused = true
+        val name = graph.host.device(from)?.name ?: getString(R.string.feature_device_fallback)
+        val early = SystemClock.elapsedRealtime() - s.since < 3_000
+        Toast.makeText(this, getString(if (early) R.string.output_refused else R.string.output_stopped_there, name), Toast.LENGTH_LONG).show()
+        finish()
     }
 
     private fun notification(peerName: String) = LiveNotifications.active(
@@ -58,21 +83,27 @@ class SoundShareService : Service() {
 
     private fun begin(intent: Intent) {
         val peer = intent.getStringExtra(EXTRA_PEER).orEmpty()
-        if (running || peer.isEmpty()) return
-        val name = graph.host.device(peer)?.name ?: getString(R.string.live_mac_fallback)
+        if (peer.isEmpty()) return
+        val name = graph.host.device(peer)?.name ?: getString(R.string.feature_device_fallback)
         try {
             ServiceCompat.startForeground(this, LiveNotifications.ACTIVE_ID + 1, notification(name), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
         } catch (e: Exception) {
             Log.w(TAG, "could not go to the foreground", e)
             return finish()
         }
+        // The sound went somewhere else until now: that device is told it ends, and this one takes its place. Let go of first, so
+        // what ends the old capture does not end the service.
+        sending?.let { end(it) }
+        sending = null
         val code = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
         val data = IntentCompat.getParcelableExtra(intent, EXTRA_RESULT_DATA, Intent::class.java)
         val granted = data?.let { runCatching { getSystemService(MediaProjectionManager::class.java).getMediaProjection(code, it) }.getOrNull() }
         if (granted == null) return finish()
-        projection = granted
+        val s = Sending(peer, granted)
         granted.registerCallback(object : MediaProjection.Callback() {
-            override fun onStop() = finish()
+            override fun onStop() {
+                if (sending === s) finish()
+            }
         }, null)
 
         val record = try {
@@ -80,6 +111,8 @@ class SoundShareService : Service() {
                 .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
                 .addMatchingUsage(AudioAttributes.USAGE_GAME)
                 .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
+                // What Tandem plays itself is the sound of other devices: sent on, it could go back to where it came from.
+                .excludeUid(Process.myUid())
                 .build()
             val format = AudioFormat.Builder()
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(RATE).setChannelMask(AudioFormat.CHANNEL_IN_STEREO).build()
@@ -89,30 +122,34 @@ class SoundShareService : Service() {
         } catch (e: Exception) {
             // No permission to record audio, or the system refused the capture.
             Log.w(TAG, "could not capture the sound", e)
+            runCatching { granted.stop() }
             return finish()
         }
 
-        running = true
+        sending = s
         _active.value = peer
-        thread = Thread({ pump(record, peer) }, "tandem-sound-out").apply {
+        s.thread = Thread({ pump(s, record) }, "tandem-sound-out").apply {
             priority = Thread.MAX_PRIORITY
             start()
         }
     }
 
     /** Reads what the apps play and sends it, in whole sample frames that fit one datagram. */
-    private fun pump(record: AudioRecord, peer: String) {
+    private fun pump(s: Sending, record: AudioRecord) {
         val engine = graph.host.engine
-        if (engine == null) return finish()
+        if (engine == null) {
+            if (sending === s) finish()
+            return
+        }
         try {
-            runBlocking { engine.sendAudioStart(peer, STREAM.toUByte(), RATE.toUInt(), 2.toUByte()) }
-            val limit = engine.audioPayloadLimit(peer).toInt() / FRAME * FRAME
+            runBlocking { engine.sendAudioStart(s.peer, STREAM.toUByte(), RATE.toUInt(), 2.toUByte()) }
+            val limit = engine.audioPayloadLimit(s.peer).toInt() / FRAME * FRAME
             val size = (if (limit >= 400) limit else DEFAULT_PACKET).coerceAtMost(MAX_PACKET)
             val buffer = ByteArray(size)
             var seq = 0u
             var failures = 0
             record.startRecording()
-            while (running) {
+            while (s.running) {
                 val read = record.read(buffer, 0, size)
                 if (read <= 0) {
                     if (read < 0) break
@@ -120,7 +157,7 @@ class SoundShareService : Service() {
                 }
                 val bytes = if (read == size) buffer else buffer.copyOf(read / FRAME * FRAME)
                 try {
-                    engine.sendAudio(peer, STREAM.toUByte(), seq++, bytes.copyOf())
+                    engine.sendAudio(s.peer, STREAM.toUByte(), seq++, bytes.copyOf())
                     failures = 0
                 } catch (e: Exception) {
                     // The link is gone for a moment: a few lost packets are a gap, a long failure is the end.
@@ -132,22 +169,27 @@ class SoundShareService : Service() {
         } finally {
             runCatching { record.stop() }
             runCatching { record.release() }
-            runCatching { runBlocking { engine.sendAudioStop(peer, STREAM.toUByte()) } }
-            finish()
+            if (!s.refused) runCatching { runBlocking { engine.sendAudioStop(s.peer, STREAM.toUByte()) } }
+            if (sending === s) finish()
         }
     }
 
+    private fun end(s: Sending) {
+        s.running = false
+        runCatching { s.projection.stop() }
+    }
+
     private fun finish() {
-        running = false
+        sending?.let { end(it) }
+        sending = null
         _active.value = null
-        runCatching { projection?.stop() }
-        projection = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
-        running = false
+        sending?.let { end(it) }
+        sending = null
         _active.value = null
         super.onDestroy()
     }
@@ -156,11 +198,12 @@ class SoundShareService : Service() {
         private const val TAG = "SoundShare"
         const val ACTION_BEGIN = "nl.markmaaktmedia.tandem.SOUND_BEGIN"
         const val ACTION_STOP = "nl.markmaaktmedia.tandem.SOUND_STOP"
+        private const val ACTION_REFUSED = "nl.markmaaktmedia.tandem.SOUND_REFUSED"
         const val EXTRA_PEER = "peer"
         const val EXTRA_RESULT_CODE = "resultCode"
         const val EXTRA_RESULT_DATA = "resultData"
 
-        /** The stream number of this phone's sound, apart from the one the computer's sound uses. */
+        /** The stream number of this phone's sound, apart from the ones the computer's sound uses. */
         const val STREAM = 9
         private const val RATE = 48_000
         private const val FRAME = 4
@@ -174,6 +217,13 @@ class SoundShareService : Service() {
 
         fun stop(context: Context) {
             if (_active.value != null) context.startService(Intent(context, SoundShareService::class.java).setAction(ACTION_STOP))
+        }
+
+        /** A stop of this phone's stream came from [from]: when the sound goes there, that is a no. */
+        fun refused(context: Context, from: String) {
+            if (_active.value == from) {
+                context.startService(Intent(context, SoundShareService::class.java).setAction(ACTION_REFUSED).putExtra(EXTRA_PEER, from))
+            }
         }
     }
 }

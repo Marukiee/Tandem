@@ -575,7 +575,7 @@ final class EngineModel {
             // A stop right after the start is a no: the device does not allow it. Later it is the person
             // pressing Stop there, or another app taking the speaker.
             if Date().timeIntervalSince(speakerStartedAt) < 3 {
-                let text = phone ? String(localized: "Your phone does not allow this. Turn on Speaker for your Mac in the settings of Tandem on your phone.")
+                let text = phone ? String(localized: "Your phone does not allow this. Turn on Speaker for your other devices in the settings of Tandem on your phone.")
                     : String(localized: "\(name) does not play sound from other devices. Turn it on in Tandem there.")
                 stopSpeaker(tellPhone: false, state: .failed(text))
                 // A phone says it on the row of its page; a computer has no such row.

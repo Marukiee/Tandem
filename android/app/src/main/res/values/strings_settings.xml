@@ -107,7 +107,7 @@
     <string name="settings_kw_pad_scroll">scroll speed, scrolling, two fingers, faster, slower</string>
     <string name="settings_kw_pad_hold">drag, hold, press and hold, delay, long press, move files, left button</string>
     <string name="settings_audio_delay">Sound delay</string>
-    <string name="settings_audio_delay_sub">Low plays closer to live and can stutter on a poor connection. Smooth waits a little longer to stay steady. It applies the next time your Mac plays through this phone.</string>
+    <string name="settings_audio_delay_sub">Low plays closer to live and can stutter on a poor connection. Smooth waits a little longer to stay steady. It applies the next time a device plays through this phone.</string>
     <string name="audio_delay_low">Low</string>
     <string name="audio_delay_normal">Normal</string>
     <string name="audio_delay_smooth">Smooth</string>

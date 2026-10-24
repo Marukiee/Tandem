@@ -395,13 +395,13 @@
     <string name="media_next">Next</string>
     <string name="media_play">Play</string>
     <string name="media_pause">Pause</string>
-    <string name="settings_audio_output">Speaker for your Mac</string>
-    <string name="settings_audio_output_sub">Your Mac can play its sound through this phone. A notification shows while it does, with a button to stop</string>
+    <string name="settings_audio_output">Speaker for your other devices</string>
+    <string name="settings_audio_output_sub">Your other devices can play their sound through this phone, several at once. A notification shows while they do, with a button to stop</string>
     <string name="audio_playing_title">Playing sound from %1$s</string>
-    <string name="audio_playing_text">Your Mac is using this phone as its speaker</string>
+    <string name="audio_playing_text">This phone is their speaker now</string>
     <string name="audio_stop">Stop</string>
     <string name="channel_audio">Sound from your Mac</string>
-    <string name="channel_audio_desc">Shown while your Mac plays its sound through this phone</string>
+    <string name="channel_audio_desc">Shown while another device plays its sound through this phone</string>
     <string name="audio_test_name">the test tone</string>
 
     <!-- File access: what other devices may do with the files of this phone -->

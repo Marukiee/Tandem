@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="output_only_some_apps">Het geluid van deze telefoon speelt op %1$s. Alleen apps die het toestaan zijn daar te horen, en hier speelt het ook gewoon door</string>
+    <string name="output_consent_needed">Voor het sturen van het geluid moet je de vraag over schermopname met Starten beantwoorden</string>
+    <string name="output_record_needed">Voor het sturen van het geluid is toestemming nodig om audio op te nemen</string>
+    <string name="output_loop">Het geluid van %1$s speelt nu hier. Stop dat eerst, anders gaat het geluid heen en weer</string>
+    <string name="output_refused">%1$s speelt geen geluid van andere apparaten af. Zet het daar aan in Tandem</string>
+    <string name="output_stopped_there">%1$s is gestopt met het geluid afspelen</string>
+</resources>
