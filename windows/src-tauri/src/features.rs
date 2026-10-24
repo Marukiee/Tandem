@@ -52,6 +52,17 @@ pub fn current(app: &AppHandle) -> Vec<TandemFeature> {
         t("This computer has no microphone that Tandem can use", "Deze computer heeft geen microfoon die Tandem kan gebruiken"),
         Some("sound"),
     ));
+    list.push(feature(
+        "wifi.share",
+        crate::wifi::available(),
+        t("Share this computer's Wi-Fi", "De wifi van deze computer delen"),
+        if cfg!(windows) {
+            t("This PC has no Wi-Fi", "Deze pc heeft geen wifi")
+        } else {
+            t("This computer has no Wi-Fi that NetworkManager runs", "Deze computer heeft geen wifi die NetworkManager regelt")
+        },
+        None,
+    ));
     if cfg!(target_os = "linux") {
         list.push(feature(
             "bluetooth",

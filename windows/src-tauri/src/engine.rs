@@ -82,6 +82,7 @@ pub fn start(app: AppHandle) {
                 *state.engine.write().unwrap() = Some(engine);
                 crate::bluetooth::start(&app);
                 crate::features::start(&app);
+                crate::wifi::start(&app);
                 events::refresh_devices(&app);
                 let _ = app.emit("engine-ready", ());
             }
@@ -133,6 +134,11 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
     // Takes messages over Bluetooth from a computer that has no network to this one (the Linux app, where BlueZ is).
     if settings::get(app).ble_messages && crate::bluetooth::available() {
         caps.push("ble.link".into());
+    }
+    // Says which Wi-Fi it is on and hands over its password when its person says yes, and joins one another computer hands over.
+    if crate::wifi::available() {
+        caps.push("wifi.share".into());
+        caps.push("wifi.join".into());
     }
     #[cfg(feature = "screen-host")]
     if settings::get(app).screen_host && crate::host::available() {

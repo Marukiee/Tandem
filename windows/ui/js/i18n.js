@@ -154,6 +154,7 @@ const en = {
   input_wayland: "Needs permission this session does not give: under Wayland an app cannot move the pointer or press keys. Log in with an X11 session instead (the gear at the login screen).",
   input_no_display: "No screen was found to send the pointer and keys to.",
   mac: "Mac", phone: "Phone", pc: "PC", unknown: "Device", quit: "Quit",
+  wifi_share: "Share Wi-Fi", wifi_share_tip: "Send the name and password of this computer's Wi-Fi to {0}",
 };
 
 const nl = {
@@ -310,6 +311,7 @@ const nl = {
   input_wayland: "Heeft een toestemming nodig die deze sessie niet geeft: onder Wayland mag een app de muis niet bewegen of toetsen indrukken. Log in met een X11-sessie (het tandwiel op het inlogscherm).",
   input_no_display: "Er is geen scherm gevonden om de muis en toetsen naartoe te sturen.",
   mac: "Mac", phone: "Telefoon", pc: "Pc", unknown: "Apparaat", quit: "Afsluiten",
+  wifi_share: "Wifi delen", wifi_share_tip: "Stuur de naam en het wachtwoord van de wifi van deze computer naar {0}",
 };
 
 const tables = { en, nl };

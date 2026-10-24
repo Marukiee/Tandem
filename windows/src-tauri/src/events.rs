@@ -227,6 +227,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 }
             }
         }
+        TandemEvent::Wifi { from, msg } => crate::wifi::handle(app, from, msg),
         _ => {}
     }
 }

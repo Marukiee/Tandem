@@ -49,6 +49,7 @@ mod state;
 mod tailscale;
 mod tray;
 mod update;
+mod wifi;
 #[cfg(feature = "native-video")]
 mod video;
 
@@ -247,6 +248,7 @@ pub fn run() {
             ssh::ssh_resize,
             ssh::ssh_close,
             ssh::ssh_info,
+            wifi::wifi_share,
         ])
         .build(tauri::generate_context!())
         .expect("Tandem could not start")

@@ -79,6 +79,8 @@ pub enum Seen {
 }
 
 pub mod hid;
+/// The Wi-Fi this computer is on, its password, and joining one that another device handed over.
+pub mod wifi;
 #[cfg(windows)]
 mod imp;
 #[cfg(target_os = "linux")]

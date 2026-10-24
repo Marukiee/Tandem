@@ -228,6 +228,8 @@ export function DevicePage({ device }) {
 
     <div class="actions">
         <button class="btn" disabled=${!device.online} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
+        ${hasCap("wifi.join") && html`<button class="btn" disabled=${!device.online && !device.ble} title=${t("wifi_share_tip", device.name)} onClick=${() => call("wifi_share", { id: device.id }).then(say).catch(failed)}>
+          <${Icon} name="wifi" size=${17} />${t("wifi_share")}</button>`}
         ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
           <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}
         ${(isComputer || device.platform === "android") && html`${device.platform === "android" && html`<button class="btn" disabled=${!device.online || !hasCap("screen.host")} title=${hasCap("screen.host") ? "" : t("live_update_phone")} onClick=${() => show("screen")}>
