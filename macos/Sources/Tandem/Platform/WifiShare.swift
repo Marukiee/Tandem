@@ -95,16 +95,26 @@ final class WifiShare: NSObject {
         EngineModel.shared.device(id)?.name ?? String(localized: "Another device")
     }
 
-    /// A device that is not on this Mac's network asks for its password. The person here decides, like on an iPhone.
+    /// A device that is not on this Mac's network asks for its password. The person here decides, like on an iPhone. The network is
+    /// read again first: a change that came without an event would otherwise hand over the wrong one, or refuse the right one.
     private func asked(by id: String, for ssid: String) {
-        guard let network = current, network.ssid == ssid else {
-            Task { await reply(id, .refuse(ssid: ssid, why: .notOnIt)) }
-            return
+        Task { @MainActor in
+            let network = await Task.detached { Self.read() }.value
+            current = network
+            guard let network, network.ssid == ssid else {
+                await reply(id, .refuse(ssid: ssid, why: .notOnIt))
+                return
+            }
+            guard network.security.shareable else {
+                await reply(id, .refuse(ssid: ssid, why: .cannotShare))
+                return
+            }
+            question(network, for: id)
         }
-        guard network.security.shareable else {
-            Task { await reply(id, .refuse(ssid: ssid, why: .cannotShare)) }
-            return
-        }
+    }
+
+    private func question(_ network: TandemWifiNetwork, for id: String) {
+        let ssid = network.ssid
         guard asking.insert(id).inserted else { return }
         let who = name(of: id)
         var answered = false
