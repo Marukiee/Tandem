@@ -1016,3 +1016,5 @@
 "Local Network is off for Tandem on this Mac. Turn it off and on again." = "Lokaal netwerk staat uit voor Tandem op deze Mac. Zet het uit en weer aan.";
 "Tandem cannot reach your devices" = "Tandem kan je apparaten niet bereiken";
 "macOS has turned off Local Network for Tandem, which happens after some updates. Turn Tandem off and on again under Privacy and Security, Local Network." = "macOS heeft Lokaal netwerk voor Tandem uitgezet, dat gebeurt na sommige updates. Zet Tandem uit en weer aan onder Privacy en beveiliging, Lokaal netwerk.";
+"Needs a setting there" = "Daar is een instelling nodig";
+"Open there" = "Daar openen";

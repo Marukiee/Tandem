@@ -119,8 +119,11 @@ private fun MainNavigation() {
     ScreenSoundQuestion()
     val sharingFlag = LocalContext.current.graph.openSharing
     val openSharing by sharingFlag.collectAsState()
+    val settingsState = androidx.lifecycle.viewmodel.compose.viewModel<nl.markmaaktmedia.tandem.ui.screens.settings.SettingsViewModel>()
     LaunchedEffect(openSharing) {
         if (openSharing) {
+            // Straight to the switch for a computer's mouse, lit up the way a search result is, and not only to the page it is on.
+            settingsState.focus.request(nl.markmaaktmedia.tandem.ui.screens.settings.FocusKeys.PointerIn)
             nav.push(Route.SettingsPage(nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId.Sharing))
             sharingFlag.value = false
         }

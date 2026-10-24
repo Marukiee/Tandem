@@ -62,4 +62,5 @@
     <string name="tile_pointer_label">Computer mouse</string>
     <string name="feature_pointer">Use a computer\'s mouse on this phone</string>
     <string name="feature_pointer_off">It is switched off in Tandem on this phone</string>
+    <string name="features_open_there">Open there</string>
 </resources>

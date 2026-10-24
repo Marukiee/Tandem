@@ -45,7 +45,7 @@ struct FeaturesSettings: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(ordered(device.features), id: \.id) { feature in
-                            FeatureRow(feature: feature, action: String(localized: "Open on \(device.name)"), enabled: device.online || device.ble) {
+                            FeatureRow(feature: feature, action: String(localized: "Open there"), enabled: device.online || device.ble) {
                                 model.openSettings(on: device.id, page: $0)
                             }
                         }
@@ -98,7 +98,8 @@ private struct DeviceHeading: View {
     }
 }
 
-/// One feature: a green tick when it works, or what is missing and a button to the place where it is turned on.
+/// One feature, in the look of the rows of a device's page: its symbol in a circle (green when it works, orange when something is
+/// missing), what it is, why it does not work, and a button to the place where it is turned on.
 struct FeatureRow: View {
     let feature: TandemFeature
     let action: String
@@ -106,29 +107,52 @@ struct FeatureRow: View {
     let open: (String) -> Void
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: feature.ready ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                .foregroundStyle(feature.ready ? .green : .orange)
+        let tint: Color = feature.ready ? .green : .orange
+        HStack(spacing: 14) {
+            Image(systemName: feature.ready ? "checkmark" : Self.symbol(feature.id))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 30, height: 30)
+                .background(tint.opacity(0.14), in: .circle)
             VStack(alignment: .leading, spacing: 2) {
-                Text(feature.name).font(.callout.weight(feature.ready ? .regular : .semibold))
+                Text(verbatim: feature.name).font(.callout.weight(.medium))
                 if !feature.ready, !feature.why.isEmpty {
-                    Text(feature.why).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(verbatim: feature.why).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Spacer(minLength: 8)
+            Spacer(minLength: 12)
             if !feature.ready, let page = feature.page {
                 Button(action) { open(page) }
                     .buttonStyle(.tandemGlassProminent)
-                    .tint(Palette.indigo)
                     .controlSize(.small)
                     .disabled(!enabled)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
+    }
+
+    /// What each feature looks like, so a row says at a glance what it is about.
+    static func symbol(_ id: String) -> String {
+        switch id {
+        case "control": "cursorarrow.click.2"
+        case "pointer": "cursorarrow.motionlines"
+        case "screen": "display"
+        case "media", "media.control": "playpause.fill"
+        case "notifications", "alerts": "bell.badge"
+        case "microphone": "mic"
+        case "bluetooth": "dot.radiowaves.left.and.right"
+        case "network": "wifi"
+        case "calls": "phone"
+        case "files": "folder"
+        case "camera": "camera"
+        case "background": "battery.75percent"
+        default: "exclamationmark"
+        }
     }
 }
 
-/// On a device's page: what does not work there now, and the button that opens the setting on that device. Nothing when all works.
+/// On a device's page: what does not work there now, in a card like the others of the page, with the button that opens the setting on
+/// that device. Nothing when all works.
 struct FeatureNotice: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
@@ -136,14 +160,17 @@ struct FeatureNotice: View {
     var body: some View {
         let missing = device.online ? device.features.filter { !$0.ready } : []
         if !missing.isEmpty {
-            Card(radius: Metrics.card, padding: 14) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label("Not everything works on \(device.name)", systemImage: "exclamationmark.triangle.fill")
-                        .font(.callout.weight(.semibold))
-                        .foregroundStyle(.orange)
-                    ForEach(missing, id: \.id) { feature in
-                        FeatureRow(feature: feature, action: String(localized: "Open on \(device.name)")) {
-                            model.openSettings(on: device.id, page: $0)
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Needs a setting there").font(.headline).padding(.horizontal, 6)
+                Card(radius: Metrics.card, padding: 6) {
+                    VStack(spacing: 0) {
+                        ForEach(missing, id: \.id) { feature in
+                            FeatureRow(feature: feature, action: String(localized: "Open there")) {
+                                model.openSettings(on: device.id, page: $0)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .hoverHighlight(radius: Metrics.inner(Metrics.card, inset: 6))
                         }
                     }
                 }

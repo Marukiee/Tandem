@@ -59,4 +59,5 @@
     <string name="tile_pointer_label">Muis van computer</string>
     <string name="feature_pointer">De muis van een computer op deze telefoon</string>
     <string name="feature_pointer_off">Het staat uit in Tandem op deze telefoon</string>
+    <string name="features_open_there">Daar openen</string>
 </resources>

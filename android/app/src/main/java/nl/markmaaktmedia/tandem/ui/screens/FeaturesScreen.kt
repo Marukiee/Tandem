@@ -93,7 +93,7 @@ fun FeaturesScreen(onBack: () -> Unit) {
                 }
             } else {
                 Box(Modifier.alpha(if (device.online) 1f else 0.6f)) {
-                    FeatureGroup(ordered(device.features), stringResource(R.string.features_open_on, device.name), enabled = device.online || device.ble) { page ->
+                    FeatureGroup(ordered(device.features), stringResource(R.string.features_open_there), enabled = device.online || device.ble) { page ->
                         openOn(context, device, page)
                     }
                 }
@@ -110,7 +110,7 @@ fun FeatureNotice(device: TandemDevice, modifier: Modifier = Modifier) {
     if (missing.isEmpty()) return
     Column(modifier) {
         SectionHeader(stringResource(R.string.features_notice, device.name), top = 12.dp, bottom = 10.dp)
-        FeatureGroup(missing, stringResource(R.string.features_open_on, device.name)) { page -> openOn(context, device, page) }
+        FeatureGroup(missing, stringResource(R.string.features_open_there)) { page -> openOn(context, device, page) }
     }
 }
 
@@ -188,7 +188,7 @@ fun FeatureFix(device: TandemDevice, feature: TandemFeature, modifier: Modifier 
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(feature.why.ifEmpty { feature.name }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
         val page = feature.page
-        if (page != null) OpenPill(stringResource(R.string.features_open_on, device.name), device.online || device.ble) { openOn(context, device, page) }
+        if (page != null) OpenPill(stringResource(R.string.features_open_there), device.online || device.ble) { openOn(context, device, page) }
     }
 }
 
