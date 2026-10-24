@@ -131,9 +131,10 @@ fun NowPlayingSection(device: TandemDevice) {
 
     AnimatedVisibility(
         visibleState = open,
-        enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()) +
+        // From the top: the card grows downward from under the chips, the way it reads, and shrinks back up to them.
+        enter = expandVertically(TandemMotion.sizeSpring(), expandFrom = Alignment.Top) + fadeIn(TandemMotion.fadeSpec()) +
             slideInVertically(TandemMotion.spatial()) { -it / 6 },
-        exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()) +
+        exit = shrinkVertically(TandemMotion.sizeSpring(), shrinkTowards = Alignment.Top) + fadeOut(TandemMotion.fadeSpec()) +
             slideOutVertically(TandemMotion.spatial()) { -it / 6 },
     ) {
         // The gap to the chips is inside, so it opens and closes with the player instead of snapping. The sides are 4dp
