@@ -247,12 +247,16 @@ impl Inner {
 
         let reader = {
             let this = self.clone();
+            let serial = session.serial;
             async move {
                 loop {
                     match proto::read_frame(&mut recv, MAX_CONTROL_FRAME).await {
                         Ok(Some(frame)) => match decode_msg(&frame) {
                             Ok(Msg::Unknown) => {}
                             Ok(Msg::Bye { .. }) => break,
+                            // A connection that lost to another one is still read for a moment, but how the other device is now came again on
+                            // the one that stays: read late, the old state would overwrite the new.
+                            Ok(msg) if is_state(&msg) && !this.is_current(id, serial) => {}
                             Ok(msg) => this.handle_msg(id, msg).await,
                             Err(e) => {
                                 warn!(peer = %id, "bad frame: {e}");
@@ -336,6 +340,10 @@ impl Inner {
         }
         conn.close(0u32.into(), b"bye");
         self.session_ended(&session);
+    }
+
+    fn is_current(&self, id: DeviceId, serial: u64) -> bool {
+        self.peers.lock().unwrap().get(&id).and_then(|p| p.session.as_ref()).is_some_and(|s| s.serial == serial)
     }
 
     fn session_ended(self: &Arc<Self>, session: &Arc<Session>) {
@@ -583,6 +591,11 @@ mod tests {
 /// A connection that lost to another one between the same two devices (both dialed at once). Closing it at once lost what was
 /// already on its way on it, a message sent the moment the devices met; so it is still read for a moment, then closed. Both ends
 /// make the same choice, so the other end stops sending on it too.
+/// How a device is now, said again in full by every connection when it starts.
+fn is_state(msg: &Msg) -> bool {
+    matches!(msg, Msg::Status(_) | Msg::Focus(_) | Msg::Wifi(crate::wifi::WifiMsg::Network { .. }))
+}
+
 fn retire(conn: quinn::Connection) {
     tokio::spawn(async move {
         tokio::time::sleep(Duration::from_secs(2)).await;

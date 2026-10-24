@@ -223,13 +223,11 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
     proberen en de muis laten doorgaan zodra hij er weer is, zonder meldingen.
   - Onderzocht: de Mac wakker maken of gebruiken met de klep dicht (in de tas). Uitkomst: in een tas op batterij lukt wakker maken niet
     betrouwbaar (`womp` staat op batterij uit, na standby slaapt hij diep). Thuis aan de lader met een Apple TV of HomePod als Sleep Proxy
-    wel. Klep dicht en wakker blijven kan alleen met beheerdersrechten (`pmset disablesleep`), riskant door warmte in een tas. Eerst te
-    bouwen: een kaartje op de Mac dat laat zien wat aan staat voor wakker maken (lader, Wake for network access, Sleep Proxy). Klep dicht
-    wakker houden pas als laatste, alleen aan te zetten, met timer en uit bij warmte of lage batterij.
-  - Onderzocht: NFC zoals NameDrop. Android Beam is weg sinds Android 14, iPhone laat apps geen NFC delen. Kan wel: twee Android-telefoons
-    met Tandem tegen elkaar (een knipper via HCE en reader mode, de rest gaat over de gewone verbinding), 3 tot 5 dagen werk. Macs en laptops
-    hebben geen NFC; een NFC-sticker van een euro op de laptop kan koppelen of iets starten (1 tot 2 dagen). Google werkt mogelijk zelf aan
-    Tap to share in Android 17, dus eerst de sticker en wachten met telefoon tegen telefoon.
+    wel. Klep dicht en wakker blijven kan alleen met beheerdersrechten (`pmset disablesleep`), riskant door warmte in een tas. Mark wil
+    geen kaartje over wakker maken (2026-10-24). Klep dicht wakker houden pas als laatste, alleen aan te zetten, met timer en uit bij warmte
+    of lage batterij.
+  - Onderzocht: NFC zoals NameDrop. Android Beam is weg sinds Android 14, iPhone laat apps geen NFC delen. Kan alleen tussen twee
+    Android-telefoons met Tandem of met een NFC-sticker op een laptop. Mark wil allebei niet (2026-10-24), van de lijst.
   - Onderzocht: Android laten doen alsof hij een iPhone is (voor wakker maken, NameDrop, AirDrop). Niet haalbaar: Continuity gebruikt
     sleutels die via iCloud tussen apparaten van hetzelfde account gaan, AirDrop heeft AWDL nodig (een wifi-modus die Android niet
     heeft), en Apple blokkeerde Beeper Mini binnen twee dagen. Tandem doet klembord, bestanden en meldingen al met een eigen protocol.
