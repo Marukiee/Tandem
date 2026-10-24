@@ -31,13 +31,8 @@ final class NumberChooser {
         }, cancel: { [weak self] in self?.close() }))
         panel.contentView = view
         panel.setContentSize(view.fittingSize)
-        if let screen = NSScreen.main {
-            let area = screen.visibleFrame
-            let top = ScreenPanels.shared.lowestEdge.map { $0 + 30 } ?? area.maxY - 10
-            panel.setFrameOrigin(NSPoint(x: area.midX - panel.frame.width / 2, y: top - panel.frame.height))
-        }
         // Key without bringing Tandem forward, so Escape and Return reach it.
-        panel.makeKeyAndOrderFront(nil)
+        FloatingStack.shared.show(panel, key: true)
         self.panel = panel
         Task { @MainActor [weak self, weak panel] in
             try? await Task.sleep(for: .seconds(60))
@@ -46,8 +41,10 @@ final class NumberChooser {
     }
 
     func close() {
-        panel?.orderOut(nil)
-        panel = nil
+        guard let panel else { return }
+        FloatingStack.shared.remove(panel)
+        panel.orderOut(nil)
+        self.panel = nil
     }
 }
 
@@ -74,6 +71,8 @@ private struct NumberChooserView: View {
                     .keyboardShortcut(.cancelAction)
             }
         }
+        // The panel is key for Return and Escape; a blue ring of focus around a row would look like a mistake.
+        .focusEffectDisabled()
         .padding(18)
         .frame(minWidth: 300, alignment: .leading)
         .fixedSize()
@@ -94,6 +93,7 @@ struct NumberRow: View {
     var suggested = false
     let action: () -> Void
     @LocalState private var hovering = false
+    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         Button(action: action) {
@@ -110,7 +110,8 @@ struct NumberRow: View {
                 Spacer(minLength: 0)
                 Text(verbatim: number)
                     .font(.body.monospacedDigit().weight(.medium))
-                    .foregroundStyle(suggested ? Palette.indigo : .primary)
+                    // The deep indigo is too dark to read on dark glass.
+                    .foregroundStyle(suggested ? (scheme == .dark ? Palette.indigoLight : Palette.indigo) : .primary)
                     .lineLimit(1)
                     .fixedSize()
             }
@@ -120,12 +121,14 @@ struct NumberRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
         .onHover { hovering = $0 }
         .animation(.tandemFade, value: hovering)
     }
 
     private var fill: Color {
-        if hovering { return suggested ? Palette.indigo.opacity(0.18) : Color.primary.opacity(hoverOpacity * 1.5) }
-        return suggested ? Palette.indigo.opacity(0.1) : .clear
+        let tint = scheme == .dark ? 0.22 : 0.1
+        if hovering { return suggested ? Palette.indigo.opacity(tint + 0.08) : Color.primary.opacity(hoverOpacity * 1.5) }
+        return suggested ? Palette.indigo.opacity(tint) : .clear
     }
 }
