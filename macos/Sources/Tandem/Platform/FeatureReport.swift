@@ -70,6 +70,8 @@ enum FeatureReport {
         let bluetoothAllowed = CBCentralManager.authorization == .allowedAlways
         add("bluetooth", bluetoothAllowed, String(localized: "Bluetooth link"),
             String(localized: "Bluetooth is off for Tandem on this Mac"), "bluetooth")
+        add("ring", FindSounds.playable, String(localized: "Play a sound to be found"),
+            String(localized: "This Mac has no sound output right now"), "sound")
         return list
     }
 
@@ -134,6 +136,8 @@ enum FeatureReport {
             } else {
                 settings("com.apple.preference.security?Privacy_Bluetooth")
             }
+        case "sound":
+            settings("com.apple.Sound-Settings.extension")
         default:
             settings("com.apple.preference.security")
         }

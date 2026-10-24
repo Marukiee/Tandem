@@ -1030,3 +1030,26 @@
 /* Clipboard with pictures and files */
 "%@ from %@ is on your clipboard" = "%@ van %@ staat op je klembord";
 "%lld files from %@ are on your clipboard" = "%lld bestanden van %@ staan op je klembord";
+
+/* Find this computer */
+"Play sound" = "Speel geluid af";
+"Stop sound" = "Stop geluid";
+"%@ plays a sound" = "%@ speelt een geluid af";
+"%@ is offline" = "%@ is offline";
+"It can play a sound again as soon as it is connected." = "Het kan weer een geluid afspelen zodra het verbonden is.";
+"Update Tandem on %@" = "Werk Tandem bij op %@";
+"The Tandem on it cannot play a sound yet. Update it there, then try again." = "De Tandem daarop kan nog geen geluid afspelen. Werk hem daar bij en probeer het opnieuw.";
+"Connected on %@" = "Verbonden op %@";
+"Last seen %@ on %@" = "Laatst gezien %@ op %@";
+"Last seen %@ on the local network" = "Laatst gezien %@ op het lokale netwerk";
+"Last seen %@ over Tailscale" = "Laatst gezien %@ via Tailscale";
+"Last seen %@" = "Laatst gezien %@";
+"Alert sounds" = "Waarschuwingsgeluiden";
+"Ringtones" = "Beltonen";
+"Preview" = "Voorbeeld";
+"Find this Mac" = "Deze Mac zoeken";
+"When your phone or another computer looks for this Mac, this sound plays loudly until you stop it, for two minutes at most." = "Als je telefoon of een andere computer deze Mac zoekt, speelt dit geluid hard tot je het stopt, hooguit twee minuten.";
+"%@ is looking for this Mac" = "%@ zoekt deze Mac";
+"This Mac plays a sound until you stop it. Any key or click stops it too." = "Deze Mac speelt een geluid tot je het stopt. Elke toets of klik stopt het ook.";
+"Play a sound to be found" = "Een geluid afspelen om gevonden te worden";
+"This Mac has no sound output right now" = "Deze Mac heeft nu geen geluidsuitgang";
