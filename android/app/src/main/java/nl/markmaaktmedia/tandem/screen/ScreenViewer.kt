@@ -397,6 +397,8 @@ class ScreenViewer(
                 fps = update.fps?.takeIf { it > 0u }?.toInt() ?: old.fps,
                 control = update.control ?: old.control,
             )
+            // Turned back while the computer was still making the first turn: its new shape is already the wrong way.
+            askTurn()
         }
     }
 

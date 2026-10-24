@@ -237,6 +237,16 @@ final class PointerShare {
         }
     }
 
+    /// The pointer is at the top or the bottom of the screen it is on, not only on that line of the area: an extra screen that stands upright
+    /// reaches below the area, and halfway down it is no edge.
+    private func atOwnEdge(_ at: CGPoint, bottom: Bool) -> Bool {
+        var ids = [CGDirectDisplayID](repeating: 0, count: 8)
+        var count: UInt32 = 0
+        guard CGGetDisplaysWithPoint(at, 8, &ids, &count) == .success, count > 0 else { return true }
+        let bounds = CGDisplayBounds(ids[0])
+        return bottom ? at.y >= bounds.maxY - 1 : at.y <= bounds.minY
+    }
+
     private func opposite(_ edge: String) -> String {
         switch edge {
         case "left": "right"
@@ -353,8 +363,8 @@ final class PointerShare {
         var pushes: [(edge: String, position: Int)] = []
         if at.x >= area.maxX - 1 && dx > 0 { pushes.append(("right", Int(at.y - area.minY))) }
         if at.x <= area.minX && dx < 0 { pushes.append(("left", Int(at.y - area.minY))) }
-        if at.y <= area.minY && dy < 0 { pushes.append(("top", Int(at.x - area.minX))) }
-        if at.y >= area.maxY - 1 && dy > 0 { pushes.append(("bottom", Int(at.x - area.minX))) }
+        if at.y <= area.minY && dy < 0 && atOwnEdge(at, bottom: false) { pushes.append(("top", Int(at.x - area.minX))) }
+        if at.y >= area.maxY - 1 && dy > 0 && atOwnEdge(at, bottom: true) { pushes.append(("bottom", Int(at.x - area.minX))) }
         guard !pushes.isEmpty else { return false }
         let list = reachable()
         for push in pushes {
@@ -746,8 +756,8 @@ final class PointerShare {
             switch enteredBy {
             case "left": leaving = at.x <= area.minX && dx < 0
             case "right": leaving = at.x >= area.maxX - 1 && dx > 0
-            case "top": leaving = at.y <= area.minY && dy < 0
-            default: leaving = at.y >= area.maxY - 1 && dy > 0
+            case "top": leaving = at.y <= area.minY && dy < 0 && atOwnEdge(at, bottom: false)
+            default: leaving = at.y >= area.maxY - 1 && dy > 0 && atOwnEdge(at, bottom: true)
             }
             if leaving {
                 let along: CGFloat = (enteredBy == "left" || enteredBy == "right")

@@ -836,15 +836,20 @@ fn capture_loop(
             let made = extended_size(max_w, max_h);
             if made != grabber.size() {
                 // The old monitor goes first: the remembered answer is for one at a time.
+                let before = grabber.size();
                 drop(grabber);
-                let Some(fresh) = Grabber::with_options(tandem_winsys::GrabOptions { virtual_size: Some(made), ..turn.options }) else {
-                    log::warn!("the second screen could not be made again in its new shape");
+                let fresh = Grabber::with_options(tandem_winsys::GrabOptions { virtual_size: Some(made), ..turn.options }).or_else(|| {
+                    log::warn!("the second screen could not be made again in its new shape, it is made in the old one");
+                    Grabber::with_options(tandem_winsys::GrabOptions { virtual_size: Some(before), ..turn.options })
+                });
+                let Some(fresh) = fresh else {
                     let _ = engine.media_stop(session);
                     return;
                 };
                 grabber = fresh;
+                // A monitor made for the viewer is already the size that is sent.
                 let (source_w, source_h) = grabber.size();
-                (width, height) = target_size(source_w, source_h, max_w, max_h);
+                (width, height) = target_size(source_w, source_h, 0, 0);
                 let Some(fresh) = make_encoder(rate, current_fps, width, height) else {
                     let _ = engine.media_stop(session);
                     return;
