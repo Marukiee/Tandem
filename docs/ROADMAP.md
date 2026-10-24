@@ -170,8 +170,8 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   wil Mark niet.
 - Het Apple-ecosysteem op alle apparaten: wat nog mist (gevraagd 2026-10-24, het doel van Mark). Op volgorde van wat het meeste geeft:
   1. Handoff: geschrapt door Mark (2026-10-24), de browser doet dit al.
-  2. Berichten op de computer: hele sms-gesprekken lezen en nieuwe sturen, zoals Berichten op de Mac (nu alleen een melding met antwoorden). Android:
-     `Telephony` lezen met READ_SMS en sturen met SEND_SMS (beperkt zonder winkel, zie de rechten). Haalbaar.
+  2. Berichten op de computer: gebouwd (2026-10-24). Een pagina Berichten op Mac, Linux en Windows met de sms-gesprekken van de telefoon, live,
+     sturen vanaf de telefoon en een nieuw bericht aan een contact; per computer aan of uit op de telefoon. Groepsgesprekken en MMS sturen nog niet.
   3. Klembord met plaatjes en bestanden, niet alleen tekst. Haalbaar.
   4. Wifi delen: zit de telefoon niet op het netwerk van de computer maar wel met hem verbonden (Bluetooth), dan vraagt de telefoon "Het wifi van je
      MacBook overnemen?" en krijgt hij het netwerk (`WifiNetworkSuggestion`). Ook andersom. Gekozen door Mark.
