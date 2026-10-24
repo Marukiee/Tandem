@@ -9,8 +9,10 @@ How a computer finds out on which side of it another device stands (`crates/tand
   6 kHz, up on the left speaker and down on the right one at the same time, three times. Soft first, louder when it was not heard.
 - **Quiet**, for a check that runs by itself: the same up and down sweeps between 18.5 and 20 kHz, 0.25 s each, three times, at 0.04 of
   full scale, with fades over a fifth of each sweep. Above what most grown-ups hear, and a test makes sure that the fades leave less
-  than -70 dB of it below 15 kHz (a click is what would be heard). The listener reads every recording for both kinds and keeps the one
-  that stands out more, so it needs no change to tell them apart. A quiet check moves a screen only from a 3 dB difference (1.5 dB for
+  than -70 dB of it below 15 kHz (a click is what would be heard). `SideListen` says which kind comes (`quiet`), and the listener reads
+  only that one: music or a voice in the room can look more like the audible sweeps than the quiet ones do from across a desk (in the
+  measurement below the room itself scored 20 dB on the audible filter). An older listener reads only the audible kind, hears
+  nothing, and the side stays. A quiet check moves a screen only from a 3 dB difference (1.5 dB for
   the audible one) and when a second quiet check right after it agrees.
 
 Why 18.5 to 20 kHz: below 18 kHz young people hear it; above 20 kHz a recording at 44.1 kHz loses it in the filter in front of the
@@ -35,7 +37,7 @@ Chirps of 1 kHz wide, 0.2 s, at 0.01 of full scale (-40 dBFS), matched filter ag
 | 21 kHz | 72 dB | 67 dB | +5 dB |
 | 21.5 kHz | 67 dB | 66 dB | +2 dB |
 
-The quiet pattern itself, read by `side::analyze` (the ignored test `a_real_room`), at its old level of 0.06 and lower:
+The quiet pattern itself, read by the core (the ignored test `a_real_room`), at its old level of 0.06 and lower:
 
 | Level | Heard as | Left minus right | Above the room |
 |---|---|---|---|

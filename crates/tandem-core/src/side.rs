@@ -13,8 +13,8 @@
 //! The sweeps come in two kinds. The one the person asks for covers what a voice covers and is heard. The one for a check that runs by
 //! itself (`QUIET`) sweeps between 18.5 and 20 kHz, above what most grown-ups hear, softly and with long fades: a sound that starts or
 //! stops at once clicks, and a click has every pitch in it. Laptop speakers still play that high and microphones that record at 44.1 or
-//! 48 kHz still take it in (measured on a MacBook Pro, see docs/SIDE.md). The listener does not need to know which kind came: it reads the
-//! recording for both and keeps the one that stands out more.
+//! 48 kHz still take it in (measured on a MacBook Pro, see docs/SIDE.md). The listener is told which kind comes and reads only that one:
+//! a room sound (music, a voice) can look more like the audible sweeps than the quiet ones do from across a desk.
 
 use std::f32::consts::PI;
 use std::sync::Arc;
@@ -245,16 +245,17 @@ fn median(mut values: Vec<f32>) -> f32 {
     values[values.len() / 2]
 }
 
-/// Reads a recording (one channel, `rate` samples a second) for the pattern, of either kind. Nothing when it was not heard at all.
+/// Reads a recording (one channel, `rate` samples a second) for the pattern. Nothing when it was not heard at all.
 pub fn analyze(samples: &[f32], rate: u32) -> Option<Heard> {
-    let mut planner = FftPlanner::new();
-    let audible = analyze_for(&AUDIBLE, samples, rate, &mut planner);
-    let quiet = if rate >= QUIET_MIN_RATE { analyze_for(&QUIET, samples, rate, &mut planner) } else { None };
-    // A loud sweep can leave a trace in the high band through a speaker that distorts: the kind that stands out more is the one that came.
-    match (audible, quiet) {
-        (Some(a), Some(q)) => Some(if q.1 > a.1 { q.0 } else { a.0 }),
-        (a, q) => a.or(q).map(|(heard, _)| heard),
+    analyze_for(&AUDIBLE, samples, rate, &mut FftPlanner::new()).map(|(heard, _)| heard)
+}
+
+/// The same for the quiet pattern. Nothing at a rate too low to hold it.
+pub fn analyze_quiet(samples: &[f32], rate: u32) -> Option<Heard> {
+    if rate < QUIET_MIN_RATE {
+        return None;
     }
+    analyze_for(&QUIET, samples, rate, &mut FftPlanner::new()).map(|(heard, _)| heard)
 }
 
 /// What was heard of one kind of sound, and how far it stands out above the room.
@@ -438,15 +439,15 @@ mod tests {
 
     #[test]
     fn the_quiet_sweeps_are_told_apart_and_found_whenever_they_arrive() {
-        let only_left = analyze(&quiet_recording(RATE, 1.0, 0.0, 0.1, 0.0, false, 1), RATE).unwrap();
+        let only_left = analyze_quiet(&quiet_recording(RATE, 1.0, 0.0, 0.1, 0.0, false, 1), RATE).unwrap();
         assert!(only_left.right < only_left.left * 0.1, "{only_left:?}");
         for late in [0.0, 0.2, 0.45] {
-            let left = analyze(&quiet_recording(RATE, 1.0, 0.5, late, 0.005, false, 7), RATE).unwrap();
+            let left = analyze_quiet(&quiet_recording(RATE, 1.0, 0.5, late, 0.005, false, 7), RATE).unwrap();
             assert_eq!(decide_with(left, QUIET_SURE_DB), Side::Left, "late {late}: {left:?}");
-            let right = analyze(&quiet_recording(RATE, 0.3, 0.9, late, 0.005, false, 9), RATE).unwrap();
+            let right = analyze_quiet(&quiet_recording(RATE, 0.3, 0.9, late, 0.005, false, 9), RATE).unwrap();
             assert_eq!(decide_with(right, QUIET_SURE_DB), Side::Right, "late {late}: {right:?}");
         }
-        assert_eq!(analyze(&quiet_recording(RATE, 0.0, 0.0, 0.2, 0.005, false, 13), RATE), None);
+        assert_eq!(analyze_quiet(&quiet_recording(RATE, 0.0, 0.0, 0.2, 0.005, false, 13), RATE), None);
     }
 
     #[test]
@@ -454,7 +455,7 @@ mod tests {
         // 6 dB nearer to the left, heard at a tenth of what was played, with noise over the whole band louder than the sound itself.
         for seed in 0..8 {
             let rec = quiet_recording(RATE, 0.1, 0.05, 0.05 + seed as f32 * 0.05, 0.02, true, 40 + seed);
-            let heard = analyze(&rec, RATE).unwrap();
+            let heard = analyze_quiet(&rec, RATE).unwrap();
             assert_eq!(decide_with(heard, QUIET_SURE_DB), Side::Left, "seed {seed}: {heard:?}");
         }
     }
@@ -463,20 +464,20 @@ mod tests {
     fn the_quiet_sweeps_read_at_44_1_khz_and_through_a_microphone_that_hears_less_up_high() {
         let rate = 44_100;
         let rec = quiet_recording(rate, 0.4, 0.9, 0.1, 0.002, true, 3);
-        assert_eq!(decide_with(analyze(&rec, rate).unwrap(), QUIET_SURE_DB), Side::Right);
+        assert_eq!(decide_with(analyze_quiet(&rec, rate).unwrap(), QUIET_SURE_DB), Side::Right);
         // A microphone that is 3 dB down at 19 kHz and more above it: both sides sweep the same pitches, so both lose the same.
         for corner in [19_000.0, 18_000.0] {
             let rec = rolled_off(&quiet_recording(RATE, 1.0, 0.4, 0.1, 0.002, true, 5), RATE, corner);
-            let got = analyze(&rec, RATE).map(|h| decide_with(h, QUIET_SURE_DB));
+            let got = analyze_quiet(&rec, RATE).map(|h| decide_with(h, QUIET_SURE_DB));
             assert!(matches!(got, Some(Side::Left) | None), "corner {corner}: {got:?}");
         }
     }
 
     #[test]
     fn a_rate_too_low_for_the_quiet_sweeps_hears_nothing_of_them() {
-        // The same samples said to be at 32 kHz: the quiet sweeps cannot be in there, and the audible ones are not.
+        // The same samples said to be at 32 kHz: the quiet sweeps cannot be in there.
         let rec = quiet_recording(RATE, 1.0, 0.5, 0.1, 0.002, false, 21);
-        assert_eq!(analyze(&rec, 32_000), None);
+        assert_eq!(analyze_quiet(&rec, 32_000), None);
     }
 
     #[test]
@@ -516,7 +517,7 @@ mod tests {
                 let near_left = seed % 2 == 0;
                 let (l, r) = if near_left { (0.1, 0.05) } else { (0.05, 0.1) };
                 let rec = quiet_recording(RATE, l, r, 0.03 + (seed % 10) as f32 * 0.04, noise, true, 100 + seed);
-                match analyze(&rec, RATE).map(|h| decide_with(h, QUIET_SURE_DB)) {
+                match analyze_quiet(&rec, RATE).map(|h| decide_with(h, QUIET_SURE_DB)) {
                     Some(Side::Left) if near_left => right += 1,
                     Some(Side::Right) if !near_left => right += 1,
                     Some(Side::Left) | Some(Side::Right) => wrong += 1,

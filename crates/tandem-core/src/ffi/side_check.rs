@@ -17,6 +17,12 @@ pub fn tandem_side_quiet_pattern(rate: u32) -> Vec<f32> {
     crate::side::quiet_pattern(rate)
 }
 
+/// Like `tandem_side_analyze`, for a recording made after a quiet `SideListen`: only the quiet sweeps count.
+#[uniffi::export]
+pub fn tandem_side_analyze_quiet(samples: Vec<f32>, rate: u32) -> Option<super::TandemSideLevels> {
+    crate::side::analyze_quiet(&samples, rate).map(|h| super::TandemSideLevels { left: h.left, right: h.right })
+}
+
 /// The lowest rate a microphone can record the quiet sweeps at: a listener that records lower says nothing, so nothing is played.
 #[uniffi::export]
 pub fn tandem_side_quiet_min_rate() -> u32 {
