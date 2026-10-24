@@ -161,7 +161,7 @@ class TandemService : LifecycleService() {
                     android.widget.Toast.makeText(this, getString(R.string.link_poor, name), android.widget.Toast.LENGTH_LONG).show()
                 }
             }
-            is TandemEvent.SideListen -> nl.markmaaktmedia.tandem.live.SideListener.listen(this, event.from, event.id)
+            is TandemEvent.SideListen -> nl.markmaaktmedia.tandem.live.SideListener.listen(this, event.from, event.id, event.quiet)
             is TandemEvent.OpenSettings -> FeatureReport.open(this, event.page, event.from)
             is TandemEvent.SoundRequested -> nl.markmaaktmedia.tandem.audio.ScreenSound.requested(this, event.from, event.on)
             is TandemEvent.MediaStarted -> if (event.role == TandemMediaRole.VIEWER && event.kind == TandemMediaKind.SCREEN) {
