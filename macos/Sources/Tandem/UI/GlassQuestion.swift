@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// A question in a glass panel at the top of the screen, under the bar that says a device is looking at this Mac when that is there,
-/// with a few answers. Nobody answering closes it after a while, which is the same as the last answer.
+/// A question in a glass panel in the column of floating cards at the top right (see `FloatingStack`), with a few answers. Nobody
+/// answering closes it after a while, which is the same as the last answer.
 @MainActor
 final class GlassQuestion {
     struct Answer {
@@ -30,12 +30,8 @@ final class GlassQuestion {
         let view = NSHostingView(rootView: GlassQuestionView(symbol: symbol, title: title, message: body, answers: answers, close: { [weak self] in self?.close() }))
         panel.contentView = view
         panel.setContentSize(view.fittingSize)
-        if let screen = NSScreen.main {
-            let area = screen.visibleFrame
-            let top = ScreenPanels.shared.lowestEdge.map { $0 + 30 } ?? area.maxY - 10
-            panel.setFrameOrigin(NSPoint(x: area.midX - panel.frame.width / 2, y: top - panel.frame.height))
-        }
-        panel.makeKeyAndOrderFront(nil)
+        // Key, so Return and Escape answer it; the buttons draw no ring of focus for that (see below).
+        FloatingStack.shared.show(panel, key: true)
         self.panel = panel
         Task { @MainActor [weak self, weak panel] in
             try? await Task.sleep(for: closeAfter)
@@ -44,8 +40,10 @@ final class GlassQuestion {
     }
 
     func close() {
-        panel?.orderOut(nil)
-        panel = nil
+        guard let panel else { return }
+        FloatingStack.shared.remove(panel)
+        panel.orderOut(nil)
+        self.panel = nil
     }
 }
 
@@ -61,12 +59,18 @@ private struct GlassQuestionView: View {
             PromptHeader(symbol: symbol, title: Text(verbatim: title), message: Text(verbatim: message))
             HStack(spacing: 8) {
                 Spacer(minLength: 0)
-                ForEach(Array(answers.enumerated()), id: \.offset) { _, answer in
+                let quiet = answers.firstIndex { !$0.prominent }
+                ForEach(Array(answers.enumerated()), id: \.offset) { index, answer in
                     Button(answer.title) {
                         close()
                         answer.action()
                     }
                     .buttonStyle(answer.prominent ? .tandemGlassProminent : .tandemGlass)
+                    // The panel is key so the keyboard can answer, and the first button would get the blue ring of focus: a frame
+                    // around a pill of glass that looks like a mistake.
+                    .focusEffectDisabled()
+                    // Return takes the main answer, Escape the first other one.
+                    .keyboardShortcut(answer.prominent ? .defaultAction : index == quiet ? .cancelAction : nil)
                 }
             }
             .controlSize(.large)
