@@ -43,8 +43,6 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "code_copied") => "Code {0} copied",
         ("nl", "unknown_number") => "Onbekend nummer",
         (_, "unknown_number") => "Unknown number",
-        ("nl", "calling") => "{0} gaat over",
-        (_, "calling") => "{0} is ringing",
         ("nl", "missed_call") => "Gemiste oproep",
         (_, "missed_call") => "Missed call",
         ("nl", "remote_off_title") => "{0} wil deze pc bedienen",

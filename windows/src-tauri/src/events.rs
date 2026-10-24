@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use base64::Engine as _;
 use serde_json::{Value, json};
-use tandem_core::ffi::{TandemCall, TandemCallState, TandemEvent, TandemNotification, TandemShareItem, TandemShareOrigin};
+use tandem_core::ffi::{TandemEvent, TandemNotification, TandemShareItem, TandemShareOrigin};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
@@ -187,7 +187,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             let _ = app.emit("art", json!({ "key": key.to_string(), "uri": uri }));
             media::refresh(app);
         }
-        TandemEvent::Call { from, call } => incoming_call(app, &from, &call),
+        TandemEvent::Call { from, call } => crate::callcard::received(app, &from, &call),
         TandemEvent::Input { from, input } => {
             // From the computer that has the pointer: it was allowed when the pointer came over.
             if input::shared_is(&from) {
@@ -458,14 +458,5 @@ fn phone_notification(app: &AppHandle, from: &str, n: &TandemNotification) {
     if settings.phone_notifications && !n.silent {
         let body = if n.title.is_empty() { n.text.clone() } else { format!("{}\n{}", n.title, n.text) };
         toast(app, &format!("{} · {}", n.app_name, name), &body);
-    }
-}
-
-fn incoming_call(app: &AppHandle, from: &str, call: &TandemCall) {
-    let who = call.name.clone().or_else(|| call.number.clone()).unwrap_or_else(|| i18n::t(app, "unknown_number"));
-    match call.state {
-        TandemCallState::Ringing if call.incoming => toast(app, &i18n::t1(app, "calling", &device_name(app, from)), &who),
-        TandemCallState::Missed => toast(app, &i18n::t(app, "missed_call"), &who),
-        _ => {}
     }
 }
