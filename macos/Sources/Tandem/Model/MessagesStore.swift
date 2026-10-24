@@ -175,10 +175,19 @@ final class PhoneMessages {
     }
 
     /// A new message to someone this phone may not have written to yet. Returns the conversation it went to.
-    func start(to number: String, text: String) async throws -> UInt64? {
+    func start(to number: String, name: String, text: String) async throws -> UInt64? {
         guard let engine else { throw TandemSmsError.NotConnected }
         let thread = try await engine.smsSend(target: device, to: [number], text: text)
         await refresh()
+        // Android writes the message down once it is out, which can take a moment: until then it stands here as written.
+        if let thread, conversation(thread) == nil {
+            let now = Date()
+            let placeholder = TandemSmsConversation(
+                thread: thread, addresses: [number], name: name, snippet: text, date: UInt64(now.timeIntervalSince1970 * 1000), unread: 0, fromMe: true
+            )
+            conversations = merged([placeholder], into: conversations)
+            pending.append(Pending(thread: thread, text: text, date: now, state: .sent))
+        }
         if let thread { await openThread(thread) }
         return thread
     }

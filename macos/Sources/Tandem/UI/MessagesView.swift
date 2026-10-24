@@ -604,7 +604,7 @@ private struct NewMessageView: View {
         sending = true
         Task {
             do {
-                let thread = try await phone.start(to: number, text: text)
+                let thread = try await phone.start(to: number, name: recipient?.name ?? "", text: text)
                 draft = ""
                 onDone(thread)
             } catch {
