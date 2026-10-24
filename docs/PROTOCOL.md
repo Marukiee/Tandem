@@ -191,7 +191,8 @@ vragen, kijkt eerst of het woord er staat.
 | `screen.host`, `camera.host` | kan zijn scherm of camera tonen |
 | `screen.control` | een computer die zijn scherm toont en waar een telefoon ook mag klikken en typen (Toegankelijkheid staat aan) |
 | `screen.view`, `camera.view` | kan het scherm of de camera van een ander apparaat tonen |
-| `audio.play` | speelt het geluid van een telefoon af (streamnummer `9`, zie MUSIC_AND_SOUND.md) |
+| `audio.play` | speelt het geluid van andere apparaten af, ook van meer tegelijk (elk streamnummer; computers van voor dit woord alleen `9`, zie MUSIC_AND_SOUND.md) |
+| `audio.send` | kan zijn eigen geluid opnemen en naar een ander apparaat sturen |
 | `ring` | laat zijn geluid horen op `Ring` en meldt met `Ringing` wanneer het speelt en stopt |
 | `wifi.share` | een computer die zegt op welk wifi hij zit en het wachtwoord geeft als zijn persoon ja zegt |
 | `wifi.join` | verbindt met een wifi dat een ander apparaat geeft (een telefoon via het blad van het systeem) |

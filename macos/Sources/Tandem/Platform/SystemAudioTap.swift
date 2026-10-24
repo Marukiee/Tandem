@@ -4,9 +4,9 @@ import Foundation
 
 /// Captures everything this Mac plays, as 16 bit signed samples, so it can be played somewhere else.
 ///
-/// It uses a Core Audio process tap (macOS 14.2 and later): a tap on all processes, wrapped in a
+/// It uses a Core Audio process tap (macOS 14.2 and later): a tap on all processes but Tandem, wrapped in a
 /// private aggregate device that only this app can see. With `muteLocal` the tap also silences the
-/// speakers while it runs, so the phone is the speaker instead of an echo of it. The tap is gone when
+/// speakers while it runs, so the other device is the speaker instead of an echo of it. The tap is gone when
 /// this app is, and then the sound comes back by itself.
 ///
 /// The first start asks for "System Audio Recording" permission. Without it the tap still runs but
@@ -43,7 +43,7 @@ final class SystemAudioTap: @unchecked Sendable {
     /// Opens the tap and says what it will deliver. Nothing flows until [start]. It takes everything this Mac
     /// plays, whichever output it is sent to: with the Mac's sound going to a phone, that is all of it.
     func prepare(muteLocal: Bool) throws -> Format {
-        let description = CATapDescription(stereoGlobalTapButExcludeProcesses: [])
+        let description = CATapDescription(stereoGlobalTapButExcludeProcesses: Self.ownProcess())
         description.name = "Tandem"
         description.isPrivate = true
         description.muteBehavior = muteLocal ? .muted : .unmuted
@@ -135,6 +135,21 @@ final class SystemAudioTap: @unchecked Sendable {
     deinit { stop() }
 
     // MARK: Pieces
+
+    /// Tandem itself, left out of the tap: what it plays is the sound of other devices, which would go back to them as an echo, and
+    /// the mute of the tap leaves it alone, so their sound keeps playing here.
+    private static func ownProcess() -> [AudioObjectID] {
+        var pid = getpid()
+        var object = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyTranslatePIDToProcessObject, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject), &address, UInt32(MemoryLayout<pid_t>.size), &pid, &size, &object
+        )
+        return status == noErr && object != kAudioObjectUnknown ? [object] : []
+    }
 
     /// The output the capture takes its clock from: the one in use, unless that is made of other devices (the
     /// output Tandem makes for a phone is, and one cannot be part of another), then the Mac's own speakers.

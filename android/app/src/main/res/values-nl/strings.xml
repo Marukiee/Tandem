@@ -371,13 +371,13 @@
     <string name="media_next">Volgende</string>
     <string name="media_play">Afspelen</string>
     <string name="media_pause">Pauzeren</string>
-    <string name="settings_audio_output">Speaker voor je Mac</string>
-    <string name="settings_audio_output_sub">Je Mac kan zijn geluid via deze telefoon afspelen. Een melding laat het zien zolang dat gebeurt, met een knop om te stoppen</string>
+    <string name="settings_audio_output">Speaker voor je andere apparaten</string>
+    <string name="settings_audio_output_sub">Je andere apparaten kunnen hun geluid via deze telefoon afspelen, ook meer tegelijk. Een melding laat het zien zolang dat gebeurt, met een knop om te stoppen</string>
     <string name="audio_playing_title">Geluid van %1$s wordt afgespeeld</string>
-    <string name="audio_playing_text">Je Mac gebruikt deze telefoon als speaker</string>
+    <string name="audio_playing_text">Deze telefoon is nu hun speaker</string>
     <string name="audio_stop">Stop</string>
     <string name="channel_audio">Geluid van je Mac</string>
-    <string name="channel_audio_desc">Zichtbaar zolang je Mac zijn geluid via deze telefoon afspeelt</string>
+    <string name="channel_audio_desc">Zichtbaar zolang een ander apparaat zijn geluid via deze telefoon afspeelt</string>
     <string name="device_pinned">Vastgepind</string>
     <string name="transfer_menu_more">Meer opties</string>
     <string name="transfer_menu_open">Openen</string>

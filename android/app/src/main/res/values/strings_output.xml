@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="output_only_some_apps">The sound of this phone plays on %1$s. Only apps that allow it can be heard there, and it keeps playing here too</string>
+    <string name="output_consent_needed">Sending the sound needs the screen recording question answered with Start</string>
+    <string name="output_record_needed">Sending the sound needs the permission to record audio</string>
+    <string name="output_loop">The sound of %1$s plays here now. Stop that first, or the sound would go back and forth</string>
+    <string name="output_refused">%1$s does not play sound from other devices. Turn it on in Tandem there</string>
+    <string name="output_stopped_there">%1$s stopped playing the sound</string>
+</resources>

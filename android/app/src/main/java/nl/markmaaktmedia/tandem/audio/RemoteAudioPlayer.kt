@@ -16,9 +16,6 @@ import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
@@ -26,15 +23,16 @@ import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.engine.ActionReceiver
 import nl.markmaaktmedia.tandem.engine.Channels
 import nl.markmaaktmedia.tandem.engine.EngineHost
+import nl.markmaaktmedia.tandem.live.SoundShareService
 import uniffi.tandem_core.TandemAudioSink
 import uniffi.tandem_core.TandemEvent
 
 /**
- * Plays the sound of the Mac through this phone, so the phone can be chosen as the Mac's speaker.
+ * Plays the sound of other devices through this phone, so the phone can be chosen as their speaker.
  *
- * The Mac sends 16 bit samples as datagrams. They go through a [JitterBuffer] into an [AudioTrack] in
- * low latency mode, so the volume buttons of the phone are the volume. A notification says that it
- * is playing and has a Stop button. One Mac at a time; a second start while one plays is refused.
+ * A device sends 16 bit samples as datagrams. They go through a [JitterBuffer] into an [AudioTrack] in
+ * low latency mode, so the volume buttons of the phone are the volume. Each device that plays has a
+ * track of its own and the system mixes them. A notification says who is playing and has a Stop button.
  */
 class RemoteAudioPlayer(
     private val context: Context,
@@ -43,13 +41,15 @@ class RemoteAudioPlayer(
     private val scope: CoroutineScope,
 ) : TandemAudioSink {
 
-    private class Session(val device: String, val stream: Int, val track: AudioTrack, val buffer: JitterBuffer, val focus: AudioFocusRequest?, val prebufferMs: Long) {
+    private class Session(val device: String, val name: String, val stream: Int, val track: AudioTrack, val buffer: JitterBuffer, val prebufferMs: Long) {
         @Volatile var running = true
         var thread: Thread? = null
     }
 
     private val lock = Any()
-    private var session: Session? = null
+    /** By the device that sends. Guarded by [lock], as is [focus]. */
+    private val sessions = HashMap<String, Session>()
+    private var focus: AudioFocusRequest? = null
     private val audio = context.getSystemService(AudioManager::class.java)
 
     // With the screen off the phone sleeps as soon as it may, and its Wi-Fi saves power by holding packets back.
@@ -57,28 +57,30 @@ class RemoteAudioPlayer(
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
 
-    /** The name of the device whose sound is playing, or null. For the settings page. */
-    private val _playingFrom = MutableStateFlow<String?>(null)
-    val playingFrom: StateFlow<String?> = _playingFrom.asStateFlow()
+    /** Whether the sound of [device] plays here now. */
+    fun isPlayingFrom(device: String) = synchronized(lock) { device in sessions }
 
     // ---- From the engine ------------------------------------------------------
 
     /** Called for every packet, on the connection's own task: only queues. */
     override fun onAudio(from: String, stream: UByte, seq: UInt, pcm: ByteArray) {
-        val s = synchronized(lock) { session } ?: return
-        if (s.device != from) return
+        val s = synchronized(lock) { sessions[from] } ?: return
         s.buffer.push(stream.toInt(), seq.toLong(), pcm)
     }
 
     fun onEvent(event: TandemEvent) {
         when (event) {
-            // The sound of a screen this phone looks at and asked for plays also when Speaker for your computer is off.
+            // The sound of a screen this phone looks at and asked for plays also when Speaker for your other devices is off.
             is TandemEvent.AudioStart -> scope.launch {
                 start(event.from, event.stream.toInt(), event.sampleRate.toInt(), event.channels.toInt(), force = ScreenSound.asked(event.from))
             }
-            is TandemEvent.AudioStop -> synchronized(lock) { session }?.takeIf { it.device == event.from && it.stream == event.stream.toInt() }?.let { stop(tell = false) }
-            // The Mac went away: nothing more will come, so do not sit in silence.
-            is TandemEvent.Disconnected -> synchronized(lock) { session }?.takeIf { it.device == event.id }?.let { stop(tell = false) }
+            // From a device that plays here, its sound ends. From the one this phone sends its sound to, it will not, or no longer, play it.
+            is TandemEvent.AudioStop -> {
+                if (synchronized(lock) { sessions[event.from] }?.stream == event.stream.toInt()) end(event.from, tell = false)
+                else if (event.stream.toInt() == SoundShareService.STREAM) SoundShareService.refused(context, event.from)
+            }
+            // The device went away: nothing more will come, so do not sit in silence.
+            is TandemEvent.Disconnected -> end(event.id, tell = false)
             else -> Unit
         }
     }
@@ -86,14 +88,11 @@ class RemoteAudioPlayer(
     // ---- Playing --------------------------------------------------------------
 
     private suspend fun start(device: String, stream: Int, rate: Int, channels: Int, name: String? = null, force: Boolean = false) {
-        if (!force && !prefs.audioOutput.first()) {
-            // The person has not allowed it: say so, so the Mac does not keep sending into the void.
-            refuse(device, stream)
-            return
-        }
-        // A new start from the same Mac replaces the old; another Mac has to wait its turn.
-        synchronized(lock) { session }?.let { if (it.device != device) return refuse(device, stream) }
-        stop(tell = false)
+        // The person has not allowed it: say so, so the device does not keep sending into the void. And a device never plays here
+        // while this phone sends its sound there, so a stop from it always says which of the two it ends.
+        if ((!force && !prefs.audioOutput.first()) || SoundShareService.active.value == device) return refuse(device, stream)
+        // A new start from the same device replaces its old one.
+        end(device, tell = false)
 
         val mask = if (channels == 1) AudioFormat.CHANNEL_OUT_MONO else AudioFormat.CHANNEL_OUT_STEREO
         val frameBytes = channels * 2
@@ -103,7 +102,7 @@ class RemoteAudioPlayer(
         if (minimum <= 0) return refuse(device, stream)
         val track = try {
             AudioTrack.Builder()
-                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
+                .setAudioAttributes(attributes)
                 .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(mask).build())
                 .setBufferSizeInBytes(maxOf(minimum, bytesPerMs * delay.trackMs))
                 .setTransferMode(AudioTrack.MODE_STREAM)
@@ -114,30 +113,40 @@ class RemoteAudioPlayer(
             return refuse(device, stream)
         }
 
-        val focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-            // Something else taking the speaker (a call, other music) ends this, rather than fighting it.
-            .setOnAudioFocusChangeListener { change -> if (change == AudioManager.AUDIOFOCUS_LOSS) stop(tell = true) }
-            .build()
-        // Not getting the focus is no reason not to play: the Mac asked for it.
-        runCatching { audio.requestAudioFocus(focus) }
-
-        holdAwake()
         val buffer = JitterBuffer(frameBytes, bytesPerMs, maxMs = delay.maxMs, keepMs = delay.keepMs)
         buffer.reset(stream)
-        val s = Session(device, stream, track, buffer, focus, delay.prebufferMs)
-        synchronized(lock) { session = s }
-        val label = name ?: host.device(device)?.name ?: device
-        _playingFrom.value = label
+        val s = Session(device, name ?: host.device(device)?.name ?: device, stream, track, buffer, delay.prebufferMs)
+        synchronized(lock) {
+            sessions[device] = s
+            if (sessions.size == 1) {
+                holdFocus()
+                holdAwake()
+            }
+        }
         s.thread = Thread({ pump(s, bytesPerMs) }, "tandem-audio").apply {
             priority = Thread.MAX_PRIORITY
             start()
         }
-        showNotification(label)
+        showNotification()
     }
 
     /**
-     * Plays a tone through the same path the Mac's sound takes: opening the speaker, the buffer, the
+     * One focus for all the devices that play: a request of its own for each would take the focus from the one before, which
+     * would then stop. Called with [lock] held.
+     */
+    private fun holdFocus() {
+        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+            .setAudioAttributes(attributes)
+            // Something else taking the speaker (a call, other music) ends this, rather than fighting it.
+            .setOnAudioFocusChangeListener { change -> if (change == AudioManager.AUDIOFOCUS_LOSS) stop(tell = true) }
+            .build()
+        focus = request
+        // Not getting the focus is no reason not to play: the device asked for it.
+        runCatching { audio.requestAudioFocus(request) }
+    }
+
+    /**
+     * Plays a tone through the same path the sound of another device takes: opening the speaker, the buffer, the
      * notification. For the developer options, to hear that this phone can be a speaker at all.
      */
     fun playTestTone(seconds: Int = 20) {
@@ -163,7 +172,7 @@ class RemoteAudioPlayer(
                 kotlinx.coroutines.delay(frames * 1000L / rate)
             }
             kotlinx.coroutines.delay(300)
-            if (synchronized(lock) { session }?.device == TEST_DEVICE) stop(tell = false)
+            end(TEST_DEVICE, tell = false)
         }
     }
 
@@ -205,15 +214,25 @@ class RemoteAudioPlayer(
         }
     }
 
-    /** Stops playing. [tell] sends the Mac a stop too, for when this end decided. */
+    /** Stops the sound of every device. [tell] sends each a stop too, for when this end decided. */
     fun stop(tell: Boolean) {
-        val s = synchronized(lock) { session.also { session = null } } ?: return
+        synchronized(lock) { sessions.keys.toList() }.forEach { end(it, tell) }
+    }
+
+    /** Stops the sound of [device]. [tell] sends it a stop too, for when this end decided. */
+    private fun end(device: String, tell: Boolean) {
+        val s = synchronized(lock) {
+            val gone = sessions.remove(device) ?: return
+            if (sessions.isEmpty()) {
+                focus?.let { runCatching { audio.abandonAudioFocusRequest(it) } }
+                focus = null
+                letSleep()
+            }
+            gone
+        }
         s.running = false
-        s.focus?.let { runCatching { audio.abandonAudioFocusRequest(it) } }
-        letSleep()
-        _playingFrom.value = null
-        context.getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
-        if (tell) scope.launch { runCatching { host.engine?.sendAudioStop(s.device, s.stream.toUByte()) } }
+        showNotification()
+        if (tell) refuse(s.device, s.stream)
     }
 
     private fun holdAwake() {
@@ -243,7 +262,11 @@ class RemoteAudioPlayer(
 
     // ---- Notification ----------------------------------------------------------
 
-    private fun showNotification(deviceName: String) {
+    /** One notification for all the devices that play, with their names, and none when nothing plays. */
+    private fun showNotification() {
+        val names = synchronized(lock) { sessions.values.map { it.name } }
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (names.isEmpty()) return manager.cancel(NOTIFICATION_ID)
         if (!Channels.canPost(context)) return
         val stop = PendingIntent.getBroadcast(
             context, 0, Intent(context, ActionReceiver::class.java).setAction(ActionReceiver.STOP_AUDIO),
@@ -251,7 +274,7 @@ class RemoteAudioPlayer(
         )
         val notification = NotificationCompat.Builder(context, Channels.AUDIO)
             .setSmallIcon(R.drawable.ic_stat_tandem)
-            .setContentTitle(context.getString(R.string.audio_playing_title, deviceName))
+            .setContentTitle(context.getString(R.string.audio_playing_title, names.joinToString(", ")))
             .setContentText(context.getString(R.string.audio_playing_text))
             .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
             .setOngoing(true)
@@ -260,7 +283,7 @@ class RemoteAudioPlayer(
             .addAction(0, context.getString(R.string.audio_stop), stop)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .build()
-        context.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification)
+        manager.notify(NOTIFICATION_ID, notification)
     }
 
     private companion object {
@@ -270,5 +293,7 @@ class RemoteAudioPlayer(
         const val TEST_STREAM = 250
         const val UNDERRUN_NS = 150_000_000L
         const val MAX_HOLD_MS = 6 * 60 * 60 * 1000L
+        val attributes: AudioAttributes =
+            AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
     }
 }

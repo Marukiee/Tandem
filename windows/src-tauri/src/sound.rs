@@ -1,9 +1,11 @@
-//! The sound of a phone, played on this computer: what plays on the phone plays here too. The phone sends 16 bit samples in small
+//! The sound of another device, played on this computer: what plays there plays here too. The device sends 16 bit samples in small
 //! pieces; they go into a buffer, and the sound card takes them out at its own speed. A buffer that is too empty plays silence
-//! until it has filled a little, and one that has grown too full drops the oldest, so the sound stays close to the phone.
+//! until it has filled a little, and one that has grown too full drops the oldest, so the sound stays close to the device. Several
+//! devices can play here at once: each has a stream of its own on the sound card, and the system mixes them.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, LazyLock, Mutex};
+use std::time::Duration;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SampleFormat, SizedSample};
@@ -12,7 +14,8 @@ use tauri::{AppHandle, Manager};
 
 use crate::{settings, state::AppState};
 
-/// The stream of the sound of a phone, as the phone numbers it.
+/// The stream this computer sends its own sound on. Computers from before every device could be the speaker of every other only play
+/// this one.
 pub const STREAM: u8 = 9;
 /// How much sound waits before playing starts, how much may wait at most before the oldest is dropped, and what is kept when that happens.
 /// Less is closer to live and stutters sooner on a poor connection; more is steadier.
@@ -93,92 +96,131 @@ impl Buffer {
     }
 }
 
-/// One phone playing now: the thread that keeps the sound card stream alive (a stream cannot move between threads on every system)
+/// One device playing now: the thread that keeps the sound card stream alive (a stream cannot move between threads on every system)
 /// and the buffer it plays from.
 struct Playing {
-    from: String,
+    stream: u8,
     channels: usize,
     buffer: Arc<Mutex<Buffer>>,
     stop: std::sync::mpsc::Sender<()>,
 }
 
-static PLAYING: LazyLock<Mutex<Option<Playing>>> = LazyLock::new(|| Mutex::new(None));
+/// By the device that sends.
+static PLAYING: LazyLock<Mutex<HashMap<String, Playing>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// The core hands the pieces of sound to this.
 pub struct Sink;
 
 impl TandemAudioSink for Sink {
     fn on_audio(&self, from: String, stream: u8, _seq: u32, pcm: Vec<u8>) {
-        if stream != STREAM {
-            return;
-        }
-        if let Some(playing) = PLAYING.lock().unwrap().as_ref() {
-            if playing.from == from {
+        if let Some(playing) = PLAYING.lock().unwrap().get(&from) {
+            if playing.stream == stream {
                 playing.buffer.lock().unwrap().push(&pcm, playing.channels);
             }
         }
     }
 }
 
-/// A phone says it is going to send its sound. Only when the person allows it, and only one phone at a time.
-pub fn start(app: &AppHandle, from: String, rate: u32, channels: u8) {
-    // The sound of a screen that this computer looks at and asked for plays also when the sound of a phone is switched off.
-    if !settings::get(app).phone_sound && !crate::screen_sound::asked(&from) {
+/// Whether the sound of `from` plays here now.
+pub fn playing_from(from: &str) -> bool {
+    PLAYING.lock().unwrap().contains_key(from)
+}
+
+/// A device says it is going to send its sound. Only when the person allows it; a no is said, so the device stops sending and can
+/// tell its person why.
+pub fn start(app: &AppHandle, from: String, stream: u8, rate: u32, channels: u8) {
+    // The sound of a screen that this computer looks at and asked for plays also when the sound of other devices is switched off.
+    let allowed = settings::get(app).phone_sound || crate::screen_sound::asked(&from);
+    // What plays here is recorded with the rest of this computer's sound: sent back to the device it came from, it would go round and
+    // round.
+    if !allowed || crate::output::sending_to(&from) {
+        refuse(app, &from, stream);
         return;
     }
-    let _ = app.state::<AppState>();
-    stop_all();
+    // A new start of the same device replaces its old one.
+    stop(&from);
     let buffer = Arc::new(Mutex::new(Buffer::new(rate, Delay::named(&settings::get(app).sound_delay))));
     let (stop_tx, stop_rx) = std::sync::mpsc::channel::<()>();
+    let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel::<bool>(1);
     let player = buffer.clone();
     let spawned = std::thread::Builder::new().name("tandem-sound".into()).spawn(move || {
         let Some(device) = cpal::default_host().default_output_device() else {
-            log::warn!("there is no sound card to play the sound of the phone on");
+            log::warn!("there is no sound card to play the sound of another device on");
+            let _ = ready_tx.send(false);
             return;
         };
-        let Ok(config) = device.default_output_config() else { return };
+        let Ok(config) = device.default_output_config() else {
+            let _ = ready_tx.send(false);
+            return;
+        };
         let card_rate = config.sample_rate().0;
         let card_channels = usize::from(config.channels());
         let built = match config.sample_format() {
-            SampleFormat::F32 => stream::<f32>(&device, &config.into(), player, card_rate, card_channels),
-            SampleFormat::I16 => stream::<i16>(&device, &config.into(), player, card_rate, card_channels),
-            SampleFormat::U16 => stream::<u16>(&device, &config.into(), player, card_rate, card_channels),
+            SampleFormat::F32 => playback::<f32>(&device, &config.into(), player, card_rate, card_channels),
+            SampleFormat::I16 => playback::<i16>(&device, &config.into(), player, card_rate, card_channels),
+            SampleFormat::U16 => playback::<u16>(&device, &config.into(), player, card_rate, card_channels),
             other => {
                 log::warn!("the sound card wants {other:?}, which is not played");
+                let _ = ready_tx.send(false);
                 return;
             }
         };
         let Ok(running) = built else {
+            // Without a sound server in between, a second device finds the card taken.
             log::warn!("the sound card could not be opened");
+            let _ = ready_tx.send(false);
             return;
         };
         if running.play().is_err() {
+            let _ = ready_tx.send(false);
             return;
         }
+        let _ = ready_tx.send(true);
         // Alive until it is told to stop.
         let _ = stop_rx.recv();
     });
-    if spawned.is_ok() {
-        *PLAYING.lock().unwrap() = Some(Playing { from, channels: usize::from(channels), buffer, stop: stop_tx });
+    if spawned.is_err() || !ready_rx.recv_timeout(Duration::from_secs(3)).unwrap_or(false) {
+        refuse(app, &from, stream);
+        return;
     }
+    PLAYING.lock().unwrap().insert(from, Playing { stream, channels: usize::from(channels), buffer, stop: stop_tx });
 }
 
+/// The device went away: nothing more of it will come.
 pub fn stop(from: &str) {
-    let mut guard = PLAYING.lock().unwrap();
-    if guard.as_ref().is_some_and(|p| p.from == from) {
-        if let Some(playing) = guard.take() {
-            let _ = playing.stop.send(());
-        }
-    }
-}
-
-pub fn stop_all() {
-    if let Some(playing) = PLAYING.lock().unwrap().take() {
+    if let Some(playing) = PLAYING.lock().unwrap().remove(from) {
         let _ = playing.stop.send(());
     }
 }
 
-fn stream<T: SizedSample + FromSample<f32>>(
+/// The device stopped sending `stream`. A stop of another stream of the same device is about something else.
+pub fn stopped(from: &str, stream: u8) {
+    let mut playing = PLAYING.lock().unwrap();
+    if playing.get(from).is_some_and(|p| p.stream == stream) {
+        if let Some(gone) = playing.remove(from) {
+            let _ = gone.stop.send(());
+        }
+    }
+}
+
+/// The person switched off the sound of other devices: each one that plays here is told, so it stops sending.
+pub fn stop_all(app: &AppHandle) {
+    let gone: Vec<(String, Playing)> = PLAYING.lock().unwrap().drain().collect();
+    for (from, playing) in gone {
+        let _ = playing.stop.send(());
+        refuse(app, &from, playing.stream);
+    }
+}
+
+fn refuse(app: &AppHandle, to: &str, stream: u8) {
+    let Ok(engine) = app.state::<AppState>().engine() else { return };
+    let to = to.to_string();
+    tauri::async_runtime::spawn(async move {
+        let _ = engine.send_audio_stop(to, stream).await;
+    });
+}
+
+fn playback<T: SizedSample + FromSample<f32>>(
     device: &cpal::Device,
     config: &cpal::StreamConfig,
     buffer: Arc<Mutex<Buffer>>,

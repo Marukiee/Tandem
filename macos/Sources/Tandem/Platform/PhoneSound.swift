@@ -25,23 +25,26 @@ enum SoundDelay: Int, CaseIterable, Identifiable {
     }
 }
 
-/// The sound of a phone, playing on this Mac. The phone sends 16 bit samples in datagrams; they wait in a short buffer and
-/// an audio engine pulls them out at the pace of the speakers. One phone at a time.
+/// The sound of other devices, playing on this Mac. A device sends 16 bit samples in datagrams; they wait in a short buffer and
+/// an audio engine pulls them out at the pace of the speakers. Each device that plays here has an engine of its own, and the
+/// system mixes them.
 @MainActor @Observable
 final class PhoneSound {
     static let shared = PhoneSound()
 
-    /// The stream number a phone's sound uses, apart from the one the Mac's own sound uses towards the phone.
+    /// The stream number a device sends its own sound on. The Mac's sound towards a phone uses others, so they never mix up.
     nonisolated static let stream: UInt8 = 9
 
     private static let enabledKey = "phoneSoundEnabled"
     private static let delayKey = "phoneSoundDelay"
 
-    /// Whether a phone may play its sound here at all.
+    /// Whether other devices may play their sound here at all.
     var enabled: Bool = UserDefaults.standard.object(forKey: PhoneSound.enabledKey) as? Bool ?? true {
         didSet {
             UserDefaults.standard.set(enabled, forKey: Self.enabledKey)
-            if !enabled, let device { stop(device: device, tell: true) }
+            if !enabled {
+                for id in Array(players.keys) { stop(device: id, tell: true) }
+            }
         }
     }
 
@@ -49,36 +52,35 @@ final class PhoneSound {
         didSet { UserDefaults.standard.set(delay.rawValue, forKey: Self.delayKey) }
     }
 
-    /// The phone that is playing here, or nil.
-    private(set) var device: String?
-    private(set) var deviceName = ""
-
-    @ObservationIgnored private var engine: AVAudioEngine?
-    @ObservationIgnored private let ring = SoundRing()
-    @ObservationIgnored let sink = PhoneSoundSink()
-
-    private init() {
-        sink.ring = ring
+    private struct Player {
+        let stream: UInt8
+        let engine: AVAudioEngine
     }
 
-    /// Read from the connection's thread for every packet, so it is kept where a lock can reach it.
-    @ObservationIgnored nonisolated(unsafe) fileprivate var expectedDevice: String?
+    @ObservationIgnored private var players: [String: Player] = [:]
+    @ObservationIgnored let sink = PhoneSoundSink()
 
-    /// A phone asks to play. Refused (and told so) when sound from phones is off or another phone is playing.
-    func start(from id: String, name: String, sampleRate: UInt32, channels: UInt8, engineModel: EngineModel) {
-        // The sound of a screen this Mac looks at and asked for plays also when sound from phones is off.
-        guard enabled || ScreenSound.asked.contains(id), device == nil || device == id else {
-            Task { try? await engineModel.tandem?.sendAudioStop(target: id, stream: Self.stream) }
+    private init() {}
+
+    func isPlaying(from id: String) -> Bool { players[id] != nil }
+
+    /// A device asks to play. Refused (and told so) when sound from other devices is off, or when this Mac's sound goes to that
+    /// device: a device never plays and sends with the same other device at once, so a stop always says which of the two it ends.
+    func start(from id: String, name: String, stream: UInt8, sampleRate: UInt32, channels: UInt8, engineModel: EngineModel) {
+        // The sound of a screen this Mac looks at and asked for plays also when sound from other devices is off.
+        guard enabled || ScreenSound.asked.contains(id), engineModel.speaker.device != id else {
+            Task { try? await engineModel.tandem?.sendAudioStop(target: id, stream: stream) }
             return
         }
-        stopEngine()
+        let again = players[id] != nil
+        stopEngine(id)
         let channelCount = AVAudioChannelCount(max(1, min(2, Int(channels))))
         guard let format = AVAudioFormat(standardFormatWithSampleRate: Double(sampleRate), channels: channelCount) else { return }
+        let ring = SoundRing()
         ring.reset(
             channels: Int(channelCount), sampleRate: Int(sampleRate),
             prebufferMs: delay.prebufferMs, maxMs: delay.maxMs, keepMs: delay.keepMs
         )
-        let ring = self.ring
         let source = AVAudioSourceNode(format: format) { _, _, frames, list -> OSStatus in
             ring.fill(list: list, frames: Int(frames))
             return noErr
@@ -89,47 +91,56 @@ final class PhoneSound {
         do {
             try created.start()
         } catch {
-            Task { try? await engineModel.tandem?.sendAudioStop(target: id, stream: Self.stream) }
+            Task { try? await engineModel.tandem?.sendAudioStop(target: id, stream: stream) }
             return
         }
-        engine = created
-        device = id
-        expectedDevice = id
-        deviceName = name
-        FloatingToast.show(String(localized: "Sound from \(name) plays on this Mac"), symbol: "speaker.wave.2.fill")
+        players[id] = Player(stream: stream, engine: created)
+        sink.set(ring, stream: stream, for: id)
+        // A device that starts again (a new output on its side) is no news.
+        if !again { FloatingToast.show(String(localized: "Sound from \(name) plays on this Mac"), symbol: "speaker.wave.2.fill") }
     }
 
-    /// The phone stopped, went away, or the person turned this off.
+    /// The device went away, or the person turned this off.
     func stop(device id: String, tell: Bool = false) {
-        guard device == id else { return }
-        stopEngine()
-        device = nil
-        expectedDevice = nil
+        guard let player = players[id] else { return }
+        stopEngine(id)
         if tell, let model = EngineModel.shared.tandem {
-            Task { try? await model.sendAudioStop(target: id, stream: Self.stream) }
+            Task { try? await model.sendAudioStop(target: id, stream: player.stream) }
         }
     }
 
-    private func stopEngine() {
-        engine?.stop()
-        engine = nil
-        ring.clear()
+    /// The device stopped sending `stream`. A stop of another stream of the same device is about something else.
+    func stopped(device id: String, stream: UInt8) {
+        guard players[id]?.stream == stream else { return }
+        stopEngine(id)
+    }
+
+    private func stopEngine(_ id: String) {
+        players.removeValue(forKey: id)?.engine.stop()
+        sink.set(nil, stream: 0, for: id)
     }
 }
 
-/// The packets of a phone's sound, from the network thread to the audio thread.
+/// The packets of other devices' sound, from the network thread to the audio threads.
 final class PhoneSoundSink: TandemAudioSink, @unchecked Sendable {
-    var ring: SoundRing?
+    private let lock = NSLock()
+    private var rings: [String: (stream: UInt8, ring: SoundRing)] = [:]
+
+    func set(_ ring: SoundRing?, stream: UInt8, for id: String) {
+        lock.lock()
+        rings[id] = ring.map { (stream, $0) }
+        lock.unlock()
+    }
 
     func onAudio(from: String, stream: UInt8, seq: UInt32, pcm: Data) {
-        guard stream == PhoneSound.stream, from == PhoneSound.shared.expectedDeviceUnsafe else { return }
-        ring?.push(seq: seq, pcm: pcm)
+        lock.lock()
+        let found = rings[from]
+        lock.unlock()
+        guard let found, found.stream == stream else { return }
+        found.ring.push(seq: seq, pcm: pcm)
     }
 }
 
-extension PhoneSound {
-    nonisolated var expectedDeviceUnsafe: String? { expectedDevice }
-}
 
 /// A buffer of samples between the network and the speakers: it collects a cushion before it lets the speakers start,
 /// puts a moment of silence where a packet was lost, throws old sound away when it has grown into a delay, and goes back
@@ -229,17 +240,17 @@ struct PhoneSoundSettings: View {
     @Bindable private var sound = PhoneSound.shared
 
     var body: some View {
-        Section("Sound from your phone") {
+        Section("Sound from other devices") {
             DescribedToggle(
-                "Let a phone play its sound here",
-                subtitle: "Start it on the phone, on the page of this Mac. Turning this off stops it",
+                "Let other devices play their sound here",
+                subtitle: "Start it on the other device, on the page of this Mac. Several can play at once. Turning this off stops them",
                 isOn: $sound.enabled
             )
             Picker("Delay", selection: $sound.delay) {
                 ForEach(SoundDelay.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
-            Text("Low plays closer to live and can stutter on a poor connection. Smooth waits a little longer to stay steady. It applies the next time a phone starts.")
+            Text("Low plays closer to live and can stutter on a poor connection. Smooth waits a little longer to stay steady. It applies the next time a device starts.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

@@ -215,6 +215,18 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "wifi_old") => "{0} uses an old kind of security that cannot be shared.",
         ("nl", "wifi_unreachable") => "{0} is nu niet bereikbaar.",
         (_, "wifi_unreachable") => "{0} cannot be reached right now.",
+        ("nl", "output_loop") => "Het geluid van {0} speelt nu hier. Stop dat eerst, anders gaat het geluid heen en weer.",
+        (_, "output_loop") => "The sound of {0} plays here now. Stop that first, or the sound would go back and forth.",
+        ("nl", "output_no_capture_linux") => "Deze computer kan zijn geluid niet opnemen. Daarvoor is PulseAudio of PipeWire nodig, met parec (pulseaudio-utils) of GStreamer.",
+        (_, "output_no_capture_linux") => "This computer cannot record its sound. That needs PulseAudio or PipeWire, with parec (pulseaudio-utils) or GStreamer.",
+        ("nl", "output_no_capture_windows") => "Deze pc kan zijn geluid niet opnemen. Kijk of er een geluidsuitvoer aan staat.",
+        (_, "output_no_capture_windows") => "This PC cannot record its sound. Check that a sound output is on.",
+        ("nl", "output_refused") => "{0} speelt geen geluid van andere apparaten af. Zet het daar aan in Tandem.",
+        (_, "output_refused") => "{0} does not play sound from other devices. Turn it on in Tandem there.",
+        ("nl", "output_stopped_there") => "{0} is gestopt met het geluid afspelen",
+        (_, "output_stopped_there") => "{0} stopped playing the sound",
+        ("nl", "output_gone") => "Het geluid gaat niet meer naar {0}: de verbinding is weg",
+        (_, "output_gone") => "The sound no longer goes to {0}: the connection is gone",
         _ => "",
     }
 }

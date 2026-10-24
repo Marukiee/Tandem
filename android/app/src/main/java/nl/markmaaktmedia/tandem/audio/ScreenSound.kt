@@ -73,6 +73,8 @@ object ScreenSound {
             if (soundTo == from) stopSharing(context)
             return
         }
+        // Its sound plays here: sent back, the two would echo each other.
+        if (context.graph.audio.isPlayingFrom(from)) return
         soundTo = from
         val open = SoundShareActivity.forPeer(context, from).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (context.graph.appVisible) {
@@ -99,8 +101,10 @@ object ScreenSound {
     }
 
     private fun stopSharing(context: Context) {
+        val peer = soundTo
         soundTo = null
         context.getSystemService(NotificationManager::class.java).cancel(0x534E)
-        runCatching { context.startService(Intent(context, SoundShareService::class.java).setAction(SoundShareService.ACTION_STOP)) }
+        // The person may have sent the sound somewhere else since: that goes on.
+        if (SoundShareService.active.value == peer) SoundShareService.stop(context)
     }
 }

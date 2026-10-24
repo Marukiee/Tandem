@@ -243,7 +243,7 @@ private struct GeneralSettings: View {
                     )
                 }
                 DescribedToggle(
-                    "Mute this Mac while a phone is its speaker",
+                    "Mute this Mac while another device is its speaker",
                     subtitle: "Turn this off to hear the sound on both. It takes effect the next time you start it.",
                     isOn: $audioMuteLocal
                 )
