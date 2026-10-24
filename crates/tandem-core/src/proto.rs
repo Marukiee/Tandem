@@ -151,6 +151,8 @@ pub enum Msg {
     Ping { nonce: u64 },
     Pong { nonce: u64 },
     Bye { reason: String },
+    /// Handing the Wi-Fi a computer is on to another device (see `wifi`). Devices that do not know it skip it.
+    Wifi(crate::wifi::WifiMsg),
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,

@@ -131,6 +131,8 @@ pub(crate) struct Inner {
     pub ble: Mutex<crate::ble::BleHub>,
     pub audio: RwLock<Option<Arc<dyn AudioSink>>>,
     pub ble_msg_id: std::sync::atomic::AtomicU8,
+    /// The Wi-Fi network this device is on, as the app last said (see `wifi`).
+    pub wifi: Mutex<Option<crate::wifi::WifiNetwork>>,
 }
 
 /// Where the sound of the other device goes. Called on the connection's own task for every
@@ -212,6 +214,7 @@ impl Engine {
             ble: Mutex::new(Default::default()),
             audio: RwLock::new(None),
             ble_msg_id: std::sync::atomic::AtomicU8::new(0),
+            wifi: Mutex::new(None),
         });
 
         // The peers must exist before their saved addresses can be attached to them.
@@ -438,6 +441,12 @@ impl Engine {
     /// there is no link, no shared key, or the message is not one that may cross the air.
     pub fn ble_send(&self, id: &DeviceId, msg: Msg) -> bool {
         self.inner.ble_queue(id, msg)
+    }
+
+    /// Which Wi-Fi network this device is on now, `None` when it is on none. Only a device whose caps say `wifi.share` tells
+    /// the others; they hear of every change, and a device that comes up (also over Bluetooth) hears it at once.
+    pub async fn set_wifi_network(&self, network: Option<crate::wifi::WifiNetwork>) {
+        self.inner.set_wifi(network).await;
     }
 
     /// The Bluetooth link to `id` went away.

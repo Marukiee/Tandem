@@ -203,6 +203,7 @@ impl Inner {
         let status = self.my_status.lock().unwrap().clone();
         let _ = session.tx.send(Msg::Status(status)).await;
         self.ble_on_connected(id).await;
+        self.wifi_on_connected(id).await;
         let known = self.introductions(&id);
         if !known.is_empty() {
             let _ = session.tx.send(Msg::Introduce { peers: known }).await;
@@ -438,6 +439,11 @@ impl Inner {
             }
             Msg::CaptureCancel(cancel) => self.emit(Event::CaptureCancelled { from: id, id: cancel.id, why: cancel.why }),
             Msg::BleKey { key } => self.ble_on_key(id, key),
+            Msg::Wifi(msg) => {
+                if msg.sane() {
+                    self.emit(Event::Wifi { from: id, msg });
+                }
+            }
             Msg::AudioStart { stream, sample_rate, channels } => {
                 // Sample rates and channel counts far outside what any device has are a mistake.
                 if (8_000..=192_000).contains(&sample_rate) && (1..=2).contains(&channels) {

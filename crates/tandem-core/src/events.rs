@@ -98,4 +98,6 @@ pub enum Event {
     MediaOffered { from: DeviceId, kind: crate::live::MediaKind, facing: crate::live::MediaFacing, extend: bool },
     /// The pointer goes over or comes back (see `pointer_share`).
     PointerShare { from: DeviceId, msg: crate::pointer_share::PointerShareMsg },
+    /// About the Wi-Fi of the other device: which network it is on, a question for its password, or the answer (see `wifi`).
+    Wifi { from: DeviceId, msg: crate::wifi::WifiMsg },
 }

@@ -49,6 +49,7 @@ pub fn allowed(msg: &Msg) -> bool {
             | Msg::MediaPlayers { .. }
             | Msg::MediaCommand { .. }
             | Msg::Ping { .. }
+            | Msg::Wifi(_)
     )
 }
 
@@ -386,6 +387,7 @@ impl Inner {
         self.ble_save(&from, &copy);
         if new_link {
             self.emit(crate::events::Event::DevicesChanged);
+            self.wifi_on_link(from);
         }
         if !matches!(msg, Msg::Ping { .. }) {
             self.handle_msg(from, msg).await;
