@@ -56,4 +56,18 @@ object SessionPolicy {
     }
 
     const val MIN_BITRATE = 1_500_000
+
+    /** What a computer says when it turns the screen it made for this phone along with the phone. */
+    const val TURN_CAP = "screen.extend.turn"
+
+    /**
+     * The screen of its own to ask a computer for, from the pixels of this phone as it is held now: as it is held when the computer can turn
+     * it, and lying down when it cannot, since then the shape it is made in stays.
+     */
+    fun extendSize(width: Int, height: Int, turns: Boolean): Pair<Int, Int> =
+        if (turns) width to height else maxOf(width, height) to minOf(width, height)
+
+    /** Whether the picture that comes stands the other way from the phone as it is held. A square one never does. */
+    fun needsTurn(pictureWidth: Int, pictureHeight: Int, width: Int, height: Int): Boolean =
+        pictureWidth != pictureHeight && width != height && (pictureWidth > pictureHeight) != (width > height)
 }
