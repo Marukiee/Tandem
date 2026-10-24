@@ -92,12 +92,14 @@ class SoundShareService : Service() {
             return finish()
         }
         // The sound went somewhere else until now: that device is told it ends, and this one takes its place. Let go of first, so
-        // what ends the old capture does not end the service.
-        sending?.let { end(it) }
+        // what ends the old capture does not end the service, and ended only once the new projection is there, so the service
+        // is never without one.
+        val previous = sending
         sending = null
         val code = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
         val data = IntentCompat.getParcelableExtra(intent, EXTRA_RESULT_DATA, Intent::class.java)
         val granted = data?.let { runCatching { getSystemService(MediaProjectionManager::class.java).getMediaProjection(code, it) }.getOrNull() }
+        previous?.let { end(it) }
         if (granted == null) return finish()
         val s = Sending(peer, granted)
         granted.registerCallback(object : MediaProjection.Callback() {
