@@ -4,7 +4,7 @@
     <string name="perm_partly">Deels</string>
     <string name="perm_phone_opt_calllog">het nummer van de beller</string>
     <string name="perm_phone_opt_sms">weigeren met een bericht</string>
-    <string name="perm_phone_opt_dial">bellen vanaf je Mac</string>
+    <string name="perm_phone_opt_dial">bellen vanaf je computer</string>
     <string name="perm_phone_missing">Gesprekken werken. Nog uit: %1$s.</string>
     <string name="perm_phone_restricted">Android blokkeert de rechten voor de gespreksgeschiedenis en sms bij apps die niet uit de Play Store komen. Open de app-info, tik rechtsboven op de drie puntjes, kies Beperkte instellingen toestaan en probeer het dan opnieuw.</string>
     <string name="perm_open_app_info">Open app-info</string>

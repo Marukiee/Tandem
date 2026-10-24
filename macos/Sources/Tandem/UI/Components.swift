@@ -38,6 +38,9 @@ struct GlassActionButton: View {
         let button = Button(action: action) {
             Label(title, systemImage: symbol)
                 .font(.callout.weight(.semibold))
+                // A button that turns on or off changes its symbol and words: the symbol morphs, and the words fade across while the
+                // pill springs to its new width (see the animation on the row).
+                .contentTransition(.symbolEffect(.replace))
                 .frame(maxWidth: wide ? .infinity : nil)
         }
         if prominent {

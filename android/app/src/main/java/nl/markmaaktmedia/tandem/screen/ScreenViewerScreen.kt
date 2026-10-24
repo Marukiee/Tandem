@@ -717,7 +717,7 @@ private fun Overlay(
                 PillLoader(label = loading ?: "")
                 if (state == ViewerState.WaitingForApproval) {
                     Text(
-                        stringResource(R.string.screen_waiting_approval_sub),
+                        stringResource(R.string.screen_waiting_approval_sub, name),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.7f),
                         textAlign = TextAlign.Center,
@@ -759,10 +759,11 @@ private fun Overlay(
         // Over for good: why, and what to do about it.
         val finished = when (state) {
             is ViewerState.Ended -> when (state.outcome) {
-                Outcome.StoppedByMac -> Message(TandemIcons.Desktop, R.string.screen_stopped_title, R.string.screen_stopped_body)
+                // Stopped on purpose there, or not possible now: closing is what comes next, so that is the coloured button.
+                Outcome.StoppedByMac -> Message(TandemIcons.Desktop, R.string.screen_stopped_title, R.string.screen_stopped_body, closeFirst = true)
                 Outcome.Denied -> Message(TandemIcons.Shield, R.string.screen_denied_title, R.string.screen_denied_body)
-                Outcome.Busy -> Message(TandemIcons.Person, R.string.screen_busy_title, R.string.screen_busy_body)
-                Outcome.Unavailable -> Message(TandemIcons.Error, R.string.screen_unavailable_title, R.string.screen_unavailable_body)
+                Outcome.Busy -> Message(TandemIcons.Person, R.string.screen_busy_title, R.string.screen_busy_body, closeFirst = true)
+                Outcome.Unavailable -> Message(TandemIcons.Error, R.string.screen_unavailable_title, R.string.screen_unavailable_body, closeFirst = true)
                 Outcome.NoAnswer -> Message(TandemIcons.Sleep, R.string.screen_noanswer_title, R.string.screen_noanswer_body)
                 Outcome.Retry -> null
             }
@@ -785,8 +786,8 @@ private fun Overlay(
     }
 }
 
-private class Message(val icon: @Composable () -> Painter, val title: Int, val body: Int, val named: Boolean = true) {
-    constructor(icon: Painter, title: Int, body: Int, named: Boolean = true) : this({ icon }, title, body, named)
+private class Message(val icon: @Composable () -> Painter, val title: Int, val body: Int, val named: Boolean = true, val closeFirst: Boolean = false) {
+    constructor(icon: Painter, title: Int, body: Int, named: Boolean = true, closeFirst: Boolean = false) : this({ icon }, title, body, named, closeFirst)
 }
 
 @Composable
@@ -811,14 +812,19 @@ private fun EndedCard(message: Message, name: String, onRetry: () -> Unit, onClo
             textAlign = TextAlign.Center,
         )
         Text(
-            stringResource(message.body),
+            if (message.named) stringResource(message.body, name) else stringResource(message.body),
             style = MaterialTheme.typography.bodyMedium,
             color = scheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SecondaryPillButton(stringResource(R.string.screen_close), onClose)
-            PrimaryPillButton(stringResource(R.string.screen_try_again), onRetry, icon = TandemIcons.Refresh)
+            if (message.closeFirst) {
+                SecondaryPillButton(stringResource(R.string.screen_try_again), onRetry)
+                PrimaryPillButton(stringResource(R.string.screen_close), onClose)
+            } else {
+                SecondaryPillButton(stringResource(R.string.screen_close), onClose)
+                PrimaryPillButton(stringResource(R.string.screen_try_again), onRetry, icon = TandemIcons.Refresh)
+            }
         }
     }
 }

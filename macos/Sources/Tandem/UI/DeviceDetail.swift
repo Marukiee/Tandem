@@ -300,6 +300,8 @@ struct DeviceDetail: View {
         }
         .animation(.tandemFade, value: device.online)
         .animation(.tandemFade, value: device.ble)
+        // A button that turns on gets other words and so another width: the pills next to it move over smoothly, not in a jump.
+        .animation(.tandem, value: liveState)
         .task(id: "\(device.id)-\(device.online)") {
             // What was found the last time is there at once, and is looked at again quietly.
             if let known = SSHAccess.seen[device.id] {
@@ -311,6 +313,13 @@ struct DeviceDetail: View {
             sshAddress = found
             sshChecked = true
         }
+    }
+
+    /// What runs between this Mac and the device, as one value that changes whenever a button of the row turns on or off.
+    private var liveState: String {
+        let host = ScreenHost.shared.current.map { "\($0.peer)\($0.extend)" } ?? ""
+        let live = LiveManager.shared.sessions.filter { $0.peer == device.id }.map { "\($0.kind)\($0.extend)" }.joined()
+        return host + live + "\(model.ringing.contains(device.id))\(model.speaker.device == device.id)"
     }
 
     /// A small heading and the buttons under it in a grid: every button as wide as the others in its row, starting at the left, so a row

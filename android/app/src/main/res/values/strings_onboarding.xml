@@ -4,7 +4,7 @@
     <string name="perm_partly">Partly</string>
     <string name="perm_phone_opt_calllog">the caller\'s number</string>
     <string name="perm_phone_opt_sms">declining with a message</string>
-    <string name="perm_phone_opt_dial">calling from your Mac</string>
+    <string name="perm_phone_opt_dial">calling from your computer</string>
     <string name="perm_phone_missing">Calls work. Still off: %1$s.</string>
     <string name="perm_phone_restricted">Android blocks the call log and text permissions for apps that were not installed from the Play Store. Open app info, tap the three dots at the top right, choose Allow restricted settings, then try again.</string>
     <string name="perm_open_app_info">Open app info</string>

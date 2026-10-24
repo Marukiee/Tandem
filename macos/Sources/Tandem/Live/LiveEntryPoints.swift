@@ -19,7 +19,7 @@ struct LiveActionRow: View {
             let ready = device.online
             let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
             // What is on is blue, and pressing it again turns it off.
-            GlassActionButton(title: "Control computer", symbol: "display", prominent: running) {
+            GlassActionButton(title: running ? "Stop controlling" : "Control computer", symbol: running ? "stop.circle.fill" : "display", prominent: running) {
                 if let session = LiveManager.shared.session(of: .screen, on: device.id), !session.extend { LiveManager.shared.stop(session) }
                 else { LiveManager.shared.start(device: device, kind: .screen) }
             }
@@ -29,13 +29,18 @@ struct LiveActionRow: View {
             // A screen that computer makes for this one, next to the ones it has: windows are moved to it with the mouse of that computer.
             if device.caps.contains("screen.extend") {
                 let secondRunning = LiveManager.shared.session(of: .screen, on: device.id)?.extend == true
-                GlassActionButton(title: "Use as second screen", symbol: "rectangle.on.rectangle", prominent: secondRunning) {
+                // Named from where the extra screen appears: this Mac becomes a screen of that computer.
+                GlassActionButton(
+                    title: secondRunning ? "Stop being its screen" : "Be its second screen",
+                    symbol: secondRunning ? "stop.circle.fill" : "rectangle.righthalf.inset.filled.arrow.right",
+                    prominent: secondRunning
+                ) {
                     if secondRunning, let session = LiveManager.shared.session(of: .screen, on: device.id) { LiveManager.shared.stop(session) }
                     else { LiveManager.shared.start(device: device, kind: .screen, extend: true) }
                 }
                 .disabled(!ready)
                 .opacity(ready ? 1 : 0.5)
-                .help("Makes this computer add a screen for this one. Move windows to it with the mouse of that computer.")
+                .help("This Mac becomes an extra screen of that computer. Move windows to it with the mouse of that computer.")
             }
         }
         // This Mac's own extra screen, shown on that device: it makes the screen, the device is told to look at it. Grey until both can.
@@ -44,18 +49,23 @@ struct LiveActionRow: View {
             let ready = device.online && canHost && device.caps.contains("screen.extend.view")
             // On while this Mac shows a screen of its own on that device; pressing it then ends it.
             let extending = ScreenHost.shared.current?.extend == true && ScreenHost.shared.current?.peer == device.id
-            GlassActionButton(title: "Extend screen", symbol: "rectangle.on.rectangle", prominent: extending) {
+            // The other way round: this Mac gets an extra screen, shown on that device.
+            GlassActionButton(
+                title: extending ? "Stop extending" : "Extend my screen",
+                symbol: extending ? "stop.circle.fill" : "rectangle.on.rectangle",
+                prominent: extending
+            ) {
                 if extending { ScreenHost.shared.stopCurrent() } else { ScreenHost.shared.offerExtend(to: device) }
             }
             .disabled(!ready && !extending)
             .opacity(ready || extending ? 1 : 0.5)
-            .help(!device.caps.contains("screen.extend.view") ? "Update Tandem on that device to use it as a second screen" : "Adds a screen to this Mac and shows it on that device. Move windows to it with your mouse.")
+            .help(!device.caps.contains("screen.extend.view") ? "Update Tandem on that device to use it as a second screen" : "This Mac gets an extra screen, shown on that device. Move windows to it with your mouse.")
         }
         // Always there for a phone, grey while it cannot: a phone with an older Tandem is told what to do in the tooltip.
         if device.platform == .android {
             let screenReady = device.online && device.canShowScreen
             let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
-            GlassActionButton(title: "Show phone screen", symbol: "iphone.gen3", prominent: running) {
+            GlassActionButton(title: running ? "Stop phone screen" : "Show phone screen", symbol: running ? "stop.circle.fill" : "iphone.gen3", prominent: running) {
                 if let session = LiveManager.shared.session(of: .screen, on: device.id) { LiveManager.shared.stop(session) }
                 else { LiveManager.shared.start(device: device, kind: .screen) }
             }
@@ -65,7 +75,7 @@ struct LiveActionRow: View {
 
             let cameraReady = device.online && device.canShowCamera
             let cameraRunning = LiveManager.shared.session(of: .camera, on: device.id) != nil
-            GlassActionButton(title: "Phone camera", symbol: "camera", prominent: cameraRunning) {
+            GlassActionButton(title: cameraRunning ? "Stop camera" : "Phone camera", symbol: cameraRunning ? "stop.circle.fill" : "camera", prominent: cameraRunning) {
                 if let session = LiveManager.shared.session(of: .camera, on: device.id) { LiveManager.shared.stop(session) }
                 else { LiveManager.shared.start(device: device, kind: .camera) }
             }

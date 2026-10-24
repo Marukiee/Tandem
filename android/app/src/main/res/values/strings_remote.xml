@@ -6,7 +6,7 @@
     <string name="remote_mouse_buttons">Mouse buttons</string>
     <string name="remote_left">Left</string>
     <string name="remote_right">Right</string>
-    <string name="remote_type_hint">Type to send to your Mac</string>
+    <string name="remote_type_hint">Type to send to the computer</string>
     <string name="remote_media_mute">Mute</string>
     <string name="remote_media_volume_down">Volume down</string>
     <string name="remote_media_previous">Previous</string>

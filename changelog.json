@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.1.94",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Clearer screen buttons",
+      "new": [
+        "Extend my screen and Be its second screen say which way the screen goes",
+        "A button that runs shows a stop icon and says Stop, and the pills move over smoothly",
+        "Android says your computer, or its name, where it said Mac",
+        "Close is the coloured button after the other side stopped"
+      ]
+    },
+    "nl": {
+      "title": "Duidelijkere schermknoppen",
+      "new": [
+        "Mijn scherm uitbreiden en Word zijn tweede scherm zeggen welke kant het scherm op gaat",
+        "Een knop die loopt toont een stop-icoon en zegt Stop, en de pillen schuiven soepel op",
+        "Android zegt je computer, of de naam, waar het Mac zei",
+        "Sluiten is de gekleurde knop als de ander gestopt is"
+      ]
+    }
+  },
+  {
     "version": "0.1.93",
     "date": "2026-10-24",
     "en": {

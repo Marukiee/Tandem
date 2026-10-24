@@ -6,7 +6,7 @@
     <string name="remote_mouse_buttons">Muisknoppen</string>
     <string name="remote_left">Links</string>
     <string name="remote_right">Rechts</string>
-    <string name="remote_type_hint">Typ om naar je Mac te sturen</string>
+    <string name="remote_type_hint">Typ om naar de computer te sturen</string>
     <string name="remote_media_mute">Dempen</string>
     <string name="remote_media_volume_down">Zachter</string>
     <string name="remote_media_previous">Vorige</string>

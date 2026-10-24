@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="capture_channel_name">Camera for your Mac</string>
-    <string name="capture_channel_desc">When your Mac asks for a photo, a scan or a picture</string>
+    <string name="capture_channel_name">Camera for your computer</string>
+    <string name="capture_channel_desc">When your computer asks for a photo, a scan or a picture</string>
     <string name="capture_notif_photo">%1$s wants a photo</string>
     <string name="capture_notif_document">%1$s wants a scan</string>
     <string name="capture_notif_picture">%1$s wants a picture</string>
@@ -49,6 +49,6 @@
 
     <string name="capture_name_photo">Photo</string>
     <string name="capture_name_scan">Scan</string>
-    <string name="capture_mac_fallback">your Mac</string>
+    <string name="capture_mac_fallback">your computer</string>
     <string name="capture_error_local">That did not work</string>
 </resources>

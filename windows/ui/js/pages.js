@@ -238,11 +238,11 @@ export function DevicePage({ device }) {
           <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
         ${isComputer && hasCap("screen.extend") && html`<button class=${"btn" + (displayOn ? " on" : "")} disabled=${!device.online && !displayOn} title=${t("display_tip")}
           onClick=${() => (displayOn ? call("display_stop") : call("display_start", { id: device.id, name: device.name, mac: device.platform === "macos" })).catch(failed)}>
-          <${Icon} name="device-laptop" size=${17} />${displayOn ? t("display_stop_screen") : t("display_use")}</button>`}
+          <${Icon} name=${displayOn ? "circle-x" : "device-laptop"} size=${17} />${displayOn ? t("display_stop_screen") : t("display_use")}</button>`}
         ${(isComputer || device.platform === "android") && html`<button class=${"btn" + (extendOn ? " on" : "")} disabled=${(!device.online || !state.canExtend || !hasCap("screen.extend.view")) && !extendOn}
           title=${!hasCap("screen.extend.view") ? t("extend_update") : !state.canExtend ? t("extend_cant_here") : t("extend_tip")}
           onClick=${() => (extendOn ? call("display_offer_stop", { id: device.id }) : call("display_offer", { id: device.id }).then(() => say(t("extend_asked", device.name)))).catch(failed)}>
-          <${Icon} name="device-laptop" size=${17} />${extendOn ? t("extend_stop") : t("extend_to")}</button>`}
+          <${Icon} name=${extendOn ? "circle-x" : "device-desktop"} size=${17} />${extendOn ? t("extend_stop") : t("extend_to")}</button>`}
         ${isComputer && html`<button class="btn" disabled=${!sshReady} title=${sshReady ? t("ssh_title") : sshReason} onClick=${openSsh}>
           <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
         ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>

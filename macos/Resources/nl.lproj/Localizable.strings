@@ -862,6 +862,11 @@
 "Control this computer" = "Deze computer bedienen";
 "Control computer" = "Computer bedienen";
 "Use as second screen" = "Gebruik als tweede scherm";
+"Be its second screen" = "Word zijn tweede scherm";
+"Stop being its screen" = "Stop als zijn scherm";
+"Stop controlling" = "Stop met bedienen";
+"Stop phone screen" = "Stop telefoonscherm";
+"Stop camera" = "Stop camera";
 "Makes this computer add a screen for this one. Move windows to it with the mouse of that computer." = "Laat die computer een scherm voor deze toevoegen. Verplaats vensters ernaartoe met de muis van die computer.";
 "Shows the screen of this computer in a window. It asks first, and then you can use its mouse and keyboard." = "Toont het scherm van deze computer in een venster. Het vraagt eerst, en dan kun je zijn muis en toetsenbord gebruiken.";
 "The computer does not allow clicking yet" = "De computer staat klikken nog niet toe";
@@ -924,6 +929,10 @@
 "Last 7 days" = "Laatste 7 dagen";
 "Last 30 days" = "Laatste 30 dagen";
 "Extend screen" = "Scherm uitbreiden";
+"Extend my screen" = "Mijn scherm uitbreiden";
+"Stop extending" = "Stop met uitbreiden";
+"This Mac becomes an extra screen of that computer. Move windows to it with the mouse of that computer." = "Deze Mac wordt een extra scherm van die computer. Verplaats er vensters naartoe met de muis van die computer.";
+"This Mac gets an extra screen, shown on that device. Move windows to it with your mouse." = "Deze Mac krijgt een extra scherm, dat op dat apparaat te zien is. Verplaats er vensters naartoe met je muis.";
 "Update Tandem on that device to use it as a second screen" = "Update Tandem op dat apparaat om het als tweede scherm te gebruiken";
 "Adds a screen to this Mac and shows it on that device. Move windows to it with your mouse." = "Voegt een scherm toe aan deze Mac en toont het op dat apparaat. Sleep vensters ernaartoe met je muis.";
 "Asked %@ to be a second screen" = "%@ gevraagd om tweede scherm te zijn";
