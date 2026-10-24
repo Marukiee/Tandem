@@ -41,7 +41,7 @@
     <string name="settings_kw_sharing_ble">bluetooth, ble, offline, geen wifi, geen netwerk, klembord, meldingen</string>
     <string name="settings_kw_sharing_tailscale">tailscale, vpn, op afstand, onderweg, ander netwerk, tailnet, verbinden, bereiken</string>
     <string name="settings_kw_sharing_pointer">muis, toetsenbord, mac, computer, aanwijzer, cursor, rand, universal control, muis delen, toegankelijkheid</string>
-    <string name="settings_kw_sharing_tile">snelle instellingen, tegel, klembord sturen, kopiëren, plakken, snelkoppeling, quick settings</string>
+    <string name="settings_kw_tiles">snelle instellingen, tegels, tegel, klembord sturen, klembord, kopiëren, plakken, quick share, universele muis, muis, toevoegen, snelkoppeling, quick settings</string>
     <string name="settings_kw_sharing_music">muziek, media, nu aan het spelen, afspelen, speler, bediening, spotify, youtube, geluid</string>
     <string name="settings_kw_sharing_media_apps">apps, muziekapps, media-apps, uitsluiten, verbergen, welke apps, kiezen</string>
     <string name="settings_kw_sharing_speaker">audio, geluid, uitvoer, speaker, luidspreker, afspelen via telefoon, geluid van je mac, volume</string>

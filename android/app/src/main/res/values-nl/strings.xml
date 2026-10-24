@@ -221,8 +221,6 @@
     <string name="screenshot_to">Naar %1$s</string>
     <string name="screenshot_choose">Kies…</string>
     <string name="tile_label">Klembord sturen</string>
-    <string name="settings_clip_tile">Voeg de tegel Klembord sturen toe</string>
-    <string name="settings_clip_tile_sub">Stuur je klembord met één tik vanuit snelle instellingen</string>
     <string name="screenshot_sending">Versturen naar %1$s…</string>
     <string name="screenshot_sent">Verstuurd naar %1$s</string>
     <string name="screenshot_failed">De screenshot kon niet worden verstuurd</string>

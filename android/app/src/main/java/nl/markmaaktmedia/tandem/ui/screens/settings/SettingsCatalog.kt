@@ -13,6 +13,7 @@ enum class SettingsPageId(val key: String) {
     Look("look"),
     Sharing("sharing"),
     QuickShare("quickshare"),
+    Tiles("tiles"),
     Notifications("notifications"),
     Trackpad("trackpad"),
     Updates("updates"),
@@ -59,7 +60,6 @@ internal object FocusKeys {
     const val Ble = "sharing.ble"
     const val AutoTailscale = "sharing.tailscale"
     const val PointerIn = "sharing.pointer"
-    const val ClipTile = "sharing.tile"
     const val MediaShare = "sharing.music"
     const val Speaker = "sharing.speaker"
     const val Guests = "sharing.guests"
@@ -146,6 +146,7 @@ internal object SettingsCatalog {
     private val notifications = Route.SettingsPage(SettingsPageId.Notifications)
     private val trackpad = Route.SettingsPage(SettingsPageId.Trackpad)
     private val quickShare = Route.SettingsPage(SettingsPageId.QuickShare)
+    private val tiles = Route.SettingsPage(SettingsPageId.Tiles)
 
     val all: List<SettingsEntry> = listOf(
         // Look and language
@@ -205,8 +206,8 @@ internal object SettingsCatalog {
             { TandemIcons.Mouse }, subtitle = R.string.settings_pointer_in_sub, focus = FocusKeys.PointerIn,
         ),
         SettingsEntry(
-            "sharing_tile", R.string.settings_clip_tile, R.string.settings_kw_sharing_tile, SettingsCategory.Sharing, sharing,
-            { TandemIcons.Paste }, subtitle = R.string.settings_clip_tile_sub, focus = FocusKeys.ClipTile,
+            "tiles", R.string.settings_tiles, R.string.settings_kw_tiles, SettingsCategory.Sharing, tiles,
+            { TandemIcons.Bolt }, subtitle = R.string.settings_tiles_sub, via = sharing,
         ),
         SettingsEntry(
             "sharing_music", R.string.settings_media_share, R.string.settings_kw_sharing_music, SettingsCategory.Sharing, sharing,
