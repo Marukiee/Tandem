@@ -209,6 +209,10 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
     de muis, een gespeelde druk erop, `SHDoDragDrop` met de bestanden), maar nog niet aangesloten: in `drag.rs` moet een gedragen bestand dat
     binnen is terwijl de knop nog vastgehouden wordt `dragsource::start` krijgen (niet neergezet: zoals nu naar het bureaublad), en `flush`
     moet `dragsource::release` aanroepen als de drag van het systeem nog loopt.
+  - Scrollen met de universele muis op Android moet een stuk soepeler (gevraagd 2026-10-24). Nu speelt `RemoteInput` per stuk van 16 ms de
+    opgetelde stapjes af, dus de vinger beweegt schokkerig mee met de tempo's van het netwerk en `dispatchGesture`. Idee: de vinger een
+    eigen snelheid geven die de trackpad volgt (afgevlakt, met een kleine voorsprong), en per stuk een vloeiende lijn met tussenpunten;
+    meten op de Xperia met een schermopname van de telefoon.
   - Linux als hoofdcomputer: de muis van Linux gaat niet naar de Mac (gezien 2026-10-24). In de sessie sinds 15:03 heeft GNOME de barrière
     nooit meer gemeld, ook niet voor de muis van de Mac. Sinds 0.2.10 schrijft `inputcapture` de schermen en lijnen van de barrières in het
     logboek; na het bijwerken eerst opnieuw proberen en dan dat logboek lezen. Daarna: slepen vanaf Linux als hoofd met dezelfde
