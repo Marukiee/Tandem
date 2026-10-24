@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.2.12",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Smoother scrolling",
+      "new": [
+        "Scrolling from the Mac on your phone is smoother, with the universal mouse and in its window"
+      ]
+    },
+    "nl": {
+      "title": "Soepeler scrollen",
+      "new": [
+        "Scrollen vanaf de Mac op je telefoon gaat soepeler, met de universele muis en in zijn venster"
+      ]
+    }
+  },
+  {
     "version": "0.2.11",
     "date": "2026-10-24",
     "en": {
