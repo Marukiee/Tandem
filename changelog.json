@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.2.14",
+    "date": "2026-10-25",
+    "en": {
+      "title": "Call from your computer",
+      "new": [
+        "Call from your computer: type a name or number and your phone places the call",
+        "Sending files from Linux works again",
+        "Turn on a switch of Tandem on another device from here",
+        "All Quick Settings tiles in one place on Android",
+        "Computers offer Downloads, Documents and Desktop to browse"
+      ]
+    },
+    "nl": {
+      "title": "Bellen vanaf je computer",
+      "new": [
+        "Bel vanaf je computer: typ een naam of nummer en je telefoon belt",
+        "Bestanden versturen vanaf Linux werkt weer",
+        "Zet een schakelaar van Tandem op een ander apparaat van hieruit aan",
+        "Alle tegels voor Snelle instellingen op één plek op Android",
+        "Computers bieden Downloads, Documenten en Bureaublad aan om te bekijken"
+      ]
+    }
+  },
+  {
     "version": "0.2.13",
     "date": "2026-10-25",
     "en": {
