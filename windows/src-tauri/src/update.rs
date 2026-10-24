@@ -173,7 +173,7 @@ pub fn parse_release(json: &str) -> Result<Release, String> {
     }
     Ok(Release {
         version: tag.trim_start_matches(['v', 'V']).to_string(),
-        notes: root["body"].as_str().unwrap_or("").trim().to_string(),
+        notes: summary(root["body"].as_str().unwrap_or("")),
         page: root["html_url"].as_str().unwrap_or("https://github.com/Marukiee/Tandem/releases/latest").to_string(),
         size: installer["size"].as_u64().unwrap_or(0),
         installer: installer_url,
@@ -389,11 +389,51 @@ pub fn current(app: &AppHandle) -> Value {
     value
 }
 
+/// What a release says is new, as plain text for the banner: the part above the line (the table of files is below it), without the
+/// marks of Markdown. Releases from before that had the table first and a Dutch half: those parts are left out too.
+fn summary(body: &str) -> String {
+    let mut out: Vec<String> = Vec::new();
+    let mut skipping = false;
+    for raw in body.lines() {
+        let line = raw.trim();
+        if line == "---" {
+            break;
+        }
+        if let Some(heading) = line.strip_prefix("## ") {
+            skipping = heading.starts_with("Which file") || heading.ends_with("(Nederlands)");
+            if !skipping {
+                out.push(heading.replace(" (English)", ""));
+            }
+            continue;
+        }
+        if skipping {
+            continue;
+        }
+        let mut text = line.replace("**", "").replace('`', "");
+        if let Some(item) = text.strip_prefix("- ") {
+            text = format!("\u{2022} {item}");
+        }
+        if text.is_empty() && out.last().is_none_or(|l| l.is_empty()) {
+            continue;
+        }
+        out.push(text);
+    }
+    out.join("\n").trim().to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use ring::signature::Ed25519KeyPair;
 
     use super::*;
+
+    #[test]
+    fn the_banner_shows_what_is_new_and_not_the_table_or_the_dutch_half() {
+        let new = "## Clearer buttons\n\n**New**\n\n- One\n- `Two`\n\n---\n\n## Which file do I need?\n\n| a | b |\n";
+        assert_eq!(summary(new), "Clearer buttons\n\nNew\n\n\u{2022} One\n\u{2022} Two");
+        let old = "## Which file do I need? / Welk bestand heb ik nodig?\n\n| a | b |\n\nFiles without.\n\n## Title (English)\n\n**New**\n\n- One\n\n## Titel (Nederlands)\n\n**Nieuw**\n\n- Een\n";
+        assert_eq!(summary(old), "Title\n\nNew\n\n\u{2022} One");
+    }
 
     /// A feed with the files of both systems, so the test is the same wherever it runs.
     fn feed() -> String {

@@ -133,7 +133,7 @@ class UpdateRepository(
                     tag = tag,
                     versionName = VersionComparator.normalise(tag),
                     title = root.optString("name").ifBlank { tag },
-                    changelog = root.optString("body").trim(),
+                    changelog = releaseSummary(root.optString("body")),
                     apkUrl = apk?.optString("browser_download_url"),
                     apkSizeBytes = apk?.optLong("size") ?: 0L,
                     sha256Url = sha,
@@ -391,4 +391,28 @@ class UpdateRepository(
         /** Every time the app is opened, at most once a minute so switching back and forth does not hammer GitHub. */
         const val CHECK_INTERVAL_MS = 60 * 1000L
     }
+}
+
+/**
+ * What a release says is new, as plain text for the banner: the part above the line (the table of files is below it), without the
+ * marks of Markdown. Releases from before that had the table first and a Dutch half: those parts are left out too.
+ */
+internal fun releaseSummary(body: String): String {
+    val out = mutableListOf<String>()
+    var skipping = false
+    for (raw in body.lines()) {
+        val line = raw.trim()
+        if (line == "---") break
+        if (line.startsWith("## ")) {
+            skipping = line.startsWith("## Which file") || line.endsWith("(Nederlands)")
+            if (!skipping) out += line.removePrefix("## ").replace(" (English)", "")
+            continue
+        }
+        if (skipping) continue
+        var text = line.replace("**", "").replace("`", "")
+        if (text.startsWith("- ")) text = "\u2022 " + text.removePrefix("- ")
+        if (text.isEmpty() && (out.lastOrNull()?.isEmpty() != false)) continue
+        out += text
+    }
+    return out.joinToString("\n").trim()
 }

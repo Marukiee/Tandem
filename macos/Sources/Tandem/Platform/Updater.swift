@@ -140,7 +140,7 @@ final class Updater {
             guard let (zip, size) = asset(assetName) else { throw UpdateError.noAsset }
             let found = Release(
                 version: version,
-                notes: (json["body"] as? String) ?? "",
+                notes: Self.summary((json["body"] as? String) ?? ""),
                 zipURL: zip,
                 shaURL: asset(assetName + ".sha256")?.0,
                 sigURL: asset(assetName + ".sig")?.0,
@@ -411,5 +411,29 @@ private final class FileDownloader: NSObject, URLSessionDownloadDelegate, @unche
             continuation?.resume()
         }
         continuation = nil
+    }
+}
+
+extension Updater {
+    /// What a release says is new, as plain text for the banner: the part above the line (the table of files is below it), without
+    /// the marks of Markdown. Releases from before that had the table first and a Dutch half: those parts are left out too.
+    static func summary(_ body: String) -> String {
+        var out: [String] = []
+        var skipping = false
+        for raw in body.components(separatedBy: .newlines) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line == "---" { break }
+            if line.hasPrefix("## ") {
+                skipping = line.hasPrefix("## Which file") || line.hasSuffix("(Nederlands)")
+                if !skipping { out.append(String(line.dropFirst(3)).replacingOccurrences(of: " (English)", with: "")) }
+                continue
+            }
+            if skipping { continue }
+            var text = line.replacingOccurrences(of: "**", with: "").replacingOccurrences(of: "`", with: "")
+            if text.hasPrefix("- ") { text = "\u{2022} " + text.dropFirst(2) }
+            if text.isEmpty, out.last?.isEmpty ?? true { continue }
+            out.append(text)
+        }
+        return out.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

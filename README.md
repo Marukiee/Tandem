@@ -2,122 +2,117 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/Marukiee/Tandem/ci.yml?branch=main&label=CI)](https://github.com/Marukiee/Tandem/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Marukiee/Tandem?label=release)](https://github.com/Marukiee/Tandem/releases/latest)
-[![Licentie](https://img.shields.io/badge/licentie-AGPL--3.0-blue)](#licentie)
-[![Rust](https://img.shields.io/badge/core-Rust-DEA584?logo=rust&logoColor=white)](#hoe-het-werkt)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue)](#license)
+[![Rust](https://img.shields.io/badge/core-Rust-DEA584?logo=rust&logoColor=white)](#how-it-works)
 [![Android](https://img.shields.io/badge/Android-12%2B-3DDC84?logo=android&logoColor=white)](#)
 [![macOS](https://img.shields.io/badge/macOS-26%2B-000000?logo=apple&logoColor=white)](#)
-[![Windows](https://img.shields.io/badge/Windows-experimenteel-0078D4?logo=windows&logoColor=white)](windows/README.md)
-[![Linux](https://img.shields.io/badge/Linux-tandemd-FCC624?logo=linux&logoColor=black)](packaging/README.md)
+[![Windows](https://img.shields.io/badge/Windows-experimental-0078D4?logo=windows&logoColor=white)](windows/README.md)
+[![Linux](https://img.shields.io/badge/Linux-experimental-FCC624?logo=linux&logoColor=black)](#linux)
 
-Je telefoon en je computers als één geheel. Bestanden, klembord, meldingen en
-hotspot gaan direct tussen je eigen apparaten, versleuteld, zonder account en
-zonder server.
+Your phone and your computers as one. Files, clipboard, notifications and hotspot go
+straight between your own devices, encrypted, with no account and no server.
 
-Bedoeld als het alternatief voor KDE Connect voor wie op een Mac zit: dezelfde
-gedachte, maar met een eigen protocol dat snel, betrouwbaar en veilig is, en dat
-ook met Linux blijft werken.
+Meant as the KDE Connect alternative for people on a Mac: the same idea, with a protocol
+of its own that is fast, reliable and secure, and that keeps working with Linux and Windows.
 
-> **Status: werkt, en wordt snel uitgebreid.** Android en Mac zijn het meest gebruikt. Windows en Linux zijn
-> experimenteel en op echte toestellen nog weinig gezien. Per versie staat wat er nieuw is in de changelog van de
-> release, en `docs/PARITY.md` zegt per functie wat op welk systeem werkt.
+> **Status: it works, and it grows fast.** Android and Mac are used the most. Windows and Linux are
+> experimental and have been seen on few real machines so far. Each release says what is new, and
+> `docs/PARITY.md` says per feature what works on which system.
 
-## Wat het doet
+## What it does
 
-- 📤 **Delen met één tik**. Maak een screenshot, tik op delen en al je apparaten staan als doel in het deelmenu
-- 📋 **Klembord dat meebeweegt**, met geschiedenis. Wachtwoorden uit een wachtwoordmanager blijven eruit
-- 🔔 **Meldingen van je telefoon op je computer**, met antwoorden vanaf je bureaublad en oproepen opnemen of weigeren
-- 🖥️ **Scherm delen en bedienen** tussen telefoon, Mac, Windows en Linux, zoals een remote desktop
-- 🪟 **Tweede scherm**. Een telefoon of computer wordt een extra scherm voor een andere computer, aan te vragen vanaf beide kanten
-- 🖱️ **Eén muis en toetsenbord over meerdere computers**, met slepen van bestanden over de rand
-- 📱 **Telefoon als trackpad, toetsenbord en afstandsbediening**, met instelbare snelheid
-- 📶 **Automatische hotspot** en **Bluetooth** voor klembord en meldingen als er geen netwerk is
-- 🔊 **Geluid van de telefoon** op de computer en andersom
-- 🖧 **SSH-terminal**, Quick Share, bestanden van je telefoon bekijken, Tailscale als het nodig is
-- 🔁 **Bijwerken zonder verwijderen**. De app controleert zelf op updates
+- 📤 **Share with one tap**. Take a screenshot, tap share and all your devices are in the share menu
+- 📋 **A clipboard that comes along**, with history. Passwords from a password manager stay out
+- 🔔 **Your phone's notifications on your computer**, with replies from your desktop and calls to answer or decline
+- 🖥️ **Screen sharing and control** between phone, Mac, Windows and Linux, like a remote desktop
+- 🪟 **Second screen**. A phone or computer becomes an extra screen of another computer, asked for from either side
+- 🧭 **Finds the side by sound**, so a second screen and the shared mouse sit where the device really stands
+- 🖱️ **One mouse and keyboard over several computers**, with files dragged over the edge
+- 📱 **Phone as trackpad, keyboard and remote**, with adjustable speed
+- 📶 **Automatic hotspot** and **Bluetooth** for clipboard and notifications when there is no network
+- 🔊 **Your phone's sound** on the computer and the other way round
+- ✅ **What works**, per device: what is missing (a permission, a setting) and a button that opens it on that device
+- 🖧 **SSH terminal**, Quick Share, your phone's files, Tailscale when it is needed
+- 🔁 **Updates without uninstalling**. The app looks for updates itself
 
-Alles gaat direct tussen je eigen apparaten, versleuteld, zonder account.
+Everything goes straight between your own devices, encrypted, with no account.
 
-## Installeren
+## Install
 
-Alles staat op de [releases-pagina](https://github.com/Marukiee/Tandem/releases/latest).
-Bij elk bestand staat een `.sha256` als je de download wilt controleren.
+Everything is on the [releases page](https://github.com/Marukiee/Tandem/releases/latest). Each file has a
+`.sha256` next to it if you want to check the download.
 
-### Android (12 of nieuwer)
+### Android (12 or newer)
 
-1. Download `Tandem.apk` op je telefoon.
-2. Open het bestand. Android vraagt eenmalig of de app waarmee je het opent (je browser
-   of bestanden-app) apps van onbekende bronnen mag installeren. Zet dat aan, ga terug
-   en tik op Installeren.
+1. Download `Tandem.apk` on your phone.
+2. Open it. Android asks once whether the app you open it with (your browser or files app) may install
+   apps from unknown sources. Turn that on, go back and tap Install.
 
-Daarna hoef je niet meer naar GitHub. Tandem controleert zelf hooguit één keer per dag
-of er een nieuwe versie is en installeert die over de vorige heen, zonder verwijderen.
-Daarvoor vraagt de app één keer toestemming om apps te installeren.
+After that you never need GitHub again. Tandem looks for a new version at most once a day and installs it
+over the old one, without uninstalling. For that the app asks once for permission to install apps.
 
-### Mac (macOS 26 of nieuwer, Apple Silicon)
+### Mac (macOS 26 or newer, Apple silicon)
 
-1. Download `Tandem-macOS.zip`, pak uit en sleep Tandem naar Programma's.
-2. Open Tandem. macOS weigert dat de eerste keer, omdat de app is ondertekend met een
-   zelfgemaakt certificaat en niet is genotariseerd door Apple. Ga naar Systeeminstellingen,
-   Privacy en beveiliging, scroll naar onder en klik bij Tandem op "Toch openen". Dat
-   hoef je maar één keer te doen.
+1. Download `Tandem-macOS.zip`, unzip it and drag Tandem to Applications.
+2. Open Tandem. macOS refuses the first time, because the app is signed with its own certificate and is not
+   notarised by Apple. Go to System Settings, Privacy and Security, scroll down and click "Open Anyway" next
+   to Tandem. You only do this once.
 
-Updates installeren zichzelf. Omdat elke versie met hetzelfde certificaat is
-ondertekend, blijven je toestemmingen (Bluetooth, lokaal netwerk, meldingen,
-toegankelijkheid) staan.
+Updates install themselves. Every version is signed with the same certificate, so your permissions
+(Bluetooth, local network, notifications, accessibility) stay.
 
-### Windows (experimenteel)
+### Windows (experimental)
 
-1. Download `Tandem-Windows-x64-setup.exe` van de [nieuwste release](https://github.com/Marukiee/Tandem/releases/latest).
-2. Open het bestand. Windows waarschuwt voor een onbekende uitgever, omdat het installatieprogramma nog niet
-   is ondertekend: kies "Meer informatie" en dan "Toch uitvoeren". Je hebt geen beheerder nodig.
-3. Vraagt de firewall of Tandem mag communiceren, kies dan "Privénetwerken". Anders vindt je telefoon deze pc niet.
-4. Koppel je telefoon met de QR-code in het venster.
+1. Download `Tandem-Windows-x64-setup.exe` from the [latest release](https://github.com/Marukiee/Tandem/releases/latest).
+2. Open it. Windows warns about an unknown publisher, because the installer is not signed yet: choose
+   "More info" and then "Run anyway". You do not need to be an administrator.
+3. If the firewall asks whether Tandem may communicate, choose "Private networks". Otherwise your phone does
+   not find this PC.
+4. Pair your phone with the QR code in the window.
 
-Het is nieuw en nog op weinig pc's gebruikt, dus verwacht rafelige randjes. Wat werkt en wat nog niet staat
-in [windows/README.md](windows/README.md). Tussen versies door staat er een voorbeeldbouw op de release
-`windows-preview`.
+It is new and has been used on few PCs, so expect rough edges. What works and what does not yet is in
+[windows/README.md](windows/README.md).
 
-### Linux en de Hub
+### Linux
 
-`tandemd` draait als achtergronddienst op Linux. Installeren, koppelen en de systemd-dienst
-staan in [packaging/README.md](packaging/README.md). Een apparaat dat altijd aan staat,
-zoals een server op je tailnet, zet je op met de [Hub](hub/README.md).
+The app for Linux comes as a `.deb` (Ubuntu, Debian, Mint), an `.rpm` (Fedora, openSUSE) and an AppImage for
+any other distribution. It is experimental, like the one for Windows, and works best on GNOME with Wayland.
 
-## Hoe het werkt
+`tandemd` is the same core as a service without a window, for a server or a Raspberry Pi. Installing it,
+pairing and the systemd service are in [packaging/README.md](packaging/README.md). A device that is always on,
+such as a server on your tailnet, is set up with the [Hub](hub/README.md).
 
-Eén Rust-core doet het netwerk, de versleuteling en de overdracht. Android, macOS,
-Windows en Linux zijn dunne schillen eromheen.
+## How it works
 
-- **QUIC met TLS 1.3**. Elk apparaat heeft één Ed25519-sleutel. Apparaten
-  vertrouwen elkaars sleutel, geen certificaatautoriteit. Bestanden gaan over
-  eigen streams, dus een groot bestand houdt een melding niet op, en een
-  onderbroken overdracht gaat verder waar hij bleef
-- **De Circle**. Koppel een nieuw apparaat één keer met een QR-code en alle andere
-  apparaten weten het vanzelf. De ledenlijst bestaat uit ondertekende
-  verklaringen die apparaten onderling doorgeven
-- **LAN en Tailscale**. Op je eigen netwerk vinden apparaten elkaar via mDNS, op
-  afstand via je tailnet. Ze proberen alle adressen tegelijk en houden de snelste
-- **Linux mogelijk**. Dezelfde core draait als achtergronddienst op Linux, en later
-  komt er een brug voor het protocol van KDE Connect
+One Rust core does the network, the encryption and the transfers. Android, macOS, Windows and Linux are thin
+shells around it.
 
-Meer in [docs/PROTOCOL.md](docs/PROTOCOL.md) en [docs/SECURITY.md](docs/SECURITY.md).
+- **QUIC with TLS 1.3**. Each device has one Ed25519 key. Devices trust each other's keys, no certificate
+  authority. Files go over streams of their own, so a big file never holds up a notification, and a transfer
+  that was cut off goes on where it stopped
+- **The Circle**. Pair a new device once with a QR code and all the others know it by themselves. The list of
+  members is a set of signed statements that devices pass on to each other
+- **LAN and Tailscale**. On your own network devices find each other with mDNS, from afar over your tailnet.
+  They try every address at once and keep the fastest
 
-## Bouwen
+More in [docs/PROTOCOL.md](docs/PROTOCOL.md) and [docs/SECURITY.md](docs/SECURITY.md).
+
+## Build
 
 ```bash
-# de core testen
+# test the core
 cargo test --workspace
 
-# de Android-app (JDK 21, Android SDK 36, NDK 28, cargo-ndk)
+# the Android app (JDK 21, Android SDK 36, NDK 28, cargo-ndk)
 ./scripts/build-core-android.sh
 (cd android && ./gradlew assembleDebug)
 
-# de Mac-app (Command Line Tools met Swift 6.4 is genoeg)
+# the Mac app (the Command Line Tools with Swift 6.4 are enough)
 ./scripts/build-macos.sh
 ```
 
-Een release maken staat in [docs/RELEASING.md](docs/RELEASING.md).
+Making a release is described in [docs/RELEASING.md](docs/RELEASING.md).
 
-## Licentie
+## License
 
-AGPL-3.0. Zie [LICENSE](LICENSE).
+AGPL-3.0. See [LICENSE](LICENSE).
