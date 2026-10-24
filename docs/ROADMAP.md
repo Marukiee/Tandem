@@ -142,6 +142,15 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   alleen met een extensie van GNOME Shell (Quick Settings), KDE met een plasmoid; anders het menu van het pictogram. Gedaan in 0.2.1: het menu van het
   pictogram heeft Quick Share, Gedeelde muis (aan en uit, de opstelling blijft), Mijn scherm uitbreiden naar (per apparaat, met een vinkje als het loopt) en
   Telefoon zoeken (per telefoon); het menu wordt opnieuw gemaakt als de apparaten veranderen. Nog niet: een echte tegel in GNOME of KDE.
+- Uitbreiden van de Mac naar Linux (gevraagd 2026-10-24, gebouwd in 0.2.1 door een agent met metingen op de laptop over SSH): de Linux-app vroeg 3840x2400
+  (GTK meldt 1920x1200 bij schaal 2) terwijl het paneel 2560x1600 is bij 133%; de Mac maakte 3642x2276 en haalde daarbij maar 41 tot 45 beelden per seconde.
+  Nu stuurt de kijker zijn echte pixels en zijn logische maat (`logical_width`, `logical_height` in het verzoek), maakt de Mac een hiDPI-scherm van die
+  logische maat en stuurt het in de echte pixels (2560x1600 haalt 60 fps). De speler op Linux hield elk beeld 85 tot 90 ms vast (een draad per beeld
+  in `avdec_h264`, `h264parse` die op het volgende beeld wacht, een wachtrij die bytes weggooide); nu 6 ms, en het laatste beeld van een beweging 5 ms in
+  plaats van 522. In de kern werden beelden die hun sleutelbeeld inhaalden weggegooid (bevriezen aan het begin); die worden nu bewaard. Gemeten maar niet
+  op te lossen in code: de wifi van de laptop haperde (energiebesparing aan, pieken tot 128 ms), uit te zetten met NetworkManager `802-11-wireless.powersave 2`.
+  Hardware-decoderen op de laptop kan niet zonder RPM Fusion (`mesa-va-drivers-freeworld`); software is 4,6 ms per beeld bij 2560x1600. Nog niet gezien op
+  de echte toestellen: of het beeld precies 1:1 staat, en de soepelheid. Gewone kijkvensters op Linux gebruiken nog het JPEG-pad met een maximum van 1280.
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)
