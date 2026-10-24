@@ -212,6 +212,19 @@ pub fn moved(app: &AppHandle, from: String) {
     std::thread::spawn(move || consider(&app, &from, TandemSideReason::Moved));
 }
 
+/// The shared mouse was turned on here: a moment later, when the setting is saved and the edges are up, every device left or right of
+/// this screen is checked, as if it had been moved.
+pub fn mouse_turned_on(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_secs(1));
+        let ids: Vec<String> = settings::get(&app).layout.iter().map(|s| s.device.clone()).collect();
+        for id in ids {
+            consider(&app, &id, TandemSideReason::Moved);
+        }
+    });
+}
+
 /// A device connected: a moment for it to settle in, then a check when its side counts.
 pub fn connected(app: &AppHandle, id: String) {
     let app = app.clone();
@@ -366,9 +379,17 @@ fn linux_sound_off() -> bool {
         return true;
     }
     // "Volume: front-left: 42000 /  64% / ...": the first percentage.
-    run(&["get-sink-volume", "@DEFAULT_SINK@"])
-        .and_then(|out| out.split('%').next().and_then(|before| before.rsplit(' ').next()).and_then(|n| n.trim().parse::<u32>().ok()))
-        .is_some_and(|percent| percent < 5)
+    if let Some(out) = run(&["get-sink-volume", "@DEFAULT_SINK@"]) {
+        return out.split('%').next().and_then(|before| before.rsplit(' ').next()).and_then(|n| n.trim().parse::<u32>().ok()).is_some_and(|p| p < 5);
+    }
+    // Without pactl (Fedora leaves it out), PipeWire's own tool: "Volume: 0.35" or "Volume: 0.35 [MUTED]".
+    let mut command = std::process::Command::new("wpctl");
+    command.args(["get-volume", "@DEFAULT_AUDIO_SINK@"]).stdin(std::process::Stdio::null()).stderr(std::process::Stdio::null());
+    tandem_winsys::system_env(&mut command);
+    let Some(out) = command.output().ok().filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).into_owned()) else {
+        return false;
+    };
+    out.contains("MUTED") || out.split_whitespace().nth(1).and_then(|v| v.parse::<f32>().ok()).is_some_and(|v| v < 0.05)
 }
 
 /// Plays the sweeps, to hear what they are.

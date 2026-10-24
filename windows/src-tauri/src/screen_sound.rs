@@ -86,7 +86,15 @@ pub fn headphones() -> bool {
             tandem_winsys::system_env(&mut command);
             command.output().ok().filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
         };
-        let Some(sink) = run(&["get-default-sink"]).map(|s| s.trim().to_string()) else { return false };
+        let Some(sink) = run(&["get-default-sink"]).map(|s| s.trim().to_string()) else {
+            // Without pactl (Fedora leaves it out), PipeWire's own tool still says what the default output is: a Bluetooth one, or a
+            // headset or the jack by its name.
+            let mut command = Command::new("wpctl");
+            command.args(["inspect", "@DEFAULT_AUDIO_SINK@"]).stdin(Stdio::null()).stderr(Stdio::null());
+            tandem_winsys::system_env(&mut command);
+            let out = command.output().ok().filter(|o| o.status.success()).map(|o| String::from_utf8_lossy(&o.stdout).to_lowercase());
+            return out.is_some_and(|o| o.contains("bluez") || o.contains("headphone") || o.contains("headset"));
+        };
         if sink.contains("bluez") {
             return true;
         }

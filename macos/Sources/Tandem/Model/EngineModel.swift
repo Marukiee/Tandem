@@ -393,11 +393,19 @@ final class EngineModel {
 
     func refreshDevices() {
         guard let engine else { return }
+        let refusing = Set(devices.filter { $0.online && !Self.takesPointer($0) }.map(\.id))
         devices = engine.devices()
+        // A phone that was there and just turned on taking this Mac's mouse (its switch or its tile) has its side measured now. One that
+        // only came back is checked as a device that connects.
+        for device in devices where Self.takesPointer(device) && refusing.contains(device.id) { SideWatch.shared.pointerAllowed(device.id) }
         guestsByDefault = engine.guestsByDefault()
         clipboard?.setActive(devices.contains { $0.online || $0.ble })
         reconcileSpeakerDevices()
         refreshNowPlaying()
+    }
+
+    private static func takesPointer(_ device: TandemDevice) -> Bool {
+        device.online && device.features.contains { $0.id == "pointer" && $0.ready }
     }
 
     private func handle(_ event: TandemEvent) {

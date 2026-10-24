@@ -51,6 +51,18 @@ final class SideWatch {
 
     func pointerWentOver(_ id: String) { consider(id, .pointerOver) }
 
+    /// The shared mouse was turned on here: every computer left or right of this screen is checked, as if it had been moved.
+    func mouseTurnedOn() {
+        Task { @MainActor in
+            // The tap and the layout are up a moment later.
+            try? await Task.sleep(for: .seconds(1))
+            for device in EngineModel.shared.devices { consider(device.id, .moved) }
+        }
+    }
+
+    /// A phone turned on taking the mouse of a computer (its switch or its tile): it is checked, as if it had been moved.
+    func pointerAllowed(_ id: String) { consider(id, .moved) }
+
     /// An extra screen for `peer` is on. When its side is not known yet it is found by ear first, and the question comes only when that
     /// does not work (see `findsFirst`).
     func screenStarted(_ peer: String) {

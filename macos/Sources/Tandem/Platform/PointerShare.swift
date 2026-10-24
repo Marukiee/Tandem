@@ -27,6 +27,8 @@ final class PointerShare {
         didSet {
             UserDefaults.standard.set(enabled, forKey: Self.enabledKey)
             if enabled { startTap() } else { stopTap() }
+            // Turned on: where the neighbours stand is measured now, so the first push over an edge goes the right way.
+            if enabled, !oldValue { SideWatch.shared.mouseTurnedOn() }
         }
     }
 

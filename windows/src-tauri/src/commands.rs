@@ -412,6 +412,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
             current.screen_sound_ask = v;
         }
         if let Some(v) = patch["pointerShare"].as_bool() {
+            if v && !current.pointer_share {
+                crate::side::mouse_turned_on(&app);
+            }
             current.pointer_share = v;
         }
         if let Some(v) = patch["fileManagerSend"].as_bool() {

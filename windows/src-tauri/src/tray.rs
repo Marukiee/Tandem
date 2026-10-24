@@ -51,6 +51,9 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
                 "quickshare" => crate::quickshare::toggle(app),
                 "share-mouse" => {
                     crate::settings::update(app, |s| s.pointer_share = !s.pointer_share);
+                    if crate::settings::get(app).pointer_share {
+                        crate::side::mouse_turned_on(app);
+                    }
                     crate::capture::configure(app);
                     rebuild(app);
                 }

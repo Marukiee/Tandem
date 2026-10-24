@@ -24,11 +24,28 @@ pub fn say(app: &AppHandle, text: &str) {
 pub fn refresh_devices(app: &AppHandle) {
     let state = app.state::<AppState>();
     let Ok(engine) = state.engine() else { return };
-    let list: Vec<Value> = engine.devices().iter().map(model::device).collect();
-    state.data.lock().unwrap().devices = list.clone();
+    let devices = engine.devices();
+    let list: Vec<Value> = devices.iter().map(model::device).collect();
+    let refusing: Vec<String> = {
+        let mut data = state.data.lock().unwrap();
+        let refusing = data.devices.iter().filter(|d| d["online"].as_bool() == Some(true) && !takes_pointer(d)).filter_map(|d| d["id"].as_str().map(str::to_string)).collect();
+        data.devices = list.clone();
+        refusing
+    };
+    // A phone that was there and just turned on taking this computer's mouse (its switch or its tile) has its side measured now.
+    for d in &list {
+        if takes_pointer(d) && d["id"].as_str().is_some_and(|id| refusing.iter().any(|r| r == id)) {
+            crate::side::moved(app, d["id"].as_str().unwrap_or_default().to_string());
+        }
+    }
     let _ = app.emit("devices", list);
     crate::tray::rebuild(app);
     crate::sendwith::refresh(app);
+}
+
+fn takes_pointer(device: &Value) -> bool {
+    device["online"].as_bool() == Some(true)
+        && device["features"].as_array().is_some_and(|f| f.iter().any(|f| f["id"] == "pointer" && f["ready"].as_bool() == Some(true)))
 }
 
 fn device(app: &AppHandle, id: &str) -> Option<Value> {
