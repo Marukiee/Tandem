@@ -24,6 +24,9 @@ import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemPlatform
 
+/** The devices that can ask this phone for its hotspot. */
+val COMPUTERS = setOf(TandemPlatform.MAC_OS, TandemPlatform.LINUX, TandemPlatform.WINDOWS)
+
 /** How many rows [HotspotChecklistRows] draws. */
 const val HOTSPOT_CHECKLIST_ROWS = 5
 
@@ -47,7 +50,8 @@ fun ColumnScope.HotspotChecklistRows() {
         }
     }
 
-    val macPaired = devices.any { it.platform == TandemPlatform.MAC_OS }
+    // Any computer can ask for the hotspot, not only a Mac.
+    val macPaired = devices.any { it.platform in COMPUTERS }
     val automatic = shizuku == ShizukuState.Ready
 
     Row(0, TandemIcons.Bluetooth, R.string.perm_bluetooth, if (status.bluetooth) R.string.check_ok else R.string.check_bluetooth_missing, status.bluetooth) { requests.bluetooth() }

@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -96,6 +97,8 @@ fun HotspotScreen(onBack: () -> Unit) {
     val attempt by module.controller.lastAttempt.collectAsState()
     val permissions = rememberPermissionStatus()
     val ready = permissions.bluetooth && permissions.notifications
+    val devices by graph.host.devices.collectAsState()
+    val setupDone = ready && permissions.battery && devices.any { it.platform in nl.markmaaktmedia.tandem.hotspot.COMPUTERS }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -117,9 +120,12 @@ fun HotspotScreen(onBack: () -> Unit) {
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
         )
 
-        // 1. Is everything in place?
-        SectionHeader(stringResource(R.string.hotspot_section_setup))
-        SettingsGroup(Modifier.settingsTarget(FocusKeys.HotspotSetup, RoundedCornerShape(24.dp))) { HotspotChecklistRows() }
+        // 1. Is everything in place? Once it is, the list is no news and goes to the bottom of the page.
+        val setup: @Composable ColumnScope.() -> Unit = {
+            SectionHeader(stringResource(R.string.hotspot_section_setup))
+            SettingsGroup(Modifier.settingsTarget(FocusKeys.HotspotSetup, RoundedCornerShape(24.dp))) { HotspotChecklistRows() }
+        }
+        if (!setupDone) setup()
 
         // 2. Sharing: the switch, the roaming choice and a test.
         SectionHeader(stringResource(R.string.hotspot_section_sharing))
@@ -262,6 +268,7 @@ fun HotspotScreen(onBack: () -> Unit) {
                 )
             }
         }
+        if (setupDone) setup()
         androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 24.dp))
     }
 }
