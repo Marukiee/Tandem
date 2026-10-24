@@ -66,7 +66,7 @@ fun AccessScreen(onBack: () -> Unit) {
     val lastSent by MirrorListener.lastSent.collectAsState()
     val stopped = status.notificationAccess && !listening
 
-    val total = 9
+    val total = 11
 
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
@@ -196,10 +196,24 @@ fun AccessScreen(onBack: () -> Unit) {
                 modifier = Modifier.staggeredEntry(9),
             )
             PermissionCard(
+                TandemIcons.Mouse, stringResource(R.string.perm_accessibility), stringResource(R.string.perm_accessibility_why),
+                granted = status.accessibility,
+                onGrant = { context.startActivity(nl.markmaaktmedia.tandem.engine.FeatureReport.intent(context, "accessibility").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) },
+                index = 8, total = total,
+                modifier = Modifier.staggeredEntry(10),
+            )
+            PermissionCard(
+                TandemIcons.Folder, stringResource(R.string.perm_all_files), stringResource(R.string.perm_all_files_why),
+                granted = status.allFiles,
+                onGrant = { context.startActivity(nl.markmaaktmedia.tandem.engine.FeatureReport.intent(context, "all-files").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) },
+                index = 9, total = total,
+                modifier = Modifier.staggeredEntry(11),
+            )
+            PermissionCard(
                 TandemIcons.Update, stringResource(R.string.perm_install), stringResource(R.string.perm_install_why),
                 granted = status.installApps, onGrant = { Permissions.openInstallSettings(context) },
-                index = 8, total = total,
-                modifier = Modifier.staggeredEntry(10).settingsTarget(FocusKeys.PermInstall, 8, total),
+                index = 10, total = total,
+                modifier = Modifier.staggeredEntry(12).settingsTarget(FocusKeys.PermInstall, 10, total),
             )
         }
         Spacer(Modifier.height(24.dp))

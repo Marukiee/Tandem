@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.2.4",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Every permission in one place",
+      "new": [
+        "Android: Permissions also has Accessibility and All files, with a button to each"
+      ]
+    },
+    "nl": {
+      "title": "Alle rechten op één plek",
+      "new": [
+        "Android: Rechten heeft nu ook Toegankelijkheid en Alle bestanden, met een knop naar elk"
+      ]
+    }
+  },
+  {
     "version": "0.2.3",
     "date": "2026-10-24",
     "en": {

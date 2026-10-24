@@ -60,4 +60,8 @@
     <string name="feature_pointer">De muis van een computer op deze telefoon</string>
     <string name="feature_pointer_off">Het staat uit in Tandem op deze telefoon</string>
     <string name="features_open_there">Daar openen</string>
+    <string name="perm_accessibility">Toegankelijkheid</string>
+    <string name="perm_accessibility_why">Om deze telefoon vanaf een computer te bedienen, en de muis van een computer erop te gebruiken. Zet Tandem aan onder Geïnstalleerde apps.</string>
+    <string name="perm_all_files">Alle bestanden</string>
+    <string name="perm_all_files_why">Zodat je computers de bestanden van deze telefoon kunnen bekijken, en in elke map ervan kunnen opslaan.</string>
 </resources>

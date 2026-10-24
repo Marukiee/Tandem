@@ -122,6 +122,8 @@ class PermissionStatus internal constructor(private val context: Context) {
     val photos get() = read { Permissions.photos(context) }
     val camera get() = read { Permissions.camera(context) }
     val microphone get() = read { Permissions.isGranted(context, Manifest.permission.RECORD_AUDIO) }
+    val accessibility get() = read { nl.markmaaktmedia.tandem.engine.FeatureReport.accessibility(context) }
+    val allFiles get() = read { android.os.Environment.isExternalStorageManager() }
     val notificationAccess get() = read { Permissions.notificationAccess(context) }
     val bluetooth get() = read { Permissions.bluetooth(context) }
     val installApps get() = read { Permissions.installApps(context) }
