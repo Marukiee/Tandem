@@ -219,10 +219,13 @@ struct DeviceDetail: View {
                     }
                     .disabled(!(device.online || device.ble))
                     if device.caps.contains("wifi.join"), WifiShare.shared.worthSharing(with: device) { WifiShareButton(device: device) }
-                    // Phones are the ones that offer folders for now; a computer offers none until its app can show them.
-                    if device.platform == .android && device.caps.contains("files") {
+                    // A computer offers Downloads, Documents and Desktop as well now, so every device with files can be browsed.
+                    if device.caps.contains("files") {
                         GlassActionButton(title: "Browse files", symbol: "folder") { onBrowse() }
                             .disabled(!device.online)
+                    }
+                    if device.platform == .android {
+                        CallButton(device: device)
                     }
                     if device.caps.contains("sms") {
                         GlassActionButton(title: "Messages", symbol: "message") { onMessages() }

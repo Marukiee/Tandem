@@ -7,6 +7,7 @@ mod ask;
 mod bluetooth;
 mod browse;
 mod debugshot;
+mod calls;
 mod capture;
 mod quickshare;
 mod clip;
@@ -182,6 +183,7 @@ pub fn run() {
             quickshare::qs_send_paths,
             quickshare::qs_send_clipboard,
             insert::capture_request,
+            calls::dial,
             commands::get_players,
             commands::create_pairing,
             commands::cancel_pairing,

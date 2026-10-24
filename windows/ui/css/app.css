@@ -478,3 +478,8 @@ select { cursor: default; }
 .side-finder .row-line { display: flex; align-items: center; gap: 10px; }
 .side-finder .t { font-weight: 500; }
 .side-finder .s { font-size: 12px; color: var(--text-2); }
+
+/* The number to call, under its button. */
+.call-anchor { position: relative; display: inline-flex; }
+.call-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; display: flex; gap: 8px; align-items: center; padding: 10px; }
+.call-pop input { width: 170px; }
