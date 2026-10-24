@@ -36,8 +36,14 @@ fn io_failure(e: std::io::Error) -> TandemError {
 }
 
 impl TandemFiles for Files {
-    /// Never called: on Windows the core opens a file by its path itself.
+    /// The file to send, as a descriptor the core takes over (Linux). On Windows the core opens the path itself and never asks.
     fn open_read(&self, source: String) -> Result<i32, TandemError> {
+        #[cfg(unix)]
+        {
+            use std::os::fd::IntoRawFd;
+            std::fs::File::open(&source).map(IntoRawFd::into_raw_fd).map_err(io_failure)
+        }
+        #[cfg(not(unix))]
         Err(TandemError::Failed { reason: format!("{source} is opened by path on Windows") })
     }
 
