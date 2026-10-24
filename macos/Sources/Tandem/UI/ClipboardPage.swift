@@ -15,13 +15,7 @@ struct ClipboardPage: View {
             VStack(alignment: .leading, spacing: 16) {
                 header(history)
                 if history.enabled {
-                    // Spacing 0: the two are separate pieces of glass, not one that flows together.
-                    GlassEffectContainer(spacing: 0) {
-                        HStack(spacing: 12) {
-                            searchField
-                            ClipFilterChips(filter: $filter, height: 32, glass: true)
-                        }
-                    }
+                    ClipFilterChips(filter: $filter)
                 }
                 content(history: history, shown: shown)
             }
@@ -31,7 +25,11 @@ struct ClipboardPage: View {
             .animation(.tandem, value: shown.map(\.id))
             .animation(.tandem, value: history.enabled)
         }
+        // In the toolbar, where the system's own apps have their search.
+        .searchable(text: $query, placement: .toolbar, prompt: Text("Search"))
         .toolbar {
+            // The buttons and the search at the trailing end, where the system's own apps have them.
+            ToolbarSpacer(.flexible)
             ToolbarItem(placement: .primaryAction) {
                 Button { ClipboardPanelController.shared.show() } label: {
                     Label("Open the quick panel", systemImage: "rectangle.and.text.magnifyingglass")
@@ -51,13 +49,7 @@ struct ClipboardPage: View {
     }
 
     private func header(_ history: ClipboardHistory) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Clipboard").font(.largeTitle.weight(.bold))
-            HStack(spacing: 6) {
-                Text("Everything you copied and what your devices sent. Click one to copy it, right click for more.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
+        PageHeader(title: "Clipboard", subtitle: "Everything you copied and what your devices sent. Click one to copy it, right click for more.") {
             if history.enabled && history.hotkeyOn {
                 HStack(spacing: 6) {
                     Text("Open it anywhere with").font(.callout).foregroundStyle(.secondary)
@@ -66,25 +58,6 @@ struct ClipboardPage: View {
                 .padding(.top, 2)
             }
         }
-    }
-
-    private var searchField: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("Search", text: $query)
-                .textFieldStyle(.plain)
-            if !query.isEmpty {
-                Button { query = "" } label: {
-                    Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-                .transition(.scale.combined(with: .opacity))
-            }
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 32)
-        .glassEffect(.regular, in: .capsule)
-        .animation(.tandem, value: query.isEmpty)
     }
 
     @ViewBuilder
@@ -97,7 +70,6 @@ struct ClipboardPage: View {
             } actions: {
                 Button("Turn on") { history.enabled = true }
                     .buttonStyle(.tandemGlassProminent)
-                    .tint(Palette.indigo)
             }
             .frame(maxWidth: .infinity, minHeight: 260)
         } else if history.items.isEmpty {
@@ -108,7 +80,7 @@ struct ClipboardPage: View {
             )
             .frame(maxWidth: .infinity, minHeight: 260)
         } else if shown.isEmpty {
-            ContentUnavailableView.search
+            ContentUnavailableView.search(text: query)
                 .frame(maxWidth: .infinity, minHeight: 220)
         } else {
             Card(radius: Metrics.card, padding: Metrics.cardInset) {
@@ -129,27 +101,10 @@ private struct PageRow: View {
 
     var body: some View {
         Hoverable { hovering in
-            ClipRowView(item: item, hovering: hovering)
-                .overlay(alignment: .trailing) {
-                    if hovering {
-                        HStack(spacing: 2) {
-                            Button { ClipboardHistory.shared.togglePin(item.id) } label: {
-                                Image(systemName: item.pinned ? "pin.slash" : "pin").font(.callout)
-                            }
-                            .help(LocalizedStringKey(item.pinned ? "Unpin" : "Pin"))
-                            Button { ClipboardHistory.shared.delete([item.id]) } label: {
-                                Image(systemName: "trash").font(.callout)
-                            }
-                            .help("Delete")
-                        }
-                        .buttonStyle(.icon(size: 28))
-                        .padding(.horizontal, 6)
-                        .background(Color(nsColor: .controlBackgroundColor), in: .capsule)
-                        .padding(.trailing, 6)
-                        .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                    }
-                }
-                .animation(.tandemSpringy, value: hovering)
+            ClipRowView(item: item, hovering: hovering, actions: ClipRowActions(
+                togglePin: { ClipboardHistory.shared.togglePin(item.id) },
+                delete: { ClipboardHistory.shared.delete([item.id]) }
+            ))
         }
         .onTapGesture { ClipboardPanelController.shared.copy(item) }
         .contextMenu {
@@ -161,7 +116,7 @@ private struct PageRow: View {
                 }
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
+        .accessibilityElement(children: .contain)
+        .accessibilityAction(named: Text("Copy")) { ClipboardPanelController.shared.copy(item) }
     }
 }

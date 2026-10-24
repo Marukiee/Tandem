@@ -240,7 +240,6 @@ struct LiveView: View {
                             showControlHelp = true
                         }
                     }
-                    .opacity(session.controlGranted ? 1 : 0.55)
                     .popover(isPresented: $showControlHelp, arrowEdge: .top) { controlHelp }
                 }
                 if session.kind == .camera {
@@ -491,7 +490,7 @@ private struct StateCard: View {
                         Button(secondary.0, action: secondary.1).buttonStyle(.tandemGlass)
                     }
                     if let primary {
-                        Button(primary.0, action: primary.1).buttonStyle(.tandemGlassProminent).tint(Palette.indigo)
+                        Button(primary.0, action: primary.1).buttonStyle(.tandemGlassProminent)
                     }
                 }
                 .controlSize(.large)
@@ -514,13 +513,8 @@ private struct StateCard: View {
 
 extension View {
     /// Glass, except in a debug run that takes snapshots, where it is a plain material (see `DebugSupport.flatGlass`).
-    @ViewBuilder
     func liveGlass<S: Shape>(in shape: S) -> some View {
-        if DebugSupport.flatGlass {
-            background(.regularMaterial, in: shape)
-        } else {
-            glassEffect(.regular, in: shape)
-        }
+        floatingGlass(in: shape)
     }
 }
 

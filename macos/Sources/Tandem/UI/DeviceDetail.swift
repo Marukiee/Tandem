@@ -13,10 +13,8 @@ struct DeviceDetail: View {
     var onViewAll: () -> Void = {}
 
     @LocalState private var confirmRemoval = false
-    /// The address at which this computer answers for ssh, once looked for, and whether it was looked for.
+    /// The address at which this computer answers for ssh, once looked for.
     @LocalState private var sshAddress: String?
-    @LocalState private var sshChecked = false
-    @LocalState private var showIcons = false
 
     @LocalState private var position = ScrollPosition(edge: .top)
 
@@ -75,41 +73,25 @@ struct DeviceDetail: View {
     }
 
     private var header: some View {
-        Card(radius: 32, padding: 22, tint: device.online ? Palette.indigo : nil) {
+        Card(radius: Metrics.card, padding: 22, tint: device.online ? Palette.indigo : nil) {
             HStack(spacing: 20) {
-                Button { showIcons = true } label: {
+                // The system's menu, like every other choice from a list in the app.
+                Menu {
+                    ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
+                        Button { model.setIcon(choice.symbol, for: device.id) } label: {
+                            Label(choice.label, systemImage: choice.symbol)
+                        }
+                    }
+                    Divider()
+                    Button("Use the default icon") { model.setIcon(nil, for: device.id) }
+                } label: {
                     DeviceGlyph(platform: device.platform, online: device.online, size: 80, deviceID: device.id)
                 }
+                .menuStyle(.button)
                 .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
                 .help("Change the icon")
-                .popover(isPresented: $showIcons, arrowEdge: .bottom) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
-                            Button {
-                                model.setIcon(choice.symbol, for: device.id)
-                                showIcons = false
-                            } label: {
-                                Label(choice.label, systemImage: choice.symbol)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .hoverHighlight(radius: 8)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        Divider().padding(.vertical, 4)
-                        Button("Use the default icon") {
-                            model.setIcon(nil, for: device.id)
-                            showIcons = false
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                    }
-                    .padding(8)
-                    .frame(width: 210)
-                    .focusEffectDisabled()
-                }
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(device.name)
@@ -209,11 +191,9 @@ struct DeviceDetail: View {
     private var content: some View {
         VStack(spacing: 18) {
             actions
-            FeatureNotice(device: device)
             DropZone(device: device)
             NowPlayingCard(device: device)
             if device.platform == .android { HotspotCard(device: device) }
-            RemoteControlCard()
             // What is set comes before what was sent: the list grows, and the settings should not move further down the more is sent.
             settings
             recentTransfers
@@ -231,19 +211,16 @@ struct DeviceDetail: View {
                 WrapRow(spacing: 10) {
                     GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true) { pickFiles() }
                         .disabled(!device.online)
-                        .opacity(device.online ? 1 : 0.5)
                     // Small enough for Bluetooth, so it works with no network as long as a link is up.
                     GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard") {
                         model.sendClipboard(to: [device.id])
                     }
                     .disabled(!(device.online || device.ble))
-                    .opacity(device.online || device.ble ? 1 : 0.5)
                     if device.caps.contains("wifi.join") { WifiShareButton(device: device) }
                     // Phones are the ones that offer folders for now; a computer offers none until its app can show them.
                     if device.platform == .android && device.caps.contains("files") {
                         GlassActionButton(title: "Browse files", symbol: "folder") { onBrowse() }
                             .disabled(!device.online)
-                            .opacity(device.online ? 1 : 0.5)
                     }
                     if isComputer || device.platform == .android {
                         LiveActionRow(device: device)
@@ -259,7 +236,6 @@ struct DeviceDetail: View {
                             model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
                         }
                         .disabled(!device.online)
-                        .opacity(device.online ? 1 : 0.5)
                         // This Mac's sound on the phone, one press from the top, as the button in the menu bar has it. It is the same as picking the
                         // phone in the sound menu.
                         let speaking = model.speaker.device == device.id
@@ -269,13 +245,10 @@ struct DeviceDetail: View {
                             prominent: speaking
                         ) { model.toggleSpeaker(for: device.id) }
                         .disabled(!device.online && !speaking)
-                        .opacity(device.online || speaking ? 1 : 0.5)
                     }
-                    // A computer can be logged in to from here. The button is there and grey, with the reason under it, when it is not set up.
+                    // A computer can be logged in to from here. The button looks the same whether that is set up there or not: someone may
+                    // not want it, so what is missing is only said when the button is pressed.
                     if isComputer {
-                        // Until it has been looked at the button is taken to work (a button that starts grey and lights up a moment later reads as
-                        // broken), and a press finds the address itself.
-                        let missing = !device.online || (sshChecked && sshAddress == nil)
                         GlassActionButton(title: "Terminal", symbol: "terminal") {
                             Task {
                                 var address = sshAddress
@@ -283,23 +256,15 @@ struct DeviceDetail: View {
                                 if let address {
                                     SSHAccess.open(device, at: address)
                                 } else {
-                                    sshChecked = true
                                     model.showToast(SSHAccess.reason(for: device))
                                 }
                             }
                         }
-                        .disabled(missing)
-                        .opacity(missing ? 0.5 : 1)
-                        .help(missing ? SSHAccess.reason(for: device) : String(localized: "Log in to this computer over SSH"))
+                        .disabled(!device.online)
+                        .help("Log in to this computer over SSH")
                         PlaySoundButton(device: device)
                     }
                 }
-            }
-            if isComputer, sshChecked, sshAddress == nil {
-                Text(SSHAccess.reason(for: device))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 4)
             }
             if isComputer { LastSeenText(device: device) }
         }
@@ -311,12 +276,10 @@ struct DeviceDetail: View {
             // What was found the last time is there at once, and is looked at again quietly.
             if let known = SSHAccess.seen[device.id] {
                 sshAddress = known.isEmpty ? nil : known
-                sshChecked = true
             }
             let found = await SSHAccess.reachableAddress(of: device)
             SSHAccess.seen[device.id] = found ?? ""
             sshAddress = found
-            sshChecked = true
         }
     }
 
@@ -325,22 +288,6 @@ struct DeviceDetail: View {
         let host = ScreenHost.shared.running.map { "\($0.peer)\($0.extend)" }.joined()
         let live = LiveManager.shared.sessions.filter { $0.peer == device.id }.map { "\($0.kind)\($0.extend)" }.joined()
         return host + live + "\(model.ringing.contains(device.id))\(model.speaker.device == device.id)\(FindOthers.shared.ringing.contains(device.id))"
-    }
-
-    /// A small heading and the buttons under it in a grid: every button as wide as the others in its row, starting at the left, so a row
-    /// that is not full leaves room at the right and not a lonely button in the middle.
-    private func actionGroup<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.leading, 4)
-            GlassEffectContainer(spacing: 0) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 170, maximum: 280), spacing: 10)], alignment: .leading, spacing: 10) {
-                    content()
-                }
-            }
-        }
     }
 
     private func pickFiles() {
@@ -383,9 +330,13 @@ struct DeviceDetail: View {
                 }
                 .padding(.horizontal, 6)
                 .padding(.bottom, 6)
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                    TransferEntry(item: item, peerName: device.name, first: index == 0, last: index == items.count - 1)
-                        .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
+                Card(radius: Metrics.card, padding: Metrics.cardInset) {
+                    VStack(spacing: 2) {
+                        ForEach(items, id: \.id) { item in
+                            TransferEntry(item: item, peerName: device.name)
+                                .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
+                        }
+                    }
                 }
             }
             .transition(.opacity.combined(with: .move(edge: .bottom)))
@@ -403,6 +354,7 @@ struct DeviceDetail: View {
                         get: { device.clipboardEnabled },
                         set: { model.setSettings(device, clipboard: $0) }
                     ))
+                    .controlSize(.mini)
                 }
                 Divider().opacity(0.4).padding(.horizontal, 14)
                 SettingRow(symbol: "bell.badge", title: "Show its notifications", subtitle: "Phone notifications appear here, and you can reply") {
@@ -410,6 +362,7 @@ struct DeviceDetail: View {
                         get: { device.notificationsEnabled },
                         set: { model.setSettings(device, notifications: $0) }
                     ))
+                    .controlSize(.mini)
                 }
                 Divider().opacity(0.4).padding(.horizontal, 14)
                 SettingRow(symbol: "tray.and.arrow.down", title: "Accept files automatically", subtitle: "Turn off to be asked before something arrives") {
@@ -417,6 +370,7 @@ struct DeviceDetail: View {
                         get: { device.autoAccept },
                         set: { model.setSettings(device, autoAccept: $0) }
                     ))
+                    .controlSize(.mini)
                 }
                 if device.platform == .android {
                     Divider().opacity(0.4).padding(.horizontal, 14)
@@ -428,9 +382,8 @@ struct DeviceDetail: View {
                     Divider().opacity(0.4).padding(.horizontal, 14)
                 }
                 SettingRow(symbol: "trash", title: "Remove this device", subtitle: device.vouchedByRemoved ? "It was added by a device that has since been removed" : "It leaves the circle everywhere") {
-                    Button("Remove") { confirmRemoval = true }
+                    Button("Remove", role: .destructive) { confirmRemoval = true }
                         .buttonStyle(.tandemGlass)
-                        .tint(Palette.urgent)
                 }
             }
         }
@@ -444,24 +397,29 @@ extension DeviceDetail {
     fileprivate var speakerRow: some View {
         let streaming = model.speaker.device == device.id
         let enabled = model.speakerEnabled(for: device.id)
+        // What went wrong the last time it was used. A sound output that could not be made is said when the button is pressed: until then
+        // the row looks as it always does.
         let failure: String? = {
             if case let .failed(text) = model.speaker { return text }
-            return enabled ? model.speakerDevices.problem : nil
+            return nil
         }()
         return SettingRow(
             symbol: streaming ? "speaker.wave.3.fill" : "speaker.wave.2",
             title: "Use this phone as a speaker",
-            subtitle: LocalizedStringKey(speakerSubtitle(enabled: enabled, failure: failure)),
-            subtitleColor: failure == nil ? .secondary : Palette.urgent
+            subtitle: LocalizedStringKey(speakerSubtitle(enabled: enabled, failure: failure))
         ) {
             HStack(spacing: 10) {
                 if case let .starting(id) = model.speaker, id == device.id { PillSpinner(size: 16) }
                 if enabled {
-                    Button(LocalizedStringKey(streaming ? "Stop" : "Use now")) { model.toggleSpeaker(for: device.id) }
-                        .buttonStyle(.tandemGlass)
-                        .disabled(!device.online && !streaming)
+                    Button(LocalizedStringKey(streaming ? "Stop" : "Use now")) {
+                        if !streaming, let problem = model.speakerDevices.problem { model.showToast(problem) }
+                        model.toggleSpeaker(for: device.id)
+                    }
+                    .buttonStyle(.tandemGlass)
+                    .disabled(!device.online && !streaming)
                 }
                 Toggle("", isOn: Binding(get: { enabled }, set: { model.setSpeakerEnabled($0, for: device.id) }))
+                    .controlSize(.mini)
             }
         }
     }
@@ -503,8 +461,6 @@ struct SettingRow<Trailing: View>: View {
     let symbol: String
     let title: LocalizedStringKey
     let subtitle: LocalizedStringKey
-    /// Grey as a rule; red for a row that has something wrong to say.
-    var subtitleColor: Color = .secondary
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
@@ -516,10 +472,11 @@ struct SettingRow<Trailing: View>: View {
                 .background(Palette.indigo.opacity(0.12), in: .circle)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.callout.weight(.medium))
-                Text(subtitle).font(.caption).foregroundStyle(subtitleColor)
+                Text(subtitle).font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 12)
-            trailing.labelsHidden()
+            // Switches, as the grouped forms of Settings have them, at the size they have there (mini).
+            trailing.labelsHidden().toggleStyle(.switch)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
@@ -539,7 +496,7 @@ struct DropZone: View {
         VStack(spacing: 10) {
             Image(systemName: targeted ? "arrow.down.circle.fill" : "square.and.arrow.down")
                 .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(targeted || hovering ? Palette.indigo : Color.secondary)
+                .fadingForeground(Color.secondary, to: Palette.indigo, when: targeted || hovering)
                 .symbolEffect(.bounce, value: targeted)
                 .contentTransition(.symbolEffect(.replace))
             Text(targeted ? "Let go to send" : "Drop files here")
@@ -550,13 +507,13 @@ struct DropZone: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 34)
         .background {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
+            RoundedRectangle(cornerRadius: Metrics.card, style: .continuous)
                 .strokeBorder(
                     targeted ? Palette.indigo : (hovering ? Palette.indigo.opacity(0.55) : Color.primary.opacity(0.16)),
                     style: StrokeStyle(lineWidth: targeted ? 2.5 : 1.5, dash: [8, 7])
                 )
                 .background(
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    RoundedRectangle(cornerRadius: Metrics.card, style: .continuous)
                         .fill(Palette.indigo.opacity(targeted ? 0.10 : (hovering ? 0.04 : 0)))
                 )
         }
@@ -576,39 +533,6 @@ struct DropZone: View {
     }
 }
 
-// MARK: Remote control
-
-struct RemoteControlCard: View {
-    @LocalState private var trusted = AXIsProcessTrusted()
-
-    var body: some View {
-        if !trusted {
-            Card(radius: Metrics.card, padding: 6) {
-                SettingRow(
-                    symbol: "cursorarrow.motionlines",
-                    title: "Use your phone as a trackpad",
-                    subtitle: "Allow Tandem to control this Mac in System Settings, under Accessibility"
-                ) {
-                    Button("Allow") {
-                        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-                        _ = AXIsProcessTrustedWithOptions(options)
-                    }
-                    .buttonStyle(.tandemGlassProminent)
-                    .tint(Palette.indigo)
-                }
-            }
-            .task {
-                // Poll while the card is on screen, so it disappears once allowed.
-                while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(2))
-                    let now = AXIsProcessTrusted()
-                    if now != trusted { withAnimation(.tandem) { trusted = now } }
-                }
-            }
-        }
-    }
-}
-
 // MARK: Hotspot
 
 struct HotspotCard: View {
@@ -619,8 +543,8 @@ struct HotspotCard: View {
     @LocalState private var bluetooth = CBManager.authorization
     @LocalState private var showSetup = false
 
-    /// Grey until Bluetooth is allowed and the phone's network is filled in, so the switch
-    /// never looks on while nothing can happen.
+    /// Bluetooth is allowed and the phone's network is filled in. The switch only shows on when this is so, and turning it on before
+    /// opens the setup, which turns it on at its end: what it needs is said when it is wanted, not on the page all the time.
     private var ready: Bool {
         bluetooth == .allowedAlways && !ssid.isEmpty && (HotspotCredentials.password()?.isEmpty == false)
     }
@@ -631,23 +555,12 @@ struct HotspotCard: View {
                 SettingRow(
                     symbol: "personalhotspot",
                     title: "Use its hotspot when I have no connection",
-                    subtitle: ready ? "Your phone turns its hotspot on and this Mac joins it" : "Finish the hotspot setup in Settings first"
+                    subtitle: "Your phone turns its hotspot on and this Mac joins it"
                 ) {
-                    Toggle("", isOn: Binding(get: { auto && ready }, set: { auto = $0 }))
-                        .disabled(!ready)
-                }
-                if !ready {
-                    Divider().opacity(0.4).padding(.horizontal, 14)
-                    HStack {
-                        Text("Bluetooth and the phone's network name and password are needed.")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Button("Set up") { showSetup = true }
-                            .buttonStyle(.tandemGlass)
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
+                    Toggle("", isOn: Binding(get: { auto && ready }, set: { on in
+                        if on && !ready { showSetup = true } else { auto = on }
+                    }))
+                    .controlSize(.mini)
                 }
                 if model.hotspotStatus != .idle {
                     Divider().opacity(0.4).padding(.horizontal, 14)
@@ -668,7 +581,7 @@ struct HotspotCard: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .transition(.opacity.combined(with: .move(edge: .top)))
-                } else if ready {
+                } else {
                     Divider().opacity(0.4).padding(.horizontal, 14)
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
@@ -681,8 +594,10 @@ struct HotspotCard: View {
                             }
                         }
                         Spacer()
-                        Button("Turn on hotspot") { model.hotspot.requestNow(device.id) }
-                            .buttonStyle(.tandemGlass)
+                        Button("Turn on hotspot") {
+                            if ready { model.hotspot.requestNow(device.id) } else { showSetup = true }
+                        }
+                        .buttonStyle(.tandemGlass)
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
@@ -691,7 +606,7 @@ struct HotspotCard: View {
         }
         .animation(.tandem, value: model.hotspotStatus)
         .animation(.tandem, value: ready)
-        .sheet(isPresented: $showSetup) { HotspotSetupSheet() }
+        .sheet(isPresented: $showSetup, onDismiss: { bluetooth = CBManager.authorization }) { HotspotSetupSheet() }
         // The permission only changes in System Settings, so it is read again when the person comes back from there.
         // A timer that asked the system every second kept the app and the permission service awake for nothing.
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in

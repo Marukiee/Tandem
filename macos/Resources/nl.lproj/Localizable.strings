@@ -103,7 +103,6 @@
 "Phone notifications appear here, and you can reply" = "Meldingen van je telefoon verschijnen hier en je kunt antwoorden";
 "Accept files automatically" = "Bestanden automatisch accepteren";
 "Turn off to be asked before something arrives" = "Zet uit om eerst gevraagd te worden voordat iets binnenkomt";
-"Use your phone as a trackpad" = "Gebruik je telefoon als trackpad";
 "Allow Tandem to control this Mac in System Settings, under Accessibility" = "Geef Tandem toestemming om deze Mac te bedienen in Systeeminstellingen, onder Toegankelijkheid";
 "Allow" = "Sta toe";
 "Use its hotspot when I have no connection" = "Gebruik zijn hotspot als ik geen verbinding heb";
@@ -211,8 +210,6 @@
 "Only to scan a pairing code from another device." = "Alleen om een koppelcode van een ander apparaat te scannen.";
 "So your devices find this Mac after a restart. Optional." = "Zodat je apparaten deze Mac na een herstart vinden. Optioneel.";
 "Allowed" = "Toegestaan";
-"Not asked yet" = "Nog niet gevraagd";
-"Denied" = "Geweigerd";
 "Asked by macOS" = "Vraagt macOS zelf";
 "Open System Settings" = "Open Systeeminstellingen";
 "Test" = "Test";
@@ -294,17 +291,7 @@
 "Picture copied to the clipboard" = "Plaatje naar het klembord gekopieerd";
 
 /* Hotspot requirements */
-"Finish the two steps below to turn this on." = "Rond de twee stappen hieronder af om dit aan te zetten.";
-"What it needs" = "Wat het nodig heeft";
 "Open Settings" = "Instellingen openen";
-"Tandem may use Bluetooth to ask your phone." = "Tandem mag Bluetooth gebruiken om je telefoon te vragen.";
-"Tandem has not asked yet." = "Tandem heeft het nog niet gevraagd.";
-"Bluetooth is off for Tandem in System Settings." = "Bluetooth staat voor Tandem uit in Systeeminstellingen.";
-"Network name and password are saved." = "Netwerknaam en wachtwoord zijn opgeslagen.";
-"Fill in the network name and password below." = "Vul hieronder de netwerknaam en het wachtwoord in.";
-"Finish the hotspot setup in Settings first" = "Rond eerst de hotspot-instellingen af";
-"Bluetooth and the phone's network name and password are needed." = "Bluetooth en de netwerknaam en het wachtwoord van de telefoon zijn nodig.";
-"Set up" = "Instellen";
 
 /* Device icons */
 "Phone" = "Telefoon";
@@ -587,11 +574,8 @@
 "Opening it" = "Openen";
 "Open with a shortcut" = "Open met een sneltoets";
 "From any app." = "Vanuit elke app.";
-"Press a shortcut" = "Druk een sneltoets";
 "Paste into the app you were in" = "Plak in de app waar je was";
 "Return pastes straight away. Without this it only copies." = "Return plakt direct. Zonder dit kopieert het alleen.";
-"Tandem may not press keys yet" = "Tandem mag nog geen toetsen indrukken";
-"Pasting needs the Accessibility permission." = "Plakken heeft het recht Toegankelijkheid nodig.";
 "What is kept" = "Wat bewaard wordt";
 "Number of items" = "Aantal items";
 "Keep them for" = "Bewaar ze";
@@ -719,7 +703,6 @@
 "Screen Recording" = "Schermopname";
 "To send the picture of your screen. macOS asks for it once." = "Om het beeld van je scherm te versturen. macOS vraagt er eenmalig om.";
 "To move the pointer and press keys for a device you let control this Mac. Without it, devices can only watch." = "Om de aanwijzer te bewegen en toetsen in te drukken voor een apparaat dat je deze Mac laat bedienen. Zonder kunnen apparaten alleen meekijken.";
-"Not allowed yet" = "Nog niet toegestaan";
 "Right now" = "Op dit moment";
 "When a device asks" = "Als een apparaat erom vraagt";
 "Looking at this Mac" = "Deze Mac bekijken";
@@ -779,10 +762,8 @@
 "Allowed. Tandem can see your mouse and keyboard and play them from another computer" = "Toegestaan. Tandem kan je muis en toetsenbord zien en ze afspelen vanaf een andere computer";
 "Needed to see your mouse and keyboard, and to play them when another computer uses this Mac" = "Nodig om je muis en toetsenbord te zien en om ze af te spelen als een andere computer deze Mac gebruikt";
 "Windows needs nothing but the firewall: allow Tandem on private networks when Windows asks." = "Windows heeft alleen de firewall nodig: sta Tandem toe op privénetwerken als Windows het vraagt.";
-"Use this Mac's mouse and keyboard on other computers" = "Gebruik de muis en het toetsenbord van deze Mac op andere computers";
 "Universal mouse" = "Universele muis";
 "Choose below where each computer sits" = "Kies hieronder waar elke computer staat";
-"Allow Accessibility first" = "Sta eerst Toegankelijkheid toe";
 "Pair a Mac or a Windows PC to put it next to this one." = "Koppel een Mac of een Windows-pc om hem naast deze te zetten.";
 "The other computer has to allow it too: in its Tandem, under Mouse and keyboard." = "De andere computer moet het ook toestaan: in zijn Tandem, onder Muis en toetsenbord.";
 "Other computers using this Mac" = "Andere computers die deze Mac gebruiken";
@@ -799,9 +780,6 @@
 "Quick Share" = "Quick Share";
 "Looking for devices nearby" = "Zoeken naar apparaten in de buurt";
 "Send files to %@" = "Verstuur bestanden naar %@";
-"Sending to %@" = "Versturen naar %@";
-"Sent to %@" = "Verstuurd naar %@";
-"%@ said no" = "%@ zei nee";
 "Send files and receive files with Android phones and Windows PCs with Quick Share, without Google services or an account" = "Verstuur en ontvang bestanden met Android-telefoons en Windows-pc's met Quick Share, zonder Google-diensten of account";
 "Send files to and receive files from Android phones and Windows PCs with Quick Share, without Google services or an account" = "Verstuur bestanden naar en ontvang bestanden van Android-telefoons en Windows-pc's met Quick Share, zonder Google-diensten of account";
 "While this is on, this Mac can be found by everyone on the same network. Only the mode Everyone works, not Your contacts." = "Zolang dit aan staat kan iedereen op hetzelfde netwerk deze Mac vinden. Alleen de modus Iedereen werkt, niet Je contacten.";
@@ -822,7 +800,6 @@
 "must match the other device" = "moet gelijk zijn op het andere apparaat";
 "Accept" = "Accepteer";
 "Visible to everyone nearby" = "Zichtbaar voor iedereen in de buurt";
-"There is no text on the clipboard" = "Er staat geen tekst op het klembord";
 "Copied to the clipboard" = "Gekopieerd naar het klembord";
 "%@ wants to share a link" = "%@ wil een link delen";
 "%@ wants to share a note" = "%@ wil een notitie delen";
@@ -857,7 +834,6 @@
 "Log in to %@" = "Inloggen op %@";
 "The name of the account on that computer." = "De naam van het account op die computer.";
 "Log in" = "Inloggen";
-"Cancel" = "Annuleer";
 "The connection ended" = "De verbinding is gesloten";
 "Control this computer" = "Deze computer bedienen";
 "Control computer" = "Computer bedienen";
@@ -875,7 +851,6 @@
 "On a Mac: allow Tandem in System Settings, Privacy and Security, Accessibility, then restart Tandem on it." = "Op een Mac: sta Tandem toe in Systeeminstellingen, Privacy en beveiliging, Toegankelijkheid, en start Tandem daar opnieuw.";
 "On Windows and Linux: when it asks, choose Allow. Under Wayland Linux does not let an app use the mouse and keyboard: use an X11 session." = "Op Windows en Linux: kies Toestaan als het vraagt. Onder Wayland laat Linux een app de muis en het toetsenbord niet gebruiken: gebruik een X11-sessie.";
 "Then show the screen again from here." = "Toon dan het scherm opnieuw vanaf hier.";
-"Sending to %@" = "Versturen naar %@";
 "A file from %@ did not come in" = "Een bestand van %@ is niet aangekomen";
 "%@ from %@ is in %@" = "%@ van %@ staat in %@";
 "Turn on Tailscale when needed" = "Tailscale aanzetten als dat nodig is";
@@ -934,6 +909,7 @@
 "This Mac becomes an extra screen of that computer. Move windows to it with the mouse of that computer." = "Deze Mac wordt een extra scherm van die computer. Verplaats er vensters naartoe met de muis van die computer.";
 "This Mac gets an extra screen, shown on that device. Move windows to it with your mouse." = "Deze Mac krijgt een extra scherm, dat op dat apparaat te zien is. Verplaats er vensters naartoe met je muis.";
 "Update Tandem on that device to use it as a second screen" = "Update Tandem op dat apparaat om het als tweede scherm te gebruiken";
+"This Mac cannot make an extra screen" = "Deze Mac kan geen extra scherm maken";
 "Adds a screen to this Mac and shows it on that device. Move windows to it with your mouse." = "Voegt een scherm toe aan deze Mac en toont het op dat apparaat. Sleep vensters ernaartoe met je muis.";
 "Asked %@ to be a second screen" = "%@ gevraagd om tweede scherm te zijn";
 "Poor connection to %@, the picture may stutter" = "Slechte verbinding met %@, het beeld kan haperen";
@@ -985,7 +961,6 @@
 "%@ opened a setting" = "%@ heeft een instelling geopend";
 "Turn on Tandem here, then go back to %@." = "Zet Tandem hier aan en ga dan terug naar %@.";
 "Look at %@: the setting is open there" = "Kijk op %@: daar staat de instelling open";
-"%@ cannot be reached right now" = "%@ is nu niet bereikbaar";
 "Everything works on your devices." = "Alles werkt op je apparaten.";
 "%lld things need a permission or a setting. Each one says what, and opens the right place." = "%lld dingen hebben een toestemming of instelling nodig. Bij elk staat wat er mist, met een knop naar de goede plek.";
 "Update Tandem on %@ to see what works there." = "Werk Tandem bij op %@ om te zien wat daar werkt.";
@@ -1015,7 +990,6 @@
 "Local Network is off for Tandem on this Mac. Turn it off and on again." = "Lokaal netwerk staat uit voor Tandem op deze Mac. Zet het uit en weer aan.";
 "Tandem cannot reach your devices" = "Tandem kan je apparaten niet bereiken";
 "macOS has turned off Local Network for Tandem, which happens after some updates. Turn Tandem off and on again under Privacy and Security, Local Network." = "macOS heeft Lokaal netwerk voor Tandem uitgezet, dat gebeurt na sommige updates. Zet Tandem uit en weer aan onder Privacy en beveiliging, Lokaal netwerk.";
-"Needs a setting there" = "Daar is een instelling nodig";
 "Open there" = "Daar openen";
 
 /* Moving the extra screen */

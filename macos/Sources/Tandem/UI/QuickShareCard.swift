@@ -131,8 +131,8 @@ private struct QuickShareCard: View {
         }
         .padding(18)
         .frame(width: 392)
-        .liveGlass(in: .rect(cornerRadius: 32, style: .continuous))
-        .outerShadow(radius: 32, blur: 20, y: 8, opacity: 0.22)
+        .liveGlass(in: .rect(cornerRadius: Metrics.panel, style: .continuous))
+        .outerShadow(radius: Metrics.panel, blur: 20, y: 8, opacity: 0.22)
     }
 
     private var title: String {
@@ -170,7 +170,7 @@ private struct QuickShareCard: View {
                     .buttonStyle(.tandemGlass)
                 }
                 Spacer(minLength: 0)
-                Button("Done") { share.dismiss(item.id) }.buttonStyle(.tandemGlassProminent).tint(Palette.indigo)
+                Button("Done") { share.dismiss(item.id) }.buttonStyle(.tandemGlassProminent)
             } else if item.failure != nil {
                 Spacer(minLength: 0)
                 Button("Close") { share.dismiss(item.id) }.buttonStyle(.tandemGlass)
@@ -180,7 +180,7 @@ private struct QuickShareCard: View {
             } else {
                 Button("Decline") { share.decline(item.id) }.buttonStyle(.tandemGlass)
                 Spacer(minLength: 0)
-                Button("Accept") { share.accept(item.id) }.buttonStyle(.tandemGlassProminent).tint(Palette.indigo)
+                Button("Accept") { share.accept(item.id) }.buttonStyle(.tandemGlassProminent)
             }
         }
         .controlSize(.large)

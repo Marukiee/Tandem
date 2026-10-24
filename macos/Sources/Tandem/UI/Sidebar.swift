@@ -16,11 +16,13 @@ enum SidebarSelection: Hashable {
 /// Drawn by hand instead of as a system List. A List paints the row under the pointer in
 /// solid blue the moment the mouse goes down and keeps it that way, which reads as if text
 /// were being selected. Here a press only dips the row a little, the chosen row gets a
-/// soft tint of the accent colour, and the pointer over a row is a faint highlight.
+/// soft tint of the accent colour that slides from row to row, and the pointer over a row
+/// is a faint highlight that fades in.
 struct Sidebar: View {
     @Environment(EngineModel.self) private var model
     @Binding var selection: SidebarSelection?
     @Binding var showPairing: Bool
+    @Namespace private var chosen
 
     private var order: [SidebarSelection] {
         model.devices.map { .device($0.id) } + [.shared, .notifications, .clipboard]
@@ -34,7 +36,7 @@ struct Sidebar: View {
                     .padding(.top, 10)
                     .padding(.bottom, 4)
                 ForEach(model.devices, id: \.id) { device in
-                    SidebarButton(selected: selection == .device(device.id) || selection == .files(device.id)) {
+                    SidebarButton(selected: selection == .device(device.id) || selection == .files(device.id), chosen: chosen) {
                         selection = .device(device.id)
                     } content: {
                         DeviceRow(device: device)
@@ -47,17 +49,17 @@ struct Sidebar: View {
                     .padding(.horizontal, 12)
                     .padding(.top, 16)
                     .padding(.bottom, 4)
-                SidebarButton(selected: selection == .shared) {
+                SidebarButton(selected: selection == .shared, chosen: chosen) {
                     selection = .shared
                 } content: {
                     SharedRow()
                 }
-                SidebarButton(selected: selection == .notifications) {
+                SidebarButton(selected: selection == .notifications, chosen: chosen) {
                     selection = .notifications
                 } content: {
                     NotificationsRow()
                 }
-                SidebarButton(selected: selection == .clipboard) {
+                SidebarButton(selected: selection == .clipboard, chosen: chosen) {
                     selection = .clipboard
                 } content: {
                     ClipboardRow()
@@ -65,6 +67,7 @@ struct Sidebar: View {
             }
             .padding(.horizontal, 10)
             .animation(.tandem, value: model.devices.map(\.id))
+            .animation(.tandem, value: selection)
         }
         .scrollContentBackground(.hidden)
         .focusable()
@@ -92,29 +95,34 @@ struct Sidebar: View {
     }
 }
 
-/// One row of the sidebar: a tinted capsule while chosen, a faint one under the pointer.
+/// One row of the sidebar: a tinted shape while chosen, which moves to the next chosen row, and a faint one under the pointer.
 private struct SidebarButton<Content: View>: View {
     let selected: Bool
+    let chosen: Namespace.ID
     let action: () -> Void
     @ViewBuilder var content: Content
     @Environment(\.hoverEnabled) private var hoverEnabled
     @LocalState private var hovering = false
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
         Button(action: action) {
             content
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(selected ? Palette.indigo.opacity(0.16) : Color.primary.opacity(hovering && hoverEnabled ? 0.07 : 0))
+                    ZStack {
+                        shape.fill(Color.primary.opacity(hovering && hoverEnabled && !selected ? hoverOpacity : 0))
+                        if selected {
+                            shape.fill(Palette.indigo.opacity(0.16)).matchedGeometryEffect(id: "selection", in: chosen)
+                        }
+                    }
                 }
-                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .contentShape(shape)
         }
         .buttonStyle(SidebarPressStyle())
         .onHover { hovering = $0 }
-        .animation(.tandemFade, value: selected)
         .animation(.tandemFade, value: hovering)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
@@ -284,7 +292,7 @@ private struct PairButton: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .hoverHighlight(radius: 12)
+            .hoverHighlight(radius: 14)
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 10)

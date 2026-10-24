@@ -10,7 +10,6 @@ struct WifiShareButton: View {
         let reachable = device.online || device.ble
         GlassActionButton(title: "Share Wi-Fi", symbol: "wifi") { WifiShare.shared.share(with: device) }
             .disabled(!reachable)
-            .opacity(reachable ? 1 : 0.5)
             .help("Send the name and password of this Mac's Wi-Fi to \(device.name)")
     }
 }

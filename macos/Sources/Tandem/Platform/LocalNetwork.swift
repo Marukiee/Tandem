@@ -95,20 +95,12 @@ private struct NetworkPromptView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: "wifi.exclamationmark")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Palette.urgent)
-                    .frame(width: 40, height: 40)
-                    .background(Palette.urgent.opacity(0.14), in: .circle)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Tandem cannot reach your devices").font(.headline)
-                    Text("macOS has turned off Local Network for Tandem, which happens after some updates. Turn Tandem off and on again under Privacy and Security, Local Network.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
+            PromptHeader(
+                symbol: "wifi.exclamationmark",
+                tint: Palette.urgent,
+                title: Text("Tandem cannot reach your devices"),
+                message: Text("macOS has turned off Local Network for Tandem, which happens after some updates. Turn Tandem off and on again under Privacy and Security, Local Network.")
+            )
             HStack(spacing: 8) {
                 Spacer(minLength: 0)
                 Button("Later", action: close).buttonStyle(.tandemGlass)
@@ -116,10 +108,6 @@ private struct NetworkPromptView: View {
             }
             .controlSize(.large)
         }
-        .padding(18)
-        .frame(width: 440)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
-        .padding(EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28))
+        .floatingCard()
     }
 }

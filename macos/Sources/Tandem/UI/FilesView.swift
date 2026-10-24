@@ -23,6 +23,7 @@ struct FilesView: View {
     @LocalState private var hold = HoldState()
 
     var body: some View {
+        @Bindable var browser = browser
         ScrollView {
             VStack(spacing: 14) {
                 header
@@ -34,6 +35,9 @@ struct FilesView: View {
             .frame(maxWidth: 900)
             .frame(maxWidth: .infinity)
         }
+        // In the toolbar, where the system's own apps have their search.
+        .searchable(text: $browser.query, placement: .toolbar, prompt: Text("Search in this folder"))
+        .toolbar { ToolbarSpacer(.flexible) }
         .task(id: device.id) {
             browser.attach(device: device, model: model)
             if DebugSupport.mountDrive, let engine = model.tandem { model.drives.mount(device: device, engine: engine) }
@@ -56,7 +60,7 @@ struct FilesView: View {
         } isTargeted: { dropTargeted = $0 }
         .overlay {
             if dropTargeted && browser.writable {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: Metrics.card, style: .continuous)
                     .strokeBorder(Palette.indigo.opacity(0.7), style: StrokeStyle(lineWidth: 2.5, dash: [8, 6]))
                     .padding(10)
                     .allowsHitTesting(false)
@@ -87,7 +91,7 @@ struct FilesView: View {
     // MARK: Header
 
     private var header: some View {
-        Card(radius: 28, padding: 18, tint: Palette.indigo) {
+        Card(radius: Metrics.card, padding: 18, tint: Palette.indigo) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 14) {
                     Button(action: onBack) {
@@ -122,31 +126,31 @@ struct FilesView: View {
             switch state {
             case .off, .failed:
                 Button { model.drives.mount(device: device, engine: model.tandem!) } label: {
-                    Label("Show in Finder", systemImage: "externaldrive.badge.plus").font(.callout.weight(.medium))
+                    Label("Show in Finder", systemImage: "externaldrive.badge.plus")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.tandemGlass)
                 .disabled(!device.online || model.tandem == nil)
                 .help("Open these files as a drive, so any app can use them")
                 if case let .failed(message) = state {
-                    Text(message).font(.caption).foregroundStyle(.red).lineLimit(2)
+                    Text(message).font(.caption).foregroundStyle(Palette.urgent).lineLimit(2)
                 } else {
                     Text("The first time, macOS asks whether Tandem may use network drives. Allow it.")
                         .font(.caption).foregroundStyle(.tertiary).lineLimit(2)
                 }
             case .mounting:
-                ProgressView().controlSize(.small)
+                PillSpinner(size: 18)
                 Text("Opening in Finder").font(.callout).foregroundStyle(.secondary)
             case .mounted:
                 // The folder of all drives, which is a place on this Mac: this app does not go into the drive itself.
                 Button { NSWorkspace.shared.open(URL(fileURLWithPath: "/Volumes", isDirectory: true)) } label: {
-                    Label("Show drives in Finder", systemImage: "externaldrive.fill").font(.callout.weight(.medium))
+                    Label("Show drives in Finder", systemImage: "externaldrive.fill")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.tandemGlass)
                 .help("The drive is in Finder, in the sidebar under Locations")
                 Button { Task { await model.drives.eject(device: device.id, engine: model.tandem) } } label: {
-                    Label("Eject", systemImage: "eject.fill").font(.callout.weight(.medium))
+                    Label("Eject", systemImage: "eject.fill")
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.tandemGlass)
             }
             Spacer(minLength: 0)
         }
@@ -256,38 +260,18 @@ struct FilesView: View {
 
     // MARK: Looking for something
 
-    private var searchBar: some View {
+    /// What kind of file to show, above the list like the filters of the other pages. The search is in the toolbar.
+    private var kindFilter: some View {
         @Bindable var browser = browser
-        return HStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Search in this folder", text: $browser.query)
-                    .textFieldStyle(.plain)
-                if !browser.query.isEmpty {
-                    Button { browser.query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) }
-                        .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(.quaternary.opacity(0.5), in: Capsule())
-            Menu {
+        return HStack {
+            FilterMenu(title: Text(browser.kind.title), symbol: browser.kind.symbol, active: browser.kind != .all) {
                 ForEach(FilesBrowser.FileKind.allCases) { kind in
                     Button { browser.kind = kind } label: {
                         Label(kind.title, systemImage: browser.kind == kind ? "checkmark" : kind.symbol)
                     }
                 }
-            } label: {
-                Label(browser.kind.title, systemImage: browser.kind.symbol)
-                    .font(.callout.weight(.medium))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(browser.kind == .all ? AnyShapeStyle(.quaternary.opacity(0.5)) : AnyShapeStyle(Palette.indigo.opacity(0.25)), in: Capsule())
             }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .menuIndicator(.hidden)
-            .fixedSize()
+            Spacer(minLength: 0)
         }
     }
 
@@ -296,7 +280,7 @@ struct FilesView: View {
     @ViewBuilder
     private var content: some View {
         if let failure = browser.failure {
-            Card(radius: 22, padding: 18) {
+            Card(radius: Metrics.card, padding: 18) {
                 VStack(alignment: .leading, spacing: 12) {
                     Label(failure, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.secondary)
@@ -311,22 +295,19 @@ struct FilesView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 200)
         } else if browser.entries.isEmpty {
-            VStack(spacing: 8) {
-                Image(systemName: browser.path == "/" ? "folder.badge.questionmark" : "folder")
-                    .font(.system(size: 34)).foregroundStyle(.tertiary)
-                Text(browser.path == "/" ? "Nothing is shared" : "This folder is empty").foregroundStyle(.secondary)
-                if browser.writable {
-                    Text("Drop files here to put them in it.").font(.callout).foregroundStyle(.tertiary)
-                }
+            ContentUnavailableView {
+                Label(browser.path == "/" ? "Nothing is shared" : "This folder is empty", systemImage: browser.path == "/" ? "folder.badge.questionmark" : "folder")
+            } description: {
+                if browser.writable { Text("Drop files here to put them in it.") }
             }
             .frame(maxWidth: .infinity, minHeight: 200)
         } else {
-            searchBar
+            kindFilter
             if browser.shown.isEmpty {
-                ContentUnavailableView.search
+                ContentUnavailableView.search(text: browser.query)
                     .frame(maxWidth: .infinity, minHeight: 200)
             } else {
-                list
+                Card(radius: Metrics.card, padding: Metrics.cardInset) { list }
             }
         }
     }
@@ -459,33 +440,35 @@ struct FilesView: View {
     @ViewBuilder
     private var jobs: some View {
         if !browser.jobs.isEmpty {
-            VStack(spacing: 8) {
-                ForEach(browser.jobs) { job in
-                    Card(radius: 18, padding: 12) {
+            // One card of rows, like the transfers on the other pages.
+            Card(radius: Metrics.card, padding: Metrics.cardInset) {
+                VStack(spacing: 2) {
+                    ForEach(browser.jobs) { job in
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(job.title).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
                                 if let failure = job.failure {
-                                    Text(failure).font(.caption).foregroundStyle(.red)
+                                    Text(failure).font(.caption).foregroundStyle(Palette.urgent)
                                 } else if job.finished {
                                     Text("Done").font(.caption).foregroundStyle(.secondary)
                                 } else if job.total > 0 {
-                                    ProgressView(value: Double(job.done), total: Double(job.total))
+                                    ProgressCapsule(fraction: Double(job.done) / Double(job.total)).frame(height: 5)
                                     Text("\(formatBytes(job.done)) of \(formatBytes(job.total))").font(.caption).foregroundStyle(.secondary)
                                 } else {
-                                    ProgressView().controlSize(.small)
+                                    PillSpinner(size: 16)
                                 }
                             }
                             Spacer(minLength: 0)
                             if job.failure != nil {
-                                Button { browser.dismiss(job) } label: { Image(systemName: "xmark") }
-                                    .buttonStyle(.icon(size: 28))
+                                RowActionButton(symbol: "xmark", help: "Dismiss") { browser.dismiss(job) }
                             }
                         }
+                        .padding(10)
+                        .transition(.rise)
                     }
-                    .transition(.rise)
                 }
             }
+            .transition(.rise)
             .animation(.tandem, value: browser.jobs)
         }
     }
@@ -526,11 +509,7 @@ private struct FileRow: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
-        .background {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(selected ? Palette.indigo.opacity(0.22) : Color.clear)
-        }
-        .hoverHighlight(radius: 12, selected: selected)
+        .hoverHighlight(radius: Metrics.cardInner, tint: selected ? Palette.indigo : .primary, selected: selected)
     }
 
     /// A ring that fills with a check, so what is chosen can be seen at a glance down the whole list.

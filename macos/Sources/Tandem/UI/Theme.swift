@@ -47,13 +47,20 @@ extension Animation {
 /// How far a pressed element shrinks. Small enough to feel, not to distract.
 let pressedScale: CGFloat = 0.96
 
+/// How much of the text colour a row takes on under the pointer, in every list.
+let hoverOpacity: Double = 0.06
+
 /// Corner radii that nest. A shape inside another one gets the outer radius minus the
 /// gap between them, so the two curves stay parallel instead of looking pinched.
 enum Metrics {
+    /// Every card of content on a page, whatever it holds.
     static let card: CGFloat = 26
     static let cardInset: CGFloat = 10
+    /// Everything that floats over other apps: a question at the top of the screen, a card in a corner, the quick panel.
+    static let panel: CGFloat = 26
 
     static func inner(_ outer: CGFloat, inset: CGFloat) -> CGFloat { max(4, outer - inset) }
+    /// A row inside a card: its highlight, its selection.
     static var cardInner: CGFloat { inner(card, inset: cardInset) }
 }
 
@@ -90,6 +97,85 @@ extension View {
     }
 }
 
+// MARK: Glass
+
+private struct OnGlassKey: EnvironmentKey { static let defaultValue = false }
+
+extension EnvironmentValues {
+    /// True on something that is glass itself: a floating panel, a prompt, the menu bar panel. The controls on it are drawn
+    /// as fills there and not as glass of their own, because glass on glass blurs twice and loses its edge.
+    var onGlass: Bool {
+        get { self[OnGlassKey.self] }
+        set { self[OnGlassKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// The glass of something that floats, and the word to what is on it that it sits on glass. A debug run with
+    /// `TANDEM_DEBUG_FLAT_GLASS` draws a material instead, because a snapshot cannot draw glass.
+    @ViewBuilder
+    func floatingGlass<S: Shape>(in shape: S) -> some View {
+        if DebugSupport.flatGlass {
+            environment(\.onGlass, true).background(.regularMaterial, in: shape)
+        } else {
+            environment(\.onGlass, true).glassEffect(.regular, in: shape)
+        }
+    }
+
+    /// For a view that is on glass that it does not draw itself, such as the menu bar panel, whose glass is the system's.
+    func onGlassSurface() -> some View {
+        environment(\.onGlass, true)
+    }
+}
+
+/// The card that floats over other apps: the questions at the top of the screen and their kin. One width, radius, padding and shadow for
+/// all of them, and room around the glass inside the window for that shadow: a shadow that reaches past the edge of a window is cut off
+/// in a straight line. The panels that place these count on that room (12 above, 36 under).
+struct FloatingCard: ViewModifier {
+    var width: CGFloat = 440
+
+    func body(content: Content) -> some View {
+        content
+            .padding(18)
+            .frame(width: width)
+            .floatingGlass(in: RoundedRectangle(cornerRadius: Metrics.panel, style: .continuous))
+            .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
+            .padding(EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28))
+    }
+}
+
+extension View {
+    func floatingCard(width: CGFloat = 440) -> some View {
+        modifier(FloatingCard(width: width))
+    }
+}
+
+/// The top of a floating card: what it is about as a symbol on a disc, the question, and a line of explanation.
+struct PromptHeader: View {
+    let symbol: String
+    var tint: Color = Palette.indigo
+    let title: Text
+    let message: Text
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(tint)
+                .frame(width: 40, height: 40)
+                .background(tint.opacity(0.14), in: .circle)
+            VStack(alignment: .leading, spacing: 4) {
+                title.font(.headline)
+                message
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+}
+
 // MARK: Hover
 
 private struct HoverEnabledKey: EnvironmentKey { static let defaultValue = true }
@@ -102,68 +188,8 @@ extension EnvironmentValues {
     }
 }
 
-/// A card or button that rises a little under the pointer. The spring is the same one
-/// used everywhere else. With Reduce Motion on, nothing moves and only the shadow
-/// changes.
-struct HoverLift: ViewModifier {
-    var scale: CGFloat = 1.015
-    var lift: CGFloat = 2
-    var enabled = true
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.hoverEnabled) private var hoverEnabled
-    @LocalState private var hovering = false
-
-    func body(content: Content) -> some View {
-        let active = hovering && enabled && hoverEnabled
-        content
-            .scaleEffect(active && !reduceMotion ? scale : 1)
-            .offset(y: active && !reduceMotion ? -lift : 0)
-            .shadow(color: .black.opacity(active ? 0.10 : 0), radius: active ? 14 : 0, y: active ? 7 : 0)
-            .onHover { hovering = $0 }
-            .animation(reduceMotion ? .tandemFade : .tandemSpringy, value: active)
-    }
-}
-
-/// A control that swells a little under the pointer, with no shadow. For glass buttons, which
-/// do not react to the pointer in a menu bar panel by themselves.
-struct HoverSwell: ViewModifier {
-    var scale: CGFloat = 1.025
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.hoverEnabled) private var hoverEnabled
-    @LocalState private var hovering = false
-
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(hovering && hoverEnabled && !reduceMotion ? scale : 1)
-            .onHover { hovering = $0 }
-            .animation(.tandemSpringy, value: hovering)
-    }
-}
-
-/// A round glass button that turns grey under the pointer and stays grey. The system's own
-/// hover on glass flashes and fades back to white in a menu bar panel, so this holds it.
-/// Multiplied, so the white glass darkens and the icon on it stays as black as it was.
-/// Applied before the swell, so the grey grows with the button and covers its rim, which
-/// otherwise stays white around a grey disc.
-struct HoverGrey: ViewModifier {
-    @Environment(\.hoverEnabled) private var hoverEnabled
-    @LocalState private var hovering = false
-
-    func body(content: Content) -> some View {
-        content
-            .overlay {
-                Circle()
-                    .fill(Color(white: 0.78))
-                    .padding(-1)
-                    .blendMode(.multiply)
-                    .opacity(hovering && hoverEnabled ? 1 : 0)
-                    .allowsHitTesting(false)
-            }
-            .onHover { hovering = $0 }
-            .animation(.easeOut(duration: 0.12), value: hovering)
-    }
-}
+// What the pointer does, everywhere: nothing grows or moves under it, as in the system's own apps. A row or a button only takes on a
+// little colour, and that colour fades in and out.
 
 /// A soft highlight behind a row while the pointer is over it. Colour only, so a
 /// tween is right, and it stays put under Reduce Motion.
@@ -179,7 +205,7 @@ struct HoverHighlight: ViewModifier {
         content
             .background {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(tint.opacity(selected ? 0.14 : (hovering && hoverEnabled ? 0.075 : 0)))
+                    .fill(tint.opacity(selected ? 0.16 : (hovering && hoverEnabled ? hoverOpacity : 0)))
             }
             .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .onHover { hovering = $0 }
@@ -200,51 +226,50 @@ struct Hoverable<Content: View>: View {
     }
 }
 
+/// A colour of words or of a symbol that changes with the pointer or a choice. SwiftUI swaps the colour of text and symbols in one frame
+/// however it is animated, which reads as a hard jump, so the second colour is a copy on top that fades in and out.
+struct FadingForeground<Base: ShapeStyle, Other: ShapeStyle>: ViewModifier {
+    let base: Base
+    let other: Other
+    let on: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(base)
+            .overlay {
+                content
+                    .foregroundStyle(other)
+                    .opacity(on ? 1 : 0)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            .animation(.tandemFade, value: on)
+    }
+}
+
 extension View {
-    func hoverLift(scale: CGFloat = 1.015, lift: CGFloat = 2, enabled: Bool = true) -> some View {
-        modifier(HoverLift(scale: scale, lift: lift, enabled: enabled))
-    }
-
-    func hoverGrey() -> some View {
-        modifier(HoverGrey())
-    }
-
-    func hoverSwell(_ scale: CGFloat = 1.025) -> some View {
-        modifier(HoverSwell(scale: scale))
-    }
-
     func hoverHighlight(radius: CGFloat = 12, tint: Color = .primary, selected: Bool = false) -> some View {
         modifier(HoverHighlight(radius: radius, tint: tint, selected: selected))
+    }
+
+    func fadingForeground(_ base: some ShapeStyle, to other: some ShapeStyle, when on: Bool) -> some View {
+        modifier(FadingForeground(base: base, other: other, on: on))
     }
 }
 
 // MARK: Button styles
 
-/// Shrinks a little while pressed and springs back, and swells a little under the
-/// pointer, on everything tappable that is not a system glass button.
+/// Shrinks a little while pressed and springs back, on everything tappable that is not a
+/// button of its own kind.
 struct BouncyButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        BouncyButtonBody(configuration: configuration)
-    }
-}
-
-private struct BouncyButtonBody: View {
-    let configuration: ButtonStyleConfiguration
-    @Environment(\.isEnabled) private var isEnabled
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.hoverEnabled) private var hoverEnabled
-    @LocalState private var hovering = false
-
-    var body: some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? pressedScale : (hovering && hoverEnabled && isEnabled && !reduceMotion ? 1.025 : 1))
-            .onHover { hovering = $0 }
+            .scaleEffect(configuration.isPressed ? pressedScale : 1)
             .animation(.tandemBouncy, value: configuration.isPressed)
-            .animation(.tandemSpringy, value: hovering)
     }
 }
 
-/// A small round icon button: a faint disc appears under the pointer.
+/// A small round icon button: a faint disc fades in under the pointer.
 struct IconButtonStyle: ButtonStyle {
     var size: CGFloat = 28
 
@@ -257,12 +282,13 @@ private struct IconButtonBody: View {
     let configuration: ButtonStyleConfiguration
     let size: CGFloat
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.hoverEnabled) private var hoverEnabled
     @LocalState private var hovering = false
 
     var body: some View {
         configuration.label
             .frame(width: size, height: size)
-            .background(Circle().fill(Color.primary.opacity(configuration.isPressed ? 0.16 : (hovering && isEnabled ? 0.09 : 0))))
+            .background(Circle().fill(Color.primary.opacity(configuration.isPressed ? 0.16 : (hovering && isEnabled && hoverEnabled ? 0.09 : 0))))
             .contentShape(Circle())
             .scaleEffect(configuration.isPressed ? pressedScale : 1)
             .onHover { hovering = $0 }

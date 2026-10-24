@@ -7,7 +7,8 @@ import TandemCore
 import UserNotifications
 
 /// One row on the Access page: what Tandem asks for, why, whether it has it, and a
-/// way to try it without needing a second device.
+/// way to try it without needing a second device. Someone may not want a permission,
+/// so one that is not given is not a warning: the row just has its button.
 struct AccessItem: Identifiable {
     enum Status { case allowed, notAsked, denied, unknown }
 
@@ -214,25 +215,24 @@ private struct AccessRow: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 8) {
                     Text(item.title).font(.callout.weight(.semibold))
-                    StatusPill(status: item.status)
+                    AccessStatus(status: item.status)
                 }
                 Text(item.why).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if let detail = item.detail {
                     HStack(spacing: 8) {
-                        Text(detail).font(.caption).foregroundStyle(Palette.indigo).fixedSize(horizontal: false, vertical: true)
-                        Button("Restart") { ScreenHost.shared.relaunch() }.buttonStyle(.tandemGlassProminent).controlSize(.small)
+                        Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        Button("Restart") { ScreenHost.shared.relaunch() }.buttonStyle(.borderedProminent).tint(Palette.indigo)
                     }
                 }
                 HStack(spacing: 8) {
                     if item.status != .allowed, item.status != .unknown, item.status != .denied {
-                        Button("Allow") { checker.request(item.id) }.buttonStyle(.tandemGlassProminent).controlSize(.small)
+                        Button("Allow") { checker.request(item.id) }
                     }
                     if item.status == .denied || item.status == .unknown {
                         Button("Open System Settings") { checker.openSystemSettings(for: item.id) }
-                            .buttonStyle(.tandemGlass).controlSize(.small)
                     }
                     if ["notifications", "network", "accessibility"].contains(item.id) {
-                        Button("Test") { checker.runTest(item.id, model: model) }.buttonStyle(.tandemGlass).controlSize(.small)
+                        Button("Test") { checker.runTest(item.id, model: model) }
                     }
                 }
                 .padding(.top, 2)
@@ -243,22 +243,15 @@ private struct AccessRow: View {
     }
 }
 
-private struct StatusPill: View {
+/// What is given is said in a quiet grey; what is not says nothing, its button is enough.
+private struct AccessStatus: View {
     let status: AccessItem.Status
 
     var body: some View {
-        let (text, tint): (LocalizedStringKey, Color) = switch status {
-        case .allowed: ("Allowed", .green)
-        case .notAsked: ("Not asked yet", .orange)
-        case .denied: ("Denied", Palette.urgent)
-        case .unknown: ("Asked by macOS", .secondary)
+        switch status {
+        case .allowed: Text("Allowed").font(.caption).foregroundStyle(.secondary)
+        case .unknown: Text("Asked by macOS").font(.caption).foregroundStyle(.secondary)
+        case .notAsked, .denied: EmptyView()
         }
-        Text(text)
-            .font(.caption2.weight(.semibold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 2)
-            .background(tint.opacity(0.14), in: .capsule)
-            .animation(.tandemFade, value: status == .allowed)
     }
 }

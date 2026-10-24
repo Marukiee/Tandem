@@ -75,7 +75,9 @@ struct SettingsView: View {
                 Label(section.title, systemImage: section.symbol)
                     .tag(section)
             }
-            .navigationSplitViewColumnWidth(min: 176, ideal: 190, max: 220)
+            // Wide enough for the longest name in both languages, so none is cut off.
+            .frame(minWidth: 214)
+            .navigationSplitViewColumnWidth(214)
             // The sections always fit, so there is nothing to fold away, and the round button for it only got in the way.
             .toolbar(removing: .sidebarToggle)
         } detail: {
@@ -184,9 +186,7 @@ private struct GeneralSettings: View {
                 if needsRestart {
                     LabeledContent {
                         Button("Restart now") { model.relaunch() }
-                            .buttonStyle(.tandemGlassProminent)
-                            .tint(Palette.indigo)
-                            .controlSize(.small)
+                            .buttonStyle(.borderedProminent).tint(Palette.indigo)
                     } label: {
                         Text("Restart Tandem to change the language.").foregroundStyle(.secondary)
                     }
@@ -461,7 +461,7 @@ private struct HotspotSettings: View {
 
     private var credentialsSet: Bool { !ssid.isEmpty && !password.isEmpty }
     private var bluetoothAllowed: Bool { bluetooth == .allowedAlways }
-    /// The switch stays grey until everything it needs is in place, so it never looks on
+    /// The switch only shows on when everything it needs is in place, so it never looks on
     /// while nothing can happen.
     private var ready: Bool { credentialsSet && bluetoothAllowed }
 
@@ -478,11 +478,12 @@ private struct HotspotSettings: View {
                 }
             }
             Section {
+                // Looks the same whether it is set up or not: turning it on before the setup is done opens the setup, which turns it
+                // on at its end.
                 Toggle("Use my phone's hotspot when this Mac has no connection", isOn: Binding(
                     get: { auto && ready },
-                    set: { auto = $0 }
+                    set: { on in if on && !ready { showSetup = true } else { auto = on } }
                 ))
-                .disabled(!ready)
                 LabeledContent("Wait before asking") {
                     HStack(spacing: 10) {
                         Slider(value: $delay, in: 3 ... 30, step: 1)
@@ -493,29 +494,6 @@ private struct HotspotSettings: View {
                     }
                 }
                 .disabled(!(auto && ready))
-            } footer: {
-                if !ready {
-                    Text("Finish the two steps below to turn this on.")
-                }
-            }
-
-            Section {
-                Requirement(
-                    done: bluetoothAllowed,
-                    title: "Bluetooth",
-                    detail: bluetoothDetail,
-                    buttonTitle: bluetoothAllowed ? nil : (bluetooth == .notDetermined ? "Allow" : "Open Settings")
-                ) {
-                    if bluetooth == .notDetermined { BluetoothPrompt.ask() } else { BluetoothPrompt.openSettings() }
-                }
-                Requirement(
-                    done: credentialsSet,
-                    title: "Your phone's hotspot",
-                    detail: credentialsSet ? "Network name and password are saved." : "Fill in the network name and password below.",
-                    buttonTitle: nil
-                ) {}
-            } header: {
-                Text("What it needs")
             }
 
             Section {
@@ -534,42 +512,10 @@ private struct HotspotSettings: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             bluetooth = CBManager.authorization
         }
-        .sheet(isPresented: $showSetup) { HotspotSetupSheet() }
-    }
-
-    private var bluetoothDetail: LocalizedStringKey {
-        switch bluetooth {
-        case .allowedAlways: "Tandem may use Bluetooth to ask your phone."
-        case .notDetermined: "Tandem has not asked yet."
-        default: "Bluetooth is off for Tandem in System Settings."
-        }
-    }
-}
-
-/// One line of a checklist: a tick when done, what is missing when not, and a button to fix it.
-private struct Requirement: View {
-    let done: Bool
-    let title: LocalizedStringKey
-    let detail: LocalizedStringKey
-    let buttonTitle: LocalizedStringKey?
-    let action: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: done ? "checkmark.circle.fill" : "circle.dashed")
-                .font(.title3)
-                .foregroundStyle(done ? Color.green : Color.secondary)
-                .contentTransition(.symbolEffect(.replace))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                Text(detail).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 8)
-            if let buttonTitle {
-                Button(buttonTitle, action: action)
-            }
-        }
-        .animation(.tandem, value: done)
+        .sheet(isPresented: $showSetup, onDismiss: {
+            bluetooth = CBManager.authorization
+            password = HotspotCredentials.password() ?? ""
+        }) { HotspotSetupSheet() }
     }
 }
 
@@ -606,8 +552,7 @@ private struct UpdateSettings: View {
                                 .frame(maxHeight: 90)
                         }
                         Button("Update and restart") { Task { await updater.install() } }
-                            .buttonStyle(.tandemGlassProminent)
-                            .tint(Palette.indigo)
+                            .buttonStyle(.borderedProminent).tint(Palette.indigo)
                     }
                 case let .downloading(_, progress):
                     VStack(alignment: .leading, spacing: 8) {

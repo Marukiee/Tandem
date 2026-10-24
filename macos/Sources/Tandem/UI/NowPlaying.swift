@@ -52,16 +52,10 @@ private struct OtherPlayers: View {
                                 .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Spacer(minLength: 8)
-                        Button {
+                        // The same round button as the player above it.
+                        RoundIconButton(symbol: player.playing ? "pause.fill" : "play.fill", size: 30) {
                             model.sendMedia(.toggle, player: player, to: device.id)
-                        } label: {
-                            Image(systemName: player.playing ? "pause.fill" : "play.fill")
-                                .contentTransition(.symbolEffect(.replace))
-                                .frame(width: 12, height: 12)
                         }
-                        .buttonStyle(.glass)
-                        .buttonBorderShape(.circle)
-                        .controlSize(.regular)
                         .help(player.playing ? "Pause" : "Play")
                     }
                     .padding(.horizontal, 6)

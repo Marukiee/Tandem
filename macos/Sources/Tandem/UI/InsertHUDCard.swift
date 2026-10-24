@@ -98,15 +98,6 @@ private extension View {
     }
 }
 
-/// Shrinks a little under the finger and springs back.
-private struct PressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? pressedScale : 1)
-            .animation(.tandemBouncy, value: configuration.isPressed)
-    }
-}
-
 // MARK: Pieces
 
 /// The round mark that leads a row: a ring that counts down or fills while something is going on,
@@ -198,7 +189,7 @@ private struct Keycap: View {
     var body: some View {
         Text(verbatim: text)
             .font(.system(size: 11, weight: .bold, design: .rounded))
-            .foregroundStyle(lit ? Color.white : Color.secondary)
+            .fadingForeground(Color.secondary, to: Color.white, when: lit)
             .frame(minWidth: 22, minHeight: 22)
             .padding(.horizontal, round ? 0 : 4)
             .background(Capsule().fill(lit ? Palette.indigo : Color.primary.opacity(0.09)))
@@ -264,12 +255,10 @@ private struct ChooseKind: View {
             .padding(.leading, 10)
             .padding(.trailing, 2)
 
-            GlassEffectContainer(spacing: 0) {
-                HStack(spacing: 10) {
-                    ForEach(Array(InsertKind.allCases.enumerated()), id: \.element.id) { index, kind in
-                        KindTile(kind: kind, index: index) {
-                            model.choose(kind: kind, device: current?.id ?? device ?? "")
-                        }
+            HStack(spacing: 10) {
+                ForEach(Array(InsertKind.allCases.enumerated()), id: \.element.id) { index, kind in
+                    KindTile(kind: kind, index: index) {
+                        model.choose(kind: kind, device: current?.id ?? device ?? "")
                     }
                 }
             }
@@ -279,7 +268,7 @@ private struct ChooseKind: View {
 }
 
 /// One of the three things to ask for. The symbol sits in the corner where the eye starts, the name at
-/// the opposite one, and under the pointer the tile rises, the symbol swells and fills.
+/// the opposite one, and under the pointer the tile and its disc take on colour.
 private struct KindTile: View {
     let kind: InsertKind
     let index: Int
@@ -299,7 +288,7 @@ private struct KindTile: View {
                         Circle().fill(lit ? Palette.indigo : Palette.indigo.opacity(0.15))
                         Image(systemName: kind.symbol)
                             .font(.system(size: 19, weight: .semibold))
-                            .foregroundStyle(lit ? Color.white : Palette.indigo)
+                            .fadingForeground(Palette.indigo, to: Color.white, when: lit)
                     }
                     .frame(width: 40, height: 40)
                     .animation(.tandemFade, value: lit)
@@ -319,7 +308,7 @@ private struct KindTile: View {
             .hudTile(shape, lit: lit)
             .contentShape(shape)
         }
-        .buttonStyle(PressStyle())
+        .buttonStyle(.bouncy)
         .hudLit(index, scale: 1.035, lift: 3)
         .opacity(arrived ? 1 : 0)
         .scaleEffect(arrived ? 1 : 0.86)
@@ -351,33 +340,31 @@ private struct WhichPhone: View {
                 .hudLit(10)
             }
             .padding(.leading, 10)
-            GlassEffectContainer(spacing: 0) {
-                VStack(spacing: 8) {
-                    ForEach(Array(model.phones.enumerated()), id: \.element.id) { index, phone in
-                        let id = 11 + index
-                        let lit = interaction.highlighted == id
-                        let shape = RoundedRectangle(cornerRadius: InsertHUDCard.radius - 14, style: .continuous)
-                        Button {
-                            model.choose(kind: kind, device: phone.id)
-                        } label: {
-                            HStack(spacing: 12) {
-                                ZStack {
-                                    Circle().fill(lit ? Palette.indigo : Palette.indigo.opacity(0.15))
-                                    Image(systemName: kind.symbol)
-                                        .font(.system(size: 17, weight: .semibold))
-                                        .foregroundStyle(lit ? Color.white : Palette.indigo)
-                                }
-                                .frame(width: 36, height: 36)
-                                Text(verbatim: phone.name).font(.system(size: 14, weight: .semibold)).lineLimit(1)
-                                Spacer()
+            VStack(spacing: 8) {
+                ForEach(Array(model.phones.enumerated()), id: \.element.id) { index, phone in
+                    let id = 11 + index
+                    let lit = interaction.highlighted == id
+                    let shape = RoundedRectangle(cornerRadius: InsertHUDCard.radius - 14, style: .continuous)
+                    Button {
+                        model.choose(kind: kind, device: phone.id)
+                    } label: {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle().fill(lit ? Palette.indigo : Palette.indigo.opacity(0.15))
+                                Image(systemName: kind.symbol)
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .fadingForeground(Palette.indigo, to: Color.white, when: lit)
                             }
-                            .padding(10)
-                            .hudTile(shape, lit: lit)
-                            .contentShape(shape)
+                            .frame(width: 36, height: 36)
+                            Text(verbatim: phone.name).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                            Spacer()
                         }
-                        .buttonStyle(PressStyle())
-                        .hudLit(id, scale: 1.02)
+                        .padding(10)
+                        .hudTile(shape, lit: lit)
+                        .contentShape(shape)
                     }
+                    .buttonStyle(.bouncy)
+                    .hudLit(id, scale: 1.02)
                 }
             }
         }
@@ -526,13 +513,14 @@ enum InsertHUDText {
 
 extension View {
     /// The card. With `TANDEM_DEBUG_FLAT` it is a plain fill, because glass cannot be drawn into the
-    /// snapshots the harness makes and the layout would be invisible.
+    /// snapshots the harness makes and the layout would be invisible. Either way what is on it knows it sits on glass.
     @ViewBuilder
     fileprivate func hudSurface(radius: CGFloat) -> some View {
         if InsertHUDText.flat {
             background(Color(nsColor: .windowBackgroundColor), in: .rect(cornerRadius: radius, style: .continuous))
+                .onGlassSurface()
         } else {
-            glassEffect(.regular, in: .rect(cornerRadius: radius, style: .continuous))
+            floatingGlass(in: .rect(cornerRadius: radius, style: .continuous))
         }
     }
 
@@ -553,40 +541,12 @@ extension View {
         }
     }
 
-    /// A tile on the card: glass of its own, tinted indigo while it is lit.
-    @ViewBuilder
+    /// A tile on the card: a fill, tinted indigo while it is lit. Not glass of its own on the glass of the card.
     fileprivate func hudTile(_ shape: RoundedRectangle, lit: Bool) -> some View {
-        if InsertHUDText.flat {
-            background(lit ? Palette.indigo.opacity(0.22) : Color(nsColor: .quaternarySystemFill), in: shape)
-        } else {
-            // The glass stays as it is and the tint is a fill under the content that fades in and out. Changing the tint of
-            // the glass itself jumps from one to the other.
-            background(shape.fill(Palette.indigo.opacity(lit ? 0.2 : 0)).animation(.tandemFade, value: lit))
-                .glassEffect(.regular, in: shape)
-        }
+        background(shape.fill(lit ? Palette.indigo.opacity(0.2) : Color.primary.opacity(0.06)).animation(.tandemFade, value: lit))
     }
 
-    @ViewBuilder
     fileprivate func hudButton(prominent: Bool = false) -> some View {
-        if InsertHUDText.flat {
-            buttonStyle(FlatGlassButtonStyle(prominent: prominent))
-        } else if prominent {
-            buttonStyle(.tandemGlassProminent)
-        } else {
-            buttonStyle(.tandemGlass)
-        }
-    }
-}
-
-private struct FlatGlassButtonStyle: ButtonStyle {
-    let prominent: Bool
-    @Environment(\.controlSize) private var controlSize
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding(.horizontal, controlSize == .small ? 8 : 12)
-            .frame(minHeight: controlSize == .large ? 40 : 28)
-            .foregroundStyle(prominent ? Color.white : Color.primary)
-            .background(Capsule().fill(prominent ? Palette.indigo : Color(nsColor: .quaternarySystemFill)))
+        buttonStyle(TandemGlassStyle(prominent: prominent))
     }
 }

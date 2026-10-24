@@ -3,8 +3,8 @@ import SwiftUI
 import TandemCore
 
 /// The panel under the menu bar icon. The panel itself is the glass; what sits in it
-/// is content (the device rows, on a plain hover highlight) and controls (standard
-/// glass buttons), grouped in containers so neighbours blend instead of stacking.
+/// is content (the device rows, on a plain hover highlight) and controls, which are
+/// fills on that glass and not glass of their own (see `onGlass`).
 struct MenuBarPanel: View {
     @Environment(EngineModel.self) private var model
     @Environment(\.openWindow) private var openWindow
@@ -54,6 +54,7 @@ struct MenuBarPanel: View {
         }
         .padding(14)
         .frame(width: 344)
+        .onGlassSurface()
         .animation(.tandem, value: model.devices.map(\.id))
         .animation(.tandem, value: model.hotspotStatus)
         .animation(.tandem, value: model.isTransferring)
@@ -94,7 +95,6 @@ struct MenuBarPanel: View {
                 .multilineTextAlignment(.center)
             Button("Pair a device") { openMain(pairing: true) }
                 .buttonStyle(.tandemGlassProminent)
-                .tint(Palette.indigo)
                 .padding(.top, 2)
         }
         .frame(maxWidth: .infinity)
@@ -107,7 +107,7 @@ struct MenuBarPanel: View {
     /// same height so the row reads as one line.
     private var footer: some View {
         HStack(spacing: 8) {
-            RoundIconMenu(symbol: "ellipsis") {
+            RoundIconMenu(symbol: "ellipsis", size: 28) {
                 Button("Pair a device…") { openMain(pairing: true) }
                 Divider()
                 Button("Quit Tandem") { NSApp.terminate(nil) }
@@ -119,8 +119,6 @@ struct MenuBarPanel: View {
 
             Button("Open Tandem") { openMain(pairing: false) }
                 .buttonStyle(.tandemGlassProminent)
-                .tint(Palette.indigo)
-                .hoverSwell(1.02)
         }
         .controlSize(.large)
     }
@@ -158,7 +156,7 @@ private struct MenuClipboardRow: View {
                     // Like the symbols of Insert from phone: the disc fills and the symbol turns white, in colour only.
                     Image(systemName: "doc.on.clipboard.fill")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(hovering ? Color.white : Palette.indigo)
+                        .fadingForeground(Palette.indigo, to: Color.white, when: hovering)
                         .frame(width: 36, height: 36)
                         .background(hovering ? Palette.indigo : Palette.indigo.opacity(0.14), in: Circle())
                         .animation(.tandemFade, value: hovering)
@@ -249,52 +247,48 @@ private struct MenuDeviceRow: View {
 
     var body: some View {
         let reach = model.reach(of: device)
-        Hoverable { hovering in
-            HStack(spacing: 10) {
-                DeviceGlyph(platform: device.platform, online: device.online, size: 36, ring: true, deviceID: device.id, greenWhenOnline: true)
-                    .scaleEffect(hovering ? 1.06 : 1)
-                    .animation(.tandemSpringy, value: hovering)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(device.name).font(.callout.weight(.semibold)).lineLimit(1)
-                    HStack(spacing: 5) {
-                        if let hint {
-                            Text(hint)
+        HStack(spacing: 10) {
+            DeviceGlyph(platform: device.platform, online: device.online, size: 36, ring: true, deviceID: device.id, greenWhenOnline: true)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(device.name).font(.callout.weight(.semibold)).lineLimit(1)
+                HStack(spacing: 5) {
+                    if let hint {
+                        Text(hint)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(Palette.indigo)
+                            .transition(.opacity)
+                    } else {
+                        // Connected says itself: the glyph is green. Only what is not the plain case is written out.
+                        if reach != .network {
+                            Text(reach.text)
                                 .font(.caption.weight(.medium))
-                                .foregroundStyle(Palette.indigo)
+                                .foregroundStyle(reach.color)
                                 .transition(.opacity)
-                        } else {
-                            // Connected says itself: the glyph is green. Only what is not the plain case is written out.
-                            if reach != .network {
-                                Text(reach.text)
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(reach.color)
-                                    .transition(.opacity)
-                            }
-                            if let battery = device.status.battery {
-                                Image(systemName: batterySymbol(battery)).font(.caption2).foregroundStyle(.secondary)
-                                Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                            }
+                        }
+                        if let battery = device.status.battery {
+                            Image(systemName: batterySymbol(battery)).font(.caption2).foregroundStyle(.secondary)
+                            Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                         }
                     }
-                    .lineLimit(1)
                 }
-                Spacer(minLength: 4)
-                HStack(spacing: 4) {
-                    RoundIconButton(symbol: "paperplane.fill", size: 28, onHover: { hint = $0 ? "Send files" : nil }) { pickFiles() }
-                        .disabled(!device.online)
-                    RoundIconButton(symbol: "doc.on.clipboard", size: 28, onHover: { hint = $0 ? "Send clipboard" : nil }) {
-                        model.sendClipboard(to: [device.id])
-                    }
-                    .disabled(!(device.online || device.ble))
-                    LiveMenuButton(device: device, onHover: { hint = $0 ? "Show phone screen" : nil })
-                    if device.platform == .android {
-                        let on = model.speaker.device == device.id
-                        RoundIconButton(
-                            symbol: on ? "speaker.wave.3.fill" : "speaker.wave.2", tint: on ? Palette.indigo : nil, size: 28,
-                            onHover: { hint = $0 ? (on ? "Stop phone output" : "Phone as output") : nil }
-                        ) { model.toggleSpeaker(for: device.id) }
-                        .disabled(!device.online)
-                    }
+                .lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            HStack(spacing: 4) {
+                RoundIconButton(symbol: "paperplane.fill", size: 28, onHover: { hint = $0 ? "Send files" : nil }) { pickFiles() }
+                    .disabled(!device.online)
+                RoundIconButton(symbol: "doc.on.clipboard", size: 28, onHover: { hint = $0 ? "Send clipboard" : nil }) {
+                    model.sendClipboard(to: [device.id])
+                }
+                .disabled(!(device.online || device.ble))
+                LiveMenuButton(device: device, onHover: { hint = $0 ? "Show phone screen" : nil })
+                if device.platform == .android {
+                    let on = model.speaker.device == device.id
+                    RoundIconButton(
+                        symbol: on ? "speaker.wave.3.fill" : "speaker.wave.2", tint: on ? Palette.indigo : nil, size: 28,
+                        onHover: { hint = $0 ? (on ? "Stop phone output" : "Phone as output") : nil }
+                    ) { model.toggleSpeaker(for: device.id) }
+                    .disabled(!device.online)
                 }
             }
         }

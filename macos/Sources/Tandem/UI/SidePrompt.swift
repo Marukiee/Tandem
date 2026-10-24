@@ -68,32 +68,19 @@ private struct SidePromptView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: "rectangle.lefthalf.inset.filled.arrow.left")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Palette.indigo)
-                    .frame(width: 40, height: 40)
-                    .background(Palette.indigo.opacity(0.14), in: .circle)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Where does \(device.name) stand?").font(.headline)
-                    Text(note ?? String(localized: "Its screen goes on that side of this Mac, so the pointer goes over where you expect it."))
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-                Button(action: close) {
-                    Image(systemName: "xmark").font(.callout.weight(.semibold)).frame(width: 12, height: 12)
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .help("Close")
+            HStack(alignment: .top, spacing: 8) {
+                PromptHeader(
+                    symbol: "rectangle.lefthalf.inset.filled.arrow.left",
+                    title: Text("Where does \(device.name) stand?"),
+                    message: Text(note ?? String(localized: "Its screen goes on that side of this Mac, so the pointer goes over where you expect it."))
+                )
+                RoundIconButton(symbol: "xmark", size: 26, action: close)
+                    .help("Close")
             }
             HStack(spacing: 8) {
                 if device.caps.contains("side.listen") {
                     Button(finding ? "Listening…" : "Find automatically") { find() }
                         .buttonStyle(.tandemGlassProminent)
-                        .tint(Palette.indigo)
                         .disabled(finding)
                 }
                 Spacer(minLength: 0)
@@ -104,12 +91,7 @@ private struct SidePromptView: View {
             Toggle("Remember for this device", isOn: $remember)
                 .toggleStyle(.checkbox)
         }
-        .padding(18)
-        .frame(width: 440)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
-        // Room for the whole shadow inside the panel: a shadow that reaches past the edge of the window is cut off in a straight line.
-        .padding(EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28))
+        .floatingCard()
     }
 
     private func choose(_ side: String) {

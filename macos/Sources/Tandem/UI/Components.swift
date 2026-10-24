@@ -19,9 +19,30 @@ struct Card<Content: View>: View {
     }
 }
 
-/// An action on a device. It is a system glass button, so it gets the standard
-/// pressed and hover behaviour for free, and it sits in a GlassEffectContainer with
-/// its neighbours.
+/// The title of a page and the line under it, the same on every page that has one.
+struct PageHeader<Extra: View>: View {
+    let title: LocalizedStringKey
+    let subtitle: LocalizedStringKey
+    @ViewBuilder var extra: Extra
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.largeTitle.weight(.bold))
+            Text(subtitle)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            extra
+        }
+    }
+}
+
+extension PageHeader where Extra == EmptyView {
+    init(title: LocalizedStringKey, subtitle: LocalizedStringKey) {
+        self.init(title: title, subtitle: subtitle) { EmptyView() }
+    }
+}
+
+/// An action on a device or on a page: a symbol and its words in the app's button, sitting in a GlassEffectContainer with its neighbours.
 struct GlassActionButton: View {
     let title: LocalizedStringKey
     let symbol: String
@@ -33,7 +54,6 @@ struct GlassActionButton: View {
     var body: some View {
         Button(action: action) {
             Label(title, systemImage: symbol)
-                .font(.callout.weight(.semibold))
                 // A button that turns on or off changes its symbol and words: the symbol morphs, and the words fade across while the
                 // pill springs to its new width (see the animation on the row).
                 .contentTransition(.symbolEffect(.replace))
@@ -44,9 +64,13 @@ struct GlassActionButton: View {
     }
 }
 
-/// The glass pill of every button with words. The glass of the system's button leans towards the pointer on hover while the words stay
-/// where they are, which made the words look pinned to one side; here the pill and its words grow together, from the middle. The sizes
-/// are those of the system's glass buttons at each control size, measured, so a pill next to one of those is exactly as tall.
+/// The button with words of the whole app, outside the grouped forms of Settings (which use the system's push buttons, as System
+/// Settings does). On the content of a page it is a pill of glass, because a control floats over the content. On something that is glass
+/// already (a panel, a prompt) it is a fill, because glass on glass blurs twice; see `onGlass`.
+///
+/// Not the system's glass button: its glass leans towards the pointer while the words stay where they are, which made the words look
+/// pinned to one side. The sizes are those of the system's glass buttons at each control size, measured, so a pill next to one of those
+/// is exactly as tall. The pointer only brings a little light that fades in and out: no growing, as with the system's own buttons.
 struct TandemGlassStyle: ButtonStyle {
     var prominent = false
     var tint: Color = Palette.indigo
@@ -60,48 +84,128 @@ private struct TandemGlassPill: View {
     let configuration: ButtonStyleConfiguration
     let prominent: Bool
     let tint: Color
-    @Environment(\.controlSize) private var size
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.hoverEnabled) private var hoverEnabled
     @LocalState private var hovering = false
 
+    var body: some View {
+        Pill(
+            label: configuration.label, prominent: prominent, tint: tint, lit: hovering && isEnabled && hoverEnabled,
+            pressed: configuration.isPressed, destructive: configuration.role == .destructive
+        )
+        .onHover { hovering = $0 }
+    }
+}
+
+/// What a `TandemGlassStyle` button looks like, for a control that is not a button of its own, such as the label of a menu.
+struct Pill<Content: View>: View {
+    let label: Content
+    var prominent = false
+    var tint: Color = Palette.indigo
+    /// Under the pointer.
+    var lit = false
+    var pressed = false
+    var destructive = false
+    @Environment(\.controlSize) private var size
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.onGlass) private var onGlass
+
     /// The font, and the room around the words, of the system's glass button at this size.
     private var metrics: (font: Font, horizontal: CGFloat, vertical: CGFloat) {
         switch size {
-        case .mini: (.system(size: 10), 5, 0)
-        case .small: (.system(size: 11), 10, 3)
-        case .regular: (.system(size: 13), 12, 4)
-        case .large: (.system(size: 13), 14, 6)
-        case .extraLarge: (.system(size: 13), 18, 10)
-        @unknown default: (.system(size: 13), 12, 4)
+        case .mini: (.system(size: 10, weight: .medium), 5, 0)
+        case .small: (.system(size: 11, weight: .medium), 10, 3)
+        case .regular: (.system(size: 13, weight: .medium), 12, 4)
+        case .large: (.system(size: 13, weight: .medium), 14, 6)
+        case .extraLarge: (.system(size: 13, weight: .medium), 18, 10)
+        @unknown default: (.system(size: 13, weight: .medium), 12, 4)
         }
     }
 
+    private var ink: Color {
+        if prominent { return .white }
+        return destructive ? Palette.urgent : .primary
+    }
+
+    /// What lies under the words. A prominent button on glass is its colour; any other button on glass a thin fill, as the round
+    /// buttons of the panels have; on a page nothing, because there the glass is the button.
+    private var fill: Color {
+        guard onGlass else { return .clear }
+        return prominent ? tint : Color.primary.opacity(0.1)
+    }
+
+    /// The light under the pointer, and the shade of a press. A fill and not a change of the glass, because a new tint of the glass
+    /// jumps from one to the other however it is animated.
+    private var wash: Color {
+        if pressed { return prominent ? .black.opacity(0.12) : Color.primary.opacity(0.12) }
+        guard lit else { return .clear }
+        return prominent ? .white.opacity(0.16) : Color.primary.opacity(0.08)
+    }
+
     var body: some View {
-        let lit = hovering && isEnabled && hoverEnabled
-        let ink: Color = prominent ? .white : .primary
-        // On hover the glass grows the same on every side around words that stay where they are, by a real size and not by a scale
-        // (a scale grew the glass from its corner while the words grew from the middle, so they looked pinned to the left). The words
-        // get more room inside the glass, and the same room is taken off again outside it, so the button keeps its size and nothing
-        // next to it moves. The words are the content of the glass itself: glass drawn as a background of its own ends up over the
-        // words in a `GlassEffectContainer`, which made them blurry. A row of these sits in such a container with a spacing of 0, so a
-        // grown pill never flows towards its neighbour.
-        // A point on each side: more made every pill under the pointer look swollen (Mark, 2026-10-24).
-        let grow: CGFloat = configuration.isPressed ? -1 : (lit ? 1 : 0)
-        let glass: Glass = prominent
-            ? .regular.tint(lit ? tint.mix(with: .white, by: 0.12) : tint)
-            : .regular.tint(.white.opacity(lit ? 0.14 : 0))
-        configuration.label
+        // A press takes a point off every side, by a real size and not by a scale, so the words stay in the middle of the glass. The
+        // words are the content of the glass itself: glass drawn as a background of its own ends up over the words in a
+        // `GlassEffectContainer`, which made them blurry.
+        let inset: CGFloat = pressed ? 1 : 0
+        label
             .font(metrics.font)
-            .foregroundStyle(ink.opacity(isEnabled ? 1 : 0.45))
-            .padding(.horizontal, metrics.horizontal + grow)
-            .padding(.vertical, metrics.vertical + grow)
+            .foregroundStyle(ink)
+            .padding(.horizontal, metrics.horizontal - inset)
+            .padding(.vertical, metrics.vertical - inset)
+            .background {
+                Capsule()
+                    .fill(fill)
+                    .overlay { Capsule().fill(wash).animation(.tandemFade, value: pressed) }
+                    .overlay { if onGlass && !prominent { Capsule().strokeBorder(Color.primary.opacity(0.06), lineWidth: 1) } }
+            }
             .contentShape(.capsule)
-            .glassEffect(glass, in: .capsule)
-            .padding(-grow)
-            .animation(.tandemSpringy, value: lit)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-            .onHover { hovering = $0 }
+            .modifier(PillGlass(enabled: !onGlass, prominent: prominent, tint: tint))
+            .padding(inset)
+            .opacity(isEnabled ? 1 : 0.5)
+            .animation(.tandemFade, value: lit)
+            .animation(.tandemFade, value: prominent)
+            .animation(.tandemFade, value: isEnabled)
+            .animation(.tandemBouncy, value: pressed)
+    }
+}
+
+/// A filter above a list: a pill that opens its choices, and is coloured while it narrows the list.
+struct FilterMenu<Content: View>: View {
+    let title: Text
+    let symbol: String
+    let active: Bool
+    @ViewBuilder var content: Content
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
+    var body: some View {
+        Menu {
+            content
+        } label: {
+            Pill(label: Label { title.lineLimit(1) } icon: { Image(systemName: symbol) }, prominent: active, lit: hovering && hoverEnabled)
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .onHover { hovering = $0 }
+    }
+}
+
+/// The glass of a pill, only where it does not sit on glass already.
+private struct PillGlass: ViewModifier {
+    let enabled: Bool
+    let prominent: Bool
+    let tint: Color
+
+    func body(content: Content) -> some View {
+        if !enabled {
+            content
+        } else if DebugSupport.flatGlass {
+            content.background(prominent ? AnyShapeStyle(tint) : AnyShapeStyle(.regularMaterial), in: .capsule)
+        } else {
+            content.glassEffect(prominent ? .regular.tint(tint) : .regular, in: .capsule)
+        }
     }
 }
 
@@ -160,8 +264,8 @@ struct WrapRow: Layout {
 
 // MARK: Round icon buttons for the menu bar panel
 
-/// The disc under an icon in the menu bar panel. A plain tint that darkens under the pointer: the system's glass
-/// button flashed grey and fell back inside that panel, and a tint does not.
+/// The disc under an icon in the menu bar panel. A fill and not glass, because the panel is glass already, and the
+/// same fill as the buttons with words there; it darkens a little under the pointer.
 private struct RoundIconDisc: View {
     let symbol: String
     var tint: Color?
@@ -175,19 +279,11 @@ private struct RoundIconDisc: View {
             .contentTransition(.symbolEffect(.replace))
             .foregroundStyle(tint ?? Color.primary)
             .frame(width: size, height: size)
-            .background(Circle().fill(Color.primary.opacity(hovering && enabled ? 0.2 : 0.1)))
+            .background(Circle().fill(Color.primary.opacity(hovering && enabled ? 0.18 : 0.1)))
             .overlay(Circle().strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
             .contentShape(Circle())
             .opacity(enabled ? 1 : 0.4)
             .animation(.tandemFade, value: hovering)
-    }
-}
-
-struct RoundPressStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
@@ -207,7 +303,7 @@ struct RoundIconButton: View {
         Button(action: action) {
             RoundIconDisc(symbol: symbol, tint: tint, size: size, hovering: hovering && hoverEnabled, enabled: isEnabled)
         }
-        .buttonStyle(RoundPressStyle())
+        .buttonStyle(.bouncy)
         .onHover { inside in
             hovering = inside
             onHover?(inside)
@@ -486,15 +582,12 @@ struct PillSpinner: View {
 struct TransferRow: View {
     let item: TransferItem
     let peerName: String
-    var hovering = false
     @Environment(EngineModel.self) private var model
 
     var body: some View {
         HStack(spacing: 12) {
             leading
                 .frame(width: 40, height: 40)
-                .scaleEffect(hovering ? 1.05 : 1)
-                .animation(.tandemSpringy, value: hovering)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
@@ -527,7 +620,6 @@ struct TransferRow: View {
         }
         .padding(.vertical, 6)
         .animation(.tandem, value: item.state)
-        .animation(.tandemSpringy, value: hovering)
         .task(id: item.state == .done ? item.location : nil) { await loadThumbnail() }
     }
 
@@ -588,39 +680,70 @@ struct TransferRow: View {
     }
 }
 
+/// A small button at the end of a row (pin, delete): the bare symbol in grey, at the size the lists of the system use, with no plate
+/// behind it, and its name as a tooltip.
+struct RowActionButton: View {
+    let symbol: String
+    let help: LocalizedStringKey
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .medium))
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .foregroundStyle(.secondary)
+        .help(help)
+        .accessibilityLabel(Text(help))
+    }
+}
+
+/// The same, opening a menu: the three dots of a row.
+struct RowMenuButton<Content: View>: View {
+    var symbol = "ellipsis"
+    let help: LocalizedStringKey
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        Menu {
+            content
+        } label: {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .medium))
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.borderless)
+        .menuIndicator(.hidden)
+        .foregroundStyle(.secondary)
+        .fixedSize()
+        .help(help)
+        .accessibilityLabel(Text(help))
+    }
+}
+
 /// A transfer you can act on: a click opens the file, a right click offers the rest,
-/// and Delete takes it off the list while the row has the keyboard focus.
+/// and Delete takes it off the list while the row has the keyboard focus. A row of a
+/// card, like the rows of the clipboard and the notifications.
 struct TransferEntry: View {
     @Environment(EngineModel.self) private var model
     let item: TransferItem
     let peerName: String
-    /// Where the slab sits in its list, so the first and the last are rounder than the ones between.
-    var first = true
-    var last = true
     @FocusState private var focused: Bool
 
-    private var shape: UnevenRoundedRectangle {
-        let outer: CGFloat = 22, inner: CGFloat = 7
-        return UnevenRoundedRectangle(
-            topLeadingRadius: first ? outer : inner, bottomLeadingRadius: last ? outer : inner,
-            bottomTrailingRadius: last ? outer : inner, topTrailingRadius: first ? outer : inner,
-            style: .continuous
-        )
-    }
-
     var body: some View {
-        Hoverable { hovering in
-            HStack(spacing: 6) {
-                TransferRow(item: item, peerName: peerName, hovering: hovering)
-                menu(hovering: hovering)
-            }
+        let shape = RoundedRectangle(cornerRadius: Metrics.cardInner, style: .continuous)
+        HStack(spacing: 6) {
+            TransferRow(item: item, peerName: peerName)
+            // The three dots of the Android app: everything the right click offers, where it can be seen.
+            RowMenuButton(help: "More") { TransferMenu(item: item) }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 2)
-        // Plain like the cards around it (the hotspot, the settings), not a grey of its own.
-        .background(shape.fill(Color(nsColor: .controlBackgroundColor)).overlay { shape.strokeBorder(Color.primary.opacity(0.06), lineWidth: 1) })
-        .hoverHighlight(radius: 12, tint: focused ? Palette.indigo : .primary, selected: focused)
-        .clipShape(shape)
+        .padding(.horizontal, 10)
+        .hoverHighlight(radius: Metrics.cardInner, tint: focused ? Palette.indigo : .primary, selected: focused)
         .contentShape(shape)
         .onTapGesture {
             focused = true
@@ -641,24 +764,6 @@ struct TransferEntry: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .help(model.canOpen(item) ? Text("Open") : Text(""))
-    }
-
-    /// The three dots of the Android app: everything the right click offers, where it can be seen.
-    private func menu(hovering: Bool) -> some View {
-        Menu {
-            TransferMenu(item: item)
-        } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(.secondary)
-                .frame(width: 32, height: 32)
-                .background(Circle().fill(Color.primary.opacity(hovering ? 0.12 : 0.07)))
-        }
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help("More")
     }
 }
 
@@ -711,32 +816,25 @@ struct ProgressCapsule: View {
 
 // MARK: Feedback
 
-/// The toast floats over the content, so it is glass.
+/// The toast floats over the content, so it is glass. The same capsule in the window and at the bottom of the screen.
 struct ToastView: View {
     let text: String
+    var symbol: String?
 
     var body: some View {
-        Text(text)
-            .font(.callout.weight(.medium))
-            .padding(.horizontal, 18)
-            .padding(.vertical, 11)
-            .glassEffect(.regular, in: .capsule)
-            .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
-    }
-}
-
-/// Small explanation next to a setting that needs one.
-struct HelpTip: View {
-    let text: LocalizedStringKey
-    @LocalState private var shown = false
-
-    var body: some View {
-        Button { shown.toggle() } label: {
-            Image(systemName: "questionmark.circle").foregroundStyle(.secondary)
+        HStack(spacing: 9) {
+            if let symbol {
+                Image(systemName: symbol)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(Palette.indigo)
+            }
+            Text(text)
+                .font(.callout.weight(.medium))
+                .lineLimit(2)
         }
-        .buttonStyle(.bouncy)
-        .popover(isPresented: $shown) {
-            Text(text).font(.callout).padding(14).frame(width: 260, alignment: .leading)
-        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 11)
+        .floatingGlass(in: .capsule)
+        .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
     }
 }

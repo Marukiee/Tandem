@@ -43,19 +43,18 @@ struct PointerSettings: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Accessibility")
+                        // Grey either way: someone may not want this, so a permission that is not given is no warning.
                         Text(trusted
                             ? "Allowed. Tandem can see your mouse and keyboard and play them from another computer"
                             : "Needed to see your mouse and keyboard, and to play them when another computer uses this Mac")
                             .font(.caption)
-                            .foregroundStyle(trusted ? Color.secondary : Palette.urgent)
+                            .foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 12)
                     if trusted {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                     } else {
                         Button("Allow") { requestAccessibility() }
-                            .buttonStyle(.tandemGlassProminent)
-                            .tint(Palette.indigo)
                     }
                 }
             } header: {
@@ -65,12 +64,14 @@ struct PointerSettings: View {
             }
 
             Section {
+                // Looks the same with or without the permission: turning it on without it asks for it.
                 DescribedToggle(
                     "Universal mouse",
-                    subtitle: trusted ? "Choose below where each computer sits" : "Allow Accessibility first",
-                    isOn: $share.enabled
+                    subtitle: "Choose below where each computer sits",
+                    isOn: Binding(get: { share.enabled }, set: { on in
+                        if on && !trusted { requestAccessibility() } else { share.enabled = on }
+                    })
                 )
-                .disabled(!trusted)
                 // Always there and only greyed while off: rows that come and go with the switch made the whole page jump.
                 Group {
                     if neighbourChoices.isEmpty {
@@ -88,20 +89,18 @@ struct PointerSettings: View {
                                     // This Mac plays a sound and the other one says which speaker was louder: it is then put on that side.
                                     if device.caps.contains("side.listen") {
                                         Button(finding == device.id ? "Listening…" : "Find by sound") { findSide(device) }
-                                            .buttonStyle(.borderless)
                                             .disabled(!device.online || finding != nil)
                                     }
                                     if share.layout[device.id] != nil {
                                         Button("Remove") { share.layout[device.id] = nil }
-                                            .buttonStyle(.borderless)
                                     }
                                 }
                             }
                         }
                     }
                 }
-                .disabled(!share.enabled || !trusted)
-                .opacity(share.enabled && trusted ? 1 : 0.45)
+                .disabled(!share.enabled)
+                .opacity(share.enabled ? 1 : 0.45)
             } header: {
                 Text("Use this Mac's mouse and keyboard on other computers")
             } footer: {
@@ -133,11 +132,16 @@ struct PointerSettings: View {
                         isOn: Binding(
                             get: { share.isAllowed(device.id) },
                             set: { on in
-                                if on { share.allowed.insert(device.id) } else { share.allowed.remove(device.id) }
+                                if on && !trusted {
+                                    requestAccessibility()
+                                } else if on {
+                                    share.allowed.insert(device.id)
+                                } else {
+                                    share.allowed.remove(device.id)
+                                }
                             }
                         )
                     )
-                    .disabled(!trusted)
                 }
             } header: {
                 Text("Other computers using this Mac")
@@ -150,8 +154,15 @@ struct PointerSettings: View {
                     .foregroundStyle(.secondary)
                 ForEach(phones, id: \.id) { device in
                     LabeledContent(device.name) {
-                        Button("Show screen") { LiveManager.shared.start(device: device, kind: .screen) }
-                            .disabled(!device.online || !device.caps.contains("screen.host"))
+                        // Grey only while the phone is away; an older Tandem there is said when the button is pressed.
+                        Button("Show screen") {
+                            if device.caps.contains("screen.host") {
+                                LiveManager.shared.start(device: device, kind: .screen)
+                            } else {
+                                FloatingToast.show(String(localized: "Update Tandem on the phone to version 0.1.38 or newer"), symbol: "iphone.gen3")
+                            }
+                        }
+                        .disabled(!device.online)
                     }
                 }
             } header: {

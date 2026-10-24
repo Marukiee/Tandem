@@ -78,19 +78,8 @@ private struct FloatingToastView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             if state.visible {
-                HStack(spacing: 9) {
-                    Image(systemName: state.symbol)
-                        .font(.callout.weight(.semibold))
-                        .foregroundStyle(Palette.indigo)
-                    Text(state.text)
-                        .font(.callout.weight(.medium))
-                        .lineLimit(2)
-                }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 11)
-                .glassEffect(.regular, in: .capsule)
-                .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
-                .padding(.bottom, 24)
+                ToastView(text: state.text, symbol: state.symbol)
+                    .padding(.bottom, 24)
                 .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.92)))
             }
         }

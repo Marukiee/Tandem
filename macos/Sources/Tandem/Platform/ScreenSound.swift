@@ -113,42 +113,29 @@ private struct SoundPromptView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: "headphones")
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Palette.indigo)
-                    .frame(width: 40, height: 40)
-                    .background(Palette.indigo.opacity(0.14), in: .circle)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Play the sound of \(device.name) on your headphones?").font(.headline)
-                    Text("Your headphones are in. The sound can play here instead of there.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
+            PromptHeader(
+                symbol: "headphones",
+                title: Text("Play the sound of \(device.name) on your headphones?"),
+                message: Text("Your headphones are in. The sound can play here instead of there.")
+            )
+            // The answer that is not a yes at the left, the main answer at the right, as everywhere on the Mac.
             HStack(spacing: 8) {
-                Button("Play here") {
-                    ScreenSound.ask(device.id, on: true)
-                    close()
-                }
-                .buttonStyle(.tandemGlassProminent)
-                .tint(Palette.indigo)
+                Button("Leave it there", action: close).buttonStyle(.tandemGlass)
+                Spacer(minLength: 0)
                 Button("Always here") {
                     UserDefaults.standard.set("here", forKey: ScreenSound.whereKey)
                     ScreenSound.ask(device.id, on: true)
                     close()
                 }
                 .buttonStyle(.tandemGlass)
-                Spacer(minLength: 0)
-                Button("Leave it there", action: close).buttonStyle(.tandemGlass)
+                Button("Play here") {
+                    ScreenSound.ask(device.id, on: true)
+                    close()
+                }
+                .buttonStyle(.tandemGlassProminent)
             }
             .controlSize(.large)
         }
-        .padding(18)
-        .frame(width: 420)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
-        .padding(EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28))
+        .floatingCard(width: 420)
     }
 }
