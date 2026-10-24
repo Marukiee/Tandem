@@ -40,7 +40,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Zoek mijn telefoon | bron | ja | ja | ja |
 | Zoek mijn computer (geluid uit de eigen systeemgeluiden, laatst gezien met wifinaam) | ja (vraagt, met laatst gezien) | ja, beide kanten | ja, beide kanten | ja, beide kanten |
 | Bijwerken | ja | ja | ja | ja als AppImage; een pakket van de distributie werkt de pakketbeheerder bij |
-| Contacten van de telefoon in het zoeken van de computer, kiezen belt ze | bron (`sms.contacts`) | ja (Spotlight via Core Spotlight; nep-contacten gevonden met een `CSSearchQuery`, nooit met een echte telefoon) | - (zie hieronder) | ja: GNOME-zoeken (alleen met het .deb of .rpm, niet de AppImage) en KRunner; in CI op een sessiebus, nooit op een echt bureaublad |
+| Contacten van de telefoon in het zoeken van de computer, kiezen belt ze | bron (`sms.contacts`) | ja (Spotlight via Core Spotlight; nep-contacten gevonden met een `CSSearchQuery`, nooit met een echte telefoon) | - (zie hieronder) | ja: GNOME-zoeken (alleen met het .deb of .rpm, niet de AppImage) en KRunner; een test op een sessiebus staat klaar voor CI maar heeft nog niet gedraaid, nooit op een echt bureaublad |
 
 ## Wat er nog mist
 

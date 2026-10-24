@@ -73,14 +73,10 @@ private struct NumberChooserView: View {
         }
         // The panel is key for Return and Escape; a blue ring of focus around a row would look like a mistake.
         .focusEffectDisabled()
-        .padding(18)
-        .frame(minWidth: 300, alignment: .leading)
+        // As wide as the longest row needs, and never narrower than 300 with the padding of the card.
+        .frame(minWidth: 264, alignment: .leading)
         .fixedSize()
-        // A veil of the window colour on the glass, so the words stay clear over whatever is behind the card, light or dark.
-        .background(Color(nsColor: .windowBackgroundColor).opacity(0.55), in: RoundedRectangle(cornerRadius: Metrics.panel, style: .continuous))
-        .floatingGlass(in: RoundedRectangle(cornerRadius: Metrics.panel, style: .continuous))
-        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
-        .padding(EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28))
+        .floatingCard(width: nil)
     }
 }
 

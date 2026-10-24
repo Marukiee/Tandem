@@ -210,9 +210,13 @@ final class PhoneSpotlight {
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(3))
                 let before = shared.asked
-                shared.open(identifier: identifier)
+                // The way Spotlight hands over a pick: a user activity to the delegate of the app, which SwiftUI passes on.
+                let activity = NSUserActivity(activityType: CSSearchableItemActionType)
+                activity.userInfo = [CSSearchableItemActivityIdentifier: identifier]
+                let taken = NSApp.delegate?.application?(NSApp, continue: activity, restorationHandler: { _ in }) ?? false
+                try? await Task.sleep(for: .milliseconds(300))
                 let what = shared.asked > before ? "asked which number" : "no question (called, or the contact is not known)"
-                try? "\(identifier): \(what)\n".write(to: directory.appendingPathComponent("spotlight-open.txt"), atomically: true, encoding: .utf8)
+                try? "\(identifier): taken \(taken), \(what)\n".write(to: directory.appendingPathComponent("spotlight-open.txt"), atomically: true, encoding: .utf8)
             }
         }
     }

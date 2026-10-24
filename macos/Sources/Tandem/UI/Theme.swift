@@ -132,7 +132,8 @@ extension View {
 /// all of them, and room around the glass inside the window for that shadow: a shadow that reaches past the edge of a window is cut off
 /// in a straight line. The panels that place these count on that room (12 above, 36 under).
 struct FloatingCard: ViewModifier {
-    var width: CGFloat = 440
+    /// `nil` for a card as wide as its content (the choice of a number).
+    var width: CGFloat? = 440
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: Metrics.panel, style: .continuous)
@@ -149,7 +150,7 @@ struct FloatingCard: ViewModifier {
 }
 
 extension View {
-    func floatingCard(width: CGFloat = 440) -> some View {
+    func floatingCard(width: CGFloat? = 440) -> some View {
         modifier(FloatingCard(width: width))
     }
 }
