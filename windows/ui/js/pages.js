@@ -2,7 +2,7 @@
 import { html, useEffect, useState } from "../vendor/preact-htm.js";
 import { call, listen, native } from "./backend.js";
 import { ArrangementEditor } from "./arrange.js";
-import { BatteryRing, Chip, DeviceGlyph, PlayerCard, Switch, ago, deviceChips, fmtSize, platformIcon } from "./components.js";
+import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, fmtSize, platformIcon } from "./components.js";
 import { Icon } from "./icons.js";
 import { FindSoundRow, LastSeen, PlaySoundButton } from "./find.js";
 import { canPlay, OutputButton } from "./output.js";
@@ -239,14 +239,17 @@ export function DevicePage({ device }) {
   const sshReason = !device.online ? t("ssh_why_offline") : t("ssh_why_" + device.platform);
 
   return html`<div class="wrap">
-    <div class="card head" style=${device.online ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
-      <${DeviceGlyph} device=${device} size=${72} />
-      <div class="info grow">
-        <div class="title ellipsis">${device.name}</div>
-        <div class="chips">${deviceChips(device)}</div>
-        ${!device.online && html`<div class="small muted">${t("reconnecting")}</div>`}
+    <div class="card" style=${device.online ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
+      <div class="head">
+        <${DeviceGlyph} device=${device} size=${72} />
+        <div class="info grow">
+          <div class="title ellipsis">${device.name}</div>
+          <div class="chips">${deviceChips(device)}</div>
+          ${!device.online && html`<div class="small muted">${t("reconnecting")}</div>`}
+        </div>
+        ${battery && html`<${BatteryRing} battery=${battery} size=${72} />`}
       </div>
-      ${battery && html`<${BatteryRing} battery=${battery} size=${72} />`}
+      <${HeadPlayers} device=${device} players=${players} />
     </div>
 
     <${Offers} device=${device} />
@@ -297,8 +300,6 @@ export function DevicePage({ device }) {
       <${Icon} name="upload" size=${24} /><div class="drop-title">${t("drop_here")}</div>
       <div class="small">${t("drop_hint")}</div>
     </div>
-
-    ${players.map((p) => html`<div class="card" key=${p.id}><${PlayerCard} device=${device} player=${p} /></div>`)}
 
     <h2>${t("settings")}</h2>
     <div class="card flush">

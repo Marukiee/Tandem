@@ -41,6 +41,7 @@ struct DeviceDetail: View {
         .animation(.tandem, value: device.online)
         // The battery comes a moment after the connection, in a status of its own: the space it takes is made smoothly too.
         .animation(.tandem, value: device.status.battery != nil)
+        .animation(.tandem, value: shownPlayers)
         .onChange(of: device.id) {
             confirmRemoval = false
             position.scrollTo(edge: .top)
@@ -76,72 +77,86 @@ struct DeviceDetail: View {
 
     private var header: some View {
         Card(radius: Metrics.card, padding: 22, tint: device.online ? Palette.indigo : nil) {
-            HStack(spacing: 20) {
-                // The system's menu, like every other choice from a list in the app.
-                Menu {
-                    ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
-                        Button { model.setIcon(choice.symbol, for: device.id) } label: {
-                            Label(choice.label, systemImage: choice.symbol)
-                        }
-                    }
-                    Divider()
-                    Button("Use the default icon") { model.setIcon(nil, for: device.id) }
-                } label: {
-                    DeviceGlyph(platform: device.platform, online: device.online, size: 80, deviceID: device.id)
-                }
-                .menuStyle(.button)
-                .buttonStyle(.plain)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .help("Change the icon")
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(device.name)
-                        .font(.title.weight(.bold))
-                        .lineLimit(1)
-                        .contentTransition(.opacity)
-
-                    // What it is: the system and the version of Tandem on it, so the card says who this is and not only how it is reached.
-                    Text(deviceSubtitle)
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-
-                    HStack(spacing: 8) {
-                        Chip(symbol: reach.symbol, text: reach.text, tint: reach.color, strong: reach.reachable)
-                        if device.online {
-                            if usingItsHotspot {
-                                // This Mac is on the phone's hotspot: that says more than the kind of address.
-                                Chip(symbol: "personalhotspot", text: "Via hotspot", tint: Palette.indigo)
-                            } else if let route = device.route {
-                                Chip(symbol: route.symbol, text: route.label)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 20) {
+                    // The system's menu, like every other choice from a list in the app.
+                    Menu {
+                        ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
+                            Button { model.setIcon(choice.symbol, for: device.id) } label: {
+                                Label(choice.label, systemImage: choice.symbol)
                             }
                         }
-                        if let rtt = device.rttMs, device.online {
-                            Chip(symbol: "speedometer", text: "\(rtt) ms")
-                        }
+                        Divider()
+                        Button("Use the default icon") { model.setIcon(nil, for: device.id) }
+                    } label: {
+                        DeviceGlyph(platform: device.platform, online: device.online, size: 80, deviceID: device.id)
                     }
-                    if device.online {
-                        HStack(spacing: 8) {
-                            phoneNetworkChips
-                            if device.status.dnd == true {
-                                Chip(symbol: "moon.fill", text: "Do not disturb")
-                            }
-                        }
-                    } else {
-                        Text("Tandem connects again as soon as this device can be reached.")
-                            .font(.caption)
+                    .menuStyle(.button)
+                    .buttonStyle(.plain)
+                    .menuIndicator(.hidden)
+                    .fixedSize()
+                    .help("Change the icon")
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(device.name)
+                            .font(.title.weight(.bold))
+                            .lineLimit(1)
+                            .contentTransition(.opacity)
+
+                        // What it is: the system and the version of Tandem on it, so the card says who this is and not only how it is reached.
+                        Text(deviceSubtitle)
+                            .font(.callout)
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
+
+                        HStack(spacing: 8) {
+                            Chip(symbol: reach.symbol, text: reach.text, tint: reach.color, strong: reach.reachable)
+                            if device.online {
+                                if usingItsHotspot {
+                                    // This Mac is on the phone's hotspot: that says more than the kind of address.
+                                    Chip(symbol: "personalhotspot", text: "Via hotspot", tint: Palette.indigo)
+                                } else if let route = device.route {
+                                    Chip(symbol: route.symbol, text: route.label)
+                                }
+                            }
+                            if let rtt = device.rttMs, device.online {
+                                Chip(symbol: "speedometer", text: "\(rtt) ms")
+                            }
+                        }
+                        if device.online {
+                            HStack(spacing: 8) {
+                                phoneNetworkChips
+                                if device.status.dnd == true {
+                                    Chip(symbol: "moon.fill", text: "Do not disturb")
+                                }
+                            }
+                        } else {
+                            Text("Tandem connects again as soon as this device can be reached.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer(minLength: 0)
+
+                    if let battery = device.status.battery {
+                        BatteryRing(battery: battery, size: 74)
+                            .transition(.scale.combined(with: .opacity))
                     }
                 }
-                Spacer(minLength: 0)
 
-                if let battery = device.status.battery {
-                    BatteryRing(battery: battery, size: 74)
-                        .transition(.scale.combined(with: .opacity))
-                }
+                // What it plays, in the card: the card grows when it starts and shrinks when it stops. Its own id, so a
+                // player picked on one device is not the pick on the next.
+                NowPlayingCard(device: device)
+                    .id(device.id)
             }
         }
+        // While the card shrinks the player is still on its way out, and is not drawn over what sits below the card.
+        .clipShape(RoundedRectangle(cornerRadius: Metrics.card, style: .continuous))
+    }
+
+    /// The players shown in the header, as the page sees them, so the card around them grows and shrinks on the same change.
+    private var shownPlayers: [String] {
+        model.reach(of: device).reachable ? model.visibleMedia(for: device.id).map(\.id) : []
     }
 
     /// This Mac has joined the phone's hotspot, by itself or by hand.
@@ -194,7 +209,6 @@ struct DeviceDetail: View {
         VStack(spacing: 18) {
             actions
             DropZone(device: device)
-            NowPlayingCard(device: device)
             if device.platform == .android { HotspotCard(device: device) }
             // What is set comes before what was sent: the list grows, and the settings should not move further down the more is sent.
             settings

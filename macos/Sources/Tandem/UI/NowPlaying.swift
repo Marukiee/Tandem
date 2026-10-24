@@ -1,8 +1,8 @@
 import SwiftUI
 import TandemCore
 
-/// What a phone is playing, with the buttons to control it. Players that play what this Mac already
-/// plays are left out: a phone that only remote controls the Mac's Spotify is not a second player.
+/// What a phone is playing, with the buttons to control it, at the bottom of the header card of its page. Players that
+/// play what this Mac already plays are left out: a phone that only remote controls the Mac's Spotify is not a second player.
 struct NowPlayingCard: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
@@ -15,8 +15,8 @@ struct NowPlayingCard: View {
         // others are small rows in one card below it, so three players take little more room than one.
         let main = players.first { $0.id == chosen } ?? players.first { $0.playing } ?? players.first
         let others = players.filter { $0.id != main?.id }
-        // The model changes outside any animation, so the card brings its own: it slides in when something starts
-        // to play and out when it stops.
+        // The model changes outside any animation, so the player brings its own: it slides in when something starts
+        // to play and out when it stops. The page animates the card around it on the same change (DeviceDetail).
         Group {
             if let main {
                 VStack(spacing: 10) {
@@ -25,7 +25,10 @@ struct NowPlayingCard: View {
                         OtherPlayers(device: device, players: others) { picked in withAnimation(.tandem) { chosen = picked.id } }
                     }
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                // The gap to the chips belongs to the player, so it opens and closes with it instead of snapping.
+                .padding(.top, 18)
+                // A short slide: a move from the top edge would travel over the name and the chips.
+                .transition(.opacity.combined(with: .offset(y: -10)))
             }
         }
         .animation(.tandem, value: players.map(\.id))
@@ -41,30 +44,31 @@ private struct OtherPlayers: View {
     let pick: (TandemMediaPlayer) -> Void
 
     var body: some View {
-        Card(radius: Metrics.card, padding: 8) {
-            VStack(spacing: 0) {
-                ForEach(players, id: \.id) { player in
-                    HStack(spacing: 10) {
-                        PlayerCover(player: player, size: 36)
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(player.title.isEmpty ? player.app : player.title).font(.callout.weight(.medium)).lineLimit(1)
-                            Text([player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · "))
-                                .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                        }
-                        Spacer(minLength: 8)
-                        // The same round button as the player above it.
-                        RoundIconButton(symbol: player.playing ? "pause.fill" : "play.fill", size: 30) {
-                            model.sendMedia(.toggle, player: player, to: device.id)
-                        }
-                        .help(player.playing ? "Pause" : "Play")
+        // A soft fill and not a card: it sits inside the header card already.
+        VStack(spacing: 0) {
+            ForEach(players, id: \.id) { player in
+                HStack(spacing: 10) {
+                    PlayerCover(player: player, size: 36)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(player.title.isEmpty ? player.app : player.title).font(.callout.weight(.medium)).lineLimit(1)
+                        Text([player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · "))
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 5)
-                    .contentShape(Rectangle())
-                    .onTapGesture { pick(player) }
+                    Spacer(minLength: 8)
+                    // The same round button as the player above it.
+                    RoundIconButton(symbol: player.playing ? "pause.fill" : "play.fill", size: 30) {
+                        model.sendMedia(.toggle, player: player, to: device.id)
+                    }
+                    .help(player.playing ? "Pause" : "Play")
                 }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 5)
+                .contentShape(Rectangle())
+                .onTapGesture { pick(player) }
             }
         }
+        .padding(8)
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -76,19 +80,17 @@ private struct PlayerCard: View {
     private var subtitle: String { [player.artist, player.app].filter { !$0.isEmpty }.joined(separator: " · ") }
 
     var body: some View {
-        // The same plain surface as the other cards of the page, so none of them is the odd one out.
-        Card(radius: Metrics.card, padding: 16) {
-            CoverBeside(spacing: 14) {
-                PlayerCover(player: player, size: nil)
-                VStack(alignment: .leading, spacing: 8) {
-                    // What plays on the left, the buttons at the top right, and the bar below both, the width of the card.
-                    HStack(alignment: .top, spacing: 12) {
-                        PlayerTitle(title: player.title, subtitle: subtitle, titleFont: .headline, subtitleFont: .callout, spacing: 2)
-                        Spacer(minLength: 8)
-                        PlayerButtons(device: device, player: player, size: .regular)
-                    }
-                    PlayerProgress(device: device, player: player)
+        // No surface of its own: it is the bottom of the header card.
+        CoverBeside(spacing: 14) {
+            PlayerCover(player: player, size: nil)
+            VStack(alignment: .leading, spacing: 8) {
+                // What plays on the left, the buttons at the top right, and the bar below both, the width of the card.
+                HStack(alignment: .top, spacing: 12) {
+                    PlayerTitle(title: player.title, subtitle: subtitle, titleFont: .headline, subtitleFont: .callout, spacing: 2)
+                    Spacer(minLength: 8)
+                    PlayerButtons(device: device, player: player, size: .regular)
                 }
+                PlayerProgress(device: device, player: player)
             }
         }
         .animation(.tandem, value: player.art)
