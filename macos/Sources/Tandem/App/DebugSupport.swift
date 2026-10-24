@@ -280,6 +280,8 @@ enum DebugSupport {
             if messagesStart != "wide" { Color.gray.opacity(0.12).frame(width: 260).ignoresSafeArea() }
             MessagesView(device: device, onBack: {})
         }
+        // The main window's toolbar always has the sidebar button, which gives the strip its height.
+        .toolbar { ToolbarItem(placement: .navigation) { Image(systemName: "sidebar.left") } }
         .toolbar(removing: .title)
         .environment(EngineModel.shared)
         .frame(minWidth: 900, maxWidth: .infinity, minHeight: 600, maxHeight: .infinity)
@@ -299,7 +301,8 @@ enum DebugSupport {
             // The back button, the search field, the new message button, the empty strip and the call button.
             let report = [CGFloat(277), 410, 535, 800, 1069].map { x -> String in
                 let view = frame.hitTest(NSPoint(x: x, y: top))
-                return "x \(Int(x)): \(view.map { String(describing: type(of: $0)) } ?? "nothing")"
+                let name = view.map { String(describing: type(of: $0)).prefix(40) } ?? "nothing"
+                return "x \(Int(x)): \(name) \(view.map { "\($0.convert($0.bounds, to: nil))" } ?? "")"
             }
             try? report.joined(separator: "\n").write(to: directory.appendingPathComponent("messages-hittest.txt"), atomically: true, encoding: .utf8)
         }

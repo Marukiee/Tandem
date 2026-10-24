@@ -258,6 +258,7 @@ function dial(device, number) {
   // What stands in the way is said when someone asks for a call, not shown on the page all the time.
   const calls = (device.features || []).find((f) => f.id === "calls");
   if (calls && !calls.ready) { say(calls.why); return; }
+  if (!device.online) { say(t("features_unreachable", device.name)); return; }
   call("dial", { id: device.id, number })
     .then(() => say(t("sms_calling", device.name)))
     .catch(() => say(t("features_unreachable", device.name)));

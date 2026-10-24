@@ -204,11 +204,16 @@ private struct UnderToolbar<Strip: View, Content: View>: View {
             let band = max(proxy.safeAreaInsets.top, 52)
             let clear: CGFloat = avoidsWindowButtons && proxy.frame(in: .global).minX < 40 ? 120 : 0
             VStack(spacing: 0) {
+                // In front: under a toolbar a scroll view below reaches up to the top of the window, and would take the clicks
+                // meant for the row.
                 strip
                     .padding(.leading, clear)
                     .frame(maxWidth: .infinity)
                     .frame(height: band)
-                content
+                    .zIndex(1)
+                // Clipped, so what scrolls up stops at the row instead of running on under it.
+                VStack(spacing: 0) { content }
+                    .clipped()
             }
             .ignoresSafeArea(.container, edges: .top)
         }
