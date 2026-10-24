@@ -7,8 +7,8 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use tandem_core::live::{
-    MediaAccept, MediaAnswer, MediaCodec, MediaEnd, MediaFacing, MediaFrame, MediaHost, MediaInput, MediaKind, MediaPush, MediaRequest,
-    MediaUpdate, MediaViewer, MediaWant,
+    MediaAccept, MediaAnswer, MediaCodec, MediaEnd, MediaFacing, MediaFormat, MediaFrame, MediaHost, MediaInput, MediaKind, MediaPush,
+    MediaRequest, MediaResize, MediaUpdate, MediaViewer, MediaWant,
 };
 use tandem_core::platform::DesktopFiles;
 use tandem_core::store::{FileSecretStore, Store};
@@ -47,6 +47,7 @@ fn online(node: &Node, id: DeviceId) -> bool {
 #[derive(Default)]
 struct Host {
     requests: Mutex<Vec<MediaRequest>>,
+    resizes: Mutex<Vec<MediaResize>>,
 }
 
 impl MediaHost for Host {
@@ -57,11 +58,15 @@ impl MediaHost for Host {
     fn on_bitrate(&self, _session: u64, _bits_per_second: u32) {}
     fn on_input(&self, _session: u64, _input: MediaInput) {}
     fn on_stop(&self, _session: u64, _reason: MediaEnd) {}
+    fn on_resize(&self, resize: MediaResize) {
+        self.resizes.lock().unwrap().push(resize);
+    }
 }
 
 struct Viewer {
     base: Instant,
     accepted: Mutex<Option<MediaAccept>>,
+    updates: Mutex<Vec<MediaUpdate>>,
     /// Picture time and when it arrived, both in microseconds since `base`.
     frames: Mutex<Vec<(u64, u64, bool)>>,
     ended: Mutex<Option<MediaEnd>>,
@@ -69,7 +74,7 @@ struct Viewer {
 
 impl Viewer {
     fn new(base: Instant) -> Arc<Self> {
-        Arc::new(Viewer { base, accepted: Mutex::new(None), frames: Mutex::new(Vec::new()), ended: Mutex::new(None) })
+        Arc::new(Viewer { base, accepted: Mutex::new(None), updates: Mutex::new(Vec::new()), frames: Mutex::new(Vec::new()), ended: Mutex::new(None) })
     }
 }
 
@@ -77,7 +82,9 @@ impl MediaViewer for Viewer {
     fn on_accepted(&self, _session: u64, accept: MediaAccept) {
         *self.accepted.lock().unwrap() = Some(accept);
     }
-    fn on_update(&self, _session: u64, _update: MediaUpdate) {}
+    fn on_update(&self, _session: u64, update: MediaUpdate) {
+        self.updates.lock().unwrap().push(update);
+    }
     fn on_frame(&self, _session: u64, frame: MediaFrame) {
         let at = self.base.elapsed().as_micros() as u64;
         self.frames.lock().unwrap().push((frame.pts_us, at, frame.keyframe));
@@ -248,4 +255,55 @@ async fn two_devices_each_have_a_second_screen_at_once_and_stop_on_their_own() {
     wait_until("the phone still gets pictures", || on_phone.frames.lock().unwrap().len() == 15).await;
     assert!(on_phone.ended.lock().unwrap().is_none(), "the phone's screen did not end with the laptop's");
     assert_eq!(on_laptop.frames.lock().unwrap().len(), 10);
+}
+
+/// A phone that is an extra screen is turned upright: the Mac hears the new shape in the session that runs (no new request, so nothing
+/// is asked again), says the new picture, and the frames of it arrive. Only a screen made for the phone can be turned, and only once
+/// it runs.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_second_screen_that_is_turned_is_resized_within_its_session() {
+    let mac = node("Mac").await;
+    let phone = node("Phone").await;
+    let offer = mac.engine.create_pairing_offer().unwrap();
+    phone.engine.pair_with_uri(&offer.uri).await.unwrap();
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+
+    let host = Arc::new(Host::default());
+    mac.engine.set_media_host(host.clone());
+    let base = Instant::now();
+    let viewer = Viewer::new(base);
+    phone.engine.set_media_viewer(viewer.clone());
+
+    let session = phone.engine.media_request(mac.engine.id(), extend_want(2340, 1080)).unwrap();
+    let upright = MediaResize { session, max_width: 1080, max_height: 2340, logical_width: 0, logical_height: 0 };
+    assert!(phone.engine.media_resize(upright).is_err(), "nothing to turn before the Mac said yes");
+    wait_until("the request", || !host.requests.lock().unwrap().is_empty()).await;
+    mac.engine
+        .media_accept(session, MediaAnswer { codec: MediaCodec::H264, width: 2340, height: 1080, fps: 60, bitrate: 8_000_000, control: true })
+        .unwrap();
+    wait_until("the answer", || viewer.accepted.lock().unwrap().is_some()).await;
+    assert_eq!(mac.engine.media_push_frame(session, unit(true, 4_000), base.elapsed().as_micros() as u64, true), MediaPush::Sent);
+    wait_until("the first picture", || viewer.frames.lock().unwrap().len() == 1).await;
+
+    phone.engine.media_resize(upright).unwrap();
+    wait_until("the turn reaches the Mac", || !host.resizes.lock().unwrap().is_empty()).await;
+    assert_eq!(host.resizes.lock().unwrap()[0], upright);
+    assert_eq!(host.requests.lock().unwrap().len(), 1, "no second request");
+
+    // The Mac made its screen upright and says so before the first picture of it, a keyframe.
+    let format = MediaFormat { width: 1080, height: 2340, rotation: 0, fps: 60 };
+    mac.engine.media_update(session, MediaUpdate { format: Some(format), control: None }).unwrap();
+    wait_until("the new shape on the phone", || !viewer.updates.lock().unwrap().is_empty()).await;
+    assert_eq!(viewer.updates.lock().unwrap()[0].format, Some(format));
+    for n in 0..5u64 {
+        let pts = base.elapsed().as_micros() as u64 + n;
+        assert_eq!(mac.engine.media_push_frame(session, unit(n == 0, 4_000), pts, n == 0), MediaPush::Sent);
+        tokio::time::sleep(Duration::from_millis(16)).await;
+    }
+    wait_until("the upright pictures", || viewer.frames.lock().unwrap().len() == 6).await;
+    assert!(viewer.ended.lock().unwrap().is_none());
+
+    // A camera is not a screen made for the phone, so it has no shape to change.
+    let camera = phone.engine.media_request(mac.engine.id(), MediaWant::new(MediaKind::Camera)).unwrap();
+    assert!(phone.engine.media_resize(MediaResize { session: camera, ..upright }).is_err());
 }

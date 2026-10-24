@@ -161,6 +161,9 @@ pub enum Msg {
     /// The newest change of Focus (or Do Not Disturb) this device knows of, its own or one it heard. Only sent to devices that
     /// say `focus.share` or `focus.follow`. See `focus`.
     Focus(FocusChange),
+    /// The viewer of an extra screen was turned and wants the screen in its new shape (see `live::MediaResize`). Devices that do not
+    /// know it skip it.
+    MediaResize(crate::live::MediaResize),
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,

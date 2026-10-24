@@ -70,6 +70,8 @@ pub struct ViewerState {
     streak: u32,
     /// Set when the session ends, so the delivery task can say why as its last act.
     pub end_reason: Option<MediaEnd>,
+    /// The last shape asked of an extra screen, said again after the connection came back in case it was lost on the way.
+    pub resize: Option<MediaResize>,
 }
 
 pub struct ViewerSession {
@@ -113,6 +115,7 @@ impl ViewerSession {
                 poor: false,
                 streak: 0,
                 end_reason: None,
+                resize: None,
             }),
             wake: Notify::new(),
             ready: Notify::new(),
@@ -468,7 +471,7 @@ mod quality_tests {
         ViewerState {
             phase: Phase::Active, suspended: None, accept: None, control: false, asm: Assembler::new(now), queue: VecDeque::new(),
             stats: MediaStats::default(), since: Counters::default(), jitter: Jitter { arrival: None, pts: 0, value_us: 0.0 },
-            last_frame: None, last_report: now, poor: false, streak: 0, end_reason: None,
+            last_frame: None, last_report: now, poor: false, streak: 0, end_reason: None, resize: None,
         }
     }
 

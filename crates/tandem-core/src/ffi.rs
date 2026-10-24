@@ -2777,6 +2777,32 @@ pub trait TandemMediaHost: Send + Sync {
     fn on_input(&self, session: u64, input: TandemMediaInput);
     /// The session is over, for whatever reason, including a stop by this very app.
     fn on_stop(&self, session: u64, reason: TandemMediaEnd);
+    /// The viewer of an extra screen was turned: make the screen this shape, then `media_update` and a keyframe. Only comes to a
+    /// host that says `screen.extend.turn`.
+    fn on_resize(&self, session: u64, resize: TandemMediaResize);
+}
+
+/// The shape a viewer wants its extra screen in, in the units of `TandemMediaRequest`. Zero logical size when not known.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemMediaResize {
+    pub max_width: u32,
+    pub max_height: u32,
+    #[uniffi(default = 0)]
+    pub logical_width: u32,
+    #[uniffi(default = 0)]
+    pub logical_height: u32,
+}
+
+impl TandemMediaResize {
+    fn into_wire(self, session: u64) -> crate::live::MediaResize {
+        crate::live::MediaResize {
+            session,
+            max_width: self.max_width,
+            max_height: self.max_height,
+            logical_width: self.logical_width,
+            logical_height: self.logical_height,
+        }
+    }
 }
 
 /// The app that shows the picture. `on_frame` is called one frame at a time, in order, from a task of the session's own;
@@ -2812,6 +2838,16 @@ impl crate::live::MediaHost for MediaHostAdapter {
 
     fn on_stop(&self, session: u64, reason: crate::live::MediaEnd) {
         self.0.on_stop(session, reason.into());
+    }
+
+    fn on_resize(&self, resize: crate::live::MediaResize) {
+        let shape = TandemMediaResize {
+            max_width: resize.max_width,
+            max_height: resize.max_height,
+            logical_width: resize.logical_width,
+            logical_height: resize.logical_height,
+        };
+        self.0.on_resize(resize.session, shape);
     }
 }
 
@@ -2968,6 +3004,12 @@ impl TandemEngine {
 
     pub fn set_media_default_policy(&self, policy: TandemMediaPolicy) -> Result<(), TandemError> {
         self.engine.set_media_default_policy(policy.into()).map_err(Into::into)
+    }
+
+    /// The viewer of an extra screen was turned: asks the host for the screen in this shape. Only for a host that says
+    /// `screen.extend.turn`; the new picture is announced with `TandemMediaViewer.on_update`.
+    pub fn media_resize(&self, session: u64, resize: TandemMediaResize) -> Result<(), TandemError> {
+        self.engine.media_resize(resize.into_wire(session)).map_err(Into::into)
     }
 }
 
