@@ -100,21 +100,11 @@ private struct ScreenPromptView: View {
     var body: some View {
         if let prompt = host.prompt {
             VStack(alignment: .leading, spacing: 14) {
-                HStack(alignment: .top, spacing: 14) {
-                    Image(systemName: prompt.symbol)
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(Palette.indigo)
-                        .frame(width: 40, height: 40)
-                        .background(Palette.indigo.opacity(0.14), in: .circle)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(prompt.extend ? "\(prompt.name) wants to use a screen of this Mac" : prompt.wantsControl ? "\(prompt.name) wants to control this Mac" : "\(prompt.name) wants to see this Mac")
-                            .font(.headline)
-                        Text("It sees everything on your screen until you stop it. A bar at the top of your screen shows when it does, with a Stop button.")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
+                PromptHeader(
+                    symbol: prompt.symbol,
+                    title: Text(prompt.extend ? "\(prompt.name) wants to use a screen of this Mac" : prompt.wantsControl ? "\(prompt.name) wants to control this Mac" : "\(prompt.name) wants to see this Mac"),
+                    message: Text("It sees everything on your screen until you stop it. A bar at the top of your screen shows when it does, with a Stop button.")
+                )
                 if prompt.wantsControl {
                     controlRow(prompt)
                 }
@@ -129,12 +119,7 @@ private struct ScreenPromptView: View {
                 }
                 .controlSize(.large)
             }
-            .padding(18)
-            .frame(width: 420)
-            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
-            // Room for the whole shadow inside the panel: a shadow that reaches past the edge of the window is cut off in a straight line.
-            .padding(EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28))
+            .floatingCard(width: 420)
         }
     }
 
@@ -157,7 +142,7 @@ private struct ScreenPromptView: View {
             }
         }
         .padding(12)
-        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: Metrics.inner(Metrics.panel, inset: 10), style: .continuous))
         .task {
             while !Task.isCancelled {
                 host.refreshPermissions()
@@ -204,14 +189,13 @@ private struct ScreenIndicatorView: View {
             }
             Button("Stop") { host.stop(session: session.id) }
                 .buttonStyle(.tandemGlassProminent(tint: Palette.urgent))
-                .tint(Palette.urgent)
                 .controlSize(.small)
         }
         .padding(.leading, 16)
         .padding(.trailing, 8)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .capsule)
+        .floatingGlass(in: .capsule)
         .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
     }
 }
@@ -276,7 +260,7 @@ struct ScreenSettings: View {
                         Label("Restart Tandem so your other devices can see that this Mac is ready.", systemImage: "arrow.clockwise")
                             .font(.callout)
                         Spacer(minLength: 8)
-                        Button("Restart") { host.relaunch() }.buttonStyle(.tandemGlassProminent).controlSize(.small)
+                        Button("Restart") { host.relaunch() }.buttonStyle(.borderedProminent).tint(Palette.indigo)
                     }
                 }
             }
@@ -307,7 +291,7 @@ struct ScreenSettings: View {
                                 systemImage: running.extend ? "rectangle.on.rectangle" : "dot.radiowaves.left.and.right"
                             )
                             Spacer(minLength: 8)
-                            Button("Stop") { host.stop(session: running.id) }.buttonStyle(.tandemGlassProminent(tint: Palette.urgent)).tint(Palette.urgent).controlSize(.small)
+                            Button("Stop") { host.stop(session: running.id) }.buttonStyle(.borderedProminent).tint(Palette.urgent)
                         }
                     }
                 }

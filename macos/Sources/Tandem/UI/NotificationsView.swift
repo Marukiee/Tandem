@@ -8,12 +8,7 @@ struct NotificationsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Notifications").font(.largeTitle.weight(.bold))
-                    Text("What your phones showed. New ones also appear as notifications on this Mac.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+                PageHeader(title: "Notifications", subtitle: "What your phones showed. New ones also appear as notifications on this Mac.")
                 if model.mirrored.isEmpty {
                     ContentUnavailableView(
                         "No notifications yet",
@@ -23,7 +18,7 @@ struct NotificationsView: View {
                     .frame(maxWidth: .infinity, minHeight: 260)
                 } else {
                     Card(radius: Metrics.card, padding: Metrics.cardInset) {
-                        VStack(spacing: 2) {
+                        LazyVStack(spacing: 2) {
                             ForEach(model.mirrored) { item in
                                 NotificationRow(item: item)
                                     .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
@@ -38,6 +33,8 @@ struct NotificationsView: View {
             .animation(.tandem, value: model.mirrored.map(\.id))
         }
         .toolbar {
+            // The buttons and the search at the trailing end, where the system's own apps have them.
+            ToolbarSpacer(.flexible)
             if !model.mirrored.isEmpty {
                 ToolbarItem(placement: .primaryAction) {
                     Button {

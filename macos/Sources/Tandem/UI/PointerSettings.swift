@@ -54,7 +54,7 @@ struct PointerSettings: View {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                     } else {
                         Button("Allow") { requestAccessibility() }
-                            .buttonStyle(.tandemGlassProminent)
+                            .buttonStyle(.borderedProminent)
                             .tint(Palette.indigo)
                     }
                 }
@@ -88,12 +88,10 @@ struct PointerSettings: View {
                                     // This Mac plays a sound and the other one says which speaker was louder: it is then put on that side.
                                     if device.caps.contains("side.listen") {
                                         Button(finding == device.id ? "Listening…" : "Find by sound") { findSide(device) }
-                                            .buttonStyle(.borderless)
                                             .disabled(!device.online || finding != nil)
                                     }
                                     if share.layout[device.id] != nil {
                                         Button("Remove") { share.layout[device.id] = nil }
-                                            .buttonStyle(.borderless)
                                     }
                                 }
                             }

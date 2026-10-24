@@ -68,7 +68,6 @@ struct UpdateBanner: View {
                 .foregroundStyle(.secondary)
             Button("Update and restart") { Task { await updater.install() } }
                 .buttonStyle(.tandemGlassProminent)
-                .tint(Palette.indigo)
                 .controlSize(compact ? .small : .regular)
         }
     }
@@ -129,11 +128,7 @@ struct UpdateBanner: View {
                 }
                 .buttonStyle(.tandemGlass)
                 .controlSize(compact ? .small : .regular)
-                Button { updater.state = .idle } label: {
-                    Image(systemName: "xmark").font(.caption.weight(.bold)).foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("Dismiss")
+                RowActionButton(symbol: "xmark", help: "Dismiss") { updater.state = .idle }
             }
         }
     }

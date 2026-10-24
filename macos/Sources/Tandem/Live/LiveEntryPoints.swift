@@ -24,7 +24,6 @@ struct LiveActionRow: View {
                 else { LiveManager.shared.start(device: device, kind: .screen) }
             }
             .disabled(!ready)
-            .opacity(ready ? 1 : 0.5)
             .help("Shows the screen of this computer in a window. It asks first, and then you can use its mouse and keyboard.")
             // A screen that computer makes for this one, next to the ones it has: windows are moved to it with the mouse of that computer.
             if device.caps.contains("screen.extend") {
@@ -39,7 +38,6 @@ struct LiveActionRow: View {
                     else { LiveManager.shared.start(device: device, kind: .screen, extend: true) }
                 }
                 .disabled(!ready)
-                .opacity(ready ? 1 : 0.5)
                 .help("This Mac becomes an extra screen of that computer. Move windows to it with the mouse of that computer.")
             }
         }
@@ -58,7 +56,6 @@ struct LiveActionRow: View {
                 if extending { ScreenHost.shared.stop(peer: device.id) } else { ScreenHost.shared.offerExtend(to: device) }
             }
             .disabled(!ready && !extending)
-            .opacity(ready || extending ? 1 : 0.5)
             .help(!device.caps.contains("screen.extend.view") ? "Update Tandem on that device to use it as a second screen" : "This Mac gets an extra screen, shown on that device. Move windows to it with your mouse.")
         }
         // Always there for a phone, grey while it cannot: a phone with an older Tandem is told what to do in the tooltip.
@@ -70,7 +67,6 @@ struct LiveActionRow: View {
                 else { LiveManager.shared.start(device: device, kind: .screen) }
             }
             .disabled(!screenReady && !running)
-            .opacity(screenReady || running ? 1 : 0.5)
             .help(device.canShowScreen ? "Shows your phone's screen in a window. The phone asks first." : "Update Tandem on the phone to version 0.1.38 or newer")
 
             let cameraReady = device.online && device.canShowCamera
@@ -80,7 +76,6 @@ struct LiveActionRow: View {
                 else { LiveManager.shared.start(device: device, kind: .camera) }
             }
             .disabled(!cameraReady && !cameraRunning)
-            .opacity(cameraReady || cameraRunning ? 1 : 0.5)
             .help(device.canShowCamera ? "Shows your phone's camera in a window. It is a window and not a virtual webcam: share or capture it in Zoom or OBS." : "Update Tandem on the phone to version 0.1.38 or newer")
         }
     }

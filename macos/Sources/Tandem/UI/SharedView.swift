@@ -39,14 +39,7 @@ struct SharedView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Shared")
-                        .font(.largeTitle.weight(.bold))
-                        
-                    Text("Files you send and receive. Click one to open it, right click for more.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+                PageHeader(title: "Shared", subtitle: "Files you send and receive. Click one to open it, right click for more.")
                 if model.transfers.isEmpty {
                     ContentUnavailableView(
                         "Nothing yet",
@@ -58,14 +51,14 @@ struct SharedView: View {
                     filterBar
                     if items.isEmpty {
                         ContentUnavailableView.search.frame(maxWidth: .infinity, minHeight: 200)
-                    }
-                    VStack(spacing: 3) {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                            TransferEntry(
-                                item: item, peerName: model.device(item.peer)?.name ?? "?",
-                                first: index == 0, last: index == items.count - 1
-                            )
-                            .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
+                    } else {
+                        Card(radius: Metrics.card, padding: Metrics.cardInset) {
+                            LazyVStack(spacing: 2) {
+                                ForEach(items, id: \.id) { item in
+                                    TransferEntry(item: item, peerName: model.device(item.peer)?.name ?? "?")
+                                        .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
+                                }
+                            }
                         }
                     }
                 }
@@ -75,7 +68,10 @@ struct SharedView: View {
             .frame(maxWidth: .infinity)
             .animation(.tandem, value: items.map(\.id))
         }
+        .searchable(text: $query, placement: .toolbar, prompt: Text("Search by name"))
         .toolbar {
+            // The buttons and the search at the trailing end, where the system's own apps have them.
+            ToolbarSpacer(.flexible)
             if model.transfers.contains(where: { $0.state != .active }) {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
@@ -89,33 +85,21 @@ struct SharedView: View {
         }
     }
 
-    /// The search, and under it the filters: what kind of file, who it was with, which way it went, when, and whether it went wrong. A
-    /// filter that is on is coloured, and one press on "Clear filters" lets all of them go.
+    /// The filters: what kind of file, who it was with, which way it went, when, and whether it went wrong. A filter that is on is
+    /// coloured, and one press on "Clear filters" lets all of them go. The search is in the toolbar, where the system puts it.
     private var filterBar: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Search by name", text: $query).textFieldStyle(.plain)
-                if !query.isEmpty {
-                    Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) }
-                        .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(.quaternary.opacity(0.5), in: Capsule())
-
-            ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal, showsIndicators: false) {
+            GlassEffectContainer(spacing: 0) {
                 HStack(spacing: 8) {
-                    menuChip(title: kind == .all ? "Type" : kind.title, symbol: kind.symbol, active: kind != .all) {
+                    FilterMenu(title: Text(kind == .all ? "Type" : kind.title), symbol: kind.symbol, active: kind != .all) {
                         ForEach(SharedKind.allCases) { option in
                             Button { withAnimation(.tandem) { kind = option } } label: {
                                 Label(option.title, systemImage: kind == option ? "checkmark" : option.symbol)
                             }
                         }
                     }
-                    menuChip(
-                        title: model.sharedDeviceFilter.flatMap { model.device($0)?.name } ?? String(localized: "Device"),
+                    FilterMenu(
+                        title: model.sharedDeviceFilter.flatMap { model.device($0)?.name }.map { Text(verbatim: $0) } ?? Text("Device"),
                         symbol: "laptopcomputer.and.iphone", active: model.sharedDeviceFilter != nil
                     ) {
                         Button { withAnimation(.tandem) { model.sharedDeviceFilter = nil } } label: {
@@ -128,14 +112,14 @@ struct SharedView: View {
                             }
                         }
                     }
-                    menuChip(title: direction == .all ? "Direction" : direction.title, symbol: direction.symbol, active: direction != .all) {
+                    FilterMenu(title: Text(direction == .all ? "Direction" : direction.title), symbol: direction.symbol, active: direction != .all) {
                         ForEach(SharedDirection.allCases) { option in
                             Button { withAnimation(.tandem) { direction = option } } label: {
                                 Label(option.title, systemImage: direction == option ? "checkmark" : option.symbol)
                             }
                         }
                     }
-                    menuChip(title: period == .always ? "When" : period.title, symbol: "calendar", active: period != .always) {
+                    FilterMenu(title: Text(period == .always ? "When" : period.title), symbol: "calendar", active: period != .always) {
                         ForEach(SharedPeriod.allCases) { option in
                             Button { withAnimation(.tandem) { period = option } } label: {
                                 Label(option.title, systemImage: period == option ? "checkmark" : "calendar")
@@ -143,9 +127,9 @@ struct SharedView: View {
                         }
                     }
                     Button { withAnimation(.tandem) { onlyProblems.toggle() } } label: {
-                        chip(title: "Failed", symbol: "exclamationmark.triangle", active: onlyProblems)
+                        Label("Failed", systemImage: "exclamationmark.triangle")
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(TandemGlassStyle(prominent: onlyProblems))
                     if filtering {
                         Button {
                             withAnimation(.tandem) {
@@ -157,42 +141,16 @@ struct SharedView: View {
                                 model.sharedDeviceFilter = nil
                             }
                         } label: {
-                            chip(title: "Clear filters", symbol: "xmark", active: false)
+                            Label("Clear filters", systemImage: "xmark")
                         }
-                        .buttonStyle(.plain)
-                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                        .buttonStyle(.tandemGlass)
+                        .transition(.opacity)
                     }
                 }
                 .padding(.vertical, 2)
             }
         }
-    }
-
-    private func menuChip<Content: View>(title: LocalizedStringKey, symbol: String, active: Bool, @ViewBuilder content: () -> Content) -> some View {
-        Menu(content: content) { chip(title: title, symbol: symbol, active: active) }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .menuIndicator(.hidden)
-    }
-
-    private func menuChip<Content: View>(title: String, symbol: String, active: Bool, @ViewBuilder content: () -> Content) -> some View {
-        Menu(content: content) { chip(title: LocalizedStringKey(title), symbol: symbol, active: active) }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
-            .menuIndicator(.hidden)
-    }
-
-    private func chip(title: LocalizedStringKey, symbol: String, active: Bool) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: symbol).font(.caption.weight(.semibold))
-            Text(title).lineLimit(1)
-        }
-        .font(.callout.weight(.medium))
-        .foregroundStyle(active ? Palette.indigo : Color.primary)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .background(active ? Palette.indigo.opacity(0.18) : Color.primary.opacity(0.07), in: Capsule())
-        .overlay(Capsule().strokeBorder(active ? Palette.indigo.opacity(0.5) : Color.clear, lineWidth: 1))
+        .scrollClipDisabled()
     }
 }
 

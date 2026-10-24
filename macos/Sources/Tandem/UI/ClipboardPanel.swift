@@ -430,6 +430,7 @@ struct ClipboardPanelView: View {
     @Environment(EngineModel.self) private var engine
     @FocusState private var searchFocused: Bool
     @LocalState private var appeared = false
+    @Namespace private var selection
 
     private var history: ClipboardHistory { .shared }
 
@@ -455,7 +456,7 @@ struct ClipboardPanelView: View {
             footer
         }
         .frame(width: ClipboardPanelController.size.width, height: ClipboardPanelController.size.height)
-        .modifier(PanelGlass(radius: 30))
+        .modifier(PanelGlass(radius: Metrics.panel))
         .overlay(alignment: .bottomTrailing) {
             if model.actionsOpen, let item = model.selected {
                 ClipActionsMenu(actions: model.actions(for: item), index: model.actionIndex) { model.run($0) }
@@ -473,7 +474,7 @@ struct ClipboardPanelView: View {
     }
 
     private var divider: some View {
-        Rectangle().fill(Color.primary.opacity(0.08)).frame(height: 1)
+        Divider()
     }
 
     // MARK: Search
@@ -523,7 +524,7 @@ struct ClipboardPanelView: View {
                                     .padding(.top, 8)
                                     .padding(.bottom, 2)
                             case let .item(item):
-                                PanelRow(item: item, selected: model.selection == item.id)
+                                PanelRow(item: item, selected: model.selection == item.id, selection: selection, model: model)
                                     .id(item.id)
                                     .onTapGesture { model.choose(item) }
                                     .contextMenu { menu(for: item) }
@@ -532,6 +533,7 @@ struct ClipboardPanelView: View {
                     }
                     .padding(8)
                     .animation(.tandem, value: model.rows.map(\.id))
+                    .animation(.tandem, value: model.selection)
                 }
                 .scrollIndicators(.never)
                 .onChange(of: model.selection) { _, id in
@@ -561,24 +563,16 @@ struct ClipboardPanelView: View {
     }
 
     private var emptyList: some View {
-        VStack(spacing: 8) {
-            Image(systemName: emptySymbol)
-                .font(.system(size: 30, weight: .light))
-                .foregroundStyle(.tertiary)
-            Text(emptyTitle).font(.callout.weight(.medium))
+        ContentUnavailableView {
+            Label(emptyTitle, systemImage: emptySymbol)
+        } description: {
             Text(emptyDetail)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+        } actions: {
             if !history.enabled {
                 Button("Turn on") { history.enabled = true; model.rebuild() }
                     .buttonStyle(.tandemGlassProminent)
-                    .tint(Palette.indigo)
-                    .controlSize(.small)
-                    .padding(.top, 4)
             }
         }
-        .padding(.horizontal, 30)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -615,59 +609,43 @@ struct ClipboardPanelView: View {
                     .padding(.horizontal, 14)
                     .padding(.bottom, 14)
             }
-            .background(Color.primary.opacity(0.045), in: .rect(cornerRadius: 20, style: .continuous))
+            .background(Color.primary.opacity(0.045), in: .rect(cornerRadius: Metrics.inner(Metrics.panel, inset: 10), style: .continuous))
             .animation(.tandemFade, value: item.id)
         } else {
             Color.clear
         }
     }
 
+    /// Round fills for the symbols and a pill for the words, as in the menu bar panel: the panel is glass, so nothing on it is.
     private func buttons(for item: ClipItem) -> some View {
         let reachable = engine.devices.filter { item.isImage ? $0.online : ($0.online || $0.ble) }
-        return GlassEffectContainer(spacing: 8) {
-            HStack(spacing: 8) {
-                Button { model.togglePin() } label: {
-                    Image(systemName: item.pinned ? "pin.slash" : "pin").frame(width: 16, height: 16)
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
+        return HStack(spacing: 8) {
+            RoundIconButton(symbol: item.pinned ? "pin.slash" : "pin", size: 28) { model.togglePin() }
                 .help(LocalizedStringKey(item.pinned ? "Unpin" : "Pin"))
 
-                Menu {
-                    ForEach(reachable, id: \.id) { device in
-                        Button { engine.send(clip: item, to: [device.id]) } label: {
-                            Label(device.name, systemImage: device.platform.symbol)
-                        }
+            RoundIconMenu(symbol: "paperplane", size: 28) {
+                ForEach(reachable, id: \.id) { device in
+                    Button { engine.send(clip: item, to: [device.id]) } label: {
+                        Label(device.name, systemImage: device.platform.symbol)
                     }
-                } label: {
-                    Image(systemName: "paperplane").frame(width: 16, height: 16)
                 }
-                .menuStyle(.button)
-                .menuIndicator(.hidden)
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .disabled(reachable.isEmpty)
-                .help(LocalizedStringKey(reachable.isEmpty ? "No device is connected" : "Send to a device"))
+            }
+            .disabled(reachable.isEmpty)
+            .help(LocalizedStringKey(reachable.isEmpty ? "No device is connected" : "Send to a device"))
 
-                Button { model.deleteSelected() } label: {
-                    Image(systemName: "trash").frame(width: 16, height: 16)
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
+            RoundIconButton(symbol: "trash", size: 28) { model.deleteSelected() }
                 .help("Delete")
 
-                Spacer(minLength: 8)
+            Spacer(minLength: 8)
 
-                Button { model.activate() } label: {
-                    HStack(spacing: 8) {
-                        Text(LocalizedStringKey(model.pastes ? "Paste" : "Copy")).font(.callout.weight(.semibold))
-                        Text("↩").font(.system(size: 12, weight: .semibold, design: .rounded)).opacity(0.75)
-                    }
-                    .padding(.horizontal, 6)
+            Button { model.activate() } label: {
+                HStack(spacing: 8) {
+                    Text(LocalizedStringKey(model.pastes ? "Paste" : "Copy"))
+                    Text("↩").font(.system(size: 12, weight: .semibold, design: .rounded)).opacity(0.75)
                 }
-                .buttonStyle(.tandemGlassProminent)
-                .tint(Palette.indigo)
+                .padding(.horizontal, 6)
             }
+            .buttonStyle(.tandemGlassProminent)
             .controlSize(.large)
         }
     }
@@ -699,10 +677,18 @@ struct ClipboardPanelView: View {
 private struct PanelRow: View {
     let item: ClipItem
     let selected: Bool
+    let selection: Namespace.ID
+    let model: ClipboardPanelModel
 
     var body: some View {
         Hoverable { hovering in
-            ClipRowView(item: item, selected: selected, hovering: hovering)
+            ClipRowView(item: item, selected: selected, hovering: hovering, actions: ClipRowActions(
+                togglePin: {
+                    ClipboardHistory.shared.togglePin(item.id)
+                    model.rebuild()
+                },
+                delete: { model.remove(item) }
+            ), selection: selection)
         }
     }
 }
@@ -712,6 +698,7 @@ struct ClipActionsMenu: View {
     let actions: [ClipAction]
     let index: Int
     let run: (ClipAction) -> Void
+    @Namespace private var chosen
 
     var body: some View {
         VStack(spacing: 2) {
@@ -732,34 +719,40 @@ struct ClipActionsMenu: View {
                     .padding(.horizontal, 10)
                     .frame(height: 34)
                     .background {
-                        RoundedRectangle(cornerRadius: 11, style: .continuous)
-                            .fill(position == index ? Palette.indigo.opacity(0.16) : Color.primary.opacity(hovering ? 0.07 : 0))
+                        let shape = RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        ZStack {
+                            shape.fill(Color.primary.opacity(hovering && position != index ? hoverOpacity : 0))
+                            if position == index {
+                                shape.fill(Palette.indigo.opacity(0.16)).matchedGeometryEffect(id: "action", in: chosen)
+                            }
+                        }
                     }
                     .contentShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
                     .onTapGesture { run(action) }
-                    .animation(.tandemFade, value: position == index)
                     .animation(.tandemFade, value: hovering)
                 }
             }
         }
         .padding(6)
         .frame(width: 280)
-        .modifier(PanelGlass(radius: 19))
+        .animation(.tandem, value: index)
+        // A plain surface and not glass: it lies on the glass of the panel, and glass on glass blurs twice.
+        .surface(radius: 17)
         .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
     }
 }
 
 /// Glass for what floats. A debug snapshot cannot capture glass, so a debug run that keeps the panel open draws a
-/// plain fill in its place and the layout can be checked.
+/// plain fill in its place and the layout can be checked. Either way what is on it knows it sits on glass.
 private struct PanelGlass: ViewModifier {
     let radius: CGFloat
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         if DebugSupport.keepsPanelOpen {
-            content.background(Color(nsColor: .windowBackgroundColor), in: shape)
+            content.background(Color(nsColor: .windowBackgroundColor), in: shape).onGlassSurface()
         } else {
-            content.glassEffect(.regular, in: shape)
+            content.floatingGlass(in: shape)
         }
     }
 }

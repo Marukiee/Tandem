@@ -88,7 +88,7 @@ private struct HoverDisc: View {
     var body: some View {
         Image(systemName: symbol)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(hovering && enabled ? Color.white : (enabled ? Palette.indigo : Color.secondary))
+            .fadingForeground(enabled ? Palette.indigo : Color.secondary, to: Color.white, when: hovering && enabled)
             .frame(width: 36, height: 36)
             .background(
                 Circle().fill(hovering && enabled ? Palette.indigo : (enabled ? Palette.indigo.opacity(0.14) : Color.primary.opacity(0.07)))
@@ -109,7 +109,7 @@ private struct PeerChip: View {
                     Circle().fill(targeted || hovering ? Palette.indigo : Palette.indigo.opacity(0.14))
                     Image(systemName: peer.kind.symbol)
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(targeted || hovering ? Color.white : Palette.indigo)
+                        .fadingForeground(Palette.indigo, to: Color.white, when: targeted || hovering)
                 }
                 .frame(width: 46, height: 46)
                 Text(peer.name)
@@ -122,7 +122,7 @@ private struct PeerChip: View {
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.primary.opacity(targeted ? 0.10 : 0)))
             .contentShape(Rectangle())
         }
-        .buttonStyle(RoundPressStyle())
+        .buttonStyle(.bouncy)
         .onHover { hovering = $0 }
         .animation(.tandemFade, value: hovering)
         .animation(.tandemFade, value: targeted)

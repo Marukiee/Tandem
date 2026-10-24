@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import CoreBluetooth
 import CoreLocation
 import CoreWLAN
@@ -134,8 +135,7 @@ struct HotspotSetupSheet: View {
                 Button(step == steps - 1 ? "Done" : "Next") {
                     if step == steps - 1 { auto = true; dismiss() } else { withAnimation(.tandem) { step += 1 } }
                 }
-                .buttonStyle(.tandemGlassProminent)
-                .tint(Palette.indigo)
+                .buttonStyle(.borderedProminent).tint(Palette.indigo)
                 .keyboardShortcut(.defaultAction)
                 .disabled(!canContinue)
             }
@@ -190,13 +190,11 @@ struct HotspotSetupSheet: View {
                             if location == .notDetermined { LocationAccess.ask() } else { LocationAccess.openSettings() }
                         }
                         Button("I'll type it myself") { typeIt = true; withAnimation(.tandem) { step = 1 } }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(.secondary)
+                            .buttonStyle(.link)
                     }
                 } else {
                     Button("I'll type it myself") { typeIt = true; withAnimation(.tandem) { step = 1 } }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
+                        .buttonStyle(.link)
                 }
             }
         }
@@ -213,7 +211,6 @@ struct HotspotSetupSheet: View {
                 if reading { HStack(spacing: 8) { PillSpinner(size: 16); Text("Reading the password…") } }
                 else { Label("Use \(current ?? ssid)", systemImage: "wifi") }
             }
-            .buttonStyle(.tandemGlass)
             .disabled(reading || (current ?? ssid).isEmpty)
             if readFailed {
                 Text("macOS did not hand over the password. Type it below.").font(.callout).foregroundStyle(.secondary)

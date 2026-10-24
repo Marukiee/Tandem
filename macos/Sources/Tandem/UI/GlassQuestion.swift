@@ -55,17 +55,7 @@ private struct GlassQuestionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 14) {
-                Image(systemName: symbol)
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Palette.indigo)
-                    .frame(width: 40, height: 40)
-                    .background(Palette.indigo.opacity(0.14), in: .circle)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(verbatim: title).font(.headline)
-                    Text(verbatim: message).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                }
-            }
+            PromptHeader(symbol: symbol, title: Text(verbatim: title), message: Text(verbatim: message))
             HStack(spacing: 8) {
                 Spacer(minLength: 0)
                 ForEach(Array(answers.enumerated()), id: \.offset) { _, answer in
@@ -78,10 +68,6 @@ private struct GlassQuestionView: View {
             }
             .controlSize(.large)
         }
-        .padding(18)
-        .frame(width: 440)
-        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
-        .padding(EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28))
+        .floatingCard()
     }
 }

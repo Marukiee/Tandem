@@ -12,7 +12,7 @@ struct ClipboardSettings: View {
         @Bindable var history = ClipboardHistory.shared
         Form {
             Section {
-                SettingToggle(
+                DescribedToggle(
                     "Keep a history of what you copy",
                     subtitle: "Text, links and pictures, and what arrives from your other devices. It stays on this Mac.",
                     isOn: $history.enabled
@@ -22,19 +22,17 @@ struct ClipboardSettings: View {
             }
 
             Section("Opening it") {
-                SettingToggle("Open with a shortcut", subtitle: "From any app.", isOn: $history.hotkeyOn)
+                DescribedToggle("Open with a shortcut", subtitle: "From any app.", isOn: $history.hotkeyOn)
                 LabeledContent("Shortcut") {
                     HStack(spacing: 8) {
                         if history.hotkey != .standard {
                             Button("Reset") { history.hotkey = .standard }
-                                .buttonStyle(.borderless)
-                                .foregroundStyle(.secondary)
                         }
                         ShortcutRecorder(shortcut: $history.hotkey)
                     }
                 }
                 .disabled(!history.hotkeyOn)
-                SettingToggle(
+                DescribedToggle(
                     "Paste into the app you were in",
                     subtitle: "Return pastes straight away. Without this it only copies.",
                     isOn: $history.pastesDirectly
@@ -66,7 +64,7 @@ struct ClipboardSettings: View {
                     Text("90 days").tag(90)
                     Text("A year").tag(365)
                 }
-                SettingToggle("Include pictures", subtitle: "They take the most room.", isOn: $history.recordsImages)
+                DescribedToggle("Include pictures", subtitle: "They take the most room.", isOn: $history.recordsImages)
                 // Not a LabeledContent: with two lines of text it puts the button level with the first one.
                 HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -102,28 +100,6 @@ struct ClipboardSettings: View {
         if pinned > 0 { text += ", " + String(localized: "\(pinned) pinned") }
         if history.diskUsage > 0 { text += ", " + formatBytes(UInt64(history.diskUsage)) }
         return text
-    }
-}
-
-/// A toggle with a line of explanation under it, as grouped forms show them.
-private struct SettingToggle: View {
-    let title: LocalizedStringKey
-    let subtitle: LocalizedStringKey?
-    @Binding var isOn: Bool
-
-    init(_ title: LocalizedStringKey, subtitle: LocalizedStringKey? = nil, isOn: Binding<Bool>) {
-        self.title = title
-        self.subtitle = subtitle
-        _isOn = isOn
-    }
-
-    var body: some View {
-        Toggle(isOn: $isOn) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                if let subtitle { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
-            }
-        }
     }
 }
 
@@ -210,6 +186,22 @@ extension View {
 
 // MARK: Shortcut
 
+/// The look of every shortcut that can be changed: the system's button with the keys on it, and while it listens, what to do.
+struct ShortcutButton: View {
+    let display: String
+    let recording: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(recording ? String(localized: "Type a shortcut") : display)
+                .font(.system(.body, design: .rounded).weight(.medium))
+                .foregroundStyle(recording ? Color.secondary : Color.primary)
+                .frame(minWidth: 110)
+        }
+    }
+}
+
 /// A button that listens for the next key combination and takes it as the shortcut.
 struct ShortcutRecorder: View {
     @Binding var shortcut: Shortcut
@@ -217,16 +209,8 @@ struct ShortcutRecorder: View {
     @LocalState private var monitor: Any?
 
     var body: some View {
-        Button { recording ? stop() : start() } label: {
-            Text(recording ? "Press a shortcut" : shortcut.display)
-                .font(.system(.callout, design: .rounded).weight(.semibold))
-                .foregroundStyle(recording ? Palette.indigo : Color.primary)
-                .frame(minWidth: 120)
-                .contentTransition(.interpolate)
-        }
-        .buttonStyle(.tandemGlass)
-        .animation(.tandemFade, value: recording)
-        .onDisappear { if recording { stop() } }
+        ShortcutButton(display: shortcut.display, recording: recording) { recording ? stop() : start() }
+            .onDisappear { if recording { stop() } }
     }
 
     private func start() {

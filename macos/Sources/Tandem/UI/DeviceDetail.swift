@@ -16,7 +16,6 @@ struct DeviceDetail: View {
     /// The address at which this computer answers for ssh, once looked for, and whether it was looked for.
     @LocalState private var sshAddress: String?
     @LocalState private var sshChecked = false
-    @LocalState private var showIcons = false
 
     @LocalState private var position = ScrollPosition(edge: .top)
 
@@ -75,41 +74,25 @@ struct DeviceDetail: View {
     }
 
     private var header: some View {
-        Card(radius: 32, padding: 22, tint: device.online ? Palette.indigo : nil) {
+        Card(radius: Metrics.card, padding: 22, tint: device.online ? Palette.indigo : nil) {
             HStack(spacing: 20) {
-                Button { showIcons = true } label: {
+                // The system's menu, like every other choice from a list in the app.
+                Menu {
+                    ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
+                        Button { model.setIcon(choice.symbol, for: device.id) } label: {
+                            Label(choice.label, systemImage: choice.symbol)
+                        }
+                    }
+                    Divider()
+                    Button("Use the default icon") { model.setIcon(nil, for: device.id) }
+                } label: {
                     DeviceGlyph(platform: device.platform, online: device.online, size: 80, deviceID: device.id)
                 }
+                .menuStyle(.button)
                 .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .fixedSize()
                 .help("Change the icon")
-                .popover(isPresented: $showIcons, arrowEdge: .bottom) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(DeviceIconChoice.allCases, id: \.symbol) { choice in
-                            Button {
-                                model.setIcon(choice.symbol, for: device.id)
-                                showIcons = false
-                            } label: {
-                                Label(choice.label, systemImage: choice.symbol)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .hoverHighlight(radius: 8)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        Divider().padding(.vertical, 4)
-                        Button("Use the default icon") {
-                            model.setIcon(nil, for: device.id)
-                            showIcons = false
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                    }
-                    .padding(8)
-                    .frame(width: 210)
-                    .focusEffectDisabled()
-                }
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text(device.name)
@@ -230,18 +213,15 @@ struct DeviceDetail: View {
                 WrapRow(spacing: 10) {
                     GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true) { pickFiles() }
                         .disabled(!device.online)
-                        .opacity(device.online ? 1 : 0.5)
                     // Small enough for Bluetooth, so it works with no network as long as a link is up.
                     GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard") {
                         model.sendClipboard(to: [device.id])
                     }
                     .disabled(!(device.online || device.ble))
-                    .opacity(device.online || device.ble ? 1 : 0.5)
                     // Phones are the ones that offer folders for now; a computer offers none until its app can show them.
                     if device.platform == .android && device.caps.contains("files") {
                         GlassActionButton(title: "Browse files", symbol: "folder") { onBrowse() }
                             .disabled(!device.online)
-                            .opacity(device.online ? 1 : 0.5)
                     }
                     if isComputer || device.platform == .android {
                         LiveActionRow(device: device)
@@ -257,7 +237,6 @@ struct DeviceDetail: View {
                             model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
                         }
                         .disabled(!device.online)
-                        .opacity(device.online ? 1 : 0.5)
                         // This Mac's sound on the phone, one press from the top, as the button in the menu bar has it. It is the same as picking the
                         // phone in the sound menu.
                         let speaking = model.speaker.device == device.id
@@ -267,7 +246,6 @@ struct DeviceDetail: View {
                             prominent: speaking
                         ) { model.toggleSpeaker(for: device.id) }
                         .disabled(!device.online && !speaking)
-                        .opacity(device.online || speaking ? 1 : 0.5)
                     }
                     // A computer can be logged in to from here. The button is there and grey, with the reason under it, when it is not set up.
                     if isComputer {
@@ -287,7 +265,6 @@ struct DeviceDetail: View {
                             }
                         }
                         .disabled(missing)
-                        .opacity(missing ? 0.5 : 1)
                         .help(missing ? SSHAccess.reason(for: device) : String(localized: "Log in to this computer over SSH"))
                     }
                 }
@@ -321,22 +298,6 @@ struct DeviceDetail: View {
         let host = ScreenHost.shared.running.map { "\($0.peer)\($0.extend)" }.joined()
         let live = LiveManager.shared.sessions.filter { $0.peer == device.id }.map { "\($0.kind)\($0.extend)" }.joined()
         return host + live + "\(model.ringing.contains(device.id))\(model.speaker.device == device.id)"
-    }
-
-    /// A small heading and the buttons under it in a grid: every button as wide as the others in its row, starting at the left, so a row
-    /// that is not full leaves room at the right and not a lonely button in the middle.
-    private func actionGroup<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.leading, 4)
-            GlassEffectContainer(spacing: 0) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 170, maximum: 280), spacing: 10)], alignment: .leading, spacing: 10) {
-                    content()
-                }
-            }
-        }
     }
 
     private func pickFiles() {
@@ -379,9 +340,13 @@ struct DeviceDetail: View {
                 }
                 .padding(.horizontal, 6)
                 .padding(.bottom, 6)
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                    TransferEntry(item: item, peerName: device.name, first: index == 0, last: index == items.count - 1)
-                        .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
+                Card(radius: Metrics.card, padding: Metrics.cardInset) {
+                    VStack(spacing: 2) {
+                        ForEach(items, id: \.id) { item in
+                            TransferEntry(item: item, peerName: device.name)
+                                .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
+                        }
+                    }
                 }
             }
             .transition(.opacity.combined(with: .move(edge: .bottom)))
@@ -399,6 +364,7 @@ struct DeviceDetail: View {
                         get: { device.clipboardEnabled },
                         set: { model.setSettings(device, clipboard: $0) }
                     ))
+                    .controlSize(.mini)
                 }
                 Divider().opacity(0.4).padding(.horizontal, 14)
                 SettingRow(symbol: "bell.badge", title: "Show its notifications", subtitle: "Phone notifications appear here, and you can reply") {
@@ -406,6 +372,7 @@ struct DeviceDetail: View {
                         get: { device.notificationsEnabled },
                         set: { model.setSettings(device, notifications: $0) }
                     ))
+                    .controlSize(.mini)
                 }
                 Divider().opacity(0.4).padding(.horizontal, 14)
                 SettingRow(symbol: "tray.and.arrow.down", title: "Accept files automatically", subtitle: "Turn off to be asked before something arrives") {
@@ -413,6 +380,7 @@ struct DeviceDetail: View {
                         get: { device.autoAccept },
                         set: { model.setSettings(device, autoAccept: $0) }
                     ))
+                    .controlSize(.mini)
                 }
                 if device.platform == .android {
                     Divider().opacity(0.4).padding(.horizontal, 14)
@@ -424,9 +392,8 @@ struct DeviceDetail: View {
                     Divider().opacity(0.4).padding(.horizontal, 14)
                 }
                 SettingRow(symbol: "trash", title: "Remove this device", subtitle: device.vouchedByRemoved ? "It was added by a device that has since been removed" : "It leaves the circle everywhere") {
-                    Button("Remove") { confirmRemoval = true }
+                    Button("Remove", role: .destructive) { confirmRemoval = true }
                         .buttonStyle(.tandemGlass)
-                        .tint(Palette.urgent)
                 }
             }
         }
@@ -458,6 +425,7 @@ extension DeviceDetail {
                         .disabled(!device.online && !streaming)
                 }
                 Toggle("", isOn: Binding(get: { enabled }, set: { model.setSpeakerEnabled($0, for: device.id) }))
+                    .controlSize(.mini)
             }
         }
     }
@@ -515,7 +483,8 @@ struct SettingRow<Trailing: View>: View {
                 Text(subtitle).font(.caption).foregroundStyle(subtitleColor)
             }
             Spacer(minLength: 12)
-            trailing.labelsHidden()
+            // Switches, as the grouped forms of Settings have them, at the size they have there (mini).
+            trailing.labelsHidden().toggleStyle(.switch)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
@@ -535,7 +504,7 @@ struct DropZone: View {
         VStack(spacing: 10) {
             Image(systemName: targeted ? "arrow.down.circle.fill" : "square.and.arrow.down")
                 .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(targeted || hovering ? Palette.indigo : Color.secondary)
+                .fadingForeground(Color.secondary, to: Palette.indigo, when: targeted || hovering)
                 .symbolEffect(.bounce, value: targeted)
                 .contentTransition(.symbolEffect(.replace))
             Text(targeted ? "Let go to send" : "Drop files here")
@@ -546,13 +515,13 @@ struct DropZone: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 34)
         .background {
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
+            RoundedRectangle(cornerRadius: Metrics.card, style: .continuous)
                 .strokeBorder(
                     targeted ? Palette.indigo : (hovering ? Palette.indigo.opacity(0.55) : Color.primary.opacity(0.16)),
                     style: StrokeStyle(lineWidth: targeted ? 2.5 : 1.5, dash: [8, 7])
                 )
                 .background(
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    RoundedRectangle(cornerRadius: Metrics.card, style: .continuous)
                         .fill(Palette.indigo.opacity(targeted ? 0.10 : (hovering ? 0.04 : 0)))
                 )
         }
@@ -590,7 +559,6 @@ struct RemoteControlCard: View {
                         _ = AXIsProcessTrustedWithOptions(options)
                     }
                     .buttonStyle(.tandemGlassProminent)
-                    .tint(Palette.indigo)
                 }
             }
             .task {
@@ -631,6 +599,7 @@ struct HotspotCard: View {
                 ) {
                     Toggle("", isOn: Binding(get: { auto && ready }, set: { auto = $0 }))
                         .disabled(!ready)
+                        .controlSize(.mini)
                 }
                 if !ready {
                     Divider().opacity(0.4).padding(.horizontal, 14)

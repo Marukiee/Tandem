@@ -75,7 +75,9 @@ struct SettingsView: View {
                 Label(section.title, systemImage: section.symbol)
                     .tag(section)
             }
-            .navigationSplitViewColumnWidth(min: 176, ideal: 190, max: 220)
+            // Wide enough for the longest name in both languages, so none is cut off.
+            .frame(minWidth: 214)
+            .navigationSplitViewColumnWidth(214)
             // The sections always fit, so there is nothing to fold away, and the round button for it only got in the way.
             .toolbar(removing: .sidebarToggle)
         } detail: {
@@ -184,9 +186,7 @@ private struct GeneralSettings: View {
                 if needsRestart {
                     LabeledContent {
                         Button("Restart now") { model.relaunch() }
-                            .buttonStyle(.tandemGlassProminent)
-                            .tint(Palette.indigo)
-                            .controlSize(.small)
+                            .buttonStyle(.borderedProminent).tint(Palette.indigo)
                     } label: {
                         Text("Restart Tandem to change the language.").foregroundStyle(.secondary)
                     }
@@ -604,8 +604,7 @@ private struct UpdateSettings: View {
                                 .frame(maxHeight: 90)
                         }
                         Button("Update and restart") { Task { await updater.install() } }
-                            .buttonStyle(.tandemGlassProminent)
-                            .tint(Palette.indigo)
+                            .buttonStyle(.borderedProminent).tint(Palette.indigo)
                     }
                 case let .downloading(_, progress):
                     VStack(alignment: .leading, spacing: 8) {

@@ -71,7 +71,6 @@ struct PairingPanel: View {
                                 .onSubmit(joinWithPasted)
                             Button("Join", action: joinWithPasted)
                                 .buttonStyle(.tandemGlassProminent)
-                                .tint(Palette.indigo)
                                 .disabled(pasted.isEmpty || model.pairing.busy)
                         }
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -153,7 +152,6 @@ private struct CodeStage: View {
                                 Text("Expired").font(.headline)
                                 Button("New code") { model.beginPairing() }
                                     .buttonStyle(.tandemGlassProminent)
-                                    .tint(Palette.indigo)
                             }
                         } else {
                             PillSpinner(size: 34)
@@ -299,17 +297,13 @@ struct PairingSheet: View {
             PairingPanel(onFinished: close)
                 .frame(width: 460)
                 .padding(.vertical, 14)
-                .glassEffect(.regular, in: .rect(cornerRadius: 30, style: .continuous))
+                .floatingGlass(in: .rect(cornerRadius: Metrics.panel, style: .continuous))
                 .shadow(color: .black.opacity(0.28), radius: 30, y: 12)
                 .overlay(alignment: .topTrailing) {
-                    Button(action: close) {
-                        Image(systemName: "xmark").font(.callout.weight(.semibold)).frame(width: 14, height: 14)
-                    }
-                    .buttonStyle(.glass)
-                    .buttonBorderShape(.circle)
-                    .keyboardShortcut(.cancelAction)
-                    .help("Close")
-                    .padding(14)
+                    RoundIconButton(symbol: "xmark", size: 28, action: close)
+                        .keyboardShortcut(.cancelAction)
+                        .help("Close")
+                        .padding(14)
                 }
                 .transition(.scale(scale: 0.94).combined(with: .opacity))
                 .onDisappear { model.endPairing() }

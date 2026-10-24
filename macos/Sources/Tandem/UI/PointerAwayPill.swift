@@ -139,7 +139,7 @@ private struct PointerAwayView: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
-                .glassEffect(.regular, in: .capsule)
+                .floatingGlass(in: .capsule)
                 .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
                 .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.92)))
             }
@@ -214,7 +214,7 @@ private struct CarriedChip: View {
         .padding(.leading, 8)
         .padding(.trailing, 16)
         .padding(.vertical, 8)
-        .glassEffect(.regular, in: .rect(cornerRadius: 18, style: .continuous))
+        .floatingGlass(in: .rect(cornerRadius: 18, style: .continuous))
         .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
     }
 }

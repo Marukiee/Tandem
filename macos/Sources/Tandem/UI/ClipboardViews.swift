@@ -154,42 +154,70 @@ extension ClipItem {
 
 // MARK: Row
 
-/// One copy in a list: where it came from, what it was, when. The same row in the panel and on the page.
+/// What can be done with a row from the row itself, under the pointer.
+struct ClipRowActions {
+    let togglePin: () -> Void
+    let delete: () -> Void
+}
+
+/// One copy in a list: where it came from, what it was, when. The same row in the panel and on the page. Under the pointer the time
+/// makes way for a pin and a bin, bare symbols as the lists of the system have them, in the same place in both.
 struct ClipRowView: View {
     let item: ClipItem
     var selected = false
     var hovering = false
+    var actions: ClipRowActions?
+    /// The space the chosen row's tint moves in, so it slides from one row to the next instead of appearing.
+    var selection: Namespace.ID?
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Metrics.cardInner, style: .continuous)
+        let showActions = hovering && actions != nil
         HStack(spacing: 11) {
             ClipSourceIcon(item: item, size: 30)
-                .scaleEffect(hovering ? 1.05 : 1)
-                .animation(.tandemSpringy, value: hovering)
             content
             Spacer(minLength: 4)
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(ClipTime.short(item.date))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                if item.pinned {
-                    Image(systemName: "pin.fill")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Palette.indigo)
-                        .rotationEffect(.degrees(35))
-                        .transition(.scale.combined(with: .opacity))
+            ZStack(alignment: .trailing) {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(ClipTime.short(item.date))
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                    if item.pinned {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Palette.indigo)
+                            .rotationEffect(.degrees(35))
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
+                .opacity(showActions ? 0 : 1)
+                if let actions {
+                    HStack(spacing: 2) {
+                        RowActionButton(symbol: item.pinned ? "pin.slash" : "pin", help: LocalizedStringKey(item.pinned ? "Unpin" : "Pin"), action: actions.togglePin)
+                        RowActionButton(symbol: "trash", help: "Delete", action: actions.delete)
+                    }
+                    .opacity(showActions ? 1 : 0)
+                    .allowsHitTesting(showActions)
                 }
             }
-            .frame(minWidth: 44, alignment: .trailing)
+            .frame(minWidth: 50, alignment: .trailing)
         }
         .padding(.horizontal, 10)
         .frame(height: 54)
         .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(selected ? Palette.indigo.opacity(0.16) : Color.primary.opacity(hovering ? 0.07 : 0))
+            ZStack {
+                shape.fill(Color.primary.opacity(hovering && !selected ? hoverOpacity : 0))
+                if selected {
+                    if let selection {
+                        shape.fill(Palette.indigo.opacity(0.16)).matchedGeometryEffect(id: "selection", in: selection)
+                    } else {
+                        shape.fill(Palette.indigo.opacity(0.16))
+                    }
+                }
+            }
         }
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .animation(.tandemFade, value: selected)
+        .contentShape(shape)
         .animation(.tandemFade, value: hovering)
         .animation(.tandem, value: item.pinned)
     }
@@ -239,13 +267,12 @@ struct ClipRowView: View {
 
 // MARK: Chips and keys
 
-/// The filters, with one capsule that slides from one to the next.
+/// The filters, with one capsule that slides from one to the next. On a page the bar is glass of its own, because it floats over the
+/// list like a control; on the glass of the quick panel it is a fill.
 struct ClipFilterChips: View {
     @Binding var filter: ClipFilter
-    /// The height of the whole control, for when it stands next to something of a set height (the search field): the pill then fills it.
-    var height: CGFloat?
-    /// On a page the bar is glass of its own; in the quick panel it sits on the glass of the panel.
-    var glass = false
+    @Environment(\.onGlass) private var onGlass
+    @Environment(\.hoverEnabled) private var hoverEnabled
     @Namespace private var pill
     /// The pill moves at once and the list follows a frame later: a long list that is filtered in the same frame made the pill stutter.
     @LocalState private var shown: ClipFilter?
@@ -259,20 +286,19 @@ struct ClipFilterChips: View {
                     withAnimation(.tandemSpringy) { shown = option }
                     Task { @MainActor in filter = option }
                 } label: {
-                    // The darker words under the pointer fade in over the grey ones: a colour of the words itself jumps.
+                    // The words fade from grey to dark under the pointer and to white under the pill: a colour of the words itself jumps.
                     Text(option.title)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(selected == option ? Color.white : Color.secondary)
+                        .font(.callout.weight(.medium))
+                        .fadingForeground(Color.secondary, to: Color.primary, when: hovered == option && hoverEnabled && selected != option)
                         .overlay {
                             Text(option.title)
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(Color.primary)
-                                .opacity(hovered == option && selected != option ? 0.85 : 0)
-                                .animation(.easeOut(duration: 0.3), value: hovered)
+                                .font(.callout.weight(.medium))
+                                .foregroundStyle(Color.white)
+                                .opacity(selected == option ? 1 : 0)
+                                .animation(.tandemFade, value: selected)
                         }
-                        .padding(.horizontal, 10)
+                        .padding(.horizontal, 11)
                         .padding(.vertical, 5)
-                        .frame(maxHeight: height == nil ? nil : .infinity)
                         .background {
                             if selected == option {
                                 Capsule().fill(Palette.indigo.gradient).matchedGeometryEffect(id: "pill", in: pill)
@@ -287,11 +313,14 @@ struct ClipFilterChips: View {
             }
         }
         .padding(2)
-        .frame(height: height)
         .background {
-            if !glass { Capsule().fill(Color.primary.opacity(0.06)) }
+            if onGlass {
+                Capsule().fill(Color.primary.opacity(0.06))
+            } else if DebugSupport.flatGlass {
+                Capsule().fill(.regularMaterial)
+            }
         }
-        .glassEffect(glass ? .regular : .identity, in: .capsule)
+        .glassEffect(onGlass || DebugSupport.flatGlass ? .identity : .regular, in: .capsule)
         .onChange(of: filter) { _, value in if shown != value { withAnimation(.tandemSpringy) { shown = value } } }
     }
 }

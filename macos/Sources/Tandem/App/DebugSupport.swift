@@ -14,6 +14,8 @@ import TandemCore
 /// `TANDEM_DEBUG_LIVE=<file>` opens a window of the phone's screen or camera fed from a recorded stream and writes
 /// `live-window.png`, `live-frame.png` and `live-report.txt` (see `LiveDebug`).
 /// `TANDEM_DEBUG_LIVE_SELFTEST=1` runs the checks of the live video logic and writes `selftest.txt` (see `LiveSelfTest`).
+/// `TANDEM_DEBUG_APPEARANCE=dark` or `light` shows the app in that appearance, and `TANDEM_DEBUG_FLAT_GLASS=1` draws glass as a
+/// plain material, because a snapshot draws nothing of a region with glass in it.
 /// `TANDEM_DEBUG_NO_WINDOW=1` closes the main window a few seconds after the start, which is
 /// how the app runs most of the day and the state to measure its cost in. SIGUSR2 closes it
 /// at any moment, like the red button.
@@ -51,6 +53,12 @@ enum DebugSupport {
         closer.resume()
         closeSource = closer
 
+        // `TANDEM_DEBUG_APPEARANCE=dark|light`: the app in that appearance whatever the system is in, so a snapshot can show both.
+        switch variable("TANDEM_DEBUG_APPEARANCE") {
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        default: break
+        }
         // `TANDEM_DEBUG_SCREEN=encode`: runs the screen encoder against a drawn picture and decodes the result, then quits.
         if variable("TANDEM_DEBUG_SCREEN") == "encode" { ScreenDebug.run(into: directory) }
 
@@ -268,7 +276,7 @@ enum DebugSupport {
     private static func showSettingsWindow() {
         let host = NSHostingView(rootView: SettingsView().environment(EngineModel.shared))
         let window = NSWindow(
-            contentRect: NSRect(x: 120, y: 120, width: 560, height: 10),
+            contentRect: NSRect(x: 120, y: 120, width: 780, height: 620),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false

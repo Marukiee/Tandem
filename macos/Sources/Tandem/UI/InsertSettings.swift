@@ -56,7 +56,7 @@ private struct MenuKindTile: View {
                     Circle().fill(hovering ? Palette.indigo : Palette.indigo.opacity(0.15))
                     Image(systemName: kind.symbol)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(hovering ? Color.white : Palette.indigo)
+                        .fadingForeground(Palette.indigo, to: Color.white, when: hovering)
                 }
                 .frame(width: 32, height: 32)
                 Text(verbatim: kind.title)
@@ -71,7 +71,7 @@ private struct MenuKindTile: View {
             .background(shape.fill(Color.primary.opacity(hovering ? 0.11 : 0.06)))
             .contentShape(shape)
         }
-        .buttonStyle(RoundPressStyle())
+        .buttonStyle(.bouncy)
         .onHover { inside in
             hovering = inside
             onHover(inside)
@@ -112,7 +112,6 @@ struct InsertSettingsSection: View {
                                 shortcut = InsertShortcut.current
                                 InsertShortcutCenter.shared.apply()
                             }
-                            .controlSize(.small)
                         }
                     }
                 }
@@ -126,35 +125,11 @@ struct InsertSettingsSection: View {
         .onDisappear(perform: stopRecording)
     }
 
+    /// The same button as the shortcut of the clipboard history.
     private var recorder: some View {
-        Button {
+        ShortcutButton(display: shortcut.keycaps.joined(), recording: recording) {
             recording ? stopRecording() : startRecording()
-        } label: {
-            Group {
-                if recording {
-                    Text("Type a shortcut")
-                        .foregroundStyle(.secondary)
-                } else {
-                    HStack(spacing: 3) {
-                        ForEach(Array(shortcut.keycaps.enumerated()), id: \.offset) { _, cap in
-                            Text(verbatim: cap)
-                                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                .frame(minWidth: 20, minHeight: 20)
-                                .padding(.horizontal, 2)
-                                .background(Color.primary.opacity(0.08), in: .rect(cornerRadius: 6, style: .continuous))
-                        }
-                    }
-                }
-            }
-            .frame(minWidth: 120, minHeight: 24)
-            .padding(.horizontal, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .strokeBorder(recording ? Palette.indigo : Color.primary.opacity(0.12), lineWidth: recording ? 1.5 : 1)
-            )
         }
-        .buttonStyle(.bouncy)
-        .animation(.tandemFade, value: recording)
     }
 
     private func startRecording() {
