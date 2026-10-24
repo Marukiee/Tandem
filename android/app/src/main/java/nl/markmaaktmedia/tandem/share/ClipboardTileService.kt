@@ -9,19 +9,9 @@ import android.service.quicksettings.TileService
 /** The Quick Settings tile "Send clipboard": one swipe and one tap from anywhere. */
 class ClipboardTileService : TileService() {
 
-    companion object {
-        /** Asks Android to offer adding the tile, so nobody has to dig through the tile editor. */
-        fun requestAdd(context: android.content.Context) {
-            if (Build.VERSION.SDK_INT < 33) return
-            val manager = context.getSystemService(android.app.StatusBarManager::class.java)
-            manager.requestAddTileService(
-                android.content.ComponentName(context, ClipboardTileService::class.java),
-                context.getString(nl.markmaaktmedia.tandem.R.string.tile_label),
-                android.graphics.drawable.Icon.createWithResource(context, nl.markmaaktmedia.tandem.R.drawable.ic_tile_clipboard),
-                java.util.concurrent.Executors.newSingleThreadExecutor(),
-            ) { }
-        }
-    }
+    override fun onTileAdded() = QuickTiles.mark(this, javaClass, true)
+
+    override fun onTileRemoved() = QuickTiles.mark(this, javaClass, false)
 
     override fun onStartListening() {
         qsTile?.apply {

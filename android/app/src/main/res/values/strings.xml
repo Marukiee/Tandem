@@ -224,8 +224,6 @@
     <string name="screenshot_to">To %1$s</string>
     <string name="screenshot_choose">Choose…</string>
     <string name="tile_label">Send clipboard</string>
-    <string name="settings_clip_tile">Add the Send clipboard tile</string>
-    <string name="settings_clip_tile_sub">Send your clipboard from quick settings in one tap</string>
     <string name="screenshot_sending">Sending to %1$s…</string>
     <string name="screenshot_sent">Sent to %1$s</string>
     <string name="screenshot_failed">Could not send the screenshot</string>

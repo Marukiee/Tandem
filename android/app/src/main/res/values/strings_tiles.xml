@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tiles">Quick Settings tiles</string>
+    <string name="settings_tiles_sub">Put the tiles of Tandem in the Quick Settings of Android</string>
+    <string name="tiles_clipboard_sub">Sends what you copied to your other devices in one tap</string>
+    <string name="tiles_quickshare_sub">Turns Quick Share on or off, or opens it, as you set it</string>
+    <string name="tiles_pointer_sub">Lets the mouse of a computer move on to this phone</string>
+    <string name="tiles_add">Add</string>
+    <string name="tiles_added">Added</string>
+    <string name="tiles_by_hand">To add one, swipe down twice, tap the pencil and drag the tile in.</string>
+    <string name="tiles_hold">Hold a tile to open its page in Tandem.</string>
+</resources>

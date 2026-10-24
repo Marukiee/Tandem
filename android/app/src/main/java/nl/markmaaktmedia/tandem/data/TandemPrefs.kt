@@ -19,8 +19,11 @@ import nl.markmaaktmedia.tandem.ui.theme.ColourSeed
 import nl.markmaaktmedia.tandem.ui.theme.PaletteStyle
 import nl.markmaaktmedia.tandem.ui.theme.ThemeMode
 
-/** Set by the first run and the update timer, not by a person. */
-private val NotBackedUp = setOf("onboarded", "last_update_check", "dismissed_update")
+/**
+ * Set by the first run and the update timer, not by a person. The added tiles belong to this phone's Quick Settings, so on
+ * another phone they would show checks for tiles that are not there.
+ */
+private val NotBackedUp = setOf("onboarded", "last_update_check", "dismissed_update", "added_tiles")
 
 private val Context.store: DataStore<Preferences> by preferencesDataStore(name = "tandem")
 
@@ -65,6 +68,7 @@ class TandemPrefs(private val context: Context) {
         val padHold = longPreferencesKey("pad_hold_ms")
         val focusShare = booleanPreferencesKey("focus_share")
         val focusFollowOnly = booleanPreferencesKey("focus_follow_only")
+        val addedTiles = stringSetPreferencesKey("added_tiles")
     }
 
     val appearance: Flow<Appearance> = data.map { p ->
@@ -139,6 +143,19 @@ class TandemPrefs(private val context: Context) {
         context.store.edit { p ->
             val now = p[Keys.pinnedDevices] ?: emptySet()
             p[Keys.pinnedDevices] = if (pinned) now + deviceId else now - deviceId
+        }
+    }
+
+    /**
+     * The Quick Settings tiles Android said are added, by class name. Android has no call to ask this later, so it is what the
+     * add dialog answered and what the tiles heard when they were added or removed.
+     */
+    val addedTiles: Flow<Set<String>> = data.map { it[Keys.addedTiles] ?: emptySet() }
+
+    suspend fun setTileAdded(className: String, added: Boolean) {
+        context.store.edit { p ->
+            val now = p[Keys.addedTiles] ?: emptySet()
+            p[Keys.addedTiles] = if (added) now + className else now - className
         }
     }
 

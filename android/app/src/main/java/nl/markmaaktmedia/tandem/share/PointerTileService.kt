@@ -14,6 +14,10 @@ import nl.markmaaktmedia.tandem.graph
  */
 class PointerTileService : TileService() {
 
+    override fun onTileAdded() = QuickTiles.mark(this, javaClass, true)
+
+    override fun onTileRemoved() = QuickTiles.mark(this, javaClass, false)
+
     override fun onStartListening() {
         graph.scope.launch { show(graph.prefs.pointerIn.first()) }
     }

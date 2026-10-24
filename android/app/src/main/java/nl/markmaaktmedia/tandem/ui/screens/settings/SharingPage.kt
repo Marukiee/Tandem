@@ -99,9 +99,9 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                 )
             }
             ActionRow(
-                4, 6, TandemIcons.Paste, stringResource(R.string.settings_clip_tile), stringResource(R.string.settings_clip_tile_sub),
-                { nl.markmaaktmedia.tandem.share.ClipboardTileService.requestAdd(context) },
-                modifier = Modifier.settingsTarget(FocusKeys.ClipTile, 4, 6),
+                4, 6, TandemIcons.Bolt, stringResource(R.string.settings_tiles), stringResource(R.string.settings_tiles_sub),
+                { onOpen(Route.SettingsPage(SettingsPageId.Tiles)) },
+                modifier = Modifier.routeBounds(routeKey(Route.SettingsPage(SettingsPageId.Tiles))),
             )
             ActionRow(
                 5, 6, TandemIcons.Paste, stringResource(R.string.clip_history_title), stringResource(R.string.clip_history_row_sub),
