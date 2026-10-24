@@ -3,15 +3,19 @@
     "version": "0.2.12",
     "date": "2026-10-24",
     "en": {
-      "title": "Smoother scrolling",
+      "title": "Smoother scrolling, sides measured",
       "new": [
-        "Scrolling from the Mac on your phone is smoother, with the universal mouse and in its window"
+        "Scrolling from the Mac on your phone is smoother, with the universal mouse and in its window",
+        "Turning on the universal mouse measures where your devices stand, with a sound too high to hear",
+        "Received files go straight into Downloads"
       ]
     },
     "nl": {
-      "title": "Soepeler scrollen",
+      "title": "Soepeler scrollen, kanten gemeten",
       "new": [
-        "Scrollen vanaf de Mac op je telefoon gaat soepeler, met de universele muis en in zijn venster"
+        "Scrollen vanaf de Mac op je telefoon gaat soepeler, met de universele muis en in zijn venster",
+        "De universele muis aanzetten meet waar je apparaten staan, met een geluid dat te hoog is om te horen",
+        "Ontvangen bestanden komen direct in Downloads"
       ]
     }
   },
