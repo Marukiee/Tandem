@@ -56,6 +56,8 @@ object FeatureReport {
         add("background", Permissions.batteryUnrestricted(context), R.string.feature_background, R.string.feature_background_why, "battery")
         add("bluetooth", Permissions.bluetooth(context), R.string.feature_bluetooth, R.string.feature_bluetooth_why, "access")
         add("alerts", Permissions.notifications(context), R.string.feature_alerts, R.string.feature_alerts_why, "app-notifications")
+        // The sheet of the system saves what a computer hands over, on every phone: nothing here can be missing for it.
+        list += TandemFeature("wifi.join", true, context.getString(R.string.feature_wifi_join), "", null)
         return list
     }
 

@@ -39,6 +39,11 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Taking over the Wi-Fi of a computer: a fresh scan and, without the sheet of the system, a suggestion need the first; seeing
+         which networks are near needs location, asked for once and only after a network was taken over. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- What lets another device of yours browse the files of this phone. The person turns it on in system settings. -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
 
@@ -296,5 +301,15 @@
             android:exported="false">
             <meta-data android:name="autoStoreLocales" android:value="true" />
         </service>
+
+        <!-- Taking over the Wi-Fi of a computer: where the answer is waited for and the sheet of the system opens, and Not now. -->
+        <activity
+            android:name=".wifi.WifiJoinActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Tandem.Sheet" />
+        <receiver android:name=".wifi.WifiActionReceiver" android:exported="false" />
     </application>
 </manifest>

@@ -66,6 +66,7 @@ class TandemService : LifecycleService() {
         graph.media.start()
         listenerWatchdog = ListenerWatchdog(this, graph.scope).also { it.start() }
         FeatureReport.start(this, lifecycleScope)
+        nl.markmaaktmedia.tandem.wifi.WifiShare.get(this).start()
 
         lifecycleScope.launch {
             host.devices.collectLatest { devices ->
@@ -99,6 +100,7 @@ class TandemService : LifecycleService() {
         graph.audio.stop(tell = true)
         multicast?.takeIf { it.isHeld }?.release()
         FindPhone.stop()
+        nl.markmaaktmedia.tandem.wifi.WifiShare.get(this).stop()
         super.onDestroy()
     }
 
@@ -167,6 +169,7 @@ class TandemService : LifecycleService() {
             is TandemEvent.CaptureCancelled -> getSystemService(NotificationManager::class.java).cancel(captureNotificationId(event.id.toLong()))
 
             is TandemEvent.Notification -> Unit
+            is TandemEvent.Wifi -> nl.markmaaktmedia.tandem.wifi.WifiShare.get(this).onEvent(event)
 
             else -> Unit
         }
