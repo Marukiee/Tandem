@@ -614,12 +614,17 @@ function QuickShareSection({ s, patch }) {
 }
 
 // The folders of this computer that other devices may look at, and what they may do there.
-function FilesHostSection() {
+function FilesHostSection({ s, patch: patchSettings }) {
   const [policy, setPolicy] = useState(null);
   useEffect(() => { call("files_policy").then(setPolicy).catch(() => {}); }, []);
   const change = (patch) => call("files_update", { patch }).then(setPolicy).catch(failed);
   if (!policy) return null;
   return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("send_with_title")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="send" title=${t("send_with_title")} sub=${t("send_with_sub")} on=${s.fileManagerSend !== false}
+        onChange=${(v) => patchSettings({ fileManagerSend: v })} />
+    </div>
     <h2>${t("files_host_title")}</h2>
     <div class="card flush">
       <${SettingRow} icon="folder-open" title=${t("files_host_on")} sub=${t("files_host_on_sub")} on=${policy.enabled} onChange=${(v) => change({ enabled: v })} />
@@ -665,7 +670,7 @@ export function SettingsPage() {
         ${section === "general" && html`<${GeneralSettings} s=${s} patch=${patch} />`}
         ${section === "features" && html`<${FeaturesSettings} />`}
         ${section === "clipboard" && html`<${ClipboardSettings} s=${s} patch=${patch} />`}
-        ${section === "files" && html`<${FilesHostSection} />`}
+        ${section === "files" && html`<${FilesHostSection} s=${s} patch=${patch} />`}
         ${section === "remote" && html`<${RemoteSettings} s=${s} patch=${patch} />`}
         ${section === "mouse" && html`<${MouseSection} s=${s} patch=${patch} />`}
         ${section === "quickshare" && html`<${QuickShareSection} s=${s} patch=${patch} />`}

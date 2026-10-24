@@ -64,6 +64,8 @@ pub struct Settings {
     pub screen_sound_ask: bool,
     /// The shared mouse: the pointer goes over to the screens that are arranged next to this one. Off keeps the arrangement.
     pub pointer_share: bool,
+    /// "Send with Tandem" in the menus of the file manager (see `sendwith.rs`).
+    pub file_manager_send: bool,
 }
 
 impl Default for Settings {
@@ -93,6 +95,7 @@ impl Default for Settings {
             screen_sound: "there".into(),
             screen_sound_ask: true,
             pointer_share: true,
+            file_manager_send: true,
             auto_update: true,
             dismissed_update: String::new(),
         }

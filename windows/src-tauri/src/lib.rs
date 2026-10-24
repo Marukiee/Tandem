@@ -11,6 +11,7 @@ mod capture;
 mod quickshare;
 mod clip;
 mod clipfiles;
+mod sendwith;
 mod commands;
 mod drag;
 mod edge;
@@ -58,6 +59,10 @@ pub fn run() {
     tauri::Builder::default()
         // A second start only brings the first one forward.
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // Files sent from the menu of the file manager: sent, without the window coming up.
+            if sendwith::handle_args(app, &args) {
+                return;
+            }
             if args.iter().any(|a| a == "--panel") {
                 tray::show_panel_in_corner(app);
             } else {
@@ -135,7 +140,9 @@ pub fn run() {
             clip::start(handle.clone());
             // Started with Windows it waits in the tray; started by hand it shows its window.
             let args: Vec<String> = std::env::args().collect();
-            if args.iter().any(|a| a == "--panel") {
+            if sendwith::handle_args(&handle, &args) {
+                // Started by the file manager to send: it stays in the tray.
+            } else if args.iter().any(|a| a == "--panel") {
                 tray::show_panel_in_corner(&handle);
             } else if !args.iter().any(|a| a == "--minimized") {
                 tray::show_main(&handle);

@@ -414,6 +414,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["pointerShare"].as_bool() {
             current.pointer_share = v;
         }
+        if let Some(v) = patch["fileManagerSend"].as_bool() {
+            current.file_manager_send = v;
+        }
         if let Some(v) = patch["keepWhenLidClosed"].as_bool() {
             current.keep_when_lid_closed = v;
         }
@@ -437,6 +440,8 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
     media::refresh(&app);
     capture::configure(&app);
     crate::quickshare::configure(&app);
+    // The language is in the menus of the file manager too.
+    crate::sendwith::refresh(&app);
     json!(settings::get(&app))
 }
 

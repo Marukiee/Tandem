@@ -28,6 +28,7 @@ pub fn refresh_devices(app: &AppHandle) {
     state.data.lock().unwrap().devices = list.clone();
     let _ = app.emit("devices", list);
     crate::tray::rebuild(app);
+    crate::sendwith::refresh(app);
 }
 
 fn device(app: &AppHandle, id: &str) -> Option<Value> {

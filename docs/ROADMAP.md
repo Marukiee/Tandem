@@ -197,9 +197,10 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   knop nog ingedrukt terug naar de Mac en daar begint een echte sleep, zodat je loslaat waar je wilt. Windows doet hetzelfde met een venster
   van twee punten breed. Op Linux zelf loslaten in een websiteveld kan niet: GNOME breekt een sleep af die een app zelf begint (getest). De
   map naar voren halen mag een app op GNOME ook niet (getest), daarom na een sleep een melding met "Toon in map" die dat wel mag.
-- Sturen met Tandem vanuit de bestandsbeheerder op Linux en Windows, zoals de deelknop op de Mac (gevraagd 2026-10-24): rechtsklik op bestanden en
-  kies het apparaat. Linux: Bestanden (Nautilus, een script of een extensie als `nautilus-python` er is), Dolphin (servicemenu), Nemo (actie), Thunar
-  (eigen actie). Windows: Verkenner "Sturen naar" en een eigen regel in het menu. Alles roept de draaiende app aan met de bestanden.
+- Sturen met Tandem vanuit de bestandsbeheerder op Linux en Windows, zoals de deelknop op de Mac (gevraagd 2026-10-24). Gebouwd (`sendwith.rs`):
+  Bestanden krijgt met `nautilus-python` een eigen regel met de apparaten die nu bereikbaar zijn (anders onder Scripts), Dolphin een servicemenu,
+  Nemo acties, Windows een snelkoppeling per apparaat in "Sturen naar". Een schakelaar in Instellingen, Bestanden haalt het weer weg. Thunar niet
+  (dat zou de eigen instellingen van Thunar aanpassen). Bestanden laadt een nieuwe extensie pas na `nautilus -q` of opnieuw inloggen.
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)
