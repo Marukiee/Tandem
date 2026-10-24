@@ -417,9 +417,9 @@ impl Inner {
             Msg::CallAction(action) => self.emit(Event::CallAction { from: id, action }),
             Msg::Dial { number } => self.emit(Event::Dial { from: id, number }),
             Msg::Ring { on } => self.emit(Event::Ring { from: id, on }),
-            Msg::SideListen { id: probe, sound } => {
-                self.emit(Event::SideListen { from: id, id: probe, sound: crate::side::Sound::from_code(sound) })
-            }
+            Msg::SideListen { id: probe } => self.emit(Event::SideListen { from: id, id: probe }),
+            Msg::SideReady { id: probe } => self.emit(Event::SideReady { from: id, id: probe }),
+            Msg::SideMoved => self.emit(Event::SideMoved { from: id }),
             Msg::SideHeard { id: probe, left, right, heard } => self.emit(Event::SideHeard { from: id, id: probe, left, right, heard }),
             Msg::Input(input) => self.emit(Event::Input { from: id, input }),
             Msg::PointerShare(msg) => self.emit(Event::PointerShare { from: id, msg }),

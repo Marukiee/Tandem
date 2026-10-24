@@ -9,7 +9,6 @@ struct PointerSettings: View {
     @Environment(EngineModel.self) private var model
     @Bindable private var share = PointerShare.shared
     @LocalState private var trusted = AXIsProcessTrusted()
-    @LocalState private var sound = DeviceSides.sound
     @LocalState private var finding: String?
 
     private func findSide(_ device: TandemDevice) {
@@ -107,17 +106,12 @@ struct PointerSettings: View {
             }
 
             Section {
-                Picker("Sound", selection: Binding(get: { sound }, set: { sound = $0; DeviceSides.sound = $0 })) {
-                    Text("Sweep (works best)").tag(TandemSideSound.sweep)
-                    Text("Bell").tag(TandemSideSound.chime)
-                    Text("Beep").tag(TandemSideSound.beep)
-                }
                 HStack {
-                    Text("The sweep is heard best in a room with echoes. The bell and the beep only tell the side when the other device stands clearly nearer to one speaker.")
+                    Text("A short sweep from low to high on the left and from high to low on the right, at the same time. Soft first, louder when it was not heard.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 12)
-                    Button("Play") { Task { await SideTone.play(sound) } }
+                    Button("Play") { Task { await SideTone.play() } }
                 }
             } header: {
                 Text("Finding the side by sound")

@@ -995,9 +995,12 @@ pub enum TandemEvent {
     CallAction { from: String, id: String, action: TandemCallAction },
     Dial { from: String, number: String },
     Ring { from: String, on: bool },
-    SideListen { from: String, id: u64, sound: TandemSideSound },
-    /// The answer of a device to `side_probe`; `side_probe` reads it itself, the apps can let it go by.
+    SideListen { from: String, id: u64 },
+    /// The answers of a device to `side_start`, which reads them itself: the apps can let them go by.
+    SideReady { from: String, id: u64 },
     SideHeard { from: String, id: u64 },
+    /// The device was moved: find its side again if it matters (a second screen, the shared mouse).
+    SideMoved { from: String },
     Input { from: String, input: TandemInput },
     Hotspot { from: String, hotspot: TandemHotspot },
     /// The other device wants a picture. Answer with `send_files` and origin `Capture { request: id }`,
@@ -1095,8 +1098,10 @@ impl From<Event> for TandemEvent {
             }
             Event::Dial { from, number } => TandemEvent::Dial { from: from.to_string(), number },
             Event::Ring { from, on } => TandemEvent::Ring { from: from.to_string(), on },
-            Event::SideListen { from, id, sound } => TandemEvent::SideListen { from: from.to_string(), id, sound: sound.into() },
+            Event::SideListen { from, id } => TandemEvent::SideListen { from: from.to_string(), id },
+            Event::SideReady { from, id } => TandemEvent::SideReady { from: from.to_string(), id },
             Event::SideHeard { from, id, .. } => TandemEvent::SideHeard { from: from.to_string(), id },
+            Event::SideMoved { from } => TandemEvent::SideMoved { from: from.to_string() },
             Event::Input { from, input } => TandemEvent::Input { from: from.to_string(), input: input.into() },
             Event::Hotspot { from, hotspot } => TandemEvent::Hotspot { from: from.to_string(), hotspot: hotspot.into() },
             Event::CaptureRequested { from, id, kind } => {
@@ -1181,6 +1186,14 @@ pub fn tandem_hotspot_auth_message(challenge: Vec<u8>, device_id: String, action
     crate::hotspot::auth_message(&challenge, &device_id, action, timestamp_ms)
 }
 
+type SideWait = tokio::sync::oneshot::Receiver<Option<(f32, f32, bool)>>;
+
+/// The answers that `side_start` waits for, until `side_result` takes them.
+fn side_waits() -> &'static std::sync::Mutex<std::collections::HashMap<u64, SideWait>> {
+    static WAITS: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<u64, SideWait>>> = std::sync::OnceLock::new();
+    WAITS.get_or_init(Default::default)
+}
+
 /// On which side of this computer a device stands (see `side.rs`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum TandemSide {
@@ -1192,38 +1205,16 @@ pub enum TandemSide {
     NotHeard,
 }
 
-/// Which sound is played to find the side (see `side::Sound`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum TandemSideSound {
-    Sweep,
-    Chime,
-    Beep,
-}
-
-impl From<TandemSideSound> for crate::side::Sound {
-    fn from(s: TandemSideSound) -> Self {
-        match s {
-            TandemSideSound::Sweep => crate::side::Sound::Sweep,
-            TandemSideSound::Chime => crate::side::Sound::Chime,
-            TandemSideSound::Beep => crate::side::Sound::Beep,
-        }
-    }
-}
-
-impl From<crate::side::Sound> for TandemSideSound {
-    fn from(s: crate::side::Sound) -> Self {
-        match s {
-            crate::side::Sound::Sweep => TandemSideSound::Sweep,
-            crate::side::Sound::Chime => TandemSideSound::Chime,
-            crate::side::Sound::Beep => TandemSideSound::Beep,
-        }
-    }
-}
-
-/// The sounds to play for `side_probe`, as stereo samples (left, right, left, ...) at `rate` samples a second.
+/// The sweeps to play after `side_start`, as stereo samples (left, right, left, ...) at `rate` samples a second, at `loudness` (0 to 1).
 #[uniffi::export]
-pub fn tandem_side_pattern(sound: TandemSideSound, rate: u32) -> Vec<f32> {
-    crate::side::pattern(sound.into(), rate)
+pub fn tandem_side_pattern(rate: u32, loudness: f32) -> Vec<f32> {
+    crate::side::pattern_at(rate, loudness)
+}
+
+/// How loud the first try is played (0 to 1). When it was not heard, or both sides sounded alike, the second try is at 1.
+#[uniffi::export]
+pub fn tandem_side_first_loudness() -> f32 {
+    0.35
 }
 
 /// How long a device asked with `SideListen` records, in milliseconds.
@@ -1240,8 +1231,8 @@ pub struct TandemSideLevels {
 }
 
 #[uniffi::export]
-pub fn tandem_side_analyze(sound: TandemSideSound, samples: Vec<f32>, rate: u32) -> Option<TandemSideLevels> {
-    crate::side::analyze(sound.into(), &samples, rate).map(|h| TandemSideLevels { left: h.left, right: h.right })
+pub fn tandem_side_analyze(samples: Vec<f32>, rate: u32) -> Option<TandemSideLevels> {
+    crate::side::analyze(&samples, rate).map(|h| TandemSideLevels { left: h.left, right: h.right })
 }
 
 /// The rotating tag in a phone's Bluetooth advertisement for `hour` (Unix time in
@@ -1743,41 +1734,80 @@ impl TandemEngine {
         self.send(vec![target], crate::proto::Msg::Input(input.into())).await.map(|_| ())
     }
 
-    /// Finds on which side of this computer `target` stands: asks it to listen, and waits for what it heard. The app plays
-    /// `tandem_side_pattern` right after calling this (the pattern starts with a moment of silence, for the other side to start recording).
-    pub async fn side_probe(&self, target: String, sound: TandemSideSound) -> Result<TandemSide, TandemError> {
+    /// Asks `target` to listen for the sound that tells on which side of this computer it stands, and returns once its microphone is on:
+    /// the app plays `tandem_side_pattern` then, and asks `side_result` for the answer. An error when the device did not get ready.
+    pub async fn side_start(&self, target: String) -> Result<u64, TandemError> {
         let peer = DeviceId::parse(&target)?;
         let id = crate::engine::rand_u64();
         let mut events = self.engine.subscribe();
-        let sound = crate::side::Sound::from(sound).code();
-        self.send(vec![target], crate::proto::Msg::SideListen { id, sound }).await?;
-        let wait = std::time::Duration::from_millis(u64::from(crate::side::LISTEN_MS) + 5000);
-        let answer = self
+        self.send(vec![target], crate::proto::Msg::SideListen { id }).await?;
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let ready = self
             .runtime
             .spawn(async move {
-                tokio::time::timeout(wait, async move {
+                // The answer comes on the same stream of events as the "ready", so nothing that comes in between is missed.
+                let got_ready = tokio::time::timeout(std::time::Duration::from_secs(4), async {
                     loop {
                         match events.recv().await {
-                            Ok(Event::SideHeard { from, id: got, left, right, heard }) if from == peer && got == id => break Some((left, right, heard)),
+                            Ok(Event::SideReady { from, id: got }) if from == peer && got == id => break true,
                             Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
-                            Err(_) => break None,
+                            Err(_) => break false,
                         }
                     }
                 })
                 .await
-                .ok()
-                .flatten()
+                .unwrap_or(false);
+                if !got_ready {
+                    return false;
+                }
+                tokio::spawn(async move {
+                    let wait = std::time::Duration::from_millis(u64::from(crate::side::LISTEN_MS) + 3000);
+                    let heard = tokio::time::timeout(wait, async move {
+                        loop {
+                            match events.recv().await {
+                                Ok(Event::SideHeard { from, id: got, left, right, heard }) if from == peer && got == id => break Some((left, right, heard)),
+                                Ok(_) | Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
+                                Err(_) => break None,
+                            }
+                        }
+                    })
+                    .await
+                    .ok()
+                    .flatten();
+                    let _ = tx.send(heard);
+                });
+                true
             })
             .await
             .map_err(join_error)?;
-        Ok(match answer {
-            Some((left, right, true)) => match crate::side::decide(crate::side::Heard { left, right }) {
+        if !ready {
+            return Err(TandemError::NotConnected);
+        }
+        side_waits().lock().unwrap().insert(id, rx);
+        Ok(id)
+    }
+
+    /// What the device heard of the sound played after `side_start`, as the side it stands on.
+    pub async fn side_result(&self, id: u64) -> TandemSide {
+        let Some(rx) = side_waits().lock().unwrap().remove(&id) else { return TandemSide::NotHeard };
+        match self.runtime.spawn(rx).await {
+            Ok(Ok(Some((left, right, true)))) => match crate::side::decide(crate::side::Heard { left, right }) {
                 crate::side::Side::Left => TandemSide::Left,
                 crate::side::Side::Right => TandemSide::Right,
                 crate::side::Side::Unsure => TandemSide::Unsure,
             },
             _ => TandemSide::NotHeard,
-        })
+        }
+    }
+
+    /// The listening device says its microphone is on, so the sound can be played (the answer to `TandemEvent::SideListen`, before `side_heard`).
+    pub async fn side_ready(&self, target: String, id: u64) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::SideReady { id }).await.map(|_| ())
+    }
+
+    /// Tells the computers this device is a screen for or sits next to that it was moved, so they can find its side again.
+    pub async fn side_moved(&self, targets: Vec<String>) -> Result<(), TandemError> {
+        self.send(targets, crate::proto::Msg::SideMoved).await.map(|_| ())
     }
 
     /// The answer to `TandemEvent::SideListen`: what this device heard, or `levels` empty when it could not listen.

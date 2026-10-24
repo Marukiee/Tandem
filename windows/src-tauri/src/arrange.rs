@@ -217,6 +217,7 @@ pub fn put(app: &AppHandle, id: &str, edge: &str) {
         list.push(Spot { device: id.to_string(), edge: edge.to_string(), offset });
     });
     let _ = app.emit("arrangement", state_of(app));
+    crate::host::place_made(id, edge);
 }
 
 #[tauri::command]

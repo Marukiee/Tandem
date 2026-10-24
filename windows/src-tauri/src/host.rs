@@ -264,6 +264,9 @@ impl Host {
             d.id == from && matches!(d.platform, tandem_core::ffi::TandemPlatform::MacOs | tandem_core::ffi::TandemPlatform::Windows | tandem_core::ffi::TandemPlatform::Linux)
         });
         let wanted_fps = if request.max_fps == 0 { FPS } else { request.max_fps.clamp(10, MAX_FPS) };
+        // The monitors there are before one is made for the viewer, to know afterwards which one is new and put it on the side of the viewer.
+        #[cfg(target_os = "linux")]
+        let before = if request.extend { tandem_winsys::portal::monitor_connectors() } else { Vec::new() };
         // On Wayland the desktop asks the person here (once, and then it remembers), so this waits for the answer. The pictures come as the
         // planes the encoder wants, at the size that is sent and at most as often as is wanted: all that work is done in one place that is
         // good at it, and nothing is thrown away after it was made.
@@ -308,6 +311,10 @@ impl Host {
         let (stop, keyframe, rate) = (sharing.stop.clone(), sharing.keyframe.clone(), sharing.bitrate.clone());
         self.sessions.lock().unwrap().insert(session, sharing);
         self.announce();
+        #[cfg(target_os = "linux")]
+        if request.extend {
+            made_monitor(&self.app, &from, before);
+        }
         events::toast(&self.app, &i18n::t(&self.app, "host_started_title"), &i18n::t1(&self.app, "host_started_body", &events::device_name(&self.app, &from)));
         let sessions = self.sessions.clone();
         let app = self.app.clone();
@@ -315,12 +322,67 @@ impl Host {
             .name("tandem-screen".into())
             .spawn(move || {
                 capture_loop(engine, session, grabber, (width, height), fps, stop, keyframe, rate);
-                sessions.lock().unwrap().remove(&session);
+                let peer = sessions.lock().unwrap().remove(&session).map(|s| s.peer);
+                #[cfg(target_os = "linux")]
+                if let Some(peer) = peer {
+                    made_monitors().lock().unwrap().remove(&peer);
+                }
+                #[cfg(not(target_os = "linux"))]
+                let _ = peer;
                 // What is left, not an empty list: another viewer may still be looking.
                 announce(&app, &sessions);
             })
             .ok();
     }
+}
+
+/// Per viewer with a monitor made for it: the monitors that were there before, which tells which one is the made one.
+#[cfg(target_os = "linux")]
+fn made_monitors() -> &'static Mutex<HashMap<String, Vec<String>>> {
+    static MADE: std::sync::OnceLock<Mutex<HashMap<String, Vec<String>>>> = std::sync::OnceLock::new();
+    MADE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// A monitor was made for `peer`: once the desktop shows it, it goes on the side where the viewer stands. GNOME puts it on the right by
+/// itself, so only the left needs a change.
+#[cfg(target_os = "linux")]
+fn made_monitor(app: &AppHandle, peer: &str, before: Vec<String>) {
+    made_monitors().lock().unwrap().insert(peer.to_string(), before.clone());
+    let app = app.clone();
+    let peer = peer.to_string();
+    std::thread::Builder::new()
+        .name("tandem-place-monitor".into())
+        .spawn(move || {
+            // The monitor appears once the picture flows, which is a moment after the start.
+            for _ in 0..24 {
+                std::thread::sleep(Duration::from_millis(250));
+                if tandem_winsys::portal::monitor_connectors().iter().any(|c| !before.contains(c)) {
+                    let left = crate::settings::get(&app).layout.iter().any(|s| s.device == peer && s.edge == "left");
+                    if left {
+                        if let Err(error) = tandem_winsys::portal::place_made_monitor(&before, true) {
+                            log::info!("the second screen could not be put on the left: {error}");
+                        }
+                    }
+                    return;
+                }
+            }
+        })
+        .ok();
+}
+
+/// The side of a viewer was found while a monitor made for it is there: it moves to that side.
+pub fn place_made(peer: &str, edge: &str) {
+    #[cfg(target_os = "linux")]
+    {
+        let Some(before) = made_monitors().lock().unwrap().get(peer).cloned() else { return };
+        if edge == "left" || edge == "right" {
+            if let Err(error) = tandem_winsys::portal::place_made_monitor(&before, edge == "left") {
+                log::info!("the second screen could not be put on the {edge}: {error}");
+            }
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    let _ = (peer, edge);
 }
 
 impl TandemMediaHost for Host {

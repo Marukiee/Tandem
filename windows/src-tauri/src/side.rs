@@ -1,4 +1,4 @@
-//! On which side of this computer another device stands, found by ear (see `side.rs` in the core): this computer plays a sound from its left
+//! On which side of this computer another device stands, found by ear (see `side.rs` in the core): this computer plays a sweep from its left
 //! and its right speaker and the device says which was louder; or the other way round, another computer plays and this one records. The
 //! side found puts the device on that side of this screen for the shared mouse.
 
@@ -7,33 +7,25 @@ use std::time::Duration;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SampleFormat, SizedSample};
-use tandem_core::ffi::{TandemSide, TandemSideLevels, TandemSideSound};
+use tandem_core::ffi::{TandemSide, TandemSideLevels};
 use tauri::AppHandle;
 
 use crate::state::AppState;
 use crate::{arrange, settings};
 use tauri::Manager;
 
-pub fn sound_of(name: &str) -> TandemSideSound {
-    match name {
-        "chime" => TandemSideSound::Chime,
-        "beep" => TandemSideSound::Beep,
-        _ => TandemSideSound::Sweep,
-    }
-}
-
 /// Whether this computer has a microphone to listen with.
 pub fn can_listen() -> bool {
     cpal::default_host().default_input_device().is_some()
 }
 
-/// Plays the sound once, on the first two channels of the sound card. Returns when it is done.
-pub fn play(sound: TandemSideSound) -> Result<(), String> {
+/// Plays the sweeps once at `loudness` (0 to 1), on the first two channels of the sound card. Returns when it is done.
+pub fn play(loudness: f32) -> Result<(), String> {
     let device = cpal::default_host().default_output_device().ok_or("there is no sound card to play on")?;
     let config = device.default_output_config().map_err(|e| e.to_string())?;
     let rate = config.sample_rate().0;
     let channels = usize::from(config.channels());
-    let samples = Arc::new(tandem_core::ffi::tandem_side_pattern(sound, rate));
+    let samples = Arc::new(tandem_core::ffi::tandem_side_pattern(rate, loudness));
     let seconds = samples.len() as f32 / 2.0 / rate as f32;
     let at = Arc::new(Mutex::new(0usize));
     let stream = match config.sample_format() {
@@ -79,8 +71,9 @@ fn output<T: SizedSample + FromSample<f32>>(
     )
 }
 
-/// Records `ms` of the microphone as one channel. The samples and how many there are a second.
-fn record(ms: u32) -> Result<(Vec<f32>, u32), String> {
+/// Records `ms` of the microphone as one channel, after `ready` was called once the microphone is on. The samples and how many there
+/// are a second.
+fn record(ms: u32, ready: impl FnOnce()) -> Result<(Vec<f32>, u32), String> {
     let device = cpal::default_host().default_input_device().ok_or("there is no microphone")?;
     let config = device.default_input_config().map_err(|e| e.to_string())?;
     let rate = config.sample_rate().0;
@@ -94,6 +87,7 @@ fn record(ms: u32) -> Result<(Vec<f32>, u32), String> {
     }
     .map_err(|e| e.to_string())?;
     stream.play().map_err(|e| e.to_string())?;
+    ready();
     std::thread::sleep(Duration::from_millis(u64::from(ms)));
     drop(stream);
     let samples = std::mem::take(&mut *collected.lock().unwrap());
@@ -122,37 +116,43 @@ where
     )
 }
 
-/// Another computer plays its sound: record it and say how loud each side was.
-pub fn listen(app: &AppHandle, from: String, id: u64, sound: TandemSideSound) {
+/// Another computer plays its sweeps: say when the microphone is on, record, and say how loud each side was.
+pub fn listen(app: &AppHandle, from: String, id: u64) {
     let app = app.clone();
     std::thread::Builder::new()
         .name("tandem-side-listen".into())
         .spawn(move || {
-            let levels: Option<TandemSideLevels> = match record(tandem_core::ffi::tandem_side_listen_ms()) {
-                Ok((samples, rate)) => tandem_core::ffi::tandem_side_analyze(sound, samples, rate),
+            let Ok(engine) = app.state::<AppState>().engine() else { return };
+            let ready_engine = engine.clone();
+            let ready_to = from.clone();
+            let ready = move || {
+                let _ = tauri::async_runtime::block_on(ready_engine.side_ready(ready_to, id));
+            };
+            let levels: Option<TandemSideLevels> = match record(tandem_core::ffi::tandem_side_listen_ms(), ready) {
+                Ok((samples, rate)) => tandem_core::ffi::tandem_side_analyze(samples, rate),
                 Err(error) => {
                     log::info!("could not listen for the side: {error}");
                     None
                 }
             };
-            if let Ok(engine) = app.state::<AppState>().engine() {
-                let _ = tauri::async_runtime::block_on(engine.side_heard(from, id, levels));
-            }
+            let _ = tauri::async_runtime::block_on(engine.side_heard(from, id, levels));
         })
         .ok();
 }
 
-/// Plays the sound and asks the device what it heard; puts it on that side for the shared mouse when it is clear. Says "left", "right",
-/// "unsure" or "not-heard".
-#[tauri::command]
-pub async fn side_find(app: AppHandle, id: String) -> Result<String, String> {
+/// Asks the device to listen, plays the sweeps once it does, and reads its answer: soft first, once more at full loudness when it was not
+/// heard well. Puts it on that side for the shared mouse when it is clear. "left", "right", "unsure" or "not-heard".
+pub async fn find(app: &AppHandle, id: &str) -> Result<String, String> {
     let engine = app.state::<AppState>().engine()?;
-    let sound = sound_of(&settings::get(&app).side_sound);
-    // The pattern starts with a moment of silence, which is the time the device has to start recording.
-    let probe = engine.side_probe(id.clone(), sound);
-    let player = tauri::async_runtime::spawn_blocking(move || play(sound));
-    let side = probe.await.map_err(|e| e.to_string())?;
-    let _ = player.await;
+    let mut side = TandemSide::NotHeard;
+    for loudness in [tandem_core::ffi::tandem_side_first_loudness(), 1.0] {
+        let Ok(probe) = engine.side_start(id.to_string()).await else { break };
+        let _ = tauri::async_runtime::spawn_blocking(move || play(loudness)).await;
+        side = engine.side_result(probe).await;
+        if matches!(side, TandemSide::Left | TandemSide::Right) {
+            break;
+        }
+    }
     let text = match side {
         TandemSide::Left => "left",
         TandemSide::Right => "right",
@@ -160,13 +160,29 @@ pub async fn side_find(app: AppHandle, id: String) -> Result<String, String> {
         TandemSide::NotHeard => "not-heard",
     };
     if matches!(side, TandemSide::Left | TandemSide::Right) {
-        arrange::put(&app, &id, text);
+        arrange::put(app, id, text);
     }
     Ok(text.to_string())
 }
 
-/// Plays the chosen sound, to hear what it is.
 #[tauri::command]
-pub async fn side_preview(sound: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || play(sound_of(&sound))).await.map_err(|e| e.to_string())?
+pub async fn side_find(app: AppHandle, id: String) -> Result<String, String> {
+    find(&app, &id).await
+}
+
+/// A phone was moved: when it sits next to this screen, its side is found again, quietly.
+pub fn moved(app: &AppHandle, from: String) {
+    if !settings::get(app).layout.iter().any(|s| s.device == from) {
+        return;
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = find(&app, &from).await;
+    });
+}
+
+/// Plays the sweeps, to hear what they are.
+#[tauri::command]
+pub async fn side_preview() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| play(1.0)).await.map_err(|e| e.to_string())?
 }

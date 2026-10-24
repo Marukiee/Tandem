@@ -68,14 +68,13 @@ pub enum Msg {
     Dial { number: String },
     Ring { on: bool },
     /// Asks the device to record for `side::LISTEN_MS`: this one is about to play the tones of `side::pattern` (see `side.rs`).
-    SideListen {
-        id: u64,
-        /// Which sound comes (`side::Sound::code`); an older device that does not say it means the sweep.
-        #[serde(default)]
-        sound: u8,
-    },
+    SideListen { id: u64 },
+    /// The device listens now (its microphone is on): the sound can be played.
+    SideReady { id: u64 },
     /// What the device heard of those tones. `heard` is false when it could not listen (no microphone, not allowed) or heard nothing.
     SideHeard { id: u64, left: f32, right: f32, heard: bool },
+    /// This device was moved (picked up and put down again): the computer it is a screen for or sits next to may find its side again.
+    SideMoved,
     Input(InputMsg),
     /// One mouse and keyboard over several computers: the pointer goes over, and comes back (see `pointer_share`).
     PointerShare(crate::pointer_share::PointerShareMsg),

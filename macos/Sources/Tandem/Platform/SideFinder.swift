@@ -2,42 +2,32 @@ import AVFoundation
 import Foundation
 import TandemCore
 
-/// On which side of this Mac a device stands, found by ear (see `side.rs` in the core): this Mac plays a sound from its left and its right
+/// On which side of this Mac a device stands, found by ear (see `side.rs` in the core): this Mac plays a sweep from its left and its right
 /// speaker, the device records it and says which side was louder. The side is kept per device and used for a second screen (which goes
 /// on that side) and for the shared mouse (the computer is put on that side of this screen).
 @MainActor
 enum DeviceSides {
     private static let key = "deviceSides"
-    private static let soundKey = "sideSound"
+    private static let askKey = "deviceSidesAsk"
 
     static func side(of id: String) -> String? {
         (UserDefaults.standard.dictionary(forKey: key) as? [String: String])?[id]
     }
 
-    static func set(_ side: String, for id: String) {
+    /// Puts the device on that side now; `remember` keeps it for next time, otherwise the next second screen asks again.
+    static func set(_ side: String, for id: String, remember: Bool = true) {
         var all = (UserDefaults.standard.dictionary(forKey: key) as? [String: String]) ?? [:]
-        all[id] = side
+        var ask = Set(UserDefaults.standard.stringArray(forKey: askKey) ?? [])
+        if remember {
+            all[id] = side
+            ask.remove(id)
+        } else {
+            all[id] = nil
+            ask.insert(id)
+        }
         UserDefaults.standard.set(all, forKey: key)
+        UserDefaults.standard.set(Array(ask), forKey: askKey)
         apply(side, to: id)
-    }
-
-    /// The sound that is played, chosen in the settings of the shared mouse. The sweep holds up best in a room.
-    static var sound: TandemSideSound {
-        get {
-            switch UserDefaults.standard.string(forKey: soundKey) {
-            case "chime": .chime
-            case "beep": .beep
-            default: .sweep
-            }
-        }
-        set {
-            let name: String = switch newValue {
-            case .sweep: "sweep"
-            case .chime: "chime"
-            case .beep: "beep"
-            }
-            UserDefaults.standard.set(name, forKey: soundKey)
-        }
     }
 
     /// Puts the device on that side: a computer next to this screen for the shared mouse, and a second screen that runs for it.
@@ -52,11 +42,11 @@ enum DeviceSides {
     }
 }
 
-/// Plays the sound of `side.rs` once, from the left and the right speaker.
+/// Plays the sweeps of `side.rs` once, from the left and the right speaker.
 enum SideTone {
-    static func play(_ sound: TandemSideSound) async {
+    static func play(loudness: Float = 1) async {
         let rate = 48_000.0
-        let samples = tandemSidePattern(sound: sound, rate: UInt32(rate))
+        let samples = tandemSidePattern(rate: UInt32(rate), loudness: loudness)
         guard let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 2),
               let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count / 2)),
               let channels = buffer.floatChannelData
@@ -80,18 +70,25 @@ enum SideTone {
 }
 
 enum SideFinder {
-    /// Plays the sound and asks the device what it heard. Remembers and applies the side when it is clear.
+    @MainActor private static var busy: Set<String> = []
+
+    /// Asks the device to listen, plays the sweeps once it does, and reads its answer. Soft first, so a quiet room is not startled; when it
+    /// was not heard well, once more at full loudness. Applies the side when it is clear; `remember` keeps it for next time.
     @MainActor
-    static func find(_ device: TandemDevice) async -> TandemSide {
-        guard let engine = EngineModel.shared.tandem else { return .notHeard }
-        let sound = DeviceSides.sound
-        // The pattern starts with a moment of silence, which is the time the device has to start recording.
-        async let answer: TandemSide? = try? engine.sideProbe(target: device.id, sound: sound)
-        await SideTone.play(sound)
-        let side = await answer ?? .notHeard
+    static func find(_ device: TandemDevice, remember: Bool = true) async -> TandemSide {
+        guard let engine = EngineModel.shared.tandem, !busy.contains(device.id) else { return .notHeard }
+        busy.insert(device.id)
+        defer { busy.remove(device.id) }
+        var side = TandemSide.notHeard
+        for loudness in [tandemSideFirstLoudness(), 1] {
+            guard let id = try? await engine.sideStart(target: device.id) else { return .notHeard }
+            await SideTone.play(loudness: loudness)
+            side = await engine.sideResult(id: id)
+            if side == .left || side == .right { break }
+        }
         switch side {
-        case .left: DeviceSides.set("left", for: device.id)
-        case .right: DeviceSides.set("right", for: device.id)
+        case .left: DeviceSides.set("left", for: device.id, remember: remember)
+        case .right: DeviceSides.set("right", for: device.id, remember: remember)
         default: break
         }
         return side
@@ -109,16 +106,17 @@ enum SideFinder {
     }
 }
 
-/// The other side of it: another device plays, this Mac records and says how loud each side was.
+/// The other side of it: another computer plays, this Mac records and says how loud each side was.
 enum SideListener {
-    static func listen(from peer: String, id: UInt64, sound: TandemSideSound, engine: TandemEngine) {
+    static func listen(from peer: String, id: UInt64, engine: TandemEngine) {
         Task.detached(priority: .userInitiated) {
-            let levels = await record(sound: sound)
+            let levels = await record { try? await engine.sideReady(target: peer, id: id) }
             try? await engine.sideHeard(target: peer, id: id, levels: levels)
         }
     }
 
-    private static func record(sound: TandemSideSound) async -> TandemSideLevels? {
+    /// Records for as long as the core says, after telling the other side that the microphone is on (`ready`).
+    private static func record(ready: @escaping @Sendable () async -> Void) async -> TandemSideLevels? {
         switch AVCaptureDevice.authorizationStatus(for: .audio) {
         case .authorized: break
         case .notDetermined:
@@ -130,7 +128,7 @@ enum SideListener {
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { return nil }
         let collected = Collected()
-        input.installTap(onBus: 0, bufferSize: 4096, format: format) { buffer, _ in
+        input.installTap(onBus: 0, bufferSize: 2048, format: format) { buffer, _ in
             guard let data = buffer.floatChannelData else { return }
             let channels = Int(buffer.format.channelCount)
             let frames = Int(buffer.frameLength)
@@ -141,10 +139,11 @@ enum SideListener {
             collected.append(mono)
         }
         do { try engine.start() } catch { return nil }
+        await ready()
         try? await Task.sleep(for: .milliseconds(Int(tandemSideListenMs())))
         input.removeTap(onBus: 0)
         engine.stop()
-        return tandemSideAnalyze(sound: sound, samples: collected.all(), rate: UInt32(format.sampleRate))
+        return tandemSideAnalyze(samples: collected.all(), rate: UInt32(format.sampleRate))
     }
 
     private final class Collected: @unchecked Sendable {

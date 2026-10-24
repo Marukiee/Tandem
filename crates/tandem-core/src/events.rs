@@ -60,8 +60,10 @@ pub enum Event {
     Dial { from: DeviceId, number: String },
     Ring { from: DeviceId, on: bool },
     /// Another device is about to play tones to find out on which side of it this one stands: record and answer with `side_heard`.
-    SideListen { from: DeviceId, id: u64, sound: crate::side::Sound },
+    SideListen { from: DeviceId, id: u64 },
+    SideReady { from: DeviceId, id: u64 },
     SideHeard { from: DeviceId, id: u64, left: f32, right: f32, heard: bool },
+    SideMoved { from: DeviceId },
     Input { from: DeviceId, input: InputMsg },
     Hotspot { from: DeviceId, hotspot: HotspotMsg },
     /// The other device wants a picture. Open the camera, then answer with a file share whose origin is

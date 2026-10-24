@@ -262,11 +262,12 @@ final class ScreenHost {
                 return
             }
             virtual = made
-            // On the side the device stands on. Found by ear the first time, when the device can listen and the side is not known yet.
+            // On the side the device stands on. When that is not known (or the person wanted to be asked each time), the question comes up:
+            // found by sound, or chosen.
             if let known = DeviceSides.side(of: peer) {
                 made.onLeft = known == "left"
-            } else if let device = model?.device(peer), device.caps.contains("side.listen") {
-                Task { @MainActor in _ = await SideFinder.find(device) }
+            } else if let device = model?.device(peer) {
+                SidePrompt.shared.ask(device)
             }
             extendDisplay = made
             extendPeer = peer

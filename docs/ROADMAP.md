@@ -90,14 +90,24 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   `ControlBridge`) en doet een druk door `tandem://control?action=...` te openen zonder de app naar voren te halen. Het systeem toont hem als extensie
   (`pluginkit`); toevoegen gaat via Controlecentrum, Bewerken. Nog niet: Klembord sturen en Telefoon als uitvoer als knop, en een keuze van het apparaat
   voor Scherm uitbreiden (nu het laatst gebruikte, anders het eerste dat het kan).
-- De kant vinden met geluid (gevraagd 2026-10-24, gebouwd in 0.1.90, nergens op echte toestellen gehoord): de computer die plaatst speelt links en
-  rechts een ander geluid (`side.rs` in de kern: een sweep omhoog en omlaag zoals Sonos bij het afstemmen, een belletje of een piep, te kiezen, met de sweep
-  als aanrader), het andere apparaat neemt op en vergelijkt de opname met beide geluiden (een matched filter, geen getraind model: voor een bekend geluid
-  is dat het beste). De kant gaat naar de gedeelde muis (Mac en Linux/Windows als hoofd) en naar een tweede scherm dat de Mac maakt. Luisteren kan op
-  Mac, Linux, Windows en Android (die laatste alleen met Tandem open, Android geeft de microfoon niet aan een app op de achtergrond). In een simulatie met
-  galm en ruis vindt de sweep de kant ook bij 3 dB verschil; het belletje en de piep pas bij een duidelijk verschil.
-  Nog niet: een tweede scherm dat Linux maakt op de goede kant zetten (GNOME plaatst het zelf), en vanzelf opnieuw bepalen als een apparaat verplaatst
-  wordt (kan bij een telefoon met zijn bewegingssensor; bij laptops alleen op een vast moment, zoals het openen van de klep).
+- De kant vinden met geluid (gevraagd 2026-10-24, gebouwd in 0.1.90 en 0.1.91, nergens op echte toestellen gehoord): de computer die plaatst speelt
+  links een sweep omhoog en rechts tegelijk een omlaag (`side.rs` in de kern, zoals Sonos bij het afstemmen), het andere apparaat neemt op en vergelijkt
+  de opname met beide (een matched filter, geen getraind model: voor een bekend geluid is dat het beste). Belletje en piep zijn eruit: met galm per
+  speaker waren die een stuk slechter. Eerst zegt de luisteraar dat de microfoon aan staat, dan pas klinkt het, zacht eerst en harder als het niet goed
+  gehoord werd. Zo duurt het ongeveer 2 seconden. De kant gaat naar de gedeelde muis en naar een tweede scherm (Mac, en nu ook Linux: GNOME zet een
+  gemaakt scherm rechts, Tandem zet het met `ApplyMonitorsConfig` links als het apparaat links staat, alleen voor die sessie). Bij het eerste tweede
+  scherm vraagt de Mac waar het apparaat staat (zoeken, links of rechts, met Onthouden). Een telefoon die bewogen wordt (bewegingssensor, alleen met
+  Tandem open) laat de kant opnieuw bepalen. Nog niet: de vraag bij het eerste keer op Linux en Windows, en de Mac zelf heeft geen bewegingssensor
+  die een app mag lezen.
+- Mediaknoppen grijs als ze niet bediend kunnen worden, overal duidelijke meldingen als iets niet werkt (zoals geen toestemming op het apparaat), en in de
+  instellingen een overzicht per apparaat van wat wel en niet werkt en waarom, met hoe je het oplost en het liefst een knop die de goede pagina van de
+  instellingen op dat apparaat opent (gevraagd 2026-10-24).
+- Alleen Engels in de release-teksten op GitHub en in de update-melding van de apps (gevraagd 2026-10-24).
+- Linux: Bijwerken en herstarten herstart niet, en het lettertype oogt van boven ingedrukt (gevraagd 2026-10-24).
+- Een bestand over de rand slepen en neerzetten waar de aanwijzer is, ook in een veld op een website (gevraagd 2026-10-24): op een Mac en Windows als
+  ontvanger kan dat met een echte systeemsleep die Tandem start onder de aanwijzer (op de Mac een sleep vanuit een klein venster op de plek van de
+  aanwijzer, met de muis die toch al door Tandem wordt bewogen; op Windows met OLE). Wordt het nergens neergezet, dan gaat de map met het bestand open.
+  Onder Wayland (Linux) kan een app geen sleep beginnen zonder echte muis: daar gaat altijd de map open, met het bestand geselecteerd.
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)

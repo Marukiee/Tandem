@@ -50,8 +50,6 @@ pub struct Settings {
     pub auto_tailscale: bool,
     /// Messages over Bluetooth with devices that cannot be reached on the network (clipboard, notifications), where this computer can.
     pub ble_messages: bool,
-    /// The sound played to find on which side a device stands: "sweep", "chime" or "beep".
-    pub side_sound: String,
     /// Keep a list of what was copied (see `history.rs`), how many texts, and for how many days.
     pub clip_history: bool,
     pub clip_limit: u32,
@@ -81,7 +79,6 @@ impl Default for Settings {
             keep_when_lid_closed: false,
             auto_tailscale: true,
             ble_messages: true,
-            side_sound: "sweep".into(),
             clip_history: true,
             clip_limit: 250,
             clip_days: 30,

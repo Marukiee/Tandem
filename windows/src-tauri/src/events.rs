@@ -62,7 +62,8 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         }
         // A phone that shows its screen or camera by itself ("Show my screen on this PC") asks this PC to look.
         TandemEvent::MediaQuality { session, poor, .. } => crate::live::quality(app, session, poor),
-        TandemEvent::SideListen { from, id, sound } => crate::side::listen(app, from, id, sound),
+        TandemEvent::SideListen { from, id } => crate::side::listen(app, from, id),
+        TandemEvent::SideMoved { from } => crate::side::moved(app, from),
         TandemEvent::MediaOffered { from, kind, facing, extend } => {
             let name = device_name(app, &from);
             let camera = kind == tandem_core::ffi::TandemMediaKind::Camera;

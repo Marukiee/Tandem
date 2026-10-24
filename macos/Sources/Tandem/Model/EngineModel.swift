@@ -572,13 +572,27 @@ final class EngineModel {
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break
 
-        case let .sideListen(from, id, sound):
+        case let .sideListen(from, id):
             // Another computer plays its sound to find out on which side of it this Mac stands: listen, and say what was heard.
-            if let engine { SideListener.listen(from: from, id: id, sound: sound, engine: engine) }
+            if let engine { SideListener.listen(from: from, id: id, engine: engine) }
 
-        case .sideHeard:
-            // Read by `sideProbe` itself.
+        case .sideReady, .sideHeard:
+            // Read by `sideStart` itself.
             break
+
+        case let .sideMoved(from):
+            // A phone was picked up and put down again: when it is a second screen here, or sits next to this screen, its side is found
+            // again, quietly, and only said when it changed.
+            if let device = device(from), ScreenHost.shared.current?.peer == from || PointerShare.shared.layout[from] != nil,
+               DeviceSides.side(of: from) != nil {
+                let before = DeviceSides.side(of: from)
+                Task { @MainActor in
+                    let side = await SideFinder.find(device)
+                    if (side == .left || side == .right), DeviceSides.side(of: from) != before {
+                        self.showToast(SideFinder.message(side, name: device.name))
+                    }
+                }
+            }
 
         case let .mediaQuality(peer, _, poor):
             // Only said when the link got poor: it is good again without a word.

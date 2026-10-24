@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.1.91",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Finding the side, faster",
+      "new": [
+        "Finding the side takes about 2 seconds, starting soft",
+        "The first time a device becomes a second screen, the Mac asks where it stands",
+        "A second screen made by Linux goes on the side where the device stands",
+        "A phone that is moved finds its side again",
+        "Linux asks less often to capture input"
+      ]
+    },
+    "nl": {
+      "title": "De kant vinden, sneller",
+      "new": [
+        "De kant vinden duurt ongeveer 2 seconden, eerst zacht",
+        "De eerste keer dat een apparaat een tweede scherm wordt, vraagt de Mac waar het staat",
+        "Een tweede scherm dat Linux maakt gaat aan de kant waar het apparaat staat",
+        "Een telefoon die verplaatst wordt vindt zijn kant opnieuw",
+        "Linux vraagt minder vaak om invoer te mogen vangen"
+      ]
+    }
+  },
+  {
     "version": "0.1.90",
     "date": "2026-10-24",
     "en": {

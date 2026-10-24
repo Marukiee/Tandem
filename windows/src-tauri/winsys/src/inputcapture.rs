@@ -214,9 +214,20 @@ fn run(rx: async_channel::Receiver<Cmd>, handler: Arc<dyn Fn(Captured) + Send + 
             Ok(()) => return,
             Err(error) => {
                 log::warn!("capturing the mouse and keyboard did not work: {error}");
+                let refused = error.contains("cancelled");
                 *shared.reason.lock().unwrap() = error;
                 shared.state.store(2, Ordering::Relaxed);
-                // Another try now and then: the person may have changed their mind about the question.
+                if refused {
+                    // The person said no to the question of the desktop: it is not asked again by itself (that was every half minute), only
+                    // when the screens next to this one change, which is the person saying they want it after all.
+                    match rx.recv_blocking() {
+                        Ok(Cmd::Changed) => continue,
+                        Ok(Cmd::Stop) | Err(_) => return,
+                        Ok(_) => continue,
+                    }
+                }
+                // The desktop closed the session (it does that when the screen locks): one more try a little later, which asks again only
+                // where the desktop cannot remember the answer.
                 for _ in 0..30 {
                     std::thread::sleep(Duration::from_secs(1));
                     while let Ok(cmd) = rx.try_recv() {

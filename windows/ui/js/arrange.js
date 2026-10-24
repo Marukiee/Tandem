@@ -6,7 +6,7 @@ import { call, listen } from "./backend.js";
 import { Icon } from "./icons.js";
 import { platformIcon } from "./components.js";
 import { t } from "./i18n.js";
-import { say, set, state } from "./store.js";
+import { say } from "./store.js";
 
 const failed = (e) => say(String(e && e.message ? e.message : e));
 
@@ -142,10 +142,9 @@ export function ArrangementEditor() {
   </div>`;
 }
 
-/** Finding by sound on which side a device stands: this computer plays a short sound from its left and right speaker, the device listens. */
+/** Finding by sound on which side a device stands: this computer plays a short sweep from its left and right speaker, the device listens. */
 function SideFinder({ devices }) {
   const [busy, setBusy] = useState(null);
-  const sound = (state.settings && state.settings.sideSound) || "sweep";
   const listening = devices.filter((d) => d.listens);
   const find = (d) => {
     setBusy(d.id);
@@ -154,16 +153,10 @@ function SideFinder({ devices }) {
       .catch(failed)
       .finally(() => setBusy(null));
   };
-  const choose = (value) => call("set_settings", { patch: { sideSound: value } }).then((settings) => set({ settings })).catch(failed);
   return html`<div class="side-finder">
     <div class="row-line">
       <div class="grow"><div class="t">${t("side_title")}</div><div class="s">${t("side_sub")}</div></div>
-      <select value=${sound} onChange=${(e) => choose(e.currentTarget.value)}>
-        <option value="sweep">${t("side_sweep")}</option>
-        <option value="chime">${t("side_chime")}</option>
-        <option value="beep">${t("side_beep")}</option>
-      </select>
-      <button class="btn small" onClick=${() => call("side_preview", { sound }).catch(failed)}>${t("side_play")}</button>
+      <button class="btn small" onClick=${() => call("side_preview").catch(failed)}>${t("side_play")}</button>
     </div>
     ${listening.map((d) => html`<div class="row-line" key=${d.id}>
       <div class="grow">${d.name}</div>

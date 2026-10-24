@@ -95,6 +95,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import nl.markmaaktmedia.tandem.R
 import androidx.compose.foundation.layout.width
@@ -166,6 +167,17 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
             prefs.edit().putBoolean("asked", true).apply()
             micAsk.launch(android.Manifest.permission.RECORD_AUDIO)
         }
+    }
+    // Picked up and put down somewhere else: the computer finds again on which side of it the phone lies, and moves the screen there.
+    DisposableEffect(extend, id) {
+        val watcher = if (extend) {
+            nl.markmaaktmedia.tandem.live.MoveWatcher(context) {
+                graph.scope.launch { runCatching { graph.host.engine?.sideMoved(listOf(id)) } }
+            }.also { it.start() }
+        } else {
+            null
+        }
+        onDispose { watcher?.stop() }
     }
     // A second screen is used lying down, whichever way the phone was held when it was started; the other computer made it that shape.
     DisposableEffect(extend) {

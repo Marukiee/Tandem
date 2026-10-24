@@ -654,3 +654,81 @@ mod tests {
         let _ = std::fs::remove_dir_all(dir);
     }
 }
+
+// ---- Where a monitor made for a viewer goes -------------------------------------------------------------------------------------------
+
+type MonitorSpec = (String, String, String, String);
+type DisplayMode = (String, i32, i32, f64, f64, Vec<f64>, std::collections::HashMap<String, zbus::zvariant::OwnedValue>);
+type DisplayMonitor = (MonitorSpec, Vec<DisplayMode>, std::collections::HashMap<String, zbus::zvariant::OwnedValue>);
+type LogicalMonitor = (i32, i32, f64, u32, bool, Vec<MonitorSpec>, std::collections::HashMap<String, zbus::zvariant::OwnedValue>);
+type DisplayState = (u32, Vec<DisplayMonitor>, Vec<LogicalMonitor>, std::collections::HashMap<String, zbus::zvariant::OwnedValue>);
+
+fn display_state(connection: &zbus::blocking::Connection) -> Result<DisplayState, String> {
+    let reply = connection
+        .call_method(Some("org.gnome.Mutter.DisplayConfig"), "/org/gnome/Mutter/DisplayConfig", Some("org.gnome.Mutter.DisplayConfig"), "GetCurrentState", &())
+        .map_err(text)?;
+    reply.body().deserialize::<DisplayState>().map_err(text)
+}
+
+/// The connectors of the monitors there are now (GNOME), to tell afterwards which one was made for a viewer.
+pub fn monitor_connectors() -> Vec<String> {
+    let Ok(connection) = zbus::blocking::Connection::session() else { return Vec::new() };
+    display_state(&connection).map(|state| state.1.into_iter().map(|m| m.0 .0).collect()).unwrap_or_default()
+}
+
+/// Puts the monitor that was made for a viewer (the one that is new since `before`) on the left or the right of the others, for this session
+/// only (GNOME forgets it when the monitor goes). GNOME puts a new monitor on the right by itself, so only the left needs a change.
+pub fn place_made_monitor(before: &[String], left: bool) -> Result<(), String> {
+    let connection = zbus::blocking::Connection::session().map_err(text)?;
+    let state = display_state(&connection)?;
+    let (serial, monitors, logical, _) = state;
+    let Some(made) = monitors.iter().map(|m| m.0 .0.clone()).find(|c| !before.contains(c)) else {
+        return Err("the monitor that was made is not among the monitors".into());
+    };
+    // The mode each monitor has now, which the new layout keeps.
+    let mode_of = |connector: &str| -> Option<String> {
+        monitors.iter().find(|m| m.0 .0 == connector).and_then(|m| {
+            m.1.iter().find(|mode| mode.6.get("is-current").and_then(|v| v.downcast_ref::<bool>().ok()).unwrap_or(false)).map(|mode| mode.0.clone())
+        })
+    };
+    let width_of = |l: &LogicalMonitor| -> i32 {
+        let connector = &l.5.first().map(|s| s.0.clone()).unwrap_or_default();
+        let mode = monitors.iter().find(|m| &m.0 .0 == connector).and_then(|m| m.1.iter().find(|mode| Some(mode.0.clone()) == mode_of(connector)));
+        let pixels = mode.map(|m| if l.3 % 2 == 1 { m.2 } else { m.1 }).unwrap_or(0);
+        (f64::from(pixels) / l.2.max(0.5)).round() as i32
+    };
+    let Some(own) = logical.iter().find(|l| l.5.iter().any(|s| s.0 == made)) else { return Err("the monitor that was made has no place".into()) };
+    let own_width = width_of(own);
+    let others_left = logical.iter().filter(|l| !l.5.iter().any(|s| s.0 == made)).map(|l| l.0).min().unwrap_or(0);
+    let others_right = logical.iter().filter(|l| !l.5.iter().any(|s| s.0 == made)).map(|l| l.0 + width_of(l)).max().unwrap_or(0);
+    let mut layout = Vec::new();
+    for l in &logical {
+        let is_made = l.5.iter().any(|s| s.0 == made);
+        // The made one at the far left with the others moved over by its width, or at the far right of the others.
+        let x = match (is_made, left) {
+            (true, true) => 0,
+            (true, false) => others_right - others_left,
+            (false, true) => l.0 - others_left + own_width,
+            (false, false) => l.0 - others_left,
+        };
+        let y = if is_made { 0 } else { l.1 };
+        let specs: Vec<(String, String, std::collections::HashMap<String, zbus::zvariant::Value>)> = l
+            .5
+            .iter()
+            .filter_map(|s| mode_of(&s.0).map(|mode| (s.0.clone(), mode, std::collections::HashMap::new())))
+            .collect();
+        layout.push((x, y, l.2, l.3, l.4, specs));
+    }
+    let properties: std::collections::HashMap<String, zbus::zvariant::Value> = std::collections::HashMap::new();
+    // 1: for now, not kept in the settings of the desktop.
+    connection
+        .call_method(
+            Some("org.gnome.Mutter.DisplayConfig"),
+            "/org/gnome/Mutter/DisplayConfig",
+            Some("org.gnome.Mutter.DisplayConfig"),
+            "ApplyMonitorsConfig",
+            &(serial, 1u32, layout, properties),
+        )
+        .map(|_| ())
+        .map_err(text)
+}
