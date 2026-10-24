@@ -139,7 +139,9 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   een terugkaatsende aanwijzer wat er uit staat en opent die instelling op de telefoon, hooguit eens per tien minuten.
 - Windows en Linux: dezelfde snelle knoppen als het Controlecentrum van de Mac (Quick Share, Scherm uitbreiden, Gedeelde muis, Telefoon zoeken), gevraagd
   2026-10-24. Windows 11 laat apps niets aan de snelle instellingen toevoegen: het menu van het pictogram in het systeemvak en een jumplist. Linux: GNOME
-  alleen met een extensie van GNOME Shell (Quick Settings), KDE met een plasmoid; anders het menu van het pictogram.
+  alleen met een extensie van GNOME Shell (Quick Settings), KDE met een plasmoid; anders het menu van het pictogram. Gedaan in 0.2.1: het menu van het
+  pictogram heeft Quick Share, Gedeelde muis (aan en uit, de opstelling blijft), Mijn scherm uitbreiden naar (per apparaat, met een vinkje als het loopt) en
+  Telefoon zoeken (per telefoon); het menu wordt opnieuw gemaakt als de apparaten veranderen. Nog niet: een echte tegel in GNOME of KDE.
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)

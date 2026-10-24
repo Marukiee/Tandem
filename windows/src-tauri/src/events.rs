@@ -27,6 +27,7 @@ pub fn refresh_devices(app: &AppHandle) {
     let list: Vec<Value> = engine.devices().iter().map(model::device).collect();
     state.data.lock().unwrap().devices = list.clone();
     let _ = app.emit("devices", list);
+    crate::tray::rebuild(app);
 }
 
 fn device(app: &AppHandle, id: &str) -> Option<Value> {

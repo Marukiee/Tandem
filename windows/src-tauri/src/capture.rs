@@ -79,7 +79,7 @@ pub fn is_remote(device: &str) -> bool {
 pub fn configure(app: &AppHandle) {
     let _ = APP.set(app.clone());
     let current = settings::get(app);
-    let wanted = !current.layout.is_empty();
+    let wanted = current.pointer_share && !current.layout.is_empty();
     {
         // With no screen next to this one left, a pointer that is over there comes home.
         let away = INNER.lock().unwrap().remote.is_some();
@@ -413,7 +413,8 @@ mod linux {
 
     /// Starts the capture when there is a screen next to this one, and keeps the barriers where those screens are.
     pub fn configure(app: &AppHandle) {
-        if !supported() || settings::get(app).layout.is_empty() {
+        let current = settings::get(app);
+        if !supported() || !current.pointer_share || current.layout.is_empty() {
             if let Some(capture) = CAPTURE.get() {
                 capture.set_stretches(Vec::new());
             }

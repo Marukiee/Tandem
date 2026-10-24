@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.2.1",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Quick buttons on Linux and Windows",
+      "new": [
+        "The menu of the tray icon has the quick buttons of the Mac: Quick Share, Shared mouse, Extend my screen and Find phone"
+      ]
+    },
+    "nl": {
+      "title": "Snelle knoppen op Linux en Windows",
+      "new": [
+        "Het menu van het pictogram heeft de snelle knoppen van de Mac: Quick Share, Gedeelde muis, Mijn scherm uitbreiden en Telefoon zoeken"
+      ]
+    }
+  },
+  {
     "version": "0.2.0",
     "date": "2026-10-24",
     "en": {

@@ -411,6 +411,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["screenSoundAsk"].as_bool() {
             current.screen_sound_ask = v;
         }
+        if let Some(v) = patch["pointerShare"].as_bool() {
+            current.pointer_share = v;
+        }
         if let Some(v) = patch["keepWhenLidClosed"].as_bool() {
             current.keep_when_lid_closed = v;
         }

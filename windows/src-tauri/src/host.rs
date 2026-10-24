@@ -233,6 +233,8 @@ fn announce(app: &AppHandle, sessions: &Mutex<HashMap<u64, Sharing>>) {
         .map(|(session, s)| json!({ "session": session.to_string(), "peer": s.peer, "name": events::device_name(app, &s.peer), "control": s.control, "extend": s.extend }))
         .collect();
     let _ = app.emit("hosting", list);
+    let extending = sessions.lock().unwrap().values().filter(|s| s.extend).map(|s| s.peer.clone()).collect();
+    crate::tray::set_extending(app, extending);
 }
 
 pub struct Host {

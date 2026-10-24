@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use tauri::image::Image;
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Size, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
@@ -37,20 +37,31 @@ static PINNED: AtomicBool = AtomicBool::new(false);
 static PANEL_CLOSED: AtomicU64 = AtomicU64::new(0);
 
 pub fn build(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", i18n::t(app, "open_tandem"), true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", i18n::t(app, "quit_tandem"), true, None::<&str>)?;
-    let quick_share = crate::quickshare::tray_item(app)?;
-    let menu = Menu::with_items(app, &[&open, &quick_share, &quit])?;
+    let menu = menu(app)?;
     TrayIconBuilder::with_id("tandem")
         .icon(Image::from_bytes(include_bytes!("../icons/tray.png"))?)
         .tooltip("Tandem")
         .menu(&menu)
         .show_menu_on_left_click(false)
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "open" => show_main(app),
-            "quit" => quit_app(app),
-            "quickshare" => crate::quickshare::toggle(app),
-            _ => {}
+        .on_menu_event(|app, event| {
+            let id = event.id.as_ref();
+            match id {
+                "open" => show_main(app),
+                "quit" => quit_app(app),
+                "quickshare" => crate::quickshare::toggle(app),
+                "share-mouse" => {
+                    crate::settings::update(app, |s| s.pointer_share = !s.pointer_share);
+                    crate::capture::configure(app);
+                    rebuild(app);
+                }
+                _ => {
+                    if let Some(device) = id.strip_prefix("extend:") {
+                        extend(app, device);
+                    } else if let Some(device) = id.strip_prefix("ring:") {
+                        ring(app, device);
+                    }
+                }
+            }
         })
         .on_tray_icon_event(|tray, event| {
             if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, position, .. } = event {
@@ -59,6 +70,100 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
         })
         .build(app)?;
     Ok(())
+}
+
+// ---- The menu of the icon ----------------------------------------------------------------
+
+/// The devices this computer shows an extra screen of itself on now (see `host.rs`).
+static EXTENDING: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+/// What the menu was last made from, so it is only made again when something in it changed.
+static MADE_FROM: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+/// The same quick buttons as the Control Center of the Mac: Quick Share, the shared mouse, extending this screen to a device, and
+/// ringing a phone. Windows and GNOME have no place for the quick settings of an app, so they are here.
+fn menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
+    let settings = crate::settings::get(app);
+    let devices = app.state::<AppState>().data.lock().unwrap().devices.clone();
+    let online = |d: &&serde_json::Value| d["online"].as_bool().unwrap_or(false);
+    let has = |d: &serde_json::Value, cap: &str| d["caps"].as_array().is_some_and(|c| c.iter().any(|x| x == cap));
+    let name = |d: &serde_json::Value| d["name"].as_str().unwrap_or("?").to_string();
+    let id = |d: &serde_json::Value| d["id"].as_str().unwrap_or("").to_string();
+
+    let open = MenuItem::with_id(app, "open", i18n::t(app, "open_tandem"), true, None::<&str>)?;
+    let quick_share = crate::quickshare::tray_item(app)?;
+    let mouse = CheckMenuItem::with_id(app, "share-mouse", i18n::t(app, "tray_shared_mouse"), !settings.layout.is_empty(), settings.pointer_share, None::<&str>)?;
+
+    let extending = EXTENDING.lock().unwrap().clone();
+    let extend = Submenu::with_id(app, "extend", i18n::t(app, "tray_extend"), true)?;
+    let mut any = false;
+    for device in devices.iter().filter(online).filter(|d| has(d, "screen.extend.view")) {
+        let on = extending.contains(&id(device));
+        extend.append(&CheckMenuItem::with_id(app, format!("extend:{}", id(device)), name(device), true, on, None::<&str>)?)?;
+        any = true;
+    }
+    if !any {
+        extend.append(&MenuItem::with_id(app, "extend-none", i18n::t(app, "tray_none"), false, None::<&str>)?)?;
+    }
+
+    let find = Submenu::with_id(app, "find", i18n::t(app, "tray_find_phone"), true)?;
+    let mut phones = false;
+    for device in devices.iter().filter(online).filter(|d| d["platform"] == "android") {
+        find.append(&MenuItem::with_id(app, format!("ring:{}", id(device)), name(device), true, None::<&str>)?)?;
+        phones = true;
+    }
+    if !phones {
+        find.append(&MenuItem::with_id(app, "find-none", i18n::t(app, "tray_none"), false, None::<&str>)?)?;
+    }
+
+    let quit = MenuItem::with_id(app, "quit", i18n::t(app, "quit_tandem"), true, None::<&str>)?;
+    let line = PredefinedMenuItem::separator(app)?;
+    let line2 = PredefinedMenuItem::separator(app)?;
+    Menu::with_items(app, &[&open, &line, &quick_share, &mouse, &extend, &find, &line2, &quit])
+}
+
+/// Makes the menu again when the devices, the shared mouse or an extra screen changed.
+pub fn rebuild(app: &AppHandle) {
+    let settings = crate::settings::get(app);
+    let devices = app.state::<AppState>().data.lock().unwrap().devices.clone();
+    let key = format!(
+        "{}{}{:?}{}",
+        settings.pointer_share,
+        settings.layout.is_empty(),
+        EXTENDING.lock().unwrap(),
+        devices.iter().map(|d| format!("{}{}{}{}", d["id"], d["name"], d["online"], d["caps"])).collect::<String>()
+    );
+    {
+        let mut made = MADE_FROM.lock().unwrap();
+        if *made == key {
+            return;
+        }
+        *made = key;
+    }
+    let (Some(tray), Ok(menu)) = (app.tray_by_id("tandem"), menu(app)) else { return };
+    let _ = tray.set_menu(Some(menu));
+}
+
+/// Which devices this computer shows an extra screen on now.
+pub fn set_extending(app: &AppHandle, peers: Vec<String>) {
+    *EXTENDING.lock().unwrap() = peers;
+    rebuild(app);
+}
+
+fn extend(app: &AppHandle, device: &str) {
+    let device = device.to_string();
+    if EXTENDING.lock().unwrap().contains(&device) {
+        crate::live::display_offer_stop(app.clone(), device);
+    } else if let Err(error) = crate::live::display_offer(app.clone(), device) {
+        log::info!("extending to that device did not start: {error:?}");
+    }
+}
+
+fn ring(app: &AppHandle, device: &str) {
+    let Ok(engine) = app.state::<AppState>().engine() else { return };
+    let device = device.to_string();
+    tauri::async_runtime::spawn(async move {
+        let _ = engine.ring(device, true).await;
+    });
 }
 
 // ---- The main window -------------------------------------------------------------------

@@ -62,6 +62,8 @@ pub struct Settings {
     pub screen_sound: String,
     /// With "there": ask, when headphones are in, whether it should come here this time.
     pub screen_sound_ask: bool,
+    /// The shared mouse: the pointer goes over to the screens that are arranged next to this one. Off keeps the arrangement.
+    pub pointer_share: bool,
 }
 
 impl Default for Settings {
@@ -90,6 +92,7 @@ impl Default for Settings {
             sound_delay: "normal".into(),
             screen_sound: "there".into(),
             screen_sound_ask: true,
+            pointer_share: true,
             auto_update: true,
             dismissed_update: String::new(),
         }
