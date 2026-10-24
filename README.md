@@ -21,19 +21,19 @@ It started as the KDE Connect alternative for people on a Mac, and grew into Con
 
 ## Highlights
 
-- 🪟 **Any device as an extra screen, several at once.** Your Mac's screen extends to a Linux device on the left and
+- **Any device as an extra screen, several at once.** Your Mac's screen extends to a Linux device on the left and
   an Android phone on the right, each at its real sharpness. Tandem even **finds which side a device stands on by
   sound**: the computer plays a short sweep from its left and right speaker and the other device listens.
-- 🖱️ **One mouse and keyboard for all your computers.** Push the pointer over the edge of the screen and it is on the
+- **One mouse and keyboard for all your computers.** Push the pointer over the edge of the screen and it is on the
   next computer. Drag a file along, and on a Mac click where it should go, into a folder or a field of a website.
-- 📱 **Your phone on your computer.** See its screen in a window and use it live with mouse and keyboard, use its
+- **Your phone on your computer.** See its screen in a window and use it live with mouse and keyboard, use its
   camera, ring it, browse its files, and get its notifications and calls with replies from your desktop.
-- 📋 **One clipboard.** Copy on one device, paste on the other, with a history. Passwords from a password manager stay out.
-- 📶 **Never offline.** No Wi-Fi? Tandem asks your phone for its hotspot by itself, and keeps clipboard and
+- **One clipboard.** Copy on one device, paste on the other, with a history. Passwords from a password manager stay out.
+- **Never offline.** No Wi-Fi? Tandem asks your phone for its hotspot by itself, and keeps clipboard and
   notifications going over Bluetooth when there is no network at all.
-- 🔊 **Sound where you want it.** Your Mac plays through your phone, your phone through your Mac, and the sound of a
+- **Sound where you want it.** Your Mac plays through your phone, your phone through your Mac, and the sound of a
   screen you look at comes along, with a question when headphones are in.
-- ✅ **What works, at a glance.** Every device says what it is ready for and what it still needs (a permission, a
+- **What works, at a glance.** Every device says what it is ready for and what it still needs (a permission, a
   setting), and one button opens that setting on that device.
 
 ## Apple's Continuity, and Tandem
@@ -54,12 +54,11 @@ It started as the KDE Connect alternative for people on a Mac, and grew into Con
 
 ## Everything else
 
-- 📤 **Share with one tap.** Take a screenshot, tap share, and all your devices are in the share menu
-- 🖥️ **Remote desktop** between phone, Mac, Windows and Linux, asked for and allowed per device
-- 🎛️ **Phone as trackpad, keyboard and remote**, with adjustable speed
-- 🖧 **SSH terminal**, your phone's files in Finder and in the Files app, Tailscale when it is needed
-- 👪 **Guests**: family and friends can join without their clipboard coming in
-- 🔁 **Updates without uninstalling**. The apps look for updates themselves
+- **Share with one tap.** Take a screenshot, tap share, and all your devices are in the share menu
+- **Remote desktop** between phone, Mac, Windows and Linux, asked for and allowed per device
+- **Phone as trackpad, keyboard and remote**, with adjustable speed
+- **SSH terminal**, your phone's files in Finder and in the Files app, Tailscale when it is needed
+- **Updates without uninstalling**. The apps look for updates themselves
 
 ## Install
 
