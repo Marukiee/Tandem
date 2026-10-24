@@ -185,13 +185,18 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
      Volledige schijftoegang (`~/Library/DoNotDisturb` is afgeschermd) of de Focus-status-API (vraagt een recht dat mogelijk een profiel van Apple
      nodig heeft, eerst proberen). Mark vroeg om een betere weg dan een zelfgemaakte opdracht.
   9. Een tablet met pen als tekentablet voor de Mac (druk en kanteling, zoals de Apple Pencil bij Sidecar). Haalbaar met de invoer van een tweede scherm.
-  10. Bellen met het geluid op de computer (microfoon en luidspreker van de Mac). Via Bluetooth kan het niet (macOS geeft het gespreksgeluid niet aan
-      een app), maar wel via de telefoon zelf: Android 13+ heeft `AudioManager.getCallDownlinkExtractionAudioRecord` en
-      `getCallUplinkInjectionAudioTrack` (systeem-API, recht `CALL_AUDIO_INTERCEPTION`, dat de shell heeft en dus Shizuku). Of het toestel het kan
-      zegt `isPstnCallAudioInterceptable`. Terugvallen: `VOICE_DOWNLINK` opnemen met `CAPTURE_AUDIO_OUTPUT` (zoals scrcpy) en afspelen naar het
-      apparaat `TYPE_TELEPHONY` met `MODIFY_PHONE_STATE` (in-call music). Het geluid gaat dan over wifi naar Mac, Linux of Windows. Eerst een test
-      in de app die zegt wat het toestel kan. Gevraagd door Mark ("kan de mac echt helemaal niet met een omweg bellen?").
+  10. Bellen met het geluid op de computer (microfoon en luidspreker van de Mac). Via Bluetooth kan het op de Mac niet (macOS geeft het
+      gespreksgeluid niet aan een app). De weg via de telefoon zelf (de systeem-API's voor het afvangen van gespreksgeluid, met de rechten van de
+      shell via Shizuku) is niet gebouwd: de agent die het zou bouwen stopte (2026-10-24) omdat een veiligheidscontrole het afvangen van het
+      geluid van een gesprek met geleende rechten tegenhield. Wat wel kan zonder die weg: Linux als Bluetooth-headset van de telefoon (PipeWire
+      met de rol `hfp_hf`) en Windows via Telefoonkoppeling. Nog uit te zoeken of Tandem dat op Linux kan aanzetten.
   11. AirDrop zelf: niet te bouwen (zie het punt over AirDrop hierboven).
+- Slepen over de rand zonder vak (gevraagd 2026-10-24: "dat sleep vak is lelijk", de muis bleef haken aan de rand van Linux). Gedaan in 0.2.8:
+  het vak op de Mac is weg; op Linux vangt een onzichtbare strook van de X-server (ook onder Wayland, getest op GNOME 50) wat er tegen de rand
+  wordt gesleept zolang de knop ingedrukt is, en leest het bestand al tijdens het slepen; de sleep daar wordt afgebroken, de muis gaat met de
+  knop nog ingedrukt terug naar de Mac en daar begint een echte sleep, zodat je loslaat waar je wilt. Windows doet hetzelfde met een venster
+  van twee punten breed. Op Linux zelf loslaten in een websiteveld kan niet: GNOME breekt een sleep af die een app zelf begint (getest). De
+  map naar voren halen mag een app op GNOME ook niet (getest), daarom na een sleep een melding met "Toon in map" die dat wel mag.
 - Sturen met Tandem vanuit de bestandsbeheerder op Linux en Windows, zoals de deelknop op de Mac (gevraagd 2026-10-24): rechtsklik op bestanden en
   kies het apparaat. Linux: Bestanden (Nautilus, een script of een extensie als `nautilus-python` er is), Dolphin (servicemenu), Nemo (actie), Thunar
   (eigen actie). Windows: Verkenner "Sturen naar" en een eigen regel in het menu. Alles roept de draaiende app aan met de bestanden.

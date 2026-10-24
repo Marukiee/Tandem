@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.2.8",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Drag over the edge, both ways",
+      "new": [
+        "Drag a file from Linux or Windows to your Mac and let go wherever you want",
+        "Universal mouse: scroll your phone with two fingers on the trackpad",
+        "Mac: the clipboard page in Liquid Glass, clearer buttons"
+      ]
+    },
+    "nl": {
+      "title": "Slepen over de rand, beide kanten op",
+      "new": [
+        "Sleep een bestand van Linux of Windows naar je Mac en laat los waar je wilt",
+        "Universele muis: scroll op je telefoon met twee vingers op het trackpad",
+        "Mac: de klembordpagina in Liquid Glass, duidelijkere knoppen"
+      ]
+    }
+  },
+  {
     "version": "0.2.7",
     "date": "2026-10-24",
     "en": {

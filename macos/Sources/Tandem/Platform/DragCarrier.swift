@@ -17,6 +17,7 @@ final class DragCarrier {
     private var panel: CarrierPanel?
     private var follow: Timer?
     private var giveUp: Task<Void, Never>?
+    private var pickUp: Task<Void, Never>?
     /// The press that started the drag, so its release is let through and nothing else is taken for one.
     private var dragging = false
     /// Escape on this Mac's own keyboard, in another app or in Tandem.
@@ -35,7 +36,26 @@ final class DragCarrier {
         show()
         // The pointer may still be over there: it has a while to come, then a while for the press.
         restartGiveUp(seconds: 30)
+        pickUpIfHeld()
         return true
+    }
+
+    /// A drag that came over the edge from that computer with the button of this Mac's mouse still down: the drag goes on here at once,
+    /// so the files are let go wherever the button comes up, not with a press later. The press is played onto the panel under the
+    /// pointer, which starts a real drag of the system; the button the person holds ends it. Files of one drag come one by one, so it
+    /// waits a moment for the rest, which a drag cannot take in once it has started.
+    private func pickUpIfHeld() {
+        pickUp?.cancel()
+        pickUp = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(150))
+            guard let self, !Task.isCancelled, self.carrying, !self.dragging, NSEvent.pressedMouseButtons & 1 != 0 else { return }
+            let share = PointerShare.shared
+            guard share.remote == nil, share.controlledBy == nil else { return }
+            self.moveToPointer()
+            let at = CGEvent(source: nil)?.location ?? .zero
+            CGEvent(mouseEventSource: CGEventSource(stateID: .hidSystemState), mouseType: .leftMouseDown, mouseCursorPosition: at, mouseButton: .left)?
+                .post(tap: .cgSessionEventTap)
+        }
     }
 
     /// A press is about to be played here for the computer that uses the pointer: the panel is put exactly under the pointer first, in
@@ -103,6 +123,8 @@ final class DragCarrier {
         follow = nil
         giveUp?.cancel()
         giveUp = nil
+        pickUp?.cancel()
+        pickUp = nil
         panel?.orderOut(nil)
         panel = nil
         files = []

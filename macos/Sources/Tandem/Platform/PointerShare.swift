@@ -652,7 +652,8 @@ final class PointerShare {
             if remote?.device == device {
                 // Back at once: that computer did not take it. One that says how it is (`pointer.ready`) is left alone until it says it can
                 // take the pointer; for one that does not, say why it may be, or the pointer just bounces and nothing explains it.
-                let gaveBack = Date().timeIntervalSince(wentOverAt) < 1.5
+                // A pointer that comes back with the button held carries a drag that was handed back over the edge, not a refusal.
+                let gaveBack = Date().timeIntervalSince(wentOverAt) < 1.5 && NSEvent.pressedMouseButtons & 1 == 0
                 PointerLog.write("\(model.device(device)?.name ?? device) says the pointer is back (after \(String(format: "%.1f", Date().timeIntervalSince(wentOverAt))) s)")
                 comeBack(along: CGFloat(along))
                 if gaveBack {

@@ -106,6 +106,85 @@ pub mod inputcapture;
 mod x11grab;
 #[cfg(target_os = "linux")]
 mod clipwatch;
+/// Linux: a strip at the edge of the screen that catches a drag, to hand it on to the computer there.
+#[cfg(target_os = "linux")]
+pub mod edgecatch;
+
+/// A side of the screen.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Side {
+    Left,
+    Right,
+    Top,
+    Bottom,
+}
+
+/// The local files in a `text/uri-list` (what a drag or a copy of files carries): one URI a line, comments start with `#`.
+pub fn uri_list_paths(list: &str) -> Vec<String> {
+    list.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .filter_map(|line| line.strip_prefix("file://"))
+        // A host may come before the path (`file://host/path`); the path starts at the first slash.
+        .filter_map(|rest| rest.find('/').map(|at| &rest[at..]))
+        .map(percent_decode)
+        .collect()
+}
+
+/// A `file://` URI for a path, with what may not stand in a URI escaped.
+pub fn file_uri(path: &str) -> String {
+    let mut uri = String::from("file://");
+    for byte in path.bytes() {
+        if byte.is_ascii_alphanumeric() || b"/-._~".contains(&byte) {
+            uri.push(byte as char);
+        } else {
+            uri.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    uri
+}
+
+fn percent_decode(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(value) = u8::from_str_radix(&text[i + 1..i + 3], 16) {
+                out.push(value);
+                i += 3;
+                continue;
+            }
+        }
+        out.push(bytes[i]);
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+#[cfg(test)]
+mod uri_tests {
+    use super::*;
+
+    #[test]
+    fn a_uri_list_gives_the_paths_of_its_files() {
+        let list = "# from Files\r\nfile:///home/Mark/Downloads/20260923-DSC03038%20(1).jpg\r\nfile://laptop/tmp/a%25b.txt\r\nhttps://example.com/x\r\n";
+        assert_eq!(uri_list_paths(list), vec!["/home/Mark/Downloads/20260923-DSC03038 (1).jpg".to_string(), "/tmp/a%b.txt".to_string()]);
+    }
+
+    #[test]
+    fn a_path_becomes_a_uri_and_back() {
+        let path = "/home/Mark/Downloads/foto (1) & co.jpg";
+        assert_eq!(file_uri(path), "file:///home/Mark/Downloads/foto%20%281%29%20%26%20co.jpg");
+        assert_eq!(uri_list_paths(&file_uri(path)), vec![path.to_string()]);
+    }
+
+    #[test]
+    fn a_broken_escape_is_kept_as_it_is() {
+        assert_eq!(uri_list_paths("file:///tmp/100%"), vec!["/tmp/100%".to_string()]);
+        assert_eq!(uri_list_paths("file:///tmp/%zz"), vec!["/tmp/%zz".to_string()]);
+    }
+}
 #[cfg(not(windows))]
 mod imp {
     #[cfg_attr(target_os = "linux", allow(unused_imports))]

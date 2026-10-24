@@ -63,6 +63,8 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "display_on") => "A screen of {0} is shown here now. Alt+Tab brings you back, and Stop in Tandem ends it.",
         ("nl", "drop_on_desktop") => "{0} van {1} staat op het bureaublad",
         (_, "drop_on_desktop") => "{0} from {1} is on your desktop",
+        ("nl", "show_in_folder") => "Toon in map",
+        (_, "show_in_folder") => "Show in folder",
         ("nl", "drop_in_downloads") => "{0} van {1} staat in je downloads",
         (_, "drop_in_downloads") => "{0} from {1} is in your downloads",
         ("nl", "insert_failed") => "Er is niets aangekomen van {0}.",

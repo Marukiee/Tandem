@@ -121,13 +121,33 @@ pub fn shared_ended(app: &AppHandle) {
 
 fn land(app: &AppHandle, from: &str, name: &str, path: &Path) {
     // Windows puts it on the desktop, where the drop was. Linux has no desktop that shows files (GNOME has none), so it goes to the
-    // downloads folder. Either way the folder opens with the file selected, so it is found at once and can be dragged on from there.
+    // downloads folder.
     let folder = if cfg!(windows) { app.path().desktop_dir().unwrap_or_else(|_| PathBuf::from(".")) } else { crate::settings::download_dir(app) };
     let placed = place(path, &folder);
     let body = i18n::t2(app, if cfg!(windows) { "drop_on_desktop" } else { "drop_in_downloads" }, name, from);
-    events::toast(app, "Tandem", &body);
-    if let Err(error) = tauri_plugin_opener::reveal_item_in_dir(&placed) {
-        log::info!("the folder of {} could not be shown: {error}", placed.display());
+    // On Linux the desktop does not let an app bring the file manager to the front by itself: it only says the folder is ready, behind
+    // the other windows. So one notice says where the file is, and a press on it opens the folder in front, with the file selected.
+    #[cfg(target_os = "linux")]
+    {
+        let shown = placed.clone();
+        let label = i18n::t(app, "show_in_folder");
+        let buttons = [("default", ""), ("show", label.as_str())];
+        let told = tandem_winsys::notify::tell("Tandem", &body, &buttons, move |key, token| {
+            if key == "default" || key == "show" {
+                tandem_winsys::notify::show_in_folder(&shown, token);
+            }
+        });
+        if told.is_none() {
+            events::toast(app, "Tandem", &body);
+        }
+    }
+    // Windows does bring Explorer to the front, so the folder opens at once with the file selected.
+    #[cfg(not(target_os = "linux"))]
+    {
+        events::toast(app, "Tandem", &body);
+        if let Err(error) = tauri_plugin_opener::reveal_item_in_dir(&placed) {
+            log::info!("the folder of {} could not be shown: {error}", placed.display());
+        }
     }
 }
 

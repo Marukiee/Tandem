@@ -120,7 +120,12 @@ pub fn run() {
             });
             // Files that came over with a drag are put down when the button of the shared mouse comes up.
             let landing_app = handle.clone();
-            input::on_left_up(move || drag::flush(&landing_app));
+            input::on_left_up(move || {
+                edge::left_up();
+                drag::flush(&landing_app)
+            });
+            let catching_app = handle.clone();
+            input::on_left_down(move || edge::left_down(&catching_app));
             engine::start(handle.clone());
             capture::configure(&handle);
             // Which decoder shows a second screen best here, found once in the background.

@@ -31,6 +31,9 @@ enum Msg {
     ReleaseAll,
     /// Try to get the desktop to take input again (it was refused or the question went unanswered).
     Retry,
+    /// A drag here ran into the edge towards the computer that has the pointer, and its files go there: the drag here is called off
+    /// and the pointer goes back with the button still down over there.
+    HandOver,
 }
 
 static WORKER: OnceLock<Mutex<mpsc::Sender<Msg>>> = OnceLock::new();
@@ -180,6 +183,17 @@ fn changed(now: Option<(String, Edge)>) {
 }
 
 static LEFT_UP: OnceLock<Box<dyn Fn() + Send + Sync>> = OnceLock::new();
+static LEFT_PRESSED: OnceLock<Box<dyn Fn() + Send + Sync>> = OnceLock::new();
+
+/// What to do when the left button of the shared mouse goes down (a drag may start, so the edge gets ready to catch it).
+pub fn on_left_down(told: impl Fn() + Send + Sync + 'static) {
+    let _ = LEFT_PRESSED.set(Box::new(told));
+}
+
+/// See `Msg::HandOver`.
+pub fn shared_hand_over() {
+    let _ = worker().lock().unwrap().send(Msg::HandOver);
+}
 
 /// What to do when the left button of the shared mouse comes up (files that came over with a drag are put down then).
 pub fn on_left_up(told: impl Fn() + Send + Sync + 'static) {
@@ -682,6 +696,28 @@ fn run(rx: mpsc::Receiver<Msg>) {
                 }
                 continue;
             }
+            Msg::HandOver => {
+                let Some(share) = SHARED.lock().unwrap().take() else { continue };
+                // Escape first, so the drag ends without a drop at the edge, then the button comes up.
+                let _ = enigo.key(Key::Escape, Direction::Click);
+                std::thread::sleep(Duration::from_millis(40));
+                for b in buttons.drain() {
+                    let _ = enigo.button(button(b), Direction::Release);
+                }
+                LEFT_DOWN.store(false, Ordering::Relaxed);
+                let along = match (tracker.as_ref().map(Controlled::at), screen_size(&enigo)) {
+                    (Some((x, y)), Some((w, h))) => match share.entered_by {
+                        Edge::Left | Edge::Right => y / (h as f32 - 1.0).max(1.0),
+                        Edge::Top | Edge::Bottom => x / (w as f32 - 1.0).max(1.0),
+                    },
+                    _ => 0.5,
+                };
+                tracker = None;
+                carried = None;
+                changed(None);
+                say(share.device, TandemPointerShare::Leave { along: along.clamp(0.0, 1.0) });
+                continue;
+            }
             Msg::Shared(other) => Msg::Input(other),
             other => other,
         };
@@ -699,7 +735,7 @@ fn run(rx: mpsc::Receiver<Msg>) {
                 }
             }
             // Dealt with above.
-            Msg::Shared(_) | Msg::Enter { .. } | Msg::Carry(_) | Msg::End | Msg::Retry => {}
+            Msg::Shared(_) | Msg::Enter { .. } | Msg::Carry(_) | Msg::End | Msg::Retry | Msg::HandOver => {}
             Msg::Media(media) => match media {
                 TandemMediaInput::PointerAbs { x, y } => {
                     if let Some((width, height)) = screen_size(&enigo) {
@@ -794,6 +830,11 @@ fn run(rx: mpsc::Receiver<Msg>) {
                     }
                     if b == 0 {
                         LEFT_DOWN.store(down, Ordering::Relaxed);
+                        if down {
+                            if let Some(told) = LEFT_PRESSED.get() {
+                                told();
+                            }
+                        }
                         if !down {
                             LEFT_UP_HERE.store(true, Ordering::Relaxed);
                             // What was dragged over is let go where the pointer is.
