@@ -126,6 +126,18 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   seconden niets: de map zoals voorheen. Nog nergens gezien. Niet mogelijk: Linux als ontvanger onder Wayland (een app kan geen sleep beginnen zonder
   klik op zijn eigen venster en geen venster onder de aanwijzer zetten), daar blijft het de map. Windows als ontvanger kan op dezelfde manier als de Mac
   (een klein venster onder de aanwijzer en `DoDragDrop`), nog niet gebouwd.
+- Mac: na een update mocht Tandem niet meer op het lokale netwerk (gezien 2026-10-24 na 0.1.97: "No route to host" naar Linux en telefoon in het
+  systeemlogboek, Linux en Mac vonden elkaar niet). Oplossing voor de persoon: Privacy en beveiliging, Lokaal netwerk, Tandem uit en aan. Te doen: het
+  herkennen in de app (een `NWBrowser` op `_tandem._udp` die wacht met `kDNSServiceErr_PolicyDenied`) en het zeggen, in Wat werkt en als melding, met een
+  knop naar die pagina; en uitzoeken waarom het bij een update wegvalt. Vermoeden: zonder Team ID kent macOS de app aan de UUID's van zijn programma's (de
+  hoofdapp en de twee extensies, `com.apple.networkextension.uuidcache.plist`), en die zijn bij elke build nieuw. Mogelijke oplossing: een vaste LC_UUID
+  in de build zetten (gevolg: de berichten in het systeemlogboek kunnen verkeerd gelezen worden), of telkens na een update zelf vragen.
+- Android: een tegel in de snelle instellingen om de muis van een computer te ontvangen aan en uit te zetten, zoals op de Mac (gevraagd 2026-10-24).
+  En de melding op de Mac "did not take the pointer" moet zeggen wat er uit staat (de schakelaar op de telefoon of de toegankelijkheidsdienst), met
+  een knop "Open op telefoon": de telefoon kan dat melden als functie `pointer` in Wat werkt.
+- Windows en Linux: dezelfde snelle knoppen als het Controlecentrum van de Mac (Quick Share, Scherm uitbreiden, Gedeelde muis, Telefoon zoeken), gevraagd
+  2026-10-24. Windows 11 laat apps niets aan de snelle instellingen toevoegen: het menu van het pictogram in het systeemvak en een jumplist. Linux: GNOME
+  alleen met een extensie van GNOME Shell (Quick Settings), KDE met een plasmoid; anders het menu van het pictogram.
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)
