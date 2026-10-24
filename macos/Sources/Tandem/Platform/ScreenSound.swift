@@ -132,16 +132,16 @@ private struct SoundPromptView: View {
                     ScreenSound.ask(device.id, on: true)
                     close()
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.tandemGlassProminent)
                 .tint(Palette.indigo)
                 Button("Always here") {
                     UserDefaults.standard.set("here", forKey: ScreenSound.whereKey)
                     ScreenSound.ask(device.id, on: true)
                     close()
                 }
-                .buttonStyle(.glass)
+                .buttonStyle(.tandemGlass)
                 Spacer(minLength: 0)
-                Button("Leave it there", action: close).buttonStyle(.glass)
+                Button("Leave it there", action: close).buttonStyle(.tandemGlass)
             }
             .controlSize(.large)
         }

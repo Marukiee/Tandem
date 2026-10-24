@@ -572,7 +572,7 @@ struct ClipboardPanelView: View {
                 .multilineTextAlignment(.center)
             if !history.enabled {
                 Button("Turn on") { history.enabled = true; model.rebuild() }
-                    .buttonStyle(.glassProminent)
+                    .buttonStyle(.tandemGlassProminent)
                     .tint(Palette.indigo)
                     .controlSize(.small)
                     .padding(.top, 4)
@@ -665,7 +665,7 @@ struct ClipboardPanelView: View {
                     }
                     .padding(.horizontal, 6)
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.tandemGlassProminent)
                 .tint(Palette.indigo)
             }
             .controlSize(.large)

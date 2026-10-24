@@ -134,7 +134,7 @@ struct HotspotSetupSheet: View {
                 Button(step == steps - 1 ? "Done" : "Next") {
                     if step == steps - 1 { auto = true; dismiss() } else { withAnimation(.tandem) { step += 1 } }
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.tandemGlassProminent)
                 .tint(Palette.indigo)
                 .keyboardShortcut(.defaultAction)
                 .disabled(!canContinue)
@@ -213,7 +213,7 @@ struct HotspotSetupSheet: View {
                 if reading { HStack(spacing: 8) { PillSpinner(size: 16); Text("Reading the password…") } }
                 else { Label("Use \(current ?? ssid)", systemImage: "wifi") }
             }
-            .buttonStyle(.glass)
+            .buttonStyle(.tandemGlass)
             .disabled(reading || (current ?? ssid).isEmpty)
             if readFailed {
                 Text("macOS did not hand over the password. Type it below.").font(.callout).foregroundStyle(.secondary)

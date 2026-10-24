@@ -161,26 +161,26 @@ private struct QuickShareCard: View {
                         NSWorkspace.shared.open(link)
                         share.dismiss(item.id)
                     }
-                    .buttonStyle(.glass)
+                    .buttonStyle(.tandemGlass)
                 } else if !(item.saved ?? []).isEmpty {
                     Button("Show in Finder") {
                         NSWorkspace.shared.activateFileViewerSelecting((item.saved ?? []).map { URL(fileURLWithPath: $0) })
                         share.dismiss(item.id)
                     }
-                    .buttonStyle(.glass)
+                    .buttonStyle(.tandemGlass)
                 }
                 Spacer(minLength: 0)
-                Button("Done") { share.dismiss(item.id) }.buttonStyle(.glassProminent).tint(Palette.indigo)
+                Button("Done") { share.dismiss(item.id) }.buttonStyle(.tandemGlassProminent).tint(Palette.indigo)
             } else if item.failure != nil {
                 Spacer(minLength: 0)
-                Button("Close") { share.dismiss(item.id) }.buttonStyle(.glass)
+                Button("Close") { share.dismiss(item.id) }.buttonStyle(.tandemGlass)
             } else if item.accepted {
                 Spacer(minLength: 0)
-                Button("Cancel") { share.decline(item.id) }.buttonStyle(.glass)
+                Button("Cancel") { share.decline(item.id) }.buttonStyle(.tandemGlass)
             } else {
-                Button("Decline") { share.decline(item.id) }.buttonStyle(.glass)
+                Button("Decline") { share.decline(item.id) }.buttonStyle(.tandemGlass)
                 Spacer(minLength: 0)
-                Button("Accept") { share.accept(item.id) }.buttonStyle(.glassProminent).tint(Palette.indigo)
+                Button("Accept") { share.accept(item.id) }.buttonStyle(.tandemGlassProminent).tint(Palette.indigo)
             }
         }
         .controlSize(.large)

@@ -272,7 +272,7 @@ struct LiveView: View {
                 .padding(.horizontal, 4)
                 .frame(height: 20)
         }
-        .buttonStyle(.glass)
+        .buttonStyle(.tandemGlass)
         .buttonBorderShape(.capsule)
         .controlSize(.large)
         .help("Stop showing this screen")
@@ -488,10 +488,10 @@ private struct StateCard: View {
             if primary != nil || secondary != nil {
                 HStack(spacing: 10) {
                     if let secondary {
-                        Button(secondary.0, action: secondary.1).buttonStyle(.glass)
+                        Button(secondary.0, action: secondary.1).buttonStyle(.tandemGlass)
                     }
                     if let primary {
-                        Button(primary.0, action: primary.1).buttonStyle(.glassProminent).tint(Palette.indigo)
+                        Button(primary.0, action: primary.1).buttonStyle(.tandemGlassProminent).tint(Palette.indigo)
                     }
                 }
                 .controlSize(.large)

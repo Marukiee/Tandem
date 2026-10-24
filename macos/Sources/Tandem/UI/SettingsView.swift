@@ -184,7 +184,7 @@ private struct GeneralSettings: View {
                 if needsRestart {
                     LabeledContent {
                         Button("Restart now") { model.relaunch() }
-                            .buttonStyle(.glassProminent)
+                            .buttonStyle(.tandemGlassProminent)
                             .tint(Palette.indigo)
                             .controlSize(.small)
                     } label: {
@@ -604,7 +604,7 @@ private struct UpdateSettings: View {
                                 .frame(maxHeight: 90)
                         }
                         Button("Update and restart") { Task { await updater.install() } }
-                            .buttonStyle(.glassProminent)
+                            .buttonStyle(.tandemGlassProminent)
                             .tint(Palette.indigo)
                     }
                 case let .downloading(_, progress):

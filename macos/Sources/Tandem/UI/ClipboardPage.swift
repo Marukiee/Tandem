@@ -93,7 +93,7 @@ struct ClipboardPage: View {
                 Text("Tandem is not keeping what you copy. Turn it on to find a copy again later.")
             } actions: {
                 Button("Turn on") { history.enabled = true }
-                    .buttonStyle(.glassProminent)
+                    .buttonStyle(.tandemGlassProminent)
                     .tint(Palette.indigo)
             }
             .frame(maxWidth: .infinity, minHeight: 260)

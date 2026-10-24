@@ -365,7 +365,7 @@ struct ClipPreview: View {
                         Label("Open in browser", systemImage: "arrow.up.right")
                             .font(.callout.weight(.medium))
                     }
-                    .buttonStyle(.glass)
+                    .buttonStyle(.tandemGlass)
                     .controlSize(.regular)
                     .padding(.top, 2)
                 }

@@ -114,12 +114,12 @@ private struct ScreenPromptView: View {
                 }
                 HStack(spacing: 8) {
                     Button("Deny") { host.answer(.deny) }
-                        .buttonStyle(.glass)
+                        .buttonStyle(.tandemGlass)
                     Spacer(minLength: 0)
                     Button("Allow once") { host.answer(.allowOnce) }
-                        .buttonStyle(.glass)
+                        .buttonStyle(.tandemGlass)
                     Button("Always allow") { host.answer(.always) }
-                        .buttonStyle(.glassProminent)
+                        .buttonStyle(.tandemGlassProminent)
                 }
                 .controlSize(.large)
             }
@@ -145,7 +145,7 @@ private struct ScreenPromptView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Button("Allow…") { host.requestAccessibility() }
-                        .buttonStyle(.glass)
+                        .buttonStyle(.tandemGlass)
                         .controlSize(.small)
                 }
             }
@@ -174,11 +174,11 @@ private struct ScreenIndicatorView: View {
                     .lineLimit(1)
                 if running.offered {
                     Button(running.control ? "Pause control" : "Resume control") { host.setControl(!running.control) }
-                        .buttonStyle(.glass)
+                        .buttonStyle(.tandemGlass)
                         .controlSize(.small)
                 }
                 Button("Stop") { host.stopCurrent() }
-                    .buttonStyle(.glassProminent)
+                    .buttonStyle(.tandemGlassProminent(tint: Palette.urgent))
                     .tint(Palette.urgent)
                     .controlSize(.small)
             }
@@ -253,7 +253,7 @@ struct ScreenSettings: View {
                         Label("Restart Tandem so your other devices can see that this Mac is ready.", systemImage: "arrow.clockwise")
                             .font(.callout)
                         Spacer(minLength: 8)
-                        Button("Restart") { host.relaunch() }.buttonStyle(.glassProminent).controlSize(.small)
+                        Button("Restart") { host.relaunch() }.buttonStyle(.tandemGlassProminent).controlSize(.small)
                     }
                 }
             }
@@ -280,7 +280,7 @@ struct ScreenSettings: View {
                     HStack {
                         Label(running.control ? "\(running.name) is controlling this Mac" : "\(running.name) is watching this Mac", systemImage: "dot.radiowaves.left.and.right")
                         Spacer(minLength: 8)
-                        Button("Stop") { host.stopCurrent() }.buttonStyle(.glassProminent).tint(Palette.urgent).controlSize(.small)
+                        Button("Stop") { host.stopCurrent() }.buttonStyle(.tandemGlassProminent(tint: Palette.urgent)).tint(Palette.urgent).controlSize(.small)
                     }
                 }
             }
@@ -375,8 +375,8 @@ struct ScreenSettings: View {
                 Text(why).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if !allowed {
                     HStack(spacing: 8) {
-                        Button("Allow", action: allow).buttonStyle(.glassProminent).controlSize(.small)
-                        Button("Open System Settings") { host.openSettings(pane: pane) }.buttonStyle(.glass).controlSize(.small)
+                        Button("Allow", action: allow).buttonStyle(.tandemGlassProminent).controlSize(.small)
+                        Button("Open System Settings") { host.openSettings(pane: pane) }.buttonStyle(.tandemGlass).controlSize(.small)
                     }
                     .padding(.top, 2)
                 }

@@ -571,9 +571,9 @@ extension View {
         if InsertHUDText.flat {
             buttonStyle(FlatGlassButtonStyle(prominent: prominent))
         } else if prominent {
-            buttonStyle(.glassProminent).tint(Palette.indigo)
+            buttonStyle(.tandemGlassProminent)
         } else {
-            buttonStyle(.glass)
+            buttonStyle(.tandemGlass)
         }
     }
 }

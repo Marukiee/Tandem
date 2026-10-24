@@ -224,7 +224,7 @@ struct ShortcutRecorder: View {
                 .frame(minWidth: 120)
                 .contentTransition(.interpolate)
         }
-        .buttonStyle(.glass)
+        .buttonStyle(.tandemGlass)
         .animation(.tandemFade, value: recording)
         .onDisappear { if recording { stop() } }
     }

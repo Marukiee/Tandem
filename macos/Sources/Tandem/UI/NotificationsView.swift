@@ -86,7 +86,7 @@ private struct NotificationRow: View {
                         Label("Copy code \(code)", systemImage: "doc.on.doc")
                             .font(.caption.weight(.semibold))
                     }
-                    .buttonStyle(.glass)
+                    .buttonStyle(.tandemGlass)
                     .controlSize(.small)
                     .padding(.top, 4)
                 }

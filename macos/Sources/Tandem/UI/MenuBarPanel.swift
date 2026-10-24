@@ -93,7 +93,7 @@ struct MenuBarPanel: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button("Pair a device") { openMain(pairing: true) }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.tandemGlassProminent)
                 .tint(Palette.indigo)
                 .padding(.top, 2)
         }
@@ -118,7 +118,7 @@ struct MenuBarPanel: View {
             Spacer(minLength: 8)
 
             Button("Open Tandem") { openMain(pairing: false) }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.tandemGlassProminent)
                 .tint(Palette.indigo)
                 .hoverSwell(1.04)
         }
@@ -209,11 +209,11 @@ private struct MenuHotspot: View {
             if let phone = model.hotspotPhone {
                 if case .connected = status {
                     Button("Stop") { model.hotspot.stop(phone.id) }
-                        .buttonStyle(.glass)
+                        .buttonStyle(.tandemGlass)
                         .controlSize(.small)
                 } else if case .failed = status {
                     Button("Try again") { model.hotspot.requestNow(phone.id) }
-                        .buttonStyle(.glass)
+                        .buttonStyle(.tandemGlass)
                         .controlSize(.small)
                 }
             }

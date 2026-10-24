@@ -78,13 +78,13 @@ private struct SidePromptView: View {
             HStack(spacing: 8) {
                 if device.caps.contains("side.listen") {
                     Button(finding ? "Listening…" : "Find automatically") { find() }
-                        .buttonStyle(.glassProminent)
+                        .buttonStyle(.tandemGlassProminent)
                         .tint(Palette.indigo)
                         .disabled(finding)
                 }
                 Spacer(minLength: 0)
-                Button("Left") { choose("left") }.buttonStyle(.glass).disabled(finding)
-                Button("Right") { choose("right") }.buttonStyle(.glass).disabled(finding)
+                Button("Left") { choose("left") }.buttonStyle(.tandemGlass).disabled(finding)
+                Button("Right") { choose("right") }.buttonStyle(.tandemGlass).disabled(finding)
             }
             .controlSize(.large)
             Toggle("Remember for this device", isOn: $remember)

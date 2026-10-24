@@ -30,12 +30,8 @@ struct GlassActionButton: View {
     var wide = false
     let action: () -> Void
 
-    @Environment(\.isEnabled) private var isEnabled
-    @Environment(\.hoverEnabled) private var hoverEnabled
-    @LocalState private var hovering = false
-
     var body: some View {
-        let button = Button(action: action) {
+        Button(action: action) {
             Label(title, systemImage: symbol)
                 .font(.callout.weight(.semibold))
                 // A button that turns on or off changes its symbol and words: the symbol morphs, and the words fade across while the
@@ -43,23 +39,68 @@ struct GlassActionButton: View {
                 .contentTransition(.symbolEffect(.replace))
                 .frame(maxWidth: wide ? .infinity : nil)
         }
-        if prominent {
-            // The filled button shows nothing of its own under the pointer, unlike the glass ones next to it, so it lifts a little and
-            // lights up, the way the others answer.
-            let lit = hovering && isEnabled && hoverEnabled
-            button
-                .buttonStyle(.glassProminent)
-                .tint(Palette.indigo)
-                .controlSize(.large)
-                .brightness(lit ? 0.07 : 0)
-                .scaleEffect(lit ? 1.025 : 1)
-                .shadow(color: Palette.indigo.opacity(lit ? 0.35 : 0), radius: lit ? 10 : 0, y: lit ? 4 : 0)
-                .animation(.tandemSpringy, value: lit)
-                .onHover { hovering = $0 }
-        } else {
-            button.buttonStyle(.glass).controlSize(.large)
+        .buttonStyle(prominent ? .tandemGlassProminent : .tandemGlass)
+        .controlSize(.large)
+    }
+}
+
+/// The glass pill of every button with words. The glass of the system's button leans towards the pointer on hover while the words stay
+/// where they are, which made the words look pinned to one side; here the pill and its words grow together, from the middle. The sizes
+/// are those of the system's glass buttons at each control size, measured, so a pill next to one of those is exactly as tall.
+struct TandemGlassStyle: ButtonStyle {
+    var prominent = false
+    var tint: Color = Palette.indigo
+
+    func makeBody(configuration: Configuration) -> some View {
+        TandemGlassPill(configuration: configuration, prominent: prominent, tint: tint)
+    }
+}
+
+private struct TandemGlassPill: View {
+    let configuration: ButtonStyleConfiguration
+    let prominent: Bool
+    let tint: Color
+    @Environment(\.controlSize) private var size
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.hoverEnabled) private var hoverEnabled
+    @LocalState private var hovering = false
+
+    /// The font, and the room around the words, of the system's glass button at this size.
+    private var metrics: (font: Font, horizontal: CGFloat, vertical: CGFloat) {
+        switch size {
+        case .mini: (.system(size: 10), 5, 0)
+        case .small: (.system(size: 11), 10, 3)
+        case .regular: (.system(size: 13), 12, 4)
+        case .large: (.system(size: 13), 14, 6)
+        case .extraLarge: (.system(size: 13), 18, 10)
+        @unknown default: (.system(size: 13), 12, 4)
         }
     }
+
+    var body: some View {
+        let lit = hovering && isEnabled && hoverEnabled
+        let ink: Color = prominent ? .white : .primary
+        configuration.label
+            .font(metrics.font)
+            .foregroundStyle(ink.opacity(isEnabled ? 1 : 0.45))
+            .padding(.horizontal, metrics.horizontal)
+            .padding(.vertical, metrics.vertical)
+            .contentShape(.capsule)
+            .glassEffect(prominent ? .regular.tint(tint) : .regular, in: .capsule)
+            .brightness(lit ? (prominent ? 0.07 : 0.03) : 0)
+            .shadow(color: prominent ? tint.opacity(lit ? 0.35 : 0) : .black.opacity(lit ? 0.12 : 0), radius: lit ? 10 : 0, y: lit ? 4 : 0)
+            // From the middle, the words with the pill: a scale without an anchor is about the centre.
+            .scaleEffect(configuration.isPressed ? 0.96 : (lit ? 1.03 : 1), anchor: .center)
+            .animation(.tandemSpringy, value: lit)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .onHover { hovering = $0 }
+    }
+}
+
+extension ButtonStyle where Self == TandemGlassStyle {
+    static var tandemGlass: TandemGlassStyle { TandemGlassStyle() }
+    static var tandemGlassProminent: TandemGlassStyle { TandemGlassStyle(prominent: true) }
+    static func tandemGlassProminent(tint: Color) -> TandemGlassStyle { TandemGlassStyle(prominent: true, tint: tint) }
 }
 
 /// Views side by side, each as wide as it needs to be, on to the next line when the row is full.

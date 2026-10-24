@@ -118,7 +118,7 @@ struct FeatureRow: View {
             Spacer(minLength: 8)
             if !feature.ready, let page = feature.page {
                 Button(action) { open(page) }
-                    .buttonStyle(.glassProminent)
+                    .buttonStyle(.tandemGlassProminent)
                     .tint(Palette.indigo)
                     .controlSize(.small)
                     .disabled(!enabled)

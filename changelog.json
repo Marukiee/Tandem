@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.98",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Buttons grow from the middle",
+      "new": [
+        "Mac: on hover a button and its words grow together from the middle"
+      ]
+    },
+    "nl": {
+      "title": "Knoppen groeien vanuit het midden",
+      "new": [
+        "Mac: bij hover groeien een knop en zijn tekst samen vanuit het midden"
+      ]
+    }
+  },
+  {
     "version": "0.1.97",
     "date": "2026-10-24",
     "en": {

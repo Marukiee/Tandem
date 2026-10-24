@@ -424,7 +424,7 @@ struct DeviceDetail: View {
                 }
                 SettingRow(symbol: "trash", title: "Remove this device", subtitle: device.vouchedByRemoved ? "It was added by a device that has since been removed" : "It leaves the circle everywhere") {
                     Button("Remove") { confirmRemoval = true }
-                        .buttonStyle(.glass)
+                        .buttonStyle(.tandemGlass)
                         .tint(Palette.urgent)
                 }
             }
@@ -453,7 +453,7 @@ extension DeviceDetail {
                 if case let .starting(id) = model.speaker, id == device.id { PillSpinner(size: 16) }
                 if enabled {
                     Button(LocalizedStringKey(streaming ? "Stop" : "Use now")) { model.toggleSpeaker(for: device.id) }
-                        .buttonStyle(.glass)
+                        .buttonStyle(.tandemGlass)
                         .disabled(!device.online && !streaming)
                 }
                 Toggle("", isOn: Binding(get: { enabled }, set: { model.setSpeakerEnabled($0, for: device.id) }))
@@ -588,7 +588,7 @@ struct RemoteControlCard: View {
                         let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
                         _ = AXIsProcessTrustedWithOptions(options)
                     }
-                    .buttonStyle(.glassProminent)
+                    .buttonStyle(.tandemGlassProminent)
                     .tint(Palette.indigo)
                 }
             }
@@ -639,7 +639,7 @@ struct HotspotCard: View {
                             .foregroundStyle(.secondary)
                         Spacer()
                         Button("Set up") { showSetup = true }
-                            .buttonStyle(.glass)
+                            .buttonStyle(.tandemGlass)
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
@@ -653,11 +653,11 @@ struct HotspotCard: View {
                             .foregroundStyle(.secondary)
                         Spacer()
                         if case .connected = model.hotspotStatus {
-                            Button("Stop") { model.hotspot.stop(device.id) }.buttonStyle(.glass)
+                            Button("Stop") { model.hotspot.stop(device.id) }.buttonStyle(.tandemGlass)
                         }
                         // A failure leaves its message up, and the way to try again with it.
                         if case .failed = model.hotspotStatus {
-                            Button("Try again") { model.hotspot.requestNow(device.id) }.buttonStyle(.glass)
+                            Button("Try again") { model.hotspot.requestNow(device.id) }.buttonStyle(.tandemGlass)
                         }
                     }
                     .padding(.horizontal, 14)
@@ -677,7 +677,7 @@ struct HotspotCard: View {
                         }
                         Spacer()
                         Button("Turn on hotspot") { model.hotspot.requestNow(device.id) }
-                            .buttonStyle(.glass)
+                            .buttonStyle(.tandemGlass)
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
@@ -716,7 +716,7 @@ private struct SideRow: View {
                             model.showToast(SideFinder.message(found, name: device.name))
                         }
                     }
-                    .buttonStyle(.glass)
+                    .buttonStyle(.tandemGlass)
                     .disabled(!device.online || finding)
                 }
                 Picker("", selection: Binding(get: { side ?? "right" }, set: { side = $0; DeviceSides.set($0, for: device.id) })) {

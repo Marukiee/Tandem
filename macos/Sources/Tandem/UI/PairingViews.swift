@@ -70,7 +70,7 @@ struct PairingPanel: View {
                                 .frame(width: 260)
                                 .onSubmit(joinWithPasted)
                             Button("Join", action: joinWithPasted)
-                                .buttonStyle(.glassProminent)
+                                .buttonStyle(.tandemGlassProminent)
                                 .tint(Palette.indigo)
                                 .disabled(pasted.isEmpty || model.pairing.busy)
                         }
@@ -152,7 +152,7 @@ private struct CodeStage: View {
                             VStack(spacing: 10) {
                                 Text("Expired").font(.headline)
                                 Button("New code") { model.beginPairing() }
-                                    .buttonStyle(.glassProminent)
+                                    .buttonStyle(.tandemGlassProminent)
                                     .tint(Palette.indigo)
                             }
                         } else {

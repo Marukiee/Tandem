@@ -220,19 +220,19 @@ private struct AccessRow: View {
                 if let detail = item.detail {
                     HStack(spacing: 8) {
                         Text(detail).font(.caption).foregroundStyle(Palette.indigo).fixedSize(horizontal: false, vertical: true)
-                        Button("Restart") { ScreenHost.shared.relaunch() }.buttonStyle(.glassProminent).controlSize(.small)
+                        Button("Restart") { ScreenHost.shared.relaunch() }.buttonStyle(.tandemGlassProminent).controlSize(.small)
                     }
                 }
                 HStack(spacing: 8) {
                     if item.status != .allowed, item.status != .unknown, item.status != .denied {
-                        Button("Allow") { checker.request(item.id) }.buttonStyle(.glassProminent).controlSize(.small)
+                        Button("Allow") { checker.request(item.id) }.buttonStyle(.tandemGlassProminent).controlSize(.small)
                     }
                     if item.status == .denied || item.status == .unknown {
                         Button("Open System Settings") { checker.openSystemSettings(for: item.id) }
-                            .buttonStyle(.glass).controlSize(.small)
+                            .buttonStyle(.tandemGlass).controlSize(.small)
                     }
                     if ["notifications", "network", "accessibility"].contains(item.id) {
-                        Button("Test") { checker.runTest(item.id, model: model) }.buttonStyle(.glass).controlSize(.small)
+                        Button("Test") { checker.runTest(item.id, model: model) }.buttonStyle(.tandemGlass).controlSize(.small)
                     }
                 }
                 .padding(.top, 2)

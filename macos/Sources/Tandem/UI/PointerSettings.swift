@@ -54,7 +54,7 @@ struct PointerSettings: View {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                     } else {
                         Button("Allow") { requestAccessibility() }
-                            .buttonStyle(.glassProminent)
+                            .buttonStyle(.tandemGlassProminent)
                             .tint(Palette.indigo)
                     }
                 }
