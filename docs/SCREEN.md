@@ -81,7 +81,7 @@ A person can store a choice per device and kind, in the core, so a screen in the
 
 | Message | Direction | Fields |
 |---|---|---|
-| `MediaRequest` | viewer to host | `session` (random non-zero u64, chosen by the viewer), `kind`, `codecs` (preferred first: `h264`, `hevc`), `max_width`, `max_height`, `max_fps`, `max_bitrate` (bits per second, 0 = no preference), `control`, `facing` (`any`, `front`, `back`, for the camera) |
+| `MediaRequest` | viewer to host | `session` (random non-zero u64, chosen by the viewer), `kind`, `codecs` (preferred first: `h264`, `hevc`), `max_width`, `max_height`, `max_fps`, `max_bitrate` (bits per second, 0 = no preference), `control`, `facing` (`any`, `front`, `back`, for the camera), `extend`, `logical_width` and `logical_height` (for an extra screen: the viewer's screen in points or logical pixels, 0 = not said) |
 | `MediaAccept` | host to viewer | `session`, `kind`, `codec`, `width`, `height`, `fps`, `bitrate` (the starting target), `control` (granted) |
 | `MediaDeny` | host to viewer | `session`, `reason` (a `MediaEnd`), `message` |
 | `MediaUpdate` | host to viewer | `session`, `update`: optional `format` (`width`, `height`, `rotation` in degrees, `fps`) and optional `control` (revoked or granted later) |
@@ -403,6 +403,29 @@ scherm; daarom meldt een computer die het kan de capability `screen.extend`, en 
   (`live_offer.rs`); de knoppen en de melding zijn niet op echte toestellen gezien.
 - **Nog niet**: Windows als host (Windows kan een monitor alleen toevoegen met een stuurprogramma voor een virtueel scherm, dat eenmalig met beheerdersrechten
   moet worden geinstalleerd; daarna kan de opname dat scherm kiezen), en invoer op een scherm dat Linux maakt.
+
+### Schaal en vloeiend beeld (Mac naar Linux)
+
+- **De maat.** Een kijker vraagt zijn echte pixels (`max_width`, `max_height`) en zijn logische maat (`logical_width`, `logical_height`, de pixels
+  gedeeld door de schaal; `serde(default)` en een uniffi-standaard van 0). De toolkit van Linux zegt de maat van een scherm als logische maat maal
+  een hele schaal: de laptop (2560x1600 op 133%) zei 3840x2400, en de Mac maakte daar 1821x1138 punten van, gestuurd als 3642x2276. Daarom leest
+  Linux de modus en de echte schaal uit de schermconfiguratie van GNOME (`winsys::monitors`, `pick_monitor`); op een ander bureaublad blijft het
+  de maat van de toolkit. De Mac (`ScreenGeometry.extendedShape`) maakt dan een scherm met de logische maat in punten, hiDPI getekend op twee keer
+  die maat, en de opname brengt dat terug naar de pixels van de kijker (1920x1200 punten, getekend in 3840x2400, gestuurd als 2560x1600), zoals een
+  Mac dat voor de geschaalde standen van zijn eigen scherm doet. Op 100% is het een gewoon scherm, op 200% is er niets te schalen, boven 200% wordt
+  het beeld niet groter dan het getekend is. Een kijker zonder logische maat krijgt wat hij kreeg.
+- **De pijplijn op Linux** (`live.rs`, `start_player`): `fdsrc ! h264parse ! avdec_h264 thread-type=slice ! queue leaky ! videoconvert n-threads
+  ! waylandsink fullscreen fullscreen-output=<connector>`. Een decoder met een draad per beeld (wat hij doet als de invoer niet live is) hield drie
+  beelden vast; de parser gaf een beeld pas door als het volgende kwam, dus het laatste beeld van een beweging wachtte op het volgende. Na elk beeld
+  gaan daarom een access unit delimiter, een lege SEI (user data) en een startcode de buis in, en het volgende beeld zonder zijn eigen startcode
+  (`AU_END`, `framed`): samen een geldige stroom. Een rij voor de parser die bytes laat vallen sneed beelden doormidden; beelden vallen nu heel weg,
+  voor de buis, en daarna tot een keyframe (`Player::take`). Gemeten op de laptop (Ryzen AI 9 HX 370, GStreamer 1.28, de uitvoer van de encoder van
+  de Mac door een buis): van de buis tot het eind van de pijplijn 6 ms (was 87), het laatste beeld van een beweging na 5 ms (was 522), 600 van 600
+  beelden, 52% van een kern. NVDEC was slechter (50 ms, meer processor, wekt de tweede kaart), VA-API heeft op Fedora geen H.264.
+- **Meten op echte toestellen.** Linux schrijft elke tien seconden een regel `display <sessie>:` in `tandem.log` (beelden per seconde, Mbit/s,
+  langste schrijfactie, gevallen en overgeslagen beelden, gevraagde keyframes) en de pijplijn die het startte; de Mac schrijft met `NSLog` wat hij
+  maakte en elke tien seconden wat er werd opgenomen, gecodeerd en verstuurd en hoe lang de encoder deed. `TANDEM_DISPLAY_DECODER` probeert op Linux
+  een andere decoder zonder nieuwe build.
 
 | host maakt het scherm | telefoon | Mac | Linux | Windows |
 | --- | --- | --- | --- | --- |
