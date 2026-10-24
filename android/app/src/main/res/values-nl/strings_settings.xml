@@ -132,4 +132,5 @@
     <string name="settings_kw_sharing_quick_tap">quick share tegel tik openen aan uit actie</string>
     <string name="settings_kw_sharing_quick_visible">quick share zichtbaar aan blijven timer minuten uur uit</string>
     <string name="settings_kw_features">functies rechten toestemming werkt werken kapot mist toegestaan</string>
+    <string name="settings_kw_notif_focus">focus, niet storen, stil, modus, slapen, werk, volgen, alle apparaten, dnd</string>
 </resources>

@@ -63,6 +63,8 @@ class TandemPrefs(private val context: Context) {
         val audioDelay = longPreferencesKey("audio_delay")
         val padScroll = longPreferencesKey("pad_scroll")
         val padHold = longPreferencesKey("pad_hold_ms")
+        val focusShare = booleanPreferencesKey("focus_share")
+        val focusFollowOnly = booleanPreferencesKey("focus_follow_only")
     }
 
     val appearance: Flow<Appearance> = data.map { p ->
@@ -125,6 +127,13 @@ class TandemPrefs(private val context: Context) {
     /** How long a finger has to stay put on the pad before it holds the left button for a drag. */
     val padHoldMs: Flow<Int> = data.map { (it[Keys.padHold] ?: DEFAULT_PAD_HOLD_MS).toInt() }
     val pinnedDevices: Flow<Set<String>> = data.map { it[Keys.pinnedDevices] ?: emptySet() }
+
+    /** Focus the same on every device. On by default: nothing happens until a Focus is turned on somewhere. */
+    val focusShare: Flow<Boolean> = data.map { it[Keys.focusShare] ?: true }
+    /** Only follow the other devices, and keep the Do Not Disturb of this phone to itself. */
+    val focusFollowOnly: Flow<Boolean> = data.map { it[Keys.focusFollowOnly] ?: false }
+    suspend fun setFocusShare(value: Boolean) = set(Keys.focusShare, value)
+    suspend fun setFocusFollowOnly(value: Boolean) = set(Keys.focusFollowOnly, value)
 
     suspend fun setPinned(deviceId: String, pinned: Boolean) {
         context.store.edit { p ->

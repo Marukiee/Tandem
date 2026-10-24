@@ -56,6 +56,12 @@ object FeatureReport {
         add("background", Permissions.batteryUnrestricted(context), R.string.feature_background, R.string.feature_background_why, "battery")
         add("bluetooth", Permissions.bluetooth(context), R.string.feature_bluetooth, R.string.feature_bluetooth_why, "access")
         add("alerts", Permissions.notifications(context), R.string.feature_alerts, R.string.feature_alerts_why, "app-notifications")
+        // Focus: the switch in Tandem, and access to Do Not Disturb for the mode of its own that follows the other devices.
+        if (!context.graph.prefs.focusShare.first()) {
+            list += TandemFeature("focus", false, context.getString(R.string.feature_focus), context.getString(R.string.feature_focus_off), null)
+        } else {
+            add("focus", FocusMode.canUse(context), R.string.feature_focus, R.string.feature_focus_why, "dnd-access")
+        }
         return list
     }
 
@@ -77,6 +83,7 @@ object FeatureReport {
             "all-files" -> Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, pkg)
             "battery" -> Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg)
             "app-notifications" -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            "dnd-access" -> FocusMode.accessIntent()
             // Single top: with Tandem already open, Android otherwise only brings it to the front and never hands it the intent, so the
             // page of the setting was not opened.
             "sharing" -> Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_SHARING).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)

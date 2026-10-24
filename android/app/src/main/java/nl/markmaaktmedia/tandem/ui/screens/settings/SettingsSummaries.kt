@@ -57,8 +57,9 @@ internal fun rememberCategorySummaries(): Map<SettingsCategory, String> {
     val mirror by prefs.mirrorNotifications.collectAsState(initial = true)
     val codes by prefs.copyCodes.collectAsState(initial = true)
     val calls by prefs.callMirror.collectAsState(initial = true)
+    val focus by prefs.focusShare.collectAsState(initial = true)
     val sharing = onOf(listOf(screenshot, ble, mediaShare, audioOutput))
-    val notifications = onOf(listOf(mirror, codes, calls))
+    val notifications = onOf(listOf(mirror, codes, calls, focus))
 
     // Permissions, the same eight the permissions page lists. Calls count as on when anything of them works.
     val status = rememberPermissionStatus()

@@ -43,6 +43,7 @@ class TandemService : LifecycleService() {
     private lateinit var calls: CallMonitor
     private lateinit var hotspot: HotspotModule
     private lateinit var listenerWatchdog: ListenerWatchdog
+    private lateinit var focus: FocusShare
     private var multicast: WifiManager.MulticastLock? = null
     private var lastProgressPost = 0L
 
@@ -66,6 +67,7 @@ class TandemService : LifecycleService() {
         graph.media.start()
         listenerWatchdog = ListenerWatchdog(this, graph.scope).also { it.start() }
         FeatureReport.start(this, lifecycleScope)
+        focus = FocusShare(this, host, graph.prefs, lifecycleScope).also { it.start() }
 
         lifecycleScope.launch {
             host.devices.collectLatest { devices ->
@@ -95,6 +97,7 @@ class TandemService : LifecycleService() {
         calls.stop()
         hotspot.stop()
         listenerWatchdog.stop()
+        focus.stop()
         graph.media.stop()
         graph.audio.stop(tell = true)
         multicast?.takeIf { it.isHeld }?.release()
@@ -167,6 +170,7 @@ class TandemService : LifecycleService() {
             is TandemEvent.CaptureCancelled -> getSystemService(NotificationManager::class.java).cancel(captureNotificationId(event.id.toLong()))
 
             is TandemEvent.Notification -> Unit
+            is TandemEvent.Focus -> focus.follow(event)
 
             else -> Unit
         }

@@ -3,5 +3,7 @@
     <application>
         <!-- Debug builds only: checks the encoder without a Mac (see LiveSelfCheck). -->
         <receiver android:name="nl.markmaaktmedia.tandem.live.LiveSelfCheck" android:exported="true" />
+        <!-- Debug builds only: turns Tandem's own Focus mode on and off without another device (see FocusSelfCheck). -->
+        <receiver android:name="nl.markmaaktmedia.tandem.engine.FocusSelfCheck" android:exported="true" />
     </application>
 </manifest>

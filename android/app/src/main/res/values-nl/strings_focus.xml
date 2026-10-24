@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Focus the same on every device (see FocusShare) -->
+    <string name="focus_section">Focus</string>
+    <string name="focus_share">Focus delen</string>
+    <string name="focus_share_sub">Zet Focus of Niet storen aan op een van je apparaten, en de andere volgen</string>
+    <string name="focus_direction">Richting</string>
+    <string name="focus_direction_sub">Alleen volgen houdt Niet storen van deze telefoon voor zichzelf</string>
+    <string name="focus_both">Beide kanten op</string>
+    <string name="focus_follow_only">Alleen volgen</string>
+    <string name="focus_mode_settings">Wat er door mag</string>
+    <string name="focus_mode_settings_sub">Kies in de instellingen van Android wat je nog bereikt terwijl een ander apparaat Focus aan heeft</string>
+    <string name="focus_access_dialog">Niet storen toestaan</string>
+    <string name="focus_access_body">Als een ander apparaat Focus aanzet, zet Tandem op deze telefoon een eigen modus aan, en jij kiest in de instellingen van Android wat er nog door mag. Android vraagt je dat één keer toe te staan.</string>
+    <string name="focus_later">Niet nu</string>
+    <string name="focus_access_title">%1$s zette Focus aan</string>
+    <string name="focus_access_text">Sta Tandem toe Niet storen te gebruiken, dan volgt deze telefoon</string>
+
+    <!-- The mode of its own, as it shows in the settings of Android -->
+    <string name="focus_mode_name">Focus van %1$s</string>
+    <string name="focus_mode_name_any">Focus van je apparaten</string>
+    <string name="focus_mode_trigger">Gaat aan met de Focus van je andere apparaten</string>
+    <string name="focus_mode_summary">Focus op %1$s</string>
+    <string name="focus_mode_summary_named">%1$s op %2$s</string>
+
+    <!-- What this phone does for the other devices (see FeatureReport) -->
+    <string name="feature_focus">Focus op al je apparaten</string>
+    <string name="feature_focus_why">Tandem mag Niet storen op deze telefoon niet gebruiken</string>
+    <string name="feature_focus_off">Focus delen staat uit in Tandem op deze telefoon</string>
+</resources>
