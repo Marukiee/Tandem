@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioPlaybackCaptureConfiguration
 import android.media.AudioRecord
 import android.media.projection.MediaProjection
@@ -136,6 +137,26 @@ class SoundShareService : Service() {
         }
     }
 
+    /** The media volume of this phone as a gain, 0 to 1: its steps are a scale for the ear, so half way is about a quarter of the level. */
+    private fun volumeGain(audio: AudioManager): Float {
+        val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+        val level = audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / max
+        return level * level
+    }
+
+    /** 16-bit samples times [gain], in place. Untouched at full volume. */
+    private fun scale(pcm: ByteArray, gain: Float) {
+        if (gain >= 0.999f) return
+        var i = 0
+        while (i + 1 < pcm.size) {
+            val value = ((pcm[i].toInt() and 0xFF) or (pcm[i + 1].toInt() shl 8)).toShort() * gain
+            val out = value.toInt()
+            pcm[i] = out.toByte()
+            pcm[i + 1] = (out shr 8).toByte()
+            i += 2
+        }
+    }
+
     /** Reads what the apps play and sends it, in whole sample frames that fit one datagram. */
     private fun pump(s: Sending, record: AudioRecord) {
         val engine = graph.host.engine
@@ -150,6 +171,10 @@ class SoundShareService : Service() {
             val buffer = ByteArray(size)
             var seq = 0u
             var failures = 0
+            // The volume keys turn the device that is the speaker up and down: what is recorded comes before the volume of the phone.
+            val audio = getSystemService(AudioManager::class.java)
+            var gain = 1f
+            var gainReadAt = 0L
             record.startRecording()
             while (s.running) {
                 val read = record.read(buffer, 0, size)
@@ -157,7 +182,13 @@ class SoundShareService : Service() {
                     if (read < 0) break
                     continue
                 }
+                val now = SystemClock.uptimeMillis()
+                if (now - gainReadAt > GAIN_EVERY_MS) {
+                    gainReadAt = now
+                    gain = volumeGain(audio)
+                }
                 val bytes = if (read == size) buffer else buffer.copyOf(read / FRAME * FRAME)
+                scale(bytes, gain)
                 try {
                     engine.sendAudio(s.peer, STREAM.toUByte(), seq++, bytes.copyOf())
                     failures = 0
@@ -209,6 +240,8 @@ class SoundShareService : Service() {
         const val STREAM = 9
         private const val RATE = 48_000
         private const val FRAME = 4
+        /** How often the media volume is read while sending. */
+        private const val GAIN_EVERY_MS = 250L
         private const val DEFAULT_PACKET = 1152
         private const val MAX_PACKET = 3840
 

@@ -6,7 +6,7 @@
 use std::io::Read;
 #[cfg(target_os = "linux")]
 use std::process::{Child, Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::{Duration, Instant};
 
@@ -157,6 +157,39 @@ fn end(app: &AppHandle, sending: Sending, tell: bool) {
     changed(app);
 }
 
+/// The volume of this computer's output as a gain for what it sends, read twice a second while it sends: the volume keys and the slider
+/// turn the device that is its speaker up and down, and mute silences it. What is recorded comes before the volume of the output, so
+/// without this the keys did nothing over there.
+fn follow_volume(stop: Arc<AtomicBool>) -> Arc<AtomicU32> {
+    let gain = Arc::new(AtomicU32::new(1f32.to_bits()));
+    let shared = gain.clone();
+    std::thread::Builder::new()
+        .name("tandem-output-volume".into())
+        .spawn(move || {
+            while !stop.load(Ordering::Relaxed) {
+                if let Some((volume, muted)) = tandem_winsys::find::output() {
+                    // The slider is a scale for the ear: half way is about a quarter of the level.
+                    let level = if muted { 0.0 } else { volume.clamp(0.0, 1.0).powi(2) };
+                    shared.store(level.to_bits(), Ordering::Relaxed);
+                }
+                std::thread::sleep(Duration::from_millis(500));
+            }
+        })
+        .ok();
+    gain
+}
+
+/// 16-bit samples times `gain`, in place. Untouched at full volume.
+fn scale(pcm: &mut [u8], gain: f32) {
+    if gain >= 0.999 {
+        return;
+    }
+    for sample in pcm.chunks_exact_mut(2) {
+        let value = f32::from(i16::from_le_bytes([sample[0], sample[1]])) * gain;
+        sample.copy_from_slice(&(value as i16).to_le_bytes());
+    }
+}
+
 fn send(app: AppHandle, engine: Arc<tandem_core::ffi::TandemEngine>, to: String, mut reader: Box<dyn Read + Send>, stop: Arc<AtomicBool>) {
     let mut heard = false;
     if tauri::async_runtime::block_on(engine.send_audio_start(to.clone(), STREAM, RATE, CHANNELS)).is_ok() {
@@ -165,11 +198,13 @@ fn send(app: AppHandle, engine: Arc<tandem_core::ffi::TandemEngine>, to: String,
         let chunk = (engine.audio_payload_limit(to.clone()) as usize / frame * frame).max(frame);
         let mut seq = 0u32;
         let mut packet = vec![0u8; chunk];
+        let gain = follow_volume(stop.clone());
         while !stop.load(Ordering::Relaxed) {
             if reader.read_exact(&mut packet).is_err() {
                 break;
             }
             heard = true;
+            scale(&mut packet, f32::from_bits(gain.load(Ordering::Relaxed)));
             if engine.send_audio(to.clone(), STREAM, seq, packet.clone()).is_err() {
                 break;
             }

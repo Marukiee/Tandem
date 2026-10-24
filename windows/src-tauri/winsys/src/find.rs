@@ -148,7 +148,8 @@ pub fn restore(before: Before) {
     }
 }
 
-fn output() -> Option<(f32, bool)> {
+/// The volume of the default output (0 to 1, as the slider shows it) and whether it is muted.
+pub fn output() -> Option<(f32, bool)> {
     #[cfg(windows)]
     {
         win::output()
