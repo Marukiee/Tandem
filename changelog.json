@@ -5,13 +5,15 @@
     "en": {
       "title": "Control Center buttons",
       "new": [
-        "The Control Center buttons show in the colour of Tandem when they are on"
+        "The Control Center buttons show in the colour of Tandem when they are on",
+        "Mac: buttons on a device's page turn blue while they run (second screen, phone screen, camera), and pressing them again stops it"
       ]
     },
     "nl": {
       "title": "Knoppen in het Controlecentrum",
       "new": [
-        "De knoppen in het Controlecentrum hebben de kleur van Tandem als ze aanstaan"
+        "De knoppen in het Controlecentrum hebben de kleur van Tandem als ze aanstaan",
+        "Mac: knoppen op de pagina van een apparaat worden blauw zolang ze lopen (tweede scherm, telefoonscherm, camera), en nog een keer drukken stopt het"
       ]
     }
   },

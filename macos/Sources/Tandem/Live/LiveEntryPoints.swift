@@ -18,8 +18,10 @@ struct LiveActionRow: View {
         if device.isComputer, device.caps.contains("screen.host") {
             let ready = device.online
             let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
+            // What is on is blue, and pressing it again turns it off.
             GlassActionButton(title: "Control computer", symbol: "display", prominent: running) {
-                LiveManager.shared.start(device: device, kind: .screen)
+                if let session = LiveManager.shared.session(of: .screen, on: device.id), !session.extend { LiveManager.shared.stop(session) }
+                else { LiveManager.shared.start(device: device, kind: .screen) }
             }
             .disabled(!ready)
             .opacity(ready ? 1 : 0.5)
@@ -28,7 +30,8 @@ struct LiveActionRow: View {
             if device.caps.contains("screen.extend") {
                 let secondRunning = LiveManager.shared.session(of: .screen, on: device.id)?.extend == true
                 GlassActionButton(title: "Use as second screen", symbol: "rectangle.on.rectangle", prominent: secondRunning) {
-                    LiveManager.shared.start(device: device, kind: .screen, extend: true)
+                    if secondRunning, let session = LiveManager.shared.session(of: .screen, on: device.id) { LiveManager.shared.stop(session) }
+                    else { LiveManager.shared.start(device: device, kind: .screen, extend: true) }
                 }
                 .disabled(!ready)
                 .opacity(ready ? 1 : 0.5)
@@ -39,11 +42,13 @@ struct LiveActionRow: View {
         if device.caps.contains("screen.extend.view") || device.platform == .android {
             let canHost = VirtualDisplay.isAvailable
             let ready = device.online && canHost && device.caps.contains("screen.extend.view")
-            GlassActionButton(title: "Extend screen to this device", symbol: "rectangle.on.rectangle") {
-                ScreenHost.shared.offerExtend(to: device)
+            // On while this Mac shows a screen of its own on that device; pressing it then ends it.
+            let extending = ScreenHost.shared.current?.extend == true && ScreenHost.shared.current?.peer == device.id
+            GlassActionButton(title: "Extend screen to this device", symbol: "rectangle.on.rectangle", prominent: extending) {
+                if extending { ScreenHost.shared.stopCurrent() } else { ScreenHost.shared.offerExtend(to: device) }
             }
-            .disabled(!ready)
-            .opacity(ready ? 1 : 0.5)
+            .disabled(!ready && !extending)
+            .opacity(ready || extending ? 1 : 0.5)
             .help(!device.caps.contains("screen.extend.view") ? "Update Tandem on that device to use it as a second screen" : "Adds a screen to this Mac and shows it on that device. Move windows to it with your mouse.")
         }
         // Always there for a phone, grey while it cannot: a phone with an older Tandem is told what to do in the tooltip.
@@ -51,19 +56,21 @@ struct LiveActionRow: View {
             let screenReady = device.online && device.canShowScreen
             let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
             GlassActionButton(title: "Show phone screen", symbol: "iphone.gen3", prominent: running) {
-                LiveManager.shared.start(device: device, kind: .screen)
+                if let session = LiveManager.shared.session(of: .screen, on: device.id) { LiveManager.shared.stop(session) }
+                else { LiveManager.shared.start(device: device, kind: .screen) }
             }
-            .disabled(!screenReady)
-            .opacity(screenReady ? 1 : 0.5)
+            .disabled(!screenReady && !running)
+            .opacity(screenReady || running ? 1 : 0.5)
             .help(device.canShowScreen ? "Shows your phone's screen in a window. The phone asks first." : "Update Tandem on the phone to version 0.1.38 or newer")
 
             let cameraReady = device.online && device.canShowCamera
             let cameraRunning = LiveManager.shared.session(of: .camera, on: device.id) != nil
             GlassActionButton(title: "Phone camera", symbol: "camera", prominent: cameraRunning) {
-                LiveManager.shared.start(device: device, kind: .camera)
+                if let session = LiveManager.shared.session(of: .camera, on: device.id) { LiveManager.shared.stop(session) }
+                else { LiveManager.shared.start(device: device, kind: .camera) }
             }
-            .disabled(!cameraReady)
-            .opacity(cameraReady ? 1 : 0.5)
+            .disabled(!cameraReady && !cameraRunning)
+            .opacity(cameraReady || cameraRunning ? 1 : 0.5)
             .help(device.canShowCamera ? "Shows your phone's camera in a window. It is a window and not a virtual webcam: share or capture it in Zoom or OBS." : "Update Tandem on the phone to version 0.1.38 or newer")
         }
     }
