@@ -75,6 +75,14 @@ pub fn is_remote(device: &str) -> bool {
     INNER.lock().unwrap().remote.as_ref().is_some_and(|(d, _)| d == device)
 }
 
+/// Another computer's pointer came onto this screen or went: the barriers of the desktop make way for it (Linux).
+pub fn guest_pointer(here: bool) {
+    #[cfg(target_os = "linux")]
+    linux::guest_pointer(here);
+    #[cfg(not(target_os = "linux"))]
+    let _ = here;
+}
+
 /// Reads the settings: which screens sit where. The hooks are put on the first time there is one, and then stay.
 pub fn configure(app: &AppHandle) {
     let _ = APP.set(app.clone());
@@ -395,6 +403,18 @@ mod linux {
     use tandem_winsys::inputcapture::{self, Captured, Side, State, Stretch, WaylandCapture};
 
     static CAPTURE: OnceLock<WaylandCapture> = OnceLock::new();
+    /// Another computer's pointer is on this screen. Its moves are played through the desktop's own input, and when that pointer ran into
+    /// a barrier GNOME took the mouse: a drag in Files was dropped, and some seconds later the desktop closed the session that plays the
+    /// moves. So there are no barriers while it is here.
+    static GUEST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+    /// Another computer's pointer came onto this screen (true) or went (false).
+    pub fn guest_pointer(here: bool) {
+        GUEST.store(here, std::sync::atomic::Ordering::Relaxed);
+        if let Some(app) = APP.get() {
+            sync(app);
+        }
+    }
     /// Which stretch of an edge is which computer: (stretch, computer, edge).
     static STRETCHES: Mutex<Vec<(u32, String, Edge)>> = Mutex::new(Vec::new());
 
@@ -447,6 +467,10 @@ mod linux {
 
     fn sync(app: &AppHandle) {
         let Some(capture) = CAPTURE.get() else { return };
+        if GUEST.load(std::sync::atomic::Ordering::Relaxed) {
+            capture.set_stretches(Vec::new());
+            return;
+        }
         let (w, h) = crate::arrange::own_size();
         let mut known = Vec::new();
         let mut stretches = Vec::new();

@@ -124,6 +124,7 @@ pub fn run() {
             // While another computer has its pointer here, a drop zone shows at the edge where that computer sits.
             let zone_app = handle.clone();
             input::on_shared_change(move |now| {
+                capture::guest_pointer(now.is_some());
                 if now.is_none() {
                     drag::shared_ended(&zone_app);
                 }
