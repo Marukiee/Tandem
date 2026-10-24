@@ -28,6 +28,8 @@ class BleMessenger(
     /** Link address to the device id it turned out to belong to. */
     private val links = HashMap<String, String>()
     private val incoming = Channel<Piece>(Channel.UNLIMITED)
+    /** Rings when a link opens, so the pump sleeps while no computer is linked over Bluetooth, which is nearly always. */
+    private val linked = Channel<Unit>(Channel.CONFLATED)
     private var server: BleHotspotServer? = null
     private var jobs = mutableListOf<Job>()
 
@@ -40,6 +42,7 @@ class BleMessenger(
         }
         jobs += scope.launch(Dispatchers.IO) {
             while (isActive) {
+                if (synchronized(lock) { links.isEmpty() }) linked.receive()
                 delay(PUMP_MS)
                 pump()
             }
@@ -71,6 +74,7 @@ class BleMessenger(
         val from = runCatching { engine.bleReceive(piece.link, piece.bytes) }.getOrNull() ?: return
         val first = synchronized(lock) { links.put(piece.link, from) != from }
         if (first) {
+            linked.trySend(Unit)
             // The Mac marks the link as this phone's when a frame from it opens, so answer with one.
             val size = server?.chunkSize(piece.link) ?: 20
             engine.bleHello(from, size.toUInt()).forEach { server?.sendMessage(piece.link, it) }
