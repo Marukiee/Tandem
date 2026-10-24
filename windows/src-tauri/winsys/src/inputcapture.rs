@@ -356,6 +356,12 @@ async fn apply(
     }
     let stretches = shared.stretches.lock().unwrap().clone();
     let built = barriers_for(&regions, &stretches);
+    // Where the barriers go, so a pointer that never crosses can be traced to a line that is not where the edge is.
+    log::info!(
+        "barriers: screens {regions:?}, stretches {:?}, lines {:?}",
+        stretches.iter().map(|s| (s.id, s.from, s.to)).collect::<Vec<_>>(),
+        built.iter().map(|(_, _, line)| *line).collect::<Vec<_>>()
+    );
     let list: Vec<Barrier> = built.iter().filter_map(|(id, _, line)| Some(Barrier::new(std::num::NonZeroU32::new(*id)?, *line))).collect();
     let response = match capture.set_pointer_barriers(session, &list, zones.zone_set(), SetPointerBarriersOptions::default()).await {
         Ok(request) => request.response().map(|r| r.failed_barriers().iter().map(|b| b.get()).collect::<Vec<u32>>()).map_err(text),

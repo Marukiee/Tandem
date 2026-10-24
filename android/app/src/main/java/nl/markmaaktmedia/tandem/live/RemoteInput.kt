@@ -40,6 +40,9 @@ class RemoteInput(private val context: Context) {
 
     /** The live touch is the finger of a scroll, not of the left button, and where that finger is. */
     private var scrollTouch = false
+    /** What was scrolled before the finger of a scroll went down. */
+    private var waitingDx = 0f
+    private var waitingDy = 0f
     private var fingerX = 0f
     private var fingerY = 0f
     /** The scrolling stopped: its finger comes up. */
@@ -82,14 +85,27 @@ class RemoteInput(private val context: Context) {
             if (!scrolling) playScroll(service)
             return
         }
+        var stepX = dx
+        var stepY = dy
         if (live == null || !scrollTouch) {
+            // The first steps of a trackpad are tiny: a finger that went down with them would stand nearly still long enough for Android
+            // to take it for a press of what is under it. It goes down once the scroll is clearly a scroll, and moves that far at once.
+            waitingDx += dx
+            waitingDy += dy
+            main.removeCallbacks(scrollStopped)
+            main.postDelayed(scrollStopped, SCROLL_STOP_MS)
+            if (hypot(waitingDx, waitingDy) * SCROLL_GAIN < SCROLL_START) return
+            stepX = waitingDx
+            stepY = waitingDy
+            waitingDx = 0f
+            waitingDy = 0f
             scrollTouch = true
             fingerX = x.coerceIn(SCROLL_EDGE, width - SCROLL_EDGE)
             fingerY = y.coerceIn(SCROLL_EDGE, height - SCROLL_EDGE)
             startLive(service, fingerX, fingerY)
         }
-        val nx = fingerX + dx * SCROLL_GAIN
-        val ny = fingerY + dy * SCROLL_GAIN
+        val nx = fingerX + stepX * SCROLL_GAIN
+        val ny = fingerY + stepY * SCROLL_GAIN
         main.removeCallbacks(scrollStopped)
         if (nx !in SCROLL_EDGE..width - SCROLL_EDGE || ny !in SCROLL_EDGE..height - SCROLL_EDGE) {
             // The finger ran out of screen: it comes up where it is, and the next step puts it down again at the pointer.
@@ -104,6 +120,8 @@ class RemoteInput(private val context: Context) {
 
     private fun endScrollTouch(service: TandemAccessibilityService) {
         main.removeCallbacks(scrollStopped)
+        waitingDx = 0f
+        waitingDy = 0f
         if (!scrollTouch || live == null) {
             scrollTouch = false
             return
@@ -284,6 +302,8 @@ class RemoteInput(private val context: Context) {
         /** How long the trackpad has to be still before the finger of a scroll comes up, and how far from the edge it stays. */
         const val SCROLL_STOP_MS = 140L
         const val SCROLL_EDGE = 60f
+        /** How far a scroll goes before its finger goes down: past the distance at which Android stops taking a touch for a tap. */
+        const val SCROLL_START = 40f
         const val HID_ENTER = 0x28
         const val HID_ESCAPE = 0x29
         const val HID_BACKSPACE = 0x2A

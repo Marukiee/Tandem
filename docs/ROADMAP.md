@@ -202,6 +202,17 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   Bestanden krijgt met `nautilus-python` een eigen regel met de apparaten die nu bereikbaar zijn (anders onder Scripts), Dolphin een servicemenu,
   Nemo acties, Windows een snelkoppeling per apparaat in "Sturen naar". Een schakelaar in Instellingen, Bestanden haalt het weer weg. Thunar niet
   (dat zou de eigen instellingen van Thunar aanpassen). Bestanden laadt een nieuwe extensie pas na `nautilus -q` of opnieuw inloggen.
+- Stand 2026-10-24 avond (sessielimiet), open:
+  - Berichten is af op tak `worktree-agent-aaa08e5a305f8ba46` (commit 4fec7dd, getest met een emulator), nog samenvoegen met main, bouwen en
+    uitbrengen. Niet storen werd nog gebouwd door een agent (tak `worktree-agent-af413858c2f9872a0`).
+  - Windows: loslaten op de plek zelf. `winsys/src/dragsource.rs` is klaar en compileert voor Windows (een venster van een paar pixels onder
+    de muis, een gespeelde druk erop, `SHDoDragDrop` met de bestanden), maar nog niet aangesloten: in `drag.rs` moet een gedragen bestand dat
+    binnen is terwijl de knop nog vastgehouden wordt `dragsource::start` krijgen (niet neergezet: zoals nu naar het bureaublad), en `flush`
+    moet `dragsource::release` aanroepen als de drag van het systeem nog loopt.
+  - Linux als hoofdcomputer: de muis van Linux gaat niet naar de Mac (gezien 2026-10-24). In de sessie sinds 15:03 heeft GNOME de barrière
+    nooit meer gemeld, ook niet voor de muis van de Mac. Sinds 0.2.10 schrijft `inputcapture` de schermen en lijnen van de barrières in het
+    logboek; na het bijwerken eerst opnieuw proberen en dan dat logboek lezen. Daarna: slepen vanaf Linux als hoofd met dezelfde
+    onzichtbare strook (die moet er dan altijd zijn aan de kant van de buur, de knop van Linux zelf is onder Wayland niet te zien).
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)

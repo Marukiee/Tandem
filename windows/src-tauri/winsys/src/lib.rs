@@ -83,6 +83,9 @@ pub mod hid;
 pub mod wifi;
 #[cfg(windows)]
 mod imp;
+/// Windows: a drag of files of the system, started under the pointer for files that came over with a drag.
+#[cfg(windows)]
+pub mod dragsource;
 #[cfg(target_os = "linux")]
 mod grabber;
 #[cfg(target_os = "linux")]
