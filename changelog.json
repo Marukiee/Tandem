@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.2.11",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Tidier",
+      "new": [
+        "One search field in the page, next to the filters, on every page",
+        "A shared screen closes at once when the other side stops it",
+        "Share Wi-Fi only shows when the device is not on that network yet"
+      ]
+    },
+    "nl": {
+      "title": "Netter",
+      "new": [
+        "Eén zoekveld in de pagina, naast de filters, op elke pagina",
+        "Een gedeeld scherm sluit meteen als de andere kant stopt",
+        "Wifi delen staat er alleen als het apparaat nog niet op dat netwerk zit"
+      ]
+    }
+  },
+  {
     "version": "0.2.10",
     "date": "2026-10-24",
     "en": {

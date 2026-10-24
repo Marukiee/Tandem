@@ -50,9 +50,10 @@ struct SharedView: View {
                     .frame(maxWidth: .infinity, minHeight: 260)
                 } else {
                     // The search and the filters on one row, like the other pages; the filters go under it when the window is narrow.
+                    // The pills as tall as the search field.
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 10) {
-                            PageSearchField(text: $query, prompt: "Search by name").frame(minWidth: 200)
+                            PageSearchField(text: $query, prompt: "Search by name").frame(minWidth: 160)
                             filterPills.fixedSize()
                         }
                         VStack(alignment: .leading, spacing: 10) {
@@ -60,6 +61,7 @@ struct SharedView: View {
                             ScrollView(.horizontal, showsIndicators: false) { filterPills }.scrollClipDisabled()
                         }
                     }
+                    .controlSize(.large)
                     if items.isEmpty {
                         ContentUnavailableView.search.frame(maxWidth: .infinity, minHeight: 200)
                     } else {

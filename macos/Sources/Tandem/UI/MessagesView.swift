@@ -115,19 +115,8 @@ private struct ConversationList: View {
             }
             .padding(.horizontal, 12)
 
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Search", text: $search).textFieldStyle(.plain)
-                if !search.isEmpty {
-                    Button { search = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) }
-                        .buttonStyle(.plain)
-                }
-            }
-            .font(.callout)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-            .padding(.horizontal, 12)
+            PageSearchField(text: $search)
+                .padding(.horizontal, 12)
 
             ScrollView {
                 LazyVStack(spacing: 2) {
