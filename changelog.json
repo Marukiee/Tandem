@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.2.6",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Several extra screens at once",
+      "new": [
+        "Mac: extend your screen to several devices at the same time, each on its own side and each stopped on its own"
+      ]
+    },
+    "nl": {
+      "title": "Meerdere extra schermen tegelijk",
+      "new": [
+        "Mac: breid je scherm uit naar meerdere apparaten tegelijk, elk aan zijn eigen kant en elk apart te stoppen"
+      ]
+    }
+  },
+  {
     "version": "0.2.5",
     "date": "2026-10-24",
     "en": {
