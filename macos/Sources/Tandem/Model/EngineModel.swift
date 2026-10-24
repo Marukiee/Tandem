@@ -197,7 +197,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "ring"] + ScreenHost.shared.capabilities(),
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "ring", "wifi.share", "wifi.join"] + ScreenHost.shared.capabilities(),
             lowPower: false
         )
 
@@ -274,6 +274,7 @@ final class EngineModel {
         PointerShare.shared.start()
         QuickShare.shared.startIfWanted()
         startBleWatch()
+        WifiShare.shared.start(engine: engine)
         observeSleep()
         startMedia()
         speakerDevices.onSelect = { [weak self] phone, uid in self?.outputChosen(phone: phone, uid: uid) }
@@ -647,6 +648,8 @@ final class EngineModel {
             FindOthers.shared.reported(from, on: on)
             // A phone that says it stopped (on the phone itself) turns the Find phone button back.
             if !on { ringing.remove(from) }
+        case let .wifi(from, message):
+            WifiShare.shared.handle(from: from, message: message)
         }
     }
 

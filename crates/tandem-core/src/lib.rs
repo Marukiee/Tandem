@@ -27,6 +27,7 @@ pub mod tls;
 pub mod transfer;
 #[cfg(feature = "webdav")]
 pub mod webdav;
+pub mod wifi;
 
 pub use engine::{DeviceInfo, Engine, EngineConfig};
 pub use error::{Error, Result};

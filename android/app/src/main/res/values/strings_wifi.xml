@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wifi_channel">Wi-Fi from your computers</string>
+    <string name="wifi_channel_desc">When a computer can hand this phone its Wi-Fi</string>
+    <string name="wifi_offer_title">Use the Wi-Fi of %1$s?</string>
+    <string name="wifi_use">Use</string>
+    <string name="wifi_not_now">Not now</string>
+    <string name="wifi_ready_title">%1$s shared %2$s</string>
+    <string name="wifi_ready_text">Tap to join it</string>
+    <string name="wifi_computer_fallback">your computer</string>
+    <string name="wifi_gone">That Wi-Fi is no longer on offer. Ask again on the page of the computer.</string>
+    <string name="wifi_asking_title">Asking %1$s</string>
+    <string name="wifi_asking_body">Choose Share on %1$s to send the password of %2$s.</string>
+    <string name="wifi_cancel">Cancel</string>
+    <string name="wifi_close">Close</string>
+    <string name="wifi_try_again">Try again</string>
+    <string name="wifi_no_answer_title">%1$s did not answer</string>
+    <string name="wifi_no_answer_body">Check that %1$s is awake and near, then try again.</string>
+    <string name="wifi_refused_title">%1$s did not share %2$s</string>
+    <string name="wifi_refused_declined">The person at %1$s said no.</string>
+    <string name="wifi_refused_not_on_it">%1$s is no longer on %2$s.</string>
+    <string name="wifi_refused_cannot">%1$s has a sign-in for each person, which cannot be shared.</string>
+    <string name="wifi_refused_unreadable">%1$s could not read the password. It may have to be allowed there first.</string>
+    <string name="wifi_refused_other">%1$s could not share it.</string>
+    <string name="wifi_failed_title">The network was not added</string>
+    <string name="wifi_failed">Android did not save %1$s.</string>
+    <string name="wifi_failed_password">Android does not take the password of %1$s.</string>
+    <string name="wifi_suggested">Your phone joins %1$s when it is in range.</string>
+    <string name="wifi_saved">%1$s saved. Your phone joins it.</string>
+    <string name="wifi_location_title">Offer it by itself next time?</string>
+    <string name="wifi_location_body">Android counts seeing the Wi-Fi networks nearby as location. With it, Tandem offers the Wi-Fi of a computer as soon as its network is in range. Your position is never read.</string>
+    <string name="wifi_allow">Allow</string>
+    <string name="wifi_section">Wi-Fi</string>
+    <string name="wifi_use_row">Use the Wi-Fi of %1$s</string>
+    <string name="wifi_unreachable">%1$s cannot be reached right now</string>
+    <string name="wifi_give_row">Share this phone\'s Wi-Fi with %1$s</string>
+    <string name="wifi_give_title">Android keeps the password</string>
+    <string name="wifi_give_body">Android does not let apps read the password of a Wi-Fi network, so this phone cannot hand it over. Type it on %1$s, or share it from a computer that is on the network.</string>
+    <string name="feature_wifi_join">Join the Wi-Fi of your computers</string>
+</resources>

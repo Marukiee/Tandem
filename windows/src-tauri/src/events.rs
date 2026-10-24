@@ -232,6 +232,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::Ringing { from, on } => {
             let _ = app.emit("ringing", json!({ "id": from, "on": on }));
         }
+        TandemEvent::Wifi { from, msg } => crate::wifi::handle(app, from, msg),
         _ => {}
     }
 }

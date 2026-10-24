@@ -16,7 +16,7 @@ function Card({ item }) {
     </div>
     <div class="qs-buttons">
       <button class="btn quiet" onClick=${() => answer("deny")}>${item.deny}</button>
-      <button class="btn" onClick=${() => answer("always")}>${item.always}</button>
+      ${item.always && html`<button class="btn" onClick=${() => answer("always")}>${item.always}</button>`}
       <button class="btn accent" onClick=${() => answer("allow")}>${item.allow}</button>
     </div>
   </div>`;

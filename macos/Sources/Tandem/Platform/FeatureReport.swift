@@ -72,6 +72,9 @@ enum FeatureReport {
             String(localized: "Bluetooth is off for Tandem on this Mac"), "bluetooth")
         add("ring", FindSounds.playable, String(localized: "Play a sound to be found"),
             String(localized: "This Mac has no sound output right now"), "sound")
+        // Only listed when it works: Location is a choice, and a missing one would stand on the other devices as a lasting notice. Share
+        // Wi-Fi says what it needs when it is pressed.
+        if WifiShare.shared.locationAllowed { add("wifi.share", true, String(localized: "Share this Mac's Wi-Fi"), "", nil) }
         return list
     }
 

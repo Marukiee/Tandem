@@ -159,6 +159,7 @@ const en = {
   connected_on: "Connected on {0}", last_seen_on: "Last seen {0} on {1}", last_seen_lan: "Last seen {0} on the local network", last_seen_tailnet: "Last seen {0} over Tailscale", last_seen: "Last seen {0}",
   find_sound: "Sound when this PC is looked for", find_sound_sub: "Plays loudly until you stop it, for two minutes at most", find_preview: "Play it",
   "find_sound@linux": "Sound when this computer is looked for",
+  wifi_share: "Share Wi-Fi", wifi_share_tip: "Send the name and password of this computer's Wi-Fi to {0}",
 };
 
 const nl = {
@@ -320,6 +321,7 @@ const nl = {
   connected_on: "Verbonden op {0}", last_seen_on: "Laatst gezien {0} op {1}", last_seen_lan: "Laatst gezien {0} op het lokale netwerk", last_seen_tailnet: "Laatst gezien {0} via Tailscale", last_seen: "Laatst gezien {0}",
   find_sound: "Geluid als deze pc gezocht wordt", find_sound_sub: "Speelt hard tot je het stopt, hooguit twee minuten", find_preview: "Laat horen",
   "find_sound@linux": "Geluid als deze computer gezocht wordt",
+  wifi_share: "Wifi delen", wifi_share_tip: "Stuur de naam en het wachtwoord van de wifi van deze computer naar {0}",
 };
 
 const tables = { en, nl };

@@ -193,7 +193,7 @@ class EngineHost(
                     appVersion = BuildConfig.VERSION_NAME,
                     port = 47820.toUShort(),
                     enableMdns = true,
-                    caps = listOf("clipboard", "share", "notify", "call", "input", "battery", "hotspot", "screenshot", "media", "capture", "screen.view", "screen.extend.view", "side.listen", "pointer.in", "pointer.ping", "ring") +
+                    caps = listOf("clipboard", "share", "notify", "call", "input", "battery", "hotspot", "screenshot", "media", "capture", "screen.view", "screen.extend.view", "side.listen", "pointer.in", "pointer.ping", "ring", "wifi.join") +
                         nl.markmaaktmedia.tandem.live.LiveShare.caps(context),
                     lowPower = true,
                 )

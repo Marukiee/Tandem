@@ -9,7 +9,7 @@ const cover = "data:image/svg+xml;utf8," + encodeURIComponent(
 
 const now = Date.now();
 const devices = empty ? [] : [
-  { id: "phone", name: "Pixel 9", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host", "screen.extend.view"],
+  { id: "phone", name: "Pixel 9", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host", "screen.extend.view", "wifi.join"],
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 80, charging: true, powerSave: false }, network: { kind: "cellular", ssid: null, metered: true, roaming: false, signal: 3 }, hotspot: true, dnd: false } },
   { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view", "screen.extend.view"],
@@ -169,6 +169,7 @@ export async function call(command, args) {
     case "create_pairing": return { uri: "tandem://pair?c=PREVIEW", code: "4821 7093", expiresAtMs: Date.now() + 300000, qr };
     case "pair": return "phone";
     case "send_clipboard": return args.ids.length;
+    case "wifi_share": return "Wi-Fi sent to " + (devices.find((d) => d.id === args.id)?.name ?? "?");
     case "pick_and_send":
     case "send_paths": {
       const id = "9-0-out";

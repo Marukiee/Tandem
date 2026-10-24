@@ -59,6 +59,8 @@ object FeatureReport {
         // Total silence also silences alarms, which is what it rings as. Turned off on the phone itself, so nothing to open from elsewhere.
         val silent = context.getSystemService(NotificationManager::class.java).currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_NONE
         list += TandemFeature("ring", !silent, context.getString(R.string.feature_ring), if (silent) context.getString(R.string.feature_ring_why) else "", null)
+        // The sheet of the system saves what a computer hands over, on every phone: nothing here can be missing for it.
+        list += TandemFeature("wifi.join", true, context.getString(R.string.feature_wifi_join), "", null)
         return list
     }
 

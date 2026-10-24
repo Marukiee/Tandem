@@ -61,6 +61,8 @@ import nl.markmaaktmedia.tandem.ui.components.routeName
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
+import nl.markmaaktmedia.tandem.wifi.rememberWifiOffer
+import nl.markmaaktmedia.tandem.wifi.wifiOfferItem
 import uniffi.tandem_core.TandemDevice
 
 @Composable
@@ -76,6 +78,7 @@ fun DevicesScreen(
     val devices by host.devices.collectAsState()
     val state by host.state.collectAsState()
     val scope = rememberCoroutineScope()
+    val wifiOffer = rememberWifiOffer()
 
     var pickerTarget by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -123,6 +126,8 @@ fun DevicesScreen(
                 if (devices.isNotEmpty()) SecondaryPillButton(stringResource(R.string.action_pair), onPair, icon = TandemIcons.Add)
             }
         }
+
+        wifiOfferItem(wifiOffer)
 
 
         (state as? EngineState.Failed)?.let { failed ->

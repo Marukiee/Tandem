@@ -1078,6 +1078,8 @@ pub enum TandemEvent {
     PointerShare { from: String, msg: TandemPointerShare },
     /// A device that this one asked to `ring` plays its sound now, or stopped (there, by itself, or because it was asked).
     Ringing { from: String, on: bool },
+    /// About the Wi-Fi of the other device: the network it is on, a question for the password of this one's, or the answer.
+    Wifi { from: String, msg: TandemWifi },
 }
 
 impl From<Event> for TandemEvent {
@@ -1213,6 +1215,7 @@ impl From<Event> for TandemEvent {
                 TandemEvent::MediaCommand { from: from.to_string(), player, action, position_ms }
             }
             Event::Ringing { from, on } => TandemEvent::Ringing { from: from.to_string(), on },
+            Event::Wifi { from, msg } => TandemEvent::Wifi { from: from.to_string(), msg: msg.into() },
         }
     }
 }
@@ -2941,5 +2944,164 @@ impl TandemEngine {
 
     pub fn set_media_default_policy(&self, policy: TandemMediaPolicy) -> Result<(), TandemError> {
         self.engine.set_media_default_policy(policy.into()).map_err(Into::into)
+    }
+}
+
+// ---- Sharing Wi-Fi -----------------------------------------------------------------
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemWifiSecurity {
+    Open,
+    /// WPA or WPA2 with a password, and a network that takes WPA2 and WPA3 alike.
+    Wpa2,
+    /// WPA3 only.
+    Wpa3,
+    /// 802.1X: nothing that can be handed over.
+    Enterprise,
+    /// WEP or unknown: not shared either.
+    Other,
+}
+
+impl From<crate::wifi::WifiSecurity> for TandemWifiSecurity {
+    fn from(s: crate::wifi::WifiSecurity) -> Self {
+        use crate::wifi::WifiSecurity as S;
+        match s {
+            S::Open => Self::Open,
+            S::Wpa2 => Self::Wpa2,
+            S::Wpa3 => Self::Wpa3,
+            S::Enterprise => Self::Enterprise,
+            S::Other => Self::Other,
+        }
+    }
+}
+
+impl From<TandemWifiSecurity> for crate::wifi::WifiSecurity {
+    fn from(s: TandemWifiSecurity) -> Self {
+        match s {
+            TandemWifiSecurity::Open => Self::Open,
+            TandemWifiSecurity::Wpa2 => Self::Wpa2,
+            TandemWifiSecurity::Wpa3 => Self::Wpa3,
+            TandemWifiSecurity::Enterprise => Self::Enterprise,
+            TandemWifiSecurity::Other => Self::Other,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemWifiNetwork {
+    pub ssid: String,
+    pub security: TandemWifiSecurity,
+    pub hidden: bool,
+}
+
+impl From<crate::wifi::WifiNetwork> for TandemWifiNetwork {
+    fn from(n: crate::wifi::WifiNetwork) -> Self {
+        Self { ssid: n.ssid, security: n.security.into(), hidden: n.hidden }
+    }
+}
+
+impl From<TandemWifiNetwork> for crate::wifi::WifiNetwork {
+    fn from(n: TandemWifiNetwork) -> Self {
+        Self { ssid: n.ssid, security: n.security.into(), hidden: n.hidden }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemWifiRefusal {
+    /// The person said no, or did not answer.
+    Declined,
+    /// The computer is not on that network (any more).
+    NotOnIt,
+    /// An enterprise network, or one that cannot be handed over for another reason.
+    CannotShare,
+    /// The system did not give the password.
+    Unreadable,
+    Other,
+}
+
+impl From<crate::wifi::WifiRefusal> for TandemWifiRefusal {
+    fn from(w: crate::wifi::WifiRefusal) -> Self {
+        use crate::wifi::WifiRefusal as R;
+        match w {
+            R::Declined => Self::Declined,
+            R::NotOnIt => Self::NotOnIt,
+            R::CannotShare => Self::CannotShare,
+            R::Unreadable => Self::Unreadable,
+            R::Other => Self::Other,
+        }
+    }
+}
+
+impl From<TandemWifiRefusal> for crate::wifi::WifiRefusal {
+    fn from(w: TandemWifiRefusal) -> Self {
+        match w {
+            TandemWifiRefusal::Declined => Self::Declined,
+            TandemWifiRefusal::NotOnIt => Self::NotOnIt,
+            TandemWifiRefusal::CannotShare => Self::CannotShare,
+            TandemWifiRefusal::Unreadable => Self::Unreadable,
+            TandemWifiRefusal::Other => Self::Other,
+        }
+    }
+}
+
+/// What two devices say about Wi-Fi (see `wifi.rs`).
+#[derive(Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemWifi {
+    /// The network the sender is on now, or none.
+    Network { network: Option<TandemWifiNetwork> },
+    /// Asks for the password of `ssid`. Ask the person, then answer with `Share` or `Refuse`.
+    Ask { ssid: String },
+    /// The password of a network. Empty for an open one.
+    Share { network: TandemWifiNetwork, password: String },
+    Refuse { ssid: String, why: TandemWifiRefusal },
+}
+
+/// Never with the password, so an event that is logged does not give it away.
+impl std::fmt::Debug for TandemWifi {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Network { network } => f.debug_struct("Network").field("network", network).finish(),
+            Self::Ask { ssid } => f.debug_struct("Ask").field("ssid", ssid).finish(),
+            Self::Share { network, .. } => f.debug_struct("Share").field("network", network).finish_non_exhaustive(),
+            Self::Refuse { ssid, why } => f.debug_struct("Refuse").field("ssid", ssid).field("why", why).finish(),
+        }
+    }
+}
+
+impl From<crate::wifi::WifiMsg> for TandemWifi {
+    fn from(m: crate::wifi::WifiMsg) -> Self {
+        use crate::wifi::WifiMsg as M;
+        match m {
+            M::Network { network } => Self::Network { network: network.map(Into::into) },
+            M::Ask { ssid } => Self::Ask { ssid },
+            M::Share { network, password } => Self::Share { network: network.into(), password: password.0 },
+            M::Refuse { ssid, why } => Self::Refuse { ssid, why: why.into() },
+        }
+    }
+}
+
+impl From<TandemWifi> for crate::wifi::WifiMsg {
+    fn from(m: TandemWifi) -> Self {
+        match m {
+            TandemWifi::Network { network } => Self::Network { network: network.map(Into::into) },
+            TandemWifi::Ask { ssid } => Self::Ask { ssid },
+            TandemWifi::Share { network, password } => Self::Share { network: network.into(), password: crate::wifi::WifiPassword(password) },
+            TandemWifi::Refuse { ssid, why } => Self::Refuse { ssid, why: why.into() },
+        }
+    }
+}
+
+#[uniffi::export(async_runtime = "tokio")]
+impl TandemEngine {
+    /// Which Wi-Fi network this computer is on, `None` for none. Call it at the start and whenever it changes; with `wifi.share`
+    /// in the caps the others hear of it, also a phone that is only reachable over Bluetooth.
+    pub async fn set_wifi_network(&self, network: Option<TandemWifiNetwork>) {
+        let engine = self.engine.clone();
+        let _ = self.runtime.spawn(async move { engine.set_wifi_network(network.map(Into::into)).await }).await;
+    }
+
+    /// Asks for a password, or answers such a question, over the network or over a Bluetooth link.
+    pub async fn send_wifi(&self, target: String, wifi: TandemWifi) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::Wifi(wifi.into())).await.map(|_| ())
     }
 }

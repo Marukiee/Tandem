@@ -45,7 +45,11 @@ pub fn ask(app: &AppHandle, mut question: Question) -> Answer {
     #[cfg(target_os = "linux")]
     let notification = {
         let tx = tx.clone();
-        let buttons = [("allow", question.allow.as_str()), ("always", question.always.as_str()), ("deny", question.deny.as_str())];
+        // A question with two answers leaves the middle one empty.
+        let buttons: Vec<(&str, &str)> = [("allow", question.allow.as_str()), ("always", question.always.as_str()), ("deny", question.deny.as_str())]
+            .into_iter()
+            .filter(|(_, label)| !label.is_empty())
+            .collect();
         tandem_winsys::notify::ask(&question.title, &question.body, &buttons, move |key| {
             let _ = tx.send(match key {
                 "allow" => Answer::Allow,

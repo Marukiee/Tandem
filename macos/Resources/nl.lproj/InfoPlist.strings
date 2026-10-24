@@ -2,3 +2,5 @@
 "NSBluetoothAlwaysUsageDescription" = "Tandem gebruikt Bluetooth om je telefoon om zijn hotspot te vragen als deze Mac geen verbinding heeft.";
 "NSCameraUsageDescription" = "Tandem scant de koppelcode die op een ander apparaat staat.";
 "NSNetworkVolumesUsageDescription" = "Tandem opent de bestanden van je telefoon als schijf, en andere apps op deze Mac gebruiken die schijf.";
+"NSLocationUsageDescription" = "macOS vertelt Tandem de naam van je wifinetwerk alleen als het je locatie mag zien. Tandem gebruikt de naam om je wifi met je andere apparaten te delen en om de hotspot van je telefoon in te stellen, en nooit je positie.";
+"NSLocationWhenInUseUsageDescription" = "macOS vertelt Tandem de naam van je wifinetwerk alleen als het je locatie mag zien. Tandem gebruikt de naam om je wifi met je andere apparaten te delen en om de hotspot van je telefoon in te stellen, en nooit je positie.";

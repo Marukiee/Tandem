@@ -100,4 +100,6 @@ pub enum Event {
     PointerShare { from: DeviceId, msg: crate::pointer_share::PointerShareMsg },
     /// The device that this one asked to ring plays its sound now, or stopped.
     Ringing { from: DeviceId, on: bool },
+    /// About the Wi-Fi of the other device: which network it is on, a question for its password, or the answer (see `wifi`).
+    Wifi { from: DeviceId, msg: crate::wifi::WifiMsg },
 }

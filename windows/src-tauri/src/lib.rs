@@ -51,6 +51,7 @@ mod state;
 mod tailscale;
 mod tray;
 mod update;
+mod wifi;
 #[cfg(feature = "native-video")]
 mod video;
 
@@ -266,6 +267,7 @@ pub fn run() {
             find::find_sounds,
             find::find_choose,
             find::find_preview,
+            wifi::wifi_share,
         ])
         .build(tauri::generate_context!())
         .expect("Tandem could not start")

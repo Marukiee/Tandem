@@ -138,6 +138,15 @@ oudere versie kent `Ringing` niet en slaat het over; het leest het nooit als `Ri
 Elk apparaat onthoudt per ander apparaat wanneer het er het laatst mee verbonden was en op welk netwerk (`seen.cbor`): de
 wifinaam die het andere apparaat in `Status.network.ssid` noemde, of, als het niets zegt en de twee op hetzelfde lokale
 netwerk zitten, de eigen wifinaam. Dat reist niet over de lijn, het is wat dit apparaat zelf zag.
+### Wifi delen
+
+`Wifi(WifiMsg)` op de controlestream, en ook over Bluetooth (zie BLUETOOTH.md), want een apparaat dat niet op het netwerk van
+de computer zit is vaak alleen zo te bereiken. Een computer met `wifi.share` stuurt `Network { network }` (naam, beveiliging,
+verborgen, of niets) bij elke verbinding, bij elke nieuwe Bluetooth-link en bij elke wijziging. Een apparaat dat er niet op zit
+vraagt `Ask { ssid }`; de persoon bij de computer beslist, en het antwoord is `Share { network, password }` of
+`Refuse { ssid, why }` (`declined`, `not_on_it`, `cannot_share`, `unreadable`). Een computer die op de knop Wifi delen drukt
+stuurt `Share` zonder vraag; de ontvanger vraagt zijn eigen persoon voordat hij verbindt. Een naam langer dan 32 bytes of een
+wachtwoord langer dan 64 tekens gaat niet verder dan de core, en `Debug` toont het wachtwoord nooit.
 
 ### Mogelijkheden (`Hello.caps`)
 
@@ -155,6 +164,8 @@ vragen, kijkt eerst of het woord er staat.
 | `screen.view`, `camera.view` | kan het scherm of de camera van een ander apparaat tonen |
 | `audio.play` | speelt het geluid van een telefoon af (streamnummer `9`, zie MUSIC_AND_SOUND.md) |
 | `ring` | laat zijn geluid horen op `Ring` en meldt met `Ringing` wanneer het speelt en stopt |
+| `wifi.share` | een computer die zegt op welk wifi hij zit en het wachtwoord geeft als zijn persoon ja zegt |
+| `wifi.join` | verbindt met een wifi dat een ander apparaat geeft (een telefoon via het blad van het systeem) |
 
 ## De circle
 

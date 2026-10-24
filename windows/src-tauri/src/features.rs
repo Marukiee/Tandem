@@ -63,6 +63,11 @@ pub fn current(app: &AppHandle) -> Vec<TandemFeature> {
         },
         Some("sound"),
     ));
+    // A computer without Wi-Fi (or, on Linux, without NetworkManager) has nothing to share and no setting that would change that: it
+    // is left out rather than shown on the other devices as something missing.
+    if crate::wifi::available() {
+        list.push(feature("wifi.share", true, t("Share this computer's Wi-Fi", "De wifi van deze computer delen"), "", None));
+    }
     if cfg!(target_os = "linux") {
         list.push(feature(
             "bluetooth",

@@ -49,7 +49,7 @@ Inside is a CBOR `Msg` and a sequence number. The sender keeps its number climbi
 one more than the last), and the receiver stores the highest it accepted and refuses anything at
 or below it, so a captured frame cannot be replayed, also not after a restart.
 
-Only clipboard, notification (post, remove, action) and ping messages may cross the air. A frame
+Only clipboard, notification (post, remove, action), music, Wi-Fi (see PROTOCOL.md) and ping messages may cross the air. A frame
 above 48 KB is not sent.
 
 ## Chunks

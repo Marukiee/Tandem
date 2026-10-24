@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wifi_channel">Wifi van je computers</string>
+    <string name="wifi_channel_desc">Als een computer deze telefoon zijn wifi kan geven</string>
+    <string name="wifi_offer_title">De wifi van %1$s gebruiken?</string>
+    <string name="wifi_use">Gebruiken</string>
+    <string name="wifi_not_now">Niet nu</string>
+    <string name="wifi_ready_title">%1$s deelt %2$s</string>
+    <string name="wifi_ready_text">Tik om te verbinden</string>
+    <string name="wifi_computer_fallback">je computer</string>
+    <string name="wifi_gone">Die wifi wordt niet meer aangeboden. Vraag het opnieuw op de pagina van de computer.</string>
+    <string name="wifi_asking_title">Wachten op %1$s</string>
+    <string name="wifi_asking_body">Kies Delen op %1$s om het wachtwoord van %2$s te sturen.</string>
+    <string name="wifi_cancel">Annuleren</string>
+    <string name="wifi_close">Sluiten</string>
+    <string name="wifi_try_again">Opnieuw proberen</string>
+    <string name="wifi_no_answer_title">%1$s gaf geen antwoord</string>
+    <string name="wifi_no_answer_body">Kijk of %1$s wakker en dichtbij is, en probeer het opnieuw.</string>
+    <string name="wifi_refused_title">%1$s deelde %2$s niet</string>
+    <string name="wifi_refused_declined">Op %1$s is nee gezegd.</string>
+    <string name="wifi_refused_not_on_it">%1$s zit niet meer op %2$s.</string>
+    <string name="wifi_refused_cannot">%1$s heeft een aanmelding per persoon, en die kan niet gedeeld worden.</string>
+    <string name="wifi_refused_unreadable">%1$s kon het wachtwoord niet lezen. Misschien moet dat daar eerst worden toegestaan.</string>
+    <string name="wifi_refused_other">%1$s kon het niet delen.</string>
+    <string name="wifi_failed_title">Het netwerk is niet toegevoegd</string>
+    <string name="wifi_failed">Android heeft %1$s niet bewaard.</string>
+    <string name="wifi_failed_password">Android neemt het wachtwoord van %1$s niet aan.</string>
+    <string name="wifi_suggested">Je telefoon verbindt met %1$s zodra het in de buurt is.</string>
+    <string name="wifi_saved">%1$s bewaard. Je telefoon verbindt ermee.</string>
+    <string name="wifi_location_title">Voortaan vanzelf aanbieden?</string>
+    <string name="wifi_location_body">Android rekent het zien van wifinetwerken in de buurt tot locatie. Daarmee biedt Tandem de wifi van een computer aan zodra het netwerk in de buurt is. Je positie wordt nooit gelezen.</string>
+    <string name="wifi_allow">Toestaan</string>
+    <string name="wifi_section">Wifi</string>
+    <string name="wifi_use_row">De wifi van %1$s gebruiken</string>
+    <string name="wifi_unreachable">%1$s is nu niet bereikbaar</string>
+    <string name="wifi_give_row">De wifi van deze telefoon delen met %1$s</string>
+    <string name="wifi_give_title">Android houdt het wachtwoord voor zich</string>
+    <string name="wifi_give_body">Android laat apps het wachtwoord van een wifinetwerk niet lezen, dus deze telefoon kan het niet doorgeven. Typ het op %1$s, of deel het vanaf een computer die op het netwerk zit.</string>
+    <string name="feature_wifi_join">De wifi van je computers gebruiken</string>
+</resources>

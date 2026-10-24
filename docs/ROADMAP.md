@@ -173,8 +173,8 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   2. Berichten op de computer: hele sms-gesprekken lezen en nieuwe sturen, zoals Berichten op de Mac (nu alleen een melding met antwoorden). Android:
      `Telephony` lezen met READ_SMS en sturen met SEND_SMS (beperkt zonder winkel, zie de rechten). Haalbaar.
   3. Klembord met plaatjes en bestanden, niet alleen tekst. Haalbaar.
-  4. Wifi delen: zit de telefoon niet op het netwerk van de computer maar wel met hem verbonden (Bluetooth), dan vraagt de telefoon "Het wifi van je
-     MacBook overnemen?" en krijgt hij het netwerk (`WifiNetworkSuggestion`). Ook andersom. Gekozen door Mark.
+  4. Wifi delen: gebouwd (2026-10-24). De telefoon vraagt "De wifi van je MacBook gebruiken?", de computer vraagt of het wachtwoord mag, ook over
+     Bluetooth; Wifi delen op de pagina van een apparaat, ook tussen computers. Van telefoon naar computer kan niet (Android geeft het wachtwoord niet).
   5. Foto's van de telefoon vanzelf op de computer, zoals iCloud-foto's maar lokaal (schermafbeeldingen gaan al). Haalbaar.
   6. Goedkeuren met de telefoon: geschrapt door Mark (2026-10-24), ziet het nut niet.
   7. De computer laten piepen en zien waar hij is vanaf de telefoon (Find My voor laptops), met het netwerk waar hij laatst was. Het geluid komt uit

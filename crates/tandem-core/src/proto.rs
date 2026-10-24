@@ -154,6 +154,8 @@ pub enum Msg {
     /// This device plays a sound now because another one asked with `Ring`, or it stopped (the person stopped it here, it ran out, or
     /// it was asked to stop). Sent to the devices that asked, so their button shows what really happens. Devices that do not know it skip it.
     Ringing { on: bool },
+    /// Handing the Wi-Fi a computer is on to another device (see `wifi`). Devices that do not know it skip it.
+    Wifi(crate::wifi::WifiMsg),
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,
