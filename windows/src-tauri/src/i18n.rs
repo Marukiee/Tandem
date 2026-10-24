@@ -163,6 +163,12 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "quick_share") => "Quick Share",
         ("nl", "quit_tandem") => "Tandem afsluiten",
         (_, "quit_tandem") => "Quit Tandem",
+        ("nl", "find_title") => "{0} zoekt deze computer",
+        (_, "find_title") => "{0} is looking for this computer",
+        ("nl", "find_body") => "Deze computer speelt een geluid tot je het stopt. Een toets of klik op deze kaart stopt het ook.",
+        (_, "find_body") => "This computer plays a sound until you stop it. A key or a click on this card stops it too.",
+        ("nl", "find_stop") => "Stop",
+        (_, "find_stop") => "Stop",
         _ => "",
     }
 }

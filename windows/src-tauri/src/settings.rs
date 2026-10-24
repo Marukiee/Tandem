@@ -64,6 +64,8 @@ pub struct Settings {
     pub screen_sound_ask: bool,
     /// The shared mouse: the pointer goes over to the screens that are arranged next to this one. Off keeps the arrangement.
     pub pointer_share: bool,
+    /// The sound of the system that plays when another device looks for this computer. Empty is the one `find.rs` picks.
+    pub ring_sound: String,
 }
 
 impl Default for Settings {
@@ -95,6 +97,7 @@ impl Default for Settings {
             pointer_share: true,
             auto_update: true,
             dismissed_update: String::new(),
+            ring_sound: String::new(),
         }
     }
 }

@@ -52,6 +52,17 @@ pub fn current(app: &AppHandle) -> Vec<TandemFeature> {
         t("This computer has no microphone that Tandem can use", "Deze computer heeft geen microfoon die Tandem kan gebruiken"),
         Some("sound"),
     ));
+    list.push(feature(
+        "ring",
+        crate::find::can_ring(app),
+        t("Play a sound to be found", "Een geluid afspelen om gevonden te worden"),
+        if cfg!(target_os = "linux") {
+            t("No program to play sounds was found (pw-play, paplay or canberra-gtk-play)", "Er is geen programma gevonden dat geluid afspeelt (pw-play, paplay of canberra-gtk-play)")
+        } else {
+            t("The sounds of Windows are missing", "De geluiden van Windows ontbreken")
+        },
+        Some("sound"),
+    ));
     if cfg!(target_os = "linux") {
         list.push(feature(
             "bluetooth",

@@ -106,6 +106,8 @@ pub mod inputcapture;
 mod x11grab;
 #[cfg(target_os = "linux")]
 mod clipwatch;
+/// The sounds of the system, ringing until found, and the Wi-Fi this computer is on.
+pub mod find;
 #[cfg(not(windows))]
 mod imp {
     #[cfg_attr(target_os = "linux", allow(unused_imports))]

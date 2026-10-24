@@ -154,6 +154,11 @@ const en = {
   input_wayland: "Needs permission this session does not give: under Wayland an app cannot move the pointer or press keys. Log in with an X11 session instead (the gear at the login screen).",
   input_no_display: "No screen was found to send the pointer and keys to.",
   mac: "Mac", phone: "Phone", pc: "PC", unknown: "Device", quit: "Quit",
+  play_sound: "Play sound", stop_sound: "Stop sound", plays_sound: "{0} plays a sound",
+  sound_offline: "{0} is offline, so it cannot play a sound now.", sound_old: "Update Tandem on {0} to play a sound on it.",
+  connected_on: "Connected on {0}", last_seen_on: "Last seen {0} on {1}", last_seen_lan: "Last seen {0} on the local network", last_seen_tailnet: "Last seen {0} over Tailscale", last_seen: "Last seen {0}",
+  find_sound: "Sound when this PC is looked for", find_sound_sub: "Plays loudly until you stop it, for two minutes at most", find_preview: "Play it",
+  "find_sound@linux": "Sound when this computer is looked for",
 };
 
 const nl = {
@@ -310,6 +315,11 @@ const nl = {
   input_wayland: "Heeft een toestemming nodig die deze sessie niet geeft: onder Wayland mag een app de muis niet bewegen of toetsen indrukken. Log in met een X11-sessie (het tandwiel op het inlogscherm).",
   input_no_display: "Er is geen scherm gevonden om de muis en toetsen naartoe te sturen.",
   mac: "Mac", phone: "Telefoon", pc: "Pc", unknown: "Apparaat", quit: "Afsluiten",
+  play_sound: "Speel geluid af", stop_sound: "Stop geluid", plays_sound: "{0} speelt een geluid af",
+  sound_offline: "{0} is offline en kan nu geen geluid afspelen.", sound_old: "Werk Tandem bij op {0} om er een geluid op af te spelen.",
+  connected_on: "Verbonden op {0}", last_seen_on: "Laatst gezien {0} op {1}", last_seen_lan: "Laatst gezien {0} op het lokale netwerk", last_seen_tailnet: "Laatst gezien {0} via Tailscale", last_seen: "Laatst gezien {0}",
+  find_sound: "Geluid als deze pc gezocht wordt", find_sound_sub: "Speelt hard tot je het stopt, hooguit twee minuten", find_preview: "Laat horen",
+  "find_sound@linux": "Geluid als deze computer gezocht wordt",
 };
 
 const tables = { en, nl };
