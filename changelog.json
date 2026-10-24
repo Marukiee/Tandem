@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.89",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Control Center buttons",
+      "new": [
+        "The Control Center buttons show in the colour of Tandem when they are on"
+      ]
+    },
+    "nl": {
+      "title": "Knoppen in het Controlecentrum",
+      "new": [
+        "De knoppen in het Controlecentrum hebben de kleur van Tandem als ze aanstaan"
+      ]
+    }
+  },
+  {
     "version": "0.1.88",
     "date": "2026-10-24",
     "en": {

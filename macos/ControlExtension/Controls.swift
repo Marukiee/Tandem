@@ -70,6 +70,7 @@ struct QuickShareControl: ControlWidget {
             ControlWidgetToggle("Quick Share", isOn: on, action: QuickShareIntent()) { isOn in
                 Label(isOn ? "Everyone" : "Off", systemImage: "dot.radiowaves.left.and.right")
             }
+            .tint(Color(red: 0.36, green: 0.36, blue: 0.84))
         }
         .displayName("Quick Share")
         .description("Lets this Mac be found for Quick Share.")
@@ -82,6 +83,7 @@ struct MouseControl: ControlWidget {
             ControlWidgetToggle("Shared mouse", isOn: on, action: MouseIntent()) { isOn in
                 Label(isOn ? "On" : "Off", systemImage: "cursorarrow.motionlines")
             }
+            .tint(Color(red: 0.36, green: 0.36, blue: 0.84))
         }
         .displayName("Shared mouse")
         .description("Lets the mouse and keyboard of this Mac go to your other computers.")
@@ -94,6 +96,7 @@ struct ExtendControl: ControlWidget {
             ControlWidgetToggle("Extend screen", isOn: on, action: ExtendIntent()) { isOn in
                 Label(isOn ? "On" : "Off", systemImage: "rectangle.on.rectangle")
             }
+            .tint(Color(red: 0.36, green: 0.36, blue: 0.84))
         }
         .displayName("Extend screen")
         .description("Shows a screen of this Mac on your phone or another computer.")
@@ -106,6 +109,7 @@ struct FindControl: ControlWidget {
             ControlWidgetToggle("Find phone", isOn: on, action: FindIntent()) { isOn in
                 Label(isOn ? "Ringing" : "Off", systemImage: "bell.and.waves.left.and.right")
             }
+            .tint(Color(red: 0.36, green: 0.36, blue: 0.84))
         }
         .displayName("Find phone")
         .description("Makes your phone ring.")
