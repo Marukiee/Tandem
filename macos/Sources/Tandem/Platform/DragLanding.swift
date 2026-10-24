@@ -32,6 +32,16 @@ final class DragLanding {
             EngineModel.shared.showToast(String(localized: "A file from \(from) did not come in"))
             return true
         }
+        // It hangs under the pointer first, to be put down with a press where the person wants it (see `DragCarrier`).
+        if DragCarrier.shared.carry(URL(fileURLWithPath: location), name: name, from: device) { return true }
+        land(URL(fileURLWithPath: location), name: name, from: device)
+        return true
+    }
+
+    /// Puts a file that came by a drag where a drop on the edge goes, and shows it in Finder.
+    func land(_ file: URL, name: String, from device: String) {
+        let from = EngineModel.shared.device(device)?.name ?? "?"
+        let location = file.path
         // Asking Finder which folder is in front can take a moment (or a question on the first time), so it is not done on the main thread.
         let finderInFront = NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.apple.finder"
         Task { @MainActor in
@@ -41,7 +51,6 @@ final class DragLanding {
             // Said where it is: the file is shown in Finder, so it is easy to find.
             NSWorkspace.shared.activateFileViewerSelecting([placed])
         }
-        return true
     }
 
     /// Moves the file to the folder where it was dropped, with a name that is free there.

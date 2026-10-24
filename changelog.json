@@ -3,14 +3,16 @@
     "version": "0.1.99",
     "date": "2026-10-24",
     "en": {
-      "title": "An extended screen is no neighbour",
+      "title": "Put a file down where you want it",
       "new": [
+        "Mac: a file dragged over from another computer hangs under the pointer, and a click puts it down there, also in a field of a website",
         "Mac: a device that shows your extended screen gets no drop zone and no shared mouse while it does"
       ]
     },
     "nl": {
-      "title": "Een uitgebreid scherm is geen buur",
+      "title": "Een bestand neerzetten waar je wilt",
       "new": [
+        "Mac: een bestand dat van een andere computer komt hangt onder de aanwijzer, en een klik zet het daar neer, ook in een veld op een website",
         "Mac: een apparaat dat je uitgebreide scherm toont krijgt zolang geen dropzone en geen gedeelde muis"
       ]
     }

@@ -671,6 +671,13 @@ final class PointerShare {
     func controlled(_ input: TandemInput, from device: String) -> Bool {
         guard controlledBy == device else { return false }
         controllerHeardAt = Date()
+        // Files carried under the pointer: a press puts them down where it is, Escape sends them to the folder (see `DragCarrier`).
+        switch input {
+        case let .button(button, down) where button == 0 && down: DragCarrier.shared.beforePress(from: device)
+        case let .click(button, _) where button == 0: DragCarrier.shared.beforePress(from: device)
+        case let .key(code, down, _) where code == 0x29 && down: DragCarrier.shared.cancel(from: device)
+        default: break
+        }
         model.injector.handleShared(input, from: device)
         if case let .button(button, down) = input, button == 0 { controllerLeftDown = down }
         if case let .pointer(dx, dy) = input, let at = CGEvent(source: nil)?.location {

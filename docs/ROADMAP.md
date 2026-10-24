@@ -120,12 +120,12 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
 - Linux: Bijwerken en herstarten herstart niet, en het lettertype oogt van boven ingedrukt (gevraagd 2026-10-24, gedaan in 0.1.95: de nieuwe versie
   start pas als de oude weg is, en de app gebruikt Google Sans Flex zoals Android).
 - Een bestand over de rand slepen en neerzetten waar de aanwijzer is, ook in een veld op een website (gevraagd 2026-10-24). Gedaan in 0.1.97: na het
-  neerzetten gaat op elke ontvanger de map open met het bestand geselecteerd (de Mac deed dat al). Nog niet, en hoe: nu laat je los op de dropzone aan de
-  rand van de bron, en gaat de aanwijzer niet mee. Voor neerzetten in een veld moet de aanwijzer met ingedrukte knop overgaan, de bron stuurt de bestanden
-  op dat moment, en de ontvanger begint onder de aanwijzer een echte systeemsleep: op de Mac een klein paneel onder de aanwijzer waar `InputInjector` de
-  knop opnieuw indrukt, zodat `beginDraggingSession` een echte muisklik heeft (`PointerShare.controllerLeftDown` zegt of de knop vast zit); op Windows
-  `DoDragDrop` met de knop die `SendInput` al vasthoudt. Wil niets het hebben, dan de map openen. Onder Wayland (Linux) kan een app alleen een sleep beginnen
-  vanuit een klik op zijn eigen venster en kan het geen venster onder de aanwijzer zetten: daar blijft het de map. Pas bouwen met echte toestellen erbij.
+  neerzetten gaat op Linux en Windows de map open met het bestand geselecteerd. Gedaan in 0.1.99 voor de Mac als ontvanger (`DragCarrier`): het bestand
+  hangt als icoon onder de aanwijzer (een klein paneel precies onder de punt), en de volgende klik, van de eigen muis of doorgegeven door de computer die
+  de muis deelt, landt op dat paneel en begint een echte systeemsleep; loslaten zet het neer in elk veld of elke app die bestanden neemt. Escape of 30
+  seconden niets: de map zoals voorheen. Nog nergens gezien. Niet mogelijk: Linux als ontvanger onder Wayland (een app kan geen sleep beginnen zonder
+  klik op zijn eigen venster en geen venster onder de aanwijzer zetten), daar blijft het de map. Windows als ontvanger kan op dezelfde manier als de Mac
+  (een klein venster onder de aanwijzer en `DoDragDrop`), nog niet gebouwd.
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)

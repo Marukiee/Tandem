@@ -1006,3 +1006,7 @@
 "Play here" = "Hier afspelen";
 "Always here" = "Altijd hier";
 "Leave it there" = "Daar laten";
+
+/* Files carried under the pointer */
+"%@ from %@ was put down" = "%@ van %@ is neergezet";
+"%lld files from %@ were put down" = "%lld bestanden van %@ zijn neergezet";
