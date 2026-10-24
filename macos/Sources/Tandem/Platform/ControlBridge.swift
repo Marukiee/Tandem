@@ -47,7 +47,7 @@ final class ControlBridge {
         State(
             quickShare: QuickShare.shared.enabled,
             mouse: PointerShare.shared.enabled,
-            extending: ScreenHost.shared.current?.extend == true,
+            extending: !ScreenHost.shared.extended.isEmpty,
             ringing: EngineModel.shared.ringing.contains { $0 == phone?.id },
             extendTarget: extendDevice?.name,
             phone: phone?.name
@@ -77,7 +77,7 @@ final class ControlBridge {
                 UserDefaults.standard.set(device.id, forKey: "controlExtendTarget")
                 ScreenHost.shared.offerExtend(to: device)
             } else if !on {
-                ScreenHost.shared.stopCurrent()
+                ScreenHost.shared.stopExtended()
             }
         case "find":
             if let phone { EngineModel.shared.ring(phone.id, on: on) }

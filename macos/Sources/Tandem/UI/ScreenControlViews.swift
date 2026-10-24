@@ -5,8 +5,8 @@ import TandemCore
 // MARK: - Floating panels
 
 /// The two things of a remote desktop that must be seen without opening Tandem: the question when a device wants in, and
-/// the bar that says someone is looking at this Mac and lets you stop it. Both are glass panels at the top of the main
-/// screen, above everything, in every space.
+/// the bar that lists every device that looks at this Mac or shows an extra screen of it, each with its own Stop. Both are
+/// glass panels at the top of the main screen, above everything, in every space.
 @MainActor
 final class ScreenPanels {
     static let shared = ScreenPanels()
@@ -14,7 +14,7 @@ final class ScreenPanels {
     private var promptPanel: NSPanel?
     private var indicatorPanel: NSPanel?
     private var shownPrompt: UInt64?
-    private var shownIndicator: UInt64?
+    private var shownIndicator: [String] = []
 
     /// Shows, moves or hides the panels to match what the host is doing. Cheap to call after any change.
     func update() {
@@ -27,7 +27,6 @@ final class ScreenPanels {
                 let view = NSHostingView(rootView: ScreenPromptView(host: host))
                 panel.contentView = view
                 panel.setContentSize(view.fittingSize)
-                place(panel, row: 0)
                 panel.orderFrontRegardless()
                 shownPrompt = prompt.id
             }
@@ -36,25 +35,24 @@ final class ScreenPanels {
             shownPrompt = nil
         }
 
-        if let running = host.current {
-            if shownIndicator != running.id || indicatorPanel?.isVisible != true {
+        // A new view whenever a device comes, goes, or may do something else: the panel takes the size of the view, and a view that was
+        // there measures what it showed before until SwiftUI draws it again.
+        let shown = host.running.map { "\($0.id) \($0.control)" }
+        if !shown.isEmpty {
+            if shownIndicator != shown || indicatorPanel?.isVisible != true {
                 let panel = indicatorPanel ?? makePanel()
                 indicatorPanel = panel
                 let view = NSHostingView(rootView: ScreenIndicatorView(host: host))
                 panel.contentView = view
                 panel.setContentSize(view.fittingSize)
-                place(panel, row: host.prompt == nil ? 0 : 1)
                 panel.orderFrontRegardless()
-                shownIndicator = running.id
-            } else if let panel = indicatorPanel, let view = panel.contentView {
-                // The text changes with who is controlling and with what, so the width follows.
-                let size = view.fittingSize
-                if abs(size.width - panel.frame.width) > 1 { panel.setContentSize(size); place(panel, row: 0) }
+                shownIndicator = shown
             }
         } else if let panel = indicatorPanel, panel.isVisible {
             panel.orderOut(nil)
-            shownIndicator = nil
+            shownIndicator = []
         }
+        layout()
     }
 
     private func makePanel() -> NSPanel {
@@ -79,12 +77,20 @@ final class ScreenPanels {
         [promptPanel, indicatorPanel].compactMap { $0 }.filter(\.isVisible).map(\.frame.minY).min()
     }
 
-    private func place(_ panel: NSPanel, row: Int) {
+    /// The question at the top and the bar under it: a device that asks while others are already in is the usual case now, and the
+    /// question would otherwise cover the bar. The question has 36 points of room for its shadow under it and the bar 12 above it, so
+    /// starting the bar 36 above the bottom of the question leaves 12 points between the glass.
+    private func layout() {
         guard let screen = NSScreen.main else { return }
         let area = screen.visibleFrame
-        let size = panel.frame.size
-        let y = area.maxY - size.height - 10 - CGFloat(row) * 76
-        panel.setFrameOrigin(NSPoint(x: area.midX - size.width / 2, y: y))
+        var top = area.maxY - 10
+        if let panel = promptPanel, panel.isVisible {
+            panel.setFrameOrigin(NSPoint(x: area.midX - panel.frame.width / 2, y: top - panel.frame.height))
+            top = panel.frame.minY + 36
+        }
+        if let panel = indicatorPanel, panel.isVisible {
+            panel.setFrameOrigin(NSPoint(x: area.midX - panel.frame.width / 2, y: top - panel.frame.height))
+        }
     }
 }
 
@@ -165,31 +171,48 @@ private struct ScreenIndicatorView: View {
     let host: ScreenHost
 
     var body: some View {
-        if let running = host.current {
-            HStack(spacing: 10) {
-                PulsingSymbol(name: running.control ? "cursorarrow.rays" : "eye", pointSize: 15, weight: .semibold, color: NSColor(Palette.urgent))
-                    .frame(width: 22, height: 22)
-                Text(running.control ? "\(running.name) is controlling this Mac" : "\(running.name) is watching this Mac")
-                    .font(.callout.weight(.medium))
-                    .lineLimit(1)
-                if running.offered {
-                    Button(running.control ? "Pause control" : "Resume control") { host.setControl(!running.control) }
-                        .buttonStyle(.tandemGlass)
-                        .controlSize(.small)
+        let running = host.running
+        if !running.isEmpty {
+            GlassEffectContainer(spacing: 0) {
+                VStack(spacing: 8) {
+                    ForEach(running) { session in
+                        row(session)
+                    }
                 }
-                Button("Stop") { host.stopCurrent() }
-                    .buttonStyle(.tandemGlassProminent(tint: Palette.urgent))
-                    .tint(Palette.urgent)
+                // Every row as wide as the widest, so the Stop buttons stand under each other.
+                .fixedSize(horizontal: true, vertical: false)
+            }
+            .padding(EdgeInsets(top: 12, leading: 24, bottom: 30, trailing: 24))
+        }
+    }
+
+    private func row(_ session: ScreenHost.Remote) -> some View {
+        HStack(spacing: 10) {
+            PulsingSymbol(
+                name: session.extend ? "rectangle.on.rectangle" : session.control ? "cursorarrow.rays" : "eye",
+                pointSize: 15, weight: .semibold, color: NSColor(Palette.urgent)
+            )
+            .frame(width: 22, height: 22)
+            Text(session.extend ? "Extra screen on \(session.name)" : session.control ? "\(session.name) is controlling this Mac" : "\(session.name) is watching this Mac")
+                .font(.callout.weight(.medium))
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            if session.offered {
+                Button(session.control ? "Pause control" : "Resume control") { host.setControl(!session.control, session: session.id) }
+                    .buttonStyle(.tandemGlass)
                     .controlSize(.small)
             }
-            .padding(.leading, 16)
-            .padding(.trailing, 8)
-            .padding(.vertical, 8)
-            .glassEffect(.regular, in: .capsule)
-            .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
-            .padding(EdgeInsets(top: 12, leading: 24, bottom: 30, trailing: 24))
-            .animation(.tandem, value: running.control)
+            Button("Stop") { host.stop(session: session.id) }
+                .buttonStyle(.tandemGlassProminent(tint: Palette.urgent))
+                .tint(Palette.urgent)
+                .controlSize(.small)
         }
+        .padding(.leading, 16)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular, in: .capsule)
+        .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
     }
 }
 
@@ -275,12 +298,17 @@ struct ScreenSettings: View {
                 )
             }
 
-            if let running = host.current {
+            if !host.running.isEmpty {
                 Section("Right now") {
-                    HStack {
-                        Label(running.control ? "\(running.name) is controlling this Mac" : "\(running.name) is watching this Mac", systemImage: "dot.radiowaves.left.and.right")
-                        Spacer(minLength: 8)
-                        Button("Stop") { host.stopCurrent() }.buttonStyle(.tandemGlassProminent(tint: Palette.urgent)).tint(Palette.urgent).controlSize(.small)
+                    ForEach(host.running) { running in
+                        HStack {
+                            Label(
+                                running.extend ? "Extra screen on \(running.name)" : running.control ? "\(running.name) is controlling this Mac" : "\(running.name) is watching this Mac",
+                                systemImage: running.extend ? "rectangle.on.rectangle" : "dot.radiowaves.left.and.right"
+                            )
+                            Spacer(minLength: 8)
+                            Button("Stop") { host.stop(session: running.id) }.buttonStyle(.tandemGlassProminent(tint: Palette.urgent)).tint(Palette.urgent).controlSize(.small)
+                        }
                     }
                 }
             }

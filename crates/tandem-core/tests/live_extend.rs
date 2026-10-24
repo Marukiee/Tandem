@@ -1,6 +1,7 @@
 //! A second screen end to end through the core: the viewer says how big its screen is in pixels and in logical pixels, the host
-//! hears both, and sixty frames a second of the size a laptop screen gives arrive in order and in time. Real engines, real QUIC,
-//! loopback. The time a frame spends in the core is printed (`--nocapture`), so a change to the path can be measured.
+//! hears both, and sixty frames a second of the size a laptop screen gives arrive in order and in time. Two devices can each have
+//! one at the same time. Real engines, real QUIC, loopback. The time a frame spends in the core is printed (`--nocapture`), so a
+//! change to the path can be measured.
 
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -63,6 +64,13 @@ struct Viewer {
     accepted: Mutex<Option<MediaAccept>>,
     /// Picture time and when it arrived, both in microseconds since `base`.
     frames: Mutex<Vec<(u64, u64, bool)>>,
+    ended: Mutex<Option<MediaEnd>>,
+}
+
+impl Viewer {
+    fn new(base: Instant) -> Arc<Self> {
+        Arc::new(Viewer { base, accepted: Mutex::new(None), frames: Mutex::new(Vec::new()), ended: Mutex::new(None) })
+    }
 }
 
 impl MediaViewer for Viewer {
@@ -74,7 +82,9 @@ impl MediaViewer for Viewer {
         let at = self.base.elapsed().as_micros() as u64;
         self.frames.lock().unwrap().push((frame.pts_us, at, frame.keyframe));
     }
-    fn on_ended(&self, _session: u64, _reason: MediaEnd) {}
+    fn on_ended(&self, _session: u64, reason: MediaEnd) {
+        *self.ended.lock().unwrap() = Some(reason);
+    }
 }
 
 /// An access unit in Annex B of about `size` bytes: parameter sets and an IDR for a keyframe, a plain slice otherwise.
@@ -107,7 +117,7 @@ async fn a_second_screen_carries_its_logical_size_and_sixty_frames_a_second_arri
     let host = Arc::new(Host::default());
     mac.engine.set_media_host(host.clone());
     let base = Instant::now();
-    let viewer = Arc::new(Viewer { base, accepted: Mutex::new(None), frames: Mutex::new(Vec::new()) });
+    let viewer = Viewer::new(base);
     laptop.engine.set_media_viewer(viewer.clone());
 
     // A laptop of 2880 by 1800 pixels at 150%: its desktop is 1920 by 1200.
@@ -169,4 +179,73 @@ async fn a_second_screen_carries_its_logical_size_and_sixty_frames_a_second_arri
     assert_eq!((stats.lost, stats.discarded, stats.keyframes_requested), (0, 0, 0), "{stats:?}");
     // Generous for a busy test machine; on an idle one this is a few milliseconds.
     assert!(p99 < 100_000, "p99 {p99} us");
+}
+
+fn extend_want(width: u32, height: u32) -> MediaWant {
+    let mut want = MediaWant::new(MediaKind::Screen);
+    want.max_width = width;
+    want.max_height = height;
+    want.max_fps = 60;
+    want.extend = true;
+    want
+}
+
+/// A laptop on the left and a phone on the right, both an extra screen of the same Mac: the Mac hears two requests, answers both,
+/// each device gets the pictures of its own session and none of the other's, and stopping one leaves the other running.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn two_devices_each_have_a_second_screen_at_once_and_stop_on_their_own() {
+    let mac = node("Mac").await;
+    let laptop = node("Laptop").await;
+    let phone = node("Phone").await;
+    for device in [&laptop, &phone] {
+        let offer = mac.engine.create_pairing_offer().unwrap();
+        device.engine.pair_with_uri(&offer.uri).await.unwrap();
+    }
+    wait_until("connected", || {
+        online(&laptop, mac.engine.id()) && online(&phone, mac.engine.id()) && online(&mac, laptop.engine.id()) && online(&mac, phone.engine.id())
+    })
+    .await;
+
+    let host = Arc::new(Host::default());
+    mac.engine.set_media_host(host.clone());
+    let base = Instant::now();
+    let on_laptop = Viewer::new(base);
+    let on_phone = Viewer::new(base);
+    laptop.engine.set_media_viewer(on_laptop.clone());
+    phone.engine.set_media_viewer(on_phone.clone());
+
+    let left = laptop.engine.media_request(mac.engine.id(), extend_want(2880, 1800)).unwrap();
+    let right = phone.engine.media_request(mac.engine.id(), extend_want(2400, 1080)).unwrap();
+    wait_until("both requests", || host.requests.lock().unwrap().len() == 2).await;
+
+    for (session, width, height) in [(left, 2880, 1800), (right, 2400, 1080)] {
+        mac.engine
+            .media_accept(session, MediaAnswer { codec: MediaCodec::H264, width, height, fps: 60, bitrate: 8_000_000, control: true })
+            .unwrap();
+    }
+    wait_until("both answers", || on_laptop.accepted.lock().unwrap().is_some() && on_phone.accepted.lock().unwrap().is_some()).await;
+    assert_eq!(on_laptop.accepted.lock().unwrap().as_ref().map(|a| (a.width, a.height)), Some((2880, 1800)));
+    assert_eq!(on_phone.accepted.lock().unwrap().as_ref().map(|a| (a.width, a.height)), Some((2400, 1080)));
+
+    // Ten pictures to each, told apart by their size: the laptop's are larger.
+    for n in 0..10u64 {
+        let pts = base.elapsed().as_micros() as u64 + n;
+        assert_eq!(mac.engine.media_push_frame(left, unit(n == 0, 9_000), pts, n == 0), MediaPush::Sent);
+        assert_eq!(mac.engine.media_push_frame(right, unit(n == 0, 3_000), pts, n == 0), MediaPush::Sent);
+        tokio::time::sleep(Duration::from_millis(16)).await;
+    }
+    wait_until("ten pictures on each", || on_laptop.frames.lock().unwrap().len() == 10 && on_phone.frames.lock().unwrap().len() == 10).await;
+
+    // The laptop stops showing its screen; the phone goes on.
+    mac.engine.media_stop(left).unwrap();
+    wait_until("the laptop's screen ended", || on_laptop.ended.lock().unwrap().is_some()).await;
+    assert_eq!(mac.engine.media_push_frame(left, unit(false, 9_000), base.elapsed().as_micros() as u64, false), MediaPush::NoSession);
+    for n in 0..5u64 {
+        let pts = base.elapsed().as_micros() as u64 + n;
+        assert_eq!(mac.engine.media_push_frame(right, unit(false, 3_000), pts, false), MediaPush::Sent);
+        tokio::time::sleep(Duration::from_millis(16)).await;
+    }
+    wait_until("the phone still gets pictures", || on_phone.frames.lock().unwrap().len() == 15).await;
+    assert!(on_phone.ended.lock().unwrap().is_none(), "the phone's screen did not end with the laptop's");
+    assert_eq!(on_laptop.frames.lock().unwrap().len(), 10);
 }

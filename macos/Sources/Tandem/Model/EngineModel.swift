@@ -616,7 +616,7 @@ final class EngineModel {
         case let .sideMoved(from):
             // A phone was picked up and put down again: when it is a second screen here, or sits next to this screen, its side is found
             // again, quietly, and only said when it changed.
-            if let device = device(from), ScreenHost.shared.current?.peer == from || PointerShare.shared.layout[from] != nil,
+            if let device = device(from), ScreenHost.shared.remote(of: from) != nil || PointerShare.shared.layout[from] != nil,
                DeviceSides.side(of: from) != nil {
                 let before = DeviceSides.side(of: from)
                 Task { @MainActor in

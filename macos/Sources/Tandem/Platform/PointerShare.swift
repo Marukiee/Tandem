@@ -82,8 +82,7 @@ final class PointerShare {
     /// A device that shows an extra screen of this Mac right now: that screen is where the pointer goes on that side, a part of this
     /// Mac, so the device is no neighbour of the shared pointer and gets no drop zone until the extra screen ends.
     static func isExtendedScreen(_ id: String) -> Bool {
-        guard let current = ScreenHost.shared.current else { return false }
-        return current.extend && current.peer == id
+        ScreenHost.shared.isExtending(to: id)
     }
 
     /// How big the screens of the other computers are, as they said (in the units of their own pointer).

@@ -380,6 +380,13 @@ scherm; daarom meldt een computer die het kan de capability `screen.extend`, en 
   plaats van het hoofdscherm, en de invoer van het apparaat wordt op het gebied van dat scherm gezet (`RemoteGeometry`). Gezien op een echte Mac:
   het scherm komt op, in de maat, op de plek, en is weg na het stoppen. Niet gezien: de opname ervan (die vraagt het recht Schermopname, dat
   het testprogramma niet heeft).
+  **Meerdere tegelijk**: `ScreenHost` houdt een lijst van sessies (`remotes`, op sessie-id), elk met een eigen scherm van software, opname,
+  encoder, bitrate en invoer. Hooguit een sessie toont het eigen scherm van de Mac (kijken of bedienen, `mirror`); daarnaast krijgt elk apparaat
+  dat vraagt een extra scherm, tot vier (`maxExtended`, daarna vraagt de Mac of het oudste verhuist). De kern houdt een schermsessie per apparaat, dus
+  een nieuw verzoek van hetzelfde apparaat vervangt zijn vorige. Elk extra scherm staat aan de kant van zijn apparaat (`DeviceSides`), naast de echte
+  monitoren: de eerste van een kant het dichtst bij, de volgende verder naar buiten (`VirtualDisplay.arrange`, anders schuift macOS er een
+  willekeurig weg). Elk scherm heeft een eigen serienummer uit het apparaat-id. Vragen die wachten staan in een rij (`prompts`), de balk bovenaan
+  toont elk apparaat met een eigen Stop, en de knop in Control Center gaat over de extra schermen samen.
 - **Android als kijker**: de rij "Use as second screen" op de pagina van een Mac die `screen.extend` meldt. De telefoon gaat liggen, vraagt zijn eigen
   pixels, en raakt aan = klikken waar je raakt (direct aanraken). Gezien op de emulator tegen een nagebootste Mac (`tandemd --pretend-screen`, die nu ook
   `screen.extend` meldt en het verzoek afdrukt).

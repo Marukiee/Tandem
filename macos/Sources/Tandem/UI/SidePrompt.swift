@@ -8,9 +8,17 @@ import TandemCore
 final class SidePrompt {
     static let shared = SidePrompt()
     private var panel: NSPanel?
+    private var asking: String?
+    /// Two devices that become extra screens at the same time both need the question: the second waits until the first is answered.
+    private var waiting: [TandemDevice] = []
 
     func ask(_ device: TandemDevice) {
-        close()
+        if panel != nil, let asking, asking != device.id {
+            if !waiting.contains(where: { $0.id == device.id }) { waiting.append(device) }
+            return
+        }
+        dismiss()
+        asking = device.id
         let panel = KeyPanel(
             contentRect: NSRect(x: 0, y: 0, width: 440, height: 200),
             styleMask: [.borderless, .nonactivatingPanel],
@@ -40,8 +48,14 @@ final class SidePrompt {
     }
 
     func close() {
+        dismiss()
+        if !waiting.isEmpty { ask(waiting.removeFirst()) }
+    }
+
+    private func dismiss() {
         panel?.orderOut(nil)
         panel = nil
+        asking = nil
     }
 }
 

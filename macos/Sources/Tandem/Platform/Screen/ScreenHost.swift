@@ -7,8 +7,9 @@ import TandemCore
 /// This Mac as the host of a remote desktop: another device (the Android app) looks at the screen and, when allowed,
 /// controls it. The core moves the video and the input; this file is the app side of `docs/SCREEN.md`.
 ///
-/// One viewer at a time. The picture of one display is captured, encoded once and pushed into the core, which decides
-/// per frame whether the link can take it. Everything the core calls (keyframe, bitrate, input, stop) lands here.
+/// One device at a time sees this Mac's own display; beside that, every device that asks gets an extra screen of its own (a display of
+/// software, see `VirtualDisplay`), up to a few. Each session has its own capture, encoder and bitrate, and the core decides per frame
+/// whether its link can take it. Everything the core calls (keyframe, bitrate, input, stop) lands here, by session.
 ///
 /// What is asked of the person, and when:
 /// - A device that is not trusted for this yet gets a prompt on the Mac, with a choice to let it control or only watch.
@@ -18,6 +19,10 @@ import TandemCore
 @Observable
 final class ScreenHost {
     static let shared = ScreenHost()
+
+    /// More extra screens than this and the Mac is drawing, capturing and encoding more than a person can follow; the next one is asked to
+    /// take the place of the oldest.
+    static let maxExtended = 4
 
     /// A session that runs.
     struct Remote: Identifiable, Equatable {
@@ -47,16 +52,28 @@ final class ScreenHost {
         var extend = false
     }
 
-    private(set) var current: Remote?
-    private(set) var prompt: Prompt?
+    /// Every session that runs, by session id. The core keeps one screen session per device, so a device is in here at most once.
+    private(set) var remotes: [UInt64: Remote] = [:]
+    /// Requests that wait for the person, in the order they came; the first is the one on screen.
+    private(set) var prompts: [Prompt] = []
     /// Whether the Accessibility permission is there, for the prompt and the indicator to show the truth.
     private(set) var accessibility = AXIsProcessTrusted()
+
+    var prompt: Prompt? { prompts.first }
+    /// Oldest first, which is the order the bar lists them in and the extra screens are placed in.
+    var running: [Remote] { remotes.values.sorted { $0.startedAt < $1.startedAt } }
+    /// The one session that shows this Mac's own display.
+    var mirror: Remote? { remotes.values.first { !$0.extend } }
+    var extended: [Remote] { running.filter(\.extend) }
+
+    func remote(of peer: String) -> Remote? { remotes.values.first { $0.peer == peer } }
+    func isExtending(to peer: String) -> Bool { remote(of: peer)?.extend == true }
 
     /// The master switch: off, and requests are turned away and the cap is not announced.
     var enabled = UserDefaults.standard.object(forKey: "screenHostEnabled") as? Bool ?? true {
         didSet {
             UserDefaults.standard.set(enabled, forKey: "screenHostEnabled")
-            if !enabled { stopCurrent(reason: .ended) }
+            if !enabled { stopAll(reason: .ended) }
         }
     }
 
@@ -67,7 +84,8 @@ final class ScreenHost {
     @ObservationIgnored private weak var model: EngineModel?
     @ObservationIgnored private let registry = SessionRegistry()
     @ObservationIgnored private var recent: [String: (control: Bool, until: Date)] = [:]
-    @ObservationIgnored private var promptTimeout: Task<Void, Never>?
+    @ObservationIgnored private var promptTimeouts: [UInt64: Task<Void, Never>] = [:]
+    @ObservationIgnored private var pendingRequests: [UInt64: TandemMediaRequest] = [:]
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
     @ObservationIgnored private var recovering = false
     @ObservationIgnored private var watch: Task<Void, Never>?
@@ -95,15 +113,15 @@ final class ScreenHost {
         engine.setMediaHost(host: bridge)
         observers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.displayChanged() } })
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.displayChanged(woke: false) } })
         // Wake from sleep stops a capture stream without a word on some Macs.
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.displayChanged() } })
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.displayChanged(woke: true) } })
     }
 
     func shutdown() {
-        stopCurrent(reason: .ended)
+        stopAll(reason: .ended)
         for token in observers { NotificationCenter.default.removeObserver(token) }
         observers = []
     }
@@ -122,12 +140,16 @@ final class ScreenHost {
             return deny(.unavailable)
         }
 
-        // A new request from the viewer that already has the screen replaces its session. Anyone else waits.
-        if let running = current {
-            guard running.peer == peer else { return deny(.busy) }
-            teardown(session: running.id, tell: false)
+        // A new request from a device replaces what it had, as the core already did with its side of it.
+        if let running = remote(of: peer) { teardown(session: running.id, tell: false) }
+        for waiting in prompts where waiting.peer == peer { closePrompt(waiting.id) }
+
+        // This Mac's own display is shown to one device at a time. Extra screens are made for every device that asks, up to a few.
+        if request.extend {
+            if extended.count + prompts.filter(\.extend).count >= Self.maxExtended { return deny(.busy) }
+        } else if mirror != nil || prompts.contains(where: { !$0.extend }) {
+            return deny(.busy)
         }
-        if let waiting = prompt, waiting.peer != peer { return deny(.busy) }
 
         let name = model?.device(peer)?.name ?? String(localized: "A device")
         accessibility = AXIsProcessTrusted()
@@ -142,8 +164,8 @@ final class ScreenHost {
             start(request: request, peer: peer, name: name, control: controlPossible && again.control)
         } else {
             let symbol = model?.device(peer)?.platform.symbol ?? "iphone"
-            prompt = Prompt(id: id, peer: peer, name: name, symbol: symbol, wantsControl: request.control && controlPolicy != .never, allowControl: true, extend: request.extend)
-            pendingRequest = request
+            prompts.append(Prompt(id: id, peer: peer, name: name, symbol: symbol, wantsControl: request.control && controlPolicy != .never, allowControl: true, extend: request.extend))
+            pendingRequests[id] = request
             ScreenPanels.shared.update()
             Notifier.shared.post(
                 id: "screen.\(id)",
@@ -151,8 +173,7 @@ final class ScreenHost {
                 body: String(localized: "Choose what to do in Tandem."),
                 sound: true
             )
-            promptTimeout?.cancel()
-            promptTimeout = Task { [weak self] in
+            promptTimeouts[id] = Task { [weak self] in
                 // The core gives up after sixty seconds; the prompt goes just before.
                 try? await Task.sleep(for: .seconds(58))
                 guard !Task.isCancelled else { return }
@@ -161,15 +182,18 @@ final class ScreenHost {
         }
     }
 
-    @ObservationIgnored private var pendingRequest: TandemMediaRequest?
-
-    /// The display of software made for a device that uses it as a second screen, to move it to the other side when the side is found.
-    @ObservationIgnored private weak var extendDisplay: VirtualDisplay?
-    @ObservationIgnored private var extendPeer: String?
+    /// The displays of software made for devices that use them as a second screen, by session, to place them on the side of their device.
+    @ObservationIgnored private var displays: [UInt64: VirtualDisplay] = [:]
 
     func placeExtended(for peer: String, onLeft: Bool) {
-        guard extendPeer == peer, let display = extendDisplay else { return }
+        guard let running = remote(of: peer), let display = displays[running.id] else { return }
         display.onLeft = onLeft
+        arrangeExtended()
+    }
+
+    /// Every extra screen on the side of its device, in the order they came, so the first one on a side stays next to this Mac.
+    private func arrangeExtended() {
+        VirtualDisplay.arrange(extended.compactMap { displays[$0.id] })
     }
 
     /// Devices that this Mac asked to show a screen of its own, and until when their request for it needs no question.
@@ -186,21 +210,19 @@ final class ScreenHost {
             FloatingToast.show(String(localized: "Allow Tandem to record this Mac's screen in System Settings, under Screen Recording"), symbol: "rectangle.dashed.badge.record")
             return
         }
-        // This Mac shows one screen at a time to another device. Busy with another: ask whether the screen moves over, instead of an
+        // A screen beside the others, until there are as many as this Mac makes: then ask whether the oldest one moves over, instead of an
         // answer of busy on the device.
-        if let running = current, running.peer != device.id {
-            let title = running.extend
-                ? String(localized: "The extra screen is on \(running.name)")
-                : String(localized: "\(running.name) is looking at this Mac")
+        let others = extended.filter { $0.peer != device.id }
+        if others.count >= Self.maxExtended, let oldest = others.first {
             GlassQuestion.shared.ask(
                 symbol: "rectangle.on.rectangle",
-                title: title,
-                body: String(localized: "Move it to \(device.name)? \(running.name) stops showing it."),
+                title: String(localized: "The extra screen is on \(oldest.name)"),
+                body: String(localized: "Move it to \(device.name)? \(oldest.name) stops showing it."),
                 answers: [
                     GlassQuestion.Answer(title: "Cancel", action: {}),
                     GlassQuestion.Answer(title: "Move it", prominent: true, action: { [weak self] in
-                        self?.stopCurrent()
-                        // A moment for the screen of the other device to go, so the new request does not find this Mac still busy.
+                        self?.stop(session: oldest.id)
+                        // A moment for the screen of the other device to go, so the new request does not find this Mac still full.
                         Task { @MainActor [weak self] in
                             try? await Task.sleep(for: .milliseconds(600))
                             self?.offerExtend(to: device)
@@ -222,10 +244,11 @@ final class ScreenHost {
 
     enum Answer { case allowOnce, always, deny, never }
 
+    /// The answer to the question on screen, the first one that waits.
     func answer(_ answer: Answer) {
-        guard let engine, let waiting = prompt, let request = pendingRequest, request.session == waiting.id else { return }
+        guard let engine, let waiting = prompt, let request = pendingRequests[waiting.id] else { return }
         let control = waiting.wantsControl && waiting.allowControl && AXIsProcessTrusted()
-        closePrompt()
+        closePrompt(waiting.id)
         switch answer {
         case .deny:
             try? engine.mediaDeny(session: waiting.id, reason: .declined)
@@ -244,20 +267,21 @@ final class ScreenHost {
     }
 
     func setPromptControl(_ allowed: Bool) {
-        prompt?.allowControl = allowed
+        guard !prompts.isEmpty else { return }
+        prompts[0].allowControl = allowed
         ScreenPanels.shared.update()
     }
 
     private func dismissPrompt(session: UInt64) {
-        guard prompt?.id == session else { return }
-        closePrompt()
+        guard prompts.contains(where: { $0.id == session }) else { return }
+        closePrompt(session)
     }
 
-    private func closePrompt() {
-        promptTimeout?.cancel()
-        if let waiting = prompt { Notifier.shared.remove(id: "screen.\(waiting.id)") }
-        prompt = nil
-        pendingRequest = nil
+    private func closePrompt(_ session: UInt64) {
+        promptTimeouts.removeValue(forKey: session)?.cancel()
+        Notifier.shared.remove(id: "screen.\(session)")
+        prompts.removeAll { $0.id == session }
+        pendingRequests[session] = nil
         ScreenPanels.shared.update()
     }
 
@@ -272,6 +296,11 @@ final class ScreenHost {
     private func start(request: TandemMediaRequest, peer: String, name: String, control: Bool) {
         guard let engine else { return }
         let id = request.session
+        // Another device may have been let in to this Mac's own display while this one waited for its answer.
+        if !request.extend, let other = mirror, other.peer != peer {
+            try? engine.mediaDeny(session: id, reason: .busy)
+            return
+        }
         let fps = ScreenGeometry.frameRate(requested: Int(request.maxFps))
 
         // A device that wants a screen of its own gets a display of software of exactly its size next to this Mac's own; one that wants to
@@ -284,7 +313,7 @@ final class ScreenHost {
                 width: Int(request.maxWidth), height: Int(request.maxHeight),
                 logicalWidth: Int(request.logicalWidth), logicalHeight: Int(request.logicalHeight)
             )
-            guard VirtualDisplay.isAvailable, let made = VirtualDisplay(name: name, width: shape.pixelsWidth, height: shape.pixelsHeight, hiDPI: shape.hiDPI, refresh: min(60, max(30, fps))) else {
+            guard VirtualDisplay.isAvailable, let made = VirtualDisplay(name: name, key: peer, width: shape.pixelsWidth, height: shape.pixelsHeight, hiDPI: shape.hiDPI, refresh: min(60, max(30, fps))) else {
                 try? engine.mediaDeny(session: id, reason: .unavailable)
                 return
             }
@@ -301,8 +330,7 @@ final class ScreenHost {
             } else if let device = model?.device(peer) {
                 SidePrompt.shared.ask(device)
             }
-            extendDisplay = made
-            extendPeer = peer
+            displays[id] = made
             display = ScreenCapturer.DisplayInfo(id: made.displayID, bounds: made.bounds, pixels: made.pixels)
             size = (shape.streamWidth, shape.streamHeight)
         } else {
@@ -318,6 +346,7 @@ final class ScreenHost {
                 limits: (Int(request.maxWidth), Int(request.maxHeight)), baseFps: fps, startBitrate: bitrate, virtualDisplay: virtual
             )
         } catch {
+            displays[id] = nil
             try? engine.mediaDeny(session: id, reason: .unavailable)
             return
         }
@@ -325,7 +354,7 @@ final class ScreenHost {
         live.onGone = { [weak self] reason in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.teardown(session: id, tell: true, reason: reason) } }
         }
-        current = Remote(id: id, peer: peer, name: name, control: control, offered: control, startedAt: Date(), width: size.width, height: size.height, extend: request.extend)
+        remotes[id] = Remote(id: id, peer: peer, name: name, control: control, offered: control, startedAt: Date(), width: size.width, height: size.height, extend: request.extend)
         ScreenPanels.shared.update()
 
         Task { [weak self] in
@@ -334,6 +363,7 @@ final class ScreenHost {
                 // it was told to be.
                 if let virtual {
                     guard await virtual.prepare() else { throw ScreenCapturer.Failure.noDisplay }
+                    self?.arrangeExtended()
                     live.displayReady(virtual)
                 }
                 try await live.startCapture(width: size.width, height: size.height)
@@ -367,15 +397,33 @@ final class ScreenHost {
 
     // MARK: Stop
 
-    /// The person pressed Stop, or the switch went off.
-    func stopCurrent(reason: TandemMediaEnd = .ended) {
-        if let waiting = prompt, current == nil {
+    /// The person pressed Stop for one device.
+    func stop(session: UInt64, reason: TandemMediaEnd = .ended) {
+        guard remotes[session] != nil else { return }
+        teardown(session: session, tell: true, reason: reason)
+    }
+
+    /// Whatever runs for `peer`, or the question of it that waits.
+    func stop(peer: String) {
+        if let running = remote(of: peer) { return stop(session: running.id) }
+        for waiting in prompts where waiting.peer == peer {
             try? engine?.mediaDeny(session: waiting.id, reason: .declined)
-            closePrompt()
-            return
+            closePrompt(waiting.id)
         }
-        guard let running = current else { return }
-        teardown(session: running.id, tell: true, reason: reason)
+    }
+
+    /// Every extra screen, and only those: the Control Center button is about them, not about a device that looks at this display.
+    func stopExtended() {
+        for running in extended { stop(session: running.id) }
+    }
+
+    /// The switch went off, or the app quits: every session and every question that waits.
+    func stopAll(reason: TandemMediaEnd = .ended) {
+        for waiting in prompts {
+            try? engine?.mediaDeny(session: waiting.id, reason: .declined)
+            closePrompt(waiting.id)
+        }
+        for session in self.running { teardown(session: session.id, tell: true, reason: reason) }
     }
 
     /// Everything that belongs to a session, gone. `tell` is for a stop that started here: the core still has the
@@ -383,55 +431,61 @@ final class ScreenHost {
     func teardown(session: UInt64, tell: Bool, reason: TandemMediaEnd = .ended) {
         let live = registry.remove(session)
         if tell { try? engine?.mediaStop(session: session) }
-        if current?.id == session {
-            let running = current
-            current = nil
+        let hadDisplay = displays.removeValue(forKey: session) != nil
+        if let running = remotes.removeValue(forKey: session) {
             // A viewer that was lost, and not stopped, may come back from a network blip without being asked again.
-            if let running, !tell, [.peerGone, .error, .timeout].contains(reason) {
+            if !tell, [.peerGone, .error, .timeout].contains(reason) {
                 recent[running.peer] = (running.control, Date().addingTimeInterval(120))
             }
-            model?.injector.endRemote()
+            model?.injector.endRemote(from: running.peer)
             ScreenPanels.shared.update()
         }
-        if let live { Task { await live.stop() } }
+        if let live {
+            Task { [weak self] in
+                await live.stop()
+                // The extra screens that are left close the gap, each still on the side of its device.
+                if hadDisplay { self?.arrangeExtended() }
+            }
+        }
     }
 
     /// The core ended a session.
     func ended(session: UInt64, reason: TandemMediaEnd) {
-        if prompt?.id == session {
-            closePrompt()
+        if prompts.contains(where: { $0.id == session }) {
+            closePrompt(session)
             return
         }
         teardown(session: session, tell: false, reason: reason)
     }
 
-    /// Turns control on or off for the session that runs, without ending it.
-    func setControl(_ allowed: Bool) {
-        guard let engine, var running = current else { return }
+    /// Turns control on or off for one session, without ending it.
+    func setControl(_ allowed: Bool, session: UInt64) {
+        guard let engine, var running = remotes[session] else { return }
         let granted = allowed && AXIsProcessTrusted()
         try? engine.mediaUpdate(session: running.id, update: TandemMediaUpdate(width: nil, height: nil, rotation: nil, fps: nil, control: granted))
         running.control = granted
-        current = running
-        if !granted { model?.injector.endRemote() }
+        remotes[session] = running
+        if !granted { model?.injector.endRemote(from: running.peer) }
         ScreenPanels.shared.update()
     }
 
     // MARK: Input
 
     func input(session: UInt64, input: TandemMediaInput) {
-        guard let running = current, running.id == session, running.control, let live = registry.get(session) else { return }
+        guard let running = remotes[session], running.control, let live = registry.get(session) else { return }
         model?.injector.handle(remote: input, in: live.geometry, from: running.peer)
     }
 
     // MARK: The display changes
 
-    /// A different resolution, another display as the main one, a wake from sleep: the capture is started again with the
-    /// size that fits now, and the viewer is told the new shape before the first picture of it.
-    func displayChanged() {
-        guard let running = current, let live = registry.get(running.id), !recovering else { return }
-        // The display of software changes the displays of the system itself, when it comes and when it goes: that is no reason to start
-        // again. Its own capture goes on as long as the display stays what it was made as.
-        if live.isExtended { return }
+    /// A different resolution, another display as the main one, a wake from sleep: the capture of this Mac's own display is started again
+    /// with the size that fits now, and the viewer is told the new shape before the first picture of it. Extra screens keep their own
+    /// capture as long as the display stays what it was made as.
+    func displayChanged(woke: Bool) {
+        guard let running = mirror, let live = registry.get(running.id), !recovering else { return }
+        // Extra screens that come, go and move change the displays of the system without changing the one this session shows. After a
+        // wake the stream may have stopped without a word, so that always starts again.
+        if !woke, live.shows(ScreenCapturer.mainDisplay()) { return }
         recovering = true
         Task { [weak self] in
             // Displays settle for a moment after a change; a restart too early captures the old mode.
@@ -444,10 +498,10 @@ final class ScreenHost {
                     try self.engine?.mediaUpdate(session: running.id, update: TandemMediaUpdate(
                         width: UInt32(shape.width), height: UInt32(shape.height), rotation: 0, fps: UInt32(live.baseFps), control: nil
                     ))
-                    if var now = self.current, now.id == running.id {
+                    if var now = self.remotes[running.id] {
                         now.width = shape.width
                         now.height = shape.height
-                        self.current = now
+                        self.remotes[running.id] = now
                     }
                 }
                 live.requestKeyframe(force: true)
@@ -631,6 +685,12 @@ final class ScreenHostSession: @unchecked Sendable {
     /// The display of software is there and in its size: where it sits now is where the pointer and the clicks of the viewer go.
     func displayReady(_ virtual: VirtualDisplay) {
         lock.withLock { display = ScreenCapturer.DisplayInfo(id: virtual.displayID, bounds: virtual.bounds, pixels: virtual.pixels) }
+    }
+
+    /// Whether the capture was started for `info` as it is now. Where the display sits does not count: the capture follows the display,
+    /// and the input asks where it is each time.
+    func shows(_ info: ScreenCapturer.DisplayInfo) -> Bool {
+        lock.withLock { display.id == info.id && display.pixels == info.pixels && display.bounds.size == info.bounds.size }
     }
 
     func markAccepted() {
