@@ -692,6 +692,27 @@ fn display_state(connection: &zbus::blocking::Connection) -> Result<DisplayState
     reply.body().deserialize::<DisplayState>().map_err(text)
 }
 
+/// The screens as GNOME has them: each logical monitor with the mode of its first monitor and its real scale (1.25, 1.5, which the
+/// window toolkit rounds up to 2). Empty on another desktop.
+pub fn monitors() -> Vec<crate::Monitor> {
+    let Ok(connection) = zbus::blocking::Connection::session() else { return Vec::new() };
+    let Ok((_, monitors, logical, props)) = display_state(&connection) else { return Vec::new() };
+    // 1: the layout is in logical pixels (Wayland); 2: in pixels (X11).
+    let logical_layout = props.get("layout-mode").and_then(|v| v.downcast_ref::<u32>().ok()).unwrap_or(1) == 1;
+    logical
+        .iter()
+        .filter_map(|(x, y, scale, transform, primary, members, _)| {
+            let connector = &members.first()?.0;
+            let (_, modes, _) = monitors.iter().find(|m| &m.0 .0 == connector)?;
+            let mode = modes.iter().find(|mode| mode.6.get("is-current").and_then(|v| v.downcast_ref::<bool>().ok()).unwrap_or(false))?;
+            let (w, h) = (u32::try_from(mode.1).ok()?, u32::try_from(mode.2).ok()?);
+            // A screen turned a quarter has its mode the other way round.
+            let pixels = if transform % 2 == 1 { (h, w) } else { (w, h) };
+            Some(crate::Monitor { connector: connector.clone(), x: *x, y: *y, pixels, scale: *scale, primary: *primary, logical_layout })
+        })
+        .collect()
+}
+
 /// The connectors of the monitors there are now (GNOME), to tell afterwards which one was made for a viewer.
 pub fn monitor_connectors() -> Vec<String> {
     let Ok(connection) = zbus::blocking::Connection::session() else { return Vec::new() };

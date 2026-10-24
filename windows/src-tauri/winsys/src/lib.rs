@@ -242,6 +242,100 @@ mod imp {
 
 pub use imp::{Capture, Grabber, Media, battery, describe, desktop, lid_closed, screen, screen_locked, warp, watch_clipboard};
 
+/// One screen as the desktop itself describes it. The window toolkit of Linux says the size of a screen in logical pixels times a
+/// whole scale (2 for a screen at 125% or 150% on GNOME), which is neither the pixels of the screen nor its logical size times its
+/// real scale; the desktop knows both.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Monitor {
+    /// The name of its connector (`eDP-1`), which is also the name of its Wayland output.
+    pub connector: String,
+    /// Where it is in the layout of the screens, in logical pixels when `logical_layout` and in pixels when not.
+    pub x: i32,
+    pub y: i32,
+    /// The pixels of the mode in use, the way the screen stands (a screen turned on its side is taller than wide).
+    pub pixels: (u32, u32),
+    pub scale: f64,
+    pub primary: bool,
+    /// The layout is in logical pixels (GNOME on Wayland) and not in pixels (X11).
+    pub logical_layout: bool,
+}
+
+impl Monitor {
+    /// The size that windows are laid out in on this screen: its pixels divided by its scale.
+    pub fn logical(&self) -> (u32, u32) {
+        let scale = if self.scale.is_finite() && self.scale >= 0.5 { self.scale } else { 1.0 };
+        ((f64::from(self.pixels.0) / scale).round() as u32, (f64::from(self.pixels.1) / scale).round() as u32)
+    }
+}
+
+/// The screens of this computer as the desktop has them (GNOME); empty where it does not say.
+pub fn monitors() -> Vec<Monitor> {
+    #[cfg(target_os = "linux")]
+    {
+        portal::monitors()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        Vec::new()
+    }
+}
+
+/// Which of `monitors` is the screen the window toolkit describes as lying at `logical_at` (in logical pixels; `pixel_at` is the same
+/// place times its whole scale) with the logical size `logical`. By place first, then by size, then the only one, then the primary.
+pub fn pick_monitor(monitors: &[Monitor], logical_at: (i32, i32), pixel_at: (i32, i32), logical: (u32, u32)) -> Option<Monitor> {
+    let placed = monitors.iter().find(|m| (m.x, m.y) == if m.logical_layout { logical_at } else { pixel_at });
+    if let Some(found) = placed {
+        return Some(found.clone());
+    }
+    let close = |a: u32, b: u32| a.abs_diff(b) <= 1;
+    let sized: Vec<&Monitor> = monitors.iter().filter(|m| close(m.logical().0, logical.0) && close(m.logical().1, logical.1)).collect();
+    if let [only] = sized.as_slice() {
+        return Some((*only).clone());
+    }
+    if let [only] = monitors {
+        return Some(only.clone());
+    }
+    monitors.iter().find(|m| m.primary).cloned()
+}
+
+#[cfg(test)]
+mod monitor_tests {
+    use super::*;
+
+    fn screen(x: i32, pixels: (u32, u32), scale: f64, primary: bool) -> Monitor {
+        Monitor { connector: format!("DP-{x}"), x, y: 0, pixels, scale, primary, logical_layout: true }
+    }
+
+    #[test]
+    fn a_scaled_screen_has_the_logical_size_its_desktop_draws_in() {
+        assert_eq!(screen(0, (2880, 1800), 1.5, true).logical(), (1920, 1200));
+        assert_eq!(screen(0, (1920, 1080), 1.25, true).logical(), (1536, 864));
+        // GNOME keeps its scales as floats that are a hair off.
+        assert_eq!(screen(0, (1920, 1080), 1.2500000476837158, true).logical(), (1536, 864));
+        assert_eq!(screen(0, (2560, 1600), 2.0, true).logical(), (1280, 800));
+        assert_eq!(screen(0, (1920, 1080), f64::NAN, true).logical(), (1920, 1080));
+    }
+
+    #[test]
+    fn the_screen_of_the_window_is_found_by_place_then_by_size() {
+        let laptop = screen(0, (2880, 1800), 1.5, true);
+        let external = screen(1920, (3840, 2160), 1.0, false);
+        let both = [laptop.clone(), external.clone()];
+        // GTK says the external screen lies at 1920 (logical) and is 3840 by 2160; the laptop at 0, 1920 by 1200 logical.
+        assert_eq!(pick_monitor(&both, (1920, 0), (1920, 0), (3840, 2160)), Some(external.clone()));
+        assert_eq!(pick_monitor(&both, (0, 0), (0, 0), (1920, 1200)), Some(laptop.clone()));
+        // A place that matches nothing: the size decides.
+        assert_eq!(pick_monitor(&both, (5, 5), (10, 10), (1920, 1200)), Some(laptop.clone()));
+        // Nothing matches: the only screen there is, or the primary one.
+        assert_eq!(pick_monitor(&[external.clone()], (5, 5), (10, 10), (1, 1)), Some(external.clone()));
+        assert_eq!(pick_monitor(&both, (5, 5), (10, 10), (1, 1)), Some(laptop.clone()));
+        assert_eq!(pick_monitor(&[], (0, 0), (0, 0), (1920, 1080)), None);
+        // X11 lays the screens out in pixels.
+        let x11 = Monitor { x: 2880, logical_layout: false, ..external };
+        assert_eq!(pick_monitor(&[laptop, x11.clone()], (1440, 0), (2880, 0), (0, 0)), Some(x11));
+    }
+}
+
 /// Takes what points into an AppImage out of the environment of a program of the system that is about to be started (nothing on other
 /// systems, where there is no such thing).
 pub fn system_env(command: &mut std::process::Command) {
