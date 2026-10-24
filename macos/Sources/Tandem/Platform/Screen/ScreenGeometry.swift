@@ -52,6 +52,57 @@ enum ScreenGeometry {
         bounds.width / Double(max(1, streamWidth))
     }
 
+    /// A screen made for a viewer: the points the system lays it out in, whether it is drawn at twice the points (hiDPI), the pixels it is
+    /// drawn in, and the size of the picture that goes over.
+    struct ExtendedShape: Equatable {
+        var pointsWidth: Int
+        var pointsHeight: Int
+        var hiDPI: Bool
+        var pixelsWidth: Int
+        var pixelsHeight: Int
+        var streamWidth: Int
+        var streamHeight: Int
+    }
+
+    /// The most pixels a display of software is drawn in: what a 6K display has.
+    static let maxBackingArea = 6144.0 * 3456.0
+
+    /// When the viewer says its logical size, the screen has that many points, so text is as big as on the viewer's own screen, and the
+    /// picture is the viewer's real pixels, so the viewer shows it as it comes and nothing is scaled there. A Mac draws hiDPI at exactly
+    /// twice the points; for a viewer at 125% to 175% the capture brings that down to the viewer's pixels, which is what a Mac does for the
+    /// scaled modes of its own screen. Without a logical size it is the pixels that were asked for, as before.
+    static func extendedShape(width: Int, height: Int, logicalWidth: Int, logicalHeight: Int) -> ExtendedShape {
+        guard logicalWidth > 0, logicalHeight > 0, width > 0, height > 0 else {
+            let old = extendedSize(width: width, height: height)
+            return ExtendedShape(
+                pointsWidth: old.hiDPI ? old.width / 2 : old.width, pointsHeight: old.hiDPI ? old.height / 2 : old.height, hiDPI: old.hiDPI,
+                pixelsWidth: old.width, pixelsHeight: old.height, streamWidth: old.width, streamHeight: old.height
+            )
+        }
+        let stream = extendedSize(width: width, height: height)
+        let scale = Double(width) / Double(logicalWidth)
+        // A screen at 100% (or nearly) is drawn as it is.
+        guard scale >= 1.2 else {
+            return ExtendedShape(
+                pointsWidth: stream.width, pointsHeight: stream.height, hiDPI: false,
+                pixelsWidth: stream.width, pixelsHeight: stream.height, streamWidth: stream.width, streamHeight: stream.height
+            )
+        }
+        var points = (width: max(320, logicalWidth) & ~1, height: max(180, logicalHeight) & ~1)
+        let backing = Double(points.width * 2) * Double(points.height * 2)
+        if backing > maxBackingArea {
+            let factor = (maxBackingArea / backing).squareRoot()
+            points = (Int(Double(points.width) * factor) & ~1, Int(Double(points.height) * factor) & ~1)
+        }
+        let pixels = (width: points.width * 2, height: points.height * 2)
+        // A viewer above 200% has more pixels than the screen is drawn in: making the picture bigger adds bits, not detail.
+        let fits = stream.width <= pixels.width && stream.height <= pixels.height
+        return ExtendedShape(
+            pointsWidth: points.width, pointsHeight: points.height, hiDPI: true, pixelsWidth: pixels.width, pixelsHeight: pixels.height,
+            streamWidth: fits ? stream.width : pixels.width, streamHeight: fits ? stream.height : pixels.height
+        )
+    }
+
     /// The size of a screen made for a viewer: the pixels it asked for, even numbers, and no more than a good encoder takes (4K at most). It
     /// shows hiDPI (twice the points per pixel) where the screen is so large that the system would otherwise draw everything small.
     static func extendedSize(width: Int, height: Int) -> (width: Int, height: Int, hiDPI: Bool) {

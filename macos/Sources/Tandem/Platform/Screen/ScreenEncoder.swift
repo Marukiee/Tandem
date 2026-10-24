@@ -38,12 +38,17 @@ final class ScreenEncoder: @unchecked Sendable {
     }
 
     struct Counters {
+        /// Pictures from the capture; `submitted` also counts the repeats of a still screen.
+        var captured = 0
         var submitted = 0
         var encoded = 0
         var dropped = 0
         var failed = 0
         var keyframes = 0
         var bytes = 0
+        /// From the call into the encoder to the frame that came out, added up and the longest.
+        var encodeMicros = 0
+        var longestMicros = 0
     }
 
     /// Called on a VideoToolbox thread, one frame at a time and in order.
@@ -183,6 +188,7 @@ final class ScreenEncoder: @unchecked Sendable {
     func submit(_ buffer: CVPixelBuffer) {
         lock.lock()
         quietRepeats = 0
+        counters.captured += 1
         lock.unlock()
         // One queue for every call into VideoToolbox: it wants the presentation times in the order they were made,
         // and a repeat from the timer must not overtake a picture from the capture.
@@ -253,8 +259,11 @@ final class ScreenEncoder: @unchecked Sendable {
             lock.unlock()
             return
         }
+        let took = max(0, Int(DispatchTime.now().uptimeNanoseconds / 1000) - Int(pts))
         lock.lock()
         counters.encoded += 1
+        counters.encodeMicros += took
+        counters.longestMicros = max(counters.longestMicros, took)
         counters.bytes += frame.data.count
         if frame.keyframe { counters.keyframes += 1 }
         lock.unlock()
