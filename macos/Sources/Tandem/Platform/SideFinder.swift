@@ -49,6 +49,7 @@ enum DeviceSides {
         }
         UserDefaults.standard.set(all, forKey: key)
         UserDefaults.standard.set(Array(ask), forKey: askKey)
+        SideWatch.shared.chosen(side, for: id)
         apply(side, to: id)
     }
 
@@ -223,7 +224,8 @@ enum SideListener {
         try? await Task.sleep(for: .milliseconds(Int(tandemSideListenMs())))
         input.removeTap(onBus: 0)
         engine.stop()
-        return tandemSideAnalyze(samples: collected.all(), rate: UInt32(format.sampleRate))
+        let rate = UInt32(format.sampleRate)
+        return quiet ? tandemSideAnalyzeQuiet(samples: collected.all(), rate: rate) : tandemSideAnalyze(samples: collected.all(), rate: rate)
     }
 
     private final class Collected: @unchecked Sendable {

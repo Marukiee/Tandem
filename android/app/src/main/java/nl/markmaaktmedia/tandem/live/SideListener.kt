@@ -15,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import nl.markmaaktmedia.tandem.graph
 import uniffi.tandem_core.TandemSideLevels
 import uniffi.tandem_core.tandemSideAnalyze
+import uniffi.tandem_core.tandemSideAnalyzeQuiet
 import uniffi.tandem_core.tandemSideListenMs
 
 /**
@@ -37,7 +38,7 @@ object SideListener {
             val free = !quiet || !microphoneInUse(context)
             val levels = if (allowed && free && graph.appVisible) {
                 // The computer plays as soon as it hears that the microphone is on.
-                runCatching { record { runBlocking { runCatching { engine.sideReady(from, id) } } } }
+                runCatching { record(quiet) { runBlocking { runCatching { engine.sideReady(from, id) } } } }
                     .onFailure { Log.w(TAG, "could not record", it) }.getOrNull()
             } else {
                 null
@@ -53,7 +54,7 @@ object SideListener {
     }
 
     @Suppress("MissingPermission")
-    private fun record(ready: () -> Unit): TandemSideLevels? {
+    private fun record(quiet: Boolean, ready: () -> Unit): TandemSideLevels? {
         val minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_FLOAT)
         // Unprocessed where the phone has it: noise suppression takes a steady tone for noise, and automatic gain hides the difference.
         val recorder = listOf(MediaRecorder.AudioSource.UNPROCESSED, MediaRecorder.AudioSource.VOICE_RECOGNITION, MediaRecorder.AudioSource.MIC)
@@ -77,6 +78,6 @@ object SideListener {
             runCatching { recorder.stop() }
             recorder.release()
         }
-        return tandemSideAnalyze(samples.toList(), RATE.toUInt())
+        return if (quiet) tandemSideAnalyzeQuiet(samples.toList(), RATE.toUInt()) else tandemSideAnalyze(samples.toList(), RATE.toUInt())
     }
 }

@@ -7,6 +7,7 @@
 //! starts (and every few minutes while it runs). When is up to `side_check.rs` in the core. A side that changed moves the spot of that
 //! device and its second screen, with one notification; nothing asks or waits.
 
+use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Duration;
 
@@ -24,6 +25,9 @@ use tauri::Manager;
 /// both listeners hearing the other's sweeps.
 static TURN: LazyLock<tauri::async_runtime::Mutex<()>> = LazyLock::new(|| tauri::async_runtime::Mutex::new(()));
 static SCHEDULE: LazyLock<Arc<TandemSideSchedule>> = LazyLock::new(TandemSideSchedule::new);
+/// The side a check last moved each device to. A second screen of a device without a spot keeps no side in the settings, and without
+/// this every check of it would look like a change and say so again.
+static APPLIED: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 /// Whether this computer has a microphone to listen with.
 pub fn can_listen() -> bool {
@@ -159,6 +163,7 @@ pub fn listen(app: &AppHandle, from: String, id: u64, quiet: bool) {
             };
             let min_rate = if quiet { tandem_core::ffi::side_check::tandem_side_quiet_min_rate() } else { 0 };
             let levels: Option<TandemSideLevels> = match record(tandem_core::ffi::tandem_side_listen_ms(), min_rate, ready) {
+                Ok((samples, rate)) if quiet => tandem_core::ffi::side_check::tandem_side_analyze_quiet(samples, rate),
                 Ok((samples, rate)) => tandem_core::ffi::tandem_side_analyze(samples, rate),
                 Err(error) => {
                     log::info!("could not listen for the side: {error}");
@@ -260,10 +265,12 @@ pub fn consider(app: &AppHandle, id: &str, reason: TandemSideReason) {
     tauri::async_runtime::spawn(async move { recheck(&app, &id).await });
 }
 
-/// The side in use: the spot next to this screen, or the right for a second screen without one (where the desktop puts it).
+/// The side in use: the spot next to this screen, else where a check last put it, else the right for a second screen (where the desktop
+/// puts it).
 fn in_use(app: &AppHandle, id: &str) -> Option<String> {
     let spot = settings::get(app).layout.iter().find(|s| s.device == id && (s.edge == "left" || s.edge == "right")).map(|s| s.edge.clone());
-    spot.or_else(|| crate::host::extending().iter().any(|p| p == id).then(|| "right".to_string()))
+    spot.or_else(|| APPLIED.lock().unwrap().get(id).cloned())
+        .or_else(|| crate::host::extending().iter().any(|p| p == id).then(|| "right".to_string()))
 }
 
 fn name(side: TandemSide) -> Option<&'static str> {
@@ -297,6 +304,7 @@ async fn recheck(app: &AppHandle, id: &str) {
     tauri::async_runtime::spawn_blocking(move || {
         for _ in 0..240 {
             if crate::capture::pointer_at().as_deref() != Some(id.as_str()) {
+                APPLIED.lock().unwrap().insert(id.clone(), side.to_string());
                 arrange::flip(&app, &id, side);
                 crate::host::place_made(&id, side);
                 let key = if side == "left" { "side_now_left" } else { "side_now_right" };

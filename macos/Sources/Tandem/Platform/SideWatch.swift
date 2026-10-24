@@ -19,6 +19,9 @@ final class SideWatch {
     private var tick: Task<Void, Never>?
     /// Sides found that wait until the pointer is off that device, by device.
     private var waiting: [String: String] = [:]
+    /// The side last put in use per device, chosen or found, also when it is not kept (the person wants to be asked each time): without
+    /// it every check of such a device would look like a change and say so again.
+    private var applied: [String: String] = [:]
     private var settling: Task<Void, Never>?
 
     private init() {
@@ -66,6 +69,11 @@ final class SideWatch {
         enabled && device.caps.contains("side.listen") && !DeviceSides.asksEachTime(device.id)
     }
 
+    /// The person chose or found the side of `id`.
+    func chosen(_ side: String, for id: String) {
+        applied[id] = side
+    }
+
     private func woke() {
         Task { @MainActor in
             // The network comes back a few seconds after the screen; devices that are not back by then are checked when they connect.
@@ -97,7 +105,8 @@ final class SideWatch {
     /// One check, and a second when the first says another side than the one in use: a sweep that the room happened to swallow on one
     /// side must not move a screen the wrong way. The side found, or nothing.
     private func check(_ device: TandemDevice) async -> String? {
-        let known = DeviceSides.side(of: device.id) ?? PointerShare.shared.layout[device.id].map(\.edge).flatMap { ["left", "right"].contains($0) ? $0 : nil }
+        let edge = PointerShare.shared.layout[device.id].map(\.edge).flatMap { ["left", "right"].contains($0) ? $0 : nil }
+        let known = edge ?? applied[device.id] ?? DeviceSides.side(of: device.id)
         var found = await SideFinder.check(device)
         if let known, let side = Self.name(found), side != known {
             try? await Task.sleep(for: .milliseconds(600))
@@ -141,6 +150,7 @@ final class SideWatch {
     private func settle() {
         for (id, side) in waiting where !pointerIsOn(id) {
             waiting[id] = nil
+            applied[id] = side
             DeviceSides.moved(to: side, for: id)
             let name = EngineModel.shared.device(id)?.name ?? String(localized: "The device")
             FloatingToast.show(
