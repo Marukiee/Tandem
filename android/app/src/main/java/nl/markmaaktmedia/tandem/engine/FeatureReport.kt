@@ -77,8 +77,10 @@ object FeatureReport {
             "all-files" -> Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, pkg)
             "battery" -> Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, pkg)
             "app-notifications" -> Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-            "sharing" -> Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_SHARING)
-            else -> Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_ACCESS)
+            // Single top: with Tandem already open, Android otherwise only brings it to the front and never hands it the intent, so the
+            // page of the setting was not opened.
+            "sharing" -> Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_SHARING).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            else -> Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_ACCESS).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
         // A page that this phone does not have falls back to the app's own settings.
         return if (intent.resolveActivity(context.packageManager) != null) intent else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg)

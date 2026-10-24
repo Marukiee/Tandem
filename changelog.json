@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.2.5",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Open there opens the setting",
+      "new": [
+        "Android: Open there from another device opens the setting itself, also with Tandem already open"
+      ]
+    },
+    "nl": {
+      "title": "Daar openen opent de instelling",
+      "new": [
+        "Android: Daar openen vanaf een ander apparaat opent de instelling zelf, ook als Tandem al open staat"
+      ]
+    }
+  },
+  {
     "version": "0.2.4",
     "date": "2026-10-24",
     "en": {
