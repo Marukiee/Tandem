@@ -14,8 +14,6 @@
     <string name="screen_reconnecting_try">Trying again, attempt %1$d</string>
     <string name="screen_no_picture">No picture for a moment</string>
     <string name="screen_view_only">View only</string>
-    <string name="screen_stopped_title">%1$s stopped sharing</string>
-    <string name="screen_stopped_body">Someone at %1$s pressed Stop, or turned remote control off.</string>
     <string name="screen_denied_title">%1$s said no</string>
     <string name="screen_denied_body">You can allow this phone on %1$s, in Tandem under Remote control, or ask again.</string>
     <string name="screen_busy_title">%1$s is busy</string>

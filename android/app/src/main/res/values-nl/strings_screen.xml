@@ -14,8 +14,6 @@
     <string name="screen_reconnecting_try">Nieuwe poging, poging %1$d</string>
     <string name="screen_no_picture">Even geen beeld</string>
     <string name="screen_view_only">Alleen kijken</string>
-    <string name="screen_stopped_title">%1$s is gestopt met delen</string>
-    <string name="screen_stopped_body">Iemand bij %1$s heeft op Stop gedrukt of het bedienen op afstand uitgezet.</string>
     <string name="screen_denied_title">%1$s zei nee</string>
     <string name="screen_denied_body">Je kunt deze telefoon op %1$s toestaan, in Tandem onder Op afstand bedienen, of het opnieuw vragen.</string>
     <string name="screen_busy_title">%1$s is bezig</string>

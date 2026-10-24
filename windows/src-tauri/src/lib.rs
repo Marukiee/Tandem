@@ -271,6 +271,7 @@ pub fn run() {
             find::find_choose,
             find::find_preview,
             wifi::wifi_share,
+            wifi::wifi_here,
             messages::sms_conversations,
             messages::sms_messages,
             messages::sms_send,

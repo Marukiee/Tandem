@@ -246,6 +246,7 @@ export async function call(command, args) {
     case "create_pairing": return { uri: "tandem://pair?c=PREVIEW", code: "4821 7093", expiresAtMs: Date.now() + 300000, qr };
     case "pair": return "phone";
     case "send_clipboard": return args.ids.length;
+    case "wifi_here": return "Thuis";
     case "wifi_share": return "Wi-Fi sent to " + (devices.find((d) => d.id === args.id)?.name ?? "?");
     case "pick_and_send":
     case "send_paths": {

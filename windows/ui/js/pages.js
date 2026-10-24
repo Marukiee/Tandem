@@ -169,7 +169,30 @@ function PolicyBlock({ device }) {
 /** The last answer about the ssh port of each computer, so a page that is opened again shows it at once. */
 const sshSeen = new Map();
 
+/** The name of the Wi-Fi this computer is on, or null when it is on none. */
+function useWifiHere() {
+  const [here, setHere] = useState(null);
+  useEffect(() => {
+    call("wifi_here").then(setHere).catch(() => {});
+    let off;
+    listen("wifi-here", setHere).then((f) => { off = f; });
+    return () => off && off();
+  }, []);
+  return here;
+}
+
+/** Whether handing this computer's Wi-Fi to the device gives it something: not when it is on that network already. A phone does not say
+ *  the name of its network, but one on Wi-Fi that is reached over the local network is on this one. */
+function wifiWorthSharing(device, here) {
+  if (!here) return false;
+  const net = device.status?.network;
+  if (!net) return true;
+  if (net.ssid) return net.ssid !== here;
+  return !(net.kind === "wifi" && device.online && device.route === "lan");
+}
+
 export function DevicePage({ device }) {
+  const wifiHere = useWifiHere();
   const [ringing, setRinging] = useState(false);
   const players = device.online ? state.players[device.id] || [] : [];
   const transfers = state.transfers.filter((x) => x.peer === device.id).slice(0, 5);
@@ -230,7 +253,7 @@ export function DevicePage({ device }) {
 
     <div class="actions">
         <button class="btn" disabled=${!device.online} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
-        ${hasCap("wifi.join") && html`<button class="btn" disabled=${!device.online && !device.ble} title=${t("wifi_share_tip", device.name)} onClick=${() => call("wifi_share", { id: device.id }).then(say).catch(failed)}>
+        ${hasCap("wifi.join") && wifiWorthSharing(device, wifiHere) && html`<button class="btn" disabled=${!device.online && !device.ble} title=${t("wifi_share_tip", device.name)} onClick=${() => call("wifi_share", { id: device.id }).then(say).catch(failed)}>
           <${Icon} name="wifi" size=${17} />${t("wifi_share")}</button>`}
         ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
           <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}

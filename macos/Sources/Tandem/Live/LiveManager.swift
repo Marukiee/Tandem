@@ -226,13 +226,18 @@ final class LiveManager {
         session.phase = .ended(LiveEnd(reason, byMe: session.stoppedByMe))
         router.remove(session.id)
         previousCounters[session.id] = nil
+        // Stopped on purpose on the other side: the window goes, as it does for a stop here. Only an end nobody asked for stays to say why.
+        if reason == .ended, !session.stoppedByMe {
+            windows[ObjectIdentifier(session)]?.close()
+            return
+        }
         windows[ObjectIdentifier(session)]?.contentSizeChanged()
     }
 
     // MARK: Stopping
 
     /// Ends the session. Stopped from the window, the window goes with it: there is nothing to say about an end that was asked for.
-    /// An end that was not asked for (the other side stopped, the link went) stays in the window with what happened.
+    /// An end that was not asked for (the link went, the other side could not) stays in the window with what happened.
     func stop(_ session: LiveSession, closingWindow: Bool = true) {
         guard session.isRunning else { return }
         session.stoppedByMe = true

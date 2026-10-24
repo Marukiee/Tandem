@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use tandem_core::ffi::{TandemWifi, TandemWifiNetwork, TandemWifiRefusal, TandemWifiSecurity};
 use tandem_winsys::wifi::{self, Network, Security};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::ask::{Answer, Question};
 use crate::events::{device_name, toast};
@@ -46,6 +46,9 @@ fn shareable(security: Security) -> bool {
     matches!(security, Security::Open | Security::Wpa2 | Security::Wpa3)
 }
 
+/// The name of the network this computer is on, as last read, for the page: "Share Wi-Fi" only shows where it gives the device something.
+static HERE: Mutex<Option<String>> = Mutex::new(None);
+
 /// Says which network this computer is on, and again whenever that changes. The core passes on only a change.
 pub fn start(app: &AppHandle) {
     if !available() {
@@ -55,13 +58,28 @@ pub fn start(app: &AppHandle) {
     std::thread::Builder::new()
         .name("tandem-wifi".into())
         .spawn(move || loop {
+            let current = wifi::current();
+            let ssid = current.as_ref().map(|n| n.ssid.clone());
+            let changed = {
+                let mut here = HERE.lock().unwrap();
+                let changed = *here != ssid;
+                *here = ssid.clone();
+                changed
+            };
+            if changed {
+                let _ = app.emit("wifi-here", ssid);
+            }
             if let Ok(engine) = app.state::<AppState>().engine() {
-                let network = wifi::current().map(|n| to_core(&n));
-                tauri::async_runtime::block_on(engine.set_wifi_network(network));
+                tauri::async_runtime::block_on(engine.set_wifi_network(current.map(|n| to_core(&n))));
             }
             std::thread::sleep(Duration::from_secs(10));
         })
         .ok();
+}
+
+#[tauri::command]
+pub fn wifi_here() -> Option<String> {
+    HERE.lock().unwrap().clone()
 }
 
 fn reply(app: &AppHandle, to: &str, message: TandemWifi) -> bool {

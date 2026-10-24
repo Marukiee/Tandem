@@ -218,7 +218,7 @@ struct DeviceDetail: View {
                         model.sendClipboard(to: [device.id])
                     }
                     .disabled(!(device.online || device.ble))
-                    if device.caps.contains("wifi.join") { WifiShareButton(device: device) }
+                    if device.caps.contains("wifi.join"), WifiShare.shared.worthSharing(with: device) { WifiShareButton(device: device) }
                     // Phones are the ones that offer folders for now; a computer offers none until its app can show them.
                     if device.platform == .android && device.caps.contains("files") {
                         GlassActionButton(title: "Browse files", symbol: "folder") { onBrowse() }

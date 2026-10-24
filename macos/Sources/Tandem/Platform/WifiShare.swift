@@ -7,17 +7,18 @@ import TandemCore
 /// network this Mac is on; a phone that is not on it asks, and the person here says whether the password goes. A computer that hands
 /// this Mac its Wi-Fi is asked about here too, before this Mac joins.
 @MainActor
+@Observable
 final class WifiShare: NSObject {
     static let shared = WifiShare()
 
-    private var engine: TandemEngine?
-    /// What was last read, so a question about another network is answered without reading again.
-    private var current: TandemWifiNetwork?
+    @ObservationIgnored private var engine: TandemEngine?
+    /// What was last read, so a question about another network is answered without reading again, and the button shows only where it helps.
+    private(set) var current: TandemWifiNetwork?
     /// Its own client: the shared one has a single delegate, and other parts of the app may want it.
-    private let client = CWWiFiClient()
-    private var location: CLLocationManager?
+    @ObservationIgnored private let client = CWWiFiClient()
+    @ObservationIgnored private var location: CLLocationManager?
     /// The devices whose question is on screen, so asking twice does not stack questions.
-    private var asking: Set<String> = []
+    @ObservationIgnored private var asking: Set<String> = []
     /// Whether macOS lets Tandem see the name of the network, kept from the callback so nobody has to ask the location service again.
     private(set) var locationAllowed = false
 
@@ -32,6 +33,16 @@ final class WifiShare: NSObject {
         manager.delegate = self
         location = manager
         refresh()
+    }
+
+    /// Whether handing this Mac's Wi-Fi to `device` would give it something: not when it is on that network already. A phone does not
+    /// say the name of its network, but one on Wi-Fi that is reached over the local network is on this one. Without Location the name is
+    /// hidden here too, and then the button stays, to say so when it is pressed.
+    func worthSharing(with device: TandemDevice) -> Bool {
+        guard let mine = current else { return !locationAllowed }
+        guard let theirs = device.status.network else { return true }
+        if let ssid = theirs.ssid { return ssid != mine.ssid }
+        return !(theirs.kind == .wifi && device.online && device.route == .lan)
     }
 
     /// Reads the network again and tells the core, which passes on only a change.

@@ -766,11 +766,15 @@ private fun Overlay(
             }
         }
 
+        // Stopped on purpose at the Mac: the person there meant it, so the window goes, without a question to answer here.
+        val stoppedThere = state is ViewerState.Ended && state.outcome == Outcome.StoppedByMac
+        LaunchedEffect(stoppedThere) { if (stoppedThere) onClose() }
+
         // Over for good: why, and what to do about it.
         val finished = when (state) {
             is ViewerState.Ended -> when (state.outcome) {
-                // Stopped on purpose there, or not possible now: closing is what comes next, so that is the coloured button.
-                Outcome.StoppedByMac -> Message(TandemIcons.Desktop, R.string.screen_stopped_title, R.string.screen_stopped_body, closeFirst = true)
+                Outcome.StoppedByMac -> null
+                // Not possible now: closing is what comes next, so that is the coloured button.
                 Outcome.Denied -> Message(TandemIcons.Shield, R.string.screen_denied_title, R.string.screen_denied_body)
                 Outcome.Busy -> Message(TandemIcons.Person, R.string.screen_busy_title, R.string.screen_busy_body, closeFirst = true)
                 Outcome.Unavailable -> Message(TandemIcons.Error, R.string.screen_unavailable_title, R.string.screen_unavailable_body, closeFirst = true)
