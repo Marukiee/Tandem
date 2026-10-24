@@ -8,6 +8,7 @@ import android.net.Uri
 import android.provider.ContactsContract
 import android.provider.Telephony
 import nl.markmaaktmedia.tandem.R
+import uniffi.tandem_core.TandemPhoneContact
 import uniffi.tandem_core.TandemSmsContact
 import uniffi.tandem_core.TandemSmsConversation
 import uniffi.tandem_core.TandemSmsMessage
@@ -140,6 +141,38 @@ class SmsReader(private val context: Context) {
             }
         }
         return out.values.toList()
+    }
+
+    /** The people with a number whose contact id is above [after], by that id, for the search of a computer. Empty without the permission. */
+    fun allContacts(after: Long, limit: Int): Page<TandemPhoneContact> {
+        if (!SmsAccess.contacts(context)) return Page(emptyList(), false)
+        val columns = arrayOf(
+            ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+            ContactsContract.CommonDataKinds.Phone.NUMBER,
+            ContactsContract.CommonDataKinds.Phone.TYPE,
+            ContactsContract.CommonDataKinds.Phone.LABEL,
+            ContactsContract.CommonDataKinds.Phone.IS_SUPER_PRIMARY,
+        )
+        val selection = "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} > ?"
+        val order = "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} ASC, ${ContactsContract.CommonDataKinds.Phone.IS_SUPER_PRIMARY} DESC"
+        val mobile = ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE
+        return resolver.query(ContactsContract.CommonDataKinds.Phone.CONTENT_URI, columns, selection, arrayOf(after.toString()), order)?.use { c ->
+            // Read only as far as the page goes: the cursor is a window on the store, not the whole list in memory.
+            val rows = generateSequence { if (c.moveToNext()) c else null }.map {
+                val type = it.getInt(3)
+                ContactBook.Row(
+                    contact = it.getLong(0),
+                    name = it.getString(1).orEmpty(),
+                    number = it.getString(2).orEmpty(),
+                    label = ContactsContract.CommonDataKinds.Phone.getTypeLabel(context.resources, type, it.getString(4)).toString(),
+                    mobile = type == mobile,
+                    default = it.getInt(5) != 0,
+                )
+            }
+            val (items, more) = ContactBook.page(rows, limit)
+            Page(items, more)
+        } ?: Page(emptyList(), false)
     }
 
     /** One picture of an MMS, made small enough to send: at most [MAX_SIDE] pixels on its long side, as a JPEG. */
