@@ -180,10 +180,8 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   7. De computer laten piepen en zien waar hij is vanaf de telefoon (Find My voor laptops), met het netwerk waar hij laatst was. Het geluid komt uit
      de eigen systeemgeluiden van elk apparaat en is in de instellingen te kiezen (Mac `/System/Library/Sounds`, Linux het geluidsthema, Windows
      `C:\Windows\Media`, Android de kiezer van het systeem). Gekozen door Mark.
-  8. Focus en Niet storen gelijk op alle apparaten. Android: een eigen modus (Android 15 Modi, `AutomaticZenRule`) "Focus van je MacBook", zodat je
-     zelf instelt wat er door mag. Mac: aanzetten met een kant-en-klare opdracht die je met één klik toevoegt (`shortcuts run`); lezen kan niet zonder
-     Volledige schijftoegang (`~/Library/DoNotDisturb` is afgeschermd) of de Focus-status-API (vraagt een recht dat mogelijk een profiel van Apple
-     nodig heeft, eerst proberen). Mark vroeg om een betere weg dan een zelfgemaakte opdracht.
+  8. Focus en Niet storen gelijk op alle apparaten. Gebouwd (2026-10-24, op de Android-emulator gezien, niet op echte toestellen): Android een eigen
+     modus "Focus van <apparaat>", Linux GNOME en KDE, Windows alleen lezen, Mac lezen en zetten met de eigen opdracht Tandem Focus (één klik, vraagt iCloud).
   9. Een tablet met pen als tekentablet voor de Mac (druk en kanteling, zoals de Apple Pencil bij Sidecar). Haalbaar met de invoer van een tweede scherm.
   10. Bellen met het geluid op de computer (microfoon en luidspreker van de Mac). Via Bluetooth kan het niet (macOS geeft het gespreksgeluid niet aan
       een app), maar wel via de telefoon zelf: Android 13+ heeft `AudioManager.getCallDownlinkExtractionAudioRecord` en
