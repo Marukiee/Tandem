@@ -9,33 +9,57 @@
 [![Windows](https://img.shields.io/badge/Windows-experimental-0078D4?logo=windows&logoColor=white)](windows/README.md)
 [![Linux](https://img.shields.io/badge/Linux-experimental-FCC624?logo=linux&logoColor=black)](#linux)
 
-Your phone and your computers as one. Files, clipboard, notifications and hotspot go
-straight between your own devices, encrypted, with no account and no server.
+**The Apple ecosystem, on every device.** Tandem gives an Android phone, a Mac, a Linux laptop and a Windows PC what
+Apple's devices give each other: a second screen, one mouse for all of them, a shared clipboard, your phone on your
+desktop, a hotspot that turns on by itself. Straight between your own devices, encrypted, with no account and no cloud.
 
-Meant as the KDE Connect alternative for people on a Mac: the same idea, with a protocol
-of its own that is fast, reliable and secure, and that keeps working with Linux and Windows.
+It started as the KDE Connect alternative for people on a Mac, and grew into Continuity for the devices Apple leaves out.
 
 > **Status: it works, and it grows fast.** Android and Mac are used the most. Windows and Linux are
 > experimental and have been seen on few real machines so far. Each release says what is new, and
 > `docs/PARITY.md` says per feature what works on which system.
 
-## What it does
+## Highlights
 
-- 📤 **Share with one tap**. Take a screenshot, tap share and all your devices are in the share menu
-- 📋 **A clipboard that comes along**, with history. Passwords from a password manager stay out
-- 🔔 **Your phone's notifications on your computer**, with replies from your desktop and calls to answer or decline
-- 🖥️ **Screen sharing and control** between phone, Mac, Windows and Linux, like a remote desktop
-- 🪟 **Second screen**. A phone or computer becomes an extra screen of another computer, asked for from either side
-- 🧭 **Finds the side by sound**, so a second screen and the shared mouse sit where the device really stands
-- 🖱️ **One mouse and keyboard over several computers**, with files dragged over the edge
-- 📱 **Phone as trackpad, keyboard and remote**, with adjustable speed
-- 📶 **Automatic hotspot** and **Bluetooth** for clipboard and notifications when there is no network
-- 🔊 **Your phone's sound** on the computer and the other way round
-- ✅ **What works**, per device: what is missing (a permission, a setting) and a button that opens it on that device
-- 🖧 **SSH terminal**, Quick Share, your phone's files, Tailscale when it is needed
-- 🔁 **Updates without uninstalling**. The app looks for updates itself
+- 🪟 **Any device as an extra screen, several at once.** Your Mac's screen extends to a Linux laptop on the left and
+  an Android phone on the right, each at its real sharpness. Tandem even **finds which side a device stands on by
+  sound**: the computer plays a short sweep from its left and right speaker and the other device listens.
+- 🖱️ **One mouse and keyboard for all your computers.** Push the pointer over the edge of the screen and it is on the
+  next computer. Drag a file along, and on a Mac click where it should go, into a folder or a field of a website.
+- 📱 **Your phone on your computer.** See its screen in a window and use it live with mouse and keyboard, use its
+  camera, ring it, browse its files, and get its notifications and calls with replies from your desktop.
+- 📋 **One clipboard.** Copy on one device, paste on the other, with a history. Passwords from a password manager stay out.
+- 📶 **Never offline.** No Wi-Fi? Tandem asks your phone for its hotspot by itself, and keeps clipboard and
+  notifications going over Bluetooth when there is no network at all.
+- 🔊 **Sound where you want it.** Your Mac plays through your phone, your phone through your Mac, and the sound of a
+  screen you look at comes along, with a question when headphones are in.
+- ✅ **What works, at a glance.** Every device says what it is ready for and what it still needs (a permission, a
+  setting), and one button opens that setting on that device.
 
-Everything goes straight between your own devices, encrypted, with no account.
+## Apple's Continuity, and Tandem
+
+| On Apple's devices | In Tandem, on Mac, Android, Linux and Windows |
+| --- | --- |
+| Sidecar | Extend your screen to a phone, tablet or another computer (from a Mac to several at once), on the side where they stand |
+| Universal Control | One mouse and keyboard over several computers, files dragged over the edge |
+| iPhone Mirroring | Your phone's screen in a window, used live with mouse and keyboard |
+| Universal Clipboard | One clipboard over all devices, with history |
+| AirDrop | Send to any of your devices from the share menu, a drop zone or Quick Share, also to guests |
+| Continuity Camera | Your phone's camera in a window on your computer, and a photo or scan straight into a document |
+| Calls and notifications on the Mac | Your phone's notifications and calls on your computer, with replies |
+| Instant Hotspot | Your phone's hotspot turned on from the computer, by itself when there is no network |
+| Find My (ringing) | Ring your phone from the computer |
+| AirPlay to a speaker | Your computer's sound through your phone, your phone's sound through your computer |
+| Control Center | Quick buttons on the Mac's Control Center, Android's Quick Settings and the tray menu of Linux and Windows |
+
+## Everything else
+
+- 📤 **Share with one tap.** Take a screenshot, tap share, and all your devices are in the share menu
+- 🖥️ **Remote desktop** between phone, Mac, Windows and Linux, asked for and allowed per device
+- 🎛️ **Phone as trackpad, keyboard and remote**, with adjustable speed
+- 🖧 **SSH terminal**, your phone's files in Finder and in the Files app, Tailscale when it is needed
+- 👪 **Guests**: family and friends can join without their clipboard coming in
+- 🔁 **Updates without uninstalling**. The apps look for updates themselves
 
 ## Install
 
