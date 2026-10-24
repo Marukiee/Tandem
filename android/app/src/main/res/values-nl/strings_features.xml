@@ -56,7 +56,7 @@
     <string name="screen_sound_choice_here">Op deze telefoon</string>
     <string name="screen_sound_ask">Vragen als er een koptelefoon in zit</string>
     <string name="screen_sound_ask_sub">Met een Bluetooth-koptelefoon of iets in de aansluiting vraagt het of het geluid deze keer hierheen moet</string>
-    <string name="tile_pointer_label">Muis van computer</string>
+    <string name="tile_pointer_label">Universele muis</string>
     <string name="feature_pointer">De muis van een computer op deze telefoon</string>
     <string name="feature_pointer_off">Het staat uit in Tandem op deze telefoon</string>
     <string name="features_open_there">Daar openen</string>

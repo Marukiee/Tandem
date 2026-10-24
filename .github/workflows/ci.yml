@@ -3,8 +3,11 @@ name: CI
 on:
   push:
     branches: [main]
+    # Words alone build nothing.
+    paths-ignore: ['docs/**', '**.md']
   pull_request:
     branches: [main]
+    paths-ignore: ['docs/**', '**.md']
 
 # A newer push to the same branch makes the older run pointless.
 concurrency:

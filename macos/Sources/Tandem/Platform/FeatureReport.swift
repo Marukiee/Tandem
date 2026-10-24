@@ -52,7 +52,7 @@ enum FeatureReport {
         } else {
             add("screen", true, String(localized: "See this Mac's screen"), "", nil)
         }
-        add("pointer", accessibility, String(localized: "Shared mouse and keyboard"),
+        add("pointer", accessibility, String(localized: "Universal mouse"),
             String(localized: "Accessibility is off for Tandem on this Mac"), "accessibility")
         let blocked = MacMedia.sources.first { automation[$0.bundleID].map { [-1743, -1744].contains($0) } ?? false }
         let mediaWhy: String = if let blocked {

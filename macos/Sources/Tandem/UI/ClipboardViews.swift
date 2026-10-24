@@ -244,32 +244,55 @@ struct ClipFilterChips: View {
     @Binding var filter: ClipFilter
     /// The height of the whole control, for when it stands next to something of a set height (the search field): the pill then fills it.
     var height: CGFloat?
+    /// On a page the bar is glass of its own; in the quick panel it sits on the glass of the panel.
+    var glass = false
     @Namespace private var pill
+    /// The pill moves at once and the list follows a frame later: a long list that is filtered in the same frame made the pill stutter.
+    @LocalState private var shown: ClipFilter?
+    @LocalState private var hovered: ClipFilter?
 
     var body: some View {
+        let selected = shown ?? filter
         HStack(spacing: 2) {
             ForEach(ClipFilter.allCases, id: \.self) { option in
-                Button { filter = option } label: {
+                Button {
+                    withAnimation(.tandemSpringy) { shown = option }
+                    Task { @MainActor in filter = option }
+                } label: {
+                    // The darker words under the pointer fade in over the grey ones: a colour of the words itself jumps.
                     Text(option.title)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(filter == option ? Color.white : Color.secondary)
+                        .foregroundStyle(selected == option ? Color.white : Color.secondary)
+                        .overlay {
+                            Text(option.title)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.primary)
+                                .opacity(hovered == option && selected != option ? 0.85 : 0)
+                                .animation(.easeOut(duration: 0.3), value: hovered)
+                        }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
                         .frame(maxHeight: height == nil ? nil : .infinity)
                         .background {
-                            if filter == option {
-                                Capsule().fill(Palette.indigo).matchedGeometryEffect(id: "pill", in: pill)
+                            if selected == option {
+                                Capsule().fill(Palette.indigo.gradient).matchedGeometryEffect(id: "pill", in: pill)
                             }
                         }
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .onHover { inside in
+                    if inside { hovered = option } else if hovered == option { hovered = nil }
+                }
             }
         }
         .padding(2)
         .frame(height: height)
-        .background(Color.primary.opacity(0.06), in: .capsule)
-        .animation(.tandem, value: filter)
+        .background {
+            if !glass { Capsule().fill(Color.primary.opacity(0.06)) }
+        }
+        .glassEffect(glass ? .regular : .identity, in: .capsule)
+        .onChange(of: filter) { _, value in if shown != value { withAnimation(.tandemSpringy) { shown = value } } }
     }
 }
 

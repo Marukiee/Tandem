@@ -120,7 +120,7 @@ struct MenuBarPanel: View {
             Button("Open Tandem") { openMain(pairing: false) }
                 .buttonStyle(.tandemGlassProminent)
                 .tint(Palette.indigo)
-                .hoverSwell(1.04)
+                .hoverSwell(1.02)
         }
         .controlSize(.large)
     }

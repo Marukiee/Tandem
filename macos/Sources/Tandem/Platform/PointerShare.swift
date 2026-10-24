@@ -80,7 +80,7 @@ final class PointerShare {
     var neighbours: [String: String] { layout.filter { !Self.isExtendedScreen($0.key) }.mapValues(\.edge) }
 
     /// A device that shows an extra screen of this Mac right now: that screen is where the pointer goes on that side, a part of this
-    /// Mac, so the device is no neighbour of the shared pointer and gets no drop zone until the extra screen ends.
+    /// Mac, so the device is no neighbour of the shared pointer until the extra screen ends.
     static func isExtendedScreen(_ id: String) -> Bool {
         ScreenHost.shared.isExtending(to: id)
     }
@@ -194,6 +194,10 @@ final class PointerShare {
     /// The same for the computer that uses this Mac: when it last said something, and whether its left button is down.
     @ObservationIgnored private var controllerHeardAt = Date()
     @ObservationIgnored private var controllerLeftDown = false
+    /// The drag pasteboard when that left button went down: a drag started by that press has changed it since.
+    @ObservationIgnored private var controllerPressCount = 0
+    /// A drag of files is going along to that computer: what it still sends is not played here any more.
+    @ObservationIgnored private var handingOver = false
     @ObservationIgnored private var controllerWatch: Task<Void, Never>?
 
     private var model: EngineModel { EngineModel.shared }
@@ -532,7 +536,7 @@ final class PointerShare {
             if dx != 0 || dy != 0 { send(.pointer(dx: Int16(clamping: dx), dy: Int16(clamping: dy))) }
             // The other computer says when the pointer runs into the edge it came in by. One that cannot (it does not move the
             // pointer, or never answers) would keep it for good, so this Mac follows the pointer over there by counting, and takes it
-            // home when it has gone back out. A drag with the left button down stays: the drop zone is at that edge.
+            // home when it has gone back out. A drag with the left button down over there stays: that computer catches it at the edge.
             var homeward = false
             if remoteTracker != nil {
                 homeward = remoteTracker!.moved(dx: Double(dx), dy: Double(dy))
@@ -714,6 +718,7 @@ final class PointerShare {
     func controlled(_ input: TandemInput, from device: String) -> Bool {
         guard controlledBy == device else { return false }
         controllerHeardAt = Date()
+        if handingOver { return true }
         // Files carried under the pointer: a press puts them down where it is, Escape sends them to the folder (see `DragCarrier`).
         switch input {
         case let .button(button, down) where button == 0 && down: DragCarrier.shared.beforePress(from: device)
@@ -722,7 +727,10 @@ final class PointerShare {
         default: break
         }
         model.injector.handleShared(input, from: device)
-        if case let .button(button, down) = input, button == 0 { controllerLeftDown = down }
+        if case let .button(button, down) = input, button == 0 {
+            controllerLeftDown = down
+            if down { controllerPressCount = NSPasteboard(name: .drag).changeCount }
+        }
         if case let .pointer(dx, dy) = input, let at = CGEvent(source: nil)?.location {
             let area = screens
             let leaving: Bool
@@ -732,12 +740,28 @@ final class PointerShare {
             case "top": leaving = at.y <= area.minY && dy < 0
             default: leaving = at.y >= area.maxY - 1 && dy > 0
             }
-            // With the button down the pointer stays at the edge, over the drop zone, until it comes up.
-            if leaving, !controllerLeftDown {
+            if leaving {
                 let along: CGFloat = (enteredBy == "left" || enteredBy == "right")
                     ? (at.y - area.minY) / max(area.height - 1, 1)
                     : (at.x - area.minX) / max(area.width - 1, 1)
-                endControlled(tell: device, along: Float(min(max(along, 0), 1)))
+                let fraction = Float(min(max(along, 0), 1))
+                // Files dragged into the edge go along to that computer, as when the pointer of this Mac carries them over: the drag
+                // here is called off first, so nothing is dropped at the edge. Anything else held (a window, a selection) is let go.
+                if controllerLeftDown, NSPasteboard(name: .drag).changeCount != controllerPressCount, case let .files(urls)? = dragContents() {
+                    handingOver = true
+                    let source = CGEventSource(stateID: .hidSystemState)
+                    for down in [true, false] {
+                        CGEvent(keyboardEventSource: source, virtualKey: Self.escape, keyDown: down)?.post(tap: .cgSessionEventTap)
+                    }
+                    model.send(urls: urls, to: [device], origin: .drag)
+                    PointerLog.write("a drag of \(urls.count) file(s) goes along to \(model.device(device)?.name ?? device)")
+                    Task { @MainActor [weak self] in
+                        try? await Task.sleep(for: .milliseconds(60))
+                        self?.endControlled(tell: device, along: fraction)
+                    }
+                } else {
+                    endControlled(tell: device, along: fraction)
+                }
             }
         }
         return true
@@ -749,6 +773,7 @@ final class PointerShare {
         controllerWatch?.cancel()
         controllerWatch = nil
         controllerLeftDown = false
+        handingOver = false
         model.injector.releaseAll()
         if let device {
             Task { try? await model.tandem?.sendPointerShare(target: device, msg: .leave(along: along)) }

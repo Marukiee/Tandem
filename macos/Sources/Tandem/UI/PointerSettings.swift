@@ -66,12 +66,13 @@ struct PointerSettings: View {
 
             Section {
                 DescribedToggle(
-                    "Let the pointer go to other computers",
+                    "Universal mouse",
                     subtitle: trusted ? "Choose below where each computer sits" : "Allow Accessibility first",
                     isOn: $share.enabled
                 )
                 .disabled(!trusted)
-                if share.enabled && trusted {
+                // Always there and only greyed while off: rows that come and go with the switch made the whole page jump.
+                Group {
                     if neighbourChoices.isEmpty {
                         Text("Pair a Mac, a PC or a phone to put it next to this one.").foregroundStyle(.secondary)
                     } else {
@@ -99,10 +100,12 @@ struct PointerSettings: View {
                         }
                     }
                 }
+                .disabled(!share.enabled || !trusted)
+                .opacity(share.enabled && trusted ? 1 : 0.45)
             } header: {
                 Text("Use this Mac's mouse and keyboard on other computers")
             } footer: {
-                if share.enabled { Text("The other computer has to allow it too: in its Tandem, under Mouse and keyboard.") }
+                Text("The other computer has to allow it too: in its Tandem, under Mouse and keyboard.")
             }
 
             Section {
@@ -143,7 +146,7 @@ struct PointerSettings: View {
             }
 
             Section {
-                Text("A phone can sit next to this Mac too, when you turn on \"Use a computer's mouse on this phone\" in its Tandem. Or show its screen in a window here and move the pointer into it: clicks, scrolling and typing go to the phone. Both need Tandem's control under Accessibility on the phone.")
+                Text("A phone can sit next to this Mac too, when you turn on \"Universal mouse\" in its Tandem. Or show its screen in a window here and move the pointer into it: clicks, scrolling and typing go to the phone. Both need Tandem's control under Accessibility on the phone.")
                     .foregroundStyle(.secondary)
                 ForEach(phones, id: \.id) { device in
                     LabeledContent(device.name) {
@@ -156,8 +159,8 @@ struct PointerSettings: View {
             }
         }
         .formStyle(.grouped)
-        .animation(.tandem, value: share.enabled)
-        .animation(.tandem, value: trusted)
+        .animation(.tandemFade, value: share.enabled)
+        .animation(.tandemFade, value: trusted)
         .onAppear {
             share.materialize(computers.map(\.id))
             trusted = AXIsProcessTrusted()

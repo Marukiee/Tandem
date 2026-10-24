@@ -15,9 +15,12 @@ struct ClipboardPage: View {
             VStack(alignment: .leading, spacing: 16) {
                 header(history)
                 if history.enabled {
-                    HStack(spacing: 12) {
-                        searchField
-                        ClipFilterChips(filter: $filter, height: 32)
+                    // Spacing 0: the two are separate pieces of glass, not one that flows together.
+                    GlassEffectContainer(spacing: 0) {
+                        HStack(spacing: 12) {
+                            searchField
+                            ClipFilterChips(filter: $filter, height: 32, glass: true)
+                        }
                     }
                 }
                 content(history: history, shown: shown)
@@ -80,7 +83,7 @@ struct ClipboardPage: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 32)
-        .background(Color.primary.opacity(0.06), in: .capsule)
+        .glassEffect(.regular, in: .capsule)
         .animation(.tandem, value: query.isEmpty)
     }
 

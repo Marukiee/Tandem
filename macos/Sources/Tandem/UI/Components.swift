@@ -80,25 +80,25 @@ private struct TandemGlassPill: View {
     var body: some View {
         let lit = hovering && isEnabled && hoverEnabled
         let ink: Color = prominent ? .white : .primary
-        // On hover the glass grows the same on every side around words that stay where they are, by a real size and not by a scale:
-        // the glass is drawn in a layer of its own that a scale grew from its corner while the words grew from the middle, so they
-        // looked pinned to the left. The size of the button itself does not change, so nothing next to it moves. A row of these sits
-        // in a `GlassEffectContainer` with a spacing of 0, so a grown pill never flows towards its neighbour.
-        let grow: CGFloat = configuration.isPressed ? -1.5 : (lit ? 3 : 0)
+        // On hover the glass grows the same on every side around words that stay where they are, by a real size and not by a scale
+        // (a scale grew the glass from its corner while the words grew from the middle, so they looked pinned to the left). The words
+        // get more room inside the glass, and the same room is taken off again outside it, so the button keeps its size and nothing
+        // next to it moves. The words are the content of the glass itself: glass drawn as a background of its own ends up over the
+        // words in a `GlassEffectContainer`, which made them blurry. A row of these sits in such a container with a spacing of 0, so a
+        // grown pill never flows towards its neighbour.
+        // A point on each side: more made every pill under the pointer look swollen (Mark, 2026-10-24).
+        let grow: CGFloat = configuration.isPressed ? -1 : (lit ? 1 : 0)
+        let glass: Glass = prominent
+            ? .regular.tint(lit ? tint.mix(with: .white, by: 0.12) : tint)
+            : .regular.tint(.white.opacity(lit ? 0.14 : 0))
         configuration.label
             .font(metrics.font)
             .foregroundStyle(ink.opacity(isEnabled ? 1 : 0.45))
-            .padding(.horizontal, metrics.horizontal)
-            .padding(.vertical, metrics.vertical)
+            .padding(.horizontal, metrics.horizontal + grow)
+            .padding(.vertical, metrics.vertical + grow)
             .contentShape(.capsule)
-            .background {
-                Capsule()
-                    .fill(.clear)
-                    .glassEffect(prominent ? .regular.tint(tint) : .regular, in: .capsule)
-                    .brightness(lit ? (prominent ? 0.07 : 0.03) : 0)
-                    .shadow(color: prominent ? tint.opacity(lit ? 0.35 : 0) : .black.opacity(lit ? 0.12 : 0), radius: lit ? 10 : 0, y: lit ? 4 : 0)
-                    .padding(-grow)
-            }
+            .glassEffect(glass, in: .capsule)
+            .padding(-grow)
             .animation(.tandemSpringy, value: lit)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
             .onHover { hovering = $0 }

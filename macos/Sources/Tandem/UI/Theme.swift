@@ -128,7 +128,7 @@ struct HoverLift: ViewModifier {
 /// A control that swells a little under the pointer, with no shadow. For glass buttons, which
 /// do not react to the pointer in a menu bar panel by themselves.
 struct HoverSwell: ViewModifier {
-    var scale: CGFloat = 1.06
+    var scale: CGFloat = 1.025
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.hoverEnabled) private var hoverEnabled
     @LocalState private var hovering = false
@@ -209,7 +209,7 @@ extension View {
         modifier(HoverGrey())
     }
 
-    func hoverSwell(_ scale: CGFloat = 1.06) -> some View {
+    func hoverSwell(_ scale: CGFloat = 1.025) -> some View {
         modifier(HoverSwell(scale: scale))
     }
 
@@ -237,7 +237,7 @@ private struct BouncyButtonBody: View {
 
     var body: some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? pressedScale : (hovering && hoverEnabled && isEnabled && !reduceMotion ? 1.06 : 1))
+            .scaleEffect(configuration.isPressed ? pressedScale : (hovering && hoverEnabled && isEnabled && !reduceMotion ? 1.025 : 1))
             .onHover { hovering = $0 }
             .animation(.tandemBouncy, value: configuration.isPressed)
             .animation(.tandemSpringy, value: hovering)
