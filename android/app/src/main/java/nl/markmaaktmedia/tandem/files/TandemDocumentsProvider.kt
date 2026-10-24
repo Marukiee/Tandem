@@ -335,13 +335,19 @@ class TandemDocumentsProvider : DocumentsProvider() {
             Document.COLUMN_SIZE, Document.COLUMN_LAST_MODIFIED, Document.COLUMN_SUMMARY,
         )
 
-        /** Opens the Files app on the files of one device. */
+        /**
+         * Opens the Files app of Android itself on the files of one device. Not any app that takes the intent: on a phone with another
+         * file app that one took it as a file to save, named after the id of the device.
+         */
         fun open(context: Context, deviceId: String) {
             val root = DocumentsContract.buildRootUri(context.packageName + ".documents", deviceId)
-            val intent = Intent(Intent.ACTION_VIEW)
+            fun view(app: String?) = Intent(Intent.ACTION_VIEW)
                 .setDataAndType(root, Root.MIME_TYPE_ITEM)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            runCatching { context.startActivity(intent) }
+                .apply { if (app != null) setPackage(app) }
+            for (app in listOf("com.google.android.documentsui", "com.android.documentsui", null)) {
+                if (runCatching { context.startActivity(view(app)) }.isSuccess) return
+            }
         }
 
         /** The devices that offer their files and can be reached now. A device that is away has no place in the list. */

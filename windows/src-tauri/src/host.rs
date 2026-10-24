@@ -290,6 +290,12 @@ impl Host {
         // A screen that also takes what the viewer touches and types: what is shown is then also used from there.
         let play = stream_play(&grabber);
         let control = control || (request.control && play.is_some());
+        log::info!(
+            "screen for {}: control {control}, through {}, pointer in the picture {}",
+            events::device_name(&self.app, &from),
+            if play.is_some() { "the session of the picture" } else { "the general input" },
+            request.extend || !(control && viewer_is_computer)
+        );
         let (source_w, source_h) = grabber.size();
         if source_w < 64 || source_h < 64 {
             let _ = engine.media_deny(session, TandemMediaEnd::Unavailable);

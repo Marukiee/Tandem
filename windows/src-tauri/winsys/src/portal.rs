@@ -459,6 +459,12 @@ async fn start_with_input(options: &GrabOptions) -> Result<Started, String> {
     let stream = started.streams().first().ok_or("no screen was chosen")?;
     let node = stream.pipe_wire_node_id();
     let source = stream.size().map(|(w, h)| (w.max(2) as u32, h.max(2) as u32)).unwrap_or((1920, 1080));
+    // What a place of the pointer is counted in, next to what GNOME says about the screen, to find out why a pointer lands elsewhere.
+    let screens: Vec<String> = crate::monitors().iter().map(|m| format!("{} at {},{} {}x{} scale {}", m.connector, m.x, m.y, m.pixels.0, m.pixels.1, m.scale)).collect();
+    log::info!(
+        "screen with input: stream {}x{} at {:?} (said {:?}), places counted in that size; the screens: {}",
+        source.0, source.1, stream.position(), stream.size(), screens.join("; ")
+    );
     let fd = cast.open_pipe_wire_remote(&session, OpenPipeWireRemoteOptions::default()).await.map_err(text)?;
     let input = Arc::new(StreamInput { remote, session, stream: node, size: (f64::from(source.0), f64::from(source.1)), healthy: AtomicBool::new(true) });
     Ok(Started { held: Held::Both { _cast: cast, input }, node, source, remote: fd })

@@ -315,8 +315,9 @@ const help = document.getElementById("help");
 
 function showControl() {
   if (kind !== "screen") return;
-  // A computer that allows it is used at once: nobody wants to say first that the mouse is wanted.
-  if (computerPeer && controlGranted && !controlChosen) controlOn = true;
+  // What allows it is used at once, a phone as much as a computer (as on the Mac): nobody wants to say first that the mouse is wanted,
+  // and touches that went nowhere until the button was pressed read as broken.
+  if (controlGranted && !controlChosen) controlOn = true;
   controlButton.hidden = false;
   controlButton.classList.toggle("on", controlGranted && controlOn);
   controlButton.classList.toggle("off", !controlGranted);

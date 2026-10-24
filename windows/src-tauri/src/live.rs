@@ -513,6 +513,10 @@ fn start_player(app: &AppHandle, session: u64, output: Option<&str>) -> Option<P
     }
     let mut child = command.stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::piped()).spawn().ok()?;
     let mut stdin = child.stdin.take()?;
+    // A pipe holds 64 KB, less than one keyframe of a laptop screen, so writing one waited for GStreamer to read it in parts. A larger
+    // pipe takes a keyframe at once (Linux allows a megabyte without privileges).
+    #[cfg(target_os = "linux")]
+    tandem_winsys::grow_pipe(&stdin);
     // What GStreamer says when it cannot do it goes in the log: without it a second screen that stays black gives nothing to go on.
     if let Some(errors) = child.stderr.take() {
         let _ = std::thread::Builder::new().name("tandem-display-log".into()).spawn(move || {
@@ -521,8 +525,11 @@ fn start_player(app: &AppHandle, session: u64, output: Option<&str>) -> Option<P
             }
         });
     }
-    // A few pictures at most: more is a delay that only grows while GStreamer is behind, and pictures are better dropped then.
-    let (feed, rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(4);
+    // About a quarter of a second at 60 pictures a second. With room for four, the start (the first keyframe, the window that opens) and
+    // any short hitch filled it: a picture was dropped, and then everything until the next keyframe, which on the laptop froze the
+    // screen for a second at the start. A hitch is caught up quickly (the decoder needs a few ms a picture); only a GStreamer that stays
+    // behind fills this, and then dropping to a keyframe is right.
+    let (feed, rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(16);
     let counts = Arc::new(FeedCounts::default());
     let seen = counts.clone();
     let app = app.clone();

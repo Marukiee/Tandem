@@ -373,16 +373,19 @@ async fn run_delivery(inner: Arc<Inner>, viewer: Arc<ViewerSession>) {
 }
 
 /// Reports in a row that must agree before the app is told that the link got poor, or that it is good again.
-const POOR_AFTER: u32 = 3;
+const POOR_AFTER: u32 = 4;
 const GOOD_AFTER: u32 = 5;
-/// A tenth of the frames of a second lost, or this much time for a packet to go there and back.
-const POOR_LOSS: f64 = 0.1;
-const POOR_RTT: Duration = Duration::from_millis(400);
+/// Frames of a second lost (at least this many, and this share), or this much time for a packet to go there and back. Lower than this a
+/// laptop on Wi-Fi with power saving (round trips with peaks of a hundred ms and more, frames late enough to count as lost) was said to
+/// have a poor link while its picture looked fine.
+const POOR_LOST_FRAMES: u32 = 3;
+const POOR_LOSS: f64 = 0.15;
+const POOR_RTT: Duration = Duration::from_millis(500);
 
 /// Whether this second says the link is poor, kept apart from one bad second: `Some(poor)` only when the answer changes.
 fn judge(st: &mut ViewerState, counters: &Counters, rtt: Duration) -> Option<bool> {
     let total = counters.frames + counters.lost;
-    let lossy = counters.lost >= 2 && total > 0 && f64::from(counters.lost) / f64::from(total) >= POOR_LOSS;
+    let lossy = counters.lost >= POOR_LOST_FRAMES && total > 0 && f64::from(counters.lost) / f64::from(total) >= POOR_LOSS;
     let bad = lossy || rtt >= POOR_RTT;
     if bad == st.poor {
         // What this second says is what was already said: nothing to count.
@@ -393,6 +396,8 @@ fn judge(st: &mut ViewerState, counters: &Counters, rtt: Duration) -> Option<boo
     if st.streak >= if bad { POOR_AFTER } else { GOOD_AFTER } {
         st.poor = bad;
         st.streak = 0;
+        // Why, in the log, so a link that is called poor can be checked afterwards.
+        tracing::info!(poor = bad, frames = counters.frames, lost = counters.lost, rtt_ms = rtt.as_millis() as u64, "the link of a live picture changed");
         return Some(bad);
     }
     None
@@ -472,11 +477,12 @@ mod quality_tests {
     }
 
     #[test]
-    fn one_bad_second_is_not_a_poor_link_but_three_in_a_row_are_and_five_good_ones_clear_it() {
+    fn one_bad_second_is_not_a_poor_link_but_four_in_a_row_are_and_five_good_ones_clear_it() {
         let mut st = state();
         let fine = Duration::from_millis(20);
         assert_eq!(judge(&mut st, &second(30, 8), fine), None);
         assert_eq!(judge(&mut st, &second(30, 0), fine), None);
+        assert_eq!(judge(&mut st, &second(30, 8), fine), None);
         assert_eq!(judge(&mut st, &second(30, 8), fine), None);
         assert_eq!(judge(&mut st, &second(30, 8), fine), None);
         assert_eq!(judge(&mut st, &second(30, 8), fine), Some(true));
@@ -489,10 +495,15 @@ mod quality_tests {
     #[test]
     fn a_slow_round_trip_is_poor_too_and_a_still_picture_is_not() {
         let mut st = state();
-        for _ in 0..2 {
+        for _ in 0..3 {
             assert_eq!(judge(&mut st, &second(30, 0), Duration::from_millis(900)), None);
         }
         assert_eq!(judge(&mut st, &second(30, 0), Duration::from_millis(900)), Some(true));
+        // A few late frames on a jittery Wi-Fi are no poor link.
+        let mut jitter = state();
+        for _ in 0..10 {
+            assert_eq!(judge(&mut jitter, &second(30, 2), Duration::from_millis(120)), None);
+        }
         let mut still = state();
         for _ in 0..10 {
             assert_eq!(judge(&mut still, &second(0, 0), Duration::from_millis(10)), None);

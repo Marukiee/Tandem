@@ -1,6 +1,8 @@
 package nl.markmaaktmedia.tandem.live
 
+import android.accessibilityservice.GestureDescription
 import android.content.Context
+import android.graphics.Path
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -10,7 +12,9 @@ import uniffi.tandem_core.TandemMediaInput
 
 /**
  * Turns what a computer's mouse and keyboard do into touches on this phone. The pointer is somewhere on the screen, the
- * left button is the finger: pressed and let go in the same place is a tap, held long a long press, and moved a swipe.
+ * left button is the finger: it goes down when the button does, follows the pointer while it is held, and comes up with the
+ * button, played live as a touch that goes on (so a drag is seen while it happens, and holding still is a long press). Where
+ * Android will not let a touch go on, the old way is taken: the whole tap or swipe played when the button comes up.
  * The right button is Back, the middle one Home. Scrolling is a swipe in the direction of the content.
  */
 class RemoteInput(private val context: Context) {
@@ -42,10 +46,12 @@ class RemoteInput(private val context: Context) {
             is TandemMediaInput.PointerAbs -> {
                 x = (input.x * width).coerceIn(0f, width - 1)
                 y = (input.y * height).coerceIn(0f, height - 1)
+                if (live != null) follow(service)
             }
             is TandemMediaInput.PointerRel -> {
                 x = (x + input.dx).coerceIn(0f, width - 1)
                 y = (y + input.dy).coerceIn(0f, height - 1)
+                if (live != null) follow(service)
             }
             is TandemMediaInput.Button -> button(service, input.button.toInt(), input.down)
             is TandemMediaInput.Scroll -> {
@@ -83,6 +89,80 @@ class RemoteInput(private val context: Context) {
         }
     }
 
+    // ---- The live touch ------------------------------------------------------------------------------------------------------
+
+    /** The touch that is down now and goes on, with where its last piece ended; null when no finger is down this way. */
+    private var live: GestureDescription.StrokeDescription? = null
+    private var liveX = 0f
+    private var liveY = 0f
+    /** A piece is being played: the next waits for it, or Android cancels the touch. */
+    private var playing = false
+    /** The button came up while a piece was being played: the touch ends after it. */
+    private var ending = false
+    /** When Android last cancelled a touch that goes on: for a while taps and swipes are played whole, when the button comes up. */
+    private var liveRefusedAt = 0L
+    private val liveRefused get() = SystemClock.uptimeMillis() - liveRefusedAt < LIVE_RETRY_MS && liveRefusedAt != 0L
+
+    private fun point(fromX: Float, fromY: Float, toX: Float, toY: Float) = Path().apply {
+        moveTo(fromX, fromY)
+        if (fromX != toX || fromY != toY) lineTo(toX, toY)
+    }
+
+    private fun startLive(service: TandemAccessibilityService) {
+        val first = GestureDescription.StrokeDescription(point(x, y, x, y), 0, PIECE_MS, true)
+        live = first
+        liveX = x
+        liveY = y
+        play(service, first)
+    }
+
+    /** The pointer moved with the finger down: the next piece goes there once the last one was played. */
+    private fun follow(service: TandemAccessibilityService) {
+        if (!playing) next(service)
+    }
+
+    private fun next(service: TandemAccessibilityService) {
+        val current = live ?: return
+        val end = ending
+        // A piece that does not move keeps the finger where it is: that is how a press is held long.
+        val piece = runCatching { current.continueStroke(point(liveX, liveY, x, y), 0, PIECE_MS, !end) }.getOrNull()
+        if (piece == null) {
+            giveUpLive()
+            return
+        }
+        liveX = x
+        liveY = y
+        if (end) {
+            live = null
+            ending = false
+        } else {
+            live = piece
+        }
+        play(service, piece)
+    }
+
+    private fun play(service: TandemAccessibilityService, piece: GestureDescription.StrokeDescription) {
+        playing = true
+        service.stroke(piece) { played ->
+            main.post {
+                playing = false
+                if (!played) {
+                    giveUpLive()
+                    return@post
+                }
+                // Moved meanwhile, or let go: the next piece. Held still: a piece that stays, so the finger stays down.
+                if (live != null) next(service)
+            }
+        }
+    }
+
+    private fun giveUpLive() {
+        live = null
+        ending = false
+        playing = false
+        liveRefusedAt = SystemClock.uptimeMillis()
+    }
+
     private fun button(service: TandemAccessibilityService, button: Int, down: Boolean) {
         when (button) {
             0 -> if (down) {
@@ -90,8 +170,15 @@ class RemoteInput(private val context: Context) {
                 downX = x
                 downY = y
                 downAt = SystemClock.uptimeMillis()
+                if (!liveRefused) startLive(service)
             } else if (held) {
                 held = false
+                if (live != null) {
+                    // The finger comes up with the next piece, where the pointer is now.
+                    ending = true
+                    if (!playing) next(service)
+                    return
+                }
                 val duration = SystemClock.uptimeMillis() - downAt
                 if (hypot(x - downX, y - downY) < SLOP) {
                     service.press(downX, downY, if (duration > LONG_PRESS_MS) duration else TAP_MS)
@@ -116,6 +203,10 @@ class RemoteInput(private val context: Context) {
     }
 
     private companion object {
+        /** How long one piece of a live touch is: about a frame of the screen. */
+        const val PIECE_MS = 16L
+        /** How long the whole taps and swipes are kept after Android cancelled a live touch (the person touched the phone, say). */
+        const val LIVE_RETRY_MS = 10_000L
         const val SLOP = 24f
         const val TAP_MS = 50L
         const val LONG_PRESS_MS = 450L

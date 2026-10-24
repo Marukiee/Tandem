@@ -336,6 +336,12 @@ mod monitor_tests {
     }
 }
 
+/// Lets a pipe hold a megabyte instead of 64 KB, the most Linux allows without privileges.
+#[cfg(target_os = "linux")]
+pub fn grow_pipe(file: &impl std::os::fd::AsRawFd) {
+    unsafe { libc::fcntl(file.as_raw_fd(), libc::F_SETPIPE_SZ, 1 << 20) };
+}
+
 /// Takes what points into an AppImage out of the environment of a program of the system that is about to be started (nothing on other
 /// systems, where there is no such thing).
 pub fn system_env(command: &mut std::process::Command) {

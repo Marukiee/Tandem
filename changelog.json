@@ -1,5 +1,31 @@
 [
   {
+    "version": "0.2.3",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Live touches on the phone",
+      "new": [
+        "Controlling a phone from a computer is live: the finger goes down at once and follows a drag",
+        "Linux: control of a phone is on at once, like on the Mac",
+        "Linux: a second screen catches a short hitch instead of freezing for a second",
+        "Android: Browse files opens the Files app of Android, not a save dialog",
+        "Mac: asks whether to move the extra screen when it is already on another device",
+        "A poor link is said less quickly on a jittery Wi-Fi"
+      ]
+    },
+    "nl": {
+      "title": "Live aanraken op de telefoon",
+      "new": [
+        "Een telefoon bedienen vanaf een computer gaat live: de vinger gaat meteen neer en volgt het slepen",
+        "Linux: bedienen van een telefoon staat meteen aan, zoals op de Mac",
+        "Linux: een tweede scherm vangt een korte hapering op in plaats van een seconde te bevriezen",
+        "Android: Bestanden bekijken opent de Bestanden-app van Android, geen opslaan-venster",
+        "Mac: vraagt of het extra scherm moet verhuizen als het al op een ander apparaat staat",
+        "Een slechte verbinding wordt minder snel gemeld bij haperende wifi"
+      ]
+    }
+  },
+  {
     "version": "0.2.2",
     "date": "2026-10-24",
     "en": {

@@ -51,6 +51,20 @@ class TandemAccessibilityService : AccessibilityService() {
         dispatch(path, durationMs, done)
     }
 
+    /**
+     * One piece of a touch that goes on while it is played: the next piece carries on from where this one ended (see
+     * [GestureDescription.StrokeDescription.continueStroke]). [done] says whether it was played, so a touch that Android cancels can be
+     * given up on.
+     */
+    fun stroke(stroke: GestureDescription.StrokeDescription, done: (Boolean) -> Unit) {
+        val callback = object : GestureResultCallback() {
+            override fun onCompleted(gestureDescription: GestureDescription?) = done(true)
+            override fun onCancelled(gestureDescription: GestureDescription?) = done(false)
+        }
+        val started = runCatching { dispatchGesture(GestureDescription.Builder().addStroke(stroke).build(), callback, null) }.getOrDefault(false)
+        if (!started) done(false)
+    }
+
     /** [done] is told when the gesture has been played or was cancelled, so the next one is not dispatched on top of it. */
     private fun dispatch(path: Path, durationMs: Long, done: (() -> Unit)? = null) {
         val stroke = GestureDescription.StrokeDescription(path, 0, durationMs.coerceIn(10, 3000))

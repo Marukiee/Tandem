@@ -155,6 +155,14 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   (VA-API nieuw en oud, V4L2 voor ARM, avdec, openh264, en de NVIDIA-kaart alleen als niets anders werkt) met 40 zelfgemaakte beelden in het tempo van een
   scherm, kiest de snelste (hardware als die binnen 3 ms zit) en bewaart dat in `~/.cache/tandem/decoder.txt` tot GStreamer verandert. Op de laptop van Mark
   met dezelfde meting: avdec_h264 2,9 ms, openh264dec 37 ms, nvh264dec 101 ms. `TANDEM_DISPLAY_DECODER` gaat nog steeds voor.
+- Twee tweede schermen tegelijk vanaf de Mac (gevraagd 2026-10-24: Linux links en Android rechts): macOS kan meerdere virtuele schermen maken, maar
+  `ScreenHost` kent een sessie tegelijk (`current`, `extendDisplay`, `extendPeer`). Ombouwen naar een lijst van sessies, elk met eigen scherm, opname en
+  encoder, en de balk die ze allemaal toont. Sinds 0.2.3 vraagt de Mac bij een tweede verzoek of het scherm moet verhuizen (`GlassQuestion`). Nog niet:
+  dezelfde vraag op het apparaat dat "bezet" te horen krijgt, met overnemen (een veld `take_over` in het verzoek).
+- De muis bij bedienen van de Linux vanaf de Mac staat niet op dezelfde plek als op de Linux (gezien 2026-10-24). De code rekent in theorie goed (Mutter
+  deelt de plek op de stream door de schaal), dus eerst meten: sinds 0.2.3 schrijft de Linux bij het begin van een sessie de maat en plaats van de stream,
+  de schermen met hun schaal en welke invoer gebruikt wordt (`screen with input:` en `screen for ...:` in tandem.log). Vragen: verschuift het meer naar
+  rechtsonder, of loopt het alleen achter?
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)

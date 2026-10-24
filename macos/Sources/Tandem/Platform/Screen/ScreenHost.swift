@@ -186,6 +186,30 @@ final class ScreenHost {
             FloatingToast.show(String(localized: "Allow Tandem to record this Mac's screen in System Settings, under Screen Recording"), symbol: "rectangle.dashed.badge.record")
             return
         }
+        // This Mac shows one screen at a time to another device. Busy with another: ask whether the screen moves over, instead of an
+        // answer of busy on the device.
+        if let running = current, running.peer != device.id {
+            let title = running.extend
+                ? String(localized: "The extra screen is on \(running.name)")
+                : String(localized: "\(running.name) is looking at this Mac")
+            GlassQuestion.shared.ask(
+                symbol: "rectangle.on.rectangle",
+                title: title,
+                body: String(localized: "Move it to \(device.name)? \(running.name) stops showing it."),
+                answers: [
+                    GlassQuestion.Answer(title: "Cancel", action: {}),
+                    GlassQuestion.Answer(title: "Move it", prominent: true, action: { [weak self] in
+                        self?.stopCurrent()
+                        // A moment for the screen of the other device to go, so the new request does not find this Mac still busy.
+                        Task { @MainActor [weak self] in
+                            try? await Task.sleep(for: .milliseconds(600))
+                            self?.offerExtend(to: device)
+                        }
+                    }),
+                ]
+            )
+            return
+        }
         expectedExtend[device.id] = Date().addingTimeInterval(90)
         do {
             try engine.mediaOffer(peer: device.id, kind: .screen, facing: .any, extend: true)

@@ -1018,3 +1018,9 @@
 "macOS has turned off Local Network for Tandem, which happens after some updates. Turn Tandem off and on again under Privacy and Security, Local Network." = "macOS heeft Lokaal netwerk voor Tandem uitgezet, dat gebeurt na sommige updates. Zet Tandem uit en weer aan onder Privacy en beveiliging, Lokaal netwerk.";
 "Needs a setting there" = "Daar is een instelling nodig";
 "Open there" = "Daar openen";
+
+/* Moving the extra screen */
+"The extra screen is on %@" = "Het extra scherm staat op %@";
+"%@ is looking at this Mac" = "%@ kijkt mee op deze Mac";
+"Move it to %@? %@ stops showing it." = "Verplaatsen naar %@? %@ toont het dan niet meer.";
+"Move it" = "Verplaatsen";
