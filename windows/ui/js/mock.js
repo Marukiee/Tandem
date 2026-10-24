@@ -10,6 +10,8 @@ const cover = "data:image/svg+xml;utf8," + encodeURIComponent(
 const now = Date.now();
 const devices = empty ? [] : [
   { id: "phone", name: "Pixel 9", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host", "screen.extend.view", "wifi.join", "sms"],
+    // ?calls=off: the phone may not place calls yet, which the call button in Messages says when it is pressed.
+    features: [{ id: "calls", ready: new URLSearchParams(location.search).get("calls") !== "off", name: "Calls", why: "Tandem may not make calls on Pixel 9 yet. Allow it on the phone.", page: "access" }],
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false,
     status: { battery: { level: 80, charging: true, powerSave: false }, network: { kind: "cellular", ssid: null, metered: true, roaming: false, signal: 3 }, hotspot: true, dnd: false } },
   { id: "mac", name: "MacBook Pro", platform: "macos", online: true, route: "lan", rttMs: 4, appVersion: "0.1.25", caps: ["screen.host", "screen.view", "screen.extend.view", "audio.play"],
@@ -71,6 +73,8 @@ const smsConversations = [
   { thread: 3, addresses: ["+31611111111", "+31622222222"], name: "Bob, Carla", snippet: "Wie neemt de taart mee?", date: now - 26 * hour, unread: 0, fromMe: false },
   { thread: 4, addresses: ["+31633333333"], name: "Mam", snippet: "Bel je me straks even?", date: now - 50 * hour, unread: 0, fromMe: true },
   { thread: 5, addresses: ["+31201234567"], name: "Tandarts", snippet: "Herinnering: uw afspraak is op dinsdag om 09:30.", date: now - 9 * 24 * hour, unread: 0, fromMe: false },
+  { thread: 6, addresses: ["+31644444444"], name: "Lotte Bakker", snippet: "", date: now - 12 * 24 * hour, unread: 0, fromMe: false },
+  { thread: 7, addresses: ["StripeLink"], name: "", snippet: "Uw code is 482913", date: now - 14 * 24 * hour, unread: 0, fromMe: false },
 ];
 const smsMessage = (id, thread, body, ago, mine, extra = {}) => ({
   id, mms: false, thread, address: mine ? "" : (smsConversations.find((c) => c.thread === thread) || {}).addresses?.[0] || "", body, date: now - ago,
@@ -89,11 +93,15 @@ const smsThreads = {
   ],
   2: [smsMessage(21, 2, "Uw pakket wordt vandaag tussen 14:00 en 16:00 bezorgd.", 3 * hour, false)],
   3: [
+    smsMessage(33, 3, "Ik!", 26 * hour - 60000, true),
+    smsMessage(32, 3, "En wie de kaarsjes?", 26 * hour + 30000, false, { address: "+31622222222" }),
     smsMessage(31, 3, "Wie neemt de taart mee?", 26 * hour, false, { address: "+31622222222" }),
     smsMessage(30, 3, "Ik neem de slingers mee", 27 * hour, false, { address: "+31611111111" }),
   ],
   4: [smsMessage(41, 4, "Bel je me straks even?", 50 * hour, true)],
   5: [smsMessage(51, 5, "Herinnering: uw afspraak is op dinsdag om 09:30.", 9 * 24 * hour, false)],
+  6: [],
+  7: [smsMessage(71, 7, "Uw code is 482913", 14 * 24 * hour, false)],
 };
 const smsPicture = "data:image/svg+xml;utf8," + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180"><rect width="240" height="180" fill="#7fb3d5"/><circle cx="180" cy="50" r="24" fill="#f7dc6f"/><path d="M0 180 L80 90 L140 150 L190 110 L240 160 L240 180 Z" fill="#1e8449"/></svg>',

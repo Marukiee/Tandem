@@ -273,11 +273,52 @@ enum DebugSupport {
             caps: ["sms"], vouchedByRemoved: false, clipboardEnabled: true, autoAccept: true, notificationsEnabled: true, ble: false, features: []
         )
         MessagesStore.shared.phone(device.id).fillForDebug()
-        let host = NSHostingView(rootView: MessagesView(device: device, onBack: {}).environment(EngineModel.shared).frame(width: 900, height: 620))
-        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 900, height: 620), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        // Under a toolbar beside a stand in for the sidebar, as in the main window: the toolbar and its inset decide where the page
+        // starts. (A real split view in a window of its own draws nothing in a snapshot.)
+        // `wide`: as with the sidebar hidden, the window's buttons over the page.
+        let page = HStack(spacing: 0) {
+            if messagesStart != "wide" { Color.gray.opacity(0.12).frame(width: 260).ignoresSafeArea() }
+            MessagesView(device: device, onBack: {})
+        }
+        // The main window's toolbar always has the sidebar button, which gives the strip its height.
+        .toolbar { ToolbarItem(placement: .navigation) { Image(systemName: "sidebar.left") } }
+        .toolbar(removing: .title)
+        .environment(EngineModel.shared)
+        .frame(minWidth: 900, maxWidth: .infinity, minHeight: 600, maxHeight: .infinity)
+        let host = NSHostingView(rootView: page)
+        host.sceneBridgingOptions = [.toolbars]
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 1100, height: 680),
+                              styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.title = "Messages (debug)"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
         window.contentView = host
         window.makeKeyAndOrderFront(nil)
+        // What a click in the strip of the toolbar lands on: the page under it, or the bar itself. Written to `messages-hittest.txt`.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            guard let frame = window.contentView?.superview, let directory else { return }
+            let top = frame.bounds.height - 26
+            // The back button, the search field, the new message button, the empty strip and the call button.
+            let report = [CGFloat(277), 410, 535, 800, 1069].map { x -> String in
+                let view = frame.hitTest(NSPoint(x: x, y: top))
+                let name = view.map { String(describing: type(of: $0)).prefix(40) } ?? "nothing"
+                return "x \(Int(x)): \(name) \(view.map { "\($0.convert($0.bounds, to: nil))" } ?? "")"
+            }
+            try? report.joined(separator: "\n").write(to: directory.appendingPathComponent("messages-hittest.txt"), atomically: true, encoding: .utf8)
+        }
+    }
+
+    /// Where the Messages page starts in a debug run: `TANDEM_DEBUG_MESSAGES=empty` a conversation without messages, `group` a
+    /// group, `number` a number without a name, `compose` a new message. Anything else is the newest conversation.
+    static var messagesStart: String? { variable("TANDEM_DEBUG_MESSAGES") }
+
+    static var messagesThread: UInt64? {
+        switch messagesStart {
+        case "number": 2
+        case "group": 3
+        case "empty": 6
+        default: nil
+        }
     }
 
     private static func showArrangementWindow() {
