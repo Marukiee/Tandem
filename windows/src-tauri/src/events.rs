@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use base64::Engine as _;
 use serde_json::{Value, json};
-use tandem_core::ffi::{TandemCall, TandemCallState, TandemEvent, TandemNotification, TandemShareItem, TandemShareOrigin};
+use tandem_core::ffi::{TandemEvent, TandemNotification, TandemShareItem, TandemShareOrigin};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
@@ -187,7 +187,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             let _ = app.emit("art", json!({ "key": key.to_string(), "uri": uri }));
             media::refresh(app);
         }
-        TandemEvent::Call { from, call } => incoming_call(app, &from, &call),
+        TandemEvent::Call { from, call } => crate::callcard::received(app, &from, &call),
         TandemEvent::Input { from, input } => {
             // From the computer that has the pointer: it was allowed when the pointer came over.
             if input::shared_is(&from) {
@@ -458,56 +458,5 @@ fn phone_notification(app: &AppHandle, from: &str, n: &TandemNotification) {
     if settings.phone_notifications && !n.silent {
         let body = if n.title.is_empty() { n.text.clone() } else { format!("{}\n{}", n.title, n.text) };
         toast(app, &format!("{} · {}", n.app_name, name), &body);
-    }
-}
-
-/// The notice of each call that rings now, so it goes when the call is answered or ends (Linux).
-#[cfg(target_os = "linux")]
-static CALL_NOTICES: std::sync::Mutex<Vec<(String, u32)>> = std::sync::Mutex::new(Vec::new());
-
-fn incoming_call(app: &AppHandle, from: &str, call: &TandemCall) {
-    let who = call.name.clone().or_else(|| call.number.clone()).unwrap_or_else(|| i18n::t(app, "unknown_number"));
-    #[cfg(target_os = "linux")]
-    if !matches!(call.state, TandemCallState::Ringing) {
-        let mut notices = CALL_NOTICES.lock().unwrap();
-        if let Some(index) = notices.iter().position(|(id, _)| *id == call.id) {
-            tandem_winsys::notify::close(notices.remove(index).1);
-        }
-    }
-    match call.state {
-        TandemCallState::Ringing if call.incoming => ringing(app, from, call, &who),
-        TandemCallState::Missed => toast(app, &i18n::t(app, "missed_call"), &who),
-        _ => {}
-    }
-}
-
-/// A call that rings on the phone: on Linux with Answer and Decline, as on the Mac, so the phone can stay in a pocket. The phone answers;
-/// the talking happens there or on its headset.
-fn ringing(app: &AppHandle, from: &str, call: &TandemCall, who: &str) {
-    let title = i18n::t1(app, "calling", &device_name(app, from));
-    #[cfg(target_os = "linux")]
-    {
-        let (answer, decline) = (i18n::t(app, "call_answer"), i18n::t(app, "call_decline"));
-        let buttons = [("answer", answer.as_str()), ("reject", decline.as_str())];
-        let (app2, phone, id) = (app.clone(), from.to_string(), call.id.clone());
-        let told = tandem_winsys::notify::tell(&title, who, &buttons, move |key, _| {
-            let action = match key {
-                "answer" => tandem_core::ffi::TandemCallAction::Answer,
-                "reject" => tandem_core::ffi::TandemCallAction::Reject,
-                _ => return,
-            };
-            if let Ok(engine) = app2.state::<crate::state::AppState>().engine() {
-                let _ = tauri::async_runtime::block_on(engine.call_action(phone.clone(), id.clone(), action));
-            }
-        });
-        match told {
-            Some(notice) => CALL_NOTICES.lock().unwrap().push((call.id.clone(), notice)),
-            None => toast(app, &title, who),
-        }
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        let _ = call;
-        toast(app, &title, who);
     }
 }

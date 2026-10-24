@@ -55,7 +55,8 @@ final class FloatingStack {
                 NSAnimationContext.runAnimationGroup { context in
                     context.duration = 0.28
                     context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.3, 1)
-                    panel.animator().setFrameOrigin(origin)
+                    // `setFrame`: the animator of a window does nothing at all with `setFrameOrigin`, and the card would stay put.
+                    panel.animator().setFrame(NSRect(origin: origin, size: panel.frame.size), display: true)
                 }
             }
         }

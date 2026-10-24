@@ -2,14 +2,14 @@ import AppKit
 import TandemCore
 import UserNotifications
 
-/// Native notifications: received files, mirrored phone notifications and calls.
+/// Native notifications: received files, mirrored phone notifications and missed calls. A call that rings or is going on is a
+/// window of its own (`CallWindow`).
 @MainActor
 final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     static let shared = Notifier()
 
     /// Set by the model: what to do when a button on a notification is pressed.
     var onFileAction: ((String) -> Void)?
-    var onCallAction: ((_ device: String, _ callId: String, _ action: TandemCallAction) -> Void)?
     var onMirrorAction: ((_ device: String, _ key: String, _ button: String, _ reply: String?, _ dismiss: Bool) -> Void)?
     var onCopyCode: ((String) -> Void)?
     /// A plain click on a phone notification: the device, its key, and the app it came from.
@@ -23,7 +23,6 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     private var authorised = false
 
     private static let fileCategory = "tandem.file"
-    private static let callCategory = "tandem.call"
     private static let copyCodeAction = "copycode"
 
     func setUp() {
@@ -39,11 +38,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     private func baseCategories() -> Set<UNNotificationCategory> {
         let reveal = UNNotificationAction(identifier: "reveal", title: String(localized: "Show in Finder"), options: [.foreground])
         let file = UNNotificationCategory(identifier: Self.fileCategory, actions: [reveal], intentIdentifiers: [])
-
-        let answer = UNNotificationAction(identifier: "answer", title: String(localized: "Answer"), options: [])
-        let reject = UNNotificationAction(identifier: "reject", title: String(localized: "Decline"), options: [.destructive])
-        let call = UNNotificationCategory(identifier: Self.callCategory, actions: [answer, reject], intentIdentifiers: [])
-        return Set([file, call]).union(dynamicCategories.values)
+        return Set([file]).union(dynamicCategories.values)
     }
 
     func post(
@@ -70,7 +65,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         if let image, let attachment = try? UNNotificationAttachment(identifier: "icon", url: image, options: nil) {
             content.attachments = [attachment]
         }
-        content.interruptionLevel = category == Self.callCategory ? .timeSensitive : .active
+        content.interruptionLevel = .active
         let request = UNNotificationRequest(identifier: id, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
     }
@@ -99,20 +94,6 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             title: String(localized: "Code \(code) recognised and copied"),
             body: String(localized: "From \(deviceName)"),
             thread: "codes"
-        )
-    }
-
-    func postCall(device: String, id: String, name: String?, number: String?, incoming: Bool) {
-        let who = name ?? number ?? String(localized: "Unknown number")
-        post(
-            id: "call.\(id)",
-            title: incoming ? String(localized: "Incoming call") : String(localized: "Calling"),
-            body: who,
-            subtitle: device,
-            category: Self.callCategory,
-            userInfo: ["device": device, "call": id],
-            sound: incoming,
-            thread: "calls"
         )
     }
 
@@ -192,10 +173,6 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             switch response.notification.request.content.categoryIdentifier {
             case Self.fileCategory:
                 if let path = info["path"] { onFileAction?(path) }
-            case Self.callCategory:
-                guard let device = info["device"], let call = info["call"] else { return }
-                if action == "answer" { onCallAction?(device, call, .answer) }
-                if action == "reject" { onCallAction?(device, call, .reject) }
             case FocusShare.notificationCategory:
                 FocusShare.shared.addOrSignIn()
             default:

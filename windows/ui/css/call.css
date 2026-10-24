@@ -1,0 +1,91 @@
+/* The floating window of a call on a phone: one card per call, stacked. The window itself is transparent; the room around the cards
+   is for their shadow. */
+/* A dark color scheme makes Chromium paint the page dark behind everything, which would show as a dark box in the transparent window.
+   The cards follow the appearance by the media query below, not by this. */
+:root { color-scheme: normal; }
+body.call { background: transparent; margin: 0; padding: 24px; overflow: hidden; user-select: none; -webkit-user-select: none; cursor: default; }
+#cards { display: flex; flex-direction: column; }
+
+.call-card {
+  /* An opaque card: a transparent window cannot blur the desktop under it, and a see-through card washes the words out on a busy
+     wallpaper. */
+  --call-bg: rgba(250, 250, 252, 0.97);
+  --call-text: #16161b;
+  --call-text-2: #4d4d58;
+  --call-state: #4b4bc8;
+  box-sizing: border-box;
+  width: 320px;
+  height: 78px;
+  margin-bottom: 10px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 22px;
+  background: var(--call-bg);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26), 0 1px 3px rgba(0, 0, 0, 0.12);
+  color: var(--call-text);
+  overflow: hidden;
+  animation: call-in 0.5s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+  transform-origin: top right;
+  transition: opacity 0.3s ease-out, height 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), margin 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-color-scheme: dark) {
+  .call-card {
+    --call-bg: rgba(36, 36, 42, 0.97);
+    --call-text: #f4f4f7;
+    --call-text-2: #b4b4c0;
+    --call-state: #a4a4f6;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+}
+.call-card.leaving { opacity: 0; height: 0; margin-bottom: 0; animation: none; }
+
+@keyframes call-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.call-avatar {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 18px;
+}
+.call-words { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.call-name { font-weight: 650; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.call-state { font-size: 13px; font-weight: 550; color: var(--call-text); font-variant-numeric: tabular-nums; animation: call-fade 0.22s ease-out; }
+.call-state.ringing { color: var(--call-state); }
+.call-state.missed { color: #e5484d; }
+.call-via { font-size: 12px; color: var(--call-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@keyframes call-fade { from { opacity: 0; } }
+
+.call-buttons { flex: none; display: flex; gap: 8px; }
+.call-button {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  cursor: pointer;
+  animation: call-in 0.4s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease-out;
+}
+.call-button:hover { filter: brightness(1.08); }
+.call-button:active { transform: scale(0.96); }
+.call-button.red { background: #e5484d; }
+.call-button.green { background: #30a46c; }
+/* The receiver put down. */
+.call-button.red svg { transform: rotate(135deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .call-card, .call-button { animation: none; }
+}

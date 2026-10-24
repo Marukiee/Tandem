@@ -10,7 +10,8 @@
     "edge-zone",
     "qs-card",
     "ask-card",
-    "find-card"
+    "find-card",
+    "call-card"
   ],
   "permissions": [
     "core:default",
