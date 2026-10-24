@@ -5,16 +5,20 @@ import TandemCore
 /// The text messages of a phone, the way Messages shows those of an iPhone: the conversations on the left, the one that is open
 /// on the right, and a field at the bottom to write in. Sending goes out from the phone, as an ordinary SMS.
 ///
-/// The page fills the window from the top: the way back, the search and the open conversation's name sit in the strip of the
-/// toolbar, as in Messages. A header row of its own under the toolbar left an empty band above the list.
+/// The page fills the window from the top: the search and the open conversation's name sit in the strip of the toolbar, as in
+/// Messages. A header row of its own under the toolbar left an empty band above the list.
+///
+/// Calling lives here too, since it is the same people: the list switches to the phone's contacts, and a conversation and a contact
+/// each have a call button. Every call is asked first (see `CallConfirmation`).
 struct MessagesView: View {
-    @Environment(EngineModel.self) private var model
     let device: TandemDevice
-    let onBack: () -> Void
 
     @LocalState private var selection: UInt64?
     @LocalState private var composing = false
+    /// Who a new message goes to when it was started from a contact.
+    @LocalState private var recipient: TandemSmsContact?
     @LocalState private var search = ""
+    @LocalState private var tab: MessagesTab = DebugSupport.messagesStart == "contacts" ? .contacts : .conversations
 
     private var phone: PhoneMessages { MessagesStore.shared.phone(device.id) }
 
@@ -22,10 +26,11 @@ struct MessagesView: View {
         let phone = phone
         Group {
             if phone.conversations.isEmpty && phone.load != .ready && !composing {
-                MessagesNotice(phone: phone, device: device, onBack: onBack)
+                MessagesNotice(phone: phone, device: device)
             } else {
                 HStack(spacing: 0) {
-                    ConversationList(phone: phone, search: $search, selection: $selection, composing: $composing, onBack: onBack)
+                    ConversationList(phone: phone, device: device, search: $search, tab: $tab, selection: $selection, composing: $composing,
+                                     onCompose: { compose(to: nil) }, onOpen: open)
                         .frame(minWidth: 250, idealWidth: 300, maxWidth: 330)
                     detail(phone)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -49,6 +54,7 @@ struct MessagesView: View {
         .onAppear {
             if DebugSupport.messagesStart == "compose" { composing = true }
         }
+        .onChange(of: tab) { search = "" }
         .onChange(of: phone.conversations.first?.thread, initial: true) { _, first in
             // A wide window has room for the newest conversation from the start, as Messages does.
             if selection == nil, !composing, let first { selection = DebugSupport.messagesThread ?? first }
@@ -63,56 +69,61 @@ struct MessagesView: View {
         .onDisappear { phone.open = nil }
     }
 
-    /// The phone places the call itself; the talking happens on the phone or its headset, since call audio does not reach a computer.
-    private func call(_ number: String) {
-        // What stands in the way is said when someone asks for a call, not shown on the page all the time.
-        if let calls = device.features.first(where: { $0.id == "calls" }), !calls.ready {
-            model.showToast(calls.why)
-            return
-        }
-        guard let engine = model.tandem, device.online else {
-            model.showToast(String(localized: "That device is not connected right now"))
-            return
-        }
-        Task {
-            do {
-                try await engine.dial(target: device.id, number: number)
-                model.showToast(String(localized: "Calling from \(device.name)"))
-            } catch {
-                model.showToast(String(localized: "That device is not connected right now"))
-            }
+    private func call(_ conversation: TandemSmsConversation, number: String) {
+        let known = PhoneContacts.of(device.id).contact(for: number)
+        CallConfirmation.shared.ask(device: device, number: number, name: conversation.name.isEmpty ? known?.name : conversation.name, label: known?.label)
+    }
+
+    private func compose(to contact: TandemSmsContact?) {
+        selection = nil
+        recipient = contact
+        composing = true
+    }
+
+    /// A contact chosen in the list: the conversation with them when there is one, otherwise a new message to their number.
+    private func open(_ person: PhoneContacts.Person) {
+        let keys = Set(person.numbers.map { PhoneContacts.key($0.number) })
+        if let existing = phone.conversations.first(where: { $0.addresses.count == 1 && keys.contains(PhoneContacts.key($0.addresses[0])) }) {
+            composing = false
+            selection = existing.thread
+        } else if let number = person.preferred {
+            compose(to: TandemSmsContact(name: person.name, number: number.number, label: number.label))
         }
     }
 
     @ViewBuilder
     private func detail(_ phone: PhoneMessages) -> some View {
         if composing {
-            NewMessageView(phone: phone, device: device) { thread in
+            NewMessageView(phone: phone, device: device, initial: recipient) { thread in
                 composing = false
+                recipient = nil
                 if let thread { selection = thread }
             }
+            .id(recipient?.number ?? "")
             .transition(.opacity)
         } else if let thread = selection, let conversation = phone.conversation(thread) {
-            ConversationView(phone: phone, conversation: conversation, onCall: MessagesText.dialable(conversation).map { number in { call(number) } })
+            ConversationView(phone: phone, conversation: conversation, onCall: MessagesText.dialable(conversation).map { number in { call(conversation, number: number) } })
                 .id(thread)
                 .transition(.opacity)
         } else {
-            NothingChosen(hasConversations: !phone.conversations.isEmpty) {
-                selection = nil
-                composing = true
-            }
+            NothingChosen(hasConversations: !phone.conversations.isEmpty) { compose(to: nil) }
         }
     }
 }
+
+enum MessagesTab: Hashable { case conversations, contacts }
 
 // MARK: The list
 
 private struct ConversationList: View {
     let phone: PhoneMessages
+    let device: TandemDevice
     @Binding var search: String
+    @Binding var tab: MessagesTab
     @Binding var selection: UInt64?
     @Binding var composing: Bool
-    let onBack: () -> Void
+    let onCompose: () -> Void
+    let onOpen: (PhoneContacts.Person) -> Void
     /// One pill that moves from row to row, as in the sidebar.
     @Namespace private var pill
 
@@ -126,22 +137,19 @@ private struct ConversationList: View {
         }
     }
 
+    /// The numbers of the conversation that is open, so the contact it is with stands out in the other list.
+    private var openNumbers: Set<String> {
+        guard !composing, let thread = selection, let open = phone.conversation(thread), open.addresses.count == 1 else { return [] }
+        return [PhoneContacts.key(open.addresses[0])]
+    }
+
     var body: some View {
-        let shown = shown
         UnderToolbar(avoidsWindowButtons: true) {
             // Spacing 0: pieces of glass side by side, not one that flows into the other.
             GlassEffectContainer(spacing: 0) {
                 HStack(spacing: 8) {
-                    Button(action: onBack) {
-                        Image(systemName: "chevron.left").font(.system(size: 14, weight: .semibold))
-                    }
-                    .buttonStyle(GlassCircleButtonStyle(size: 30))
-                    .help("Back to the device")
-                    PageSearchField(text: $search)
-                    Button {
-                        selection = nil
-                        composing = true
-                    } label: {
+                    PageSearchField(text: $search, prompt: tab == .contacts ? "Name or number" : "Search")
+                    Button(action: onCompose) {
                         Image(systemName: "square.and.pencil")
                             .font(.system(size: 14, weight: .semibold))
                             .offset(y: -1)
@@ -152,49 +160,66 @@ private struct ConversationList: View {
             }
             .padding(.horizontal, 12)
         } content: {
-            ScrollView {
-                LazyVStack(spacing: 2) {
-                    ForEach(shown, id: \.thread) { conversation in
-                        Button {
-                            selection = conversation.thread
-                        } label: {
-                            ConversationRow(
-                                conversation: conversation,
-                                unread: phone.unread(conversation),
-                                selected: selection == conversation.thread && !composing,
-                                pill: pill
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    if shown.isEmpty && !search.isEmpty {
-                        Text("No conversations found")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 30)
-                    }
-                    if phone.moreConversations && search.isEmpty {
-                        PillSpinner(size: 18)
-                            .padding(10)
-                            .onAppear { Task { await phone.loadMoreConversations() } }
-                    }
-                }
-                .padding(.horizontal, 8)
-                .padding(.top, 2)
-                .padding(.bottom, 10)
-                .animation(.tandem, value: shown.map(\.thread))
-                .animation(.tandem, value: selection)
-                .animation(.tandem, value: composing)
+            Picker("Show", selection: $tab) {
+                Text("Conversations").tag(MessagesTab.conversations)
+                Text("Contacts").tag(MessagesTab.contacts)
             }
-            .scrollContentBackground(.hidden)
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.horizontal, 14)
+            .padding(.bottom, 8)
+            switch tab {
+            case .conversations: conversations
+            case .contacts:
+                ContactsList(device: device, contacts: PhoneContacts.of(device.id), search: search, selected: openNumbers, onOpen: onOpen)
+            }
         }
+    }
+
+    private var conversations: some View {
+        let shown = shown
+        return ScrollView {
+            LazyVStack(spacing: 2) {
+                ForEach(shown, id: \.thread) { conversation in
+                    Button {
+                        selection = conversation.thread
+                    } label: {
+                        ConversationRow(
+                            conversation: conversation,
+                            unread: phone.unread(conversation),
+                            selected: selection == conversation.thread && !composing,
+                            pill: pill
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                if shown.isEmpty && !search.isEmpty {
+                    Text("No conversations found")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 30)
+                }
+                if phone.moreConversations && search.isEmpty {
+                    PillSpinner(size: 18)
+                        .padding(10)
+                        .onAppear { Task { await phone.loadMoreConversations() } }
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.top, 2)
+            .padding(.bottom, 10)
+            .animation(.tandem, value: shown.map(\.thread))
+            .animation(.tandem, value: selection)
+            .animation(.tandem, value: composing)
+        }
+        .scrollContentBackground(.hidden)
     }
 }
 
 /// A column whose top row sits in the strip of the toolbar, with the rest under it. That strip is empty in this window (the title is
 /// gone and the window's buttons are in the sidebar), and a click there reaches the page. With the sidebar hidden the window's own
 /// buttons float over the top left corner of the page, so a column that starts there moves its row out of their way.
-private struct UnderToolbar<Strip: View, Content: View>: View {
+struct UnderToolbar<Strip: View, Content: View>: View {
     var avoidsWindowButtons = false
     @ViewBuilder var strip: Strip
     @ViewBuilder var content: Content
@@ -274,7 +299,7 @@ private struct ConversationRow: View {
 }
 
 /// A round button of glass, the size of the search field beside it.
-private struct GlassCircleButtonStyle: ButtonStyle {
+struct GlassCircleButtonStyle: ButtonStyle {
     let size: CGFloat
     var active = false
 
@@ -294,7 +319,7 @@ private struct GlassCircleButtonStyle: ButtonStyle {
 
 /// A person as Messages shows someone without a photo: their initials on a colour of their own, a figure only for a number
 /// without a name. The colour comes from the name, so it is the same every time and on every computer (see `messages.js`).
-private struct Avatar: View {
+struct Avatar: View {
     let name: String
     let address: String
     var group = false
@@ -363,7 +388,7 @@ extension View {
     /// Glass on what floats over the conversation: the field and the buttons. A debug run with `TANDEM_DEBUG_FLAT_GLASS` draws a
     /// material instead, because a snapshot cannot draw glass.
     @ViewBuilder
-    fileprivate func messagesGlass<S: Shape>(in shape: S, interactive: Bool = true) -> some View {
+    func messagesGlass<S: Shape>(in shape: S, interactive: Bool = true) -> some View {
         if DebugSupport.flatGlass {
             background(.regularMaterial, in: shape)
         } else {
@@ -452,6 +477,10 @@ private struct ConversationView: View {
             }
         }
         .onAppear { writing = true }
+        // The question about a call took the focus from the field; once it is answered the field has it back.
+        .onChange(of: CallConfirmation.shared.pending == nil) { _, answered in
+            if answered { writing = true }
+        }
     }
 
     /// Who it is with, in the middle of the strip, and the call button at its end, in line with the edge of the field below.
@@ -798,6 +827,8 @@ private struct Composer: View {
 private struct NewMessageView: View {
     let phone: PhoneMessages
     let device: TandemDevice
+    /// Who it goes to when it was started from a contact.
+    var initial: TandemSmsContact?
     let onDone: (UInt64?) -> Void
 
     @LocalState private var query = ""
@@ -891,7 +922,14 @@ private struct NewMessageView: View {
                 .padding(.top, 6)
             }
         }
-        .onAppear { choosing = true }
+        .onAppear {
+            if let initial {
+                recipient = initial
+                writing = true
+            } else {
+                choosing = true
+            }
+        }
         .task(id: query) {
             guard recipient == nil, !query.trimmingCharacters(in: .whitespaces).isEmpty else {
                 suggestions = []
@@ -933,21 +971,12 @@ private struct MessagesNotice: View {
     @Environment(EngineModel.self) private var model
     let phone: PhoneMessages
     let device: TandemDevice
-    let onBack: () -> Void
 
     @LocalState private var asked = false
 
     var body: some View {
-        UnderToolbar(avoidsWindowButtons: true) {
-            HStack {
-                Button(action: onBack) {
-                    Image(systemName: "chevron.left").font(.system(size: 14, weight: .semibold))
-                }
-                .buttonStyle(GlassCircleButtonStyle(size: 30))
-                .help("Back to the device")
-                Spacer()
-            }
-            .padding(.horizontal, 12)
+        UnderToolbar {
+            Color.clear
         } content: {
             content
                 .frame(maxWidth: 380)
