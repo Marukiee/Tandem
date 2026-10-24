@@ -59,8 +59,6 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "drop_on_desktop") => "{0} from {1} is on your desktop",
         ("nl", "drop_in_downloads") => "{0} van {1} staat in je downloads",
         (_, "drop_in_downloads") => "{0} from {1} is in your downloads",
-        ("nl", "drop_show") => "Tonen",
-        (_, "drop_show") => "Show",
         ("nl", "insert_failed") => "Er is niets aangekomen van {0}.",
         (_, "insert_failed") => "Nothing came in from {0}.",
         ("nl", "insert_cancelled") => "{0} heeft niets gemaakt.",

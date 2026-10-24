@@ -59,27 +59,14 @@ pub fn flush(app: &AppHandle) {
 }
 
 fn land(app: &AppHandle, from: &str, name: &str, path: &Path) {
-    // Windows shows its desktop and the file is where the drop was. Linux has no desktop that shows files (GNOME has none), so it goes to
-    // the downloads folder, and is not opened: a window that comes up by itself is not what a drop is.
+    // Windows puts it on the desktop, where the drop was. Linux has no desktop that shows files (GNOME has none), so it goes to the
+    // downloads folder. Either way the folder opens with the file selected, so it is found at once and can be dragged on from there.
     let folder = if cfg!(windows) { app.path().desktop_dir().unwrap_or_else(|_| PathBuf::from(".")) } else { crate::settings::download_dir(app) };
     let placed = place(path, &folder);
     let body = i18n::t2(app, if cfg!(windows) { "drop_on_desktop" } else { "drop_in_downloads" }, name, from);
-    #[cfg(target_os = "linux")]
-    {
-        let target = placed.clone();
-        let buttons = [("show", i18n::t(app, "drop_show"))];
-        let pairs: Vec<(&str, &str)> = buttons.iter().map(|(k, v)| (*k, v.as_str())).collect();
-        let shown = tandem_winsys::notify::ask("Tandem", &body, &pairs, move |_| {
-            let _ = tauri_plugin_opener::reveal_item_in_dir(&target);
-        });
-        if shown.is_none() {
-            events::toast(app, "Tandem", &body);
-        }
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        events::toast(app, "Tandem", &body);
-        let _ = &placed;
+    events::toast(app, "Tandem", &body);
+    if let Err(error) = tauri_plugin_opener::reveal_item_in_dir(&placed) {
+        log::info!("the folder of {} could not be shown: {error}", placed.display());
     }
 }
 

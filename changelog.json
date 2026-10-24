@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.97",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Dropped files are shown",
+      "new": [
+        "A file dragged to Linux or Windows opens its folder with the file selected"
+      ]
+    },
+    "nl": {
+      "title": "Neergezette bestanden in beeld",
+      "new": [
+        "Een bestand dat naar Linux of Windows gesleept wordt opent zijn map met het bestand geselecteerd"
+      ]
+    }
+  },
+  {
     "version": "0.1.96",
     "date": "2026-10-24",
     "en": {
