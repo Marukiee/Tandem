@@ -110,6 +110,13 @@ pub struct MediaRequest {
     /// of the size asked for, that the host adds next to its own. Only means something for a screen.
     #[serde(default)]
     pub extend: bool,
+    /// For an extra screen: the size of the viewer's screen in the units its desktop lays windows out in (points on a Mac, logical pixels on
+    /// Linux and Windows), which is its pixels divided by its scale. The host draws what is on the screen at this size and sends it in the
+    /// pixels of `max_width` and `max_height`, so text is as big as the viewer's own and nothing is scaled on the viewer. Zero when not said.
+    #[serde(default)]
+    pub logical_width: u32,
+    #[serde(default)]
+    pub logical_height: u32,
 }
 
 /// What the host gives. Also what the viewer is told once the host has said yes.
@@ -513,5 +520,27 @@ mod tests {
         let request: MediaRequest = crate::proto::decode(&bytes).unwrap();
         assert_eq!(request.session, 5);
         assert!(request.codecs.is_empty() && !request.control);
+        assert_eq!((request.logical_width, request.logical_height), (0, 0));
+    }
+
+    #[test]
+    fn the_logical_size_of_a_second_screen_travels_with_the_request() {
+        let request = MediaRequest {
+            session: 9,
+            kind: MediaKind::Screen,
+            codecs: vec![MediaCodec::H264],
+            max_width: 2880,
+            max_height: 1800,
+            max_fps: 60,
+            max_bitrate: 0,
+            control: false,
+            facing: MediaFacing::Any,
+            extend: true,
+            logical_width: 1920,
+            logical_height: 1200,
+        };
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&request, &mut bytes).unwrap();
+        assert_eq!(crate::proto::decode::<MediaRequest>(&bytes).unwrap(), request);
     }
 }
