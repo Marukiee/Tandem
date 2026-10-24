@@ -31,6 +31,8 @@ final class ScreenHost {
         let startedAt: Date
         var width: Int
         var height: Int
+        /// A screen made for the viewer (a second screen), not the one that is here.
+        var extend = false
     }
 
     /// A request that waits for the person at the Mac.
@@ -273,7 +275,7 @@ final class ScreenHost {
         live.onGone = { [weak self] reason in
             DispatchQueue.main.async { MainActor.assumeIsolated { self?.teardown(session: id, tell: true, reason: reason) } }
         }
-        current = Remote(id: id, peer: peer, name: name, control: control, offered: control, startedAt: Date(), width: size.width, height: size.height)
+        current = Remote(id: id, peer: peer, name: name, control: control, offered: control, startedAt: Date(), width: size.width, height: size.height, extend: request.extend)
         ScreenPanels.shared.update()
 
         Task { [weak self] in

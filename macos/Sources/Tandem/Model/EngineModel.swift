@@ -1132,6 +1132,10 @@ final class EngineModel {
     func handle(url: URL) {
         guard url.scheme == "tandem" else { return }
         // The Share menu hands over the files it was given (see macos/ShareExtension).
+        if url.host == "control" {
+            ControlBridge.shared.perform(url)
+            return
+        }
         if url.host == "send" {
             let files = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.filter { $0.name == "file" }.compactMap(\.value) ?? []
             let urls = files.map { URL(fileURLWithPath: $0) }.filter { FileManager.default.fileExists(atPath: $0.path) }

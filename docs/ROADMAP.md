@@ -83,7 +83,13 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   `swiftc` in `scripts/build-macos.sh`, ondertekend met eigen rechten) geeft de bestanden door aan de app met een `tandem://send`-adres, en de app
   vraagt welk apparaat. Het systeem toont hem als deeldienst (`pluginkit`); de gebruiker moet hem mogelijk aanzetten onder Systeeminstellingen,
   Extensies, Delen. Nog niet: tekst en links delen, een regel per apparaat ("Stuur naar Maruks telefoon" kan in het deelmenu niet, daar staat een regel
-  per extensie), en een knop in het Controlecentrum (een WidgetKit-besturing, nu met Xcode mogelijk) voor Quick Share en het klembord sturen.
+  per extensie), en het klembord sturen vanuit het Controlecentrum.
+- Knoppen in het Controlecentrum van de Mac (gevraagd 2026-10-24, gebouwd in 0.1.88, nog niet in het Controlecentrum gezien): een WidgetKit-extensie
+  (`macos/ControlExtension`, een minimaal Xcode-project dat `scripts/build-macos.sh` met `xcodebuild` bouwt, want de metadata van de intents maakt alleen
+  Xcode) met Quick Share, Scherm uitbreiden, Gedeelde muis en Telefoon zoeken. De extensie leest wat aan staat uit `control-state.json` (geschreven door
+  `ControlBridge`) en doet een druk door `tandem://control?action=...` te openen zonder de app naar voren te halen. Het systeem toont hem als extensie
+  (`pluginkit`); toevoegen gaat via Controlecentrum, Bewerken. Nog niet: Klembord sturen en Telefoon als uitvoer als knop, en een keuze van het apparaat
+  voor Scherm uitbreiden (nu het laatst gebruikte, anders het eerste dat het kan).
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)

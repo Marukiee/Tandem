@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.1.88",
+    "date": "2026-10-24",
+    "en": {
+      "title": "Tandem in the Control Center",
+      "new": [
+        "Buttons in the Control Center of the Mac: Quick Share, extend screen, shared mouse and find phone"
+      ]
+    },
+    "nl": {
+      "title": "Tandem in het Controlecentrum",
+      "new": [
+        "Knoppen in het Controlecentrum van de Mac: Quick Share, scherm uitbreiden, gedeelde muis en telefoon zoeken"
+      ]
+    }
+  },
+  {
     "version": "0.1.87",
     "date": "2026-10-21",
     "en": {

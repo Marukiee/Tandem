@@ -62,5 +62,17 @@ swiftc -O -parse-as-library -module-name TandemShare -application-extension -tar
 sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" -e "s|@BUNDLE_ID@|$BUNDLE_ID|" macos/ShareExtension/Info.plist >"$EXT/Contents/Info.plist"
 ./scripts/mac-signing.sh sign "$EXT" macos/Resources/TandemShare.entitlements
 
+# The buttons of the Control Center: a WidgetKit extension, which needs the metadata of its intents that only xcodebuild makes. Signed first too.
+CTL="$APP/Contents/PlugIns/TandemControls.appex"
+SUPPORT_DIR=$([ "$CONFIG" = release ] && echo Tandem || echo Tandem-Dev)
+CTL_BUILD="$(mktemp -d)"
+xcodebuild -project macos/ControlExtension/TandemControls.xcodeproj -target TandemControls -configuration Release \
+  CONFIGURATION_BUILD_DIR="$CTL_BUILD" SYMROOT="$CTL_BUILD/sym" OBJROOT="$CTL_BUILD/obj" PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID.Controls" \
+  MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD" TANDEM_SUPPORT_DIR="$SUPPORT_DIR" build >"$CTL_BUILD/log.txt" 2>&1 \
+  || { tail -30 "$CTL_BUILD/log.txt"; echo "the Control Center extension did not build"; exit 1; }
+rm -rf "$CTL"
+cp -R "$CTL_BUILD/TandemControls.appex" "$CTL"
+./scripts/mac-signing.sh sign "$CTL" macos/Resources/TandemControls.entitlements
+
 ./scripts/mac-signing.sh sign "$APP"
 echo "built $APP ($CONFIG, $VERSION)"
