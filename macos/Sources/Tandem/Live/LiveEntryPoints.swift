@@ -9,8 +9,10 @@ extension TandemDevice {
     var canShowCamera: Bool { platform == .android && caps.contains("camera.host") }
 }
 
-/// The buttons on the page of a phone that can show its screen or its camera in a window here.
+/// The buttons on the page of a phone that can show its screen or its camera in a window here. They look the same whether the
+/// device can do it yet or not: someone may not want it, so what is missing (a newer Tandem there) is only said when one is pressed.
 struct LiveActionRow: View {
+    @Environment(EngineModel.self) private var model
     let device: TandemDevice
 
     var body: some View {
@@ -41,10 +43,8 @@ struct LiveActionRow: View {
                 .help("This Mac becomes an extra screen of that computer. Move windows to it with the mouse of that computer.")
             }
         }
-        // This Mac's own extra screen, shown on that device: it makes the screen, the device is told to look at it. Grey until both can.
+        // This Mac's own extra screen, shown on that device: it makes the screen, the device is told to look at it.
         if device.caps.contains("screen.extend.view") || device.platform == .android {
-            let canHost = VirtualDisplay.isAvailable
-            let ready = device.online && canHost && device.caps.contains("screen.extend.view")
             // On while this Mac shows a screen of its own on that device; pressing it then ends it.
             let extending = ScreenHost.shared.isExtending(to: device.id)
             // The other way round: this Mac gets an extra screen, shown on that device.
@@ -53,30 +53,38 @@ struct LiveActionRow: View {
                 symbol: extending ? "stop.circle.fill" : "rectangle.on.rectangle",
                 prominent: extending
             ) {
-                if extending { ScreenHost.shared.stop(peer: device.id) } else { ScreenHost.shared.offerExtend(to: device) }
+                if extending {
+                    ScreenHost.shared.stop(peer: device.id)
+                } else if !device.caps.contains("screen.extend.view") {
+                    model.showToast(String(localized: "Update Tandem on that device to use it as a second screen"))
+                } else if !VirtualDisplay.isAvailable {
+                    model.showToast(String(localized: "This Mac cannot make an extra screen"))
+                } else {
+                    ScreenHost.shared.offerExtend(to: device)
+                }
             }
-            .disabled(!ready && !extending)
-            .help(!device.caps.contains("screen.extend.view") ? "Update Tandem on that device to use it as a second screen" : "This Mac gets an extra screen, shown on that device. Move windows to it with your mouse.")
+            .disabled(!device.online && !extending)
+            .help("This Mac gets an extra screen, shown on that device. Move windows to it with your mouse.")
         }
-        // Always there for a phone, grey while it cannot: a phone with an older Tandem is told what to do in the tooltip.
+        // Always there for a phone: a phone with an older Tandem is told what to do when the button is pressed.
         if device.platform == .android {
-            let screenReady = device.online && device.canShowScreen
             let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
             GlassActionButton(title: running ? "Stop phone screen" : "Show phone screen", symbol: running ? "stop.circle.fill" : "iphone.gen3", prominent: running) {
                 if let session = LiveManager.shared.session(of: .screen, on: device.id) { LiveManager.shared.stop(session) }
+                else if !device.canShowScreen { model.showToast(String(localized: "Update Tandem on the phone to version 0.1.38 or newer")) }
                 else { LiveManager.shared.start(device: device, kind: .screen) }
             }
-            .disabled(!screenReady && !running)
-            .help(device.canShowScreen ? "Shows your phone's screen in a window. The phone asks first." : "Update Tandem on the phone to version 0.1.38 or newer")
+            .disabled(!device.online && !running)
+            .help("Shows your phone's screen in a window. The phone asks first.")
 
-            let cameraReady = device.online && device.canShowCamera
             let cameraRunning = LiveManager.shared.session(of: .camera, on: device.id) != nil
             GlassActionButton(title: cameraRunning ? "Stop camera" : "Phone camera", symbol: cameraRunning ? "stop.circle.fill" : "camera", prominent: cameraRunning) {
                 if let session = LiveManager.shared.session(of: .camera, on: device.id) { LiveManager.shared.stop(session) }
+                else if !device.canShowCamera { model.showToast(String(localized: "Update Tandem on the phone to version 0.1.38 or newer")) }
                 else { LiveManager.shared.start(device: device, kind: .camera) }
             }
-            .disabled(!cameraReady && !cameraRunning)
-            .help(device.canShowCamera ? "Shows your phone's camera in a window. It is a window and not a virtual webcam: share or capture it in Zoom or OBS." : "Update Tandem on the phone to version 0.1.38 or newer")
+            .disabled(!device.online && !cameraRunning)
+            .help("Shows your phone's camera in a window. It is a window and not a virtual webcam: share or capture it in Zoom or OBS.")
         }
     }
 }

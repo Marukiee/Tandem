@@ -98,8 +98,8 @@ private struct DeviceHeading: View {
     }
 }
 
-/// One feature, in the look of the rows of a device's page: its symbol in a circle (green when it works, orange when something is
-/// missing), what it is, why it does not work, and a button to the place where it is turned on.
+/// One feature: its symbol in a circle (green when it works, orange when something is missing), what it is, why it does not work, and
+/// a button to the place where it is turned on. This page is the one place that lists what does not work, because it is opened for that.
 struct FeatureRow: View {
     let feature: TandemFeature
     let action: String
@@ -123,8 +123,7 @@ struct FeatureRow: View {
             Spacer(minLength: 12)
             if !feature.ready, let page = feature.page {
                 Button(action) { open(page) }
-                    .buttonStyle(.tandemGlassProminent)
-                    .controlSize(.small)
+                    .buttonStyle(.borderedProminent).tint(Palette.indigo)
                     .disabled(!enabled)
             }
         }
@@ -147,35 +146,6 @@ struct FeatureRow: View {
         case "camera": "camera"
         case "background": "battery.75percent"
         default: "exclamationmark"
-        }
-    }
-}
-
-/// On a device's page: what does not work there now, in a card like the others of the page, with the button that opens the setting on
-/// that device. Nothing when all works.
-struct FeatureNotice: View {
-    @Environment(EngineModel.self) private var model
-    let device: TandemDevice
-
-    var body: some View {
-        let missing = device.online ? device.features.filter { !$0.ready } : []
-        if !missing.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Needs a setting there").font(.headline).padding(.horizontal, 6)
-                Card(radius: Metrics.card, padding: 6) {
-                    VStack(spacing: 0) {
-                        ForEach(missing, id: \.id) { feature in
-                            FeatureRow(feature: feature, action: String(localized: "Open there")) {
-                                model.openSettings(on: device.id, page: $0)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .hoverHighlight(radius: Metrics.inner(Metrics.card, inset: 6))
-                        }
-                    }
-                }
-            }
-            .transition(.opacity.combined(with: .move(edge: .top)))
         }
     }
 }

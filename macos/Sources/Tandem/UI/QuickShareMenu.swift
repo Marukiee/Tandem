@@ -181,7 +181,7 @@ struct QuickShareSettings: View {
                     isOn: $share.enabled
                 )
                 if let problem = share.problem {
-                    Text(problem).font(.caption).foregroundStyle(Palette.urgent)
+                    Text(problem).font(.caption).foregroundStyle(.secondary)
                 }
             } footer: {
                 Text("While this is on, this Mac can be found by everyone on the same network. Only the mode Everyone works, not Your contacts.")

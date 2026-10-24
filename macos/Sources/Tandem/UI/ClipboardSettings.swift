@@ -6,7 +6,6 @@ import SwiftUI
 /// The Clipboard tab of Settings: whether a history is kept at all, how much, from which apps, and the shortcut.
 struct ClipboardSettings: View {
     @LocalState private var confirmClear = false
-    @LocalState private var trusted = AXIsProcessTrusted()
 
     var body: some View {
         @Bindable var history = ClipboardHistory.shared
@@ -32,26 +31,18 @@ struct ClipboardSettings: View {
                     }
                 }
                 .disabled(!history.hotkeyOn)
+                // Pasting needs the Accessibility permission. It is asked for when this is turned on and when a paste needs it, and
+                // not shown as a warning in between: someone may be fine with copying only.
                 DescribedToggle(
                     "Paste into the app you were in",
                     subtitle: "Return pastes straight away. Without this it only copies.",
-                    isOn: $history.pastesDirectly
+                    isOn: Binding(get: { history.pastesDirectly }, set: { on in
+                        history.pastesDirectly = on
+                        if on && !AXIsProcessTrusted() {
+                            _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+                        }
+                    })
                 )
-                if history.pastesDirectly && !trusted {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Tandem may not press keys yet")
-                            Text("Pasting needs the Accessibility permission.").font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer(minLength: 12)
-                        Button("Open Settings") {
-                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }
-                    }
-                    .transition(.opacity)
-                }
             }
 
             Section {
@@ -84,12 +75,6 @@ struct ClipboardSettings: View {
             IgnoredAppsSection()
         }
         .formStyle(.grouped)
-        .animation(.tandem, value: trusted)
-        .animation(.tandem, value: history.pastesDirectly)
-        // The permission only changes in System Settings, so it is read again when the person comes back.
-        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-            trusted = AXIsProcessTrusted()
-        }
         .clearHistoryDialog(isPresented: $confirmClear)
     }
 

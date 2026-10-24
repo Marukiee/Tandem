@@ -240,7 +240,6 @@ struct LiveView: View {
                             showControlHelp = true
                         }
                     }
-                    .opacity(session.controlGranted ? 1 : 0.55)
                     .popover(isPresented: $showControlHelp, arrowEdge: .top) { controlHelp }
                 }
                 if session.kind == .camera {

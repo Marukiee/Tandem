@@ -375,20 +375,18 @@ struct ScreenSettings: View {
                 .frame(width: 30, height: 30)
                 .background(Palette.indigo.opacity(0.12), in: .circle)
             VStack(alignment: .leading, spacing: 4) {
+                // Someone may not want to be looked at: a permission that is not given is not a warning, the row just has its buttons.
                 HStack(spacing: 8) {
                     Text(title).font(.callout.weight(.semibold))
-                    Text(allowed ? "Allowed" : "Not allowed yet")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(allowed ? Color.green : Color.orange)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
-                        .background((allowed ? Color.green : Color.orange).opacity(0.14), in: .capsule)
+                    if allowed {
+                        Text("Allowed").font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 Text(why).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 if !allowed {
                     HStack(spacing: 8) {
-                        Button("Allow", action: allow).buttonStyle(.tandemGlassProminent).controlSize(.small)
-                        Button("Open System Settings") { host.openSettings(pane: pane) }.buttonStyle(.tandemGlass).controlSize(.small)
+                        Button("Allow", action: allow)
+                        Button("Open System Settings") { host.openSettings(pane: pane) }
                     }
                     .padding(.top, 2)
                 }
