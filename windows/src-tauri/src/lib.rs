@@ -7,6 +7,7 @@ mod ask;
 mod bluetooth;
 mod browse;
 mod debugshot;
+mod callcard;
 mod calls;
 mod contactsearch;
 mod capture;
@@ -188,6 +189,8 @@ pub fn run() {
             calls::dial,
             contactsearch::call_ask_pending,
             contactsearch::call_ask_taken,
+            callcard::call_cards,
+            callcard::call_action,
             commands::get_players,
             commands::create_pairing,
             commands::cancel_pairing,

@@ -114,6 +114,9 @@ export function deviceChips(d) {
   if (net && hotspot && net.kind === "cellular") {
     chips.push(html`<${Chip} icon="antenna-bars-5" tone="accent">${t("hotspot_cellular")}<//>`);
   } else {
+    // A computer says no network of its own, but where it was last seen: the network it is on now, as a chip with the others.
+    const seenOn = !net && d.lastSeen && d.lastSeen.ssid;
+    if (seenOn) chips.push(html`<${Chip} icon="wifi">${d.lastSeen.ssid}<//>`);
     if (net) {
       const text = { wifi: net.ssid ? t("on_wifi_ssid", net.ssid) : t("on_wifi"), cellular: net.roaming ? t("on_cellular_roaming") : t("on_cellular"), ethernet: t("on_ethernet"), none: t("no_network"), other: t("no_network") }[net.kind];
       chips.push(html`<${Chip} icon=${net.kind === "cellular" ? "antenna-bars-5" : "wifi"}>${text}<//>`);

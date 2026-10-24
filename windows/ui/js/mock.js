@@ -29,6 +29,22 @@ const devices = empty ? [] : [
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false, status: {} },
 ];
 
+/** The floating call window, with ?call=ringing, dialing, active, missed or stack. */
+const sanne = { device: "phone", call: "1", key: "phone/1", deviceName: "Maruks Telefoon", name: "Sanne de Vries", number: "+31 6 12345678" };
+let callCards = (() => {
+  switch (new URLSearchParams(location.search).get("call")) {
+    case "ringing": return [{ ...sanne, phase: "ringing", since: null }];
+    case "dialing": return [{ ...sanne, phase: "dialing", since: null }];
+    case "active": return [{ ...sanne, phase: "active", since: Date.now() - 83000 }];
+    case "missed": return [{ ...sanne, phase: "missed", since: null }];
+    case "stack": return [
+      { ...sanne, phase: "active", since: Date.now() - 4000 },
+      { device: "work", call: "1", key: "work/1", deviceName: "Werktelefoon", name: null, number: "+31 20 7654321", phase: "ringing", since: null },
+    ];
+    default: return [];
+  }
+})();
+
 /** What the update shows when the page is asked for ?update=available, downloading, installing or failed. */
 function updateFor(kind) {
   const base = { dismissed: "", version: "0.1.27", page: "https://github.com/Marukiee/Tandem/releases/latest" };
@@ -54,7 +70,7 @@ const state = {
     { device: "phone", deviceName: "Pixel 9", key: "a", appId: "wa", appName: "WhatsApp", title: "Anna", text: "Zie je dat? Ik ben er over tien minuten.", ts: now - 120000, buttons: [] },
     { device: "phone", deviceName: "Pixel 9", key: "b", appId: "bank", appName: "Bank", title: "Code 482913", text: "Gebruik 482913 om in te loggen.", ts: now - 900000, otp: "482913", buttons: [] },
   ],
-  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: true, keepWhenLidClosed: false, autoTailscale: true, sideCheck: true, sideCheckMinutes: 2 },
+  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: true, keepWhenLidClosed: false, autoTailscale: true, sideCheck: true, sideCheckMinutes: 2, sideSound: "quiet" },
   update: updateFor(new URLSearchParams(location.search).get("update")),
   autostart: true, downloadDir: "C:\\Users\\Mark\\Downloads\\Tandem", systemLanguage: navigator.language, build_: "",
 };
@@ -282,6 +298,16 @@ export async function call(command, args) {
       { id: 1, title: "Alex's MacBook Pro wants to see your screen", body: "It sees everything on your screen and can use your mouse and keyboard until you stop it. You can stop it in the window of Tandem.", allow: "Allow", always: "Always allow", deny: "Deny", control: true },
     ];
     case "ask_answer": return null;
+    case "call_cards": return callCards;
+    case "call_action": {
+      // Answer turns the card into a call that goes on; Decline and Hang up take it away, as the phone would report.
+      const key = args.device + "/" + args.call;
+      callCards = args.action === "answer"
+        ? callCards.map((c) => (c.key === key ? { ...c, phase: "active", since: Date.now() } : c))
+        : callCards.filter((c) => c.key !== key);
+      setTimeout(() => emit("call-cards", callCards), 300);
+      return null;
+    }
     case "qs_respond": case "qs_dismiss": case "qs_pick_and_send": case "qs_send_clipboard": case "qs_open_link": case "qs_send_paths": return null;
     case "guests_by_default": return guestsMock;
     case "set_guests_by_default": guestsMock = args.on; return null;

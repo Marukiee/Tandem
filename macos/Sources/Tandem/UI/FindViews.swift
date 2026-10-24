@@ -67,7 +67,8 @@ struct LastSeenText: View {
 
     static func text(for device: TandemDevice) -> String? {
         guard let seen = device.lastSeen else { return nil }
-        if device.online { return seen.ssid.map { String(localized: "Connected on \($0)") } }
+        // Connected, the network is a chip at the top of the page; this line is only for where it was last.
+        if device.online { return nil }
         let when = Date(timeIntervalSince1970: Double(seen.atMs) / 1000).formatted(.relative(presentation: .named, unitsStyle: .wide))
         if let ssid = seen.ssid { return String(localized: "Last seen \(when) on \(ssid)") }
         switch seen.route {

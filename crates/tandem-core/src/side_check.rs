@@ -51,9 +51,10 @@ pub struct Schedule {
 }
 
 impl Schedule {
-    /// How often a device in use is checked: the setting of the person, a minute at least.
+    /// How often a device in use is checked: the setting of the person, a minute at least, or 0 for never (then only what the
+    /// person does, a screen that starts, the mouse turned on, a device that connects or wakes, starts a check).
     pub fn set_every(&mut self, ms: u64) {
-        self.every_ms = Some(ms.max(60_000));
+        self.every_ms = Some(if ms == 0 { 0 } else { ms.max(60_000) });
     }
 
     fn every(&self) -> u64 {
@@ -72,6 +73,9 @@ impl Schedule {
     }
 
     fn due(&self, device: &str, reason: Reason, now_ms: u64) -> bool {
+        if self.every() == 0 && matches!(reason, Reason::PointerOver | Reason::InUse) {
+            return false;
+        }
         let Some(entry) = self.devices.get(device) else { return true };
         let Some(since) = now_ms.checked_sub(entry.at_ms) else { return true };
         let wait = match reason {
@@ -122,6 +126,15 @@ mod tests {
         assert!(!s.start("phone", Reason::PointerOver, T0 + 5_000));
         // Another device is on its own.
         assert!(s.start("laptop", Reason::PointerOver, T0 + 5_000));
+    }
+
+    #[test]
+    fn never_leaves_only_what_the_person_does() {
+        let mut s = Schedule::default();
+        s.set_every(0);
+        assert!(!s.start("laptop", Reason::InUse, T0));
+        assert!(!s.start("laptop", Reason::PointerOver, T0));
+        assert!(s.start("laptop", Reason::Moved, T0));
     }
 
     #[test]

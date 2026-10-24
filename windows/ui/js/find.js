@@ -47,7 +47,8 @@ export function PlaySoundButton({ device }) {
 export function lastSeenText(device) {
   const seen = device.lastSeen;
   if (!seen) return "";
-  if (device.online) return seen.ssid ? t("connected_on", seen.ssid) : "";
+  // Connected, the network is a chip at the top of the page; this line is only for where it was last.
+  if (device.online) return "";
   const when = ago(seen.atMs);
   if (seen.ssid) return t("last_seen_on", when, seen.ssid);
   if (seen.route === "lan") return t("last_seen_lan", when);

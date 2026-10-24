@@ -35,14 +35,15 @@ final class WifiShare: NSObject {
         refresh()
     }
 
-    /// Whether handing this Mac's Wi-Fi to `device` would give it something: not when it is on that network already. A phone does not
-    /// say the name of its network, but one on Wi-Fi that is reached over the local network is on this one. Without Location the name is
-    /// hidden here too, and then the button stays, to say so when it is pressed.
+    /// Whether handing this Mac's Wi-Fi to `device` would give it something: when it has no Wi-Fi of its own, or is on another network
+    /// whose name it says. A phone does not say the name of its network, and one that is on Wi-Fi is nearly always on this one (or far
+    /// away, over Tailscale, where this network would be of no use). Without Location the name is hidden here too, and then the button
+    /// stays, to say so when it is pressed.
     func worthSharing(with device: TandemDevice) -> Bool {
         guard let mine = current else { return !locationAllowed }
         guard let theirs = device.status.network else { return true }
         if let ssid = theirs.ssid { return ssid != mine.ssid }
-        return !(theirs.kind == .wifi && device.online && device.route == .lan)
+        return theirs.kind != .wifi
     }
 
     /// Reads the network again and tells the core, which passes on only a change.

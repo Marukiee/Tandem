@@ -61,7 +61,9 @@ const en = {
   tab_features: "What works", features_offline_label: "Offline", features_all_good: "Everything works on your devices.",
   features_missing: "{0} things need a permission or a setting. Each one says what, and opens the right place.",
   features_open_here: "Open settings", features_open_on: "Open on {0}", features_opened: "Look at {0}: the setting is open there",
-  features_unreachable: "{0} cannot be reached right now", features_turn_on: "Turn on", call: "Call", call_number: "Number", call_number_or_name: "Name or number", call_started: "{0} is calling {1}", features_turned_on: "Turned on on {0}",
+  features_unreachable: "{0} cannot be reached right now", features_turn_on: "Turn on", call: "Call", call_number: "Number", call_number_or_name: "Name or number", call_started: "{0} is calling {1}",
+  call_incoming: "Incoming call", call_dialing: "Calling…", call_missed: "Missed call", call_via: "via {0}", call_unknown: "Unknown number",
+  call_answer: "Answer", call_decline: "Decline", call_hangup: "Hang up", features_turned_on: "Turned on on {0}",
   features_old: "Update Tandem on {0} to see what works there.", features_offline: "Not connected. What works there shows up when it connects.",
   tab_general: "General", tab_clipboard: "Clipboard", tab_files: "Files", tab_remote: "Remote control", tab_mouse: "Mouse and keyboard", tab_quickshare: "Quick Share", tab_updates: "Updates",
   pc_name_sub: "This is how your other devices see it.", behaviour: "Behaviour", sound_media: "Sound and music", received_files: "Received files",
@@ -184,7 +186,7 @@ const en = {
   output_use: "Use as speaker", output_stop: "Stop speaker", output_tip: "Play the sound of this computer on {0}",
   output_started: "The sound of this computer plays on {0}. It keeps playing here too.",
   side_auto: "Check the side by itself", side_auto_sub: "With a sound too high to hear: when a second screen starts, the shared mouse goes on, a computer comes back, and every few minutes. Only when this computer plays through its own speakers.",
-  side_every: "Check every", side_every_one: "Minute", side_every_n: "{0} minutes",
+  side_every: "Check every", side_every_one: "Minute", side_every_n: "{0} minutes", side_every_never: "Never", side_sound: "Sound for finding the side", side_sound_sub: "Quiet is too high to hear. Audible only helps with a device whose microphone does not pick up the quiet one.", side_sound_quiet: "Quiet (recommended)", side_sound_audible: "Audible", side_quiet_missed: "{0} did not hear the quiet sound. Try the audible one?", side_not_now: "Not now", side_try_audible: "Use audible sound",
 };
 
 const nl = {
@@ -249,7 +251,9 @@ const nl = {
   tab_features: "Wat werkt", features_offline_label: "Offline", features_all_good: "Alles werkt op je apparaten.",
   features_missing: "{0} dingen hebben een toestemming of instelling nodig. Bij elk staat wat er mist, met een knop naar de goede plek.",
   features_open_here: "Instellingen openen", features_open_on: "Open op {0}", features_opened: "Kijk op {0}: daar staat de instelling open",
-  features_unreachable: "{0} is nu niet bereikbaar", features_turn_on: "Aanzetten", call: "Bellen", call_number: "Nummer", call_number_or_name: "Naam of nummer", call_started: "{0} belt {1}", features_turned_on: "Aangezet op {0}",
+  features_unreachable: "{0} is nu niet bereikbaar", features_turn_on: "Aanzetten", call: "Bellen", call_number: "Nummer", call_number_or_name: "Naam of nummer", call_started: "{0} belt {1}",
+  call_incoming: "Inkomend gesprek", call_dialing: "Bellen…", call_missed: "Gemist gesprek", call_via: "via {0}", call_unknown: "Onbekend nummer",
+  call_answer: "Opnemen", call_decline: "Weigeren", call_hangup: "Ophangen", features_turned_on: "Aangezet op {0}",
   features_old: "Werk Tandem bij op {0} om te zien wat daar werkt.", features_offline: "Niet verbonden. Wat daar werkt verschijnt zodra er verbinding is.",
   tab_general: "Algemeen", tab_clipboard: "Klembord", tab_files: "Bestanden", tab_remote: "Op afstand", tab_mouse: "Muis en toetsenbord", tab_quickshare: "Quick Share", tab_updates: "Updates",
   pc_name_sub: "Zo zien je andere apparaten deze computer.", behaviour: "Gedrag", sound_media: "Geluid en muziek", received_files: "Ontvangen bestanden",
@@ -371,7 +375,7 @@ const nl = {
   output_use: "Gebruik als speaker", output_stop: "Stop speaker", output_tip: "Speel het geluid van deze computer af op {0}",
   output_started: "Het geluid van deze computer speelt op {0}. Het speelt hier ook gewoon door.",
   side_auto: "De kant vanzelf controleren", side_auto_sub: "Met een geluid dat te hoog is om te horen: als een tweede scherm start, de gedeelde muis aangaat, een computer terugkomt, en om de paar minuten. Alleen als deze computer via zijn eigen speakers speelt.",
-  side_every: "Controleer elke", side_every_one: "Minuut", side_every_n: "{0} minuten",
+  side_every: "Controleer elke", side_every_one: "Minuut", side_every_n: "{0} minuten", side_every_never: "Nooit", side_sound: "Geluid om de kant te vinden", side_sound_sub: "Stil is te hoog om te horen. Hoorbaar helpt alleen bij een apparaat waarvan de microfoon het stille geluid niet oppikt.", side_sound_quiet: "Stil (aanbevolen)", side_sound_audible: "Hoorbaar", side_quiet_missed: "{0} hoorde het stille geluid niet. Het hoorbare proberen?", side_not_now: "Nu niet", side_try_audible: "Hoorbaar geluid",
 };
 
 const tables = { en, nl };

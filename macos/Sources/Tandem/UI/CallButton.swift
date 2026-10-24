@@ -66,18 +66,21 @@ struct CallButton: View {
         let dialed = Self.clean(chosen ?? (Self.clean(number).isEmpty ? found.first?.number ?? "" : number))
         guard !dialed.isEmpty else { return }
         asking = false
-        Self.dial(dialed, on: device) { model.showToast($0) }
+        let contact = found.first { Self.clean($0.number) == dialed }?.name
+        Self.dial(dialed, on: device, contact: contact) { model.showToast($0) }
     }
 
     /// The phone dials `number`, and `say` gets what to show. Also what a contact picked in Spotlight uses (`PhoneSpotlight`).
     @MainActor
-    static func dial(_ number: String, on device: TandemDevice, say: @escaping @MainActor (String) -> Void) {
+    static func dial(_ number: String, on device: TandemDevice, contact: String? = nil, say: @escaping @MainActor (String) -> Void) {
         let dialed = clean(number)
         guard !dialed.isEmpty, let engine = EngineModel.shared.tandem else { return }
         let name = device.name
+        let id = device.id
         Task { @MainActor in
             do {
-                try await engine.dial(target: device.id, number: dialed)
+                try await engine.dial(target: id, number: dialed)
+                CallWindow.shared.dialed(device: id, number: dialed, name: contact)
                 say(String(localized: "\(name) is calling \(dialed)"))
             } catch {
                 say(String(localized: "\(name) could not be reached"))

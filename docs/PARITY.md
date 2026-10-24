@@ -12,7 +12,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Koppelen met QR, link en code van 8 cijfers, uitnodigen | ja, bekeken (emulator) | ja | ja | ja |
 | Bestanden, klembord, links, tekst sturen en ontvangen | ja | ja | ja | ja |
 | Meldingen van de telefoon tonen op de computer | bron | ja | ja | ja |
-| Antwoorden op meldingen, bellen en gemiste oproepen tonen | bron | ja | deels (toon) | deels (toon) |
+| Antwoorden op meldingen, bellen en gemiste oproepen tonen | bron | ja (zwevend belvenster) | deels (meldingen als toon; zwevend belvenster met Opnemen, Weigeren en Ophangen, nooit gezien) | deels (idem; onder Wayland kiest het bureaublad de plek van het belvenster en houdt het niet bovenop) |
 | Muziek van de telefoon bedienen vanaf de computer | bron | ja | ja (mediatoetsen van het systeem) | ja (MPRIS, getest op een sessiebus in CI) |
 | Klembordgeschiedenis | ja | ja | ja | ja |
 | Quick Share (ontvangen en versturen, tekst en links) | ja | ja | ja | ja |

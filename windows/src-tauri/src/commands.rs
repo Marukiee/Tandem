@@ -449,8 +449,12 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["sideCheck"].as_bool() {
             current.side_check = v;
         }
+        if let Some(v) = patch["sideSound"].as_str().filter(|v| ["quiet", "audible"].contains(v)) {
+            current.side_sound = v.to_string();
+        }
         if let Some(v) = patch["sideCheckMinutes"].as_u64() {
-            current.side_check_minutes = (v as u32).clamp(1, 60);
+            // 0 is never.
+            current.side_check_minutes = (v as u32).min(60);
         }
     }
     settings::save(&app);

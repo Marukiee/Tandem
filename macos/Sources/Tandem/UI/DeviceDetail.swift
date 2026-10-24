@@ -126,6 +126,10 @@ struct DeviceDetail: View {
                         if device.online {
                             HStack(spacing: 8) {
                                 phoneNetworkChips
+                                // A computer: the network it is on, as a chip with the others and not as a line of its own under the buttons.
+                                if device.platform != .android, let ssid = device.lastSeen?.ssid {
+                                    Chip(symbol: "wifi", text: "\(ssid)")
+                                }
                                 if device.status.dnd == true {
                                     Chip(symbol: "moon.fill", text: "Do not disturb")
                                 }

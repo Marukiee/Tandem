@@ -177,18 +177,28 @@ pub fn listen(app: &AppHandle, from: String, id: u64, quiet: bool) {
 
 /// Asks the device to listen, plays the sweeps once it does, and reads its answer: soft first, once more at full loudness when it was not
 /// heard well. Puts it on that side for the shared mouse when it is clear. "left", "right", "unsure" or "not-heard".
-pub async fn find(app: &AppHandle, id: &str) -> Result<String, String> {
-    let engine = app.state::<AppState>().engine()?;
-    let _turn = TURN.lock().await;
-    let mut side = TandemSide::NotHeard;
-    for loudness in [tandem_core::ffi::tandem_side_first_loudness(), 1.0] {
-        let Ok(probe) = engine.side_start(id.to_string()).await else { break };
-        let _ = tauri::async_runtime::spawn_blocking(move || play(loudness)).await;
-        side = engine.side_result(probe).await;
-        if matches!(side, TandemSide::Left | TandemSide::Right) {
-            break;
+/// "Find by sound": the quiet sweeps first, which nobody hears and which most devices pick up well. The audible ones only when the
+/// person chose them in the settings, or asked for them after the quiet ones were not heard (`audible`): some microphones hear less
+/// up high. A result of the quiet sweeps that found nothing comes back as `quiet-` and what happened, so the page can offer the
+/// audible ones.
+pub async fn find(app: &AppHandle, id: &str, audible: bool) -> Result<String, String> {
+    let audible = audible || settings::get(app).side_sound == "audible";
+    let side = if audible {
+        let engine = app.state::<AppState>().engine()?;
+        let _turn = TURN.lock().await;
+        let mut side = TandemSide::NotHeard;
+        for loudness in [tandem_core::ffi::tandem_side_first_loudness(), 1.0] {
+            let Ok(probe) = engine.side_start(id.to_string()).await else { break };
+            let _ = tauri::async_runtime::spawn_blocking(move || play(loudness)).await;
+            side = engine.side_result(probe).await;
+            if matches!(side, TandemSide::Left | TandemSide::Right) {
+                break;
+            }
         }
-    }
+        side
+    } else {
+        check(app, id).await
+    };
     let text = match side {
         TandemSide::Left => "left",
         TandemSide::Right => "right",
@@ -197,13 +207,14 @@ pub async fn find(app: &AppHandle, id: &str) -> Result<String, String> {
     };
     if matches!(side, TandemSide::Left | TandemSide::Right) {
         arrange::put(app, id, text);
+        return Ok(text.to_string());
     }
-    Ok(text.to_string())
+    Ok(if audible { text.to_string() } else { format!("quiet-{text}") })
 }
 
 #[tauri::command]
-pub async fn side_find(app: AppHandle, id: String) -> Result<String, String> {
-    find(&app, &id).await
+pub async fn side_find(app: AppHandle, id: String, audible: Option<bool>) -> Result<String, String> {
+    find(&app, &id, audible.unwrap_or(false)).await
 }
 
 /// A phone was moved: when it sits next to this screen, its side is checked again, quietly.
@@ -248,7 +259,7 @@ pub fn watch(app: &AppHandle) {
         .spawn(move || loop {
             std::thread::sleep(Duration::from_secs(60));
             let chosen = settings::get(&app);
-            SCHEDULE.set_every_minutes(chosen.side_check_minutes.max(1));
+            SCHEDULE.set_every_minutes(chosen.side_check_minutes);
             let mut ids: Vec<String> = chosen.layout.iter().map(|s| s.device.clone()).collect();
             ids.extend(crate::host::extending());
             ids.sort();

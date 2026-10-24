@@ -17,7 +17,9 @@ pub async fn dial(state: State<'_, AppState>, id: String, number: String) -> Res
     if number.len() < 3 {
         return Err("not a number to call".into());
     }
-    state.engine()?.dial(id, number).await.map_err(|e| e.to_string())
+    state.engine()?.dial(id.clone(), number.clone()).await.map_err(|e| e.to_string())?;
+    crate::callcard::dialed(&id, &number);
+    Ok(())
 }
 
 #[cfg(test)]

@@ -34,14 +34,6 @@ struct PointerSettings: View {
     var body: some View {
         Form {
             Section {
-                step("rectangle.2.swap", "Drag the screens next to this one, the way they stand on your desk. That is where the pointer goes over.")
-                step("cursorarrow.motionlines", "Push the pointer over that edge. Your mouse and keyboard now work on the other computer.")
-                step("arrow.uturn.backward", "Push it back over the edge it came in by, or press Control, Option and Command with Escape.")
-            } header: {
-                Text("How it works")
-            }
-
-            Section {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Accessibility")
@@ -120,6 +112,9 @@ struct PointerSettings: View {
                         ForEach([1, 2, 5, 10], id: \.self) { minutes in
                             Text(minutes == 1 ? String(localized: "Minute") : String(localized: "\(minutes) minutes")).tag(minutes)
                         }
+                        Divider()
+                        // Never: only a screen that starts, the mouse turned on, a device that connects or wakes.
+                        Text("Never").tag(0)
                     }
                 }
                 HStack {
@@ -181,6 +176,15 @@ struct PointerSettings: View {
                 }
             } header: {
                 Text("Your phone")
+            }
+
+            // At the end: it is read once, and the settings themselves come first.
+            Section {
+                step("rectangle.2.swap", "Drag the screens next to this one, the way they stand on your desk. That is where the pointer goes over.")
+                step("cursorarrow.motionlines", "Push the pointer over that edge. Your mouse and keyboard now work on the other computer.")
+                step("arrow.uturn.backward", "Push it back over the edge it came in by, or press Control, Option and Command with Escape.")
+            } header: {
+                Text("How it works")
             }
         }
         .formStyle(.grouped)

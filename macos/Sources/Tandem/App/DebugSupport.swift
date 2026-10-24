@@ -105,6 +105,23 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_PAIRSHEET") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { NotificationCenter.default.post(name: .tandemShowPairing, object: nil) }
         }
+        // `TANDEM_DEBUG_CALL=ringing|dialing|active|missed|stack|cycle`: the floating window of a call, with a made up call.
+        if let stage = variable("TANDEM_DEBUG_CALL") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { CallWindow.shared.debugShow(stage) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+                try? CallWindow.shared.debugHitReport().write(to: directory.appendingPathComponent("call-window.txt"), atomically: true, encoding: .utf8)
+            }
+        }
+        // `TANDEM_DEBUG_QUESTION=1`: a question card in the floating column, to see how it reads on what is under it.
+        if variable("TANDEM_DEBUG_QUESTION") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                GlassQuestion.shared.ask(
+                    symbol: "wifi.exclamationmark", title: "Tandem cannot reach your devices",
+                    body: "macOS has turned off Local Network for Tandem, which happens after some updates.",
+                    answers: [GlassQuestion.Answer(title: "Later") {}, GlassQuestion.Answer(title: "Open Settings", prominent: true) {}]
+                )
+            }
+        }
         if variable("TANDEM_DEBUG_PANEL") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { showPanelWindow() }
         }

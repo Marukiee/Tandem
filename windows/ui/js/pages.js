@@ -182,14 +182,15 @@ function useWifiHere() {
   return here;
 }
 
-/** Whether handing this computer's Wi-Fi to the device gives it something: not when it is on that network already. A phone does not say
- *  the name of its network, but one on Wi-Fi that is reached over the local network is on this one. */
+/** Whether handing this computer's Wi-Fi to the device gives it something: when it has no Wi-Fi of its own, or is on another network
+ *  whose name it says. A phone does not say the name of its network, and one on Wi-Fi is nearly always on this one (or far away, over
+ *  Tailscale, where this network would be of no use). */
 function wifiWorthSharing(device, here) {
   if (!here) return false;
   const net = device.status?.network;
   if (!net) return true;
   if (net.ssid) return net.ssid !== here;
-  return !(net.kind === "wifi" && device.online && device.route === "lan");
+  return net.kind !== "wifi";
 }
 
 export function DevicePage({ device }) {
@@ -605,9 +606,15 @@ function MouseSection({ s, patch }) {
       ? html`<${ArrangementEditor} />
         <div class="card flush">
           <${SettingRow} icon="device-laptop" title=${t("side_auto")} sub=${t("side_auto_sub")} on=${s.sideCheck} onChange=${(v) => patch({ sideCheck: v })} />
+          <${SettingRow} icon="volume" title=${t("side_sound")} sub=${t("side_sound_sub")}>
+            <select value=${s.sideSound || "quiet"} onChange=${(e) => patch({ sideSound: e.target.value })}>
+              <option value="quiet">${t("side_sound_quiet")}</option><option value="audible">${t("side_sound_audible")}</option>
+            </select>
+          <//>
           ${s.sideCheck && html`<${SettingRow} icon="refresh" title=${t("side_every")}>
-            <select value=${String(s.sideCheckMinutes || 2)} onChange=${(e) => patch({ sideCheckMinutes: Number(e.target.value) })}>
+            <select value=${String(s.sideCheckMinutes ?? 2)} onChange=${(e) => patch({ sideCheckMinutes: Number(e.target.value) })}>
               ${[1, 2, 5, 10].map((m) => html`<option value=${String(m)}>${m === 1 ? t("side_every_one") : t("side_every_n", m)}</option>`)}
+              <option value="0">${t("side_every_never")}</option>
             </select>
           <//>`}
         </div>`

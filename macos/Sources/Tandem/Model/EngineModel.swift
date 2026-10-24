@@ -305,7 +305,7 @@ final class EngineModel {
         notifier.onFileAction = { path in
             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
         }
-        notifier.onCallAction = { [weak self] device, call, action in
+        CallWindow.shared.onAction = { [weak self] device, call, action in
             Task { try? await self?.engine?.callAction(target: device, id: call, action: action) }
         }
         notifier.onMirrorAction = { [weak self] device, key, button, reply, dismiss in
@@ -534,16 +534,7 @@ final class EngineModel {
             mirrored.removeAll { $0.device == from && $0.key == key }
 
         case let .call(from, call):
-            switch call.state {
-            case .ringing, .dialing:
-                Notifier.shared.postCall(device: from, id: call.id, name: call.name, number: call.number, incoming: call.incoming)
-            case .active, .ended, .missed:
-                Notifier.shared.remove(id: "call.\(call.id)")
-                if call.state == .missed {
-                    let who = call.name ?? call.number ?? String(localized: "Unknown number")
-                    Notifier.shared.post(id: "missed.\(call.id)", title: String(localized: "Missed call"), body: who)
-                }
-            }
+            CallWindow.shared.received(call, from: from, deviceName: device(from)?.name ?? "Phone")
 
         case let .input(from, input):
             if !PointerShare.shared.controlled(input, from: from) { injector.handle(input, from: from) }

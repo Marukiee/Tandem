@@ -130,8 +130,8 @@ pub fn activate(app: &AppHandle, id: &str) {
             let app = app.clone();
             tauri::async_runtime::spawn(async move {
                 let name = events::device_name(&app, &phone);
-                let Ok(engine) = app.state::<AppState>().engine() else { return };
-                match engine.dial(phone, number.clone()).await {
+                // What the Call button does, so the call card shows up the same way.
+                match crate::calls::dial(app.state::<AppState>(), phone, number.clone()).await {
                     Ok(()) => events::toast(&app, "Tandem", &i18n::t2(&app, "call_started", &name, &number)),
                     Err(_) => events::toast(&app, "Tandem", &i18n::t1(&app, "call_unreachable", &name)),
                 }
