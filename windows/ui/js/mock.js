@@ -132,7 +132,15 @@ function smsAnswer(command, args) {
     case "sms_messages": return { thread: args.thread, items: smsThreads[args.thread] || [], more: false };
     case "sms_contacts": return [
       { name: "Anna de Vries", number: "+31612345678", label: "Mobiel" },
+      { name: "Anna de Vries", number: "+31205550123", label: "Werk" },
       { name: "Anne Jansen", number: "+31698765432", label: "Werk" },
+      { name: "Bob", number: "+31611111111", label: "Mobiel" },
+      { name: "Carla Smit", number: "+31622222222", label: "Mobiel" },
+      { name: "Mam", number: "+31633333333", label: "Mobiel" },
+      { name: "Lotte Bakker", number: "+31644444444", label: "Mobiel" },
+      { name: "Pieter van Dijk", number: "+31655555555", label: "Mobiel" },
+      { name: "Pieter van Dijk", number: "+31307778899", label: "Thuis" },
+      { name: "Yusuf Kaya", number: "+31677777777", label: "Mobiel" },
     ].filter((c) => c.name.toLowerCase().includes(args.query.toLowerCase()) || c.number.includes(args.query));
     case "sms_picture": return smsPicture;
     case "sms_send": {
@@ -219,6 +227,8 @@ export async function call(command, args) {
       { id: "microphone", ready: false, name: "Find the side by sound", why: "This computer has no microphone that Tandem can use", page: "sound" },
     ];
     case "features_open_here": case "features_open_on": return null;
+    // Kept, so a look in the browser can tell how many calls one press made.
+    case "dial": (window.mockDials = window.mockDials || []).push(args); return null;
     case "live_start": return 1;
     case "display_start": case "display_stop": return null;
     case "display_state": return [];

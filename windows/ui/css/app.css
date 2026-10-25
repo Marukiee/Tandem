@@ -488,12 +488,22 @@ select { cursor: default; }
 .side-finder .t { font-weight: 500; }
 .side-finder .s { font-size: 12px; color: var(--text-2); }
 
-/* The number to call, under its button. */
-.call-anchor { position: relative; display: inline-flex; }
-.call-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; display: flex; gap: 8px; align-items: center; padding: 10px; }
-.call-pop input { width: 170px; }
-.call-pop { flex-wrap: wrap; width: 280px; }
-.call-found { flex-basis: 100%; display: flex; flex-direction: column; gap: 2px; }
+/* Which of someone's numbers to call, in the question before the call. */
+.call-ask-numbers { display: flex; flex-direction: column; gap: 2px; margin: 14px 0 0 54px; }
+.call-contact.on { background: var(--accent-soft); }
 .call-contact { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 8px; border: 0; border-radius: 10px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .call-contact:hover { background: var(--hover, rgba(127, 127, 127, 0.12)); }
 .call-contact .s { font-size: 12px; opacity: 0.7; }
+
+/* A phone's messages, as a place of its own just under that phone: a smaller mark in the middle of the column of the phone's glyph. */
+.nav .subrow { padding-top: 5px; padding-bottom: 5px; font-weight: 500; }
+.subrow-mark { flex: none; width: 36px; display: grid; place-items: center; }
+.subrow-mark svg { box-sizing: content-box; padding: 5px; border-radius: 50%; color: var(--accent); background: var(--accent-soft); }
+
+/* The question before every call. */
+.call-ask { width: 400px; }
+.call-ask-head { display: flex; align-items: flex-start; gap: 14px; }
+.call-ask-head h2 { margin: 2px 0 4px; font-size: 16px; }
+.call-ask-head p { margin: 0; font-size: 13px; }
+.call-ask-mark { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); }
+.call-ask-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }

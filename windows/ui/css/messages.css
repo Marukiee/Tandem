@@ -174,3 +174,9 @@
 .sms-notice p { margin: 0; }
 .sms-notice-mark { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
 .sms-notice-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+
+/* Conversations or contacts, under the search. */
+.sms-tabs { flex: none; display: flex; margin: 0 12px 8px; }
+.sms-tabs button { flex: 1; }
+.sms-contact-number { font-size: 13px; color: var(--text-2); line-height: 1.35; }
+.sms-contact .sms-row-name { flex: none; }
