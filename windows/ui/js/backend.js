@@ -68,6 +68,8 @@ function apply(snapshot) {
     systemLanguage: snapshot.systemLanguage,
     selected: pick(snapshot.devices),
   });
+  // A ring of the battery card in the panel asked for this device's page while this window did not exist yet.
+  if (snapshot.openDevice) set({ selected: snapshot.openDevice, page: "device" });
 }
 
 /** Loads everything once and then follows what the app reports. */
@@ -90,6 +92,7 @@ export async function connect() {
 
 async function follow() {
   await listen("devices", (devices) => set({ devices, selected: pick(devices) }));
+  await listen("open-device", (id) => set({ selected: id, page: "device" }));
   await listen("transfer", (item) => set({ transfers: upsert(state.transfers, item) }));
   await listen("offer", (offer) => set({ offers: [...state.offers, offer] }));
   await listen("offer-gone", ({ from, offer }) => set({ offers: state.offers.filter((o) => !(o.from === from && o.offer === offer)) }));

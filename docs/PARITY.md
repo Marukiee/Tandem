@@ -40,6 +40,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Zoek mijn telefoon | bron | ja | ja | ja |
 | Zoek mijn computer (geluid uit de eigen systeemgeluiden, laatst gezien met wifinaam) | ja (vraagt, met laatst gezien) | ja, beide kanten | ja, beide kanten | ja, beide kanten |
 | Bijwerken | ja | ja | ja | ja als AppImage; een pakket van de distributie werkt de pakketbeheerder bij |
+| Batterijen van alle apparaten als ringen (zoals de widget Batterijen van iOS) | widget op het startscherm (Glance, Material You, schaalbaar, tik opent het apparaat; gezien op de emulator) | widget op het bureaublad (WidgetKit, klein, middel en groot; alleen als PNG gezien, zie onder) | in het paneel bij het systeemvak (geen widget, zie onder) | in het paneel bij het systeemvak (geen widget, zie onder) |
 
 ## Wat er nog mist
 
@@ -52,3 +53,8 @@ Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een ech
 - **Overal**: Windows en Linux moeten dezelfde functies als de Mac kunnen aanbieden, niet alleen tonen: geluid van een computer naar een andere
   computer en Invoegen vanaf telefoon als bron voor een andere computer.
 - De Mac-functies die aan macOS zelf vastzitten horen er niet bij: het menu Diensten, het Controlecentrum, het AirDrop-knopje.
+- **Batterijwidget**: Windows heeft geen widgets op het bureaublad, en het Widgets-bord van Windows 11 neemt alleen widgets van een verpakte app
+  (MSIX met een widgetprovider), wat Tandem niet is. GNOME heeft geen widgets op het bureaublad. KDE Plasma zou een plasmoid kunnen hebben, die is
+  er niet. Daarom staan de ringen op Windows en Linux in het paneel bij het systeemvak, met een klik naar het apparaat. Op de Mac zit de widget in
+  dezelfde extensie als de knoppen van het Controlecentrum; die extensie staat bij het systeem ingeschreven (`pluginkit`), maar of macOS een widget
+  laadt van een app met het eigen certificaat (geen Apple Developer ID) is nooit gezien, net als de knoppen.
