@@ -57,12 +57,13 @@ class ShellUserService : Binder() {
     /**
      * `appops set <package> PROJECT_MEDIA allow`. With it, MediaProjectionManagerService's hasProjectionPermission is true for the
      * package, and SystemUI's MediaProjectionPermissionActivity then answers RESULT_OK at once instead of asking. The shell holds
-     * MANAGE_APP_OPS_MODES, an app does not. An argument list, no shell string, so the package name cannot become a command.
+     * MANAGE_APP_OPS_MODES, an app does not. An argument list, no shell string, so the package name cannot become a command, and
+     * the full path, since nothing promises a PATH in a process that Shizuku starts.
      */
     private fun allowProjection(pkg: String): Pair<Int, String> {
         if (!PACKAGE.matches(pkg)) return 1 to "not a package name"
         return try {
-            val process = ProcessBuilder("cmd", "appops", "set", pkg, "PROJECT_MEDIA", "allow").redirectErrorStream(true).start()
+            val process = ProcessBuilder("/system/bin/cmd", "appops", "set", pkg, "PROJECT_MEDIA", "allow").redirectErrorStream(true).start()
             if (!process.waitFor(10, TimeUnit.SECONDS)) {
                 process.destroy()
                 return 2 to "appops did not answer"

@@ -35,7 +35,7 @@ const val HOTSPOT_CHECKLIST_ROWS = 5
  * so it is clear at a glance whether sharing the hotspot can work.
  */
 @Composable
-fun ColumnScope.HotspotChecklistRows() {
+fun ColumnScope.HotspotChecklistRows(openShizuku: () -> Unit = {}) {
     val context = LocalContext.current
     val module = HotspotModule.get(context)
     val status = rememberPermissionStatus()
@@ -61,13 +61,7 @@ fun ColumnScope.HotspotChecklistRows() {
     Row(
         3, TandemIcons.Hotspot, R.string.check_method,
         if (automatic) R.string.check_method_shizuku else R.string.check_method_manual, automatic, neutral = !automatic,
-    ) {
-        when (shizuku) {
-            ShizukuState.NeedsPermission -> module.shizuku.requestPermission()
-            ShizukuState.NotRunning, ShizukuState.Denied -> module.shizuku.launchShizuku()
-            else -> Unit
-        }
-    }
+    ) { openShizuku() }
     Row(4, TandemIcons.Laptop, R.string.check_mac, if (macPaired) R.string.check_ok else R.string.check_mac_missing, macPaired) {}
 }
 

@@ -123,7 +123,7 @@ fun HotspotScreen(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.ui.Route
         // 1. Is everything in place? Once it is, the list is no news and goes to the bottom of the page.
         val setup: @Composable ColumnScope.() -> Unit = {
             SectionHeader(stringResource(R.string.hotspot_section_setup))
-            SettingsGroup(Modifier.settingsTarget(FocusKeys.HotspotSetup, RoundedCornerShape(24.dp))) { HotspotChecklistRows() }
+            SettingsGroup(Modifier.settingsTarget(FocusKeys.HotspotSetup, RoundedCornerShape(24.dp))) { HotspotChecklistRows(openShizuku = { onOpen(nl.markmaaktmedia.tandem.ui.Route.SettingsPage(nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId.Shizuku)) }) }
         }
         if (!setupDone) setup()
 
@@ -214,17 +214,10 @@ fun HotspotScreen(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.ui.Route
         // 4. How it turns on, and where to read more.
         SectionHeader(stringResource(R.string.hotspot_section_help))
         SettingsGroup {
-            val methodText = when (shizuku) {
-                ShizukuState.Ready -> R.string.hotspot_method_shizuku
-                ShizukuState.NeedsPermission -> R.string.hotspot_method_need_permission
-                ShizukuState.Denied -> R.string.hotspot_method_denied
-                ShizukuState.NotRunning -> R.string.hotspot_method_not_running
-                ShizukuState.NotInstalled -> R.string.hotspot_method_not_installed
-                ShizukuState.TooOld -> R.string.hotspot_method_too_old
-            }
+            // How to start or allow Shizuku is told on its own page; here only which way the hotspot turns on.
+            val methodText = if (shizuku == ShizukuState.Ready) R.string.hotspot_method_shizuku else R.string.hotspot_method_manual
             val rows = if (attempt != null) 3 else 2
             SettingsTarget(FocusKeys.HotspotMethod, 0, rows) {
-                // What Shizuku is and how to start or allow it lives on its own page, since more than the hotspot uses it.
                 ActionRow(
                     0, rows, TandemIcons.Hotspot, stringResource(R.string.hotspot_method), stringResource(methodText),
                     onClick = { onOpen(nl.markmaaktmedia.tandem.ui.Route.SettingsPage(nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId.Shizuku)) },

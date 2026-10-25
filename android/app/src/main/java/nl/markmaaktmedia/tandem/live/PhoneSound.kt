@@ -86,7 +86,7 @@ object PhoneSound {
             say(app, R.string.output_loop, peer)
             return
         }
-        if (_connecting.value == peer) return
+        if (_connecting.value == peer || sendingTo(peer)) return
         graph.scope.launch {
             // One device at a time: most phones keep one Bluetooth speaker, and the capture has one target.
             val current = bluetooth.value
@@ -133,6 +133,14 @@ object PhoneSound {
         val pending = synchronized(waiting) { waiting.remove(from) }
         if (pending != null) {
             pending.complete(if (on) "" else error.ifEmpty { "refused" })
+            return
+        }
+        // Connected after this phone gave up waiting (or after it asked to stop): nobody would ever end that link, and Android may
+        // move the sound to it while the capture sends it too. So it is ended at once.
+        if (on && bluetooth.value != from) {
+            stopping += from
+            val engine = context.graph.host.engine ?: return
+            context.graph.scope.launch(Dispatchers.IO) { runCatching { engine.requestBtSpeaker(from, false, bluetoothName(context)) } }
             return
         }
         if (!on && bluetooth.value == from) {
