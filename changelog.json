@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.2.20",
+    "date": "2026-10-25",
+    "en": {
+      "title": "One setup page",
+      "new": [
+        "The phone is quiet while its sound plays on another device",
+        "What the phone plays shows on the computer, also when Spotify there shows the same song",
+        "Permissions, Shizuku and file access on one page on Android",
+        "Messages sits under the phone's name in the sidebar"
+      ]
+    },
+    "nl": {
+      "title": "Eén pagina om in te stellen",
+      "new": [
+        "De telefoon is stil terwijl zijn geluid op een ander apparaat speelt",
+        "Wat de telefoon speelt staat op de computer, ook als Spotify daar hetzelfde nummer toont",
+        "Rechten, Shizuku en bestandstoegang op één pagina op Android",
+        "Berichten staat in de zijbalk onder de naam van de telefoon"
+      ]
+    }
+  },
+  {
     "version": "0.2.19",
     "date": "2026-10-25",
     "en": {
