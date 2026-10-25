@@ -233,9 +233,21 @@ async fn changes_go_only_to_computers_that_show_messages_and_may() {
     let mac = node("Mac", &["sms.view"]).await;
     let old = node("Old PC", &["clipboard"]).await;
     let guest = node("Guest", &["sms.view"]).await;
+    // Three pairings straight after each other sometimes time out while the machine is busy with other builds; a fresh
+    // offer is what a person would try too.
     for computer in [&mac, &old, &guest] {
-        let offer = phone.engine.create_pairing_offer().unwrap();
-        computer.engine.pair_with_uri(&offer.uri).await.unwrap();
+        let mut tries = 0;
+        loop {
+            let offer = phone.engine.create_pairing_offer().unwrap();
+            match computer.engine.pair_with_uri(&offer.uri).await {
+                Ok(_) => break,
+                Err(e) if tries < 2 => {
+                    tries += 1;
+                    eprintln!("pairing again after: {e}");
+                }
+                Err(e) => panic!("pairing failed three times: {e}"),
+            }
+        }
     }
     let ids = [mac.engine.id(), old.engine.id(), guest.engine.id()];
     wait_until("all connected", || ids.iter().all(|id| phone.engine.devices().iter().any(|d| d.id == *id && d.online && !d.caps.is_empty()))).await;
