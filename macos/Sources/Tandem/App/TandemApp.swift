@@ -57,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DriveMount.removeLeftovers()
             DebugSupport.install()
             EngineModel.shared.start()
+            TandemSpotlight.shared.start()
             InsertFromPhone.shared.install()
             ClipboardPanelController.shared.start()
             ControlBridge.shared.start()
@@ -78,12 +79,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// A contact of the phone picked in Spotlight (see `PhoneSpotlight`).
+    /// A result of Tandem picked in Spotlight: a contact of the phone (`PhoneSpotlight`), or a device, an action, a conversation and
+    /// the rest (`TandemSpotlight`).
     func application(_ application: NSApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
         guard userActivity.activityType == CSSearchableItemActionType,
               let identifier = userActivity.userInfo?[CSSearchableItemActivityIdentifier] as? String
         else { return false }
-        Task { @MainActor in PhoneSpotlight.shared.open(identifier: identifier) }
+        Task { @MainActor in TandemSpotlight.shared.open(identifier) }
         return true
     }
 
