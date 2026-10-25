@@ -20,6 +20,8 @@ mod screenshots;
 mod sendwith;
 mod commands;
 mod drag;
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+mod dragcard;
 mod edge;
 mod engine;
 mod events;

@@ -120,6 +120,9 @@ pub mod folderwatch;
 /// Linux: a strip at the edge of the screen that catches a drag, to hand it on to the computer there.
 #[cfg(target_os = "linux")]
 pub mod edgecatch;
+/// Linux: a card under the pointer with files that were just put down, to drag on from there.
+#[cfg(target_os = "linux")]
+pub mod dragcard;
 
 /// A side of the screen.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

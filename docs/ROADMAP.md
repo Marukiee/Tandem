@@ -215,6 +215,12 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   knop nog ingedrukt terug naar de Mac en daar begint een echte sleep, zodat je loslaat waar je wilt. Windows doet hetzelfde met een venster
   van twee punten breed. Op Linux zelf loslaten in een websiteveld kan niet: GNOME breekt een sleep af die een app zelf begint (getest). De
   map naar voren halen mag een app op GNOME ook niet (getest), daarom na een sleep een melding met "Toon in map" die dat wel mag.
+- Een kaartje onder de aanwijzer op Linux na slepen van de Mac (gevraagd 2026-10-24). Gebouwd (`dragcard.rs` in de app en in winsys): de
+  bestanden landen in Downloads zoals voorheen, met de melding, en onder de aanwijzer staat 6 seconden een kaartje met een plaatje van het
+  bestand (bij meer een stapel met het aantal). Wie het kaartje pakt sleept de bestanden verder, naar een map, een mail of een websiteveld;
+  losgelaten waar niets ze neemt glijdt het terug. Het is een X-venster (XWayland) en de sleep is XDND, met een druk van de persoon zelf, zodat
+  GNOME hem mag doorgeven aan Wayland-vensters. Op een X-server in een container getest met een GTK-venster als doel; op GNOME nog nooit gezien.
+  Het logboek schrijft elke stap met `dragcard:` ervoor.
 - Sturen met Tandem vanuit de bestandsbeheerder op Linux en Windows, zoals de deelknop op de Mac (gevraagd 2026-10-24). Gebouwd (`sendwith.rs`):
   Bestanden krijgt met `nautilus-python` een eigen regel met de apparaten die nu bereikbaar zijn (anders onder Scripts), Dolphin een servicemenu,
   Nemo acties, Windows een snelkoppeling per apparaat in "Sturen naar". Een schakelaar in Instellingen, Bestanden haalt het weer weg. Thunar niet

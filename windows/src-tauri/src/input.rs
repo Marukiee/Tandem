@@ -209,6 +209,22 @@ pub fn left_up_since_enter() -> bool {
     LEFT_UP_HERE.load(Ordering::Relaxed)
 }
 
+/// Where the pointer of the other computer is on this screen, as a part of its width and of its height. On Linux it is counted (see
+/// `shared_move`), so it is right where the X server would not know: the files of a drag get their card here.
+static AT: Mutex<Option<(f32, f32)>> = Mutex::new(None);
+
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub fn shared_at() -> Option<(f32, f32)> {
+    *AT.lock().unwrap()
+}
+
+fn note_at(tracker: Option<&Controlled>, size: (f32, f32)) {
+    *AT.lock().unwrap() = tracker.map(|t| {
+        let (x, y) = t.at();
+        (x / size.0.max(1.0), y / size.1.max(1.0))
+    });
+}
+
 /// How long the computer that has the pointer may stay silent. It asks twice a second whether this one is still there.
 const LOST_AFTER: Duration = Duration::from_millis(3500);
 
@@ -624,6 +640,7 @@ fn run(rx: mpsc::Receiver<Msg>) {
     // Where the pointer is on this screen while another computer has it, counted from where it came in. On a system where the real
     // place cannot be asked (or is not worth trusting), this is what says the pointer ran into the edge it came in by.
     let mut tracker: Option<Controlled> = None;
+    let mut size = (1.0f32, 1.0f32);
     // Text that came over with a drag and waits for the button to come up.
     let mut carried: Option<String> = None;
 
@@ -646,6 +663,8 @@ fn run(rx: mpsc::Receiver<Msg>) {
                     let (x, y) = counting.at();
                     let _ = enigo.move_mouse(x as i32, y as i32, Coordinate::Abs);
                     tracker = Some(counting);
+                    size = (screen.width, screen.height);
+                    note_at(tracker.as_ref(), size);
                     // The other computer follows where its pointer is over here with this, and takes it home by itself if it must.
                     if let Some(device) = SHARED.lock().unwrap().as_ref().map(|s| s.device.clone()) {
                         say(device, TandemPointerShare::Size { width: width.max(1) as u32, height: height.max(1) as u32 });
@@ -659,6 +678,7 @@ fn run(rx: mpsc::Receiver<Msg>) {
             }
             Msg::End => {
                 tracker = None;
+                note_at(None, size);
                 carried = None;
                 LEFT_DOWN.store(false, Ordering::Relaxed);
                 Msg::ReleaseAll
@@ -678,6 +698,7 @@ fn run(rx: mpsc::Receiver<Msg>) {
                     continue;
                 }
                 let leaving = shared_move(&mut enigo, tracker.as_mut(), dx, dy);
+                note_at(tracker.as_ref(), size);
                 if let Some(along) = leaving {
                     // A drag runs into the edge: it stays there, over the drop zone, until the button comes up.
                     if !buttons.contains(&0) {

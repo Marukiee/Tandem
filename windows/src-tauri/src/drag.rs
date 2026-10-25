@@ -100,7 +100,14 @@ pub fn finished(app: &AppHandle, peer: &str, offer: u64, name: &str, location: &
     if input::left_down() {
         WAITING.lock().unwrap().push((from, name.to_string(), PathBuf::from(path)));
     } else {
-        land(app, &from, name, Path::new(path));
+        let placed = land(app, &from, name, Path::new(path));
+        // Let go here a moment ago, and the file only came in now: it gets the card too, while the pointer is still here.
+        #[cfg(target_os = "linux")]
+        if input::shared_is(peer) {
+            crate::dragcard::show(app, vec![placed]);
+        }
+        #[cfg(not(target_os = "linux"))]
+        drop(placed);
     }
     true
 }
@@ -117,9 +124,11 @@ pub fn flush(app: &AppHandle) {
     if let Some(carried) = CARRIED.lock().unwrap().take() {
         waiting.extend(carried.waiting);
     }
-    for (from, name, path) in waiting {
-        land(app, &from, &name, &path);
-    }
+    let placed: Vec<PathBuf> = waiting.into_iter().map(|(from, name, path)| land(app, &from, &name, &path)).collect();
+    #[cfg(target_os = "linux")]
+    crate::dragcard::show(app, placed);
+    #[cfg(not(target_os = "linux"))]
+    drop(placed);
 }
 
 /// The pointer of the other computer went back. A drag that came with it and was not let go here goes back with it: its files are
@@ -151,7 +160,8 @@ pub fn shared_ended(app: &AppHandle) {
     }
 }
 
-fn land(app: &AppHandle, from: &str, name: &str, path: &Path) {
+/// Puts the file down and says where. Gives where it went.
+fn land(app: &AppHandle, from: &str, name: &str, path: &Path) -> PathBuf {
     // Windows puts it on the desktop, where the drop was. Linux has no desktop that shows files (GNOME has none), so it goes to the
     // downloads folder.
     let folder = if cfg!(windows) { app.path().desktop_dir().unwrap_or_else(|_| PathBuf::from(".")) } else { crate::settings::download_dir(app) };
@@ -181,6 +191,7 @@ fn land(app: &AppHandle, from: &str, name: &str, path: &Path) {
             log::info!("the folder of {} could not be shown: {error}", placed.display());
         }
     }
+    placed
 }
 
 /// Moves the file to the folder, under a name that is free there.
