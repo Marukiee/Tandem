@@ -526,5 +526,17 @@ select { cursor: default; }
 .batt:active { transform: scale(0.96); }
 .batt-ring { position: relative; flex: none; }
 .batt-ring > svg { transform: rotate(-90deg); }
-.batt-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.batt-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transition: color 0.45s ease; }
+.batt-icon.charging { color: var(--ok); }
+/* Behind the icon while the device plays something: it fades in and turns slowly. */
+.batt-shape { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); fill: var(--accent-soft); opacity: 0; transition: opacity 0.5s ease; }
+.batt-shape.on { opacity: 1; animation: batt-turn 9s linear infinite; }
+@keyframes batt-turn { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+/* A change of the charger, once: a green ripple that grows out of the icon, or the green drawing back into it. */
+.batt-pulse { position: absolute; left: 50%; top: 50%; border-radius: 50%; background: var(--ok); pointer-events: none; transform: translate(-50%, -50%); opacity: 0; }
+.batt-pulse.pulse-on { animation: batt-ripple 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.batt-pulse.pulse-off { animation: batt-drain 0.7s cubic-bezier(0.5, 0, 0.9, 0.5) both; }
+@keyframes batt-ripple { from { opacity: 0.55; transform: translate(-50%, -50%) scale(0.6); } to { opacity: 0; transform: translate(-50%, -50%) scale(1.45); } }
+@keyframes batt-drain { from { opacity: 0.45; transform: translate(-50%, -50%) scale(1); } to { opacity: 0; transform: translate(-50%, -50%) scale(0.2); } }
+@media (prefers-reduced-motion: reduce) { .batt-shape.on, .batt-pulse { animation: none; } }
 .batt-level { display: flex; align-items: center; gap: 1px; font: 600 13px var(--font-display); font-variant-numeric: tabular-nums; }

@@ -83,12 +83,16 @@ struct BatteryWidgetRing: View {
                 .trim(from: 0, to: BatteryWidgetStyle.arc(device.level))
                 .stroke(BatteryWidgetStyle.tint(level: device.level, charging: device.charging), style: StrokeStyle(lineWidth: line, lineCap: .round))
                 .rotationEffect(.degrees(-90))
+            // Green on the charger, as the system's own widget shows it.
             Image(systemName: device.symbol)
                 .font(.system(size: diameter * 0.36, weight: .medium))
-                .foregroundStyle(.primary)
+                .foregroundStyle(device.charging ? Color.green : Color.primary)
         }
         .padding(line / 2)
         .frame(width: diameter, height: diameter)
+        // WidgetKit plays these between two versions of the widget: the ring fills or empties, and the green comes and goes softly.
+        .animation(.smooth(duration: 0.7), value: device.level)
+        .animation(.smooth(duration: 0.5), value: device.charging)
     }
 }
 
@@ -104,12 +108,16 @@ struct BatteryWidgetItem: View {
             HStack(spacing: 1) {
                 if device.charging {
                     Image(systemName: "bolt.fill").font(.system(size: diameter * 0.2, weight: .bold)).foregroundStyle(.green)
+                        .transition(.scale.combined(with: .opacity))
                 }
                 Text("\(device.level)%")
                     .font(.system(size: max(11, diameter * 0.24), weight: .semibold, design: .rounded).monospacedDigit())
                     .foregroundStyle(.primary)
+                    .contentTransition(.numericText(value: Double(device.level)))
             }
             .lineLimit(1)
+            .animation(.smooth(duration: 0.5), value: device.charging)
+            .animation(.smooth(duration: 0.7), value: device.level)
             if showsName {
                 Text(device.name)
                     .font(.system(size: 11, weight: .medium))

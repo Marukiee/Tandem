@@ -54,7 +54,7 @@ function Panel() {
       </div>
     </div>
 
-    <${BatteryCard} items=${batteryList(state.self, state.devices)}
+    <${BatteryCard} items=${batteryList(state.self, state.devices, state.players)}
       onOpen=${(item) => call("show_main", { device: item.id === "this" ? null : item.id }).catch(failed)} />
 
     ${state.offers.map((o) => html`<div class="banner" key=${o.offer} style="padding:8px 10px;gap:8px">
