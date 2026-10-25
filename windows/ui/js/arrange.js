@@ -154,7 +154,7 @@ function SideFinder({ devices }) {
     call("side_find", { id: d.id, audible })
       .then((side) => {
         if (side.startsWith("quiet-")) { setLouder(d.id); return; }
-        say(t(side === "left" ? "side_left" : side === "right" ? "side_right" : side === "unsure" ? "side_unsure" : "side_not_heard", d.name));
+        say(t(side === "left" ? "side_left" : side === "right" ? "side_right" : side === "unsure" ? "side_unsure" : side === "not-listening" ? "side_not_listening" : "side_not_heard", d.name));
       })
       .catch(failed)
       .finally(() => setBusy(null));

@@ -79,8 +79,12 @@ enum SideTone {
     }
 
     /// Made at the rate the sound card runs at: a resampler on the way cuts off near the top of what it carries, where the quiet sweeps are.
+    /// Always on the Mac's own speakers, whatever the sound of the Mac goes to now.
     private static func play(_ make: (UInt32) -> [Float]) async -> Bool {
         let engine = AVAudioEngine()
+        if let speakers = AudioRoute.builtInSpeakers() {
+            do { try engine.outputNode.auAudioUnit.setDeviceID(speakers) } catch { PointerLog.write("side: could not play on the Mac's own speakers: \(error)") }
+        }
         let rate = engine.outputNode.outputFormat(forBus: 0).sampleRate
         guard rate > 0 else { return false }
         let samples = make(UInt32(rate))
@@ -147,11 +151,24 @@ enum SideFinder {
         defer { SpeakerTurn.give() }
         var side = TandemSide.notHeard
         var audible = audibleChosen
+        lastProblem = nil
+        guard AudioRoute.speakersCanPlay() else {
+            PointerLog.write("side: \(device.name): nothing played, the Mac's own speakers are off, nearly off, or headphones are plugged in")
+            lastProblem = .speakers
+            return .notHeard
+        }
         if !audible {
-            if AudioRoute.speakersCanPlay(), let id = try? await engine.sideCheckStart(target: device.id) {
+            do {
+                PointerLog.write("side: \(device.name): asked to listen for the quiet sound")
+                let id = try await engine.sideCheckStart(target: device.id)
                 let played = await SideTone.playQuiet()
                 let heard = await engine.sideCheckResult(id: id)
+                PointerLog.write("side: \(device.name): played \(played), heard \(heard)")
                 if played { side = heard }
+            } catch {
+                PointerLog.write("side: \(device.name): did not start listening: \(error)")
+                lastProblem = .notListening
+                return .notHeard
             }
             if side != .left && side != .right {
                 audible = await askForAudible(name: device.name)
@@ -159,9 +176,17 @@ enum SideFinder {
         }
         if audible {
             for loudness in [tandemSideFirstLoudness(), 1] {
-                guard let id = try? await engine.sideStart(target: device.id) else { return .notHeard }
-                await SideTone.play(loudness: loudness)
-                side = await engine.sideResult(id: id)
+                do {
+                    PointerLog.write("side: \(device.name): asked to listen, audible at \(loudness)")
+                    let id = try await engine.sideStart(target: device.id)
+                    await SideTone.play(loudness: loudness)
+                    side = await engine.sideResult(id: id)
+                    PointerLog.write("side: \(device.name): heard \(side)")
+                } catch {
+                    PointerLog.write("side: \(device.name): did not start listening: \(error)")
+                    lastProblem = .notListening
+                    return .notHeard
+                }
                 if side == .left || side == .right { break }
             }
         }
@@ -216,10 +241,22 @@ enum SideFinder {
         return played ? side : .notHeard
     }
 
+    /// Why the last `find` found nothing, when it was not that the sound was not heard.
+    enum Problem { case notListening, speakers }
+    @MainActor static var lastProblem: Problem?
+
     /// What to tell the person after `find`.
     @MainActor
     static func message(_ side: TandemSide, name: String) -> String {
-        switch side {
+        if side == .notHeard, let problem = lastProblem {
+            switch problem {
+            case .notListening:
+                return String(localized: "\(name) did not start listening. Its microphone may be in use by another app or not allowed for Tandem, or the phone is not reachable right now.")
+            case .speakers:
+                return String(localized: "The speakers of this Mac are off or very low, or headphones are plugged in. Turn them up and try again.")
+            }
+        }
+        return switch side {
         case .left: String(localized: "\(name) stands on the left")
         case .right: String(localized: "\(name) stands on the right")
         case .unsure: String(localized: "Both sides sounded about the same. Put \(name) more to one side, or choose the side yourself.")

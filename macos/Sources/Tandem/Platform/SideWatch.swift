@@ -194,12 +194,29 @@ enum AudioRoute {
     private static let headphones: UInt32 = 0x6864_706E // 'hdpn'
     private static let internalSpeaker: UInt32 = 0x6973_706B // 'ispk'
 
-    /// Whether the quiet sweeps would come out of speakers in this room: not when the sound is off or nearly off, goes to headphones,
-    /// Bluetooth or AirPlay, or is sent to a phone (as its speaker, or with a screen), where the listener could hear its own speaker.
+    /// The Mac's own speakers, also when its sound goes to headphones, AirPods or a television: the sweeps are played there (see
+    /// `SideTone`), since only speakers in the room tell left from right.
+    static func builtInSpeakers() -> AudioObjectID? {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDevices, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size) == noErr else { return nil }
+        var ids = [AudioObjectID](repeating: 0, count: Int(size) / MemoryLayout<AudioObjectID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &ids) == noErr else { return nil }
+        return ids.first { id in
+            let transport: UInt32 = value(id, kAudioDevicePropertyTransportType, kAudioObjectPropertyScopeGlobal) ?? 0
+            guard transport == kAudioDeviceTransportTypeBuiltIn else { return false }
+            var streams = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreams, mScope: kAudioObjectPropertyScopeOutput, mElement: kAudioObjectPropertyElementMain)
+            var streamSize: UInt32 = 0
+            return AudioObjectGetPropertyDataSize(id, &streams, 0, nil, &streamSize) == noErr && streamSize > 0
+        }
+    }
+
+    /// Whether the sweeps can come out of the Mac's own speakers: not when they are off or nearly off, when something is plugged into the
+    /// jack (the built-in output then is the headphones), or while this Mac's sound is sent to a phone, which could hear its own speaker.
     @MainActor
     static func speakersCanPlay() -> Bool {
         if EngineModel.shared.speaker.device != nil { return false }
-        guard let output = defaultDevice(kAudioHardwarePropertyDefaultOutputDevice) else { return false }
+        guard let output = builtInSpeakers() else { return false }
         let transport: UInt32 = value(output, kAudioDevicePropertyTransportType, kAudioObjectPropertyScopeGlobal) ?? kAudioDeviceTransportTypeUnknown
         let elsewhere = [
             kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE, kAudioDeviceTransportTypeAirPlay,
