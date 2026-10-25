@@ -12,6 +12,10 @@ data class WidgetBattery(
     val charging: Boolean,
     /** Not connected now: the last level that was heard, shown dimmed. */
     val away: Boolean,
+    /** Something plays on it: the shape around its icon turns. */
+    val playing: Boolean = false,
+    /** When it went on or came off the charger (milliseconds since 1970), so the ring plays that change once; 0 when not seen. */
+    val chargeChangedAt: Long = 0,
 )
 
 /** What the widget needs of a device of the engine, so the logic can be tested without the core. */
@@ -22,6 +26,7 @@ data class WidgetDeviceInput(
     val online: Boolean,
     val level: Int?,
     val charging: Boolean,
+    val playing: Boolean = false,
 )
 
 /**
@@ -58,12 +63,18 @@ object BatteryWidgetLogic {
      * The other devices for the widget, in the order it shows them: connected first, then by name. One that has gone away keeps its last
      * level, dimmed; the engine forgets that level when the app restarts, the file of the widget does not. One that left the circle goes.
      */
-    fun merge(previous: List<WidgetBattery>, devices: List<WidgetDeviceInput>): List<WidgetBattery> {
+    fun merge(previous: List<WidgetBattery>, devices: List<WidgetDeviceInput>, now: Long = System.currentTimeMillis()): List<WidgetBattery> {
         val known = previous.associateBy { it.id }
         return devices.mapNotNull { d ->
+            val before = known[d.id]
             when {
-                d.level != null -> WidgetBattery(d.id, d.name, d.icon, d.level.coerceIn(0, 100), d.charging && d.online, !d.online)
-                else -> known[d.id]?.copy(name = d.name, icon = d.icon, charging = false, away = true)
+                d.level != null -> {
+                    val charging = d.charging && d.online
+                    // A change seen now, not the first time a device is heard of.
+                    val changedAt = if (before != null && before.charging != charging && !before.away) now else before?.chargeChangedAt ?: 0
+                    WidgetBattery(d.id, d.name, d.icon, d.level.coerceIn(0, 100), charging, !d.online, d.playing && d.online, changedAt)
+                }
+                else -> before?.copy(name = d.name, icon = d.icon, charging = false, away = true, playing = false)
             }
         }.sortedWith(compareBy<WidgetBattery>({ it.away }, { it.name.lowercase() }))
     }
@@ -72,7 +83,7 @@ object BatteryWidgetLogic {
     fun differsVisibly(old: List<WidgetBattery>, new: List<WidgetBattery>): Boolean {
         if (old.map { it.id } != new.map { it.id }) return true
         return old.zip(new).any { (a, b) ->
-            a.name != b.name || a.icon != b.icon || a.charging != b.charging || a.away != b.away ||
+            a.name != b.name || a.icon != b.icon || a.charging != b.charging || a.away != b.away || a.playing != b.playing ||
                 band(a.level) != band(b.level) || kotlin.math.abs(a.level - b.level) >= 5
         }
     }
@@ -84,16 +95,19 @@ object BatteryWidgetLogic {
         else -> 2
     }
 
-    fun encode(devices: List<WidgetBattery>, selfName: String?): String {
+    fun encode(devices: List<WidgetBattery>, selfName: String?, selfPlaying: Boolean = false): String {
         val array = JSONArray()
         devices.forEach {
             array.put(
                 JSONObject().put("id", it.id).put("name", it.name).put("icon", it.icon).put("level", it.level)
-                    .put("charging", it.charging).put("away", it.away),
+                    .put("charging", it.charging).put("away", it.away).put("playing", it.playing).put("chargeChangedAt", it.chargeChangedAt),
             )
         }
-        return JSONObject().put("devices", array).put("self", selfName ?: "").toString()
+        return JSONObject().put("devices", array).put("self", selfName ?: "").put("selfPlaying", selfPlaying).toString()
     }
+
+    /** Whether something plays on this phone, as [encode] wrote it. */
+    fun selfPlaying(text: String?): Boolean = runCatching { JSONObject(text ?: return false).optBoolean("selfPlaying") }.getOrDefault(false)
 
     /** The devices and the name of this phone, from what [encode] wrote. Anything unreadable is an empty widget, never a crash. */
     fun decode(text: String?): Pair<List<WidgetBattery>, String?> = runCatching {
@@ -102,7 +116,7 @@ object BatteryWidgetLogic {
         val list = (0 until array.length()).map { array.getJSONObject(it) }.map {
             WidgetBattery(
                 it.getString("id"), it.optString("name"), it.optString("icon"), it.optInt("level"),
-                it.optBoolean("charging"), it.optBoolean("away"),
+                it.optBoolean("charging"), it.optBoolean("away"), it.optBoolean("playing"), it.optLong("chargeChangedAt"),
             )
         }
         Pair(list, root.optString("self").ifEmpty { null })

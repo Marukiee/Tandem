@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Played once when a device comes off the charger: the green of the shape draws back into its middle and fades, and the shape in its own
+     colour is left. -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+  <aapt:attr name="android:drawable">
+    <vector
+        android:width="100dp"
+        android:height="100dp"
+        android:viewportWidth="100"
+        android:viewportHeight="100">
+      <group
+          android:name="drain"
+          android:pivotX="50"
+          android:pivotY="50">
+        <path
+            android:name="disc"
+            android:fillColor="#FF000000"
+            android:pathData="M50,17 A33,33 0 1,1 49.99,17 Z" />
+      </group>
+    </vector>
+  </aapt:attr>
+  <target android:name="drain">
+    <aapt:attr name="android:animation">
+      <set>
+        <objectAnimator android:propertyName="scaleX" android:valueFrom="1" android:valueTo="0.2" android:duration="700"
+            android:interpolator="@android:interpolator/accelerate_cubic" />
+        <objectAnimator android:propertyName="scaleY" android:valueFrom="1" android:valueTo="0.2" android:duration="700"
+            android:interpolator="@android:interpolator/accelerate_cubic" />
+      </set>
+    </aapt:attr>
+  </target>
+  <target android:name="disc">
+    <aapt:attr name="android:animation">
+      <objectAnimator android:propertyName="fillAlpha" android:valueFrom="1" android:valueTo="0" android:duration="700"
+          android:interpolator="@android:interpolator/accelerate_quad" />
+    </aapt:attr>
+  </target>
+</animated-vector>

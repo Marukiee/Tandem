@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same at night. -->
+<resources>
+    <color name="widget_primary">@android:color/system_accent1_200</color>
+    <color name="widget_on_primary">@android:color/system_accent1_800</color>
+    <color name="widget_secondary_container">@android:color/system_accent2_700</color>
+    <color name="widget_on_secondary_container">@android:color/system_accent2_100</color>
+    <color name="widget_surface_variant">@android:color/system_neutral2_700</color>
+    <color name="widget_on_surface_variant">@android:color/system_neutral2_200</color>
+    <color name="widget_outline">@android:color/system_neutral2_400</color>
+    <color name="widget_error">#FFF2B8B5</color>
+    <color name="widget_amber">#FFFFB95C</color>
+    <color name="widget_green">#FF81C995</color>
+    <color name="widget_green_container">#FF0F5223</color>
+    <color name="widget_on_green_container">#FFC4EED0</color>
+</resources>

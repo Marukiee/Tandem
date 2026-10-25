@@ -5,10 +5,11 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.RectF
 import android.net.Uri
 import android.os.Build
+import android.view.View
+import android.widget.RemoteViews
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,6 +25,7 @@ import androidx.glance.ImageProvider
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
+import androidx.glance.appwidget.AndroidRemoteViews
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
@@ -52,11 +54,8 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import nl.markmaaktmedia.tandem.MainActivity
 import nl.markmaaktmedia.tandem.R
-import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.roundToInt
-import kotlin.math.sin
 
 class BatteryWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = BatteryWidget()
@@ -82,7 +81,8 @@ class BatteryWidget : GlanceAppWidget() {
     private fun load(context: Context, version: Long): List<WidgetBattery> {
         val (others, selfName) = BatteryWidgetStore.read(context)
         val own = BatteryWidgetStore.ownBattery(context)?.let { (level, charging) ->
-            WidgetBattery(SELF, selfName ?: Build.MODEL, "phone", level, charging, away = false)
+            WidgetBattery(SELF, selfName ?: Build.MODEL, "phone", level, charging, away = false, playing = BatteryWidgetStore.selfPlaying(context),
+                chargeChangedAt = BatteryWidgetStore.selfChargeChangedAt)
         }
         return listOfNotNull(own) + others
     }
@@ -91,9 +91,6 @@ class BatteryWidget : GlanceAppWidget() {
         const val SELF = "this"
     }
 }
-
-// The warnings are the amber and red a Pixel uses for a low battery; the rest follows the wallpaper.
-private val amber = ColorProvider(day = Color(0xFFB86E00), night = Color(0xFFFFB95C))
 
 // Google Sans Flex where the system has it (a Pixel), otherwise the system's own sans.
 private val expressive = FontFamily("google-sans-flex")
@@ -138,45 +135,14 @@ private fun Content(devices: List<WidgetBattery>) {
 private fun Item(device: WidgetBattery, diameter: Int, names: Boolean, modifier: GlanceModifier) {
     val context = LocalContext.current
     val colors = GlanceTheme.colors
-    val tone = BatteryWidgetColors.tone(device.level, device.charging, device.away)
-    val arcColor = when (tone) {
-        BatteryTone.Normal -> colors.primary
-        BatteryTone.Low -> amber
-        BatteryTone.Critical -> colors.error
-        BatteryTone.Away -> colors.outline
-    }
-    // This phone in the strong primary, the others in the soft secondary container, a device that is away in grey: so this phone stands out.
-    val (container, onContainer) = when {
-        device.away -> colors.surfaceVariant to colors.onSurfaceVariant
-        device.id == BatteryWidget.SELF -> colors.primary to colors.onPrimary
-        else -> colors.secondaryContainer to colors.onSecondaryContainer
-    }
-    val shape = BatteryWidgetColors.shapeOf(device.icon)
     Column(modifier.clickable(actionStartActivity(openIntent(context, device.id))), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(GlanceModifier.size(diameter.dp), contentAlignment = Alignment.Center) {
-            Image(
-                ImageProvider(R.drawable.widget_ring_track), null, GlanceModifier.fillMaxSize(),
-                colorFilter = ColorFilter.tint(colors.surfaceVariant),
-            )
-            Image(
-                ImageProvider(arc(context, diameter, device.level)), null, GlanceModifier.fillMaxSize(),
-                colorFilter = ColorFilter.tint(arcColor),
-            )
-            Image(
-                ImageProvider(shapeMask(context, (diameter * SHAPE).roundToInt(), shape)), null, GlanceModifier.size((diameter * SHAPE).dp),
-                colorFilter = ColorFilter.tint(container),
-            )
-            Image(
-                ImageProvider(iconRes(device.icon)), null, GlanceModifier.size((diameter * 0.32f).dp),
-                colorFilter = ColorFilter.tint(onContainer),
-            )
-        }
+        AndroidRemoteViews(ring(context, device, diameter), GlanceModifier.size(diameter.dp))
         Spacer(GlanceModifier.height((diameter * 0.08f).dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (device.charging) {
                 Image(
                     ImageProvider(R.drawable.sym_bolt_filled), null, GlanceModifier.size(max(13f, diameter * 0.2f).dp),
-                    colorFilter = ColorFilter.tint(colors.primary),
+                    colorFilter = ColorFilter.tint(green),
                 )
                 Spacer(GlanceModifier.width(1.dp))
             }
@@ -198,6 +164,93 @@ private fun Item(device: WidgetBattery, diameter: Int, names: Boolean, modifier:
         }
     }
 }
+
+// The charger: green, as on a Pixel's own battery widget.
+private val green = ColorProvider(day = Color(0xFF1E8E3E), night = Color(0xFF81C995))
+
+/**
+ * The ring of one device as plain views (layout/widget_ring.xml), which is what lets it move: on the charger the arc, the shape and the icon go
+ * green, and while something plays the shape turns. Each state is a layer of its own that the frame fades in and out. The colours are
+ * resources with a day and a night value, so the ring follows the system between two updates as the rest of the widget does.
+ */
+private fun ring(context: Context, device: WidgetBattery, diameter: Int): RemoteViews {
+    val views = RemoteViews(context.packageName, R.layout.widget_ring)
+    val density = context.resources.displayMetrics.density
+    val charging = device.charging && !device.away
+    val playing = device.playing && !device.away
+    val arcColor = when (BatteryWidgetColors.tone(device.level, device.charging, device.away)) {
+        BatteryTone.Normal -> R.color.widget_primary
+        BatteryTone.Low -> R.color.widget_amber
+        BatteryTone.Critical -> R.color.widget_error
+        BatteryTone.Away -> R.color.widget_outline
+    }
+    // This phone in the strong primary, the others in the soft secondary container, a device that is away in grey: so this phone stands out.
+    val (container, onContainer) = when {
+        device.away -> R.color.widget_surface_variant to R.color.widget_on_surface_variant
+        device.id == BatteryWidget.SELF -> R.color.widget_primary to R.color.widget_on_primary
+        else -> R.color.widget_secondary_container to R.color.widget_on_secondary_container
+    }
+    val cookie = BatteryWidgetColors.shapeOf(device.icon) == BatteryShape.Cookie
+
+    val arc = arc(context, diameter, device.level)
+    views.setImageViewBitmap(R.id.ring_arc, arc)
+    views.setImageViewBitmap(R.id.ring_arc_green, arc)
+    tint(views, R.id.ring_track, R.color.widget_surface_variant)
+    tint(views, R.id.ring_arc, arcColor)
+    tint(views, R.id.ring_arc_green, R.color.widget_green)
+
+    val shapeInset = (diameter * (1 - SHAPE) / 2 * density).roundToInt()
+    val shape = if (cookie) R.drawable.widget_shape_cookie else R.drawable.widget_shape_clover
+    for (id in listOf(R.id.ring_shape, R.id.ring_shape_green)) views.setImageViewResource(id, shape)
+    tint(views, R.id.ring_shape, container)
+    tint(views, R.id.ring_shape_green, R.color.widget_green_container)
+    for ((id, color) in listOf(
+        R.id.ring_spin_cookie to container, R.id.ring_spin_cookie_green to R.color.widget_green_container,
+        R.id.ring_spin_clover to container, R.id.ring_spin_clover_green to R.color.widget_green_container,
+    )) {
+        views.setColorStateList(id, "setIndeterminateTintList", color)
+    }
+    for (id in listOf(R.id.ring_shape, R.id.ring_shape_green, R.id.ring_spin_cookie, R.id.ring_spin_cookie_green, R.id.ring_spin_clover, R.id.ring_spin_clover_green)) {
+        views.setViewPadding(id, shapeInset, shapeInset, shapeInset, shapeInset)
+    }
+
+    val iconInset = (diameter * (1 - ICON) / 2 * density).roundToInt()
+    for (id in listOf(R.id.ring_icon, R.id.ring_icon_green)) {
+        views.setImageViewResource(id, iconRes(device.icon))
+        views.setViewPadding(id, iconInset, iconInset, iconInset, iconInset)
+    }
+    tint(views, R.id.ring_icon, onContainer)
+    tint(views, R.id.ring_icon_green, R.color.widget_on_green_container)
+
+    // The change of the charger, played once by the view that appears with it: only in the update that comes with the change.
+    val justChanged = !device.away && System.currentTimeMillis() - device.chargeChangedAt < CHANGE_SHOWN_MS
+    views.setColorStateList(R.id.ring_charge_on, "setIndeterminateTintList", R.color.widget_green)
+    views.setColorStateList(R.id.ring_charge_off, "setIndeterminateTintList", R.color.widget_green_container)
+    for (id in listOf(R.id.ring_charge_on, R.id.ring_charge_off)) views.setViewPadding(id, shapeInset, shapeInset, shapeInset, shapeInset)
+
+    fun show(id: Int, visible: Boolean) = views.setViewVisibility(id, if (visible) View.VISIBLE else View.GONE)
+    show(R.id.ring_charge_on, justChanged && charging)
+    show(R.id.ring_charge_off, justChanged && !charging)
+    show(R.id.ring_arc, !charging)
+    show(R.id.ring_arc_green, charging)
+    show(R.id.ring_shape, !playing && !charging)
+    show(R.id.ring_shape_green, !playing && charging)
+    show(R.id.ring_spin_cookie, playing && cookie && !charging)
+    show(R.id.ring_spin_cookie_green, playing && cookie && charging)
+    show(R.id.ring_spin_clover, playing && !cookie && !charging)
+    show(R.id.ring_spin_clover_green, playing && !cookie && charging)
+    show(R.id.ring_icon, !charging)
+    show(R.id.ring_icon_green, charging)
+    return views
+}
+
+private fun tint(views: RemoteViews, id: Int, color: Int) = views.setColorStateList(id, "setImageTintList", color)
+
+/** The icon takes this part of the ring. */
+private const val ICON = 0.32f
+
+/** How long after a change of the charger an update still plays it. */
+private const val CHANGE_SHOWN_MS = 8_000L
 
 /** The shape fills this part of the ring, leaving a sliver of the card between them. */
 private const val SHAPE = 0.66f
@@ -223,26 +276,6 @@ private fun arc(context: Context, diameter: Int, level: Int): Bitmap {
         color = android.graphics.Color.BLACK
     }
     Canvas(bitmap).drawArc(RectF(line / 2, line / 2, px - line / 2, px - line / 2), -90f, BatteryWidgetColors.sweep(level), false, paint)
-    return bitmap
-}
-
-/** A cookie or a clover: a circle whose edge goes in and out in soft waves, which is how Material 3 Expressive draws them. */
-private fun shapeMask(context: Context, size: Int, shape: BatteryShape): Bitmap {
-    val px = max(1, (size * maskDensity(context)).roundToInt())
-    val bitmap = Bitmap.createBitmap(px, px, Bitmap.Config.ALPHA_8)
-    val centre = px / 2f
-    val path = Path()
-    val steps = 180
-    for (i in 0..steps) {
-        val angle = 2 * PI * i / steps
-        // From the full radius at a lobe to (1 - depth) of it between two lobes, along a cosine so every turn is round.
-        val radius = centre * (1 - shape.depth * (1 - cos(shape.lobes * angle).toFloat()) / 2)
-        val x = centre + radius * cos(angle - PI / 2).toFloat()
-        val y = centre + radius * sin(angle - PI / 2).toFloat()
-        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
-    }
-    path.close()
-    Canvas(bitmap).drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.BLACK })
     return bitmap
 }
 

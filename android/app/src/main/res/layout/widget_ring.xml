@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One ring of the battery widget (BatteryWidget.kt). Every state has its own layer and only one of each pair shows: the arc, the shape and the
+     icon in their colour or in green on the charger, the shape still or turning while something plays. A launcher builds a widget anew on
+     every update, so a change of state is shown by an animation that plays once when its view appears (the charge layers). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/ring_track"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:src="@drawable/widget_ring_track" />
+
+    <ImageView
+        android:id="@+id/ring_arc"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no" />
+
+    <ImageView
+        android:id="@+id/ring_arc_green"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/ring_shape"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no" />
+
+    <ImageView
+        android:id="@+id/ring_shape_green"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
+    <!-- The bars have no size limit of their own here: the default one keeps them at 48dp. -->
+    <ProgressBar
+        android:id="@+id/ring_spin_cookie"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:indeterminate="true"
+        android:indeterminateDrawable="@drawable/widget_spin_cookie"
+        android:indeterminateDuration="9000"
+        android:indeterminateBehavior="repeat"
+        android:minWidth="1dp"
+        android:minHeight="1dp"
+        android:maxWidth="1000dp"
+        android:maxHeight="1000dp"
+        android:visibility="gone" />
+
+    <ProgressBar
+        android:id="@+id/ring_spin_cookie_green"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:indeterminate="true"
+        android:indeterminateDrawable="@drawable/widget_spin_cookie"
+        android:indeterminateDuration="9000"
+        android:indeterminateBehavior="repeat"
+        android:minWidth="1dp"
+        android:minHeight="1dp"
+        android:maxWidth="1000dp"
+        android:maxHeight="1000dp"
+        android:visibility="gone" />
+
+    <ProgressBar
+        android:id="@+id/ring_spin_clover"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:indeterminate="true"
+        android:indeterminateDrawable="@drawable/widget_spin_clover"
+        android:indeterminateDuration="9000"
+        android:indeterminateBehavior="repeat"
+        android:minWidth="1dp"
+        android:minHeight="1dp"
+        android:maxWidth="1000dp"
+        android:maxHeight="1000dp"
+        android:visibility="gone" />
+
+    <ProgressBar
+        android:id="@+id/ring_spin_clover_green"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:indeterminate="true"
+        android:indeterminateDrawable="@drawable/widget_spin_clover"
+        android:indeterminateDuration="9000"
+        android:indeterminateBehavior="repeat"
+        android:minWidth="1dp"
+        android:minHeight="1dp"
+        android:maxWidth="1000dp"
+        android:maxHeight="1000dp"
+        android:visibility="gone" />
+
+    <!-- Once, just after a change of the charger: see widget_charge_on and widget_charge_off. Over the shape, under the icon. -->
+    <ProgressBar
+        android:id="@+id/ring_charge_on"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:indeterminate="true"
+        android:indeterminateDrawable="@drawable/widget_charge_on"
+        android:minWidth="1dp"
+        android:minHeight="1dp"
+        android:maxWidth="1000dp"
+        android:maxHeight="1000dp"
+        android:visibility="gone" />
+
+    <ProgressBar
+        android:id="@+id/ring_charge_off"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:indeterminate="true"
+        android:indeterminateDrawable="@drawable/widget_charge_off"
+        android:minWidth="1dp"
+        android:minHeight="1dp"
+        android:maxWidth="1000dp"
+        android:maxHeight="1000dp"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/ring_icon"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no" />
+
+    <ImageView
+        android:id="@+id/ring_icon_green"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+</FrameLayout>

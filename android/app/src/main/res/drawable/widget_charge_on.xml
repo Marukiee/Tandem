@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Played once when a device goes on the charger: a green disc grows out of the shape and fades, like a ripple. The ring shows it in a
+     progress bar, which starts an animated drawable by itself when it appears (BatteryWidget.kt). -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt">
+  <aapt:attr name="android:drawable">
+    <vector
+        android:width="100dp"
+        android:height="100dp"
+        android:viewportWidth="100"
+        android:viewportHeight="100">
+      <group
+          android:name="burst"
+          android:pivotX="50"
+          android:pivotY="50"
+          android:scaleX="0.6"
+          android:scaleY="0.6">
+        <path
+            android:name="disc"
+            android:fillAlpha="0.8"
+            android:fillColor="#FF000000"
+            android:pathData="M50,17 A33,33 0 1,1 49.99,17 Z" />
+      </group>
+    </vector>
+  </aapt:attr>
+  <target android:name="burst">
+    <aapt:attr name="android:animation">
+      <set>
+        <objectAnimator android:propertyName="scaleX" android:valueFrom="0.6" android:valueTo="1.45" android:duration="900"
+            android:interpolator="@android:interpolator/decelerate_cubic" />
+        <objectAnimator android:propertyName="scaleY" android:valueFrom="0.6" android:valueTo="1.45" android:duration="900"
+            android:interpolator="@android:interpolator/decelerate_cubic" />
+      </set>
+    </aapt:attr>
+  </target>
+  <target android:name="disc">
+    <aapt:attr name="android:animation">
+      <objectAnimator android:propertyName="fillAlpha" android:valueFrom="0.8" android:valueTo="0" android:duration="900"
+          android:interpolator="@android:interpolator/decelerate_quad" />
+    </aapt:attr>
+  </target>
+</animated-vector>

@@ -39,7 +39,7 @@ class Graph(app: Application) {
     )
 
     init {
-        nl.markmaaktmedia.tandem.widget.BatteryWidgetStore.start(app, host, deviceIcons, scope)
+        nl.markmaaktmedia.tandem.widget.BatteryWidgetStore.start(app, host, deviceIcons, media, scope)
         // Quick Share starts once the engine runs, when the person left it on.
         scope.launch {
             host.state.first { it == nl.markmaaktmedia.tandem.engine.EngineState.Running }

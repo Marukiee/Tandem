@@ -9,5 +9,7 @@
         <receiver android:name="nl.markmaaktmedia.tandem.engine.FocusSelfCheck" android:exported="true" />
         <!-- Debug builds only: plays a scroll of a trackpad and measures the finger (see ScrollSelfCheck). -->
         <receiver android:name="nl.markmaaktmedia.tandem.live.ScrollSelfCheck" android:exported="true" />
+        <!-- Debug builds only: made up batteries for the battery widget, to see its changes (see WidgetSelfCheck). -->
+        <receiver android:name="nl.markmaaktmedia.tandem.widget.WidgetSelfCheck" android:exported="true" />
     </application>
 </manifest>
