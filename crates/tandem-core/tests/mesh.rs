@@ -271,6 +271,33 @@ async fn a_send_to_several_devices_reaches_all_of_them() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_copied_picture_waits_for_the_clipboard_and_not_in_downloads() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    wait_until("connected", || online(&phone, mac.engine.id()) && online(&mac, phone.engine.id())).await;
+
+    let picture = random_bytes(80_000, 9);
+    let mut mac_events = mac.engine.subscribe();
+    phone
+        .engine
+        .send_bytes(&[mac.engine.id()], "Screenshot_20261025.png", "image/png", picture.clone(), ShareOrigin::Clipboard)
+        .await
+        .unwrap();
+    let done = expect(&mut mac_events, "picture for the clipboard", |e| match e {
+        Event::Finished(done) if done.incoming => Some(done.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(done.error, None);
+    let location = PathBuf::from(done.location.unwrap());
+    assert_eq!(std::fs::read(&location).unwrap(), picture);
+    assert!(location.starts_with(mac.data.join("clipboard")), "{location:?} is not in the clipboard folder");
+    assert_eq!(location.file_name().unwrap(), "Screenshot_20261025.png");
+    assert!(!mac.downloads.join("Screenshot_20261025.png").exists());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn an_interrupted_download_resumes_from_where_it_stopped() {
     let phone = node("Phone").await;
     let mac = node("Mac").await;

@@ -54,6 +54,8 @@ pub struct Settings {
     pub clip_history: bool,
     pub clip_limit: u32,
     pub clip_days: u32,
+    /// A screenshot taken here goes to the clipboards of the devices that share the clipboard (see `screenshots.rs`).
+    pub send_screenshots: bool,
     /// Other devices may look at the screen of this computer (when each of them is allowed, see `host.rs`). Off: they are all turned away.
     pub screen_host: bool,
     /// How much sound of a phone waits before it plays: "low", "normal" or "smooth".
@@ -102,6 +104,7 @@ impl Default for Settings {
             clip_history: true,
             clip_limit: 250,
             clip_days: 30,
+            send_screenshots: true,
             screen_host: true,
             sound_delay: "normal".into(),
             screen_sound: "there".into(),

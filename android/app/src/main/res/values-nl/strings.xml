@@ -113,6 +113,8 @@
     <string name="settings_sharing">Delen</string>
     <string name="settings_screenshot">Screenshots aanbieden om te delen</string>
     <string name="settings_screenshot_sub">Na een screenshot kun je hem met één tik naar een apparaat sturen</string>
+    <string name="settings_send_screenshots">Stuur screenshots naar je apparaten</string>
+    <string name="settings_send_screenshots_sub">Een screenshot die je maakt staat op het klembord van de apparaten die het klembord met deze telefoon delen</string>
     <string name="settings_bg_clipboard">Klembord op de achtergrond synchroniseren</string>
     <string name="settings_bg_clipboard_sub">Android laat een app het klembord alleen lezen als hij in beeld is. Gebruik de tegel Klembord sturen, of geef de geavanceerde toestemming op de Rechten-pagina.</string>
     <string name="settings_notifications">Meldingen en gesprekken</string>

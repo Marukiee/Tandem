@@ -284,6 +284,7 @@ class EngineHost(
         val manager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         manager.setPrimaryClip(ClipData.newPlainText("Tandem", text))
         lastRemoteClip = text
+        nl.markmaaktmedia.tandem.share.ClipboardPictures.movedOn()
     }
 
     /** The text we just wrote to the clipboard ourselves, so we do not send it back. */

@@ -12,6 +12,7 @@ mod capture;
 mod quickshare;
 mod clip;
 mod clipfiles;
+mod screenshots;
 mod sendwith;
 mod commands;
 mod drag;
@@ -147,6 +148,7 @@ pub fn run() {
             decoder_probe::warm_up();
             quickshare::configure(&handle);
             clip::start(handle.clone());
+            screenshots::start(&handle);
             // Started with Windows it waits in the tray; started by hand it shows its window.
             let args: Vec<String> = std::env::args().collect();
             if sendwith::handle_args(&handle, &args) {

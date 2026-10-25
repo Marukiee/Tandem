@@ -789,9 +789,6 @@ function FocusSettings({ s, patch }) {
     </div>`;
 }
 
-    onChange=${(v) => call("set_guests_by_default", { on: v }).then(() => setOn(v)).catch(failed)} />`;
-}
-
 function GeneralSettings({ s, patch }) {
   const [name, setName] = useState(state.self ? state.self.name : "");
   const delays = ["low", "normal", "smooth"];
@@ -871,6 +868,10 @@ function ClipboardSettings({ s, patch }) {
   const summary = [t("clip_items", info.count), info.pinned ? t("clip_pinned", info.pinned) : "", info.bytes ? fmtSize(info.bytes) : ""].filter(Boolean).join(", ");
   return html`<div style="display:flex;flex-direction:column;gap:12px">
     <h2>${t("tab_clipboard")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="photo" title=${t("clip_screenshots")} sub=${t("clip_screenshots_sub")} on=${s.sendScreenshots !== false} onChange=${(v) => patch({ sendScreenshots: v })} />
+    </div>
+    <h2>${t("clip_history_heading")}</h2>
     <div class="card flush">
       <${SettingRow} icon="clipboard" title=${t("clip_keep")} sub=${t("clip_keep_sub")} on=${s.clipHistory} onChange=${(v) => patch({ clipHistory: v })} />
     </div>

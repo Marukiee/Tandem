@@ -16,6 +16,9 @@ import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import uniffi.tandem_core.TandemShareOrigin
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.engine.ActionReceiver
@@ -24,8 +27,11 @@ import nl.markmaaktmedia.tandem.engine.EngineHost
 import nl.markmaaktmedia.tandem.engine.Permissions
 
 /**
- * Notices a new screenshot and offers to send it: a heads-up notification with a
- * button per device. Your devices are one tap away instead of three.
+ * Notices a new screenshot. It goes straight to the clipboards of the devices that share the clipboard with this phone (when
+ * "Send screenshots to your devices" is on), and a heads-up notification offers to send it as a file, with a button per device.
+ *
+ * MediaStore is the only way in: Android 14's screen capture callback only tells an app about screenshots of its own activity
+ * while it is in front, and without the picture (see docs/PARITY.md).
  */
 class ScreenshotWatcher(
     private val context: Context,
@@ -34,6 +40,8 @@ class ScreenshotWatcher(
     private val scope: CoroutineScope,
 ) {
     private var lastHandled = 0L
+    /** One look at a time: a screenshot changes MediaStore several times, and each change asks for a look. */
+    private val looking = Mutex()
     private val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean, uri: Uri?) {
             scope.launch { inspect() }
@@ -48,19 +56,28 @@ class ScreenshotWatcher(
         context.contentResolver.unregisterContentObserver(observer)
     }
 
-    private suspend fun inspect() {
-        if (!prefs.screenshotPrompt.first() || !Permissions.photos(context) || !Channels.canPost(context)) return
+    private suspend fun inspect() = looking.withLock {
+        if (!Permissions.photos(context)) return@withLock
         val online = host.devices.value.filter { it.online }
-        if (online.isEmpty()) return
+        if (online.isEmpty()) return@withLock
+        val offer = prefs.screenshotPrompt.first() && Channels.canPost(context)
+        val clipboards = if (prefs.sendScreenshots.first()) online.filter { it.clipboardEnabled }.map { it.id } else emptyList()
+        if (!offer && clipboards.isEmpty()) return@withLock
 
-        val uri = latestScreenshot() ?: return
-        val thumbnail = runCatching { context.contentResolver.loadThumbnail(uri, Size(720, 720), null) }.getOrNull()
-        post(uri, online.map { it.id to it.name }, thumbnail)
+        val (uri, size) = latestScreenshot() ?: return@withLock
+        // As large as the other side takes for its clipboard without asking.
+        if (clipboards.isNotEmpty() && size <= EngineHost.CLIPBOARD_FILES_LIMIT) {
+            runCatching { host.sendUris(listOf(uri), clipboards, TandemShareOrigin.Clipboard) }
+        }
+        if (offer) {
+            val thumbnail = runCatching { context.contentResolver.loadThumbnail(uri, Size(720, 720), null) }.getOrNull()
+            post(uri, online.map { it.id to it.name }, thumbnail)
+        }
     }
 
-    /** The newest screenshot from the last few seconds, if it has not been offered yet. */
-    private fun latestScreenshot(): Uri? {
-        val projection = arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DATE_ADDED, MediaStore.Images.Media.RELATIVE_PATH, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.IS_PENDING)
+    /** The newest screenshot from the last few seconds, with its size, if it has not been handled yet. */
+    private fun latestScreenshot(): Pair<Uri, Long>? {
+        val projection = arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DATE_ADDED, MediaStore.Images.Media.RELATIVE_PATH, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.IS_PENDING, MediaStore.Images.Media.SIZE)
         val since = System.currentTimeMillis() / 1000 - 12
         context.contentResolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI, projection,
@@ -72,10 +89,9 @@ class ScreenshotWatcher(
                 val path = cursor.getString(2).orEmpty()
                 val name = cursor.getString(3).orEmpty()
                 val pending = cursor.getInt(4)
-                val isScreenshot = path.contains("Screenshot", true) || name.startsWith("Screenshot", true)
-                if (!isScreenshot || pending != 0 || id <= lastHandled) continue
+                if (!isScreenshot(path, name) || pending != 0 || id <= lastHandled) continue
                 lastHandled = id
-                return ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
+                return ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id) to cursor.getLong(5)
             }
         }
         return null
@@ -131,6 +147,16 @@ class ScreenshotWatcher(
 
     companion object {
         const val SCREENSHOT_ID = 3
+
+        /**
+         * A screenshot is in a Screenshots folder (Pictures/Screenshots, DCIM/Screenshots), or is named like one. Never what is in
+         * Downloads: a screenshot that another device sent lands there, and would otherwise be taken for a new one and sent back.
+         */
+        fun isScreenshot(relativePath: String, name: String): Boolean {
+            if (relativePath.startsWith("Download", ignoreCase = true)) return false
+            val inFolder = relativePath.split('/').any { it.equals("Screenshots", ignoreCase = true) }
+            return inFolder || name.startsWith("Screenshot", ignoreCase = true)
+        }
 
         /**
          * Turns the screenshot notification into a short status line (sending, sent, failed).

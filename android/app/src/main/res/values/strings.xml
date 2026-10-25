@@ -116,6 +116,8 @@
     <string name="settings_sharing">Sharing</string>
     <string name="settings_screenshot">Offer to share screenshots</string>
     <string name="settings_screenshot_sub">After a screenshot, a notification lets you send it to a device in one tap</string>
+    <string name="settings_send_screenshots">Send screenshots to your devices</string>
+    <string name="settings_send_screenshots_sub">A screenshot you take is on the clipboard of the devices that share the clipboard with this phone</string>
     <string name="settings_bg_clipboard">Sync clipboard in the background</string>
     <string name="settings_bg_clipboard_sub">Android only lets an app read the clipboard while it is on screen. Use the Send clipboard tile, or grant the advanced permission on the Permissions page.</string>
     <string name="settings_notifications">Notifications and calls</string>

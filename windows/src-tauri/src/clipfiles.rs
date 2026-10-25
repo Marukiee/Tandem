@@ -30,6 +30,30 @@ struct Seen {
 }
 static SEEN: Mutex<Seen> = Mutex::new(Seen { applied: None, applied_at: None, last: None });
 
+/// The last picture that was sent, by a copy or as a screenshot. Windows and GNOME save a screenshot and also put it on the clipboard,
+/// and that is one screenshot: the second way sees it was just sent. The pixels are compared, and as a fallback the size, because the
+/// copy Windows puts on the clipboard need not have the same alpha as the file that was saved.
+struct Sent {
+    hash: u64,
+    size: (u32, u32),
+    screenshot: bool,
+    at: Instant,
+}
+static SENT: Mutex<Option<Sent>> = Mutex::new(None);
+
+/// True when this picture was not just sent the other way; it then counts as sent now. Two copies of the same size are two pictures:
+/// the size only counts between a copy and a screenshot.
+fn claim_picture(hash: u64, size: (u32, u32), screenshot: bool) -> bool {
+    let mut sent = SENT.lock().unwrap();
+    let twice = sent.as_ref().is_some_and(|s| {
+        s.at.elapsed() < Duration::from_secs(5) && (s.hash == hash || (s.size == size && s.screenshot != screenshot))
+    });
+    if !twice {
+        *sent = Some(Sent { hash, size, screenshot, at: Instant::now() });
+    }
+    !twice
+}
+
 /// The clipboard that pictures and files are put on. It is kept: on Linux what is on the clipboard is served by the program that put it
 /// there, for as long as that one holds it.
 static BOARD: Mutex<Option<Clipboard>> = Mutex::new(None);
@@ -123,6 +147,9 @@ pub fn copied_picture(app: &AppHandle, board: &mut Clipboard) -> bool {
         return true;
     }
     let Some(rgba) = image::RgbaImage::from_raw(image.width as u32, image.height as u32, image.bytes.into_owned()) else { return true };
+    if targets(app).is_empty() || !claim_picture(hash_of(rgba.as_raw()), rgba.dimensions(), false) {
+        return true;
+    }
     let mut png = std::io::Cursor::new(Vec::new());
     if rgba.write_to(&mut png, image::ImageFormat::Png).is_err() || png.get_ref().len() > PICTURE_LIMIT {
         return true;
@@ -134,6 +161,25 @@ pub fn copied_picture(app: &AppHandle, board: &mut Clipboard) -> bool {
         send(app, vec![file]);
     }
     true
+}
+
+/// A screenshot was saved here (see `screenshots`). It goes as the file it is, to the clipboards of the devices that share the
+/// clipboard, when the switch for it is on.
+pub fn screenshot_taken(app: &AppHandle, path: &Path) {
+    if !crate::settings::get(app).send_screenshots || targets(app).is_empty() {
+        return;
+    }
+    if std::fs::metadata(path).map(|m| m.len()).unwrap_or(u64::MAX) > FILES_LIMIT {
+        return;
+    }
+    let Ok(decoded) = image::open(path) else { return };
+    let rgba = decoded.to_rgba8();
+    let hash = hash_of(rgba.as_raw());
+    // What the clipboard watcher would make of the same picture, so it does not send it again.
+    SEEN.lock().unwrap().last = Some(hash);
+    if claim_picture(hash, rgba.dimensions(), true) {
+        send(app, vec![path.to_path_buf()]);
+    }
 }
 
 // ---- Receiving --------------------------------------------------------------------------------------------------------------------
@@ -170,6 +216,14 @@ pub fn finished(app: &AppHandle, peer: &str, offer: u64, location: &Option<Strin
     };
     let name = events::device_name(app, peer);
     let picture = (files.len() == 1).then(|| picture_to_clipboard(&files[0]).ok()).flatten();
+    // A single picture waits in the core's clipboard folder (see `kept_for_clipboard`). The clipboard holds the picture itself now, so
+    // the file goes: screenshots from every device would otherwise pile up.
+    if files.len() == 1 && waits_for_clipboard(&files[0]) {
+        let _ = std::fs::remove_file(&files[0]);
+        if let Some(folder) = files[0].parent() {
+            let _ = std::fs::remove_dir(folder);
+        }
+    }
     let put = picture.is_some() || files_to_clipboard(&files).is_ok();
     if !put {
         return true;
@@ -182,6 +236,10 @@ pub fn finished(app: &AppHandle, peer: &str, offer: u64, location: &Option<Strin
     };
     events::say(app, &said);
     true
+}
+
+fn waits_for_clipboard(file: &Path) -> bool {
+    file.parent().and_then(Path::parent).and_then(Path::file_name).is_some_and(|n| n == tandem_core::transfer::CLIPBOARD_DIR)
 }
 
 fn with_board<T>(work: impl FnOnce(&mut Clipboard) -> Result<T, arboard::Error>) -> Result<T, String> {
@@ -204,4 +262,21 @@ pub fn picture_to_clipboard(path: &Path) -> Result<(), String> {
 fn files_to_clipboard(paths: &[PathBuf]) -> Result<(), String> {
     applied(hash_paths(paths));
     with_board(|board| board.set().file_list(paths))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_screenshot_that_is_also_copied_is_sent_once() {
+        *SENT.lock().unwrap() = None;
+        assert!(claim_picture(1, (1920, 1080), true));
+        // The same pixels from the clipboard, and the copy Windows made with other alpha.
+        assert!(!claim_picture(1, (1920, 1080), false));
+        assert!(!claim_picture(2, (1920, 1080), false));
+        // Another picture of another size is news, and so is a second copy of the same size.
+        assert!(claim_picture(3, (800, 600), false));
+        assert!(claim_picture(4, (800, 600), false));
+    }
 }

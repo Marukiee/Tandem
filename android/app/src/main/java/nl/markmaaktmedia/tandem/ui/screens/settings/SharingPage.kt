@@ -48,6 +48,7 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
 
     val deviceName by prefs.deviceName.collectAsState(initial = null)
     val screenshot by prefs.screenshotPrompt.collectAsState(initial = true)
+    val sendScreenshots by prefs.sendScreenshots.collectAsState(initial = true)
     val bleMessages by prefs.bluetoothMessages.collectAsState(initial = true)
     val autoTailscale by prefs.autoTailscale.collectAsState(initial = true)
     val pointerIn by prefs.pointerIn.collectAsState(initial = false)
@@ -72,39 +73,46 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         // Family and friends: a device that is paired from now on starts without clipboard, without notifications and with files asked about.
         SectionHeader(stringResource(R.string.settings_sharing))
         SettingsGroup {
-            SettingsTarget(FocusKeys.Screenshot, 0, 6) {
+            SettingsTarget(FocusKeys.Screenshot, 0, 7) {
                 SwitchRow(
-                    0, 6, TandemIcons.Screenshot, stringResource(R.string.settings_screenshot), stringResource(R.string.settings_screenshot_sub), screenshot, { scope.launch { prefs.setScreenshotPrompt(it) } },
+                    0, 7, TandemIcons.Screenshot, stringResource(R.string.settings_screenshot), stringResource(R.string.settings_screenshot_sub), screenshot, { scope.launch { prefs.setScreenshotPrompt(it) } },
                     blocked = if (status.photos) null else stringResource(R.string.perm_needs_photos), onBlocked = { onOpen(Route.Access) },
                 )
             }
-            SettingsTarget(FocusKeys.Ble, 1, 6) {
+            SettingsTarget(FocusKeys.SendScreenshots, 1, 7) {
                 SwitchRow(
-                    1, 6, TandemIcons.Bluetooth, stringResource(R.string.settings_ble_messages), stringResource(R.string.settings_ble_messages_sub), bleMessages, { scope.launch { prefs.setBluetoothMessages(it) } },
+                    1, 7, TandemIcons.Paste, stringResource(R.string.settings_send_screenshots), stringResource(R.string.settings_send_screenshots_sub), sendScreenshots,
+                    { scope.launch { prefs.setSendScreenshots(it) } },
+                    blocked = if (status.photos) null else stringResource(R.string.perm_needs_photos), onBlocked = { onOpen(Route.Access) },
+                )
+            }
+            SettingsTarget(FocusKeys.Ble, 2, 7) {
+                SwitchRow(
+                    2, 7, TandemIcons.Bluetooth, stringResource(R.string.settings_ble_messages), stringResource(R.string.settings_ble_messages_sub), bleMessages, { scope.launch { prefs.setBluetoothMessages(it) } },
                     blocked = if (status.bluetooth) null else stringResource(R.string.perm_needs_bluetooth), onBlocked = { onOpen(Route.Access) },
                 )
             }
-            SettingsTarget(FocusKeys.AutoTailscale, 2, 6) {
+            SettingsTarget(FocusKeys.AutoTailscale, 3, 7) {
                 SwitchRow(
-                    2, 6, TandemIcons.Wifi, stringResource(R.string.settings_auto_tailscale), stringResource(R.string.settings_auto_tailscale_sub), autoTailscale,
+                    3, 7, TandemIcons.Wifi, stringResource(R.string.settings_auto_tailscale), stringResource(R.string.settings_auto_tailscale_sub), autoTailscale,
                     { scope.launch { prefs.setAutoTailscale(it) } },
                 )
             }
-            SettingsTarget(FocusKeys.PointerIn, 3, 6) {
+            SettingsTarget(FocusKeys.PointerIn, 4, 7) {
                 SwitchRow(
-                    3, 6, TandemIcons.Mouse, stringResource(R.string.settings_pointer_in), stringResource(R.string.settings_pointer_in_sub), pointerIn,
+                    4, 7, TandemIcons.Mouse, stringResource(R.string.settings_pointer_in), stringResource(R.string.settings_pointer_in_sub), pointerIn,
                     { scope.launch { prefs.setPointerIn(it) } },
                     blocked = if (nl.markmaaktmedia.tandem.live.TandemAccessibilityService.running) null else stringResource(R.string.pointer_in_needs_access),
                     onBlocked = { onOpen(Route.Access) },
                 )
             }
             ActionRow(
-                4, 6, TandemIcons.Bolt, stringResource(R.string.settings_tiles), stringResource(R.string.settings_tiles_sub),
+                5, 7, TandemIcons.Bolt, stringResource(R.string.settings_tiles), stringResource(R.string.settings_tiles_sub),
                 { onOpen(Route.SettingsPage(SettingsPageId.Tiles)) },
                 modifier = Modifier.routeBounds(routeKey(Route.SettingsPage(SettingsPageId.Tiles))),
             )
             ActionRow(
-                5, 6, TandemIcons.Paste, stringResource(R.string.clip_history_title), stringResource(R.string.clip_history_row_sub),
+                6, 7, TandemIcons.Paste, stringResource(R.string.clip_history_title), stringResource(R.string.clip_history_row_sub),
                 { onOpen(Route.ClipboardHistory) }, modifier = Modifier.routeBounds(routeKey(Route.ClipboardHistory)),
             )
         }
