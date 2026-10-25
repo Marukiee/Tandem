@@ -274,6 +274,7 @@ h2 { font: 600 16px var(--font-display); margin: 6px 2px 0; }
 .feature-mark .icon { color: inherit; }
 .setting.disabled select { opacity: 0.5; }
 .switch:disabled { opacity: 0.45; cursor: not-allowed; }
+.switch.grey { opacity: 0.45; }
 
 input[type="text"], textarea, select {
   font: inherit;

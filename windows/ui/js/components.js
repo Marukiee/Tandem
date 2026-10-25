@@ -91,8 +91,10 @@ export function Chip({ icon, children, tone = "" }) {
   return html`<span class=${"chip " + tone}>${icon && html`<${Icon} name=${icon} size=${14} />`}${children}</span>`;
 }
 
-export function Switch({ on, onChange, label, disabled }) {
-  return html`<button class=${"switch" + (on ? " on" : "")} role="switch" aria-checked=${on} aria-label=${label} disabled=${!!disabled} onClick=${() => !disabled && onChange(!on)}></button>`;
+// `grey`: looks off and greyed but still takes a press, so the page can say why it cannot be on. A disabled button would take none.
+export function Switch({ on, onChange, label, disabled, grey }) {
+  return html`<button class=${"switch" + (on && !grey ? " on" : "") + (grey ? " grey" : "")} role="switch" aria-checked=${on && !grey} aria-disabled=${!!grey} aria-label=${label}
+    disabled=${!!disabled} onClick=${() => !disabled && onChange(grey ? true : !on)}></button>`;
 }
 
 const routeText = { lan: "local_network", tailnet: "tailscale", other: "internet" };

@@ -10,6 +10,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.FocusMode
@@ -25,8 +27,8 @@ import nl.markmaaktmedia.tandem.ui.components.TandemDialog
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 
 /**
- * Focus the same on every device. The rows look the same whether or not Android has given Tandem access to Do Not Disturb: someone
- * may not want this at all. What is missing is only said when the person turns it on, or opens what its mode lets through.
+ * Focus the same on every device. Without access to Do Not Disturb the switch is grey and off, not on as if it worked; a tap on it
+ * or on what its mode lets through says why, with the way to allow it.
  */
 @Composable
 internal fun FocusGroup() {
@@ -36,16 +38,18 @@ internal fun FocusGroup() {
     val share by prefs.focusShare.collectAsState(initial = true)
     val followOnly by prefs.focusFollowOnly.collectAsState(initial = false)
     var explain by remember { mutableStateOf(false) }
+    // Read again on return: the access is given in the settings of Android.
+    var allowed by remember { mutableStateOf(FocusMode.canUse(context)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { allowed = FocusMode.canUse(context) }
 
     SectionHeader(stringResource(R.string.focus_section))
     SettingsGroup {
         SettingsTarget(FocusKeys.FocusShare, 0, 3) {
             SwitchRow(
                 0, 3, TandemIcons.Dnd, stringResource(R.string.focus_share), stringResource(R.string.focus_share_sub), share,
-                { on ->
-                    scope.launch { prefs.setFocusShare(on) }
-                    if (on && !FocusMode.canUse(context)) explain = true
-                },
+                { on -> scope.launch { prefs.setFocusShare(on) } },
+                blocked = if (allowed) null else stringResource(R.string.focus_needs_access),
+                onBlocked = { explain = true },
             )
         }
         DropdownRow(

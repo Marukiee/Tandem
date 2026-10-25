@@ -10,6 +10,7 @@
     <string name="focus_follow_only">Only follow</string>
     <string name="focus_mode_settings">What comes through</string>
     <string name="focus_mode_settings_sub">Choose in the settings of Android what still reaches you while another device has Focus on</string>
+    <string name="focus_needs_access">Needs access to Do Not Disturb</string>
     <string name="focus_access_dialog">Allow Do Not Disturb</string>
     <string name="focus_access_body">When another device turns on Focus, Tandem turns on a mode of its own on this phone, and you choose in the settings of Android what still comes through. Android asks you to allow that once.</string>
     <string name="focus_later">Not now</string>

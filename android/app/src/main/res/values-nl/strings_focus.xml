@@ -10,6 +10,7 @@
     <string name="focus_follow_only">Alleen volgen</string>
     <string name="focus_mode_settings">Wat er door mag</string>
     <string name="focus_mode_settings_sub">Kies in de instellingen van Android wat je nog bereikt terwijl een ander apparaat Focus aan heeft</string>
+    <string name="focus_needs_access">Heeft toegang tot Niet storen nodig</string>
     <string name="focus_access_dialog">Niet storen toestaan</string>
     <string name="focus_access_body">Als een ander apparaat Focus aanzet, zet Tandem op deze telefoon een eigen modus aan, en jij kiest in de instellingen van Android wat er nog door mag. Android vraagt je dat één keer toe te staan.</string>
     <string name="focus_later">Niet nu</string>

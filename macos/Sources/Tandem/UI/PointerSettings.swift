@@ -59,14 +59,13 @@ struct PointerSettings: View {
             }
 
             Section {
-                // Looks the same with or without the permission: turning it on without it asks for it.
+                // Grey and off without the permission, not on as if it worked: the Allow button is just above.
                 DescribedToggle(
                     "Universal mouse",
-                    subtitle: "Choose below where each computer sits",
-                    isOn: Binding(get: { share.enabled }, set: { on in
-                        if on && !trusted { requestAccessibility() } else { share.enabled = on }
-                    })
+                    subtitle: trusted ? "Choose below where each computer sits" : "Needs Accessibility, above",
+                    isOn: Binding(get: { share.enabled && trusted }, set: { on in share.enabled = on })
                 )
+                .disabled(!trusted)
                 // Always there and only greyed while off: rows that come and go with the switch made the whole page jump.
                 Group {
                     if neighbourChoices.isEmpty {
@@ -94,8 +93,8 @@ struct PointerSettings: View {
                         }
                     }
                 }
-                .disabled(!share.enabled)
-                .opacity(share.enabled ? 1 : 0.45)
+                .disabled(!share.enabled || !trusted)
+                .opacity(share.enabled && trusted ? 1 : 0.45)
             } header: {
                 Text("Use this Mac's mouse and keyboard on other computers")
             } footer: {
@@ -145,20 +144,16 @@ struct PointerSettings: View {
                 ForEach(computers, id: \.id) { device in
                     DescribedToggle(
                         LocalizedStringKey(device.name),
-                        subtitle: share.controlledBy == device.id ? "Using this Mac right now" : "May use this Mac's screen as its next screen",
+                        subtitle: !trusted ? "Needs Accessibility, above"
+                            : share.controlledBy == device.id ? "Using this Mac right now" : "May use this Mac's screen as its next screen",
                         isOn: Binding(
-                            get: { share.isAllowed(device.id) },
+                            get: { share.isAllowed(device.id) && trusted },
                             set: { on in
-                                if on && !trusted {
-                                    requestAccessibility()
-                                } else if on {
-                                    share.allowed.insert(device.id)
-                                } else {
-                                    share.allowed.remove(device.id)
-                                }
+                                if on { share.allowed.insert(device.id) } else { share.allowed.remove(device.id) }
                             }
                         )
                     )
+                    .disabled(!trusted)
                 }
             } header: {
                 Text("Other computers using this Mac")

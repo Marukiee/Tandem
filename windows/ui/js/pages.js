@@ -128,11 +128,11 @@ export function TransferRow({ item }) {
 }
 
 /** [disabled] greys the row out, and [why] says in its place what has to be done before it works. */
-function SettingRow({ icon, title, sub, on, onChange, children, disabled, why }) {
-  return html`<div class=${"setting" + (disabled ? " disabled" : "")}>
+function SettingRow({ icon, title, sub, on, onChange, children, disabled, why, grey }) {
+  return html`<div class=${"setting" + (disabled || grey ? " disabled" : "")}>
     <${Icon} name=${icon} size=${20} />
     <div class="grow"><div class="t">${title}</div>${(why || sub) && html`<div class="s">${why || sub}</div>`}</div>
-    ${children || html`<${Switch} on=${on && !disabled} onChange=${onChange} label=${title} disabled=${disabled} />`}
+    ${children || html`<${Switch} on=${on && !disabled} onChange=${onChange} label=${title} disabled=${disabled} grey=${grey} />`}
   </div>`;
 }
 
@@ -622,7 +622,7 @@ function MouseSection({ s, patch }) {
 
     <h2>${t("mouse_in")}</h2>
     <div class="card flush">
-      <${SettingRow} icon="pointer" title=${t("mouse_in_title")} sub=${t("mouse_in_sub")} on=${s.remoteInput} onChange=${(v) => (v && !state.input.ok ? say(inputWhy()) : patch({ remoteInput: v }))} />
+      <${SettingRow} icon="pointer" title=${t("mouse_in_title")} sub=${t("mouse_in_sub")} on=${s.remoteInput && state.input.ok} grey=${!state.input.ok} onChange=${(v) => (v && !state.input.ok ? say(inputWhy()) : patch({ remoteInput: v }))} />
       ${state.hasLid && html`<${SettingRow} icon="device-laptop" title=${t("lid_title")} sub=${t("lid_sub")} on=${s.keepWhenLidClosed} onChange=${(v) => patch({ keepWhenLidClosed: v })} />`}
     </div>
     ${s.remoteInput && state.input.ok && html`<${AllowedDevices} s=${s} patch=${patch} />`}
@@ -785,8 +785,7 @@ function FeaturesSettings() {
   </div>`;
 }
 
-// Focus the same on every device. The switch looks the same whatever the desktop can do; a desktop without a Do Not Disturb is only
-// mentioned when the person turns it on, and then the switch stays off.
+// Focus the same on every device. On a desktop without a Do Not Disturb the switch is grey and off, and says why when pressed.
 function FocusSettings({ s, patch }) {
   const [info, setInfo] = useState(null);
   useEffect(() => { call("focus_info").then(setInfo).catch(() => {}); }, []);
@@ -794,7 +793,7 @@ function FocusSettings({ s, patch }) {
   const change = (v) => (v && !info.read ? say(t("focus_unsupported")) : patch({ focusShare: v }));
   return html`<h2>${t("focus")}</h2>
     <div class="card flush">
-      <${SettingRow} icon="moon" title=${t("focus_share")} sub=${t(info.read && !info.set ? "focus_share_sub_send" : "focus_share_sub")} on=${s.focusShare ?? info.read} onChange=${change} />
+      <${SettingRow} icon="moon" title=${t("focus_share")} sub=${t(info.read && !info.set ? "focus_share_sub_send" : "focus_share_sub")} on=${info.read && (s.focusShare ?? true)} grey=${!info.read} onChange=${change} />
       ${info.read && info.set && html`<${SettingRow} icon="refresh" title=${t("focus_direction")} sub=${t("focus_direction_sub")}>
         <select value=${s.focusFollowOnly ? "follow" : "both"} onChange=${(e) => patch({ focusFollowOnly: e.target.value === "follow" })}>
           <option value="both">${t("focus_both")}</option><option value="follow">${t("focus_follow_only")}</option>
@@ -933,7 +932,7 @@ function RemoteSettings({ s, patch }) {
     <h2>${t("tab_remote")}</h2>
     <div class="muted">${t("remote_intro")}</div>
     <div class="card flush">
-      <${SettingRow} icon="device-desktop" title=${t("remote_host")} sub=${t("remote_host_sub")} on=${s.screenHost && state.canHost}
+      <${SettingRow} icon="device-desktop" title=${t("remote_host")} sub=${t("remote_host_sub")} on=${s.screenHost && state.canHost} grey=${!state.canHost}
         onChange=${(v) => (v && !state.canHost ? say(t("remote_unavailable")) : patch({ screenHost: v }))} />
     </div>
     <h2>${t("screen_sound")}</h2>
