@@ -34,8 +34,9 @@ import nl.markmaaktmedia.tandem.graph
  * It goes to one device at a time: a new one takes the place of the last.
  *
  * The sound goes as it is: 16 bit, 48 kHz, two channels, in packets that fit one datagram, the way the computer's own
- * sound goes to the phone. It keeps playing on the phone too: the capture is a copy of what plays, and the system gives an
- * app no way to silence the original.
+ * sound goes to the phone. The capture is a copy of what plays, taken before the volume of the phone, so the media of the
+ * phone are muted while it goes (it played on both, and twice is no speaker), and unmuted after. The volume keys of the phone
+ * still turn the other device up and down: they lift the mute for a moment, Tandem takes their level and mutes again.
  */
 class SoundShareService : Service() {
     /** One capture for one device. A new one replaces it, so what ends an old one must not end the service. */
@@ -131,18 +132,57 @@ class SoundShareService : Service() {
 
         sending = s
         _active.value = peer
+        if (!listening) {
+            listening = true
+            androidx.core.content.ContextCompat.registerReceiver(
+                this, volumeChanged, android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION"),
+                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+        }
         s.thread = Thread({ pump(s, record) }, "tandem-sound-out").apply {
             priority = Thread.MAX_PRIORITY
             start()
         }
     }
 
-    /** The media volume of this phone as a gain, 0 to 1: its steps are a scale for the ear, so half way is about a quarter of the level. */
+    /**
+     * The media volume of this phone as a gain, 0 to 1: its steps are a scale for the ear, so half way is about a quarter of the level.
+     * The level from before the mute, since the media are muted while the sound goes elsewhere: a muted stream says 0.
+     */
     private fun volumeGain(audio: AudioManager): Float {
+        if (!audio.isStreamMute(AudioManager.STREAM_MUSIC)) audible = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-        val level = audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / max
+        val level = audible.coerceAtLeast(0).toFloat() / max
         return level * level
     }
+
+    /** The media volume the last time the phone was not muted. */
+    @Volatile private var audible = 0
+
+    /** Whether Tandem muted the media of this phone, so it unmutes them after, and only then. */
+    @Volatile private var mutedHere = false
+
+    /** Mutes the media of this phone while their sound plays elsewhere; again after a volume key lifted the mute. */
+    private fun keepMuted(audio: AudioManager) {
+        if (audio.isStreamMute(AudioManager.STREAM_MUSIC)) return
+        audible = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+        runCatching { audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, 0) }
+        mutedHere = true
+    }
+
+    private fun unmute() {
+        if (!mutedHere) return
+        mutedHere = false
+        runCatching { getSystemService(AudioManager::class.java).adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0) }
+    }
+
+    /** A volume key: seen at once, so the phone is heard for as short as can be before it is muted again. */
+    private val volumeChanged = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (sending != null) keepMuted(getSystemService(AudioManager::class.java))
+        }
+    }
+    private var listening = false
 
     /** 16-bit samples times [gain], in place. Untouched at full volume. */
     private fun scale(pcm: ByteArray, gain: Float) {
@@ -173,9 +213,10 @@ class SoundShareService : Service() {
             var failures = 0
             // The volume keys turn the device that is the speaker up and down: what is recorded comes before the volume of the phone.
             val audio = getSystemService(AudioManager::class.java)
-            var gain = 1f
+            var gain = volumeGain(audio)
             var gainReadAt = 0L
             record.startRecording()
+            keepMuted(audio)
             while (s.running) {
                 val read = record.read(buffer, 0, size)
                 if (read <= 0) {
@@ -186,6 +227,7 @@ class SoundShareService : Service() {
                 if (now - gainReadAt > GAIN_EVERY_MS) {
                     gainReadAt = now
                     gain = volumeGain(audio)
+                    keepMuted(audio)
                 }
                 val bytes = if (read == size) buffer else buffer.copyOf(read / FRAME * FRAME)
                 scale(bytes, gain)
@@ -216,6 +258,8 @@ class SoundShareService : Service() {
         sending?.let { end(it) }
         sending = null
         _active.value = null
+        stopListening()
+        unmute()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -224,7 +268,15 @@ class SoundShareService : Service() {
         sending?.let { end(it) }
         sending = null
         _active.value = null
+        stopListening()
+        unmute()
         super.onDestroy()
+    }
+
+    private fun stopListening() {
+        if (!listening) return
+        listening = false
+        runCatching { unregisterReceiver(volumeChanged) }
     }
 
     companion object {
