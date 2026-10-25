@@ -57,6 +57,8 @@ struct Sidebar: View {
                         } content: {
                             MessagesRow(device: device)
                         }
+                        // Stepped in to the column of the phone's name, its shape too, so it reads as part of that phone.
+                        .padding(.leading, DeviceRow.nameColumn)
                         .transition(.opacity)
                     }
                 }
@@ -180,6 +182,8 @@ private struct DevicesHeader: View {
 private struct DeviceRow: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
+    /// Where the name starts, from the edge of the row's content: the glyph and the space after it.
+    static let nameColumn: CGFloat = 38 + 11
 
     var body: some View {
         let reach = model.reach(of: device)
@@ -252,20 +256,19 @@ private struct SideRow: View {
     }
 }
 
-/// The messages of a phone, just under it and stepped in, so it reads as part of that phone: a smaller disc in the middle of the
-/// column of the phone's own glyph.
+/// The messages of a phone, just under it and stepped in under its name (see `Sidebar`), so it reads as part of that phone: a small
+/// disc and the word.
 private struct MessagesRow: View {
     let device: TandemDevice
 
     var body: some View {
         let unread = MessagesStore.shared.phone(device.id).unreadCount
-        HStack(spacing: 11) {
+        HStack(spacing: 8) {
             Image(systemName: "message.fill")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Palette.indigo)
-                .frame(width: 26, height: 26)
+                .frame(width: 24, height: 24)
                 .background(Palette.indigo.opacity(0.14), in: Circle())
-                .frame(width: 38)
             Text("Messages").font(.callout.weight(.medium)).lineLimit(1)
             Spacer(minLength: 0)
             if unread > 0 {
