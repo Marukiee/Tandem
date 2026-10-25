@@ -16,11 +16,12 @@ pub const GNOME_PATH: &str = "/nl/markmaaktmedia/tandem/SearchProvider";
 pub const KRUNNER_PATH: &str = "/nl/markmaaktmedia/tandem/KRunner";
 
 /// What KRunner needs to find the runner on the bus. Plasma 5.24 and 6 read it from the user's data folder.
+/// The file keeps the name it had when it only found contacts: a second file next to an old one would ask Tandem twice.
 pub const KRUNNER_DESKTOP: &str = "[Desktop Entry]
-Name=Tandem contacts
-Comment=Call a contact of your phone
+Name=Tandem
+Comment=Your devices, what they can do, messages, contacts, the clipboard, shared files and settings
 Type=Service
-Icon=call-start
+Icon=phone
 X-KDE-ServiceTypes=Plasma/Runner
 X-KDE-PluginInfo-Name=tandem-contacts
 X-KDE-PluginInfo-EnabledByDefault=true
@@ -30,18 +31,25 @@ X-Plasma-DBusRunner-Service=nl.markmaaktmedia.tandem.SearchProvider
 X-Plasma-DBusRunner-Path=/nl/markmaaktmedia/tandem/KRunner
 ";
 
+/// How a result is shown: its name, the line under it and the name of an icon of the theme (without `-symbolic`, which GNOME adds).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Meta {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub icon: String,
+}
+
 /// What the search of the desktop asks of the app.
 pub trait Source: Send + Sync + 'static {
     /// The results for what was typed, split in words, best first.
     fn search(&self, terms: &[String]) -> Vec<String>;
-    /// For each result that is still there: its id, its name and the line under it.
-    fn metas(&self, ids: &[String]) -> Vec<(String, String, String)>;
+    /// How each result that is still there is shown.
+    fn metas(&self, ids: &[String]) -> Vec<Meta>;
     fn activate(&self, id: &str);
     /// The app itself was asked for (GNOME: a click on its icon next to the results).
     fn launch(&self);
 }
-
-const ICON: &str = "call-start-symbolic";
 
 struct Gnome(Arc<dyn Source>);
 
@@ -60,17 +68,17 @@ impl Gnome {
         self.0
             .metas(&ids)
             .into_iter()
-            .map(|(id, name, description)| {
+            .map(|m| {
                 let mut meta = HashMap::new();
                 let mut put = |key: &str, value: Value<'_>| {
                     if let Ok(value) = OwnedValue::try_from(value) {
                         meta.insert(key.to_string(), value);
                     }
                 };
-                put("id", Value::from(id));
-                put("name", Value::from(name));
-                put("description", Value::from(description));
-                put("gicon", Value::from(ICON));
+                put("gicon", Value::from(format!("{}-symbolic", m.icon)));
+                put("id", Value::from(m.id));
+                put("name", Value::from(m.name));
+                put("description", Value::from(m.description));
                 meta
             })
             .collect()
@@ -99,7 +107,7 @@ impl Krunner {
     #[zbus(name = "Match")]
     fn find(&self, query: String) -> Vec<Match> {
         let terms: Vec<String> = query.split_whitespace().map(str::to_string).collect();
-        // Shorter than two letters finds half the address book.
+        // Shorter than two letters finds half of everything.
         if query.trim().chars().count() < 2 {
             return Vec::new();
         }
@@ -109,12 +117,12 @@ impl Krunner {
             .metas(&ids)
             .into_iter()
             .enumerate()
-            .map(|(rank, (id, name, description))| {
+            .map(|(rank, m)| {
                 let mut properties = HashMap::new();
-                if let Ok(value) = OwnedValue::try_from(Value::from(description)) {
+                if let Ok(value) = OwnedValue::try_from(Value::from(m.description)) {
                     properties.insert("subtext".to_string(), value);
                 }
-                (id, name, "call-start".to_string(), 70, 1.0 - rank as f64 / (count * 2.0), properties)
+                (m.id, m.name, m.icon, 70, 1.0 - rank as f64 / (count * 2.0), properties)
             })
             .collect()
     }
@@ -158,8 +166,10 @@ mod tests {
         fn search(&self, terms: &[String]) -> Vec<String> {
             if terms.iter().any(|t| t == "anna") { vec!["phone/1".into()] } else { Vec::new() }
         }
-        fn metas(&self, ids: &[String]) -> Vec<(String, String, String)> {
-            ids.iter().map(|id| (id.clone(), "Anna".into(), "Mobile +31612345678".into())).collect()
+        fn metas(&self, ids: &[String]) -> Vec<Meta> {
+            ids.iter()
+                .map(|id| Meta { id: id.clone(), name: "Anna".into(), description: "Mobile +31612345678".into(), icon: "call-start".into() })
+                .collect()
         }
         fn activate(&self, id: &str) {
             self.0.lock().unwrap().push(id.to_string());
@@ -197,12 +207,14 @@ mod tests {
         let metas: Vec<HashMap<String, OwnedValue>> = gnome.call("GetResultMetas", &(ids.clone(),)).unwrap();
         let name: String = metas[0]["name"].try_clone().unwrap().try_into().unwrap();
         assert_eq!(name, "Anna");
+        let icon: String = metas[0]["gicon"].try_clone().unwrap().try_into().unwrap();
+        assert_eq!(icon, "call-start-symbolic");
         let () = gnome.call("ActivateResult", &("phone/1", vec!["anna"], 0u32)).unwrap();
 
         let krunner = proxy(KRUNNER_PATH, "org.kde.krunner1");
         let matches: Vec<Match> = krunner.call("Match", &("anna",)).unwrap();
         assert_eq!(matches.len(), 1);
-        assert_eq!((matches[0].0.as_str(), matches[0].1.as_str()), ("phone/1", "Anna"));
+        assert_eq!((matches[0].0.as_str(), matches[0].1.as_str(), matches[0].2.as_str()), ("phone/1", "Anna", "call-start"));
         let () = krunner.call("Run", &("phone/1", "")).unwrap();
         assert_eq!(*fake.0.lock().unwrap(), vec!["phone/1", "phone/1"]);
 

@@ -85,12 +85,12 @@ fn can_host() -> bool {
 
 /// Whether this computer can make a screen for another device to show (Linux under Wayland where the desktop offers it).
 #[cfg(feature = "screen-host")]
-fn can_extend() -> bool {
+pub(crate) fn can_extend() -> bool {
     crate::host::extend_available()
 }
 
 #[cfg(not(feature = "screen-host"))]
-fn can_extend() -> bool {
+pub(crate) fn can_extend() -> bool {
     false
 }
 
@@ -422,6 +422,19 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         }
         if let Some(v) = patch["contactsSearch"].as_bool() {
             current.contacts_search = v;
+        }
+        let s = &mut *current;
+        for (key, field) in [
+            ("searchDevices", &mut s.search_devices),
+            ("searchActions", &mut s.search_actions),
+            ("searchMessages", &mut s.search_messages),
+            ("searchClipboard", &mut s.search_clipboard),
+            ("searchFiles", &mut s.search_files),
+            ("searchSettings", &mut s.search_settings),
+        ] {
+            if let Some(v) = patch[key].as_bool() {
+                *field = v;
+            }
         }
         if let Some(v) = patch["keepWhenLidClosed"].as_bool() {
             current.keep_when_lid_closed = v;

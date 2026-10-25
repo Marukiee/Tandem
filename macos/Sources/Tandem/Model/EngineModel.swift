@@ -1290,6 +1290,7 @@ final class EngineModel {
     func resetEverything() {
         Task {
             await stop()
+            await TandemSpotlight.forgetEverything()
             try? FileManager.default.removeItem(at: Self.supportDirectory())
             relaunch()
         }

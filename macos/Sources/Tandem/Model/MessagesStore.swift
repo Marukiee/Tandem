@@ -54,6 +54,8 @@ final class PhoneMessages {
     private(set) var threads: [UInt64: Thread] = [:]
     private(set) var pending: [Pending] = []
     private(set) var pictures: [UInt64: NSImage] = [:]
+    /// A conversation picked in Spotlight, for the page to open (`TandemSpotlight`).
+    var wanted: UInt64?
     /// The conversation on screen, which counts as read here as long as it is.
     var open: UInt64? {
         didSet { if let open { markSeen(open) } }
@@ -349,6 +351,7 @@ final class MessagesStore {
     func handle(from: String, event: TandemSmsEvent) {
         if case let .changed(conversations, messages) = event {
             phones[from]?.changed(conversations: conversations, messages: messages)
+            TandemSpotlight.shared.conversationsChanged(from, conversations)
         }
     }
 }

@@ -70,7 +70,8 @@ const state = {
     { device: "phone", deviceName: "Pixel 9", key: "a", appId: "wa", appName: "WhatsApp", title: "Anna", text: "Zie je dat? Ik ben er over tien minuten.", ts: now - 120000, buttons: [] },
     { device: "phone", deviceName: "Pixel 9", key: "b", appId: "bank", appName: "Bank", title: "Code 482913", text: "Gebruik 482913 om in te loggen.", ts: now - 900000, otp: "482913", buttons: [] },
   ],
-  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: true, keepWhenLidClosed: false, autoTailscale: true, sideCheck: true, sideCheckMinutes: 2, sideSound: "quiet" },
+  settings: { closeToTray: true, copyCodes: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: true, keepWhenLidClosed: false, autoTailscale: true, sideCheck: true, sideCheckMinutes: 2, sideSound: "quiet",
+    contactsSearch: true, searchDevices: true, searchActions: true, searchMessages: false, searchClipboard: false, searchFiles: true, searchSettings: true },
   update: updateFor(new URLSearchParams(location.search).get("update")),
   autostart: true, downloadDir: "C:\\Users\\Mark\\Downloads\\Tandem", systemLanguage: navigator.language, build_: "",
 };
@@ -175,6 +176,17 @@ export function listen(event, handler) {
 
 function emit(event, payload) {
   (listeners[event] || []).forEach((h) => h(payload));
+}
+
+// A pick in the search of the desktop, as the app reports it: `?open=settings/mouse`, `?open=messages/phone/1` or `?open=device/mac` at the
+// start, and `mockEmit("search-open", {...})` from the console while the page is open.
+window.mockEmit = emit;
+function searchOpen() {
+  const [page, a, b] = (new URLSearchParams(location.search).get("open") || "").split("/");
+  if (!page) return null;
+  if (page === "settings") return { page, section: a, key: "page" };
+  if (page === "messages") return { page, selected: a, thread: b != null ? Number(b) : undefined };
+  return { page, selected: a };
 }
 
 const qr = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29"><rect width="29" height="29" fill="#fff"/>' +
@@ -325,6 +337,7 @@ export async function call(command, args) {
     case "guests_by_default": return guestsMock;
     case "set_guests_by_default": guestsMock = args.on; return null;
     case "set_settings": Object.assign(state.settings, args.patch); return state.settings;
+    case "search_open_pending": return searchOpen();
     case "set_autostart": state.autostart = args.enabled; return args.enabled;
     case "check_update": state.update = { state: "up-to-date", dismissed: state.update.dismissed }; return state.update;
     case "dismiss_update": state.update = { ...state.update, dismissed: args.version }; return null;

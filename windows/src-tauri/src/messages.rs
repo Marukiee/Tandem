@@ -114,6 +114,7 @@ pub async fn sms_ask_access(state: State<'_, AppState>, id: String) -> Reply<()>
 /// What the phone tells by itself, on to the page.
 pub fn event(app: &AppHandle, from: &str, msg: TandemSmsEvent) {
     if let TandemSmsEvent::Changed { conversations, messages } = msg {
+        crate::desktopsearch::conversations_changed(app, from, &conversations);
         let _ = app.emit(
             "sms",
             json!({

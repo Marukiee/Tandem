@@ -85,6 +85,7 @@ struct SettingsView: View {
                 .navigationTitle(Text(selection.title))
         }
         .frame(width: 780, height: 620)
+        .modifier(SpotlightSettingsNavigation(selection: $selection))
     }
 
     @ViewBuilder
@@ -149,7 +150,6 @@ private struct GeneralSettings: View {
     @AppStorage("showInDock") private var showInDock = true
     @AppStorage("copyCodes") private var copyCodes = true
     @AppStorage("bleMessages") private var bleMessages = true
-    @AppStorage(PhoneSpotlight.enabledKey) private var phoneSpotlight = true
     @AppStorage(TailscaleAuto.enabledKey) private var autoTailscale = true
     @AppStorage("audioMuteLocal") private var audioMuteLocal = true
     @AppStorage(ReceivedImages.copyKey) private var copyImages = true
@@ -258,13 +258,9 @@ private struct GeneralSettings: View {
                     subtitle: "Clipboard and notifications from your phone still arrive over Bluetooth when this Mac has no connection.",
                     isOn: $bleMessages
                 )
-                DescribedToggle(
-                    "Phone contacts in Spotlight",
-                    subtitle: "Type a name in Spotlight and pick the person: your phone calls them. Turned off, the contacts are taken out of Spotlight.",
-                    isOn: $phoneSpotlight
-                )
-                .onChange(of: phoneSpotlight) { _, on in PhoneSpotlight.shared.setEnabled(on) }
             }
+
+            SpotlightSettingsSection()
 
             InsertSettingsSection()
 

@@ -155,14 +155,22 @@ pub fn clip_history_clear(app: AppHandle, keep_pinned: bool) {
     change(&app, |list| if keep_pinned { list.into_iter().filter(|i| i.pinned).collect() } else { Vec::new() });
 }
 
+/// The list as it is now, newest first (for the search of the desktop).
+pub fn items(app: &AppHandle) -> Vec<Item> {
+    ITEMS.lock().unwrap().get_or_insert_with(|| load(app)).clone()
+}
+
 /// Puts a text from the list on the clipboard again, without sending it to the other devices.
 #[tauri::command]
 pub fn clip_history_copy(app: AppHandle, id: u64) -> Result<(), String> {
+    // Loaded first: a pick in the search of the desktop can come before the page of the history was ever opened.
     let text = ITEMS
         .lock()
         .unwrap()
-        .as_ref()
-        .and_then(|list| list.iter().find(|i| i.id == id).map(|i| i.text.clone()))
+        .get_or_insert_with(|| load(&app))
+        .iter()
+        .find(|i| i.id == id)
+        .map(|i| i.text.clone())
         .ok_or("that text is no longer in the list")?;
     crate::clip::apply(&app, &text);
     Ok(())

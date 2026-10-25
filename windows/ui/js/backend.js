@@ -106,6 +106,18 @@ async function follow() {
   const ask = (callAsk) => callAsk && set({ selected: callAsk.id, page: "messages", callAsk: { ...callAsk, at: Date.now() } });
   await listen("call-ask", ask);
   call("call_ask_pending").then(ask).catch(() => {});
+  // Something picked in the search of the desktop: a device page, a conversation, the files of a device or a section of the settings.
+  const go = (place) => {
+    if (!place) return;
+    const at = Date.now();
+    const patch = { page: place.page };
+    if (place.selected) patch.selected = place.selected;
+    if (place.page === "settings") patch.settingsWanted = { section: place.section, at };
+    if (place.page === "messages" && place.thread != null) patch.smsWanted = { device: place.selected, thread: place.thread, at };
+    set({ dialog: null, ...patch });
+  };
+  await listen("search-open", go);
+  call("search_open_pending").then(go).catch(() => {});
   await listen("engine-ready", async () => apply(await call("get_state")));
   await listen("engine-error", (error) => set({ error }));
   await listen("paired", ({ id, name }) => {

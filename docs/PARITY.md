@@ -41,6 +41,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Zoek mijn computer (geluid uit de eigen systeemgeluiden, laatst gezien met wifinaam) | ja (vraagt, met laatst gezien) | ja, beide kanten | ja, beide kanten | ja, beide kanten |
 | Bijwerken | ja | ja | ja | ja als AppImage; een pakket van de distributie werkt de pakketbeheerder bij |
 | Contacten van de telefoon in het zoeken van de computer, kiezen belt ze | bron (`sms.contacts`) | ja (Spotlight via Core Spotlight; nep-contacten gevonden met een `CSSearchQuery`, nooit met een echte telefoon) | - (zie hieronder) | ja: GNOME-zoeken (alleen met het .deb of .rpm, niet de AppImage) en KRunner; een test op een sessiebus staat klaar voor CI maar heeft nog niet gedraaid, nooit op een echt bureaublad |
+| Apparaten, hun acties ("Klembord naar ...", "... zoeken", "Scherm uitbreiden naar ..."), gesprekken, klembordgeschiedenis, gedeelde bestanden en instellingen in het zoeken, elk met een eigen schakelaar (berichten en klembord eerst uit) | - (bron van de gesprekken) | ja (Core Spotlight; alles gevonden met een `CSSearchQuery` in de app, openen van Instellingen en het hoofdvenster nagekeken, nooit met een echt apparaat) | - (zie hieronder) | ja: dezelfde leverancier als de contacten, antwoord uit wat de app op dat moment heeft; zoeken en ids getest, nooit op een echt bureaublad |
 
 ## Wat er nog mist
 
@@ -56,7 +57,8 @@ Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een ech
 - **Contacten in het zoeken van Windows** kan niet: het zoeken van het Startmenu toont apps, instellingen, bestanden en het web, en heeft
   geen manier voor een app om eigen resultaten te geven (de zoekconnectors van Windows 7 werken alleen in de Verkenner). Een bestand per
   contact in een geïndexeerde map zou als document verschijnen, niet als iemand die je belt. Op Windows haalt Tandem de lijst dus niet op;
-  bellen gaat met de knop Bellen op de pagina van de telefoon, waar een naam ook werkt.
+  bellen gaat met de knop Bellen op de pagina van de telefoon, waar een naam ook werkt. Om dezelfde reden staan apparaten, acties, gesprekken,
+  het klembord, gedeelde bestanden en instellingen van Tandem niet in het zoeken van Windows: alles staat in het venster van Tandem zelf.
 - **Linux, GNOME**: GNOME leest zoekleveranciers alleen uit `/usr/share/gnome-shell/search-providers`, niet uit de map van de gebruiker. Het
   .deb en .rpm zetten het bestand daar; de AppImage kan dat niet, KRunner werkt er wel mee. Een nieuwe leverancier ziet GNOME pas na opnieuw
   inloggen.

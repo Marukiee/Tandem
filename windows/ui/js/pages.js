@@ -707,6 +707,14 @@ export function SettingsPage() {
   const s = state.settings;
   const [section, setSection] = useState(rememberedSection);
   const open = (id) => { setSection(id); try { localStorage.setItem("settingsSection", id); } catch { /* the choice is only a convenience */ } };
+  // A section picked in the search of the desktop.
+  const wanted = state.settingsWanted;
+  useEffect(() => {
+    if (!wanted) return;
+    // Taken once, so opening Settings later starts where the person left it.
+    state.settingsWanted = null;
+    if (SECTIONS.some(([id]) => id === wanted.section)) open(wanted.section);
+  }, [wanted && wanted.at]);
   const patch = async (change) => { set({ settings: await call("set_settings", { patch: change }) }); setLanguage(state.settings.language, state.systemLanguage); };
   return html`<div class="wrap settings">
     <div><h1>${t("settings")}</h1></div>
@@ -816,9 +824,10 @@ function GeneralSettings({ s, patch }) {
       <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
       <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
-      ${state.platform === "linux" && html`<${SettingRow} icon="phone" title=${t("contacts_search")} sub=${t("contacts_search_sub")} on=${s.contactsSearch !== false} onChange=${(v) => patch({ contactsSearch: v })} />`}
       ${state.canBluetooth && html`<${SettingRow} icon="bluetooth" title=${t("ble_messages")} sub=${t("ble_messages_sub")} on=${s.bleMessages !== false} onChange=${(v) => patch({ bleMessages: v })} />`}
     </div>
+
+    ${state.platform === "linux" && html`<${SearchSettings} s=${s} patch=${patch} />`}
 
     <${FocusSettings} s=${s} patch=${patch} />
 
@@ -863,6 +872,20 @@ function GeneralSettings({ s, patch }) {
       <//>
     </div>
   </div>`;
+}
+
+// What the search of GNOME and KRunner finds of Tandem, a switch per kind. Messages and the clipboard are off until they are turned on.
+function SearchSettings({ s, patch }) {
+  const rows = [["searchDevices", "devices", "search_devices", true], ["searchActions", "bolt", "search_actions", true],
+    ["searchMessages", "message", "search_messages", false], ["searchClipboard", "clipboard", "search_clipboard", false],
+    ["searchFiles", "files", "search_files", true], ["searchSettings", "settings", "search_settings", true]];
+  return html`<h2>${t("search_title")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="phone" title=${t("contacts_search")} sub=${t("contacts_search_sub")} on=${s.contactsSearch !== false} onChange=${(v) => patch({ contactsSearch: v })} />
+      ${rows.map(([key, icon, label, byDefault]) => html`<${SettingRow} key=${key} icon=${icon} title=${t(label)} sub=${t(label + "_sub")}
+        on=${byDefault ? s[key] !== false : s[key] === true} onChange=${(v) => patch({ [key]: v })} />`)}
+    </div>
+    <div class="small muted">${t("search_note")}</div>`;
 }
 
 // What is kept of what was copied, for how long, and a way to empty it.

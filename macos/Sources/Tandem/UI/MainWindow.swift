@@ -131,6 +131,7 @@ struct MainWindow: View {
                 showPairing = true
             }
         }
+        .modifier(SpotlightNavigation(selection: $selection))
         .onReceive(NotificationCenter.default.publisher(for: .tandemShowPairing)) { _ in
             MainWindow.wantsPairing = false
             showPairing = true

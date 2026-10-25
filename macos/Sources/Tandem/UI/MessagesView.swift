@@ -59,6 +59,12 @@ struct MessagesView: View {
             // A wide window has room for the newest conversation from the start, as Messages does.
             if selection == nil, !composing, let first { selection = DebugSupport.messagesThread ?? first }
         }
+        .onChange(of: phone.wanted, initial: true) { _, wanted in
+            guard let wanted else { return }
+            phone.wanted = nil
+            composing = false
+            selection = wanted
+        }
         .onChange(of: selection) { _, thread in
             phone.open = thread
             if let thread {
