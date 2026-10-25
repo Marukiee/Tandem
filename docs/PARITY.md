@@ -15,6 +15,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Antwoorden op meldingen, bellen en gemiste oproepen tonen | bron | ja (zwevend belvenster) | deels (meldingen als toon; zwevend belvenster met Opnemen, Weigeren en Ophangen, nooit gezien) | deels (idem; onder Wayland kiest het bureaublad de plek van het belvenster en houdt het niet bovenop) |
 | Muziek van de telefoon bedienen vanaf de computer | bron | ja | ja (mediatoetsen van het systeem) | ja (MPRIS, getest op een sessiebus in CI) |
 | Klembordgeschiedenis | ja | ja | ja | ja |
+| Een screenshot staat meteen op het klembord van de andere apparaten (schakelaar in de klembordinstellingen, alleen naar apparaten met klembord aan; bij de ontvanger alleen als klembord, nooit als bestand dat blijft) | ja (MediaStore, map Screenshots) | ja (map uit `com.apple.screencapture`, met Control via het klembord) | ja (map Screenshots, Knipprogramma via het klembord, eenmaal) | ja (map Screenshots in Afbeeldingen, ook vertaald; GNOME via het klembord, eenmaal; nooit gezien) |
 | Quick Share (ontvangen en versturen, tekst en links) | ja | ja | ja | ja |
 | Bestanden van een telefoon bekijken en kopieren | bron | ja | ja | ja |
 | Eigen mappen aanbieden aan andere apparaten (host) | ja | ja | ja (instellingen, nooit gezien) | ja (instellingen, nooit gezien) |
@@ -72,3 +73,9 @@ Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een ech
   er niet. Daarom staan de ringen op Windows en Linux in het paneel bij het systeemvak, met een klik naar het apparaat. Op de Mac zit de widget in
   dezelfde extensie als de knoppen van het Controlecentrum; die extensie staat bij het systeem ingeschreven (`pluginkit`), maar of macOS een widget
   laadt van een app met het eigen certificaat (geen Apple Developer ID) is nooit gezien, net als de knoppen.
+- **Screenshots naar het klembord**: Android heeft sinds versie 14 een melding voor een screenshot (`ScreenCaptureCallback`), maar alleen voor een
+  scherm van de app zelf terwijl die vooraan staat, en zonder het plaatje. Tandem kijkt daarom in MediaStore, met de toestemming voor foto's; met
+  alleen toegang tot een paar gekozen foto's ziet het een nieuwe screenshot niet. Op de Mac schrijft macOS het bestand pas weg als het
+  zwevende miniatuurtje verdwijnt (zo'n 5 seconden), dus met dat miniatuurtje aan komt de screenshot pas dan aan; zonder (Cmd-Shift-5,
+  Opties) meteen. Op Android houdt het klembord alleen een link vast, dus daar blijft het plaatje als bestand in de eigen map van Tandem tot
+  het volgende plaatje of tekst binnenkomt, en hooguit een uur (Android wist het klembord dan zelf ook).

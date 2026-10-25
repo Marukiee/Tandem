@@ -45,6 +45,43 @@ final class ClipboardFiles {
         return true
     }
 
+    /// A single picture that was copied waits in the core's own clipboard folder, not in Downloads (see `kept_for_clipboard`).
+    private static func isWaitingForClipboard(_ file: URL) -> Bool {
+        file.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent == "clipboard"
+    }
+
+    /// The picture goes on the pasteboard as a picture only, and its file goes at once: a screenshot from every device would otherwise
+    /// pile up as files. The history keeps it the way it keeps any copied picture, with the device it came from.
+    private func putPicture(_ file: URL, from device: String) -> Bool {
+        guard let data = try? Data(contentsOf: file) else { return false }
+        let isPNG = UTType(filenameExtension: file.pathExtension)?.conforms(to: .png) == true
+        let pasteboard = NSPasteboard.general
+        if isPNG {
+            pasteboard.clearContents()
+            pasteboard.setData(data, forType: .png)
+        } else if let image = NSImage(data: data) {
+            pasteboard.clearContents()
+            pasteboard.writeObjects([image])
+        } else {
+            return false
+        }
+        try? FileManager.default.removeItem(at: file)
+        try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
+        ClipboardRecorder.shared.ignoreCurrent()
+        let source = EngineModel.shared.device(device)
+        let deviceName = source?.name, symbol = source?.platform.symbol
+        Task.detached(priority: .utility) {
+            guard let prepared = ClipImage.prepare(data: data, isPNG: isPNG) else { return }
+            await MainActor.run {
+                ClipboardHistory.shared.record(
+                    image: prepared.png, thumbnail: prepared.thumbnail, width: prepared.width, height: prepared.height, hash: prepared.hash,
+                    app: nil, appName: nil, device: deviceName, devicePlatform: symbol
+                )
+            }
+        }
+        return true
+    }
+
     private static func png(_ image: NSImage) -> Data? {
         guard let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff) else { return nil }
         return bitmap.representation(using: .png, properties: [:])
@@ -71,15 +108,18 @@ final class ClipboardFiles {
         offers[offer] = entry
         let files = entry.files
         let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        if files.count == 1, let type = UTType(filenameExtension: files[0].pathExtension), type.conforms(to: .image), let image = NSImage(contentsOf: files[0]) {
-            // A picture as a picture, so it pastes into a message or a document, and as its file, so it pastes into Finder.
-            pasteboard.writeObjects([image, files[0] as NSURL])
+        let name = EngineModel.shared.device(device)?.name ?? "?"
+        if files.count == 1, Self.isWaitingForClipboard(files[0]) {
+            // What cannot be read as a picture here goes as its file, which the core's sweep removes later.
+            if !putPicture(files[0], from: device) {
+                pasteboard.clearContents()
+                pasteboard.writeObjects([files[0] as NSURL])
+            }
         } else {
+            pasteboard.clearContents()
             pasteboard.writeObjects(files.map { $0 as NSURL })
         }
         EngineModel.shared.clipboardWritten()
-        let name = EngineModel.shared.device(device)?.name ?? "?"
         EngineModel.shared.showToast(files.count == 1
             ? String(localized: "\(files[0].lastPathComponent) from \(name) is on your clipboard")
             : String(localized: "\(files.count) files from \(name) are on your clipboard"))

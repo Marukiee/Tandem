@@ -44,6 +44,7 @@ class TandemPrefs(private val context: Context) {
         val mirrorAllApps = booleanPreferencesKey("mirror_all_apps")
         val mirrorExcluded = stringSetPreferencesKey("mirror_excluded")
         val screenshotPrompt = booleanPreferencesKey("screenshot_prompt")
+        val sendScreenshots = booleanPreferencesKey("send_screenshots")
         val callMirror = booleanPreferencesKey("call_mirror")
         val hotspotForMac = booleanPreferencesKey("hotspot_for_mac")
         val autoUpdateCheck = booleanPreferencesKey("auto_update_check")
@@ -88,6 +89,8 @@ class TandemPrefs(private val context: Context) {
     /** With "all apps" on, these are the ones left out. */
     val mirrorExcluded: Flow<Set<String>> = data.map { it[Keys.mirrorExcluded] ?: emptySet() }
     val screenshotPrompt: Flow<Boolean> = data.map { it[Keys.screenshotPrompt] ?: true }
+    /** A new screenshot goes to the clipboards of the devices that share the clipboard with this phone. */
+    val sendScreenshots: Flow<Boolean> = data.map { it[Keys.sendScreenshots] ?: true }
     val callMirror: Flow<Boolean> = data.map { it[Keys.callMirror] ?: true }
     val hotspotForMac: Flow<Boolean> = data.map { it[Keys.hotspotForMac] ?: false }
     val autoUpdateCheck: Flow<Boolean> = data.map { it[Keys.autoUpdateCheck] ?: true }
@@ -223,6 +226,7 @@ class TandemPrefs(private val context: Context) {
     suspend fun setMirrorNotifications(value: Boolean) = set(Keys.mirrorNotifications, value)
     suspend fun setMirrorAllApps(value: Boolean) = set(Keys.mirrorAllApps, value)
     suspend fun setScreenshotPrompt(value: Boolean) = set(Keys.screenshotPrompt, value)
+    suspend fun setSendScreenshots(value: Boolean) = set(Keys.sendScreenshots, value)
     suspend fun setCallMirror(value: Boolean) = set(Keys.callMirror, value)
     suspend fun setHotspotForMac(value: Boolean) = set(Keys.hotspotForMac, value)
     suspend fun setAutoUpdateCheck(value: Boolean) = set(Keys.autoUpdateCheck, value)

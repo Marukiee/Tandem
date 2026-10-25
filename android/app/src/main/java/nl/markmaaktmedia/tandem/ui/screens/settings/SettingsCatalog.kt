@@ -59,6 +59,7 @@ internal object FocusKeys {
     const val PhoneName = "sharing.name"
     const val PhoneId = "sharing.id"
     const val Screenshot = "sharing.screenshot"
+    const val SendScreenshots = "sharing.screenshot.send"
     const val Ble = "sharing.ble"
     const val AutoTailscale = "sharing.tailscale"
     const val PointerIn = "sharing.pointer"
@@ -198,6 +199,10 @@ internal object SettingsCatalog {
         SettingsEntry(
             "sharing_screenshot", R.string.settings_screenshot, R.string.settings_kw_sharing_screenshot, SettingsCategory.Sharing, sharing,
             { TandemIcons.Screenshot }, subtitle = R.string.settings_screenshot_sub, focus = FocusKeys.Screenshot,
+        ),
+        SettingsEntry(
+            "sharing_send_screenshots", R.string.settings_send_screenshots, R.string.settings_kw_sharing_send_screenshots, SettingsCategory.Sharing, sharing,
+            { TandemIcons.Paste }, subtitle = R.string.settings_send_screenshots_sub, focus = FocusKeys.SendScreenshots,
         ),
         SettingsEntry(
             "sharing_ble", R.string.settings_ble_messages, R.string.settings_kw_sharing_ble, SettingsCategory.Sharing, sharing,

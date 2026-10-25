@@ -176,7 +176,10 @@ final class ClipboardHistory {
     }
 
     /// A picture was copied. Its files are written in the background; the item is in the list at once.
-    func record(image png: Data, thumbnail: Data?, width: Int, height: Int, hash: String, app: String?, appName: String?) {
+    func record(
+        image png: Data, thumbnail: Data?, width: Int, height: Int, hash: String, app: String?, appName: String?,
+        device: String? = nil, devicePlatform: String? = nil
+    ) {
         guard enabled, recordsImages else { return }
         if bump(hash: hash) { return }
         let id = UUID()
@@ -184,7 +187,7 @@ final class ClipboardHistory {
             id: id, kind: .image, preview: "", text: nil, characters: 0, lines: 0,
             imageWidth: width, imageHeight: height, imageBytes: png.count,
             date: Date(), pinned: false,
-            app: app, appName: appName, device: nil, devicePlatform: nil, hash: hash
+            app: app, appName: appName, device: device, devicePlatform: devicePlatform, hash: hash
         )
         let image = imageURL(id), thumb = thumbnailURL(id)
         Task.detached(priority: .utility) {

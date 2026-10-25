@@ -78,7 +78,13 @@ enum Command {
     /// List the devices in the circle.
     Devices,
     /// Send files to a device (name or id prefix).
-    Send { device: String, files: Vec<PathBuf> },
+    Send {
+        device: String,
+        files: Vec<PathBuf>,
+        /// As a copy for that device's clipboard, the way a picture or files copied on a computer travel.
+        #[arg(long)]
+        clipboard: bool,
+    },
     /// Send text to a device's clipboard.
     Clip { device: String, text: Vec<String> },
     /// Remove a device from the circle for good.
@@ -288,7 +294,7 @@ async fn execute(engine: &Engine, command: &Command) -> Result<String> {
             let id = engine.pair_with_uri(uri).await?;
             Ok(format!("paired with {id}\n"))
         }
-        Command::Send { device, files } => {
+        Command::Send { device, files, clipboard } => {
             let id = resolve(engine, device)?;
             let mut out = Vec::new();
             for path in files {
@@ -300,7 +306,8 @@ async fn execute(engine: &Engine, command: &Command) -> Result<String> {
                     mime: String::new(),
                 });
             }
-            let report = engine.send_files(&[id], out, ShareOrigin::Files).await?;
+            let origin = if *clipboard { ShareOrigin::Clipboard } else { ShareOrigin::Files };
+            let report = engine.send_files(&[id], out, origin).await?;
             if report.sent_to.is_empty() {
                 bail!("that device is not connected right now");
             }
@@ -499,8 +506,8 @@ fn command_line(command: &Command) -> Option<String> {
         Command::Whoami => vec!["whoami".into()],
         Command::Devices => vec!["devices".into()],
         Command::Pair { uri } => vec!["pair".into(), uri.clone()],
-        Command::Send { device, files } => {
-            let mut parts = vec!["send".to_string(), device.clone()];
+        Command::Send { device, files, clipboard } => {
+            let mut parts = vec![if *clipboard { "send-clipboard" } else { "send" }.to_string(), device.clone()];
             for file in files {
                 parts.push(std::fs::canonicalize(file).ok()?.to_string_lossy().into_owned());
             }
@@ -560,9 +567,10 @@ fn parse_line(line: &str) -> Option<Command> {
         "devices" => Some(Command::Devices),
         "pair-show" => Some(Command::PairShow),
         "pair" if !rest.is_empty() => Some(Command::Pair { uri: rest.join(" ") }),
-        "send" => Some(Command::Send {
+        "send" | "send-clipboard" => Some(Command::Send {
             device: rest.first()?.clone(),
             files: rest.iter().skip(1).map(PathBuf::from).collect(),
+            clipboard: name == "send-clipboard",
         }),
         "clip" => Some(Command::Clip { device: rest.first()?.clone(), text: vec![rest.get(1)?.clone()] }),
         "remove" => Some(Command::Remove { device: rest.first()?.clone() }),

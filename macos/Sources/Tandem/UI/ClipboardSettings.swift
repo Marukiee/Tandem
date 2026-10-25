@@ -6,6 +6,7 @@ import SwiftUI
 /// The Clipboard tab of Settings: whether a history is kept at all, how much, from which apps, and the shortcut.
 struct ClipboardSettings: View {
     @LocalState private var confirmClear = false
+    @AppStorage(ScreenshotSender.key) private var sendScreenshots = true
 
     var body: some View {
         @Bindable var history = ClipboardHistory.shared
@@ -18,6 +19,15 @@ struct ClipboardSettings: View {
                 )
             } footer: {
                 Text("Copies that an app marks as secret, such as passwords from a password manager, are never saved.")
+            }
+
+            Section("Your other devices") {
+                DescribedToggle(
+                    "Send screenshots to your devices",
+                    subtitle: "A screenshot you take is on the clipboard of the devices that share the clipboard with this Mac.",
+                    isOn: $sendScreenshots
+                )
+                .onChange(of: sendScreenshots) { ScreenshotSender.shared.refresh() }
             }
 
             Section("Opening it") {

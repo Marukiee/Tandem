@@ -1185,3 +1185,6 @@
 "Settings" = "Instellingen";
 "The pages and main switches of these settings." = "De pagina's en de belangrijkste schakelaars van deze instellingen.";
 "What Tandem puts in Spotlight stays on this Mac. Turned off, it is taken out at once." = "Wat Tandem in Spotlight zet, blijft op deze Mac. Staat het uit, dan gaat het er meteen uit.";
+"Your other devices" = "Je andere apparaten";
+"Send screenshots to your devices" = "Stuur screenshots naar je apparaten";
+"A screenshot you take is on the clipboard of the devices that share the clipboard with this Mac." = "Een screenshot die je maakt staat op het klembord van de apparaten die het klembord met deze Mac delen.";

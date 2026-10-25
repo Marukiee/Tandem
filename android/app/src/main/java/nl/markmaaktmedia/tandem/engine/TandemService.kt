@@ -22,6 +22,7 @@ import nl.markmaaktmedia.tandem.calls.CallMonitor
 import nl.markmaaktmedia.tandem.capture.CaptureActivity
 import nl.markmaaktmedia.tandem.hotspot.HotspotModule
 import nl.markmaaktmedia.tandem.mirror.ListenerWatchdog
+import nl.markmaaktmedia.tandem.share.ClipboardPictures
 import nl.markmaaktmedia.tandem.share.ClipboardSendActivity
 import nl.markmaaktmedia.tandem.share.ScreenshotWatcher
 import nl.markmaaktmedia.tandem.share.ShareShortcuts
@@ -125,7 +126,7 @@ class TandemService : LifecycleService() {
 
             is TandemEvent.Finished -> {
                 postProgress()
-                if (event.incoming && event.offer in clipboardOffers) {
+                if (event.incoming && (event.offer in clipboardOffers || event.location?.let(ClipboardPictures::waits) == true)) {
                     // A picture or files copied on that device: on this phone's clipboard, not as a file that came in.
                     event.location?.takeIf { event.error == null }?.let { clipboardFile(event.offer, it) }
                 } else if (event.incoming && event.error == null && event.location != null) {
@@ -193,6 +194,11 @@ class TandemService : LifecycleService() {
 
     /** Everything of the offer that is in so far goes on the clipboard together, so several files are pasted as one. */
     private fun clipboardFile(offer: ULong, location: String) {
+        if (ClipboardPictures.waits(location)) {
+            ClipboardPictures.put(this, location, getString(R.string.app_name))
+            clipboardOffers.remove(offer)
+            return
+        }
         val uris = clipboardFiles.getOrPut(offer) { mutableListOf() }.apply { add(android.net.Uri.parse(location)) }
         val clip = android.content.ClipData.newUri(contentResolver, getString(R.string.app_name), uris.first())
         uris.drop(1).forEach { clip.addItem(android.content.ClipData.Item(it)) }

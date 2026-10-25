@@ -37,6 +37,7 @@
     <string name="settings_kw_sharing">deze telefoon, naam, id, delen, screenshots, bluetooth, klembord, muziek, speaker</string>
     <string name="settings_kw_sharing_name">apparaatnaam, hernoemen, naam telefoon, bijnaam, naam wijzigen, device name</string>
     <string name="settings_kw_sharing_id">identiteit, id, sleutel, vingerafdruk, apparaat-id, nummer, device id</string>
+    <string name="settings_kw_sharing_send_screenshots">screenshot, schermafbeelding, klembord, plakken, kopiëren, andere apparaten</string>
     <string name="settings_kw_sharing_screenshot">screenshot, schermafbeelding, schermafdruk, delen, foto\'s, aanbieden</string>
     <string name="settings_kw_sharing_ble">bluetooth, ble, offline, geen wifi, geen netwerk, klembord, meldingen</string>
     <string name="settings_kw_sharing_tailscale">tailscale, vpn, op afstand, onderweg, ander netwerk, tailnet, verbinden, bereiken</string>

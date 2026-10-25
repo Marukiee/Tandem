@@ -187,16 +187,26 @@ impl Inner {
             let item = item.clone();
             let offer_id = entry.offer.id;
             let cancel = entry.cancel.clone();
+            let clipboard_on = self.settings.read().unwrap().for_device(&peer).clipboard;
+            let for_clipboard = kept_for_clipboard(&entry.offer, clipboard_on);
             tasks.spawn(async move {
                 let _permit = permit;
-                this.receive_item(peer, offer_id, index as u32, item, cancel).await;
+                this.receive_item(peer, offer_id, index as u32, item, for_clipboard, cancel).await;
             });
         }
         while tasks.join_next().await.is_some() {}
         self.in_offers.lock().unwrap().remove(&(peer, entry.offer.id));
     }
 
-    async fn receive_item(self: Arc<Self>, peer: DeviceId, offer: u64, index: u32, item: ShareItem, cancel: CancellationToken) {
+    async fn receive_item(
+        self: Arc<Self>,
+        peer: DeviceId,
+        offer: u64,
+        index: u32,
+        item: ShareItem,
+        for_clipboard: bool,
+        cancel: CancellationToken,
+    ) {
         let temp = self.partial_path(peer, offer, index);
         let attempt = async {
         let mut attempts = 0u32;
@@ -231,7 +241,11 @@ impl Inner {
                 let name = item.name.clone();
                 let mime = item.mime.clone();
                 let path = temp.clone();
-                let stored = tokio::task::spawn_blocking(move || files.store_download(&path, &name, &mime)).await;
+                let clipboard_dir = self.clipboard_dir(peer, offer);
+                let stored = tokio::task::spawn_blocking(move || {
+                    if for_clipboard { keep_for_clipboard(&path, &clipboard_dir, &name) } else { files.store_download(&path, &name, &mime) }
+                })
+                .await;
                 match stored {
                     Ok(Ok(location)) => TransferDone {
                         offer,
@@ -277,6 +291,12 @@ impl Inner {
                 _ = self.cancel.cancelled() => return None,
             }
         }
+    }
+
+    /// Where a picture that came for the clipboard waits until the app has put it there. Not Downloads: it is a copy, not a file that
+    /// came in, and a folder of its own per offer keeps the name it had without two of them meeting.
+    fn clipboard_dir(&self, peer: DeviceId, offer: u64) -> PathBuf {
+        self.store.dir().join(CLIPBOARD_DIR).join(format!("{peer}-{offer:016x}"))
     }
 
     fn partial_path(&self, peer: DeviceId, offer: u64, index: u32) -> PathBuf {
@@ -509,6 +529,15 @@ impl Inner {
                 }
             }
         }
+        // Pictures for the clipboard are removed by the app once they are on it; this catches what a crash or a quit left behind.
+        if let Ok(entries) = std::fs::read_dir(self.store.dir().join(CLIPBOARD_DIR)) {
+            let old = std::time::SystemTime::now() - CLIPBOARD_KEPT;
+            for entry in entries.flatten() {
+                if entry.metadata().and_then(|m| m.modified()).is_ok_and(|modified| modified < old) {
+                    let _ = std::fs::remove_dir_all(entry.path()).or_else(|_| std::fs::remove_file(entry.path()));
+                }
+            }
+        }
         let outgoing = self.store.dir().join("outgoing");
         if let Ok(entries) = std::fs::read_dir(outgoing) {
             let old = std::time::SystemTime::now() - Duration::from_secs(24 * 3600);
@@ -523,6 +552,50 @@ impl Inner {
     }
 }
 
+/// The folder in the data folder for pictures on their way to the clipboard.
+pub const CLIPBOARD_DIR: &str = "clipboard";
+/// As large as a clipboard offer that the apps take without asking.
+pub const CLIPBOARD_LIMIT: u64 = 50 * 1024 * 1024;
+/// How long such a picture may stay at most. Android needs the file for as long as its clipboard points at it, and clears its
+/// clipboard after an hour.
+const CLIPBOARD_KEPT: Duration = Duration::from_secs(3600);
+
+/// A picture that was copied (or a screenshot) on a device that shares the clipboard with this one. It goes to the clipboard here
+/// and nowhere else, so it is not stored with the downloads, where it would pile up, and where the screenshot watcher of a phone
+/// would take a screenshot that came in for a new one and send it back. Files that were copied do go to the downloads: pasted,
+/// they have to be somewhere.
+pub(crate) fn kept_for_clipboard(offer: &ShareOffer, clipboard_on: bool) -> bool {
+    clipboard_on
+        && offer.origin == ShareOrigin::Clipboard
+        && offer.items.len() == 1
+        && offer.items[0].size <= CLIPBOARD_LIMIT
+        && is_picture(&offer.items[0])
+}
+
+fn is_picture(item: &ShareItem) -> bool {
+    if item.mime.starts_with("image/") {
+        return true;
+    }
+    let ext = Path::new(&item.name).extension().map(|e| e.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
+    matches!(ext.as_str(), "png" | "jpg" | "jpeg" | "gif" | "webp" | "heic" | "heif" | "tif" | "tiff" | "bmp")
+}
+
+/// Moves the finished picture into its own folder under the clipboard folder, under the name it came with.
+fn keep_for_clipboard(temp: &Path, dir: &Path, name: &str) -> std::io::Result<String> {
+    std::fs::create_dir_all(dir)?;
+    let target = dir.join(safe_name(name));
+    std::fs::rename(temp, &target)?;
+    Ok(target.to_string_lossy().into_owned())
+}
+
+/// A name that stays inside its folder.
+fn safe_name(name: &str) -> String {
+    let cleaned: String =
+        name.chars().map(|c| if matches!(c, '/' | '\\' | ':') || c.is_control() { '_' } else { c }).collect::<String>();
+    let cleaned = cleaned.trim().trim_start_matches('.');
+    if cleaned.is_empty() { "picture.png".to_string() } else { cleaned.chars().take(160).collect() }
+}
+
 fn failed(peer: DeviceId, offer: u64, index: u32, item: &ShareItem, reason: String) -> TransferDone {
     TransferDone {
         offer,
@@ -533,5 +606,41 @@ fn failed(peer: DeviceId, offer: u64, index: u32, item: &ShareItem, reason: Stri
         size: item.size,
         location: None,
         error: Some(reason),
+    }
+}
+
+#[cfg(test)]
+mod clipboard_tests {
+    use super::*;
+
+    fn offer(origin: ShareOrigin, items: &[(&str, &str, u64)]) -> ShareOffer {
+        ShareOffer {
+            id: 1,
+            origin,
+            items: items
+                .iter()
+                .map(|(name, mime, size)| ShareItem { name: name.to_string(), size: *size, mime: mime.to_string(), modified: None })
+                .collect(),
+        }
+    }
+
+    #[test]
+    fn only_one_copied_picture_skips_the_downloads() {
+        assert!(kept_for_clipboard(&offer(ShareOrigin::Clipboard, &[("Screenshot.png", "image/png", 10)]), true));
+        assert!(kept_for_clipboard(&offer(ShareOrigin::Clipboard, &[("Shot.JPG", "", 10)]), true));
+        // The clipboard is off for that device: the app asks about it like other files, so it has to be where files go.
+        assert!(!kept_for_clipboard(&offer(ShareOrigin::Clipboard, &[("Screenshot.png", "image/png", 10)]), false));
+        assert!(!kept_for_clipboard(&offer(ShareOrigin::Screenshot, &[("Screenshot.png", "image/png", 10)]), true));
+        assert!(!kept_for_clipboard(&offer(ShareOrigin::Clipboard, &[("notes.txt", "text/plain", 10)]), true));
+        assert!(!kept_for_clipboard(&offer(ShareOrigin::Clipboard, &[("a.png", "image/png", 10), ("b.png", "image/png", 10)]), true));
+        assert!(!kept_for_clipboard(&offer(ShareOrigin::Clipboard, &[("huge.png", "image/png", CLIPBOARD_LIMIT + 1)]), true));
+    }
+
+    #[test]
+    fn a_name_cannot_leave_its_folder() {
+        assert_eq!(safe_name("../../etc/passwd"), "_.._etc_passwd");
+        assert_eq!(safe_name(".hidden.png"), "hidden.png");
+        assert_eq!(safe_name("  "), "picture.png");
+        assert_eq!(safe_name("Screenshot 10.00.png"), "Screenshot 10.00.png");
     }
 }

@@ -899,6 +899,10 @@ function ClipboardSettings({ s, patch }) {
   return html`<div style="display:flex;flex-direction:column;gap:12px">
     <h2>${t("tab_clipboard")}</h2>
     <div class="card flush">
+      <${SettingRow} icon="photo" title=${t("clip_screenshots")} sub=${t("clip_screenshots_sub")} on=${s.sendScreenshots !== false} onChange=${(v) => patch({ sendScreenshots: v })} />
+    </div>
+    <h2>${t("clip_history_heading")}</h2>
+    <div class="card flush">
       <${SettingRow} icon="clipboard" title=${t("clip_keep")} sub=${t("clip_keep_sub")} on=${s.clipHistory} onChange=${(v) => patch({ clipHistory: v })} />
     </div>
     <div class="small muted">${t("clip_secret_note")}</div>

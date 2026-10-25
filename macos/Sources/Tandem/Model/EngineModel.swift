@@ -401,6 +401,7 @@ final class EngineModel {
         for device in devices where Self.takesPointer(device) && refusing.contains(device.id) { SideWatch.shared.pointerAllowed(device.id) }
         guestsByDefault = engine.guestsByDefault()
         clipboard?.setActive(devices.contains { $0.online || $0.ble })
+        ScreenshotSender.shared.refresh()
         reconcileSpeakerDevices()
         refreshNowPlaying()
         PhoneSpotlight.shared.devicesChanged(devices, engine: engine)

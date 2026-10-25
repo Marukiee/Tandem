@@ -38,6 +38,7 @@
     <string name="settings_kw_sharing">this phone, name, id, share, screenshots, bluetooth, clipboard, music, speaker</string>
     <string name="settings_kw_sharing_name">device name, rename, phone name, nickname, call this phone</string>
     <string name="settings_kw_sharing_id">identity, identifier, key, fingerprint, serial, device id</string>
+    <string name="settings_kw_sharing_send_screenshots">screenshots, clipboard, paste, copy, send screenshot, other devices</string>
     <string name="settings_kw_sharing_screenshot">screenshots, screen capture, share screenshot, photos, quick share, offer</string>
     <string name="settings_kw_sharing_ble">bluetooth, ble, offline, no wifi, no network, low energy, clipboard, notifications</string>
     <string name="settings_kw_sharing_tailscale">tailscale, vpn, remote, away from home, other network, tailnet, connect, reach</string>
