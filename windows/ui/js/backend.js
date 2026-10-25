@@ -102,6 +102,10 @@ async function follow() {
   await listen("display", (displays) => set({ displays }));
   // The event leaves out what the person decided about it, so that stays.
   await listen("update", (update) => set({ update: { dismissed: state.update.dismissed, ...update } }));
+  // A person picked in the search of the desktop: the Messages of that phone, with the question before the call over it.
+  const ask = (callAsk) => callAsk && set({ selected: callAsk.id, page: "messages", callAsk: { ...callAsk, at: Date.now() } });
+  await listen("call-ask", ask);
+  call("call_ask_pending").then(ask).catch(() => {});
   await listen("engine-ready", async () => apply(await call("get_state")));
   await listen("engine-error", (error) => set({ error }));
   await listen("paired", ({ id, name }) => {

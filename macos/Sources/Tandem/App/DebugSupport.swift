@@ -52,6 +52,7 @@ enum DebugSupport {
         closer.setEventHandler { closeWindows() }
         closer.resume()
         closeSource = closer
+        PhoneSpotlight.debug(into: directory)
 
         // `TANDEM_DEBUG_APPEARANCE=dark|light`: the app in that appearance whatever the system is in, so a snapshot can show both.
         switch variable("TANDEM_DEBUG_APPEARANCE") {

@@ -188,16 +188,25 @@ pub async fn find(app: &AppHandle, id: &str, audible: bool) -> Result<String, St
         let _turn = TURN.lock().await;
         let mut side = TandemSide::NotHeard;
         for loudness in [tandem_core::ffi::tandem_side_first_loudness(), 1.0] {
-            let Ok(probe) = engine.side_start(id.to_string()).await else { break };
+            let probe = match engine.side_start(id.to_string()).await {
+                Ok(probe) => probe,
+                Err(error) => {
+                    log::info!("side: {id} did not start listening: {error}");
+                    return Ok("not-listening".into());
+                }
+            };
             let _ = tauri::async_runtime::spawn_blocking(move || play(loudness)).await;
             side = engine.side_result(probe).await;
+            log::info!("side: {id} heard the audible sound at {loudness}: {side:?}");
             if matches!(side, TandemSide::Left | TandemSide::Right) {
                 break;
             }
         }
         side
     } else {
-        check(app, id).await
+        let side = check(app, id).await;
+        log::info!("side: {id} heard the quiet sound: {side:?}");
+        side
     };
     let text = match side {
         TandemSide::Left => "left",

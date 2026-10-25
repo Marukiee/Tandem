@@ -304,12 +304,15 @@ export function DevicePage({ device }) {
       <${SettingRow} icon="bell" title=${t("show_its_notifications")} sub=${t("show_its_notifications_sub")} on=${device.notifications} onChange=${(v) => setting({ notifications: v })} />
       ${hasCap("screen.view") && html`<${ScreenPolicyRows} device=${device} />`}
       <${SettingRow} icon="download" title=${t("accept_automatically")} sub=${t("accept_automatically_sub")} on=${device.autoAccept} onChange=${(v) => setting({ autoAccept: v })} />
+    </div>
+
+    ${transfers.length > 0 && html`<h2>${t("recent")}</h2><div class="card flush">${transfers.map((x) => html`<${TransferRow} item=${x} key=${x.id} />`)}</div>`}
+
+    <div class="card flush" style="margin-top:18px">
       <${SettingRow} icon="trash" title=${t("remove_device")} sub=${t("remove_device_sub")}>
         <button class="btn danger small" onClick=${() => set({ dialog: { kind: "remove", id: device.id } })}>${t("remove")}</button>
       <//>
     </div>
-
-    ${transfers.length > 0 && html`<h2>${t("recent")}</h2><div class="card flush">${transfers.map((x) => html`<${TransferRow} item=${x} key=${x.id} />`)}</div>`}
   </div>`;
 }
 
@@ -813,6 +816,7 @@ function GeneralSettings({ s, patch }) {
       <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
       <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
+      ${state.platform === "linux" && html`<${SettingRow} icon="phone" title=${t("contacts_search")} sub=${t("contacts_search_sub")} on=${s.contactsSearch !== false} onChange=${(v) => patch({ contactsSearch: v })} />`}
       ${state.canBluetooth && html`<${SettingRow} icon="bluetooth" title=${t("ble_messages")} sub=${t("ble_messages_sub")} on=${s.bleMessages !== false} onChange=${(v) => patch({ bleMessages: v })} />`}
     </div>
 

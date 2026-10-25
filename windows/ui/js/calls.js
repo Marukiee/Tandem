@@ -27,6 +27,18 @@ export function askCall(device, numbers, name = "") {
   set({ dialog: { kind: "call", id: device.id, numbers: dialable, name: (name || "").trim() } });
 }
 
+/** A person picked in the search of the desktop (`contactsearch.rs`), asked about like every other call. */
+export function useCallAsk() {
+  useEffect(() => {
+    const ask = state.callAsk;
+    if (!ask) return;
+    set({ callAsk: null });
+    call("call_ask_taken").catch(() => {});
+    const device = state.devices.find((d) => d.id === ask.id);
+    if (device) askCall(device, ask.numbers || [], ask.name);
+  }, [state.callAsk && state.callAsk.at]);
+}
+
 /** The question itself, over the page. Enter calls and Escape cancels, also while the field of a conversation had the keys. */
 export function CallDialog({ dialog }) {
   const device = state.devices.find((d) => d.id === dialog.id);
@@ -82,7 +94,7 @@ export function CallDialog({ dialog }) {
       </div>
       ${several && html`<div class="call-ask-numbers" role="radiogroup">
         ${dialog.numbers.map((n, i) => html`<button role="radio" aria-checked=${i === pick} class=${"call-contact" + (i === pick ? " on" : "")} onClick=${() => setPick(i)}>
-          <span class="t">${n.label || t("call_number")}</span><span class="s">${n.number}</span></button>`)}
+          <span class="who"><span class="s">${n.label || t("call_number")}</span></span><span class="n">${n.number}</span></button>`)}
       </div>`}
       <div class="call-ask-actions">
         <button class="btn" data-cancel onClick=${close}>${t("cancel")}</button>

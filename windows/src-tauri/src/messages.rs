@@ -85,6 +85,19 @@ pub async fn sms_contacts(state: State<'_, AppState>, id: String, query: String)
     Ok(Value::Array(found.iter().map(contact).collect()))
 }
 
+/// Every number in the contacts of the phone `id`, one item per number as `sms_contacts` gives them. Only for a phone that says
+/// `sms.contacts`: an older one stays quiet until the wait runs out.
+#[tauri::command]
+pub async fn sms_all_contacts(state: State<'_, AppState>, id: String) -> Reply<Value> {
+    let people = state.engine()?.sms_all_contacts(id).await.map_err(refusal)?;
+    Ok(Value::Array(
+        people
+            .iter()
+            .flat_map(|p| p.numbers.iter().map(move |n| json!({ "name": p.name, "number": n.number, "label": n.label })))
+            .collect(),
+    ))
+}
+
 /// A picture of an MMS as something an image can show, or nothing when the phone has none to give.
 #[tauri::command]
 pub async fn sms_picture(state: State<'_, AppState>, id: String, part: u64) -> Reply<Option<String>> {

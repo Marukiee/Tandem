@@ -46,10 +46,16 @@ final class PhoneContacts {
         self.device = device
     }
 
-    /// The whole book, once per run of the app. Asked one question after the other so the phone is never flooded.
-    func loadAll() async {
+    /// The whole book, once per run of the app. A phone that says `sms.contacts` hands it out in one go; an older one is asked one
+    /// letter after the other so it is never flooded.
+    func loadAll(caps: [String]) async {
         guard load == .idle, let engine = EngineModel.shared.tandem else { return }
         load = .loading
+        if caps.contains("sms.contacts"), let people = try? await engine.smsAllContacts(target: device) {
+            add(people.flatMap { person in person.numbers.map { TandemSmsContact(name: person.name, number: $0.number, label: $0.label) } })
+            load = .done
+            return
+        }
         let letters = "abcdefghijklmnopqrstuvwxyz".map(String.init)
         var full: [String] = []
         for letter in letters {

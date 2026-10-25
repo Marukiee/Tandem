@@ -40,6 +40,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Zoek mijn telefoon | bron | ja | ja | ja |
 | Zoek mijn computer (geluid uit de eigen systeemgeluiden, laatst gezien met wifinaam) | ja (vraagt, met laatst gezien) | ja, beide kanten | ja, beide kanten | ja, beide kanten |
 | Bijwerken | ja | ja | ja | ja als AppImage; een pakket van de distributie werkt de pakketbeheerder bij |
+| Contacten van de telefoon in het zoeken van de computer, kiezen belt ze | bron (`sms.contacts`) | ja (Spotlight via Core Spotlight; nep-contacten gevonden met een `CSSearchQuery`, nooit met een echte telefoon) | - (zie hieronder) | ja: GNOME-zoeken (alleen met het .deb of .rpm, niet de AppImage) en KRunner; een test op een sessiebus staat klaar voor CI maar heeft nog niet gedraaid, nooit op een echt bureaublad |
 
 ## Wat er nog mist
 
@@ -52,3 +53,10 @@ Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een ech
 - **Overal**: Windows en Linux moeten dezelfde functies als de Mac kunnen aanbieden, niet alleen tonen: geluid van een computer naar een andere
   computer en Invoegen vanaf telefoon als bron voor een andere computer.
 - De Mac-functies die aan macOS zelf vastzitten horen er niet bij: het menu Diensten, het Controlecentrum, het AirDrop-knopje.
+- **Contacten in het zoeken van Windows** kan niet: het zoeken van het Startmenu toont apps, instellingen, bestanden en het web, en heeft
+  geen manier voor een app om eigen resultaten te geven (de zoekconnectors van Windows 7 werken alleen in de Verkenner). Een bestand per
+  contact in een geïndexeerde map zou als document verschijnen, niet als iemand die je belt. Op Windows haalt Tandem de lijst dus niet op;
+  bellen gaat met de knop Bellen op de pagina van de telefoon, waar een naam ook werkt.
+- **Linux, GNOME**: GNOME leest zoekleveranciers alleen uit `/usr/share/gnome-shell/search-providers`, niet uit de map van de gebruiker. Het
+  .deb en .rpm zetten het bestand daar; de AppImage kan dat niet, KRunner werkt er wel mee. Een nieuwe leverancier ziet GNOME pas na opnieuw
+  inloggen.

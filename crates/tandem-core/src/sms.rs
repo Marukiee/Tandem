@@ -24,6 +24,9 @@ use crate::proto::Msg;
 pub const CAP_PHONE: &str = "sms";
 /// What a computer that shows them says, so the phone sends it the changes.
 pub const CAP_VIEW: &str = "sms.view";
+/// A phone that hands out its whole list of contacts in pages (`ListContacts`). An older one does not answer that question at all, so a
+/// computer only asks a phone that says this.
+pub const CAP_CONTACTS: &str = "sms.contacts";
 
 /// A page is never longer than this, whatever is asked.
 pub const MAX_PAGE: u32 = 100;
@@ -36,6 +39,12 @@ pub const MAX_SNIPPET: usize = 200;
 pub const MAX_SEND: usize = 5000;
 pub const MAX_QUERY: usize = 100;
 pub const MAX_CONTACTS: usize = 25;
+/// People in one page of the whole list of contacts.
+pub const MAX_CONTACT_PAGE: u32 = 200;
+/// The numbers of one person. Past this it is a switchboard, not a person.
+pub const MAX_NUMBERS: usize = 10;
+/// The whole list a computer takes from a phone, in people: enough for any address book, and a bound on how long it keeps asking.
+pub const MAX_ALL_CONTACTS: usize = 5000;
 /// The people in one conversation. More is a broadcast list, not a conversation.
 pub const MAX_ADDRESSES: usize = 20;
 pub const MAX_PICTURES: usize = 10;
@@ -123,6 +132,29 @@ pub struct SmsContact {
     pub label: String,
 }
 
+/// One number of a person in the whole list of contacts.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhoneNumber {
+    pub number: String,
+    /// What kind of number it is ("Mobile", "Work"), in the language of the phone, so only for showing.
+    #[serde(default)]
+    pub label: String,
+    /// The one to call without asking: the default number of the person, or else their only mobile number. At most one per person.
+    #[serde(default)]
+    pub preferred: bool,
+}
+
+/// A person in the contacts of the phone, with all their numbers.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PhoneContact {
+    /// The contact on the phone. It stays the same while the person is in the contacts, so a computer can keep it as a key.
+    pub id: u64,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub numbers: Vec<PhoneNumber>,
+}
+
 /// Why the phone will not do what was asked.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -203,6 +235,26 @@ pub enum SmsMsg {
         #[serde(default)]
         messages: Vec<SmsMessage>,
     },
+
+    // Added later, at the end so the older ones keep their place.
+    /// The people with a number in the contacts of the phone whose contact id is above `after`, by that id, at most `limit` of them.
+    /// A cursor and not a count, so a contact added or removed between two pages does not shift the rest. Only asked of a phone that
+    /// says `CAP_CONTACTS`.
+    ListContacts {
+        req: u64,
+        #[serde(default)]
+        after: u64,
+        #[serde(default)]
+        limit: u32,
+    },
+    /// A page of the whole list. `more` when there is a page after it, which starts after the id of the last person here.
+    ContactPage {
+        req: u64,
+        #[serde(default)]
+        items: Vec<PhoneContact>,
+        #[serde(default)]
+        more: bool,
+    },
 }
 
 impl SmsMsg {
@@ -213,7 +265,8 @@ impl SmsMsg {
             | SmsMsg::ListMessages { req, .. }
             | SmsMsg::Send { req, .. }
             | SmsMsg::FindContacts { req, .. }
-            | SmsMsg::Picture { req, .. } => Some(*req),
+            | SmsMsg::Picture { req, .. }
+            | SmsMsg::ListContacts { req, .. } => Some(*req),
             _ => None,
         }
     }
@@ -226,6 +279,7 @@ impl SmsMsg {
             | SmsMsg::Sent { req, .. }
             | SmsMsg::Contacts { req, .. }
             | SmsMsg::PictureData { req, .. }
+            | SmsMsg::ContactPage { req, .. }
             | SmsMsg::Refused { req, .. } => *req == id,
             _ => false,
         }
@@ -265,6 +319,16 @@ impl SmsMsg {
                 }
                 SmsMsg::Contacts { req, items }
             }
+            SmsMsg::ListContacts { req, after, limit } => {
+                let limit = if limit == 0 { MAX_CONTACT_PAGE } else { limit.min(MAX_CONTACT_PAGE) };
+                SmsMsg::ListContacts { req, after, limit }
+            }
+            SmsMsg::ContactPage { req, mut items, more } => {
+                items.truncate(MAX_CONTACT_PAGE as usize);
+                items.iter_mut().for_each(tidy_person);
+                items.retain(|p| !p.numbers.is_empty());
+                SmsMsg::ContactPage { req, items, more }
+            }
             SmsMsg::Sent { req, thread, mut error } => {
                 if let Some(text) = error.as_mut() {
                     cut(text, 500);
@@ -298,6 +362,22 @@ fn tidy_message(m: &mut SmsMessage) {
     cut(&mut m.address, 64);
     cut(&mut m.body, MAX_BODY);
     m.pictures.truncate(MAX_PICTURES);
+}
+
+fn tidy_person(p: &mut PhoneContact) {
+    cut(&mut p.name, 200);
+    p.numbers.retain(|n| !n.number.trim().is_empty());
+    p.numbers.truncate(MAX_NUMBERS);
+    // "Call without asking" has to mean one number, so only the first that says so keeps it.
+    let mut seen = false;
+    for n in &mut p.numbers {
+        cut(&mut n.number, 64);
+        cut(&mut n.label, 64);
+        if n.preferred && seen {
+            n.preferred = false;
+        }
+        seen |= n.preferred;
+    }
 }
 
 /// Cuts `text` to at most `max` bytes, at the edge of a character.
@@ -349,6 +429,30 @@ impl Engine {
             }
         };
         tokio::time::timeout(ANSWER_WAIT, wait).await.map_err(|_| Error::connection("the phone did not answer"))?
+    }
+
+    /// The whole list of contacts of the phone `peer`, page after page. The answer may be a `Refused`, which is handed back as it is.
+    /// Only for a phone that says `CAP_CONTACTS`: an older one never answers, and this ends in the error of a phone that did not.
+    pub async fn sms_all_contacts(&self, peer: DeviceId) -> Result<std::result::Result<Vec<PhoneContact>, SmsRefusal>> {
+        let mut all: Vec<PhoneContact> = Vec::new();
+        let mut after = 0;
+        loop {
+            match self.sms_ask(peer, |req| SmsMsg::ListContacts { req, after, limit: MAX_CONTACT_PAGE }).await? {
+                SmsMsg::ContactPage { items, more, .. } => {
+                    let last = items.iter().map(|p| p.id).max();
+                    all.extend(items);
+                    // A page that does not move the cursor on would be asked for again and again.
+                    match last {
+                        Some(last) if more && last > after && all.len() < MAX_ALL_CONTACTS => after = last,
+                        _ => break,
+                    }
+                }
+                SmsMsg::Refused { why, .. } => return Ok(Err(why)),
+                other => return Err(Error::invalid(format!("the phone gave an answer to another question: {other:?}"))),
+            }
+        }
+        all.truncate(MAX_ALL_CONTACTS);
+        Ok(Ok(all))
     }
 
     /// The phone's answer to a question of `peer`.
@@ -512,6 +616,63 @@ mod tests {
         assert_eq!(items.len(), MAX_PAGE as usize);
         // Cut at the edge of a character, never in the middle of one.
         assert!(items[0].body.len() <= MAX_BODY && items[0].body.chars().all(|c| c == 'é'));
+    }
+
+    fn person(id: u64, numbers: &[(&str, bool)]) -> PhoneContact {
+        PhoneContact {
+            id,
+            name: format!("Person {id}"),
+            numbers: numbers.iter().map(|(n, p)| PhoneNumber { number: n.to_string(), label: "Mobile".into(), preferred: *p }).collect(),
+        }
+    }
+
+    #[test]
+    fn the_whole_list_goes_in_pages_and_is_a_question_with_an_answer() {
+        let ask = Msg::Sms(SmsMsg::ListContacts { req: 4, after: 17, limit: 0 }.tidy());
+        let Msg::Sms(back) = decode_msg(&encode(&ask).unwrap()).unwrap() else { panic!("not sms") };
+        // A question like the others, so a device whose messages are off is refused by the core.
+        assert_eq!(back.request(), Some(4));
+        assert_eq!(back, SmsMsg::ListContacts { req: 4, after: 17, limit: MAX_CONTACT_PAGE });
+        let SmsMsg::ListContacts { limit, .. } = (SmsMsg::ListContacts { req: 1, after: 0, limit: 100_000 }).tidy() else { panic!() };
+        assert_eq!(limit, MAX_CONTACT_PAGE);
+
+        let page = SmsMsg::ContactPage { req: 4, items: vec![person(18, &[("+31600000001", true)])], more: true };
+        let Msg::Sms(back) = decode_msg(&encode(&Msg::Sms(page.clone())).unwrap()).unwrap() else { panic!("not sms") };
+        assert!(back.answers(4) && !back.answers(5));
+        assert_eq!(back.request(), None);
+        assert_eq!(back, page);
+    }
+
+    #[test]
+    fn a_page_of_contacts_is_held_to_its_limits() {
+        let mut crowded = person(1, &[("1", true), ("2", true), (" ", false)]);
+        crowded.numbers.extend((0..20).map(|i| PhoneNumber { number: format!("+316{i:08}"), ..Default::default() }));
+        let mut items = vec![crowded, person(2, &[(" ", false)])];
+        items.extend((10..400).map(|id| person(id, &[("+31611111111", false)])));
+        let SmsMsg::ContactPage { items, .. } = (SmsMsg::ContactPage { req: 1, items, more: true }).tidy() else { panic!() };
+        assert_eq!(items[0].numbers.len(), MAX_NUMBERS);
+        // One number to call without asking, and a person without a number to call is no result.
+        assert_eq!(items[0].numbers.iter().filter(|n| n.preferred).count(), 1);
+        assert!(items.iter().all(|p| p.id != 2));
+        assert!(items.len() <= MAX_CONTACT_PAGE as usize);
+    }
+
+    #[test]
+    fn a_person_without_the_later_fields_still_reads() {
+        let old = ciborium::Value::Map(vec![
+            (ciborium::Value::Text("id".into()), ciborium::Value::Integer(5.into())),
+            (
+                ciborium::Value::Text("numbers".into()),
+                ciborium::Value::Array(vec![ciborium::Value::Map(vec![(
+                    ciborium::Value::Text("number".into()),
+                    ciborium::Value::Text("+31612345678".into()),
+                )])]),
+            ),
+        ]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&old, &mut bytes).unwrap();
+        let p: PhoneContact = crate::proto::decode(&bytes).unwrap();
+        assert_eq!((p.id, p.name.as_str(), p.numbers[0].preferred, p.numbers[0].label.as_str()), (5, "", false, ""));
     }
 
     #[test]

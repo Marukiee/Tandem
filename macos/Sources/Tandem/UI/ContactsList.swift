@@ -42,7 +42,7 @@ struct ContactsList: View {
         }
         .scrollContentBackground(.hidden)
         .task(id: device.online) {
-            if device.online { await contacts.loadAll() }
+            if device.online { await contacts.loadAll(caps: device.caps) }
         }
         .task(id: search) {
             // Typing fast asks the phone once, for what was typed last.

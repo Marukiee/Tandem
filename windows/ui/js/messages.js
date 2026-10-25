@@ -220,14 +220,23 @@ function addContacts(device, found) {
   redraw();
 }
 
-/** The whole book, once while the window is open. The phone only answers a search (at most 25 at a time, nothing for an empty one),
- * so it is asked for each letter in turn, and a letter that fills a whole answer again for each two letters. One question after the
- * other, so the phone is never flooded, and what comes in shows up at once. */
-async function loadContacts(device) {
+/** The whole book, once while the window is open. A phone that says `sms.contacts` hands it out in one go. An older one only answers a
+ * search (at most 25 at a time, nothing for an empty one), so it is asked for each letter in turn, and a letter that fills a whole
+ * answer again for each two letters. One question after the other, so the phone is never flooded, and what comes in shows up at once. */
+async function loadContacts(d) {
+  const device = d.id;
   const book = phone(device).contacts;
   if (book.load !== "idle") return;
   book.load = "loading";
   redraw();
+  if (Array.isArray(d.caps) && d.caps.includes("sms.contacts")) {
+    try {
+      addContacts(device, await call("sms_all_contacts", { id: device }));
+      book.load = "done";
+      redraw();
+      return;
+    } catch { /* asked letter by letter below */ }
+  }
   const full = [];
   for (const letter of LETTERS) {
     let found;
@@ -455,7 +464,7 @@ export function MessagesPage({ device }) {
  * are. A click writes to the person, the phone button calls them (after asking). */
 function ContactsList({ device, search, open, onOpen }) {
   const book = phone(device.id).contacts;
-  useEffect(() => { if (device.online) loadContacts(device.id); }, [device.id, device.online]);
+  useEffect(() => { if (device.online) loadContacts(device); }, [device.id, device.online]);
   useEffect(() => {
     if (!device.online || !search.trim()) return undefined;
     // Typing fast asks the phone once, for what was typed last; it knows the people not gathered yet.

@@ -85,7 +85,7 @@ final class LiveManager {
         device: TandemDevice, kind: TandemMediaKind, facing: LiveCameraFacing = .back, quality: LiveQuality = .standard,
         reusing: LiveSession? = nil, extend: Bool = false
     ) -> LiveSession? {
-        if let existing = session(of: kind, on: device.id), existing.cameraFacing == facing || kind == .screen {
+        if let existing = session(of: kind, on: device.id), kind == .screen || (existing.cameraFacing == facing && existing.quality == quality) {
             windows[ObjectIdentifier(existing)]?.bringToFront()
             return existing
         }

@@ -79,8 +79,12 @@ enum SideTone {
     }
 
     /// Made at the rate the sound card runs at: a resampler on the way cuts off near the top of what it carries, where the quiet sweeps are.
+    /// Always on the Mac's own speakers, whatever the sound of the Mac goes to now.
     private static func play(_ make: (UInt32) -> [Float]) async -> Bool {
         let engine = AVAudioEngine()
+        if let speakers = AudioRoute.builtInSpeakers() {
+            do { try engine.outputNode.auAudioUnit.setDeviceID(speakers) } catch { PointerLog.write("side: could not play on the Mac's own speakers: \(error)") }
+        }
         let rate = engine.outputNode.outputFormat(forBus: 0).sampleRate
         guard rate > 0 else { return false }
         let samples = make(UInt32(rate))
@@ -130,8 +134,14 @@ private enum SpeakerTurn {
 enum SideFinder {
     @MainActor private static var busy: Set<String> = []
 
-    /// Asks the device to listen, plays the sweeps once it does, and reads its answer. Soft first, so a quiet room is not startled; when it
-    /// was not heard well, once more at full loudness. Applies the side when it is clear; `remember` keeps it for next time.
+    /// Which sweeps "Find by sound" plays: `quiet` (too high to hear, the first choice) or `audible`, for a device whose microphone does
+    /// not pick up the quiet ones.
+    static let soundKey = "sideSound"
+    static var audibleChosen: Bool { UserDefaults.standard.string(forKey: soundKey) == "audible" }
+
+    /// "Find by sound": the quiet sweeps first, which nobody hears and most devices pick up well. When they were not heard, it asks
+    /// whether to play the audible ones, soft first and then at full loudness; with "Audible" chosen in Settings it plays those at once.
+    /// Applies the side when it is clear; `remember` keeps it for next time.
     @MainActor
     static func find(_ device: TandemDevice, remember: Bool = true) async -> TandemSide {
         guard let engine = EngineModel.shared.tandem, !busy.contains(device.id) else { return .notHeard }
@@ -140,11 +150,45 @@ enum SideFinder {
         await SpeakerTurn.take()
         defer { SpeakerTurn.give() }
         var side = TandemSide.notHeard
-        for loudness in [tandemSideFirstLoudness(), 1] {
-            guard let id = try? await engine.sideStart(target: device.id) else { return .notHeard }
-            await SideTone.play(loudness: loudness)
-            side = await engine.sideResult(id: id)
-            if side == .left || side == .right { break }
+        var audible = audibleChosen
+        lastProblem = nil
+        guard AudioRoute.speakersCanPlay() else {
+            PointerLog.write("side: \(device.name): nothing played, the Mac's own speakers are off, nearly off, or headphones are plugged in")
+            lastProblem = .speakers
+            return .notHeard
+        }
+        if !audible {
+            do {
+                PointerLog.write("side: \(device.name): asked to listen for the quiet sound")
+                let id = try await engine.sideCheckStart(target: device.id)
+                let played = await SideTone.playQuiet()
+                let heard = await engine.sideCheckResult(id: id)
+                PointerLog.write("side: \(device.name): played \(played), heard \(heard)")
+                if played { side = heard }
+            } catch {
+                PointerLog.write("side: \(device.name): did not start listening: \(error)")
+                lastProblem = .notListening
+                return .notHeard
+            }
+            if side != .left && side != .right {
+                audible = await askForAudible(name: device.name)
+            }
+        }
+        if audible {
+            for loudness in [tandemSideFirstLoudness(), 1] {
+                do {
+                    PointerLog.write("side: \(device.name): asked to listen, audible at \(loudness)")
+                    let id = try await engine.sideStart(target: device.id)
+                    await SideTone.play(loudness: loudness)
+                    side = await engine.sideResult(id: id)
+                    PointerLog.write("side: \(device.name): heard \(side)")
+                } catch {
+                    PointerLog.write("side: \(device.name): did not start listening: \(error)")
+                    lastProblem = .notListening
+                    return .notHeard
+                }
+                if side == .left || side == .right { break }
+            }
         }
         switch side {
         case .left: DeviceSides.set("left", for: device.id, remember: remember)
@@ -152,6 +196,33 @@ enum SideFinder {
         default: break
         }
         return side
+    }
+
+    /// The quiet sweeps were not heard: may the audible ones play? Not now when nobody answers.
+    @MainActor
+    private static func askForAudible(name: String) async -> Bool {
+        await withCheckedContinuation { continuation in
+            var answered = false
+            let answer: (Bool) -> Void = { yes in
+                guard !answered else { return }
+                answered = true
+                continuation.resume(returning: yes)
+            }
+            GlassQuestion.shared.ask(
+                symbol: "speaker.wave.2",
+                title: String(localized: "\(name) did not hear the quiet sound"),
+                body: String(localized: "Some microphones hear less up high. The audible sound is a short sweep you can hear."),
+                answers: [
+                    GlassQuestion.Answer(title: "Not now") { answer(false) },
+                    GlassQuestion.Answer(title: "Use audible sound", prominent: true) { answer(true) },
+                ],
+                closeAfter: .seconds(30)
+            )
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(31))
+                answer(false)
+            }
+        }
     }
 
     /// Once, with the quiet sweeps, for a check by itself: nothing is applied, and nothing is played when this Mac's sound would not come
@@ -170,10 +241,22 @@ enum SideFinder {
         return played ? side : .notHeard
     }
 
+    /// Why the last `find` found nothing, when it was not that the sound was not heard.
+    enum Problem { case notListening, speakers }
+    @MainActor static var lastProblem: Problem?
+
     /// What to tell the person after `find`.
     @MainActor
     static func message(_ side: TandemSide, name: String) -> String {
-        switch side {
+        if side == .notHeard, let problem = lastProblem {
+            switch problem {
+            case .notListening:
+                return String(localized: "\(name) did not start listening. Its microphone may be in use by another app or not allowed for Tandem, or the phone is not reachable right now.")
+            case .speakers:
+                return String(localized: "The speakers of this Mac are off or very low, or headphones are plugged in. Turn them up and try again.")
+            }
+        }
+        return switch side {
         case .left: String(localized: "\(name) stands on the left")
         case .right: String(localized: "\(name) stands on the right")
         case .unsure: String(localized: "Both sides sounded about the same. Put \(name) more to one side, or choose the side yourself.")

@@ -52,14 +52,23 @@ final class CallConfirmation {
             return
         }
         pending = nil
-        let dialed = Self.clean(request.number)
-        Task {
+        Self.dial(request.number, device: request.device, deviceName: request.deviceName, name: request.name, engine: engine) {
+            EngineModel.shared.showToast($0)
+        }
+    }
+
+    /// The phone dials, without asking: only for a call that was just asked about, here or in the card of a Spotlight pick.
+    static func dial(_ number: String, device: String, deviceName: String, name: String?, engine: TandemEngine,
+                     say: @escaping @MainActor (String) -> Void) {
+        let dialed = clean(number)
+        guard !dialed.isEmpty else { return }
+        Task { @MainActor in
             do {
-                try await engine.dial(target: request.device, number: dialed)
-                CallWindow.shared.dialed(device: request.device, number: dialed, name: request.name)
-                EngineModel.shared.showToast(String(localized: "\(request.deviceName) is calling \(request.name ?? request.number)"))
+                try await engine.dial(target: device, number: dialed)
+                CallWindow.shared.dialed(device: device, number: dialed, name: name)
+                say(String(localized: "\(deviceName) is calling \(name ?? number)"))
             } catch {
-                EngineModel.shared.showToast(String(localized: "\(request.deviceName) could not be reached"))
+                say(String(localized: "\(deviceName) could not be reached"))
             }
         }
     }

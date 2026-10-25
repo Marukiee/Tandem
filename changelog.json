@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.2.16",
+    "date": "2026-10-25",
+    "en": {
+      "title": "Calls and contacts",
+      "new": [
+        "The Linux and Windows window loads again",
+        "A call shows as a small card with Answer, Decline and Hang up",
+        "Find and call your phone's contacts from Spotlight, GNOME and KDE",
+        "Switch between the phone's front and back camera in one click",
+        "Find by sound uses the quiet tone first"
+      ]
+    },
+    "nl": {
+      "title": "Bellen en contacten",
+      "new": [
+        "Het venster op Linux en Windows laadt weer",
+        "Een oproep verschijnt als klein kaartje met Opnemen, Weigeren en Ophangen",
+        "Zoek en bel de contacten van je telefoon vanuit Spotlight, GNOME en KDE",
+        "Wissel met één klik tussen de voor- en achtercamera van je telefoon",
+        "Zoeken met geluid gebruikt eerst de stille toon"
+      ]
+    }
+  },
+  {
     "version": "0.2.15",
     "date": "2026-10-25",
     "en": {

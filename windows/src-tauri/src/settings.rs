@@ -66,6 +66,8 @@ pub struct Settings {
     pub pointer_share: bool,
     /// "Send with Tandem" in the menus of the file manager (see `sendwith.rs`).
     pub file_manager_send: bool,
+    /// The contacts of the phones in the search of the desktop (see `contactsearch.rs`).
+    pub contacts_search: bool,
     /// The sound of the system that plays when another device looks for this computer. Empty is the one `find.rs` picks.
     pub ring_sound: String,
     /// Focus the same on every device. Not chosen yet: on where the desktop has a Do Not Disturb (see `focus::on`).
@@ -111,6 +113,7 @@ impl Default for Settings {
             screen_sound_ask: true,
             pointer_share: true,
             file_manager_send: true,
+            contacts_search: true,
             auto_update: true,
             dismissed_update: String::new(),
             ring_sound: String::new(),

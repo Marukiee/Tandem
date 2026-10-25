@@ -8,7 +8,7 @@ import { setLanguage, t } from "./i18n.js";
 import { ClipboardPage, DevicePage, FilesPage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
 import { say, selectedDevice, set, state, useStore } from "./store.js";
 import { MessagesPage, offersMessages } from "./messages.js";
-import { CallDialog } from "./calls.js";
+import { CallDialog, useCallAsk } from "./calls.js";
 
 /** The update, at the foot of the sidebar: what is out, how far the download is, and what went wrong. */
 function UpdateBanner() {
@@ -157,6 +157,7 @@ function Page() {
 
 function App() {
   useStore();
+  useCallAsk();
   useEffect(() => { setLanguage(state.settings.language, state.systemLanguage); }, [state.settings.language, state.systemLanguage]);
   return html`<div id="app" class=${framed() ? "framed" : ""}>
     ${framed() && html`<${Titlebar} />`}

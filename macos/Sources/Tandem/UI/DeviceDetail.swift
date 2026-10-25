@@ -215,6 +215,7 @@ struct DeviceDetail: View {
             // What is set comes before what was sent: the list grows, and the settings should not move further down the more is sent.
             settings
             recentTransfers
+            removal
         }
     }
 
@@ -406,15 +407,20 @@ struct DeviceDetail: View {
                     Divider().opacity(0.4).padding(.horizontal, 14)
                     speakerRow
                 }
-                Divider().opacity(0.4).padding(.horizontal, 14)
                 if device.isComputer || device.platform == .android {
-                    SideRow(device: device)
                     Divider().opacity(0.4).padding(.horizontal, 14)
+                    SideRow(device: device)
                 }
-                SettingRow(symbol: "trash", title: "Remove this device", subtitle: device.vouchedByRemoved ? "It was added by a device that has since been removed" : "It leaves the circle everywhere") {
-                    Button("Remove", role: .destructive) { confirmRemoval = true }
-                        .buttonStyle(.tandemGlass)
-                }
+            }
+        }
+    }
+
+    /// At the very bottom of the page: it is done once, if ever, and should not sit between the things that are used.
+    private var removal: some View {
+        Card(radius: Metrics.card, padding: 6) {
+            SettingRow(symbol: "trash", title: "Remove this device", subtitle: device.vouchedByRemoved ? "It was added by a device that has since been removed" : "It leaves the circle everywhere") {
+                Button("Remove", role: .destructive) { confirmRemoval = true }
+                    .buttonStyle(.tandemGlass)
             }
         }
     }

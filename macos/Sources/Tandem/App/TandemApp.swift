@@ -1,4 +1,5 @@
 import AppKit
+import CoreSpotlight
 import SwiftUI
 
 @main
@@ -75,6 +76,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { @MainActor in
             for url in urls { EngineModel.shared.handle(url: url) }
         }
+    }
+
+    /// A contact of the phone picked in Spotlight (see `PhoneSpotlight`).
+    func application(_ application: NSApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
+        guard userActivity.activityType == CSSearchableItemActionType,
+              let identifier = userActivity.userInfo?[CSSearchableItemActivityIdentifier] as? String
+        else { return false }
+        Task { @MainActor in PhoneSpotlight.shared.open(identifier: identifier) }
+        return true
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

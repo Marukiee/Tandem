@@ -1092,7 +1092,6 @@
 "macOS lets apps neither turn on a Focus nor see one, so Tandem does both with a shortcut of its own, Tandem Focus, that you add with one click." = "macOS laat apps geen Focus aanzetten en ook niet zien, dus doet Tandem beide met een eigen opdracht, Tandem Focus, die je met één klik toevoegt.";
 "Add the Tandem Focus shortcut" = "De opdracht Tandem Focus toevoegen";
 "Add Shortcut" = "Opdracht toevoegen";
-"Not Now" = "Niet nu";
 "Shortcuts asks you once to add it. After that this Mac follows your other devices and they follow this Mac." = "Opdrachten vraagt je één keer om hem toe te voegen. Daarna volgt deze Mac je andere apparaten en volgen zij deze Mac.";
 "Sign in to iCloud" = "Log in bij iCloud";
 "Open Apple Account" = "Apple-account openen";
@@ -1133,3 +1132,17 @@
 "Call %@?" = "%@ bellen?";
 "Via %@" = "Via %@";
 "%@ via %@" = "%1$@ via %2$@";
+"%@ did not hear the quiet sound" = "%@ hoorde het stille geluid niet";
+"Some microphones hear less up high. The audible sound is a short sweep you can hear." = "Sommige microfoons horen minder in de hoogte. Het hoorbare geluid is een korte sweep die je kunt horen.";
+"Use audible sound" = "Hoorbaar geluid";
+"Sound for finding the side" = "Geluid om de kant te vinden";
+"Quiet (recommended)" = "Stil (aanbevolen)";
+"Audible" = "Hoorbaar";
+"Quiet is too high to hear. Audible only helps with a device whose microphone does not pick up the quiet one." = "Stil is te hoog om te horen. Hoorbaar helpt alleen bij een apparaat waarvan de microfoon het stille geluid niet oppikt.";
+"Phone contacts in Spotlight" = "Contacten van de telefoon in Spotlight";
+"Type a name in Spotlight and pick the person: your phone calls them. Turned off, the contacts are taken out of Spotlight." = "Typ een naam in Spotlight en kies de persoon: je telefoon belt ze. Staat het uit, dan gaan de contacten uit Spotlight.";
+"Which number?" = "Welk nummer?";
+"That contact is no longer on the phone" = "Dat contact staat niet meer op de telefoon";
+"That phone is no longer paired" = "Die telefoon is niet meer gekoppeld";
+"%@ did not start listening. Its microphone may be in use by another app or not allowed for Tandem, or the phone is not reachable right now." = "%@ begon niet te luisteren. De microfoon wordt misschien door een andere app gebruikt of mag niet door Tandem gebruikt worden, of de telefoon is nu niet bereikbaar.";
+"The speakers of this Mac are off or very low, or headphones are plugged in. Turn them up and try again." = "De speakers van deze Mac staan uit of heel zacht, of er zit een koptelefoon in. Zet ze harder en probeer het opnieuw.";

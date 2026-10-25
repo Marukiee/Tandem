@@ -131,6 +131,12 @@ telefoon die `sms` zegt; een computer die ze toont zegt `sms.view`.
    wat op de telefoon zelf verstuurd werd, naar elke verbonden computer met `sms.view` die het mag.
 4. `AskAccess` vraagt de persoon op de telefoon om de computer toe te laten. Het is de enige vraag die een computer mag
    stellen als hij uit staat, zonder antwoord, en hooguit eens per halve minuut.
+5. Een telefoon die ook `sms.contacts` zegt geeft zijn hele lijst met contacten, voor het zoeken van de computer (Spotlight,
+   GNOME): `ListContacts { after, limit }` krijgt `ContactPage { items, more }`, mensen met een nummer op volgorde van hun
+   contact-id boven `after`, hoogstens 200 per pagina. Elke persoon heeft `id`, `name` en `numbers` met `number`, `label` en
+   `preferred` (hooguit één: het standaardnummer of anders het enige mobiele, dat zonder vragen gebeld mag worden). De volgende
+   pagina begint na het hoogste id van de vorige. Een oudere telefoon kent de vraag niet en zwijgt, daarom alleen aan een
+   telefoon die `sms.contacts` zegt.
 
 De schakelaar per apparaat (`DeviceSettings.messages`) staat in de core van de telefoon, die een vraag van een computer die
 uit staat weigert voordat de app er iets van hoort. Een gast staat uit.
@@ -197,6 +203,7 @@ vragen, kijkt eerst of het woord er staat.
 | `wifi.share` | een computer die zegt op welk wifi hij zit en het wachtwoord geeft als zijn persoon ja zegt |
 | `wifi.join` | verbindt met een wifi dat een ander apparaat geeft (een telefoon via het blad van het systeem) |
 | `sms`, `sms.view` | een telefoon die zijn sms'jes laat lezen en sturen, en een computer die ze toont (Berichten) |
+| `sms.contacts` | een telefoon die zijn hele lijst met contacten in pagina's geeft (`ListContacts`) |
 | `focus.share` | leest zijn eigen Focus of Niet storen en stuurt een wijziging door (`Focus`) |
 | `focus.follow` | kan een eigen Focus aan- en uitzetten als een ander apparaat dat doet |
 
