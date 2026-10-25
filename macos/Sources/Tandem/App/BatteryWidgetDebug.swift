@@ -25,7 +25,7 @@ enum BatteryWidgetDebug {
                     let view = BatteryWidgetView(devices: devices, size: size)
                         .padding(16)
                         .frame(width: frame.width, height: frame.height)
-                        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(BatteryWidgetStyle.background))
+                        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.background))
                         .environment(\.colorScheme, scheme)
                     let renderer = ImageRenderer(content: view)
                     renderer.scale = 2

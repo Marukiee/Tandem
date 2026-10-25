@@ -45,24 +45,19 @@ enum BatteryWidgetSize {
     }
 }
 
-/// The colours are fixed, the same in dark and light and on every system: a dark card like the Batteries widget of iOS, so a ring reads
-/// the same on a light desktop as on a dark one. Keep in step with `BatteryWidgetColors.kt` and `batteries.js`.
+/// Apple's own language, as in the system's Batteries widget: the system background of a widget, thin rings, the system green, yellow and
+/// red (which differ a little between light and dark, as Apple makes them), SF Symbols and SF Pro Rounded numbers. Android and the tray panel
+/// of Linux and Windows draw the same rings in their own languages.
 enum BatteryWidgetStyle {
-    static let background = Color(red: 0x1C / 255, green: 0x1C / 255, blue: 0x1E / 255)
-    static let track = Color.white.opacity(0.16)
-    static let text = Color.white
-    static let secondary = Color.white.opacity(0.6)
-    static let green = Color(red: 0x30 / 255, green: 0xD1 / 255, blue: 0x58 / 255)
-    static let yellow = Color(red: 0xFF / 255, green: 0xD6 / 255, blue: 0x0A / 255)
-    static let red = Color(red: 0xFF / 255, green: 0x45 / 255, blue: 0x3A / 255)
+    static let track = Color.primary.opacity(0.12)
     static let awayOpacity = 0.4
 
     /// A battery on the charger is green whatever its level, as on iOS: it is getting better.
     static func tint(level: Int, charging: Bool) -> Color {
-        if charging { return green }
-        if level < 10 { return red }
-        if level < 20 { return yellow }
-        return green
+        if charging { return .green }
+        if level < 10 { return .red }
+        if level < 20 { return .yellow }
+        return .green
     }
 
     /// Anything below 100 leaves an opening, so 97 does not look like a closed ring with a flaw.
@@ -70,7 +65,7 @@ enum BatteryWidgetStyle {
         level >= 100 ? 1 : CGFloat(max(0, level)) / 100 * 0.945
     }
 
-    /// The extension has no translations of its own: the few words it shows are chosen here.
+/// The extension has no translations of its own: the few words it shows are chosen here.
     static func text(_ english: String, _ dutch: String) -> String {
         (Locale.preferredLanguages.first ?? "en").hasPrefix("nl") ? dutch : english
     }
@@ -81,7 +76,7 @@ struct BatteryWidgetRing: View {
     let diameter: CGFloat
 
     var body: some View {
-        let line = max(3, diameter * 0.1)
+        let line = max(2.5, diameter * 0.075)
         ZStack {
             Circle().stroke(BatteryWidgetStyle.track, lineWidth: line)
             Circle()
@@ -89,8 +84,8 @@ struct BatteryWidgetRing: View {
                 .stroke(BatteryWidgetStyle.tint(level: device.level, charging: device.charging), style: StrokeStyle(lineWidth: line, lineCap: .round))
                 .rotationEffect(.degrees(-90))
             Image(systemName: device.symbol)
-                .font(.system(size: diameter * 0.36, weight: .semibold))
-                .foregroundStyle(BatteryWidgetStyle.text)
+                .font(.system(size: diameter * 0.36, weight: .medium))
+                .foregroundStyle(.primary)
         }
         .padding(line / 2)
         .frame(width: diameter, height: diameter)
@@ -108,17 +103,17 @@ struct BatteryWidgetItem: View {
             BatteryWidgetRing(device: device, diameter: diameter)
             HStack(spacing: 1) {
                 if device.charging {
-                    Image(systemName: "bolt.fill").font(.system(size: diameter * 0.2, weight: .bold)).foregroundStyle(BatteryWidgetStyle.green)
+                    Image(systemName: "bolt.fill").font(.system(size: diameter * 0.2, weight: .bold)).foregroundStyle(.green)
                 }
                 Text("\(device.level)%")
                     .font(.system(size: max(11, diameter * 0.24), weight: .semibold, design: .rounded).monospacedDigit())
-                    .foregroundStyle(BatteryWidgetStyle.text)
+                    .foregroundStyle(.primary)
             }
             .lineLimit(1)
             if showsName {
                 Text(device.name)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(BatteryWidgetStyle.secondary)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
@@ -128,7 +123,7 @@ struct BatteryWidgetItem: View {
     }
 }
 
-/// The content of the widget. The caller gives it the dark card (`containerBackground` in the extension) and the size.
+/// The content of the widget. The caller gives it the background (the system's, with `containerBackground` in the extension) and the size.
 struct BatteryWidgetView: View {
     let devices: [BatteryWidgetDevice]
     let size: BatteryWidgetSize
@@ -138,10 +133,10 @@ struct BatteryWidgetView: View {
         Group {
             if shown.isEmpty {
                 VStack(spacing: 6) {
-                    Image(systemName: "battery.100percent").font(.system(size: 26, weight: .semibold)).foregroundStyle(BatteryWidgetStyle.secondary)
+                    Image(systemName: "battery.100percent").font(.system(size: 26, weight: .semibold)).foregroundStyle(.secondary)
                     Text(BatteryWidgetStyle.text("No batteries yet", "Nog geen batterijen"))
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(BatteryWidgetStyle.secondary)
+                        .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
             } else {
@@ -153,7 +148,6 @@ struct BatteryWidgetView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .environment(\.colorScheme, .dark)
     }
 
     // Fewer devices get bigger rings, so a widget with two of them is not mostly empty card.

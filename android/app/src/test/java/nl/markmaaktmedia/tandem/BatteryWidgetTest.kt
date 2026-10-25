@@ -1,5 +1,7 @@
 package nl.markmaaktmedia.tandem
 
+import nl.markmaaktmedia.tandem.widget.BatteryShape
+import nl.markmaaktmedia.tandem.widget.BatteryTone
 import nl.markmaaktmedia.tandem.widget.BatteryWidgetColors
 import nl.markmaaktmedia.tandem.widget.BatteryWidgetLogic
 import nl.markmaaktmedia.tandem.widget.WidgetBattery
@@ -13,14 +15,15 @@ class BatteryWidgetTest {
     private val c = BatteryWidgetColors
 
     @Test
-    fun colours() {
-        assertEquals(c.GREEN, c.tint(20, false))
-        assertEquals(c.YELLOW, c.tint(19, false))
-        assertEquals(c.YELLOW, c.tint(10, false))
-        assertEquals(c.RED, c.tint(9, false))
-        assertEquals(c.RED, c.tint(0, false))
-        // On the charger it is green, low or not.
-        assertEquals(c.GREEN, c.tint(5, true))
+    fun tones() {
+        assertEquals(BatteryTone.Normal, c.tone(20, false, false))
+        assertEquals(BatteryTone.Low, c.tone(19, false, false))
+        assertEquals(BatteryTone.Low, c.tone(10, false, false))
+        assertEquals(BatteryTone.Critical, c.tone(9, false, false))
+        assertEquals(BatteryTone.Critical, c.tone(0, false, false))
+        // On the charger it is no warning, low or not; away is away whatever the level.
+        assertEquals(BatteryTone.Normal, c.tone(5, true, false))
+        assertEquals(BatteryTone.Away, c.tone(5, false, true))
     }
 
     @Test
@@ -31,10 +34,10 @@ class BatteryWidgetTest {
     }
 
     @Test
-    fun solidColoursLieOnTheCard() {
-        assertEquals(c.BACKGROUND, c.solid(c.TEXT, 0f))
-        assertEquals(c.TEXT, c.solid(c.TEXT, 1f))
-        assertEquals(0xFF, c.solid(c.TRACK) ushr 24)
+    fun phonesAreCookiesComputersClovers() {
+        assertEquals(BatteryShape.Cookie, c.shapeOf("phone"))
+        assertEquals(BatteryShape.Clover, c.shapeOf("laptop"))
+        assertEquals(BatteryShape.Clover, c.shapeOf("windows"))
     }
 
     @Test
@@ -92,5 +95,16 @@ class BatteryWidgetTest {
         assertEquals(3, six.columns)
         assertEquals(2, BatteryWidgetLogic.layout(BatteryWidgetLogic.Size.Small, 4).columns)
         assertEquals(3, BatteryWidgetLogic.layout(BatteryWidgetLogic.Size.Medium, 3).columns)
+    }
+
+    @Test
+    fun ringsShrinkToTheCellTheyAreGiven() {
+        val size = BatteryWidgetLogic.Size.Large
+        // Two rows of three in a widget only a little over the step to large: smaller rings, and both rows still fit.
+        val tight = BatteryWidgetLogic.fit(size, 6, 335f, 198f)
+        assertTrue(tight.diameter < 80)
+        assertTrue(2 * BatteryWidgetLogic.itemHeight(tight.diameter, tight.names) + BatteryWidgetLogic.rowGap(size) <= 198f)
+        // With room to spare they stay as big as the step says.
+        assertEquals(80, BatteryWidgetLogic.fit(size, 6, 400f, 400f).diameter)
     }
 }

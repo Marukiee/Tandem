@@ -51,7 +51,7 @@ struct BatteryWidgetEntryView: View {
 
     var body: some View {
         BatteryWidgetView(devices: entry.snapshot.devices, size: size)
-            .containerBackground(BatteryWidgetStyle.background, for: .widget)
+            .containerBackground(.background, for: .widget)
     }
 }
 

@@ -2,7 +2,6 @@ package nl.markmaaktmedia.tandem.widget
 
 import org.json.JSONArray
 import org.json.JSONObject
-import kotlin.math.roundToInt
 
 /** One ring of the battery widget. [icon] is a key of `DeviceIconChoice`, or one of the platform icons (see [BatteryWidgetIcons]). */
 data class WidgetBattery(
@@ -26,42 +25,31 @@ data class WidgetDeviceInput(
 )
 
 /**
- * The colours are fixed, the same in dark and light and on every system: a dark card like the Batteries widget of iOS. Keep in step with
- * `BatteryWidgetStyle` in `macos/Sources/Tandem/UI/BatteryWidgetView.swift` and with `windows/ui/js/batteries.js`.
+ * The role a ring is drawn in. The colours themselves come from the wallpaper (Material You, see BatteryWidget.kt), so the widget looks like the
+ * other widgets of a Pixel; only the warnings of a low battery are fixed hues. The Mac and the tray panel draw the same rings in their own language.
  */
-object BatteryWidgetColors {
-    const val BACKGROUND = 0xFF1C1C1E.toInt()
-    const val TRACK = 0x29FFFFFF
-    const val TEXT = 0xFFFFFFFF.toInt()
-    const val SECONDARY = 0x99FFFFFF.toInt()
-    const val GREEN = 0xFF30D158.toInt()
-    const val YELLOW = 0xFFFFD60A.toInt()
-    const val RED = 0xFFFF453A.toInt()
-    const val AWAY_ALPHA = 0.4f
+enum class BatteryTone { Normal, Low, Critical, Away }
 
-    /** A battery on the charger is green whatever its level, as on iOS: it is getting better. */
-    fun tint(level: Int, charging: Boolean): Int = when {
-        charging -> GREEN
-        level < 10 -> RED
-        level < 20 -> YELLOW
-        else -> GREEN
+/** [lobes] waves around the edge, [depth] how deep they go as a part of the radius. */
+enum class BatteryShape(val lobes: Int, val depth: Float) { Cookie(9, 0.11f), Clover(4, 0.26f) }
+
+object BatteryWidgetColors {
+    /** Low under 20, critical under 10. On the charger it is never a warning: it is getting better. */
+    fun tone(level: Int, charging: Boolean, away: Boolean): BatteryTone = when {
+        away -> BatteryTone.Away
+        charging -> BatteryTone.Normal
+        level < 10 -> BatteryTone.Critical
+        level < 20 -> BatteryTone.Low
+        else -> BatteryTone.Normal
     }
 
     /** Anything below 100 leaves an opening, so 97 does not look like a closed ring with a flaw. Degrees of the circle. */
     fun sweep(level: Int): Float = if (level >= 100) 360f else level.coerceIn(0, 100) / 100f * 0.945f * 360f
 
-    /**
-     * [color] at [alpha] times its own opacity, laid on the card and made opaque. A widget tints its pictures in a way that darkens a see
-     * through colour instead of letting the card show through it, so every colour is given solid.
-     */
-    fun solid(color: Int, alpha: Float = 1f): Int {
-        val a = (color ushr 24) / 255f * alpha.coerceIn(0f, 1f)
-        fun channel(shift: Int): Int {
-            val top = (color shr shift) and 0xFF
-            val under = (BACKGROUND shr shift) and 0xFF
-            return (top * a + under * (1 - a)).roundToInt().coerceIn(0, 255)
-        }
-        return (0xFF shl 24) or (channel(16) shl 16) or (channel(8) shl 8) or channel(0)
+    /** The container under a device's icon, from the shapes of Material 3 Expressive: phones a cookie, computers a clover. */
+    fun shapeOf(icon: String): BatteryShape = when (icon) {
+        "phone", "tablet", "watch" -> BatteryShape.Cookie
+        else -> BatteryShape.Clover
     }
 }
 
@@ -139,5 +127,33 @@ object BatteryWidgetLogic {
             4 -> Layout(2, 92, true)
             else -> Layout(3, 80, true)
         }
+    }
+
+    /** The space between rows, in dp. */
+    fun rowGap(size: Size): Int = if (size == Size.Small) 8 else 18
+
+    /**
+     * How tall one ring is with what is under it, in dp; keep in step with `Item` in BatteryWidget.kt. A line of text in a widget takes
+     * about 1.8 times its size, with the padding Android puts around it (measured on a Pixel 7 emulator).
+     */
+    fun itemHeight(diameter: Int, names: Boolean): Float =
+        diameter * 1.08f + maxOf(13f, diameter * 0.22f) * 1.8f + if (names) 22f else 0f
+
+    /**
+     * [layout] made to fit a widget of [width] by [height] dp (inside its padding). A launcher gives a widget any size between the steps, and
+     * the steps only say how big the rings may be: smaller if the cell is, and without names when even small rings do not fit with them.
+     */
+    fun fit(size: Size, count: Int, width: Float, height: Float): Layout {
+        val wanted = layout(size, count)
+        val rows = (count + wanted.columns - 1) / wanted.columns
+        val gaps = (rows - 1) * rowGap(size)
+        fun fits(d: Int, names: Boolean) = rows * itemHeight(d, names) + gaps <= height
+        val widest = ((width / wanted.columns) * 0.86f).toInt()
+        var d = minOf(wanted.diameter, widest)
+        var names = wanted.names
+        while (d > 28 && !fits(d, names)) {
+            if (names && d <= 56) names = false else d -= 2
+        }
+        return wanted.copy(diameter = d.coerceAtLeast(24), names = names)
     }
 }
