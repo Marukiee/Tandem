@@ -1189,3 +1189,21 @@
 "Send screenshots to your devices" = "Stuur screenshots naar je apparaten";
 "A screenshot you take is on the clipboard of the devices that share the clipboard with this Mac." = "Een screenshot die je maakt staat op het klembord van de apparaten die het klembord met deze Mac delen.";
 "Needs Accessibility, above" = "Heeft Toegankelijkheid nodig, hierboven";
+
+/* The tour (SetupTour, TourView) */
+"What Tandem can do" = "Wat Tandem kan";
+"Each thing with what it needs, to set up now or later" = "Elk onderdeel met wat het nodig heeft, om nu of later in te stellen";
+"Everything is set up, or put away as not for you." = "Alles is ingesteld, of weggezet als niet voor jou.";
+"%lld things can still be set up. Each one says what it needs: set it up now, later, or put it away." = "%lld dingen kunnen nog ingesteld worden. Elk zegt wat het nodig heeft: stel het nu in, later, of zet het weg.";
+"To set up" = "Nog in te stellen";
+"Not for me" = "Niet voor mij";
+"Works" = "Werkt";
+"Not for you" = "Niet voor jou";
+"Back on the list" = "Terug op de lijst";
+"Set up" = "Instellen";
+"A reminder comes in a few days" = "Over een paar dagen komt een herinnering";
+"Tandem: still to set up" = "Tandem: nog in te stellen";
+"%lld things are still waiting: %@" = "%1$lld dingen wachten nog: %2$@";
+"Codes from texts copied here" = "Codes uit sms'jes hier gekopieerd";
+"Copy codes is off in Tandem on this Mac" = "Codes kopiëren staat uit in Tandem op deze Mac";
+"Notifications are off for Tandem on this Mac, so a copied code is not shown" = "Meldingen staan uit voor Tandem op deze Mac, dus een gekopieerde code wordt niet getoond";

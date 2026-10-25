@@ -90,6 +90,10 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_MESSAGES") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showMessagesWindow() }
         }
+        // `TANDEM_DEBUG_TOUR=1`: the window of the tour (SetupTour).
+        if variable("TANDEM_DEBUG_TOUR") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { TourWindow.shared.show() }
+        }
         // `TANDEM_DEBUG_SIDEBAR=1`: the sidebar with two made up phones and a computer, the Messages of the first one chosen.
         if variable("TANDEM_DEBUG_SIDEBAR") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSidebarWindow() }

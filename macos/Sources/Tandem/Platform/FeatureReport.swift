@@ -21,7 +21,10 @@ enum FeatureReport {
         Task { @MainActor in
             while true {
                 if let engine = EngineModel.shared.tandem {
-                    await engine.setFeatures(features: await current())
+                    let features = await current()
+                    await engine.setFeatures(features: features)
+                    SetupTour.remindIfDue(features)
+                    SetupTour.showIfNew()
                 }
                 try? await Task.sleep(for: .seconds(4))
             }
@@ -64,6 +67,14 @@ enum FeatureReport {
         add("notifications", [.authorized, .provisional].contains(notifications), String(localized: "Notifications on this Mac"),
             notifications == .notDetermined ? String(localized: "Notifications have not been allowed yet") : String(localized: "Notifications are off for Tandem on this Mac"),
             "notifications")
+        // Codes from the texts of a phone, copied here: the switch, and notifications to say so (the window may not be open).
+        let copyCodes = UserDefaults.standard.object(forKey: "copyCodes") as? Bool ?? true
+        if !copyCodes {
+            add("codes", false, String(localized: "Codes from texts copied here"), String(localized: "Copy codes is off in Tandem on this Mac"), switchPage + "codes")
+        } else {
+            add("codes", [.authorized, .provisional].contains(notifications), String(localized: "Codes from texts copied here"),
+                String(localized: "Notifications are off for Tandem on this Mac, so a copied code is not shown"), "notifications")
+        }
         add("microphone", microphone == .authorized, String(localized: "Find the side by sound"),
             microphone == .notDetermined ? String(localized: "The microphone has not been allowed yet") : String(localized: "The microphone is off for Tandem on this Mac"),
             "microphone")
@@ -154,6 +165,8 @@ enum FeatureReport {
             FocusShare.shared.addOrSignIn()
         case switchPage + "focus":
             UserDefaults.standard.set(true, forKey: FocusShare.shareKey)
+        case switchPage + "codes":
+            UserDefaults.standard.set(true, forKey: "copyCodes")
         default:
             settings("com.apple.preference.security")
         }

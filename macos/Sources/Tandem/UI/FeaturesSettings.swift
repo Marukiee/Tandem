@@ -27,6 +27,13 @@ struct FeaturesSettings: View {
                     Image(systemName: missing == 0 ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
                         .foregroundStyle(missing == 0 ? .green : .orange)
                 }
+                // The tour of this Mac: each thing with set up, later and not for me.
+                LabeledContent {
+                    Button("Open") { TourWindow.shared.show() }
+                } label: {
+                    Text("What Tandem can do")
+                    Text("Each thing with what it needs, to set up now or later").font(.caption).foregroundStyle(.secondary)
+                }
             }
             Section {
                 ForEach(ordered(mine), id: \.id) { feature in
@@ -146,6 +153,9 @@ struct FeatureRow: View {
         case "camera": "camera"
         case "background": "battery.75percent"
         case "messages": "message"
+        case "codes": "key"
+        case "ring": "speaker.wave.2"
+        case "focus": "moon"
         default: "exclamationmark"
         }
     }

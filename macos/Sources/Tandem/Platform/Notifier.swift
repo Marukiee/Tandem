@@ -175,6 +175,8 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
                 if let path = info["path"] { onFileAction?(path) }
             case FocusShare.notificationCategory:
                 FocusShare.shared.addOrSignIn()
+            case SetupTour.notificationCategory:
+                TourWindow.shared.show()
             default:
                 guard let device = info["device"], let key = info["key"] else { return }
                 if action == Self.copyCodeAction {
