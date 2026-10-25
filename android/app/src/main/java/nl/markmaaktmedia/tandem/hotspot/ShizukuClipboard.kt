@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.engine.EngineHost
 import nl.markmaaktmedia.tandem.engine.EngineState
@@ -53,7 +54,12 @@ object ShizukuClipboard {
                     if (on && shizuku.refresh() == ShizukuState.Ready) {
                         val result = shizuku.watchClipboard(copies)
                         _watching.value = result.ok
-                        _problem.value = if (result.ok) null else result.message
+                        _problem.value = when {
+                            result.ok -> null
+                            result.message == ShellClipboard.ROOT -> context.getString(R.string.shizuku_clipboard_root)
+                            else -> context.getString(R.string.shizuku_clipboard_failed)
+                        }
+                        if (!result.ok) android.util.Log.w("ShizukuClipboard", "could not listen: ${result.message}")
                     } else if (_watching.value || (!on && shizuku.refresh() == ShizukuState.Ready)) {
                         // Also when it was turned off while the app was away: the process of Shizuku outlives the app.
                         shizuku.unwatchClipboard()

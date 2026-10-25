@@ -136,6 +136,8 @@
     <string name="shizuku_use_clipboard_off">Heeft Shizuku nodig: zonder sturen de tegel en de deelknop het klembord</string>
     <string name="shizuku_clipboard_message">Verberg \"Shell heeft geplakt vanaf je klembord\"</string>
     <string name="shizuku_clipboard_message_sub">Android zegt dat na elke kopie. Zet Toegang tot klembord tonen uit onder Privacy</string>
+    <string name="shizuku_clipboard_root">Shizuku draait hier als root en dan laat Android geen kopieën lezen. Start Shizuku met draadloze foutopsporing</string>
+    <string name="shizuku_clipboard_failed">Android liet Shizuku niet naar kopieën luisteren op deze telefoon</string>
     <string name="setup_title">Instellen</string>
     <string name="settings_access_row">Rechten</string>
     <string name="settings_access_sub">Zie wat aan staat, zet dingen aan en probeer ze</string>

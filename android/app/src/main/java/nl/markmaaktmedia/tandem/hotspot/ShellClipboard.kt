@@ -43,7 +43,8 @@ internal class ShellClipboard {
             listener = made
             0 to "ok"
         } catch (t: Throwable) {
-            1 to describe(t)
+            // Under root the package of the shell is not ours to give; tried only as the shell so far.
+            if (Process.myUid() == 0) 2 to ROOT else 1 to describe(t)
         }
     }
 
@@ -117,6 +118,8 @@ internal class ShellClipboard {
     companion object {
         /** The call that brings a copy to the app: one string. */
         const val TX_CLIP = 1
+        /** What [watch] says when it failed under root, for the app to put in words. */
+        const val ROOT = "root"
         private const val LISTENER = "android.content.IOnPrimaryClipChangedListener"
         private const val PACKAGE = "com.android.shell"
         /** A copy longer than this is not text to paste somewhere else. */
