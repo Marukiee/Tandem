@@ -102,6 +102,7 @@ internal object FocusKeys {
     const val ShizukuStatus = "shizuku.status"
     const val ShizukuHotspot = "shizuku.hotspot"
     const val ShizukuProjection = "shizuku.projection"
+    const val ShizukuClipboard = "shizuku.clipboard"
 
     const val FilesPermission = "files.permission"
     const val FilesEnabled = "files.enabled"

@@ -133,6 +133,12 @@
     <string name="settings_hotspot_for_mac">Let my computer use my hotspot</string>
     <string name="settings_hotspot_for_mac_sub">When your computer has no connection it can ask this phone to turn the hotspot on</string>
     <string name="settings_access">Permissions</string>
+    <string name="shizuku_use_clipboard">Send everything you copy</string>
+    <string name="shizuku_use_clipboard_sub">To the devices that share the clipboard, as computers do</string>
+    <string name="shizuku_use_clipboard_on">Every copy goes to your devices</string>
+    <string name="shizuku_use_clipboard_off">Needs Shizuku: without it the tile and the share button send the clipboard</string>
+    <string name="shizuku_clipboard_message">Hide \"Shell pasted from your clipboard\"</string>
+    <string name="shizuku_clipboard_message_sub">Android says it after every copy. Turn off Show clipboard access under Privacy</string>
     <string name="setup_title">Setup</string>
     <string name="settings_access_row">Permissions</string>
     <string name="settings_access_sub">See what is on, turn things on and try them</string>

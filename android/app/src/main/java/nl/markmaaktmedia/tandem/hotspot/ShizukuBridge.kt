@@ -134,6 +134,11 @@ class ShizukuBridge(private val context: Context) {
     /** Lets Android skip its screen recording question for [pkg] (see [ShellUserService]). */
     suspend fun allowProjection(pkg: String): ShellResult = call(ShellUserService.TX_ALLOW_PROJECTION) { it.writeString(pkg) }
 
+    /** Every copy on this phone goes to [to] (see [ShellClipboard]); called again it only checks that it still does. */
+    suspend fun watchClipboard(to: IBinder): ShellResult = call(ShellUserService.TX_CLIP_WATCH) { it.writeStrongBinder(to) }
+
+    suspend fun unwatchClipboard(): ShellResult = call(ShellUserService.TX_CLIP_UNWATCH)
+
     /** Who Shizuku runs as: 0 for root, 2000 for the shell, null when it is not running. */
     fun serverUid(): Int? = try {
         if (Shizuku.pingBinder()) Shizuku.getUid() else null

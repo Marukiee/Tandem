@@ -51,6 +51,7 @@ class TandemPrefs(private val context: Context) {
         val dismissedUpdate = stringPreferencesKey("dismissed_update")
         val lastUpdateCheck = longPreferencesKey("last_update_check")
         val copyCodes = booleanPreferencesKey("copy_codes")
+        val clipboardShizuku = booleanPreferencesKey("clipboard_shizuku")
         val remoteMedia = booleanPreferencesKey("remote_media")
         val remoteMouse = booleanPreferencesKey("remote_mouse")
         val deviceIcons = stringPreferencesKey("device_icons")
@@ -97,6 +98,8 @@ class TandemPrefs(private val context: Context) {
     val dismissedUpdate: Flow<String?> = data.map { it[Keys.dismissedUpdate] }
     val lastUpdateCheck: Flow<Long> = data.map { it[Keys.lastUpdateCheck] ?: 0L }
     val copyCodes: Flow<Boolean> = data.map { it[Keys.copyCodes] ?: true }
+    /** With Shizuku every copy goes to the devices that share the clipboard (see ShizukuClipboard). On when Shizuku is there. */
+    val clipboardShizuku: Flow<Boolean> = data.map { it[Keys.clipboardShizuku] ?: true }
     /** Trackpad screen: the media buttons start off, the left and right buttons start on. */
     val remoteMedia: Flow<Boolean> = data.map { it[Keys.remoteMedia] ?: false }
     val remoteMouse: Flow<Boolean> = data.map { it[Keys.remoteMouse] ?: true }
@@ -233,6 +236,7 @@ class TandemPrefs(private val context: Context) {
     suspend fun setLastUpdateCheck(value: Long) = set(Keys.lastUpdateCheck, value)
     suspend fun setDismissedUpdate(value: String) = set(Keys.dismissedUpdate, value)
     suspend fun setCopyCodes(value: Boolean) = set(Keys.copyCodes, value)
+    suspend fun setClipboardShizuku(value: Boolean) = set(Keys.clipboardShizuku, value)
     suspend fun setRemoteMedia(value: Boolean) = set(Keys.remoteMedia, value)
     suspend fun setRemoteMouse(value: Boolean) = set(Keys.remoteMouse, value)
     suspend fun setAudioDelay(index: Int) = set(Keys.audioDelay, index.toLong())

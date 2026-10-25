@@ -6,14 +6,15 @@ import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
 
 /**
- * The part of Tandem that Shizuku runs with the shell's identity (or root's), in its own process: the hotspot, and the app-op
- * that lets Android skip its screen recording question for Tandem.
+ * The part of Tandem that Shizuku runs with the shell's identity (or root's), in its own process: the hotspot, the app-op
+ * that lets Android skip its screen recording question for Tandem, and hearing every copy (see [ShellClipboard]).
  *
  * It is a bare Binder instead of an AIDL service: a few calls do not justify the AIDL toolchain, and Shizuku only asks for an
  * IBinder. Shizuku creates it through the no-argument constructor, so R8 must keep that (see proguard-rules.pro).
  */
 class ShellUserService : Binder() {
     private val tethering = ShellTethering()
+    private val clipboard = ShellClipboard()
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
         when (code) {
@@ -40,6 +41,19 @@ class ShellUserService : Binder() {
                 reply?.writeNoException()
                 reply?.writeInt(result)
                 reply?.writeString(message)
+            }
+            TX_CLIP_WATCH -> {
+                val to = data.readStrongBinder()
+                val (result, message) = if (to == null) 1 to "no one to tell" else clipboard.watch(to)
+                reply?.writeNoException()
+                reply?.writeInt(result)
+                reply?.writeString(message)
+            }
+            TX_CLIP_UNWATCH -> {
+                clipboard.unwatch()
+                reply?.writeNoException()
+                reply?.writeInt(0)
+                reply?.writeString("ok")
             }
             TX_DESTROY -> {
                 // Shizuku does not end this process by itself.
@@ -80,6 +94,8 @@ class ShellUserService : Binder() {
         const val TX_STOP = 2
         const val TX_STATUS = 3
         const val TX_ALLOW_PROJECTION = 4
+        const val TX_CLIP_WATCH = 5
+        const val TX_CLIP_UNWATCH = 6
 
         /** The code Shizuku uses to ask a user service to exit. */
         const val TX_DESTROY = 16777115

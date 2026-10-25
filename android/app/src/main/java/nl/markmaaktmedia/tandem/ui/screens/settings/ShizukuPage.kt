@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.hotspot.HotspotModule
 import nl.markmaaktmedia.tandem.hotspot.ShizukuState
 import nl.markmaaktmedia.tandem.live.ProjectionGrant
@@ -30,6 +31,7 @@ import nl.markmaaktmedia.tandem.ui.Route
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
 import nl.markmaaktmedia.tandem.ui.components.SectionHeader
 import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
+import nl.markmaaktmedia.tandem.ui.components.SwitchRow
 import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 
@@ -63,6 +65,9 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
     }
 
     val ready = state == ShizukuState.Ready
+    val clipOn by context.graph.prefs.clipboardShizuku.collectAsState(initial = true)
+    val clipWatching by nl.markmaaktmedia.tandem.hotspot.ShizukuClipboard.watching.collectAsState()
+    val clipProblem by nl.markmaaktmedia.tandem.hotspot.ShizukuClipboard.problem.collectAsState()
     // The next step for Shizuku itself, from its own row and from a use that waits for it.
     val nextStep: () -> Unit = {
         when (state) {
@@ -104,17 +109,17 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
 
     SectionHeader(stringResource(R.string.shizuku_section_uses))
     SettingsGroup {
-        SettingsTarget(FocusKeys.ShizukuHotspot, 0, 2) {
+        SettingsTarget(FocusKeys.ShizukuHotspot, 0, 4) {
             ActionRow(
-                0, 2, TandemIcons.Hotspot, stringResource(R.string.shizuku_use_hotspot),
+                0, 4, TandemIcons.Hotspot, stringResource(R.string.shizuku_use_hotspot),
                 stringResource(if (ready) R.string.shizuku_use_hotspot_on else R.string.shizuku_use_hotspot_off),
                 onClick = { onOpen(Route.Hotspot) },
                 trailing = if (ready) done else null,
             )
         }
-        SettingsTarget(FocusKeys.ShizukuProjection, 1, 2) {
+        SettingsTarget(FocusKeys.ShizukuProjection, 1, 4) {
             ActionRow(
-                1, 2, TandemIcons.VolumeUp, stringResource(R.string.shizuku_use_projection),
+                1, 4, TandemIcons.VolumeUp, stringResource(R.string.shizuku_use_projection),
                 stringResource(
                     when {
                         projection -> R.string.shizuku_use_projection_on
@@ -132,5 +137,23 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
                 trailing = if (projection) done else null,
             )
         }
+        SettingsTarget(FocusKeys.ShizukuClipboard, 2, 4) {
+            SwitchRow(
+                2, 4, TandemIcons.Paste, stringResource(R.string.shizuku_use_clipboard),
+                clipProblem ?: stringResource(if (clipWatching) R.string.shizuku_use_clipboard_on else R.string.shizuku_use_clipboard_sub),
+                clipOn,
+                { on -> scope.launch { context.graph.prefs.setClipboardShizuku(on) } },
+                blocked = if (ready) null else stringResource(R.string.shizuku_use_clipboard_off),
+                onBlocked = nextStep,
+            )
+        }
+        // Android tells about every read of the clipboard by another app, so also about each copy the shell hears for Tandem.
+        ActionRow(
+            3, 4, TandemIcons.Shield, stringResource(R.string.shizuku_clipboard_message),
+            stringResource(R.string.shizuku_clipboard_message_sub),
+            onClick = {
+                runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_PRIVACY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            },
+        )
     }
 }
