@@ -51,6 +51,8 @@ if (allBatteries && !empty) {
     clipboard: true, autoAccept: false, notifications: true, ble: false, vouchedByRemoved: false, status: { battery: { level: 7, charging: false, powerSave: true } } });
   devices[2].status = { battery: { level: 41, charging: false, powerSave: false } };
 }
+// ?batteries=two: this computer and one phone, the card with the names beside the rings.
+if (new URLSearchParams(location.search).get("batteries") === "two" && !empty) delete devices[1].status.battery;
 
 /** What the update shows when the page is asked for ?update=available, downloading, installing or failed. */
 function updateFor(kind) {

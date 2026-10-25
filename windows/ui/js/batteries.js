@@ -45,7 +45,7 @@ function cookie(size, lobes = 9, depth = 0.11) {
 // is drawn for the first time is not.
 const lastCharging = new Map();
 
-function Ring({ item, size, onOpen }) {
+function Ring({ item, size, onOpen, wide }) {
   const before = lastCharging.get(item.id);
   const at = before && before.charging !== item.charging && !item.away ? Date.now() : before ? before.at : 0;
   lastCharging.set(item.id, { charging: item.charging, at });
@@ -58,7 +58,8 @@ function Ring({ item, size, onOpen }) {
   // Anything below 100 leaves an opening, so 97 does not look like a closed ring with a flaw.
   const arc = item.level >= 100 ? 1 : (Math.max(0, item.level) / 100) * 0.945;
   const label = `${item.name} ${item.level}%${item.charging ? ", " + t("charging") : ""}`;
-  return html`<button class="batt" style=${`opacity:${item.away ? AWAY : 1}`} title=${label} aria-label=${label} onClick=${() => onOpen && onOpen(item)}>
+  const level = html`<span class="batt-level">${item.charging && html`<span class="ok-text" style="display:flex"><${Icon} name="bolt" size=${wide ? 15 : 12} filled=${true} stroke=${1.5} /></span>`}${item.level}%</span>`;
+  return html`<button class=${"batt" + (wide ? " wide" : "")} style=${`opacity:${item.away ? AWAY : 1}`} title=${label} aria-label=${label} onClick=${() => onOpen && onOpen(item)}>
     <span class="batt-ring" style=${`width:${size}px;height:${size}px`}>
       <svg width=${size} height=${size}>
         <circle cx=${size / 2} cy=${size / 2} r=${r} fill="none" stroke="var(--line-strong)" stroke-width=${stroke} />
@@ -69,7 +70,7 @@ function Ring({ item, size, onOpen }) {
       ${change && html`<span class=${"batt-pulse" + change} key=${item.id + change + at} style=${`width:${shape}px;height:${shape}px`}></span>`}
       <span class=${"batt-icon" + (item.charging ? " charging" : "")}><${Icon} name=${item.icon} size=${Math.round(size * 0.4)} stroke=${2} /></span>
     </span>
-    <span class="batt-level">${item.charging && html`<span class="ok-text" style="display:flex"><${Icon} name="bolt" size=${12} filled=${true} stroke=${1.5} /></span>`}${item.level}%</span>
+    ${wide ? html`<span class="batt-text">${level}<span class="batt-name">${item.name}</span></span>` : level}
   </button>`;
 }
 
@@ -78,11 +79,12 @@ export function BatteryCard({ items, onOpen }) {
   if (!items.length) return null;
   const rows = [];
   for (let i = 0; i < items.length; i += 4) rows.push(items.slice(i, i + 4));
-  // Fewer rings get more room, the way the widgets do it.
-  const size = items.length <= 2 ? 58 : 50;
+  // One or two devices get their name beside the ring, so the card is not mostly empty, the way the widgets fill themselves.
+  const wide = items.length <= 2;
+  const size = wide ? 54 : 50;
   return html`<div class="card battcard">
     ${rows.map((row, index) => html`<div class="battrow" key=${index}>
-      ${row.map((item) => html`<${Ring} item=${item} size=${size} onOpen=${onOpen} key=${item.id} />`)}
+      ${row.map((item) => html`<${Ring} item=${item} size=${size} wide=${wide} onOpen=${onOpen} key=${item.id} />`)}
       ${Array.from({ length: rows.length > 1 ? 4 - row.length : 0 }, (_, n) => html`<span class="batt" key=${"gap" + n}></span>`)}
     </div>`)}
   </div>`;

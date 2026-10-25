@@ -13,4 +13,5 @@
     <color name="widget_green">#FF81C995</color>
     <color name="widget_green_container">#FF0F5223</color>
     <color name="widget_on_green_container">#FFC4EED0</color>
+    <color name="widget_row">@android:color/system_neutral1_800</color>
 </resources>

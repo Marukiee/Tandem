@@ -158,17 +158,13 @@ struct BatteryWidgetView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // Fewer devices get bigger rings, so a widget with two of them is not mostly empty card.
+    // One device fills the widget, a few become rows across it with their names, so nothing is empty card. The same as on Android.
 
     @ViewBuilder
     private func small(_ shown: [BatteryWidgetDevice]) -> some View {
         switch shown.count {
-        case 1:
-            BatteryWidgetItem(device: shown[0], diameter: 76, showsName: true)
-        case 2:
-            row(shown, diameter: 56)
-        default:
-            grid(shown, columns: 2, diameter: 46, spacing: 10, names: false)
+        case 1: BatteryWidgetItem(device: shown[0], diameter: 92, showsName: true)
+        default: BatteryWidgetRows(devices: shown)
         }
     }
 
@@ -179,9 +175,10 @@ struct BatteryWidgetView: View {
     @ViewBuilder
     private func grid(_ shown: [BatteryWidgetDevice]) -> some View {
         switch shown.count {
-        case 1: BatteryWidgetItem(device: shown[0], diameter: 140, showsName: true)
+        case 1: BatteryWidgetItem(device: shown[0], diameter: 170, showsName: true)
+        // Two or three rows would each be a tall empty pill here: big rings side by side fill it better.
         case 2, 3: grid(shown, columns: shown.count, diameter: 96, spacing: 20, names: true)
-        case 4: grid(shown, columns: 2, diameter: 92, spacing: 22, names: true)
+        case 4: BatteryWidgetRows(devices: shown)
         default: grid(shown, columns: 3, diameter: 80, spacing: 22, names: true)
         }
     }
@@ -194,6 +191,50 @@ struct BatteryWidgetView: View {
                     ForEach(rows[index]) { BatteryWidgetItem(device: $0, diameter: diameter, showsName: names) }
                     // A short last row keeps the columns of the rows above it.
                     ForEach(0 ..< (columns - rows[index].count), id: \.self) { _ in Color.clear.frame(maxWidth: .infinity, maxHeight: 1) }
+                }
+            }
+        }
+    }
+}
+
+/// Each device a row across the widget, the rows sharing its height: a pill with the ring at its start, the level and under it the name.
+struct BatteryWidgetRows: View {
+    let devices: [BatteryWidgetDevice]
+    private let gap: CGFloat = 4
+
+    var body: some View {
+        GeometryReader { proxy in
+            let height = (proxy.size.height - gap * CGFloat(devices.count - 1)) / CGFloat(devices.count)
+            let inset = min(8, max(4, height * 0.12))
+            let diameter = min(height - 2 * inset, proxy.size.width * 0.28, 64)
+            VStack(spacing: gap) {
+                ForEach(devices) { device in
+                    HStack(spacing: 10) {
+                        BatteryWidgetRing(device: device, diameter: diameter)
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack(spacing: 1) {
+                                if device.charging {
+                                    Image(systemName: "bolt.fill").font(.system(size: min(20, max(12, height * 0.24)), weight: .bold)).foregroundStyle(.green)
+                                }
+                                Text("\(device.level)%")
+                                    .font(.system(size: min(24, max(14, height * 0.3)), weight: .semibold, design: .rounded).monospacedDigit())
+                                    .contentTransition(.numericText(value: Double(device.level)))
+                            }
+                            Text(device.name)
+                                .font(.system(size: min(14, max(11, height * 0.2)), weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .truncationMode(.tail)
+                        }
+                        .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.leading, inset)
+                    .padding(.trailing, 10)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.primary.opacity(0.06), in: .rect(cornerRadius: min(height / 2, 18)))
+                    .opacity(device.away ? BatteryWidgetStyle.awayOpacity : 1)
+                    .animation(.smooth(duration: 0.7), value: device.level)
+                    .animation(.smooth(duration: 0.5), value: device.charging)
                 }
             }
         }

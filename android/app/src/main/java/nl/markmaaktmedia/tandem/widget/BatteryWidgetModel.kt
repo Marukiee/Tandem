@@ -154,8 +154,8 @@ object BatteryWidgetLogic {
         diameter * 1.08f + maxOf(13f, diameter * 0.22f) * 1.8f + if (names) 22f else 0f
 
     /**
-     * [layout] made to fit a widget of [width] by [height] dp (inside its padding). A launcher gives a widget any size between the steps, and
-     * the steps only say how big the rings may be: smaller if the cell is, and without names when even small rings do not fit with them.
+     * [layout] made to fit a widget of [width] by [height] dp (inside its padding). A launcher gives a widget any size between the steps, so the
+     * rings take what the cell gives: as big as fits up to [MAX_RING], and without names when even small rings do not fit with them.
      */
     fun fit(size: Size, count: Int, width: Float, height: Float): Layout {
         val wanted = layout(size, count)
@@ -163,11 +163,62 @@ object BatteryWidgetLogic {
         val gaps = (rows - 1) * rowGap(size)
         fun fits(d: Int, names: Boolean) = rows * itemHeight(d, names) + gaps <= height
         val widest = ((width / wanted.columns) * 0.86f).toInt()
-        var d = minOf(wanted.diameter, widest)
-        var names = wanted.names
+        var d = minOf(MAX_RING, widest)
+        var names = wanted.names || d >= 64
         while (d > 28 && !fits(d, names)) {
             if (names && d <= 56) names = false else d -= 2
         }
         return wanted.copy(diameter = d.coerceAtLeast(24), names = names)
     }
+
+    /** The biggest a ring gets in the grid, in dp: beyond it a ring is only a large empty circle. */
+    const val MAX_RING = 150
+
+    /** How the widget is filled: one device large, a few as rows across the widget, or a grid of rings. */
+    sealed interface Plan {
+        /** One device: its ring as big as the widget allows, with the level under it, or beside it in a wide widget. */
+        data class Single(val diameter: Int, val beside: Boolean, val names: Boolean) : Plan
+        /** Each device a row the width of the widget, ring, name and level, the rows sharing the height. */
+        data class Rows(val height: Int, val diameter: Int) : Plan
+        data class Grid(val layout: Layout) : Plan
+    }
+
+    /** The space between rows, in dp. */
+    const val ROW_GAP = 4
+
+    /**
+     * What to draw for [count] devices in [width] by [height] dp. Rows suit a square or tall widget with a few devices, as the battery widget of
+     * a Pixel does: every device gets its name and nothing is empty card. A wide widget, or more devices, keep the grid.
+     */
+    fun plan(size: Size, count: Int, width: Float, height: Float): Plan {
+        if (count == 1) {
+            if (width >= height * 1.5f) {
+                val d = minOf(height, width * 0.45f, MAX_SINGLE.toFloat()).toInt()
+                return Plan.Single(d.coerceAtLeast(24), beside = true, names = true)
+            }
+            var d = minOf(width * 0.9f, height, MAX_SINGLE.toFloat()).toInt()
+            var names = true
+            while (d > 28 && itemHeight(d, names) > height) {
+                if (names && d <= 56) names = false else d -= 2
+            }
+            return Plan.Single(d.coerceAtLeast(24), beside = false, names = names)
+        }
+        if (count <= 4 && width < height * 1.7f && width >= 120f) {
+            val row = (height - ROW_GAP * (count - 1)) / count
+            if (row in MIN_ROW..MAX_ROW) {
+                val inset = (row * 0.12f).coerceIn(4f, 8f)
+                return Plan.Rows(row.toInt(), minOf(row - 2 * inset, width * 0.28f, 64f).toInt())
+            }
+        }
+        return Plan.Grid(fit(size, count, width, height))
+    }
+
+    /** One device alone may grow this far, in dp. */
+    private const val MAX_SINGLE = 180
+
+    /** Below this a row has no room for a ring with the text beside it, in dp. */
+    private const val MIN_ROW = 34f
+
+    /** Above this a row is a tall empty pill, and big rings side by side fill the widget better, in dp. */
+    private const val MAX_ROW = 90f
 }

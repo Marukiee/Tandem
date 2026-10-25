@@ -104,7 +104,26 @@ class BatteryWidgetTest {
         val tight = BatteryWidgetLogic.fit(size, 6, 335f, 198f)
         assertTrue(tight.diameter < 80)
         assertTrue(2 * BatteryWidgetLogic.itemHeight(tight.diameter, tight.names) + BatteryWidgetLogic.rowGap(size) <= 198f)
-        // With room to spare they stay as big as the step says.
-        assertEquals(80, BatteryWidgetLogic.fit(size, 6, 400f, 400f).diameter)
+        // With room to spare they grow into it.
+        assertTrue(BatteryWidgetLogic.fit(size, 6, 400f, 400f).diameter > 80)
+    }
+
+    @Test
+    fun aFewDevicesInASquareWidgetBecomeRows() {
+        val small = BatteryWidgetLogic.Size.Small
+        // A 2 by 2 widget with three devices: three rows that share the height.
+        val rows = BatteryWidgetLogic.plan(small, 3, 150f, 150f) as BatteryWidgetLogic.Plan.Rows
+        assertTrue(3 * rows.height + 2 * BatteryWidgetLogic.ROW_GAP <= 150)
+        assertTrue(rows.diameter < rows.height)
+        // One device fills the widget instead of sitting small in the middle.
+        val one = BatteryWidgetLogic.plan(small, 1, 150f, 150f) as BatteryWidgetLogic.Plan.Single
+        assertTrue(one.diameter > 76)
+        assertTrue(BatteryWidgetLogic.itemHeight(one.diameter, one.names) <= 150f)
+        // Wide and low: the ring beside the level.
+        assertTrue((BatteryWidgetLogic.plan(BatteryWidgetLogic.Size.Medium, 1, 320f, 90f) as BatteryWidgetLogic.Plan.Single).beside)
+        // Two devices in a large widget would be two tall pills: big rings instead.
+        assertTrue(BatteryWidgetLogic.plan(BatteryWidgetLogic.Size.Large, 2, 330f, 330f) is BatteryWidgetLogic.Plan.Grid)
+        // Six devices keep the grid.
+        assertTrue(BatteryWidgetLogic.plan(BatteryWidgetLogic.Size.Large, 6, 320f, 320f) is BatteryWidgetLogic.Plan.Grid)
     }
 }

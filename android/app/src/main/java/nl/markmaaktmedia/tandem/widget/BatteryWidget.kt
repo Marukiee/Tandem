@@ -104,26 +104,35 @@ private fun Content(devices: List<WidgetBattery>) {
         else -> BatteryWidgetLogic.Size.Large
     }
     val shown = devices.take(kind.capacity)
+    val plan = BatteryWidgetLogic.plan(kind, shown.size, size.width.value - 2 * PADDING, size.height.value - 2 * PADDING)
     Box(
         GlanceModifier.fillMaxSize().appWidgetBackground().cornerRadius(android.R.dimen.system_app_widget_background_radius)
-            .background(GlanceTheme.colors.widgetBackground).padding(12.dp),
+            .background(GlanceTheme.colors.widgetBackground).padding(PADDING.dp),
         contentAlignment = Alignment.Center,
     ) {
-        if (shown.isEmpty()) {
-            Text(
+        when {
+            shown.isEmpty() -> Text(
                 LocalContext.current.getString(R.string.battery_widget_empty),
                 style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 13.sp, fontFamily = expressive, textAlign = TextAlign.Center),
             )
-        } else {
-            // Inside the padding of 12 on each side.
-            val layout = BatteryWidgetLogic.fit(kind, shown.size, size.width.value - 24, size.height.value - 24)
-            Column(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                shown.chunked(layout.columns).forEachIndexed { index, row ->
-                    if (index > 0) Spacer(GlanceModifier.height(BatteryWidgetLogic.rowGap(kind).dp))
-                    Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        row.forEach { Item(it, layout.diameter, layout.names, GlanceModifier.defaultWeight()) }
-                        // A short last row keeps the columns of the rows above it.
-                        repeat(layout.columns - row.size) { Spacer(GlanceModifier.defaultWeight()) }
+            plan is BatteryWidgetLogic.Plan.Single && plan.beside -> Beside(shown[0], plan.diameter)
+            plan is BatteryWidgetLogic.Plan.Single -> Item(shown[0], plan.diameter, plan.names, GlanceModifier)
+            plan is BatteryWidgetLogic.Plan.Rows -> Column(GlanceModifier.fillMaxSize()) {
+                shown.forEachIndexed { index, device ->
+                    if (index > 0) Spacer(GlanceModifier.height(BatteryWidgetLogic.ROW_GAP.dp))
+                    DeviceRow(device, plan.height, plan.diameter, GlanceModifier.fillMaxWidth().defaultWeight())
+                }
+            }
+            plan is BatteryWidgetLogic.Plan.Grid -> {
+                val layout = plan.layout
+                Column(GlanceModifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    shown.chunked(layout.columns).forEachIndexed { index, row ->
+                        if (index > 0) Spacer(GlanceModifier.height(BatteryWidgetLogic.rowGap(kind).dp))
+                        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            row.forEach { Item(it, layout.diameter, layout.names, GlanceModifier.defaultWeight()) }
+                            // A short last row keeps the columns of the rows above it.
+                            repeat(layout.columns - row.size) { Spacer(GlanceModifier.defaultWeight()) }
+                        }
                     }
                 }
             }
@@ -131,38 +140,95 @@ private fun Content(devices: List<WidgetBattery>) {
     }
 }
 
+/** Inside the card, in dp. */
+private const val PADDING = 10
+
 @Composable
 private fun Item(device: WidgetBattery, diameter: Int, names: Boolean, modifier: GlanceModifier) {
     val context = LocalContext.current
-    val colors = GlanceTheme.colors
     Column(modifier.clickable(actionStartActivity(openIntent(context, device.id))), horizontalAlignment = Alignment.CenterHorizontally) {
         AndroidRemoteViews(ring(context, device, diameter), GlanceModifier.size(diameter.dp))
         Spacer(GlanceModifier.height((diameter * 0.08f).dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (device.charging) {
-                Image(
-                    ImageProvider(R.drawable.sym_bolt_filled), null, GlanceModifier.size(max(13f, diameter * 0.2f).dp),
-                    colorFilter = ColorFilter.tint(green),
-                )
-                Spacer(GlanceModifier.width(1.dp))
-            }
-            Text(
-                "${device.level}%",
-                style = TextStyle(
-                    color = if (device.away) colors.onSurfaceVariant else colors.onSurface,
-                    fontSize = max(13f, diameter * 0.22f).sp, fontWeight = FontWeight.Bold, fontFamily = expressive,
-                ),
-                maxLines = 1,
-            )
-        }
-        if (names) {
-            Text(
-                device.name,
-                style = TextStyle(color = colors.onSurfaceVariant, fontSize = 11.sp, fontFamily = expressive, textAlign = TextAlign.Center),
-                maxLines = 1,
-            )
+        Level(device, max(13f, diameter * 0.22f))
+        if (names) Name(device, 11f, TextAlign.Center)
+    }
+}
+
+/** One device in a wide widget: the ring at the start, the level large beside it with the name under it. */
+@Composable
+private fun Beside(device: WidgetBattery, diameter: Int) {
+    val context = LocalContext.current
+    Row(GlanceModifier.fillMaxSize().clickable(actionStartActivity(openIntent(context, device.id))), verticalAlignment = Alignment.CenterVertically) {
+        AndroidRemoteViews(ring(context, device, diameter), GlanceModifier.size(diameter.dp))
+        Spacer(GlanceModifier.width((diameter * 0.16f).dp))
+        Column(GlanceModifier.defaultWeight()) {
+            Level(device, (diameter * 0.34f).coerceIn(16f, 44f))
+            Name(device, (diameter * 0.14f).coerceIn(12f, 16f), TextAlign.Start)
         }
     }
+}
+
+/** One device as a row across the widget: a pill with the ring at its start, the name, and the level at its end. */
+@Composable
+private fun DeviceRow(device: WidgetBattery, height: Int, diameter: Int, modifier: GlanceModifier) {
+    val context = LocalContext.current
+    val inset = ((height - diameter) / 2).coerceAtLeast(2)
+    Row(
+        modifier.cornerRadius((height / 2f).coerceAtMost(PILL_RADIUS).dp).background(ColorProvider(R.color.widget_row))
+            .clickable(actionStartActivity(openIntent(context, device.id))).padding(start = inset.dp, end = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AndroidRemoteViews(ring(context, device, diameter), GlanceModifier.size(diameter.dp))
+        Spacer(GlanceModifier.width(10.dp))
+        if (height >= STACKED_ROW) {
+            // The level on top and the name under it, so the name gets the whole width beside the ring.
+            Column(GlanceModifier.defaultWeight()) {
+                Level(device, (height * 0.3f).coerceIn(15f, 24f))
+                Name(device, (height * 0.2f).coerceIn(11f, 14f), TextAlign.Start)
+            }
+        } else {
+            Name(device, 12f, TextAlign.Start, GlanceModifier.defaultWeight(), GlanceTheme.colors.onSurface)
+            Spacer(GlanceModifier.width(4.dp))
+            Level(device, (height * 0.4f).coerceIn(13f, 16f))
+        }
+    }
+}
+
+/** From this height in dp a row has room for the level and the name under each other. */
+private const val STACKED_ROW = 44
+
+/** Rows rounder than this would no longer follow the corners of the card around them. */
+private const val PILL_RADIUS = 20f
+
+@Composable
+private fun Level(device: WidgetBattery, fontSize: Float) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (device.charging) {
+            Image(ImageProvider(R.drawable.sym_bolt_filled), null, GlanceModifier.size((fontSize * 0.9f).dp), colorFilter = ColorFilter.tint(green))
+            Spacer(GlanceModifier.width(1.dp))
+        }
+        Text(
+            "${device.level}%",
+            style = TextStyle(
+                color = if (device.away) GlanceTheme.colors.onSurfaceVariant else GlanceTheme.colors.onSurface,
+                fontSize = fontSize.sp, fontWeight = FontWeight.Bold, fontFamily = expressive,
+            ),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun Name(device: WidgetBattery, fontSize: Float, align: TextAlign, modifier: GlanceModifier = GlanceModifier, color: ColorProvider? = null) {
+    Text(
+        device.name,
+        modifier,
+        style = TextStyle(
+            color = if (device.away || color == null) GlanceTheme.colors.onSurfaceVariant else color,
+            fontSize = fontSize.sp, fontWeight = if (color != null) FontWeight.Medium else FontWeight.Normal, fontFamily = expressive, textAlign = align,
+        ),
+        maxLines = 1,
+    )
 }
 
 // The charger: green, as on a Pixel's own battery widget.
