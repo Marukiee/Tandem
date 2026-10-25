@@ -248,6 +248,9 @@ export async function call(command, args) {
     case "features_local": return [
       { id: "control", ready: true, name: "Control this computer", why: "", page: null },
       { id: "microphone", ready: false, name: "Find the side by sound", why: "This computer has no microphone that Tandem can use", page: "sound" },
+      { id: "codes", ready: false, name: "Codes from texts copied here", why: "Copy codes is off in Tandem on this computer", page: "switch:codes" },
+      { id: "focus", ready: true, name: "Focus on all your devices", why: "", page: null },
+      { id: "bluetooth", ready: false, name: "Bluetooth link", why: "Bluetooth is off or missing on this computer", page: "bluetooth" },
     ];
     case "features_open_here": case "features_open_on": return null;
     // Kept, so a look in the browser can tell how many calls one press made.
@@ -255,6 +258,7 @@ export async function call(command, args) {
     case "live_start": return 1;
     case "display_start": case "display_stop": return null;
     case "webcam_start": case "webcam_stop": return "1";
+    case "tour_pending": return new URLSearchParams(location.search).get("page") === "tour";
     case "display_state": return [];
     case "fs_roots": return [{ name: "Phone", write: false }];
     case "fs_list": return args.path === "/Phone"

@@ -472,6 +472,19 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
             // 0 is never.
             current.side_check_minutes = (v as u32).min(60);
         }
+        if let Some(v) = patch["tourSeen"].as_u64() {
+            current.tour_seen = v as u32;
+        }
+        let ids = |v: &Value| v.as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).take(64).collect::<Vec<_>>());
+        if let Some(v) = ids(&patch["tourLater"]) {
+            current.tour_later = v;
+        }
+        if let Some(v) = ids(&patch["tourSkip"]) {
+            current.tour_skip = v;
+        }
+        if let Some(v) = patch["tourRemindAt"].as_u64() {
+            current.tour_remind_at = v;
+        }
     }
     settings::save(&app);
     // The switch for the media controls takes effect at once.

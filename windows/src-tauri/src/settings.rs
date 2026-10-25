@@ -93,6 +93,12 @@ pub struct Settings {
     pub side_sound: String,
     /// Downloads, Documents and Desktop were offered once (see `engine::offer_usual_folders`).
     pub usual_folders_offered: bool,
+    /// The tour of what Tandem can do (tour.js): the version last shown, what waits for later, what is not for this person, and when to
+    /// remind of what waits (milliseconds since 1970, 0 for no reminder).
+    pub tour_seen: u32,
+    pub tour_later: Vec<String>,
+    pub tour_skip: Vec<String>,
+    pub tour_remind_at: u64,
 }
 
 impl Default for Settings {
@@ -139,6 +145,10 @@ impl Default for Settings {
             side_check: true,
             side_check_minutes: 2,
             usual_folders_offered: false,
+            tour_seen: 0,
+            tour_later: Vec::new(),
+            tour_skip: Vec::new(),
+            tour_remind_at: 0,
             side_sound: "quiet".into(),
         }
     }

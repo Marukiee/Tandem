@@ -258,6 +258,7 @@ pub fn run() {
             commands::transfer_cancel,
             side::side_find,
             features::features_local,
+            features::tour_pending,
             features::features_open_here,
             features::features_open_on,
             side::side_preview,

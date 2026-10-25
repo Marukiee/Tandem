@@ -780,6 +780,8 @@ function FeaturesSettings() {
   return html`<div style="display:flex;flex-direction:column;gap:12px">
     <h2>${t("tab_features")}</h2>
     <div class="muted">${missing === 0 ? t("features_all_good") : t("features_missing", missing)}</div>
+    <div class="card flush"><${SettingRow} icon="bulb" title=${t("tour_title")} sub=${t("tour_row_sub")}>
+      <button class="btn small" onClick=${() => set({ page: "tour" })}>${t("tour_open")}</button><//></div>
     <h2>${state.self ? state.self.name : t("this_pc")}</h2>
     <div class="card flush">${ordered(mine).map((f) => html`<${FeatureRow} key=${f.id} feature=${f} action=${t("features_open_here")} open=${(page) => call("features_open_here", { page })} />`)}</div>
     ${others.map((d) => html`<div key=${d.id} style="display:flex;flex-direction:column;gap:6px">

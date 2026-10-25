@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 use tandem_core::ffi::TandemFeature;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::state::AppState;
 
@@ -68,6 +68,15 @@ pub fn current(app: &AppHandle) -> Vec<TandemFeature> {
     if crate::wifi::available() {
         list.push(feature("wifi.share", true, t("Share this computer's Wi-Fi", "De wifi van deze computer delen"), "", None));
     }
+    // Codes from the texts of a phone, copied here: the notice that says so needs nothing but the switch.
+    let codes = crate::settings::get(app).copy_codes;
+    list.push(feature(
+        "codes",
+        codes,
+        t("Codes from texts copied here", "Codes uit sms'jes hier gekopieerd"),
+        t("Copy codes is off in Tandem on this computer", "Codes kopi\u{eb}ren staat uit in Tandem op deze computer"),
+        (!codes).then_some("switch:codes"),
+    ));
     let focus = tandem_winsys::focus::abilities();
     list.push(feature(
         "focus",
@@ -99,11 +108,71 @@ pub fn start(app: &AppHandle) {
         .name("tandem-features".into())
         .spawn(move || loop {
             if let Ok(engine) = app.state::<AppState>().engine() {
-                tauri::async_runtime::block_on(engine.set_features(current(&app)));
+                let features = current(&app);
+                remind_if_due(&app, &features);
+                tauri::async_runtime::block_on(engine.set_features(features));
             }
             std::thread::sleep(Duration::from_secs(6));
         })
         .ok();
+}
+
+/// What was left for later in the tour comes back once, when its day has come and only while it is still not ready: one notice that opens
+/// the tour. What got ready in the meantime is dropped from the list.
+fn remind_if_due(app: &AppHandle, features: &[TandemFeature]) {
+    let settings = crate::settings::get(app);
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
+    if settings.tour_remind_at == 0 || now < settings.tour_remind_at {
+        return;
+    }
+    let waiting: Vec<&TandemFeature> = features.iter().filter(|f| !f.ready && settings.tour_later.contains(&f.id)).collect();
+    let still: Vec<String> = waiting.iter().map(|f| f.id.clone()).collect();
+    crate::settings::update(app, |s| {
+        s.tour_remind_at = 0;
+        s.tour_later = still;
+    });
+    if waiting.is_empty() {
+        return;
+    }
+    let nl = crate::i18n::lang(app) == "nl";
+    let title = if nl { "Tandem: nog in te stellen" } else { "Tandem: still to set up" };
+    let names = waiting.iter().map(|f| f.name.as_str()).collect::<Vec<_>>().join(", ");
+    let body = if waiting.len() == 1 {
+        names
+    } else if nl {
+        format!("{} dingen wachten nog: {names}", waiting.len())
+    } else {
+        format!("{} things are still waiting: {names}", waiting.len())
+    };
+    #[cfg(target_os = "linux")]
+    {
+        let handle = app.clone();
+        let open = if nl { "Openen" } else { "Open" };
+        let told = tandem_winsys::notify::tell(title, &body, &[("default", ""), ("open", open)], move |_, _| open_tour(&handle));
+        if told.is_some() {
+            return;
+        }
+    }
+    crate::events::toast(app, title, &body);
+}
+
+/// The main window, on the page of the tour. A main window that is not there yet asks for it when it starts (`tour_pending`).
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub fn open_tour(app: &AppHandle) {
+    if app.get_webview_window("main").is_some() {
+        let _ = app.emit_to("main", "open-page", "tour");
+    } else {
+        TOUR_PENDING.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+    crate::tray::show_main(app);
+}
+
+static TOUR_PENDING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Whether the main window is to open on the tour, once.
+#[tauri::command]
+pub fn tour_pending() -> bool {
+    TOUR_PENDING.swap(false, std::sync::atomic::Ordering::SeqCst)
 }
 
 /// Opens the page of the system settings for `page`.
@@ -114,6 +183,7 @@ pub fn turn_on(app: &AppHandle, page: &str) -> bool {
     match feature {
         "screen" => crate::settings::update(app, |s| s.screen_host = true),
         "focus" => crate::settings::update(app, |s| s.focus_share = Some(true)),
+        "codes" => crate::settings::update(app, |s| s.copy_codes = true),
         _ => {}
     }
     true

@@ -93,6 +93,7 @@ export async function connect() {
 async function follow() {
   await listen("devices", (devices) => set({ devices, selected: pick(devices) }));
   await listen("open-device", (id) => set({ selected: id, page: "device" }));
+  await listen("open-page", (page) => set({ page }));
   await listen("transfer", (item) => set({ transfers: upsert(state.transfers, item) }));
   await listen("offer", (offer) => set({ offers: [...state.offers, offer] }));
   await listen("offer-gone", ({ from, offer }) => set({ offers: state.offers.filter((o) => !(o.from === from && o.offer === offer)) }));

@@ -9,6 +9,7 @@ import { ClipboardPage, DevicePage, FilesPage, NotificationsPage, PairPanel, Set
 import { say, selectedDevice, set, state, useStore } from "./store.js";
 import { MessagesPage, offersMessages } from "./messages.js";
 import { CallDialog, useCallAsk } from "./calls.js";
+import { TourPage, maybeShowTour } from "./tour.js";
 
 /** The update, at the foot of the sidebar: what is out, how far the download is, and what went wrong. */
 function UpdateBanner() {
@@ -146,6 +147,7 @@ function Page() {
   else if (state.page === "files") body = html`<${FilesPage} />`;
   else if (state.page === "notifications") body = html`<${NotificationsPage} />`;
   else if (state.page === "settings") body = html`<${SettingsPage} />`;
+  else if (state.page === "tour") body = html`<${TourPage} />`;
   else if (state.page === "messages" && selectedDevice()) body = html`<${MessagesPage} device=${selectedDevice()} key=${state.selected} />`;
   else if (state.devices.length === 0) body = html`<${Welcome} />`;
   else {
@@ -173,6 +175,9 @@ if (!native) {
   const wanted = new URLSearchParams(location.search).get("page");
   if (wanted) set({ page: wanted });
 }
+// The tour once after an update that brings a new one, or because its reminder was pressed while there was no window yet.
+if (await call("tour_pending").catch(() => false)) set({ page: "tour" });
+else if (native) maybeShowTour();
 setLanguage(state.settings.language, state.systemLanguage);
 await listenDrops(
   (over) => set({ dropping: over }),
