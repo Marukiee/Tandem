@@ -8,10 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* Controls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* Controls.swift */; };
+		A10000000000000000000012 /* Batteries.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* Batteries.swift */; };
+		A10000000000000000000014 /* BatteryWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* BatteryWidgetView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000002 /* Controls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Controls.swift; sourceTree = "<group>"; };
+		A10000000000000000000013 /* Batteries.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Batteries.swift; sourceTree = "<group>"; };
+		A10000000000000000000015 /* BatteryWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../Sources/Tandem/UI/BatteryWidgetView.swift; sourceTree = "<group>"; };
 		A10000000000000000000003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000000000000000000004 /* TandemControls.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = TandemControls.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -31,6 +35,8 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000002 /* Controls.swift */,
+				A10000000000000000000013 /* Batteries.swift */,
+				A10000000000000000000015 /* BatteryWidgetView.swift */,
 				A10000000000000000000003 /* Info.plist */,
 				A10000000000000000000007 /* Products */,
 			);
@@ -108,6 +114,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000001 /* Controls.swift in Sources */,
+				A10000000000000000000012 /* Batteries.swift in Sources */,
+				A10000000000000000000014 /* BatteryWidgetView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

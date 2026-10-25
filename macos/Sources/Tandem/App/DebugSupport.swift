@@ -120,6 +120,10 @@ enum DebugSupport {
                 NSApp.terminate(nil)
             }
         }
+        // `TANDEM_DEBUG_BATTERYWIDGET=1`: pictures of the battery widget in every size, light and dark, then quits (see BatteryWidgetDebug).
+        if variable("TANDEM_DEBUG_BATTERYWIDGET") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { BatteryWidgetDebug.run(into: directory) }
+        }
         if variable("TANDEM_DEBUG_LIVE_SELFTEST") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { LiveSelfTest.run(directory: directory) }
         }

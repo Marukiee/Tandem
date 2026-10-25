@@ -59,6 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             InsertFromPhone.shared.install()
             ClipboardPanelController.shared.start()
             ControlBridge.shared.start()
+            BatteryBridge.shared.start()
             Updater.shared.checkIfDue()
             Updater.shared.startPeriodicChecks()
             if ProcessInfo.processInfo.environment["TANDEM_UPDATE_TEST_FROM"] != nil {
