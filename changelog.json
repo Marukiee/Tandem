@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.2.19",
+    "date": "2026-10-25",
+    "en": {
+      "title": "Webcam and drag card on Linux",
+      "new": [
+        "Use the phone as a webcam on Linux",
+        "Files dropped from the Mac get a card under the pointer on Linux, to drag them on"
+      ]
+    },
+    "nl": {
+      "title": "Webcam en sleepkaartje op Linux",
+      "new": [
+        "Gebruik de telefoon als webcam op Linux",
+        "Bestanden die je van de Mac sleept krijgen op Linux een kaartje onder de muis om verder te slepen"
+      ]
+    }
+  },
+  {
     "version": "0.2.18",
     "date": "2026-10-25",
     "en": {
@@ -8,7 +26,8 @@
         "Battery widgets on Android and the Mac, battery rings in the tray panel on Linux and Windows",
         "A screenshot lands on the clipboard of your other devices",
         "Phone sound without the screen recording question, with Shizuku or as a Bluetooth speaker",
-        "Devices, actions, messages, clipboard, files and settings in Spotlight and the Linux search"
+        "Devices, actions, messages, clipboard, files and settings in Spotlight and the Linux search",
+        "Switches that cannot work are grey and say why"
       ]
     },
     "nl": {
@@ -17,7 +36,8 @@
         "Batterijwidgets op Android en de Mac, batterijringen in het paneel op Linux en Windows",
         "Een screenshot staat meteen op het klembord van je andere apparaten",
         "Geluid van de telefoon zonder de vraag over schermopname, met Shizuku of als Bluetooth-luidspreker",
-        "Apparaten, acties, berichten, klembord, bestanden en instellingen in Spotlight en het zoeken op Linux"
+        "Apparaten, acties, berichten, klembord, bestanden en instellingen in Spotlight en het zoeken op Linux",
+        "Schakelaars die niet kunnen werken zijn grijs en zeggen waarom"
       ]
     }
   },
