@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.24",
+    "date": "2026-10-25",
+    "en": { "title": "A fuller battery widget", "new": ["The battery widget fills itself: one device large, a few as rows with their names"] },
+    "nl": { "title": "Een vollere batterijwidget", "new": ["De batterijwidget vult zichzelf: een apparaat groot, een paar als rijen met hun naam"] }
+  },
+  {
     "version": "0.2.23",
     "date": "2026-10-25",
     "en": { "title": "Who is calling", "new": ["The call card shows the name of whoever you are calling with, also for calls you make"] },
