@@ -52,6 +52,8 @@ export function CallDialog({ dialog }) {
     const onKey = (e) => {
       if (e.isComposing) return;
       if (e.key === "Enter") {
+        // Someone who went to Cancel with Tab and pressed Enter wants Cancel, as everywhere in a browser.
+        if (e.target && e.target.dataset && e.target.dataset.cancel != null) return;
         e.preventDefault();
         e.stopPropagation();
         confirm();
@@ -83,7 +85,7 @@ export function CallDialog({ dialog }) {
           <span class="t">${n.label || t("call_number")}</span><span class="s">${n.number}</span></button>`)}
       </div>`}
       <div class="call-ask-actions">
-        <button class="btn" onClick=${close}>${t("cancel")}</button>
+        <button class="btn" data-cancel onClick=${close}>${t("cancel")}</button>
         <button class="btn accent" onClick=${confirm}><${Icon} name="phone" size=${16} />${t("call")}</button>
       </div>
     </div>
