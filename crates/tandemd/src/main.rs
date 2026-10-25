@@ -791,6 +791,10 @@ async fn main() -> Result<()> {
                 }
             }
             print!("{}", execute(&engine, other).await?);
+            // A message is on its way when the call returns, not read yet: closing at once lost the clipboard on a phone.
+            if matches!(other, Command::Clip { .. }) {
+                tokio::time::sleep(Duration::from_millis(1500)).await;
+            }
             if matches!(other, Command::Send { .. }) {
                 // Stay until the transfers are done.
                 let mut events = engine.subscribe();
