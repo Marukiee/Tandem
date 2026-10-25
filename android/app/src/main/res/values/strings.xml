@@ -229,7 +229,7 @@
     <string name="onb_later">Later</string>
     <string name="onb_pair_now">Pair now</string>
     <string name="onb_perm_title">What Tandem asks</string>
-    <string name="onb_perm_body">Everything is optional and you can change it later under Settings, Permissions.</string>
+    <string name="onb_perm_body">Everything is optional and you can change it later under Settings, Setup.</string>
     <string name="onb_pair_title">Pair your first device</string>
     <string name="onb_pair_body">Open Tandem on your computer, show the pairing code and scan it with this phone.</string>
     <string name="remote_ready">Ready</string>

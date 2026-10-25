@@ -226,7 +226,7 @@
     <string name="onb_later">Later</string>
     <string name="onb_pair_now">Nu koppelen</string>
     <string name="onb_perm_title">Wat Tandem vraagt</string>
-    <string name="onb_perm_body">Alles is optioneel en je kunt het later wijzigen onder Instellingen, Rechten.</string>
+    <string name="onb_perm_body">Alles is optioneel en je kunt het later wijzigen onder Instellingen, Instellen.</string>
     <string name="onb_pair_title">Koppel je eerste apparaat</string>
     <string name="onb_pair_body">Open Tandem op je computer, toon de koppelcode en scan hem met deze telefoon.</string>
     <string name="remote_ready">Klaar</string>
