@@ -172,13 +172,25 @@ final class TandemSpotlight {
     }
 
     /// The battery, the round trip and every tick of a transfer change what is watched: one look a moment later covers them all.
+    /// A long transfer changes something every moment; the look that has waited longest is then let through instead of put off for good.
     private func schedule(after delay: Double = 1.5) {
+        if delay > 0, pending != nil, let since = pendingSince, Date().timeIntervalSince(since) > 5 { return }
         pending?.cancel()
+        if pendingSince == nil { pendingSince = Date() }
         pending = Task { @MainActor [weak self] in
             if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
-            guard !Task.isCancelled else { return }
-            self?.sync()
+            guard !Task.isCancelled, let self else { return }
+            pending = nil
+            pendingSince = nil
+            sync()
         }
+    }
+
+    private var pendingSince: Date?
+
+    /// Everything of this app goes out of Spotlight, the contacts too: after a reset none of those devices is paired any more.
+    static func forgetEverything() async {
+        try? await CSSearchableIndex.default().deleteAllSearchableItems()
     }
 
     // MARK: Writing the index
