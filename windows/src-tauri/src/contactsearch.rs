@@ -1,7 +1,8 @@
 //! The contacts of the paired phones in the search of the desktop: type a name in the GNOME overview (or KRunner on KDE), pick the
 //! person, and the phone calls them. The list is fetched from each phone that says `sms.contacts` when it connects and again every
 //! few hours, and only kept in memory: the search asks this app while it runs and Tandem is not started for it. The parts of the
-//! desktop are in `tandem_winsys::searchprovider`; what is found and what a pick does is here, so it is tested on any system.
+//! desktop are in `tandem_winsys::searchprovider`, offered by `desktopsearch.rs` with the other kinds of results; what is found of the
+//! contacts and what a pick does is here, so it is tested on any system.
 //! Windows has no way for an app to put results in the search of the Start menu (see docs/PARITY.md).
 #![cfg_attr(not(target_os = "linux"), allow(dead_code))]
 
@@ -185,8 +186,8 @@ pub fn refresh(app: &AppHandle) {
             book.clear();
         }
     }
-    #[cfg(target_os = "linux")]
-    linux::configure(app, on);
+    // The provider on the bus answers for the other kinds too, so whether it is there is decided with those.
+    crate::desktopsearch::refresh(app);
     if !on {
         *ASKED.lock().unwrap() = None;
         return;
@@ -248,59 +249,6 @@ pub fn start(app: AppHandle) {
             refresh(&app);
         }
     });
-}
-
-#[cfg(target_os = "linux")]
-mod linux {
-    use std::path::{Path, PathBuf};
-    use std::sync::{Arc, Mutex};
-
-    use tandem_winsys::searchprovider::{SearchProvider, Source};
-    use tauri::AppHandle;
-
-    static PROVIDER: Mutex<Option<SearchProvider>> = Mutex::new(None);
-
-    struct App(AppHandle);
-
-    impl Source for App {
-        fn search(&self, terms: &[String]) -> Vec<String> {
-            super::search(terms)
-        }
-        fn metas(&self, ids: &[String]) -> Vec<(String, String, String)> {
-            super::describe(ids)
-        }
-        fn activate(&self, id: &str) {
-            super::activate(&self.0, id);
-        }
-        fn launch(&self) {
-            crate::tray::show_main(&self.0);
-        }
-    }
-
-    /// Where KRunner looks for runners of other apps that answer on the bus.
-    fn krunner_file() -> Option<PathBuf> {
-        let data = std::env::var_os("XDG_DATA_HOME")
-            .map(PathBuf::from)
-            .or_else(|| std::env::var_os("HOME").map(|h| Path::new(&h).join(".local/share")))?;
-        Some(data.join("krunner/dbusplugins/tandem-contacts.desktop"))
-    }
-
-    pub fn configure(app: &AppHandle, on: bool) {
-        let mut provider = PROVIDER.lock().unwrap();
-        if on && provider.is_none() {
-            *provider = SearchProvider::start(Arc::new(App(app.clone())));
-        } else if !on {
-            // Dropping the connection gives the name on the bus back: GNOME and KRunner then find nobody to ask.
-            *provider = None;
-        }
-        if let Some(file) = krunner_file() {
-            if on {
-                crate::sendwith::put(&file, tandem_winsys::searchprovider::KRUNNER_DESKTOP, false);
-            } else {
-                let _ = std::fs::remove_file(file);
-            }
-        }
-    }
 }
 
 #[cfg(test)]

@@ -10,6 +10,7 @@ mod debugshot;
 mod callcard;
 mod calls;
 mod contactsearch;
+mod desktopsearch;
 mod capture;
 mod quickshare;
 mod clip;
@@ -189,6 +190,7 @@ pub fn run() {
             calls::dial,
             contactsearch::call_ask_pending,
             contactsearch::call_ask_taken,
+            desktopsearch::search_open_pending,
             callcard::call_cards,
             callcard::call_action,
             commands::get_players,

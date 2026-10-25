@@ -4,7 +4,7 @@ import { html, useEffect, useRef, useState } from "../vendor/preact-htm.js";
 import { call, listen } from "./backend.js";
 import { Icon } from "./icons.js";
 import { language, t } from "./i18n.js";
-import { say, set } from "./store.js";
+import { say, set, state as store } from "./store.js";
 
 const PAGE = 40;
 const REFUSALS = ["off", "no_permission", "unavailable", "offline"];
@@ -284,6 +284,16 @@ export function MessagesPage({ device }) {
     if (device.online) refresh(device.id);
     else if (p.load !== "ready") { p.load = "offline"; redraw(); }
   }, [device.id, device.online]);
+
+  // A conversation picked in the search of the desktop.
+  const wanted = store.smsWanted;
+  useEffect(() => {
+    if (!wanted || wanted.device !== device.id) return;
+    // Taken once, so coming back to the page later starts as it always does.
+    store.smsWanted = null;
+    setComposing(false);
+    setSelection(wanted.thread);
+  }, [wanted && wanted.at, device.id]);
 
   // There is room for the newest conversation from the start, as in Messages.
   const first = p.conversations[0];

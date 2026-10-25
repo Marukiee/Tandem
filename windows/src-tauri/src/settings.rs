@@ -68,6 +68,14 @@ pub struct Settings {
     pub file_manager_send: bool,
     /// The contacts of the phones in the search of the desktop (see `contactsearch.rs`).
     pub contacts_search: bool,
+    /// The rest of Tandem in that search, a switch per kind (see `desktopsearch.rs`). Messages and the clipboard hold what people write
+    /// and copy, which the overview would show to anyone at the keyboard: those two are off until the person turns them on.
+    pub search_devices: bool,
+    pub search_actions: bool,
+    pub search_messages: bool,
+    pub search_clipboard: bool,
+    pub search_files: bool,
+    pub search_settings: bool,
     /// The sound of the system that plays when another device looks for this computer. Empty is the one `find.rs` picks.
     pub ring_sound: String,
     /// Focus the same on every device. Not chosen yet: on where the desktop has a Do Not Disturb (see `focus::on`).
@@ -114,6 +122,12 @@ impl Default for Settings {
             pointer_share: true,
             file_manager_send: true,
             contacts_search: true,
+            search_devices: true,
+            search_actions: true,
+            search_messages: false,
+            search_clipboard: false,
+            search_files: true,
+            search_settings: true,
             auto_update: true,
             dismissed_update: String::new(),
             ring_sound: String::new(),
