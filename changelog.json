@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.2.17",
+    "date": "2026-10-25",
+    "en": {
+      "title": "Messages in the sidebar",
+      "new": [
+        "Messages has its own place in the sidebar, with your contacts and a call button",
+        "Every call asks first",
+        "Find by sound always plays on the Mac's own speakers and says why when the phone did not listen",
+        "Share Focus is grey until the shortcut is there"
+      ]
+    },
+    "nl": {
+      "title": "Berichten in de zijbalk",
+      "new": [
+        "Berichten heeft een eigen plek in de zijbalk, met je contacten en een belknop",
+        "Elke oproep vraagt eerst",
+        "Zoeken met geluid speelt altijd via de eigen speakers van de Mac en zegt waarom als de telefoon niet luisterde",
+        "Focus delen is grijs tot de snelkoppeling er is"
+      ]
+    }
+  },
+  {
     "version": "0.2.16",
     "date": "2026-10-25",
     "en": {
