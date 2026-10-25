@@ -67,6 +67,7 @@ import nl.markmaaktmedia.tandem.ui.update.UpdateBanner
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.layout.onSizeChanged
+import kotlinx.coroutines.flow.first
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 
@@ -145,9 +146,12 @@ private fun MainNavigation() {
         }
     }
     val deviceFlag = LocalContext.current.graph.openDevice
+    val deviceHost = LocalContext.current.graph.host
     val openDevice by deviceFlag.collectAsState()
     LaunchedEffect(openDevice) {
         openDevice?.let { id ->
+            // From a cold start the devices are not listed yet, and the page of a device that is not listed closes itself at once.
+            deviceHost.state.first { it == nl.markmaaktmedia.tandem.engine.EngineState.Running }
             if (nav.top != Route.Device(id)) nav.push(Route.Device(id))
             deviceFlag.value = null
         }

@@ -50,9 +50,14 @@ final class BatteryBridge {
                 others.append(last)
             }
         }
-        // A device that was removed from the circle is not kept.
-        let ids = Set(model.devices.map(\.id))
-        known = known.filter { ids.contains($0.key) }
+        // A device that was removed from the circle is not kept. An empty list is more likely a list not filled yet than a circle of one, and
+        // would wipe what the widget last knew.
+        if model.devices.isEmpty {
+            others = known.values.map { var last = $0; last.away = true; last.charging = false; return last }
+        } else {
+            let ids = Set(model.devices.map(\.id))
+            known = known.filter { ids.contains($0.key) }
+        }
         others.sort { ($0.away ? 1 : 0, $0.name) < ($1.away ? 1 : 0, $1.name) }
         return BatteryWidgetSnapshot(devices: devices + others)
     }
