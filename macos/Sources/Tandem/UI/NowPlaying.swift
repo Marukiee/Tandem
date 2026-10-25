@@ -1,8 +1,8 @@
 import SwiftUI
 import TandemCore
 
-/// What a phone is playing, with the buttons to control it, at the bottom of the header card of its page. Players that
-/// play what this Mac already plays are left out: a phone that only remote controls the Mac's Spotify is not a second player.
+/// What a phone is playing, with the buttons to control it, at the bottom of the header card of its page. Also when this Mac shows the
+/// same track (Spotify on a computer shows the track of the account wherever it plays).
 struct NowPlayingCard: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
