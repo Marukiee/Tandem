@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.2.22",
+    "date": "2026-10-25",
+    "en": {
+      "title": "What Tandem can do",
+      "new": [
+        "A tour of everything Tandem can do, with what each thing needs: set it up now, later or not at all",
+        "One reminder a few days later for what you left for later"
+      ]
+    },
+    "nl": {
+      "title": "Wat Tandem kan",
+      "new": [
+        "Een rondleiding langs alles wat Tandem kan, met wat elk onderdeel nodig heeft: nu instellen, later of niet",
+        "Eén herinnering een paar dagen later voor wat je voor later bewaarde"
+      ]
+    }
+  },
+  {
     "version": "0.2.21",
     "date": "2026-10-25",
     "en": {
