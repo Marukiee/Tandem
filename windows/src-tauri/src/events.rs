@@ -86,6 +86,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::SideListen { from, id, quiet } => crate::side::listen(app, from, id, quiet),
         TandemEvent::SideMoved { from } => crate::side::moved(app, from),
         TandemEvent::SoundRequested { from, on } => crate::screen_sound::requested(app, from, on),
+        TandemEvent::BtSpeakerRequested { from, on, name } => crate::btspeaker::requested(app, from, on, name),
         TandemEvent::MediaStarted { peer, kind: tandem_core::ffi::TandemMediaKind::Screen, role: tandem_core::ffi::TandemMediaRole::Viewer, .. } => crate::screen_sound::view_started(app, peer),
         TandemEvent::MediaEnded { peer, role: tandem_core::ffi::TandemMediaRole::Viewer, .. } => crate::screen_sound::view_ended(app, &peer),
         TandemEvent::MediaEnded { peer, role: tandem_core::ffi::TandemMediaRole::Host, .. } => crate::screen_sound::host_ended(app, &peer),

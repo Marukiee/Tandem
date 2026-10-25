@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shizuku_title">Shizuku</string>
+    <string name="shizuku_intro">Shizuku lets Tandem do a few things an app may not do by itself. It is optional: without it everything still works, with a tap or a question more.</string>
+    <string name="shizuku_section_state">State</string>
+    <string name="shizuku_section_uses">What Tandem uses it for</string>
+    <string name="shizuku_state_not_installed">Not installed</string>
+    <string name="shizuku_state_not_installed_sub">Tap to get Shizuku</string>
+    <string name="shizuku_state_not_running">Installed, not running</string>
+    <string name="shizuku_state_not_running_sub">Tap to open Shizuku and start it. It stops when the phone restarts</string>
+    <string name="shizuku_state_needs_permission">Running, Tandem is not allowed yet</string>
+    <string name="shizuku_state_needs_permission_sub">Tap to allow Tandem</string>
+    <string name="shizuku_state_denied">Tandem was refused</string>
+    <string name="shizuku_state_denied_sub">Tap to open Shizuku and allow Tandem there</string>
+    <string name="shizuku_state_too_old">Too old</string>
+    <string name="shizuku_state_too_old_sub">Update Shizuku to version 11 or newer</string>
+    <string name="shizuku_state_root">Ready, running as root</string>
+    <string name="shizuku_state_shell">Ready, running as the shell</string>
+    <string name="shizuku_state_ready_sub">Tandem can use it</string>
+    <string name="shizuku_use_hotspot">Hotspot turns on by itself</string>
+    <string name="shizuku_use_hotspot_on">Your computer turns on the hotspot without a tap on this phone</string>
+    <string name="shizuku_use_hotspot_off">Without Shizuku you tap a notification to turn it on</string>
+    <string name="shizuku_use_projection">Sound and screen without the screen recording question</string>
+    <string name="shizuku_use_projection_on">Android no longer asks when this phone\'s sound or screen is shared. The notification that it is shared stays</string>
+    <string name="shizuku_use_projection_off">Android asks each time the sound or the screen is shared</string>
+    <string name="shizuku_use_projection_set">Tap to set it now</string>
+</resources>

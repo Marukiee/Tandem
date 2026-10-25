@@ -15,7 +15,8 @@ import nl.markmaaktmedia.tandem.graph
 
 /**
  * Asks for what sending the phone's sound needs, one thing after the other (the permission to record audio, then the
- * system's question about capturing), and hands the answer to [SoundShareService]. It shows nothing of its own but a short
+ * system's question about capturing, which answers itself once the app-op of [ProjectionGrant] is set), and hands the answer
+ * to [SoundShareService]. [PhoneSound] decides whether this is the way at all. It shows nothing of its own but a short
  * word when something is missing, and what the person can expect once it runs.
  */
 class SoundShareActivity : ComponentActivity() {

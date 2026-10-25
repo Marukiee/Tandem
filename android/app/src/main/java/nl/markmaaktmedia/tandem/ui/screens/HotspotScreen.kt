@@ -80,7 +80,7 @@ private val LIMITS_MB = listOf(0L, 100L, 250L, 500L, 1024L, 2048L, 3072L, 5120L,
 
 /** Everything about letting your Mac use this phone's hotspot, on a page of its own. */
 @Composable
-fun HotspotScreen(onBack: () -> Unit) {
+fun HotspotScreen(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.ui.Route) -> Unit = {}) {
     val context = LocalContext.current
     val graph = context.graph
     val module = HotspotModule.get(context)
@@ -224,18 +224,10 @@ fun HotspotScreen(onBack: () -> Unit) {
             }
             val rows = if (attempt != null) 3 else 2
             SettingsTarget(FocusKeys.HotspotMethod, 0, rows) {
+                // What Shizuku is and how to start or allow it lives on its own page, since more than the hotspot uses it.
                 ActionRow(
                     0, rows, TandemIcons.Hotspot, stringResource(R.string.hotspot_method), stringResource(methodText),
-                    onClick = {
-                        when (shizuku) {
-                            ShizukuState.NeedsPermission -> module.shizuku.requestPermission()
-                            ShizukuState.NotRunning, ShizukuState.Denied -> module.shizuku.launchShizuku()
-                            ShizukuState.NotInstalled, ShizukuState.TooOld -> context.startActivity(
-                                Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                            ShizukuState.Ready -> Unit
-                        }
-                    },
+                    onClick = { onOpen(nl.markmaaktmedia.tandem.ui.Route.SettingsPage(nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId.Shizuku)) },
                     trailing = if (shizuku == ShizukuState.Ready) {
                         { Icon(TandemIcons.Check, null, tint = LocalTandemExtraColors.current.online, modifier = Modifier.size(24.dp)) }
                     } else null,

@@ -160,6 +160,10 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         "audio.play".into(),
         "audio.send".into(),
     ];
+    // Becomes the Bluetooth speaker of a paired phone when the phone asks (see `btspeaker`), so the phone needs no question.
+    if crate::btspeaker::available() {
+        caps.push("audio.bt_sink".into());
+    }
     // Listens to the sound of another computer that wants to know on which side this one stands (see `side.rs`).
     if crate::side::can_listen() {
         caps.push("side.listen".into());

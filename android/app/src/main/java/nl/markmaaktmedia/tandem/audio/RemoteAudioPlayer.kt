@@ -90,7 +90,7 @@ class RemoteAudioPlayer(
     private suspend fun start(device: String, stream: Int, rate: Int, channels: Int, name: String? = null, force: Boolean = false) {
         // The person has not allowed it: say so, so the device does not keep sending into the void. And a device never plays here
         // while this phone sends its sound there, so a stop from it always says which of the two it ends.
-        if ((!force && !prefs.audioOutput.first()) || SoundShareService.active.value == device) return refuse(device, stream)
+        if ((!force && !prefs.audioOutput.first()) || nl.markmaaktmedia.tandem.live.PhoneSound.sendingTo(device)) return refuse(device, stream)
         // A new start from the same device replaces its old one.
         end(device, tell = false)
 

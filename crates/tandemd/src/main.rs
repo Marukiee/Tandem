@@ -60,6 +60,9 @@ struct Cli {
     /// With --pretend-screen: the size of the clip, written 1280x720.
     #[arg(long, global = true, hide = true)]
     pretend_screen_size: Option<String>,
+    /// Claim a capability this daemon does not have (repeat for more), to see what the apps offer for it, e.g. `audio.bt_sink`.
+    #[arg(long, global = true, hide = true)]
+    pretend_cap: Vec<String>,
     #[command(subcommand)]
     command: Command,
 }
@@ -192,6 +195,7 @@ async fn start_engine(cli: &Cli) -> Result<(Engine, PathBuf)> {
     // No `sms.view`: the text messages of a phone are only asked for (`sms`), never sent here by themselves, so a Hub never
     // keeps or prints them.
     cfg.caps = vec!["clipboard".into(), "share".into(), tandem_core::focus::CAP_SHARE.into(), tandem_core::focus::CAP_FOLLOW.into()];
+    cfg.caps.extend(cli.pretend_cap.iter().cloned());
     if cli.pretend_screen.is_some() {
         cfg.caps.push("screen.host".into());
         // So the apps show the way to a second screen too, which this host answers with the clip like any other request.
@@ -627,6 +631,8 @@ fn print_event(engine: &Engine, event: &Event) {
         Event::Connected { id } => println!("connected: {}", name_of(id)),
         Event::Disconnected { id } => println!("disconnected: {}", name_of(id)),
         Event::Paired { id } => println!("paired: {}", name_of(id)),
+        Event::BtSpeakerRequested { from, on, name } => println!("bluetooth speaker asked by {} (on: {on}, as {name:?}), not answered", name_of(from)),
+        Event::AudioStart { from, stream, .. } => println!("sound from {} starts (stream {stream})", name_of(from)),
         Event::RemovedFromCircle => println!("this device was removed from the circle"),
         Event::Clipboard { from, text, .. } => println!("clipboard from {}: {text}", name_of(from)),
         Event::ShareOffered { from, offer } => {

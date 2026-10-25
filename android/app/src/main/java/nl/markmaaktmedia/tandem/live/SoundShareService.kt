@@ -29,8 +29,8 @@ import nl.markmaaktmedia.tandem.graph
 
 /**
  * Sends what this phone plays to another device, which plays it there. The sound is taken from the apps through the system's
- * playback capture, which needs the permission to record the screen (the system's own question, every time) and the
- * permission to record audio. Apps that do not allow their sound to be captured stay silent, and that is theirs to decide.
+ * playback capture, which needs the permission to record the screen (the system's own question, every time unless Shizuku
+ * set the app-op that answers it, see [ProjectionGrant]) and the permission to record audio. Apps that do not allow their sound to be captured stay silent, and that is theirs to decide.
  * It goes to one device at a time: a new one takes the place of the last.
  *
  * The sound goes as it is: 16 bit, 48 kHz, two channels, in packets that fit one datagram, the way the computer's own

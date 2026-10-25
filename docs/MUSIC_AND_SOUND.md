@@ -118,7 +118,8 @@ the Spotify and Music announcements have only been compiled: they have not run o
 De andere kant op werkt met dezelfde berichten: de telefoon stuurt `AudioStart` met stream `9` (de Mac gebruikt een eigen
 streamnummer naar de telefoon), daarna datagrammen met 16 bit samples, en sluit af met `AudioStop`. De Mac meldt dat
 hij het kan met de mogelijkheid `audio.play`. Op Android neemt `SoundShareService` het geluid van andere apps op met
-AudioPlaybackCapture (toestemming voor opnemen en de vraag van het systeem over schermopname, elke keer; apps die opname
+AudioPlaybackCapture (toestemming voor opnemen en de vraag van het systeem over schermopname, elke keer tenzij Shizuku de app-op
+heeft gezet, zie "Without the screen recording question" hieronder; apps die opname
 niet toestaan blijven stil). Op de Mac speelt `PhoneSound` het af: een korte buffer (`SoundRing`) met een kussen vooraf,
 stilte op de plaats van een verloren pakket, oud geluid weg als de klokken uit elkaar lopen, en een audio-engine die
 op het tempo van de luidsprekers trekt. De vertraging heeft drie standen (laag, normaal, soepel) zoals op de telefoon.
@@ -148,7 +149,7 @@ messages are the ones above (`AudioStart`, datagrams, `AudioStop`); nothing new 
   sent on, and is not muted with the rest. Linux: `parec` of the monitor of the default output, else GStreamer
   `pulsesrc` (PulseAudio or PipeWire with its Pulse server); a recorder that ends before it delivered anything is told to
   the person as "cannot record". Windows: WASAPI loopback of the default output through cpal. Android: playback capture
-  with the screen recording question each time, Tandem's own uid left out; only apps that allow capture are heard, which
+  with the screen recording question each time (unless Shizuku set the app-op, see below), Tandem's own uid left out; only apps that allow capture are heard, which
   the phone says when it starts.
 - **Quiet at the sender.** Only the Mac goes quiet (the tap mutes what it records, Settings, General). Linux, Windows and
   Android keep playing and say so when it starts: muting the output may silence the monitor or the loopback too, and
@@ -160,4 +161,41 @@ messages are the ones above (`AudioStart`, datagrams, `AudioStop`); nothing new 
   Linux a second stream may find the card taken, and that sender gets a no.
 - **Not tried on hardware.** Everything here is compiled and the existing buffer tests pass; no sound went between real
   devices. A ring of three devices through Linux or Windows (which record their own playback) could still echo.
+
+## Without the screen recording question
+
+Android asks its screen recording question each time a phone's sound or screen is shared. Tandem avoids it where Android allows,
+and picks the way by itself (`PhoneSound` on the phone), behind the same button and the same request from a computer that looks at
+the phone's screen. A way that fails falls through to the next without a word; only the failure of the last one is told.
+
+1. **Shizuku.** When Shizuku is running and Tandem is allowed, Tandem sets `appops set <package> PROJECT_MEDIA allow` once, through
+   its Shizuku user service (`ShellUserService`, which runs as the shell or root), for the package of the running build. It is set
+   again whenever Shizuku comes up and checked at every start of the app (so after an update too); the mode is read from the system,
+   never remembered. With it allowed, `MediaProjectionManagerService.hasProjectionPermission` is true, and SystemUI's
+   `MediaProjectionPermissionActivity` answers the capture intent at once with a projection of the entire screen, before the
+   question and before the choice between one app and the entire screen (read in AOSP, Android 14, 15 and 16). The intent is still
+   launched and closes right away, so Tandem has to be in front: a request from a computer while Tandem is behind still comes as a
+   notification to tap. The notification that the sound or screen is shared stays. This works for the sound and for showing the
+   screen, to every device, the Mac included.
+2. **The computer as Bluetooth speaker.** Without Shizuku, to a Linux or Windows computer that says `audio.bt_sink` and is paired
+   with the phone over Bluetooth: the phone sends `BtSpeaker` and the computer connects to the phone's Audio Source (A2DP) from its
+   own side, so the phone needs nothing, not even the permission to record. Everything the phone plays goes there, also apps that
+   do not allow capture, and it no longer plays on the phone itself. Linux: BlueZ over D-Bus, `Device1.ConnectProfile` with
+   `0000110a-...`; the adapter must list the Audio Sink UUID `0000110b-...`, which it does once PipeWire (WirePlumber) offers its
+   `a2dp_sink` role. WirePlumber's configuration is only read, to say why when it is off. Stop is `DisconnectProfile` of that one
+   profile. Windows 10 2004 and later: `AudioPlaybackConnection` (`GetDeviceSelector`, `TryCreateFromId`, `StartAsync`, `OpenAsync`),
+   kept open on a thread of its own. **The phone is matched by name**: Android gives apps no Bluetooth address, so the phone sends its
+   Bluetooth name (or its Tandem name without the Bluetooth permission) and the computer looks for a paired device by that name. A
+   computer refuses when its switch for the sound of other devices is off, and when it sends its own sound to that phone (it would
+   loop). A Mac cannot be an A2DP sink (see PARITY.md).
+3. **Otherwise** the capture with the question, as before.
+
+Settings, Shizuku on the phone shows the state of Shizuku (not installed, not running, needs permission, ready as root or as the
+shell) and a check for each use: the hotspot that turns on by itself, and sound and screen without the question.
+
+Seen on an emulator (Android 16) with `tandemd --pretend-cap`: with the app-op set by hand through adb (the same command the Shizuku
+service runs, as the same shell user), the sound and the screen started without any question and the settings page showed the check;
+with it back on default, a computer that says `audio.bt_sink` and does not answer made the row say "Connecting over Bluetooth" for
+fifteen seconds, after which the question came as before. Not tried on hardware: Shizuku itself, BlueZ and `AudioPlaybackConnection`
+have only been compiled, and no sound went over Bluetooth.
 

@@ -23,7 +23,8 @@ shell en de shell heeft `TETHER_PRIVILEGED`.
 1. Installeer Shizuku (Play Store of github.com/RikkaApps/Shizuku).
 2. Zet Ontwikkelaarsopties en Draadloos foutopsporen aan, open Shizuku en kies "Starten via
    Draadloos foutopsporen". Volg de stappen daar.
-3. Open Tandem, Instellingen, Hotspot, tik op Methode en sta Tandem toe in het Shizuku-venster.
+3. Open Tandem, Instellingen, Shizuku (of Hotspot, Methode) en sta Tandem toe in het Shizuku-venster. Die pagina laat ook zien
+   of Shizuku als root of als de shell draait en waar Tandem het verder voor gebruikt.
 4. Druk op "Hotspot testen": de hotspot gaat 20 seconden aan.
 
 Shizuku moet na elke herstart van de telefoon opnieuw gestart worden. Zonder Shizuku

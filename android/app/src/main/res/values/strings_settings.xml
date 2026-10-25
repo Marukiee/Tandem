@@ -68,6 +68,10 @@
     <string name="settings_kw_hotspot_usage">data usage, used today, history, megabytes, gigabytes, counter, statistics</string>
     <string name="settings_kw_hotspot_limit">limit, cap, quota, data limit, maximum, budget</string>
     <string name="settings_kw_hotspot_method">shizuku, automatic, adb, wireless debugging, how it turns on</string>
+    <string name="settings_kw_shizuku">shizuku, adb, root, shell, wireless debugging, without asking, automatic</string>
+    <string name="settings_kw_shizuku_status">shizuku state, running, allowed, permission, start shizuku, root, shell</string>
+    <string name="settings_kw_shizuku_hotspot">hotspot by itself, automatic hotspot, tethering, shizuku</string>
+    <string name="settings_kw_shizuku_projection">screen recording question, cast, record, consent, sound, screen, no question, media projection</string>
     <string name="settings_kw_hotspot_guide">guide, help, instructions, documentation, how to, github, manual</string>
     <string name="settings_kw_files">files, folders, storage, webdav, drive, finder, share files, browse</string>
     <string name="settings_kw_files_permission">all files access, manage storage, storage permission, external storage</string>

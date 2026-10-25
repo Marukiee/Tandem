@@ -164,6 +164,7 @@ class TandemService : LifecycleService() {
             is TandemEvent.SideListen -> nl.markmaaktmedia.tandem.live.SideListener.listen(this, event.from, event.id, event.quiet)
             is TandemEvent.OpenSettings -> FeatureReport.open(this, event.page, event.from)
             is TandemEvent.SoundRequested -> nl.markmaaktmedia.tandem.audio.ScreenSound.requested(this, event.from, event.on)
+            is TandemEvent.BtSpeakerState -> nl.markmaaktmedia.tandem.live.PhoneSound.onState(this, event.from, event.on, event.error)
             is TandemEvent.MediaStarted -> if (event.role == TandemMediaRole.VIEWER && event.kind == TandemMediaKind.SCREEN) {
                 nl.markmaaktmedia.tandem.audio.ScreenSound.viewStarted(this, event.peer)
             }

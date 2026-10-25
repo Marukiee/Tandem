@@ -17,7 +17,7 @@ import java.util.function.Supplier
  * Starts and stops Wi-Fi tethering through the system's TetheringManager.
  *
  * This runs in a process with the shell's identity, which Shizuku provides (see
- * [HotspotUserService]). The shell holds TETHER_PRIVILEGED, an app never does, and that
+ * [ShellUserService]). The shell holds TETHER_PRIVILEGED, an app never does, and that
  * is the only reason this can work without root. TetheringManager is a system API, so
  * everything is reached by reflection, and the two names its request class has had
  * (nested up to Android 15, top level after) are both tried.

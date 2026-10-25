@@ -5,6 +5,7 @@
 mod arrange;
 mod ask;
 mod bluetooth;
+mod btspeaker;
 mod browse;
 mod debugshot;
 mod calls;

@@ -631,6 +631,10 @@ final class EngineModel {
                 screenSoundTo = nil
             }
 
+        case .btSpeakerRequested, .btSpeakerState:
+            // A Mac cannot be the Bluetooth speaker of a phone (A2DP sink) and does not say `audio.bt_sink`, so no phone asks it.
+            break
+
         case .notificationAction, .callAction, .dial, .captureRequested, .captureCancelled,
              .mediaRequested, .mediaBitrate:
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
