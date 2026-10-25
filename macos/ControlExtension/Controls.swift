@@ -123,5 +123,6 @@ struct TandemControls: WidgetBundle {
         ExtendControl()
         MouseControl()
         FindControl()
+        BatteryWidget()
     }
 }

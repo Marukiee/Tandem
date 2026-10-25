@@ -148,6 +148,9 @@ dependencies {
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
 
+    // The battery widget: Compose for the home screen, drawn as remote views.
+    implementation(libs.glance.appwidget)
+
     testImplementation(libs.junit)
     // The JVM tests run without Android, whose JSON classes are empty shells there.
     testImplementation("org.json:json:20240303")

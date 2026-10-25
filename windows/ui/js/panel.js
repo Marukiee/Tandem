@@ -1,6 +1,7 @@
 // The small panel above the tray icon: who is connected, what is moving, what plays, and a way into the app.
 import { html, render, useEffect, useRef } from "../vendor/preact-htm.js";
 import { call, connect, native } from "./backend.js";
+import { BatteryCard, batteryList } from "./batteries.js";
 import { DeviceGlyph, PlayerCard, fmtSize } from "./components.js";
 import { Icon } from "./icons.js";
 import { setLanguage, t } from "./i18n.js";
@@ -52,6 +53,9 @@ function Panel() {
         <div class="small muted">${state.devices.length ? t("panel_connected", online.length, state.devices.length) : t("panel_none")}</div>
       </div>
     </div>
+
+    <${BatteryCard} items=${batteryList(state.self, state.devices)}
+      onOpen=${(item) => call("show_main", { device: item.id === "this" ? null : item.id }).catch(failed)} />
 
     ${state.offers.map((o) => html`<div class="banner" key=${o.offer} style="padding:8px 10px;gap:8px">
       <${Icon} name="download" size=${18} />

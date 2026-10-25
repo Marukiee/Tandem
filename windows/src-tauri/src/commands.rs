@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use serde_json::{Value, json};
 use tandem_core::ffi::{TandemMediaAction, TandemOutgoingFile, TandemShareOrigin};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_autostart::ManagerExt as _;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
@@ -21,13 +21,16 @@ fn shown(e: impl std::fmt::Display) -> String {
 
 /// Everything a window needs to draw itself from nothing.
 #[tauri::command]
-pub fn get_state(app: AppHandle, state: State<'_, AppState>) -> Value {
+pub fn get_state(app: AppHandle, window: tauri::WebviewWindow, state: State<'_, AppState>) -> Value {
     let engine = state.engine.read().unwrap().clone();
     let data = state.data.lock().unwrap();
     json!({
         "ready": engine.is_some(),
         "error": state.error.lock().unwrap().clone(),
-        "self": engine.as_ref().map(|e| json!({ "id": e.id(), "name": e.name(), "port": e.port() })),
+        // The battery of this computer is for the rings of the panel, read now: the panel asks again each time it opens.
+        "self": engine.as_ref().map(|e| json!({ "id": e.id(), "name": e.name(), "port": e.port(),
+            "battery": tandem_winsys::battery().map(|b| json!({ "level": b.level, "charging": b.charging, "powerSave": b.saver })) })),
+        "openDevice": if window.label() == "main" { OPEN_DEVICE.lock().unwrap().take() } else { None },
         "version": app.package_info().version.to_string(),
         "devices": data.devices,
         "transfers": data.transfers,
@@ -519,8 +522,19 @@ pub fn open_downloads(app: AppHandle) -> Reply<()> {
     app.opener().open_path(dir.to_string_lossy().into_owned(), None::<&str>).map_err(shown)
 }
 
+/// The page the main window opens on when it is made, for a ring of the battery card in the panel clicked while there was no main
+/// window to tell.
+static OPEN_DEVICE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
 #[tauri::command]
-pub fn show_main(app: AppHandle) {
+pub fn show_main(app: AppHandle, device: Option<String>) {
+    if let Some(id) = device {
+        if app.get_webview_window("main").is_some() {
+            let _ = app.emit_to("main", "open-device", id);
+        } else {
+            *OPEN_DEVICE.lock().unwrap() = Some(id);
+        }
+    }
     tray::show_main(&app);
 }
 

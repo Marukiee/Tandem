@@ -19,6 +19,7 @@ jna = "5.17.0"
 material = "1.13.0"
 junit = "4.13.2"
 shizuku = "13.1.5"
+glance = "1.1.1"
 
 [libraries]
 # Optional at run time: the hotspot falls back to a notification without the Shizuku app.
@@ -55,6 +56,8 @@ mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version
 mlkit-scanner = { group = "com.google.android.gms", name = "play-services-mlkit-document-scanner", version.ref = "mlkitScanner" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
+# The battery widget on the home screen.
+glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]

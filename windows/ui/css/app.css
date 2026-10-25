@@ -513,3 +513,15 @@ select { cursor: default; }
 .call-ask-head p { margin: 0; font-size: 13px; }
 .call-ask-mark { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); }
 .call-ask-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+
+/* The battery rings of the panel (batteries.js). The yellow of a low battery is the caution colour of Windows, which the app has no other use for. */
+.battcard { --batt-low: #9d5d00; display: flex; flex-direction: column; gap: 10px; }
+.panelbox .battcard { padding: 12px 6px 10px; }
+@media (prefers-color-scheme: dark) { .battcard { --batt-low: #fce100; } }
+.battrow { display: flex; justify-content: space-around; }
+.batt { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: inherit; cursor: default; transition: opacity 0.3s ease, transform 0.2s ease; }
+.batt:active { transform: scale(0.96); }
+.batt-ring { position: relative; flex: none; }
+.batt-ring > svg { transform: rotate(-90deg); }
+.batt-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.batt-level { display: flex; align-items: center; gap: 1px; font: 600 13px var(--font-display); font-variant-numeric: tabular-nums; }

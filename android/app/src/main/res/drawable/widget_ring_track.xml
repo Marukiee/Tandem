@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The track under the level of the battery widget; the widget tints it. An eighth of the ring wide, as the level drawn over it (LINE). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+  <path
+      android:strokeColor="#FF000000"
+      android:strokeWidth="12.5"
+      android:fillColor="#00000000"
+      android:pathData="M50,6.25 A43.75,43.75 0 1,1 49.99,6.25 Z" />
+</vector>

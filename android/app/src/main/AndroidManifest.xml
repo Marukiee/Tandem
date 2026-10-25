@@ -180,6 +180,17 @@
         <receiver android:name=".live.LiveActionReceiver" android:exported="false" />
         <receiver android:name=".quickshare.QuickShareActionReceiver" android:exported="false" />
 
+        <!-- The battery widget on the home screen (see widget/BatteryWidget.kt). -->
+        <receiver
+            android:name=".widget.BatteryWidgetReceiver"
+            android:exported="true"
+            android:label="@string/battery_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/battery_widget_info" />
+        </receiver>
+
         <service
             android:name=".share.ClipboardTileService"
             android:exported="true"

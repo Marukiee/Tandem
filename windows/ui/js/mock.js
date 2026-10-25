@@ -44,6 +44,13 @@ let callCards = (() => {
     default: return [];
   }
 })();
+// ?batteries=all: every kind of ring in the battery card of the panel, a low one, an empty one and one that is away.
+const allBatteries = new URLSearchParams(location.search).get("batteries") === "all";
+if (allBatteries && !empty) {
+  devices.push({ id: "tab", name: "Galaxy Tab", platform: "android", online: true, route: "lan", rttMs: 9, appVersion: "0.1.25", caps: [],
+    clipboard: true, autoAccept: false, notifications: true, ble: false, vouchedByRemoved: false, status: { battery: { level: 7, charging: false, powerSave: true } } });
+  devices[2].status = { battery: { level: 41, charging: false, powerSave: false } };
+}
 
 /** What the update shows when the page is asked for ?update=available, downloading, installing or failed. */
 function updateFor(kind) {
@@ -58,7 +65,7 @@ function updateFor(kind) {
 }
 
 const state = {
-  ready: true, error: null, self: { id: "me", name: "My Laptop", port: 47820 }, version: "0.1.25", build: "preview", canShare: true, canHost: true, canBluetooth: true, canExtend: new URLSearchParams(location.search).get("platform") === "linux", platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
+  ready: true, error: null, self: { id: "me", name: "My Laptop", port: 47820, battery: { level: allBatteries ? 15 : 92, charging: false, powerSave: false } }, version: "0.1.25", build: "preview", canShare: true, canHost: true, canBluetooth: true, canExtend: new URLSearchParams(location.search).get("platform") === "linux", platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
   devices,
   transfers: empty ? [] : [
     { id: "1-0-in", peer: "phone", name: "IMG_20261003_141201.jpg", incoming: true, state: "done", done: 4200000, total: 4200000, location: "C:\\Users\\Mark\\Downloads\\Tandem\\IMG_20261003_141201.jpg", updatedAt: now - 60000, startedAt: now - 62000 },

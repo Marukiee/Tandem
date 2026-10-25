@@ -43,6 +43,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Bijwerken | ja | ja | ja | ja als AppImage; een pakket van de distributie werkt de pakketbeheerder bij |
 | Contacten van de telefoon in het zoeken van de computer, kiezen belt ze | bron (`sms.contacts`) | ja (Spotlight via Core Spotlight; nep-contacten gevonden met een `CSSearchQuery`, nooit met een echte telefoon) | - (zie hieronder) | ja: GNOME-zoeken (alleen met het .deb of .rpm, niet de AppImage) en KRunner; een test op een sessiebus staat klaar voor CI maar heeft nog niet gedraaid, nooit op een echt bureaublad |
 | Apparaten, hun acties ("Klembord naar ...", "... zoeken", "Scherm uitbreiden naar ..."), gesprekken, klembordgeschiedenis, gedeelde bestanden en instellingen in het zoeken, elk met een eigen schakelaar (berichten en klembord eerst uit) | - (bron van de gesprekken) | ja (Core Spotlight; alles gevonden met een `CSSearchQuery` in de app, openen van Instellingen en het hoofdvenster nagekeken, nooit met een echt apparaat) | - (zie hieronder) | ja: dezelfde leverancier als de contacten, antwoord uit wat de app op dat moment heeft; zoeken en ids getest, nooit op een echt bureaublad |
+| Batterijen van alle apparaten als ringen (zoals de widget Batterijen van iOS) | widget op het startscherm (Glance, Material You, schaalbaar, tik opent het apparaat; gezien op de emulator) | widget op het bureaublad (WidgetKit, klein, middel en groot; alleen als PNG gezien, zie onder) | in het paneel bij het systeemvak (geen widget, zie onder) | in het paneel bij het systeemvak (geen widget, zie onder) |
 
 ## Wat er nog mist
 
@@ -66,3 +67,8 @@ Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een ech
 - **Linux, GNOME**: GNOME leest zoekleveranciers alleen uit `/usr/share/gnome-shell/search-providers`, niet uit de map van de gebruiker. Het
   .deb en .rpm zetten het bestand daar; de AppImage kan dat niet, KRunner werkt er wel mee. Een nieuwe leverancier ziet GNOME pas na opnieuw
   inloggen.
+- **Batterijwidget**: Windows heeft geen widgets op het bureaublad, en het Widgets-bord van Windows 11 neemt alleen widgets van een verpakte app
+  (MSIX met een widgetprovider), wat Tandem niet is. GNOME heeft geen widgets op het bureaublad. KDE Plasma zou een plasmoid kunnen hebben, die is
+  er niet. Daarom staan de ringen op Windows en Linux in het paneel bij het systeemvak, met een klik naar het apparaat. Op de Mac zit de widget in
+  dezelfde extensie als de knoppen van het Controlecentrum; die extensie staat bij het systeem ingeschreven (`pluginkit`), maar of macOS een widget
+  laadt van een app met het eigen certificaat (geen Apple Developer ID) is nooit gezien, net als de knoppen.
