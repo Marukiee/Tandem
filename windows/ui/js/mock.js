@@ -254,6 +254,7 @@ export async function call(command, args) {
     case "dial": (window.mockDials = window.mockDials || []).push(args); return null;
     case "live_start": return 1;
     case "display_start": case "display_stop": return null;
+    case "webcam_start": case "webcam_stop": return "1";
     case "display_state": return [];
     case "fs_roots": return [{ name: "Phone", write: false }];
     case "fs_list": return args.path === "/Phone"

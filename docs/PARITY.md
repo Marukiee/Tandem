@@ -20,6 +20,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Bestanden van een telefoon bekijken en kopieren | bron | ja | ja | ja |
 | Eigen mappen aanbieden aan andere apparaten (host) | ja | ja | ja (instellingen, nooit gezien) | ja (instellingen, nooit gezien) |
 | Telefoonscherm en camera tonen | bron | ja, bekeken (emulator) | ja | ja (eigen decoder, nooit gezien) |
+| De camera van de telefoon als webcam van de computer | bron (voorcamera) | nee, vraagt een camera-extensie met een betaalde Apple Developer-account (later) | nee, nog niet gebouwd (`MFCreateVirtualCamera`, Windows 11); de knop is grijs en zegt het | ja: een PipeWire-bron met de rol camera, voor browsers (cameraportaal), OBS en andere PipeWire-apps; niet voor apps die alleen `/dev/video` lezen. Getest in een container met PipeWire 1.4, nooit met een echte telefoon of browser |
 | De telefoon bedienen met het getoonde scherm | bron | ja | ja (knop, nooit gezien) | ja (knop, nooit gezien) |
 | Invoegen vanaf telefoon (scan, foto) | bron | ja | ja (op het klembord, nooit gezien) | ja (op het klembord, nooit gezien) |
 | Geluid van de telefoon op de computer | bron | ja | ja (nooit gehoord) | ja (nooit gehoord) |

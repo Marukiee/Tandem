@@ -103,6 +103,7 @@ async function follow() {
   await listen("say", (text) => say(text));
   await listen("hosting", (hosting) => set({ hosting }));
   await listen("display", (displays) => set({ displays }));
+  await listen("webcams", (webcams) => set({ webcams }));
   // The event leaves out what the person decided about it, so that stays.
   await listen("update", (update) => set({ update: { dismissed: state.update.dismissed, ...update } }));
   // A person picked in the search of the desktop: the Messages of that phone, with the question before the call over it.

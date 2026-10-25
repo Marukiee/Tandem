@@ -262,6 +262,8 @@ pub fn run() {
             features::features_open_on,
             side::side_preview,
             live::display_stop,
+            live::webcam_start,
+            live::webcam_stop,
             live::display_state,
             live::live_attach,
             live::live_fit,

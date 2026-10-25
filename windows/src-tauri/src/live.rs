@@ -51,6 +51,8 @@ struct Session {
     player: Option<Player>,
     /// The Wayland output a second screen fills: the one whose size was asked for.
     output: Option<String>,
+    /// Linux: the camera of a phone as a camera of this computer (see `webcam_start`), not a second screen.
+    webcam: bool,
 }
 
 /// A program of its own that decodes and shows the pictures of a second screen: the window of this app cannot do that smoothly enough for
@@ -62,6 +64,10 @@ struct Player {
     waiting: bool,
     asked: Option<Instant>,
     counts: Arc<FeedCounts>,
+    /// GStreamer was started again (a webcam whose last app let go): what it gets next must start with a keyframe.
+    restarted: Arc<AtomicBool>,
+    /// Set before this player is replaced by another one, so the end of its thread does not end the session.
+    retired: Arc<AtomicBool>,
 }
 
 /// What became of the pictures of a second screen, for the line in the log every few seconds.
@@ -75,6 +81,9 @@ struct FeedCounts {
 impl Player {
     /// One picture from the core. True when a keyframe should be asked for.
     fn take(&mut self, data: Vec<u8>, keyframe: bool) -> bool {
+        if self.restarted.swap(false, Ordering::Relaxed) {
+            self.waiting = true;
+        }
         if keyframe {
             self.waiting = false;
         }
@@ -230,8 +239,12 @@ impl TandemMediaViewer for Viewer {
         };
         if shows_itself {
             // The program that shows the pictures starts now that there is something to show.
-            let output = SESSIONS.lock().unwrap().get(&session).and_then(|s| s.output.clone());
-            let player = start_player(&self.app, session, output.as_deref());
+            let (output, webcam, rotation) = match SESSIONS.lock().unwrap().get(&session) {
+                Some(s) => (s.output.clone(), s.webcam, s.rotation),
+                None => return,
+            };
+            let player = if webcam { start_webcam(&self.app, session, rotation) } else { start_player(&self.app, session, output.as_deref()) };
+            let failed = player.is_none();
             let name = {
                 let mut sessions = SESSIONS.lock().unwrap();
                 match sessions.get_mut(&session) {
@@ -243,7 +256,12 @@ impl TandemMediaViewer for Viewer {
                 }
             };
             announce_displays(&self.app);
-            crate::events::say(&self.app, &crate::i18n::t1(&self.app, "display_on", &name));
+            if webcam && failed {
+                crate::events::say(&self.app, &crate::i18n::t(&self.app, "webcam_no_gstreamer"));
+                end_display(&self.app, session);
+            } else {
+                crate::events::say(&self.app, &crate::i18n::t1(&self.app, if webcam { "webcam_on" } else { "display_on" }, &name));
+            }
             return;
         }
         self.tell(session, "live-accepted", state);
@@ -251,8 +269,26 @@ impl TandemMediaViewer for Viewer {
 
     fn on_update(&self, session: u64, update: TandemMediaUpdate) {
         if let Some(rotation) = update.rotation {
-            if let Some(s) = SESSIONS.lock().unwrap().get_mut(&session) {
-                s.rotation = rotation;
+            let turned_webcam = match SESSIONS.lock().unwrap().get_mut(&session) {
+                Some(s) => {
+                    let turned = s.rotation != rotation;
+                    s.rotation = rotation;
+                    s.webcam && turned && s.player.is_some()
+                }
+                None => false,
+            };
+            // A webcam is upright for the apps that use it: the phone turned, so GStreamer turns the picture another way from the next
+            // keyframe on.
+            if turned_webcam {
+                if let Some(player) = start_webcam(&self.app, session, rotation) {
+                    let old = SESSIONS.lock().unwrap().get_mut(&session).and_then(|s| s.player.replace(player));
+                    if let Some(old) = old {
+                        old.retired.store(true, Ordering::SeqCst);
+                    }
+                    if let Ok(engine) = self.app.state::<AppState>().engine() {
+                        let _ = engine.media_request_keyframe(session);
+                    }
+                }
             }
         }
         self.tell(session, "live-update", json!({ "width": update.width, "height": update.height, "rotation": update.rotation, "control": update.control }));
@@ -376,6 +412,7 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
             extended: extend,
             player: None,
             output: None,
+            webcam: false,
         },
     );
     // The shape before the first picture says it (see `live_fit`): wide for a camera or the screen of a computer, tall for a phone.
@@ -486,8 +523,6 @@ pub(crate) fn framed(data: &[u8], first: bool) -> &[u8] {
 
 /// Starts the program that shows the pictures of a second screen, filling this computer's screen, and the thread that feeds it.
 fn start_player(app: &AppHandle, session: u64, output: Option<&str>) -> Option<Player> {
-    use std::io::{BufRead, Write};
-    use std::process::{Command, Stdio};
     let gst = gst();
     let Some(decoder) = &gst.decoder else {
         log::warn!("display: no H.264 decoder for GStreamer");
@@ -505,14 +540,62 @@ fn start_player(app: &AppHandle, session: u64, output: Option<&str>) -> Option<P
         "-q fdsrc fd=0 blocksize=262144 ! h264parse ! {decoder} ! queue max-size-buffers=2 max-size-bytes=0 max-size-time=0 leaky=downstream ! {} ! {}{fill}",
         gst.convert, gst.sink
     );
-    log::info!("display {session}: gst-launch-1.0 {pipeline}");
+    run_player(app, session, pipeline.split_whitespace().map(String::from).collect(), false)
+}
+
+/// The camera of a phone as a camera of this computer: decoded, turned upright and handed to PipeWire as a video source with the role of a
+/// camera, which is where browsers (through the camera portal), OBS and the other apps of a Wayland desktop look for cameras. The source
+/// goes when the last app that used it lets go, so GStreamer is started again then, for the next one.
+fn start_webcam(app: &AppHandle, session: u64, rotation: u16) -> Option<Player> {
+    let gst = gst();
+    let Some(decoder) = &gst.decoder else {
+        log::warn!("webcam: no H.264 decoder for GStreamer");
+        return None;
+    };
+    if gst_inspect("pipewiresink").is_none() {
+        log::warn!("webcam: GStreamer has no pipewiresink (gstreamer1-plugins-pipewire or gstreamer1.0-pipewire)");
+        return None;
+    }
+    let name = SESSIONS.lock().unwrap().get(&session).map(|s| s.name.clone()).unwrap_or_default();
+    let mut args: Vec<String> = format!(
+        "-q fdsrc fd=0 blocksize=262144 ! h264parse ! {decoder} ! queue max-size-buffers=2 max-size-bytes=0 max-size-time=0 leaky=downstream{} ! {} ! video/x-raw,format=YUY2 ! pipewiresink mode=provide client-name=Tandem sync=false",
+        upright(rotation),
+        gst.convert
+    )
+    .split_whitespace()
+    .map(String::from)
+    .collect();
+    args.push(webcam_properties(&name));
+    run_player(app, session, args, true)
+}
+
+/// The turn that makes the camera picture upright, as the window would turn it.
+fn upright(rotation: u16) -> &'static str {
+    match rotation % 360 {
+        90 => " ! videoflip method=clockwise",
+        180 => " ! videoflip method=rotate-180",
+        270 => " ! videoflip method=counterclockwise",
+        _ => "",
+    }
+}
+
+/// What the PipeWire source says it is: a camera, with the name of the phone as apps show it. gst-launch joins its arguments and parses
+/// them again, so the value is quoted for it and the name once more inside it.
+fn webcam_properties(phone: &str) -> String {
+    let clean: String = phone.chars().filter(|c| !matches!(c, '"' | '\\' | ',' | ';')).collect();
+    let label = format!("{} (Tandem)", if clean.trim().is_empty() { "Phone" } else { clean.trim() });
+    format!("stream-properties=\"props,media.class=Video/Source,media.role=Camera,node.description=\\\"{label}\\\"\"")
+}
+
+fn spawn_gst(session: u64, args: &[String]) -> Option<(std::process::Child, std::process::ChildStdin)> {
+    use std::io::BufRead;
+    use std::process::{Command, Stdio};
+    log::info!("display {session}: gst-launch-1.0 {}", args.join(" "));
     let mut command = Command::new("gst-launch-1.0");
     tandem_winsys::system_env(&mut command);
-    for part in pipeline.split_whitespace() {
-        command.arg(part);
-    }
+    command.args(args);
     let mut child = command.stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::piped()).spawn().ok()?;
-    let mut stdin = child.stdin.take()?;
+    let stdin = child.stdin.take()?;
     // A pipe holds 64 KB, less than one keyframe of a laptop screen, so writing one waited for GStreamer to read it in parts. A larger
     // pipe takes a keyframe at once (Linux allows a megabyte without privileges).
     #[cfg(target_os = "linux")]
@@ -525,13 +608,23 @@ fn start_player(app: &AppHandle, session: u64, output: Option<&str>) -> Option<P
             }
         });
     }
+    Some((child, stdin))
+}
+
+/// Starts GStreamer with `args` and the thread that feeds it. With `again`, GStreamer is started anew when it ends while the session goes on.
+fn run_player(app: &AppHandle, session: u64, args: Vec<String>, again: bool) -> Option<Player> {
+    use std::io::Write;
+    let (child, mut stdin) = spawn_gst(session, &args)?;
+    let child = Arc::new(Mutex::new(Some(child)));
     // About a quarter of a second at 60 pictures a second. With room for four, the start (the first keyframe, the window that opens) and
     // any short hitch filled it: a picture was dropped, and then everything until the next keyframe, which on the laptop froze the
     // screen for a second at the start. A hitch is caught up quickly (the decoder needs a few ms a picture); only a GStreamer that stays
     // behind fills this, and then dropping to a keyframe is right.
     let (feed, rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(16);
     let counts = Arc::new(FeedCounts::default());
-    let seen = counts.clone();
+    let restarted = Arc::new(AtomicBool::new(false));
+    let retired = Arc::new(AtomicBool::new(false));
+    let (seen, held, again_flag, done) = (counts.clone(), child.clone(), restarted.clone(), retired.clone());
     let app = app.clone();
     let started = Instant::now();
     std::thread::Builder::new()
@@ -539,10 +632,28 @@ fn start_player(app: &AppHandle, session: u64, output: Option<&str>) -> Option<P
         .spawn(move || {
             let mut first = true;
             let (mut pictures, mut bytes, mut longest, mut since) = (0u64, 0u64, Duration::ZERO, Instant::now());
+            let mut restarts = 0u32;
             while let Ok(data) = rx.recv() {
                 let picture = framed(&data, first);
                 let at = Instant::now();
                 if stdin.write_all(picture).and_then(|_| stdin.write_all(&AU_END)).is_err() {
+                    // A webcam: the last app let go and GStreamer ended with it. Started again, at most now and then, for the next app.
+                    if again && !done.load(Ordering::SeqCst) && restarts < 200 {
+                        if let Some(mut old) = held.lock().unwrap().take() {
+                            let _ = old.wait();
+                        }
+                        std::thread::sleep(Duration::from_millis(300));
+                        let Some((fresh, input)) = spawn_gst(session, &args) else { break };
+                        *held.lock().unwrap() = Some(fresh);
+                        stdin = input;
+                        first = true;
+                        restarts += 1;
+                        again_flag.store(true, Ordering::Relaxed);
+                        if let Ok(engine) = app.state::<AppState>().engine() {
+                            let _ = engine.media_request_keyframe(session);
+                        }
+                        continue;
+                    }
                     break;
                 }
                 if first {
@@ -567,11 +678,14 @@ fn start_player(app: &AppHandle, session: u64, output: Option<&str>) -> Option<P
                     (pictures, bytes, longest, since) = (0, 0, Duration::ZERO, Instant::now());
                 }
             }
-            // The program is gone (its window was closed) or the session is: either way the second screen is over.
-            end_display(&app, session);
+            // The program is gone (its window was closed) or the session is: either way the second screen is over. Not when another
+            // player took this one's place.
+            if !done.load(Ordering::SeqCst) {
+                end_display(&app, session);
+            }
         })
         .ok()?;
-    Some(Player { feed, child: Arc::new(Mutex::new(Some(child))), waiting: true, asked: None, counts })
+    Some(Player { feed, child, waiting: true, asked: None, counts, restarted, retired })
 }
 
 /// The link of a session that is looked at got poor, or is good again: the window of it says so over the picture; a second screen has no window
@@ -594,9 +708,17 @@ fn announce_displays(app: &AppHandle) {
         .lock()
         .unwrap()
         .iter()
-        .filter(|(_, s)| (s.display && s.player.is_some()) || s.extended)
+        .filter(|(_, s)| (s.display && !s.webcam && s.player.is_some()) || s.extended)
         .map(|(id, s)| json!({ "session": id.to_string(), "name": s.name, "peer": s.peer }))
         .collect();
+    let webcams: Vec<Value> = SESSIONS
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|(_, s)| s.webcam)
+        .map(|(id, s)| json!({ "session": id.to_string(), "name": s.name, "peer": s.peer }))
+        .collect();
+    let _ = app.emit("webcams", webcams);
     let _ = app.emit("display", list);
 }
 
@@ -719,9 +841,72 @@ pub fn display_open(app: &AppHandle, id: String, name: String, mac: bool) -> Rep
             extended: false,
             player: None,
             output,
+            webcam: false,
         },
     );
     Ok(session.to_string())
+}
+
+/// Linux: the camera of a phone as a camera of this computer, for video calls and recordings in any app. No window: the pictures go to
+/// GStreamer and from there to PipeWire (see `start_webcam`). The front camera, which is what faces the person in a call.
+#[tauri::command]
+pub fn webcam_start(app: AppHandle, id: String, name: String) -> Reply<String> {
+    if !cfg!(target_os = "linux") {
+        return Err("webcam-not-here".into());
+    }
+    let engine = app.state::<AppState>().engine()?;
+    let _ = std::thread::Builder::new().name("tandem-webcam-probe".into()).spawn(|| {
+        gst();
+    });
+    let want = TandemMediaWant {
+        kind: TandemMediaKind::Camera,
+        codecs: vec![TandemMediaCodec::H264],
+        max_width: 1920,
+        max_height: 1080,
+        max_fps: 30,
+        max_bitrate: 0,
+        control: false,
+        facing: TandemMediaFacing::Front,
+        extend: false,
+        logical_width: 0,
+        logical_height: 0,
+    };
+    let peer = id.clone();
+    let session = engine.media_request(id, want).map_err(|e| e.to_string())?;
+    SESSIONS.lock().unwrap().insert(
+        session,
+        Session {
+            label: format!("webcam-{session}"),
+            name,
+            peer,
+            kind: "camera",
+            channel: None,
+            backlog: Vec::new(),
+            accepted: None,
+            rotation: 0,
+            computer: false,
+            mac: false,
+            #[cfg(feature = "native-video")]
+            decode: None,
+            lost: Arc::new(AtomicBool::new(false)),
+            display: true,
+            extended: false,
+            player: None,
+            output: None,
+            webcam: true,
+        },
+    );
+    announce_displays(&app);
+    Ok(session.to_string())
+}
+
+/// Stops the camera of that phone as a camera of this computer.
+#[tauri::command]
+pub fn webcam_stop(app: AppHandle, id: String) {
+    let ours: Vec<u64> = SESSIONS.lock().unwrap().iter().filter(|(_, s)| s.webcam && s.peer == id).map(|(session, _)| *session).collect();
+    for session in ours {
+        end_display(&app, session);
+    }
 }
 
 /// Asks another device to be a second screen of this computer: this one makes the screen, that one is told to show it.
@@ -750,7 +935,7 @@ pub fn display_offer_stop(app: AppHandle, id: String) {
 /// Ends every second screen that is shown here.
 #[tauri::command]
 pub fn display_stop(app: AppHandle) {
-    let shown: Vec<u64> = SESSIONS.lock().unwrap().iter().filter(|(_, s)| s.display || s.extended).map(|(id, _)| *id).collect();
+    let shown: Vec<u64> = SESSIONS.lock().unwrap().iter().filter(|(_, s)| (s.display && !s.webcam) || s.extended).map(|(id, _)| *id).collect();
     for session in shown {
         end_display(&app, session);
     }
@@ -924,6 +1109,20 @@ fn permission_of(text: &str) -> tandem_core::ffi::TandemMediaPermission {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_webcam_is_upright_and_named_after_the_phone() {
+        assert_eq!(upright(0), "");
+        assert_eq!(upright(90), " ! videoflip method=clockwise");
+        assert_eq!(upright(270), " ! videoflip method=counterclockwise");
+        // What gst-launch gets as one argument; the shell test on a PipeWire 1.4 desktop gave a node with exactly this description.
+        assert_eq!(
+            webcam_properties("Pixel 9"),
+            r#"stream-properties="props,media.class=Video/Source,media.role=Camera,node.description=\"Pixel 9 (Tandem)\"""#
+        );
+        // A name with quotes or commas cannot break out of it.
+        assert!(webcam_properties(r#"Mark's "phone", new"#).contains(r#"\"Mark's phone new (Tandem)\""#));
+    }
 
     #[test]
     fn a_session_number_survives_the_trip_as_text() {

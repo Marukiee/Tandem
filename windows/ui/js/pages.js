@@ -213,6 +213,7 @@ export function DevicePage({ device }) {
   // A second screen that is shown here from this device, and a screen that this computer made for it: each button then says how to stop.
   const displayOn = state.displays.some((d) => d.peer === device.id);
   const extendOn = state.hosting.some((h) => h.peer === device.id && h.extend);
+  const webcamOn = state.webcams.some((w) => w.peer === device.id);
   const isComputerEarly = device.platform === "macos" || device.platform === "windows" || device.platform === "linux";
   const show = (kind) => call("live_start", { id: device.id, kind, name: device.name, computer: isComputerEarly, mac: device.platform === "macos" }).catch(failed);
   // A computer that answers on the ssh port can be logged in to from here. The button is grey, with the reason, when it does not.
@@ -265,6 +266,12 @@ export function DevicePage({ device }) {
           <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} title=${t("live_camera_tip")} onClick=${() => (hasCap("camera.host") ? show("camera") : say(t("live_update_phone")))}>
           <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
+        ${device.platform === "android" && html`<button class=${"btn" + (webcamOn ? " on" : "") + (state.platform === "linux" ? "" : " grey")} disabled=${!device.online && !webcamOn} title=${t("webcam_tip")}
+          onClick=${() => (webcamOn ? call("webcam_stop", { id: device.id }).catch(failed)
+            : state.platform !== "linux" ? say(t("webcam_not_here"))
+            : !hasCap("camera.host") ? say(t("live_update_phone"))
+            : call("webcam_start", { id: device.id, name: device.name }).then(() => say(t("webcam_asked", device.name))).catch(failed))}>
+          <${Icon} name=${webcamOn ? "circle-x" : "video"} size=${17} />${webcamOn ? t("webcam_stop") : t("webcam_use")}</button>`}
         ${isComputer && hasCap("screen.host") && html`<button class="btn" disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => show("screen")}>
           <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
         ${isComputer && hasCap("screen.extend") && html`<button class=${"btn" + (displayOn ? " on" : "")} disabled=${!device.online && !displayOn} title=${t("display_tip")}

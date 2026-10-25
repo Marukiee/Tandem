@@ -263,6 +263,10 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
 - Later, als Mark een betaalde Apple Developer-account neemt (gezegd 2026-10-25): de telefoon als webcam op de Mac (een camera-extensie
   vraagt een Developer ID), notarisatie zodat "Toch openen" bij de eerste installatie weg is, de Focus-status van macOS lezen zonder de
   snelkoppeling in Opdrachten (en dus zonder iCloud), en meldingen als echte communicatiemeldingen. Webcam op Linux en Windows nu al bouwen.
+- Webcam op Linux gebouwd (2026-10-25, `webcam_start` in `live.rs`): de knop "Gebruik als webcam" op de pagina van de telefoon vraagt de
+  voorcamera, GStreamer draait het beeld rechtop en geeft het aan PipeWire als bron met de rol camera ("Pixel 9 (Tandem)"). Een PipeWire-bron
+  van GStreamer stopt als de laatste app de camera loslaat; Tandem start hem dan opnieuw. In een container met PipeWire 1.4 en WirePlumber 0.5
+  gelezen zoals een browser dat doet (staand beeld, juiste maat). PipeWire 0.3.65 (Debian 12) crasht erop. Windows nog niet (`MFCreateVirtualCamera`).
 - Nog te controleren op echte toestellen: sectie 0.
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)

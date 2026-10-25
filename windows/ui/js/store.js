@@ -24,6 +24,7 @@ export const state = {
   hasLid: false,
   hosting: [],
   displays: [],
+  webcams: [],
   // Whether this system lets Tandem move the pointer and press keys, and if not why (wayland, no-display).
   input: { ok: true, why: "" },
   // How the update stands: idle, checking, up-to-date, available, downloading, installing or failed.
