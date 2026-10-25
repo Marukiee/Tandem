@@ -40,6 +40,7 @@ enum BatteryWidgetDebug {
             }
         }
         try? report.write(to: directory.appendingPathComponent("battery-widget.txt"), atomically: true, encoding: .utf8)
-        NSApp.terminate(nil)
+        // Not terminate: that waits for the engine to say goodbye, and the engine is still starting this early, so the app stayed.
+        exit(0)
     }
 }
