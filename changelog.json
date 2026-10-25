@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.2.21",
+    "date": "2026-10-25",
+    "en": {
+      "title": "Codes and live widgets",
+      "new": [
+        "Codes from texts are copied on your computer again, also on Android 15 and newer",
+        "With Shizuku everything you copy on Android goes to your devices",
+        "Battery widgets go green on the charger and move when something plays"
+      ]
+    },
+    "nl": {
+      "title": "Codes en levende widgets",
+      "new": [
+        "Codes uit sms'jes worden weer gekopieerd op je computer, ook op Android 15 en nieuwer",
+        "Met Shizuku gaat alles wat je op Android kopieert naar je apparaten",
+        "Batterijwidgets worden groen aan de lader en bewegen als er iets speelt"
+      ]
+    }
+  },
+  {
     "version": "0.2.20",
     "date": "2026-10-25",
     "en": {
