@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="battery_widget_name">Batterijen</string>
+    <string name="battery_widget_description">De batterij van deze telefoon en van je andere apparaten</string>
+    <string name="battery_widget_empty">Nog geen batterijen</string>
+</resources>

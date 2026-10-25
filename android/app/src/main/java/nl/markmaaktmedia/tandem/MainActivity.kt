@@ -29,6 +29,7 @@ class MainActivity : AppCompatActivity() {
         intent?.data?.toString()?.takeIf { it.startsWith("tandem://") }?.let { graph.pairLink.value = it }
         if (intent?.action == nl.markmaaktmedia.tandem.quickshare.QuickShareTileService.ACTION_OPEN_PAGE) graph.openQuickShare.value = true
         if (intent?.action == ACTION_OPEN_DISPLAY) intent.getStringExtra(EXTRA_DEVICE)?.let { graph.openDisplay.value = it }
+        if (intent?.action == ACTION_OPEN_DEVICE) intent.getStringExtra(EXTRA_DEVICE)?.let { graph.openDevice.value = it }
         if (intent?.action == ACTION_OPEN_ACCESS) graph.openAccess.value = true
         if (intent?.action == ACTION_OPEN_SHARING) graph.openSharing.value = true
     }
@@ -47,6 +48,9 @@ class MainActivity : AppCompatActivity() {
         /** From the notification of a computer that asks this phone to be its second screen. */
         const val ACTION_OPEN_DISPLAY = "nl.markmaaktmedia.tandem.OPEN_DISPLAY"
         const val EXTRA_DEVICE = "device"
+
+        /** From a ring of the battery widget: the page of that device. */
+        const val ACTION_OPEN_DEVICE = "nl.markmaaktmedia.tandem.OPEN_DEVICE"
 
         /** From another device that shows what this phone is missing: Tandem's page of permissions. */
         const val ACTION_OPEN_ACCESS = "nl.markmaaktmedia.tandem.OPEN_ACCESS"

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="battery_widget_name">Batteries</string>
+    <string name="battery_widget_description">The battery of this phone and of your other devices</string>
+    <string name="battery_widget_empty">No batteries yet</string>
+</resources>

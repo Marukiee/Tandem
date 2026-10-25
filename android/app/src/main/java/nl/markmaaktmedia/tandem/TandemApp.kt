@@ -39,6 +39,7 @@ class Graph(app: Application) {
     )
 
     init {
+        nl.markmaaktmedia.tandem.widget.BatteryWidgetStore.start(app, host, deviceIcons, scope)
         // Quick Share starts once the engine runs, when the person left it on.
         scope.launch {
             host.state.first { it == nl.markmaaktmedia.tandem.engine.EngineState.Running }
@@ -69,6 +70,9 @@ class Graph(app: Application) {
 
     /** Set when a computer asks this phone to be its second screen: the id of that computer, for the screen to open on. */
     val openDisplay = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+
+    /** Set by a ring of the battery widget: the id of the device whose page is to be opened. */
+    val openDevice = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
     /** Whether the app is on the screen now, so an offer from a computer opens it at once and does not wait as a notification. */
     @Volatile var appVisible = false

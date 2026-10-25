@@ -144,6 +144,14 @@ private fun MainNavigation() {
             displayFlag.value = null
         }
     }
+    val deviceFlag = LocalContext.current.graph.openDevice
+    val openDevice by deviceFlag.collectAsState()
+    LaunchedEffect(openDevice) {
+        openDevice?.let { id ->
+            if (nav.top != Route.Device(id)) nav.push(Route.Device(id))
+            deviceFlag.value = null
+        }
+    }
     val pairFlag = LocalContext.current.graph.startAtPair
     LaunchedEffect(startAtPair) {
         if (startAtPair) {
