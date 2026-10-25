@@ -72,6 +72,9 @@ internal fun rememberCategorySummaries(): Map<SettingsCategory, String> {
     val hotspot by prefs.hotspotForMac.collectAsState(initial = false)
     val hotspotReady = status.bluetooth && status.notifications
 
+    // Shizuku: its state in a word.
+    val shizukuState by nl.markmaaktmedia.tandem.hotspot.HotspotModule.get(context).shizuku.state.collectAsState()
+
     // Files.
     var resumes by remember { mutableIntStateOf(0) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { resumes++ }
@@ -93,6 +96,16 @@ internal fun rememberCategorySummaries(): Map<SettingsCategory, String> {
                 !hotspotReady -> R.string.hotspot_row_setup
                 hotspot -> R.string.hotspot_row_on
                 else -> R.string.hotspot_row_off
+            },
+        ),
+        SettingsCategory.Shizuku to stringResource(
+            when (shizukuState) {
+                nl.markmaaktmedia.tandem.hotspot.ShizukuState.Ready -> R.string.shizuku_state_ready_sub
+                nl.markmaaktmedia.tandem.hotspot.ShizukuState.NotInstalled -> R.string.shizuku_state_not_installed
+                nl.markmaaktmedia.tandem.hotspot.ShizukuState.NotRunning -> R.string.shizuku_state_not_running
+                nl.markmaaktmedia.tandem.hotspot.ShizukuState.NeedsPermission -> R.string.shizuku_state_needs_permission
+                nl.markmaaktmedia.tandem.hotspot.ShizukuState.Denied -> R.string.shizuku_state_denied
+                nl.markmaaktmedia.tandem.hotspot.ShizukuState.TooOld -> R.string.shizuku_state_too_old
             },
         ),
         SettingsCategory.Files to when {

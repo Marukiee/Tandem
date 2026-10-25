@@ -17,6 +17,7 @@ enum class SettingsPageId(val key: String) {
     Notifications("notifications"),
     Trackpad("trackpad"),
     Updates("updates"),
+    Shizuku("shizuku"),
     About("about"),
     ;
 
@@ -38,6 +39,7 @@ internal enum class SettingsCategory(
     Features(R.string.features_title, { TandemIcons.CheckCircle }, Route.Features),
     Permissions(R.string.settings_access, { TandemIcons.Shield }, Route.Access),
     Hotspot(R.string.settings_hotspot, { TandemIcons.Hotspot }, Route.Hotspot),
+    Shizuku(R.string.shizuku_title, { TandemIcons.Terminal }, Route.SettingsPage(SettingsPageId.Shizuku)),
     Files(R.string.files_title, { TandemIcons.Folder }, Route.FileAccess),
     Updates(R.string.settings_cat_updates, { TandemIcons.Update }, Route.SettingsPage(SettingsPageId.Updates)),
     About(R.string.settings_cat_about, { TandemIcons.Info }, Route.SettingsPage(SettingsPageId.About)),
@@ -94,6 +96,10 @@ internal object FocusKeys {
     const val HotspotMethod = "hotspot.method"
     const val HotspotGuide = "hotspot.guide"
 
+    const val ShizukuStatus = "shizuku.status"
+    const val ShizukuHotspot = "shizuku.hotspot"
+    const val ShizukuProjection = "shizuku.projection"
+
     const val FilesPermission = "files.permission"
     const val FilesEnabled = "files.enabled"
     const val FilesWrite = "files.write"
@@ -146,6 +152,7 @@ internal object SettingsCatalog {
     private val trackpad = Route.SettingsPage(SettingsPageId.Trackpad)
     private val quickShare = Route.SettingsPage(SettingsPageId.QuickShare)
     private val tiles = Route.SettingsPage(SettingsPageId.Tiles)
+    private val shizuku = Route.SettingsPage(SettingsPageId.Shizuku)
 
     val all: List<SettingsEntry> = listOf(
         // Look and language
@@ -358,6 +365,24 @@ internal object SettingsCatalog {
         SettingsEntry(
             "hotspot_guide", R.string.hotspot_setup, R.string.settings_kw_hotspot_guide, SettingsCategory.Hotspot, Route.Hotspot,
             { TandemIcons.OpenInNew }, subtitle = R.string.hotspot_setup_sub, focus = FocusKeys.HotspotGuide,
+        ),
+
+        // Shizuku
+        SettingsEntry(
+            "shizuku", R.string.shizuku_title, R.string.settings_kw_shizuku, SettingsCategory.Shizuku, shizuku,
+            { TandemIcons.Terminal }, subtitle = R.string.shizuku_intro,
+        ),
+        SettingsEntry(
+            "shizuku_status", R.string.shizuku_section_state, R.string.settings_kw_shizuku_status, SettingsCategory.Shizuku, shizuku,
+            { TandemIcons.Terminal }, focus = FocusKeys.ShizukuStatus,
+        ),
+        SettingsEntry(
+            "shizuku_hotspot", R.string.shizuku_use_hotspot, R.string.settings_kw_shizuku_hotspot, SettingsCategory.Shizuku, shizuku,
+            { TandemIcons.Hotspot }, focus = FocusKeys.ShizukuHotspot,
+        ),
+        SettingsEntry(
+            "shizuku_projection", R.string.shizuku_use_projection, R.string.settings_kw_shizuku_projection, SettingsCategory.Shizuku, shizuku,
+            { TandemIcons.VolumeUp }, focus = FocusKeys.ShizukuProjection,
         ),
 
         // Files

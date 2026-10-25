@@ -40,8 +40,9 @@ import uniffi.tandem_core.TandemMediaKind
  * Where the person decides, and where the system asks for the screen or the camera.
  *
  * Two doors: a Mac asked (`forRequest`, from the notification or straight away when Tandem is open) and the person
- * started it on the phone (`forStart`). Either way the system's own question comes last, because Android shows it every
- * time and nothing an app does can answer it. Once it is answered the foreground service takes over and this closes.
+ * started it on the phone (`forStart`). Either way the system's own question comes last. Android shows it every time, unless
+ * Shizuku could set the app-op that answers it at once ([ProjectionGrant]). Once it is answered the foreground service takes over
+ * and this closes.
  */
 class LiveShareActivity : ComponentActivity() {
     private var session: ULong? = null
@@ -148,8 +149,11 @@ class LiveShareActivity : ComponentActivity() {
     private fun proceed() {
         asking = false
         when (kind) {
-            TandemMediaKind.SCREEN ->
+            TandemMediaKind.SCREEN -> lifecycleScope.launch {
+                // Set by now in nearly every case; checked again because Shizuku may only just have come up.
+                ProjectionGrant.ensure(applicationContext)
                 screenPermission.launch(getSystemService(MediaProjectionManager::class.java).createScreenCaptureIntent())
+            }
             TandemMediaKind.CAMERA ->
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                     start(0, null)

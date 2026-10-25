@@ -86,6 +86,22 @@ pub enum Msg {
     /// The device that looks at this one's screen wants its sound too (`on`), or no longer. The sound goes as `AudioStart` and datagrams;
     /// the sender stops by itself when the screen session ends.
     SoundRequest { on: bool },
+    /// A phone asks a computer that says `audio.bt_sink` to be its Bluetooth speaker (A2DP sink), connecting from the computer's
+    /// side so the phone needs no screen recording question, or to stop (`on` false). `name` is the phone's Bluetooth name: Android
+    /// gives apps no Bluetooth address, so the computer finds the phone among its paired devices by that name. Answered with
+    /// `BtSpeakerState`.
+    BtSpeaker {
+        on: bool,
+        #[serde(default)]
+        name: String,
+    },
+    /// Whether the computer plays the phone's sound over Bluetooth now. Sent as the answer to `BtSpeaker`, and again when the
+    /// link ends by itself. `error` says why not, empty when it works.
+    BtSpeakerState {
+        on: bool,
+        #[serde(default)]
+        error: String,
+    },
     Input(InputMsg),
     /// One mouse and keyboard over several computers: the pointer goes over, and comes back (see `pointer_share`).
     PointerShare(crate::pointer_share::PointerShareMsg),
@@ -736,6 +752,20 @@ mod tests {
         let bytes = encode(&msg).unwrap();
         match decode_msg(&bytes).unwrap() {
             Msg::Clipboard(c) => assert_eq!(c.text, "hi"),
+            other => panic!("wrong message: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn bluetooth_speaker_messages_round_trip() {
+        let ask = encode(&Msg::BtSpeaker { on: true, name: "Pixel".into() }).unwrap();
+        match decode_msg(&ask).unwrap() {
+            Msg::BtSpeaker { on, name } => assert_eq!((on, name.as_str()), (true, "Pixel")),
+            other => panic!("wrong message: {other:?}"),
+        }
+        let answer = encode(&Msg::BtSpeakerState { on: false, error: "not paired".into() }).unwrap();
+        match decode_msg(&answer).unwrap() {
+            Msg::BtSpeakerState { on, error } => assert_eq!((on, error.as_str()), (false, "not paired")),
             other => panic!("wrong message: {other:?}"),
         }
     }

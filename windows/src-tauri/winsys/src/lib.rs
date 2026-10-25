@@ -79,6 +79,8 @@ pub enum Seen {
 }
 
 pub mod hid;
+/// This computer as the Bluetooth speaker of a paired phone (Linux and Windows).
+pub mod btspeaker;
 /// The Wi-Fi this computer is on, its password, and joining one that another device handed over.
 pub mod wifi;
 pub mod focus;

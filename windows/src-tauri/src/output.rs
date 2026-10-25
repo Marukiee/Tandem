@@ -85,7 +85,7 @@ fn changed(app: &AppHandle) {
 pub fn start(app: &AppHandle, to: String, why: Why) -> Result<(), String> {
     let engine = app.state::<AppState>().engine()?;
     // Its sound plays here, so it would be recorded and sent back to it, round and round.
-    if crate::sound::playing_from(&to) {
+    if crate::sound::playing_from(&to) || crate::btspeaker::playing_from(&to) {
         return Err(i18n::t1(app, "output_loop", &events::device_name(app, &to)));
     }
     stop(app);

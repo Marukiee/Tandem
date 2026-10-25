@@ -51,9 +51,9 @@ class ShizukuBridge(private val context: Context) {
     private var binder: IBinder? = null
 
     private val args: Shizuku.UserServiceArgs by lazy {
-        Shizuku.UserServiceArgs(ComponentName(context.packageName, HotspotUserService::class.java.name))
+        Shizuku.UserServiceArgs(ComponentName(context.packageName, ShellUserService::class.java.name))
             .daemon(false)
-            .processNameSuffix("hotspot")
+            .processNameSuffix("shell")
             .debuggable(BuildConfig.DEBUG)
             // A new version restarts the service, so it never runs old code after an update.
             .version(BuildConfig.VERSION_CODE)
@@ -126,20 +126,31 @@ class ShizukuBridge(private val context: Context) {
 
     // ---- Calls -----------------------------------------------------------------
 
-    suspend fun start(): ShellResult = call(HotspotUserService.TX_START)
-    suspend fun stop(): ShellResult = call(HotspotUserService.TX_STOP)
+    suspend fun start(): ShellResult = call(ShellUserService.TX_START)
+    suspend fun stop(): ShellResult = call(ShellUserService.TX_STOP)
 
-    suspend fun status(): ShellResult = call(HotspotUserService.TX_STATUS)
+    suspend fun status(): ShellResult = call(ShellUserService.TX_STATUS)
 
-    private suspend fun call(code: Int): ShellResult = withContext(Dispatchers.IO) {
+    /** Lets Android skip its screen recording question for [pkg] (see [ShellUserService]). */
+    suspend fun allowProjection(pkg: String): ShellResult = call(ShellUserService.TX_ALLOW_PROJECTION) { it.writeString(pkg) }
+
+    /** Who Shizuku runs as: 0 for root, 2000 for the shell, null when it is not running. */
+    fun serverUid(): Int? = try {
+        if (Shizuku.pingBinder()) Shizuku.getUid() else null
+    } catch (_: Throwable) {
+        null
+    }
+
+    private suspend fun call(code: Int, write: (Parcel) -> Unit = {}): ShellResult = withContext(Dispatchers.IO) {
         if (refresh() != ShizukuState.Ready) return@withContext ShellResult(false, "Shizuku is not ready")
         val service = connect() ?: return@withContext ShellResult(false, "could not reach the Shizuku service")
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
         try {
+            write(data)
             if (!service.transact(code, data, reply, 0)) return@withContext ShellResult(false, "the service refused the call")
             reply.readException()
-            if (code == HotspotUserService.TX_STATUS) {
+            if (code == ShellUserService.TX_STATUS) {
                 val clients = reply.readInt().takeIf { it >= 0 }
                 val tethered = reply.readInt().takeIf { it >= 0 }
                 ShellResult(true, "ok", clients, tethered)

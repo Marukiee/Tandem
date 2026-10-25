@@ -67,6 +67,8 @@ pub enum Event {
     SideMoved { from: DeviceId },
     OpenSettings { from: DeviceId, page: String },
     SoundRequested { from: DeviceId, on: bool },
+    BtSpeakerRequested { from: DeviceId, on: bool, name: String },
+    BtSpeakerState { from: DeviceId, on: bool, error: String },
     Input { from: DeviceId, input: InputMsg },
     Hotspot { from: DeviceId, hotspot: HotspotMsg },
     /// The other device wants a picture. Open the camera, then answer with a file share whose origin is

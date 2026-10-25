@@ -22,6 +22,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | De telefoon bedienen met het getoonde scherm | bron | ja | ja (knop, nooit gezien) | ja (knop, nooit gezien) |
 | Invoegen vanaf telefoon (scan, foto) | bron | ja | ja (op het klembord, nooit gezien) | ja (op het klembord, nooit gezien) |
 | Geluid van de telefoon op de computer | bron | ja | ja (nooit gehoord) | ja (nooit gehoord) |
+| Geluid en scherm van de telefoon zonder de vraag over schermopname | met Shizuku (app-op `PROJECT_MEDIA`) | - (geen Bluetooth-luidspreker, zie onder) | ook zonder Shizuku, als Bluetooth-luidspreker (nooit gehoord) | ook zonder Shizuku, als Bluetooth-luidspreker via BlueZ en PipeWire (nooit gehoord) |
 | Scherm van de computer tonen aan andere apparaten en het laten bedienen (zoals TeamViewer) | kijkt en bedient | ja (host en kijker) | ja (host, GDI en OpenH264, kijker) | ja onder X11 (host, nooit gezien); onder Wayland geeft de portal met GStreamer beeld (op een echte laptop gezien als debugbeeld, delen met een kijker nog niet); kijker ja, het scherm van een Mac gezien in een venster op een echte laptop (0.1.75) |
 | De computer bedienen vanaf de telefoon (trackpad, toetsenbord, aanraken) | bron | ja | ja | ja: X11, en onder Wayland via een portalsessie met het beeld (0.1.83, nooit gezien) |
 | Een computer bedienen vanaf een andere computer (gedeelde muis) | nee | ja (hoofd en bestuurd) | ja (hoofd en bestuurd) | deels: bestuurd (X11 en Wayland met de RemoteDesktop-portal), hoofd alleen onder Wayland via de InputCapture-portal (nooit gezien), niet onder X11 |
@@ -53,6 +54,9 @@ Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een ech
   Bluetooth, tweede scherm, bediening onder Wayland en de melding bij slechte verbinding nalopen op de echte laptop.
 - **Overal**: Windows en Linux moeten dezelfde functies als de Mac kunnen aanbieden, niet alleen tonen: geluid van een computer naar een andere
   computer en Invoegen vanaf telefoon als bron voor een andere computer.
+- **Mac als Bluetooth-luidspreker**: kan niet. macOS biedt geen A2DP sink aan: een Mac speelt geen geluid af dat een telefoon over
+  Bluetooth stuurt, en een app kan dat profiel niet zelf aanbieden. Het geluid van een telefoon zonder Shizuku komt daar dus met de
+  vraag over schermopname, zoals voorheen.
 - De Mac-functies die aan macOS zelf vastzitten horen er niet bij: het menu Diensten, het Controlecentrum, het AirDrop-knopje.
 - **Contacten in het zoeken van Windows** kan niet: het zoeken van het Startmenu toont apps, instellingen, bestanden en het web, en heeft
   geen manier voor een app om eigen resultaten te geven (de zoekconnectors van Windows 7 werken alleen in de Verkenner). Een bestand per

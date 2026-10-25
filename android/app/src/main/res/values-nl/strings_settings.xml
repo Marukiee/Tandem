@@ -67,6 +67,10 @@
     <string name="settings_kw_hotspot_usage">datagebruik, vandaag gebruikt, geschiedenis, megabytes, gigabytes, teller, statistieken</string>
     <string name="settings_kw_hotspot_limit">limiet, maximum, datalimiet, quotum, budget, dagelijks</string>
     <string name="settings_kw_hotspot_method">shizuku, automatisch, adb, draadloos debuggen, hoe hij aangaat, vanzelf</string>
+    <string name="settings_kw_shizuku">shizuku, adb, root, shell, draadloos debuggen, zonder vragen, automatisch</string>
+    <string name="settings_kw_shizuku_status">shizuku status, draait, toegestaan, toestemming, shizuku starten, root, shell</string>
+    <string name="settings_kw_shizuku_hotspot">hotspot vanzelf, automatische hotspot, tethering, shizuku</string>
+    <string name="settings_kw_shizuku_projection">vraag over schermopname, casten, opnemen, toestemming, geluid, scherm, zonder vraag, media projection</string>
     <string name="settings_kw_hotspot_guide">handleiding, gids, hulp, instructies, documentatie, hoe, github</string>
     <string name="settings_kw_files">bestanden, mappen, opslag, webdav, schijf, finder, bestanden delen, bladeren</string>
     <string name="settings_kw_files_permission">toegang tot alle bestanden, opslag beheren, opslagrecht, externe opslag</string>

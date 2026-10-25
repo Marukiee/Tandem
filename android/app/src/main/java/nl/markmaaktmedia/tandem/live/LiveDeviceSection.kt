@@ -55,7 +55,8 @@ fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
     if (!permissions) {
     SectionHeader(stringResource(R.string.live_section_share), top = 12.dp, bottom = 0.dp)
     SettingsGroup {
-        val soundTo by SoundShareService.active.collectAsState()
+        val soundTo by PhoneSound.active.collectAsState()
+        val connecting by PhoneSound.connecting.collectAsState()
         val soundRow = if (canSound) 1 else 0
         val rows = listOfNotNull(
             if (canScreen) TandemMediaKind.SCREEN else null,
@@ -67,9 +68,15 @@ fun LiveDeviceSection(device: TandemDevice, permissions: Boolean = false) {
             ActionRow(
                 0, rows.size + soundRow, if (sending) TandemIcons.Stop else TandemIcons.VolumeUp,
                 stringResource(if (sending) R.string.sound_stop_title else R.string.sound_send_title, device.name),
-                stringResource(if (sending) R.string.sound_stop_sub else R.string.sound_send_sub),
+                stringResource(
+                    when {
+                        sending -> R.string.sound_stop_sub
+                        connecting == device.id -> R.string.sound_connecting
+                        else -> R.string.sound_send_sub
+                    },
+                ),
                 {
-                    if (sending) SoundShareService.stop(context) else context.startActivity(SoundShareActivity.forPeer(context, device.id))
+                    if (sending) PhoneSound.stop(context) else PhoneSound.start(context, device.id)
                 },
                 // Green while it plays, with a stop symbol: a tap ends it.
                 iconTint = if (sending) online else null,

@@ -14,11 +14,6 @@
     <string name="hotspot_method">Methode</string>
     <string name="hotspot_method_shizuku">Shizuku, gaat vanzelf aan</string>
     <string name="hotspot_method_manual">Handmatig, je tikt op een melding</string>
-    <string name="hotspot_method_need_permission">Shizuku draait, tik om Tandem toestemming te geven</string>
-    <string name="hotspot_method_denied">Shizuku heeft Tandem geweigerd, sta het toe in de Shizuku-app</string>
-    <string name="hotspot_method_not_running">Handmatig. Shizuku is geïnstalleerd maar draait niet, tik om het te openen</string>
-    <string name="hotspot_method_not_installed">Handmatig. Installeer Shizuku om hem vanzelf aan te zetten</string>
-    <string name="hotspot_method_too_old">Handmatig. Werk Shizuku bij naar versie 11 of nieuwer</string>
 
     <string name="hotspot_test">Hotspot testen</string>
     <string name="hotspot_test_sub">Zet hem 20 seconden aan</string>

@@ -113,6 +113,11 @@ class HotspotModule private constructor(private val context: Context) {
         jobs += scope.launch { prefs.dailyUsage.collectLatest { days = it } }
         jobs += scope.launch { graph.host.state.collectLatest { reconcile() } }
         jobs += scope.launch { controller.snapshot.collectLatest { publish(it) } }
+        // Each time Shizuku comes up (after a restart of the phone, or once Tandem is allowed), and at every start of the app after an
+        // update, the app-op that skips the screen recording question is checked and set again if it went.
+        jobs += scope.launch {
+            shizuku.state.collectLatest { if (it == ShizukuState.Ready) nl.markmaaktmedia.tandem.live.ProjectionGrant.ensure(context) }
+        }
         jobs += scope.launch {
             while (true) {
                 delay(TICK_MS)

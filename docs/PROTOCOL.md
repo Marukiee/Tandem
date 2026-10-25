@@ -183,6 +183,15 @@ Het gaat alleen naar apparaten met `focus.share` of `focus.follow`. Een apparaat
 stuurt dat niet terug: alleen een wijziging van wat het apparaat zelf leest, die verschilt van de nieuwste, is nieuws. Zie
 `crates/tandem-core/src/focus.rs`.
 
+### Bluetooth-luidspreker
+
+`BtSpeaker { on, name }` vraagt een computer met `audio.bt_sink` om de Bluetooth-luidspreker (A2DP sink) van de telefoon te worden,
+of ermee te stoppen. De computer verbindt zelf met het A2DP-bronprofiel van de telefoon, zodat de telefoon geen vraag over
+schermopname nodig heeft. `name` is de Bluetooth-naam van de telefoon: Android geeft apps geen Bluetooth-adres, dus de computer
+zoekt de telefoon op naam tussen zijn gekoppelde apparaten. Het antwoord is `BtSpeakerState { on, error }`, en hetzelfde bericht
+volgt als de verbinding vanzelf eindigt. `error` zegt in gewone woorden waarom niet, leeg als het werkt. Een oudere computer slaat
+`BtSpeaker` over; de telefoon wacht vijftien seconden op een antwoord en stuurt het geluid dan zelf. Zie MUSIC_AND_SOUND.md.
+
 ### Mogelijkheden (`Hello.caps`)
 
 Een apparaat zegt in zijn `Hello` wat het kan, als lijst van woorden. Een onbekend woord wordt genegeerd. Wie iets wil
@@ -199,6 +208,7 @@ vragen, kijkt eerst of het woord er staat.
 | `screen.view`, `camera.view` | kan het scherm of de camera van een ander apparaat tonen |
 | `audio.play` | speelt het geluid van andere apparaten af, ook van meer tegelijk (elk streamnummer; computers van voor dit woord alleen `9`, zie MUSIC_AND_SOUND.md) |
 | `audio.send` | kan zijn eigen geluid opnemen en naar een ander apparaat sturen |
+| `audio.bt_sink` | een computer (Linux, Windows) die de Bluetooth-luidspreker van een gekoppelde telefoon kan worden op `BtSpeaker` |
 | `ring` | laat zijn geluid horen op `Ring` en meldt met `Ringing` wanneer het speelt en stopt |
 | `wifi.share` | een computer die zegt op welk wifi hij zit en het wachtwoord geeft als zijn persoon ja zegt |
 | `wifi.join` | verbindt met een wifi dat een ander apparaat geeft (een telefoon via het blad van het systeem) |

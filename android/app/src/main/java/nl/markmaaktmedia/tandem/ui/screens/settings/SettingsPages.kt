@@ -35,6 +35,7 @@ fun SettingsPageScreen(page: SettingsPageId, onBack: () -> Unit, onOpen: (Route)
         SettingsPageId.Notifications -> NotificationsPage(onBack, onOpen)
         SettingsPageId.Trackpad -> TrackpadPage(onBack)
         SettingsPageId.Updates -> UpdatesPage(onBack, onOpen)
+        SettingsPageId.Shizuku -> ShizukuPage(onBack, onOpen)
         SettingsPageId.About -> AboutPage(onBack, onOpen)
     }
 }

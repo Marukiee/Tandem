@@ -14,11 +14,6 @@
     <string name="hotspot_method">Method</string>
     <string name="hotspot_method_shizuku">Shizuku, turns on by itself</string>
     <string name="hotspot_method_manual">Manual, you tap a notification</string>
-    <string name="hotspot_method_need_permission">Shizuku is running, tap to allow Tandem</string>
-    <string name="hotspot_method_denied">Shizuku refused Tandem, allow it in the Shizuku app</string>
-    <string name="hotspot_method_not_running">Manual. Shizuku is installed but not running, tap to open it</string>
-    <string name="hotspot_method_not_installed">Manual. Install Shizuku to turn it on by itself</string>
-    <string name="hotspot_method_too_old">Manual. Update Shizuku to version 11 or newer</string>
 
     <string name="hotspot_test">Test the hotspot</string>
     <string name="hotspot_test_sub">Turns it on for 20 seconds</string>
