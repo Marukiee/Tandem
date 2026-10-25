@@ -30,7 +30,11 @@ object FeatureReport {
     fun start(context: Context, scope: CoroutineScope) {
         scope.launch {
             while (true) {
-                runCatching { context.graph.host.engine?.setFeatures(current(context)) }
+                runCatching {
+                    val features = current(context)
+                    context.graph.host.engine?.setFeatures(features)
+                    SetupTour.remindIfDue(context, features)
+                }
                 delay(5_000)
             }
         }
@@ -49,6 +53,17 @@ object FeatureReport {
         if (!pointerOn) add("pointer", false, R.string.feature_pointer, R.string.feature_pointer_off, SWITCH + "pointer")
         else add("pointer", accessibility(context), R.string.feature_pointer, R.string.feature_control_why, "accessibility")
         add("notifications", listener, R.string.feature_notifications, R.string.feature_listener_why, "notification-access")
+        // Codes copied on the computers. Since Android 15 the code in a notification is hidden from Tandem, so there it comes from the text
+        // itself (SmsBridge), which needs the permission of Messages; before, the notification access is enough.
+        val hidden = android.os.Build.VERSION.SDK_INT >= 35
+        val sms = nl.markmaaktmedia.tandem.messages.SmsAccess.available(context)
+        if (!context.graph.prefs.mirrorNotifications.first()) {
+            list += TandemFeature("codes", false, context.getString(R.string.feature_codes), context.getString(R.string.feature_codes_off), SWITCH + "notifications")
+        } else if (hidden && sms) {
+            add("codes", nl.markmaaktmedia.tandem.messages.SmsAccess.granted(context), R.string.feature_codes, R.string.feature_codes_why_sms, "messages")
+        } else if (!hidden) {
+            add("codes", listener, R.string.feature_codes, R.string.feature_listener_why, "notification-access")
+        }
         add("media", listener, R.string.feature_media, R.string.feature_listener_why, "notification-access")
         add("calls", Permissions.phone(context), R.string.feature_calls, R.string.feature_calls_why, "access")
         add("files", Environment.isExternalStorageManager(), R.string.feature_files, R.string.feature_files_why, "all-files")
@@ -109,21 +124,31 @@ object FeatureReport {
      */
     const val SWITCH = "switch:"
 
-    /** Turns on the switch of Tandem behind `page` (see [SWITCH]). True when it was one. */
+    /** Turns on the switch of Tandem behind `page` (see [SWITCH]), here and without a word: for the person on this phone. */
+    fun switchOn(context: Context, page: String): Boolean {
+        val feature = page.removePrefix(SWITCH)
+        if (feature == page) return false
+        context.graph.scope.launch {
+            when (feature) {
+                "pointer" -> context.graph.prefs.setPointerIn(true)
+                "focus" -> context.graph.prefs.setFocusShare(true)
+                "notifications" -> context.graph.prefs.setMirrorNotifications(true)
+            }
+        }
+        return true
+    }
+
+    /** The same for another device that asked, which this phone then says. True when `page` was a switch. */
     private fun turnOn(context: Context, page: String, from: String?): Boolean {
         val feature = page.removePrefix(SWITCH)
         if (feature == page) return false
         val name = when (feature) {
             "pointer" -> R.string.feature_pointer
             "focus" -> R.string.feature_focus
+            "notifications" -> R.string.feature_codes
             else -> return true
         }
-        context.graph.scope.launch {
-            when (feature) {
-                "pointer" -> context.graph.prefs.setPointerIn(true)
-                "focus" -> context.graph.prefs.setFocusShare(true)
-            }
-        }
+        switchOn(context, page)
         val who = from?.let { context.graph.host.device(it)?.name } ?: context.getString(R.string.feature_device_fallback)
         val notification = NotificationCompat.Builder(context, Channels.CAPTURE)
             .setSmallIcon(R.drawable.ic_stat_tandem)

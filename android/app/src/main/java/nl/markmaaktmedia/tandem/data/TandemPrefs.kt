@@ -52,6 +52,10 @@ class TandemPrefs(private val context: Context) {
         val lastUpdateCheck = longPreferencesKey("last_update_check")
         val copyCodes = booleanPreferencesKey("copy_codes")
         val clipboardShizuku = booleanPreferencesKey("clipboard_shizuku")
+        val tourSeen = androidx.datastore.preferences.core.intPreferencesKey("tour_seen")
+        val tourLater = stringSetPreferencesKey("tour_later")
+        val tourSkip = stringSetPreferencesKey("tour_skip")
+        val tourRemindAt = longPreferencesKey("tour_remind_at")
         val remoteMedia = booleanPreferencesKey("remote_media")
         val remoteMouse = booleanPreferencesKey("remote_mouse")
         val deviceIcons = stringPreferencesKey("device_icons")
@@ -100,6 +104,11 @@ class TandemPrefs(private val context: Context) {
     val copyCodes: Flow<Boolean> = data.map { it[Keys.copyCodes] ?: true }
     /** With Shizuku every copy goes to the devices that share the clipboard (see ShizukuClipboard). On when Shizuku is there. */
     val clipboardShizuku: Flow<Boolean> = data.map { it[Keys.clipboardShizuku] ?: true }
+    /** The tour of what Tandem can do (see SetupTour): the version last shown, what waits for later, what is not for this person, and when to remind. */
+    val tourSeen: Flow<Int> = data.map { it[Keys.tourSeen] ?: 0 }
+    val tourLater: Flow<Set<String>> = data.map { it[Keys.tourLater] ?: emptySet() }
+    val tourSkip: Flow<Set<String>> = data.map { it[Keys.tourSkip] ?: emptySet() }
+    val tourRemindAt: Flow<Long> = data.map { it[Keys.tourRemindAt] ?: 0L }
     /** Trackpad screen: the media buttons start off, the left and right buttons start on. */
     val remoteMedia: Flow<Boolean> = data.map { it[Keys.remoteMedia] ?: false }
     val remoteMouse: Flow<Boolean> = data.map { it[Keys.remoteMouse] ?: true }
@@ -237,6 +246,10 @@ class TandemPrefs(private val context: Context) {
     suspend fun setDismissedUpdate(value: String) = set(Keys.dismissedUpdate, value)
     suspend fun setCopyCodes(value: Boolean) = set(Keys.copyCodes, value)
     suspend fun setClipboardShizuku(value: Boolean) = set(Keys.clipboardShizuku, value)
+    suspend fun setTourSeen(value: Int) = set(Keys.tourSeen, value)
+    suspend fun setTourLater(value: Set<String>) = set(Keys.tourLater, value)
+    suspend fun setTourSkip(value: Set<String>) = set(Keys.tourSkip, value)
+    suspend fun setTourRemindAt(value: Long) = set(Keys.tourRemindAt, value)
     suspend fun setRemoteMedia(value: Boolean) = set(Keys.remoteMedia, value)
     suspend fun setRemoteMouse(value: Boolean) = set(Keys.remoteMouse, value)
     suspend fun setAudioDelay(index: Int) = set(Keys.audioDelay, index.toLong())

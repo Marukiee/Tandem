@@ -38,6 +38,7 @@ fun routeKey(route: Route): String = when (route) {
     is Route.ClipboardHistory -> "clipboard-history"
     Route.Access -> "access"
     Route.Features -> "features"
+    Route.Tour -> "tour"
     Route.FileAccess -> "files"
     Route.MirrorApps -> "mirror"
     Route.Appearance -> "appearance"

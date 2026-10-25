@@ -66,6 +66,9 @@ class Graph(app: Application) {
     /** Set when another device asks this phone to open Tandem's page of permissions. */
     val openAccess = kotlinx.coroutines.flow.MutableStateFlow(false)
 
+    /** Set by the reminder of the tour: the tour is to be opened. */
+    val openTour = kotlinx.coroutines.flow.MutableStateFlow(false)
+
     /** Set when another device asks this phone to open the sharing page of its settings. */
     val openSharing = kotlinx.coroutines.flow.MutableStateFlow(false)
 

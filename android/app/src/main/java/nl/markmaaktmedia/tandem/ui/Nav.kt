@@ -27,6 +27,8 @@ sealed interface Route {
 
     /** What works on each device, and what it still needs. */
     data object Features : Route
+    /** What Tandem can do here and what each thing still needs (TourScreen). */
+    data object Tour : Route
     data object FileAccess : Route
     data object MirrorApps : Route
     data object Appearance : Route
@@ -104,6 +106,7 @@ private fun routeFromKey(key: String): Route? = when {
     key.startsWith("terminal:") -> Route.Terminal(key.removePrefix("terminal:"))
     key == "access" -> Route.Access
     key == "features" -> Route.Features
+    key == "tour" -> Route.Tour
     key == "clipboard-history" -> Route.ClipboardHistory
     key == "files" -> Route.FileAccess
     key == "mirror" -> Route.MirrorApps

@@ -59,6 +59,14 @@ fun SetupScreen(onBack: () -> Unit, onOpen: (Route) -> Unit, start: SetupSection
             TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
         }
         Text(stringResource(R.string.setup_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 8.dp))
+        // The tour first: it says per thing what it needs, and the parts below are where it is given.
+        Spacer(Modifier.height(16.dp))
+        nl.markmaaktmedia.tandem.ui.components.SettingsGroup {
+            nl.markmaaktmedia.tandem.ui.components.ActionRow(
+                0, 1, TandemIcons.Idea, stringResource(R.string.tour_title), stringResource(R.string.tour_row_sub),
+                onClick = { onOpen(Route.Tour) },
+            )
+        }
         Part(SetupSection.Permissions, R.string.settings_access, tops) { AccessContent() }
         Part(SetupSection.Shizuku, R.string.shizuku_title, tops) { ShizukuContent(onOpen) }
         Part(SetupSection.Files, R.string.files_title, tops) { FileAccessContent(withPermission = false) }

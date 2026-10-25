@@ -128,6 +128,24 @@ private fun MainNavigation() {
             sharingFlag.value = false
         }
     }
+    // The tour once after an update that brings a new one, also for whoever finished the first run long ago; and from its reminder.
+    val tourPrefs = LocalContext.current.graph.prefs
+    val tourSeen by tourPrefs.tourSeen.collectAsState(initial = null)
+    LaunchedEffect(tourSeen) {
+        val seen = tourSeen ?: return@LaunchedEffect
+        if (seen < nl.markmaaktmedia.tandem.engine.SetupTour.VERSION) {
+            tourPrefs.setTourSeen(nl.markmaaktmedia.tandem.engine.SetupTour.VERSION)
+            nav.push(Route.Tour)
+        }
+    }
+    val tourFlag = LocalContext.current.graph.openTour
+    val openTour by tourFlag.collectAsState()
+    LaunchedEffect(openTour) {
+        if (openTour) {
+            nav.push(Route.Tour)
+            tourFlag.value = false
+        }
+    }
     val accessFlag = LocalContext.current.graph.openAccess
     val openAccess by accessFlag.collectAsState()
     LaunchedEffect(openAccess) {
@@ -269,6 +287,7 @@ private fun RouteBody(route: Route, nav: Nav) {
         is Route.DeviceSettings -> nl.markmaaktmedia.tandem.ui.screens.DeviceSettingsScreen(route.id, onBack = { nav.pop() })
         Route.Access -> nl.markmaaktmedia.tandem.ui.screens.SetupScreen(onBack = { nav.pop() }, onOpen = { nav.push(it) }, nl.markmaaktmedia.tandem.ui.screens.SetupSection.Permissions)
         Route.Features -> nl.markmaaktmedia.tandem.ui.screens.FeaturesScreen(onBack = { nav.pop() })
+        Route.Tour -> nl.markmaaktmedia.tandem.ui.screens.TourScreen(onBack = { nav.pop() })
         Route.FileAccess -> nl.markmaaktmedia.tandem.ui.screens.SetupScreen(onBack = { nav.pop() }, onOpen = { nav.push(it) }, nl.markmaaktmedia.tandem.ui.screens.SetupSection.Files)
         Route.MirrorApps -> MirrorAppsScreen(onBack = { nav.pop() })
         Route.Appearance -> AppearanceScreen(onBack = { nav.pop() })

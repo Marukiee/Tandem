@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
         if (intent?.action == ACTION_OPEN_DISPLAY) intent.getStringExtra(EXTRA_DEVICE)?.let { graph.openDisplay.value = it }
         if (intent?.action == ACTION_OPEN_DEVICE) intent.getStringExtra(EXTRA_DEVICE)?.let { graph.openDevice.value = it }
         if (intent?.action == ACTION_OPEN_ACCESS) graph.openAccess.value = true
+        if (intent?.action == ACTION_OPEN_TOUR) graph.openTour.value = true
         if (intent?.action == ACTION_OPEN_SHARING) graph.openSharing.value = true
     }
 
@@ -54,6 +55,9 @@ class MainActivity : AppCompatActivity() {
 
         /** From another device that shows what this phone is missing: Tandem's page of permissions. */
         const val ACTION_OPEN_ACCESS = "nl.markmaaktmedia.tandem.OPEN_ACCESS"
+
+        /** From the reminder of the tour: what Tandem can do and what still waits. */
+        const val ACTION_OPEN_TOUR = "nl.markmaaktmedia.tandem.OPEN_TOUR"
 
         /** From another device: the page of Settings with sharing, where the mouse of a computer is switched on. */
         const val ACTION_OPEN_SHARING = "nl.markmaaktmedia.tandem.OPEN_SHARING"
