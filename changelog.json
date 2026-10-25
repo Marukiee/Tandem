@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.23",
+    "date": "2026-10-25",
+    "en": { "title": "Who is calling", "new": ["The call card shows the name of whoever you are calling with, also for calls you make"] },
+    "nl": { "title": "Wie er belt", "new": ["Het belkaartje toont de naam van wie je spreekt, ook bij gesprekken die je zelf begint"] }
+  },
+  {
     "version": "0.2.22",
     "date": "2026-10-25",
     "en": {
