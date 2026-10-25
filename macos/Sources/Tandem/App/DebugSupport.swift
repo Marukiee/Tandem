@@ -89,6 +89,10 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_MESSAGES") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showMessagesWindow() }
         }
+        // `TANDEM_DEBUG_SIDEBAR=1`: the sidebar with two made up phones and a computer, the Messages of the first one chosen.
+        if variable("TANDEM_DEBUG_SIDEBAR") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSidebarWindow() }
+        }
         // `TANDEM_DEBUG_AWAY=1`: the pill that stays while the pointer is on another computer.
         if variable("TANDEM_DEBUG_AWAY") != nil {
             let carried = variable("TANDEM_DEBUG_AWAY") == "carry"
@@ -283,6 +287,29 @@ enum DebugSupport {
         window.makeKeyAndOrderFront(nil)
     }
 
+    private static func showSidebarWindow() {
+        let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
+        func made(_ id: String, _ name: String, _ platform: TandemPlatform, online: Bool, caps: [String]) -> TandemDevice {
+            TandemDevice(id: id, name: name, platform: platform, online: online, route: nil, rttMs: online ? 12 : nil, status: status, appVersion: nil, caps: caps,
+                         vouchedByRemoved: false, clipboardEnabled: true, autoAccept: false, notificationsEnabled: true, ble: false, features: [])
+        }
+        // A model of its own, so the made up devices never mix with the ones of the engine.
+        let model = EngineModel()
+        model.devices = [
+            made("debug-phone", "Pixel 9", .android, online: true, caps: ["sms", "files"]),
+            made("debug-mac", "MacBook Air", .macOs, online: true, caps: ["files"]),
+            made("debug-phone-2", "Xperia", .android, online: false, caps: []),
+        ]
+        MessagesStore.shared.phone("debug-phone").fillForDebug()
+        let host = NSHostingView(rootView: Sidebar(selection: .constant(.messages("debug-phone")), showPairing: .constant(false))
+            .environment(model)
+            .frame(width: 280, height: 560))
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 280, height: 560), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Sidebar (debug)"
+        window.contentView = host
+        window.makeKeyAndOrderFront(nil)
+    }
+
     private static func showMessagesWindow() {
         let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
         // Not online, so the page does not ask a phone that is not there and shows what it was given.
@@ -291,13 +318,15 @@ enum DebugSupport {
             caps: ["sms"], vouchedByRemoved: false, clipboardEnabled: true, autoAccept: true, notificationsEnabled: true, ble: false, features: []
         )
         MessagesStore.shared.phone(device.id).fillForDebug()
+        PhoneContacts.of(device.id).fillForDebug()
         // Under a toolbar beside a stand in for the sidebar, as in the main window: the toolbar and its inset decide where the page
         // starts. (A real split view in a window of its own draws nothing in a snapshot.)
         // `wide`: as with the sidebar hidden, the window's buttons over the page.
         let page = HStack(spacing: 0) {
             if messagesStart != "wide" { Color.gray.opacity(0.12).frame(width: 260).ignoresSafeArea() }
-            MessagesView(device: device, onBack: {})
+            MessagesView(device: device)
         }
+        .callConfirmation()
         // The main window's toolbar always has the sidebar button, which gives the strip its height.
         .toolbar { ToolbarItem(placement: .navigation) { Image(systemName: "sidebar.left") } }
         .toolbar(removing: .title)
@@ -312,6 +341,7 @@ enum DebugSupport {
         window.titlebarAppearsTransparent = true
         window.contentView = host
         window.makeKeyAndOrderFront(nil)
+        if messagesStart?.hasPrefix("confirm") ?? false { confirmCallForDebug(device: device, window: window) }
         // What a click in the strip of the toolbar lands on: the page under it, or the bar itself. Written to `messages-hittest.txt`.
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
             guard let frame = window.contentView?.superview, let directory else { return }
@@ -326,8 +356,43 @@ enum DebugSupport {
         }
     }
 
+    /// The question before a call, over the open conversation whose field has the focus. `confirm-return` and `confirm-escape` then
+    /// press that key in the window and write what came of it to `call-confirm.txt`: the question has to take the key, not the field.
+    private static func confirmCallForDebug(device: TandemDevice, window: NSWindow) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            CallConfirmation.shared.show(device: device, number: "+31 6 1234 5678", name: "Anna de Vries", label: "Mobile")
+        }
+        let key: (code: UInt16, text: String)? = switch messagesStart {
+        case "confirm-return": (36, "\r")
+        case "confirm-escape": (53, "\u{1b}")
+        default: nil
+        }
+        guard let key else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+            let before = "focus before: \(window.firstResponder.map { String(describing: type(of: $0)) } ?? "none")"
+            for type in [NSEvent.EventType.keyDown, .keyUp] {
+                if let event = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                                windowNumber: window.windowNumber, context: nil, characters: key.text,
+                                                charactersIgnoringModifiers: key.text, isARepeat: false, keyCode: key.code) {
+                    window.sendEvent(event)
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                let report = [
+                    before,
+                    "question still up: \(CallConfirmation.shared.pending != nil)",
+                    "toast: \(EngineModel.shared.toast ?? "none")",
+                ]
+                if let directory {
+                    try? report.joined(separator: "\n").write(to: directory.appendingPathComponent("call-confirm.txt"), atomically: true, encoding: .utf8)
+                }
+            }
+        }
+    }
+
     /// Where the Messages page starts in a debug run: `TANDEM_DEBUG_MESSAGES=empty` a conversation without messages, `group` a
-    /// group, `number` a number without a name, `compose` a new message. Anything else is the newest conversation.
+    /// group, `number` a number without a name, `compose` a new message, `contacts` the contacts of the phone, `confirm` the
+    /// question before a call. Anything else is the newest conversation.
     static var messagesStart: String? { variable("TANDEM_DEBUG_MESSAGES") }
 
     static var messagesThread: UInt64? {

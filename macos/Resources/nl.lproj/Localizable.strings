@@ -1121,6 +1121,17 @@
 "Number" = "Nummer";
 "%@ is calling %@" = "%1$@ belt %2$@";
 "%@ could not be reached" = "%@ is niet bereikbaar";
+
+/* Messages and calls: the contacts of the phone, and the question before every call */
+"Conversations" = "Gesprekken";
+"Contacts" = "Contacten";
+"Show" = "Toon";
+"No contacts" = "Geen contacten";
+"No contacts found" = "Geen contacten gevonden";
+"Tandem on %@ may not have access to contacts yet." = "Tandem op %@ heeft misschien nog geen toegang tot de contacten.";
+"Call %@?" = "%@ bellen?";
+"Via %@" = "Via %@";
+"%@ via %@" = "%1$@ via %2$@";
 "%@ did not hear the quiet sound" = "%@ hoorde het stille geluid niet";
 "Some microphones hear less up high. The audible sound is a short sweep you can hear." = "Sommige microfoons horen minder in de hoogte. Het hoorbare geluid is een korte sweep die je kunt horen.";
 "Use audible sound" = "Hoorbaar geluid";

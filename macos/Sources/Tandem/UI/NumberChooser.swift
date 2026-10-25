@@ -80,8 +80,7 @@ private struct NumberChooserView: View {
     }
 }
 
-/// One number of a person: what kind on the left, small, and the number on the right in digits of one width, on one line. Also the
-/// rows under the field of the Call button.
+/// One number of a person: what kind on the left, small, and the number on the right in digits of one width, on one line.
 struct NumberRow: View {
     var title: String? = nil
     let label: String

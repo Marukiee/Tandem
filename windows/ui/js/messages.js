@@ -1,12 +1,24 @@
 // Messages: the text messages of a phone, the way Messages on a Mac shows those of an iPhone. The conversations on the left,
 // the one that is open on the right, a field at the bottom. What is sent goes out from the phone, as an ordinary SMS.
+// Calling lives here too, since it is the same people: the list switches to the phone's contacts, and a conversation and a contact
+// each have a call button. Every call is asked first (see `askCall` in calls.js).
 import { html, useEffect, useRef, useState } from "../vendor/preact-htm.js";
 import { call, listen } from "./backend.js";
+import { askCall, typedNumber } from "./calls.js";
 import { Icon } from "./icons.js";
 import { language, t } from "./i18n.js";
-import { say, set } from "./store.js";
+import { say } from "./store.js";
 
 const PAGE = 40;
+// The same as `MAX_CONTACTS` in the core: an answer this long may have left people out.
+const CONTACTS_ANSWER = 25;
+const LETTERS = "abcdefghijklmnopqrstuvwxyz".split("");
+
+/** A phone has its messages, and its calls with them, as a place of its own under it in the sidebar. What a device can do is only
+ * known while it is connected, so a phone that is away keeps the place: the page itself says that it cannot be reached. */
+export function offersMessages(d) {
+  return d.platform === "android" && (!Array.isArray(d.caps) || !d.caps.length || d.caps.includes("sms"));
+}
 const REFUSALS = ["off", "no_permission", "unavailable", "offline"];
 
 // What is known of each phone, kept while the window is open so going back and forth does not ask the phone again.
@@ -14,7 +26,12 @@ const phones = new Map();
 const redraws = new Set();
 
 function phone(id) {
-  if (!phones.has(id)) phones.set(id, { conversations: [], more: false, load: "idle", problem: "", threads: new Map(), pending: [], pictures: new Map() });
+  if (!phones.has(id)) {
+    phones.set(id, {
+      conversations: [], more: false, load: "idle", problem: "", threads: new Map(), pending: [], pictures: new Map(),
+      contacts: { byKey: new Map(), people: [], load: "idle" },
+    });
+  }
   return phones.get(id);
 }
 
@@ -175,6 +192,85 @@ function problemText(code) {
   }
 }
 
+// ---- Contacts --------------------------------------------------------------------------
+
+/** The last nine digits: what is left of a Dutch (and most other) mobile number with the country code or the 0 in front taken off. */
+function numberKey(number) {
+  const digits = String(number || "").replace(/\D/g, "");
+  return digits.length > 9 ? digits.slice(-9) : digits;
+}
+
+function addContacts(device, found) {
+  const book = phone(device).contacts;
+  let changed = false;
+  (found || []).forEach((c) => {
+    const k = numberKey(c.number);
+    if (!book.byKey.has(k)) { book.byKey.set(k, c); changed = true; }
+  });
+  if (!changed) return;
+  const grouped = new Map();
+  book.byKey.forEach((c) => {
+    const id = c.name || c.number;
+    if (!grouped.has(id)) grouped.set(id, { id, name: c.name, numbers: [] });
+    grouped.get(id).numbers.push({ number: c.number, label: c.label || "" });
+  });
+  book.people = [...grouped.values()]
+    .map((p) => ({ ...p, numbers: p.numbers.sort((a, b) => a.label.localeCompare(b.label) || a.number.localeCompare(b.number)) }))
+    .sort((a, b) => a.id.localeCompare(b.id, language(), { numeric: true, sensitivity: "base" }));
+  redraw();
+}
+
+/** The whole book, once while the window is open. A phone that says `sms.contacts` hands it out in one go. An older one only answers a
+ * search (at most 25 at a time, nothing for an empty one), so it is asked for each letter in turn, and a letter that fills a whole
+ * answer again for each two letters. One question after the other, so the phone is never flooded, and what comes in shows up at once. */
+async function loadContacts(d) {
+  const device = d.id;
+  const book = phone(device).contacts;
+  if (book.load !== "idle") return;
+  book.load = "loading";
+  redraw();
+  if (Array.isArray(d.caps) && d.caps.includes("sms.contacts")) {
+    try {
+      addContacts(device, await call("sms_all_contacts", { id: device }));
+      book.load = "done";
+      redraw();
+      return;
+    } catch { /* asked letter by letter below */ }
+  }
+  const full = [];
+  for (const letter of LETTERS) {
+    let found;
+    try {
+      found = await call("sms_contacts", { id: device, query: letter });
+    } catch {
+      // The phone went away or refuses: try again the next time the list is opened.
+      book.load = "idle";
+      redraw();
+      return;
+    }
+    addContacts(device, found);
+    if ((found || []).length >= CONTACTS_ANSWER) full.push(letter);
+  }
+  for (const letter of full) {
+    for (const second of LETTERS) {
+      try { addContacts(device, await call("sms_contacts", { id: device, query: letter + second })); } catch { /* the rest still comes */ }
+    }
+  }
+  book.load = "done";
+  redraw();
+}
+
+function matchingPeople(book, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return book.people;
+  const digits = q.replace(/\D/g, "");
+  return book.people.filter((p) => p.name.toLowerCase().includes(q)
+    || (digits.length >= 3 && p.numbers.some((n) => n.number.replace(/\D/g, "").includes(digits))));
+}
+
+/** The number to write to first: a mobile one, since a landline cannot take a text. */
+const preferred = (person) => person.numbers.find((n) => /mob/i.test(n.label)) || person.numbers[0];
+
 // ---- Words --------------------------------------------------------------------------
 
 function title(c) {
@@ -253,15 +349,10 @@ function Avatar({ name, address = "", group = false, size = 40 }) {
 
 const ConversationAvatar = ({ c, size }) => html`<${Avatar} name=${c.name} address=${c.addresses[0] || ""} group=${c.addresses.length > 1} size=${size} />`;
 
-/** Has the phone place a call. The talking happens on the phone or its headset: call audio does not reach a computer. */
-function dial(device, number) {
-  // What stands in the way is said when someone asks for a call, not shown on the page all the time.
-  const calls = (device.features || []).find((f) => f.id === "calls");
-  if (calls && !calls.ready) { say(calls.why); return; }
-  if (!device.online) { say(t("features_unreachable", device.name)); return; }
-  call("dial", { id: device.id, number })
-    .then(() => say(t("sms_calling", device.name)))
-    .catch(() => say(t("features_unreachable", device.name)));
+/** Asks to call the person of a conversation, with the name and kind of number the phone's contacts have for it. */
+function dial(device, conversation, number) {
+  const known = phone(device.id).contacts.byKey.get(numberKey(number));
+  askCall(device, [{ number, label: known ? known.label : "" }], conversation.name || (known && known.name) || "");
 }
 
 // ---- The page -------------------------------------------------------------------------
@@ -270,7 +361,10 @@ export function MessagesPage({ device }) {
   const [, bump] = useState(0);
   const [selection, setSelection] = useState(null);
   const [composing, setComposing] = useState(false);
+  // Who a new message goes to when it was started from a contact.
+  const [recipient, setRecipient] = useState(null);
   const [search, setSearch] = useState("");
+  const [tab, setTab] = useState(new URLSearchParams(location.search).get("sms_tab") === "contacts" ? "contacts" : "conversations");
   const p = phone(device.id);
 
   useEffect(() => {
@@ -299,10 +393,18 @@ export function MessagesPage({ device }) {
     }
   }, [selection, composing]);
 
-  const back = () => set({ page: "device", selected: device.id });
-  const compose = () => { setComposing(true); setSelection(null); };
+  const compose = (to = null) => { setRecipient(to); setComposing(true); setSelection(null); };
+  const switchTo = (which) => { setTab(which); setSearch(""); };
+  // A contact chosen in the list: the conversation with them when there is one, otherwise a new message to their number.
+  const openPerson = (person) => {
+    const keys = new Set(person.numbers.map((n) => numberKey(n.number)));
+    const existing = p.conversations.find((c) => c.addresses.length === 1 && keys.has(numberKey(c.addresses[0])));
+    if (existing) { setComposing(false); setSelection(existing.thread); return; }
+    const number = preferred(person);
+    if (number) compose({ name: person.name, number: number.number, label: number.label });
+  };
 
-  if (!p.conversations.length && p.load !== "ready" && !composing) return html`<${Notice} device=${device} p=${p} back=${back} />`;
+  if (!p.conversations.length && p.load !== "ready" && !composing) return html`<${Notice} device=${device} p=${p} />`;
 
   const query = search.trim().toLowerCase();
   const shown = query
@@ -313,14 +415,19 @@ export function MessagesPage({ device }) {
   return html`<div class="sms">
     <aside class="sms-list">
       <div class="sms-head">
-        <button class="ib" title=${t("back")} onClick=${back}><${Icon} name="chevron-left" size=${18} /></button>
         <label class="sms-search"><${Icon} name="search" size=${15} />
-          <input type="text" placeholder=${t("search")} value=${search} onInput=${(e) => setSearch(e.target.value)} />
+          <input type="text" placeholder=${tab === "contacts" ? t("sms_name_or_number") : t("search")} value=${search} onInput=${(e) => setSearch(e.target.value)} />
           ${search && html`<button class="ib sms-clear" title=${t("remove")} onClick=${() => setSearch("")}><${Icon} name="x" size=${13} /></button>`}
         </label>
-        <button class=${"ib" + (composing ? " on" : "")} title=${t("sms_new")} onClick=${compose}><${Icon} name="edit" size=${18} /></button>
+        <button class=${"ib" + (composing ? " on" : "")} title=${t("sms_new")} onClick=${() => compose()}><${Icon} name="edit" size=${18} /></button>
       </div>
-      <div class="sms-rows">
+      <div class="seg sms-tabs" role="tablist">
+        <button role="tab" class=${tab === "conversations" ? "on" : ""} aria-selected=${tab === "conversations"} onClick=${() => switchTo("conversations")}>${t("sms_conversations")}</button>
+        <button role="tab" class=${tab === "contacts" ? "on" : ""} aria-selected=${tab === "contacts"} onClick=${() => switchTo("contacts")}>${t("sms_contacts")}</button>
+      </div>
+      ${tab === "contacts"
+        ? html`<${ContactsList} device=${device} search=${search} open=${open} onOpen=${openPerson} />`
+        : html`<div class="sms-rows">
         ${shown.map((c) => {
           const unread = c.unread > 0 && c.date > seen(device.id, c.thread) && c.thread !== p.open;
           return html`<div key=${c.thread} class=${"sms-row" + (open && open.thread === c.thread ? " selected" : "") + (unread ? " unread" : "")}
@@ -335,20 +442,65 @@ export function MessagesPage({ device }) {
         })}
         ${query && !shown.length && html`<div class="sms-empty-list muted">${t("sms_no_results")}</div>`}
         ${p.more && !query && html`<${Sentinel} key=${p.conversations.length} onSeen=${() => moreConversations(device.id)} />`}
-      </div>
+      </div>`}
     </aside>
     <section class="sms-chat">
       ${composing
-        ? html`<${NewMessage} device=${device} onDone=${(thread) => { setComposing(false); if (thread != null) setSelection(thread); }} />`
+        ? html`<${NewMessage} key=${recipient ? recipient.number : ""} device=${device} initial=${recipient}
+            onDone=${(thread) => { setComposing(false); setRecipient(null); if (thread != null) setSelection(thread); }} />`
         : open
           ? html`<${Conversation} key=${open.thread} device=${device} conversation=${open} />`
           : html`<div class="sms-hero">
               <span class="sms-notice-mark"><${Icon} name="message" size=${28} /></span>
               <h2>${p.conversations.length ? t("sms_choose") : t("sms_none")}</h2>
               <p class="muted">${t("sms_pick_hint")}</p>
-              <button class="btn accent" onClick=${compose}><${Icon} name="edit" size=${16} />${t("sms_new")}</button>
+              <button class="btn accent" onClick=${() => compose()}><${Icon} name="edit" size=${16} />${t("sms_new")}</button>
             </div>`}
     </section>
+  </div>`;
+}
+
+/** The phone's contacts, built like the conversation rows: the same faces, the name in bold and the numbers under it with what they
+ * are. A click writes to the person, the phone button calls them (after asking). */
+function ContactsList({ device, search, open, onOpen }) {
+  const book = phone(device.id).contacts;
+  useEffect(() => { if (device.online) loadContacts(device); }, [device.id, device.online]);
+  useEffect(() => {
+    if (!device.online || !search.trim()) return undefined;
+    // Typing fast asks the phone once, for what was typed last; it knows the people not gathered yet.
+    const timer = setTimeout(() => call("sms_contacts", { id: device.id, query: search.trim() }).then((found) => addContacts(device.id, found)).catch(() => {}), 250);
+    return () => clearTimeout(timer);
+  }, [search, device.id, device.online]);
+  const people = matchingPeople(book, search);
+  const typed = typedNumber(search);
+  const digits = typed ? typed.replace(/\D/g, "") : "";
+  const shown = typed && !people.some((p) => p.numbers.some((n) => n.number.replace(/\D/g, "").includes(digits)))
+    ? [{ id: "typed", name: "", numbers: [{ number: typed, label: "" }] }, ...people]
+    : people;
+  const openKey = open && open.addresses.length === 1 ? numberKey(open.addresses[0]) : null;
+  // Someone with more numbers is asked which one in the question itself, the one to write to first chosen.
+  const ask = (person) => {
+    const first = preferred(person);
+    askCall(device, [first, ...person.numbers.filter((n) => n !== first)], person.name);
+  };
+  return html`<div class="sms-rows">
+    ${shown.map((person) => {
+      const selected = openKey && person.numbers.some((n) => numberKey(n.number) === openKey);
+      const title = person.name || person.numbers[0].number;
+      return html`<div key=${person.id} class=${"sms-row sms-contact" + (selected ? " selected" : "")} onClick=${() => onOpen(person)}>
+        <span class="sms-dot"></span>
+        <${Avatar} name=${person.name} address=${person.numbers[0].number} size=${40} />
+        <div class="grow">
+          <div class="sms-row-name ellipsis">${title}</div>
+          ${person.name && person.numbers.map((n) => html`<div class="sms-contact-number ellipsis">${[n.label, n.number].filter(Boolean).join(" ")}</div>`)}
+        </div>
+        <button class="ib solid" title=${t("sms_call", title)} onClick=${(e) => { e.stopPropagation(); ask(person); }}>
+          <${Icon} name="phone" size=${16} /></button>
+      </div>`;
+    })}
+    ${!shown.length && book.load !== "loading" && html`<div class="sms-empty-list muted">
+      ${search ? t("sms_no_contacts_found") : html`<b>${t("sms_no_contacts")}</b><br />${t("sms_contacts_access", device.name)}`}</div>`}
+    ${book.load === "loading" && html`<div class="sms-more"><span class="sms-spinner"></span></div>`}
   </div>`;
 }
 
@@ -419,7 +571,7 @@ function Conversation({ device, conversation }) {
       <${ConversationAvatar} c=${conversation} size=${32} />
       <div class="grow"><div class="sms-chat-name ellipsis">${title(conversation)}</div>
         ${conversation.name && html`<div class="small muted ellipsis">${conversation.addresses.join(", ")}</div>`}</div>
-      ${number && html`<button class="ib solid" title=${t("sms_call", title(conversation))} onClick=${() => dial(device, number)}><${Icon} name="phone" size=${17} /></button>`}
+      ${number && html`<button class="ib solid" title=${t("sms_call", title(conversation))} onClick=${() => dial(device, conversation, number)}><${Icon} name="phone" size=${17} /></button>`}
     </header>
     <div class="sms-scroll">
       ${items.map((item) => item.day != null
@@ -492,9 +644,9 @@ function Composer({ value, onInput, onSend, disabled = false, autofocus = false 
   </footer>`;
 }
 
-function NewMessage({ device, onDone }) {
+function NewMessage({ device, initial = null, onDone }) {
   const [query, setQuery] = useState("");
-  const [recipient, setRecipient] = useState(null);
+  const [recipient, setRecipient] = useState(initial);
   const [suggestions, setSuggestions] = useState([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -552,11 +704,11 @@ function NewMessage({ device, onDone }) {
       </div>`)}
     </div>
     ${problem && html`<div class="sms-note small bad-text">${problem}</div>`}
-    <${Composer} value=${draft} onInput=${setDraft} onSend=${submit} disabled=${sending} />`;
+    <${Composer} value=${draft} onInput=${setDraft} onSend=${submit} disabled=${sending} autofocus=${!!initial} />`;
 }
 
 /** What stands in the way, said only once the person opened Messages, with the one thing that helps. */
-function Notice({ device, p, back }) {
+function Notice({ device, p }) {
   const [asked, setAsked] = useState(false);
   const ask = () => call("sms_ask_access", { id: device.id })
     .then(() => { setAsked(true); say(t("sms_look", device.name)); })
@@ -570,7 +722,6 @@ function Notice({ device, p, back }) {
   };
   const words = kinds[p.load];
   return html`<div class="sms sms-alone">
-    <div class="sms-head"><button class="ib" title=${t("back")} onClick=${back}><${Icon} name="chevron-left" size=${18} /></button></div>
     <div class="sms-notice">
       ${!words
         ? html`<span class="sms-spinner big"></span>`

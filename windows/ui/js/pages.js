@@ -6,7 +6,6 @@ import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, 
 import { Icon } from "./icons.js";
 import { FindSoundRow, LastSeen, PlaySoundButton } from "./find.js";
 import { canPlay, OutputButton } from "./output.js";
-import { CallButton } from "./calls.js";
 import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
 
@@ -262,8 +261,6 @@ export function DevicePage({ device }) {
           <${Icon} name="wifi" size=${17} />${t("wifi_share")}</button>`}
         ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
           <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}
-        ${hasCap("sms") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "messages", selected: device.id })}>
-          <${Icon} name="message" size=${17} />${t("sms_messages")}</button>`}
         ${(isComputer || device.platform === "android") && html`${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${() => (hasCap("screen.host") ? show("screen") : say(t("live_update_phone")))}>
           <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} title=${t("live_camera_tip")} onClick=${() => (hasCap("camera.host") ? show("camera") : say(t("live_update_phone")))}>
@@ -287,7 +284,6 @@ export function DevicePage({ device }) {
           <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>
         <button class="btn" disabled=${!device.online} title=${t("insert_scan_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "document" }).catch(failed)}>
           <${Icon} name="file" size=${17} />${t("insert_scan")}</button>`}
-        ${device.platform === "android" && html`<${CallButton} device=${device} />`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
           <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}`}
     </div>

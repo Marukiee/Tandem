@@ -132,7 +132,8 @@ final class PhoneSpotlight {
 
     // MARK: Picked in Spotlight
 
-    /// A result was picked: the phone calls the person, after asking which number when there is more than one.
+    /// A result was picked: the phone calls the person, always after asking, as every call from this Mac is (a pick is easily a slip).
+    /// With one number a card asks whether to call it; with more, the card that asks which one is that question.
     func open(identifier: String) {
         guard let (phone, personId) = Self.parse(identifier),
               let person = Self.read(phone).first(where: { $0.id == personId })
@@ -141,7 +142,7 @@ final class PhoneSpotlight {
             return
         }
         if person.numbers.count == 1 {
-            call(person.numbers[0].number, on: phone)
+            confirm(person.name, number: person.numbers[0], on: phone)
             return
         }
         // The one the phone would call without asking goes first, where Return picks it.
@@ -149,13 +150,29 @@ final class PhoneSpotlight {
             .sorted { ($0.element.preferred ? 0 : 1, $0.offset) < ($1.element.preferred ? 0 : 1, $1.offset) }
             .map { NumberChooser.Choice(number: $0.element.number, label: $0.element.label) }
         asked += 1
-        NumberChooser.shared.ask(name: person.name, choices: choices) { [weak self] number in self?.call(number, on: phone) }
+        NumberChooser.shared.ask(name: person.name, choices: choices) { [weak self] number in self?.call(number, name: person.name, on: phone) }
+    }
+
+    /// "Call Anna de Vries?" with Cancel and Call in the column of floating cards, since Spotlight leaves no window to ask in. Return
+    /// calls, Escape cancels, and nobody answering calls nobody.
+    private func confirm(_ name: String, number: Number, on phone: String) {
+        let what = [number.label, number.number].filter { !$0.isEmpty }.joined(separator: " ")
+        let via = EngineModel.shared.device(phone)?.name ?? ""
+        GlassQuestion.shared.ask(
+            symbol: "phone.fill",
+            title: String(localized: "Call \(name)?"),
+            body: via.isEmpty ? what : String(localized: "\(what) via \(via)"),
+            answers: [
+                .init(title: "Cancel") {},
+                .init(title: "Call", prominent: true) { [weak self] in self?.call(number.number, name: name, on: phone) },
+            ]
+        )
     }
 
     /// How often a person was asked which number, for the check below.
     private(set) var asked = 0
 
-    private func call(_ number: String, on phone: String) {
+    private func call(_ number: String, name: String, on phone: String) {
         Task { @MainActor in
             // Spotlight may just have started Tandem: the phone needs a moment to be found.
             for _ in 0..<40 {
@@ -166,7 +183,10 @@ final class PhoneSpotlight {
                 FloatingToast.show(String(localized: "That phone is no longer paired"), symbol: "exclamationmark.triangle.fill")
                 return
             }
-            CallButton.dial(number, on: device) { FloatingToast.show($0, symbol: "phone.fill") }
+            guard let engine = EngineModel.shared.tandem else { return }
+            CallConfirmation.dial(number, device: device.id, deviceName: device.name, name: name, engine: engine) {
+                FloatingToast.show($0, symbol: "phone.fill")
+            }
         }
     }
 

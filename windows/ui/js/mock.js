@@ -9,7 +9,7 @@ const cover = "data:image/svg+xml;utf8," + encodeURIComponent(
 
 const now = Date.now();
 const devices = empty ? [] : [
-  { id: "phone", name: "Pixel 9", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host", "screen.extend.view", "wifi.join", "sms"],
+  { id: "phone", name: "Pixel 9", platform: "android", online: true, route: "lan", rttMs: 16, appVersion: "0.1.25", caps: ["files", "screen.host", "camera.host", "screen.extend.view", "wifi.join", "sms", "sms.contacts"],
     // ?calls=off: the phone may not place calls yet, which the call button in Messages says when it is pressed.
     features: [{ id: "calls", ready: new URLSearchParams(location.search).get("calls") !== "off", name: "Calls", why: "Tandem may not make calls on Pixel 9 yet. Allow it on the phone.", page: "access" }],
     clipboard: true, autoAccept: true, notifications: true, ble: false, vouchedByRemoved: false,
@@ -124,17 +124,28 @@ const smsPicture = "data:image/svg+xml;utf8," + encodeURIComponent(
 );
 let smsNext = 100;
 
+// The contacts of the phone, two people with two numbers. A search finds a part of the name or the number, as the phone does.
+const smsContacts = [
+  { name: "Anna de Vries", number: "+31612345678", label: "Mobiel" },
+  { name: "Anna de Vries", number: "+31201234567", label: "Werk" },
+  { name: "Anne Jansen", number: "+31698765432", label: "Werk" },
+  { name: "Bob", number: "+31611111111", label: "Mobiel" },
+  { name: "Carla Smit", number: "+31622222222", label: "Mobiel" },
+  { name: "Mam", number: "+31633333333", label: "Mobiel" },
+  { name: "Lotte Bakker", number: "+31644444444", label: "Mobiel" },
+  { name: "Pieter van Dijk", number: "+31655555555", label: "Mobiel" },
+  { name: "Pieter van Dijk", number: "+31307778899", label: "Thuis" },
+  { name: "Yusuf Kaya", number: "+31677777777", label: "Mobiel" },
+];
+
 function smsAnswer(command, args) {
   if (command === "sms_ask_access") return null;
   if (smsRefusal) throw smsRefusal;
   switch (command) {
     case "sms_conversations": return { items: smsConversations.filter((c) => !args.before || c.date <= args.before).slice(0, args.limit), more: false };
     case "sms_messages": return { thread: args.thread, items: smsThreads[args.thread] || [], more: false };
-    case "sms_contacts": return [
-      { name: "Anna de Vries", number: "+31612345678", label: "Mobiel" },
-      { name: "Anna de Vries", number: "+31201234567", label: "Werk" },
-      { name: "Anne Jansen", number: "+31698765432", label: "Werk" },
-    ].filter((c) => c.name.toLowerCase().includes(args.query.toLowerCase()) || c.number.includes(args.query));
+    case "sms_contacts": return smsContacts.filter((c) => c.name.toLowerCase().includes(args.query.toLowerCase()) || c.number.includes(args.query));
+    case "sms_all_contacts": return smsContacts;
     case "sms_picture": return smsPicture;
     case "sms_send": {
       let conversation = smsConversations.find((c) => c.addresses.join() === args.to.join());
@@ -220,6 +231,8 @@ export async function call(command, args) {
       { id: "microphone", ready: false, name: "Find the side by sound", why: "This computer has no microphone that Tandem can use", page: "sound" },
     ];
     case "features_open_here": case "features_open_on": return null;
+    // Kept, so a look in the browser can tell how many calls one press made.
+    case "dial": (window.mockDials = window.mockDials || []).push(args); return null;
     case "live_start": return 1;
     case "display_start": case "display_stop": return null;
     case "display_state": return [];

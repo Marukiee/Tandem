@@ -7,7 +7,8 @@ import { ResizeEdges, Titlebar, framed } from "./chrome.js";
 import { setLanguage, t } from "./i18n.js";
 import { ClipboardPage, DevicePage, FilesPage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
 import { say, selectedDevice, set, state, useStore } from "./store.js";
-import { MessagesPage } from "./messages.js";
+import { MessagesPage, offersMessages } from "./messages.js";
+import { CallDialog, useCallAsk } from "./calls.js";
 
 /** The update, at the foot of the sidebar: what is out, how far the download is, and what went wrong. */
 function UpdateBanner() {
@@ -78,8 +79,11 @@ function Nav() {
     <div class="label">${t("devices")}</div>
     ${state.devices.map((d) => {
       const battery = d.status && d.status.battery;
-      const on = state.page === "device" && state.selected === d.id;
-      return html`<div class=${"row" + (on ? " selected" : "") + (d.online ? "" : " dim")} key=${d.id} onClick=${() => set({ selected: d.id, page: "device" })}>
+      const on = (state.page === "device" || state.page === "files") && state.selected === d.id;
+      const messages = offersMessages(d) && html`<div class=${"row subrow" + (state.page === "messages" && state.selected === d.id ? " selected" : "") + (d.online ? "" : " dim")}
+        key=${d.id + "-messages"} onClick=${() => set({ selected: d.id, page: "messages" })}>
+        <span class="subrow-mark"><${Icon} name="message" size=${15} /></span><span class="grow">${t("sms_messages")}</span></div>`;
+      return [html`<div class=${"row" + (on ? " selected" : "") + (d.online ? "" : " dim")} key=${d.id} onClick=${() => set({ selected: d.id, page: "device" })}>
         <${DeviceGlyph} device=${d} size=${36} />
         <div class="grow">
           <div class="name ellipsis">${d.name}</div>
@@ -87,7 +91,7 @@ function Nav() {
         </div>
         ${battery && html`<span class="small muted" style="display:flex;align-items:center;gap:2px">
           ${battery.charging && html`<${Icon} name="bolt" size=${13} filled=${true} class="ok-text" />`}${battery.level}%</span>`}
-      </div>`;
+      </div>`, messages];
     })}
     <div class="row addrow" onClick=${() => set({ dialog: { kind: "pair" } })}><${Icon} name="plus" size=${18} />${t("add_device")}</div>
     <div class="spacer"></div>
@@ -120,6 +124,7 @@ function Dialogs() {
         <div style="text-align:right;margin-top:14px"><button class="btn" onClick=${close}>${t("close")}</button></div>
       </div></div>`;
   }
+  if (dialog.kind === "call") return html`<${CallDialog} dialog=${dialog} />`;
   if (dialog.kind === "remove") {
     const d = state.devices.find((x) => x.id === dialog.id);
     return html`<div class="scrim" onClick=${(e) => e.target === e.currentTarget && close()}>
@@ -152,6 +157,7 @@ function Page() {
 
 function App() {
   useStore();
+  useCallAsk();
   useEffect(() => { setLanguage(state.settings.language, state.systemLanguage); }, [state.settings.language, state.systemLanguage]);
   return html`<div id="app" class=${framed() ? "framed" : ""}>
     ${framed() && html`<${Titlebar} />`}

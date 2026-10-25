@@ -27,7 +27,15 @@ struct Sidebar: View {
     @Namespace private var chosen
 
     private var order: [SidebarSelection] {
-        model.devices.map { .device($0.id) } + [.shared, .notifications, .clipboard]
+        model.devices.flatMap { device in
+            Sidebar.offersMessages(device) ? [SidebarSelection.device(device.id), .messages(device.id)] : [.device(device.id)]
+        } + [.shared, .notifications, .clipboard]
+    }
+
+    /// A phone has its messages, and its calls with them, as a place of its own under it. What a device can do is only known while
+    /// it is connected, so a phone that is away keeps the place: the page itself says that it cannot be reached.
+    static func offersMessages(_ device: TandemDevice) -> Bool {
+        device.platform == .android && (device.caps.isEmpty || device.caps.contains("sms"))
     }
 
     var body: some View {
@@ -38,10 +46,18 @@ struct Sidebar: View {
                     .padding(.top, 10)
                     .padding(.bottom, 4)
                 ForEach(model.devices, id: \.id) { device in
-                    SidebarButton(selected: selection == .device(device.id) || selection == .files(device.id) || selection == .messages(device.id), chosen: chosen) {
+                    SidebarButton(selected: selection == .device(device.id) || selection == .files(device.id), chosen: chosen) {
                         selection = .device(device.id)
                     } content: {
                         DeviceRow(device: device)
+                    }
+                    if Sidebar.offersMessages(device) {
+                        SidebarButton(selected: selection == .messages(device.id), chosen: chosen) {
+                            selection = .messages(device.id)
+                        } content: {
+                            MessagesRow(device: device)
+                        }
+                        .transition(.opacity)
                     }
                 }
 
@@ -233,6 +249,38 @@ private struct SideRow: View {
         }
         .padding(.vertical, 3)
         .animation(.tandem, value: badge)
+    }
+}
+
+/// The messages of a phone, just under it and stepped in, so it reads as part of that phone: a smaller disc in the middle of the
+/// column of the phone's own glyph.
+private struct MessagesRow: View {
+    let device: TandemDevice
+
+    var body: some View {
+        let unread = MessagesStore.shared.phone(device.id).unreadCount
+        HStack(spacing: 11) {
+            Image(systemName: "message.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Palette.indigo)
+                .frame(width: 26, height: 26)
+                .background(Palette.indigo.opacity(0.14), in: Circle())
+                .frame(width: 38)
+            Text("Messages").font(.callout.weight(.medium)).lineLimit(1)
+            Spacer(minLength: 0)
+            if unread > 0 {
+                Text("\(unread)")
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(Palette.indigo.opacity(0.18), in: Capsule())
+                    .contentTransition(.numericText(value: Double(unread)))
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .padding(.vertical, 1)
+        .opacity(device.online ? 1 : 0.6)
+        .animation(.tandem, value: unread)
     }
 }
 

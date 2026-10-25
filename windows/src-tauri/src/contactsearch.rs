@@ -10,11 +10,11 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
-use tandem_core::ffi::sms::{TandemPhoneContact, TandemSmsError};
+use tandem_core::ffi::sms::{TandemPhoneContact, TandemPhoneNumber, TandemSmsError};
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::settings;
 use crate::state::AppState;
-use crate::{events, i18n, settings};
 
 const REFRESH_EVERY: Duration = Duration::from_secs(3 * 3600);
 const RETRY_AFTER: Duration = Duration::from_secs(10 * 60);
@@ -25,16 +25,8 @@ const MAX_RESULTS: usize = 8;
 static BOOK: Mutex<Vec<(String, Vec<TandemPhoneContact>)>> = Mutex::new(Vec::new());
 /// When each phone was last asked, or is being asked (`None` while the question runs).
 static ASKED: Mutex<Option<HashMap<String, Option<Instant>>>> = Mutex::new(None);
-/// A person to show in the Call box once the window is there, for a window that had to be made first.
+/// A person to ask about calling once the window is there, for a window that had to be made first.
 static PENDING: Mutex<Option<Value>> = Mutex::new(None);
-
-/// What picking a person does.
-#[derive(Debug, PartialEq, Eq)]
-pub enum Pick {
-    Call { phone: String, number: String },
-    /// Several numbers and none to call without asking: the Call box of that phone, with the name in it.
-    Ask { phone: String, name: String },
-}
 
 fn result_id(phone: &str, person: u64) -> String {
     format!("{phone}/{person}")
@@ -102,14 +94,14 @@ pub fn metas(book: &[(String, Vec<TandemPhoneContact>)], ids: &[String]) -> Vec<
         .collect()
 }
 
-/// One number, or the one the phone marked to call without asking, is called at once; otherwise the person chooses.
-pub fn pick(book: &[(String, Vec<TandemPhoneContact>)], id: &str) -> Option<Pick> {
+/// What picking a person does: the question before the call, in the window, as for every call (a pick in the overview is easily a
+/// slip). All their numbers, with the one the phone would call without asking first, where Enter takes it.
+pub fn ask(book: &[(String, Vec<TandemPhoneContact>)], id: &str) -> Option<Value> {
     let (phone, p) = person(book, id)?;
-    let chosen = if p.numbers.len() == 1 { p.numbers.first() } else { p.numbers.iter().find(|n| n.preferred) };
-    Some(match chosen {
-        Some(n) => Pick::Call { phone: phone.to_string(), number: n.number.clone() },
-        None => Pick::Ask { phone: phone.to_string(), name: p.name.clone() },
-    })
+    let mut numbers: Vec<&TandemPhoneNumber> = p.numbers.iter().collect();
+    numbers.sort_by_key(|n| !n.preferred);
+    let numbers: Vec<Value> = numbers.iter().map(|n| json!({ "number": n.number, "label": n.label })).collect();
+    Some(json!({ "id": phone, "name": p.name, "numbers": numbers }))
 }
 
 // ---- With the app ------------------------------------------------------------------------------------------------------------
@@ -124,35 +116,19 @@ pub fn describe(ids: &[String]) -> Vec<(String, String, String)> {
 
 /// A person was picked in the search of the desktop.
 pub fn activate(app: &AppHandle, id: &str) {
-    let Some(choice) = pick(&BOOK.lock().unwrap(), id) else { return };
-    match choice {
-        Pick::Call { phone, number } => {
-            let app = app.clone();
-            tauri::async_runtime::spawn(async move {
-                let name = events::device_name(&app, &phone);
-                // What the Call button does, so the call card shows up the same way.
-                match crate::calls::dial(app.state::<AppState>(), phone, number.clone()).await {
-                    Ok(()) => events::toast(&app, "Tandem", &i18n::t2(&app, "call_started", &name, &number)),
-                    Err(_) => events::toast(&app, "Tandem", &i18n::t1(&app, "call_unreachable", &name)),
-                }
-            });
-        }
-        Pick::Ask { phone, name } => {
-            let ask = json!({ "id": phone, "name": name });
-            *PENDING.lock().unwrap() = Some(ask.clone());
-            crate::tray::show_main(app);
-            let _ = app.emit("call-ask", ask);
-        }
-    }
+    let Some(ask) = ask(&BOOK.lock().unwrap(), id) else { return };
+    *PENDING.lock().unwrap() = Some(ask.clone());
+    crate::tray::show_main(app);
+    let _ = app.emit("call-ask", ask);
 }
 
-/// The person for the Call box that a window made just now has not heard of yet.
+/// The person to ask about that a window made just now has not heard of yet.
 #[tauri::command]
 pub fn call_ask_pending() -> Option<Value> {
     PENDING.lock().unwrap().take()
 }
 
-/// The Call box took the person.
+/// The window asked about the person.
 #[tauri::command]
 pub fn call_ask_taken() {
     PENDING.lock().unwrap().take();
@@ -349,13 +325,19 @@ mod tests {
     }
 
     #[test]
-    fn one_number_or_the_marked_one_is_called_otherwise_the_person_chooses() {
+    fn a_pick_is_always_asked_with_the_marked_number_first() {
         let book = book();
-        assert_eq!(pick(&book, "phone/1"), Some(Pick::Call { phone: "phone".into(), number: "+31 6 1234 5678".into() }));
-        assert_eq!(pick(&book, "phone/2"), Some(Pick::Ask { phone: "phone".into(), name: "Hanna Jansen".into() }));
-        assert_eq!(pick(&book, "phone/3"), Some(Pick::Call { phone: "phone".into(), number: "020".into() }));
-        assert_eq!(pick(&book, "phone/9"), None);
-        assert_eq!(pick(&book, "nonsense"), None);
+        let numbers = |id: &str| -> Vec<String> {
+            ask(&book, id).unwrap()["numbers"].as_array().unwrap().iter().map(|n| n["number"].as_str().unwrap().to_string()).collect()
+        };
+        assert_eq!(ask(&book, "phone/1").unwrap()["name"], "Anna de Vries");
+        assert_eq!(ask(&book, "phone/1").unwrap()["id"], "phone");
+        assert_eq!(numbers("phone/1"), vec!["+31 6 1234 5678"]);
+        assert_eq!(numbers("phone/2"), vec!["+31611111111", "+31201111111"]);
+        assert_eq!(numbers("phone/3"), vec!["020", "+31622222222"]);
+        assert_eq!(ask(&book, "phone/2").unwrap()["numbers"][1]["label"], "Work");
+        assert!(ask(&book, "phone/9").is_none());
+        assert!(ask(&book, "nonsense").is_none());
     }
 
     #[test]

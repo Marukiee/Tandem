@@ -287,6 +287,7 @@ pub fn run() {
             messages::sms_messages,
             messages::sms_send,
             messages::sms_contacts,
+            messages::sms_all_contacts,
             messages::sms_picture,
             messages::sms_ask_access,
             focus::focus_info,

@@ -69,7 +69,7 @@ struct MainWindow: View {
         }
         // A sheet or dialog covers the window; nothing behind it should react to the pointer.
         // Set before the sheet is attached, so the sheet itself is not affected.
-        .environment(\.hoverEnabled, !(showPairing || model.pendingTrash != nil || model.removedFromCircle))
+        .environment(\.hoverEnabled, !(showPairing || model.pendingTrash != nil || model.removedFromCircle || CallConfirmation.shared.pending != nil))
         .overlay(alignment: .bottom) {
             if let toast = model.toast {
                 ToastView(text: toast)
@@ -85,6 +85,7 @@ struct MainWindow: View {
             }
         }
         .animation(.tandemSpringy, value: showPairing)
+        .callConfirmation()
         .alert("This device was removed", isPresented: Binding(
             get: { model.removedFromCircle },
             set: { model.removedFromCircle = $0 }
@@ -167,7 +168,6 @@ struct MainWindow: View {
                     DeviceDetail(
                         device: device,
                         onBrowse: { selection = .files(device.id) },
-                        onMessages: { selection = .messages(device.id) },
                         onViewAll: {
                             model.sharedDeviceFilter = device.id
                             selection = .shared
@@ -184,7 +184,7 @@ struct MainWindow: View {
                 }
             case let .messages(id):
                 if let device = model.device(id) {
-                    MessagesView(device: device, onBack: { selection = .device(id) }).transition(.page)
+                    MessagesView(device: device).transition(.page)
                 } else {
                     Color.clear
                 }

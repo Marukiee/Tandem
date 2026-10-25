@@ -488,19 +488,28 @@ select { cursor: default; }
 .side-finder .t { font-weight: 500; }
 .side-finder .s { font-size: 12px; color: var(--text-2); }
 
-/* The number to call, under its button. */
-.call-anchor { position: relative; display: inline-flex; }
-.call-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; display: flex; gap: 8px; align-items: center; padding: 10px; }
-.call-pop input { width: 170px; }
-.call-pop { flex-wrap: wrap; width: 320px; }
-.call-found { flex-basis: 100%; display: flex; flex-direction: column; gap: 2px; }
-/* One row per number: who and what kind on the left, the number on the right on one line, as the chooser of the Mac. */
+/* One row per number in the question before a call: what kind on the left, the number on the right on one line, as the chooser of
+   the Mac. The one that Call takes is tinted. */
+.call-ask-numbers { display: flex; flex-direction: column; gap: 2px; margin: 14px 0 0 54px; }
 .call-contact { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 44px; padding: 4px 10px; border: 0; border-radius: 10px; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background 0.2s ease-out; }
 .call-contact:hover { background: var(--hover, rgba(127, 127, 127, 0.12)); }
-.call-contact:first-child { background: var(--accent-soft); }
-.call-contact:first-child:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+.call-contact.on { background: var(--accent-soft); }
+.call-contact.on:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
 .call-contact .who { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .call-contact .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .call-contact .s { font-size: 12px; color: var(--muted, inherit); opacity: 0.75; }
 .call-contact .n { font-variant-numeric: tabular-nums; font-weight: 500; white-space: nowrap; }
-.call-contact:first-child .n { color: var(--accent); }
+.call-contact.on .n { color: var(--accent); }
+
+/* A phone's messages, as a place of its own just under that phone: a smaller mark in the middle of the column of the phone's glyph. */
+.nav .subrow { padding-top: 5px; padding-bottom: 5px; font-weight: 500; }
+.subrow-mark { flex: none; width: 36px; display: grid; place-items: center; }
+.subrow-mark svg { box-sizing: content-box; padding: 5px; border-radius: 50%; color: var(--accent); background: var(--accent-soft); }
+
+/* The question before every call. */
+.call-ask { width: 400px; }
+.call-ask-head { display: flex; align-items: flex-start; gap: 14px; }
+.call-ask-head h2 { margin: 2px 0 4px; font-size: 16px; }
+.call-ask-head p { margin: 0; font-size: 13px; }
+.call-ask-mark { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--accent); background: var(--accent-soft); }
+.call-ask-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
