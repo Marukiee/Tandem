@@ -443,7 +443,7 @@ fn phone_notification(app: &AppHandle, from: &str, n: &TandemNotification) {
     let name = device_name(app, from);
     let settings = settings::get(app);
     if settings.copy_codes {
-        if let Some(code) = &n.otp {
+        if let Some(code) = n.otp.as_ref().filter(|code| first_time(code)) {
             clip::apply(app, code);
             toast(app, &i18n::t1(app, "code_copied", code), &name);
         }
@@ -461,4 +461,14 @@ fn phone_notification(app: &AppHandle, from: &str, n: &TandemNotification) {
         let body = if n.title.is_empty() { n.text.clone() } else { format!("{}\n{}", n.title, n.text) };
         toast(app, &format!("{} · {}", n.app_name, name), &body);
     }
+}
+
+/// The same code can come twice: from the notification of the messages app and from the message itself (the phone sends both where
+/// Android still shows the code in the notification). It is copied and announced once.
+fn first_time(code: &str) -> bool {
+    static LAST: std::sync::Mutex<Option<(String, std::time::Instant)>> = std::sync::Mutex::new(None);
+    let mut last = LAST.lock().unwrap();
+    let again = last.as_ref().is_some_and(|(seen, at)| seen == code && at.elapsed() < std::time::Duration::from_secs(120));
+    *last = Some((code.to_string(), std::time::Instant::now()));
+    !again
 }

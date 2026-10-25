@@ -24,11 +24,17 @@ import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.Channels
 import nl.markmaaktmedia.tandem.engine.EngineHost
 import nl.markmaaktmedia.tandem.graph
+import kotlinx.coroutines.flow.first
+import uniffi.tandem_core.TandemEngine
 import uniffi.tandem_core.TandemEvent
+import uniffi.tandem_core.TandemNotification
+import uniffi.tandem_core.TandemPlatform
 import uniffi.tandem_core.TandemSmsEvent
 import uniffi.tandem_core.TandemSmsMessage
 import uniffi.tandem_core.TandemSmsRefusal
 import uniffi.tandem_core.TandemSmsRequest
+import uniffi.tandem_core.TandemSmsStatus
+import uniffi.tandem_core.tandemFindCode
 
 /**
  * Messages on the phone's side: answers the questions of the computers from [SmsReader], sends what they write, and tells
@@ -192,12 +198,48 @@ class SmsBridge(
             return
         }
         val engine = host.engine ?: return
+        sendCodes(engine, changed)
         if (changed.isEmpty() || !anyReader()) return
         val conversations = safely { reader.conversations(changed.map { it.thread.toLong() }.toSet()) }.orEmpty()
         runCatching { engine.smsChanged(conversations, changed) }
     }
 
     private fun key(m: TandemSmsMessage) = (if (m.mms) "m" else "s") + m.id
+
+    /** The messages whose code went out, so a later change of the same message (read, a picture in) does not send it again. */
+    private val codesSent = HashSet<String>()
+
+    /**
+     * A code in a text that just came in goes to the computers as a notification with that code, which they copy and say so. Since
+     * Android 15 an app that reads notifications gets the text of one with a code hidden ("sensitive notification content"), so the
+     * notification of the messages app no longer brings it; the message itself, which Tandem may read for Messages, does. The
+     * computers leave out a code they copied a moment ago, for a phone where the notification still brings it too.
+     */
+    private suspend fun sendCodes(engine: TandemEngine, changed: List<TandemSmsMessage>) {
+        val prefs = context.graph.prefs
+        if (!prefs.mirrorNotifications.first()) return
+        val now = System.currentTimeMillis()
+        val fresh = changed.filter { it.status == TandemSmsStatus.RECEIVED && now - it.date.toLong() < CODE_FRESH_MS && codesSent.add(key(it)) }
+        if (codesSent.size > 500) codesSent.clear()
+        if (fresh.isEmpty()) return
+        val app = Telephony.Sms.getDefaultSmsPackage(context) ?: context.packageName
+        if (!prefs.mirrors(app)) return
+        val targets = host.devices.value.filter { it.platform != TandemPlatform.ANDROID }.map { it.id }
+        if (targets.isEmpty()) return
+        val label = runCatching {
+            val pm = context.packageManager
+            pm.getApplicationLabel(pm.getApplicationInfo(app, 0)).toString()
+        }.getOrDefault(context.getString(R.string.setting_messages))
+        for (m in fresh) {
+            val code = tandemFindCode(m.body) ?: continue
+            val sender = safely { reader.conversations(setOf(m.thread.toLong())) }?.firstOrNull()?.name?.ifBlank { null } ?: m.address
+            val notification = TandemNotification(
+                key = "tandem-code-${key(m)}", appId = app, appName = label, title = sender, text = m.body, subText = null,
+                ts = m.date, ongoing = false, silent = false, buttons = emptyList(), otp = code, progressDone = null, progressTotal = null,
+            )
+            runCatching { engine.sendNotification(targets, notification) }
+        }
+    }
 
     private fun signature(m: TandemSmsMessage) = listOf(m.status, m.read, m.body, m.date, m.pictures.size).hashCode()
 
@@ -235,6 +277,8 @@ class SmsBridge(
         private const val TAG = "SmsBridge"
         private const val NOTIFICATION = 0x534D00
         const val CAP_VIEW = "sms.view"
+        /** A text older than this is not news any more: its code is not sent on. */
+        private const val CODE_FRESH_MS = 3 * 60_000L
         private val WATCHED = listOf(Uri.parse("content://sms"), Uri.parse("content://mms"), Uri.parse("content://mms-sms/"))
 
         /** What this phone says it can do: messages, when it has a SIM slot to have them. */
