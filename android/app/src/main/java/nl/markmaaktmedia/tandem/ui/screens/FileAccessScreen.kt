@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -63,10 +64,10 @@ private val UploadLimits = listOf(0L, 10_000_000L, 100_000_000L, 1_000_000_000L,
 
 /**
  * What other devices may do with the files of this phone. The choices are kept by the core, which also enforces them,
- * so this screen only shows them and changes them.
+ * so this screen only shows them and changes them. On the page Setup.
  */
 @Composable
-fun FileAccessScreen(onBack: () -> Unit) {
+internal fun ColumnScope.FileAccessContent(withPermission: Boolean = true) {
     val context = LocalContext.current
     val host = context.graph.host
     val devices by host.devices.collectAsState()
@@ -114,23 +115,17 @@ fun FileAccessScreen(onBack: () -> Unit) {
         }
     }
 
-    Column(
-        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
-        }
-        Text(stringResource(R.string.files_title), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 8.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             stringResource(R.string.files_intro),
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
         )
 
-        // Without this Android lets the app see almost nothing of the storage, and a device that asks gets nothing.
-        SectionHeader(stringResource(R.string.files_permission_header))
-        SettingsGroup {
+        // Without this Android lets the app see almost nothing of the storage, and a device that asks gets nothing. On the page Setup the
+        // card of the permissions above says it already.
+        if (withPermission) SectionHeader(stringResource(R.string.files_permission_header))
+        if (withPermission) SettingsGroup {
             SettingsTarget(FocusKeys.FilesPermission, 0, 1) {
                 ActionRow(
                     0, 1, TandemIcons.Folder,
@@ -287,7 +282,6 @@ fun FileAccessScreen(onBack: () -> Unit) {
                 }
             }
         }
-        androidx.compose.foundation.layout.Spacer(Modifier.padding(bottom = 24.dp))
     }
 }
 

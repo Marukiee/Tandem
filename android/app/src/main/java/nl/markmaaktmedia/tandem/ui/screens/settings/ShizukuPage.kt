@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -35,6 +36,12 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 /** What Shizuku is doing on this phone, and what Tandem does with it. */
 @Composable
 internal fun ShizukuPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
+    nl.markmaaktmedia.tandem.ui.screens.SetupScreen(onBack, onOpen, nl.markmaaktmedia.tandem.ui.screens.SetupSection.Shizuku)
+}
+
+/** What Shizuku is for here and how far it is, on the page Setup. */
+@Composable
+internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
     val context = LocalContext.current
     val shizuku = HotspotModule.get(context).shizuku
     val state by shizuku.state.collectAsState()
@@ -70,62 +77,60 @@ internal fun ShizukuPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         Icon(TandemIcons.Check, null, tint = LocalTandemExtraColors.current.online, modifier = Modifier.size(24.dp))
     }
 
-    SettingsPageFrame(stringResource(R.string.shizuku_title), onBack) {
-        Text(
-            stringResource(R.string.shizuku_intro),
-            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-        )
+    Text(
+        stringResource(R.string.shizuku_intro),
+        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+    )
 
-        SectionHeader(stringResource(R.string.shizuku_section_state))
-        SettingsGroup {
-            val (title, sub) = when (state) {
-                ShizukuState.NotInstalled -> R.string.shizuku_state_not_installed to R.string.shizuku_state_not_installed_sub
-                ShizukuState.NotRunning -> R.string.shizuku_state_not_running to R.string.shizuku_state_not_running_sub
-                ShizukuState.NeedsPermission -> R.string.shizuku_state_needs_permission to R.string.shizuku_state_needs_permission_sub
-                ShizukuState.Denied -> R.string.shizuku_state_denied to R.string.shizuku_state_denied_sub
-                ShizukuState.TooOld -> R.string.shizuku_state_too_old to R.string.shizuku_state_too_old_sub
-                ShizukuState.Ready -> (if (uid == 0) R.string.shizuku_state_root else R.string.shizuku_state_shell) to R.string.shizuku_state_ready_sub
-            }
-            SettingsTarget(FocusKeys.ShizukuStatus, 0, 1) {
-                ActionRow(
-                    0, 1, TandemIcons.Terminal, stringResource(title), stringResource(sub),
-                    onClick = nextStep,
-                    trailing = if (ready) done else null,
-                )
-            }
+    SectionHeader(stringResource(R.string.shizuku_section_state))
+    SettingsGroup {
+        val (title, sub) = when (state) {
+            ShizukuState.NotInstalled -> R.string.shizuku_state_not_installed to R.string.shizuku_state_not_installed_sub
+            ShizukuState.NotRunning -> R.string.shizuku_state_not_running to R.string.shizuku_state_not_running_sub
+            ShizukuState.NeedsPermission -> R.string.shizuku_state_needs_permission to R.string.shizuku_state_needs_permission_sub
+            ShizukuState.Denied -> R.string.shizuku_state_denied to R.string.shizuku_state_denied_sub
+            ShizukuState.TooOld -> R.string.shizuku_state_too_old to R.string.shizuku_state_too_old_sub
+            ShizukuState.Ready -> (if (uid == 0) R.string.shizuku_state_root else R.string.shizuku_state_shell) to R.string.shizuku_state_ready_sub
         }
+        SettingsTarget(FocusKeys.ShizukuStatus, 0, 1) {
+            ActionRow(
+                0, 1, TandemIcons.Terminal, stringResource(title), stringResource(sub),
+                onClick = nextStep,
+                trailing = if (ready) done else null,
+            )
+        }
+    }
 
-        SectionHeader(stringResource(R.string.shizuku_section_uses))
-        SettingsGroup {
-            SettingsTarget(FocusKeys.ShizukuHotspot, 0, 2) {
-                ActionRow(
-                    0, 2, TandemIcons.Hotspot, stringResource(R.string.shizuku_use_hotspot),
-                    stringResource(if (ready) R.string.shizuku_use_hotspot_on else R.string.shizuku_use_hotspot_off),
-                    onClick = { onOpen(Route.Hotspot) },
-                    trailing = if (ready) done else null,
-                )
-            }
-            SettingsTarget(FocusKeys.ShizukuProjection, 1, 2) {
-                ActionRow(
-                    1, 2, TandemIcons.VolumeUp, stringResource(R.string.shizuku_use_projection),
-                    stringResource(
-                        when {
-                            projection -> R.string.shizuku_use_projection_on
-                            ready -> R.string.shizuku_use_projection_set
-                            else -> R.string.shizuku_use_projection_off
-                        },
-                    ),
-                    onClick = {
-                        when {
-                            projection -> Unit
-                            ready -> scope.launch { ProjectionGrant.ensure(context) }
-                            else -> nextStep()
-                        }
+    SectionHeader(stringResource(R.string.shizuku_section_uses))
+    SettingsGroup {
+        SettingsTarget(FocusKeys.ShizukuHotspot, 0, 2) {
+            ActionRow(
+                0, 2, TandemIcons.Hotspot, stringResource(R.string.shizuku_use_hotspot),
+                stringResource(if (ready) R.string.shizuku_use_hotspot_on else R.string.shizuku_use_hotspot_off),
+                onClick = { onOpen(Route.Hotspot) },
+                trailing = if (ready) done else null,
+            )
+        }
+        SettingsTarget(FocusKeys.ShizukuProjection, 1, 2) {
+            ActionRow(
+                1, 2, TandemIcons.VolumeUp, stringResource(R.string.shizuku_use_projection),
+                stringResource(
+                    when {
+                        projection -> R.string.shizuku_use_projection_on
+                        ready -> R.string.shizuku_use_projection_set
+                        else -> R.string.shizuku_use_projection_off
                     },
-                    trailing = if (projection) done else null,
-                )
-            }
+                ),
+                onClick = {
+                    when {
+                        projection -> Unit
+                        ready -> scope.launch { ProjectionGrant.ensure(context) }
+                        else -> nextStep()
+                    }
+                },
+                trailing = if (projection) done else null,
+            )
         }
     }
 }

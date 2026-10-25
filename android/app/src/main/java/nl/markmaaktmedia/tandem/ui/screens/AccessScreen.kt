@@ -4,6 +4,7 @@ import android.Manifest
 import android.app.NotificationManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,9 +52,9 @@ import nl.markmaaktmedia.tandem.ui.theme.GroupedSpacing
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemNotification
 
-/** What Tandem may do on this phone, with a way to try each thing without a second device. */
+/** What Tandem may do on this phone, with a way to try each thing without a second device. On the page Setup. */
 @Composable
-fun AccessScreen(onBack: () -> Unit) {
+internal fun ColumnScope.AccessContent() {
     val context = LocalContext.current
     val graph = context.graph
     val scope = rememberCoroutineScope()
@@ -69,163 +70,155 @@ fun AccessScreen(onBack: () -> Unit) {
     val messages = nl.markmaaktmedia.tandem.messages.SmsAccess.available(context)
     val total = if (messages) 12 else 11
 
-    Column(
-        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-    ) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
-        }
-        Text(stringResource(R.string.access_title), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(horizontal = 8.dp).staggeredEntry(0))
-        Text(
-            stringResource(R.string.access_intro),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp).staggeredEntry(1),
-        )
-        Spacer(Modifier.height(8.dp))
+    Text(
+        stringResource(R.string.access_intro),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp).staggeredEntry(1),
+    )
+    Spacer(Modifier.height(8.dp))
 
-        Column(verticalArrangement = Arrangement.spacedBy(GroupedSpacing)) {
-            PermissionCard(
-                TandemIcons.Notifications, stringResource(R.string.perm_notifications), stringResource(R.string.perm_notifications_why),
-                granted = status.notifications,
-                onGrant = requests::notifications,
-                testLabel = stringResource(R.string.perm_notifications_test),
-                onTest = {
-                    Channels.create(context)
-                    context.getSystemService(NotificationManager::class.java).notify(
-                        4242,
-                        NotificationCompat.Builder(context, Channels.INCOMING).setSmallIcon(R.drawable.ic_stat_tandem)
-                            .setContentTitle(context.getString(R.string.test_notification_title))
-                            .setContentText(context.getString(R.string.test_notification_text)).build(),
-                    )
-                    notificationTest = context.getString(R.string.test_sent_local)
-                },
-                testResult = notificationTest,
-                note = blockedNote(!status.notifications && status.isBlocked(Manifest.permission.POST_NOTIFICATIONS), requests),
-                index = 0, total = total,
-                modifier = Modifier.staggeredEntry(2).settingsTarget(FocusKeys.PermNotifications, 0, total),
-            )
-            PermissionCard(
-                TandemIcons.Battery, stringResource(R.string.perm_battery), stringResource(R.string.perm_battery_why),
-                granted = status.battery, onGrant = { Permissions.openBatterySettings(context) },
-                index = 1, total = total,
-                modifier = Modifier.staggeredEntry(3).settingsTarget(FocusKeys.PermBattery, 1, total),
-            )
-            PermissionCard(
-                TandemIcons.Screenshot, stringResource(R.string.perm_photos), stringResource(R.string.perm_photos_why),
-                granted = status.photos, onGrant = requests::photos,
-                note = blockedNote(!status.photos && status.isBlocked(Manifest.permission.READ_MEDIA_IMAGES), requests),
-                index = 2, total = total,
-                modifier = Modifier.staggeredEntry(4).settingsTarget(FocusKeys.PermPhotos, 2, total),
-            )
-            PermissionCard(
-                TandemIcons.Devices, stringResource(R.string.perm_listener), stringResource(R.string.perm_listener_why),
-                granted = status.notificationAccess,
-                partly = stopped,
-                onGrant = { Permissions.openNotificationAccessSettings(context) },
-                note = if (stopped) {
-                    PermissionNote(
-                        stringResource(R.string.perm_listener_stopped),
-                        listOf(
-                            PermissionNoteAction(stringResource(R.string.perm_listener_restart), { Permissions.restartListener(context) }, primary = true),
-                            PermissionNoteAction(stringResource(R.string.perm_listener_open), { Permissions.openNotificationAccessSettings(context) }),
-                        ),
-                    )
-                } else {
-                    null
-                },
-                testLabel = stringResource(R.string.perm_listener_test),
-                onTest = {
-                    val targets = graph.host.devices.value.filter { it.online }.map { it.id }
-                    scope.launch {
-                        if (targets.isEmpty()) {
-                            listenerTest = context.getString(R.string.test_no_device)
-                        } else {
-                            runCatching {
-                                graph.host.engine?.sendNotification(
-                                    targets,
-                                    TandemNotification(
-                                        key = "tandem-test", appId = context.packageName, appName = "Tandem",
-                                        title = context.getString(R.string.test_notification_title),
-                                        text = context.getString(R.string.test_remote_text),
-                                        subText = null, ts = System.currentTimeMillis().toULong(), ongoing = false, silent = false,
-                                        buttons = emptyList(), otp = null, progressDone = null, progressTotal = null,
-                                    ),
-                                )
-                            }
-                            listenerTest = context.getString(R.string.test_sent_remote, targets.size)
-                        }
-                    }
-                },
-                testResult = listenerTest ?: if (listening) {
-                    lastSent?.let { stringResource(R.string.perm_listener_running, android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(it))) }
-                        ?: stringResource(R.string.perm_listener_idle)
-                } else {
-                    null
-                },
-                index = 3, total = total,
-                modifier = Modifier.staggeredEntry(5).settingsTarget(FocusKeys.PermListener, 3, total),
-            )
-            PermissionCard(
-                TandemIcons.Call, stringResource(R.string.perm_phone), stringResource(R.string.perm_phone_why),
-                granted = status.phone != PermissionLevel.Off,
-                partly = status.phone == PermissionLevel.Partly,
-                onGrant = requests::phone,
-                note = phoneNote(status, requests),
-                index = 4, total = total,
-                modifier = Modifier.staggeredEntry(6).settingsTarget(FocusKeys.PermPhone, 4, total),
-            )
-            PermissionCard(
-                TandemIcons.Bluetooth, stringResource(R.string.perm_bluetooth), stringResource(R.string.perm_bluetooth_why),
-                granted = status.bluetooth, onGrant = requests::bluetooth,
-                note = blockedNote(!status.bluetooth && status.isBlocked(Permissions.bluetoothPermissions.toList()), requests),
-                index = 5, total = total,
-                modifier = Modifier.staggeredEntry(7).settingsTarget(FocusKeys.PermBluetooth, 5, total),
-            )
-            PermissionCard(
-                TandemIcons.QrScan, stringResource(R.string.perm_camera), stringResource(R.string.perm_camera_why),
-                granted = status.camera, onGrant = requests::camera,
-                note = blockedNote(!status.camera && status.isBlocked(Manifest.permission.CAMERA), requests),
-                index = 6, total = total,
-                modifier = Modifier.staggeredEntry(8).settingsTarget(FocusKeys.PermCamera, 6, total),
-            )
-            PermissionCard(
-                TandemIcons.Mic, stringResource(R.string.perm_microphone), stringResource(R.string.perm_microphone_why),
-                granted = status.microphone, onGrant = requests::microphone,
-                note = blockedNote(!status.microphone && status.isBlocked(Manifest.permission.RECORD_AUDIO), requests),
-                index = 7, total = total,
-                modifier = Modifier.staggeredEntry(9),
-            )
-            PermissionCard(
-                TandemIcons.Mouse, stringResource(R.string.perm_accessibility), stringResource(R.string.perm_accessibility_why),
-                granted = status.accessibility,
-                onGrant = { context.startActivity(nl.markmaaktmedia.tandem.engine.FeatureReport.intent(context, "accessibility").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) },
-                index = 8, total = total,
-                modifier = Modifier.staggeredEntry(10),
-            )
-            PermissionCard(
-                TandemIcons.Folder, stringResource(R.string.perm_all_files), stringResource(R.string.perm_all_files_why),
-                granted = status.allFiles,
-                onGrant = { context.startActivity(nl.markmaaktmedia.tandem.engine.FeatureReport.intent(context, "all-files").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) },
-                index = 9, total = total,
-                modifier = Modifier.staggeredEntry(11),
-            )
-            PermissionCard(
-                TandemIcons.Update, stringResource(R.string.perm_install), stringResource(R.string.perm_install_why),
-                granted = status.installApps, onGrant = { Permissions.openInstallSettings(context) },
-                index = 10, total = total,
-                modifier = Modifier.staggeredEntry(12).settingsTarget(FocusKeys.PermInstall, 10, total),
-            )
-            if (messages) {
-                PermissionCard(
-                    androidx.compose.ui.res.painterResource(R.drawable.sym_sms), stringResource(R.string.perm_messages), stringResource(R.string.perm_messages_why),
-                    granted = status.sms,
-                    onGrant = { context.startActivity(nl.markmaaktmedia.tandem.messages.MessagesAccessActivity.intent(context, null)) },
-                    index = 11, total = total,
-                    modifier = Modifier.staggeredEntry(13),
+    Column(verticalArrangement = Arrangement.spacedBy(GroupedSpacing)) {
+        PermissionCard(
+            TandemIcons.Notifications, stringResource(R.string.perm_notifications), stringResource(R.string.perm_notifications_why),
+            granted = status.notifications,
+            onGrant = requests::notifications,
+            testLabel = stringResource(R.string.perm_notifications_test),
+            onTest = {
+                Channels.create(context)
+                context.getSystemService(NotificationManager::class.java).notify(
+                    4242,
+                    NotificationCompat.Builder(context, Channels.INCOMING).setSmallIcon(R.drawable.ic_stat_tandem)
+                        .setContentTitle(context.getString(R.string.test_notification_title))
+                        .setContentText(context.getString(R.string.test_notification_text)).build(),
                 )
-            }
+                notificationTest = context.getString(R.string.test_sent_local)
+            },
+            testResult = notificationTest,
+            note = blockedNote(!status.notifications && status.isBlocked(Manifest.permission.POST_NOTIFICATIONS), requests),
+            index = 0, total = total,
+            modifier = Modifier.staggeredEntry(2).settingsTarget(FocusKeys.PermNotifications, 0, total),
+        )
+        PermissionCard(
+            TandemIcons.Battery, stringResource(R.string.perm_battery), stringResource(R.string.perm_battery_why),
+            granted = status.battery, onGrant = { Permissions.openBatterySettings(context) },
+            index = 1, total = total,
+            modifier = Modifier.staggeredEntry(3).settingsTarget(FocusKeys.PermBattery, 1, total),
+        )
+        PermissionCard(
+            TandemIcons.Screenshot, stringResource(R.string.perm_photos), stringResource(R.string.perm_photos_why),
+            granted = status.photos, onGrant = requests::photos,
+            note = blockedNote(!status.photos && status.isBlocked(Manifest.permission.READ_MEDIA_IMAGES), requests),
+            index = 2, total = total,
+            modifier = Modifier.staggeredEntry(4).settingsTarget(FocusKeys.PermPhotos, 2, total),
+        )
+        PermissionCard(
+            TandemIcons.Devices, stringResource(R.string.perm_listener), stringResource(R.string.perm_listener_why),
+            granted = status.notificationAccess,
+            partly = stopped,
+            onGrant = { Permissions.openNotificationAccessSettings(context) },
+            note = if (stopped) {
+                PermissionNote(
+                    stringResource(R.string.perm_listener_stopped),
+                    listOf(
+                        PermissionNoteAction(stringResource(R.string.perm_listener_restart), { Permissions.restartListener(context) }, primary = true),
+                        PermissionNoteAction(stringResource(R.string.perm_listener_open), { Permissions.openNotificationAccessSettings(context) }),
+                    ),
+                )
+            } else {
+                null
+            },
+            testLabel = stringResource(R.string.perm_listener_test),
+            onTest = {
+                val targets = graph.host.devices.value.filter { it.online }.map { it.id }
+                scope.launch {
+                    if (targets.isEmpty()) {
+                        listenerTest = context.getString(R.string.test_no_device)
+                    } else {
+                        runCatching {
+                            graph.host.engine?.sendNotification(
+                                targets,
+                                TandemNotification(
+                                    key = "tandem-test", appId = context.packageName, appName = "Tandem",
+                                    title = context.getString(R.string.test_notification_title),
+                                    text = context.getString(R.string.test_remote_text),
+                                    subText = null, ts = System.currentTimeMillis().toULong(), ongoing = false, silent = false,
+                                    buttons = emptyList(), otp = null, progressDone = null, progressTotal = null,
+                                ),
+                            )
+                        }
+                        listenerTest = context.getString(R.string.test_sent_remote, targets.size)
+                    }
+                }
+            },
+            testResult = listenerTest ?: if (listening) {
+                lastSent?.let { stringResource(R.string.perm_listener_running, android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(it))) }
+                    ?: stringResource(R.string.perm_listener_idle)
+            } else {
+                null
+            },
+            index = 3, total = total,
+            modifier = Modifier.staggeredEntry(5).settingsTarget(FocusKeys.PermListener, 3, total),
+        )
+        PermissionCard(
+            TandemIcons.Call, stringResource(R.string.perm_phone), stringResource(R.string.perm_phone_why),
+            granted = status.phone != PermissionLevel.Off,
+            partly = status.phone == PermissionLevel.Partly,
+            onGrant = requests::phone,
+            note = phoneNote(status, requests),
+            index = 4, total = total,
+            modifier = Modifier.staggeredEntry(6).settingsTarget(FocusKeys.PermPhone, 4, total),
+        )
+        PermissionCard(
+            TandemIcons.Bluetooth, stringResource(R.string.perm_bluetooth), stringResource(R.string.perm_bluetooth_why),
+            granted = status.bluetooth, onGrant = requests::bluetooth,
+            note = blockedNote(!status.bluetooth && status.isBlocked(Permissions.bluetoothPermissions.toList()), requests),
+            index = 5, total = total,
+            modifier = Modifier.staggeredEntry(7).settingsTarget(FocusKeys.PermBluetooth, 5, total),
+        )
+        PermissionCard(
+            TandemIcons.QrScan, stringResource(R.string.perm_camera), stringResource(R.string.perm_camera_why),
+            granted = status.camera, onGrant = requests::camera,
+            note = blockedNote(!status.camera && status.isBlocked(Manifest.permission.CAMERA), requests),
+            index = 6, total = total,
+            modifier = Modifier.staggeredEntry(8).settingsTarget(FocusKeys.PermCamera, 6, total),
+        )
+        PermissionCard(
+            TandemIcons.Mic, stringResource(R.string.perm_microphone), stringResource(R.string.perm_microphone_why),
+            granted = status.microphone, onGrant = requests::microphone,
+            note = blockedNote(!status.microphone && status.isBlocked(Manifest.permission.RECORD_AUDIO), requests),
+            index = 7, total = total,
+            modifier = Modifier.staggeredEntry(9),
+        )
+        PermissionCard(
+            TandemIcons.Mouse, stringResource(R.string.perm_accessibility), stringResource(R.string.perm_accessibility_why),
+            granted = status.accessibility,
+            onGrant = { context.startActivity(nl.markmaaktmedia.tandem.engine.FeatureReport.intent(context, "accessibility").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) },
+            index = 8, total = total,
+            modifier = Modifier.staggeredEntry(10),
+        )
+        PermissionCard(
+            TandemIcons.Folder, stringResource(R.string.perm_all_files), stringResource(R.string.perm_all_files_why),
+            granted = status.allFiles,
+            onGrant = { context.startActivity(nl.markmaaktmedia.tandem.engine.FeatureReport.intent(context, "all-files").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) },
+            index = 9, total = total,
+            // The search for the permission of the files lands here: the page Setup shows it once, in this card.
+            modifier = Modifier.staggeredEntry(11).settingsTarget(FocusKeys.FilesPermission, 9, total),
+        )
+        PermissionCard(
+            TandemIcons.Update, stringResource(R.string.perm_install), stringResource(R.string.perm_install_why),
+            granted = status.installApps, onGrant = { Permissions.openInstallSettings(context) },
+            index = 10, total = total,
+            modifier = Modifier.staggeredEntry(12).settingsTarget(FocusKeys.PermInstall, 10, total),
+        )
+        if (messages) {
+            PermissionCard(
+                androidx.compose.ui.res.painterResource(R.drawable.sym_sms), stringResource(R.string.perm_messages), stringResource(R.string.perm_messages_why),
+                granted = status.sms,
+                onGrant = { context.startActivity(nl.markmaaktmedia.tandem.messages.MessagesAccessActivity.intent(context, null)) },
+                index = 11, total = total,
+                modifier = Modifier.staggeredEntry(13),
+            )
         }
-        Spacer(Modifier.height(24.dp))
     }
 }

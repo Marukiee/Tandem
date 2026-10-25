@@ -53,7 +53,6 @@ import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.PillLoader
 import nl.markmaaktmedia.tandem.ui.components.PillNavItem
 import nl.markmaaktmedia.tandem.ui.components.PillNavigationBar
-import nl.markmaaktmedia.tandem.ui.screens.AccessScreen
 import nl.markmaaktmedia.tandem.ui.screens.AppearanceScreen
 import nl.markmaaktmedia.tandem.ui.screens.DeviceDetailScreen
 import nl.markmaaktmedia.tandem.ui.screens.DevicesScreen
@@ -268,9 +267,9 @@ private fun RouteBody(route: Route, nav: Nav) {
         is Route.Terminal -> nl.markmaaktmedia.tandem.ui.screens.TerminalScreen(route.id, onBack = { nav.pop() })
         is Route.ClipboardHistory -> nl.markmaaktmedia.tandem.ui.screens.ClipboardHistoryScreen(onBack = { nav.pop() })
         is Route.DeviceSettings -> nl.markmaaktmedia.tandem.ui.screens.DeviceSettingsScreen(route.id, onBack = { nav.pop() })
-        Route.Access -> AccessScreen(onBack = { nav.pop() })
+        Route.Access -> nl.markmaaktmedia.tandem.ui.screens.SetupScreen(onBack = { nav.pop() }, onOpen = { nav.push(it) }, nl.markmaaktmedia.tandem.ui.screens.SetupSection.Permissions)
         Route.Features -> nl.markmaaktmedia.tandem.ui.screens.FeaturesScreen(onBack = { nav.pop() })
-        Route.FileAccess -> nl.markmaaktmedia.tandem.ui.screens.FileAccessScreen(onBack = { nav.pop() })
+        Route.FileAccess -> nl.markmaaktmedia.tandem.ui.screens.SetupScreen(onBack = { nav.pop() }, onOpen = { nav.push(it) }, nl.markmaaktmedia.tandem.ui.screens.SetupSection.Files)
         Route.MirrorApps -> MirrorAppsScreen(onBack = { nav.pop() })
         Route.Appearance -> AppearanceScreen(onBack = { nav.pop() })
         Route.Developer -> nl.markmaaktmedia.tandem.ui.screens.DeveloperScreen(onBack = { nav.pop() }, onOpen = { nav.push(it) })

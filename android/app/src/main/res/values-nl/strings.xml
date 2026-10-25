@@ -130,6 +130,7 @@
     <string name="settings_hotspot_for_mac">Laat mijn computer mijn hotspot gebruiken</string>
     <string name="settings_hotspot_for_mac_sub">Als je computer geen verbinding heeft kan hij deze telefoon vragen de hotspot aan te zetten</string>
     <string name="settings_access">Rechten</string>
+    <string name="setup_title">Instellen</string>
     <string name="settings_access_row">Rechten</string>
     <string name="settings_access_sub">Zie wat aan staat, zet dingen aan en probeer ze</string>
     <string name="settings_updates">Updates</string>
