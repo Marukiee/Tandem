@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.engine.EngineHost
 import nl.markmaaktmedia.tandem.engine.Permissions
+import nl.markmaaktmedia.tandem.mirror.MirrorListener
 import uniffi.tandem_core.TandemCall
 import uniffi.tandem_core.TandemCallAction
 import uniffi.tandem_core.TandemCallState
@@ -39,6 +40,8 @@ class CallMonitor(
     private var name: String? = null
     private var answered = false
     private var lastState = TelephonyManager.EXTRA_STATE_IDLE
+    /** A number a computer asked this phone to call, and when: the call that starts right after is that one. */
+    @Volatile private var dialed: Pair<String, Long>? = null
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -78,6 +81,12 @@ class CallMonitor(
                 if (lastState == TelephonyManager.EXTRA_STATE_IDLE) {
                     callId = System.currentTimeMillis().toString()
                     incoming = false
+                    // A call this phone makes brings no number with it; one a computer asked for a moment ago is that one.
+                    dialed?.takeIf { System.currentTimeMillis() - it.second < DIALED_MS }?.let { (to, _) ->
+                        number = to
+                        name = lookup(to)
+                    }
+                    dialed = null
                 }
                 answered = true
                 send(targets, TandemCallState.ACTIVE)
@@ -91,6 +100,28 @@ class CallMonitor(
             }
         }
         lastState = state
+        if (state != TelephonyManager.EXTRA_STATE_IDLE && number == null && name == null) fromNotification(targets, state)
+    }
+
+    /**
+     * Without a number, who the call is with comes from the notification of the phone app (see [MirrorListener.callTitle]), which can come a
+     * moment after the call state: looked at a few times, and the card on the computers gets the name as soon as there is one.
+     */
+    private fun fromNotification(targets: List<String>, state: String) {
+        val id = callId
+        scope.launch {
+            for (wait in listOf(0L, 600L, 1_500L, 3_000L)) {
+                kotlinx.coroutines.delay(wait)
+                if (callId != id || lastState != state || number != null || name != null) return@launch
+                val title = MirrorListener.callTitle() ?: continue
+                if (title.any(Char::isLetter)) name = title else {
+                    number = title
+                    name = lookup(title)
+                }
+                send(targets, if (state == TelephonyManager.EXTRA_STATE_RINGING) TandemCallState.RINGING else TandemCallState.ACTIVE)
+                return@launch
+            }
+        }
     }
 
     private suspend fun send(targets: List<String>, state: TandemCallState) {
@@ -126,6 +157,11 @@ class CallMonitor(
         }
     }
 
+    private companion object {
+        /** How long after a computer asked for it a call that starts is the one it asked for. */
+        const val DIALED_MS = 20_000L
+    }
+
     private fun silence() {
         val audio = context.getSystemService(android.media.AudioManager::class.java)
         runCatching { audio.setStreamVolume(android.media.AudioManager.STREAM_RING, 0, 0) }
@@ -134,6 +170,7 @@ class CallMonitor(
     /** The Mac asked to dial a number. */
     fun dial(number: String) {
         if (!Permissions.phone(context)) return
+        dialed = number to System.currentTimeMillis()
         val telecom = context.getSystemService(TelecomManager::class.java)
         runCatching { telecom.placeCall(Uri.fromParts("tel", number, null), Bundle()) }
     }

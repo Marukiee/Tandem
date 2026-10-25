@@ -38,6 +38,7 @@ class MirrorListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         _connected.value = true
+        instance = this
         val graph = applicationContext.graph
         eventJob?.cancel()
         eventJob = graph.scope.launch {
@@ -49,6 +50,7 @@ class MirrorListener : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         _connected.value = false
+        instance = null
         eventJob?.cancel()
         super.onListenerDisconnected()
     }
@@ -194,6 +196,20 @@ class MirrorListener : NotificationListenerService() {
     }
 
     companion object {
+        @Volatile private var instance: MirrorListener? = null
+
+        /**
+         * Who the call on this phone is with, as the phone app shows it in its notification of the call: the name of a contact, or the number.
+         * The broadcast of the call state carries the number only for an app that may read the call log (a setting Android keeps back from
+         * apps that are not from a store), and never for a call that the phone makes; the notification has it either way.
+         */
+        fun callTitle(): String? = runCatching {
+            instance?.activeNotifications.orEmpty()
+                .filter { it.notification.category == Notification.CATEGORY_CALL }
+                .maxByOrNull { it.postTime }
+                ?.notification?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+        }.getOrNull()
+
         /** Which device already has the icon of which app, as `device|package`. */
         private val iconsSent: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
