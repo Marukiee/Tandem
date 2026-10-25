@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.2.18",
+    "date": "2026-10-25",
+    "en": {
+      "title": "Battery widgets and screenshots",
+      "new": [
+        "Battery widgets on Android and the Mac, battery rings in the tray panel on Linux and Windows",
+        "A screenshot lands on the clipboard of your other devices",
+        "Phone sound without the screen recording question, with Shizuku or as a Bluetooth speaker",
+        "Devices, actions, messages, clipboard, files and settings in Spotlight and the Linux search"
+      ]
+    },
+    "nl": {
+      "title": "Batterijwidgets en screenshots",
+      "new": [
+        "Batterijwidgets op Android en de Mac, batterijringen in het paneel op Linux en Windows",
+        "Een screenshot staat meteen op het klembord van je andere apparaten",
+        "Geluid van de telefoon zonder de vraag over schermopname, met Shizuku of als Bluetooth-luidspreker",
+        "Apparaten, acties, berichten, klembord, bestanden en instellingen in Spotlight en het zoeken op Linux"
+      ]
+    }
+  },
+  {
     "version": "0.2.17",
     "date": "2026-10-25",
     "en": {
