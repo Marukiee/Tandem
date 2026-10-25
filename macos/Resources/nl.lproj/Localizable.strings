@@ -1135,3 +1135,4 @@
 "That phone is no longer paired" = "Die telefoon is niet meer gekoppeld";
 "%@ did not start listening. Its microphone may be in use by another app or not allowed for Tandem, or the phone is not reachable right now." = "%@ begon niet te luisteren. De microfoon wordt misschien door een andere app gebruikt of mag niet door Tandem gebruikt worden, of de telefoon is nu niet bereikbaar.";
 "The speakers of this Mac are off or very low, or headphones are plugged in. Turn them up and try again." = "De speakers van deze Mac staan uit of heel zacht, of er zit een koptelefoon in. Zet ze harder en probeer het opnieuw.";
+"Needs the Tandem Focus shortcut" = "Heeft de snelkoppeling Tandem Focus nodig";

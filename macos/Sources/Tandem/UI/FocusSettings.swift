@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Focus the same on every device, as a section of the General tab. The rows look the same whether or not the shortcut is there:
-/// someone may not want this at all. What is missing is said when the person turns sharing on, with the button that adds it.
+/// Focus the same on every device, as a section of the General tab. Without the Tandem Focus shortcut it cannot work, so the switch is
+/// grey and off until the shortcut is there, with the button that adds it next to it; it does not pretend to be on.
 struct FocusSettingsSection: View {
     @AppStorage(FocusShare.shareKey) private var share = true
     @AppStorage(FocusShare.followOnlyKey) private var followOnly = false
@@ -9,12 +9,14 @@ struct FocusSettingsSection: View {
     @LocalState private var needsICloud = false
 
     var body: some View {
+        let installed = FocusShare.shared.installed
         Section {
             DescribedToggle(
                 "Share Focus",
                 subtitle: "Turn on Focus on one of your devices, and the others follow.",
-                isOn: $share
+                isOn: Binding(get: { share && installed }, set: { share = $0 })
             )
+            .disabled(!installed)
             .onChange(of: share) { _, on in
                 FocusShare.shared.configure()
                 guard on else { return }
@@ -27,13 +29,23 @@ struct FocusSettingsSection: View {
                 Text("Both ways").tag(false)
                 Text("Only follow").tag(true)
             }
-            .disabled(!share)
+            .disabled(!share || !installed)
             .onChange(of: followOnly) { _, _ in FocusShare.shared.configure() }
+            if !installed {
+                HStack {
+                    Text("Needs the Tandem Focus shortcut").foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Add Shortcut") {
+                        Task { if await FocusShare.shared.add() == .needsICloud { needsICloud = true } }
+                    }
+                }
+            }
         } header: {
             Text("Focus")
         } footer: {
             Text("macOS lets apps neither turn on a Focus nor see one, so Tandem does both with a shortcut of its own, Tandem Focus, that you add with one click.")
         }
+        .task { await FocusShare.shared.refresh() }
         .alert("Add the Tandem Focus shortcut", isPresented: $askToAdd) {
             Button("Add Shortcut") {
                 Task { if await FocusShare.shared.add() == .needsICloud { needsICloud = true } }
