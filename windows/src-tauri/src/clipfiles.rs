@@ -217,8 +217,9 @@ pub fn finished(app: &AppHandle, peer: &str, offer: u64, location: &Option<Strin
     let name = events::device_name(app, peer);
     let picture = (files.len() == 1).then(|| picture_to_clipboard(&files[0]).ok()).flatten();
     // A single picture waits in the core's clipboard folder (see `kept_for_clipboard`). The clipboard holds the picture itself now, so
-    // the file goes: screenshots from every device would otherwise pile up.
-    if files.len() == 1 && waits_for_clipboard(&files[0]) {
+    // the file goes: screenshots from every device would otherwise pile up. A picture that could not be read here (WebP, HEIC) goes on
+    // the clipboard as its file instead, so that one stays until the sweep of the core.
+    if picture.is_some() && waits_for_clipboard(&files[0]) {
         let _ = std::fs::remove_file(&files[0]);
         if let Some(folder) = files[0].parent() {
             let _ = std::fs::remove_dir(folder);

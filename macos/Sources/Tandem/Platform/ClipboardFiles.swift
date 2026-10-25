@@ -53,10 +53,6 @@ final class ClipboardFiles {
     /// The picture goes on the pasteboard as a picture only, and its file goes at once: a screenshot from every device would otherwise
     /// pile up as files. The history keeps it the way it keeps any copied picture, with the device it came from.
     private func putPicture(_ file: URL, from device: String) -> Bool {
-        defer {
-            try? FileManager.default.removeItem(at: file)
-            try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
-        }
         guard let data = try? Data(contentsOf: file) else { return false }
         let isPNG = UTType(filenameExtension: file.pathExtension)?.conforms(to: .png) == true
         let pasteboard = NSPasteboard.general
@@ -69,6 +65,8 @@ final class ClipboardFiles {
         } else {
             return false
         }
+        try? FileManager.default.removeItem(at: file)
+        try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
         ClipboardRecorder.shared.ignoreCurrent()
         let source = EngineModel.shared.device(device)
         let deviceName = source?.name, symbol = source?.platform.symbol
@@ -112,7 +110,11 @@ final class ClipboardFiles {
         let pasteboard = NSPasteboard.general
         let name = EngineModel.shared.device(device)?.name ?? "?"
         if files.count == 1, Self.isWaitingForClipboard(files[0]) {
-            guard putPicture(files[0], from: device) else { return true }
+            // What cannot be read as a picture here goes as its file, which the core's sweep removes later.
+            if !putPicture(files[0], from: device) {
+                pasteboard.clearContents()
+                pasteboard.writeObjects([files[0] as NSURL])
+            }
         } else {
             pasteboard.clearContents()
             pasteboard.writeObjects(files.map { $0 as NSURL })
