@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.25",
+    "date": "2026-10-26",
+    "en": { "title": "Clipboard with Shizuku as root", "new": ["Copies are sent and received again when Shizuku runs as root", "Setup opens Permissions, Shizuku and File access as pages of their own"] },
+    "nl": { "title": "Klembord met Shizuku als root", "new": ["Kopieren en ontvangen werkt weer als Shizuku als root draait", "Setup opent Rechten, Shizuku en Bestandstoegang als eigen pagina's"] }
+  },
+  {
     "version": "0.2.24",
     "date": "2026-10-25",
     "en": { "title": "A fuller battery widget", "new": ["The battery widget fills itself: one device large, a few as rows with their names"] },
