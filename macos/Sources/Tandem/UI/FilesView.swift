@@ -21,6 +21,9 @@ struct FilesView: View {
     @LocalState private var picking = false
     @LocalState private var rowFrames: [String: CGRect] = [:]
     @LocalState private var hold = HoldState()
+    /// Where a shift-click reaches from, as in Finder: the row clicked last without shift, and what was chosen with it.
+    @LocalState private var rangeAnchor: String?
+    @LocalState private var rangeBase: Set<String> = []
 
     var body: some View {
         @Bindable var browser = browser
@@ -355,12 +358,22 @@ struct FilesView: View {
     private func tapped(_ entry: TandemFsEntry) {
         if hold.suppressTap { return }
         let flags = NSEvent.modifierFlags
+        // Shift chooses everything from the row clicked last to this one, and the rows chosen before that stay.
+        if flags.contains(.shift), let anchor = rangeAnchor, browser.shown.contains(where: { $0.name == anchor }) {
+            if !picking { startPicking(with: Array(browser.selection)) }
+            withAnimation(.tandem) { browser.select(from: anchor, to: entry.name, keeping: rangeBase) }
+            return
+        }
         if picking || flags.contains(.command) || flags.contains(.shift) {
             if !picking { startPicking(with: Array(browser.selection)) }
             withAnimation(.tandemSpringy) { browser.toggle(entry.name) }
+            rangeAnchor = entry.name
+            rangeBase = browser.selection
             if browser.selection.isEmpty { stopPicking() }
         } else {
             browser.selection = [entry.name]
+            rangeAnchor = entry.name
+            rangeBase = []
         }
     }
 

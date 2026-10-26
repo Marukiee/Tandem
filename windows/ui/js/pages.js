@@ -1,5 +1,5 @@
 // The pages of the main window.
-import { html, useEffect, useState } from "../vendor/preact-htm.js";
+import { html, useEffect, useRef, useState } from "../vendor/preact-htm.js";
 import { call, listen, native } from "./backend.js";
 import { ArrangementEditor } from "./arrange.js";
 import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, fmtSize, platformIcon } from "./components.js";
@@ -393,7 +393,11 @@ export function FilesPage() {
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("all");
   const [picked, setPicked] = useState(new Set());
+  const range = useRef({ anchor: null, base: new Set() });
   const [busy, setBusy] = useState(false);
+  // How far the copy into the download folder is (browse.rs sends it), for the bar above the list.
+  const [copying, setCopying] = useState(null);
+  useEffect(() => { let off; listen("fs-progress", setCopying).then((f) => { off = f; }); return () => off && off(); }, []);
   if (!device) return html`<div class="wrap"><div class="card empty">${t("nothing_yet")}</div></div>`;
 
   const open = async (next) => {
@@ -416,7 +420,20 @@ export function FilesPage() {
   const parts = path.split("/").filter(Boolean);
   const join = (name) => (path === "/" ? "" : path) + "/" + name;
   const shown = entries.filter((e) => KINDS[kind](e) && query.toLowerCase().split(/\s+/).filter(Boolean).every((w) => e.name.toLowerCase().includes(w)));
-  const toggle = (name) => setPicked((old) => { const next = new Set(old); next.has(name) ? next.delete(name) : next.add(name); return next; });
+  // A click chooses one row; with shift, everything from the row clicked last to this one, keeping what was chosen before that.
+  const pick = (name, event) => {
+    const names = shown.map((e) => e.name);
+    const from = names.indexOf(range.current.anchor);
+    if (event && event.shiftKey && from >= 0) {
+      const to = names.indexOf(name);
+      setPicked(new Set([...range.current.base, ...names.slice(Math.min(from, to), Math.max(from, to) + 1)]));
+      return;
+    }
+    const next = new Set(picked);
+    next.has(name) ? next.delete(name) : next.add(name);
+    range.current = { anchor: name, base: next };
+    setPicked(next);
+  };
   const chosen = entries.filter((e) => picked.has(e.name));
   const download = async () => {
     setBusy(true);
@@ -425,7 +442,7 @@ export function FilesPage() {
       say(t("downloaded_n", result.saved.length) + (result.skippedFolders ? " " + t("folders_skipped") : ""));
       setPicked(new Set());
     } catch (e) { failed(e); }
-    setBusy(false);
+    setBusy(false); setCopying(null);
   };
 
   return html`<div class="wrap">
@@ -444,13 +461,21 @@ export function FilesPage() {
       ${Object.keys(KINDS).map((k) => html`<button class=${"btn small" + (kind === k ? " accent" : "")} onClick=${() => setKind(k)}>${t("kind_" + k)}</button>`)}
     </div>
     ${problem && html`<div class="card"><div class="small" style="color:var(--danger,#d33)">${problem}</div></div>`}
+    ${busy && copying && html`<div class="card flush"><div class="item">
+      <${Icon} name="arrow-down" size=${18} />
+      <div class="grow">
+        <div class="ellipsis" style="font-weight:500">${copying.name}</div>
+        <div class="small muted ellipsis">${copying.count > 1 ? t("n_of_m", copying.number, copying.count) + " · " : ""}${fmtSize(copying.done)} / ${fmtSize(copying.total)}</div>
+        <div class="prog"><i style=${`width:${copying.total ? Math.min(100, Math.round((copying.done / copying.total) * 100)) : 0}%`}></i></div>
+      </div>
+    </div></div>`}
     ${loading ? html`<div class="card empty">${t("looking")}</div>`
       : shown.length === 0 ? html`<div class="card empty"><${Icon} name="files" size=${34} /><div>${entries.length ? t("nothing_matches") : t("folder_empty")}</div></div>`
       : html`<div class="card flush">${shown.map((e) => html`<div class="item" key=${e.name}>
-          <button class="btn small" style=${"width:30px;height:30px;padding:0;border-radius:999px;justify-content:center;" + (picked.has(e.name) ? "background:var(--accent, #5b5bd6);color:#fff;border-color:transparent" : "")} title=${t("select")} onClick=${() => toggle(e.name)}>
+          <button class="btn small" style=${"width:30px;height:30px;padding:0;border-radius:999px;justify-content:center;" + (picked.has(e.name) ? "background:var(--accent, #5b5bd6);color:#fff;border-color:transparent" : "")} title=${t("select")} onMouseDown=${noTextPick} onClick=${(ev) => pick(e.name, ev)}>
             ${picked.has(e.name) ? html`<${Icon} name="check" size=${15} />` : html`<${Icon} name=${e.dir ? "folder-open" : "file"} size=${15} />`}
           </button>
-          <div class="grow" style="cursor:pointer;min-width:0" onClick=${() => (e.dir ? open(join(e.name)) : toggle(e.name))}>
+          <div class="grow" style="cursor:pointer;min-width:0" onMouseDown=${noTextPick} onClick=${(ev) => (e.dir && !ev.shiftKey ? open(join(e.name)) : pick(e.name, ev))}>
             <div class="ellipsis">${e.name}</div>
             <div class="small muted">${e.dir ? t("folder") : sizeText(e.size)}${e.modifiedMs ? " · " + new Date(e.modifiedMs).toLocaleDateString() : ""}</div>
           </div>
@@ -467,6 +492,9 @@ const SHARED_KINDS = {
   archives: /\.(zip|rar|7z|tar|gz|tgz|bz2|xz|dmg|iso|apk|pkg|deb|rpm|appimage)$/i,
 };
 const kindOf = (name) => Object.keys(SHARED_KINDS).find((k) => SHARED_KINDS[k].test(name)) || "other";
+
+/** A shift-click chooses rows; without this the browser also selects the text between them. */
+const noTextPick = (e) => { if (e.shiftKey) e.preventDefault(); };
 
 /** A small button that opens a list to choose from. It is coloured while something other than "all" is chosen. */
 function FilterChip({ icon, label, active, options, value, onPick }) {
