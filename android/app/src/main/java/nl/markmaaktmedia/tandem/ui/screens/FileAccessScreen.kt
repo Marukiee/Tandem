@@ -62,9 +62,15 @@ import uniffi.tandem_core.TandemShare
 /** The sizes the limit on what a device may send goes through when it is tapped. 0 is no limit. */
 private val UploadLimits = listOf(0L, 10_000_000L, 100_000_000L, 1_000_000_000L, 10_000_000_000L)
 
+/** What other devices may do with the files of this phone, a page that Setup opens. */
+@Composable
+fun FileAccessScreen(onBack: () -> Unit) {
+    nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageFrame(stringResource(R.string.files_title), onBack) { FileAccessContent() }
+}
+
 /**
  * What other devices may do with the files of this phone. The choices are kept by the core, which also enforces them,
- * so this screen only shows them and changes them. On the page Setup.
+ * so this screen only shows them and changes them.
  */
 @Composable
 internal fun ColumnScope.FileAccessContent(withPermission: Boolean = true) {

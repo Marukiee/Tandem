@@ -187,7 +187,7 @@ private fun Categories(summaries: Map<SettingsCategory, String>, bottomPadding: 
 
 /** One category: its icon, its name, and a line that says how it is set right now. */
 @Composable
-private fun CategoryRow(index: Int, total: Int, category: SettingsCategory, summary: String, onClick: () -> Unit, modifier: Modifier) {
+internal fun CategoryRow(index: Int, total: Int, category: SettingsCategory, summary: String, onClick: () -> Unit, modifier: Modifier) {
     GroupedRow(index, total, modifier = modifier, onClick = onClick) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),

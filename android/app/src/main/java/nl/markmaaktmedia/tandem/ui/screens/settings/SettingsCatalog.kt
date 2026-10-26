@@ -37,8 +37,8 @@ internal enum class SettingsCategory(
     Notifications(R.string.settings_notifications, { TandemIcons.Notifications }, Route.SettingsPage(SettingsPageId.Notifications)),
     Trackpad(R.string.settings_cat_trackpad, { TandemIcons.Mouse }, Route.SettingsPage(SettingsPageId.Trackpad)),
     Features(R.string.features_title, { TandemIcons.CheckCircle }, Route.Features),
-    /** Permissions, Shizuku and file access on one page; the three below stay for the search. */
-    Setup(R.string.setup_title, { TandemIcons.Shield }, Route.Access),
+    /** Permissions, Shizuku and file access, each a page that the page Setup opens; the three below are those pages, also for the search. */
+    Setup(R.string.setup_title, { TandemIcons.Shield }, Route.Setup),
     Permissions(R.string.settings_access, { TandemIcons.Shield }, Route.Access),
     Hotspot(R.string.settings_hotspot, { TandemIcons.Hotspot }, Route.Hotspot),
     Shizuku(R.string.shizuku_title, { TandemIcons.Terminal }, Route.SettingsPage(SettingsPageId.Shizuku)),

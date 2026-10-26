@@ -23,6 +23,8 @@ sealed interface Route {
 
     /** A login to a computer over SSH, in a terminal. */
     data class Terminal(val id: String) : Route
+    /** Permissions, Shizuku and file access, each a page of its own (asked 2026-10-26). */
+    data object Setup : Route
     data object Access : Route
 
     /** What works on each device, and what it still needs. */
@@ -104,6 +106,7 @@ private fun routeFromKey(key: String): Route? = when {
     key.startsWith("screen:") -> Route.Screen(key.removePrefix("screen:"))
     key.startsWith("display:") -> Route.Display(key.removePrefix("display:"))
     key.startsWith("terminal:") -> Route.Terminal(key.removePrefix("terminal:"))
+    key == "setup" -> Route.Setup
     key == "access" -> Route.Access
     key == "features" -> Route.Features
     key == "tour" -> Route.Tour

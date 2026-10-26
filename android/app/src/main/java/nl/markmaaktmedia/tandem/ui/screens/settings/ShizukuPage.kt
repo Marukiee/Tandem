@@ -38,10 +38,10 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 /** What Shizuku is doing on this phone, and what Tandem does with it. */
 @Composable
 internal fun ShizukuPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
-    nl.markmaaktmedia.tandem.ui.screens.SetupScreen(onBack, onOpen, nl.markmaaktmedia.tandem.ui.screens.SetupSection.Shizuku)
+    SettingsPageFrame(stringResource(R.string.shizuku_title), onBack) { ShizukuContent(onOpen) }
 }
 
-/** What Shizuku is for here and how far it is, on the page Setup. */
+/** What Shizuku is for here and how far it is. */
 @Composable
 internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
     val context = LocalContext.current

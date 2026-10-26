@@ -36,6 +36,7 @@ fun routeKey(route: Route): String = when (route) {
     is Route.Terminal -> "terminal:${route.id}"
     is Route.DeviceSettings -> "devsettings:${route.id}"
     is Route.ClipboardHistory -> "clipboard-history"
+    Route.Setup -> "setup"
     Route.Access -> "access"
     Route.Features -> "features"
     Route.Tour -> "tour"

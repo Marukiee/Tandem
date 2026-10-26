@@ -52,7 +52,13 @@ import nl.markmaaktmedia.tandem.ui.theme.GroupedSpacing
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemNotification
 
-/** What Tandem may do on this phone, with a way to try each thing without a second device. On the page Setup. */
+/** What Tandem may do on this phone, a page that Setup opens. */
+@Composable
+fun AccessScreen(onBack: () -> Unit) {
+    nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageFrame(stringResource(R.string.settings_access), onBack) { AccessContent() }
+}
+
+/** What Tandem may do on this phone, with a way to try each thing without a second device. */
 @Composable
 internal fun ColumnScope.AccessContent() {
     val context = LocalContext.current
