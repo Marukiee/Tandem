@@ -2,9 +2,12 @@
 //! folder. What the other device allows is decided there, so a refusal comes back as the reason it gives.
 
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
-use tauri::{AppHandle, State};
+use tandem_core::ffi::TandemFsProgress;
+use tauri::{AppHandle, Emitter, State};
 
 use crate::settings;
 use crate::state::AppState;
@@ -49,6 +52,27 @@ fn free_name(folder: &Path, name: &str) -> PathBuf {
         .unwrap_or(first)
 }
 
+/// How far a copy is, as `fs-progress` for the bar on the page of the files: the file, which one of how many, and its bytes.
+struct CopyProgress {
+    app: AppHandle,
+    name: String,
+    number: usize,
+    count: usize,
+    last: Mutex<Option<Instant>>,
+}
+
+impl TandemFsProgress for CopyProgress {
+    fn progress(&self, done: u64, total: u64) {
+        // A few times a second is enough for a bar, and the window is not flooded on a fast network.
+        let mut last = self.last.lock().unwrap();
+        if done < total && last.is_some_and(|at| at.elapsed() < Duration::from_millis(120)) {
+            return;
+        }
+        *last = Some(Instant::now());
+        let _ = self.app.emit("fs-progress", json!({ "name": self.name, "number": self.number, "count": self.count, "done": done, "total": total }));
+    }
+}
+
 /// Copies files from the other device into the download folder. A folder is not copied yet, and says so.
 #[tauri::command]
 pub async fn fs_get(app: AppHandle, state: State<'_, AppState>, id: String, paths: Vec<String>, folders: Vec<bool>) -> Reply<Value> {
@@ -57,6 +81,7 @@ pub async fn fs_get(app: AppHandle, state: State<'_, AppState>, id: String, path
     std::fs::create_dir_all(&folder).map_err(shown)?;
     let mut saved = Vec::new();
     let mut skipped = 0usize;
+    let count = paths.iter().enumerate().filter(|(index, _)| !folders.get(*index).copied().unwrap_or(false)).count();
     for (index, remote) in paths.iter().enumerate() {
         if folders.get(index).copied().unwrap_or(false) {
             skipped += 1;
@@ -64,7 +89,8 @@ pub async fn fs_get(app: AppHandle, state: State<'_, AppState>, id: String, path
         }
         let name = remote.rsplit('/').next().unwrap_or("file");
         let target = free_name(&folder, name);
-        engine.fs_download(id.clone(), remote.clone(), target.to_string_lossy().into_owned(), None).await.map_err(shown)?;
+        let progress = Arc::new(CopyProgress { app: app.clone(), name: name.to_string(), number: saved.len() + 1, count, last: Mutex::new(None) });
+        engine.fs_download(id.clone(), remote.clone(), target.to_string_lossy().into_owned(), Some(progress)).await.map_err(shown)?;
         saved.push(target.to_string_lossy().into_owned());
     }
     Ok(json!({ "saved": saved, "skippedFolders": skipped }))

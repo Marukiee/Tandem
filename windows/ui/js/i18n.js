@@ -1,7 +1,7 @@
 // The words of the interface, in English and Dutch. Windows picks which one, unless the person chose.
 const en = {
   browse_files: "Browse files", files_on: "Files on {0}", folders: "Folders", back: "Back", search_folder: "Search in this folder", folder: "Folder", folder_empty: "This folder is empty",
-  select: "Select", looking: "Looking", download_n: "Download {0}", downloaded_n: "Copied {0} file(s) to the download folder.",
+  select: "Select", looking: "Looking", download_n: "Download {0}", downloaded_n: "Copied {0} file(s) to the download folder.", n_of_m: "{0} of {1}",
   kind_all: "All", kind_folders: "Folders", kind_images: "Pictures", kind_video: "Video", kind_documents: "Documents",
   clipboard: "Clipboard", title_clipboard: "Clipboard history", lead_clipboard: "What came to the clipboard from your other devices, and what you copied here. Click a text to copy it again.",
   search: "Search", nothing_matches: "Nothing matches.", copied: "Copied", keep_this: "Keep this one", let_go: "Let this one go", clear_all_but_kept: "Clear all but the ones you keep",
@@ -203,7 +203,7 @@ const en = {
 
 const nl = {
   browse_files: "Bestanden bekijken", files_on: "Bestanden op {0}", folders: "Mappen", back: "Terug", search_folder: "Zoek in deze map", folder: "Map", folder_empty: "Deze map is leeg",
-  select: "Selecteren", looking: "Even kijken", download_n: "Download {0}", downloaded_n: "{0} bestand(en) naar de downloadmap gekopieerd.",
+  select: "Selecteren", looking: "Even kijken", download_n: "Download {0}", downloaded_n: "{0} bestand(en) naar de downloadmap gekopieerd.", n_of_m: "{0} van {1}",
   kind_all: "Alles", kind_folders: "Mappen", kind_images: "Foto's", kind_video: "Video", kind_documents: "Documenten",
   clipboard: "Klembord", title_clipboard: "Klembordgeschiedenis", lead_clipboard: "Wat van je andere apparaten op het klembord kwam, en wat je hier kopieerde. Klik op een tekst om hem opnieuw te kopieren.",
   search: "Zoeken", nothing_matches: "Niets komt overeen.", copied: "Gekopieerd", keep_this: "Bewaar deze", let_go: "Laat deze los", clear_all_but_kept: "Wis alles behalve wat je bewaart",

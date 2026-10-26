@@ -144,6 +144,8 @@ class TandemDocumentsProvider : DocumentsProvider() {
     /** Reads what is asked for, when it is asked for, so a big file opens at once and only travels as far as it is read. */
     private fun openForReading(doc: Doc): ParcelFileDescriptor {
         val size = call { it.fsStat(doc.device, doc.path) }.size.toLong()
+        val from = appContext.graph.host.devices.value.firstOrNull { it.id == doc.device }?.name
+        val progress = ReadProgress(appContext, doc.path.substringAfterLast('/'), from, size)
         val storage = appContext.getSystemService(StorageManager::class.java)
         return storage.openProxyFileDescriptor(
             ParcelFileDescriptor.MODE_READ_ONLY,
@@ -160,10 +162,11 @@ class TandemDocumentsProvider : DocumentsProvider() {
                         throw ErrnoException("onRead", OsConstants.EIO)
                     }
                     bytes.copyInto(data, 0, 0, bytes.size)
+                    progress.read(offset + bytes.size)
                     return bytes.size
                 }
 
-                override fun onRelease() {}
+                override fun onRelease() = progress.done()
             },
             handler,
         )
