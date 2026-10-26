@@ -138,7 +138,7 @@
     <string name="shizuku_use_clipboard_on">Every copy goes to your devices</string>
     <string name="shizuku_use_clipboard_off">Needs Shizuku: without it the tile and the share button send the clipboard</string>
     <string name="shizuku_clipboard_message">Hide \"Shell pasted from your clipboard\"</string>
-    <string name="shizuku_clipboard_message_sub">Android says it after every copy. Turn off Show clipboard access under Privacy</string>
+    <string name="shizuku_clipboard_message_sub">Android says it after every copy Tandem hears. Hidden here is hidden for every app, as Show clipboard access under Privacy</string>
     <string name="shizuku_clipboard_root">Shizuku runs as root here and Android does not let that read copies. Start Shizuku with wireless debugging instead</string>
     <string name="shizuku_clipboard_failed">Android would not let Shizuku listen to copies on this phone</string>
     <string name="tour_title">What Tandem can do</string>

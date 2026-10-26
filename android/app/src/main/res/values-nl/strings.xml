@@ -135,7 +135,7 @@
     <string name="shizuku_use_clipboard_on">Elke kopie gaat naar je apparaten</string>
     <string name="shizuku_use_clipboard_off">Heeft Shizuku nodig: zonder sturen de tegel en de deelknop het klembord</string>
     <string name="shizuku_clipboard_message">Verberg \"Shell heeft geplakt vanaf je klembord\"</string>
-    <string name="shizuku_clipboard_message_sub">Android zegt dat na elke kopie. Zet Toegang tot klembord tonen uit onder Privacy</string>
+    <string name="shizuku_clipboard_message_sub">Android zegt dat na elke kopie die Tandem hoort. Hier verborgen is verborgen voor elke app, net als Toegang tot klembord tonen onder Privacy</string>
     <string name="shizuku_clipboard_root">Shizuku draait hier als root en dan laat Android geen kopieën lezen. Start Shizuku met draadloze foutopsporing</string>
     <string name="shizuku_clipboard_failed">Android liet Shizuku niet naar kopieën luisteren op deze telefoon</string>
     <string name="tour_title">Wat Tandem kan</string>

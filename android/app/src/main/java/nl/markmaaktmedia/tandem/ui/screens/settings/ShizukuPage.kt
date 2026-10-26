@@ -60,8 +60,13 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
             delay(2_000)
         }
     }
+    // Android's switch Show clipboard access, read through Shizuku: an app may not read it itself. Null until it is known.
+    var messageShown by remember { mutableStateOf<Boolean?>(null) }
     LaunchedEffect(state) {
-        if (state == ShizukuState.Ready) ProjectionGrant.ensure(context)
+        if (state == ShizukuState.Ready) {
+            ProjectionGrant.ensure(context)
+            shizuku.clipboardMessage(null).takeIf { it.ok }?.let { messageShown = it.message != "0" }
+        }
     }
 
     val ready = state == ShizukuState.Ready
@@ -147,13 +152,18 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
                 onBlocked = nextStep,
             )
         }
-        // Android tells about every read of the clipboard by another app, so also about each copy the shell hears for Tandem.
-        ActionRow(
+        // Android tells about every read of the clipboard by another app, so also about each copy the shell hears for Tandem. It has no
+        // way to leave out one app: hiding it is Android's own switch Show clipboard access, for every app, which the shell may set.
+        SwitchRow(
             3, 4, TandemIcons.Shield, stringResource(R.string.shizuku_clipboard_message),
             stringResource(R.string.shizuku_clipboard_message_sub),
-            onClick = {
-                runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_PRIVACY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            messageShown == false,
+            { hide ->
+                messageShown = !hide
+                scope.launch { shizuku.clipboardMessage(!hide).let { if (it.ok) messageShown = it.message != "0" } }
             },
+            blocked = if (ready) null else stringResource(R.string.shizuku_use_clipboard_off),
+            onBlocked = nextStep,
         )
     }
 }

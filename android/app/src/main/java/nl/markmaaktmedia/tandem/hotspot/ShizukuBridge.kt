@@ -139,6 +139,10 @@ class ShizukuBridge(private val context: Context) {
 
     suspend fun unwatchClipboard(): ShellResult = call(ShellUserService.TX_CLIP_UNWATCH)
 
+    /** Android's switch Show clipboard access: [show] true or false sets it, null only asks. The message of the answer is "1" or "0". */
+    suspend fun clipboardMessage(show: Boolean?): ShellResult =
+        call(ShellUserService.TX_CLIP_MESSAGE) { it.writeInt(when (show) { true -> 1; false -> 0; null -> -1 }) }
+
     /** Who Shizuku runs as: 0 for root, 2000 for the shell, null when it is not running. */
     fun serverUid(): Int? = try {
         if (Shizuku.pingBinder()) Shizuku.getUid() else null
