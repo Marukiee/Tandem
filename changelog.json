@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.27",
+    "date": "2026-10-26",
+    "en": { "title": "Files at a glance", "new": ["Shift-click chooses a range of files of another device", "Copying from another device shows how far it is, also in the Files app of Android"] },
+    "nl": { "title": "Bestanden in een oogopslag", "new": ["Shift-klik kiest een reeks bestanden van een ander apparaat", "Kopieren van een ander apparaat laat zien hoe ver het is, ook in de Bestanden-app van Android"] }
+  },
+  {
     "version": "0.2.26",
     "date": "2026-10-26",
     "en": { "title": "No clipboard message", "new": ["A switch under Setup, Shizuku hides Android's message after every copy"] },
