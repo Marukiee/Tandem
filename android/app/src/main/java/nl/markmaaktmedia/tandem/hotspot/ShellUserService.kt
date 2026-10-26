@@ -2,17 +2,29 @@ package nl.markmaaktmedia.tandem.hotspot
 
 import android.os.Binder
 import android.os.Parcel
+import android.os.Process
+import android.system.Os
 import java.util.concurrent.TimeUnit
 import kotlin.system.exitProcess
 
 /**
- * The part of Tandem that Shizuku runs with the shell's identity (or root's), in its own process: the hotspot, the app-op
+ * The part of Tandem that Shizuku runs with the shell's identity (root's becomes the shell's), in its own process: the hotspot, the app-op
  * that lets Android skip its screen recording question for Tandem, and hearing every copy (see [ShellClipboard]).
  *
  * It is a bare Binder instead of an AIDL service: a few calls do not justify the AIDL toolchain, and Shizuku only asks for an
  * IBinder. Shizuku creates it through the no-argument constructor, so R8 must keep that (see proguard-rules.pro).
  */
 class ShellUserService : Binder() {
+    init {
+        // Shizuku started with root runs this as root, but every call here names the shell's package, and Android checks that a package
+        // belongs to its caller: as root the clipboard refuses each read and clears itself for it, so copies vanished (seen 2026-10-26).
+        // Everything here works as the shell, so a root process becomes the shell before anything else.
+        if (Process.myUid() == 0) runCatching {
+            Os.setgid(SHELL_UID)
+            Os.setuid(SHELL_UID)
+        }
+    }
+
     private val tethering = ShellTethering()
     private val clipboard = ShellClipboard()
 
@@ -90,6 +102,7 @@ class ShellUserService : Binder() {
     }
 
     companion object {
+        private const val SHELL_UID = 2000
         const val TX_START = 1
         const val TX_STOP = 2
         const val TX_STATUS = 3

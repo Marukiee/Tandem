@@ -16,7 +16,8 @@ import java.lang.reflect.Proxy
  * alone. Android then says "Shell pasted from your clipboard"; the person can turn that message off in the privacy settings.
  *
  * The clipboard service is a hidden interface, so everything is reached by reflection: its calls take the package and the user, and since
- * Android 14 an attribution tag and a device as well, which [args] fills in by type. Tried on Android 16 (emulator) with app_process as shell.
+ * Android 14 an attribution tag and a device as well, which [args] fills in by type. Tried on Android 16 (emulator) with Shizuku as the shell
+ * and as root (which [ShellUserService] turns into the shell first).
  */
 internal class ShellClipboard {
     private var listener: Any? = null
@@ -43,7 +44,7 @@ internal class ShellClipboard {
             listener = made
             0 to "ok"
         } catch (t: Throwable) {
-            // Under root the package of the shell is not ours to give; tried only as the shell so far.
+            // Still root: ShellUserService could not become the shell, and the package of the shell is not root's to give.
             if (Process.myUid() == 0) 2 to ROOT else 1 to describe(t)
         }
     }
