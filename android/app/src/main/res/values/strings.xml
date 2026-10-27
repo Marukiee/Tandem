@@ -513,4 +513,19 @@
     <string name="batch_sending">Sending file %1$d of %2$d</string>
     <string name="received_of">Received %1$d of %2$d files</string>
     <string name="files_reading_from">%1$d%% from %2$s</string>
+    <plurals name="transfers_chosen">
+        <item quantity="one">%d chosen</item>
+        <item quantity="other">%d chosen</item>
+    </plurals>
+    <plurals name="transfers_delete_title">
+        <item quantity="one">Delete %d file?</item>
+        <item quantity="other">Delete %d files?</item>
+    </plurals>
+    <string name="transfers_delete_body">They are deleted from this phone. Files you sent stay where they were. This cannot be undone.</string>
+    <string name="transfers_delete_files">Delete files…</string>
+    <string name="transfers_delete_none">Only files that came in on this phone can be deleted</string>
+    <string name="transfers_choose_all">Choose all</string>
+    <string name="transfers_choose_none">Choose none</string>
+    <string name="transfers_share">Share</string>
+    <string name="transfers_share_none">None of these files is on this phone yet</string>
 </resources>

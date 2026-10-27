@@ -512,6 +512,8 @@ fun TransferRow(
     peerName: String,
     actions: TransferActions,
     modifier: Modifier = Modifier,
+    /** Null when nothing is being chosen; otherwise whether this row is, shown as a check over its square. */
+    selected: Boolean? = null,
 ) {
     val context = LocalContext.current
     val tint = when (item.state) {
@@ -530,7 +532,21 @@ fun TransferRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        PreviewTile(item, tint)
+        Box {
+            PreviewTile(item, tint)
+            androidx.compose.animation.AnimatedVisibility(
+                visible = selected == true,
+                enter = androidx.compose.animation.scaleIn(TandemMotion.springy()) + androidx.compose.animation.fadeIn(TandemMotion.fadeSpec()),
+                exit = androidx.compose.animation.scaleOut(TandemMotion.springy()) + androidx.compose.animation.fadeOut(TandemMotion.fadeSpec()),
+                modifier = Modifier.align(Alignment.BottomEnd),
+            ) {
+                Icon(
+                    TandemIcons.CheckCircle, null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp).clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.surface),
+                )
+            }
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(item.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.MiddleEllipsis)
             val subtitle = when (item.state) {
@@ -545,7 +561,8 @@ fun TransferRow(
                 WavyProgress(fraction, tint, MaterialTheme.colorScheme.surfaceContainerHighest)
             }
         }
-        Box {
+        // While choosing, the menu of one row would be the wrong thing: the bar above the list acts on all that is chosen.
+        if (selected == null) Box {
             TandemIconButton(TandemIcons.More, stringResource(R.string.transfer_menu_more), { menu = true })
             androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 @Composable

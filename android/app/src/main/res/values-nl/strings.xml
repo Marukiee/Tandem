@@ -510,4 +510,19 @@
     <string name="batch_sending">Bestand %1$d van %2$d versturen</string>
     <string name="received_of">%1$d van %2$d bestanden ontvangen</string>
     <string name="files_reading_from">%1$d%% van %2$s</string>
+    <plurals name="transfers_chosen">
+        <item quantity="one">%d gekozen</item>
+        <item quantity="other">%d gekozen</item>
+    </plurals>
+    <plurals name="transfers_delete_title">
+        <item quantity="one">%d bestand verwijderen?</item>
+        <item quantity="other">%d bestanden verwijderen?</item>
+    </plurals>
+    <string name="transfers_delete_body">Ze worden van deze telefoon verwijderd. Bestanden die je stuurde blijven waar ze waren. Dit kan niet ongedaan worden.</string>
+    <string name="transfers_delete_files">Bestanden verwijderen…</string>
+    <string name="transfers_delete_none">Alleen bestanden die op deze telefoon binnenkwamen kunnen verwijderd worden</string>
+    <string name="transfers_choose_all">Alles kiezen</string>
+    <string name="transfers_choose_none">Niets kiezen</string>
+    <string name="transfers_share">Delen</string>
+    <string name="transfers_share_none">Geen van deze bestanden staat al op deze telefoon</string>
 </resources>
