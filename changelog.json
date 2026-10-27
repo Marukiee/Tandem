@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.31",
+    "date": "2026-10-27",
+    "en": { "title": "Choose many", "new": ["Shared: hold a file and drag to choose many on Android, Command or Shift-click on computers", "Quick Share on Android: the pill at the bottom slides between Receive and Send"] },
+    "nl": { "title": "Veel tegelijk", "new": ["Gedeeld: houd een bestand vast en sleep om er veel te kiezen op Android, Command- of Shift-klik op computers", "Quick Share op Android: de pill onderin schuift tussen Ontvangen en Versturen"] }
+  },
+  {
     "version": "0.2.30",
     "date": "2026-10-27",
     "en": { "title": "Messages in their place", "new": ["Messages sit with Files, Notifications and Clipboard instead of under the phone"] },
