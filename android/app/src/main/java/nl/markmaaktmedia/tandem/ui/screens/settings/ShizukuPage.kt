@@ -49,6 +49,21 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
     val state by shizuku.state.collectAsState()
     val projection by ProjectionGrant.state.collectAsState()
     var uid by remember { mutableStateOf<Int?>(null) }
+    // Android names the Wi-Fi to Tandem only with Location: without the name the phone cannot say which network it hands over.
+    val wifiShare = remember { nl.markmaaktmedia.tandem.wifi.WifiShare.get(context) }
+    var wifiNamed by remember { mutableStateOf(true) }
+    val askLocation = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        wifiNamed = wifiShare.canSeeNearby()
+        // Said no before: Android does not ask again, its page for the app is the way.
+        if (!granted) {
+            context.startActivity(
+                Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+    }
     val scope = rememberCoroutineScope()
 
     // Shizuku sends no word when it is started or allowed in its own app, so the page looks again while it is open.
@@ -57,6 +72,7 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
             shizuku.refresh()
             uid = shizuku.serverUid()
             ProjectionGrant.allowed(context)
+            wifiNamed = wifiShare.canSeeNearby()
             delay(2_000)
         }
     }
@@ -167,9 +183,25 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
         )
         ActionRow(
             4, 5, TandemIcons.Wifi, stringResource(R.string.shizuku_use_wifi),
-            stringResource(if (ready) R.string.shizuku_use_wifi_on else R.string.shizuku_use_wifi_off),
-            onClick = { if (!ready) nextStep() },
-            trailing = if (ready) done else null,
+            stringResource(
+                when {
+                    !ready -> R.string.shizuku_use_wifi_off
+                    !wifiNamed -> R.string.shizuku_use_wifi_location
+                    else -> R.string.shizuku_use_wifi_on
+                },
+            ),
+            onClick = {
+                when {
+                    !ready -> nextStep()
+                    !wifiNamed && !nl.markmaaktmedia.tandem.engine.Permissions.isGranted(context, android.Manifest.permission.ACCESS_FINE_LOCATION) ->
+                        askLocation.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                    // Allowed, but Location is off for the whole phone.
+                    !wifiNamed -> context.startActivity(
+                        Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }
+            },
+            trailing = if (ready && wifiNamed) done else null,
         )
     }
 }

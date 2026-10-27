@@ -27,4 +27,5 @@
     <string name="shizuku_use_wifi">Share this phone\'s Wi-Fi</string>
     <string name="shizuku_use_wifi_on">Your computers offer to take it over when they have no network</string>
     <string name="shizuku_use_wifi_off">Android lets only the shell read the password of a Wi-Fi network</string>
+    <string name="shizuku_use_wifi_location">Allow Location for Tandem too: without it Android hides the name of the Wi-Fi</string>
 </resources>

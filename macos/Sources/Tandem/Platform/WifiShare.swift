@@ -91,7 +91,11 @@ final class WifiShare: NSObject {
                 self.offered = []
                 return
             }
-            guard pending.isEmpty, !GlassQuestion.shared.isShowing else { return }
+            // Busy with an answer, or another question on screen: look again, as no event may come while this Mac has no network.
+            guard pending.isEmpty, !GlassQuestion.shared.isShowing else {
+                evaluate()
+                return
+            }
             for (id, network) in theirs where !offered.contains(network.ssid) && !declined.contains(network.ssid) {
                 guard let device = EngineModel.shared.device(id), device.online || device.ble else { continue }
                 guard wifiWorthOffering(network: network, connected: false, known: known) else { continue }

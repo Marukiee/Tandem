@@ -27,4 +27,5 @@
     <string name="shizuku_use_wifi">De wifi van deze telefoon delen</string>
     <string name="shizuku_use_wifi_on">Je computers bieden aan hem over te nemen als ze geen netwerk hebben</string>
     <string name="shizuku_use_wifi_off">Android laat alleen de shell het wachtwoord van een wifinetwerk lezen</string>
+    <string name="shizuku_use_wifi_location">Geef Tandem ook Locatie: zonder verbergt Android de naam van de wifi</string>
 </resources>

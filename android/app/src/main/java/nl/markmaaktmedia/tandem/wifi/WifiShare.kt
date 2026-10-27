@@ -321,7 +321,7 @@ class WifiShare private constructor(private val context: Context) {
         waiting = scope.launch {
             val sent = runCatching { graph.host.engine?.sendWifi(computer, TandemWifi.Ask(network.ssid)) != null }.getOrDefault(false)
             if (sent) delay(ASK_TIMEOUT_MS)
-            // The computer says no by itself after a minute and a half without an answer there; this is for one that is gone.
+            // The other device answers at once (it asks nobody); this is for one that is gone or never answers.
             val now = _join.value
             if (now is Join.Asking && now.computer == computer) settle(Join.NoAnswer(computer, network.ssid))
         }
@@ -452,7 +452,7 @@ class WifiShare private constructor(private val context: Context) {
         private const val KEY_DECLINED = "declined"
         private const val KEY_KNOWN = "known"
         private const val KEY_LOCATION_ASKED = "location_asked"
-        /** A little longer than the computer waits for its person. */
+        /** An older computer still asks its person first, for up to a minute and a half. */
         private const val ASK_TIMEOUT_MS = 100_000L
         private const val READY_FOR_MS = 10 * 60_000L
 
