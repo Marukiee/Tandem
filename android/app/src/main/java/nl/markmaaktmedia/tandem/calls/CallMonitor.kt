@@ -13,6 +13,8 @@ import android.telephony.TelephonyManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.engine.EngineHost
 import nl.markmaaktmedia.tandem.engine.Permissions
@@ -42,12 +44,17 @@ class CallMonitor(
     private var lastState = TelephonyManager.EXTRA_STATE_IDLE
     /** A number a computer asked this phone to call, and when: the call that starts right after is that one. */
     @Volatile private var dialed: Pair<String, Long>? = null
+    /**
+     * One change of the call state at a time. Android sends a ringing call twice in a row, once without the number and once with it,
+     * and handled side by side both saw a phone that was not ringing yet: two calls, two cards on the computers (seen 2026-10-27).
+     */
+    private val order = Mutex()
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE) ?: return
             val incomingNumber = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
-            scope.launch { onState(state, incomingNumber) }
+            scope.launch { order.withLock { onState(state, incomingNumber) } }
         }
     }
 

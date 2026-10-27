@@ -643,6 +643,13 @@ fn print_event(engine: &Engine, event: &Event) {
         Event::AudioStart { from, stream, .. } => println!("sound from {} starts (stream {stream})", name_of(from)),
         Event::RemovedFromCircle => println!("this device was removed from the circle"),
         Event::Clipboard { from, text, .. } => println!("clipboard from {}: {text}", name_of(from)),
+        Event::Call { from, call } => println!(
+            "call {} from {}: {:?}, {}",
+            call.id,
+            name_of(from),
+            call.state,
+            call.name.as_deref().or(call.number.as_deref()).unwrap_or("unknown number")
+        ),
         Event::ShareOffered { from, offer } => {
             println!("{} offers {} file(s)", name_of(from), offer.items.len());
         }
