@@ -92,6 +92,11 @@ class WifiShare private constructor(private val context: Context) {
     /** The networks offered since the app started, so one is asked about once. */
     private val asked = mutableSetOf<String>()
     private var declined: Set<String> = store.getStringSet(KEY_DECLINED, emptySet()).orEmpty().toSet()
+    /** The networks this phone has been on: it saved them, so it joins them by itself and they are never offered. */
+    private var known: Set<String> = store.getStringSet(KEY_KNOWN, emptySet()).orEmpty().toSet()
+    /** Since when each network has been worth offering, for [WifiOfferPolicy.settled]. */
+    private val pending = mutableMapOf<String, Long>()
+    private var settling: Job? = null
     private var nearby: Set<String> = emptySet()
     private var waiting: Job? = null
     private var forget: Job? = null
@@ -100,8 +105,13 @@ class WifiShare private constructor(private val context: Context) {
 
     private val callback = object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
         override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-            _phoneSsid.value = (caps.transportInfo as? WifiInfo)?.ssid?.let(::cleanSsid)
+            val ssid = (caps.transportInfo as? WifiInfo)?.ssid?.let(::cleanSsid)
+            _phoneSsid.value = ssid
             _phoneOnWifi.value = true
+            if (ssid != null && ssid !in known) {
+                known = known + ssid
+                store.edit().putStringSet(KEY_KNOWN, known).apply()
+            }
             evaluate()
         }
 
@@ -186,14 +196,32 @@ class WifiShare private constructor(private val context: Context) {
             withdraw()
         }
         if (_join.value != null) return
+        val now = System.currentTimeMillis()
+        val worth = mutableSetOf<String>()
         for (device in graph.host.devices.value) {
             val network = _networks.value[device.id] ?: continue
-            if (WifiOfferPolicy.shouldOffer(network, phone, bluetoothOnly = device.ble && !device.online, declined, asked)) {
-                asked += network.ssid
-                _offer.value = Offer(device.id, network)
-                notifyOffer(device.id, device.name, network)
-                return
+            if (!WifiOfferPolicy.shouldOffer(network, phone, bluetoothOnly = device.ble && !device.online, declined, asked, known)) continue
+            worth += network.ssid
+            val since = pending.getOrPut(network.ssid) { now }
+            if (!WifiOfferPolicy.settled(since, now)) {
+                lookAgain(since + WifiOfferPolicy.SETTLE_MS - now)
+                continue
             }
+            pending.remove(network.ssid)
+            asked += network.ssid
+            _offer.value = Offer(device.id, network)
+            notifyOffer(device.id, device.name, network)
+            return
+        }
+        // A network the phone joined meanwhile, or that went out of reach, starts again from the beginning next time.
+        pending.keys.retainAll(worth)
+    }
+
+    private fun lookAgain(after: Long) {
+        settling?.cancel()
+        settling = scope.launch {
+            delay(after + 500)
+            evaluate()
         }
     }
 
@@ -348,6 +376,7 @@ class WifiShare private constructor(private val context: Context) {
         private const val OFFER_ID = 0x5746
         private const val READY_ID = 0x5747
         private const val KEY_DECLINED = "declined"
+        private const val KEY_KNOWN = "known"
         private const val KEY_LOCATION_ASKED = "location_asked"
         /** A little longer than the computer waits for its person. */
         private const val ASK_TIMEOUT_MS = 100_000L

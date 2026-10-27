@@ -17,7 +17,18 @@ class WifiOfferPolicyTest {
         bluetoothOnly: Boolean = false,
         declined: Set<String> = emptySet(),
         asked: Set<String> = emptySet(),
-    ) = WifiOfferPolicy.shouldOffer(network, phone, bluetoothOnly, declined, asked)
+        known: Set<String> = emptySet(),
+    ) = WifiOfferPolicy.shouldOffer(network, phone, bluetoothOnly, declined, asked, known)
+
+    @Test fun aNetworkThePhoneHasBeenOnIsNotOffered() {
+        // Coming home: the phone sees its own network before it has joined it again.
+        assertFalse(offer(phone = Phone(ssid = null, nearby = setOf("Home")), known = setOf("Home")))
+    }
+
+    @Test fun anOfferWaitsUntilThePhoneHadTimeToJoinByItself() {
+        assertFalse(WifiOfferPolicy.settled(since = 1_000, now = 30_000))
+        assertTrue(WifiOfferPolicy.settled(since = 1_000, now = 1_000 + WifiOfferPolicy.SETTLE_MS))
+    }
 
     @Test fun withoutSeeingNearbyNetworksOnlyAComputerOverBluetoothIsOffered() {
         assertTrue(offer(bluetoothOnly = true))

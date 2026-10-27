@@ -6,9 +6,11 @@ import uniffi.tandem_core.TandemWifiSecurity
 /**
  * When the phone offers to take over the Wi-Fi of a computer. Pure, so the rules are tested without a phone.
  *
- * The network has to be one the phone can join, not the one it is on, not one the person said no to, and not one it already
- * asked about. Then it has to be near: in the last scan when Tandem may see nearby networks, and otherwise only while the
- * computer can be reached over Bluetooth alone, which says it is close by and that its network is no way to it now.
+ * The network has to be one the phone can join, not the one it is on, not one it has been on before (it knows that one and joins
+ * it by itself), not one the person said no to, and not one it already asked about. Then it has to be near: in the last scan when
+ * Tandem may see nearby networks, and otherwise only while the computer can be reached over Bluetooth alone, which says it is close
+ * by and that its network is no way to it now. And all that for a while ([settled]): coming home, the phone joins its own network
+ * a moment after the scan sees it, and Android does not tell an app which networks the phone has saved.
  */
 object WifiOfferPolicy {
     data class Phone(
@@ -27,14 +29,20 @@ object WifiOfferPolicy {
         bluetoothOnly: Boolean,
         declined: Set<String>,
         asked: Set<String>,
+        known: Set<String> = emptySet(),
     ): Boolean {
         if (network == null || !joinable(network)) return false
         val ssid = network.ssid
-        if (ssid == phone.ssid || ssid in declined || ssid in asked) return false
+        if (ssid == phone.ssid || ssid in known || ssid in declined || ssid in asked) return false
         val nearby = phone.nearby ?: return bluetoothOnly
         // A hidden network never shows up in a scan by its name.
         return ssid in nearby || (network.hidden && bluetoothOnly)
     }
+
+    /** How long a network has to stay worth offering before it is: long enough for the phone to join a network it saved. */
+    const val SETTLE_MS = 90_000L
+
+    fun settled(since: Long, now: Long): Boolean = now - since >= SETTLE_MS
 
     /** A no holds until the computer moves to another network: then the old one may be offered again later. */
     fun forgetDeclined(declined: Set<String>, before: TandemWifiNetwork?, after: TandemWifiNetwork?): Set<String> =
