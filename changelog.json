@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.30",
+    "date": "2026-10-27",
+    "en": { "title": "Messages in their place", "new": ["Messages sit with Files, Notifications and Clipboard instead of under the phone"] },
+    "nl": { "title": "Berichten op hun plek", "new": ["Berichten staat bij Bestanden, Meldingen en Klembord in plaats van onder de telefoon"] }
+  },
+  {
     "version": "0.2.29",
     "date": "2026-10-27",
     "en": { "title": "Wi-Fi when you have none", "new": ["A device without a network offers to take over the Wi-Fi of another one, never one it knows", "Your phone hands its Wi-Fi to your computers with Shizuku"] },

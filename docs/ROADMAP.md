@@ -27,6 +27,9 @@ Open, wacht op een echte Windows-pc: alles van sectie 2 voor Windows (scherm del
 Foundation, hotspot) en alles nalopen.
 
 Open, kan zonder dat die toegang er is, nog niet gedaan:
+- Bellen als eigen plek in de zijbalk (gevraagd 2026-10-27): Berichten staat sinds 0.2.30 bij Bestanden en Meldingen, bellen zit nog op de
+  pagina Berichten (contacten met een belknop). Een rij Bellen met de recente gesprekken van de telefoon vraagt READ_CALL_LOG op Android en
+  een nieuw bericht in de core; op Mac, Windows en Linux tegelijk.
 - Gasten en familie (gevraagd 2026-10-09): familieleden met de app zonder dat hun klembord bij je binnenkomt. Per apparaat kan dat met de
   schakelaar Klembord (die werkt twee kanten op in de kern: wat jij kopieert gaat er niet heen en wat zij kopieren wordt aan jouw kant
   weggegooid, `session.rs` bij `Msg::Clipboard`). Gebouwd in 0.1.75: een instelling "Nieuwe apparaten beginnen als gast" (kern
