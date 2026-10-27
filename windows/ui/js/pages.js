@@ -107,23 +107,23 @@ function Offers({ device }) {
   </div>`);
 }
 
-export function TransferRow({ item }) {
+export function TransferRow({ item, chosen, onClick }) {
   const peer = state.devices.find((d) => d.id === item.peer);
   const active = item.state === "active";
   const pct = item.total ? Math.min(100, Math.round((item.done / item.total) * 100)) : 0;
   const detail = active
     ? fmtSize(item.done) + " / " + fmtSize(item.total) + (item.speed ? " · " + fmtSize(item.speed) + "/s" : "")
     : item.state === "failed" ? (item.error === "cancelled" ? t("cancelled") : item.error || t("failed")) : fmtSize(item.total);
-  return html`<div class="item">
-    <${Icon} name=${item.incoming ? "arrow-down" : "arrow-up"} size=${18} class=${item.state === "failed" ? "bad" : ""} />
+  return html`<div class=${"item" + (chosen ? " chosen" : "") + (onClick ? " pickable" : "")} onMouseDown=${noTextPick} onClick=${onClick}>
+    ${chosen ? html`<${Icon} name="check" size=${18} class="accent-text" />` : html`<${Icon} name=${item.incoming ? "arrow-down" : "arrow-up"} size=${18} class=${item.state === "failed" ? "bad" : ""} />`}
     <div class="grow">
       <div class="ellipsis" style="font-weight:500">${item.name}</div>
       <div class="small muted ellipsis" style=${item.state === "failed" ? "color:var(--bad)" : ""}>${peer ? peer.name + " · " : ""}${detail}${!active && item.updatedAt ? " · " + ago(item.updatedAt) : ""}</div>
       ${active && html`<div class="prog"><i style=${`width:${pct}%`}></i></div>`}
     </div>
-    ${active && html`<button class="ib" title=${t("cancel_transfer")} onClick=${() => call("transfer_cancel", { id: item.id, peer: item.peer, incoming: Boolean(item.incoming) }).catch(failed)}><${Icon} name="x" size=${18} /></button>`}
+    ${active && html`<button class="ib" title=${t("cancel_transfer")} onClick=${(e) => e.stopPropagation() || call("transfer_cancel", { id: item.id, peer: item.peer, incoming: Boolean(item.incoming) }).catch(failed)}><${Icon} name="x" size=${18} /></button>`}
     ${item.state === "done" && item.incoming && item.location && html`
-      <button class="ib" title=${t("show_in_folder")} onClick=${() => call("reveal_path", { path: item.location }).catch(failed)}><${Icon} name="folder-open" size=${18} /></button>`}
+      <button class="ib" title=${t("show_in_folder")} onClick=${(e) => e.stopPropagation() || call("reveal_path", { path: item.location }).catch(failed)}><${Icon} name="folder-open" size=${18} /></button>`}
   </div>`;
 }
 
@@ -524,7 +524,10 @@ export function SharedPage() {
   const [direction, setDirection] = useState("all");
   const [peer, setPeer] = useState("all");
   const [period, setPeriod] = useState("always");
-  const [failed, setFailed] = useState(false);
+  const [onlyFailed, setOnlyFailed] = useState(false);
+  // Rows chosen with Ctrl or Shift, to open, remove or trash at once. While any is chosen a click chooses instead of opening.
+  const [chosen, setChosen] = useState(new Set());
+  const range = useRef({ anchor: null, kept: new Set() });
   const day = 86400000;
   const within = { today: day, week: 7 * day, month: 30 * day };
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -533,15 +536,58 @@ export function SharedPage() {
     && (direction === "all" || (direction === "received") === !!x.incoming)
     && (peer === "all" || x.peer === peer)
     && (period === "always" || Date.now() - (x.startedAt || 0) < within[period])
-    && (!failed || x.state === "failed")
+    && (!onlyFailed || x.state === "failed")
     && words.every((w) => x.name.toLowerCase().includes(w)));
-  const filtering = kind !== "all" || direction !== "all" || peer !== "all" || period !== "always" || failed || query;
+  const filtering = kind !== "all" || direction !== "all" || peer !== "all" || period !== "always" || onlyFailed || query;
   const peers = [...new Set(state.transfers.map((x) => x.peer))].map((id) => ({ key: id, label: (state.devices.find((d) => d.id === id) || {}).name || "?" }));
-  const clear = () => { setQuery(""); setKind("all"); setDirection("all"); setPeer("all"); setPeriod("always"); setFailed(false); };
+  const clear = () => { setQuery(""); setKind("all"); setDirection("all"); setPeer("all"); setPeriod("always"); setOnlyFailed(false); };
   const kinds = ["all", "pictures", "videos", "audio", "documents", "archives", "other"].map((k) => ({ key: k, label: t("kind_" + k) }));
   const directions = ["all", "received", "sent"].map((k) => ({ key: k, label: t("dir_" + k) }));
   const periods = ["always", "today", "week", "month"].map((k) => ({ key: k, label: t("period_" + k) }));
   const nameOf = (list, key, fallback) => (list.find((o) => o.key === key) || { label: fallback }).label;
+  // What is no longer shown cannot stay chosen.
+  const shownIds = items.map((x) => x.id);
+  const picked = items.filter((x) => chosen.has(x.id));
+  useEffect(() => {
+    if (picked.length !== chosen.size) setChosen(new Set(picked.map((x) => x.id)));
+  }, [shownIds.join("|")]);
+  useEffect(() => {
+    const key = (e) => { if (e.key === "Escape" && chosen.size > 0) setChosen(new Set()); };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [chosen.size]);
+  const clicked = (item, e) => {
+    const r = range.current;
+    if (e.shiftKey && r.anchor && shownIds.includes(r.anchor)) {
+      const a = shownIds.indexOf(r.anchor), b = shownIds.indexOf(item.id);
+      setChosen(new Set([...r.kept, ...shownIds.slice(Math.min(a, b), Math.max(a, b) + 1)]));
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.shiftKey || chosen.size > 0) {
+      const next = new Set(chosen);
+      next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+      setChosen(next);
+      range.current = { anchor: item.id, kept: next };
+      return;
+    }
+    range.current = { anchor: item.id, kept: new Set() };
+    if (item.state === "done" && item.location) call("open_path", { path: item.location }).catch(failed);
+  };
+  const openable = picked.filter((x) => x.state === "done" && x.location);
+  const trashable = picked.filter((x) => x.state === "done" && x.incoming && x.location);
+  const removeChosen = () => call("transfers_remove", { ids: [...chosen] }).then(() => {
+    set({ transfers: state.transfers.filter((x) => !(chosen.has(x.id) && x.state !== "active")) });
+    setChosen(new Set());
+  }).catch(failed);
+  const trashChosen = () => {
+    if (!trashable.length) return say(t("trash_none"));
+    if (!confirm(t("trash_confirm", trashable.length))) return;
+    call("transfers_trash", { ids: trashable.map((x) => x.id) }).then((moved) => {
+      set({ transfers: state.transfers.filter((x) => !moved.includes(x.id)) });
+      setChosen(new Set([...chosen].filter((id) => !moved.includes(id))));
+      if (moved.length < trashable.length) say(t("trash_some_failed"));
+    }).catch(failed);
+  };
   return html`<div class="wrap">
     <div style="display:flex;align-items:flex-end;gap:12px">
       <div class="grow"><h1>${t("title_shared")}</h1><p class="lead">${t("lead_shared")}</p></div>
@@ -558,12 +604,20 @@ export function SharedPage() {
             options=${[{ key: "all", label: t("all_devices") }, ...peers]} value=${peer} onPick=${setPeer} />
           <${FilterChip} icon="arrow-down" label=${direction === "all" ? t("filter_direction") : nameOf(directions, direction, "")} active=${direction !== "all"} options=${directions} value=${direction} onPick=${setDirection} />
           <${FilterChip} icon="hourglass" label=${period === "always" ? t("filter_when") : nameOf(periods, period, "")} active=${period !== "always"} options=${periods} value=${period} onPick=${setPeriod} />
-          <button class=${"chip" + (failed ? " on" : "")} onClick=${() => setFailed(!failed)}><${Icon} name="alert-triangle" size=${15} /><span>${t("failed")}</span></button>
+          <button class=${"chip" + (onlyFailed ? " on" : "")} onClick=${() => setOnlyFailed(!onlyFailed)}><${Icon} name="alert-triangle" size=${15} /><span>${t("failed")}</span></button>
           ${filtering && html`<button class="chip" onClick=${clear}><${Icon} name="x" size=${15} /><span>${t("clear_filters")}</span></button>`}
         </div>
         ${items.length === 0
           ? html`<div class="card empty"><${Icon} name="files" size=${34} /><div>${t("nothing_matches")}</div></div>`
-          : html`<div class="card flush">${items.map((x) => html`<${TransferRow} item=${x} key=${x.id} />`)}</div>`}`}
+          : html`${chosen.size > 0 && html`<div class="chosenbar">
+              <b class="grow">${t("n_chosen", chosen.size)}</b>
+              <button class="btn small" onClick=${() => setChosen(chosen.size === items.length ? new Set() : new Set(shownIds))}>${t(chosen.size === items.length ? "choose_none" : "choose_all")}</button>
+              <button class=${"btn small" + (openable.length ? "" : " dim")} onClick=${() => openable.length ? openable.forEach((x) => call("open_path", { path: x.location }).catch(failed)) : say(t("open_none"))}>${t("open")}</button>
+              <button class="btn small" onClick=${removeChosen}>${t("remove_from_list")}</button>
+              <button class=${"btn small danger" + (trashable.length ? "" : " dim")} onClick=${trashChosen}><${Icon} name="trash" size=${15} />${t("move_to_trash")}</button>
+              <button class="ib" title=${t("stop_choosing")} onClick=${() => setChosen(new Set())}><${Icon} name="x" size=${17} /></button>
+            </div>`}
+            <div class="card flush">${items.map((x) => html`<${TransferRow} item=${x} key=${x.id} chosen=${chosen.has(x.id)} onClick=${(e) => clicked(x, e)} />`)}</div>`}`}
   </div>`;
 }
 

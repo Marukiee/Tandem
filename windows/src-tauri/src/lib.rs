@@ -223,6 +223,8 @@ pub fn run() {
             commands::open_path,
             commands::reveal_path,
             commands::open_downloads,
+            commands::transfers_remove,
+            commands::transfers_trash,
             commands::show_main,
             commands::hide_panel,
             commands::resize_panel,

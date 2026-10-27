@@ -1055,6 +1055,19 @@
 /* Messages: the text messages of a phone */
 "Messages" = "Berichten";
 "Texts and calls" = "Sms en bellen";
+"Files you send and receive. Click one to open it, Command or Shift-click to choose more, right click for more." = "Bestanden die je stuurt en ontvangt. Klik om te openen, Command- of Shift-klik om meer te kiezen, rechtsklik voor meer.";
+"Move 1 file to the Trash?" = "1 bestand naar de prullenmand verplaatsen?";
+"Move %lld files to the Trash?" = "%lld bestanden naar de prullenmand verplaatsen?";
+"Move to Trash" = "Naar prullenmand";
+"Move to Trash…" = "Naar prullenmand…";
+"Files you sent stay where they were." = "Bestanden die je stuurde blijven waar ze waren.";
+"1 chosen" = "1 gekozen";
+"%lld chosen" = "%lld gekozen";
+"Choose All" = "Alles kiezen";
+"Choose None" = "Niets kiezen";
+"Only files that came in on this Mac can go to the Trash" = "Alleen bestanden die op deze Mac binnenkwamen kunnen naar de prullenmand";
+"Stop choosing" = "Stoppen met kiezen";
+"Some files could not be moved to the Trash" = "Sommige bestanden konden niet naar de prullenmand";
 "No messages yet" = "Nog geen berichten";
 "Choose a conversation" = "Kies een gesprek";
 "New message" = "Nieuw bericht";

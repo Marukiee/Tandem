@@ -359,6 +359,7 @@ export async function call(command, args) {
       return null;
     }
     case "qs_respond": case "qs_dismiss": case "qs_pick_and_send": case "qs_send_clipboard": case "qs_open_link": case "qs_send_paths": return null;
+    case "transfers_trash": return args.ids;
     case "guests_by_default": return guestsMock;
     case "set_guests_by_default": guestsMock = args.on; return null;
     case "set_settings": Object.assign(state.settings, args.patch); return state.settings;

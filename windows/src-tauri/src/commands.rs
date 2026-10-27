@@ -528,6 +528,71 @@ pub fn reveal_path(app: AppHandle, path: String) -> Reply<()> {
     app.opener().reveal_item_in_dir(path).map_err(shown)
 }
 
+/// Takes transfers off the page Shared. One that is still running stays: it is stopped with its own button.
+#[tauri::command]
+pub fn transfers_remove(app: AppHandle, ids: Vec<String>) -> Reply<()> {
+    let state = app.state::<AppState>();
+    state.data.lock().unwrap().transfers.retain(|t| !(ids.iter().any(|id| t["id"] == id.as_str()) && t["state"] != "active"));
+    Ok(())
+}
+
+/// Moves received files to the Trash (the Recycle Bin on Windows) and takes them off the list. A file that was sent is the person's
+/// own original and is left alone. The answer is the ids that went; one that could not stays on the list.
+#[tauri::command]
+pub fn transfers_trash(app: AppHandle, ids: Vec<String>) -> Reply<Vec<String>> {
+    let state = app.state::<AppState>();
+    let found: Vec<(String, String)> = state
+        .data
+        .lock()
+        .unwrap()
+        .transfers
+        .iter()
+        .filter(|t| ids.iter().any(|id| t["id"] == id.as_str()) && t["incoming"] == true && t["state"] == "done")
+        .filter_map(|t| Some((t["id"].as_str()?.to_string(), t["location"].as_str()?.to_string())))
+        .collect();
+    let moved: Vec<String> = found
+        .into_iter()
+        .filter(|(_, path)| to_trash(path).map_err(|e| log::warn!("could not move {path} to the trash: {e}")).is_ok())
+        .map(|(id, _)| id)
+        .collect();
+    state.data.lock().unwrap().transfers.retain(|t| !moved.iter().any(|id| t["id"] == id.as_str()));
+    Ok(moved)
+}
+
+/// Moves one file to the Trash with what the system has for it: `gio` on a Linux desktop, the Recycle Bin of Windows through
+/// PowerShell. The path goes in an environment variable, never in the text of a command, so no name can become one.
+fn to_trash(path: &str) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    let mut command = {
+        let mut command = std::process::Command::new("gio");
+        command.args(["trash", "--", path]);
+        command
+    };
+    #[cfg(windows)]
+    let mut command = {
+        use std::os::windows::process::CommandExt;
+        let mut command = std::process::Command::new("powershell");
+        command
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($env:TANDEM_TRASH, 'OnlyErrorDialogs', 'SendToRecycleBin')",
+            ])
+            .env("TANDEM_TRASH", path)
+            // No console window flashing up.
+            .creation_flags(0x0800_0000);
+        command
+    };
+    #[cfg(not(any(target_os = "linux", windows)))]
+    return Err(format!("no Trash for {path} here"));
+    #[cfg(any(target_os = "linux", windows))]
+    {
+        let output = command.stdin(std::process::Stdio::null()).output().map_err(|e| e.to_string())?;
+        if output.status.success() { Ok(()) } else { Err(String::from_utf8_lossy(&output.stderr).trim().to_string()) }
+    }
+}
+
 #[tauri::command]
 pub fn open_downloads(app: AppHandle) -> Reply<()> {
     let dir = settings::download_dir(&app);

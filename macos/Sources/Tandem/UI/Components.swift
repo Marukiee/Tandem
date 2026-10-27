@@ -773,6 +773,10 @@ struct TransferEntry: View {
     @Environment(EngineModel.self) private var model
     let item: TransferItem
     let peerName: String
+    /// Chosen among others on the page Shared, which then acts on all of them at once.
+    var chosen = false
+    /// What a click does instead of opening, for a page where rows can be chosen; nil opens.
+    var onTap: (() -> Void)?
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -783,11 +787,11 @@ struct TransferEntry: View {
             RowMenuButton(help: "More") { TransferMenu(item: item) }
         }
         .padding(.horizontal, 10)
-        .hoverHighlight(radius: Metrics.cardInner, tint: focused ? Palette.indigo : .primary, selected: focused)
+        .hoverHighlight(radius: Metrics.cardInner, tint: focused || chosen ? Palette.indigo : .primary, selected: focused || chosen)
         .contentShape(shape)
         .onTapGesture {
             focused = true
-            model.open(item)
+            if let onTap { onTap() } else { model.open(item) }
         }
         .focusable()
         .focused($focused)

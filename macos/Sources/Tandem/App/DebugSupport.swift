@@ -183,6 +183,17 @@ enum DebugSupport {
     /// The folder of a device's files to start in, and the row to have chosen there.
     static var filesPath: String? { variable("TANDEM_DEBUG_FILES_PATH") }
     static var filesSelection: String? { variable("TANDEM_DEBUG_FILES_SELECT") }
+    /// `TANDEM_DEBUG_SHARED_CHOSEN=<n>`: the page Shared with made up transfers, the first n of them chosen.
+    static var sharedChosen: Int? { variable("TANDEM_DEBUG_SHARED_CHOSEN").flatMap(Int.init) }
+
+    static func sharedSamples() -> [TransferItem] {
+        let now = Date()
+        return ["IMG_2041.jpg", "Offerte.pdf", "Notities.txt", "Clip 3.mov", "Muziek.zip"].enumerated().map { index, name in
+            TransferItem(id: "debug-\(index)", peer: "debug-phone", name: name, done: 2_000_000, total: 2_000_000, incoming: index % 2 == 0,
+                         state: .done, location: nil, error: nil, started: now, updated: now.addingTimeInterval(Double(-index * 60)))
+        }
+    }
+
     /// Opens the files as a drive in Finder as soon as the page is there.
     static var mountDrive: Bool { variable("TANDEM_DEBUG_MOUNT") != nil }
 

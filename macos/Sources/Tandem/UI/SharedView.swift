@@ -9,6 +9,11 @@ struct SharedView: View {
     @LocalState private var direction: SharedDirection = .all
     @LocalState private var period: SharedPeriod = .always
     @LocalState private var onlyProblems = false
+    /// Rows chosen with Command or Shift, to remove or trash at once. While any is chosen a click chooses instead of opening.
+    @LocalState private var chosen: Set<String> = []
+    @LocalState private var anchor: String?
+    @LocalState private var kept: Set<String> = []
+    @LocalState private var askTrash = false
 
     /// What the search and the filters, and the device the page was narrowed to, leave of the list.
     private var items: [TransferItem] {
@@ -40,7 +45,10 @@ struct SharedView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                PageHeader(title: "Shared", subtitle: "Files you send and receive. Click one to open it, right click for more.")
+                PageHeader(title: "Shared", subtitle: "Files you send and receive. Click one to open it, Command or Shift-click to choose more, right click for more.")
+                if !chosen.isEmpty {
+                    chosenBar.transition(.opacity.combined(with: .move(edge: .top)))
+                }
                 if model.transfers.isEmpty {
                     ContentUnavailableView(
                         "Nothing yet",
@@ -68,7 +76,10 @@ struct SharedView: View {
                         Card(radius: Metrics.card, padding: Metrics.cardInset) {
                             LazyVStack(spacing: 2) {
                                 ForEach(items, id: \.id) { item in
-                                    TransferEntry(item: item, peerName: model.device(item.peer)?.name ?? "?")
+                                    TransferEntry(
+                                        item: item, peerName: model.device(item.peer)?.name ?? "?",
+                                        chosen: chosen.contains(item.id), onTap: { clicked(item) }
+                                    )
                                         .transition(.asymmetric(insertion: .scale(scale: 0.96).combined(with: .opacity), removal: .opacity))
                                 }
                             }
@@ -80,6 +91,24 @@ struct SharedView: View {
             .frame(maxWidth: 760, alignment: .leading)
             .frame(maxWidth: .infinity)
             .animation(.tandem, value: items.map(\.id))
+            .animation(.tandem, value: chosen.isEmpty)
+        }
+        .onAppear {
+            guard let count = DebugSupport.sharedChosen else { return }
+            if model.transfers.isEmpty { model.transfers = DebugSupport.sharedSamples() }
+            chosen = Set(items.prefix(count).map(\.id))
+        }
+        // What is no longer shown cannot stay chosen.
+        .onChange(of: items.map(\.id)) { _, ids in chosen.formIntersection(ids) }
+        .onKeyPress(.escape) {
+            guard !chosen.isEmpty else { return .ignored }
+            withAnimation(.tandem) { chosen = [] }
+            return .handled
+        }
+        .confirmationDialog(trashTitle, isPresented: $askTrash) {
+            Button("Move to Trash", role: .destructive) { trashChosen() }
+        } message: {
+            Text("Files you sent stay where they were.")
         }
         .toolbar {
             // The buttons at the trailing end, where the system's own apps have them.
@@ -95,6 +124,81 @@ struct SharedView: View {
                 }
             }
         }
+    }
+
+    /// A click with Command chooses a row or lets it go, with Shift everything from the row clicked last; while something is chosen a plain
+    /// click does the same as Command. Otherwise a click opens the file, as before.
+    private func clicked(_ item: TransferItem) {
+        let flags = NSEvent.modifierFlags
+        let ids = items.map(\.id)
+        if flags.contains(.shift), let anchor, let a = ids.firstIndex(of: anchor), let b = ids.firstIndex(of: item.id) {
+            withAnimation(.tandem) { chosen = kept.union(ids[min(a, b)...max(a, b)]) }
+            return
+        }
+        if flags.contains(.command) || flags.contains(.shift) || !chosen.isEmpty {
+            withAnimation(.tandemSpringy) {
+                if chosen.contains(item.id) { chosen.remove(item.id) } else { chosen.insert(item.id) }
+            }
+            anchor = item.id
+            kept = chosen
+            return
+        }
+        anchor = item.id
+        kept = []
+        model.open(item)
+    }
+
+    private var chosenItems: [TransferItem] { model.transfers.filter { chosen.contains($0.id) } }
+    /// Only what arrived on this Mac goes to the Trash: a file that was sent is the person's own original.
+    private var trashable: [TransferItem] { chosenItems.filter { $0.incoming && model.canOpen($0) } }
+
+    private var trashTitle: String {
+        trashable.count == 1 ? String(localized: "Move 1 file to the Trash?") : String(localized: "Move \(trashable.count) files to the Trash?")
+    }
+
+    /// In place of nothing, above the list while rows are chosen: how many, and what can be done with all of them.
+    private var chosenBar: some View {
+        HStack(spacing: 10) {
+            Text(chosen.count == 1 ? String(localized: "1 chosen") : String(localized: "\(chosen.count) chosen"))
+                .font(.headline)
+                .contentTransition(.numericText(value: Double(chosen.count)))
+            Spacer(minLength: 8)
+            Button(chosen.count == items.count ? "Choose None" : "Choose All") {
+                withAnimation(.tandem) { chosen = chosen.count == items.count ? [] : Set(items.map(\.id)) }
+            }
+            Button("Open") { chosenItems.filter(model.canOpen).forEach(model.open) }
+                .disabled(!chosenItems.contains(where: model.canOpen))
+            Button("Remove from List") {
+                withAnimation(.tandem) {
+                    model.removeFromList(chosen)
+                    chosen = []
+                }
+            }
+            Button("Move to Trash…", role: .destructive) { askTrash = true }
+                .disabled(trashable.isEmpty)
+                .help(trashable.isEmpty ? Text("Only files that came in on this Mac can go to the Trash") : Text("Move to Trash"))
+            Button { withAnimation(.tandem) { chosen = [] } } label: { Image(systemName: "xmark") }
+                .buttonStyle(.borderless)
+                .help("Stop choosing")
+        }
+        .buttonStyle(.glass)
+        .controlSize(.large)
+    }
+
+    private func trashChosen() {
+        let items = trashable
+        var moved: Set<String> = []
+        for item in items {
+            guard let path = item.location, (try? FileManager.default.trashItem(at: URL(fileURLWithPath: path), resultingItemURL: nil)) != nil else { continue }
+            moved.insert(item.id)
+        }
+        // What could not be moved stays in the list, and chosen, so it can be tried again or looked at.
+        withAnimation(.tandem) {
+            model.removeFromList(moved)
+            chosen.subtract(moved)
+        }
+        if moved.count < items.count { model.showToast(String(localized: "Some files could not be moved to the Trash")) }
+        else { model.showToast(String(localized: "Moved to the Trash")) }
     }
 
     /// The filters: what kind of file, who it was with, which way it went, when, and whether it went wrong. A filter that is on is
