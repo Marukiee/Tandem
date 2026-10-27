@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.29",
+    "date": "2026-10-27",
+    "en": { "title": "Wi-Fi when you have none", "new": ["A device without a network offers to take over the Wi-Fi of another one, never one it knows", "Your phone hands its Wi-Fi to your computers with Shizuku"] },
+    "nl": { "title": "Wifi als je er geen hebt", "new": ["Een apparaat zonder netwerk biedt aan de wifi van een ander over te nemen, nooit een die het al kent", "Je telefoon geeft zijn wifi aan je computers met Shizuku"] }
+  },
+  {
     "version": "0.2.28",
     "date": "2026-10-27",
     "en": { "title": "One call, one card", "new": ["An incoming call shows one card on your computers", "Your phone no longer offers the Wi-Fi of your computer when it knows that network already"] },
