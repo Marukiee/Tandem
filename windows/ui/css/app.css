@@ -509,9 +509,6 @@ select { cursor: default; }
 .call-contact.on .n { color: var(--accent); }
 
 /* Stepped in to the column of the phone's name (glyph 36 and gap 11), its tint too, so it reads as part of that phone. */
-.nav .subrow { margin-left: 47px; gap: 8px; padding-top: 5px; padding-bottom: 5px; font-weight: 500; }
-.subrow-mark { flex: none; display: grid; place-items: center; }
-.subrow-mark svg { box-sizing: content-box; padding: 5px; border-radius: 50%; color: var(--accent); background: var(--accent-soft); }
 
 /* The question before every call. */
 .call-ask { width: 400px; }

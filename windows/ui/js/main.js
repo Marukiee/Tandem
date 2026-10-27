@@ -75,15 +75,14 @@ function DisplayBanner() {
 
 function Nav() {
   const unread = state.notifications.length;
+  // The messages of a phone, and its calls with them, sit with Shared and the clipboard; with more than one phone each says whose it is.
+  const phones = state.devices.filter(offersMessages);
   return html`<nav class="nav">
     <div class="brand" data-tauri-drag-region><img src="icons/brand.png" alt="" />Tandem<span class="tag">${t("experimental")}</span></div>
     <div class="label">${t("devices")}</div>
     ${state.devices.map((d) => {
       const battery = d.status && d.status.battery;
       const on = (state.page === "device" || state.page === "files") && state.selected === d.id;
-      const messages = offersMessages(d) && html`<div class=${"row subrow" + (state.page === "messages" && state.selected === d.id ? " selected" : "") + (d.online ? "" : " dim")}
-        key=${d.id + "-messages"} onClick=${() => set({ selected: d.id, page: "messages" })}>
-        <span class="subrow-mark"><${Icon} name="message" size=${15} /></span><span class="grow">${t("sms_messages")}</span></div>`;
       return [html`<div class=${"row" + (on ? " selected" : "") + (d.online ? "" : " dim")} key=${d.id} onClick=${() => set({ selected: d.id, page: "device" })}>
         <${DeviceGlyph} device=${d} size=${36} />
         <div class="grow">
@@ -92,11 +91,14 @@ function Nav() {
         </div>
         ${battery && html`<span class="small muted" style="display:flex;align-items:center;gap:2px">
           ${battery.charging && html`<${Icon} name="bolt" size=${13} filled=${true} class="ok-text" />`}${battery.level}%</span>`}
-      </div>`, messages];
+      </div>`];
     })}
     <div class="row addrow" onClick=${() => set({ dialog: { kind: "pair" } })}><${Icon} name="plus" size=${18} />${t("add_device")}</div>
     <div class="spacer"></div>
     <div class=${"row" + (state.page === "shared" ? " selected" : "")} onClick=${() => set({ page: "shared" })}><${Icon} name="files" size=${19} /><span class="grow">${t("shared")}</span></div>
+    ${phones.map((d) => html`<div class=${"row" + (state.page === "messages" && state.selected === d.id ? " selected" : "") + (d.online ? "" : " dim")}
+      key=${d.id + "-messages"} onClick=${() => set({ selected: d.id, page: "messages" })}>
+      <${Icon} name="message" size=${19} /><span class="grow ellipsis">${t("sms_messages")}${phones.length > 1 && html` <span class="muted">${d.name}</span>`}</span></div>`)}
     <div class=${"row" + (state.page === "clipboard" ? " selected" : "")} onClick=${() => set({ page: "clipboard" })}><${Icon} name="clipboard" size=${19} /><span class="grow">${t("clipboard")}</span></div>
     <div class=${"row" + (state.page === "notifications" ? " selected" : "")} onClick=${() => set({ page: "notifications" })}>
       <${Icon} name="bell" size=${19} /><span class="grow">${t("notifications")}</span>${unread > 0 && html`<span class="badge">${unread > 99 ? "99+" : unread}</span>`}</div>

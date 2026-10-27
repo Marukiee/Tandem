@@ -27,13 +27,14 @@ struct Sidebar: View {
     @Namespace private var chosen
 
     private var order: [SidebarSelection] {
-        model.devices.flatMap { device in
-            Sidebar.offersMessages(device) ? [SidebarSelection.device(device.id), .messages(device.id)] : [.device(device.id)]
-        } + [.shared, .notifications, .clipboard]
+        model.devices.map { .device($0.id) } + [.shared] + phones.map { .messages($0.id) } + [.notifications, .clipboard]
     }
 
-    /// A phone has its messages, and its calls with them, as a place of its own under it. What a device can do is only known while
-    /// it is connected, so a phone that is away keeps the place: the page itself says that it cannot be reached.
+    /// The phones whose messages have a row in the second group.
+    private var phones: [TandemDevice] { model.devices.filter(Sidebar.offersMessages) }
+
+    /// A phone has its messages, and its calls with them, as a place of its own in the second group. What a device can do is only
+    /// known while it is connected, so a phone that is away keeps the place: the page itself says that it cannot be reached.
     static func offersMessages(_ device: TandemDevice) -> Bool {
         device.platform == .android && (device.caps.isEmpty || device.caps.contains("sms"))
     }
@@ -51,16 +52,6 @@ struct Sidebar: View {
                     } content: {
                         DeviceRow(device: device)
                     }
-                    if Sidebar.offersMessages(device) {
-                        SidebarButton(selected: selection == .messages(device.id), chosen: chosen) {
-                            selection = .messages(device.id)
-                        } content: {
-                            MessagesRow(device: device)
-                        }
-                        // Stepped in to the column of the phone's name, its shape too, so it reads as part of that phone.
-                        .padding(.leading, DeviceRow.nameColumn)
-                        .transition(.opacity)
-                    }
                 }
 
                 Text("Shared")
@@ -73,6 +64,15 @@ struct Sidebar: View {
                     selection = .shared
                 } content: {
                     SharedRow()
+                }
+                ForEach(phones, id: \.id) { device in
+                    SidebarButton(selected: selection == .messages(device.id), chosen: chosen) {
+                        selection = .messages(device.id)
+                    } content: {
+                        // With more than one phone each row says whose it is.
+                        MessagesRow(device: device, named: phones.count > 1)
+                    }
+                    .transition(.opacity)
                 }
                 SidebarButton(selected: selection == .notifications, chosen: chosen) {
                     selection = .notifications
@@ -182,8 +182,6 @@ private struct DevicesHeader: View {
 private struct DeviceRow: View {
     @Environment(EngineModel.self) private var model
     let device: TandemDevice
-    /// Where the name starts, from the edge of the row's content: the glyph and the space after it.
-    static let nameColumn: CGFloat = 38 + 11
 
     var body: some View {
         let reach = model.reach(of: device)
@@ -256,34 +254,20 @@ private struct SideRow: View {
     }
 }
 
-/// The messages of a phone, just under it and stepped in under its name (see `Sidebar`), so it reads as part of that phone: a small
-/// disc and the word.
+/// The messages of a phone, and its calls with them (see `MessagesView`), in the second group like Files and Notifications.
 private struct MessagesRow: View {
     let device: TandemDevice
+    let named: Bool
 
     var body: some View {
         let unread = MessagesStore.shared.phone(device.id).unreadCount
-        HStack(spacing: 8) {
-            Image(systemName: "message.fill")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Palette.indigo)
-                .frame(width: 24, height: 24)
-                .background(Palette.indigo.opacity(0.14), in: Circle())
-            Text("Messages").font(.callout.weight(.medium)).lineLimit(1)
-            Spacer(minLength: 0)
-            if unread > 0 {
-                Text("\(unread)")
-                    .font(.caption.weight(.semibold).monospacedDigit())
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
-                    .background(Palette.indigo.opacity(0.18), in: Capsule())
-                    .contentTransition(.numericText(value: Double(unread)))
-                    .transition(.scale.combined(with: .opacity))
-            }
-        }
-        .padding(.vertical, 1)
+        SideRow(
+            symbol: "message.fill",
+            title: "Messages",
+            subtitle: named ? device.name : String(localized: "Texts and calls"),
+            badge: unread
+        )
         .opacity(device.online ? 1 : 0.6)
-        .animation(.tandem, value: unread)
     }
 }
 
