@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.28",
+    "date": "2026-10-27",
+    "en": { "title": "One call, one card", "new": ["An incoming call shows one card on your computers", "Your phone no longer offers the Wi-Fi of your computer when it knows that network already"] },
+    "nl": { "title": "Een gesprek, een kaart", "new": ["Een inkomend gesprek toont een kaart op je computers", "Je telefoon biedt de wifi van je computer niet meer aan als hij dat netwerk al kent"] }
+  },
+  {
     "version": "0.2.27",
     "date": "2026-10-26",
     "en": { "title": "Files at a glance", "new": ["Shift-click chooses a range of files of another device", "Copying from another device shows how far it is, also in the Files app of Android"] },
