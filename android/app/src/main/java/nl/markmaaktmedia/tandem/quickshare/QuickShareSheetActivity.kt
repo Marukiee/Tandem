@@ -23,6 +23,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -169,7 +173,9 @@ class QuickShareSheetActivity : ComponentActivity() {
                         .navigationBarsPadding(),
                 ) {
                     Column(
-                        Modifier.fillMaxWidth().animateContentSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 22.dp, bottom = 96.dp),
+                        // No animateContentSize here: the change of tab animates its own size, and two springs on one height made shrinking
+                        // judder while growing looked fine.
+                        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 22.dp, bottom = 96.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Text(stringResource(R.string.quickshare_title), style = MaterialTheme.typography.headlineLarge)
@@ -179,8 +185,10 @@ class QuickShareSheetActivity : ComponentActivity() {
                             targetState = tab,
                             transitionSpec = {
                                 val forward = targetState > initialState
-                                (slideInHorizontally(TandemMotion.spatial()) { if (forward) it / 4 else -it / 4 } + fadeIn(TandemMotion.fadeSpec())) togetherWith
-                                    (slideOutHorizontally(TandemMotion.spatial()) { if (forward) -it / 4 else it / 4 } + fadeOut(TandemMotion.fadeSpec()))
+                                ((slideInHorizontally(TandemMotion.spatial()) { if (forward) it / 4 else -it / 4 } + fadeIn(TandemMotion.fadeSpec())) togetherWith
+                                    (slideOutHorizontally(TandemMotion.spatial()) { if (forward) -it / 4 else it / 4 } + fadeOut(TandemMotion.fadeSpec())))
+                                    // The same spring both ways, and nothing cut off while the page that leaves fades: the sheet clips it.
+                                    .using(androidx.compose.animation.SizeTransform(clip = false) { _, _ -> TandemMotion.sizeSpring() })
                             },
                             label = "quickShareTab",
                         ) { current ->
@@ -219,14 +227,42 @@ class QuickShareSheetActivity : ComponentActivity() {
                             },
                         )
                     }
-                    // The two ways of the page, in a pill that floats at the bottom.
-                    Row(
+                    // The two ways of the page, in a pill that floats at the bottom. One highlight slides between them, as the pill of the
+                    // navigation does, instead of one fading out and the other in.
+                    val bounds = remember { androidx.compose.runtime.mutableStateListOf(androidx.compose.ui.geometry.Rect.Zero, androidx.compose.ui.geometry.Rect.Zero) }
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    val target = bounds[tab]
+                    val leftAnim = remember { androidx.compose.animation.core.Animatable(0f) }
+                    val widthAnim = remember { androidx.compose.animation.core.Animatable(0f) }
+                    androidx.compose.runtime.LaunchedEffect(target) {
+                        if (target.width <= 0f) return@LaunchedEffect
+                        // The first place is taken at once: opening the sheet should not grow the highlight out of nothing.
+                        if (widthAnim.value == 0f) {
+                            leftAnim.snapTo(target.left)
+                            widthAnim.snapTo(target.width)
+                        } else {
+                            launch { leftAnim.animateTo(target.left, TandemMotion.spatial()) }
+                            widthAnim.animateTo(target.width, TandemMotion.spatial())
+                        }
+                    }
+                    val left = leftAnim.value
+                    val width = widthAnim.value
+                    Box(
                         Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp)
                             .shadow(6.dp, CircleShape).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        Tab(stringResource(R.string.quickshare_tab_receive), TandemIcons.Download, tab == 0) { tab = 0 }
-                        Tab(stringResource(R.string.quickshare_tab_send), TandemIcons.Send, tab == 1) { tab = 1 }
+                        if (width > 0f) {
+                            Box(
+                                Modifier.matchParentSize().wrapContentWidth(Alignment.Start)
+                                    .offset { androidx.compose.ui.unit.IntOffset(left.toInt(), 0) }
+                                    .width(with(density) { width.toDp() })
+                                    .clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Tab(stringResource(R.string.quickshare_tab_receive), TandemIcons.Download, tab == 0, { bounds[0] = it }) { tab = 0 }
+                            Tab(stringResource(R.string.quickshare_tab_send), TandemIcons.Send, tab == 1, { bounds[1] = it }) { tab = 1 }
+                        }
                     }
                 }
             }
@@ -234,15 +270,24 @@ class QuickShareSheetActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun Tab(label: String, icon: androidx.compose.ui.graphics.painter.Painter, selected: Boolean, onClick: () -> Unit) {
+    private fun Tab(
+        label: String,
+        icon: androidx.compose.ui.graphics.painter.Painter,
+        selected: Boolean,
+        onPlaced: (androidx.compose.ui.geometry.Rect) -> Unit,
+        onClick: () -> Unit,
+    ) {
+        val ink by androidx.compose.animation.animateColorAsState(
+            if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface, TandemMotion.colourSpec(), label = "tabInk",
+        )
+        // Both always carry their icon, so neither changes width and the highlight slides between two fixed places.
         Row(
-            Modifier.clip(CircleShape)
-                .background(androidx.compose.animation.animateColorAsState(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent, TandemMotion.colourSpec(), label = "tabFill").value)
-                .bouncyClickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 10.dp),
+            Modifier.onPlaced { onPlaced(it.boundsInParent()) }
+                .clip(CircleShape).bouncyClickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (selected) Icon(icon, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
-            Text(label, style = MaterialTheme.typography.labelLarge, color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface)
+            Icon(icon, null, modifier = Modifier.size(18.dp), tint = ink)
+            Text(label, style = MaterialTheme.typography.labelLarge, color = ink)
         }
     }
 
