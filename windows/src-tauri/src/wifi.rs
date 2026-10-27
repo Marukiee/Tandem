@@ -1,7 +1,9 @@
-//! Handing the Wi-Fi of this computer to another device of the circle, and joining the Wi-Fi another computer hands over (see
-//! `wifi` in the core). The core tells the others which network this computer is on. A device that is not on it asks, and the person
-//! here decides in the card in the corner (on Linux also a notification with the buttons). The password is only in memory, on its way.
+//! Handing the Wi-Fi of this computer to another device of the circle, and taking over the Wi-Fi of another one (see `wifi` in the
+//! core). The core tells the others which network this computer is on. A device without a network offers its person to take over a
+//! network of another one; that yes is the only question, the device that is asked hands the password over. Here the question is the
+//! card in the corner (on Linux also a notification with the buttons). The password is only in memory, on its way.
 
+use std::collections::{HashMap, HashSet};
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
@@ -28,7 +30,7 @@ fn to_core(network: &Network) -> TandemWifiNetwork {
         Security::Enterprise => TandemWifiSecurity::Enterprise,
         Security::Other => TandemWifiSecurity::Other,
     };
-    TandemWifiNetwork { ssid: network.ssid.clone(), security, hidden: network.hidden }
+    TandemWifiNetwork { ssid: network.ssid.clone(), security, hidden: network.hidden, locked: false }
 }
 
 fn from_core(network: &TandemWifiNetwork) -> Network {
@@ -49,7 +51,29 @@ fn shareable(security: Security) -> bool {
 /// The name of the network this computer is on, as last read, for the page: "Share Wi-Fi" only shows where it gives the device something.
 static HERE: Mutex<Option<String>> = Mutex::new(None);
 
-/// Says which network this computer is on, and again whenever that changes. The core passes on only a change.
+/// What this computer knows of the networks of others, and what it asked: one lock, as the loop and the events both use it.
+#[derive(Default)]
+struct Offers {
+    /// The network each other device said it is on.
+    theirs: HashMap<String, TandemWifiNetwork>,
+    /// Offered since this computer last had a network.
+    offered: HashSet<String>,
+    /// Said no to, until that device is on another network.
+    declined: HashSet<String>,
+    /// The network asked for from each device, after a yes here: what comes back is joined without asking again.
+    pending: HashMap<String, String>,
+    /// How many looks in a row found no network. Losing it for a moment (moving to another access point) says nothing.
+    without: u32,
+}
+
+static OFFERS: OnceLock<Mutex<Offers>> = OnceLock::new();
+
+fn offers() -> std::sync::MutexGuard<'static, Offers> {
+    OFFERS.get_or_init(Default::default).lock().unwrap()
+}
+
+/// Says which network this computer is on, and again whenever that changes. The core passes on only a change. Every look also
+/// says whether to offer the network of another device.
 pub fn start(app: &AppHandle) {
     if !available() {
         return;
@@ -69,9 +93,11 @@ pub fn start(app: &AppHandle) {
             if changed {
                 let _ = app.emit("wifi-here", ssid);
             }
+            let on_wifi = current.is_some();
             if let Ok(engine) = app.state::<AppState>().engine() {
                 tauri::async_runtime::block_on(engine.set_wifi_network(current.map(|n| to_core(&n))));
             }
+            look(&app, on_wifi || wifi::connected());
             std::thread::sleep(Duration::from_secs(10));
         })
         .ok();
@@ -87,24 +113,137 @@ fn reply(app: &AppHandle, to: &str, message: TandemWifi) -> bool {
     tauri::async_runtime::block_on(engine.send_wifi(to.to_string(), message)).is_ok()
 }
 
+/// One look: with no network for two looks in a row, a network of another device that can be reached now and that this computer does
+/// not know is offered, one at a time.
+fn look(app: &AppHandle, connected: bool) {
+    let offer = {
+        let mut offers = offers();
+        if connected {
+            offers.without = 0;
+            offers.offered.clear();
+            return;
+        }
+        offers.without += 1;
+        if offers.without < 2 || !offers.pending.is_empty() {
+            return;
+        }
+        let known = wifi::known();
+        let reachable = |id: &str| {
+            let state = app.state::<AppState>();
+            let data = state.data.lock().unwrap();
+            data.devices.iter().any(|d| d["id"] == id && (d["online"].as_bool() == Some(true) || d["ble"].as_bool() == Some(true)))
+        };
+        let found = offers
+            .theirs
+            .iter()
+            .find(|(id, network)| {
+                !offers.offered.contains(&network.ssid)
+                    && !offers.declined.contains(&network.ssid)
+                    && tandem_core::ffi::wifi_worth_offering((*network).clone(), false, known.clone())
+                    && reachable(id)
+            })
+            .map(|(id, network)| (id.clone(), network.clone()));
+        if let Some((_, network)) = &found {
+            offers.offered.insert(network.ssid.clone());
+        }
+        found
+    };
+    if let Some((id, network)) = offer {
+        let app = app.clone();
+        std::thread::spawn(move || offer_network(&app, &id, &network));
+    }
+}
+
+/// Asks the person here whether this computer, which has no network, takes over the one of another device.
+fn offer_network(app: &AppHandle, from: &str, network: &TandemWifiNetwork) {
+    let name = device_name(app, from);
+    let question = Question {
+        id: 0,
+        title: i18n::t1(app, "wifi_use_title", &name),
+        body: i18n::t2(app, "wifi_use_body", &name, &network.ssid),
+        allow: i18n::t(app, "wifi_join"),
+        always: String::new(),
+        deny: i18n::t(app, "wifi_not_now"),
+        control: false,
+    };
+    if crate::ask::ask(app, question) == Answer::Deny {
+        offers().declined.insert(network.ssid.clone());
+        return;
+    }
+    offers().pending.insert(from.to_string(), network.ssid.clone());
+    if !reply(app, from, TandemWifi::Ask { ssid: network.ssid.clone() }) {
+        offers().pending.remove(from);
+        toast(app, &i18n::t1(app, "wifi_unreachable", &name), &network.ssid);
+        return;
+    }
+    std::thread::sleep(Duration::from_secs(100));
+    let mut offers = offers();
+    if offers.pending.get(from) == Some(&network.ssid) {
+        offers.pending.remove(from);
+        drop(offers);
+        toast(app, &i18n::t1(app, "wifi_not_sent", &name), &network.ssid);
+    }
+}
+
 pub fn handle(app: &AppHandle, from: String, message: TandemWifi) {
     let app = app.clone();
     match message {
-        // Both wait for the person, so off the thread of the events.
+        // Off the thread of the events: reading a password and joining take a while, and a question waits for the person.
         TandemWifi::Ask { ssid } => {
             std::thread::spawn(move || asked(&app, &from, &ssid));
         }
         TandemWifi::Share { network, password } => {
-            std::thread::spawn(move || offered(&app, &from, &network, &password));
+            let wanted = {
+                let mut offers = offers();
+                let wanted = offers.pending.get(&from) == Some(&network.ssid);
+                if wanted {
+                    offers.pending.remove(&from);
+                }
+                wanted
+            };
+            std::thread::spawn(move || {
+                if wanted {
+                    join(&app, &from, &network, &password);
+                } else {
+                    offered(&app, &from, &network, &password);
+                }
+            });
         }
-        // This computer does not ask others for their Wi-Fi: it offers its own, and joins what it is handed.
-        TandemWifi::Network { .. } | TandemWifi::Refuse { .. } => {}
+        TandemWifi::Network { network } => {
+            let mut offers = offers();
+            // A no holds until that device is on another network.
+            if let Some(before) = offers.theirs.get(&from).map(|n| n.ssid.clone()) {
+                if network.as_ref().map(|n| &n.ssid) != Some(&before) {
+                    offers.declined.remove(&before);
+                }
+            }
+            match network {
+                Some(network) => offers.theirs.insert(from, network),
+                None => offers.theirs.remove(&from),
+            };
+        }
+        TandemWifi::Refuse { ssid, why } => {
+            let mut offers = offers();
+            if offers.pending.get(&from) != Some(&ssid) {
+                return;
+            }
+            offers.pending.remove(&from);
+            drop(offers);
+            let name = device_name(&app, &from);
+            let key = match why {
+                TandemWifiRefusal::CannotShare => "wifi_refused_cannot",
+                TandemWifiRefusal::NotOnIt => "wifi_refused_not_on_it",
+                TandemWifiRefusal::Unreadable => "wifi_refused_unreadable",
+                _ => "wifi_not_sent",
+            };
+            toast(&app, &i18n::t1(&app, key, &name), &ssid);
+        }
     }
 }
 
-/// A device that is not on the network of this computer asks for its password. One question for each device at a time.
+/// Another device asks for the password of this computer's network: its person said yes to taking it over there, so no second
+/// question here.
 fn asked(app: &AppHandle, from: &str, ssid: &str) {
-    static ASKING: Mutex<Vec<String>> = Mutex::new(Vec::new());
     let Some(network) = wifi::current().filter(|n| n.ssid == ssid) else {
         reply(app, from, TandemWifi::Refuse { ssid: ssid.to_string(), why: TandemWifiRefusal::NotOnIt });
         return;
@@ -113,29 +252,7 @@ fn asked(app: &AppHandle, from: &str, ssid: &str) {
         reply(app, from, TandemWifi::Refuse { ssid: ssid.to_string(), why: TandemWifiRefusal::CannotShare });
         return;
     }
-    {
-        let mut asking = ASKING.lock().unwrap();
-        if asking.iter().any(|id| id == from) {
-            return;
-        }
-        asking.push(from.to_string());
-    }
     let name = device_name(app, from);
-    let question = Question {
-        id: 0,
-        title: i18n::t2(app, "wifi_ask_title", ssid, &name),
-        body: i18n::t1(app, "wifi_ask_body", &name),
-        allow: i18n::t(app, "wifi_share"),
-        always: String::new(),
-        deny: i18n::t(app, "wifi_dont_share"),
-        control: false,
-    };
-    let answer = crate::ask::ask(app, question);
-    ASKING.lock().unwrap().retain(|id| id != from);
-    if answer == Answer::Deny {
-        reply(app, from, TandemWifi::Refuse { ssid: ssid.to_string(), why: TandemWifiRefusal::Declined });
-        return;
-    }
     match wifi::password(&network) {
         Some(password) => {
             if reply(app, from, TandemWifi::Share { network: to_core(&network), password }) {
@@ -149,7 +266,8 @@ fn asked(app: &AppHandle, from: &str, ssid: &str) {
     }
 }
 
-/// Another computer hands this one its Wi-Fi. Joining moves this computer to another network, so the person here says yes first.
+/// Another device hands this one its Wi-Fi without being asked (Share Wi-Fi there). Joining moves this computer to another network,
+/// so the person here says yes first.
 fn offered(app: &AppHandle, from: &str, network: &TandemWifiNetwork, password: &str) {
     let name = device_name(app, from);
     let question = Question {
@@ -164,6 +282,11 @@ fn offered(app: &AppHandle, from: &str, network: &TandemWifiNetwork, password: &
     if crate::ask::ask(app, question) == Answer::Deny {
         return;
     }
+    join(app, from, network, password);
+}
+
+fn join(app: &AppHandle, from: &str, network: &TandemWifiNetwork, password: &str) {
+    let name = device_name(app, from);
     match wifi::join(&from_core(network), password) {
         Ok(()) => toast(app, &i18n::t1(app, "wifi_joined", &network.ssid), &name),
         Err(reason) => {

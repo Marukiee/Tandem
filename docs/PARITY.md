@@ -41,6 +41,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Bluetooth tussen apparaten zonder netwerk (klembord, meldingen) | wacht (telefoon) | wacht en zoekt | nee | wacht en zoekt (BlueZ, nooit tussen twee computers gezien) |
 | Computer wakker maken (Wake on LAN) vanaf de telefoon | ja | doel | doel | doel |
 | Zoek mijn telefoon | bron | ja | ja | ja |
+| Wifi overnemen als dit apparaat geen netwerk heeft, en eigen wifi doorgeven | ja; doorgeven alleen met Shizuku (Android geeft het wachtwoord alleen aan de shell) | ja | ja | ja |
 | Zoek mijn computer (geluid uit de eigen systeemgeluiden, laatst gezien met wifinaam) | ja (vraagt, met laatst gezien) | ja, beide kanten | ja, beide kanten | ja, beide kanten |
 | Bijwerken | ja | ja | ja | ja als AppImage; een pakket van de distributie werkt de pakketbeheerder bij |
 | Contacten van de telefoon in het zoeken van de computer, kiezen belt ze | bron (`sms.contacts`) | ja (Spotlight via Core Spotlight; nep-contacten gevonden met een `CSSearchQuery`, nooit met een echte telefoon) | - (zie hieronder) | ja: GNOME-zoeken (alleen met het .deb of .rpm, niet de AppImage) en KRunner; een test op een sessiebus staat klaar voor CI maar heeft nog niet gedraaid, nooit op een echt bureaublad |

@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
@@ -37,8 +38,8 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemDevice
 
 /**
- * On the page of a computer: take over its Wi-Fi when the phone is not on it, and the other way round. Android keeps the
- * password of a network from apps, so that one can never work; it looks like the rest and says so when it is pressed.
+ * On the page of a computer: take over its Wi-Fi when the phone is not on it, and the other way round. Android hands the password of
+ * a network only to the shell, so the other way needs Shizuku; without, the row looks like the rest and says so when it is pressed.
  */
 @Composable
 fun WifiDeviceSection(device: TandemDevice) {
@@ -48,6 +49,8 @@ fun WifiDeviceSection(device: TandemDevice) {
     val phoneSsid by share.phoneSsid.collectAsState()
     val phoneOnWifi by share.phoneOnWifi.collectAsState()
     var explain by remember { mutableStateOf(false) }
+    val shizuku by remember { nl.markmaaktmedia.tandem.hotspot.HotspotModule.get(context).shizuku }.state.collectAsState()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     val network = networks[device.id]
     val take = network?.takeIf { (device.online || device.ble) && WifiOfferPolicy.joinable(it) && it.ssid != phoneSsid }
@@ -67,7 +70,23 @@ fun WifiDeviceSection(device: TandemDevice) {
         if (give) {
             ActionRow(
                 row++, rows, TandemIcons.Wifi, stringResource(R.string.wifi_give_row, device.name), phoneSsid,
-                { explain = true },
+                {
+                    if (shizuku != nl.markmaaktmedia.tandem.hotspot.ShizukuState.Ready) {
+                        explain = true
+                    } else {
+                        scope.launch {
+                            // Sent says so by itself; anything else is said here.
+                            when (share.handOver(device.id, null)) {
+                                null -> Unit
+                                uniffi.tandem_core.TandemWifiRefusal.NOT_ON_IT ->
+                                    Toast.makeText(context, context.getString(R.string.wifi_give_no_name), Toast.LENGTH_LONG).show()
+                                uniffi.tandem_core.TandemWifiRefusal.UNREADABLE ->
+                                    Toast.makeText(context, context.getString(R.string.wifi_give_unreadable), Toast.LENGTH_LONG).show()
+                                else -> Toast.makeText(context, context.getString(R.string.wifi_unreachable, device.name), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                },
             )
         }
     }

@@ -15,6 +15,7 @@ final class GlassQuestion {
     private var panel: NSPanel?
     /// Counts the questions, so whoever asked can tell whether the one on screen is still theirs before closing it.
     private(set) var asked = 0
+    var isShowing: Bool { panel != nil }
 
     func ask(symbol: String, title: String, body: String, answers: [Answer], closeAfter: Duration = .seconds(60)) {
         close()

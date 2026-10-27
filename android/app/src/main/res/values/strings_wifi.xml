@@ -10,7 +10,7 @@
     <string name="wifi_computer_fallback">your computer</string>
     <string name="wifi_gone">That Wi-Fi is no longer on offer. Ask again on the page of the computer.</string>
     <string name="wifi_asking_title">Asking %1$s</string>
-    <string name="wifi_asking_body">Choose Share on %1$s to send the password of %2$s.</string>
+    <string name="wifi_asking_body">Waiting for %1$s to send the password of %2$s.</string>
     <string name="wifi_cancel">Cancel</string>
     <string name="wifi_close">Close</string>
     <string name="wifi_try_again">Try again</string>
@@ -34,7 +34,10 @@
     <string name="wifi_use_row">Use the Wi-Fi of %1$s</string>
     <string name="wifi_unreachable">%1$s cannot be reached right now</string>
     <string name="wifi_give_row">Share this phone\'s Wi-Fi with %1$s</string>
-    <string name="wifi_give_title">Android keeps the password</string>
-    <string name="wifi_give_body">Android does not let apps read the password of a Wi-Fi network, so this phone cannot hand it over. Type it on %1$s, or share it from a computer that is on the network.</string>
+    <string name="wifi_give_title">Shizuku is needed</string>
+    <string name="wifi_give_body">Android only lets the shell read the password of a Wi-Fi network. With Shizuku on (Settings, Setup), this phone hands it to %1$s, and %1$s offers to take it over when it has no network.</string>
     <string name="feature_wifi_join">Join the Wi-Fi of your computers</string>
+    <string name="wifi_sent">Wi-Fi sent to %1$s</string>
+    <string name="wifi_give_no_name">Android keeps the name of this phone\'s Wi-Fi from Tandem. Allow Location for Tandem and try again.</string>
+    <string name="wifi_give_unreadable">Shizuku could not read the password of this network.</string>
 </resources>

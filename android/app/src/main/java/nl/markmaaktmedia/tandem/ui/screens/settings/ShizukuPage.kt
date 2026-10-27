@@ -114,17 +114,17 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
 
     SectionHeader(stringResource(R.string.shizuku_section_uses))
     SettingsGroup {
-        SettingsTarget(FocusKeys.ShizukuHotspot, 0, 4) {
+        SettingsTarget(FocusKeys.ShizukuHotspot, 0, 5) {
             ActionRow(
-                0, 4, TandemIcons.Hotspot, stringResource(R.string.shizuku_use_hotspot),
+                0, 5, TandemIcons.Hotspot, stringResource(R.string.shizuku_use_hotspot),
                 stringResource(if (ready) R.string.shizuku_use_hotspot_on else R.string.shizuku_use_hotspot_off),
                 onClick = { onOpen(Route.Hotspot) },
                 trailing = if (ready) done else null,
             )
         }
-        SettingsTarget(FocusKeys.ShizukuProjection, 1, 4) {
+        SettingsTarget(FocusKeys.ShizukuProjection, 1, 5) {
             ActionRow(
-                1, 4, TandemIcons.VolumeUp, stringResource(R.string.shizuku_use_projection),
+                1, 5, TandemIcons.VolumeUp, stringResource(R.string.shizuku_use_projection),
                 stringResource(
                     when {
                         projection -> R.string.shizuku_use_projection_on
@@ -142,9 +142,9 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
                 trailing = if (projection) done else null,
             )
         }
-        SettingsTarget(FocusKeys.ShizukuClipboard, 2, 4) {
+        SettingsTarget(FocusKeys.ShizukuClipboard, 2, 5) {
             SwitchRow(
-                2, 4, TandemIcons.Paste, stringResource(R.string.shizuku_use_clipboard),
+                2, 5, TandemIcons.Paste, stringResource(R.string.shizuku_use_clipboard),
                 clipProblem ?: stringResource(if (clipWatching) R.string.shizuku_use_clipboard_on else R.string.shizuku_use_clipboard_sub),
                 clipOn,
                 { on -> scope.launch { context.graph.prefs.setClipboardShizuku(on) } },
@@ -155,7 +155,7 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
         // Android tells about every read of the clipboard by another app, so also about each copy the shell hears for Tandem. It has no
         // way to leave out one app: hiding it is Android's own switch Show clipboard access, for every app, which the shell may set.
         SwitchRow(
-            3, 4, TandemIcons.Shield, stringResource(R.string.shizuku_clipboard_message),
+            3, 5, TandemIcons.Shield, stringResource(R.string.shizuku_clipboard_message),
             stringResource(R.string.shizuku_clipboard_message_sub),
             messageShown == false,
             { hide ->
@@ -164,6 +164,12 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
             },
             blocked = if (ready) null else stringResource(R.string.shizuku_use_clipboard_off),
             onBlocked = nextStep,
+        )
+        ActionRow(
+            4, 5, TandemIcons.Wifi, stringResource(R.string.shizuku_use_wifi),
+            stringResource(if (ready) R.string.shizuku_use_wifi_on else R.string.shizuku_use_wifi_off),
+            onClick = { if (!ready) nextStep() },
+            trailing = if (ready) done else null,
         )
     }
 }

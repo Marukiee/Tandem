@@ -1,11 +1,12 @@
 import CoreLocation
 import CoreWLAN
 import Foundation
+import Network
 import TandemCore
 
-/// Hands the Wi-Fi this Mac is on to another device, the way an iPhone offers a friend its password. The core tells the others which
-/// network this Mac is on; a phone that is not on it asks, and the person here says whether the password goes. A computer that hands
-/// this Mac its Wi-Fi is asked about here too, before this Mac joins.
+/// Hands the Wi-Fi this Mac is on to another device, the way an iPhone offers a friend its password, and takes over the Wi-Fi of
+/// another one. Every device says which network it is on. One without any network offers its person to take over a network of
+/// another device that it does not know yet; that yes is the only question, the device that is asked hands the password over.
 @MainActor
 @Observable
 final class WifiShare: NSObject {
@@ -17,8 +18,16 @@ final class WifiShare: NSObject {
     /// Its own client: the shared one has a single delegate, and other parts of the app may want it.
     @ObservationIgnored private let client = CWWiFiClient()
     @ObservationIgnored private var location: CLLocationManager?
-    /// The devices whose question is on screen, so asking twice does not stack questions.
-    @ObservationIgnored private var asking: Set<String> = []
+    /// The network each other device said it is on.
+    @ObservationIgnored private var theirs: [String: TandemWifiNetwork] = [:]
+    /// Networks offered since this Mac last had a network, and ones the person said no to (until that device moves to another).
+    @ObservationIgnored private var offered: Set<String> = []
+    @ObservationIgnored private var declined: Set<String> = []
+    /// The network asked for from each device, after a yes here: what comes back is joined without asking again.
+    @ObservationIgnored private var pending: [String: String] = [:]
+    @ObservationIgnored private var looking: Task<Void, Never>?
+    /// A cable counts as a network: a Mac on Ethernet is not offered Wi-Fi.
+    @ObservationIgnored private let wired = NWPathMonitor(requiredInterfaceType: .wiredEthernet)
     /// Whether macOS lets Tandem see the name of the network, kept from the callback so nobody has to ask the location service again.
     private(set) var locationAllowed = false
 
@@ -32,6 +41,8 @@ final class WifiShare: NSObject {
         let manager = CLLocationManager()
         manager.delegate = self
         location = manager
+        wired.pathUpdateHandler = { _ in Task { @MainActor in WifiShare.shared.evaluate() } }
+        wired.start(queue: .global(qos: .utility))
         refresh()
     }
 
@@ -52,8 +63,46 @@ final class WifiShare: NSObject {
             let network = await Task.detached { Self.read() }.value
             current = network
             await engine?.setWifiNetwork(network: network)
+            evaluate()
         }
     }
+
+    /// Whether this Mac has any network: Wi-Fi it is joined to (also when Location hides its name), or a cable.
+    nonisolated static func connected(wired: Bool) -> Bool {
+        wired || CWWiFiClient.shared().interface()?.wlanChannel() != nil
+    }
+
+    /// The networks this Mac has saved. macOS gives their names without Location.
+    nonisolated static func known() -> [String] {
+        let profiles = CWWiFiClient.shared().interface()?.configuration()?.networkProfiles.array as? [CWNetworkProfile] ?? []
+        return profiles.compactMap(\.ssid)
+    }
+
+    /// Offers to take over the network of another device when this Mac has none. Losing the Wi-Fi for a moment, as when it moves to
+    /// another access point, says nothing: this looks again a few seconds later, and only then asks.
+    func evaluate() {
+        looking?.cancel()
+        looking = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(Self.graceSeconds))
+            guard !Task.isCancelled, let self else { return }
+            let wired = self.wired.currentPath.status == .satisfied
+            let (connected, known) = await Task.detached { (Self.connected(wired: wired), Self.known()) }.value
+            if connected {
+                self.offered = []
+                return
+            }
+            guard pending.isEmpty, !GlassQuestion.shared.isShowing else { return }
+            for (id, network) in theirs where !offered.contains(network.ssid) && !declined.contains(network.ssid) {
+                guard let device = EngineModel.shared.device(id), device.online || device.ble else { continue }
+                guard wifiWorthOffering(network: network, connected: false, known: known) else { continue }
+                offered.insert(network.ssid)
+                offer(network, of: id)
+                return
+            }
+        }
+    }
+
+    private static let graceSeconds = 10.0
 
     /// The network of the Wi-Fi interface. Without Location, macOS hides the name, and then there is nothing to share.
     nonisolated static func read() -> TandemWifiNetwork? {
@@ -92,11 +141,64 @@ final class WifiShare: NSObject {
         case let .ask(ssid):
             asked(by: id, for: ssid)
         case let .share(network, password):
-            offered(network, password: password, by: id)
-        case .network, .refuse:
-            // This Mac does not ask other devices for their Wi-Fi: it offers its own, and joins what it is handed.
-            break
+            if pending[id] == network.ssid {
+                pending[id] = nil
+                join(network, password: password)
+            } else {
+                handed(network, password: password, by: id)
+            }
+        case let .network(network):
+            // A no holds until that device is on another network.
+            if let before = theirs[id], before.ssid != network?.ssid { declined.remove(before.ssid) }
+            theirs[id] = network
+            evaluate()
+        case let .refuse(ssid, why):
+            guard pending[id] == ssid else { return }
+            pending[id] = nil
+            refused(ssid, why: why, by: id)
         }
+    }
+
+    /// Asks the person here whether this Mac, which has no network, takes over the one of another device.
+    private func offer(_ network: TandemWifiNetwork, of id: String) {
+        let who = name(of: id)
+        GlassQuestion.shared.ask(
+            symbol: "wifi",
+            title: String(localized: "Use the Wi-Fi of \(who)?"),
+            body: String(localized: "This Mac has no network. \(who) is on \(network.ssid)."),
+            answers: [
+                GlassQuestion.Answer(title: "Not Now", action: { [weak self] in self?.declined.insert(network.ssid) }),
+                GlassQuestion.Answer(title: "Join Network", prominent: true, action: { [weak self] in self?.ask(id, for: network.ssid) }),
+            ],
+            closeAfter: .seconds(120)
+        )
+    }
+
+    private func ask(_ id: String, for ssid: String) {
+        let who = name(of: id)
+        pending[id] = ssid
+        Task { @MainActor in
+            guard await reply(id, .ask(ssid: ssid)) else {
+                pending[id] = nil
+                FloatingToast.show(String(localized: "\(who) cannot be reached right now"), symbol: "wifi.exclamationmark")
+                return
+            }
+            try? await Task.sleep(for: .seconds(100))
+            guard pending[id] == ssid else { return }
+            pending[id] = nil
+            FloatingToast.show(String(localized: "\(who) did not send the Wi-Fi"), symbol: "wifi.exclamationmark")
+        }
+    }
+
+    private func refused(_ ssid: String, why: TandemWifiRefusal, by id: String) {
+        let who = name(of: id)
+        let text = switch why {
+        case .cannotShare: String(localized: "\(who) cannot hand over the password of \(ssid)")
+        case .notOnIt: String(localized: "\(who) is no longer on \(ssid)")
+        case .unreadable: String(localized: "\(who) could not read the password of \(ssid)")
+        default: String(localized: "\(who) did not send the Wi-Fi")
+        }
+        FloatingToast.show(text, symbol: "wifi.exclamationmark")
     }
 
     @discardableResult
@@ -109,8 +211,9 @@ final class WifiShare: NSObject {
         EngineModel.shared.device(id)?.name ?? String(localized: "Another device")
     }
 
-    /// A device that is not on this Mac's network asks for its password. The person here decides, like on an iPhone. The network is
-    /// read again first: a change that came without an event would otherwise hand over the wrong one, or refuse the right one.
+    /// Another device asks for the password of this Mac's network: its person said yes to taking it over there, so no second question
+    /// here (macOS itself may still ask to let Tandem read it). The network is read again first: a change that came without an event
+    /// would otherwise hand over the wrong one, or refuse the right one.
     private func asked(by id: String, for ssid: String) {
         Task { @MainActor in
             let network = await Task.detached { Self.read() }.value
@@ -123,38 +226,7 @@ final class WifiShare: NSObject {
                 await reply(id, .refuse(ssid: ssid, why: .cannotShare))
                 return
             }
-            question(network, for: id)
-        }
-    }
-
-    private func question(_ network: TandemWifiNetwork, for id: String) {
-        let ssid = network.ssid
-        guard asking.insert(id).inserted else { return }
-        let who = name(of: id)
-        var answered = false
-        GlassQuestion.shared.ask(
-            symbol: "wifi",
-            title: String(localized: "Share the password of \(ssid) with \(who)?"),
-            body: String(localized: "\(who) is not on this network. macOS may ask you to allow Tandem to read the password."),
-            answers: [
-                GlassQuestion.Answer(title: "Don't Share", action: { [weak self] in
-                    answered = true
-                    self?.asking.remove(id)
-                    Task { await self?.reply(id, .refuse(ssid: ssid, why: .declined)) }
-                }),
-                GlassQuestion.Answer(title: "Share", prominent: true, action: { [weak self] in
-                    answered = true
-                    self?.asking.remove(id)
-                    self?.send(network, to: id)
-                }),
-            ],
-            closeAfter: .seconds(90)
-        )
-        // Nobody here: the phone hears no rather than waiting for ever.
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(90))
-            guard !answered, let self, self.asking.remove(id) != nil else { return }
-            await self.reply(id, .refuse(ssid: ssid, why: .declined))
+            send(network, to: id)
         }
     }
 
@@ -214,8 +286,9 @@ final class WifiShare: NSObject {
         )
     }
 
-    /// Another computer hands this Mac its Wi-Fi. Joining moves this Mac to another network, so the person here says yes first.
-    private func offered(_ network: TandemWifiNetwork, password: String, by id: String) {
+    /// Another device hands this Mac its Wi-Fi without being asked (Share Wi-Fi there). Joining moves this Mac to another network, so
+    /// the person here says yes first.
+    private func handed(_ network: TandemWifiNetwork, password: String, by id: String) {
         let who = name(of: id)
         GlassQuestion.shared.ask(
             symbol: "wifi",

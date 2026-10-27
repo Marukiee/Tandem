@@ -10,7 +10,7 @@
     <string name="wifi_computer_fallback">je computer</string>
     <string name="wifi_gone">Die wifi wordt niet meer aangeboden. Vraag het opnieuw op de pagina van de computer.</string>
     <string name="wifi_asking_title">Wachten op %1$s</string>
-    <string name="wifi_asking_body">Kies Delen op %1$s om het wachtwoord van %2$s te sturen.</string>
+    <string name="wifi_asking_body">Wachten tot %1$s het wachtwoord van %2$s stuurt.</string>
     <string name="wifi_cancel">Annuleren</string>
     <string name="wifi_close">Sluiten</string>
     <string name="wifi_try_again">Opnieuw proberen</string>
@@ -34,7 +34,10 @@
     <string name="wifi_use_row">De wifi van %1$s gebruiken</string>
     <string name="wifi_unreachable">%1$s is nu niet bereikbaar</string>
     <string name="wifi_give_row">De wifi van deze telefoon delen met %1$s</string>
-    <string name="wifi_give_title">Android houdt het wachtwoord voor zich</string>
-    <string name="wifi_give_body">Android laat apps het wachtwoord van een wifinetwerk niet lezen, dus deze telefoon kan het niet doorgeven. Typ het op %1$s, of deel het vanaf een computer die op het netwerk zit.</string>
+    <string name="wifi_give_title">Shizuku is nodig</string>
+    <string name="wifi_give_body">Android laat alleen de shell het wachtwoord van een wifinetwerk lezen. Met Shizuku aan (Instellingen, Instellen) geeft deze telefoon het aan %1$s, en biedt %1$s zelf aan het over te nemen als hij geen netwerk heeft.</string>
     <string name="feature_wifi_join">De wifi van je computers gebruiken</string>
+    <string name="wifi_sent">Wifi gestuurd naar %1$s</string>
+    <string name="wifi_give_no_name">Android houdt de naam van de wifi van deze telefoon voor Tandem verborgen. Geef Tandem toegang tot Locatie en probeer het opnieuw.</string>
+    <string name="wifi_give_unreadable">Shizuku kon het wachtwoord van dit netwerk niet lezen.</string>
 </resources>

@@ -1,10 +1,12 @@
-//! Handing the Wi-Fi a computer is on to another device of the circle, the way an iPhone offers a friend its password.
+//! Handing the Wi-Fi a device is on to another device of the circle, the way an iPhone offers a friend its password.
 //!
-//! A computer says which network it is on (`WifiMsg::Network`) when that changes, and to every device that comes up, also
-//! over a Bluetooth link: a phone that is not on that network is exactly the one that may only be reachable that way. The
-//! device that is not on it asks (`Ask`), the person at the computer says yes or no, and the password comes back (`Share`)
-//! or does not (`Refuse`). The password only travels inside an authenticated connection or a sealed Bluetooth frame, and its
+//! A device says which network it is on (`WifiMsg::Network`) when that changes, and to every device that comes up, also
+//! over a Bluetooth link: a device without a network is exactly the one that may only be reachable that way. A device that
+//! has no network offers its person to take that one over ([`worth_offering`]); a yes there asks (`Ask`), and the password comes
+//! back (`Share`) or does not (`Refuse`), without a second question at the sender. The password only travels inside an authenticated connection or a sealed Bluetooth frame, and its
 //! `Debug` never shows it, so a message that is logged by mistake does not give it away.
+//!
+//! A phone reads its password only with Shizuku (the shell may read saved networks); without, it says its network as `locked`.
 
 use std::fmt;
 
@@ -55,6 +57,16 @@ pub struct WifiNetwork {
     /// The network does not announce its name, so the joiner has to look for it by name.
     #[serde(default)]
     pub hidden: bool,
+    /// The sender is on it but cannot hand its password over now: a phone without Shizuku. Others then do not offer it.
+    #[serde(default)]
+    pub locked: bool,
+}
+
+/// Whether a device offers to take over `network`, the one another device of the circle is on. Only a device with no network at all
+/// (`connected` false), as a network it knows it joins by itself, and one the sender can hand over. Whether the sender can be reached
+/// now, and what the person already said no to, is up to the app.
+pub fn worth_offering(network: &WifiNetwork, connected: bool, known: &[String]) -> bool {
+    !connected && !network.locked && !network.ssid.is_empty() && network.security.shareable() && !known.iter().any(|k| *k == network.ssid)
 }
 
 /// A Wi-Fi password. Empty for an open network.
@@ -192,7 +204,17 @@ mod tests {
     }
 
     fn home() -> WifiNetwork {
-        WifiNetwork { ssid: "Home".into(), security: WifiSecurity::Wpa3, hidden: true }
+        WifiNetwork { ssid: "Home".into(), security: WifiSecurity::Wpa3, hidden: true, locked: false }
+    }
+
+    #[test]
+    fn only_a_device_without_a_network_is_offered_one_it_does_not_know_and_can_have() {
+        let home = home();
+        assert!(worth_offering(&home, false, &[]));
+        assert!(!worth_offering(&home, true, &[]), "it has a network");
+        assert!(!worth_offering(&home, false, &["Home".into()]), "it joins a known one by itself");
+        assert!(!worth_offering(&WifiNetwork { locked: true, ..home.clone() }, false, &[]), "a phone without Shizuku");
+        assert!(!worth_offering(&WifiNetwork { security: WifiSecurity::Enterprise, ..home }, false, &[]));
     }
 
     #[test]
@@ -237,6 +259,7 @@ mod tests {
         assert_eq!(network.security, WifiSecurity::Other);
         assert!(!network.security.shareable());
         assert!(!network.hidden);
+        assert!(!network.locked, "an older sender can always hand it over");
 
         let refuse = ciborium::Value::Map(vec![(
             ciborium::Value::Text("Wifi".into()),

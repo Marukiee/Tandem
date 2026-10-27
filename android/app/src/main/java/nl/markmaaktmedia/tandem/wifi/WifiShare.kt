@@ -19,18 +19,23 @@ import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.Channels
 import nl.markmaaktmedia.tandem.engine.Permissions
 import nl.markmaaktmedia.tandem.graph
+import nl.markmaaktmedia.tandem.hotspot.HotspotModule
+import nl.markmaaktmedia.tandem.hotspot.ShizukuState
 import uniffi.tandem_core.TandemEvent
 import uniffi.tandem_core.TandemWifi
 import uniffi.tandem_core.TandemWifiNetwork
@@ -38,10 +43,14 @@ import uniffi.tandem_core.TandemWifiRefusal
 import uniffi.tandem_core.TandemWifiSecurity
 
 /**
- * Taking over the Wi-Fi of a computer, the way an iPhone offers a friend the password. Each computer says which network it is on,
- * also over Bluetooth when that is the only way to it. When the phone is not on it and it is near, the phone asks once, with a
- * notification and a card in the app ([WifiOfferPolicy]). A yes asks the computer, whose person decides there. The password that
- * comes back goes into the system's own sheet for saving a network ([WifiJoinActivity]).
+ * Taking over the Wi-Fi of another device, the way an iPhone offers a friend the password, and handing over this phone's. Each device
+ * says which network it is on, also over Bluetooth when that is the only way to it. When the phone is on no Wi-Fi and a network it
+ * does not know is near, the phone asks once, with a notification and a card in the app ([WifiOfferPolicy]). A yes asks the other
+ * device, which sends the password without a second question. It goes into the system's own sheet for saving a network
+ * ([WifiJoinActivity]).
+ *
+ * The other way round needs Shizuku: Android lets only the shell read the password of a saved network. Without it the phone says its
+ * network as locked, and the others do not offer it.
  *
  * [nl.markmaaktmedia.tandem.engine.TandemService] starts it and hands it the Wi-Fi events. The password is only ever in memory.
  */
@@ -52,6 +61,7 @@ class WifiShare private constructor(private val context: Context) {
     private val wifi = context.getSystemService(WifiManager::class.java)
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
     private val notifications = context.getSystemService(NotificationManager::class.java)
+    private val shizuku by lazy { HotspotModule.get(context).shizuku }
 
     private val _networks = MutableStateFlow<Map<String, TandemWifiNetwork>>(emptyMap())
     /** The network each computer said it is on. */
@@ -97,27 +107,38 @@ class WifiShare private constructor(private val context: Context) {
     /** Since when each network has been worth offering, for [WifiOfferPolicy.settled]. */
     private val pending = mutableMapOf<String, Long>()
     private var settling: Job? = null
+    /** The networks this phone has saved, as the shell tells it (empty without Shizuku). */
+    private var saved: Set<String> = emptySet()
+    /** The network this phone is on, as the others hear of it, before it is marked locked or not. */
+    @Volatile private var here: TandemWifiNetwork? = null
     private var nearby: Set<String> = emptySet()
     private var waiting: Job? = null
     private var forget: Job? = null
     private var devices: Job? = null
+    private var shizukuWatch: Job? = null
     private var started = false
 
     private val callback = object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
         override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-            val ssid = (caps.transportInfo as? WifiInfo)?.ssid?.let(::cleanSsid)
+            val info = caps.transportInfo as? WifiInfo
+            val ssid = info?.ssid?.let(::cleanSsid)
             _phoneSsid.value = ssid
             _phoneOnWifi.value = true
+            here = ssid?.let { TandemWifiNetwork(it, securityOf(info.currentSecurityType), info.hiddenSSID) }
             if (ssid != null && ssid !in known) {
                 known = known + ssid
                 store.edit().putStringSet(KEY_KNOWN, known).apply()
             }
+            announce()
             evaluate()
         }
 
         override fun onLost(network: Network) {
             _phoneSsid.value = null
             _phoneOnWifi.value = false
+            here = null
+            announce()
+            readSaved()
             evaluate()
         }
     }
@@ -143,7 +164,30 @@ class WifiShare private constructor(private val context: Context) {
         ContextCompat.registerReceiver(context, scans, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION), ContextCompat.RECEIVER_NOT_EXPORTED)
         readScan()
         // A computer that comes in reach over Bluetooth alone, or goes, changes what may be offered.
-        devices = scope.launch { graph.host.devices.collect { evaluate() } }
+        devices = scope.launch { graph.host.devices.collect { announce(); evaluate() } }
+        // With Shizuku the password can be handed over, and the saved networks are known.
+        shizukuWatch = scope.launch {
+            shizuku.state.collect {
+                announce()
+                readSaved()
+            }
+        }
+    }
+
+    /** Tells the others which network this phone is on. The core passes on only a change, so saying it again costs nothing. */
+    private fun announce() {
+        val network = here?.copy(locked = shizuku.state.value != ShizukuState.Ready)
+        scope.launch { runCatching { graph.host.engine?.setWifiNetwork(network) } }
+    }
+
+    private fun readSaved() {
+        if (shizuku.state.value != ShizukuState.Ready) return
+        scope.launch {
+            val result = shizuku.savedWifi()
+            if (!result.ok) return@launch
+            saved = result.message.lines().filter { it.isNotEmpty() }.toSet()
+            evaluate()
+        }
     }
 
     fun stop() {
@@ -152,6 +196,7 @@ class WifiShare private constructor(private val context: Context) {
         runCatching { connectivity.unregisterNetworkCallback(callback) }
         runCatching { context.unregisterReceiver(scans) }
         devices?.cancel()
+        shizukuWatch?.cancel()
     }
 
     fun onEvent(event: TandemEvent.Wifi) {
@@ -162,10 +207,8 @@ class WifiShare private constructor(private val context: Context) {
                 val now = _join.value
                 if (now is Join.Asking && now.computer == event.from && now.ssid == msg.ssid) settle(Join.Refused(event.from, msg.ssid, msg.why))
             }
-            // Android does not let an app read the password of a network, so a device that asks hears that it cannot have it.
-            is TandemWifi.Ask -> scope.launch {
-                runCatching { graph.host.engine?.sendWifi(event.from, TandemWifi.Refuse(msg.ssid, TandemWifiRefusal.CANNOT_SHARE)) }
-            }
+            // The person there said yes to taking it over: no second question here.
+            is TandemWifi.Ask -> scope.launch { handOver(event.from, msg.ssid) }
         }
     }
 
@@ -189,7 +232,7 @@ class WifiShare private constructor(private val context: Context) {
     /** Offers a network when one may be offered, and takes back an offer that no longer holds. */
     @Synchronized
     fun evaluate() {
-        val phone = WifiOfferPolicy.Phone(_phoneSsid.value, if (canSeeNearby()) nearby else null)
+        val phone = WifiOfferPolicy.Phone(_phoneSsid.value, if (canSeeNearby()) nearby else null, onWifi = _phoneOnWifi.value)
         _offer.value?.let { current ->
             val holds = _networks.value[current.computer]?.ssid == current.network.ssid && phone.ssid != current.network.ssid && _join.value == null
             if (holds) return
@@ -200,7 +243,7 @@ class WifiShare private constructor(private val context: Context) {
         val worth = mutableSetOf<String>()
         for (device in graph.host.devices.value) {
             val network = _networks.value[device.id] ?: continue
-            if (!WifiOfferPolicy.shouldOffer(network, phone, bluetoothOnly = device.ble && !device.online, declined, asked, known)) continue
+            if (!WifiOfferPolicy.shouldOffer(network, phone, bluetoothOnly = device.ble && !device.online, declined, asked, known + saved)) continue
             worth += network.ssid
             val since = pending.getOrPut(network.ssid) { now }
             if (!WifiOfferPolicy.settled(since, now)) {
@@ -223,6 +266,37 @@ class WifiShare private constructor(private val context: Context) {
             delay(after + 500)
             evaluate()
         }
+    }
+
+    /**
+     * Sends the password of this phone's network to [to]: because its person said yes there to taking it over ([ssid] the network it
+     * asked for), or because the person here pressed Share on its page (null). Android hands the password only to the shell, so this
+     * needs Shizuku. Null when it went, otherwise why not.
+     */
+    suspend fun handOver(to: String, ssid: String?): TandemWifiRefusal? {
+        val network = here
+        val name = ssid ?: network?.ssid.orEmpty()
+        val why = when {
+            network == null || (ssid != null && network.ssid != ssid) -> TandemWifiRefusal.NOT_ON_IT
+            !WifiOfferPolicy.joinable(network) -> TandemWifiRefusal.CANNOT_SHARE
+            shizuku.state.value != ShizukuState.Ready -> TandemWifiRefusal.CANNOT_SHARE
+            else -> {
+                val read = shizuku.wifiPassword(network.ssid)
+                if (!read.ok) {
+                    TandemWifiRefusal.UNREADABLE
+                } else {
+                    val sent = runCatching { graph.host.engine?.sendWifi(to, TandemWifi.Share(network, read.message)) != null }.getOrDefault(false)
+                    if (sent) {
+                        val who = graph.host.device(to)?.name ?: context.getString(R.string.wifi_computer_fallback)
+                        withContext(Dispatchers.Main) { Toast.makeText(context, context.getString(R.string.wifi_sent, who), Toast.LENGTH_SHORT).show() }
+                        return null
+                    }
+                    TandemWifiRefusal.OTHER
+                }
+            }
+        }
+        if (ssid != null && name.isNotEmpty()) runCatching { graph.host.engine?.sendWifi(to, TandemWifi.Refuse(name, why)) }
+        return why
     }
 
     /** "Not now": this network is not offered again until the computer has been on another one. */
@@ -381,6 +455,16 @@ class WifiShare private constructor(private val context: Context) {
         /** A little longer than the computer waits for its person. */
         private const val ASK_TIMEOUT_MS = 100_000L
         private const val READY_FOR_MS = 10 * 60_000L
+
+        /** What the others need to know of the security of this phone's network. */
+        fun securityOf(type: Int): TandemWifiSecurity = when (type) {
+            WifiInfo.SECURITY_TYPE_OPEN, WifiInfo.SECURITY_TYPE_OWE -> TandemWifiSecurity.OPEN
+            WifiInfo.SECURITY_TYPE_PSK -> TandemWifiSecurity.WPA2
+            WifiInfo.SECURITY_TYPE_SAE -> TandemWifiSecurity.WPA3
+            WifiInfo.SECURITY_TYPE_EAP, WifiInfo.SECURITY_TYPE_EAP_WPA3_ENTERPRISE, WifiInfo.SECURITY_TYPE_EAP_WPA3_ENTERPRISE_192_BIT ->
+                TandemWifiSecurity.ENTERPRISE
+            else -> TandemWifiSecurity.OTHER
+        }
 
         /** Android writes a name in quotes when it is text, and this when it may not say. */
         fun cleanSsid(raw: String): String? = raw.removeSurrounding("\"").takeIf { it.isNotEmpty() && it != "<unknown ssid>" }

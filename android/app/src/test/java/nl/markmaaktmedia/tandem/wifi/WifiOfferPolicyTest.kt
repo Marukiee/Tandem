@@ -25,8 +25,18 @@ class WifiOfferPolicyTest {
         assertFalse(offer(phone = Phone(ssid = null, nearby = setOf("Home")), known = setOf("Home")))
     }
 
-    @Test fun anOfferWaitsUntilThePhoneHadTimeToJoinByItself() {
-        assertFalse(WifiOfferPolicy.settled(since = 1_000, now = 30_000))
+    @Test fun aPhoneOnWifiIsNeverOfferedOne() {
+        // Also when Android keeps the name of its network from Tandem: the phone has a network, and that is enough.
+        assertFalse(offer(phone = Phone(ssid = null, nearby = setOf("Home"), onWifi = true), bluetoothOnly = true))
+        assertFalse(offer(phone = Phone(ssid = "Cafe", nearby = setOf("Cafe", "Home")), bluetoothOnly = true))
+    }
+
+    @Test fun aNetworkTheOtherDeviceCannotHandOverIsNotOffered() {
+        assertFalse(offer(network = TandemWifiNetwork("Home", TandemWifiSecurity.WPA2, false, locked = true), bluetoothOnly = true))
+    }
+
+    @Test fun anOfferWaitsAMomentForThePhoneToJoinByItself() {
+        assertFalse(WifiOfferPolicy.settled(since = 1_000, now = 5_000))
         assertTrue(WifiOfferPolicy.settled(since = 1_000, now = 1_000 + WifiOfferPolicy.SETTLE_MS))
     }
 
@@ -37,7 +47,7 @@ class WifiOfferPolicyTest {
     }
 
     @Test fun seeingNearbyNetworksTheScanDecides() {
-        assertTrue(offer(phone = Phone(ssid = "Cafe", nearby = setOf("Cafe", "Home"))))
+        assertTrue(offer(phone = Phone(ssid = null, nearby = setOf("Cafe", "Home"))))
         // Out of range: not even over Bluetooth, the scan knows better.
         assertFalse(offer(phone = Phone(ssid = null, nearby = setOf("Cafe")), bluetoothOnly = true))
     }

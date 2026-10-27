@@ -3021,18 +3021,28 @@ pub struct TandemWifiNetwork {
     pub ssid: String,
     pub security: TandemWifiSecurity,
     pub hidden: bool,
+    /// The sender cannot hand its password over now (a phone without Shizuku).
+    #[uniffi(default = false)]
+    pub locked: bool,
 }
 
 impl From<crate::wifi::WifiNetwork> for TandemWifiNetwork {
     fn from(n: crate::wifi::WifiNetwork) -> Self {
-        Self { ssid: n.ssid, security: n.security.into(), hidden: n.hidden }
+        Self { ssid: n.ssid, security: n.security.into(), hidden: n.hidden, locked: n.locked }
     }
 }
 
 impl From<TandemWifiNetwork> for crate::wifi::WifiNetwork {
     fn from(n: TandemWifiNetwork) -> Self {
-        Self { ssid: n.ssid, security: n.security.into(), hidden: n.hidden }
+        Self { ssid: n.ssid, security: n.security.into(), hidden: n.hidden, locked: n.locked }
     }
+}
+
+/// Whether this device, which is `connected` to a network or not and knows the networks `known`, offers to take over `network`
+/// (see `wifi::worth_offering`).
+#[uniffi::export]
+pub fn wifi_worth_offering(network: TandemWifiNetwork, connected: bool, known: Vec<String>) -> bool {
+    crate::wifi::worth_offering(&network.into(), connected, &known)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]

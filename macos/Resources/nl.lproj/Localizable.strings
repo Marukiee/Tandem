@@ -1031,8 +1031,6 @@
 /* Sharing Wi-Fi */
 "Share Wi-Fi" = "Wifi delen";
 "Send the name and password of this Mac's Wi-Fi to %@" = "Stuur de naam en het wachtwoord van de wifi van deze Mac naar %@";
-"Share the password of %@ with %@?" = "Het wachtwoord van %1$@ delen met %2$@?";
-"%@ is not on this network. macOS may ask you to allow Tandem to read the password." = "%@ zit niet op dit netwerk. macOS kan je vragen of Tandem het wachtwoord mag lezen.";
 "Don't Share" = "Niet delen";
 "macOS did not hand over the password of %@" = "macOS gaf het wachtwoord van %@ niet vrij";
 "Wi-Fi sent to %@" = "Wifi gestuurd naar %@";
@@ -1045,6 +1043,12 @@
 "Join %@?" = "Verbinden met %@?";
 "%@ shared its Wi-Fi with this Mac." = "%@ deelt zijn wifi met deze Mac.";
 "Join Network" = "Verbinden";
+"Use the Wi-Fi of %@?" = "De wifi van %@ gebruiken?";
+"This Mac has no network. %@ is on %@." = "Deze Mac heeft geen netwerk. %1$@ zit op %2$@.";
+"%@ did not send the Wi-Fi" = "%@ stuurde de wifi niet";
+"%@ cannot hand over the password of %@" = "%1$@ kan het wachtwoord van %2$@ niet doorgeven";
+"%@ is no longer on %@" = "%1$@ zit niet meer op %2$@";
+"%@ could not read the password of %@" = "%1$@ kon het wachtwoord van %2$@ niet lezen";
 "Joined %@" = "Verbonden met %@";
 "Could not join %@" = "Kon niet verbinden met %@";
 "Share this Mac's Wi-Fi" = "De wifi van deze Mac delen";

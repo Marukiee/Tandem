@@ -24,4 +24,7 @@
     <string name="shizuku_use_projection_on">Android vraagt niets meer als het geluid of scherm van deze telefoon gedeeld wordt. De melding dat het gedeeld wordt blijft</string>
     <string name="shizuku_use_projection_off">Android vraagt het elke keer dat het geluid of het scherm gedeeld wordt</string>
     <string name="shizuku_use_projection_set">Tik om het nu in te stellen</string>
+    <string name="shizuku_use_wifi">De wifi van deze telefoon delen</string>
+    <string name="shizuku_use_wifi_on">Je computers bieden aan hem over te nemen als ze geen netwerk hebben</string>
+    <string name="shizuku_use_wifi_off">Android laat alleen de shell het wachtwoord van een wifinetwerk lezen</string>
 </resources>

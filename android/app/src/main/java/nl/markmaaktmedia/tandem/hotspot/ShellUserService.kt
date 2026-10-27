@@ -9,7 +9,7 @@ import kotlin.system.exitProcess
 
 /**
  * The part of Tandem that Shizuku runs with the shell's identity (root's becomes the shell's), in its own process: the hotspot, the app-op
- * that lets Android skip its screen recording question for Tandem, and hearing every copy (see [ShellClipboard]).
+ * that lets Android skip its screen recording question for Tandem, hearing every copy (see [ShellClipboard]) and the saved Wi-Fi (see [ShellWifi]).
  *
  * It is a bare Binder instead of an AIDL service: a few calls do not justify the AIDL toolchain, and Shizuku only asks for an
  * IBinder. Shizuku creates it through the no-argument constructor, so R8 must keep that (see proguard-rules.pro).
@@ -27,6 +27,7 @@ class ShellUserService : Binder() {
 
     private val tethering = ShellTethering()
     private val clipboard = ShellClipboard()
+    private val wifi = ShellWifi()
 
     override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
         when (code) {
@@ -63,6 +64,26 @@ class ShellUserService : Binder() {
             }
             TX_CLIP_MESSAGE -> {
                 val (result, message) = clipboardMessage(data.readInt())
+                reply?.writeNoException()
+                reply?.writeInt(result)
+                reply?.writeString(message)
+            }
+            TX_WIFI_SAVED -> {
+                val (result, message) = runCatching { 0 to wifi.saved().joinToString("\n") { it.ssid } }.getOrElse { 5 to (it.message ?: it.javaClass.simpleName) }
+                reply?.writeNoException()
+                reply?.writeInt(result)
+                reply?.writeString(message)
+            }
+            TX_WIFI_PASSWORD -> {
+                val ssid = data.readString().orEmpty()
+                val (result, message) = runCatching {
+                    val saved = wifi.saved().firstOrNull { it.ssid == ssid }
+                    when {
+                        saved == null -> 6 to "not saved"
+                        // An open network has no password, and that is an answer too.
+                        else -> 0 to saved.password.orEmpty()
+                    }
+                }.getOrElse { 5 to (it.message ?: it.javaClass.simpleName) }
                 reply?.writeNoException()
                 reply?.writeInt(result)
                 reply?.writeString(message)
@@ -134,6 +155,8 @@ class ShellUserService : Binder() {
         const val TX_CLIP_WATCH = 5
         const val TX_CLIP_UNWATCH = 6
         const val TX_CLIP_MESSAGE = 7
+        const val TX_WIFI_SAVED = 8
+        const val TX_WIFI_PASSWORD = 9
         private const val CLIPBOARD_MESSAGE = "clipboard_show_access_notifications"
 
         /** The code Shizuku uses to ask a user service to exit. */

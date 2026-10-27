@@ -139,6 +139,12 @@ class ShizukuBridge(private val context: Context) {
 
     suspend fun unwatchClipboard(): ShellResult = call(ShellUserService.TX_CLIP_UNWATCH)
 
+    /** The names of the Wi-Fi networks this phone has saved, one on each line. */
+    suspend fun savedWifi(): ShellResult = call(ShellUserService.TX_WIFI_SAVED)
+
+    /** The password of a saved network, as the message of the result (empty for an open one). Never logged. */
+    suspend fun wifiPassword(ssid: String): ShellResult = call(ShellUserService.TX_WIFI_PASSWORD) { it.writeString(ssid) }
+
     /** Android's switch Show clipboard access: [show] true or false sets it, null only asks. The message of the answer is "1" or "0". */
     suspend fun clipboardMessage(show: Boolean?): ShellResult =
         call(ShellUserService.TX_CLIP_MESSAGE) { it.writeInt(when (show) { true -> 1; false -> 0; null -> -1 }) }

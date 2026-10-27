@@ -87,6 +87,8 @@ enum Command {
     },
     /// Send text to a device's clipboard.
     Clip { device: String, text: Vec<String> },
+    /// Ask a device for the password of the Wi-Fi it is on, as a device without a network does after a yes.
+    WifiAsk { device: String, ssid: String },
     /// Remove a device from the circle for good.
     Remove { device: String },
     /// Print this device's id and name.
@@ -321,6 +323,14 @@ async fn execute(engine: &Engine, command: &Command) -> Result<String> {
             }
             Ok("sent\n".to_string())
         }
+        Command::WifiAsk { device, ssid } => {
+            let id = resolve(engine, device)?;
+            let msg = tandem_core::proto::Msg::Wifi(tandem_core::wifi::WifiMsg::Ask { ssid: ssid.clone() });
+            if engine.send_msg(&[id], msg).await.is_empty() {
+                bail!("that device is not connected right now");
+            }
+            Ok("asked\n".to_string())
+        }
         Command::Remove { device } => {
             let id = resolve(engine, device)?;
             engine.remove_device(id).await?;
@@ -514,6 +524,7 @@ fn command_line(command: &Command) -> Option<String> {
             parts
         }
         Command::Clip { device, text } => vec!["clip".into(), device.clone(), text.join(" ")],
+        Command::WifiAsk { device, ssid } => vec!["wifi-ask".into(), device.clone(), ssid.clone()],
         Command::Remove { device } => vec!["remove".into(), device.clone()],
         Command::PairShow => vec!["pair-show".into()],
         Command::Ls { device, path } => vec!["ls".into(), device.clone(), path.clone()],
@@ -574,6 +585,7 @@ fn parse_line(line: &str) -> Option<Command> {
         }),
         "clip" => Some(Command::Clip { device: rest.first()?.clone(), text: vec![rest.get(1)?.clone()] }),
         "remove" => Some(Command::Remove { device: rest.first()?.clone() }),
+        "wifi-ask" => Some(Command::WifiAsk { device: rest.first()?.clone(), ssid: rest.get(1)?.clone() }),
         "ls" => Some(Command::Ls { device: rest.first()?.clone(), path: rest.get(1)?.clone() }),
         "sms" => Some(Command::Sms { device: rest.first()?.clone(), thread: rest.get(1).and_then(|t| t.parse().ok()) }),
         "sms-send" => Some(Command::SmsSend { device: rest.first()?.clone(), number: rest.get(1)?.clone(), text: vec![rest.get(2)?.clone()] }),
@@ -643,6 +655,13 @@ fn print_event(engine: &Engine, event: &Event) {
         Event::AudioStart { from, stream, .. } => println!("sound from {} starts (stream {stream})", name_of(from)),
         Event::RemovedFromCircle => println!("this device was removed from the circle"),
         Event::Clipboard { from, text, .. } => println!("clipboard from {}: {text}", name_of(from)),
+        // The password itself is never printed: its length says whether one came.
+        Event::Wifi { from, msg } => match msg {
+            tandem_core::wifi::WifiMsg::Share { network, password } => {
+                println!("wifi from {}: shares {} ({:?}), a password of {} characters", name_of(from), network.ssid, network.security, password.0.chars().count())
+            }
+            other => println!("wifi from {}: {other:?}", name_of(from)),
+        },
         Event::Call { from, call } => println!(
             "call {} from {}: {:?}, {}",
             call.id,

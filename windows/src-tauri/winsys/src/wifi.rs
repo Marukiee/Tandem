@@ -52,6 +52,42 @@ pub fn join(network: &Network, password: &str) -> Result<(), String> {
     Err(format!("not on {} after half a minute", network.ssid))
 }
 
+/// Whether this computer has any network now: Wi-Fi, a cable or anything else with a way out. A computer without one is offered to
+/// take over the Wi-Fi of another device.
+pub fn connected() -> bool {
+    imp::connected().unwrap_or_else(routed)
+}
+
+/// The Wi-Fi networks this computer has saved: it joins those by itself, so they are not offered.
+pub fn known() -> Vec<String> {
+    imp::known()
+}
+
+/// Whether the system has a route out. Connecting a UDP socket sends nothing; without a network it fails at once.
+fn routed() -> bool {
+    std::net::UdpSocket::bind("0.0.0.0:0").and_then(|socket| socket.connect("192.0.2.1:9")).is_ok()
+}
+
+/// From `nmcli -t -f STATE general`: "connected", "connected (site only)" and "connected (local only)" all have a network.
+pub fn nm_connected(text: &str) -> bool {
+    text.trim().starts_with("connected")
+}
+
+/// The Wi-Fi connections in `nmcli -t -f NAME,TYPE connection show`. NetworkManager names a connection after its network unless
+/// someone renamed it.
+pub fn nm_known(text: &str) -> Vec<String> {
+    text.lines()
+        .map(split_terse)
+        .filter(|fields| fields.len() == 2 && fields[1] == "802-11-wireless" && !fields[0].is_empty())
+        .map(|mut fields| fields.swap_remove(0))
+        .collect()
+}
+
+/// The profiles in `netsh wlan show profiles`: every "label : name" line, the label in the language of Windows.
+pub fn netsh_profiles(text: &str) -> Vec<String> {
+    text.lines().filter_map(|line| line.split_once(" : ")).map(|(_, name)| name.trim().to_string()).filter(|n| !n.is_empty()).collect()
+}
+
 /// The kind of security from what NetworkManager calls its key management.
 pub fn security_of_key_mgmt(key_mgmt: &str) -> Security {
     match key_mgmt.trim() {
@@ -217,6 +253,14 @@ mod imp {
         run("nmcli", &["-t", "-f", "TYPE", "device"]).is_some_and(|text| text.lines().any(|l| l == "wifi"))
     }
 
+    pub fn connected() -> Option<bool> {
+        run("nmcli", &["-t", "-f", "STATE", "general"]).map(|text| super::nm_connected(&text))
+    }
+
+    pub fn known() -> Vec<String> {
+        run("nmcli", &["-t", "-f", "NAME,TYPE", "connection", "show"]).map(|text| super::nm_known(&text)).unwrap_or_default()
+    }
+
     pub fn current() -> Option<Network> {
         let devices = run("nmcli", &["-t", "-f", "DEVICE,TYPE,STATE,CONNECTION", "device"])?;
         let profile = super::nm_active_connection(&devices)?;
@@ -287,6 +331,14 @@ mod imp {
         run("netsh", &["wlan", "show", "interfaces"]).is_some_and(|text| text.lines().any(|l| l.contains(" : ")))
     }
 
+    pub fn connected() -> Option<bool> {
+        None
+    }
+
+    pub fn known() -> Vec<String> {
+        run("netsh", &["wlan", "show", "profiles"]).map(|text| super::netsh_profiles(&text)).unwrap_or_default()
+    }
+
     /// The profile of the network, written to a folder of its own and read back. With `clear` the password is in it.
     fn export(profile: &str, clear: bool) -> Option<(Network, Option<String>)> {
         let folder = std::env::temp_dir().join(format!("tandem-wifi-{}", std::process::id()));
@@ -339,6 +391,14 @@ mod imp {
         false
     }
 
+    pub fn connected() -> Option<bool> {
+        None
+    }
+
+    pub fn known() -> Vec<String> {
+        Vec::new()
+    }
+
     pub fn current() -> Option<Network> {
         None
     }
@@ -355,6 +415,17 @@ mod imp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn saved_networks_and_the_state_are_read_from_the_tools() {
+        let nm = "Home:802-11-wireless\nWired connection 1:802-3-ethernet\nCafe\\: upstairs:802-11-wireless\nlo:loopback\n";
+        assert_eq!(nm_known(nm), vec!["Home".to_string(), "Cafe: upstairs".to_string()]);
+        assert!(nm_connected("connected (site only)\n"));
+        assert!(!nm_connected("disconnected\n"));
+        assert!(!nm_connected("connecting\n"));
+        let netsh = "Profiles on interface Wi-Fi:\r\n\r\nGroup policy profiles (read only)\r\n---------------------------------\r\n    <None>\r\n\r\nUser profiles\r\n-------------\r\n    All User Profile     : Home\r\n    Alle gebruikersprofielen : Cafe 2\r\n";
+        assert_eq!(netsh_profiles(netsh), vec!["Home".to_string(), "Cafe 2".to_string()]);
+    }
 
     #[test]
     fn the_wifi_connection_that_is_up_is_found_also_with_a_colon_in_its_name() {

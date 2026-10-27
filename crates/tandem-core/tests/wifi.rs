@@ -1,4 +1,4 @@
-//! Handing the Wi-Fi of a computer to a phone: the computer says which network it is on, to a phone that connects and to one
+//! Handing the Wi-Fi of one device to another: a device says which network it is on, to a device that connects and to one
 //! that only has a Bluetooth link, and a question for the password gets its answer. Real engines, real QUIC, loopback.
 
 use std::path::PathBuf;
@@ -63,7 +63,7 @@ fn online(node: &Node, id: DeviceId) -> bool {
 }
 
 fn home() -> WifiNetwork {
-    WifiNetwork { ssid: "Home".into(), security: WifiSecurity::Wpa2, hidden: false }
+    WifiNetwork { ssid: "Home".into(), security: WifiSecurity::Wpa2, hidden: false, locked: false }
 }
 
 fn network_from(event: &Event, from: DeviceId) -> Option<Option<WifiNetwork>> {
@@ -89,7 +89,7 @@ async fn a_phone_hears_the_network_when_it_connects_and_when_it_changes() {
 
     // Two devices that find each other can have two connections for a moment, and a connection that starts says the network again: the
     // one said last may come once more. One said before it may not.
-    let office = WifiNetwork { ssid: "Office".into(), security: WifiSecurity::Wpa3, hidden: true };
+    let office = WifiNetwork { ssid: "Office".into(), security: WifiSecurity::Wpa3, hidden: true, locked: false };
     mac.engine.set_wifi_network(Some(office.clone())).await;
     let heard = expect(&mut phone_events, "the new network", |e| network_from(e, mac_id).filter(|n| *n != Some(home()))).await;
     assert_eq!(heard, Some(office.clone()));

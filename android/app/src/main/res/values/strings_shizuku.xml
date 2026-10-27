@@ -24,4 +24,7 @@
     <string name="shizuku_use_projection_on">Android no longer asks when this phone\'s sound or screen is shared. The notification that it is shared stays</string>
     <string name="shizuku_use_projection_off">Android asks each time the sound or the screen is shared</string>
     <string name="shizuku_use_projection_set">Tap to set it now</string>
+    <string name="shizuku_use_wifi">Share this phone\'s Wi-Fi</string>
+    <string name="shizuku_use_wifi_on">Your computers offer to take it over when they have no network</string>
+    <string name="shizuku_use_wifi_off">Android lets only the shell read the password of a Wi-Fi network</string>
 </resources>

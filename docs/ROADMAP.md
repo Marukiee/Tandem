@@ -192,8 +192,10 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   2. Berichten op de computer: gebouwd (2026-10-24). Een pagina Berichten op Mac, Linux en Windows met de sms-gesprekken van de telefoon, live,
      sturen vanaf de telefoon en een nieuw bericht aan een contact; per computer aan of uit op de telefoon. Groepsgesprekken en MMS sturen nog niet.
   3. Klembord met plaatjes en bestanden, niet alleen tekst. Haalbaar.
-  4. Wifi delen: gebouwd (2026-10-24). De telefoon vraagt "De wifi van je MacBook gebruiken?", de computer vraagt of het wachtwoord mag, ook over
-     Bluetooth; Wifi delen op de pagina van een apparaat, ook tussen computers. Van telefoon naar computer kan niet (Android geeft het wachtwoord niet).
+  4. Wifi delen: gebouwd (2026-10-24), omgebouwd (2026-10-27). Elk apparaat meldt zijn netwerk. Een apparaat zonder enig netwerk vraagt
+     "De wifi van X gebruiken?" voor een netwerk dat het nog niet kent; dat ja is de enige vraag, de ander geeft het wachtwoord, ook over
+     Bluetooth. Wifi delen op de pagina van een apparaat, ook tussen computers. Van telefoon naar computer met Shizuku (de shell leest
+     opgeslagen netwerken); zonder Shizuku meldt de telefoon zijn netwerk als `locked` en biedt niemand het aan.
   5. Foto's van de telefoon vanzelf op de computer, zoals iCloud-foto's maar lokaal (schermafbeeldingen gaan al). Haalbaar.
   6. Goedkeuren met de telefoon: geschrapt door Mark (2026-10-24), ziet het nut niet.
   7. De computer laten piepen en zien waar hij is vanaf de telefoon (Find My voor laptops), met het netwerk waar hij laatst was. Het geluid komt uit
