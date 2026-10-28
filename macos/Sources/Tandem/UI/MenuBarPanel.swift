@@ -8,30 +8,66 @@ import TandemCore
 struct MenuBarPanel: View {
     @Environment(EngineModel.self) private var model
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(spacing: 10) {
             header
 
-            if model.hotspotStatus != .idle { MenuHotspot() }
-
             if model.devices.isEmpty {
                 empty
             } else {
-                // No glass container here: the buttons in a row sit close together, and in a
-                // container glass that close blends into one blob and drags the icons off centre
-                // as soon as one of them swells under the pointer.
-                VStack(spacing: 2) {
-                    ForEach(model.devices, id: \.id) { device in
-                        MenuDeviceRow(device: device)
-                    }
-                }
+                devices
             }
 
-            MenuInsertFromPhone()
+            MenuNowPlaying()
 
+            MenuTiles()
+
+            quickShare
+
+            UpdateBanner(compact: true)
+        }
+        .padding(14)
+        .frame(width: 344)
+        .onGlassSurface()
+        .animation(.tandem, value: model.devices.map(\.id))
+        .animation(.tandem, value: model.devices.map(\.online))
+        .animation(.tandem, value: model.hotspotStatus)
+        .animation(.tandem, value: model.isTransferring)
+        .animation(.tandem, value: model.remoteMedia.mapValues(\.players))
+    }
+
+    /// All devices on one card: the ones that can be reached with their buttons, the hotspot in use, and the rest on a line each.
+    private var devices: some View {
+        let reachable = model.devices.filter { model.reach(of: $0).reachable }
+        let away = model.devices.filter { !model.reach(of: $0).reachable }
+        // No glass container here: the buttons in a row sit close together, and in a container glass that close blends into one
+        // blob and drags the icons off centre as soon as one of them swells under the pointer.
+        return VStack(spacing: 2) {
+            ForEach(reachable, id: \.id) { device in
+                MenuDeviceRow(device: device)
+            }
+            if model.hotspotStatus != .idle {
+                MenuHotspot()
+                    .padding(.horizontal, 4)
+                    .padding(.bottom, 4)
+            }
+            if !reachable.isEmpty && !away.isEmpty {
+                Divider().padding(.horizontal, 10).padding(.vertical, 4)
+            }
+            ForEach(away, id: \.id) { device in
+                MenuAwayRow(device: device)
+            }
+        }
+        .padding(4)
+        .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 22, style: .continuous))
+    }
+
+    /// Quick Share on a card of its own, with what is being sent from this Mac under it.
+    private var quickShare: some View {
+        VStack(alignment: .leading, spacing: 4) {
             MenuQuickShare()
-
             if let item = model.transfers.first(where: { $0.state == .active }) {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack {
@@ -42,30 +78,19 @@ struct MenuBarPanel: View {
                     ProgressCapsule(fraction: item.fraction).frame(height: 5)
                 }
                 .padding(.horizontal, 10)
+                .padding(.bottom, 8)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
-
-            MenuClipboardRow()
-
-            MenuNowPlaying()
-
-            UpdateBanner(compact: true)
-            footer
         }
-        .padding(14)
-        .frame(width: 344)
-        .onGlassSurface()
-        .animation(.tandem, value: model.devices.map(\.id))
-        .animation(.tandem, value: model.hotspotStatus)
-        .animation(.tandem, value: model.isTransferring)
-        .animation(.tandem, value: model.remoteMedia.mapValues(\.players))
+        .padding(4)
+        .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 22, style: .continuous))
     }
 
     // MARK: Header
 
+    /// The name and how many devices are there, with the extras and the way into the app at the end: no row of its own at the bottom.
     private var header: some View {
-        HStack(spacing: 10) {
-            PillMark(size: 30)
+        HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(AppIdentity.displayName).font(.headline)
                 if !model.devices.isEmpty {
@@ -81,8 +106,21 @@ struct MenuBarPanel: View {
                 }
             }
             Spacer(minLength: 0)
+            RoundIconMenu(symbol: "ellipsis", size: 30) {
+                Button("Pair a device…") { openMain(pairing: true) }
+                Button("Settings…") {
+                    NSApp.activate(ignoringOtherApps: true)
+                    openSettings()
+                }
+                Divider()
+                Button("Quit Tandem") { NSApp.terminate(nil) }
+                    .keyboardShortcut("q")
+            }
+            .help("More")
+            RoundIconButton(symbol: "macwindow", tint: Palette.indigo, size: 30) { openMain(pairing: false) }
+                .help("Open Tandem")
         }
-        .padding(.horizontal, 6)
+        .padding(.leading, 8)
         .animation(.tandem, value: model.onlineCount)
     }
 
@@ -101,28 +139,6 @@ struct MenuBarPanel: View {
         .padding(.vertical, 14)
     }
 
-    // MARK: Footer
-
-    /// Settings and the extras on the left, the main action on the right, all the
-    /// same height so the row reads as one line.
-    private var footer: some View {
-        HStack(spacing: 8) {
-            RoundIconMenu(symbol: "ellipsis", size: 28) {
-                Button("Pair a device…") { openMain(pairing: true) }
-                Divider()
-                Button("Quit Tandem") { NSApp.terminate(nil) }
-                    .keyboardShortcut("q")
-            }
-            .help("More")
-
-            Spacer(minLength: 8)
-
-            Button("Open Tandem") { openMain(pairing: false) }
-                .buttonStyle(.tandemGlassProminent)
-        }
-        .controlSize(.large)
-    }
-
     private func openMain(pairing: Bool) {
         openWindow(id: "main")
         NSApp.activate(ignoringOtherApps: true)
@@ -133,51 +149,6 @@ struct MenuBarPanel: View {
                 NotificationCenter.default.post(name: .tandemShowPairing, object: nil)
             }
         }
-    }
-}
-
-/// The way into the clipboard history from the menu bar: a row like a device's, with the shortcut on it.
-private struct MenuClipboardRow: View {
-    /// The newest thing on the list, as one line.
-    static func latest(of items: [ClipItem]) -> String {
-        guard let item = items.max(by: { $0.date < $1.date }) else { return String(localized: "Nothing saved yet") }
-        if item.isImage { return String(localized: "Image") }
-        let line = item.preview.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.first { !$0.isEmpty } ?? ""
-        return line.isEmpty ? String(localized: "Nothing saved yet") : line
-    }
-
-    var body: some View {
-        let history = ClipboardHistory.shared
-        Button {
-            ClipboardPanelController.shared.show()
-        } label: {
-            Hoverable { hovering in
-                HStack(spacing: 10) {
-                    // Like the symbols of Insert from phone: the disc fills and the symbol turns white, in colour only.
-                    Image(systemName: "doc.on.clipboard.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .fadingForeground(Palette.indigo, to: Color.white, when: hovering)
-                        .frame(width: 36, height: 36)
-                        .background(hovering ? Palette.indigo : Palette.indigo.opacity(0.14), in: Circle())
-                        .animation(.tandemFade, value: hovering)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Clipboard history").font(.callout.weight(.semibold))
-                        // What was copied last, not how many things there are: that is what the row is for.
-                        Text(history.enabled ? Self.latest(of: history.items) : String(localized: "Off"))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                    Spacer(minLength: 4)
-                    if history.hotkeyOn { KeyCap(history.hotkey.display) }
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .hoverHighlight(radius: 18)
-            }
-        }
-        .buttonStyle(.plain)
     }
 }
 
@@ -262,55 +233,61 @@ private struct MenuDeviceRow: View {
 
     var body: some View {
         let reach = model.reach(of: device)
-        HStack(spacing: 10) {
-            DeviceGlyph(platform: device.platform, online: device.online, size: 36, ring: true, deviceID: device.id, greenWhenOnline: true)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(device.name).font(.callout.weight(.semibold)).lineLimit(1)
-                HStack(spacing: 5) {
-                    if let hint {
-                        Text(hint)
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(Palette.indigo)
-                            .transition(.opacity)
-                    } else {
-                        // Connected says itself: the glyph is green. Only what is not the plain case is written out.
-                        if reach != .network {
-                            Text(reach.text)
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                DeviceGlyph(platform: device.platform, online: device.online, size: 36, ring: true, deviceID: device.id, greenWhenOnline: true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(device.name).font(.callout.weight(.semibold)).lineLimit(1)
+                    HStack(spacing: 5) {
+                        if let hint {
+                            Text(hint)
                                 .font(.caption.weight(.medium))
-                                .foregroundStyle(reach.color)
+                                .foregroundStyle(Palette.indigo)
                                 .transition(.opacity)
-                        }
-                        if let battery = device.status.battery {
-                            Image(systemName: batterySymbol(battery)).font(.caption2).foregroundStyle(.secondary)
-                            Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                        } else {
+                            // Connected says itself: the glyph is green. Only what is not the plain case is written out.
+                            if reach != .network {
+                                Text(reach.text)
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(reach.color)
+                                    .transition(.opacity)
+                            }
+                            if let battery = device.status.battery {
+                                Image(systemName: batterySymbol(battery)).font(.caption2).foregroundStyle(.secondary)
+                                Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            }
+                            if device.online, let rtt = device.rttMs {
+                                Text("· \(rtt) ms").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            }
                         }
                     }
+                    .lineLimit(1)
                 }
-                .lineLimit(1)
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 4)
-            HStack(spacing: 4) {
-                RoundIconButton(symbol: "paperplane.fill", size: 28, onHover: { hover($0, "Send files") }) { pickFiles() }
+            // The buttons share the width under the name, all the same size, instead of crowding the name at its side.
+            HStack(spacing: 6) {
+                RoundIconButton(symbol: "paperplane.fill", size: 32, onHover: { hover($0, "Send files") }) { pickFiles() }
                     .disabled(!device.online)
-                RoundIconButton(symbol: "doc.on.clipboard", size: 28, onHover: { hover($0, "Send clipboard") }) {
+                RoundIconButton(symbol: "doc.on.clipboard", size: 32, onHover: { hover($0, "Send clipboard") }) {
                     model.sendClipboard(to: [device.id])
                 }
                 .disabled(!(device.online || device.ble))
-                LiveMenuButton(device: device, onHover: { hover($0, "Show phone screen") })
+                LiveMenuButton(device: device, size: 32, onHover: { hover($0, device.isComputer ? "Control computer" : "Show phone screen") })
                 if device.platform == .android {
                     let on = model.speaker.device == device.id
                     RoundIconButton(
-                        symbol: on ? "speaker.wave.3.fill" : "speaker.wave.2", tint: on ? Palette.indigo : nil, size: 28,
+                        symbol: on ? "speaker.wave.3.fill" : "speaker.wave.2", tint: on ? Palette.indigo : nil, size: 32,
                         onHover: { hover($0, on ? "Stop phone output" : "Phone as output") }
                     ) { model.toggleSpeaker(for: device.id) }
                     .disabled(!device.online)
                 }
             }
+            .environment(\.iconButtonsFill, true)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .hoverHighlight(radius: 18, tint: targeted ? Palette.indigo : .primary, selected: targeted)
-        .opacity(reach.reachable ? 1 : 0.6)
         .scaleEffect(targeted ? 1.02 : 1)
         .animation(.tandemSpringy, value: targeted)
         .animation(.tandem, value: device.online)
@@ -343,5 +320,95 @@ private struct MenuDeviceRow: View {
         panel.allowsMultipleSelection = true
         NSApp.activate(ignoringOtherApps: true)
         if panel.runModal() == .OK { model.send(urls: panel.urls, to: [device.id]) }
+    }
+}
+
+/// A device that cannot be reached now, on one quiet line: its buttons would do nothing, so it has none.
+private struct MenuAwayRow: View {
+    @Environment(EngineModel.self) private var model
+    let device: TandemDevice
+
+    var body: some View {
+        let reach = model.reach(of: device)
+        HStack(spacing: 10) {
+            Image(systemName: device.platform.symbol)
+                .font(.system(size: 13, weight: .medium))
+                .frame(width: 36)
+            Text(device.name).font(.callout).lineLimit(1)
+            Spacer(minLength: 6)
+            Text(reach.text).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .foregroundStyle(.secondary)
+        .opacity(0.75)
+    }
+}
+
+/// Four things with one press, chosen in Settings: a tile each, the shortcut that does the same under its name.
+private struct MenuTiles: View {
+    @Environment(EngineModel.self) private var model
+    /// Read again whenever the panel opens, so a change in Settings shows at once.
+    @LocalState private var tiles = PanelAction.tiles
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+            ForEach(tiles) { action in
+                MenuTile(action: action, shortcut: ActionShortcuts.shared.shortcut(for: action)?.display)
+            }
+        }
+        .onAppear { tiles = PanelAction.tiles }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            let now = PanelAction.tiles
+            if now != tiles { tiles = now }
+        }
+    }
+}
+
+/// The symbol in a disc at the left, the name and the shortcut next to it, on the same plain tint as the cards around it. Under the
+/// pointer the tint deepens and the disc fills, the symbol turning white: colour only, and the press dips it like the other buttons.
+private struct MenuTile: View {
+    @Environment(EngineModel.self) private var model
+    let action: PanelAction
+    let shortcut: String?
+    @LocalState private var hovering = false
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+        // What needs a phone that is not there looks dimmed, and says why when it is pressed.
+        let ready = action.ready
+        Button { action.perform() } label: {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle().fill(hovering ? Palette.indigo : Palette.indigo.opacity(0.15))
+                    Image(systemName: action.symbol)
+                        .font(.system(size: 14, weight: .semibold))
+                        .fadingForeground(Palette.indigo, to: Color.white, when: hovering)
+                }
+                .frame(width: 32, height: 32)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: action.tileTitle)
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .lineLimit(1)
+                    if let shortcut {
+                        Text(verbatim: shortcut)
+                            .font(.caption.monospaced())
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(shape.fill(Color.primary.opacity(hovering ? 0.11 : 0.05)))
+            .contentShape(shape)
+            .opacity(ready ? 1 : 0.55)
+        }
+        .buttonStyle(.bouncy)
+        .onHover { hovering = $0 }
+        .animation(.tandemFade, value: hovering)
+        .help(action.title)
     }
 }

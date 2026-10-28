@@ -92,11 +92,12 @@ struct LiveActionRow: View {
 /// One button in the row of a phone in the menu bar panel, with the two things the phone can show behind it.
 struct LiveMenuButton: View {
     let device: TandemDevice
+    var size: CGFloat = 28
     var onHover: ((Bool) -> Void)?
 
     var body: some View {
         if device.canShowScreen || device.canShowCamera {
-            RoundIconMenu(symbol: "rectangle.on.rectangle", size: 28, onHover: onHover) {
+            RoundIconMenu(symbol: "rectangle.on.rectangle", size: size, onHover: onHover) {
                 if device.canShowScreen {
                     Button {
                         LiveManager.shared.start(device: device, kind: .screen)

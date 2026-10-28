@@ -304,6 +304,11 @@ struct WrapRow: Layout {
 
 // MARK: Round icon buttons for the menu bar panel
 
+extension EnvironmentValues {
+    /// Round icon buttons in a row that share out its width as equal rounded keys, as under a device in the menu bar panel.
+    @Entry var iconButtonsFill = false
+}
+
 /// The disc under an icon in the menu bar panel. A fill and not glass, because the panel is glass already, and the
 /// same fill as the buttons with words there; it darkens a little under the pointer.
 private struct RoundIconDisc: View {
@@ -312,16 +317,20 @@ private struct RoundIconDisc: View {
     var size: CGFloat
     var hovering: Bool
     var enabled: Bool
+    @Environment(\.iconButtonsFill) private var fill
 
     var body: some View {
+        // In a row that shares out its width (see `iconButtonsFill`) the disc becomes a rounded key as wide as its share.
+        let shape = RoundedRectangle(cornerRadius: fill ? size * 0.36 : size / 2, style: .continuous)
         Image(systemName: symbol)
             .font(.system(size: size * 0.43, weight: .semibold))
             .contentTransition(.symbolEffect(.replace))
             .foregroundStyle(tint ?? Color.primary)
-            .frame(width: size, height: size)
-            .background(Circle().fill(Color.primary.opacity(hovering && enabled ? 0.18 : 0.1)))
-            .overlay(Circle().strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
-            .contentShape(Circle())
+            .frame(width: fill ? nil : size, height: size)
+            .frame(maxWidth: fill ? .infinity : nil)
+            .background(shape.fill(Color.primary.opacity(hovering && enabled ? 0.18 : 0.1)))
+            .overlay(shape.strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
+            .contentShape(shape)
             .opacity(enabled ? 1 : 0.4)
             .animation(.tandemFade, value: hovering)
     }
@@ -357,6 +366,7 @@ struct RoundIconMenu<Content: View>: View {
     var size: CGFloat = 30
     var onHover: ((Bool) -> Void)?
     @ViewBuilder var content: Content
+    @Environment(\.iconButtonsFill) private var fill
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.hoverEnabled) private var hoverEnabled
     @LocalState private var hovering = false
@@ -370,7 +380,7 @@ struct RoundIconMenu<Content: View>: View {
         .menuStyle(.button)
         .menuIndicator(.hidden)
         .buttonStyle(.plain)
-        .fixedSize()
+        .fixedSize(horizontal: !fill, vertical: true)
         .onHover { inside in
             hovering = inside
             onHover?(inside)

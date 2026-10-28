@@ -60,6 +60,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             TandemSpotlight.shared.start()
             InsertFromPhone.shared.install()
             ClipboardPanelController.shared.start()
+            ActionShortcuts.shared.apply()
             ControlBridge.shared.start()
             BatteryBridge.shared.start()
             Updater.shared.checkIfDue()

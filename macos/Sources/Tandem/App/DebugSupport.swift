@@ -459,6 +459,22 @@ enum DebugSupport {
     }
 
     private static func showPanelWindow() {
+        // `TANDEM_DEBUG_PANEL=devices`: made up devices, a phone that is there and two that are away, so the panel has its rows.
+        if variable("TANDEM_DEBUG_PANEL") == "devices", EngineModel.shared.devices.isEmpty {
+            let battery = TandemBattery(level: 35, charging: false, powerSave: false)
+            func status(_ battery: TandemBattery?) -> TandemStatus {
+                TandemStatus(battery: battery, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
+            }
+            func made(_ id: String, _ name: String, _ platform: TandemPlatform, online: Bool, battery: TandemBattery?, caps: [String]) -> TandemDevice {
+                TandemDevice(id: id, name: name, platform: platform, online: online, route: nil, rttMs: online ? 12 : nil, status: status(battery), appVersion: nil,
+                             caps: caps, vouchedByRemoved: false, clipboardEnabled: true, autoAccept: false, notificationsEnabled: true, ble: false, features: [])
+            }
+            EngineModel.shared.devices = [
+                made("debug-phone", "Maruks Telefoon", .android, online: true, battery: battery, caps: ["sms", "files", "capture", "screen.host", "audio.play"]),
+                made("debug-linux", "Maruks Linux Laptop", .linux, online: false, battery: nil, caps: []),
+                made("debug-xperia", "Xperia test", .android, online: false, battery: nil, caps: []),
+            ]
+        }
         let host = NSHostingView(rootView: MenuBarPanel().environment(EngineModel.shared))
         let window = NSWindow(
             contentRect: NSRect(x: 80, y: 80, width: 344, height: 10),

@@ -27,6 +27,9 @@ Open, wacht op een echte Windows-pc: alles van sectie 2 voor Windows (scherm del
 Foundation, hotspot) en alles nalopen.
 
 Open, kan zonder dat die toegang er is, nog niet gedaan:
+- Menubalkpaneel en sneltoetsen (gevraagd 2026-10-29): op de Mac in 0.2.33, een kaart met de apparaten, vier vakjes naar keuze en een lijst
+  sneltoetsen voor elke functie (Instellingen, Sneltoetsen). Linux en Windows: het trayvenster op dezelfde manier indelen; sneltoetsen in elke app
+  vragen daar de plugin global-shortcut van Tauri, die nog niet in de afhankelijkheden zit.
 - Bellen als eigen plek in de zijbalk (gevraagd 2026-10-27): Berichten staat sinds 0.2.30 bij Bestanden en Meldingen, bellen zit nog op de
   pagina Berichten (contacten met een belknop). Een rij Bellen met de recente gesprekken van de telefoon vraagt READ_CALL_LOG op Android en
   een nieuw bericht in de core; op Mac, Windows en Linux tegelijk.
