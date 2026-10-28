@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.32",
+    "date": "2026-10-29",
+    "en": { "title": "Clean sound", "new": ["Your phone as a speaker no longer crackles over a hotspot or busy Wi-Fi"] },
+    "nl": { "title": "Schoon geluid", "new": ["Je telefoon als speaker kraakt niet meer over een hotspot of druk wifi"] }
+  },
+  {
     "version": "0.2.31",
     "date": "2026-10-27",
     "en": { "title": "Choose many", "new": ["Shared: hold a file and drag to choose many on Android, Command or Shift-click on computers", "Quick Share on Android: the pill at the bottom slides between Receive and Send"] },
