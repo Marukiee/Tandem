@@ -104,7 +104,8 @@ class RemoteAudioPlayer(
             AudioTrack.Builder()
                 .setAudioAttributes(attributes)
                 .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(mask).build())
-                .setBufferSizeInBytes(maxOf(minimum, bytesPerMs * delay.trackMs))
+                // Room for the cushion to grow on a restless network (see pump), which a fixed small one could not.
+                .setBufferSizeInBytes(maxOf(minimum, bytesPerMs * (delay.trackMs + GROW_MS)))
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
                 .build()
@@ -123,7 +124,7 @@ class RemoteAudioPlayer(
                 holdAwake()
             }
         }
-        s.thread = Thread({ pump(s, bytesPerMs) }, "tandem-audio").apply {
+        s.thread = Thread({ pump(s, bytesPerMs, frameBytes) }, "tandem-audio").apply {
             priority = Thread.MAX_PRIORITY
             start()
         }
@@ -176,16 +177,29 @@ class RemoteAudioPlayer(
         }
     }
 
-    /** Moves packets from the buffer to the speaker, keeping a small cushion in the speaker. */
-    private fun pump(s: Session, bytesPerMs: Int) {
-        var written = 0L
+    /**
+     * Moves packets from the buffer to the speaker, keeping a cushion of sound in the speaker against packets that come late.
+     *
+     * The cushion starts at the chosen delay and grows by itself when the speaker runs dry or packets go missing, as on a hotspot or a
+     * busy Wi-Fi, and shrinks slowly again after a calm while. The two clocks (of the device that sends and of this phone) never run
+     * exactly alike, so the cushion also creeps; both are held at the target by playing a packet a few percent faster or slower
+     * ([PcmSmoothing.squeeze]), never by throwing sound away or adding silence, which is what crackled.
+     */
+    private fun pump(s: Session, bytesPerMs: Int, frameBytes: Int) {
+        val base = s.prebufferMs.toInt()
+        var target = base
+        var writtenFrames = 0L
         var started = false
         var idleSince = 0L
+        var underruns = 0
+        var lost = 0
+        var calmSince = System.nanoTime()
+        val framesPerMs = bytesPerMs / frameBytes
         try {
             while (s.running) {
-                val chunk = s.buffer.take(20)
+                var chunk = s.buffer.take(20)
                 if (chunk == null) {
-                    // Nothing for a while: let the speaker run dry and build the cushion up again, instead of
+                    // Nothing for a while: let the speaker run dry and build the cushion up again, a bigger one, instead of
                     // playing every new packet the moment it arrives, which is a crackle each time.
                     if (started) {
                         if (idleSince == 0L) idleSince = System.nanoTime()
@@ -193,17 +207,43 @@ class RemoteAudioPlayer(
                             s.track.pause()
                             s.track.flush()
                             started = false
-                            written = 0
+                            writtenFrames = 0
+                            target = minOf(base + GROW_MS, target + GROW_STEP_MS)
                         }
                     }
                     continue
                 }
                 idleSince = 0L
+                if (started) {
+                    val now = System.nanoTime()
+                    // Ran dry for a moment, or packets went missing: a bigger cushion from now on.
+                    val dry = runCatching { s.track.underrunCount }.getOrDefault(underruns)
+                    val missing = s.buffer.lost
+                    if (dry > underruns || missing > lost) {
+                        target = minOf(base + GROW_MS, target + GROW_STEP_MS)
+                        calmSince = now
+                    } else if (now - calmSince > CALM_NS && target > base) {
+                        target = maxOf(base, target - SHRINK_STEP_MS)
+                        calmSince = now
+                    }
+                    underruns = dry
+                    lost = missing
+                    // What waits: in the speaker (written but not played yet) and in the buffer.
+                    val head = s.track.playbackHeadPosition.toLong() and 0xFFFFFFFFL
+                    val waitingMs = ((writtenFrames - head).coerceAtLeast(0) / framesPerMs).toInt() + s.buffer.queuedMs
+                    val frames = chunk.size / frameBytes
+                    val step = maxOf(1, frames * CORRECT_PERCENT / 100)
+                    if (waitingMs > target + SLACK_MS) chunk = PcmSmoothing.squeeze(chunk, step, frameBytes)
+                    else if (waitingMs < target - SLACK_MS) chunk = PcmSmoothing.squeeze(chunk, -step, frameBytes)
+                }
                 s.track.write(chunk, 0, chunk.size)
-                written += chunk.size
-                if (!started && written >= s.prebufferMs * bytesPerMs) {
+                writtenFrames += chunk.size / frameBytes
+                if (!started && writtenFrames >= target.toLong() * framesPerMs) {
                     s.track.play()
                     started = true
+                    underruns = runCatching { s.track.underrunCount }.getOrDefault(0)
+                    lost = s.buffer.lost
+                    calmSince = System.nanoTime()
                 }
             }
         } catch (e: Exception) {
@@ -292,6 +332,15 @@ class RemoteAudioPlayer(
         const val TEST_DEVICE = "tandem-test-tone"
         const val TEST_STREAM = 250
         const val UNDERRUN_NS = 150_000_000L
+        /** How far the cushion may grow above the chosen delay, and by how much at a time. */
+        const val GROW_MS = 240
+        const val GROW_STEP_MS = 40
+        const val SHRINK_STEP_MS = 10
+        /** How long it has to stay calm before the cushion shrinks a step. */
+        const val CALM_NS = 20_000_000_000L
+        /** How far the cushion may be off before it is corrected, and how much faster or slower a packet plays to do that. */
+        const val SLACK_MS = 25
+        const val CORRECT_PERCENT = 2
         const val MAX_HOLD_MS = 6 * 60 * 60 * 1000L
         val attributes: AudioAttributes =
             AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()

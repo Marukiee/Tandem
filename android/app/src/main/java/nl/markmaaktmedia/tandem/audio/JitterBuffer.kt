@@ -8,9 +8,10 @@ import java.util.concurrent.atomic.AtomicInteger
  * Holds the packets of sound between the network and the speaker.
  *
  * Packets arrive in bursts and now and then late, out of order or not at all; the speaker wants a
- * steady stream. This keeps a short cushion, drops what arrives too late to matter, fills a hole
- * with a moment of silence so the rest does not slide forward, and throws old sound away when the
- * two clocks have drifted so far apart that the cushion has grown into a delay.
+ * steady stream. This keeps a short cushion, drops what arrives too late to matter, and fills a hole
+ * so the rest does not slide forward: with the sound before it fading away, and the sound after it
+ * fading in, as silence would click at both ends (see [PcmSmoothing]). Old sound is thrown away only
+ * when far too much waits: the slow drift of two clocks is taken out by the player, without a jump.
  *
  * Safe to call [push] from one thread and [take] from another.
  */
@@ -30,6 +31,10 @@ class JitterBuffer(
 
     @Volatile private var stream = -1
     @Volatile private var lastSeq = -1L
+    private var last: ByteArray = ByteArray(0)
+
+    /** How many packets never came since [reset], and were filled in. For the player, which waits longer when many go missing. */
+    @Volatile var lost = 0
 
     /** How many packets were thrown away (late or too much waiting) since [reset]. For the log and the tests. */
     @Volatile var dropped = 0
@@ -43,7 +48,9 @@ class JitterBuffer(
         queued.set(0)
         stream = newStream
         lastSeq = -1
+        last = ByteArray(0)
         dropped = 0
+        lost = 0
     }
 
     fun push(fromStream: Int, seq: Long, pcm: ByteArray) {
@@ -58,10 +65,15 @@ class JitterBuffer(
             val missing = seq - previous - 1
             if (missing > 0) {
                 val bytes = minOf(missing * pcm.size, (gapMs * bytesPerMs).toLong()).toInt() / frameBytes * frameBytes
-                if (bytes > 0) add(ByteArray(bytes))
+                if (bytes > 0) {
+                    add(PcmSmoothing.conceal(last, bytes, frameBytes))
+                    lost += missing.toInt()
+                    PcmSmoothing.fadeIn(pcm, FADE_MS * bytesPerMs / frameBytes, frameBytes)
+                }
             }
         }
         lastSeq = seq
+        last = pcm
         add(pcm)
         trim()
     }
@@ -76,6 +88,10 @@ class JitterBuffer(
     private fun add(bytes: ByteArray) {
         queue.addLast(bytes)
         queued.addAndGet(bytes.size)
+    }
+
+    private companion object {
+        const val FADE_MS = 3
     }
 
     private fun trim() {

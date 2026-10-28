@@ -43,16 +43,24 @@ class JitterBufferTest {
     }
 
     @Test
-    fun aLostPacketLeavesAMomentOfSilenceSoTheRestDoesNotSlideForward() {
+    fun aLostPacketIsFilledWithTheSoundBeforeItFadingAwaySoTheRestDoesNotSlideForward() {
         val b = buffer()
         b.push(1, 0, packet(5, 1))
         // Packets 1 and 2 never arrived.
         b.push(1, 3, packet(5, 4))
         assertEquals(1, b.take(10)!![0].toInt())
-        val silence = b.take(10)!!
-        assertEquals(10 * 192, silence.size)
-        assertEquals(0, silence.count { it.toInt() != 0 })
-        assertEquals(4, b.take(10)!![0].toInt())
+        val filled = b.take(10)!!
+        assertEquals(10 * 192, filled.size)
+        // It starts as the packet before (0x0101 in every sample) and dies away to nothing.
+        val first = (filled[0].toInt() and 0xFF) or (filled[1].toInt() shl 8)
+        val lastSample = (filled[filled.size - 2].toInt() and 0xFF) or (filled[filled.size - 1].toInt() shl 8)
+        assertEquals(0x0101, first)
+        assertEquals(true, lastSample < 10)
+        // The sound after the hole fades in instead of starting with a jump, and then is itself.
+        val after = b.take(10)!!
+        assertEquals(true, ((after[0].toInt() and 0xFF) or (after[1].toInt() shl 8)) < 0x0404)
+        assertEquals(4, after[after.size - 1].toInt())
+        assertEquals(2, b.lost)
     }
 
     @Test
@@ -62,9 +70,9 @@ class JitterBufferTest {
         b.push(1, 1000, packet(5, 2))
         b.take(10)
         // At most the cap (40 ms), and always a whole number of frames.
-        val silence = b.take(10)!!
-        assertEquals(40 * 192, silence.size)
-        assertEquals(0, silence.size % 4)
+        val filled = b.take(10)!!
+        assertEquals(40 * 192, filled.size)
+        assertEquals(0, filled.size % 4)
     }
 
     @Test
