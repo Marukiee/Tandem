@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.33",
+    "date": "2026-10-29",
+    "en": { "title": "A tidier menu", "new": ["The menu bar panel puts your devices on one card, with four tiles you choose", "Settings, Shortcuts: a shortcut for everything Tandem does with one press"] },
+    "nl": { "title": "Een rustiger menu", "new": ["Het menubalkpaneel zet je apparaten op een kaart, met vier vakjes die je zelf kiest", "Instellingen, Sneltoetsen: een sneltoets voor alles wat Tandem met een druk doet"] }
+  },
+  {
     "version": "0.2.32",
     "date": "2026-10-29",
     "en": { "title": "Clean sound", "new": ["Your phone as a speaker no longer crackles over a hotspot or busy Wi-Fi"] },
