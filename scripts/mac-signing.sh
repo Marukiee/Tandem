@@ -11,13 +11,22 @@
 #   mac-signing.sh sign <app>       sign an app bundle
 #   mac-signing.sh export           print base64 of the p12 for GitHub secrets
 #   mac-signing.sh ci               in CI: build the keychain from MACOS_CERT_* secrets
+#
+# With TANDEM_SIGN=developer-id the Developer ID Application certificate of team X8Y2M32MNQ signs instead (in CI from the
+# DEVELOPER_ID_* secrets), with Apple's timestamp, so the app can be notarized. The updater takes both (Updater.swift).
 set -euo pipefail
 
 DIR="${TANDEM_KEYSTORES:-$HOME/keystores}"
-P12="$DIR/tandem-mac-signing.p12"
-PASSFILE="$DIR/tandem-mac-signing.password"
 KEYCHAIN="$DIR/tandem-signing.keychain-db"
-IDENTITY="Tandem Signing"
+if [ "${TANDEM_SIGN:-}" = developer-id ]; then
+  P12="$DIR/tandem-developer-id.p12"
+  PASSFILE="$DIR/tandem-developer-id.password"
+  IDENTITY="Developer ID Application: Mark Mossing Holsteijn (X8Y2M32MNQ)"
+else
+  P12="$DIR/tandem-mac-signing.p12"
+  PASSFILE="$DIR/tandem-mac-signing.password"
+  IDENTITY="Tandem Signing"
+fi
 ENTITLEMENTS="$(cd "$(dirname "$0")/.." && pwd)/macos/Resources/Tandem.entitlements"
 
 password() { cat "$PASSFILE"; }
@@ -65,7 +74,21 @@ CNF
   echo "SHA-256 of the certificate: $(openssl pkcs12 -in "$P12" -clcerts -nokeys -passin "pass:$(password)" 2>/dev/null | openssl x509 -outform der | shasum -a 256 | cut -d' ' -f1)"
 }
 
+cmd_ci_developer_id() {
+  : "${DEVELOPER_ID_P12_B64:?missing}"; : "${DEVELOPER_ID_PASSWORD:?missing}"
+  mkdir -p "$DIR"
+  printf '%s' "$DEVELOPER_ID_P12_B64" | base64 --decode >"$P12"
+  printf '%s' "$DEVELOPER_ID_PASSWORD" >"$PASSFILE"
+  make_keychain
+  # The intermediate of Apple that the certificate hangs from; a runner usually has it, this makes sure.
+  curl -fsSL https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer -o "$DIR/DeveloperIDG2CA.cer" \
+    && security import "$DIR/DeveloperIDG2CA.cer" -k "$KEYCHAIN" >/dev/null 2>&1 || true
+  security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"') || true
+  security find-identity -v -p codesigning "$KEYCHAIN" || true
+}
+
 cmd_ci() {
+  if [ "${TANDEM_SIGN:-}" = developer-id ]; then cmd_ci_developer_id; return; fi
   : "${MACOS_CERT_P12_B64:?missing}"; : "${MACOS_CERT_PASSWORD:?missing}"
   mkdir -p "$DIR"
   printf '%s' "$MACOS_CERT_P12_B64" | base64 --decode >"$P12"
@@ -85,9 +108,16 @@ cmd_ci() {
 cmd_sign() {
   local app="${1:?usage: sign <app>}"
   local entitlements="${2:-$ENTITLEMENTS}"
-  [ -f "$KEYCHAIN" ] || cmd_setup
+  if [ ! -f "$KEYCHAIN" ]; then
+    # A Developer ID comes from Apple and cannot be made here.
+    [ "${TANDEM_SIGN:-}" = developer-id ] && { echo "no keychain with the Developer ID: run 'ci' first"; exit 1; }
+    cmd_setup
+  fi
   security unlock-keychain -p "$(password)" "$KEYCHAIN"
-  codesign --force --options runtime --timestamp=none \
+  # Notarization wants Apple's timestamp; the self-made certificate has no use for one.
+  local stamp=--timestamp=none
+  [ "${TANDEM_SIGN:-}" = developer-id ] && stamp=--timestamp
+  codesign --force --options runtime "$stamp" \
     --entitlements "$entitlements" --keychain "$KEYCHAIN" --sign "$IDENTITY" "$app"
   codesign --verify --strict "$app"
   echo "signed $app"

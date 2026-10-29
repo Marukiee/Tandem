@@ -146,14 +146,42 @@ jobs:
           targets: aarch64-apple-darwin
       - uses: Swatinem/rust-cache@v2
 
+      # Signed with the Developer ID of team X8Y2M32MNQ and notarized, so macOS trusts it at once. Builds from before 0.2.43 only take
+      # the self-made certificate; 0.2.43 and later take both (Updater.signedByOurDeveloperID).
       - name: Import the signing certificate
         env:
-          MACOS_CERT_P12_B64: ${{ secrets.MACOS_CERT_P12_B64 }}
-          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          TANDEM_SIGN: developer-id
+          DEVELOPER_ID_P12_B64: ${{ secrets.DEVELOPER_ID_P12_B64 }}
+          DEVELOPER_ID_PASSWORD: ${{ secrets.DEVELOPER_ID_PASSWORD }}
         run: ./scripts/mac-signing.sh ci
 
       - name: Build and sign the app
+        env:
+          TANDEM_SIGN: developer-id
         run: ./scripts/build-macos.sh release
+
+      - name: Notarize
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          app=macos/dist/Tandem.app
+          ditto -c -k --keepParent "$app" "$RUNNER_TEMP/notarize.zip"
+          out=$(xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" \
+            --password "$NOTARY_PASSWORD" --wait --timeout 30m --output-format json)
+          echo "$out"
+          id=$(echo "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+          status=$(echo "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')
+          if [ "$status" != Accepted ]; then
+            xcrun notarytool log "$id" --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" --password "$NOTARY_PASSWORD" || true
+            echo "::error::notarization: $status"; exit 1
+          fi
+          # The ticket goes into the app, so it opens without asking Apple first, also offline.
+          xcrun stapler staple "$app"
+          xcrun stapler validate "$app"
+          spctl --assess --type execute --verbose "$app"
 
       - name: Check the bundle
         run: |
