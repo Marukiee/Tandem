@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.53",
+    "date": "2026-10-29",
+    "en": { "title": "Signed by Apple", "new": ["Tandem is now signed and notarized through Apple. After this update macOS asks once more for its permissions"] },
+    "nl": { "title": "Ondertekend via Apple", "new": ["Tandem is nu ondertekend en genotariseerd via Apple. Na deze update vraagt macOS nog een keer om de rechten"] }
+  },
+  {
     "version": "0.2.52",
     "date": "2026-10-29",
     "en": { "title": "Phone as a second screen", "new": ["The phone button in the menu bar now extends your Mac's screen to the phone"] },
