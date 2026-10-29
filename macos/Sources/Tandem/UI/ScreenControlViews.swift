@@ -337,6 +337,7 @@ struct ScreenSettings: View {
                 }
                 .disabled(!editable)
             }
+            WebcamSection()
             // Last and small: for the few who stream with OBS.
             CameraStreamSection()
         }

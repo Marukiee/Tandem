@@ -155,10 +155,16 @@ jobs:
           DEVELOPER_ID_PASSWORD: ${{ secrets.DEVELOPER_ID_PASSWORD }}
         run: ./scripts/mac-signing.sh ci
 
+      # The profile that lets the app install Tandem Camera. Without the secret the app is built without the camera extension.
       - name: Build and sign the app
         env:
           TANDEM_SIGN: developer-id
-        run: ./scripts/build-macos.sh release
+          DEVELOPER_ID_PROFILE_B64: ${{ secrets.DEVELOPER_ID_PROFILE_B64 }}
+        run: |
+          set -euo pipefail
+          export TANDEM_PROFILE="$RUNNER_TEMP/tandem.provisionprofile"
+          if [ -n "$DEVELOPER_ID_PROFILE_B64" ]; then printf '%s' "$DEVELOPER_ID_PROFILE_B64" | base64 --decode >"$TANDEM_PROFILE"; fi
+          ./scripts/build-macos.sh release
 
       - name: Notarize
         env:

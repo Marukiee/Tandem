@@ -272,6 +272,7 @@ final class EngineModel {
 
         hotspot.attach(model: self)
         LiveManager.shared.attach(engine: engine)
+        VirtualCamera.shared.start()
         ScreenHost.shared.attach(engine: engine, model: self)
         engine.setAudioSink(sink: PhoneSound.shared.sink)
         PointerShare.shared.start()

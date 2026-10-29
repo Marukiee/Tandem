@@ -1260,3 +1260,9 @@
 "In OBS: add a Media Source, turn off Local File and paste the address as Input. Open the phone's camera in Tandem to start the picture." = "In OBS: voeg een Mediabron toe, zet Lokaal bestand uit en plak het adres bij Invoer. Open de camera van de telefoon in Tandem om het beeld te starten.";
 "While a phone's camera is open in Tandem, OBS shows it too: add a Media Source, turn off Local File and paste the address as Input." = "Terwijl de camera van een telefoon in Tandem open is, toont OBS hem ook: voeg een Mediabron toe, zet Lokaal bestand uit en plak het adres bij Invoer.";
 "Copy address" = "Kopieer adres";
+"Phone as webcam" = "Telefoon als webcam";
+"Pick Tandem Camera in Zoom, FaceTime or any other app, and the camera of your phone turns on. The first time, macOS asks you to allow it." = "Kies Tandem Camera in Zoom, FaceTime of een andere app en de camera van je telefoon gaat aan. De eerste keer vraagt macOS of je het toestaat.";
+"This build of Tandem has no camera extension" = "Deze versie van Tandem heeft geen camera-extensie";
+"Open Tandem on your phone to use it as a webcam" = "Open Tandem op je telefoon om hem als webcam te gebruiken";
+"Allow Tandem Camera in System Settings, under Login Items & Extensions" = "Sta Tandem Camera toe in Systeeminstellingen, bij Inloggen en extensies";
+"Tandem Camera could not be installed: %@" = "Tandem Camera kon niet worden geïnstalleerd: %@";

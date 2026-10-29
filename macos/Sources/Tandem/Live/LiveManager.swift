@@ -80,11 +80,12 @@ final class LiveManager {
 
     // MARK: Starting
 
-    /// Opens a window and asks the phone. A window of this kind for this phone that is already there comes to the front.
+    /// Opens a window and asks the phone. A window of this kind for this phone that is already there comes to the front. Without
+    /// `showWindow` (the phone as a webcam) there is no window: the one who starts it also ends it.
     @discardableResult
     func start(
         device: TandemDevice, kind: TandemMediaKind, facing: LiveCameraFacing = .back, quality: LiveQuality = .standard,
-        reusing: LiveSession? = nil, extend: Bool = false
+        reusing: LiveSession? = nil, extend: Bool = false, showWindow: Bool = true
     ) -> LiveSession? {
         if let existing = session(of: kind, on: device.id), kind == .screen || (existing.cameraFacing == facing && existing.quality == quality) {
             windows[ObjectIdentifier(existing)]?.bringToFront()
@@ -126,8 +127,13 @@ final class LiveManager {
         if let reused = replaced, let controller = windows[ObjectIdentifier(reused)] {
             controller.bringToFront()
         }
+        if kind == .camera, showWindow { VirtualCamera.shared.remember(phone: device.id) }
         if replaced == nil {
             sessions.append(session)
+            guard showWindow else {
+                startStatsTimer()
+                return session
+            }
             let controller = LiveWindowController(session: session, manager: self)
             windows[ObjectIdentifier(session)] = controller
             controller.show()
@@ -166,10 +172,13 @@ final class LiveManager {
         let pipeline = LivePipeline()
         let engine = engine
         pipeline.decoder.onNeedsKeyframe = { try? engine?.mediaRequestKeyframe(session: id) }
+        let isCamera = session.kind == .camera
+        if isCamera { VirtualCamera.shared.setRotation(0) }
         pipeline.decoder.onImage = { [weak session] image, _ in
             guard let session else { return }
             // Straight to the layer from the decoder's thread; the main actor only hears that the first one is there.
             session.surface.show(image)
+            if isCamera { VirtualCamera.shared.push(image) }
             if !session.firstPicture.exchange(true) {
                 Task { @MainActor in session.hasPicture = true }
             }
@@ -191,7 +200,10 @@ final class LiveManager {
                     session.width = Int(width)
                     session.height = Int(height)
                 }
-                if let rotation = update.rotation { session.phoneRotation = Int(rotation) % 360 }
+                if let rotation = update.rotation {
+                    session.phoneRotation = Int(rotation) % 360
+                    if session.kind == .camera { VirtualCamera.shared.setRotation(session.phoneRotation) }
+                }
                 if let control = update.control { session.controlGranted = control }
                 self?.windows[ObjectIdentifier(session)]?.contentSizeChanged()
             }

@@ -108,6 +108,14 @@ cmd_ci() {
 cmd_sign() {
   local app="${1:?usage: sign <app>}"
   local entitlements="${2:-$ENTITLEMENTS}"
+  # On the Mac of the developer the Developer ID sits in the login keychain, where codesign finds it by itself. CI writes the password
+  # file when it builds its own keychain, so its absence means here.
+  if [ "${TANDEM_SIGN:-}" = developer-id ] && [ ! -f "$PASSFILE" ]; then
+    codesign --force --options runtime --timestamp --entitlements "$entitlements" --sign "$IDENTITY" "$app"
+    codesign --verify --strict "$app"
+    echo "signed $app"
+    return
+  fi
   if [ ! -f "$KEYCHAIN" ]; then
     # A Developer ID comes from Apple and cannot be made here.
     [ "${TANDEM_SIGN:-}" = developer-id ] && { echo "no keychain with the Developer ID: run 'ci' first"; exit 1; }

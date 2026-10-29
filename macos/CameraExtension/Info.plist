@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleExecutable</key><string>TandemCamera</string>
+    <key>CFBundleIdentifier</key><string>@BUNDLE_ID@.Camera</string>
+    <key>CFBundleName</key><string>Tandem Camera</string>
+    <key>CFBundleDisplayName</key><string>Tandem Camera</string>
+    <key>CFBundlePackageType</key><string>SYSX</string>
+    <key>CFBundleShortVersionString</key><string>@VERSION@</string>
+    <key>CFBundleVersion</key><string>@BUILD@</string>
+    <key>LSMinimumSystemVersion</key><string>26.0</string>
+    <key>CMIOExtension</key>
+    <dict>
+        <!-- Has to start with the app group of the extension. -->
+        <key>CMIOExtensionMachServiceName</key><string>X8Y2M32MNQ.@BUNDLE_ID@.Camera</string>
+    </dict>
+    <key>NSSystemExtensionUsageDescription</key>
+    <string>Tandem Camera shows the camera of your phone in Zoom, FaceTime, Teams and every other app on this Mac.</string>
+</dict>
+</plist>

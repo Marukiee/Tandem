@@ -74,5 +74,32 @@ rm -rf "$CTL"
 cp -R "$CTL_BUILD/TandemControls.appex" "$CTL"
 ./scripts/mac-signing.sh sign "$CTL" macos/Resources/TandemControls.entitlements
 
-./scripts/mac-signing.sh sign "$APP"
+# Tandem Camera, the phone as a webcam: a system extension, which macOS only lets an app install with a provisioning profile of the
+# Developer ID that allows it. Without both (a build signed with the own certificate, or no profile yet) it is left out, and so is the
+# entitlement: an app that claims it without the profile is stopped at launch.
+APP_ENTITLEMENTS=macos/Resources/Tandem.entitlements
+PROFILE_FILE="${TANDEM_PROFILE:-$HOME/keystores/$([ "$CONFIG" = release ] && echo tandem || echo tandem-dev).provisionprofile}"
+if [ "${TANDEM_SIGN:-}" = developer-id ] && [ -f "$PROFILE_FILE" ]; then
+  SYSX="$APP/Contents/Library/SystemExtensions/$BUNDLE_ID.Camera.systemextension"
+  mkdir -p "$SYSX/Contents/MacOS"
+  swiftc -O -swift-version 5 -module-name TandemCamera -target arm64-apple-macos26.0 \
+    -framework CoreMediaIO -framework CoreMedia -framework CoreVideo \
+    -o "$SYSX/Contents/MacOS/TandemCamera" macos/CameraExtension/main.swift
+  sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" -e "s|@BUNDLE_ID@|$BUNDLE_ID|" macos/CameraExtension/Info.plist >"$SYSX/Contents/Info.plist"
+  WORK="$(mktemp -d)"
+  sed -e "s|@BUNDLE_ID@|$BUNDLE_ID|" macos/CameraExtension/TandemCamera.entitlements >"$WORK/camera.entitlements"
+  ./scripts/mac-signing.sh sign "$SYSX" "$WORK/camera.entitlements"
+  cp "$PROFILE_FILE" "$APP/Contents/embedded.provisionprofile"
+  APP_ENTITLEMENTS="$WORK/app.entitlements"
+  cp macos/Resources/Tandem.entitlements "$APP_ENTITLEMENTS"
+  /usr/libexec/PlistBuddy \
+    -c "Add :com.apple.developer.system-extension.install bool true" \
+    -c "Add :com.apple.application-identifier string X8Y2M32MNQ.$BUNDLE_ID" \
+    -c "Add :com.apple.developer.team-identifier string X8Y2M32MNQ" \
+    -c "Add :com.apple.security.application-groups array" \
+    -c "Add :com.apple.security.application-groups:0 string X8Y2M32MNQ.$BUNDLE_ID" \
+    "$APP_ENTITLEMENTS" >/dev/null
+fi
+
+./scripts/mac-signing.sh sign "$APP" "$APP_ENTITLEMENTS"
 echo "built $APP ($CONFIG, $VERSION)"
