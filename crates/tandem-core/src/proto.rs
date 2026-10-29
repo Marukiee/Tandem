@@ -49,6 +49,10 @@ pub struct Hello {
     pub boot_id: u64,
 }
 
+/// The audio stream a phone sends its microphone on, apart from its own sound (9) and from what a computer sends it. The apps write
+/// the number in themselves (it is not in the bindings); an `AudioStop` on it ends the microphone, from either side.
+pub const MIC_STREAM: u8 = 10;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Msg {
     CircleSync { statements: Vec<Statement> },
@@ -86,6 +90,10 @@ pub enum Msg {
     /// The device that looks at this one's screen wants its sound too (`on`), or no longer. The sound goes as `AudioStart` and datagrams;
     /// the sender stops by itself when the screen session ends.
     SoundRequest { on: bool },
+    /// A computer asks a phone that says `audio.mic` to be its microphone (`on`), or to stop. The phone answers with `AudioStart` on
+    /// `MIC_STREAM` and datagrams of what it records, or with `AudioStop` on that stream when it will not. A message of its own, not a
+    /// field on `SoundRequest`: an older phone would read that as a request for its playback and ask to capture the screen.
+    MicRequest { on: bool },
     /// A phone asks a computer that says `audio.bt_sink` to be its Bluetooth speaker (A2DP sink), connecting from the computer's
     /// side so the phone needs no screen recording question, or to stop (`on` false). `name` is the phone's Bluetooth name: Android
     /// gives apps no Bluetooth address, so the computer finds the phone among its paired devices by that name. Answered with
@@ -757,6 +765,18 @@ mod tests {
             Msg::Clipboard(c) => assert_eq!(c.text, "hi"),
             other => panic!("wrong message: {other:?}"),
         }
+    }
+
+    #[test]
+    fn microphone_requests_round_trip() {
+        for on in [true, false] {
+            let ask = encode(&Msg::MicRequest { on }).unwrap();
+            match decode_msg(&ask).unwrap() {
+                Msg::MicRequest { on: read } => assert_eq!(read, on),
+                other => panic!("wrong message: {other:?}"),
+            }
+        }
+        assert_eq!(MIC_STREAM, 10, "the apps have this number written in, and a phone's own sound is 9");
     }
 
     #[test]

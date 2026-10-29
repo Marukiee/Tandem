@@ -69,6 +69,7 @@ pub enum Event {
     SideMoved { from: DeviceId },
     OpenSettings { from: DeviceId, page: String },
     SoundRequested { from: DeviceId, on: bool },
+    MicRequested { from: DeviceId, on: bool },
     BtSpeakerRequested { from: DeviceId, on: bool, name: String },
     BtSpeakerState { from: DeviceId, on: bool, error: String },
     Input { from: DeviceId, input: InputMsg },
