@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.42",
+    "date": "2026-10-29",
+    "en": { "title": "Always means always", "new": ["Always allow for showing your screen no longer asks again"] },
+    "nl": { "title": "Altijd is altijd", "new": ["Altijd toestaan voor je scherm tonen vraagt het niet meer opnieuw"] }
+  },
+  {
     "version": "0.2.41",
     "date": "2026-10-29",
     "en": { "title": "Codes come through", "new": ["A code in a text is copied on your computer again, also when Tandem may only read your texts"] },
