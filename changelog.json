@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.48",
+    "date": "2026-10-29",
+    "en": { "title": "Tidier settings", "new": ["The OBS setting is one small row with an explanation behind the (i)"] },
+    "nl": { "title": "Rustiger instellingen", "new": ["De OBS-instelling is een kleine regel met uitleg achter de (i)"] }
+  },
+  {
     "version": "0.2.47",
     "date": "2026-10-29",
     "en": { "title": "Phone camera in OBS", "new": ["The camera of your phone goes to OBS on your computer, without capturing a window"] },
