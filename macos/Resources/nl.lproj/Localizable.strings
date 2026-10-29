@@ -1266,3 +1266,8 @@
 "Open Tandem on your phone to use it as a webcam" = "Open Tandem op je telefoon om hem als webcam te gebruiken";
 "Allow Tandem Camera in System Settings, under Login Items & Extensions" = "Sta Tandem Camera toe in Systeeminstellingen, bij Inloggen en extensies";
 "Tandem Camera could not be installed: %@" = "Tandem Camera kon niet worden geïnstalleerd: %@";
+"Put these files in the Finder sidebar, so any app can use them" = "Zet deze bestanden in de Finder-zijbalk, zodat elke app ze kan gebruiken";
+"Adding to Finder" = "Toevoegen aan Finder";
+"In the Finder sidebar under Locations" = "In de Finder-zijbalk onder Locaties";
+"Remove from Finder" = "Haal uit Finder";
+"Finder did not take it (%@), so it opens as a drive" = "Finder nam het niet aan (%@), dus het opent als schijf";

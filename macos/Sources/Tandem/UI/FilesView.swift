@@ -121,6 +121,15 @@ struct FilesView: View {
     /// The files as a drive between the other drives of Finder.
     @ViewBuilder
     private var drive: some View {
+        if FilesInFinder.shared.available || FilesInFinder.shared.state(of: device.id) != .off {
+            FinderPlaceControls(device: device)
+        } else {
+            mountedDrive
+        }
+    }
+
+    @ViewBuilder
+    private var mountedDrive: some View {
         let state = model.drives.state(of: device.id)
         HStack(spacing: 10) {
             switch state {

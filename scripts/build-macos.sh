@@ -62,6 +62,31 @@ swiftc -O -parse-as-library -module-name TandemShare -application-extension -tar
 sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" -e "s|@BUNDLE_ID@|$BUNDLE_ID|" macos/ShareExtension/Info.plist >"$EXT/Contents/Info.plist"
 ./scripts/mac-signing.sh sign "$EXT" macos/Resources/TandemShare.entitlements
 
+# The files of a phone in the Finder sidebar: a File Provider extension, built without an Xcode project like the Share menu. It
+# finds the address of each phone's server in an app group that it shares with the app, and the app only gets that group with
+# the Developer ID and its profile (the camera block below), so it is built in under the same condition. Without it the app keeps
+# the mounted drive. The extension claims nothing that needs a profile; one of its own (App ID <bundle id>.Files) goes in when there is one.
+FILES_APP_PROFILE="${TANDEM_PROFILE:-$HOME/keystores/$([ "$CONFIG" = release ] && echo tandem || echo tandem-dev).provisionprofile}"
+FILES_PROFILE="${TANDEM_FILES_PROFILE:-$HOME/keystores/$([ "$CONFIG" = release ] && echo tandem-files || echo tandem-dev-files).provisionprofile}"
+if [ "${TANDEM_SIGN:-}" = developer-id ] && [ -f "$FILES_APP_PROFILE" ]; then
+  FPX="$APP/Contents/PlugIns/TandemFiles.appex"
+  mkdir -p "$FPX/Contents/MacOS"
+  swiftc -O -swift-version 5 -parse-as-library -module-name TandemFiles -application-extension -target arm64-apple-macos26.0 \
+    -framework FileProvider -framework UniformTypeIdentifiers -Xlinker -e -Xlinker _NSExtensionMain \
+    -o "$FPX/Contents/MacOS/TandemFiles" macos/FileProviderExtension/FileProviderExtension.swift macos/FileProviderExtension/WebDAVClient.swift
+  sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" -e "s|@BUNDLE_ID@|$BUNDLE_ID|" macos/FileProviderExtension/Info.plist >"$FPX/Contents/Info.plist"
+  FILES_WORK="$(mktemp -d)"
+  sed -e "s|@BUNDLE_ID@|$BUNDLE_ID|" macos/FileProviderExtension/TandemFiles.entitlements >"$FILES_WORK/files.entitlements"
+  if [ -f "$FILES_PROFILE" ]; then
+    cp "$FILES_PROFILE" "$FPX/Contents/embedded.provisionprofile"
+    /usr/libexec/PlistBuddy \
+      -c "Add :com.apple.application-identifier string X8Y2M32MNQ.$BUNDLE_ID.Files" \
+      -c "Add :com.apple.developer.team-identifier string X8Y2M32MNQ" \
+      "$FILES_WORK/files.entitlements" >/dev/null
+  fi
+  ./scripts/mac-signing.sh sign "$FPX" "$FILES_WORK/files.entitlements"
+fi
+
 # The buttons of the Control Center: a WidgetKit extension, which needs the metadata of its intents that only xcodebuild makes. Signed first too.
 CTL="$APP/Contents/PlugIns/TandemControls.appex"
 SUPPORT_DIR=$([ "$CONFIG" = release ] && echo Tandem || echo Tandem-Dev)

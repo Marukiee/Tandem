@@ -228,6 +228,7 @@ final class EngineModel {
     func stop() async {
         ScreenHost.shared.shutdown()
         await drives.ejectAll(engine: engine)
+        FilesInFinder.shared.stopAll(engine: engine)
         injector.releaseAll()
         clipboard?.stop()
         outputMute.stop()
@@ -408,6 +409,7 @@ final class EngineModel {
         reconcileSpeakerDevices()
         refreshNowPlaying()
         PhoneSpotlight.shared.devicesChanged(devices, engine: engine)
+        FilesInFinder.shared.devicesChanged(devices, engine: engine)
     }
 
     /// The first time: Downloads, Documents and Desktop are offered to the other devices, as a phone offers its storage, so "Browse files"

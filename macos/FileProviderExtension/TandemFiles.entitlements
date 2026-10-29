@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- An extension must be sandboxed. This one only talks to the server of the app on the loopback address. -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <!-- Where the app leaves the address and password of each phone's server. Starting with the team, it needs no profile. -->
+    <key>com.apple.security.application-groups</key>
+    <array><string>X8Y2M32MNQ.@BUNDLE_ID@</string></array>
+</dict>
+</plist>
