@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.38",
+    "date": "2026-10-29",
+    "en": { "title": "The right buttons", "new": ["Show your Mac on your phone from the menu bar", "Computers in the menu bar get buttons to extend your screen and for the universal mouse"] },
+    "nl": { "title": "De juiste knoppen", "new": ["Toon je Mac op je telefoon vanuit de menubalk", "Computers in de menubalk krijgen knoppen om je scherm uit te breiden en voor de gedeelde muis"] }
+  },
+  {
     "version": "0.2.37",
     "date": "2026-10-29",
     "en": { "title": "Fewer buttons", "new": ["The clipboard button under a device only shows when sharing the clipboard with it is off"] },
