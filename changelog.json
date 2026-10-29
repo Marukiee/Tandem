@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.47",
+    "date": "2026-10-29",
+    "en": { "title": "Phone camera in OBS", "new": ["The camera of your phone goes to OBS on your computer, without capturing a window"] },
+    "nl": { "title": "Telefooncamera in OBS", "new": ["De camera van je telefoon gaat naar OBS op je computer, zonder een venster op te nemen"] }
+  },
+  {
     "version": "0.2.46",
     "date": "2026-10-29",
     "en": { "title": "Presentation remote", "new": ["Your phone is the clicker of a presentation on your computer: big buttons, the volume keys, and a pointer you aim with the phone"] },
