@@ -10,9 +10,10 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
      `VirtualCamera.swift`): komt alleen in de app met het provisioning profile van de Developer ID (System Extension), secret
      `DEVELOPER_ID_PROFILE_B64`. Een app die Tandem Camera kiest zet de telefooncamera aan zonder venster.
   2. Telefoon als microfoon van de computer: een invoerapparaat in macOS (Audio Server-plugin), op Windows en Linux een virtueel
-     invoerapparaat.
+     invoerapparaat. Mac en Linux gebouwd in 0.2.53 (`macos/AudioDriver`, `PhoneMicrophone.swift`, `virtual_audio.rs`), nog niet
+     gehoord. Windows staat in PARITY.md.
   3. Telefoon als echte geluidsuitvoer: in het geluidsmenu van macOS zoals AirPods, in plaats van het afgetapte systeemgeluid; Windows
-     en Linux hetzelfde als uitvoerapparaat.
+     en Linux hetzelfde als uitvoerapparaat. Mac en Linux gebouwd in 0.2.53 (Tandem Speaker, `SpeakerCapture.swift`), nog niet gehoord.
   4. De bestanden van de telefoon als vaste plek in de Finder-zijbalk (File Provider), in plaats van een gekoppelde schijf; Windows
      en Linux zo dicht mogelijk daarbij (Cloud Files API, een GVfs- of FUSE-mount). Mac gebouwd (2026-10-29,
      `macos/FileProviderExtension`, `FilesInFinder.swift`), nergens geïnstalleerd gezien: komt alleen in de app met de Developer ID en
