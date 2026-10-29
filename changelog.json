@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.45",
+    "date": "2026-10-29",
+    "en": { "title": "Quiet during calls", "new": ["Music pauses while your phone rings or your Mac is in a call, and plays again after"] },
+    "nl": { "title": "Stil tijdens gesprekken", "new": ["Muziek pauzeert als je telefoon overgaat of je Mac in gesprek is, en speelt daarna verder"] }
+  },
+  {
     "version": "0.2.44",
     "date": "2026-10-29",
     "en": { "title": "Battery alerts", "new": ["A notification when another device is almost empty or fully charged"] },
