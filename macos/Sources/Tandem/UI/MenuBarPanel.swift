@@ -271,10 +271,14 @@ private struct MenuDeviceRow: View {
             HStack(spacing: 6) {
                 RoundIconButton(symbol: "paperplane.fill", size: 32, onHover: { hover($0, "Send files") }) { pickFiles() }
                     .disabled(!device.online)
-                RoundIconButton(symbol: "doc.on.clipboard", size: 32, onHover: { hover($0, "Send clipboard") }) {
-                    model.sendClipboard(to: [device.id])
+                // What is copied goes there by itself while sharing the clipboard is on for this device: only with that off is a
+                // button for sending it once worth its place.
+                if !device.clipboardEnabled {
+                    RoundIconButton(symbol: "doc.on.clipboard", size: 32, onHover: { hover($0, "Send clipboard") }) {
+                        model.sendClipboard(to: [device.id])
+                    }
+                    .disabled(!(device.online || device.ble))
                 }
-                .disabled(!(device.online || device.ble))
                 LiveMenuButton(device: device, size: 32, onHover: { hover($0, device.isComputer ? "Control computer" : "Show phone screen") })
                 if device.platform == .android {
                     let on = model.speaker.device == device.id
