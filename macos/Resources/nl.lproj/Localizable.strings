@@ -1248,3 +1248,9 @@
 "Show this Mac on the phone" = "Deze Mac tonen op de telefoon";
 "Asked %@ to show this Mac" = "%@ gevraagd deze Mac te tonen";
 "Stop the universal mouse" = "Gedeelde muis stoppen";
+"%@ is fully charged" = "%@ is vol";
+"%@ is almost empty" = "%@ is bijna leeg";
+"You can unplug it." = "Je kunt de lader eruit halen.";
+"%lld%% left. Time to charge it." = "Nog %lld%%. Tijd om op te laden.";
+"Battery alerts" = "Batterijmeldingen";
+"A notification when another device is almost empty or fully charged." = "Een melding als een ander apparaat bijna leeg of vol is.";

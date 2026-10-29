@@ -18,6 +18,8 @@ pub struct Settings {
     pub copy_codes: bool,
     /// Show the phone's notifications as Windows notifications.
     pub phone_notifications: bool,
+    /// A notification when another device is almost empty or fully charged.
+    pub battery_alerts: bool,
     /// "auto" follows Windows, otherwise "en" or "nl".
     pub language: String,
     /// The phone's trackpad and keyboard move the pointer and type on this PC. Off until the person turns it on,
@@ -108,6 +110,7 @@ impl Default for Settings {
             close_to_tray: true,
             copy_codes: true,
             phone_notifications: true,
+            battery_alerts: true,
             language: "auto".into(),
             remote_input: false,
             pointer_allowed: None,

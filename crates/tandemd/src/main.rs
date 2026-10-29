@@ -662,6 +662,9 @@ fn print_event(engine: &Engine, event: &Event) {
             notification.title,
             if notification.otp.is_some() { "found" } else { "none" }
         ),
+        Event::BatteryAlert { from, level, full } => {
+            println!("battery of {}: {} at {level}%", name_of(from), if *full { "full" } else { "almost empty" })
+        }
         // The password itself is never printed: its length says whether one came.
         Event::Wifi { from, msg } => match msg {
             tandem_core::wifi::WifiMsg::Share { network, password } => {

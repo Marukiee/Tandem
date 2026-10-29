@@ -46,6 +46,7 @@ class TandemPrefs(private val context: Context) {
         val screenshotPrompt = booleanPreferencesKey("screenshot_prompt")
         val sendScreenshots = booleanPreferencesKey("send_screenshots")
         val callMirror = booleanPreferencesKey("call_mirror")
+        val batteryAlerts = booleanPreferencesKey("battery_alerts")
         val hotspotForMac = booleanPreferencesKey("hotspot_for_mac")
         val autoUpdateCheck = booleanPreferencesKey("auto_update_check")
         val dismissedUpdate = stringPreferencesKey("dismissed_update")
@@ -97,6 +98,8 @@ class TandemPrefs(private val context: Context) {
     /** A new screenshot goes to the clipboards of the devices that share the clipboard with this phone. */
     val sendScreenshots: Flow<Boolean> = data.map { it[Keys.sendScreenshots] ?: true }
     val callMirror: Flow<Boolean> = data.map { it[Keys.callMirror] ?: true }
+    /** A notification here when another device is almost empty or fully charged. */
+    val batteryAlerts: Flow<Boolean> = data.map { it[Keys.batteryAlerts] ?: true }
     val hotspotForMac: Flow<Boolean> = data.map { it[Keys.hotspotForMac] ?: false }
     val autoUpdateCheck: Flow<Boolean> = data.map { it[Keys.autoUpdateCheck] ?: true }
     val dismissedUpdate: Flow<String?> = data.map { it[Keys.dismissedUpdate] }
@@ -240,6 +243,7 @@ class TandemPrefs(private val context: Context) {
     suspend fun setScreenshotPrompt(value: Boolean) = set(Keys.screenshotPrompt, value)
     suspend fun setSendScreenshots(value: Boolean) = set(Keys.sendScreenshots, value)
     suspend fun setCallMirror(value: Boolean) = set(Keys.callMirror, value)
+    suspend fun setBatteryAlerts(value: Boolean) = set(Keys.batteryAlerts, value)
     suspend fun setHotspotForMac(value: Boolean) = set(Keys.hotspotForMac, value)
     suspend fun setAutoUpdateCheck(value: Boolean) = set(Keys.autoUpdateCheck, value)
     suspend fun setLastUpdateCheck(value: Long) = set(Keys.lastUpdateCheck, value)

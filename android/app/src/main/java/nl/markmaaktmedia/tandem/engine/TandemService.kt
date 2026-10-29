@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.MainActivity
 import nl.markmaaktmedia.tandem.R
@@ -153,6 +154,7 @@ class TandemService : LifecycleService() {
 
             is TandemEvent.CallAction -> calls.handle(event)
             is TandemEvent.Dial -> calls.dial(event.number)
+            is TandemEvent.BatteryAlert -> lifecycleScope.launch { batteryAlert(event) }
             is TandemEvent.Hotspot -> hotspot.onEvent(event)
 
             // The link of a screen that is looked at got poor: said once, over the picture, and nothing when it is good again.
@@ -240,6 +242,19 @@ class TandemService : LifecycleService() {
             .setTimeoutAfter(120_000)
             .build()
         getSystemService(NotificationManager::class.java).notify(0x4449, notification)
+    }
+
+    /** Another device is almost empty or fully charged: one notification for it, replaced by the next. */
+    private suspend fun batteryAlert(event: TandemEvent.BatteryAlert) {
+        if (!graph.prefs.batteryAlerts.first() || !Channels.canPost(this)) return
+        val name = graph.host.device(event.from)?.name ?: return
+        val notification = NotificationCompat.Builder(this, Channels.BATTERY)
+            .setSmallIcon(R.drawable.ic_stat_tandem)
+            .setContentTitle(getString(if (event.full) R.string.battery_full_title else R.string.battery_low_title, name))
+            .setContentText(if (event.full) getString(R.string.battery_full_text) else getString(R.string.battery_low_text, event.level.toInt()))
+            .setAutoCancel(true)
+            .build()
+        runCatching { getSystemService(NotificationManager::class.java).notify("battery-${event.from}", 0x4241, notification) }
     }
 
     private fun captureNotificationId(request: Long): Int = 0x4341 + (request xor (request ushr 32)).toInt().and(0xFFFF)

@@ -1044,6 +1044,8 @@ pub enum TandemEvent {
     Call { from: String, call: TandemCall },
     CallAction { from: String, id: String, action: TandemCallAction },
     Dial { from: String, number: String },
+    /// Another device is nearly empty, or full on the charger: for a notification, when the person wants those.
+    BatteryAlert { from: String, level: u8, full: bool },
     Ring { from: String, on: bool },
     /// `quiet` when the other device checks by itself: listen only when the microphone is free and allowed, without asking for it.
     SideListen { from: String, id: u64, quiet: bool },
@@ -1165,6 +1167,7 @@ impl From<Event> for TandemEvent {
                 TandemEvent::CallAction { from: from.to_string(), id: action.id, action: action.action.into() }
             }
             Event::Dial { from, number } => TandemEvent::Dial { from: from.to_string(), number },
+            Event::BatteryAlert { from, level, full } => TandemEvent::BatteryAlert { from: from.to_string(), level, full },
             Event::Ring { from, on } => TandemEvent::Ring { from: from.to_string(), on },
             Event::SideListen { from, id, quiet } => TandemEvent::SideListen { from: from.to_string(), id, quiet },
             Event::SideReady { from, id } => TandemEvent::SideReady { from: from.to_string(), id },

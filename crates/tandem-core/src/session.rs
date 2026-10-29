@@ -400,8 +400,19 @@ impl Inner {
                 }
             }
             Msg::Status(status) => {
-                if let Some(peer) = self.peers.lock().unwrap().get_mut(&id) {
-                    peer.status.merge(&status);
+                let alert = {
+                    let mut peers = self.peers.lock().unwrap();
+                    peers.get_mut(&id).and_then(|peer| {
+                        let before = peer.status.battery.clone();
+                        peer.status.merge(&status);
+                        let after = peer.status.battery.clone()?;
+                        let mut said = self.battery_said.lock().unwrap();
+                        let said = said.entry(id).or_default();
+                        crate::battery_alert::check(before.as_ref(), &after, said).map(|alert| (alert, after.level))
+                    })
+                };
+                if let Some((alert, level)) = alert {
+                    self.emit(Event::BatteryAlert { from: id, level, full: alert == crate::battery_alert::BatteryAlert::Full });
                 }
                 self.note_seen(id, false);
                 self.emit(Event::DevicesChanged);

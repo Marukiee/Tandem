@@ -29,33 +29,38 @@ internal fun NotificationsPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
     val mirror by prefs.mirrorNotifications.collectAsState(initial = true)
     val copyCodes by prefs.copyCodes.collectAsState(initial = true)
     val calls by prefs.callMirror.collectAsState(initial = true)
+    val battery by prefs.batteryAlerts.collectAsState(initial = true)
     val status = nl.markmaaktmedia.tandem.ui.components.rememberPermissionStatus()
 
     SettingsPageFrame(stringResource(R.string.settings_notifications), onBack) {
         Spacer(Modifier.height(16.dp))
         SettingsGroup {
-            SettingsTarget(FocusKeys.Mirror, 0, 4) {
+            SettingsTarget(FocusKeys.Mirror, 0, 5) {
                 SwitchRow(
-                    0, 4, TandemIcons.Notifications, stringResource(R.string.settings_mirror), stringResource(R.string.settings_mirror_sub), mirror, { scope.launch { prefs.setMirrorNotifications(it) } },
+                    0, 5, TandemIcons.Notifications, stringResource(R.string.settings_mirror), stringResource(R.string.settings_mirror_sub), mirror, { scope.launch { prefs.setMirrorNotifications(it) } },
                     blocked = if (status.notificationAccess) null else stringResource(R.string.perm_needs_listener), onBlocked = { onOpen(Route.Access) },
                 )
             }
             ActionRow(
-                1, 4, TandemIcons.Devices, stringResource(R.string.settings_mirror_apps), stringResource(R.string.settings_mirror_apps_sub),
+                1, 5, TandemIcons.Devices, stringResource(R.string.settings_mirror_apps), stringResource(R.string.settings_mirror_apps_sub),
                 { onOpen(Route.MirrorApps) }, modifier = Modifier.routeBounds(routeKey(Route.MirrorApps)),
             )
-            SettingsTarget(FocusKeys.Codes, 2, 4) {
+            SettingsTarget(FocusKeys.Codes, 2, 5) {
                 SwitchRow(
-                    2, 4, TandemIcons.Key, stringResource(R.string.settings_codes), stringResource(R.string.settings_codes_sub), copyCodes, { scope.launch { prefs.setCopyCodes(it) } },
+                    2, 5, TandemIcons.Key, stringResource(R.string.settings_codes), stringResource(R.string.settings_codes_sub), copyCodes, { scope.launch { prefs.setCopyCodes(it) } },
                     blocked = if (status.notificationAccess) null else stringResource(R.string.perm_needs_listener), onBlocked = { onOpen(Route.Access) },
                 )
             }
-            SettingsTarget(FocusKeys.Calls, 3, 4) {
+            SettingsTarget(FocusKeys.Calls, 3, 5) {
                 SwitchRow(
-                    3, 4, TandemIcons.Call, stringResource(R.string.settings_calls), stringResource(R.string.settings_calls_sub), calls, { scope.launch { prefs.setCallMirror(it) } },
+                    3, 5, TandemIcons.Call, stringResource(R.string.settings_calls), stringResource(R.string.settings_calls_sub), calls, { scope.launch { prefs.setCallMirror(it) } },
                     blocked = if (status.phone != nl.markmaaktmedia.tandem.ui.components.PermissionLevel.Off) null else stringResource(R.string.perm_needs_phone), onBlocked = { onOpen(Route.Access) },
                 )
             }
+            SwitchRow(
+                4, 5, TandemIcons.Battery, stringResource(R.string.settings_battery_alerts), stringResource(R.string.settings_battery_alerts_sub), battery,
+                { scope.launch { prefs.setBatteryAlerts(it) } },
+            )
         }
         FindSoundGroup()
         FocusGroup()

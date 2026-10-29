@@ -525,4 +525,12 @@
     <string name="transfers_choose_none">Niets kiezen</string>
     <string name="transfers_share">Delen</string>
     <string name="transfers_share_none">Geen van deze bestanden staat al op deze telefoon</string>
+    <string name="channel_battery">Batterij van je apparaten</string>
+    <string name="channel_battery_desc">Als een ander apparaat bijna leeg of vol is</string>
+    <string name="battery_low_title">%1$s is bijna leeg</string>
+    <string name="battery_low_text">Nog %1$d%%. Tijd om op te laden.</string>
+    <string name="battery_full_title">%1$s is vol</string>
+    <string name="battery_full_text">Je kunt de lader eruit halen.</string>
+    <string name="settings_battery_alerts">Batterijmeldingen</string>
+    <string name="settings_battery_alerts_sub">Een melding als een ander apparaat bijna leeg of vol is</string>
 </resources>

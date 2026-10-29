@@ -58,6 +58,8 @@ pub enum Event {
     Call { from: DeviceId, call: CallMsg },
     CallAction { from: DeviceId, action: CallAction },
     Dial { from: DeviceId, number: String },
+    /// Another device is nearly empty (not charging, at or below `battery_alert::LOW`) or full on the charger.
+    BatteryAlert { from: DeviceId, level: u8, full: bool },
     Ring { from: DeviceId, on: bool },
     /// Another device is about to play tones to find out on which side of it this one stands: record and answer with `side_heard`.
     /// `quiet` when it checks by itself, without the person asking.

@@ -160,6 +160,16 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             }
         }
         TandemEvent::Notification { from, notification } => phone_notification(app, &from, &notification),
+        TandemEvent::BatteryAlert { from, level, full } => {
+            if settings::get(app).battery_alerts {
+                let name = device_name(app, &from);
+                if full {
+                    toast(app, &i18n::t1(app, "battery_full_title", &name), &i18n::t(app, "battery_full_text"));
+                } else {
+                    toast(app, &i18n::t1(app, "battery_low_title", &name), &i18n::t1(app, "battery_low_text", &level.to_string()));
+                }
+            }
+        }
         TandemEvent::NotificationRemoved { from, key } => {
             app.state::<AppState>()
                 .data

@@ -528,4 +528,12 @@
     <string name="transfers_choose_none">Choose none</string>
     <string name="transfers_share">Share</string>
     <string name="transfers_share_none">None of these files is on this phone yet</string>
+    <string name="channel_battery">Battery of your devices</string>
+    <string name="channel_battery_desc">When another device is almost empty or fully charged</string>
+    <string name="battery_low_title">%1$s is almost empty</string>
+    <string name="battery_low_text">%1$d%% left. Time to charge it.</string>
+    <string name="battery_full_title">%1$s is fully charged</string>
+    <string name="battery_full_text">You can unplug it.</string>
+    <string name="settings_battery_alerts">Battery alerts</string>
+    <string name="settings_battery_alerts_sub">A notification when another device is almost empty or fully charged</string>
 </resources>

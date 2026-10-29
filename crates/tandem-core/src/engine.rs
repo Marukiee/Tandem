@@ -117,6 +117,8 @@ pub(crate) struct Inner {
     pub pairing: Mutex<Option<PendingPairing>>,
     pub open_pairings: Mutex<HashMap<discovery::Hint, crate::pairing::OpenPairing>>,
     pub my_status: Mutex<Status>,
+    /// What was last said about the battery of each other device (see `battery_alert`).
+    pub battery_said: Mutex<HashMap<DeviceId, Option<crate::battery_alert::BatteryAlert>>>,
     pub settings: RwLock<Settings>,
     pub last_remote_clip: Mutex<Option<u64>>,
     pub poke: Notify,
@@ -205,6 +207,7 @@ impl Engine {
             pairing: Mutex::new(None),
             open_pairings: Mutex::new(HashMap::new()),
             my_status: Mutex::new(Status::default()),
+            battery_said: Mutex::new(HashMap::new()),
             settings: RwLock::new(settings),
             last_remote_clip: Mutex::new(None),
             poke: Notify::new(),

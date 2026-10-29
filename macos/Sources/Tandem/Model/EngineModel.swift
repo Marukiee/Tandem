@@ -681,6 +681,15 @@ final class EngineModel {
         case let .ring(from, on):
             FindThisMac.shared.ring(from: from, on: on)
 
+        case let .batteryAlert(from, level, full):
+            // Settings, General: "Battery alerts", on unless turned off.
+            guard UserDefaults.standard.object(forKey: "batteryAlerts") as? Bool ?? true, let name = device(from)?.name else { return }
+            Notifier.shared.post(
+                id: "battery.\(from)",
+                title: full ? String(localized: "\(name) is fully charged") : String(localized: "\(name) is almost empty"),
+                body: full ? String(localized: "You can unplug it.") : String(localized: "\(Int(level))% left. Time to charge it.")
+            )
+
         case let .ringing(from, on):
             FindOthers.shared.reported(from, on: on)
             // A phone that says it stopped (on the phone itself) turns the Find phone button back.

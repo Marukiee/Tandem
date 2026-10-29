@@ -16,6 +16,7 @@ object Channels {
     const val AUDIO = "audio"
     const val UPDATE = "update"
     const val CAPTURE = "capture"
+    const val BATTERY = "battery"
 
     fun create(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -34,6 +35,7 @@ object Channels {
                 channel(AUDIO, R.string.channel_audio, R.string.channel_audio_desc, NotificationManager.IMPORTANCE_LOW),
                 channel(UPDATE, R.string.channel_update, R.string.channel_update_desc, NotificationManager.IMPORTANCE_DEFAULT),
                 channel(CAPTURE, R.string.capture_channel_name, R.string.capture_channel_desc, NotificationManager.IMPORTANCE_HIGH),
+                channel(BATTERY, R.string.channel_battery, R.string.channel_battery_desc, NotificationManager.IMPORTANCE_DEFAULT),
             ),
         )
     }

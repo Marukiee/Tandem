@@ -153,6 +153,7 @@ private struct GeneralSettings: View {
     @LocalState private var startAtLogin = SMAppService.mainApp.status == .enabled
     @AppStorage("showInDock") private var showInDock = true
     @AppStorage("copyCodes") private var copyCodes = true
+    @AppStorage("batteryAlerts") private var batteryAlerts = true
     @AppStorage("bleMessages") private var bleMessages = true
     @AppStorage(TailscaleAuto.enabledKey) private var autoTailscale = true
     @AppStorage("audioMuteLocal") private var audioMuteLocal = true
@@ -220,6 +221,11 @@ private struct GeneralSettings: View {
                     "Copy codes from text messages to the clipboard",
                     subtitle: "You also get a notification when a code was copied. Without this, the notification has a Copy code button.",
                     isOn: $copyCodes
+                )
+                DescribedToggle(
+                    "Battery alerts",
+                    subtitle: "A notification when another device is almost empty or fully charged.",
+                    isOn: $batteryAlerts
                 )
                 DescribedToggle(
                     "Copy pictures from your phone to the clipboard",

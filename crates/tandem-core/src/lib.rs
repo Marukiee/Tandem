@@ -1,3 +1,4 @@
+pub mod battery_alert;
 pub mod ble;
 pub mod circle;
 pub mod discovery;
