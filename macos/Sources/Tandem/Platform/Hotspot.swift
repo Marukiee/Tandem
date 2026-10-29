@@ -1,3 +1,5 @@
+import AppKit
+import CoreWLAN
 import Foundation
 import Network
 import TandemCore
@@ -55,6 +57,12 @@ final class HotspotCoordinator {
     private var watchTask: Task<Void, Never>?
     private let ble = BleHotspotClient()
     private let pathMonitor = NWPathMonitor()
+    /// When this Mac started or last woke: macOS needs a while then to join a network it knows, and asking the phone in the meantime
+    /// turned its hotspot on for nothing (seen 2026-10-29, after a restart at home).
+    private var settlingSince = Date()
+    private var wakeObserver: NSObjectProtocol?
+    /// Looks in a row that found a known network nearby, so a network macOS will not join does not keep the hotspot away for good.
+    private var waitedForKnown = 0
 
     static let enabledKey = "autoHotspot"
     static let delayKey = "hotspotDelay"
@@ -64,6 +72,9 @@ final class HotspotCoordinator {
 
     func attach(model: EngineModel) {
         self.model = model
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { _ in
+            Task { @MainActor [weak self] in self?.settlingSince = Date() }
+        }
         // A wired connection is a reason to let the hotspot go. The model's own network
         // watcher only says online or not, so this looks at the path itself.
         pathMonitor.pathUpdateHandler = { [weak self] path in
@@ -104,21 +115,52 @@ final class HotspotCoordinator {
         }
     }
 
-    /// Called whenever the network changes. Waits a few seconds before acting, because
-    /// a Mac that lost Wi-Fi often gets it back on its own.
+    /// Called whenever the network changes. Waits a few seconds before acting, because a Mac that lost Wi-Fi often gets it back on
+    /// its own: longer right after it started or woke, when macOS is still joining a network it knows. And a network it knows that is
+    /// near goes first: it is joined, and the phone is only asked when there is none.
     func networkChanged(online: Bool) {
         offlineTask?.cancel()
+        if online { waitedForKnown = 0 }
         guard let model, !online, autoEnabled else { return }
         if model.hotspotStatus.isBusy { return }
         if case .connected = model.hotspotStatus { return }
-        let delay = UserDefaults.standard.object(forKey: Self.delayKey) as? Double ?? 8
+        let chosen = UserDefaults.standard.object(forKey: Self.delayKey) as? Double ?? 8
+        let settling = Self.settleSeconds - Date().timeIntervalSince(settlingSince)
+        let delay = max(chosen, settling)
         offlineTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled, let self, let model = self.model, !model.isOnline else { return }
+            let hotspot = UserDefaults.standard.string(forKey: Self.ssidKey)
+            if self.waitedForKnown < Self.knownTries, await Task.detached(operation: { Self.joinKnownNearby(except: hotspot) }).value {
+                self.waitedForKnown += 1
+                return self.networkChanged(online: model.isOnline)
+            }
+            self.waitedForKnown = 0
             if let target = model.devices.first(where: { $0.platform == .android }) {
                 self.requestNow(target.id)
             }
         }
+    }
+
+    /// The seconds after a start or a wake in which the phone is not asked.
+    private static let settleSeconds = 40.0
+    /// How many looks a known network nearby may hold the hotspot off: the delay apart, so about half a minute.
+    private static let knownTries = 3
+
+    /// Whether a network this Mac has saved (not the phone's own hotspot) is in range; if so, this Mac is asked to join it. macOS
+    /// names the networks of a scan only to an app that may see the location, which Tandem may for sharing Wi-Fi; without that it
+    /// finds none here and the phone is asked as before.
+    nonisolated static func joinKnownNearby(except hotspot: String?) -> Bool {
+        // Only a Mac on no Wi-Fi at all: one on a network without internet is not moved to another here.
+        guard let interface = CWWiFiClient.shared().interface(), interface.powerOn(), interface.wlanChannel() == nil else { return false }
+        let known = Set(WifiShare.known()).subtracting([hotspot].compactMap { $0 })
+        guard !known.isEmpty, let found = try? interface.scanForNetworks(withSSID: nil) else { return false }
+        let nearby = found.filter { $0.ssid.map(known.contains) ?? false }.sorted { $0.rssiValue > $1.rssiValue }
+        guard let best = nearby.first else { return false }
+        // The password of a saved network is in the keychain of the system, which CoreWLAN takes by itself; failing, macOS still
+        // joins it on its own a moment later.
+        try? interface.associate(to: best, password: nil)
+        return true
     }
 
     /// The phone connected to the core: over the hotspot, that is the moment it works.
