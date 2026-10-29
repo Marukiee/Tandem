@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.50",
+    "date": "2026-10-29",
+    "en": { "title": "Hotspot off when you leave", "new": ["When your Mac moves to another network, your phone turns its hotspot off if nothing else is on it"] },
+    "nl": { "title": "Hotspot uit als je weggaat", "new": ["Gaat je Mac naar een ander netwerk, dan zet je telefoon de hotspot uit als er niets anders op zit"] }
+  },
+  {
     "version": "0.2.49",
     "date": "2026-10-29",
     "en": { "title": "Your own Wi-Fi first", "new": ["After a restart your Mac joins a network it knows before it asks your phone for its hotspot"] },
