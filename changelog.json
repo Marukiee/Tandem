@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.34",
+    "date": "2026-10-29",
+    "en": { "title": "Shortcuts for photo and scan", "new": ["Control Option P takes a photo with your phone, Control Option D scans a document"] },
+    "nl": { "title": "Sneltoetsen voor foto en scan", "new": ["Control Option P maakt een foto met je telefoon, Control Option D scant een document"] }
+  },
+  {
     "version": "0.2.33",
     "date": "2026-10-29",
     "en": { "title": "A tidier menu", "new": ["The menu bar panel puts your devices on one card, with four tiles you choose", "Settings, Shortcuts: a shortcut for everything Tandem does with one press"] },
