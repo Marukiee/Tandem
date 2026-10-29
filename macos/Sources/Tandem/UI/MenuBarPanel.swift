@@ -304,14 +304,18 @@ private struct MenuDeviceRow: View {
                     ) { toggleMouse() }
                     .disabled(!device.online && !mouse)
                 }
-                // The other way round: what is on this Mac, on the phone. Only to a phone that can look at a computer's screen.
-                if device.platform == .android, device.caps.contains("screen.view") {
-                    let on = ScreenHost.shared.isMirroring(to: device.id)
+                // The other way round: the phone as an extra screen of this Mac.
+                if device.platform == .android, device.caps.contains("screen.extend.view") {
+                    let extending = ScreenHost.shared.isExtending(to: device.id)
                     RoundIconButton(
-                        symbol: "macbook.and.iphone", tint: on ? Palette.indigo : nil, size: 32,
-                        onHover: { hover($0, on ? "Stop showing this Mac" : "Show this Mac on the phone") }
-                    ) { ScreenHost.shared.toggleMirror(on: device) }
-                    .disabled(!device.online)
+                        symbol: "macbook.and.iphone", tint: extending ? Palette.indigo : nil, size: 32,
+                        onHover: { hover($0, extending ? "Stop extending" : "Extend my screen") }
+                    ) {
+                        if extending { ScreenHost.shared.stop(peer: device.id) }
+                        else if !VirtualDisplay.isAvailable { model.showToast(String(localized: "This Mac cannot make an extra screen")) }
+                        else { ScreenHost.shared.offerExtend(to: device) }
+                    }
+                    .disabled(!device.online && !extending)
                 }
                 if device.platform == .android {
                     let on = model.speaker.device == device.id

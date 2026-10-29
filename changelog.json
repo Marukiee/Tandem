@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.52",
+    "date": "2026-10-29",
+    "en": { "title": "Phone as a second screen", "new": ["The phone button in the menu bar now extends your Mac's screen to the phone"] },
+    "nl": { "title": "Telefoon als tweede scherm", "new": ["De telefoonknop in de menubalk breidt nu het scherm van je Mac uit naar je telefoon"] }
+  },
+  {
     "version": "0.2.51",
     "date": "2026-10-29",
     "en": { "title": "Smoother pointer", "new": ["The trackpad and the presentation pointer on your phone move the pointer as often as the screen measures your finger"] },
