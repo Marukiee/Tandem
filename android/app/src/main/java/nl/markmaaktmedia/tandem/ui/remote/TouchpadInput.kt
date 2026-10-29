@@ -34,6 +34,12 @@ fun Modifier.touchpad(classifier: TouchpadClassifier): Modifier = pointerInput(c
                     continue
                 }
                 val down = event.changes.filter { it.pressed }
+                // The screen samples a finger faster than it draws (240 times a second on some phones), and the samples
+                // between two frames come along as history. One finger is fed every one of them, so the pointer moves as
+                // often as the finger is measured instead of once a frame.
+                down.singleOrNull()?.takeIf { event.changes.size == 1 }?.let { finger ->
+                    for (h in finger.historical) classifier.onFrame(h.uptimeMillis, listOf(Touch(finger.id.value, h.position.x, h.position.y)))
+                }
                 classifier.onFrame(
                     event.changes.maxOf { it.uptimeMillis },
                     down.map { Touch(it.id.value, it.position.x, it.position.y) },

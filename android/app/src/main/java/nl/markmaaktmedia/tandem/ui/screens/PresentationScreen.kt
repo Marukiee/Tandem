@@ -230,10 +230,13 @@ private fun GyroPointer(active: Boolean, move: (Int, Int) -> Unit) {
 
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
         }
-        sensors.registerListener(listener, gyro, SensorManager.SENSOR_DELAY_GAME)
+        sensors.registerListener(listener, gyro, SAMPLE_US)
         onDispose { sensors.unregisterListener(listener) }
     }
 }
+
+/** 200 times a second, the most Android gives without a special permission. The game rate is 50, which a pointer shows as stutter. */
+private const val SAMPLE_US = 5_000
 
 /** A quarter turn of the wrist takes the pointer across most of a screen. */
 private const val PIXELS_PER_RADIAN = 1400f

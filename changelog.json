@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.51",
+    "date": "2026-10-29",
+    "en": { "title": "Smoother pointer", "new": ["The trackpad and the presentation pointer on your phone move the pointer as often as the screen measures your finger"] },
+    "nl": { "title": "Soepelere pointer", "new": ["Het trackpad en de presentatiepointer op je telefoon bewegen de pointer zo vaak als het scherm je vinger meet"] }
+  },
+  {
     "version": "0.2.50",
     "date": "2026-10-29",
     "en": { "title": "Hotspot off when you leave", "new": ["When your Mac moves to another network, your phone turns its hotspot off if nothing else is on it"] },

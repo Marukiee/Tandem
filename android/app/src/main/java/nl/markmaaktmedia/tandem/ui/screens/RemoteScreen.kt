@@ -1,5 +1,6 @@
 package nl.markmaaktmedia.tandem.ui.screens
 
+import android.view.InputDevice
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
@@ -51,6 +52,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -187,6 +189,13 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
     // The finger's own loop lets go when the screen goes away. This covers the rest: the link closing under a held
     // button, and the connection dropping while the finger is still down.
     DisposableEffect(classifier) { onDispose { classifier.cancel() } }
+    // Touches normally wait for the next frame and come in batches. Here each one is passed on the moment the screen measures
+    // it, so the pointer on the other side moves at the rate of the finger, not of the display.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        view.requestUnbufferedDispatch(InputDevice.SOURCE_CLASS_POINTER)
+        onDispose { view.requestUnbufferedDispatch(0) }
+    }
     val online = device?.online == true
     LaunchedEffect(online) { if (!online) classifier.cancel() }
 
