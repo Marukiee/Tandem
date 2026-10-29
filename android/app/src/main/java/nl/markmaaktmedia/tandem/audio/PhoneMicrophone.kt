@@ -122,8 +122,8 @@ class MicShareActivity : ComponentActivity() {
  * speaker at the same time.
  */
 class MicShareService : Service() {
-    @Volatile private var running = false
-    private var thread: Thread? = null
+    /** Counts the recordings: one that is no longer the latest ends, even when the newer one is for the same computer. */
+    @Volatile private var generation = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -155,15 +155,15 @@ class MicShareService : Service() {
         // Another computer had it: it ends there, this one takes over.
         stopRecording()
         peer = to
-        running = true
-        thread = Thread({ pump(to) }, "tandem-mic").apply {
+        val mine = generation
+        Thread({ pump(to, mine) }, "tandem-mic").apply {
             priority = Thread.MAX_PRIORITY
             start()
         }
     }
 
-    private fun pump(to: String) {
-        val engine = graph.host.engine ?: return finish()
+    private fun pump(to: String, mine: Int) {
+        val engine = graph.host.engine ?: return finishIf(mine)
         val record = try {
             val minimum = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
             AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, minimum * 4)
@@ -174,7 +174,7 @@ class MicShareService : Service() {
         if (record == null || record.state != AudioRecord.STATE_INITIALIZED) {
             record?.release()
             runCatching { runBlocking { engine.sendAudioStop(to, STREAM.toUByte()) } }
-            return finish()
+            return finishIf(mine)
         }
         try {
             runBlocking { engine.sendAudioStart(to, STREAM.toUByte(), RATE.toUInt(), 1.toUByte()) }
@@ -184,7 +184,7 @@ class MicShareService : Service() {
             var seq = 0u
             var failures = 0
             record.startRecording()
-            while (running && peer == to) {
+            while (generation == mine) {
                 val read = record.read(buffer, 0, size)
                 if (read <= 0) {
                     if (read < 0) break
@@ -203,15 +203,20 @@ class MicShareService : Service() {
         } finally {
             runCatching { record.stop() }
             record.release()
-            runCatching { runBlocking { engine.sendAudioStop(to, STREAM.toUByte()) } }
-            if (peer == to) finish()
+            // A newer recording for the same computer goes on: a stop now would end that one there.
+            val takenOver = generation != mine && peer == to
+            if (!takenOver) runCatching { runBlocking { engine.sendAudioStop(to, STREAM.toUByte()) } }
+            finishIf(mine)
         }
     }
 
     private fun stopRecording() {
-        running = false
-        thread = null
+        generation++
         peer = null
+    }
+
+    private fun finishIf(mine: Int) {
+        if (generation == mine) finish()
     }
 
     private fun finish() {
