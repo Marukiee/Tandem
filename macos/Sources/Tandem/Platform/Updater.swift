@@ -12,7 +12,8 @@ import SwiftUI
 /// download is checked twice before anything is replaced: against the SHA-256 in the
 /// release, and against an Ed25519 signature whose public key is compiled into this
 /// app. The new app must also be signed by the same certificate as this one, which is
-/// what keeps Bluetooth, local network and accessibility permissions across updates.
+/// what keeps Bluetooth, local network and accessibility permissions across updates, or
+/// by Tandem's Developer ID, which releases move to (see `signedByOurDeveloperID`).
 @MainActor
 @Observable
 final class Updater {
@@ -238,7 +239,8 @@ final class Updater {
 
         try run("/usr/bin/codesign", ["--verify", "--deep", "--strict", app.path])
         if let mine = Self.leafCertificateHash(of: Bundle.main.bundleURL),
-           Self.leafCertificateHash(of: app) != mine {
+           Self.leafCertificateHash(of: app) != mine,
+           !Self.signedByOurDeveloperID(app) {
             throw UpdateError.identity
         }
         return app
@@ -261,6 +263,21 @@ final class Updater {
         process.waitUntilExit()
         guard process.terminationStatus == 0 else { throw UpdateError.unpack }
         return process.terminationStatus
+    }
+
+    /// The team of Tandem's Developer ID, which releases move to from the self-made certificate: an app signed by it is Tandem as
+    /// well. Nobody else gets a Developer ID for this team, and the zip itself is checked with the update key before this.
+    static let developerTeam = "X8Y2M32MNQ"
+
+    /// Whether `url` is signed with a Developer ID Application certificate of Tandem's team, as Apple issues them.
+    static func signedByOurDeveloperID(_ url: URL) -> Bool {
+        var staticCode: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(url as CFURL, [], &staticCode) == errSecSuccess, let staticCode else { return false }
+        // Apple's root, the Developer ID intermediate, a Developer ID Application leaf, and our team in it.
+        let text = "anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and certificate leaf[subject.OU] = \"\(developerTeam)\""
+        var requirement: SecRequirement?
+        guard SecRequirementCreateWithString(text as CFString, [], &requirement) == errSecSuccess, let requirement else { return false }
+        return SecStaticCodeCheckValidity(staticCode, SecCSFlags(rawValue: kSecCSCheckAllArchitectures), requirement) == errSecSuccess
     }
 
     /// The hash of the certificate an app was signed with. Equal hashes mean the same
