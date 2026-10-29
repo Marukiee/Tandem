@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.41",
+    "date": "2026-10-29",
+    "en": { "title": "Codes come through", "new": ["A code in a text is copied on your computer again, also when Tandem may only read your texts"] },
+    "nl": { "title": "Codes komen door", "new": ["Een code in een sms wordt weer gekopieerd op je computer, ook als Tandem je sms alleen mag lezen"] }
+  },
+  {
     "version": "0.2.40",
     "date": "2026-10-29",
     "en": { "title": "Shizuku opens it", "new": ["With Shizuku, Tandem also gives itself permission to draw over other apps, so a second screen opens on the phone without a tap"] },
