@@ -105,10 +105,12 @@ final class HotspotCoordinator {
             activeDevice = phone.id
             model.hotspotStatus = .connected(phone.name)
         case .connected:
-            // An unreadable name is not proof of leaving: only a different network is.
+            // An unreadable name is not proof of leaving: only a different network is. Moved on to it (by hand, or macOS did): the
+            // phone turns the hotspot off when nobody else is on it.
             if let current, current != saved {
                 model.hotspotStatus = .idle
                 hotspotGateway = nil
+                if let id = activeDevice { leave(id) }
             }
         default:
             break
@@ -297,6 +299,26 @@ final class HotspotCoordinator {
         }
     }
 
+    /// This Mac went on to a better network: the phone turns the hotspot off unless other devices are still on it. The button Stop
+    /// is `stop`, which turns it off whatever else is on it.
+    func leave(_ id: String) {
+        guard let model, let engine = model.engineHandle else { return }
+        runTask?.cancel()
+        offlineTask?.cancel()
+        model.hotspotStatus = .idle
+        hotspotGateway = nil
+        ignoreNetworkUntil = Date().addingTimeInterval(25)
+        let online = model.device(id)?.online == true
+        runTask = Task { [weak self] in
+            guard let self else { return }
+            if online {
+                try? await engine.sendHotspot(target: id, hotspot: .leave)
+            } else {
+                _ = try? await self.ble.run(action: BleHotspotClient.actionLeave, phoneId: id, engine: engine) { _ in }
+            }
+        }
+    }
+
     /// A better connection than the hotspot appeared: a cable, or another network with
     /// internet. The phone's battery is worth more than the hotspot.
     private func pathChanged(wired: Bool, satisfied: Bool) {
@@ -307,7 +329,7 @@ final class HotspotCoordinator {
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled, let self, let model = self.model, case .connected = model.hotspotStatus else { return }
             if wired {
-                self.stop(id)
+                self.leave(id)
                 return
             }
             guard satisfied else {
@@ -317,7 +339,7 @@ final class HotspotCoordinator {
                 return
             }
             if let route = await HotspotWiFi.defaultRoute(), let known = self.hotspotGateway, route.gateway != known {
-                self.stop(id)
+                self.leave(id)
             }
         }
     }
@@ -344,7 +366,7 @@ final class HotspotCoordinator {
                     quicAnswer = .off
                 }
             }
-        case .request, .stop:
+        case .request, .stop, .leave:
             break
         }
     }

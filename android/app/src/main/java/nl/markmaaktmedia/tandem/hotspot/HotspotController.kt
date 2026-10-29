@@ -119,6 +119,22 @@ class HotspotController(
         submit { if (on) turnOn() else turnOff() }
     }
 
+    /**
+     * The Mac went on to another network. A few seconds for it to be gone from the hotspot, then off when nobody else is on it.
+     * Counting needs Shizuku; without it the idle timer turns it off later, as before.
+     */
+    fun leave() {
+        submit {
+            delay(LEAVE_SETTLE_MS)
+            if (_snapshot.value.phase != Phase.On || shizuku.state.value != ShizukuState.Ready) return@submit
+            val clients = shizuku.status().clients
+            if (clients == 0) {
+                Log.i(TAG, "the Mac left and nobody else is on the hotspot, turning it off")
+                turnOff()
+            }
+        }
+    }
+
     /** The settings button: on for a while, then off again. */
     fun test(holdMs: Long = TEST_HOLD_MS) {
         publish(HotspotSnapshot(Phase.Starting))
@@ -382,6 +398,8 @@ class HotspotController(
 
     companion object {
         private const val TAG = "HotspotController"
+        /** How long the Mac that left has to drop off the hotspot before the others are counted. */
+        const val LEAVE_SETTLE_MS = 6_000L
         const val TEST_HOLD_MS = 20_000L
         private const val START_WAIT_MS = 20_000L
         private const val STOP_WAIT_MS = 10_000L

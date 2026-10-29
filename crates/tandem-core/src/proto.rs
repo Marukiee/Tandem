@@ -552,6 +552,9 @@ pub enum HotspotMsg {
         error: Option<String>,
     },
     Stop,
+    /// The Mac went on to another network: the phone turns the hotspot off, unless other devices are still on it. An older phone
+    /// skips it, as it skips anything it does not know.
+    Leave,
 }
 
 /// A Focus was turned on or off by the person on the device `origin`.

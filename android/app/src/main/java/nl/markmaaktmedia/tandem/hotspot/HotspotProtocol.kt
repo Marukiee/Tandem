@@ -34,6 +34,8 @@ object HotspotProtocol {
 
     const val ACTION_ON = 1
     const val ACTION_OFF = 2
+    /** The Mac went on to another network: off, unless other devices are still on the hotspot. */
+    const val ACTION_LEAVE = 3
 
     /** Sent as the client count when the phone cannot tell. */
     const val CLIENTS_UNKNOWN = 255
@@ -108,7 +110,7 @@ class HotspotRequest(
             if (bytes.size < 11) return null
             if (bytes[0].toInt() != HotspotProtocol.VERSION) return null
             val action = bytes[1].toInt()
-            if (action != HotspotProtocol.ACTION_ON && action != HotspotProtocol.ACTION_OFF) return null
+            if (action !in setOf(HotspotProtocol.ACTION_ON, HotspotProtocol.ACTION_OFF, HotspotProtocol.ACTION_LEAVE)) return null
             var time = 0L
             for (i in 0 until 8) time = (time shl 8) or (bytes[2 + i].toLong() and 0xFF)
             val idLen = bytes[10].toInt() and 0xFF

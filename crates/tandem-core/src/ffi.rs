@@ -787,6 +787,8 @@ pub enum TandemHotspot {
     Request { reason: String },
     State { on: bool, ssid: Option<String>, clients: u8, data_used: Option<u64>, error: Option<String> },
     Stop,
+    /// The Mac left for another network: off, unless other devices are still on the hotspot.
+    Leave,
 }
 
 impl From<HotspotMsg> for TandemHotspot {
@@ -797,6 +799,7 @@ impl From<HotspotMsg> for TandemHotspot {
                 TandemHotspot::State { on, ssid, clients, data_used, error }
             }
             HotspotMsg::Stop => TandemHotspot::Stop,
+            HotspotMsg::Leave => TandemHotspot::Leave,
         }
     }
 }
@@ -809,6 +812,7 @@ impl From<TandemHotspot> for HotspotMsg {
                 HotspotMsg::State { on, ssid, clients, data_used, error }
             }
             TandemHotspot::Stop => HotspotMsg::Stop,
+            TandemHotspot::Leave => HotspotMsg::Leave,
         }
     }
 }
