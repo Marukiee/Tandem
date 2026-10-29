@@ -89,6 +89,7 @@ final class TandemAudioDriver {
     func uninstall() async -> String? {
         // Sound that goes to Tandem Speaker now would go nowhere once it is gone: back to the Mac's own output first.
         EngineModel.shared.speakerDevices.leaveTandemSpeaker()
+        PhoneMicrophone.shared.stop(tell: true)
         return await run(["/bin/rm -rf \(Self.quoted(Self.installedURL.path))", Self.restartAudio])
     }
 

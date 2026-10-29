@@ -218,6 +218,7 @@ extension SpeakerDevices {
 
     /// The button on a phone's page: Tandem Speaker becomes the output, for that phone.
     fileprivate func selectTandemSpeaker(for phone: String) -> Bool {
+        TandemAudioDriver.shared.offerUpdateIfNeeded()
         speakerPhone = phone
         UserDefaults.standard.set(phone, forKey: "tandemSpeakerPhone")
         guard var device = TandemAudioDriver.device(TandemAudioDriver.speakerUID) else { return false }
