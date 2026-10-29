@@ -3,6 +3,17 @@
 Alles wat nog niet af is, op volgorde van aanpak. Begin bovenaan. Een punt is pas af als het op echte
 toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze en de agentregels.
 
+## Nieuwe functies (gekozen door Mark, 2026-10-29), nog te bouwen, op alle apparaten
+
+- **Presentatie-afstandsbediening:** volumeknoppen (en knoppen op het scherm) zijn volgende en vorige dia op de computer. Een pointer
+  die met de gyroscoop van de telefoon beweegt zolang je de pointerknop ingedrukt houdt: wijzen met de telefoon, een stip op het scherm
+  van de computer. Loslaten en de stip is weg.
+- **Batterijmeldingen:** een melding op de andere apparaten als een apparaat vol is of bijna leeg (rond 15%). Aan en uit in Instellingen.
+- **Media uit tijdens een gesprek:** zit je in een gesprek (telefoon of call op de computer), dan pauzeert de muziek en video op de
+  andere apparaten vanzelf, en na het gesprek gaat hij weer verder als hij liep. Aan en uit in Instellingen.
+- **Wifi doorgeven met één tik:** een apparaat in je circle krijgt het wifi-netwerk van een ander apparaat zonder wachtwoord te typen
+  (op Android leest Shizuku de opgeslagen netwerken).
+
 ## Open lijst voor een grote ronde (bijgewerkt 2026-10-09, na versie 0.1.73)
 
 Een regel per punt wat nog open staat, met waar het uitgewerkt is. Elk nieuw verzoek van Mark komt hier bij en in zijn sectie; een punt
