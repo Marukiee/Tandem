@@ -66,6 +66,7 @@ mod update;
 mod wifi;
 #[cfg(feature = "native-video")]
 mod video;
+mod virtual_audio;
 
 use tauri::{Manager, RunEvent, WindowEvent};
 
@@ -308,13 +309,19 @@ pub fn run() {
             output::output_start,
             output::output_stop,
             output::output_state,
+            virtual_audio::mic_start,
+            virtual_audio::mic_stop,
+            virtual_audio::mic_state,
         ])
         .build(tauri::generate_context!())
         .expect("Tandem could not start")
         .run(|_app, event| {
             // The last window going away is not a reason to stop: Tandem lives in the tray. Quitting is its own thing.
-            if let RunEvent::ExitRequested { api, code: None, .. } = event {
-                api.prevent_exit();
+            match event {
+                RunEvent::ExitRequested { api, code: None, .. } => api.prevent_exit(),
+                // The sound devices Tandem made on Linux go with it.
+                RunEvent::Exit => virtual_audio::unload(),
+                _ => {}
             }
         });
 }

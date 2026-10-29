@@ -5,7 +5,7 @@ import { ArrangementEditor } from "./arrange.js";
 import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, fmtSize, platformIcon } from "./components.js";
 import { Icon } from "./icons.js";
 import { FindSoundRow, LastSeen, PlaySoundButton } from "./find.js";
-import { canPlay, OutputButton } from "./output.js";
+import { canPlay, MicButton, OutputButton } from "./output.js";
 import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
 
@@ -289,6 +289,7 @@ export function DevicePage({ device }) {
           <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
         ${isComputer && html`<${PlaySoundButton} device=${device} />`}
         ${canPlay(device) && html`<${OutputButton} device=${device} />`}
+        ${device.platform === "android" && html`<${MicButton} device=${device} />`}
         ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
           <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>
         <button class="btn" disabled=${!device.online} title=${t("insert_scan_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "document" }).catch(failed)}>

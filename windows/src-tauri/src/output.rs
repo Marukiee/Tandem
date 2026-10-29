@@ -1,7 +1,7 @@
 //! This computer's sound, played on another device: the person picks the device on its page (Use as speaker), or a device that looks
 //! at this computer's screen asks for it (`SoundRequest`, see `screen_sound`). It goes to one device at a time, as `AudioStart` on
-//! stream 9 and datagrams of 16 bit stereo at 48 kHz. It keeps playing here too: muting the output may also silence what is recorded
-//! of it, and whether it does differs per sound system.
+//! stream 9 and datagrams of 16 bit stereo at 48 kHz. On Windows it keeps playing here too: muting the output may also silence what is
+//! recorded of it. On Linux the person's choice goes through Tandem Speaker (see `virtual_audio`), which plays nowhere but on the phone.
 
 use std::io::Read;
 #[cfg(target_os = "linux")]
@@ -89,8 +89,15 @@ pub fn start(app: &AppHandle, to: String, why: Why) -> Result<(), String> {
         return Err(i18n::t1(app, "output_loop", &events::device_name(app, &to)));
     }
     stop(app);
-    let (reader, capture) = record().map_err(|error| {
+    let through = if why == Why::Chosen {
+        crate::virtual_audio::remember_phone(&to);
+        crate::virtual_audio::take_output(app)
+    } else {
+        None
+    };
+    let (reader, capture) = record(through.as_deref()).map_err(|error| {
         log::info!("the sound of this computer cannot be recorded: {error}");
+        crate::virtual_audio::give_back_output();
         i18n::t(app, NO_CAPTURE)
     })?;
     let stop = Arc::new(AtomicBool::new(false));
@@ -145,6 +152,9 @@ pub fn refused(app: &AppHandle, from: &str, stream: u8) -> bool {
 
 fn end(app: &AppHandle, sending: Sending, tell: bool) {
     sending.stop.store(true, Ordering::Relaxed);
+    if sending.why == Why::Chosen {
+        crate::virtual_audio::give_back_output();
+    }
     if tell {
         if let Ok(engine) = app.state::<AppState>().engine() {
             let to = sending.to.clone();
@@ -244,11 +254,12 @@ pub fn output_state() -> Option<String> {
 /// What this computer plays, as 16 bit stereo at 48 kHz: from the monitor of the default output through PulseAudio or PipeWire
 /// (parec, else GStreamer) on Linux, from the loopback of the default output on Windows.
 #[cfg(target_os = "linux")]
-fn record() -> Result<(Box<dyn Read + Send>, Capture), String> {
+fn record(device: Option<&str>) -> Result<(Box<dyn Read + Send>, Capture), String> {
+    let device = device.unwrap_or("@DEFAULT_MONITOR@");
     let mut parec = Command::new("parec");
-    parec.args(["--raw", "--format=s16le", "--rate=48000", "--channels=2", "--latency-msec=20", "--device=@DEFAULT_MONITOR@"]);
+    parec.args(["--raw", "--format=s16le", "--rate=48000", "--channels=2", "--latency-msec=20"]).arg(format!("--device={device}"));
     let mut gst = Command::new("gst-launch-1.0");
-    gst.args(["-q", "pulsesrc", "device=@DEFAULT_MONITOR@", "!", "audioconvert", "!", "audioresample", "!"])
+    gst.args(["-q", "pulsesrc"]).arg(format!("device={device}")).args(["!", "audioconvert", "!", "audioresample", "!"])
         .arg("audio/x-raw,format=S16LE,rate=48000,channels=2")
         .args(["!", "fdsink", "fd=1", "sync=false"]);
     for mut command in [parec, gst] {
@@ -264,7 +275,7 @@ fn record() -> Result<(Box<dyn Read + Send>, Capture), String> {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn record() -> Result<(Box<dyn Read + Send>, Capture), String> {
+fn record(_device: Option<&str>) -> Result<(Box<dyn Read + Send>, Capture), String> {
     loopback::start().map(|(reader, stop)| (Box::new(reader) as Box<dyn Read + Send>, Capture::Loopback { _stop: stop }))
 }
 

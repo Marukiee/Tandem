@@ -205,6 +205,9 @@ const en = {
   focus_both: "Both ways", focus_follow_only: "Only follow", focus_unsupported: "This desktop has no Do Not Disturb that Tandem can use. GNOME and KDE Plasma have one.",
   output_use: "Use as speaker", output_stop: "Stop speaker", output_tip: "Play the sound of this computer on {0}",
   output_started: "The sound of this computer plays on {0}. It keeps playing here too.",
+  output_started_linux: "The sound of this computer plays on {0}, through Tandem Speaker. Pick another output to hear it here again.",
+  mic_use: "Use as microphone", mic_stop: "Stop microphone", mic_tip: "Hear {0} in Tandem Microphone, in every app",
+  mic_asked: "{0} is asked for its microphone. Pick Tandem Microphone in your app.",
   side_auto: "Check the side by itself", side_auto_sub: "With a sound too high to hear: when a second screen starts, the shared mouse goes on, a computer comes back, and every few minutes. Only when this computer plays through its own speakers.",
   side_every: "Check every", side_every_one: "Minute", side_every_n: "{0} minutes", side_every_never: "Never", side_sound: "Sound for finding the side", side_sound_sub: "Quiet is too high to hear. Audible only helps with a device whose microphone does not pick up the quiet one.", side_sound_quiet: "Quiet (recommended)", side_sound_audible: "Audible", side_quiet_missed: "{0} did not hear the quiet sound. Try the audible one?", side_not_now: "Not now", side_not_listening: "{0} did not start listening. Its microphone may be in use by another app or not allowed for Tandem, or it is not reachable right now.", side_try_audible: "Use audible sound",
 };
@@ -414,6 +417,9 @@ const nl = {
   focus_both: "Beide kanten op", focus_follow_only: "Alleen volgen", focus_unsupported: "Dit bureaublad heeft geen Niet storen dat Tandem kan gebruiken. GNOME en KDE Plasma hebben het wel.",
   output_use: "Gebruik als speaker", output_stop: "Stop speaker", output_tip: "Speel het geluid van deze computer af op {0}",
   output_started: "Het geluid van deze computer speelt op {0}. Het speelt hier ook gewoon door.",
+  output_started_linux: "Het geluid van deze computer speelt op {0}, via Tandem Speaker. Kies een andere uitvoer om het hier weer te horen.",
+  mic_use: "Gebruik als microfoon", mic_stop: "Stop microfoon", mic_tip: "Hoor {0} in Tandem Microphone, in elke app",
+  mic_asked: "{0} is om zijn microfoon gevraagd. Kies Tandem Microphone in je app.",
   side_auto: "De kant vanzelf controleren", side_auto_sub: "Met een geluid dat te hoog is om te horen: als een tweede scherm start, de gedeelde muis aangaat, een computer terugkomt, en om de paar minuten. Alleen als deze computer via zijn eigen speakers speelt.",
   side_every: "Controleer elke", side_every_one: "Minuut", side_every_n: "{0} minuten", side_every_never: "Nooit", side_sound: "Geluid om de kant te vinden", side_sound_sub: "Stil is te hoog om te horen. Hoorbaar helpt alleen bij een apparaat waarvan de microfoon het stille geluid niet oppikt.", side_sound_quiet: "Stil (aanbevolen)", side_sound_audible: "Hoorbaar", side_quiet_missed: "{0} hoorde het stille geluid niet. Het hoorbare proberen?", side_not_now: "Nu niet", side_not_listening: "{0} begon niet te luisteren. De microfoon wordt misschien door een andere app gebruikt of mag niet door Tandem gebruikt worden, of het apparaat is nu niet bereikbaar.", side_try_audible: "Hoorbaar geluid",
 };

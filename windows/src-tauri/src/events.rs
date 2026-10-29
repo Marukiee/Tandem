@@ -58,6 +58,20 @@ pub fn device_name(app: &AppHandle, id: &str) -> String {
     device(app, id).and_then(|d| d["name"].as_str().map(str::to_string)).unwrap_or_else(|| "?".to_string())
 }
 
+/// What a device says it can do.
+pub fn device_caps(app: &AppHandle, id: &str) -> Vec<String> {
+    device(app, id)
+        .and_then(|d| d["caps"].as_array().map(|caps| caps.iter().filter_map(|c| c.as_str().map(str::to_string)).collect()))
+        .unwrap_or_default()
+}
+
+/// The phones that are connected now.
+pub fn online_phones(app: &AppHandle) -> Vec<String> {
+    let state = app.state::<AppState>();
+    let data = state.data.lock().unwrap();
+    data.devices.iter().filter(|d| d["online"].as_bool() == Some(true) && d["platform"] == "android").filter_map(|d| d["id"].as_str().map(str::to_string)).collect()
+}
+
 /// A device setting that is on unless the device says otherwise.
 fn allowed(app: &AppHandle, id: &str, key: &str) -> bool {
     device(app, id).map(|d| d[key].as_bool().unwrap_or(true)).unwrap_or(true)
@@ -77,6 +91,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             input::release_all();
             crate::sound::stop(&id);
             crate::output::stop_for(app, &id, None);
+            crate::virtual_audio::disconnected(app, &id);
             let had = app.state::<AppState>().data.lock().unwrap().players.remove(&id).is_some();
             refresh_devices(app);
             if had {
@@ -153,10 +168,14 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             }
         }
         TandemEvent::CaptureCancelled { from, why, .. } => crate::insert::cancelled(app, &from, why),
-        TandemEvent::AudioStart { from, stream, sample_rate, channels } => crate::sound::start(app, from, stream, sample_rate, channels),
+        TandemEvent::AudioStart { from, stream, sample_rate, channels } => {
+            if !crate::virtual_audio::started(app, &from, stream, sample_rate, channels) {
+                crate::sound::start(app, from, stream, sample_rate, channels)
+            }
+        }
         // From the device this computer sends its sound to, a stop is a no to that; from any other, its own sound ends.
         TandemEvent::AudioStop { from, stream } => {
-            if !crate::output::refused(app, &from, stream) {
+            if !crate::virtual_audio::stopped(app, &from, stream) && !crate::output::refused(app, &from, stream) {
                 crate::sound::stopped(&from, stream)
             }
         }

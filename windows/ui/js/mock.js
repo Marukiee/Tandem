@@ -317,6 +317,9 @@ export async function call(command, args) {
     case "find_choose": case "find_preview": case "find_stop": case "ring": return null;
     case "output_state": return null;
     case "output_start": emit("output", args.id); return null;
+    case "mic_state": return null;
+    case "mic_start": emit("mic", args.id); return null;
+    case "mic_stop": emit("mic", null); return null;
     case "output_stop": emit("output", null); return null;
     case "ssh_info": return { label: "ssh-preview", platform: new URLSearchParams(location.search).get("platform") || "windows" };
     case "create_pairing": return { uri: "tandem://pair?c=PREVIEW", code: "4821 7093", expiresAtMs: Date.now() + 300000, qr };

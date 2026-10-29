@@ -113,6 +113,9 @@ pub struct Sink;
 
 impl TandemAudioSink for Sink {
     fn on_audio(&self, from: String, stream: u8, _seq: u32, pcm: Vec<u8>) {
+        if crate::virtual_audio::on_audio(&from, stream, &pcm) {
+            return;
+        }
         if let Some(playing) = PLAYING.lock().unwrap().get(&from) {
             if playing.stream == stream {
                 playing.buffer.lock().unwrap().push(&pcm, playing.channels);

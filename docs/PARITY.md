@@ -25,6 +25,8 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | De telefoon bedienen met het getoonde scherm | bron | ja | ja (knop, nooit gezien) | ja (knop, nooit gezien) |
 | Invoegen vanaf telefoon (scan, foto) | bron | ja | ja (op het klembord, nooit gezien) | ja (op het klembord, nooit gezien) |
 | Geluid van de telefoon op de computer | bron | ja | ja (nooit gehoord) | ja (nooit gehoord) |
+| Telefoon als echte geluidsuitvoer van de computer (kiezen in het geluidsmenu) | bron | ja, Tandem Speaker met eigen driver (nooit geladen, vraagt eenmalig het wachtwoord) | - (geen virtueel apparaat zonder ondertekende driver, zie onder; de knop speelt het geluid via loopback zoals voorheen) | ja, Tandem Speaker als null-sink via pactl (nooit gehoord) |
+| Telefoon als microfoon van de computer | bron (`audio.mic`) | ja, Tandem Microphone met dezelfde driver (nooit geladen) | - (zie onder, de knop is grijs en zegt waarom) | ja, Tandem Microphone als remap-source via pactl, gevoed met pacat (nooit gehoord) |
 | Geluid en scherm van de telefoon zonder de vraag over schermopname | met Shizuku (app-op `PROJECT_MEDIA`) | - (geen Bluetooth-luidspreker, zie onder) | ook zonder Shizuku, als Bluetooth-luidspreker (nooit gehoord) | ook zonder Shizuku, als Bluetooth-luidspreker via BlueZ en PipeWire (nooit gehoord) |
 | Scherm van de computer tonen aan andere apparaten en het laten bedienen (zoals TeamViewer) | kijkt en bedient | ja (host en kijker) | ja (host, GDI en OpenH264, kijker) | ja onder X11 (host, nooit gezien); onder Wayland geeft de portal met GStreamer beeld (op een echte laptop gezien als debugbeeld, delen met een kijker nog niet); kijker ja, het scherm van een Mac gezien in een venster op een echte laptop (0.1.75) |
 | De computer bedienen vanaf de telefoon (trackpad, toetsenbord, aanraken) | bron | ja | ja | ja: X11, en onder Wayland via een portalsessie met het beeld (0.1.83, nooit gezien) |
@@ -62,6 +64,10 @@ Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een ech
   Bluetooth, tweede scherm, bediening onder Wayland en de melding bij slechte verbinding nalopen op de echte laptop.
 - **Overal**: Windows en Linux moeten dezelfde functies als de Mac kunnen aanbieden, niet alleen tonen: geluid van een computer naar een andere
   computer en Invoegen vanaf telefoon als bron voor een andere computer.
+- **Virtuele geluidsapparaten op Windows** (Tandem Speaker en Tandem Microphone): kan niet zonder kernel-driver. Windows laat een
+  app geen eigen geluidsapparaat maken; daarvoor is een audio-driver (WDM/AVStream) nodig die Microsoft ondertekent, met een EV-certificaat
+  en het Hardware Dev Center. Telefoon als uitvoer werkt op Windows daarom met de loopback van de eigen uitvoer zoals voorheen, en
+  Telefoon als microfoon is grijs en zegt dat bij gebruik.
 - **Mac als Bluetooth-luidspreker**: kan niet. macOS biedt geen A2DP sink aan: een Mac speelt geen geluid af dat een telefoon over
   Bluetooth stuurt, en een app kan dat profiel niet zelf aanbieden. Het geluid van een telefoon zonder Shizuku komt daar dus met de
   vraag over schermopname, zoals voorheen.
