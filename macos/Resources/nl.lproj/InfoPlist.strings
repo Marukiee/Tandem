@@ -4,3 +4,4 @@
 "NSNetworkVolumesUsageDescription" = "Tandem opent de bestanden van je telefoon als schijf, en andere apps op deze Mac gebruiken die schijf.";
 "NSLocationUsageDescription" = "macOS vertelt Tandem de naam van je wifinetwerk alleen als het je locatie mag zien. Tandem gebruikt de naam om je wifi met je andere apparaten te delen en om de hotspot van je telefoon in te stellen, en nooit je positie.";
 "NSLocationWhenInUseUsageDescription" = "macOS vertelt Tandem de naam van je wifinetwerk alleen als het je locatie mag zien. Tandem gebruikt de naam om je wifi met je andere apparaten te delen en om de hotspot van je telefoon in te stellen, en nooit je positie.";
+"NSMicrophoneUsageDescription" = "Tandem luistert een paar seconden naar het geluid dat een andere computer afspeelt, om te weten aan welke kant ervan deze Mac staat. Ook neemt Tandem de Tandem Speaker op, om het geluid van deze Mac op je telefoon af te spelen.";

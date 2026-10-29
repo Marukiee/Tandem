@@ -264,6 +264,14 @@ struct DeviceDetail: View {
                             prominent: speaking
                         ) { model.toggleSpeaker(for: device.id) }
                         .disabled(!device.online && !speaking)
+                        // The phone as the microphone of this Mac. Grey only when it is away; what else is missing is said when it is pressed.
+                        let listening = PhoneMicrophone.shared.state.device == device.id
+                        GlassActionButton(
+                            title: listening ? "Stop phone microphone" : "Phone as microphone",
+                            symbol: listening ? "mic.fill" : "mic",
+                            prominent: listening
+                        ) { PhoneMicrophone.shared.toggle(for: device.id) }
+                        .disabled(!device.online && !listening)
                     }
                     // A computer can be logged in to from here. The button looks the same whether that is set up there or not: someone may
                     // not want it, so what is missing is only said when the button is pressed.
@@ -318,7 +326,7 @@ struct DeviceDetail: View {
     private var liveState: String {
         let host = ScreenHost.shared.running.map { "\($0.peer)\($0.extend)" }.joined()
         let live = LiveManager.shared.sessions.filter { $0.peer == device.id }.map { "\($0.kind)\($0.extend)" }.joined()
-        return host + live + "\(model.ringing.contains(device.id))\(model.speaker.device == device.id)\(FindOthers.shared.ringing.contains(device.id))"
+        return host + live + "\(model.ringing.contains(device.id))\(model.speaker.device == device.id)\(FindOthers.shared.ringing.contains(device.id))\(PhoneMicrophone.shared.state.device == device.id)"
     }
 
     private func pickFiles() {
@@ -467,6 +475,7 @@ extension DeviceDetail {
         case .on(device.id): return String(localized: "This Mac's sound plays on \(device.name). Pick another output to stop.")
         case .starting(device.id): return String(localized: "Starting")
         default:
+            if TandemAudioDriver.shared.active { return String(localized: "Pick Tandem Speaker in the sound menu") }
             return String(localized: "Pick \(device.name) (Tandem) in the sound menu")
         }
     }

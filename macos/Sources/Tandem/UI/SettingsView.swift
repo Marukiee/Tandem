@@ -203,6 +203,8 @@ private struct GeneralSettings: View {
 
             PhoneSoundSettings()
 
+            TandemAudioSettings()
+
             FindSoundSettings()
 
             Section("Behaviour") {

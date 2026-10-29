@@ -67,6 +67,8 @@ final class PhoneSound {
     /// A device asks to play. Refused (and told so) when sound from other devices is off, or when this Mac's sound goes to that
     /// device: a device never plays and sends with the same other device at once, so a stop always says which of the two it ends.
     func start(from id: String, name: String, stream: UInt8, sampleRate: UInt32, channels: UInt8, engineModel: EngineModel) {
+        // A phone that is this Mac's microphone sends on a stream of its own, also while it plays its sound here or this Mac's sound plays there.
+        if PhoneMicrophone.shared.started(from: id, stream: stream, sampleRate: sampleRate, channels: channels) { return }
         // The sound of a screen this Mac looks at and asked for plays also when sound from other devices is off.
         guard enabled || ScreenSound.asked.contains(id), engineModel.speaker.device != id else {
             Task { try? await engineModel.tandem?.sendAudioStop(target: id, stream: stream) }
@@ -111,6 +113,7 @@ final class PhoneSound {
 
     /// The device stopped sending `stream`. A stop of another stream of the same device is about something else.
     func stopped(device id: String, stream: UInt8) {
+        if PhoneMicrophone.shared.stopped(from: id, stream: stream) { return }
         guard players[id]?.stream == stream else { return }
         stopEngine(id)
     }
@@ -125,6 +128,14 @@ final class PhoneSound {
 final class PhoneSoundSink: TandemAudioSink, @unchecked Sendable {
     private let lock = NSLock()
     private var rings: [String: (stream: UInt8, ring: SoundRing)] = [:]
+    /// A phone's microphone, apart: the same phone can send its own sound at the same time.
+    private var microphones: [String: SoundRing] = [:]
+
+    func setMicrophone(_ ring: SoundRing?, for id: String) {
+        lock.lock()
+        microphones[id] = ring
+        lock.unlock()
+    }
 
     func set(_ ring: SoundRing?, stream: UInt8, for id: String) {
         lock.lock()
@@ -134,6 +145,11 @@ final class PhoneSoundSink: TandemAudioSink, @unchecked Sendable {
 
     func onAudio(from: String, stream: UInt8, seq: UInt32, pcm: Data) {
         lock.lock()
+        if stream == PhoneMicrophone.stream, let microphone = microphones[from] {
+            lock.unlock()
+            microphone.push(seq: seq, pcm: pcm)
+            return
+        }
         let found = rings[from]
         lock.unlock()
         guard let found, found.stream == stream else { return }

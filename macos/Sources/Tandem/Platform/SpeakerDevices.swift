@@ -40,6 +40,12 @@ final class SpeakerDevices {
     /// runs and clears what an earlier run left behind.
     @ObservationIgnored private var signature = "-"
     @ObservationIgnored private var quitObserver: NSObjectProtocol?
+    @ObservationIgnored private var lastPhones: [(id: String, name: String)] = []
+    @ObservationIgnored private var lastEnabled = false
+    /// The phone Tandem Speaker plays on, picked with the button on its page.
+    @ObservationIgnored private var speakerPhone = UserDefaults.standard.string(forKey: "tandemSpeakerPhone")
+    /// The phone that had Tandem Speaker when it dropped, and the output the sound went back to then.
+    @ObservationIgnored private var away: (phone: String, output: String?)?
 
     static func uid(forPhone id: String) -> String { uidPrefix + id }
 
@@ -52,8 +58,12 @@ final class SpeakerDevices {
     /// Makes the devices match the phones, or removes them all when [enabled] is false. Cheap to call
     /// often: it does nothing when nothing changed.
     func sync(phones: [(id: String, name: String)], enabled: Bool) {
-        let wanted = enabled ? Dictionary(phones.map { (Self.uid(forPhone: $0.id), "\($0.name) (Tandem)") }, uniquingKeysWith: { first, _ in first }) : [:]
-        let now = wanted.keys.sorted().map { "\($0)=\(wanted[$0] ?? "")" }.joined(separator: "|")
+        lastPhones = phones
+        lastEnabled = enabled
+        // With Tandem's own driver there is one real output, Tandem Speaker, and no device per phone: both would be in the menu.
+        let driver = TandemAudioDriver.shared.active
+        let wanted = enabled && !driver ? Dictionary(phones.map { (Self.uid(forPhone: $0.id), "\($0.name) (Tandem)") }, uniquingKeysWith: { first, _ in first }) : [:]
+        let now = wanted.keys.sorted().map { "\($0)=\(wanted[$0] ?? "")" }.joined(separator: "|") + (driver ? "|driver:" + phones.map(\.id).sorted().joined(separator: ",") : "")
         guard now != signature else { return }
         signature = now
 
@@ -61,7 +71,10 @@ final class SpeakerDevices {
             startListening()
             if quitObserver == nil {
                 quitObserver = NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
-                    MainActor.assumeIsolated { self?.removeAll() }
+                    MainActor.assumeIsolated {
+                        self?.leaveTandemSpeaker()
+                        self?.removeAll()
+                    }
                 }
             }
         } else {
@@ -82,6 +95,7 @@ final class SpeakerDevices {
         created = wanted.reduce(into: [:]) { result, entry in
             if AudioDevices.device(forUID: entry.key) != nil, let phone = Self.phone(fromUID: entry.key) { result[phone] = entry.value }
         }
+        if driver, enabled { created = Dictionary(phones.map { ($0.id, "Tandem Speaker") }, uniquingKeysWith: { first, _ in first }) }
         if enabled { defaultChanged() }
     }
 
@@ -139,7 +153,18 @@ final class SpeakerDevices {
 
     private func defaultChanged() {
         guard let device = AudioDevices.defaultOutput(), let uid = AudioDevices.uid(of: device) else { return }
-        if let phone = Self.phone(fromUID: uid) {
+        if uid == TandemAudioDriver.speakerUID, TandemAudioDriver.shared.active {
+            // Tandem Speaker plays nowhere but on a phone: without one, the sound goes back to where it was rather than into silence.
+            guard let phone = driverPhone() else {
+                selectedPhone = nil
+                restoreOutput()
+                EngineModel.shared.showToast(String(localized: "No phone is connected, so the sound stays on this Mac"))
+                return
+            }
+            guard selectedPhone != phone else { return }
+            selectedPhone = phone
+            onSelect?(phone, uid)
+        } else if let phone = Self.phone(fromUID: uid) {
             guard selectedPhone != phone else { return }
             selectedPhone = phone
             onSelect?(phone, uid)
@@ -155,6 +180,7 @@ final class SpeakerDevices {
     /// the sound starts. False when the output does not exist or the system would not switch.
     @discardableResult
     func select(phone: String) -> Bool {
+        if TandemAudioDriver.shared.active { return selectTandemSpeaker(for: phone) }
         guard var device = AudioDevices.device(forUID: Self.uid(forPhone: phone)) else { return false }
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultOutputDevice, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain
@@ -172,5 +198,61 @@ final class SpeakerDevices {
             mSelector: kAudioHardwarePropertyDefaultOutputDevice, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain
         )
         AudioObjectSetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, UInt32(MemoryLayout<AudioObjectID>.size), &device)
+    }
+}
+
+// MARK: Tandem Speaker
+
+extension SpeakerDevices {
+    /// The driver came or went: the outputs per phone go or come back.
+    func resync() {
+        signature = "-"
+        sync(phones: lastPhones, enabled: lastEnabled)
+    }
+
+    /// Which phone Tandem Speaker plays on: the one picked last, else the first that is connected.
+    fileprivate func driverPhone() -> String? {
+        let online = lastPhones.map(\.id).filter { EngineModel.shared.device($0)?.online == true }
+        return online.first { $0 == speakerPhone } ?? online.first
+    }
+
+    /// The button on a phone's page: Tandem Speaker becomes the output, for that phone.
+    fileprivate func selectTandemSpeaker(for phone: String) -> Bool {
+        speakerPhone = phone
+        UserDefaults.standard.set(phone, forKey: "tandemSpeakerPhone")
+        guard var device = TandemAudioDriver.device(TandemAudioDriver.speakerUID) else { return false }
+        // Already the output, for another phone: the sound moves over, as no change of output will say it.
+        if AudioDevices.defaultOutput() == device {
+            if selectedPhone != phone {
+                selectedPhone = phone
+                onSelect?(phone, TandemAudioDriver.speakerUID)
+            }
+            return true
+        }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultOutputDevice, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain
+        )
+        return AudioObjectSetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, UInt32(MemoryLayout<AudioObjectID>.size), &device) == noErr
+    }
+
+    /// Tandem Speaker plays only while Tandem runs and the driver is there: before either goes, the sound goes back to the Mac.
+    func leaveTandemSpeaker() {
+        guard let output = AudioDevices.defaultOutput(), AudioDevices.uid(of: output) == TandemAudioDriver.speakerUID else { return }
+        restoreOutput()
+    }
+
+    /// The phone of Tandem Speaker dropped. Its sound would go nowhere, so it goes back to the Mac, and to the phone again when that is back.
+    func phoneGone(_ id: String) {
+        guard selectedPhone == id, let output = AudioDevices.defaultOutput(), AudioDevices.uid(of: output) == TandemAudioDriver.speakerUID else { return }
+        restoreOutput()
+        away = (id, AudioDevices.defaultOutput().flatMap { AudioDevices.uid(of: $0) })
+    }
+
+    /// Back on Tandem Speaker, unless the person picked another output while the phone was away.
+    func phoneBack(_ id: String) {
+        guard let gone = away, gone.phone == id else { return }
+        away = nil
+        guard TandemAudioDriver.shared.active, AudioDevices.defaultOutput().flatMap({ AudioDevices.uid(of: $0) }) == gone.output else { return }
+        select(phone: id)
     }
 }

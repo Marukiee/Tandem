@@ -150,7 +150,7 @@ final class EngineModel {
     let speakerDevices = SpeakerDevices()
     /// The sound is going to a phone because its output was chosen in the system, not from a button here.
     @ObservationIgnored private var speakerViaOutput = false
-    @ObservationIgnored private var tap: SystemAudioTap?
+    @ObservationIgnored private var tap: (any SoundCapture)?
     @ObservationIgnored private var speakerStream: UInt8 = 0
     /// The device that looks at this Mac's screen and asked for its sound.
     @ObservationIgnored private var screenSoundTo: String?
@@ -445,6 +445,7 @@ final class EngineModel {
                 injector.sourceDisconnected(id)
                 PointerShare.shared.deviceGone(id)
                 PhoneSound.shared.stop(device: id)
+                PhoneMicrophone.shared.phoneGone(id)
                 remoteMedia[id] = nil
                 coversSent[id] = nil
                 refreshNowPlaying()
@@ -452,6 +453,7 @@ final class EngineModel {
                 // again by itself when the phone is back (below), which is also what happens after the Mac sleeps.
                 if speaker.device == id {
                     stopSpeaker(tellPhone: false, state: .off)
+                    speakerDevices.phoneGone(id)
                     if device(id)?.platform == .android {
                         showToast(String(localized: "Your phone disconnected, so the sound plays on this Mac until it is back"))
                     } else {
@@ -466,6 +468,7 @@ final class EngineModel {
             }
             // Its output is the chosen one and the sound is not on it: it was away, and is back.
             if case let .connected(id) = event, speakerDevices.selectedPhone == id, speaker.device != id { startSpeaker(on: id) }
+            if case let .connected(id) = event { speakerDevices.phoneBack(id) }
 
         case let .paired(id):
             refreshDevices()
@@ -635,7 +638,7 @@ final class EngineModel {
                 screenSoundTo = nil
             }
 
-        case .btSpeakerRequested, .btSpeakerState:
+        case .btSpeakerRequested, .btSpeakerState, .micRequested:
             // A Mac cannot be the Bluetooth speaker of a phone (A2DP sink) and does not say `audio.bt_sink`, so no phone asks it.
             break
 
@@ -730,14 +733,14 @@ final class EngineModel {
         if forScreen || device(id)?.platform != .android {
             speakerStream = PhoneSound.stream
         } else {
-            speakerStream &+= speakerStream &+ 1 == PhoneSound.stream ? 2 : 1
+            repeat { speakerStream &+= 1 } while speakerStream == PhoneSound.stream || speakerStream == PhoneMicrophone.stream
         }
         let stream = speakerStream
         speaker = .starting(id)
         // Chosen as an output, it stops again when another is chosen.
         speakerViaOutput = speakerDevices.selectedPhone == id
         let mute = UserDefaults.standard.object(forKey: "audioMuteLocal") as? Bool ?? true
-        let tap = SystemAudioTap()
+        let tap = SpeakerCapture.make()
         self.tap = tap
         Task { @MainActor [weak self] in
             do {
@@ -785,7 +788,7 @@ final class EngineModel {
 
     /// Notices a capture that has gone quiet because the output it was clocked by went away (headphones
     /// unplugged, say) and opens it again on the new default output.
-    private func watchSpeaker(tap: SystemAudioTap, id: String, stream: UInt8, mute: Bool) {
+    private func watchSpeaker(tap: any SoundCapture, id: String, stream: UInt8, mute: Bool) {
         speakerWatch?.cancel()
         speakerWatch = Task { @MainActor [weak self] in
             var current = tap
@@ -794,7 +797,7 @@ final class EngineModel {
                 guard let self, case .on = self.speaker, self.tap === current, let engine = self.engine else { return }
                 guard Date().timeIntervalSince(current.lastDelivery) > 4 else { continue }
                 current.stop()
-                let fresh = SystemAudioTap()
+                let fresh = SpeakerCapture.make()
                 do {
                     let format = try fresh.prepare(muteLocal: mute)
                     let frameBytes = Int(format.channels) * 2
