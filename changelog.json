@@ -1,6 +1,6 @@
 [
   {
-    "version": "0.2.55",
+    "version": "0.2.56",
     "date": "2026-10-29",
     "en": { "title": "No more stuck transfers", "new": ["A file that arrived no longer stays in the list as if it were still coming in"] },
     "nl": { "title": "Geen vastgelopen overdrachten meer", "new": ["Een binnengekomen bestand blijft niet meer in de lijst staan alsof het nog binnenkomt"] }

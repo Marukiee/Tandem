@@ -135,7 +135,7 @@ jobs:
     # Pinned instead of macos-latest: the app needs the macOS 26 SDK, and a moving
     # label could change the toolchain under a release.
     runs-on: macos-26
-    timeout-minutes: 60
+    timeout-minutes: 180
     env:
       VERSION: ${{ needs.meta.outputs.version }}
       BUILD: ${{ needs.meta.outputs.code }}
