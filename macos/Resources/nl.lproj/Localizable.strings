@@ -1254,3 +1254,5 @@
 "%lld%% left. Time to charge it." = "Nog %lld%%. Tijd om op te laden.";
 "Battery alerts" = "Batterijmeldingen";
 "A notification when another device is almost empty or fully charged." = "Een melding als een ander apparaat bijna leeg of vol is.";
+"Pause music during calls" = "Muziek pauzeren tijdens gesprekken";
+"When your phone rings or this Mac is in a call, music here and on your phone pauses, and plays again after. Starting it yourself during the call works as always." = "Gaat je telefoon over of is deze Mac in gesprek, dan pauzeert de muziek hier en op je telefoon, en speelt daarna verder. Zelf weer aanzetten tijdens het gesprek werkt gewoon.";

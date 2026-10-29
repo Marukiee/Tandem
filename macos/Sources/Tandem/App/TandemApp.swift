@@ -61,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             InsertFromPhone.shared.install()
             ClipboardPanelController.shared.start()
             ActionShortcuts.shared.apply()
+            CallPause.shared.start()
             ControlBridge.shared.start()
             BatteryBridge.shared.start()
             Updater.shared.checkIfDue()

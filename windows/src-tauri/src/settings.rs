@@ -20,6 +20,8 @@ pub struct Settings {
     pub phone_notifications: bool,
     /// A notification when another device is almost empty or fully charged.
     pub battery_alerts: bool,
+    /// What plays here pauses while the phone rings or is in a call, and plays again after.
+    pub pause_during_calls: bool,
     /// "auto" follows Windows, otherwise "en" or "nl".
     pub language: String,
     /// The phone's trackpad and keyboard move the pointer and type on this PC. Off until the person turns it on,
@@ -111,6 +113,7 @@ impl Default for Settings {
             copy_codes: true,
             phone_notifications: true,
             battery_alerts: true,
+            pause_during_calls: true,
             language: "auto".into(),
             remote_input: false,
             pointer_allowed: None,

@@ -41,6 +41,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Bluetooth tussen apparaten zonder netwerk (klembord, meldingen) | wacht (telefoon) | wacht en zoekt | nee | wacht en zoekt (BlueZ, nooit tussen twee computers gezien) |
 | Computer wakker maken (Wake on LAN) vanaf de telefoon | ja | doel | doel | doel |
 | Zoek mijn telefoon | bron | ja | ja | ja |
+| Muziek pauzeren tijdens een gesprek (telefoon belt: de computer pauzeert; computer belt: ook de telefoon) | pauzeert zelf (Android) | ja, beide kanten | telefoon belt: ja; computer belt: nee (nog geen herkenning van een gesprek op Windows) | idem |
 | Sneltoetsen voor elke functie en vier vakjes naar keuze in het paneel | - | ja | nee (de plugin global-shortcut van Tauri ontbreekt nog) | nee (idem) |
 | Wifi overnemen als dit apparaat geen netwerk heeft, en eigen wifi doorgeven | ja; doorgeven alleen met Shizuku (Android geeft het wachtwoord alleen aan de shell) | ja | ja | ja |
 | Zoek mijn computer (geluid uit de eigen systeemgeluiden, laatst gezien met wifinaam) | ja (vraagt, met laatst gezien) | ja, beide kanten | ja, beide kanten | ja, beide kanten |

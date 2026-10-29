@@ -154,6 +154,7 @@ private struct GeneralSettings: View {
     @AppStorage("showInDock") private var showInDock = true
     @AppStorage("copyCodes") private var copyCodes = true
     @AppStorage("batteryAlerts") private var batteryAlerts = true
+    @AppStorage(CallPause.enabledKey) private var pauseDuringCalls = true
     @AppStorage("bleMessages") private var bleMessages = true
     @AppStorage(TailscaleAuto.enabledKey) private var autoTailscale = true
     @AppStorage("audioMuteLocal") private var audioMuteLocal = true
@@ -221,6 +222,11 @@ private struct GeneralSettings: View {
                     "Copy codes from text messages to the clipboard",
                     subtitle: "You also get a notification when a code was copied. Without this, the notification has a Copy code button.",
                     isOn: $copyCodes
+                )
+                DescribedToggle(
+                    "Pause music during calls",
+                    subtitle: "When your phone rings or this Mac is in a call, music here and on your phone pauses, and plays again after. Starting it yourself during the call works as always.",
+                    isOn: $pauseDuringCalls
                 )
                 DescribedToggle(
                     "Battery alerts",

@@ -199,7 +199,10 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             let _ = app.emit("art", json!({ "key": key.to_string(), "uri": uri }));
             media::refresh(app);
         }
-        TandemEvent::Call { from, call } => crate::callcard::received(app, &from, &call),
+        TandemEvent::Call { from, call } => {
+            pause_for_call(app, &from, call.state);
+            crate::callcard::received(app, &from, &call)
+        }
         TandemEvent::Input { from, input } => {
             // From the computer that has the pointer: it was allowed when the pointer came over.
             if input::shared_is(&from) {
@@ -474,6 +477,33 @@ fn phone_notification(app: &AppHandle, from: &str, n: &TandemNotification) {
     if settings.phone_notifications && !n.silent {
         let body = if n.title.is_empty() { n.text.clone() } else { format!("{}\n{}", n.title, n.text) };
         toast(app, &format!("{} · {}", n.app_name, name), &body);
+    }
+}
+
+/// What plays here pauses once when a phone rings or goes into a call, and plays again when every call is over: only what was
+/// paused for it and is still paused, so music the person starts during the call keeps playing and nothing starts that they stopped.
+fn pause_for_call(app: &AppHandle, from: &str, state: tandem_core::ffi::TandemCallState) {
+    use tandem_core::ffi::TandemCallState as State;
+    static CALLS: std::sync::Mutex<(Vec<String>, Option<Vec<String>>)> = std::sync::Mutex::new((Vec::new(), None));
+    let mut guard = CALLS.lock().unwrap();
+    let (calls, paused) = &mut *guard;
+    match state {
+        State::Ringing | State::Dialing | State::Active => {
+            if !calls.iter().any(|c| c == from) {
+                calls.push(from.to_string());
+            }
+            if paused.is_none() && settings::get(app).pause_during_calls {
+                *paused = Some(tandem_winsys::pausemedia::pause_playing());
+            }
+        }
+        State::Ended | State::Missed => {
+            calls.retain(|c| c != from);
+            if calls.is_empty() {
+                if let Some(names) = paused.take() {
+                    std::thread::spawn(move || tandem_winsys::pausemedia::play(&names));
+                }
+            }
+        }
     }
 }
 

@@ -359,6 +359,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["batteryAlerts"].as_bool() {
             current.battery_alerts = v;
         }
+        if let Some(v) = patch["pauseDuringCalls"].as_bool() {
+            current.pause_during_calls = v;
+        }
         if let Some(v) = patch["remoteInput"].as_bool() {
             if v && !current.remote_input && input_blocked().is_none() {
                 crate::input::warm_up();

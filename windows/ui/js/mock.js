@@ -79,7 +79,7 @@ const state = {
     { device: "phone", deviceName: "Pixel 9", key: "a", appId: "wa", appName: "WhatsApp", title: "Anna", text: "Zie je dat? Ik ben er over tien minuten.", ts: now - 120000, buttons: [] },
     { device: "phone", deviceName: "Pixel 9", key: "b", appId: "bank", appName: "Bank", title: "Code 482913", text: "Gebruik 482913 om in te loggen.", ts: now - 900000, otp: "482913", buttons: [] },
   ],
-  settings: { closeToTray: true, copyCodes: true, batteryAlerts: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: true, keepWhenLidClosed: false, autoTailscale: true, sideCheck: true, sideCheckMinutes: 2, sideSound: "quiet",
+  settings: { closeToTray: true, copyCodes: true, batteryAlerts: true, pauseDuringCalls: true, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: true, keepWhenLidClosed: false, autoTailscale: true, sideCheck: true, sideCheckMinutes: 2, sideSound: "quiet",
     contactsSearch: true, searchDevices: true, searchActions: true, searchMessages: false, searchClipboard: false, searchFiles: true, searchSettings: true, sendScreenshots: true },
   update: updateFor(new URLSearchParams(location.search).get("update")),
   autostart: true, downloadDir: "C:\\Users\\Mark\\Downloads\\Tandem", systemLanguage: navigator.language, build_: "",

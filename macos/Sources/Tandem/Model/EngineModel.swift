@@ -543,6 +543,7 @@ final class EngineModel {
 
         case let .call(from, call):
             CallWindow.shared.received(call, from: from, deviceName: device(from)?.name ?? "Phone")
+            CallPause.shared.call(call.state, on: from)
 
         case let .input(from, input):
             if !PointerShare.shared.controlled(input, from: from) { injector.handle(input, from: from) }
