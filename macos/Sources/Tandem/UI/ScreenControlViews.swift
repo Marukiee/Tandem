@@ -249,7 +249,6 @@ struct ScreenSettings: View {
                 )
                 .disabled(ScreenSound.choice == "here")
             }
-            CameraStreamSection()
             Section {
                 DescribedToggle(
                     "Let my other devices see and control this Mac",
@@ -338,6 +337,8 @@ struct ScreenSettings: View {
                 }
                 .disabled(!editable)
             }
+            // Last and small: for the few who stream with OBS.
+            CameraStreamSection()
         }
         .formStyle(.grouped)
         .task {

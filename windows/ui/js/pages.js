@@ -915,16 +915,16 @@ function GeneralSettings({ s, patch }) {
       <${SettingRow} icon="x" title=${t("close_to_tray")} sub=${t("close_to_tray_sub")} on=${s.closeToTray} onChange=${(v) => patch({ closeToTray: v })} />
       <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
       <${SettingRow} icon="phone" title=${t("pause_during_calls")} sub=${t("pause_during_calls_sub")} on=${s.pauseDuringCalls} onChange=${(v) => patch({ pauseDuringCalls: v })} />
-      <${SettingRow} icon="camera" title=${t("camera_obs")} sub=${s.cameraToObs ? t("camera_obs_on", OBS_ADDRESS) : t("camera_obs_sub")} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })}>
-        <div style="display:flex;gap:8px;align-items:center">
-          ${s.cameraToObs && html`<button class="btn small" onClick=${() => navigator.clipboard.writeText(OBS_ADDRESS).then(() => say(t("camera_obs_copied"))).catch(failed)}>${t("copy")}</button>`}
-          <${Switch} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })} label=${t("camera_obs")} />
-        </div>
-      <//>
       <${SettingRow} icon="bolt" title=${t("battery_alerts")} sub=${t("battery_alerts_sub")} on=${s.batteryAlerts} onChange=${(v) => patch({ batteryAlerts: v })} />
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
       <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />
       ${state.canBluetooth && html`<${SettingRow} icon="bluetooth" title=${t("ble_messages")} sub=${t("ble_messages_sub")} on=${s.bleMessages !== false} onChange=${(v) => patch({ bleMessages: v })} />`}
+      <${SettingRow} icon="camera" title=${html`${t("camera_obs")} <span class="muted" title=${t("camera_obs_info", OBS_ADDRESS)} style="cursor:help">ⓘ</span>`} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })}>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${s.cameraToObs && html`<button class="btn small" title=${OBS_ADDRESS} onClick=${() => navigator.clipboard.writeText(OBS_ADDRESS).then(() => say(t("camera_obs_copied"))).catch(failed)}>${t("copy_address")}</button>`}
+          <${Switch} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })} label=${t("camera_obs")} />
+        </div>
+      <//>
     </div>
 
     ${state.platform === "linux" && html`<${SearchSettings} s=${s} patch=${patch} />`}

@@ -16,37 +16,39 @@ enum CameraStream {
     }
 }
 
-/// In Settings, Remote control: the switch and the address to give OBS.
+/// In Settings, Remote control, at the bottom: one row with the switch, an (i) that says how, and the address to copy while it is on.
 struct CameraStreamSection: View {
     @Environment(EngineModel.self) private var model
     @AppStorage(CameraStream.enabledKey) private var enabled = false
+    @LocalState private var explaining = false
 
     var body: some View {
         Section {
             Toggle(isOn: $enabled) {
-                VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
                     Text("Phone camera to OBS")
-                    Text("While a phone's camera is open here, OBS can show it too, without capturing the window.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            .onChange(of: enabled) { _, _ in CameraStream.apply(model.tandem) }
-            if enabled {
-                LabeledContent("Address for OBS") {
-                    HStack(spacing: 8) {
-                        Text(verbatim: CameraStream.address).font(.body.monospaced()).textSelection(.enabled)
-                        Button("Copy") {
+                    Button { explaining.toggle() } label: { Image(systemName: "info.circle").foregroundStyle(.secondary) }
+                        .buttonStyle(.borderless)
+                        .popover(isPresented: $explaining, arrowEdge: .bottom) {
+                            Text("While a phone's camera is open in Tandem, OBS shows it too: add a Media Source, turn off Local File and paste the address as Input.")
+                                .font(.callout)
+                                .frame(width: 280, alignment: .leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(14)
+                        }
+                    if enabled {
+                        Button("Copy address") {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(CameraStream.address, forType: .string)
                             model.showToast(String(localized: "OBS address copied"))
                         }
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
+                        .help(CameraStream.address)
                     }
                 }
             }
-        } header: {
-            Text("Phone camera")
-        } footer: {
-            Text("In OBS: add a Media Source, turn off Local File and paste the address as Input. Open the phone's camera in Tandem to start the picture.")
+            .onChange(of: enabled) { _, _ in CameraStream.apply(model.tandem) }
         }
         .animation(.tandem, value: enabled)
     }

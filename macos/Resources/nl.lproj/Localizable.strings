@@ -1261,3 +1261,5 @@
 "Address for OBS" = "Adres voor OBS";
 "OBS address copied" = "OBS-adres gekopieerd";
 "In OBS: add a Media Source, turn off Local File and paste the address as Input. Open the phone's camera in Tandem to start the picture." = "In OBS: voeg een Mediabron toe, zet Lokaal bestand uit en plak het adres bij Invoer. Open de camera van de telefoon in Tandem om het beeld te starten.";
+"While a phone's camera is open in Tandem, OBS shows it too: add a Media Source, turn off Local File and paste the address as Input." = "Terwijl de camera van een telefoon in Tandem open is, toont OBS hem ook: voeg een Mediabron toe, zet Lokaal bestand uit en plak het adres bij Invoer.";
+"Copy address" = "Kopieer adres";
