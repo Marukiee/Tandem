@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.36",
+    "date": "2026-10-29",
+    "en": { "title": "Nothing twice", "new": ["The menu bar panel no longer shows sending twice: Find phone (Control Option F) took the tile"] },
+    "nl": { "title": "Niets dubbel", "new": ["Het menubalkpaneel toont sturen niet meer dubbel: Telefoon zoeken (Control Option F) kreeg het vakje"] }
+  },
+  {
     "version": "0.2.35",
     "date": "2026-10-29",
     "en": { "title": "The right side at once", "new": ["Extending your screen to your phone finds which side it is on while the screen starts"] },
