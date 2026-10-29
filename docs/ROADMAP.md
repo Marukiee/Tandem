@@ -14,7 +14,12 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
   3. Telefoon als echte geluidsuitvoer: in het geluidsmenu van macOS zoals AirPods, in plaats van het afgetapte systeemgeluid; Windows
      en Linux hetzelfde als uitvoerapparaat.
   4. De bestanden van de telefoon als vaste plek in de Finder-zijbalk (File Provider), in plaats van een gekoppelde schijf; Windows
-     en Linux zo dicht mogelijk daarbij (Cloud Files API, een GVfs- of FUSE-mount).
+     en Linux zo dicht mogelijk daarbij (Cloud Files API, een GVfs- of FUSE-mount). Mac gebouwd (2026-10-29,
+     `macos/FileProviderExtension`, `FilesInFinder.swift`), nergens geïnstalleerd gezien: komt alleen in de app met de Developer ID en
+     het profile (zelfde voorwaarde als de camera, want de app krijgt de app group daar), anders blijft de gekoppelde schijf. Linux
+     gebouwd (`sidebar.rs`: GVfs-mount en een GTK-bladwijzer), nooit gezien. Nog te doen: **Windows met de Cloud Files API**
+     (`CfRegisterSyncRoot`, een sync root in de navigatie van de Verkenner met plaatshouders die bij openen worden opgehaald), een
+     grote klus; tot dan is de knop daar grijs en zegt waarom.
   5. "Stuur met Tandem" bij rechtsklik in Finder (Finder Sync of een Services-menu), in de Verkenner van Windows en in Nautilus.
      Bestond al: het Services-menu van de Mac (`NSServices` in Info.plist), `sendwith.rs` voor Nautilus, Dolphin, Nemo en "Sturen naar".
 

@@ -42,6 +42,7 @@ pub fn refresh_devices(app: &AppHandle) {
     crate::tray::rebuild(app);
     crate::sendwith::refresh(app);
     crate::contactsearch::refresh(app);
+    crate::sidebar::refresh(app);
 }
 
 fn takes_pointer(device: &Value) -> bool {

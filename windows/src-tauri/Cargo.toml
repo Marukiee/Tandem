@@ -40,6 +40,10 @@ jpeg-encoder = { version = "0.7", optional = true }
 portable-pty = "0.9.0"
 cpal = "0.15"
 
+# The files of a phone in the sidebar of the file manager (sidebar.rs) are served as WebDAV for GVfs to mount.
+[target.'cfg(target_os = "linux")'.dependencies]
+tandem-core = { path = "../../crates/tandem-core", features = ["webdav"] }
+
 [dev-dependencies]
 ring = "0.17"
 

@@ -400,6 +400,9 @@ export function FilesPage() {
   // How far the copy into the download folder is (browse.rs sends it), for the bar above the list.
   const [copying, setCopying] = useState(null);
   useEffect(() => { let off; listen("fs-progress", setCopying).then((f) => { off = f; }); return () => off && off(); }, []);
+  // The files as a place in the sidebar of the file manager (sidebar.rs): GVfs and a GTK bookmark on Linux. Windows says why not yet.
+  const [inSidebar, setInSidebar] = useState(false);
+  useEffect(() => { if (device) call("files_sidebar", { id: device.id }).then(setInSidebar).catch(() => {}); }, [device && device.id]);
   if (!device) return html`<div class="wrap"><div class="card empty">${t("nothing_yet")}</div></div>`;
 
   const open = async (next) => {
@@ -437,6 +440,15 @@ export function FilesPage() {
     setPicked(next);
   };
   const chosen = entries.filter((e) => picked.has(e.name));
+  const toggleSidebar = async () => {
+    setBusy(true);
+    try {
+      const on = await call("files_sidebar", { id: device.id, on: !inSidebar });
+      setInSidebar(on);
+      if (on) say(t("sidebar_added"));
+    } catch (e) { failed(e); }
+    setBusy(false);
+  };
   const download = async () => {
     setBusy(true);
     try {
@@ -451,6 +463,8 @@ export function FilesPage() {
     <div style="display:flex;align-items:center;gap:10px">
       <button class="btn small" onClick=${() => set({ page: "device" })}><${Icon} name="chevron-left" size=${16} />${t("back")}</button>
       <div class="grow"><h1 style="margin:0">${t("files_on", device.name)}</h1></div>
+      <button class=${"btn small" + (state.platform === "linux" ? "" : " grey")} disabled=${busy || (!device.online && !inSidebar)} onClick=${toggleSidebar}
+        title=${t("sidebar_hint")}><${Icon} name="pin" size=${16} />${inSidebar ? t("sidebar_remove") : t("sidebar_add")}</button>
       ${chosen.length > 0 && html`<button class="btn accent" disabled=${busy} onClick=${download}><${Icon} name="download" size=${17} />${t("download_n", chosen.length)}</button>`}
     </div>
     <div class="small" style="margin:8px 0;display:flex;gap:4px;flex-wrap:wrap;align-items:center">

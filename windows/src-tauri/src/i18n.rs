@@ -251,6 +251,8 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "side_now_left") => "{0} is now on the left",
         ("nl", "side_now_right") => "{0} staat nu rechts",
         (_, "side_now_right") => "{0} is now on the right",
+        ("nl", "sidebar_not_on_windows") => "Op Windows kan dit nog niet: daar is de Cloud Files API voor nodig, die nog niet gebouwd is",
+        (_, "sidebar_not_on_windows") => "Not on Windows yet: it needs the Cloud Files API, which is not built yet",
         _ => "",
     }
 }

@@ -263,6 +263,7 @@ export async function call(command, args) {
     case "tour_pending": return new URLSearchParams(location.search).get("page") === "tour";
     case "display_state": return [];
     case "fs_roots": return [{ name: "Phone", write: false }];
+    case "files_sidebar": return !!args.on;
     case "fs_list": return args.path === "/Phone"
       ? [{ name: "DCIM", dir: true, size: 0, modifiedMs: 1730000000000, readonly: false }, { name: "Download", dir: true, size: 0, modifiedMs: 1730000000000, readonly: false },
          { name: "notes.txt", dir: false, size: 2048, modifiedMs: 1730000000000, readonly: false }]

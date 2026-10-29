@@ -18,6 +18,7 @@ mod clip;
 mod clipfiles;
 mod screenshots;
 mod sendwith;
+mod sidebar;
 mod commands;
 mod drag;
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
@@ -247,6 +248,7 @@ pub fn run() {
             browse::fs_roots,
             browse::fs_list,
             browse::fs_get,
+            sidebar::files_sidebar,
             history::clip_history,
             history::clip_history_search,
             history::clip_history_pin,

@@ -1,5 +1,7 @@
 // The words of the interface, in English and Dutch. Windows picks which one, unless the person chose.
 const en = {
+  sidebar_add: "In the sidebar", sidebar_remove: "Out of the sidebar", sidebar_hint: "These files as a place in the sidebar of the file manager, for every app",
+  sidebar_added: "The files are in the sidebar of the file manager",
   browse_files: "Browse files", files_on: "Files on {0}", folders: "Folders", back: "Back", search_folder: "Search in this folder", folder: "Folder", folder_empty: "This folder is empty",
   select: "Select", looking: "Looking", download_n: "Download {0}", downloaded_n: "Copied {0} file(s) to the download folder.", n_of_m: "{0} of {1}",
   kind_all: "All", kind_folders: "Folders", kind_images: "Pictures", kind_video: "Video", kind_documents: "Documents",
@@ -208,6 +210,8 @@ const en = {
 };
 
 const nl = {
+  sidebar_add: "In de zijbalk", sidebar_remove: "Uit de zijbalk", sidebar_hint: "Deze bestanden als plek in de zijbalk van bestandsbeheer, voor elke app",
+  sidebar_added: "De bestanden staan in de zijbalk van bestandsbeheer",
   browse_files: "Bestanden bekijken", files_on: "Bestanden op {0}", folders: "Mappen", back: "Terug", search_folder: "Zoek in deze map", folder: "Map", folder_empty: "Deze map is leeg",
   select: "Selecteren", looking: "Even kijken", download_n: "Download {0}", downloaded_n: "{0} bestand(en) naar de downloadmap gekopieerd.", n_of_m: "{0} van {1}",
   kind_all: "Alles", kind_folders: "Mappen", kind_images: "Foto's", kind_video: "Video", kind_documents: "Documenten",

@@ -247,6 +247,7 @@ fn describe_later(app: &AppHandle, label: &'static str) {
 fn describe_later(_app: &AppHandle, _label: &'static str) {}
 
 pub fn quit_app(app: &AppHandle) {
+    crate::sidebar::stop_all(app);
     // Close the connections politely, so the other devices see this one go instead of time out.
     if let Ok(engine) = app.state::<AppState>().engine() {
         tauri::async_runtime::block_on(engine.shutdown());
