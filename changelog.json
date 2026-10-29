@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.37",
+    "date": "2026-10-29",
+    "en": { "title": "Fewer buttons", "new": ["The clipboard button under a device only shows when sharing the clipboard with it is off"] },
+    "nl": { "title": "Minder knoppen", "new": ["De klembordknop onder een apparaat staat er alleen als klembord delen ermee uit staat"] }
+  },
+  {
     "version": "0.2.36",
     "date": "2026-10-29",
     "en": { "title": "Nothing twice", "new": ["The menu bar panel no longer shows sending twice: Find phone (Control Option F) took the tile"] },
