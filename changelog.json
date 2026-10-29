@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.39",
+    "date": "2026-10-29",
+    "en": { "title": "Straight to the screen", "new": ["A second screen started from the computer opens on the phone by itself, no notification to tap (with permission to draw over other apps)", "Send to someone nearby is a small button next to Quick Share"] },
+    "nl": { "title": "Meteen in beeld", "new": ["Een tweede scherm dat je op de computer start, opent op de telefoon vanzelf, zonder melding om op te tikken (met het recht om over andere apps te tonen)", "Naar iemand in de buurt sturen is een kleine knop naast Quick Share"] }
+  },
+  {
     "version": "0.2.38",
     "date": "2026-10-29",
     "en": { "title": "The right buttons", "new": ["Show your Mac on your phone from the menu bar", "Computers in the menu bar get buttons to extend your screen and for the universal mouse"] },

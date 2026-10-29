@@ -8,7 +8,6 @@ struct MenuQuickShare: View {
     @Bindable private var share = QuickShare.shared
     @LocalState private var showDevices = false
     @LocalState private var overRow = false
-    @LocalState private var overSend = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -23,6 +22,21 @@ struct MenuQuickShare: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 4)
+                // Sending to someone nearby is a small button in the row itself, not a row of its own (Mark, 2026-10-29: the
+                // separate "Send to someone nearby..." row looked off). The devices only show once the person wants to send.
+                if share.enabled {
+                    Button {
+                        withAnimation(.tandem) { showDevices.toggle() }
+                    } label: {
+                        Label(showDevices ? "Done" : "Send", systemImage: showDevices ? "checkmark" : "paperplane.fill")
+                            .font(.caption.weight(.semibold))
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                    .buttonStyle(.tandemGlass)
+                    .controlSize(.small)
+                    .help("Send to someone nearby…")
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+                }
                 Toggle("", isOn: $share.enabled).labelsHidden().toggleStyle(.switch).controlSize(.small)
             }
             .padding(.horizontal, 10)
@@ -30,24 +44,6 @@ struct MenuQuickShare: View {
             .hoverHighlight(radius: 18)
             .onHover { overRow = $0 }
             if share.enabled {
-                // The devices are not laid out at once: they are there when the person says they want to send.
-                Button {
-                    withAnimation(.tandem) { showDevices.toggle() }
-                } label: {
-                    // The same row as the others in the panel: a disc with a symbol, the name, and the highlight under the pointer.
-                    HStack(spacing: 10) {
-                        HoverDisc(symbol: showDevices ? "chevron.down" : "paperplane.fill", hovering: overSend, enabled: true)
-                        // Nearby, not your own devices: those have their buttons on the card above.
-                        Text(showDevices ? "Hide devices" : "Send to someone nearby…").font(.callout.weight(.semibold))
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .hoverHighlight(radius: 18)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .onHover { overSend = $0 }
                 if showDevices {
                     let named = share.peers
                     if named.isEmpty {

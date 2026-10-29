@@ -221,13 +221,14 @@ class TandemService : LifecycleService() {
             return
         }
         val name = graph.host.device(from)?.name ?: getString(R.string.capture_mac_fallback)
-        val open = PendingIntent.getActivity(
-            this, 0x4449,
-            Intent(this, MainActivity::class.java).setAction(if (extend) MainActivity.ACTION_OPEN_DISPLAY else MainActivity.ACTION_OPEN_MIRROR)
-                .putExtra(MainActivity.EXTRA_DEVICE, from)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
+        val screen = Intent(this, MainActivity::class.java).setAction(if (extend) MainActivity.ACTION_OPEN_DISPLAY else MainActivity.ACTION_OPEN_MIRROR)
+            .putExtra(MainActivity.EXTRA_DEVICE, from)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        // The person started it on the computer, so with permission to draw over other apps (which also lets the app open a
+        // screen from the background) it opens by itself, the same as an incoming share request. Otherwise a notification
+        // that has to be tapped, because Android does not let a background app open a screen.
+        if (android.provider.Settings.canDrawOverlays(this) && runCatching { startActivity(screen) }.isSuccess) return
+        val open = PendingIntent.getActivity(this, 0x4449, screen, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val notification = NotificationCompat.Builder(this, Channels.CAPTURE)
             .setSmallIcon(R.drawable.ic_stat_tandem)
             .setContentTitle(getString(if (extend) R.string.display_offer_title else R.string.mirror_offer_title, name))
