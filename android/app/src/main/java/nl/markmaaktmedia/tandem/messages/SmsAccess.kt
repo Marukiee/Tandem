@@ -15,6 +15,9 @@ object SmsAccess {
 
     fun granted(context: Context) = permissions.all { granted(context, it) }
 
+    /** Reading alone: enough to notice a text that came in, and to pass on the code in it. */
+    fun canRead(context: Context) = granted(context, Manifest.permission.READ_SMS)
+
     /** Names for the numbers. Asked for with the calls; without it a conversation shows its number. */
     fun contacts(context: Context) = granted(context, Manifest.permission.READ_CONTACTS)
 

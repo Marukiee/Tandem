@@ -517,18 +517,20 @@ final class EngineModel {
             finishTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, size: size, location: location, error: error)
 
         case let .notification(from, notification):
-            guard device(from)?.notificationsEnabled ?? true else { return }
             let deviceName = device(from)?.name ?? "Phone"
             // The phone looks for the code (with the core's function) and sends it along.
             let code = notification.otp
+            // Notifications of that device turned off here are not shown, but a code is still copied: that has its own switch.
+            let shown = device(from)?.notificationsEnabled ?? true
             // The same code can come twice: from the notification of the messages app and from the message itself (see SmsBridge).
             let again = code != nil && lastCode?.code == code && Date().timeIntervalSince(lastCode?.at ?? .distantPast) < 120
             if let code { lastCode = (code, Date()) }
             if let code, !again, UserDefaults.standard.object(forKey: "copyCodes") as? Bool ?? true {
                 putOnClipboard(code)
                 showToast(String(localized: "Code \(code) copied"))
-                Notifier.shared.postCodeCopied(code: code, deviceName: deviceName, key: notification.key)
+                if shown { Notifier.shared.postCodeCopied(code: code, deviceName: deviceName, key: notification.key) }
             }
+            guard shown else { return }
             Notifier.shared.postMirrored(device: from, deviceName: deviceName, notification: notification, code: code)
             remember(notification, from: from, deviceName: deviceName, code: code)
 

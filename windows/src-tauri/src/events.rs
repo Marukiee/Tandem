@@ -437,16 +437,20 @@ fn chrono_ms() -> u64 {
 
 fn phone_notification(app: &AppHandle, from: &str, n: &TandemNotification) {
     // Ongoing ones (music, navigation, downloads) come and go; they do not belong on a list.
-    if n.ongoing || !allowed(app, from, "notifications") {
+    if n.ongoing {
         return;
     }
     let name = device_name(app, from);
     let settings = settings::get(app);
+    // A code is copied also when the notifications of that device are not shown here: copying codes has its own switch.
     if settings.copy_codes {
         if let Some(code) = n.otp.as_ref().filter(|code| first_time(code)) {
             clip::apply(app, code);
             toast(app, &i18n::t1(app, "code_copied", code), &name);
         }
+    }
+    if !allowed(app, from, "notifications") {
+        return;
     }
     let value = model::notification(from, &name, n);
     {

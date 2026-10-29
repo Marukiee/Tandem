@@ -655,6 +655,13 @@ fn print_event(engine: &Engine, event: &Event) {
         Event::AudioStart { from, stream, .. } => println!("sound from {} starts (stream {stream})", name_of(from)),
         Event::RemovedFromCircle => println!("this device was removed from the circle"),
         Event::Clipboard { from, text, .. } => println!("clipboard from {}: {text}", name_of(from)),
+        Event::Notification { from, notification } => println!(
+            "notification from {}: {} | {} | code {}",
+            name_of(from),
+            notification.app_name,
+            notification.title,
+            if notification.otp.is_some() { "found" } else { "none" }
+        ),
         // The password itself is never printed: its length says whether one came.
         Event::Wifi { from, msg } => match msg {
             tandem_core::wifi::WifiMsg::Share { network, password } => {

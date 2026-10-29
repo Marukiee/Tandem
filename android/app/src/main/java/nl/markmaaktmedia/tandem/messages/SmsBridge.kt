@@ -62,7 +62,8 @@ class SmsBridge(
         // The permission is given and taken in the settings, outside the app: looked at again now and then.
         watcher = scope.launch {
             while (isActive) {
-                val granted = SmsAccess.granted(context)
+                // Reading is what watching needs: a phone that may read but not send still passes on the codes that come in.
+                val granted = SmsAccess.canRead(context)
                 if (granted && observer == null) watch() else if (!granted && observer != null) unwatch()
                 delay(5_000)
             }
@@ -187,7 +188,7 @@ class SmsBridge(
     }
 
     private suspend fun look() {
-        if (!SmsAccess.granted(context)) return
+        if (!SmsAccess.canRead(context)) return
         val newest = safely { reader.newest(60, 20) } ?: return
         val changed = newest.filter { seen[key(it)] != signature(it) }
         seen.clear()
