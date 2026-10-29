@@ -13,6 +13,12 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
   andere apparaten vanzelf, en na het gesprek gaat hij weer verder als hij liep. Aan en uit in Instellingen.
 - **Wifi doorgeven met één tik:** een apparaat in je circle krijgt het wifi-netwerk van een ander apparaat zonder wachtwoord te typen
   (op Android leest Shizuku de opgeslagen netwerken).
+- **Telefoon als webcam op de Mac** (Mark heeft nu een Apple Developer-account, 2026-10-29): een camera-extensie (CMIOExtension) in de
+  app. Vraagt een Developer ID-certificaat, notarisatie en een overgangsrelease, want de updater vergelijkt de handtekening van de nieuwe
+  app met die van de draaiende (`Tandem Signing` wordt Developer ID).
+- **Telefoon als webcam op Windows:** een virtuele camera met `MFCreateVirtualCamera` (Windows 11), zodat Zoom, Teams en OBS hem zien.
+- **De telefooncamera als bron in OBS:** Tandem zet het beeld als stream op de eigen computer (`srt://127.0.0.1:...`), in OBS een
+  Mediabron met dat adres; een knop "Kopieer OBS-adres". Op Mac, Windows en Linux.
 
 ## Open lijst voor een grote ronde (bijgewerkt 2026-10-09, na versie 0.1.73)
 
