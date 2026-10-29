@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.43",
+    "date": "2026-10-29",
+    "en": { "title": "Ready for what comes", "new": ["The Mac app takes updates signed with Tandem's Apple Developer ID"] },
+    "nl": { "title": "Klaar voor wat komt", "new": ["De Mac-app neemt updates aan die met de Apple Developer ID van Tandem zijn ondertekend"] }
+  },
+  {
     "version": "0.2.42",
     "date": "2026-10-29",
     "en": { "title": "Always means always", "new": ["Always allow for showing your screen no longer asks again"] },
