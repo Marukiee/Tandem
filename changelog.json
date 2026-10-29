@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.49",
+    "date": "2026-10-29",
+    "en": { "title": "Your own Wi-Fi first", "new": ["After a restart your Mac joins a network it knows before it asks your phone for its hotspot"] },
+    "nl": { "title": "Eerst je eigen wifi", "new": ["Na een herstart verbindt je Mac eerst met een bekend netwerk voordat hij je telefoon om de hotspot vraagt"] }
+  },
+  {
     "version": "0.2.48",
     "date": "2026-10-29",
     "en": { "title": "Tidier settings", "new": ["The OBS setting is one small row with an explanation behind the (i)"] },
