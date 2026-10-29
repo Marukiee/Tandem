@@ -5,6 +5,16 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 
 ## Nieuwe functies (gekozen door Mark, 2026-10-29), nog te bouwen, op alle apparaten
 
+- **Met de Developer ID (gekozen 2026-10-29, eerst releases ondertekenen en notariseren met team X8Y2M32MNQ; 0.2.43 neemt die al aan):**
+  1. Telefoon als echte webcam op de Mac (Camera Extension) en op Windows (zie verderop).
+  2. Telefoon als microfoon van de computer: een invoerapparaat in macOS (Audio Server-plugin), op Windows en Linux een virtueel
+     invoerapparaat.
+  3. Telefoon als echte geluidsuitvoer: in het geluidsmenu van macOS zoals AirPods, in plaats van het afgetapte systeemgeluid; Windows
+     en Linux hetzelfde als uitvoerapparaat.
+  4. De bestanden van de telefoon als vaste plek in de Finder-zijbalk (File Provider), in plaats van een gekoppelde schijf; Windows
+     en Linux zo dicht mogelijk daarbij (Cloud Files API, een GVfs- of FUSE-mount).
+  5. "Stuur met Tandem" bij rechtsklik in Finder (Finder Sync of een Services-menu), in de Verkenner van Windows en in Nautilus.
+
 - **Presentatie-afstandsbediening:** volumeknoppen (en knoppen op het scherm) zijn volgende en vorige dia op de computer. Een pointer
   die met de gyroscoop van de telefoon beweegt zolang je de pointerknop ingedrukt houdt: wijzen met de telefoon, een stip op het scherm
   van de computer. Loslaten en de stip is weg.
