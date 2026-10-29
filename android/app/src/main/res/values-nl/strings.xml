@@ -533,4 +533,11 @@
     <string name="battery_full_text">Je kunt de lader eruit halen.</string>
     <string name="settings_battery_alerts">Batterijmeldingen</string>
     <string name="settings_battery_alerts_sub">Een melding als een ander apparaat bijna leeg of vol is</string>
+    <string name="presentation_title">Presentatie</string>
+    <string name="presentation_row_sub">Volgende en vorige dia, en een pointer die je met de telefoon richt</string>
+    <string name="presentation_hint">De volumeknoppen gaan ook naar de volgende en vorige dia. Houd Pointer vast en richt de telefoon om de pointer te bewegen.</string>
+    <string name="presentation_next">Volgende</string>
+    <string name="presentation_previous">Vorige</string>
+    <string name="presentation_pointer">Pointer</string>
+    <string name="presentation_pointing">Richten</string>
 </resources>

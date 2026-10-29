@@ -12,6 +12,9 @@ sealed interface Route {
     data object Pair : Route
     data class Remote(val id: String) : Route
 
+    /** The phone as the clicker of a presentation on a computer. */
+    data class Presentation(val id: String) : Route
+
     /** What is set for one device: sharing, what it may ask, and removing it. */
     data class DeviceSettings(val id: String) : Route
 
@@ -102,6 +105,7 @@ private fun routeFromKey(key: String): Route? = when {
     key.startsWith("device:") -> Route.Device(key.removePrefix("device:"))
     key == "pair" -> Route.Pair
     key.startsWith("remote:") -> Route.Remote(key.removePrefix("remote:"))
+    key.startsWith("presentation:") -> Route.Presentation(key.removePrefix("presentation:"))
     key.startsWith("devsettings:") -> Route.DeviceSettings(key.removePrefix("devsettings:"))
     key.startsWith("screen:") -> Route.Screen(key.removePrefix("screen:"))
     key.startsWith("display:") -> Route.Display(key.removePrefix("display:"))

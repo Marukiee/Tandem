@@ -536,4 +536,11 @@
     <string name="battery_full_text">You can unplug it.</string>
     <string name="settings_battery_alerts">Battery alerts</string>
     <string name="settings_battery_alerts_sub">A notification when another device is almost empty or fully charged</string>
+    <string name="presentation_title">Presentation</string>
+    <string name="presentation_row_sub">Next and previous slide, and a pointer you aim with the phone</string>
+    <string name="presentation_hint">The volume keys go to the next and the previous slide too. Hold Pointer and aim the phone to move the pointer.</string>
+    <string name="presentation_next">Next</string>
+    <string name="presentation_previous">Previous</string>
+    <string name="presentation_pointer">Pointer</string>
+    <string name="presentation_pointing">Aiming</string>
 </resources>

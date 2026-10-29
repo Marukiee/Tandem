@@ -662,6 +662,15 @@ fn print_event(engine: &Engine, event: &Event) {
             notification.title,
             if notification.otp.is_some() { "found" } else { "none" }
         ),
+        // Keys and clicks, one line each; a pointer that moves would flood the screen, so those only as a dot.
+        Event::Input { from, input } => match input {
+            tandem_core::proto::InputMsg::Pointer { .. } => {
+                use std::io::Write;
+                print!(".");
+                let _ = std::io::stdout().flush();
+            }
+            other => println!("input from {}: {other:?}", name_of(from)),
+        },
         Event::BatteryAlert { from, level, full } => {
             println!("battery of {}: {} at {level}%", name_of(from), if *full { "full" } else { "almost empty" })
         }

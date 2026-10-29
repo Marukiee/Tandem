@@ -285,9 +285,10 @@ private fun RouteContent(route: Route, nav: Nav) {
 private fun RouteBody(route: Route, nav: Nav) {
     when (route) {
         Route.Home -> HomeTabs(nav)
-        is Route.Device -> DeviceDetailScreen(route.id, onBack = { nav.pop() }, onRemote = { nav.push(Route.Remote(it)) }, onScreen = { nav.push(Route.Screen(it)) }, onDisplay = { nav.push(Route.Display(it)) }, onTerminal = { nav.push(Route.Terminal(it)) }, onSettings = { nav.push(Route.DeviceSettings(it)) })
+        is Route.Device -> DeviceDetailScreen(route.id, onBack = { nav.pop() }, onRemote = { nav.push(Route.Remote(it)) }, onScreen = { nav.push(Route.Screen(it)) }, onDisplay = { nav.push(Route.Display(it)) }, onTerminal = { nav.push(Route.Terminal(it)) }, onPresentation = { nav.push(Route.Presentation(it)) }, onSettings = { nav.push(Route.DeviceSettings(it)) })
         Route.Pair -> PairScreen(onBack = { nav.pop() }, onPaired = { nav.pop() })
         is Route.Remote -> RemoteScreen(route.id, onBack = { nav.pop() })
+        is Route.Presentation -> nl.markmaaktmedia.tandem.ui.screens.PresentationScreen(route.id, onBack = { nav.pop() })
         is Route.Screen -> nl.markmaaktmedia.tandem.screen.ScreenViewerScreen(route.id, onBack = { nav.pop() })
         is Route.Display -> nl.markmaaktmedia.tandem.screen.ScreenViewerScreen(route.id, extend = true, onBack = { nav.pop() })
         is Route.Terminal -> nl.markmaaktmedia.tandem.ui.screens.TerminalScreen(route.id, onBack = { nav.pop() })
