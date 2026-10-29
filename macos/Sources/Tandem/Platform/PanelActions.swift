@@ -133,10 +133,17 @@ final class ActionShortcuts {
     private var hotKeys: [GlobalHotKey] = []
     private var paused = false
 
-    /// Control and Option with S sends files, as Control and Option with V opens the clipboard history.
+    /// Control and Option with a letter, as Control and Option with V opens the clipboard history: P for a photo, D for a document,
+    /// S to send files. Almost nothing else uses these, so they take nothing away from an app.
     static let standard: [PanelAction: Shortcut] = [
-        .sendFiles: Shortcut(keyCode: KeyboardLayout.keyCode(forCharacter: "s") ?? UInt32(kVK_ANSI_S), modifiers: UInt32(controlKey | optionKey), key: "S"),
+        .takePhoto: controlOption("p", UInt32(kVK_ANSI_P)),
+        .scanDocument: controlOption("d", UInt32(kVK_ANSI_D)),
+        .sendFiles: controlOption("s", UInt32(kVK_ANSI_S)),
     ]
+
+    private static func controlOption(_ character: Character, _ fallback: UInt32) -> Shortcut {
+        Shortcut(keyCode: KeyboardLayout.keyCode(forCharacter: character) ?? fallback, modifiers: UInt32(controlKey | optionKey), key: character.uppercased())
+    }
 
     /// Whether the shortcut of an action is kept here rather than in a setting of its own.
     static func owns(_ action: PanelAction) -> Bool { action != .insertFromPhone && action != .clipboardHistory }

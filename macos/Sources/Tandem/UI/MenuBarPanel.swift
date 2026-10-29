@@ -120,6 +120,8 @@ struct MenuBarPanel: View {
             RoundIconButton(symbol: "macwindow", tint: Palette.indigo, size: 30) { openMain(pairing: false) }
                 .help("Open Tandem")
         }
+        // The first control in the panel would take the keyboard focus and a blue ring as soon as the panel opens.
+        .focusEffectDisabled()
         .padding(.leading, 8)
         .animation(.tandem, value: model.onlineCount)
     }
