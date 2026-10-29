@@ -108,7 +108,12 @@ final class FilesInFinder {
         lastTry[id] = Date()
         Task {
             defer { starting.remove(id) }
-            guard let share = try? await engine.serveFilesAsDrive(id: id, name: device.name), state(of: id) == .on else { return }
+            guard let share = try? await engine.serveFilesAsDrive(id: id, name: device.name) else { return }
+            // Turned off while it started.
+            guard state(of: id) == .on else {
+                engine.stopServingFilesAsDrive(id: id)
+                return
+            }
             do {
                 try write(DriveAddress(url: share.url, user: share.user, password: share.password), for: id)
             } catch {
@@ -143,12 +148,22 @@ final class FilesInFinder {
     /// Puts the phone in the Finder sidebar and opens it. False when the system refused, with the reason in `refusal`.
     func turnOn(_ device: TandemDevice, engine: TandemEngine) async -> Bool {
         states[device.id] = .adding
+        let domain = Self.domain(id: device.id, name: device.name)
         do {
-            try await NSFileProviderManager.add(Self.domain(id: device.id, name: device.name))
+            try await NSFileProviderManager.add(domain)
+            // Adding is only bookkeeping; the extension is started for the first signal, which is where a system that
+            // will not run it says so.
+            try await NSFileProviderManager(for: domain)?.signalEnumerator(for: .workingSet)
         } catch {
-            states[device.id] = .off
-            refusal = error.localizedDescription
-            return false
+            let failure = error as NSError
+            let notThere: [NSFileProviderError.Code] = [.providerNotFound, .applicationExtensionNotFound, .providerDomainNotFound]
+            // Other answers of the File Provider (busy, say) do not mean that the place cannot work.
+            if failure.domain != NSFileProviderErrorDomain || notThere.contains(where: { $0.rawValue == failure.code }) {
+                try? await NSFileProviderManager.remove(domain)
+                states[device.id] = .off
+                refusal = error.localizedDescription
+                return false
+            }
         }
         states[device.id] = .on
         names[device.id] = device.name

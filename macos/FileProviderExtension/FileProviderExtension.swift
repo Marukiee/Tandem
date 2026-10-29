@@ -65,6 +65,18 @@ final class TandemFilesExtension: NSObject, NSFileProviderReplicatedExtension {
             } else if itemTemplate.contentType == .symbolicLink || itemTemplate.contentType == .aliasFile {
                 // A phone has no links, and an alias pointing into this Mac means nothing there.
                 throw NSFileProviderError(.excludedFromSync)
+            } else if options.contains(.mayAlreadyExist) {
+                // A file the system found again (after a reset, say), possibly without its content. What the phone has wins:
+                // a missing content is not an empty file, and a local copy does not overwrite the phone's.
+                if let existing = try? await self.client.stat(path) {
+                    completionHandler(self.item(for: existing), [], url != nil, nil)
+                    return
+                }
+                guard let url else {
+                    completionHandler(nil, [], false, nil)
+                    return
+                }
+                try await self.upload(url, to: path)
             } else {
                 try await self.upload(url, to: path)
             }

@@ -131,9 +131,12 @@ mod linux {
     fn take_away(engine: &TandemEngine, id: &str) {
         let Some(address) = PLACED.lock().unwrap().get_or_insert_with(HashMap::new).remove(id) else { return };
         bookmark(&address, None);
-        // A mount whose server is gone only gives errors; it goes first.
-        let _ = run_with_timeout(Command::new("gio").args(["mount", "-u", &address]), None);
         engine.stop_serving_files_as_drive(id.to_string());
+        // A mount whose server is gone only gives errors, so it goes too; on a thread of its own, because GVfs may take
+        // its time and this runs when the devices change.
+        std::thread::spawn(move || {
+            let _ = run_with_timeout(Command::new("gio").args(["mount", "-u", &address]), None);
+        });
     }
 
     pub fn refresh(app: &AppHandle) {
