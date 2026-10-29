@@ -2,8 +2,8 @@
   {
     "version": "0.2.53",
     "date": "2026-10-29",
-    "en": { "title": "Signed by Apple", "new": ["Tandem is now signed and notarized through Apple. After this update macOS asks once more for its permissions"] },
-    "nl": { "title": "Ondertekend via Apple", "new": ["Tandem is nu ondertekend en genotariseerd via Apple. Na deze update vraagt macOS nog een keer om de rechten"] }
+    "en": { "title": "Your phone as webcam, speaker and microphone", "new": ["Tandem Camera: pick it in Zoom or FaceTime and your phone's camera turns on", "Tandem Speaker and Tandem Microphone in the sound menu", "Your phone's files in the Finder sidebar", "Signed and notarized through Apple. After this update macOS asks once more for its permissions"] },
+    "nl": { "title": "Je telefoon als webcam, speaker en microfoon", "new": ["Tandem Camera: kies hem in Zoom of FaceTime en de camera van je telefoon gaat aan", "Tandem Speaker en Tandem Microphone in het geluidsmenu", "De bestanden van je telefoon in de Finder-zijbalk", "Ondertekend en genotariseerd via Apple. Na deze update vraagt macOS nog een keer om de rechten"] }
   },
   {
     "version": "0.2.52",
