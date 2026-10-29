@@ -37,7 +37,8 @@ struct MenuQuickShare: View {
                     // The same row as the others in the panel: a disc with a symbol, the name, and the highlight under the pointer.
                     HStack(spacing: 10) {
                         HoverDisc(symbol: showDevices ? "chevron.down" : "paperplane.fill", hovering: overSend, enabled: true)
-                        Text(showDevices ? "Hide devices" : "Send files…").font(.callout.weight(.semibold))
+                        // Nearby, not your own devices: those have their buttons on the card above.
+                        Text(showDevices ? "Hide devices" : "Send to someone nearby…").font(.callout.weight(.semibold))
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, 10)

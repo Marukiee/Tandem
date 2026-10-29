@@ -52,8 +52,9 @@ enum PanelAction: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// The four tiles until the person picks others.
-    static let standardTiles: [PanelAction] = [.takePhoto, .scanDocument, .sendFiles, .clipboardHistory]
+    /// The four tiles until the person picks others. Not sending files: the phone has that button on its card already, and its
+    /// shortcut works without a tile.
+    static let standardTiles: [PanelAction] = [.takePhoto, .scanDocument, .clipboardHistory, .findPhone]
     private static let tilesKey = "panelTiles"
 
     static var tiles: [PanelAction] {
@@ -134,11 +135,12 @@ final class ActionShortcuts {
     private var paused = false
 
     /// Control and Option with a letter, as Control and Option with V opens the clipboard history: P for a photo, D for a document,
-    /// S to send files. Almost nothing else uses these, so they take nothing away from an app.
+    /// S to send files, F to find the phone. Almost nothing else uses these, so they take nothing away from an app.
     static let standard: [PanelAction: Shortcut] = [
         .takePhoto: controlOption("p", UInt32(kVK_ANSI_P)),
         .scanDocument: controlOption("d", UInt32(kVK_ANSI_D)),
         .sendFiles: controlOption("s", UInt32(kVK_ANSI_S)),
+        .findPhone: controlOption("f", UInt32(kVK_ANSI_F)),
     ]
 
     private static func controlOption(_ character: Character, _ fallback: UInt32) -> Shortcut {
