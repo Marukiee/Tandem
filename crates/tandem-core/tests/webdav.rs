@@ -212,3 +212,32 @@ async fn a_big_file_goes_through_the_drive_both_ways_and_the_policy_still_holds(
     assert!(ask(&share, "GET", "/My%20Phone/Docs/big.bin", &[], b"", pw).await.status >= 400);
     share.stop();
 }
+
+/// The WebDAV client of the Finder extension (macos/FileProviderExtension) against this server. It needs that client built
+/// first, so it only runs when asked:
+/// `swiftc -O -o <bin> macos/FileProviderExtension/WebDAVClient.swift macos/FileProviderExtension/Check/main.swift`, then
+/// `TANDEM_DAV_CHECK=<bin> cargo test -p tandem-core --features webdav --test webdav -- --ignored finder`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore]
+async fn the_finder_extension_client_works_against_the_server() {
+    let check = std::env::var("TANDEM_DAV_CHECK").expect("TANDEM_DAV_CHECK names the built check");
+    let (_host, _client, shared, share) = set_up().await;
+    std::fs::write(shared.path().join("a.txt"), "hello drive").unwrap();
+    std::fs::create_dir(shared.path().join("sub")).unwrap();
+    let (url, user, password) = (share.url.clone(), share.user.clone(), share.password.clone());
+    let output = tokio::task::spawn_blocking(move || {
+        std::process::Command::new(check)
+            .env("TANDEM_DAV_URL", url)
+            .env("TANDEM_DAV_USER", user)
+            .env("TANDEM_DAV_PASSWORD", password)
+            .output()
+            .unwrap()
+    })
+    .await
+    .unwrap();
+    println!("{}{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
+    assert!(output.status.success());
+    assert_eq!(std::fs::read(shared.path().join("a.txt")).unwrap(), b"from the Mac");
+    assert!(shared.path().join("Moved map").is_dir() && !shared.path().join("sub").exists());
+    share.stop();
+}
