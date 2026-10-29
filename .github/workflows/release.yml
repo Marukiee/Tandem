@@ -176,7 +176,7 @@ jobs:
           app=macos/dist/Tandem.app
           ditto -c -k --keepParent "$app" "$RUNNER_TEMP/notarize.zip"
           out=$(xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$NOTARY_APPLE_ID" --team-id "$NOTARY_TEAM_ID" \
-            --password "$NOTARY_PASSWORD" --wait --timeout 30m --output-format json)
+            --password "$NOTARY_PASSWORD" --wait --timeout 2h --output-format json)
           echo "$out"
           id=$(echo "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
           status=$(echo "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')
