@@ -386,6 +386,10 @@ fn progress(app: &AppHandle, offer: u64, index: u32, peer: &str, incoming: bool,
         data.offers.retain(|o| !(o["from"] == peer && o["offer"] == offer_text));
         let now = chrono_ms();
         let existing = data.transfers.iter().position(|t| t["id"] == id);
+        // The last word of progress can come just after the end: it must not make a finished file look busy again forever.
+        if existing.is_some_and(|at| data.transfers[at]["state"] != "active") {
+            return;
+        }
         let mut item = match existing {
             Some(at) => data.transfers.remove(at),
             None => json!({ "id": id, "peer": peer, "name": name, "incoming": incoming, "startedAt": now }),

@@ -299,6 +299,8 @@ class EngineHost(
         val now = System.currentTimeMillis()
         _transfers.update { list ->
             val existing = list.firstOrNull { it.id == id }
+            // The last word of progress can come just after the end: it must not make a finished file look busy again forever.
+            if (existing != null && existing.state != TransferItem.State.Active) return@update list
             val done = e.done.toLong()
             val item = if (existing != null) {
                 val seconds = (now - existing.updatedAt) / 1000.0

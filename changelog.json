@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.55",
+    "date": "2026-10-29",
+    "en": { "title": "No more stuck transfers", "new": ["A file that arrived no longer stays in the list as if it were still coming in"] },
+    "nl": { "title": "Geen vastgelopen overdrachten meer", "new": ["Een binnengekomen bestand blijft niet meer in de lijst staan alsof het nog binnenkomt"] }
+  },
+  {
     "version": "0.2.54",
     "date": "2026-10-29",
     "en": { "title": "Permissions after the switch", "new": ["Allowing Accessibility or Screen Recording again clears the old switch that no longer worked", "Calmer notice on the phone when something is still off on the Mac"] },

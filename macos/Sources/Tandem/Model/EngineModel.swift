@@ -978,6 +978,8 @@ final class EngineModel {
         let now = Date()
         if let position = transfers.firstIndex(where: { $0.id == id }) {
             var item = transfers[position]
+            // The last word of progress can come just after the end: it must not make a finished file look busy again forever.
+            guard item.state == .active else { return }
             let elapsed = now.timeIntervalSince(item.updated)
             if elapsed > 0.05, done >= item.done {
                 let instant = Double(done - item.done) / elapsed
