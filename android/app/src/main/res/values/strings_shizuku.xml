@@ -20,9 +20,9 @@
     <string name="shizuku_use_hotspot">Hotspot turns on by itself</string>
     <string name="shizuku_use_hotspot_on">Your computer turns on the hotspot without a tap on this phone</string>
     <string name="shizuku_use_hotspot_off">Without Shizuku you tap a notification to turn it on</string>
-    <string name="shizuku_use_projection">Sound and screen without the screen recording question</string>
-    <string name="shizuku_use_projection_on">Android no longer asks when this phone\'s sound or screen is shared. The notification that it is shared stays</string>
-    <string name="shizuku_use_projection_off">Android asks each time the sound or the screen is shared</string>
+    <string name="shizuku_use_projection">Sound and screen without questions or taps</string>
+    <string name="shizuku_use_projection_on">Android no longer asks when this phone\'s sound or screen is shared, and a second screen or share started on the computer opens by itself. The notification that it is shared stays</string>
+    <string name="shizuku_use_projection_off">Android asks each time the sound or the screen is shared, and a second screen opens only after a tap on its notification</string>
     <string name="shizuku_use_projection_set">Tap to set it now</string>
     <string name="shizuku_use_wifi">Share this phone\'s Wi-Fi</string>
     <string name="shizuku_use_wifi_on">Your computers offer to take it over when they have no network</string>

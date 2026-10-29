@@ -20,9 +20,9 @@
     <string name="shizuku_use_hotspot">Hotspot gaat vanzelf aan</string>
     <string name="shizuku_use_hotspot_on">Je computer zet de hotspot aan zonder tik op deze telefoon</string>
     <string name="shizuku_use_hotspot_off">Zonder Shizuku tik je op een melding om hem aan te zetten</string>
-    <string name="shizuku_use_projection">Geluid en scherm zonder de vraag over schermopname</string>
-    <string name="shizuku_use_projection_on">Android vraagt niets meer als het geluid of scherm van deze telefoon gedeeld wordt. De melding dat het gedeeld wordt blijft</string>
-    <string name="shizuku_use_projection_off">Android vraagt het elke keer dat het geluid of het scherm gedeeld wordt</string>
+    <string name="shizuku_use_projection">Geluid en scherm zonder vragen of tikken</string>
+    <string name="shizuku_use_projection_on">Android vraagt niets meer als het geluid of scherm van deze telefoon gedeeld wordt, en een tweede scherm of deelverzoek dat je op de computer start opent vanzelf. De melding dat het gedeeld wordt blijft</string>
+    <string name="shizuku_use_projection_off">Android vraagt het elke keer dat het geluid of het scherm gedeeld wordt, en een tweede scherm opent pas na een tik op de melding</string>
     <string name="shizuku_use_projection_set">Tik om het nu in te stellen</string>
     <string name="shizuku_use_wifi">De wifi van deze telefoon delen</string>
     <string name="shizuku_use_wifi_on">Je computers bieden aan hem over te nemen als ze geen netwerk hebben</string>

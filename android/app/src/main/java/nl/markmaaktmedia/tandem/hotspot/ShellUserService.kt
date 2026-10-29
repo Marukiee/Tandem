@@ -111,10 +111,14 @@ class ShellUserService : Binder() {
      * `appops set <package> PROJECT_MEDIA allow`. With it, MediaProjectionManagerService's hasProjectionPermission is true for the
      * package, and SystemUI's MediaProjectionPermissionActivity then answers RESULT_OK at once instead of asking. The shell holds
      * MANAGE_APP_OPS_MODES, an app does not. The package goes as one argument (see [command]), so it cannot become a command.
+     * SYSTEM_ALERT_WINDOW goes along: drawing over other apps is what lets Tandem open a screen from the background, so a share
+     * request or a second screen started on the computer opens by itself instead of as a notification to tap.
      */
     private fun allowProjection(pkg: String): Pair<Int, String> {
         if (!PACKAGE.matches(pkg)) return 1 to "not a package name"
-        return command("/system/bin/cmd", "appops", "set", pkg, "PROJECT_MEDIA", "allow")
+        val projection = command("/system/bin/cmd", "appops", "set", pkg, "PROJECT_MEDIA", "allow")
+        val overlay = command("/system/bin/cmd", "appops", "set", pkg, "SYSTEM_ALERT_WINDOW", "allow")
+        return if (projection.first != 0) projection else overlay
     }
 
     /**

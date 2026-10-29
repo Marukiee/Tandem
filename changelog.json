@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.40",
+    "date": "2026-10-29",
+    "en": { "title": "Shizuku opens it", "new": ["With Shizuku, Tandem also gives itself permission to draw over other apps, so a second screen opens on the phone without a tap"] },
+    "nl": { "title": "Shizuku opent het", "new": ["Met Shizuku geeft Tandem zichzelf ook het recht om over andere apps te tonen, zodat een tweede scherm zonder tik op de telefoon opent"] }
+  },
+  {
     "version": "0.2.39",
     "date": "2026-10-29",
     "en": { "title": "Straight to the screen", "new": ["A second screen started from the computer opens on the phone by itself, no notification to tap (with permission to draw over other apps)", "Send to someone nearby is a small button next to Quick Share"] },

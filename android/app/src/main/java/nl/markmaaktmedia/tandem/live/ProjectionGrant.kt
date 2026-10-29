@@ -36,7 +36,9 @@ object ProjectionGrant {
     fun allowed(context: Context): Boolean {
         val ops = context.getSystemService(AppOpsManager::class.java)
         val mode = runCatching { ops.unsafeCheckOpNoThrow(OP, Process.myUid(), context.packageName) }.getOrDefault(AppOpsManager.MODE_ERRORED)
-        return (mode == AppOpsManager.MODE_ALLOWED).also { _allowed.value = it }
+        // Drawing over other apps is set along with it (ShellUserService.allowProjection), so the grant counts as done only with both.
+        val overlay = android.provider.Settings.canDrawOverlays(context)
+        return (mode == AppOpsManager.MODE_ALLOWED && overlay).also { _allowed.value = it }
     }
 
     /** Allowed now, or made so when Shizuku is ready. False when it is neither, and nothing is shown to the person. */
