@@ -10,6 +10,8 @@ import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
 
 const failed = (e) => say(String(e && e.message ? e.message : e));
+/** Where the camera of a phone goes for OBS: the port of `tsout` in the core. */
+const OBS_ADDRESS = "udp://127.0.0.1:47993";
 
 /** What came of a send, as a short message. */
 export function afterSend(result) {
@@ -913,6 +915,12 @@ function GeneralSettings({ s, patch }) {
       <${SettingRow} icon="x" title=${t("close_to_tray")} sub=${t("close_to_tray_sub")} on=${s.closeToTray} onChange=${(v) => patch({ closeToTray: v })} />
       <${SettingRow} icon="clipboard" title=${t("copy_codes")} sub=${t("copy_codes_sub")} on=${s.copyCodes} onChange=${(v) => patch({ copyCodes: v })} />
       <${SettingRow} icon="phone" title=${t("pause_during_calls")} sub=${t("pause_during_calls_sub")} on=${s.pauseDuringCalls} onChange=${(v) => patch({ pauseDuringCalls: v })} />
+      <${SettingRow} icon="camera" title=${t("camera_obs")} sub=${s.cameraToObs ? t("camera_obs_on", OBS_ADDRESS) : t("camera_obs_sub")} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })}>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${s.cameraToObs && html`<button class="btn small" onClick=${() => navigator.clipboard.writeText(OBS_ADDRESS).then(() => say(t("camera_obs_copied"))).catch(failed)}>${t("copy")}</button>`}
+          <${Switch} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })} label=${t("camera_obs")} />
+        </div>
+      <//>
       <${SettingRow} icon="bolt" title=${t("battery_alerts")} sub=${t("battery_alerts_sub")} on=${s.batteryAlerts} onChange=${(v) => patch({ batteryAlerts: v })} />
       <${SettingRow} icon="bell" title=${t("phone_notifications")} sub=${t("phone_notifications_sub")} on=${s.phoneNotifications} onChange=${(v) => patch({ phoneNotifications: v })} />
       <${SettingRow} icon="wifi" title=${t("auto_tailscale")} sub=${t("auto_tailscale_sub")} on=${s.autoTailscale} onChange=${(v) => patch({ autoTailscale: v })} />

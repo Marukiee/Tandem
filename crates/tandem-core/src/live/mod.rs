@@ -11,6 +11,7 @@ pub mod assembler;
 mod host;
 pub mod policy;
 pub mod rate;
+pub mod tsout;
 mod viewer;
 pub mod wire;
 
@@ -342,6 +343,8 @@ pub(crate) struct Live {
     pub(crate) viewer: RwLock<Option<Arc<dyn MediaViewer>>>,
     pub(crate) service: policy::MediaService,
     pub(crate) tuning: RwLock<MediaTuning>,
+    /// The camera of a phone looked at here, passed on to OBS on this computer, when the app turned that on (see `tsout`).
+    pub(crate) camera_out: Mutex<Option<tsout::TsOut>>,
     told_unknown: Mutex<HashMap<(DeviceId, u64), Instant>>,
     epoch: AtomicU64,
     /// For the calls from threads of the app, which are not inside the runtime.
@@ -356,6 +359,7 @@ impl Live {
             viewer: RwLock::new(None),
             service: policy::MediaService::new(store),
             tuning: RwLock::new(MediaTuning::default()),
+            camera_out: Mutex::new(None),
             told_unknown: Mutex::new(HashMap::new()),
             epoch: AtomicU64::new(1),
             handle: tokio::runtime::Handle::current(),

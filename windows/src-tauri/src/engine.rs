@@ -99,6 +99,7 @@ pub fn start(app: AppHandle) {
         match built {
             Ok(engine) => {
                 engine.set_media_viewer(Arc::new(crate::live::Viewer { app: app.clone() }));
+                engine.set_camera_stream(if crate::settings::get(&app).camera_to_obs { tandem_core::ffi::tandem_camera_stream_port() } else { 0 });
                 engine.set_audio_sink(Arc::new(crate::sound::Sink));
                 #[cfg(feature = "screen-host")]
                 engine.set_media_host(Arc::new(crate::host::Host::new(app.clone())));

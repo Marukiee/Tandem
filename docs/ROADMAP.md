@@ -15,11 +15,11 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
      en Linux zo dicht mogelijk daarbij (Cloud Files API, een GVfs- of FUSE-mount).
   5. "Stuur met Tandem" bij rechtsklik in Finder (Finder Sync of een Services-menu), in de Verkenner van Windows en in Nautilus.
 
-- **Presentatie-afstandsbediening:** volumeknoppen (en knoppen op het scherm) zijn volgende en vorige dia op de computer. Een pointer
+- **Presentatie-afstandsbediening** (gebouwd in 0.2.46, op de emulator getest): volumeknoppen (en knoppen op het scherm) zijn volgende en vorige dia op de computer. Een pointer
   die met de gyroscoop van de telefoon beweegt zolang je de pointerknop ingedrukt houdt: wijzen met de telefoon, een stip op het scherm
   van de computer. Loslaten en de stip is weg.
-- **Batterijmeldingen:** een melding op de andere apparaten als een apparaat vol is of bijna leeg (rond 15%). Aan en uit in Instellingen.
-- **Media uit tijdens een gesprek:** zit je in een gesprek (telefoon of call op de computer), dan pauzeert de muziek en video op de
+- **Batterijmeldingen** (gebouwd in 0.2.44, de keten getest met de emulator): een melding op de andere apparaten als een apparaat vol is of bijna leeg (rond 15%). Aan en uit in Instellingen.
+- **Media uit tijdens een gesprek** (gebouwd in 0.2.45; computer-in-gesprek alleen op de Mac): zit je in een gesprek (telefoon of call op de computer), dan pauzeert de muziek en video op de
   andere apparaten vanzelf, en na het gesprek gaat hij weer verder als hij liep. Aan en uit in Instellingen.
 - **Wifi doorgeven met één tik:** een apparaat in je circle krijgt het wifi-netwerk van een ander apparaat zonder wachtwoord te typen
   (op Android leest Shizuku de opgeslagen netwerken).
@@ -27,7 +27,7 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
   app. Vraagt een Developer ID-certificaat, notarisatie en een overgangsrelease, want de updater vergelijkt de handtekening van de nieuwe
   app met die van de draaiende (`Tandem Signing` wordt Developer ID).
 - **Telefoon als webcam op Windows:** een virtuele camera met `MFCreateVirtualCamera` (Windows 11), zodat Zoom, Teams en OBS hem zien.
-- **De telefooncamera als bron in OBS:** Tandem zet het beeld als stream op de eigen computer (`srt://127.0.0.1:...`), in OBS een
+- **De telefooncamera als bron in OBS** (gebouwd in 0.2.47 als MPEG-TS over UDP in plaats van SRT, nog niet in OBS gezien): Tandem zet het beeld als stream op de eigen computer (`srt://127.0.0.1:...`), in OBS een
   Mediabron met dat adres; een knop "Kopieer OBS-adres". Op Mac, Windows en Linux.
 
 ## Open lijst voor een grote ronde (bijgewerkt 2026-10-09, na versie 0.1.73)

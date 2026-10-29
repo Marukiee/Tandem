@@ -71,6 +71,7 @@ final class LiveManager {
     func attach(engine: TandemEngine) {
         self.engine = engine
         engine.setMediaViewer(viewer: router)
+        CameraStream.apply(engine)
     }
 
     func session(of kind: TandemMediaKind, on peer: String) -> LiveSession? {

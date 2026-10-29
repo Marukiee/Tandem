@@ -362,6 +362,12 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["pauseDuringCalls"].as_bool() {
             current.pause_during_calls = v;
         }
+        if let Some(v) = patch["cameraToObs"].as_bool() {
+            current.camera_to_obs = v;
+            if let Ok(engine) = app.state::<AppState>().engine() {
+                engine.set_camera_stream(if v { tandem_core::ffi::tandem_camera_stream_port() } else { 0 });
+            }
+        }
         if let Some(v) = patch["remoteInput"].as_bool() {
             if v && !current.remote_input && input_blocked().is_none() {
                 crate::input::warm_up();

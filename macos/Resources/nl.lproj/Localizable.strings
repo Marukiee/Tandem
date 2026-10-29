@@ -1256,3 +1256,8 @@
 "A notification when another device is almost empty or fully charged." = "Een melding als een ander apparaat bijna leeg of vol is.";
 "Pause music during calls" = "Muziek pauzeren tijdens gesprekken";
 "When your phone rings or this Mac is in a call, music here and on your phone pauses, and plays again after. Starting it yourself during the call works as always." = "Gaat je telefoon over of is deze Mac in gesprek, dan pauzeert de muziek hier en op je telefoon, en speelt daarna verder. Zelf weer aanzetten tijdens het gesprek werkt gewoon.";
+"Phone camera to OBS" = "Telefooncamera naar OBS";
+"While a phone's camera is open here, OBS can show it too, without capturing the window." = "Terwijl de camera van een telefoon hier open is, kan OBS hem ook tonen, zonder het venster op te nemen.";
+"Address for OBS" = "Adres voor OBS";
+"OBS address copied" = "OBS-adres gekopieerd";
+"In OBS: add a Media Source, turn off Local File and paste the address as Input. Open the phone's camera in Tandem to start the picture." = "In OBS: voeg een Mediabron toe, zet Lokaal bestand uit en plak het adres bij Invoer. Open de camera van de telefoon in Tandem om het beeld te starten.";

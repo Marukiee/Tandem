@@ -22,6 +22,8 @@ pub struct Settings {
     pub battery_alerts: bool,
     /// What plays here pauses while the phone rings or is in a call, and plays again after.
     pub pause_during_calls: bool,
+    /// The camera of a phone looked at here goes to OBS too, as `udp://127.0.0.1:<port>` (see `tsout` in the core).
+    pub camera_to_obs: bool,
     /// "auto" follows Windows, otherwise "en" or "nl".
     pub language: String,
     /// The phone's trackpad and keyboard move the pointer and type on this PC. Off until the person turns it on,
@@ -114,6 +116,7 @@ impl Default for Settings {
             phone_notifications: true,
             battery_alerts: true,
             pause_during_calls: true,
+            camera_to_obs: false,
             language: "auto".into(),
             remote_input: false,
             pointer_allowed: None,

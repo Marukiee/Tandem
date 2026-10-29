@@ -2944,6 +2944,12 @@ impl TandemEngine {
         self.engine.media_stats(session).map(Into::into)
     }
 
+    /// Passes the camera of a phone that is looked at here on to OBS on this computer, as an MPEG transport stream over UDP to
+    /// 127.0.0.1 on `port` (0 turns it off). OBS shows it with a Media Source of `udp://127.0.0.1:<port>`.
+    pub fn set_camera_stream(&self, port: u16) {
+        *self.engine.inner.live.camera_out.lock().unwrap() = if port == 0 { None } else { crate::live::tsout::TsOut::new(port) };
+    }
+
     // What other devices may ask of this one.
 
     pub fn media_policy(&self, id: String) -> Result<TandemMediaPolicy, TandemError> {
@@ -3039,6 +3045,12 @@ impl From<TandemWifiNetwork> for crate::wifi::WifiNetwork {
     fn from(n: TandemWifiNetwork) -> Self {
         Self { ssid: n.ssid, security: n.security.into(), hidden: n.hidden, locked: n.locked }
     }
+}
+
+/// The port the camera goes to OBS on, unless the person chose another.
+#[uniffi::export]
+pub fn tandem_camera_stream_port() -> u16 {
+    crate::live::tsout::DEFAULT_PORT
 }
 
 /// Whether this device, which is `connected` to a network or not and knows the networks `known`, offers to take over `network`

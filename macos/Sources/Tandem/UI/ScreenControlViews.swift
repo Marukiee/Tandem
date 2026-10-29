@@ -249,6 +249,7 @@ struct ScreenSettings: View {
                 )
                 .disabled(ScreenSound.choice == "here")
             }
+            CameraStreamSection()
             Section {
                 DescribedToggle(
                     "Let my other devices see and control this Mac",
