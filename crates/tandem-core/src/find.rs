@@ -88,7 +88,8 @@ impl Find {
         if force || moved || now.saturating_sub(seen.written_ms) >= WRITE_EVERY_MS {
             seen.written_ms = now;
             let snapshot: HashMap<String, LastSeen> = seen.map.iter().map(|(id, s)| (id.to_string(), s.clone())).collect();
-            drop(seen);
+            // Written with the lock held: two notes a moment apart wrote side by side, and the older one could land last, so after
+            // a restart a device seemed to have been seen before it went.
             if let Err(e) = store.write_cbor(FILE, &snapshot) {
                 warn!("could not save where the devices were last seen: {e}");
             }
