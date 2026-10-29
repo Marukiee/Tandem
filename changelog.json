@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.46",
+    "date": "2026-10-29",
+    "en": { "title": "Presentation remote", "new": ["Your phone is the clicker of a presentation on your computer: big buttons, the volume keys, and a pointer you aim with the phone"] },
+    "nl": { "title": "Presentatie-afstandsbediening", "new": ["Je telefoon is de clicker van een presentatie op je computer: grote knoppen, de volumeknoppen en een pointer die je met de telefoon richt"] }
+  },
+  {
     "version": "0.2.45",
     "date": "2026-10-29",
     "en": { "title": "Quiet during calls", "new": ["Music pauses while your phone rings or your Mac is in a call, and plays again after"] },
