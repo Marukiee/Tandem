@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.44",
+    "date": "2026-10-29",
+    "en": { "title": "Battery alerts", "new": ["A notification when another device is almost empty or fully charged"] },
+    "nl": { "title": "Batterijmeldingen", "new": ["Een melding als een ander apparaat bijna leeg of vol is"] }
+  },
+  {
     "version": "0.2.43",
     "date": "2026-10-29",
     "en": { "title": "Ready for what comes", "new": ["The Mac app takes updates signed with Tandem's Apple Developer ID"] },
