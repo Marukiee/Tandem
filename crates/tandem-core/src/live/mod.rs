@@ -789,8 +789,11 @@ impl Inner {
             return;
         };
 
-        let control_allowed = policy.control != MediaPermission::Never;
-        let pre_approved = permission == MediaPermission::Always && (!request.control || policy.control == MediaPermission::Always);
+        // "Always" for the screen asks no more, also when the request wants control too and that was never said "always" (or could
+        // not be, as on a Mac without accessibility then): it starts without control. Asked, the person decides about control in the
+        // question; not asked, only an "always" for control gives it.
+        let pre_approved = permission == MediaPermission::Always;
+        let control_allowed = if pre_approved { policy.control == MediaPermission::Always } else { policy.control != MediaPermission::Never };
         let host = HostSession::new(session, peer, request.clone(), self.peer_boot(&peer), control_allowed);
 
         // One session per kind per device: a viewer that crashed must not lock itself out of the next try.

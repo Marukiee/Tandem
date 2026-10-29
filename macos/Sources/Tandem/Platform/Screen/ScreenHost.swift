@@ -293,9 +293,11 @@ final class ScreenHost {
         case .allowOnce:
             start(request: request, peer: waiting.peer, name: waiting.name, control: control)
         case .always:
+            // The choice about control is kept also when this Mac cannot give it yet (no accessibility): once it can, it does.
+            let controlChosen = waiting.wantsControl && waiting.allowControl
             changePolicy(peer: waiting.peer) { policy in
                 policy.screen = .always
-                if control { policy.control = .always }
+                if controlChosen { policy.control = .always }
             }
             start(request: request, peer: waiting.peer, name: waiting.name, control: control)
         }

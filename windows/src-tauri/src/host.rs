@@ -461,7 +461,8 @@ impl TandemMediaHost for Host {
                 if let Some(engine) = this.engine() {
                     if let Ok(mut policy) = engine.media_policy(from.clone()) {
                         policy.screen = TandemMediaPermission::Always;
-                        if wants_control {
+                        // Also when the mouse cannot be driven here yet (Wayland without the portal): once it can, it is.
+                        if request.control {
                             policy.control = TandemMediaPermission::Always;
                         }
                         let _ = engine.set_media_policy(from.clone(), policy);
