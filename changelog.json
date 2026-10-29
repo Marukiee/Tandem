@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.35",
+    "date": "2026-10-29",
+    "en": { "title": "The right side at once", "new": ["Extending your screen to your phone finds which side it is on while the screen starts"] },
+    "nl": { "title": "Meteen aan de goede kant", "new": ["Scherm uitbreiden naar je telefoon zoekt al tijdens het starten aan welke kant hij staat"] }
+  },
+  {
     "version": "0.2.34",
     "date": "2026-10-29",
     "en": { "title": "Shortcuts for photo and scan", "new": ["Control Option P takes a photo with your phone, Control Option D scans a document"] },
