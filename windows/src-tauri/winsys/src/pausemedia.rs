@@ -64,7 +64,7 @@ mod imp {
     };
 
     fn sessions() -> Vec<windows::Media::Control::GlobalSystemMediaTransportControlsSession> {
-        let Ok(manager) = Manager::RequestAsync().and_then(|op| op.get()) else { return Vec::new() };
+        let Ok(manager) = Manager::RequestAsync().and_then(|op| op.join()) else { return Vec::new() };
         manager.GetSessions().map(|list| list.into_iter().collect()).unwrap_or_default()
     }
 
@@ -78,7 +78,7 @@ mod imp {
             .filter(|s| status(s) == Some(Status::Playing))
             .filter_map(|s| {
                 let name = s.SourceAppUserModelId().ok()?.to_string();
-                s.TryPauseAsync().ok()?.get().ok()?;
+                s.TryPauseAsync().ok()?.join().ok()?;
                 Some(name)
             })
             .collect()
@@ -88,7 +88,7 @@ mod imp {
         for session in sessions() {
             let Some(name) = session.SourceAppUserModelId().ok().map(|n| n.to_string()) else { continue };
             if names.contains(&name) && status(&session) == Some(Status::Paused) {
-                let _ = session.TryPlayAsync().and_then(|op| op.get());
+                let _ = session.TryPlayAsync().and_then(|op| op.join());
             }
         }
     }
