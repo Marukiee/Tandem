@@ -78,9 +78,14 @@ class RemoteAudioPlayer(
             is TandemEvent.AudioStop -> {
                 if (synchronized(lock) { sessions[event.from] }?.stream == event.stream.toInt()) end(event.from, tell = false)
                 else if (event.stream.toInt() == SoundShareService.STREAM) SoundShareService.refused(context, event.from)
+                // The computer this phone is the microphone of will not, or no longer, take it.
+                else if (event.stream.toInt() == MicShareService.STREAM) MicShare.stopFor(context, event.from)
             }
             // The device went away: nothing more will come, so do not sit in silence.
-            is TandemEvent.Disconnected -> end(event.id, tell = false)
+            is TandemEvent.Disconnected -> {
+                end(event.id, tell = false)
+                MicShare.stopFor(context, event.id)
+            }
             else -> Unit
         }
     }

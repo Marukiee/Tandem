@@ -62,4 +62,8 @@
     <string name="sound_stop_title">Stop met geluid sturen naar %1$s</string>
     <string name="sound_stop_sub">Het geluid van deze telefoon speelt nu op de computer</string>
     <string name="sound_sending">Geluid sturen naar %1$s</string>
+    <string name="mic_sending">%1$s hoort je microfoon</string>
+    <string name="mic_request_title">%1$s wil je microfoon gebruiken</string>
+    <string name="mic_request_text">Tik om hem aan te zetten</string>
+    <string name="mic_permission_needed">Tandem heeft toestemming voor de microfoon nodig om de microfoon van je computer te zijn</string>
 </resources>

@@ -19,6 +19,7 @@
          itself over the lock screen, and the pill that says it is going on. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -265,6 +266,18 @@
             android:name=".live.SoundShareService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
+
+        <!-- This phone as the microphone of a computer: the permission to record audio if needed, then a service. -->
+        <activity
+            android:name=".audio.MicShareActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <service
+            android:name=".audio.MicShareService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
 
         <!-- Lets a computer that shows this phone's screen click and type on it. Off until the person turns it on. -->
         <service

@@ -62,4 +62,8 @@
     <string name="sound_stop_title">Stop sending sound to %1$s</string>
     <string name="sound_stop_sub">The sound of this phone is playing on the computer now</string>
     <string name="sound_sending">Sending sound to %1$s</string>
+    <string name="mic_sending">%1$s hears your microphone</string>
+    <string name="mic_request_title">%1$s wants to use your microphone</string>
+    <string name="mic_request_text">Tap to turn it on</string>
+    <string name="mic_permission_needed">Tandem needs the microphone permission to be the microphone of your computer</string>
 </resources>
