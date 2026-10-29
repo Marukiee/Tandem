@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreAudio
 import Foundation
 
@@ -26,6 +27,12 @@ enum SpeakerCapture {
 /// Records Tandem Speaker Return, the hidden other half of Tandem Speaker: what apps play to Tandem Speaker comes out here, 48 kHz stereo
 /// float. Recording an input asks for the microphone permission once, like any input; without it the sound is silence.
 final class DriverSpeakerCapture: SoundCapture, @unchecked Sendable {
+    struct MicrophoneDenied: LocalizedError {
+        var errorDescription: String? {
+            String(localized: "Allow Tandem to use the microphone in System Settings, Privacy and Security, Microphone: it records Tandem Speaker for your phone.")
+        }
+    }
+
     private var device = AudioObjectID(kAudioObjectUnknown)
     private var procID: AudioDeviceIOProcID?
     private let queue = DispatchQueue(label: "tandem.audio.speaker", qos: .userInteractive)
@@ -36,6 +43,9 @@ final class DriverSpeakerCapture: SoundCapture, @unchecked Sendable {
 
     /// `muteLocal` has nothing to do here: what plays to Tandem Speaker plays nowhere else.
     func prepare(muteLocal: Bool) throws -> SystemAudioTap.Format {
+        // Without the permission the recording is silence and nothing would say why. Not asked yet is left to the system's question.
+        let permission = AVCaptureDevice.authorizationStatus(for: .audio)
+        if permission == .denied || permission == .restricted { throw MicrophoneDenied() }
         guard let found = TandemAudioDriver.device(TandemAudioDriver.speakerReturnUID) else { throw SystemAudioTap.Failure.step("Tandem Speaker", -1) }
         device = found
         return SystemAudioTap.Format(sampleRate: 48_000, channels: 2)

@@ -217,8 +217,9 @@ extension SpeakerDevices {
     }
 
     /// The button on a phone's page: Tandem Speaker becomes the output, for that phone.
-    fileprivate func selectTandemSpeaker(for phone: String) -> Bool {
-        TandemAudioDriver.shared.offerUpdateIfNeeded()
+    /// `offer`: the person did this, so a newer driver may be offered; not when the sound comes back by itself.
+    fileprivate func selectTandemSpeaker(for phone: String, offer: Bool = true) -> Bool {
+        if offer { TandemAudioDriver.shared.offerUpdateIfNeeded() }
         speakerPhone = phone
         UserDefaults.standard.set(phone, forKey: "tandemSpeakerPhone")
         guard var device = TandemAudioDriver.device(TandemAudioDriver.speakerUID) else { return false }
@@ -254,6 +255,6 @@ extension SpeakerDevices {
         guard let gone = away, gone.phone == id else { return }
         away = nil
         guard TandemAudioDriver.shared.active, AudioDevices.defaultOutput().flatMap({ AudioDevices.uid(of: $0) }) == gone.output else { return }
-        select(phone: id)
+        _ = selectTandemSpeaker(for: id, offer: false)
     }
 }

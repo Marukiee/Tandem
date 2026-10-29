@@ -609,10 +609,13 @@ final class EngineModel {
                 let text = phone ? String(localized: "Your phone does not allow this. Turn on Speaker for your other devices in the settings of Tandem on your phone.")
                     : String(localized: "\(name) does not play sound from other devices. Turn it on in Tandem there.")
                 stopSpeaker(tellPhone: false, state: .failed(text))
+                // Tandem Speaker plays nowhere else: the sound goes back to the Mac.
+                speakerDevices.leaveTandemSpeaker()
                 // A phone says it on the row of its page; a computer has no such row.
                 if !phone { showToast(text) }
             } else {
                 stopSpeaker(tellPhone: false, state: .off)
+                speakerDevices.leaveTandemSpeaker()
                 showToast(phone ? String(localized: "Your phone stopped playing the sound") : String(localized: "\(name) stopped playing the sound"))
             }
 
@@ -758,6 +761,7 @@ final class EngineModel {
             } catch {
                 guard let self, self.tap === tap else { tap.stop(); return }
                 self.stopSpeaker(tellPhone: true, state: .failed(error.localizedDescription))
+                self.speakerDevices.leaveTandemSpeaker()
                 // A phone says it on the row of its page; a computer has no such row.
                 if self.device(id)?.platform != .android { self.showToast(error.localizedDescription) }
             }
@@ -807,6 +811,7 @@ final class EngineModel {
                     current = fresh
                 } catch {
                     self.stopSpeaker(tellPhone: true, state: .failed(error.localizedDescription))
+                self.speakerDevices.leaveTandemSpeaker()
                     return
                 }
             }

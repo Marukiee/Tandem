@@ -59,6 +59,7 @@ pub fn device_name(app: &AppHandle, id: &str) -> String {
 }
 
 /// What a device says it can do.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub fn device_caps(app: &AppHandle, id: &str) -> Vec<String> {
     device(app, id)
         .and_then(|d| d["caps"].as_array().map(|caps| caps.iter().filter_map(|c| c.as_str().map(str::to_string)).collect()))
@@ -66,6 +67,7 @@ pub fn device_caps(app: &AppHandle, id: &str) -> Vec<String> {
 }
 
 /// The phones that are connected now.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub fn online_phones(app: &AppHandle) -> Vec<String> {
     let state = app.state::<AppState>();
     let data = state.data.lock().unwrap();
