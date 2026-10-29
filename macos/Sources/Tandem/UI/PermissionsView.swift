@@ -110,7 +110,7 @@ final class AccessChecker {
         case "notifications":
             UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
         case "accessibility":
-            _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+            ScreenHost.shared.requestAccessibility()
         case "screen":
             ScreenHost.shared.requestScreenRecording()
         case "bluetooth":

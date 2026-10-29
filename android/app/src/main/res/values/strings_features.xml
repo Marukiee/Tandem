@@ -62,6 +62,7 @@
     <string name="tile_pointer_label">Universal mouse</string>
     <string name="feature_pointer">Use a computer\'s mouse on this phone</string>
     <string name="feature_pointer_off">It is switched off in Tandem on this phone</string>
+    <string name="features_open">Open</string>
     <string name="features_open_there">Open there</string>
     <string name="perm_accessibility">Accessibility</string>
     <string name="perm_accessibility_why">To control this phone from a computer, and to use a computer\'s mouse on it. Turn on Tandem under Installed apps.</string>

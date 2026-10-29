@@ -3,6 +3,9 @@ package nl.markmaaktmedia.tandem.ui.screens
 import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
+import nl.markmaaktmedia.tandem.ui.theme.SquircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -187,14 +190,48 @@ private fun OpenPill(label: String, enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** One thing a device is missing, under the controls it greys out: what it is, and the button that opens it on that device. */
+/**
+ * One thing a device is missing, under the controls it greys out: a calm line of its own with what it is and a small button that opens
+ * it on that device. Not red: nothing is broken, it only waits for a switch.
+ */
 @Composable
 fun FeatureFix(device: TandemDevice, feature: TandemFeature, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(feature.why.ifEmpty { feature.name }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, modifier = Modifier.weight(1f))
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier
+            .fillMaxWidth()
+            .clip(SquircleShape(18.dp))
+            .background(scheme.surfaceContainerHighest)
+            .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(TandemIcons.Shield, null, tint = scheme.tertiary, modifier = Modifier.size(20.dp))
+        Text(
+            feature.why.ifEmpty { feature.name },
+            style = MaterialTheme.typography.bodyMedium,
+            color = scheme.onSurface,
+            modifier = Modifier.weight(1f).padding(vertical = 6.dp),
+        )
         val page = feature.page
-        if (page != null) OpenPill(label(page, stringResource(R.string.features_open_there)), device.online || device.ble) { openOn(context, device, page) }
+        if (page != null) {
+            val enabled = device.online || device.ble
+            Row(
+                Modifier
+                    .heightIn(min = 36.dp)
+                    .clip(PillShape)
+                    .background(scheme.secondaryContainer)
+                    .alpha(if (enabled) 1f else 0.5f)
+                    .bouncyClickable(enabled = enabled) { openOn(context, device, page) }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(label(page, stringResource(R.string.features_open)), style = MaterialTheme.typography.labelLarge, color = scheme.onSecondaryContainer)
+                Icon(TandemIcons.OpenInNew, null, tint = scheme.onSecondaryContainer, modifier = Modifier.size(16.dp))
+            }
+        }
     }
 }
 

@@ -586,10 +586,12 @@ final class ScreenHost {
     // MARK: Permissions
 
     func requestScreenRecording() {
+        if !CGPreflightScreenCaptureAccess() { FeatureReport.forgetStale("ScreenCapture") }
         if !CGRequestScreenCaptureAccess() { openSettings(pane: "Privacy_ScreenCapture") }
     }
 
     func requestAccessibility() {
+        if !AXIsProcessTrusted() { FeatureReport.forgetStale("Accessibility") }
         _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
     }
 

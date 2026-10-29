@@ -121,7 +121,7 @@ enum FeatureReport {
     static func open(_ page: String) {
         switch page {
         case "accessibility":
-            _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+            ScreenHost.shared.requestAccessibility()
             settings("com.apple.preference.security?Privacy_Accessibility")
         case "screen":
             ScreenHost.shared.requestScreenRecording()
@@ -170,6 +170,20 @@ enum FeatureReport {
         default:
             settings("com.apple.preference.security")
         }
+    }
+
+    /// After an update with another signature (the move to the Developer ID) System Settings still shows Tandem switched on, but that
+    /// switch belongs to the old signature and this app is not let in. Only removing it helps: the question that follows then adds a
+    /// switch for this app. Only done when the permission is missing, so a working one is never touched.
+    static func forgetStale(_ service: String) {
+        guard let id = Bundle.main.bundleIdentifier else { return }
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        task.arguments = ["reset", service, id]
+        task.standardOutput = FileHandle.nullDevice
+        task.standardError = FileHandle.nullDevice
+        try? task.run()
+        task.waitUntilExit()
     }
 
     private static func settings(_ pane: String) {

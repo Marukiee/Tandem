@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.54",
+    "date": "2026-10-29",
+    "en": { "title": "Permissions after the switch", "new": ["Allowing Accessibility or Screen Recording again clears the old switch that no longer worked", "Calmer notice on the phone when something is still off on the Mac"] },
+    "nl": { "title": "Rechten na de overstap", "new": ["Toegankelijkheid of Schermopname opnieuw toestaan ruimt de oude schakelaar op die niet meer werkte", "Rustigere melding op de telefoon als er op de Mac nog iets uit staat"] }
+  },
+  {
     "version": "0.2.53",
     "date": "2026-10-29",
     "en": { "title": "Your phone as webcam, speaker and microphone", "new": ["Tandem Camera: pick it in Zoom or FaceTime and your phone's camera turns on", "Tandem Speaker and Tandem Microphone in the sound menu", "Your phone's files in the Finder sidebar", "Signed and notarized through Apple. After this update macOS asks once more for its permissions"] },

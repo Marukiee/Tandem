@@ -49,7 +49,7 @@ struct ClipboardSettings: View {
                     isOn: Binding(get: { history.pastesDirectly }, set: { on in
                         history.pastesDirectly = on
                         if on && !AXIsProcessTrusted() {
-                            _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
+                            ScreenHost.shared.requestAccessibility()
                         }
                     })
                 )
