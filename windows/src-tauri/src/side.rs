@@ -300,7 +300,9 @@ pub fn consider(app: &AppHandle, id: &str, reason: TandemSideReason) {
         return;
     }
     let (app, id) = (app.clone(), id.to_string());
-    tauri::async_runtime::spawn(async move { recheck(&app, &id).await });
+    // The person just set the device up for a screen, and may well have put it on the other side: one check is enough to move it.
+    let confirm = reason != TandemSideReason::ScreenStarted;
+    tauri::async_runtime::spawn(async move { recheck(&app, &id, confirm).await });
 }
 
 /// The side in use: the spot next to this screen, else where a check last put it, else the right for a second screen (where the desktop
@@ -319,12 +321,12 @@ fn name(side: TandemSide) -> Option<&'static str> {
     }
 }
 
-/// One check, and a second when the first says another side than the one in use: a sweep that the room happened to swallow on one side
-/// must not move anything the wrong way. Then the move, once the pointer is not on that device.
-async fn recheck(app: &AppHandle, id: &str) {
+/// One check, and with `confirm` a second when the first says another side than the one in use: a sweep that the room happened to
+/// swallow on one side must not move anything the wrong way. Then the move, once the pointer is not on that device.
+async fn recheck(app: &AppHandle, id: &str, confirm: bool) {
     let known = in_use(app, id);
     let mut found = check(app, id).await;
-    if let (Some(known), Some(side)) = (known.as_deref(), name(found)) {
+    if let (true, Some(known), Some(side)) = (confirm, known.as_deref(), name(found)) {
         if side != known {
             tauri::async_runtime::spawn_blocking(|| std::thread::sleep(Duration::from_millis(600))).await.ok();
             if check(app, id).await != found {

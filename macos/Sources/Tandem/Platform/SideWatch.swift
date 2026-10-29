@@ -74,7 +74,13 @@ final class SideWatch {
     /// does not work (see `findsFirst`).
     func screenStarted(_ peer: String) {
         guard let device = EngineModel.shared.device(peer) else { return }
-        guard DeviceSides.side(of: peer) == nil, findsFirst(device) else { return consider(peer, .screenStarted) }
+        guard DeviceSides.side(of: peer) == nil, findsFirst(device) else {
+            // The person just set the phone up for a screen, and may well have put it on the other side: one check is enough to move
+            // it, without the second one that guards a check nobody asked for against a sweep the room swallowed.
+            guard enabled, counts(device), AudioRoute.speakersCanPlay(), schedule.start(device: peer, reason: .screenStarted) else { return }
+            Task { @MainActor in _ = await check(device, confirm: false) }
+            return
+        }
         Task { @MainActor in
             var found: String?
             if AudioRoute.speakersCanPlay(), schedule.start(device: peer, reason: .screenStarted) { found = await check(device) }
@@ -121,13 +127,13 @@ final class SideWatch {
         Task { @MainActor in _ = await check(device) }
     }
 
-    /// One check, and a second when the first says another side than the one in use: a sweep that the room happened to swallow on one
-    /// side must not move a screen the wrong way. The side found, or nothing.
-    private func check(_ device: TandemDevice) async -> String? {
+    /// One check, and with [confirm] a second when the first says another side than the one in use: a sweep that the room happened to
+    /// swallow on one side must not move a screen the wrong way. The side found, or nothing.
+    private func check(_ device: TandemDevice, confirm: Bool = true) async -> String? {
         let edge = PointerShare.shared.layout[device.id].map(\.edge).flatMap { ["left", "right"].contains($0) ? $0 : nil }
         let known = edge ?? applied[device.id] ?? DeviceSides.side(of: device.id)
         var found = await SideFinder.check(device)
-        if let known, let side = Self.name(found), side != known {
+        if confirm, let known, let side = Self.name(found), side != known {
             try? await Task.sleep(for: .milliseconds(600))
             if await SideFinder.check(device) != found { found = .unsure }
         }

@@ -357,6 +357,8 @@ final class ScreenHost {
         }
         remotes[id] = Remote(id: id, peer: peer, name: name, control: control, offered: control, startedAt: Date(), width: size.width, height: size.height, extend: request.extend)
         ScreenPanels.shared.update()
+        // The side is listened for while the display gets ready, not after: by the time the screen shows, it is on the right side.
+        if request.extend { SideWatch.shared.screenStarted(peer) }
 
         Task { [weak self] in
             do {
@@ -384,7 +386,6 @@ final class ScreenHost {
                 // Pictures that came before the accept were not sent, and a still screen sends no new one: the first
                 // frame the viewer gets must be a keyframe made from what is on the display right now.
                 live.requestKeyframe(force: true)
-                if request.extend { SideWatch.shared.screenStarted(peer) }
             } catch {
                 self?.failed(session: id, error: error)
             }
