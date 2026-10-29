@@ -259,7 +259,9 @@ private struct MenuDeviceRow: View {
                                 Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                             }
                             if device.online, let rtt = device.rttMs {
-                                Text("· \(rtt) ms").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                                // The dot separates it from what comes before; with nothing before it, it stands alone.
+                                let alone = reach == .network && device.status.battery == nil
+                                Text(alone ? "\(rtt) ms" : "· \(rtt) ms").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -280,6 +282,37 @@ private struct MenuDeviceRow: View {
                     .disabled(!(device.online || device.ble))
                 }
                 LiveMenuButton(device: device, size: 32, onHover: { hover($0, device.isComputer ? "Control computer" : "Show phone screen") })
+                // A computer: this Mac's screen extended to it, and the shared mouse going over to it.
+                if device.isComputer {
+                    if device.caps.contains("screen.extend.view") {
+                        let extending = ScreenHost.shared.isExtending(to: device.id)
+                        RoundIconButton(
+                            symbol: "rectangle.on.rectangle", tint: extending ? Palette.indigo : nil, size: 32,
+                            onHover: { hover($0, extending ? "Stop extending" : "Extend my screen") }
+                        ) {
+                            if extending { ScreenHost.shared.stop(peer: device.id) }
+                            else if !VirtualDisplay.isAvailable { model.showToast(String(localized: "This Mac cannot make an extra screen")) }
+                            else { ScreenHost.shared.offerExtend(to: device) }
+                        }
+                        .disabled(!device.online && !extending)
+                    }
+                    let share = PointerShare.shared
+                    let mouse = share.enabled && share.layout[device.id] != nil
+                    RoundIconButton(
+                        symbol: mouse ? "computermouse.fill" : "computermouse", tint: mouse ? Palette.indigo : nil, size: 32,
+                        onHover: { hover($0, mouse ? "Stop the universal mouse" : "Universal mouse") }
+                    ) { toggleMouse() }
+                    .disabled(!device.online && !mouse)
+                }
+                // The other way round: what is on this Mac, on the phone. Only to a phone that can look at a computer's screen.
+                if device.platform == .android, device.caps.contains("screen.view") {
+                    let on = ScreenHost.shared.isMirroring(to: device.id)
+                    RoundIconButton(
+                        symbol: "macbook.and.iphone", tint: on ? Palette.indigo : nil, size: 32,
+                        onHover: { hover($0, on ? "Stop showing this Mac" : "Show this Mac on the phone") }
+                    ) { ScreenHost.shared.toggleMirror(on: device) }
+                    .disabled(!device.online)
+                }
                 if device.platform == .android {
                     let on = model.speaker.device == device.id
                     RoundIconButton(
@@ -306,6 +339,21 @@ private struct MenuDeviceRow: View {
             model.send(urls: urls, to: [device.id])
             return true
         } isTargeted: { targeted = $0 }
+    }
+
+    /// The pointer of this Mac goes over the edge to this computer, or no longer: on, it goes on the side the computer was last found on
+    /// (the right until a check knows better, which starts at once).
+    private func toggleMouse() {
+        let share = PointerShare.shared
+        if share.enabled, share.layout[device.id] != nil {
+            share.layout[device.id] = nil
+            return
+        }
+        if share.layout[device.id] == nil {
+            share.layout[device.id] = PointerShare.Placement(edge: DeviceSides.side(of: device.id) ?? "right", offset: nil)
+        }
+        share.enabled = true
+        SideWatch.shared.moved(device.id)
     }
 
     private func batterySymbol(_ battery: TandemBattery) -> String {

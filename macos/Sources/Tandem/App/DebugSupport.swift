@@ -470,9 +470,9 @@ enum DebugSupport {
                              caps: caps, vouchedByRemoved: false, clipboardEnabled: true, autoAccept: false, notificationsEnabled: true, ble: false, features: [])
             }
             EngineModel.shared.devices = [
-                made("debug-phone", "Maruks Telefoon", .android, online: true, battery: battery, caps: ["sms", "files", "capture", "screen.host", "audio.play"]),
-                made("debug-linux", "Maruks Linux Laptop", .linux, online: false, battery: nil, caps: []),
-                made("debug-xperia", "Xperia test", .android, online: false, battery: nil, caps: []),
+                made("debug-phone", "Maruks Telefoon", .android, online: true, battery: battery, caps: ["sms", "files", "capture", "screen.host", "audio.play", "screen.view"]),
+                made("debug-pc", "Maruks Linux Laptop", .linux, online: true, battery: nil, caps: ["screen.host", "screen.extend.view"]),
+                                made("debug-xperia", "Xperia test", .android, online: false, battery: nil, caps: []),
             ]
         }
         let host = NSHostingView(rootView: MenuBarPanel().environment(EngineModel.shared))

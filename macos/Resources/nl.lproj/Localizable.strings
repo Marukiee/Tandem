@@ -1244,3 +1244,7 @@
 "Click a shortcut and press the new keys, with Command, Control or Option. Escape keeps the old one. They work in every app." = "Klik op een sneltoets en druk de nieuwe toetsen in, met Command, Control of Option. Escape houdt de oude. Ze werken in elke app.";
 "%@ already starts %@." = "%1$@ start al %2$@.";
 "Send to someone nearby…" = "Naar iemand in de buurt…";
+"Stop showing this Mac" = "Stoppen met deze Mac tonen";
+"Show this Mac on the phone" = "Deze Mac tonen op de telefoon";
+"Asked %@ to show this Mac" = "%@ gevraagd deze Mac te tonen";
+"Stop the universal mouse" = "Gedeelde muis stoppen";

@@ -162,6 +162,14 @@ private fun MainNavigation() {
             displayFlag.value = null
         }
     }
+    val mirrorFlag = LocalContext.current.graph.openMirror
+    val openMirror by mirrorFlag.collectAsState()
+    LaunchedEffect(openMirror) {
+        openMirror?.let { id ->
+            nav.push(Route.Screen(id))
+            mirrorFlag.value = null
+        }
+    }
     val deviceFlag = LocalContext.current.graph.openDevice
     val deviceHost = LocalContext.current.graph.host
     val openDevice by deviceFlag.collectAsState()

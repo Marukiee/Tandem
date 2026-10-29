@@ -159,7 +159,11 @@ final class ScreenHost {
 
         // The person pressed the button for this on this Mac a moment ago: that was the question, it is not asked again.
         let asked = request.extend && (expectedExtend.removeValue(forKey: peer) ?? .distantPast) > Date()
-        if preApproved || asked {
+        // Shown on a device from the button for it here: to look at, as that button says; control is a question of its own.
+        let shown = !request.extend && (expectedMirror.removeValue(forKey: peer) ?? .distantPast) > Date()
+        if shown {
+            start(request: request, peer: peer, name: name, control: false)
+        } else if preApproved || asked {
             start(request: request, peer: peer, name: name, control: controlPossible)
         } else if let again = recent[peer], again.until > Date() {
             start(request: request, peer: peer, name: name, control: controlPossible && again.control)
@@ -199,6 +203,36 @@ final class ScreenHost {
 
     /// Devices that this Mac asked to show a screen of its own, and until when their request for it needs no question.
     @ObservationIgnored private var expectedExtend: [String: Date] = [:]
+    /// The same for devices this Mac asked to show what is on its own display.
+    @ObservationIgnored private var expectedMirror: [String: Date] = [:]
+
+    /// Whether this Mac's own display is shown on `peer` now.
+    func isMirroring(to peer: String) -> Bool { mirror?.peer == peer }
+
+    /// Shows what is on this Mac's display on `device`, or stops it when it is shown there already: the device is asked to open its
+    /// viewer, and the request that follows is taken without a question, to look at only.
+    func toggleMirror(on device: TandemDevice) {
+        if let running = mirror, running.peer == device.id { return stop(session: running.id) }
+        guard let engine else { return }
+        guard device.online else {
+            model?.showToast(String(localized: "\(device.name) cannot be reached right now"))
+            return
+        }
+        guard ScreenCapturer.hasPermission else {
+            FloatingToast.show(String(localized: "Allow Tandem to record this Mac's screen in System Settings, under Screen Recording"), symbol: "rectangle.dashed.badge.record")
+            return
+        }
+        // This Mac's own display goes to one device at a time.
+        if let running = mirror { stop(session: running.id) }
+        expectedMirror[device.id] = Date().addingTimeInterval(90)
+        do {
+            try engine.mediaOffer(peer: device.id, kind: .screen, facing: .any, extend: false)
+            model?.showToast(String(localized: "Asked \(device.name) to show this Mac"))
+        } catch {
+            expectedMirror[device.id] = nil
+            model?.showToast(String(localized: "\(device.name) cannot be reached right now"))
+        }
+    }
 
     /// Asks `device` to be a second screen of this Mac: it is told, and its request for the screen that follows is taken without a prompt.
     func offerExtend(to device: TandemDevice) {

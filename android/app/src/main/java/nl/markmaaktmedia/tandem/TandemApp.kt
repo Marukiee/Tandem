@@ -74,6 +74,8 @@ class Graph(app: Application) {
 
     /** Set when a computer asks this phone to be its second screen: the id of that computer, for the screen to open on. */
     val openDisplay = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    /** A computer offered to show its own display here: its viewer opens. */
+    val openMirror = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
     /** Set by a ring of the battery widget: the id of the device whose page is to be opened. */
     val openDevice = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)

@@ -61,4 +61,5 @@
     <string name="display_offer_title">%1$s wants to use this phone as a second screen</string>
     <string name="display_offer_text">Tap to open it</string>
     <string name="link_poor">Poor connection to %1$s, the picture may stutter</string>
+    <string name="mirror_offer_title">%1$s wants to show its screen on this phone</string>
 </resources>

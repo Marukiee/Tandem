@@ -97,7 +97,8 @@ struct LiveMenuButton: View {
 
     var body: some View {
         if device.canShowScreen || device.canShowCamera {
-            RoundIconMenu(symbol: "rectangle.on.rectangle", size: size, onHover: onHover) {
+            // A phone, or a display: two rectangles would read as a screen extended to it.
+            RoundIconMenu(symbol: device.isComputer ? "display" : "iphone.gen3", size: size, onHover: onHover) {
                 if device.canShowScreen {
                     Button {
                         LiveManager.shared.start(device: device, kind: .screen)

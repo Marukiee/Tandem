@@ -173,7 +173,7 @@ class TandemService : LifecycleService() {
                 TandemMediaRole.VIEWER -> nl.markmaaktmedia.tandem.audio.ScreenSound.viewEnded(this, event.peer)
                 TandemMediaRole.HOST -> nl.markmaaktmedia.tandem.audio.ScreenSound.hostEnded(this, event.peer)
             }
-            is TandemEvent.MediaOffered -> if (event.extend && event.kind == TandemMediaKind.SCREEN) offerDisplay(event.from)
+            is TandemEvent.MediaOffered -> if (event.kind == TandemMediaKind.SCREEN) offerDisplay(event.from, event.extend)
             is TandemEvent.CaptureRequested -> postCaptureRequest(event)
             is TandemEvent.CaptureCancelled -> getSystemService(NotificationManager::class.java).cancel(captureNotificationId(event.id.toLong()))
 
@@ -213,22 +213,24 @@ class TandemService : LifecycleService() {
      * A computer asks this phone to be its second screen. With the app open the screen opens at once, since the person just pressed
      * the button on that computer; otherwise it is a heads-up that opens it, because an app may not take over the screen from behind.
      */
-    private fun offerDisplay(from: String) {
+    /** A computer offers a screen: one of its own for this phone ([extend]), or what is on its display, to look at. */
+    private fun offerDisplay(from: String, extend: Boolean) {
         val graph = graph
         if (graph.appVisible) {
-            graph.openDisplay.value = from
+            if (extend) graph.openDisplay.value = from else graph.openMirror.value = from
             return
         }
         val name = graph.host.device(from)?.name ?: getString(R.string.capture_mac_fallback)
         val open = PendingIntent.getActivity(
             this, 0x4449,
-            Intent(this, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_DISPLAY).putExtra(MainActivity.EXTRA_DEVICE, from)
+            Intent(this, MainActivity::class.java).setAction(if (extend) MainActivity.ACTION_OPEN_DISPLAY else MainActivity.ACTION_OPEN_MIRROR)
+                .putExtra(MainActivity.EXTRA_DEVICE, from)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(this, Channels.CAPTURE)
             .setSmallIcon(R.drawable.ic_stat_tandem)
-            .setContentTitle(getString(R.string.display_offer_title, name))
+            .setContentTitle(getString(if (extend) R.string.display_offer_title else R.string.mirror_offer_title, name))
             .setContentText(getString(R.string.display_offer_text))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
