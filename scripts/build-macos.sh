@@ -99,6 +99,15 @@ rm -rf "$CTL"
 cp -R "$CTL_BUILD/TandemControls.appex" "$CTL"
 ./scripts/mac-signing.sh sign "$CTL" macos/Resources/TandemControls.entitlements
 
+# Tandem's sound devices (Tandem Speaker and Tandem Microphone): a Core Audio driver in C, carried in the app. The app copies it to
+# /Library/Audio/Plug-Ins/HAL when the person turns it on, with their password; its own version (Info.plist there) says when to again.
+DRV="$APP/Contents/Resources/TandemAudio.driver"
+mkdir -p "$DRV/Contents/MacOS"
+clang -bundle -arch arm64 -mmacosx-version-min=26.0 -O2 -Wall -fvisibility=hidden -framework CoreAudio -framework CoreFoundation \
+  -o "$DRV/Contents/MacOS/TandemAudio" macos/AudioDriver/TandemAudio.c macos/AudioDriver/ring.c
+cp macos/AudioDriver/Info.plist "$DRV/Contents/Info.plist"
+./scripts/mac-signing.sh sign "$DRV" macos/AudioDriver/TandemAudio.entitlements
+
 # Tandem Camera, the phone as a webcam: a system extension, which macOS only lets an app install with a provisioning profile of the
 # Developer ID that allows it. Without both (a build signed with the own certificate, or no profile yet) it is left out, and so is the
 # entitlement: an app that claims it without the profile is stopped at launch.
