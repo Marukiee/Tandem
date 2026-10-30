@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.58",
+    "date": "2026-10-30",
+    "en": { "title": "Hotspot joined by hand", "new": ["Joined your phone's hotspot yourself? Tandem sees it and offers to stop it"] },
+    "nl": { "title": "Hotspot met de hand gekozen", "new": ["Zelf op de hotspot van je telefoon gegaan? Tandem ziet het en biedt stoppen aan"] }
+  },
+  {
     "version": "0.2.57",
     "date": "2026-10-30",
     "en": { "title": "Hotspot from the panel", "new": ["A hotspot button by your phone in the menu bar panel", "A received file leaves the panel after a few minutes", "Tandem shows up again under Screen Recording when you allow it"] },

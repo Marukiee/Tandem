@@ -97,14 +97,27 @@ final class HotspotCoordinator {
     private func syncWithCurrentNetwork() async {
         guard let model, Date() >= ignoreNetworkUntil else { return }
         let saved = UserDefaults.standard.string(forKey: Self.ssidKey) ?? ""
-        guard !saved.isEmpty else { return }
-        let current = await Task.detached { CurrentWiFi.ssid() }.value
+        // A phone with its hotspot on that is itself on mobile data, yet reached over the local network: the only network the two
+        // share is that hotspot. This needs no name, which macOS hides without Location access (seen 2026-10-30, joined by hand).
+        let sharing = model.devices.first { phone in
+            phone.platform == .android && phone.online && phone.route == .lan
+                && phone.status.hotspot == true && phone.status.network?.kind == .cellular
+        }
+        let current = saved.isEmpty ? nil : await Task.detached { CurrentWiFi.ssid() }.value
         switch model.hotspotStatus {
         case .idle, .failed:
-            guard current == saved, let phone = model.devices.first(where: { $0.platform == .android }) else { return }
+            let byName = !saved.isEmpty && current == saved ? model.devices.first(where: { $0.platform == .android }) : nil
+            guard let phone = sharing ?? byName else { return }
             activeDevice = phone.id
             model.hotspotStatus = .connected(phone.name)
         case .connected:
+            // Seen by the link alone: once that is gone, so is the line. The hotspot is the phone's to keep or turn off.
+            if saved.isEmpty || current == nil {
+                if sharing == nil, model.devices.first(where: { $0.id == activeDevice })?.online == true {
+                    model.hotspotStatus = .idle
+                }
+                return
+            }
             // An unreadable name is not proof of leaving: only a different network is. Moved on to it (by hand, or macOS did): the
             // phone turns the hotspot off when nobody else is on it.
             if let current, current != saved {
