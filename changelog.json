@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.57",
+    "date": "2026-10-30",
+    "en": { "title": "Hotspot from the panel", "new": ["A hotspot button by your phone in the menu bar panel", "A received file leaves the panel after a few minutes", "Tandem shows up again under Screen Recording when you allow it"] },
+    "nl": { "title": "Hotspot vanuit het paneel", "new": ["Een hotspotknop bij je telefoon in het menubalkpaneel", "Een ontvangen bestand verdwijnt na een paar minuten uit het paneel", "Tandem staat weer bij Schermopname als je toestemming geeft"] }
+  },
+  {
     "version": "0.2.56",
     "date": "2026-10-29",
     "en": { "title": "No more stuck transfers", "new": ["A file that arrived no longer stays in the list as if it were still coming in"] },

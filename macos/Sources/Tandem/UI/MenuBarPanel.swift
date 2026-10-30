@@ -68,22 +68,42 @@ struct MenuBarPanel: View {
     private var quickShare: some View {
         VStack(alignment: .leading, spacing: 4) {
             MenuQuickShare()
-            if let item = model.transfers.first(where: { $0.state == .active }) {
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack {
-                        Text(item.name).font(.caption.weight(.medium)).lineLimit(1).truncationMode(.middle)
-                        Spacer()
-                        Text(formatSpeed(item.speed)).font(.caption).foregroundStyle(.secondary)
+            // Read again every few seconds: a file that came in stays a few minutes and then goes by itself, and a transfer that
+            // has said nothing for a while is no longer shown as running.
+            TimelineView(.periodic(from: .now, by: 5)) { context in
+                if let item = recentTransfer(at: context.date) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack {
+                            Text(item.name).font(.caption.weight(.medium)).lineLimit(1).truncationMode(.middle)
+                            Spacer()
+                            if item.state == .active {
+                                Text(formatSpeed(item.speed)).font(.caption).foregroundStyle(.secondary)
+                            } else {
+                                Text(item.incoming ? "Received" : "Sent").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        ProgressCapsule(fraction: item.fraction).frame(height: 5)
                     }
-                    ProgressCapsule(fraction: item.fraction).frame(height: 5)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 8)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
-                .padding(.horizontal, 10)
-                .padding(.bottom, 8)
-                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(4)
         .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 22, style: .continuous))
+    }
+
+    /// The newest transfer worth a line: one still moving, or one that finished in the last four minutes.
+    private func recentTransfer(at now: Date) -> TransferItem? {
+        model.transfers.first { item in
+            let quiet = now.timeIntervalSince(item.updated)
+            switch item.state {
+            case .active: return quiet < 30
+            case .done: return quiet < 240
+            case .failed: return false
+            }
+        }
     }
 
     // MARK: Header
@@ -324,6 +344,21 @@ private struct MenuDeviceRow: View {
                         onHover: { hover($0, on ? "Stop phone output" : "Phone as output") }
                     ) { model.toggleSpeaker(for: device.id) }
                     .disabled(!device.online)
+                    // Asked over Bluetooth when there is no network, so it works when it is needed most.
+                    let status = model.hotspotStatus
+                    let joined = { if case .connected = status { true } else { false } }()
+                    RoundIconButton(
+                        symbol: "personalhotspot", tint: joined || status.isBusy ? Palette.indigo : nil, size: 32,
+                        onHover: { hover($0, joined ? "Stop the hotspot" : "Turn on hotspot") }
+                    ) {
+                        if joined { model.hotspot.stop(device.id) }
+                        else if HotspotCredentials.complete { model.hotspot.requestNow(device.id) }
+                        else {
+                            model.showToast(String(localized: "Set up the hotspot first, on the page of your phone"))
+                            AppScenes.showMain(.device(device.id))
+                        }
+                    }
+                    .disabled(status.isBusy)
                 }
             }
             .environment(\.iconButtonsFill, true)

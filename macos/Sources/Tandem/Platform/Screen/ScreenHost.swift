@@ -2,6 +2,7 @@ import AppKit
 import ApplicationServices
 import Foundation
 import Observation
+import ScreenCaptureKit
 import TandemCore
 
 /// This Mac as the host of a remote desktop: another device (the Android app) looks at the screen and, when allowed,
@@ -586,7 +587,11 @@ final class ScreenHost {
     // MARK: Permissions
 
     func requestScreenRecording() {
-        if !CGPreflightScreenCaptureAccess() { FeatureReport.forgetStale("ScreenCapture") }
+        guard !CGPreflightScreenCaptureAccess() else { return }
+        FeatureReport.forgetStale("ScreenCapture")
+        // With its old switch gone macOS only lists Tandem again once it really tries to record (seen 2026-10-30): this attempt puts
+        // it back in the list, so there is a switch to turn on.
+        SCShareableContent.getExcludingDesktopWindows(false, onScreenWindowsOnly: true) { _, _ in }
         if !CGRequestScreenCaptureAccess() { openSettings(pane: "Privacy_ScreenCapture") }
     }
 
