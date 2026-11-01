@@ -126,6 +126,7 @@ struct MenuBarPanel: View {
                 }
             }
             Spacer(minLength: 0)
+            KeepAwakeButton()
             RoundIconMenu(symbol: "ellipsis", size: 30) {
                 Button("Pair a device…") { openMain(pairing: true) }
                 Button("Settings…") {

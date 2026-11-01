@@ -54,7 +54,9 @@ final class ScreenHost {
     }
 
     /// Every session that runs, by session id. The core keeps one screen session per device, so a device is in here at most once.
-    private(set) var remotes: [UInt64: Remote] = [:]
+    private(set) var remotes: [UInt64: Remote] = [:] {
+        didSet { if remotes.isEmpty != oldValue.isEmpty { KeepAwake.shared.setSession(!remotes.isEmpty) } }
+    }
     /// Requests that wait for the person, in the order they came; the first is the one on screen.
     private(set) var prompts: [Prompt] = []
     /// Whether the Accessibility permission is there, for the prompt and the indicator to show the truth.
@@ -353,6 +355,15 @@ final class ScreenHost {
             displays[id] = made
             display = ScreenCapturer.DisplayInfo(id: made.displayID, bounds: made.bounds, pixels: made.pixels)
             size = (shape.streamWidth, shape.streamHeight)
+        } else if Lid.leavesNoDisplay, VirtualDisplay.isAvailable,
+                  let made = VirtualDisplay(name: "Tandem", key: "lid-closed", width: 1920, height: 1200, hiDPI: false, refresh: min(60, max(30, fps))) {
+            // The lid is closed and kept awake: the built in display is off and there is nothing else to show, so a screen of software stands
+            // in for as long as this session runs, with the windows of the Mac on it.
+            NSLog("Tandem: the lid is closed and no display is on, %@ gets a screen of software", name)
+            virtual = made
+            displays[id] = made
+            display = ScreenCapturer.DisplayInfo(id: made.displayID, bounds: made.bounds, pixels: made.pixels)
+            size = ScreenGeometry.fit(source: made.pixels, maxWidth: Int(request.maxWidth), maxHeight: Int(request.maxHeight))
         } else {
             size = ScreenGeometry.fit(source: display.pixels, maxWidth: Int(request.maxWidth), maxHeight: Int(request.maxHeight))
         }

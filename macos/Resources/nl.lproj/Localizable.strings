@@ -1309,3 +1309,14 @@
 "That is not the password of this Mac." = "Dat is niet het wachtwoord van deze Mac.";
 "Screen Sharing does not answer. Turn it on in System Settings under General, Sharing." = "Scherm delen antwoordt niet. Zet het aan in Systeeminstellingen bij Algemeen, Delen.";
 "Screen Sharing did not let Tandem in: %@" = "Scherm delen liet Tandem niet binnen: %@";
+"Keep awake" = "Wakker houden";
+"Keep this Mac awake" = "Houd deze Mac wakker";
+"So your other devices can reach it while you are away. Turns itself off when the battery drops below %lld%%." = "Zodat je andere apparaten hem bereiken als je weg bent. Gaat vanzelf uit als de batterij onder %lld%% komt.";
+"Also with the lid closed" = "Ook met de klep dicht";
+"macOS asks for your password once. With the lid closed Tandem makes a screen of its own to show." = "macOS vraagt één keer je wachtwoord. Met de klep dicht maakt Tandem een eigen scherm om te tonen.";
+"This Mac stays awake" = "Deze Mac blijft wakker";
+"This Mac may sleep again" = "Deze Mac mag weer slapen";
+"Let this Mac sleep again" = "Laat deze Mac weer slapen";
+"Keep awake turned off, the battery is at %lld%%." = "Wakker houden staat uit, de batterij is %lld%%.";
+"Without your password this Mac still sleeps when you close it" = "Zonder je wachtwoord slaapt deze Mac nog als je hem dichtdoet";
+"Tandem wants to keep this Mac awake with the lid closed." = "Tandem wil deze Mac wakker houden met de klep dicht.";

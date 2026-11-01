@@ -227,6 +227,7 @@ final class EngineModel {
 
     func stop() async {
         ScreenHost.shared.shutdown()
+        KeepAwake.shared.shutdown()
         await drives.ejectAll(engine: engine)
         FilesInFinder.shared.stopAll(engine: engine)
         injector.releaseAll()
@@ -275,6 +276,7 @@ final class EngineModel {
         LiveManager.shared.attach(engine: engine)
         VirtualCamera.shared.start()
         ScreenHost.shared.attach(engine: engine, model: self)
+        KeepAwake.shared.start()
         engine.setAudioSink(sink: PhoneSound.shared.sink)
         PointerShare.shared.start()
         FocusShare.shared.start(engine: engine)

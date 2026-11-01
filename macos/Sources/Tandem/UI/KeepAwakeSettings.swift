@@ -1,0 +1,39 @@
+import SwiftUI
+
+/// Keeping this Mac awake to reach it from elsewhere, in General. The same switch is the cup in the panel.
+struct KeepAwakeSettings: View {
+    private var awake: KeepAwake { KeepAwake.shared }
+
+    var body: some View {
+        Section("Keep awake") {
+            DescribedToggle(
+                "Keep this Mac awake",
+                subtitle: "So your other devices can reach it while you are away. Turns itself off when the battery drops below \(KeepAwake.batteryFloor)%.",
+                isOn: Binding(get: { awake.on }, set: { awake.set($0) })
+            )
+            DescribedToggle(
+                "Also with the lid closed",
+                subtitle: "macOS asks for your password once. With the lid closed Tandem makes a screen of its own to show.",
+                isOn: Binding(get: { awake.lidClosed }, set: { awake.lidClosed = $0 })
+            )
+            .disabled(awake.asking)
+        }
+    }
+}
+
+/// The cup in the header of the panel: one press keeps this Mac awake, another lets it sleep again.
+struct KeepAwakeButton: View {
+    private var awake: KeepAwake { KeepAwake.shared }
+
+    var body: some View {
+        RoundIconButton(symbol: awake.on ? "cup.and.heat.waves.fill" : "cup.and.saucer", tint: awake.on ? Palette.indigo : nil, size: 30) {
+            awake.toggle()
+            FloatingToast.show(
+                awake.on ? String(localized: "This Mac stays awake") : String(localized: "This Mac may sleep again"),
+                symbol: awake.on ? "cup.and.heat.waves.fill" : "cup.and.saucer"
+            )
+        }
+        .help(awake.on ? "Let this Mac sleep again" : "Keep this Mac awake")
+        .disabled(awake.asking)
+    }
+}
