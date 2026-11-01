@@ -34,26 +34,14 @@ struct LockedAccessSection: View {
                             .tint(Palette.indigo)
                             .disabled(password.isEmpty || checking)
                     }
-                    if LockedAccess.remoteManagementOn, !managementRefused {
-                        // Remote Management lets in only the accounts it lists, an administrator too, so this is said before the first try.
-                        HStack {
-                            Text("Remote Management is on, so it decides who comes in. It has to allow you to Observe and Control.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer(minLength: 8)
-                            Button("Open Remote Management") { LockedAccess.openRemoteManagementSettings() }
-                        }
+                    if LockedAccess.remoteManagementOn {
+                        // Remote Management lets in only who it allows, an administrator too, and its switches sit two sheets deep.
+                        RemoteManagementSteps()
                     }
                     if let problem {
-                        HStack {
-                            Label(problem, systemImage: "exclamationmark.triangle.fill")
-                                .font(.caption)
-                                .foregroundStyle(Palette.urgent)
-                            if managementRefused {
-                                Spacer(minLength: 8)
-                                Button("Open Remote Management") { LockedAccess.openRemoteManagementSettings() }
-                            }
-                        }
+                        Label(problem, systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(Palette.urgent)
                     }
                 }
             } else if on, let failure {
@@ -118,7 +106,7 @@ struct LockedAccessSection: View {
             } catch ScreenSharingClient.Failure.wrongPassword {
                 managementRefused = LockedAccess.remoteManagementOn
                 problem = managementRefused
-                    ? String(localized: "Remote Management turned it down. Open it, click the i, and allow access for all users, or add yourself with Observe and Control. Then save again.")
+                    ? String(localized: "Remote Management turned it down. Follow the steps above, then save again.")
                     : String(localized: "That is not the password of this Mac.")
             } catch ScreenSharingClient.Failure.unreachable {
                 problem = String(localized: "Screen Sharing does not answer. Turn it on in System Settings under General, Sharing.")
@@ -133,5 +121,35 @@ struct LockedAccessSection: View {
         sharing = LockedAccess.screenSharingOn
         on = LockedAccess.hasPassword
         failure = LockedAccess.lastFailure
+    }
+}
+
+/// Where Remote Management keeps who may observe and control, in the words System Settings uses.
+private struct RemoteManagementSteps: View {
+    private let steps: [LocalizedStringKey] = [
+        "Click the i next to Remote Management.",
+        "At Allow access for, choose All users, or add yourself with the +.",
+        "Click Options… and check Observe and Control.",
+        "Click OK and Done, then save here.",
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Remote Management is on and decides who comes in.")
+                    .font(.caption.weight(.semibold))
+                Spacer(minLength: 8)
+                Button("Open Remote Management") { LockedAccess.openRemoteManagementSettings() }
+            }
+            ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("\(index + 1).")
+                        .monospacedDigit()
+                    Text(step)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            }
+        }
     }
 }
