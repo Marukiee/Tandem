@@ -458,6 +458,21 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
             name = name,
             onRetry = { viewer.retry() },
             onClose = onBack,
+            platform = device?.platform,
+            // Locked, and it lets this phone unlock it: the fingerprint, the unlock, and the screen asked for again once it opened.
+            onUnlock = if (device?.online == true && device.status.unlock == true && activity != null) {
+                {
+                    UnlockPrompt.ask(activity, device.name, onYes = {
+                        graph.scope.launch {
+                            runCatching { graph.host.engine?.unlock(id) }
+                            kotlinx.coroutines.delay(2_000)
+                            viewer.retry()
+                        }
+                    }, onNo = {})
+                }
+            } else {
+                null
+            },
         )
 
         // The slim bar at the top. It stays: a quiet bar is dimmed, a touch brings it back to full.
@@ -717,6 +732,8 @@ private fun Overlay(
     name: String,
     onRetry: () -> Unit,
     onClose: () -> Unit,
+    platform: uniffi.tandem_core.TandemPlatform? = null,
+    onUnlock: (() -> Unit)? = null,
 ) {
     val extras = LocalTandemExtraColors.current
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -787,8 +804,26 @@ private fun Overlay(
                 // Not possible now: closing is what comes next, so that is the coloured button.
                 Outcome.Denied -> Message(TandemIcons.Shield, R.string.screen_denied_title, R.string.screen_denied_body)
                 Outcome.Busy -> Message(TandemIcons.Person, R.string.screen_busy_title, R.string.screen_busy_body, closeFirst = true)
-                Outcome.Unavailable -> Message(TandemIcons.Error, R.string.screen_unavailable_title, R.string.screen_unavailable_body, closeFirst = true)
-                Outcome.Locked -> Message(TandemIcons.Lock, R.string.screen_locked_title, R.string.screen_locked_body, closeFirst = true)
+                // What is missing, and what unlocks it, in the words of the system that computer runs.
+                Outcome.Unavailable -> Message(
+                    TandemIcons.Error, R.string.screen_unavailable_title,
+                    when (platform) {
+                        uniffi.tandem_core.TandemPlatform.MAC_OS -> R.string.screen_unavailable_body_mac
+                        uniffi.tandem_core.TandemPlatform.LINUX -> R.string.screen_unavailable_body_linux
+                        else -> R.string.screen_unavailable_body
+                    },
+                    closeFirst = true,
+                )
+                Outcome.Locked -> Message(
+                    TandemIcons.Lock, R.string.screen_locked_title,
+                    when {
+                        onUnlock != null -> R.string.screen_locked_body_unlock
+                        platform == uniffi.tandem_core.TandemPlatform.LINUX -> R.string.screen_locked_body_linux
+                        platform == uniffi.tandem_core.TandemPlatform.WINDOWS -> R.string.screen_locked_body_windows
+                        else -> R.string.screen_locked_body
+                    },
+                    closeFirst = true, unlock = onUnlock != null,
+                )
                 Outcome.NoAnswer -> Message(TandemIcons.Sleep, R.string.screen_noanswer_title, R.string.screen_noanswer_body)
                 Outcome.Retry -> null
             }
@@ -805,18 +840,22 @@ private fun Overlay(
             val shown = remember { mutableStateOf<Message?>(null) }
             if (finished != null) shown.value = finished
             shown.value?.let { message ->
-                EndedCard(message, name, onRetry, onClose)
+                EndedCard(message, name, onRetry, onClose, onUnlock)
             }
         }
     }
 }
 
-private class Message(val icon: @Composable () -> Painter, val title: Int, val body: Int, val named: Boolean = true, val closeFirst: Boolean = false) {
-    constructor(icon: Painter, title: Int, body: Int, named: Boolean = true, closeFirst: Boolean = false) : this({ icon }, title, body, named, closeFirst)
+private class Message(
+    val icon: @Composable () -> Painter, val title: Int, val body: Int, val named: Boolean = true, val closeFirst: Boolean = false,
+    val unlock: Boolean = false,
+) {
+    constructor(icon: Painter, title: Int, body: Int, named: Boolean = true, closeFirst: Boolean = false, unlock: Boolean = false) :
+        this({ icon }, title, body, named, closeFirst, unlock)
 }
 
 @Composable
-private fun EndedCard(message: Message, name: String, onRetry: () -> Unit, onClose: () -> Unit) {
+private fun EndedCard(message: Message, name: String, onRetry: () -> Unit, onClose: () -> Unit, onUnlock: (() -> Unit)? = null) {
     val scheme = MaterialTheme.colorScheme
     Column(
         Modifier
@@ -843,7 +882,11 @@ private fun EndedCard(message: Message, name: String, onRetry: () -> Unit, onClo
             textAlign = TextAlign.Center,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (message.closeFirst) {
+            if (message.unlock && onUnlock != null) {
+                // Unlocking is what you came to do here; closing is the other choice.
+                SecondaryPillButton(stringResource(R.string.screen_close), onClose)
+                PrimaryPillButton(stringResource(R.string.unlock_row_title), onUnlock, icon = TandemIcons.Key)
+            } else if (message.closeFirst) {
                 SecondaryPillButton(stringResource(R.string.screen_try_again), onRetry)
                 PrimaryPillButton(stringResource(R.string.screen_close), onClose)
             } else {

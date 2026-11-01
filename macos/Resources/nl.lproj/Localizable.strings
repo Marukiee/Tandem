@@ -1342,3 +1342,9 @@
 "unlock %@" = "%@ ontgrendelen";
 "Unlock" = "Ontgrendel";
 "Unlock this computer with Touch ID" = "Ontgrendel deze computer met Touch ID";
+"Unlock it with Touch ID, and its screen shows here." = "Ontgrendel hem met Touch ID, dan verschijnt zijn scherm hier.";
+"A locked computer shows nothing to other apps. Unlock it there, or let this Mac unlock it: in Tandem on that computer, under Behaviour, turn on Unlock with a fingerprint." = "Een vergrendelde computer laat andere apps niets zien. Ontgrendel hem daar, of laat deze Mac hem ontgrendelen: zet in Tandem op die computer onder Gedrag Ontgrendel met een vingerafdruk aan.";
+"A locked computer shows nothing to other apps. Unlock it there and try again." = "Een vergrendelde computer laat andere apps niets zien. Ontgrendel hem daar en probeer het opnieuw.";
+"That computer cannot share its screen yet. Answer the question of the desktop there about sharing the screen, and try again." = "Die computer kan zijn scherm nog niet delen. Beantwoord daar de vraag van het bureaublad over scherm delen, en probeer het opnieuw.";
+"That computer cannot share its screen right now. See What works in Tandem there for what is missing." = "Die computer kan zijn scherm nu niet delen. Kijk in Tandem daar bij Wat werkt wat er ontbreekt.";
+"That Mac cannot share its screen yet. Turn on Screen Recording and Accessibility for Tandem there, in System Settings under Privacy & Security, and try again." = "Die Mac kan zijn scherm nog niet delen. Zet daar Schermopname en Toegankelijkheid aan voor Tandem, in Systeeminstellingen bij Privacy en beveiliging, en probeer het opnieuw.";

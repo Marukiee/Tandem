@@ -345,8 +345,14 @@ impl TandemMediaViewer for Viewer {
             TandemMediaEnd::Locked => Some("live_end_locked"),
             _ => None,
         };
+        // What unlocks a computer, or which permission it misses, is said in the words of the system it runs.
+        let platform = crate::events::device(&self.app, &ended.peer).and_then(|d| d["platform"].as_str().map(str::to_string)).unwrap_or_default();
+        let key = key.map(|key| match (key, platform.as_str()) {
+            ("live_end_locked" | "live_end_unavailable", "macos" | "linux" | "windows" | "android") => format!("{key}_{platform}"),
+            _ => key.to_string(),
+        });
         if let Some(key) = key {
-            let text = crate::i18n::t1(&self.app, key, &ended.name);
+            let text = crate::i18n::t1(&self.app, &key, &ended.name);
             crate::events::say(&self.app, &text);
             crate::events::toast(&self.app, &ended.name, &text);
         }

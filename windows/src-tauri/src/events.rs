@@ -50,7 +50,7 @@ fn takes_pointer(device: &Value) -> bool {
         && device["features"].as_array().is_some_and(|f| f.iter().any(|f| f["id"] == "pointer" && f["ready"].as_bool() == Some(true)))
 }
 
-fn device(app: &AppHandle, id: &str) -> Option<Value> {
+pub fn device(app: &AppHandle, id: &str) -> Option<Value> {
     app.state::<AppState>().data.lock().unwrap().devices.iter().find(|d| d["id"] == id).cloned()
 }
 

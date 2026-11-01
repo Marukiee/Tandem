@@ -82,7 +82,9 @@ struct LiveCopy: Equatable {
         )
     }
 
-    static func ended(_ end: LiveEnd, name: String, kind: TandemMediaKind, computer: Bool = false) -> LiveCopy {
+    /// `platform` and `unlockable` only matter for a locked computer: what unlocks it from afar differs per system, and one that lets
+    /// this Mac unlock it gets a button for it.
+    static func ended(_ end: LiveEnd, name: String, kind: TandemMediaKind, computer: Bool = false, platform: TandemPlatform? = nil, unlockable: Bool = false) -> LiveCopy {
         let what = kind == .camera ? String(localized: "its camera") : String(localized: "its screen")
         switch end {
         case .stopped:
@@ -122,7 +124,11 @@ struct LiveCopy: Equatable {
             return LiveCopy(
                 title: String(localized: "\(name) could not start"),
                 detail: computer
-                    ? String(localized: "That computer cannot share its screen yet. On a Mac, allow Screen Recording for Tandem. On Linux with Wayland, answer the question of the desktop about sharing the screen. Then try again.")
+                    ? platform == .linux
+                        ? String(localized: "That computer cannot share its screen yet. Answer the question of the desktop there about sharing the screen, and try again.")
+                        : platform == .windows
+                            ? String(localized: "That computer cannot share its screen right now. See What works in Tandem there for what is missing.")
+                            : String(localized: "That Mac cannot share its screen yet. Turn on Screen Recording and Accessibility for Tandem there, in System Settings under Privacy & Security, and try again.")
                     : kind == .camera
                         ? String(localized: "The camera is in use by another app, or Tandem is not allowed to use it.")
                         : String(localized: "Screen sharing was not confirmed on the phone."),
@@ -144,7 +150,13 @@ struct LiveCopy: Equatable {
         case .locked:
             return LiveCopy(
                 title: String(localized: "\(name) is locked"),
-                detail: String(localized: "A locked computer shows nothing to other apps. Unlock it there, or let a Mac be reached while it is locked: in Tandem on that Mac, under Remote control."),
+                detail: unlockable
+                    ? String(localized: "Unlock it with Touch ID, and its screen shows here.")
+                    : platform == .linux
+                        ? String(localized: "A locked computer shows nothing to other apps. Unlock it there, or let this Mac unlock it: in Tandem on that computer, under Behaviour, turn on Unlock with a fingerprint.")
+                        : platform == .windows
+                            ? String(localized: "A locked computer shows nothing to other apps. Unlock it there and try again.")
+                            : String(localized: "A locked computer shows nothing to other apps. Unlock it there, or let a Mac be reached while it is locked: in Tandem on that Mac, under Remote control."),
                 symbol: "lock.fill", canRetry: true
             )
         case .failed:

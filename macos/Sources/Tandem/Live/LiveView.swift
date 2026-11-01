@@ -135,12 +135,24 @@ struct LiveView: View {
                 )
             }
         case let .ended(end):
-            StateCard(
-                copy: .ended(end, name: name, kind: session.kind, computer: peerIsComputer), busy: false, footnote: nil,
-                // Close is the one that is coloured: after a stop it is what you came to do, and Try again is the other choice.
-                primary: (String(localized: "Close"), { controller.close() }),
-                secondary: LiveCopy.ended(end, name: name, kind: session.kind, computer: peerIsComputer).canRetry ? (String(localized: "Try again"), { LiveManager.shared.restart(session) }) : nil
-            )
+            let device = model.device(session.peer)
+            // Locked, and it lets this Mac unlock it: Unlock is what you came to do, Close the other choice.
+            let unlockable = end == .locked && device?.online == true && device?.status.unlock == true
+            let copy = LiveCopy.ended(end, name: name, kind: session.kind, computer: peerIsComputer, platform: device?.platform, unlockable: unlockable)
+            if unlockable {
+                StateCard(
+                    copy: copy, busy: false, footnote: nil,
+                    primary: (String(localized: "Unlock"), { LiveManager.shared.unlockThenRestart(session) }),
+                    secondary: (String(localized: "Close"), { controller.close() })
+                )
+            } else {
+                StateCard(
+                    copy: copy, busy: false, footnote: nil,
+                    // Close is the one that is coloured: after a stop it is what you came to do, and Try again is the other choice.
+                    primary: (String(localized: "Close"), { controller.close() }),
+                    secondary: copy.canRetry ? (String(localized: "Try again"), { LiveManager.shared.restart(session) }) : nil
+                )
+            }
         }
     }
 

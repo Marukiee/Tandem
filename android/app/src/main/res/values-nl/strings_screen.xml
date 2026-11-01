@@ -69,4 +69,9 @@
     <string name="screen_unlock_no_lock">Stel een schermvergrendeling in op deze telefoon om er een computer mee te ontgrendelen</string>
     <string name="unlock_row_title">Ontgrendelen</string>
     <string name="unlock_row_sub">Hij is vergrendeld. Je vingerafdruk maakt hem open</string>
+    <string name="screen_locked_body_unlock">Ontgrendel %1$s met je vingerafdruk, dan verschijnt zijn scherm hier.</string>
+    <string name="screen_locked_body_linux">Een vergrendelde computer laat andere apps niets zien. Ontgrendel %1$s daar, of laat deze telefoon hem ontgrendelen: zet in Tandem op die computer bij Gedrag Ontgrendel met een vingerafdruk aan.</string>
+    <string name="screen_locked_body_windows">Een vergrendelde computer laat andere apps niets zien. Ontgrendel %1$s daar en probeer het opnieuw.</string>
+    <string name="screen_unavailable_body_mac">Tandem op %1$s kan zijn scherm nog niet tonen. Zet op die Mac Schermopname en Toegankelijkheid aan voor Tandem, in Systeeminstellingen bij Privacy en beveiliging.</string>
+    <string name="screen_unavailable_body_linux">Tandem op %1$s kan zijn scherm nog niet tonen. Beantwoord op die computer de vraag van het bureaublad over scherm delen, en probeer het opnieuw.</string>
 </resources>

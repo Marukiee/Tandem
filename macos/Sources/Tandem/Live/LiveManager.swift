@@ -145,6 +145,22 @@ final class LiveManager {
     }
 
     /// The same window asks again: after an end, or with another camera or quality.
+    /// A locked computer that lets this Mac unlock it: Touch ID first, then the unlock, and the screen asked for again once it had a
+    /// moment to open.
+    func unlockThenRestart(_ session: LiveSession) {
+        let context = LAContext()
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) else { return }
+        let peer = session.peer
+        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: String(localized: "unlock \(session.phoneName)")) { [weak self, weak session] ok, _ in
+            guard ok else { return }
+            Task { @MainActor in
+                try? await self?.engine?.unlock(target: peer)
+                try? await Task.sleep(for: .seconds(2))
+                if let session { self?.restart(session) }
+            }
+        }
+    }
+
     func restart(_ session: LiveSession) {
         guard let device = EngineModel.shared.device(session.peer) else { return }
         start(device: device, kind: session.kind, facing: session.cameraFacing, quality: session.quality, reusing: session, extend: session.extend)

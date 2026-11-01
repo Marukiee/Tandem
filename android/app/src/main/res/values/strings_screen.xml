@@ -69,4 +69,9 @@
     <string name="screen_unlock_no_lock">Set a screen lock on this phone to unlock a computer with it</string>
     <string name="unlock_row_title">Unlock</string>
     <string name="unlock_row_sub">It is locked. Your fingerprint unlocks it</string>
+    <string name="screen_locked_body_unlock">Unlock %1$s with your fingerprint, and its screen shows here.</string>
+    <string name="screen_locked_body_linux">A locked computer shows nothing to other apps. Unlock %1$s there, or let this phone unlock it: in Tandem on that computer, under Behaviour, turn on Unlock with a fingerprint.</string>
+    <string name="screen_locked_body_windows">A locked computer shows nothing to other apps. Unlock %1$s there and try again.</string>
+    <string name="screen_unavailable_body_mac">Tandem on %1$s cannot show its screen yet. On that Mac, turn on Screen Recording and Accessibility for Tandem, in System Settings under Privacy &amp; Security.</string>
+    <string name="screen_unavailable_body_linux">Tandem on %1$s cannot show its screen yet. On that computer, answer the question of the desktop about sharing the screen, and try again.</string>
 </resources>
