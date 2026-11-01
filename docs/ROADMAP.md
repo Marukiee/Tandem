@@ -8,6 +8,10 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 - **Inloggen op afstand op een vergrendelde Mac** (gevraagd 2026-11-01): gebouwd in 0.2.61. De Mac logt zelf in op zijn eigen Scherm delen
   (127.0.0.1, Apple-login met het wachtwoord uit de sleutelhanger) en stuurt dat beeld als gewone H.264-sessie, dus elke kijker werkt.
   Na ontgrendelen gaat de sessie verder met de gewone opname. Werkt niet na een herstart, uitloggen of slaap.
+- **Vergrendelde Windows- en Linux-pc bereiken** (gevraagd 2026-11-01): Windows kan het met een eigen dienst die als SYSTEM draait,
+  het inlogscherm (Winlogon) vastlegt en de toetsen doorgeeft, zoals Chrome Remote Desktop en RustDesk; eenmalig installeren met
+  beheerdersrechten. Linux met een eigen systeemdienst (X11 en Wayland verschillen), of op GNOME via Remote Login (RDP). Alleen te
+  testen op een echte pc.
 - **Mac dichtgeklapt laten werken** (gevraagd 2026-11-01): wakker houden zoals Amphetamine. Inactief slapen tegenhouden kan zonder
   beheerder; dichtgeklapt wakker blijven vraagt `pmset disablesleep` met het beheerderswachtwoord, en zonder scherm is er niets om
   op te nemen (een scherm van software zou dat oplossen).

@@ -83,7 +83,7 @@ export function TourPage() {
 function iconOf(id) {
   switch (id) {
     case "control": return "pointer";
-    case "screen": return "device-desktop";
+    case "screen": case "screen.locked": return "device-desktop";
     case "microphone": return "microphone";
     case "ring": return "bell-ringing";
     case "focus": return "moon";

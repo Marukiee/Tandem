@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.62",
+    "date": "2026-11-01",
+    "en": { "title": "Locked Mac in What works", "new": ["What works shows whether this Mac can be reached while it is locked, with a button to set it up"] },
+    "nl": { "title": "Vergrendelde Mac in Wat werkt", "new": ["Wat werkt laat zien of deze Mac vergrendeld bereikbaar is, met een knop om het in te stellen"] }
+  },
+  {
     "version": "0.2.61",
     "date": "2026-11-01",
     "en": { "title": "Reach a locked Mac", "new": ["Turn on Reach this Mac while it is locked under Remote control, and your phone shows the lock screen so you can unlock it from anywhere"] },

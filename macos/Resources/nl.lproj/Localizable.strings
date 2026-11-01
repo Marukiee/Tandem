@@ -1301,6 +1301,9 @@
 "Screen Sharing asks for the password of this Mac before it shows the lock screen. It stays in your Keychain, and is never sent to another device." = "Scherm delen vraagt het wachtwoord van deze Mac voordat het het vergrendelscherm laat zien. Het blijft in je sleutelhanger en gaat nooit naar een ander apparaat.";
 "Password of %@" = "Wachtwoord van %@";
 "Enter again" = "Opnieuw invoeren";
+"Screen Sharing is off on this Mac" = "Scherm delen staat uit op deze Mac";
+"Reaching it while locked is off in Tandem on this Mac" = "Vergrendeld bereiken staat uit in Tandem op deze Mac";
+"Screen Sharing did not take the saved password. Enter it again in Tandem on this Mac." = "Scherm delen nam het bewaarde wachtwoord niet aan. Voer het opnieuw in in Tandem op deze Mac.";
 "Screen Sharing is off, so devices cannot reach this Mac while it is locked." = "Scherm delen staat uit, dus apparaten kunnen deze Mac niet bereiken als hij vergrendeld is.";
 "Turn on Screen Sharing first, in System Settings under General, Sharing" = "Zet eerst Scherm delen aan, in Systeeminstellingen bij Algemeen, Delen";
 "That is not the password of this Mac." = "Dat is niet het wachtwoord van deze Mac.";

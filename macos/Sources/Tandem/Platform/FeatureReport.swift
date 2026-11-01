@@ -55,6 +55,17 @@ enum FeatureReport {
         } else {
             add("screen", true, String(localized: "See this Mac's screen"), "", nil)
         }
+        // Through Screen Sharing of macOS, which has to be on, with the password of this Mac kept in Tandem.
+        let lockedName = String(localized: "Reach this Mac while it is locked")
+        if !LockedAccess.screenSharingOn {
+            add("screen.locked", false, lockedName, String(localized: "Screen Sharing is off on this Mac"), "sharing")
+        } else if !LockedAccess.hasPassword {
+            add("screen.locked", false, lockedName, String(localized: "Reaching it while locked is off in Tandem on this Mac"), "lockedaccess")
+        } else if LockedAccess.lastFailure != nil {
+            add("screen.locked", false, lockedName, String(localized: "Screen Sharing did not take the saved password. Enter it again in Tandem on this Mac."), "lockedaccess")
+        } else {
+            add("screen.locked", true, lockedName, "", nil)
+        }
         add("pointer", accessibility, String(localized: "Universal mouse"),
             String(localized: "Accessibility is off for Tandem on this Mac"), "accessibility")
         let blocked = MacMedia.sources.first { automation[$0.bundleID].map { [-1743, -1744].contains($0) } ?? false }
@@ -128,6 +139,10 @@ enum FeatureReport {
             settings("com.apple.preference.security?Privacy_ScreenCapture")
         case "restart":
             ScreenHost.shared.relaunch()
+        case "sharing":
+            LockedAccess.openSharingSettings()
+        case "lockedaccess":
+            AppScenes.showSettings(.screen)
         case "localnetwork":
             LocalNetwork.openSettings()
         case "automation":

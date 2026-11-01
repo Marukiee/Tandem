@@ -143,6 +143,7 @@ struct FeatureRow: View {
         case "control": "cursorarrow.click.2"
         case "pointer": "cursorarrow.motionlines"
         case "screen": "display"
+        case "screen.locked": "lock.display"
         case "media", "media.control": "playpause.fill"
         case "notifications", "alerts": "bell.badge"
         case "microphone": "mic"
