@@ -1333,3 +1333,5 @@
 "At Allow access for, choose All users, or add yourself with the +." = "Kies bij Sta toegang toe voor Alle gebruikers, of voeg jezelf toe met de +.";
 "Click Options… and check Observe and Control." = "Klik op Opties… en vink Observeren en Bedienen aan.";
 "Click OK and Done, then save here." = "Klik op OK en Gereed, en sla daarna hier op.";
+"Own settings for these devices" = "Eigen instellingen voor deze apparaten";
+"%lld devices" = "%lld apparaten";

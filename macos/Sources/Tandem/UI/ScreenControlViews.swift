@@ -206,12 +206,17 @@ private struct ScreenIndicatorView: View {
 /// them and changes them. The permissions macOS wants for it are here too, with the honest state of each.
 struct ScreenSettings: View {
     @Environment(EngineModel.self) private var model
-    @LocalState private var target: String?
+    /// Empty is the choices for all devices; otherwise the devices that are changed together.
+    @LocalState private var targets: Set<String> = []
     @LocalState private var version = 0
     @LocalState private var tick = 0
 
     private var host: ScreenHost { ScreenHost.shared }
     private var engine: TandemEngine? { model.tandem }
+
+    /// The chosen devices in the order of the list. The first one is shown; a change goes to all of them.
+    private var chosen: [String] { model.devices.map(\.id).filter(targets.contains) }
+    private var target: String? { chosen.first }
 
     private var policy: TandemMediaPolicy? {
         _ = version
@@ -223,7 +228,7 @@ struct ScreenSettings: View {
     private var own: Bool {
         guard let target else { return true }
         _ = version
-        return engine?.hasOwnMediaPolicy(id: target) ?? false
+        return chosen.allSatisfy { engine?.hasOwnMediaPolicy(id: $0) ?? false }
     }
 
     private var editable: Bool { target == nil || own }
@@ -299,23 +304,18 @@ struct ScreenSettings: View {
             }
 
             Section {
-                Picker("For", selection: $target) {
-                    Text("All devices").tag(String?.none)
-                    ForEach(model.devices, id: \.id) { device in
-                        Text(device.name).tag(String?.some(device.id))
-                    }
-                }
-                if let target {
+                DeviceTargetsPicker(devices: model.devices, selection: $targets)
+                if !chosen.isEmpty {
                     DescribedToggle(
-                        "Own settings for this device",
+                        chosen.count == 1 ? LocalizedStringKey("Own settings for this device") : LocalizedStringKey("Own settings for these devices"),
                         subtitle: "Otherwise it follows the settings for all devices",
                         isOn: Binding(
                             get: { own },
                             set: { wantOwn in
                                 if wantOwn {
-                                    if let policy { try? engine?.setMediaPolicy(id: target, policy: policy) }
+                                    if let policy { for id in chosen where !(engine?.hasOwnMediaPolicy(id: id) ?? false) { try? engine?.setMediaPolicy(id: id, policy: policy) } }
                                 } else {
-                                    try? engine?.clearMediaPolicy(id: target)
+                                    for id in chosen { try? engine?.clearMediaPolicy(id: id) }
                                 }
                                 version += 1
                             }
@@ -363,8 +363,13 @@ struct ScreenSettings: View {
     private func change(_ edit: (inout TandemMediaPolicy) -> Void) {
         guard let engine, var next = policy else { return }
         edit(&next)
-        if let target {
-            try? engine.setMediaPolicy(id: target, policy: next)
+        if !chosen.isEmpty {
+            // Each device keeps what it had in the other choices; only the one that was changed is made the same.
+            for id in chosen {
+                guard var own = try? engine.mediaPolicy(id: id) else { continue }
+                edit(&own)
+                try? engine.setMediaPolicy(id: id, policy: own)
+            }
         } else {
             try? engine.setMediaDefaultPolicy(policy: next)
         }

@@ -7,8 +7,8 @@ import TandemCore
 struct FileSettings: View {
     @Environment(EngineModel.self) private var model
 
-    /// Nil is the choices for all devices; an id is one device.
-    @LocalState private var target: String?
+    /// Empty is the choices for all devices; otherwise the devices that are changed together.
+    @LocalState private var targets: Set<String> = []
     @LocalState private var version = 0
     @LocalState private var activity: [TandemFileActivity] = []
 
@@ -16,6 +16,10 @@ struct FileSettings: View {
     private static let limits: [UInt64] = [0, 10_000_000, 100_000_000, 1_000_000_000, 10_000_000_000]
 
     private var engine: TandemEngine? { model.tandem }
+
+    /// The chosen devices in the order of the list. The first one is shown; a change goes to all of them.
+    private var chosen: [String] { model.devices.map(\.id).filter(targets.contains) }
+    private var target: String? { chosen.first }
 
     private var policy: TandemFilePolicy? {
         _ = version
@@ -27,7 +31,7 @@ struct FileSettings: View {
     private var own: Bool {
         guard let target else { return true }
         _ = version
-        return engine?.hasOwnFilePolicy(id: target) ?? false
+        return chosen.allSatisfy { engine?.hasOwnFilePolicy(id: $0) ?? false }
     }
 
     /// A device that follows the choices for all devices shows them, but they are changed under All devices.
@@ -36,24 +40,19 @@ struct FileSettings: View {
     var body: some View {
         Form {
             Section {
-                Picker("For", selection: $target) {
-                    Text("All devices").tag(String?.none)
-                    ForEach(model.devices, id: \.id) { device in
-                        Text(device.name).tag(String?.some(device.id))
-                    }
-                }
-                if let target {
+                DeviceTargetsPicker(devices: model.devices, selection: $targets)
+                if !chosen.isEmpty {
                     DescribedToggle(
-                        "Own settings for this device",
+                        chosen.count == 1 ? LocalizedStringKey("Own settings for this device") : LocalizedStringKey("Own settings for these devices"),
                         subtitle: "Otherwise it follows the settings for all devices",
                         isOn: Binding(
                             get: { own },
                             set: { wantOwn in
                                 if wantOwn {
                                     // It starts from what it follows now, so nothing changes until a person changes it.
-                                    if let policy { try? engine?.setFilePolicy(id: target, policy: policy) }
+                                    if let policy { for id in chosen where !(engine?.hasOwnFilePolicy(id: id) ?? false) { try? engine?.setFilePolicy(id: id, policy: policy) } }
                                 } else {
-                                    try? engine?.clearFilePolicy(id: target)
+                                    for id in chosen { try? engine?.clearFilePolicy(id: id) }
                                 }
                                 version += 1
                             }
@@ -118,7 +117,7 @@ struct FileSettings: View {
                 try? await Task.sleep(for: .seconds(3))
             }
         }
-        .onChange(of: target) { version += 1 }
+        .onChange(of: targets) { version += 1 }
     }
 
     // MARK: Rows
@@ -182,8 +181,13 @@ struct FileSettings: View {
     private func change(_ edit: (inout TandemFilePolicy) -> Void) {
         guard var next = policy, let engine else { return }
         edit(&next)
-        if let target {
-            try? engine.setFilePolicy(id: target, policy: next)
+        if !chosen.isEmpty {
+            // Each device keeps what it had in the other choices; only the one that was changed is made the same.
+            for id in chosen {
+                guard var own = try? engine.filePolicy(id: id) else { continue }
+                edit(&own)
+                try? engine.setFilePolicy(id: id, policy: own)
+            }
         } else {
             try? engine.setFileDefaultPolicy(policy: next)
         }
