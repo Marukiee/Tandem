@@ -10,8 +10,9 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
   Na ontgrendelen gaat de sessie verder met de gewone opname. Werkt niet na een herstart, uitloggen of slaap.
 - **Vergrendelde Windows- en Linux-pc bereiken** (gevraagd 2026-11-01): Windows kan het met een eigen dienst die als SYSTEM draait,
   het inlogscherm (Winlogon) vastlegt en de toetsen doorgeeft, zoals Chrome Remote Desktop en RustDesk; eenmalig installeren met
-  beheerdersrechten. Linux met een eigen systeemdienst (X11 en Wayland verschillen), of op GNOME via Remote Login (RDP). Alleen te
-  testen op een echte pc.
+  beheerdersrechten. Linux: op GNOME (Wayland) kan het niet, getest 2026-11-01: Mutter laat geen nieuwe sessie van GNOME Remote Desktop
+  toe zolang het scherm vergrendeld is. Alleen een sessie die al openstond voor het vergrendelen blijft werken, met het deel-icoon
+  van GNOME steeds in beeld. X11 (met een eigen dienst) en KDE nog niet geprobeerd. Alleen te testen op een echte pc.
 - **Mac dichtgeklapt laten werken** (gevraagd 2026-11-01): wakker houden zoals Amphetamine. Inactief slapen tegenhouden kan zonder
   beheerder; dichtgeklapt wakker blijven vraagt `pmset disablesleep` met het beheerderswachtwoord, en zonder scherm is er niets om
   op te nemen (een scherm van software zou dat oplossen).
