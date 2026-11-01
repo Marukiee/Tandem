@@ -1,6 +1,7 @@
 import AppKit
 import CoreVideo
 import Foundation
+import os
 import Security
 import TandemCore
 import VideoToolbox
@@ -33,8 +34,18 @@ enum LockedAccess {
     static var port: UInt16 { debugPort ?? 5900 }
     static var user: String { NSUserName() }
 
-    /// Screen Sharing (or Remote Management, which includes it) answers on this Mac.
+    /// Screen Sharing (or Remote Management, which includes it) answers on this Mac. Asked by views as they redraw, so the answer is
+    /// kept a moment: every probe is a connection Screen Sharing logs and handles.
     static var screenSharingOn: Bool {
+        if let (time, answer) = probed.withLock({ $0 }), Date().timeIntervalSince(time) < 3 { return answer }
+        let answer = probe()
+        probed.withLock { $0 = (Date(), answer) }
+        return answer
+    }
+
+    private static let probed = OSAllocatedUnfairLock<(Date, Bool)?>(initialState: nil)
+
+    private static func probe() -> Bool {
         let probe = socket(AF_INET, SOCK_STREAM, 0)
         guard probe >= 0 else { return false }
         defer { close(probe) }
@@ -97,6 +108,11 @@ enum LockedAccess {
 
     static func openSharingSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.Sharing-Settings.extension") { NSWorkspace.shared.open(url) }
+    }
+
+    /// Sharing, at Remote Management where macOS knows the anchor; its i holds who may come in.
+    static func openRemoteManagementSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Sharing-Settings.extension?Services_ARDService") { NSWorkspace.shared.open(url) }
     }
 }
 

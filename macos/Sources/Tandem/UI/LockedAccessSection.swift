@@ -9,6 +9,8 @@ struct LockedAccessSection: View {
     @State private var password = ""
     @State private var checking = false
     @State private var problem: String?
+    /// The password was right and Remote Management still said no, which only its own settings change.
+    @State private var managementRefused = false
     @State private var failure = LockedAccess.lastFailure
 
     var body: some View {
@@ -32,10 +34,26 @@ struct LockedAccessSection: View {
                             .tint(Palette.indigo)
                             .disabled(password.isEmpty || checking)
                     }
+                    if LockedAccess.remoteManagementOn, !managementRefused {
+                        // Remote Management lets in only the accounts it lists, an administrator too, so this is said before the first try.
+                        HStack {
+                            Text("Remote Management is on, so it decides who comes in. It has to allow you to Observe and Control.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer(minLength: 8)
+                            Button("Open Remote Management") { LockedAccess.openRemoteManagementSettings() }
+                        }
+                    }
                     if let problem {
-                        Label(problem, systemImage: "exclamationmark.triangle.fill")
-                            .font(.caption)
-                            .foregroundStyle(Palette.urgent)
+                        HStack {
+                            Label(problem, systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(Palette.urgent)
+                            if managementRefused {
+                                Spacer(minLength: 8)
+                                Button("Open Remote Management") { LockedAccess.openRemoteManagementSettings() }
+                            }
+                        }
                     }
                 }
             } else if on, let failure {
@@ -68,6 +86,7 @@ struct LockedAccessSection: View {
             asking = false
             password = ""
             problem = nil
+            managementRefused = false
             return
         }
         refresh()
@@ -83,6 +102,7 @@ struct LockedAccessSection: View {
         guard !password.isEmpty, !checking else { return }
         checking = true
         problem = nil
+        managementRefused = false
         let entered = password
         Task {
             do {
@@ -96,8 +116,9 @@ struct LockedAccessSection: View {
                     FloatingToast.show(String(localized: "Restart Tandem so your other devices can see that this Mac is ready."), symbol: "arrow.clockwise")
                 }
             } catch ScreenSharingClient.Failure.wrongPassword {
-                problem = LockedAccess.remoteManagementOn
-                    ? String(localized: "Remote Management turned it down. In System Settings, General, Sharing, open the i of Remote Management and allow access for all users, or for yourself with Observe and Control. Then save again.")
+                managementRefused = LockedAccess.remoteManagementOn
+                problem = managementRefused
+                    ? String(localized: "Remote Management turned it down. Open it, click the i, and allow access for all users, or add yourself with Observe and Control. Then save again.")
                     : String(localized: "That is not the password of this Mac.")
             } catch ScreenSharingClient.Failure.unreachable {
                 problem = String(localized: "Screen Sharing does not answer. Turn it on in System Settings under General, Sharing.")
