@@ -5,6 +5,10 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 
 ## Nieuwe functies (gekozen door Mark, 2026-10-29), nog te bouwen, op alle apparaten
 
+- **Inloggen op afstand op een vergrendelde Mac** (gevraagd 2026-11-01, via Tailscale vanaf de telefoon): een app ziet het vergrendelscherm niet
+  en kan er niet in typen. Kan met een systeemdienst van Tandem (LaunchDaemon via `SMAppService`, eenmalig goedkeuren) die het
+  vergrendelscherm vastlegt en de toetsen doorgeeft, zoals RustDesk dat doet, of met Scherm delen van macOS en een VNC-kijker in de
+  Android-app. Tot dan zegt de telefoon dat de Mac vergrendeld is (0.2.60).
 - **Met de Developer ID (gekozen 2026-10-29, eerst releases ondertekenen en notariseren met team X8Y2M32MNQ; 0.2.43 neemt die al aan):**
   1. Telefoon als echte webcam op de Mac (Camera Extension) en op Windows (zie verderop). Mac gebouwd (2026-10-29, `macos/CameraExtension`,
      `VirtualCamera.swift`): komt alleen in de app met het provisioning profile van de Developer ID (System Extension), secret

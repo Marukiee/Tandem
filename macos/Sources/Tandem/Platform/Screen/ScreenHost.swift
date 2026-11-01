@@ -137,6 +137,9 @@ final class ScreenHost {
 
         guard request.kind == .screen, request.codecs.isEmpty || request.codecs.contains(.h264) else { return deny(.unsupported) }
         guard enabled else { return deny(.policy) }
+        // The lock screen belongs to the system: an app sees nothing of it and cannot type into it. Said straight away, instead of a
+        // session that keeps failing and a phone that keeps trying (seen 2026-11-01, over Tailscale while away from the Mac).
+        guard !ScreenLock.isLocked else { return deny(.locked) }
         guard ScreenCapturer.hasPermission else {
             FloatingToast.show(String(localized: "Allow Tandem to record this Mac's screen in System Settings, under Screen Recording"), symbol: "rectangle.dashed.badge.record")
             return deny(.unavailable)
@@ -356,7 +359,7 @@ final class ScreenHost {
         }
         registry.add(live)
         live.onGone = { [weak self] reason in
-            DispatchQueue.main.async { MainActor.assumeIsolated { self?.teardown(session: id, tell: true, reason: reason) } }
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.teardown(session: id, tell: true, reason: ScreenLock.isLocked ? .locked : reason) } }
         }
         remotes[id] = Remote(id: id, peer: peer, name: name, control: control, offered: control, startedAt: Date(), width: size.width, height: size.height, extend: request.extend)
         ScreenPanels.shared.update()
@@ -397,7 +400,7 @@ final class ScreenHost {
 
     private func failed(session: UInt64, error: Error) {
         guard let engine else { return }
-        let reason: TandemMediaEnd = ScreenCapturer.isPermissionError(error) ? .unavailable : .error
+        let reason: TandemMediaEnd = ScreenLock.isLocked ? .locked : ScreenCapturer.isPermissionError(error) ? .unavailable : .error
         try? engine.mediaDeny(session: session, reason: reason)
         teardown(session: session, tell: false)
         if reason == .unavailable {
@@ -535,7 +538,7 @@ final class ScreenHost {
                 live.requestKeyframe(force: true)
             } catch {
                 // A display that cannot be captured any more ends the session; the device asks again when it can.
-                teardown(session: id, tell: true, reason: .error)
+                teardown(session: id, tell: true, reason: ScreenLock.isLocked ? .locked : .error)
                 return
             }
         }
@@ -579,7 +582,7 @@ final class ScreenHost {
                 live.requestKeyframe(force: true)
             } catch {
                 // A display that cannot be captured any more ends the session. The viewer asks again when it can.
-                self.teardown(session: running.id, tell: true, reason: .error)
+                self.teardown(session: running.id, tell: true, reason: ScreenLock.isLocked ? .locked : .error)
             }
         }
     }
@@ -924,5 +927,13 @@ final class ScreenHostSession: @unchecked Sendable {
         }
         try await nextCapture.start(display: fresh, width: size.width, height: size.height, fps: rate)
         if changed { oldEncoder.invalidate() }
+    }
+}
+
+/// Whether this Mac shows its lock screen now.
+enum ScreenLock {
+    static var isLocked: Bool {
+        guard let session = CGSessionCopyCurrentDictionary() as? [String: Any] else { return false }
+        return session["CGSSessionScreenIsLocked"] as? Bool ?? false
     }
 }

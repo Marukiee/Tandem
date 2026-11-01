@@ -778,6 +778,7 @@ private fun Overlay(
                 Outcome.Denied -> Message(TandemIcons.Shield, R.string.screen_denied_title, R.string.screen_denied_body)
                 Outcome.Busy -> Message(TandemIcons.Person, R.string.screen_busy_title, R.string.screen_busy_body, closeFirst = true)
                 Outcome.Unavailable -> Message(TandemIcons.Error, R.string.screen_unavailable_title, R.string.screen_unavailable_body, closeFirst = true)
+                Outcome.Locked -> Message(TandemIcons.Lock, R.string.screen_locked_title, R.string.screen_locked_body, closeFirst = true)
                 Outcome.NoAnswer -> Message(TandemIcons.Sleep, R.string.screen_noanswer_title, R.string.screen_noanswer_body)
                 Outcome.Retry -> null
             }

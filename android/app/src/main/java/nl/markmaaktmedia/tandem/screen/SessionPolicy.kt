@@ -16,6 +16,9 @@ enum class Outcome {
     /** The Mac cannot, for now: no permission to record the screen, or no such feature. */
     Unavailable,
 
+    /** The Mac is locked: its lock screen cannot be shown or used by an app. Trying again changes nothing until it is unlocked. */
+    Locked,
+
     /** Nobody answered the question on the Mac. */
     NoAnswer,
 
@@ -30,6 +33,7 @@ object SessionPolicy {
         TandemMediaEnd.BUSY -> Outcome.Busy
         TandemMediaEnd.UNSUPPORTED, TandemMediaEnd.UNAVAILABLE -> Outcome.Unavailable
         TandemMediaEnd.TIMEOUT -> Outcome.NoAnswer
+        TandemMediaEnd.LOCKED -> Outcome.Locked
         TandemMediaEnd.PEER_GONE, TandemMediaEnd.ERROR, TandemMediaEnd.UNKNOWN_SESSION, TandemMediaEnd.REPLACED -> Outcome.Retry
     }
 

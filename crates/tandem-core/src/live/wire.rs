@@ -69,6 +69,8 @@ pub enum MediaEnd {
     UnknownSession,
     /// The other device was gone for longer than the grace period, or restarted.
     PeerGone,
+    /// The host is locked: its lock screen cannot be shown or used by an app. An older device reads it as `Error`.
+    Locked,
     #[serde(other)]
     Error,
 }

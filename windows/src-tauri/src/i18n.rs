@@ -173,6 +173,8 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "live_end_timeout") => "{0} did not answer. Is Tandem open there, and did you answer its question?",
         ("nl", "live_end_busy") => "{0} is al met een ander scherm bezig.",
         (_, "live_end_busy") => "{0} is already busy with another screen.",
+        ("nl", "live_end_locked") => "{0} is vergrendeld. Ontgrendel hem daar en probeer opnieuw.",
+        (_, "live_end_locked") => "{0} is locked. Unlock it there and try again.",
         ("nl", "live_end_lost") => "De verbinding met {0} is weg.",
         (_, "live_end_lost") => "The connection to {0} was lost.",
         ("nl", "tray_shared_mouse") => "Universele muis",

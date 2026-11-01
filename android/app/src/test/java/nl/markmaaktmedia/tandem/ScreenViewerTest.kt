@@ -289,6 +289,7 @@ class ScreenViewerTest {
         assertEquals(Outcome.Busy, SessionPolicy.outcome(TandemMediaEnd.BUSY))
         assertEquals(Outcome.Unavailable, SessionPolicy.outcome(TandemMediaEnd.UNAVAILABLE))
         assertEquals(Outcome.NoAnswer, SessionPolicy.outcome(TandemMediaEnd.TIMEOUT))
+        assertEquals(Outcome.Locked, SessionPolicy.outcome(TandemMediaEnd.LOCKED))
     }
 
     @Test fun retriesSlowDownAndAskForLess() {

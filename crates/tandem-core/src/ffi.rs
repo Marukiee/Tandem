@@ -2320,6 +2320,8 @@ pub enum TandemMediaEnd {
     UnknownSession,
     /// The other device was gone for longer than the grace period, or restarted.
     PeerGone,
+    /// The host is locked, so there is nothing to show until someone unlocks it there.
+    Locked,
     Error,
 }
 
@@ -2337,6 +2339,7 @@ impl From<crate::live::MediaEnd> for TandemMediaEnd {
             E::Replaced => TandemMediaEnd::Replaced,
             E::UnknownSession => TandemMediaEnd::UnknownSession,
             E::PeerGone => TandemMediaEnd::PeerGone,
+            E::Locked => TandemMediaEnd::Locked,
             E::Error => TandemMediaEnd::Error,
         }
     }
@@ -2356,6 +2359,7 @@ impl From<TandemMediaEnd> for crate::live::MediaEnd {
             TandemMediaEnd::Replaced => E::Replaced,
             TandemMediaEnd::UnknownSession => E::UnknownSession,
             TandemMediaEnd::PeerGone => E::PeerGone,
+            TandemMediaEnd::Locked => E::Locked,
             TandemMediaEnd::Error => E::Error,
         }
     }

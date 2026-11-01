@@ -342,6 +342,7 @@ impl TandemMediaViewer for Viewer {
             TandemMediaEnd::Timeout => Some("live_end_timeout"),
             TandemMediaEnd::Busy => Some("live_end_busy"),
             TandemMediaEnd::PeerGone => Some("live_end_lost"),
+            TandemMediaEnd::Locked => Some("live_end_locked"),
             _ => None,
         };
         if let Some(key) = key {

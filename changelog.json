@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.60",
+    "date": "2026-11-01",
+    "en": { "title": "Says when a computer is locked", "new": ["Asking for the screen of a locked Mac or Linux computer now says it is locked, instead of trying again and again"] },
+    "nl": { "title": "Zegt wanneer een computer vergrendeld is", "new": ["Het scherm vragen van een vergrendelde Mac of Linux-computer zegt nu dat hij vergrendeld is, in plaats van steeds opnieuw te proberen"] }
+  },
+  {
     "version": "0.2.59",
     "date": "2026-11-01",
     "en": { "title": "Tidier device page", "new": ["The buttons of a device grouped by what they do", "Clear buttons next to the page title", "A sent file no longer stays at 100%"] },

@@ -1294,3 +1294,5 @@
 "Allow Tandem to use the microphone in System Settings, Privacy and Security, Microphone: it records Tandem Speaker for your phone." = "Sta Tandem de microfoon toe in Systeeminstellingen, Privacy en beveiliging, Microfoon: Tandem neemt daarmee de Tandem Speaker op voor je telefoon.";
 "Stop the hotspot" = "Hotspot stoppen";
 "Set up the hotspot first, on the page of your phone" = "Stel eerst de hotspot in, op de pagina van je telefoon";
+"%@ is locked" = "%@ is vergrendeld";
+"A locked computer shows nothing to other apps. Unlock it there and try again." = "Een vergrendelde computer laat andere apps niets zien. Ontgrendel hem daar en probeer opnieuw.";

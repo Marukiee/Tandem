@@ -35,6 +35,8 @@ enum LiveEnd: Equatable {
     case noAnswer
     /// The connection was gone for longer than the core waits.
     case lost
+    /// That computer is locked: nothing to show until someone unlocks it there.
+    case locked
     case failed
 
     init(_ reason: TandemMediaEnd, byMe: Bool) {
@@ -48,6 +50,7 @@ enum LiveEnd: Equatable {
         case .unavailable: self = .unavailable
         case .timeout: self = .noAnswer
         case .peerGone: self = .lost
+        case .locked: self = .locked
         case .unknownSession, .error: self = .failed
         }
     }
@@ -137,6 +140,12 @@ struct LiveCopy: Equatable {
             return LiveCopy(
                 title: String(localized: "Lost the connection to \(name)"),
                 detail: String(localized: "Both devices need to be on the same network, or reach each other another way."), symbol: "wifi.slash", canRetry: true
+            )
+        case .locked:
+            return LiveCopy(
+                title: String(localized: "\(name) is locked"),
+                detail: String(localized: "A locked computer shows nothing to other apps. Unlock it there and try again."),
+                symbol: "lock.fill", canRetry: true
             )
         case .failed:
             return LiveCopy(
