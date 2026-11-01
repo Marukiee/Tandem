@@ -49,6 +49,11 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
                 "open" => show_main(app),
                 "quit" => quit_app(app),
                 "quickshare" => crate::quickshare::toggle(app),
+                "keep-awake" => {
+                    crate::settings::update(app, |s| s.keep_awake = !s.keep_awake);
+                    crate::keepawake::configure(app);
+                    let _ = tauri::Emitter::emit(app, "settings", crate::settings::get(app));
+                }
                 "share-mouse" => {
                     crate::settings::update(app, |s| s.pointer_share = !s.pointer_share);
                     if crate::settings::get(app).pointer_share {
@@ -94,6 +99,7 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
 
     let open = MenuItem::with_id(app, "open", i18n::t(app, "open_tandem"), true, None::<&str>)?;
     let quick_share = crate::quickshare::tray_item(app)?;
+    let awake = CheckMenuItem::with_id(app, "keep-awake", i18n::t(app, "keep_awake"), crate::keepawake::available(), settings.keep_awake, None::<&str>)?;
     let mouse = CheckMenuItem::with_id(app, "share-mouse", i18n::t(app, "tray_shared_mouse"), !settings.layout.is_empty(), settings.pointer_share, None::<&str>)?;
 
     let extending = EXTENDING.lock().unwrap().clone();
@@ -121,7 +127,7 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let quit = MenuItem::with_id(app, "quit", i18n::t(app, "quit_tandem"), true, None::<&str>)?;
     let line = PredefinedMenuItem::separator(app)?;
     let line2 = PredefinedMenuItem::separator(app)?;
-    Menu::with_items(app, &[&open, &line, &quick_share, &mouse, &extend, &find, &line2, &quit])
+    Menu::with_items(app, &[&open, &line, &quick_share, &mouse, &awake, &extend, &find, &line2, &quit])
 }
 
 /// Makes the menu again when the devices, the shared mouse or an extra screen changed.
@@ -129,8 +135,9 @@ pub fn rebuild(app: &AppHandle) {
     let settings = crate::settings::get(app);
     let devices = app.state::<AppState>().data.lock().unwrap().devices.clone();
     let key = format!(
-        "{}{}{:?}{}",
+        "{}{}{}{:?}{}",
         settings.pointer_share,
+        settings.keep_awake,
         settings.layout.is_empty(),
         EXTENDING.lock().unwrap(),
         devices.iter().map(|d| format!("{}{}{}{}", d["id"], d["name"], d["online"], d["caps"])).collect::<String>()

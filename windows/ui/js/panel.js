@@ -30,6 +30,11 @@ function Row({ device }) {
 function Panel() {
   useStore();
   const box = useRef(null);
+  const awake = !!(state.settings.keepAwake && state.canKeepAwake);
+  const keepAwake = async () => {
+    if (!state.canKeepAwake) return say(t("keep_awake_why"));
+    try { set({ settings: await call("set_settings", { patch: { keepAwake: !awake } }) }); } catch (e) { failed(e); }
+  };
   const online = state.devices.filter((d) => d.online);
   const active = state.transfers.filter((x) => x.state === "active");
   const playing = online
@@ -52,6 +57,7 @@ function Panel() {
         <div style="font:600 15px var(--font-display)">Tandem</div>
         <div class="small muted">${state.devices.length ? t("panel_connected", online.length, state.devices.length) : t("panel_none")}</div>
       </div>
+      <button class=${"ib solid" + (awake ? " on" : "") + (state.canKeepAwake ? "" : " grey")} title=${t("keep_awake")} aria-pressed=${awake} onClick=${keepAwake}><${Icon} name="coffee" size=${16} /></button>
     </div>
 
     <${BatteryCard} items=${batteryList(state.self, state.devices, state.players)}

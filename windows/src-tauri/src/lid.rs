@@ -17,7 +17,13 @@ pub fn present() -> bool {
 
 /// Whether other computers must stay away from this one now.
 pub fn blocked(app: &AppHandle) -> bool {
-    locked() || (!settings::get(app).keep_when_lid_closed && tandem_winsys::lid_closed() == Some(true))
+    locked() || (!usable_closed(app) && tandem_winsys::lid_closed() == Some(true))
+}
+
+/// Keep awake with the lid closed is there to reach a closed laptop, so it keeps it usable too.
+fn usable_closed(app: &AppHandle) -> bool {
+    let s = settings::get(app);
+    s.keep_when_lid_closed || (s.keep_awake && s.keep_awake_lid)
 }
 
 /// Whether the screen is locked now.
@@ -43,7 +49,7 @@ pub fn start(app: AppHandle) {
                     crate::input::warm_up();
                 }
                 was_locked = now_locked;
-                if locked() || (closed && !settings::get(&app).keep_when_lid_closed) {
+                if locked() || (closed && !usable_closed(&app)) {
                     crate::input::shared_stop_here();
                     if !was_closed {
                         #[cfg(feature = "screen-host")]

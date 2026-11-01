@@ -49,6 +49,7 @@ pub fn get_state(app: AppHandle, window: tauri::WebviewWindow, state: State<'_, 
         "canExtend": cfg!(feature = "screen-host") && can_extend(),
         "input": input_support(),
         "hasLid": crate::lid::present(),
+        "canKeepAwake": crate::keepawake::available(),
     })
 }
 
@@ -454,6 +455,12 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["keepWhenLidClosed"].as_bool() {
             current.keep_when_lid_closed = v;
         }
+        if let Some(v) = patch["keepAwake"].as_bool() {
+            current.keep_awake = v;
+        }
+        if let Some(v) = patch["keepAwakeLid"].as_bool() {
+            current.keep_awake_lid = v;
+        }
         if let Some(v) = patch["systemMedia"].as_bool() {
             current.system_media = v;
         }
@@ -507,6 +514,7 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
     crate::sendwith::refresh(&app);
     crate::contactsearch::refresh(&app);
     crate::focus::configure(&app);
+    crate::keepawake::configure(&app);
     json!(settings::get(&app))
 }
 

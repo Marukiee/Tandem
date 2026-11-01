@@ -56,6 +56,7 @@ function apply(snapshot) {
     canExtend: !!snapshot.canExtend,
     canBluetooth: !!snapshot.canBluetooth,
     hasLid: !!snapshot.hasLid,
+    canKeepAwake: !!snapshot.canKeepAwake,
     input: snapshot.input || { ok: true, why: "" },
     devices: snapshot.devices,
     transfers: snapshot.transfers,
@@ -103,6 +104,8 @@ async function follow() {
   await listen("art", ({ key, uri }) => set({ art: { ...state.art, [key]: uri } }));
   await listen("say", (text) => say(text));
   await listen("hosting", (hosting) => set({ hosting }));
+  // Keep awake can turn itself off (a low battery) or be switched from the menu of the tray icon.
+  await listen("settings", (settings) => set({ settings }));
   await listen("display", (displays) => set({ displays }));
   await listen("webcams", (webcams) => set({ webcams }));
   // The event leaves out what the person decided about it, so that stays.

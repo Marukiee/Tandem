@@ -39,6 +39,7 @@ fn host_stop() {}
 mod i18n;
 mod hands;
 mod input;
+mod keepawake;
 mod lid;
 mod insert;
 mod live;
@@ -110,6 +111,7 @@ pub fn run() {
             power::start(handle.clone());
             find::start_whereabouts(&handle);
             lid::start(handle.clone());
+            keepawake::start(handle.clone());
             pointer_ready::start(handle.clone());
             debugshot::start();
             #[cfg(feature = "screen-host")]
@@ -315,12 +317,15 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("Tandem could not start")
-        .run(|_app, event| {
+        .run(|app, event| {
             // The last window going away is not a reason to stop: Tandem lives in the tray. Quitting is its own thing.
             match event {
                 RunEvent::ExitRequested { api, code: None, .. } => api.prevent_exit(),
-                // The sound devices Tandem made on Linux go with it.
-                RunEvent::Exit => virtual_audio::unload(),
+                // The sound devices Tandem made on Linux go with it, and the lid and the sleep of this computer are given back.
+                RunEvent::Exit => {
+                    virtual_audio::unload();
+                    keepawake::quit(app);
+                }
                 _ => {}
             }
         });

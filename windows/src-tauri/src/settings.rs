@@ -52,6 +52,10 @@ pub struct Settings {
     /// A laptop with its lid closed keeps being used from other computers. Off: a pointer that was sent here goes back the moment
     /// the lid closes, and does not come over while it is closed.
     pub keep_when_lid_closed: bool,
+    /// Keep awake: this computer does not sleep, so it can still be reached from another device (see `keepawake.rs`).
+    pub keep_awake: bool,
+    /// With Keep awake on, closing the lid does not put it to sleep either.
+    pub keep_awake_lid: bool,
     /// Turn Tailscale on by itself when a device cannot be reached on this network and Tailscale would reach it.
     pub auto_tailscale: bool,
     /// Messages over Bluetooth with devices that cannot be reached on the network (clipboard, notifications), where this computer can.
@@ -127,6 +131,8 @@ impl Default for Settings {
             system_media: true,
             phone_sound: true,
             keep_when_lid_closed: false,
+            keep_awake: false,
+            keep_awake_lid: true,
             auto_tailscale: true,
             ble_messages: true,
             clip_history: true,

@@ -222,6 +222,8 @@ h2 { font: 600 16px var(--font-display); margin: 6px 2px 0; }
 .ib:active { background: var(--press); transform: scale(0.96); }
 .ib.solid { background: var(--card-2); border: 1px solid var(--line); }
 .ib[disabled] { opacity: 0.35; pointer-events: none; }
+.ib.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ib.grey { opacity: 0.45; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {

@@ -348,6 +348,23 @@ mod imp {
 
 pub use imp::{Capture, Grabber, Media, battery, describe, desktop, lid_closed, screen, screen_locked, warp, watch_clipboard};
 
+/// Keeps Windows from sleeping for as long as it lives. Windows ties the request to the thread that made it, so a thread of its own
+/// waits here until the guard is dropped. Nothing on other systems, where `systemd-inhibit` does it.
+pub struct StayAwake {
+    _until: std::sync::mpsc::Sender<()>,
+}
+
+impl StayAwake {
+    pub fn new() -> StayAwake {
+        let (until, dropped) = std::sync::mpsc::channel::<()>();
+        #[cfg(windows)]
+        std::thread::Builder::new().name("tandem-awake".into()).spawn(move || imp::stay_awake(dropped)).ok();
+        #[cfg(not(windows))]
+        drop(dropped);
+        StayAwake { _until: until }
+    }
+}
+
 /// One screen as the desktop itself describes it. The window toolkit of Linux says the size of a screen in logical pixels times a
 /// whole scale (2 for a screen at 125% or 150% on GNOME), which is neither the pixels of the screen nor its logical size times its
 /// real scale; the desktop knows both.

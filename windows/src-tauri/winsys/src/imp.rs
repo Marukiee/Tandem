@@ -372,6 +372,14 @@ pub fn lid_closed() -> Option<bool> {
     None
 }
 
+/// Holds "system required" until the guard of `StayAwake` is dropped, which ends the wait.
+pub fn stay_awake(until: std::sync::mpsc::Receiver<()>) {
+    use windows::Win32::System::Power::{ES_CONTINUOUS, ES_SYSTEM_REQUIRED, SetThreadExecutionState};
+    unsafe { SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED) };
+    let _ = until.recv();
+    unsafe { SetThreadExecutionState(ES_CONTINUOUS) };
+}
+
 /// Puts the pointer somewhere.
 pub fn warp(x: i32, y: i32) {
     unsafe {

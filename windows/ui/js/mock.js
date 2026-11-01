@@ -68,6 +68,8 @@ function updateFor(kind) {
 
 const state = {
   ready: true, error: null, self: { id: "me", name: "My Laptop", port: 47820, battery: { level: allBatteries ? 15 : 92, charging: false, powerSave: false } }, version: "0.1.25", build: "preview", canShare: true, canHost: true, canBluetooth: true, canExtend: new URLSearchParams(location.search).get("platform") === "linux", platform: new URLSearchParams(location.search).get("platform") || "windows", input: { ok: new URLSearchParams(location.search).get("input") !== "no", why: "wayland" },
+  // `?awake=no` is a Linux without systemd-inhibit.
+  canKeepAwake: new URLSearchParams(location.search).get("awake") !== "no", hasLid: true,
   devices,
   transfers: empty ? [] : [
     { id: "1-0-in", peer: "phone", name: "IMG_20261003_141201.jpg", incoming: true, state: "done", done: 4200000, total: 4200000, location: "C:\\Users\\Mark\\Downloads\\Tandem\\IMG_20261003_141201.jpg", updatedAt: now - 60000, startedAt: now - 62000 },
@@ -80,7 +82,7 @@ const state = {
     { device: "phone", deviceName: "Pixel 9", key: "b", appId: "bank", appName: "Bank", title: "Code 482913", text: "Gebruik 482913 om in te loggen.", ts: now - 900000, otp: "482913", buttons: [] },
   ],
   settings: { closeToTray: true, copyCodes: true, batteryAlerts: true, pauseDuringCalls: true, cameraToObs: false, phoneNotifications: true, remoteInput: false, systemMedia: true, autoUpdate: true, language: "auto", downloadDir: "", shareDevice: "", shareEdge: "", quickShare: true, keepWhenLidClosed: false, autoTailscale: true, sideCheck: true, sideCheckMinutes: 2, sideSound: "quiet",
-    contactsSearch: true, searchDevices: true, searchActions: true, searchMessages: false, searchClipboard: false, searchFiles: true, searchSettings: true, sendScreenshots: true },
+    contactsSearch: true, searchDevices: true, searchActions: true, searchMessages: false, searchClipboard: false, searchFiles: true, searchSettings: true, sendScreenshots: true, keepAwake: false, keepAwakeLid: true },
   update: updateFor(new URLSearchParams(location.search).get("update")),
   autostart: true, downloadDir: "C:\\Users\\Mark\\Downloads\\Tandem", systemLanguage: navigator.language, build_: "",
 };
