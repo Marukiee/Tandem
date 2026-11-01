@@ -96,7 +96,9 @@ struct LockedAccessSection: View {
                     FloatingToast.show(String(localized: "Restart Tandem so your other devices can see that this Mac is ready."), symbol: "arrow.clockwise")
                 }
             } catch ScreenSharingClient.Failure.wrongPassword {
-                problem = String(localized: "That is not the password of this Mac.")
+                problem = LockedAccess.remoteManagementOn
+                    ? String(localized: "Remote Management turned it down. In System Settings, General, Sharing, open the i of Remote Management and allow access for all users, or for yourself with Observe and Control. Then save again.")
+                    : String(localized: "That is not the password of this Mac.")
             } catch ScreenSharingClient.Failure.unreachable {
                 problem = String(localized: "Screen Sharing does not answer. Turn it on in System Settings under General, Sharing.")
             } catch {

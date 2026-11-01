@@ -49,6 +49,13 @@ enum LockedAccess {
 
     static var hasPassword: Bool { password() != nil }
 
+    /// Remote Management is on instead of Screen Sharing. It lets in only the accounts it was given, not every administrator, so a right
+    /// password can still be turned down (seen 2026-11-01).
+    static var remoteManagementOn: Bool {
+        (try? String(contentsOfFile: "/Library/Application Support/Apple/Remote Desktop/RemoteManagement.launchd", encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines) == "enabled"
+    }
+
     /// Everything is there to let a device in while this Mac is locked.
     static var ready: Bool { hasPassword && screenSharingOn }
 

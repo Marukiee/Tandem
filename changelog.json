@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.64",
+    "date": "2026-11-01",
+    "en": { "title": "Clearer setup for a locked Mac", "new": ["Says what to change when Remote Management of macOS turns Tandem down"] },
+    "nl": { "title": "Duidelijker instellen voor een vergrendelde Mac", "new": ["Zegt wat je moet aanpassen als Extern beheer van macOS Tandem weigert"] }
+  },
+  {
     "version": "0.2.63",
     "date": "2026-11-01",
     "en": { "title": "Keep awake from afar", "new": ["Keep a computer awake from your phone or another computer, on the page of that computer"] },
