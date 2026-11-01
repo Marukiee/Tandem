@@ -1,3 +1,4 @@
+import LocalAuthentication
 import SwiftUI
 import TandemCore
 
@@ -55,5 +56,25 @@ struct RemoteKeepAwakeButton: View {
         }
         .disabled(!device.online)
         .help(awake ? "Let this computer sleep again" : "Keep this computer awake, also with the lid closed")
+    }
+}
+
+/// A computer that is locked and lets this Mac unlock it, once Touch ID (or this Mac's password) says the person here is its person. There
+/// only while that computer says both.
+struct RemoteUnlockButton: View {
+    @Environment(EngineModel.self) private var model
+    let device: TandemDevice
+
+    var body: some View {
+        GlassActionButton(title: "Unlock", symbol: "lock.open", prominent: true) {
+            let context = LAContext()
+            guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) else { return }
+            let id = device.id
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: String(localized: "unlock \(device.name)")) { ok, _ in
+                guard ok else { return }
+                Task { @MainActor in try? await model.tandem?.unlock(target: id) }
+            }
+        }
+        .help("Unlock this computer with Touch ID")
     }
 }

@@ -941,6 +941,8 @@ function GeneralSettings({ s, patch }) {
         onChange=${(v) => (v && !state.canKeepAwake ? say(t("keep_awake_why")) : patch({ keepAwake: v }))} />
       ${(state.platform === "windows" || state.hasLid) && html`<${SettingRow} icon="device-laptop" title=${t("keep_awake_lid")} sub=${t("keep_awake_lid_sub")}
         on=${s.keepAwakeLid !== false} disabled=${!s.keepAwake || !state.canKeepAwake} onChange=${(v) => patch({ keepAwakeLid: v })} />`}
+      <${SettingRow} icon="key" title=${t("unlock_afar")} sub=${t("unlock_afar_sub")} on=${s.unlockFromAfar && state.canUnlock} grey=${!state.canUnlock}
+        onChange=${(v) => (v && !state.canUnlock ? say(t("unlock_afar_why")) : patch({ unlockFromAfar: v }))} />
       ${state.canBluetooth && html`<${SettingRow} icon="bluetooth" title=${t("ble_messages")} sub=${t("ble_messages_sub")} on=${s.bleMessages !== false} onChange=${(v) => patch({ bleMessages: v })} />`}
       <${SettingRow} icon="camera" title=${html`${t("camera_obs")} <span class="muted" title=${t("camera_obs_info", OBS_ADDRESS)} style="cursor:help">ⓘ</span>`} on=${s.cameraToObs} onChange=${(v) => patch({ cameraToObs: v })}>
         <div style="display:flex;gap:8px;align-items:center">

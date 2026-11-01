@@ -50,6 +50,7 @@ pub fn get_state(app: AppHandle, window: tauri::WebviewWindow, state: State<'_, 
         "input": input_support(),
         "hasLid": crate::lid::present(),
         "canKeepAwake": crate::keepawake::available(),
+        "canUnlock": crate::unlock::available(),
     })
 }
 
@@ -467,6 +468,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["keepAwakeLid"].as_bool() {
             current.keep_awake_lid = v;
         }
+        if let Some(v) = patch["unlockFromAfar"].as_bool() {
+            current.unlock_from_afar = v;
+        }
         if let Some(v) = patch["systemMedia"].as_bool() {
             current.system_media = v;
         }
@@ -521,6 +525,7 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
     crate::contactsearch::refresh(&app);
     crate::focus::configure(&app);
     crate::keepawake::configure(&app);
+    crate::unlock::announce(&app);
     json!(settings::get(&app))
 }
 

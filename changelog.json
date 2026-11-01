@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.66",
+    "date": "2026-11-01",
+    "en": { "title": "Unlock Linux from your phone", "new": ["Unlock a locked Linux computer with your fingerprint, from its page on your phone or Mac"] },
+    "nl": { "title": "Linux ontgrendelen vanaf je telefoon", "new": ["Ontgrendel een vergrendelde Linux-computer met je vingerafdruk, vanaf zijn pagina op je telefoon of Mac"] }
+  },
+  {
     "version": "0.2.65",
     "date": "2026-11-01",
     "en": { "title": "Unlock with your fingerprint", "new": ["Unlock a locked Mac with your fingerprint on your phone, once per session", "Choose several devices at once under For in the settings of the Mac"] },

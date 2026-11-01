@@ -285,6 +285,9 @@ struct DeviceDetail: View {
                     .disabled(!device.online)
                     .help("Log in to this computer over SSH")
                     RemoteKeepAwakeButton(device: device)
+                    if device.online, device.status.unlock == true, device.status.locked == true {
+                        RemoteUnlockButton(device: device)
+                    }
                 }
             }
         }

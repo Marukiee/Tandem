@@ -67,4 +67,6 @@
     <string name="screen_unlock_title">Unlock %1$s</string>
     <string name="screen_unlock_sub">The computer types its own password on its lock screen</string>
     <string name="screen_unlock_no_lock">Set a screen lock on this phone to unlock a computer with it</string>
+    <string name="unlock_row_title">Unlock</string>
+    <string name="unlock_row_sub">It is locked. Your fingerprint unlocks it</string>
 </resources>

@@ -8,7 +8,13 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 - **Inloggen op afstand op een vergrendelde Mac** (gevraagd 2026-11-01): gebouwd in 0.2.61. De Mac logt zelf in op zijn eigen Scherm delen
   (127.0.0.1, Apple-login met het wachtwoord uit de sleutelhanger) en stuurt dat beeld als gewone H.264-sessie, dus elke kijker werkt.
   Na ontgrendelen gaat de sessie verder met de gewone opname. Werkt niet na een herstart, uitloggen of slaap.
-- **Ontgrendelen met een vingerafdruk** (gevraagd 2026-11-01): gebouwd in 0.2.65 voor de Mac als bron, Android en de Mac als kijker. De
+- **Mappen versturen, vanaf elk apparaat** (gevraagd 2026-11-01): een hele map sturen, met de mappen erin, van en naar Mac, Android,
+  Windows en Linux.
+- **Linux vraagt steeds toestemming** (gemeld 2026-11-01): de InputCapture-portal van Fedora 44 is versie 1 en kan niets onthouden, dus
+  GNOME vraagt bij elke start om de muis en het toetsenbord te vangen (de universele muis). Opties: die sessie pas openen als de
+  universele muis echt gebruikt wordt. Voor scherm en invoer bewaart Tandem al tokens; nagaan wanneer GNOME daar toch weer vraagt.
+- **Ontgrendelen met een vingerafdruk** (gevraagd 2026-11-01): gebouwd in 0.2.65 voor de Mac als bron, Android en de Mac als kijker,
+  in 0.2.66 ook een vergrendelde Linux-pc (logind) met een knop Ontgrendel op zijn pagina. De
   telefoon controleert de vingerafdruk en de Mac gaat daarop af. Open: Windows Hello op een Windows-kijker (vraagt de `windows`-crate,
   eerst aan Mark vragen), en het echte inlogscherm van macOS is nog niet met de hand geprobeerd.
 - **Vergrendelde Windows- en Linux-pc bereiken** (gevraagd 2026-11-01): Windows kan het met een eigen dienst die als SYSTEM draait,

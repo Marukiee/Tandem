@@ -1,0 +1,78 @@
+//! Unlocking this computer from another device whose person showed it is them (a fingerprint there). Linux only, through logind, and
+//! only for a device that may always look at and control this computer. Off until switched on in the settings: the other device checks
+//! the fingerprint, and this computer takes its word.
+
+use std::sync::Mutex;
+use std::time::Duration;
+
+use tandem_core::ffi::{TandemMediaPermission, TandemStatus};
+use tauri::{AppHandle, Manager};
+
+use crate::state::AppState;
+use crate::{events, i18n, settings};
+
+/// logind is there to ask: only on Linux, and only where `loginctl` is.
+pub fn available() -> bool {
+    cfg!(target_os = "linux") && std::process::Command::new("loginctl").arg("--version").output().is_ok_and(|out| out.status.success())
+}
+
+fn offered(app: &AppHandle) -> bool {
+    settings::get(app).unlock_from_afar && available()
+}
+
+pub fn start(app: AppHandle) {
+    std::thread::Builder::new()
+        .name("tandem-unlock".into())
+        .spawn(move || loop {
+            announce(&app);
+            // Only while it is offered does the lock matter to anyone, so only then is logind asked.
+            std::thread::sleep(Duration::from_secs(if offered(&app) { 2 } else { 30 }));
+        })
+        .ok();
+}
+
+/// What the other devices were last told: whether it can be unlocked from afar, and whether it is locked.
+static TOLD: Mutex<Option<(Option<bool>, Option<bool>)>> = Mutex::new(None);
+
+pub fn announce(app: &AppHandle) {
+    let offer = offered(app);
+    let now = (available().then_some(offer), Some(offer && locked()));
+    let mut told = TOLD.lock().unwrap();
+    if *told == Some(now) {
+        return;
+    }
+    let Ok(engine) = app.state::<AppState>().engine() else { return };
+    tauri::async_runtime::block_on(engine.update_status(TandemStatus { unlock: now.0, locked: now.1, ..Default::default() }));
+    *told = Some(now);
+}
+
+/// Another device asks to unlock. Everything is checked here again: the switch, the device, and that the screen is locked at all.
+pub fn from_afar(app: &AppHandle, from: &str) {
+    if !offered(app) || !locked() {
+        return;
+    }
+    let Ok(engine) = app.state::<AppState>().engine() else { return };
+    let Ok(policy) = engine.media_policy(from.to_string()) else { return };
+    if policy.screen != TandemMediaPermission::Always || policy.control != TandemMediaPermission::Always {
+        log::info!("unlock asked by a device that may not always look and control, ignored");
+        return;
+    }
+    let done = std::process::Command::new("loginctl").args(["unlock-session", &session()]).status().is_ok_and(|s| s.success());
+    if done {
+        events::toast(app, "Tandem", &i18n::t1(app, "unlocked_by", &events::device_name(app, from)));
+    } else {
+        log::info!("loginctl could not unlock this session");
+    }
+    announce(app);
+}
+
+fn session() -> String {
+    std::env::var("XDG_SESSION_ID").unwrap_or_else(|_| "auto".into())
+}
+
+fn locked() -> bool {
+    std::process::Command::new("loginctl")
+        .args(["show-session", &session(), "-p", "LockedHint", "--value"])
+        .output()
+        .is_ok_and(|out| String::from_utf8_lossy(&out.stdout).trim() == "yes")
+}

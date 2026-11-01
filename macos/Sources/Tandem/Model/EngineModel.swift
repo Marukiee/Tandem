@@ -699,6 +699,10 @@ final class EngineModel {
         case let .keepAwake(from, on):
             KeepAwake.shared.setFromAfar(on, by: device(from)?.name ?? String(localized: "A device"))
 
+        case .unlock:
+            // This Mac is unlocked from inside a session, through Screen Sharing (`ScreenHost`), not with this message.
+            break
+
         case let .batteryAlert(from, level, full):
             // Settings, General: "Battery alerts", on unless turned off.
             guard UserDefaults.standard.object(forKey: "batteryAlerts") as? Bool ?? true, let name = device(from)?.name else { return }

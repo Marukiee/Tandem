@@ -454,6 +454,7 @@ impl Inner {
             Msg::SideReady { id: probe } => self.emit(Event::SideReady { from: id, id: probe }),
             Msg::SideMoved => self.emit(Event::SideMoved { from: id }),
             Msg::KeepAwake { on } => self.emit(Event::KeepAwake { from: id, on }),
+            Msg::Unlock {} => self.emit(Event::Unlock { from: id }),
             Msg::OpenSettings { page } => self.emit(Event::OpenSettings { from: id, page }),
             Msg::SoundRequest { on } => self.emit(Event::SoundRequested { from: id, on }),
             Msg::MicRequest { on } => self.emit(Event::MicRequested { from: id, on }),

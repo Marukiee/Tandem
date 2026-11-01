@@ -197,6 +197,9 @@ pub enum Msg {
     /// Asks a computer to keep itself awake (or to let it sleep again), from afar: its status says how it is now. Devices that do not
     /// know it skip it.
     KeepAwake { on: bool },
+    /// The person at another device showed it is them (a fingerprint there): unlock this computer's screen, when its status offers
+    /// it with `unlock`. Devices that do not know it skip it.
+    Unlock {},
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,
@@ -272,6 +275,10 @@ pub struct Status {
     /// device that has no such switch.
     #[serde(default)]
     pub awake: Option<bool>,
+    /// This computer can be unlocked from afar with `Unlock` (its person switched that on), for devices that may always look and
+    /// control. Whether it is locked now is `locked`.
+    #[serde(default)]
+    pub unlock: Option<bool>,
     /// What this device can do for the others and whether it is ready for it: the whole list each time it changes.
     #[serde(default)]
     pub features: Option<Vec<Feature>>,
@@ -298,7 +305,7 @@ impl Status {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, features);
+        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, features);
     }
 }
 
@@ -1024,6 +1031,15 @@ mod tests {
         let (mut a, mut b) = tokio::io::duplex(1024);
         write_frame(&mut a, &vec![0u8; 200]).await.unwrap();
         assert!(read_frame(&mut b, 100).await.is_err());
+    }
+
+    #[test]
+    fn unlock_travels_and_its_offer_is_merged() {
+        let bytes = encode(&Msg::Unlock {}).unwrap();
+        assert!(matches!(decode_msg(&bytes).unwrap(), Msg::Unlock {}));
+        let mut mine = Status { unlock: Some(false), locked: Some(true), ..Default::default() };
+        mine.merge(&Status { unlock: Some(true), ..Default::default() });
+        assert_eq!((mine.unlock, mine.locked), (Some(true), Some(true)));
     }
 
     #[test]

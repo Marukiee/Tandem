@@ -1340,3 +1340,5 @@
 "Turn on reaching this Mac while it is locked first" = "Zet eerst bereikbaar terwijl hij vergrendeld is aan";
 "The lock screen did not take the saved password" = "Het inlogscherm nam het opgeslagen wachtwoord niet aan";
 "unlock %@" = "%@ ontgrendelen";
+"Unlock" = "Ontgrendel";
+"Unlock this computer with Touch ID" = "Ontgrendel deze computer met Touch ID";

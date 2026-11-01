@@ -275,6 +275,8 @@ pub struct TandemStatus {
     pub muted: Option<bool>,
     #[uniffi(default = None)]
     pub awake: Option<bool>,
+    #[uniffi(default = None)]
+    pub unlock: Option<bool>,
 }
 
 impl From<Status> for TandemStatus {
@@ -296,6 +298,7 @@ impl From<Status> for TandemStatus {
             wake_mac: s.wake_mac,
             muted: s.muted,
             awake: s.awake,
+            unlock: s.unlock,
         }
     }
 }
@@ -319,6 +322,7 @@ impl From<TandemStatus> for Status {
             wake_mac: s.wake_mac,
             muted: s.muted,
             awake: s.awake,
+            unlock: s.unlock,
             // The features go their own way, with `set_features`.
             features: None,
         }
@@ -1056,6 +1060,7 @@ pub enum TandemEvent {
     BatteryAlert { from: String, level: u8, full: bool },
     Ring { from: String, on: bool },
     KeepAwake { from: String, on: bool },
+    Unlock { from: String },
     /// `quiet` when the other device checks by itself: listen only when the microphone is free and allowed, without asking for it.
     SideListen { from: String, id: u64, quiet: bool },
     /// The answers of a device to `side_start`, which reads them itself: the apps can let them go by.
@@ -1181,6 +1186,7 @@ impl From<Event> for TandemEvent {
             Event::BatteryAlert { from, level, full } => TandemEvent::BatteryAlert { from: from.to_string(), level, full },
             Event::Ring { from, on } => TandemEvent::Ring { from: from.to_string(), on },
             Event::KeepAwake { from, on } => TandemEvent::KeepAwake { from: from.to_string(), on },
+            Event::Unlock { from } => TandemEvent::Unlock { from: from.to_string() },
             Event::SideListen { from, id, quiet } => TandemEvent::SideListen { from: from.to_string(), id, quiet },
             Event::SideReady { from, id } => TandemEvent::SideReady { from: from.to_string(), id },
             Event::SideHeard { from, id, .. } => TandemEvent::SideHeard { from: from.to_string(), id },
@@ -1818,6 +1824,11 @@ impl TandemEngine {
 
     pub async fn dial(&self, target: String, number: String) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::Dial { number }).await.map(|_| ())
+    }
+
+    /// Asks `target` to unlock its screen. The person here showed it is them first (a fingerprint); `target` checks the rest.
+    pub async fn unlock(&self, target: String) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::Unlock {}).await.map(|_| ())
     }
 
     /// Asks `target` to keep itself awake, or to let it sleep again.

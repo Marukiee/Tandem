@@ -56,6 +56,8 @@ pub struct Settings {
     pub keep_awake: bool,
     /// With Keep awake on, closing the lid does not put it to sleep either.
     pub keep_awake_lid: bool,
+    /// A device that may always look and control unlocks this computer after a fingerprint there (see `unlock.rs`).
+    pub unlock_from_afar: bool,
     /// Turn Tailscale on by itself when a device cannot be reached on this network and Tailscale would reach it.
     pub auto_tailscale: bool,
     /// Messages over Bluetooth with devices that cannot be reached on the network (clipboard, notifications), where this computer can.
@@ -133,6 +135,7 @@ impl Default for Settings {
             keep_when_lid_closed: false,
             keep_awake: false,
             keep_awake_lid: true,
+            unlock_from_afar: false,
             auto_tailscale: true,
             ble_messages: true,
             clip_history: true,

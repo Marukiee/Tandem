@@ -67,4 +67,6 @@
     <string name="screen_unlock_title">%1$s ontgrendelen</string>
     <string name="screen_unlock_sub">De computer typt zijn eigen wachtwoord op het inlogscherm</string>
     <string name="screen_unlock_no_lock">Stel een schermvergrendeling in op deze telefoon om er een computer mee te ontgrendelen</string>
+    <string name="unlock_row_title">Ontgrendelen</string>
+    <string name="unlock_row_sub">Hij is vergrendeld. Je vingerafdruk maakt hem open</string>
 </resources>

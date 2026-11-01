@@ -238,11 +238,30 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         val showFiles = device.online && "files" in device.caps
         // A computer that can make a screen of its own for this phone: the row is there when it says so, and not as a grey one that cannot work.
         val showDisplay = computer && "screen.extend" in device.caps
-        val controlRows = (if (computer) 5 else if (device.online) 1 else 0) + (if (showFiles) 1 else 0) + (if (showDisplay) 1 else 0)
+        // Locked, and it lets this phone unlock it (a computer whose person switched that on): the row is there only then.
+        val showUnlock = computer && device.online && device.status.unlock == true && device.status.locked == true
+        val controlRows = (if (computer) 5 else if (device.online) 1 else 0) + (if (showFiles) 1 else 0) + (if (showDisplay) 1 else 0) +
+            (if (showUnlock) 1 else 0)
         if (controlRows > 0) {
             SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
             SettingsGroup {
                 var row = 0
+                if (showUnlock) {
+                    ActionRow(
+                        row++, controlRows, TandemIcons.Key, stringResource(R.string.unlock_row_title), stringResource(R.string.unlock_row_sub),
+                        {
+                            val activity = context as? android.app.Activity
+                            if (activity != null) {
+                                nl.markmaaktmedia.tandem.screen.UnlockPrompt.ask(
+                                    activity, device.name,
+                                    onYes = { scope.launch { runCatching { host.engine?.unlock(id) } } },
+                                    onNo = {},
+                                )
+                            }
+                        },
+                        iconTint = MaterialTheme.colorScheme.onPrimary, iconContainer = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 if (computer) {
                     nl.markmaaktmedia.tandem.ui.components.ControlRow(
                         row++, controlRows, TandemIcons.Mouse, stringResource(R.string.tile_trackpad), stringResource(R.string.trackpad_row_sub),

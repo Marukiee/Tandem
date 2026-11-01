@@ -40,6 +40,7 @@ mod i18n;
 mod hands;
 mod input;
 mod keepawake;
+mod unlock;
 mod lid;
 mod insert;
 mod live;
@@ -112,6 +113,7 @@ pub fn run() {
             find::start_whereabouts(&handle);
             lid::start(handle.clone());
             keepawake::start(handle.clone());
+            unlock::start(handle.clone());
             pointer_ready::start(handle.clone());
             debugshot::start();
             #[cfg(feature = "screen-host")]
