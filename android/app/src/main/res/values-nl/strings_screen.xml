@@ -64,4 +64,7 @@
     <string name="display_offer_text">Tik om het te openen</string>
     <string name="link_poor">Slechte verbinding met %1$s, het beeld kan haperen</string>
     <string name="mirror_offer_title">%1$s wil zijn scherm op deze telefoon tonen</string>
+    <string name="screen_unlock_title">%1$s ontgrendelen</string>
+    <string name="screen_unlock_sub">De computer typt zijn eigen wachtwoord op het inlogscherm</string>
+    <string name="screen_unlock_no_lock">Stel een schermvergrendeling in op deze telefoon om er een computer mee te ontgrendelen</string>
 </resources>

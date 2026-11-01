@@ -2613,6 +2613,9 @@ pub struct TandemMediaUpdate {
     pub rotation: Option<u16>,
     pub fps: Option<u32>,
     pub control: Option<bool>,
+    /// The screen is locked and the host offers to unlock it once the viewer's person confirmed it is them, or no longer.
+    #[uniffi(default = None)]
+    pub unlock: Option<bool>,
 }
 
 impl From<crate::live::MediaUpdate> for TandemMediaUpdate {
@@ -2623,6 +2626,7 @@ impl From<crate::live::MediaUpdate> for TandemMediaUpdate {
             rotation: update.format.map(|f| f.rotation),
             fps: update.format.map(|f| f.fps),
             control: update.control,
+            unlock: update.unlock,
         }
     }
 }
@@ -2639,7 +2643,7 @@ impl From<TandemMediaUpdate> for crate::live::MediaUpdate {
             }),
             _ => None,
         };
-        crate::live::MediaUpdate { format, control: update.control }
+        crate::live::MediaUpdate { format, control: update.control, unlock: update.unlock }
     }
 }
 
@@ -2656,6 +2660,8 @@ pub enum TandemMediaInput {
     Key { code: u32, down: bool, mods: u16, text: String },
     /// A piece of text that was committed. Not the clipboard.
     Text { text: String },
+    /// The person confirmed it is them; only sent after the host offered to unlock.
+    Unlock,
 }
 
 impl From<crate::live::MediaInput> for TandemMediaInput {
@@ -2668,6 +2674,7 @@ impl From<crate::live::MediaInput> for TandemMediaInput {
             I::Scroll { dx, dy } => TandemMediaInput::Scroll { dx, dy },
             I::Key { code, down, mods, text } => TandemMediaInput::Key { code, down, mods, text },
             I::Text { text } => TandemMediaInput::Text { text },
+            I::Unlock => TandemMediaInput::Unlock,
         }
     }
 }
@@ -2682,6 +2689,7 @@ impl From<TandemMediaInput> for crate::live::MediaInput {
             TandemMediaInput::Scroll { dx, dy } => I::Scroll { dx, dy },
             TandemMediaInput::Key { code, down, mods, text } => I::Key { code, down, mods, text },
             TandemMediaInput::Text { text } => I::Text { text },
+            TandemMediaInput::Unlock => I::Unlock,
         }
     }
 }

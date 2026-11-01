@@ -334,6 +334,9 @@ extension InputInjector {
             remoteKey(code: code, down: down, mods: mods, text: text)
         case let .text(text):
             type(text)
+        case .unlock:
+            // Only meaningful on the lock screen, which ScreenHost handles through Screen Sharing.
+            break
         }
         armWatchdog()
     }

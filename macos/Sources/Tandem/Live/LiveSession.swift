@@ -225,6 +225,10 @@ final class LiveSession {
     var controlGranted = false
     /// The person's own switch: the mouse and keys go to the phone only while it is on.
     var controlOn = true
+    /// Touch ID said yes once for this window, so a lock again, or a session made again after a dropped link, unlocks without asking.
+    var unlockApproved = false
+    /// Touch ID is asking right now.
+    var unlockAsking = false
 
     let surface = VideoSurfaceView()
     /// Flips when the first picture is drawn, so the decoder's thread can tell the main actor once.

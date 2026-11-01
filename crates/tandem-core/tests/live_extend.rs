@@ -292,7 +292,7 @@ async fn a_second_screen_that_is_turned_is_resized_within_its_session() {
 
     // The Mac made its screen upright and says so before the first picture of it, a keyframe.
     let format = MediaFormat { width: 1080, height: 2340, rotation: 0, fps: 60 };
-    mac.engine.media_update(session, MediaUpdate { format: Some(format), control: None }).unwrap();
+    mac.engine.media_update(session, MediaUpdate { format: Some(format), control: None, unlock: None }).unwrap();
     wait_until("the new shape on the phone", || !viewer.updates.lock().unwrap().is_empty()).await;
     assert_eq!(viewer.updates.lock().unwrap()[0].format, Some(format));
     for n in 0..5u64 {

@@ -195,6 +195,16 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
     }
     val orientation = LocalConfiguration.current.orientation
     LaunchedEffect(turns, orientation) { if (turns) viewer.turned() }
+    // The computer is locked and offers to unlock: once a fingerprint says so, it types its own password on its lock screen.
+    val unlockAsk by viewer.unlockAsk.collectAsState()
+    DisposableEffect(unlockAsk) {
+        val cancel = if (unlockAsk && activity != null) {
+            UnlockPrompt.ask(activity, device?.name ?: "", onYes = viewer::unlockConfirmed, onNo = viewer::unlockDeclined)
+        } else {
+            null
+        }
+        onDispose { cancel?.cancel() }
+    }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewer.pause() }
     LifecycleEventEffect(Lifecycle.Event.ON_START) { viewer.resume() }
 

@@ -817,6 +817,7 @@ fn run(rx: mpsc::Receiver<Msg>) {
                 TandemMediaInput::Text { text } => {
                     let _ = enigo.text(&text);
                 }
+                TandemMediaInput::Unlock => {}
             },
             Msg::Input(input) => match input {
                 TandemInput::Pointer { dx, dy } => {

@@ -8,6 +8,9 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 - **Inloggen op afstand op een vergrendelde Mac** (gevraagd 2026-11-01): gebouwd in 0.2.61. De Mac logt zelf in op zijn eigen Scherm delen
   (127.0.0.1, Apple-login met het wachtwoord uit de sleutelhanger) en stuurt dat beeld als gewone H.264-sessie, dus elke kijker werkt.
   Na ontgrendelen gaat de sessie verder met de gewone opname. Werkt niet na een herstart, uitloggen of slaap.
+- **Ontgrendelen met een vingerafdruk** (gevraagd 2026-11-01): gebouwd in 0.2.65 voor de Mac als bron, Android en de Mac als kijker. De
+  telefoon controleert de vingerafdruk en de Mac gaat daarop af. Open: Windows Hello op een Windows-kijker (vraagt de `windows`-crate,
+  eerst aan Mark vragen), en het echte inlogscherm van macOS is nog niet met de hand geprobeerd.
 - **Vergrendelde Windows- en Linux-pc bereiken** (gevraagd 2026-11-01): Windows kan het met een eigen dienst die als SYSTEM draait,
   het inlogscherm (Winlogon) vastlegt en de toetsen doorgeeft, zoals Chrome Remote Desktop en RustDesk; eenmalig installeren met
   beheerdersrechten. Linux: op GNOME (Wayland) kan het niet, getest 2026-11-01: Mutter laat geen nieuwe sessie van GNOME Remote Desktop

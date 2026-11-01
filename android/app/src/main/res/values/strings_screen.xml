@@ -64,4 +64,7 @@
     <string name="display_offer_text">Tap to open it</string>
     <string name="link_poor">Poor connection to %1$s, the picture may stutter</string>
     <string name="mirror_offer_title">%1$s wants to show its screen on this phone</string>
+    <string name="screen_unlock_title">Unlock %1$s</string>
+    <string name="screen_unlock_sub">The computer types its own password on its lock screen</string>
+    <string name="screen_unlock_no_lock">Set a screen lock on this phone to unlock a computer with it</string>
 </resources>

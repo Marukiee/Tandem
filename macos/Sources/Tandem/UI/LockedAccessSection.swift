@@ -12,6 +12,7 @@ struct LockedAccessSection: View {
     /// The password was right and Remote Management still said no, which only its own settings change.
     @State private var managementRefused = false
     @State private var failure = LockedAccess.lastFailure
+    @State private var unlockFromAfar = LockedAccess.unlockFromAfar
 
     var body: some View {
         Section {
@@ -62,6 +63,23 @@ struct LockedAccessSection: View {
                     Button("Open") { LockedAccess.openSharingSettings() }
                 }
             }
+            // Said when it is used, not before: without the password above there is nothing to unlock with.
+            DescribedToggle(
+                "Unlock with a fingerprint on your phone",
+                subtitle: "Your phone asks for your fingerprint once per session, and this Mac types its password on the lock screen. The phone checks the fingerprint; this Mac takes its word.",
+                isOn: Binding(
+                    get: { on && unlockFromAfar },
+                    set: { wanted in
+                        guard on else {
+                            FloatingToast.show(String(localized: "Turn on reaching this Mac while it is locked first"), symbol: "lock.display")
+                            return
+                        }
+                        LockedAccess.unlockFromAfar = wanted
+                        unlockFromAfar = wanted
+                    }
+                )
+            )
+            .opacity(on ? 1 : 0.5)
         }
         .animation(.tandem, value: asking)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }

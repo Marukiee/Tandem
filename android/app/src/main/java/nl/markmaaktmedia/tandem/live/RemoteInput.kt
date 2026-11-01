@@ -94,6 +94,8 @@ class RemoteInput(private val context: Context) {
             is TandemMediaInput.Scroll -> scroll(service, input.dx.toFloat(), input.dy.toFloat())
             is TandemMediaInput.Key -> if (input.down) key(service, input.code.toInt(), input.text)
             is TandemMediaInput.Text -> service.type(input.text)
+            // A phone is not reached while locked; only a computer offers to unlock.
+            TandemMediaInput.Unlock -> Unit
         }
     }
 

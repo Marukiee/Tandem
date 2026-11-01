@@ -67,6 +67,13 @@ enum LockedAccess {
             .trimmingCharacters(in: .whitespacesAndNewlines) == "enabled"
     }
 
+    /// The lock screen is unlocked with the kept password once the person at a viewer confirmed it is them (a fingerprint there). Off
+    /// until switched on: the phone checks who holds it, and this Mac takes its word.
+    static var unlockFromAfar: Bool {
+        get { UserDefaults.standard.bool(forKey: "lockedAccessUnlockFromAfar") }
+        set { UserDefaults.standard.set(newValue, forKey: "lockedAccessUnlockFromAfar") }
+    }
+
     /// Everything is there to let a device in while this Mac is locked.
     static var ready: Bool { hasPassword && screenSharingOn }
 
@@ -292,7 +299,28 @@ final class ScreenSharingSource: ScreenSource, @unchecked Sendable {
             if !down { for modifier in held.reversed() { client.key(modifier, down: false) } }
         case let .text(text):
             type(text)
+        case .unlock:
+            // ScreenHost checks who asks and types the password with `enterPassword`.
+            break
         }
+    }
+
+    /// A key that does nothing but wake the lock screen, so the first key of the password is not the one that wakes it.
+    func wakeLockScreen() {
+        client.key(0xFFE1, down: true)
+        client.key(0xFFE1, down: false)
+    }
+
+    /// Whatever is in the field selected, so it is replaced, then the password and Return.
+    func enterPassword(_ password: String) {
+        let command: UInt32 = 0xFFEB, a: UInt32 = 0x61, enter: UInt32 = 0xFF0D
+        client.key(command, down: true)
+        client.key(a, down: true)
+        client.key(a, down: false)
+        client.key(command, down: false)
+        type(password)
+        client.key(enter, down: true)
+        client.key(enter, down: false)
     }
 
     private func type(_ text: String) {

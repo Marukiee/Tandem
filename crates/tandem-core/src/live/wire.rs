@@ -156,6 +156,10 @@ pub struct MediaUpdate {
     /// Control granted or taken away while the session runs.
     #[serde(default)]
     pub control: Option<bool>,
+    /// The host's screen is locked and it offers to unlock it with what it keeps (true), or not any more (false). The viewer asks its
+    /// person (a fingerprint) and answers with `MediaInput::Unlock`. Only a host that offers it sends it, so only such a host gets it.
+    #[serde(default)]
+    pub unlock: Option<bool>,
 }
 
 /// The viewer of an extra screen was turned (or its screen changed size): it wants the screen made for it in this shape from now on,
@@ -215,6 +219,8 @@ pub enum MediaInput {
     },
     /// A piece of text that was committed. Not the clipboard.
     Text { text: String },
+    /// The person at the viewer confirmed it is them: unlock the screen. Only after the host offered it in a `MediaUpdate`.
+    Unlock,
 }
 
 impl MediaInput {
@@ -593,5 +599,25 @@ mod tests {
         let bytes = crate::proto::encode(&crate::proto::Msg::MediaResize(MediaResize { session: 3, max_width: 1080, max_height: 2340, ..Default::default() })).unwrap();
         assert!(ciborium::from_reader::<OldMsg, _>(bytes.as_slice()).is_err());
         assert!(ciborium::from_reader::<ciborium::Value, _>(bytes.as_slice()).is_ok());
+    }
+
+    #[test]
+    fn the_offer_to_unlock_and_the_answer_travel_and_an_older_update_reads() {
+        let update = MediaUpdate { unlock: Some(true), ..Default::default() };
+        let bytes = crate::proto::encode(&crate::proto::Msg::MediaUpdate { session: 4, update }).unwrap();
+        match crate::proto::decode_msg(&bytes).unwrap() {
+            crate::proto::Msg::MediaUpdate { session: 4, update: got } => assert_eq!(got, update),
+            other => panic!("wrong message: {other:?}"),
+        }
+        let bytes = crate::proto::encode(&crate::proto::Msg::MediaInput { session: 4, input: MediaInput::Unlock }).unwrap();
+        match crate::proto::decode_msg(&bytes).unwrap() {
+            crate::proto::Msg::MediaInput { session: 4, input: MediaInput::Unlock } => {}
+            other => panic!("wrong message: {other:?}"),
+        }
+        let old = ciborium::Value::Map(vec![(ciborium::Value::Text("control".into()), ciborium::Value::Bool(true))]);
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&old, &mut bytes).unwrap();
+        let got: MediaUpdate = crate::proto::decode(&bytes).unwrap();
+        assert_eq!((got.control, got.unlock), (Some(true), None));
     }
 }

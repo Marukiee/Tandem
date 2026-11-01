@@ -110,6 +110,15 @@ class ScreenViewer(
 
     @Volatile private var session = 0UL
     @Volatile private var control = false
+
+    private val _unlockAsk = MutableStateFlow(false)
+    /** The computer is locked and offers to unlock with the password it keeps, once a fingerprint here says it is its person. */
+    val unlockAsk: StateFlow<Boolean> = _unlockAsk.asStateFlow()
+    /** A fingerprint said yes while this computer is open here: a lock again, or a session made again after a while in another app,
+     *  unlocks without asking. Closing the screen, opening another computer or a long time away forgets it. */
+    private var unlockApproved = false
+    /** When the screen went out of view, 0 while it is in view. */
+    private var awaySince = 0L
     @Volatile private var lastFrameAt = 0L
     private var attempt = 0
     private var requestJob: Job? = null
@@ -135,6 +144,7 @@ class ScreenViewer(
     /** Starts looking at a Mac. Called again for the same one (a rotation, a recomposition), it keeps what runs. */
     fun open(id: String, extend: Boolean = false) {
         pauseJob?.cancel()
+        if (peer != id) unlockApproved = false
         val running = _state.value
         if (peer == id && this.extend == extend && (running is ViewerState.Streaming || running is ViewerState.Connecting ||
                 running is ViewerState.WaitingForApproval || running is ViewerState.Reconnecting)
@@ -151,6 +161,7 @@ class ScreenViewer(
     /** The person left. The Mac is told and stops sharing. */
     fun close() {
         pauseJob?.cancel()
+        unlockApproved = false
         shutDown(tell = true)
         peer = null
         _state.value = ViewerState.Idle
@@ -159,6 +170,7 @@ class ScreenViewer(
     /** The screen is not in front. A short visit to another app keeps the session; a long one ends it. */
     fun pause() {
         pauseJob?.cancel()
+        awaySince = SystemClock.elapsedRealtime()
         pauseJob = main.launch {
             delay(PAUSE_LIMIT_MS)
             val id = peer ?: return@launch
@@ -170,6 +182,9 @@ class ScreenViewer(
 
     fun resume() {
         pauseJob?.cancel()
+        // Long enough away that someone else may hold the phone now: the next unlock asks again.
+        if (awaySince != 0L && SystemClock.elapsedRealtime() - awaySince > UNLOCK_AWAY_MS) unlockApproved = false
+        awaySince = 0L
         val id = peer
         if (id != null && _state.value == ViewerState.Idle) open(id, extend)
     }
@@ -366,9 +381,22 @@ class ScreenViewer(
         }
         heldButtons.clear()
         pointerMapper.reset()
+        _unlockAsk.value = false
         _picture.value = false
         _stalled.value = false
         _info.value = null
+    }
+
+    /** The fingerprint said yes. */
+    fun unlockConfirmed() {
+        _unlockAsk.value = false
+        unlockApproved = true
+        send(TandemMediaInput.Unlock)
+    }
+
+    /** No fingerprint: the lock screen is there to type on, as without this. */
+    fun unlockDeclined() {
+        _unlockAsk.value = false
     }
 
     // ---- From the core ------------------------------------------------------------------------
@@ -389,8 +417,13 @@ class ScreenViewer(
     override fun onUpdate(session: ULong, update: TandemMediaUpdate) {
         main.launch {
             if (session != this@ScreenViewer.session) return@launch
-            val old = _info.value ?: return@launch
             update.control?.let { control = it }
+            when (update.unlock) {
+                true -> if (unlockApproved) send(TandemMediaInput.Unlock) else _unlockAsk.value = true
+                false -> _unlockAsk.value = false
+                null -> Unit
+            }
+            val old = _info.value ?: return@launch
             _info.value = old.copy(
                 width = update.width?.toInt() ?: old.width,
                 height = update.height?.toInt() ?: old.height,
@@ -468,6 +501,7 @@ class ScreenViewer(
         const val WAITING_AFTER_MS = 1500L
         const val ONLINE_WAIT_MS = 60_000L
         const val PAUSE_LIMIT_MS = 20_000L
+        const val UNLOCK_AWAY_MS = 5 * 60_000L
         const val NUDGE_MS = 2500L
         const val STALL_MS = 4000L
         const val TURN_SETTLE_MS = 300L

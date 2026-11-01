@@ -1335,3 +1335,8 @@
 "Click OK and Done, then save here." = "Klik op OK en Gereed, en sla daarna hier op.";
 "Own settings for these devices" = "Eigen instellingen voor deze apparaten";
 "%lld devices" = "%lld apparaten";
+"Unlock with a fingerprint on your phone" = "Ontgrendel met een vingerafdruk op je telefoon";
+"Your phone asks for your fingerprint once per session, and this Mac types its password on the lock screen. The phone checks the fingerprint; this Mac takes its word." = "Je telefoon vraagt één keer per sessie om je vingerafdruk, en deze Mac typt zijn wachtwoord op het inlogscherm. De telefoon controleert de vingerafdruk, deze Mac gaat daarop af.";
+"Turn on reaching this Mac while it is locked first" = "Zet eerst bereikbaar terwijl hij vergrendeld is aan";
+"The lock screen did not take the saved password" = "Het inlogscherm nam het opgeslagen wachtwoord niet aan";
+"unlock %@" = "%@ ontgrendelen";

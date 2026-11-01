@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.65",
+    "date": "2026-11-01",
+    "en": { "title": "Unlock with your fingerprint", "new": ["Unlock a locked Mac with your fingerprint on your phone, once per session", "Choose several devices at once under For in the settings of the Mac"] },
+    "nl": { "title": "Ontgrendelen met je vingerafdruk", "new": ["Ontgrendel een vergrendelde Mac met je vingerafdruk op je telefoon, één keer per sessie", "Kies onder Voor in de instellingen van de Mac meerdere apparaten tegelijk"] }
+  },
+  {
     "version": "0.2.64",
     "date": "2026-11-01",
     "en": { "title": "Clearer setup for a locked Mac", "new": ["Says what to change when Remote Management of macOS turns Tandem down"] },

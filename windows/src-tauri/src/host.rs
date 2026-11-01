@@ -185,6 +185,8 @@ impl StreamPlay {
                     self.input.keysym(symbol, false);
                 }
             }
+            // Only a host that can be reached while locked offers it, and this one does not yet (docs/PARITY.md).
+            TandemMediaInput::Unlock => {}
         }
     }
 
@@ -877,7 +879,7 @@ fn capture_loop(
                 encoder = fresh;
                 turn.follow(session, &grabber);
                 // Told before the first picture of the new shape, which is a keyframe.
-                let _ = engine.media_update(session, TandemMediaUpdate { width: Some(width), height: Some(height), rotation: Some(0), fps: Some(fps), control: None });
+                let _ = engine.media_update(session, TandemMediaUpdate { unlock: None, width: Some(width), height: Some(height), rotation: Some(0), fps: Some(fps), control: None });
                 keyframe.store(true, Ordering::Relaxed);
                 last = None;
                 turn.place();

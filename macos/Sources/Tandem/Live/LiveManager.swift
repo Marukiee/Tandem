@@ -1,4 +1,5 @@
 import AppKit
+import LocalAuthentication
 import Observation
 import SwiftUI
 import TandemCore
@@ -205,6 +206,7 @@ final class LiveManager {
                     if session.kind == .camera { VirtualCamera.shared.setRotation(session.phoneRotation) }
                 }
                 if let control = update.control { session.controlGranted = control }
+                if update.unlock == true { self?.unlock(session) }
                 self?.windows[ObjectIdentifier(session)]?.contentSizeChanged()
             }
         }
@@ -227,6 +229,29 @@ final class LiveManager {
             self?.sendInput(session, input)
         }
         router.register(pipeline, for: id)
+    }
+
+    /// The other computer is locked and offers to unlock with the password it keeps, once the person here is who they should be. Touch ID
+    /// (or this Mac's password) asks once per window.
+    private func unlock(_ session: LiveSession) {
+        guard session.controlGranted, !session.unlockAsking else { return }
+        if session.unlockApproved {
+            sendInput(session, .unlock)
+            return
+        }
+        let context = LAContext()
+        guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) else { return }
+        session.unlockAsking = true
+        let id = session.id
+        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: String(localized: "unlock \(session.phoneName)")) { [weak self, weak session] ok, _ in
+            Task { @MainActor in
+                guard let session else { return }
+                session.unlockAsking = false
+                guard ok, session.id == id, session.isRunning else { return }
+                session.unlockApproved = true
+                self?.sendInput(session, .unlock)
+            }
+        }
     }
 
     /// A click, a scroll or a key for the phone, when it allowed this.

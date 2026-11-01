@@ -415,6 +415,7 @@ final class ScreenHost {
                     bitrate: UInt32(bitrate), control: control
                 ))
                 live.markAccepted()
+                self.offerUnlock(session: id)
                 // Pictures that came before the accept were not sent, and a still screen sends no new one: the first
                 // frame the viewer gets must be a keyframe made from what is on the display right now.
                 live.requestKeyframe(force: true)
@@ -470,6 +471,7 @@ final class ScreenHost {
     /// session and the viewer has to hear about it.
     func teardown(session: UInt64, tell: Bool, reason: TandemMediaEnd = .ended) {
         let live = registry.remove(session)
+        unlockOffered.remove(session)
         if tell { try? engine?.mediaStop(session: session) }
         let hadDisplay = displays.removeValue(forKey: session) != nil
         wantedShapes[session] = nil
@@ -575,8 +577,51 @@ final class ScreenHost {
 
     func input(session: UInt64, input: TandemMediaInput) {
         guard let running = remotes[session], running.control, let live = registry.get(session) else { return }
+        if case .unlock = input { return unlock(session: session) }
         if live.handleThroughScreenSharing(input) { return }
         model?.injector.handle(remote: input, in: live.geometry, from: running.peer)
+    }
+
+    // MARK: Unlocking from afar
+
+    /// Sessions that were told they may unlock this Mac, for as long as the lock lasts. Used once: the next lock offers it again.
+    @ObservationIgnored private var unlockOffered: Set<UInt64> = []
+
+    /// What a device needs before the password is typed for it, at the moment of asking and again at the moment of typing.
+    private func mayUnlock(session: UInt64) -> Bool {
+        guard let engine, let running = remotes[session], let live = registry.get(session) else { return false }
+        let policy = try? engine.mediaPolicy(id: running.peer)
+        return LockedAccess.unlockFromAfar && LockedAccess.hasPassword && running.control && live.viaScreenSharing
+            && policy?.screen == .always && policy?.control == .always && ScreenLock.isLocked
+    }
+
+    /// Tells the viewer whether it may unlock this Mac now, when that changed.
+    private func offerUnlock(session: UInt64) {
+        let offer = mayUnlock(session: session)
+        guard offer != unlockOffered.contains(session) else { return }
+        if offer { unlockOffered.insert(session) } else { unlockOffered.remove(session) }
+        try? engine?.mediaUpdate(session: session, update: TandemMediaUpdate(width: nil, height: nil, rotation: nil, fps: nil, control: nil, unlock: offer))
+    }
+
+    /// The person at the viewer confirmed it is them. The password goes only into the lock screen: with the Mac unlocked in between,
+    /// whatever app is in front would get it, so the lock is looked at again right before the first key.
+    private func unlock(session: UInt64) {
+        guard unlockOffered.contains(session), mayUnlock(session: session), let running = remotes[session],
+              let source = registry.get(session)?.lockScreen, let password = LockedAccess.password()
+        else { return }
+        unlockOffered.remove(session)
+        try? engine?.mediaUpdate(session: session, update: TandemMediaUpdate(width: nil, height: nil, rotation: nil, fps: nil, control: nil, unlock: false))
+        NSLog("Tandem: %@ unlocks this Mac", running.name)
+        Task { [weak self] in
+            source.wakeLockScreen()
+            try? await Task.sleep(for: .milliseconds(600))
+            guard let self, ScreenLock.isLocked, self.registry.get(session)?.lockScreen === source else { return }
+            source.enterPassword(password)
+            try? await Task.sleep(for: .seconds(5))
+            if ScreenLock.isLocked, self.registry.get(session)?.lockScreen === source {
+                LockedAccess.lastFailure = String(localized: "The lock screen did not take the saved password")
+            }
+        }
     }
 
     // MARK: Locked and unlocked
@@ -631,6 +676,7 @@ final class ScreenHost {
                     ))
                 }
                 live.requestKeyframe(force: true)
+                self?.offerUnlock(session: running.id)
                 // Back from Screen Sharing, the mouse and keyboard need Accessibility again.
                 if !toScreenSharing, let self, !AXIsProcessTrusted() { self.setControl(false, session: running.id) }
             } catch {
@@ -818,6 +864,8 @@ final class ScreenHostSession: @unchecked Sendable {
     var viaScreenSharing: Bool { lock.withLock { capturer is ScreenSharingSource } }
 
     /// Input for a session through Screen Sharing goes there; false when it is for the event posting of the system.
+    var lockScreen: ScreenSharingSource? { lock.withLock { capturer as? ScreenSharingSource } }
+
     func handleThroughScreenSharing(_ input: TandemMediaInput) -> Bool {
         guard let source = lock.withLock({ capturer as? ScreenSharingSource }) else { return false }
         source.handle(input)
