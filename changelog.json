@@ -2,8 +2,8 @@
   {
     "version": "0.2.62",
     "date": "2026-11-01",
-    "en": { "title": "Locked Mac in What works", "new": ["What works shows whether this Mac can be reached while it is locked, with a button to set it up"] },
-    "nl": { "title": "Vergrendelde Mac in Wat werkt", "new": ["Wat werkt laat zien of deze Mac vergrendeld bereikbaar is, met een knop om het in te stellen"] }
+    "en": { "title": "Keep awake", "new": ["A cup in the panel keeps your computer awake, also with the lid closed, so you can reach it from elsewhere", "What works shows whether this Mac can be reached while it is locked"] },
+    "nl": { "title": "Wakker houden", "new": ["Een kopje in het paneel houdt je computer wakker, ook met de klep dicht, zodat je hem overal vandaan bereikt", "Wat werkt laat zien of deze Mac vergrendeld bereikbaar is"] }
   },
   {
     "version": "0.2.61",
