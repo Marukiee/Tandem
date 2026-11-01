@@ -223,87 +223,13 @@ struct DeviceDetail: View {
 
     private var actions: some View {
         let isComputer = device.platform == .macOs || device.platform == .windows || device.platform == .linux
-        return VStack(alignment: .leading, spacing: 10) {
-            // All of it in one row of buttons that are as wide as their words, wrapping on a narrow window: what goes between the two devices first, then what this
-            // Mac does on the other one (look at it, use it, log in to it, ring it).
-            GlassEffectContainer(spacing: 0) {
-                WrapRow(spacing: 10) {
-                    GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true) { pickFiles() }
-                        .disabled(!device.online)
-                    // Small enough for Bluetooth, so it works with no network as long as a link is up.
-                    GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard") {
-                        model.sendClipboard(to: [device.id])
-                    }
-                    .disabled(!(device.online || device.ble))
-                    if device.caps.contains("wifi.join"), WifiShare.shared.worthSharing(with: device) { WifiShareButton(device: device) }
-                    // A computer offers Downloads, Documents and Desktop as well now, so every device with files can be browsed.
-                    if device.caps.contains("files") {
-                        GlassActionButton(title: "Browse files", symbol: "folder") { onBrowse() }
-                            .disabled(!device.online)
-                    }
-                    if isComputer || device.platform == .android {
-                        LiveActionRow(device: device)
-                    }
-                    if device.platform == .android {
-                        let ringing = model.ringing.contains(device.id)
-                        GlassActionButton(
-                            title: ringing ? "Stop ringing" : "Find phone",
-                            symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right",
-                            prominent: ringing
-                        ) {
-                            model.ring(device.id, on: !ringing)
-                            model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
-                        }
-                        .disabled(!device.online)
-                        // This Mac's sound on the phone, one press from the top, as the button in the menu bar has it. It is the same as picking the
-                        // phone in the sound menu.
-                        let speaking = model.speaker.device == device.id
-                        GlassActionButton(
-                            title: speaking ? "Stop phone output" : "Phone as output",
-                            symbol: speaking ? "speaker.wave.3.fill" : "speaker.wave.2",
-                            prominent: speaking
-                        ) { model.toggleSpeaker(for: device.id) }
-                        .disabled(!device.online && !speaking)
-                        // The phone as the microphone of this Mac. Grey only when it is away; what else is missing is said when it is pressed.
-                        let listening = PhoneMicrophone.shared.state.device == device.id
-                        GlassActionButton(
-                            title: listening ? "Stop phone microphone" : "Phone as microphone",
-                            symbol: listening ? "mic.fill" : "mic",
-                            prominent: listening
-                        ) { PhoneMicrophone.shared.toggle(for: device.id) }
-                        .disabled(!device.online && !listening)
-                    }
-                    // A computer can be logged in to from here. The button looks the same whether that is set up there or not: someone may
-                    // not want it, so what is missing is only said when the button is pressed.
-                    if isComputer {
-                        GlassActionButton(title: "Terminal", symbol: "terminal") {
-                            Task {
-                                var address = sshAddress
-                                if address == nil { address = await SSHAccess.reachableAddress(of: device) }
-                                if let address {
-                                    SSHAccess.open(device, at: address)
-                                } else {
-                                    model.showToast(SSHAccess.reason(for: device))
-                                }
-                            }
-                        }
-                        .disabled(!device.online)
-                        .help("Log in to this computer over SSH")
-                        PlaySoundButton(device: device)
-                    }
-                    // This Mac's sound on a computer that plays the sound of other devices. What can go wrong there is said when it is
-                    // pressed.
-                    if isComputer, device.caps.contains("audio.play") {
-                        let speaking = model.speaker.device == device.id
-                        GlassActionButton(
-                            title: speaking ? "Stop speaker" : "Use as speaker",
-                            symbol: speaking ? "speaker.wave.3.fill" : "speaker.wave.2",
-                            prominent: speaking
-                        ) { model.toggleSpeaker(for: device.id) }
-                        .disabled(!device.online && !speaking)
-                        .help("Play the sound of this Mac on \(device.name)")
-                    }
-                }
+        return VStack(alignment: .leading, spacing: 12) {
+            // Grouped by what they are for, the groups side by side as cards with a row per action, and under each other when the window
+            // is too narrow. Pills as wide as their words wrapped into ragged lines, and a group of one took a whole line.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 12) { actionGroups(isComputer: isComputer) }
+                    .fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: 12) { actionGroups(isComputer: isComputer) }
             }
             if isComputer { LastSeenText(device: device) }
         }
@@ -319,6 +245,93 @@ struct DeviceDetail: View {
             let found = await SSHAccess.reachableAddress(of: device)
             SSHAccess.seen[device.id] = found ?? ""
             sshAddress = found
+        }
+    }
+
+    @ViewBuilder
+    private func actionGroups(isComputer: Bool) -> some View {
+        ActionGroup(title: "Share") {
+            GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true) { pickFiles() }
+                .disabled(!device.online)
+            // Small enough for Bluetooth, so it works with no network as long as a link is up.
+            GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard") {
+                model.sendClipboard(to: [device.id])
+            }
+            .disabled(!(device.online || device.ble))
+            if device.caps.contains("wifi.join"), WifiShare.shared.worthSharing(with: device) { WifiShareButton(device: device) }
+            // A computer offers Downloads, Documents and Desktop as well now, so every device with files can be browsed.
+            if device.caps.contains("files") {
+                GlassActionButton(title: "Browse files", symbol: "folder") { onBrowse() }
+                    .disabled(!device.online)
+            }
+        }
+        if isComputer || device.platform == .android {
+            ActionGroup(title: "Screen") {
+                LiveActionRow(device: device)
+                // A computer can be logged in to from here. The button looks the same whether that is set up there or not: someone may
+                // not want it, so what is missing is only said when the button is pressed.
+                if isComputer {
+                    GlassActionButton(title: "Terminal", symbol: "terminal") {
+                        Task {
+                            var address = sshAddress
+                            if address == nil { address = await SSHAccess.reachableAddress(of: device) }
+                            if let address {
+                                SSHAccess.open(device, at: address)
+                            } else {
+                                model.showToast(SSHAccess.reason(for: device))
+                            }
+                        }
+                    }
+                    .disabled(!device.online)
+                    .help("Log in to this computer over SSH")
+                }
+            }
+        }
+        if isComputer || device.platform == .android {
+            ActionGroup(title: "Sound") {
+                if device.platform == .android {
+                    // This Mac's sound on the phone, one press from the top, as the button in the menu bar has it. It is the same as picking
+                    // the phone in the sound menu.
+                    let speaking = model.speaker.device == device.id
+                    GlassActionButton(
+                        title: speaking ? "Stop phone output" : "Phone as output",
+                        symbol: speaking ? "speaker.wave.3.fill" : "speaker.wave.2",
+                        prominent: speaking
+                    ) { model.toggleSpeaker(for: device.id) }
+                    .disabled(!device.online && !speaking)
+                    // The phone as the microphone of this Mac. Grey only when it is away; what else is missing is said when it is pressed.
+                    let listening = PhoneMicrophone.shared.state.device == device.id
+                    GlassActionButton(
+                        title: listening ? "Stop phone microphone" : "Phone as microphone",
+                        symbol: listening ? "mic.fill" : "mic",
+                        prominent: listening
+                    ) { PhoneMicrophone.shared.toggle(for: device.id) }
+                    .disabled(!device.online && !listening)
+                    let ringing = model.ringing.contains(device.id)
+                    GlassActionButton(
+                        title: ringing ? "Stop ringing" : "Find phone",
+                        symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right",
+                        prominent: ringing
+                    ) {
+                        model.ring(device.id, on: !ringing)
+                        model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
+                    }
+                    .disabled(!device.online)
+                }
+                // This Mac's sound on a computer that plays the sound of other devices. What can go wrong there is said when it is
+                // pressed.
+                if isComputer, device.caps.contains("audio.play") {
+                    let speaking = model.speaker.device == device.id
+                    GlassActionButton(
+                        title: speaking ? "Stop speaker" : "Use as speaker",
+                        symbol: speaking ? "speaker.wave.3.fill" : "speaker.wave.2",
+                        prominent: speaking
+                    ) { model.toggleSpeaker(for: device.id) }
+                    .disabled(!device.online && !speaking)
+                    .help("Play the sound of this Mac on \(device.name)")
+                }
+                if isComputer { PlaySoundButton(device: device) }
+            }
         }
     }
 
@@ -575,6 +588,29 @@ struct DropZone: View {
             return true
         } isTargeted: { targeted = $0 }
         .opacity(device.online ? 1 : 0.5)
+    }
+}
+
+/// A few actions under the name of what they are for, on a card of the same tint as the ones in the menu bar panel. The buttons in it
+/// draw themselves as rows (see `actionButtonsAsRows`).
+private struct ActionGroup<Content: View>: View {
+    let title: LocalizedStringKey
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
+            content
+        }
+        .padding(6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 22, style: .continuous))
+        .environment(\.actionButtonsAsRows, true)
     }
 }
 

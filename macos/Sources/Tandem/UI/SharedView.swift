@@ -45,7 +45,17 @@ struct SharedView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                PageHeader(title: "Shared", subtitle: "Files you send and receive. Click one to open it, Command or Shift-click to choose more, right click for more.")
+                PageHeader(title: "Shared", subtitle: "Files you send and receive. Click one to open it, Command or Shift-click to choose more, right click for more.") {
+                    EmptyView()
+                } actions: {
+                    if model.transfers.contains(where: { $0.state != .active }) {
+                        Button("Clear finished", systemImage: "xmark.bin") {
+                            withAnimation(.tandem) { model.clearFinishedTransfers() }
+                        }
+                        .buttonStyle(.tandemGlass)
+                        .transition(.opacity)
+                    }
+                }
                 if !chosen.isEmpty {
                     chosenBar.transition(.opacity.combined(with: .move(edge: .top)))
                 }
@@ -109,20 +119,6 @@ struct SharedView: View {
             Button("Move to Trash", role: .destructive) { trashChosen() }
         } message: {
             Text("Files you sent stay where they were.")
-        }
-        .toolbar {
-            // The buttons at the trailing end, where the system's own apps have them.
-            ToolbarSpacer(.flexible)
-            if model.transfers.contains(where: { $0.state != .active }) {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        withAnimation(.tandem) { model.clearFinishedTransfers() }
-                    } label: {
-                        Label("Clear finished", systemImage: "xmark.bin")
-                    }
-                    .help("Clear finished")
-                }
-            }
         }
     }
 

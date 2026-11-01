@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.59",
+    "date": "2026-11-01",
+    "en": { "title": "Tidier device page", "new": ["The buttons of a device grouped by what they do", "Clear buttons next to the page title", "A sent file no longer stays at 100%"] },
+    "nl": { "title": "Rustigere apparaatpagina", "new": ["De knoppen van een apparaat gegroepeerd per functie", "Wisknoppen naast de titel van de pagina", "Een verstuurd bestand blijft niet meer op 100% hangen"] }
+  },
+  {
     "version": "0.2.58",
     "date": "2026-10-30",
     "en": { "title": "Hotspot joined by hand", "new": ["Joined your phone's hotspot yourself? Tandem sees it and offers to stop it"] },

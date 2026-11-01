@@ -20,14 +20,20 @@ struct Card<Content: View>: View {
 }
 
 /// The title of a page and the line under it, the same on every page that has one.
-struct PageHeader<Extra: View>: View {
+struct PageHeader<Extra: View, Actions: View>: View {
     let title: LocalizedStringKey
     let subtitle: LocalizedStringKey
     @ViewBuilder var extra: Extra
+    /// The buttons of the page, on the line of the title at its end: in the toolbar they floated alone in a corner of the window.
+    @ViewBuilder var actions: Actions
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.largeTitle.weight(.bold))
+            HStack(alignment: .center, spacing: 8) {
+                Text(title).font(.largeTitle.weight(.bold))
+                Spacer(minLength: 12)
+                actions
+            }
             Text(subtitle)
                 .font(.callout)
                 .foregroundStyle(.secondary)
@@ -36,9 +42,15 @@ struct PageHeader<Extra: View>: View {
     }
 }
 
-extension PageHeader where Extra == EmptyView {
+extension PageHeader where Actions == EmptyView {
+    init(title: LocalizedStringKey, subtitle: LocalizedStringKey, @ViewBuilder extra: () -> Extra) {
+        self.init(title: title, subtitle: subtitle, extra: extra, actions: { EmptyView() })
+    }
+}
+
+extension PageHeader where Extra == EmptyView, Actions == EmptyView {
     init(title: LocalizedStringKey, subtitle: LocalizedStringKey) {
-        self.init(title: title, subtitle: subtitle) { EmptyView() }
+        self.init(title: title, subtitle: subtitle, extra: { EmptyView() }, actions: { EmptyView() })
     }
 }
 
@@ -50,8 +62,18 @@ struct GlassActionButton: View {
     /// Takes the width it is given, so buttons side by side come out the same size whatever their labels are.
     var wide = false
     let action: () -> Void
+    @Environment(\.actionButtonsAsRows) private var asRow
 
     var body: some View {
+        if asRow {
+            Button(action: action) { ActionRow(title: title, symbol: symbol, on: prominent) }
+                .buttonStyle(BouncyButtonStyle())
+        } else {
+            pill
+        }
+    }
+
+    private var pill: some View {
         Button(action: action) {
             Label(title, systemImage: symbol)
                 // A button that turns on or off changes its symbol and words: the symbol morphs, and the words fade across while the
@@ -304,7 +326,47 @@ struct WrapRow: Layout {
 
 // MARK: Round icon buttons for the menu bar panel
 
+/// An action as a row on a card: the symbol in a disc and the name next to it, as the tiles of the menu bar panel. Under the pointer the
+/// row deepens and the disc fills; an action that is on keeps the filled disc and says its name in the tint.
+private struct ActionRow: View {
+    let title: LocalizedStringKey
+    let symbol: String
+    let on: Bool
+    @Environment(\.isEnabled) private var enabled
+    @LocalState private var hovering = false
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        let filled = on || (hovering && enabled)
+        HStack(spacing: 10) {
+            ZStack {
+                Circle().fill(filled ? Palette.indigo : Palette.indigo.opacity(0.15))
+                Image(systemName: symbol)
+                    .font(.system(size: 13, weight: .semibold))
+                    .contentTransition(.symbolEffect(.replace))
+                    .fadingForeground(Palette.indigo, to: Color.white, when: filled)
+            }
+            .frame(width: 30, height: 30)
+            Text(title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(on ? Palette.indigo : Color.primary)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 6)
+        .frame(height: 42)
+        .background(shape.fill(Color.primary.opacity(hovering && enabled ? 0.07 : 0)))
+        .contentShape(shape)
+        .opacity(enabled ? 1 : 0.45)
+        .onHover { hovering = $0 }
+        .animation(.tandemFade, value: hovering)
+        .animation(.tandemFade, value: on)
+    }
+}
+
 extension EnvironmentValues {
+    /// Action buttons on a card of a group draw themselves as rows, as on the page of a device.
+    @Entry var actionButtonsAsRows = false
     /// Round icon buttons in a row that share out its width as equal rounded keys, as under a device in the menu bar panel.
     @Entry var iconButtonsFill = false
 }

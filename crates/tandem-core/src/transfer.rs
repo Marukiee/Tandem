@@ -498,10 +498,14 @@ impl Inner {
         }
 
         proto::send(&mut send, &FileTrailer { blake3: *hasher.finalize().as_bytes() }).await?;
-        let ack: FileAck = proto::recv(&mut recv, MAX_SMALL_FRAME).await?;
+        // Every byte and the trailer are out. A receiver that closes the connection right after its last file can take the
+        // acknowledgement down with it: that is not a failed send, and saying nothing left the file at 100% for good. A receiver that
+        // really failed pulls again, and says so then.
+        let ack: Option<FileAck> = proto::recv(&mut recv, MAX_SMALL_FRAME).await.ok();
         let _ = send.finish();
-        let error = (!ack.ok).then(|| "the other device rejected the checksum".to_string());
-        if ack.ok {
+        let rejected = ack.is_some_and(|a| !a.ok);
+        let error = rejected.then(|| "the other device rejected the checksum".to_string());
+        if !rejected {
             self.progress(peer, request.offer, request.index, false, &item.name, size, size);
         }
         self.emit(Event::Finished(TransferDone {

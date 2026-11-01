@@ -8,7 +8,17 @@ struct NotificationsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                PageHeader(title: "Notifications", subtitle: "What your phones showed. New ones also appear as notifications on this Mac.")
+                PageHeader(title: "Notifications", subtitle: "What your phones showed. New ones also appear as notifications on this Mac.") {
+                    EmptyView()
+                } actions: {
+                    if !model.mirrored.isEmpty {
+                        Button("Clear all", systemImage: "xmark.bin") {
+                            withAnimation(.tandem) { model.clearMirrored() }
+                        }
+                        .buttonStyle(.tandemGlass)
+                        .transition(.opacity)
+                    }
+                }
                 if model.mirrored.isEmpty {
                     ContentUnavailableView(
                         "No notifications yet",
@@ -31,20 +41,6 @@ struct NotificationsView: View {
             .frame(maxWidth: 760, alignment: .leading)
             .frame(maxWidth: .infinity)
             .animation(.tandem, value: model.mirrored.map(\.id))
-        }
-        .toolbar {
-            // The buttons and the search at the trailing end, where the system's own apps have them.
-            ToolbarSpacer(.flexible)
-            if !model.mirrored.isEmpty {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        withAnimation(.tandem) { model.clearMirrored() }
-                    } label: {
-                        Label("Clear all", systemImage: "xmark.bin")
-                    }
-                    .help("Clear all")
-                }
-            }
         }
     }
 }

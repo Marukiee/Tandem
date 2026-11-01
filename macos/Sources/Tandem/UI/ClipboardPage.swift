@@ -31,24 +31,6 @@ struct ClipboardPage: View {
             .animation(.tandem, value: shown.map(\.id))
             .animation(.tandem, value: history.enabled)
         }
-        .toolbar {
-            // The buttons at the trailing end, where the system's own apps have them.
-            ToolbarSpacer(.flexible)
-            ToolbarItem(placement: .primaryAction) {
-                Button { ClipboardPanelController.shared.show() } label: {
-                    Label("Open the quick panel", systemImage: "rectangle.and.text.magnifyingglass")
-                }
-                .help("Open the quick panel")
-            }
-            if !history.items.isEmpty {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { confirmClear = true } label: {
-                        Label("Clear", systemImage: "xmark.bin")
-                    }
-                    .help("Clear")
-                }
-            }
-        }
         .clearHistoryDialog(isPresented: $confirmClear)
     }
 
@@ -60,6 +42,16 @@ struct ClipboardPage: View {
                     KeyCap(history.hotkey.display)
                 }
                 .padding(.top, 2)
+            }
+        } actions: {
+            Button("Open the quick panel", systemImage: "rectangle.and.text.magnifyingglass") { ClipboardPanelController.shared.show() }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.tandemGlass)
+                .help("Open the quick panel")
+            if !history.items.isEmpty {
+                Button("Clear", systemImage: "xmark.bin") { confirmClear = true }
+                    .buttonStyle(.tandemGlass)
+                    .transition(.opacity)
             }
         }
     }
