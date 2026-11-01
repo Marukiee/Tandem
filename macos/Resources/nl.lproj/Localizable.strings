@@ -1295,4 +1295,14 @@
 "Stop the hotspot" = "Hotspot stoppen";
 "Set up the hotspot first, on the page of your phone" = "Stel eerst de hotspot in, op de pagina van je telefoon";
 "%@ is locked" = "%@ is vergrendeld";
-"A locked computer shows nothing to other apps. Unlock it there and try again." = "Een vergrendelde computer laat andere apps niets zien. Ontgrendel hem daar en probeer opnieuw.";
+"A locked computer shows nothing to other apps. Unlock it there, or let a Mac be reached while it is locked: in Tandem on that Mac, under Remote control." = "Een vergrendelde computer laat andere apps niets zien. Ontgrendel hem daar, of maak een Mac vergrendeld bereikbaar: in Tandem op die Mac, bij Op afstand bedienen.";
+"Reach this Mac while it is locked" = "Deze Mac bereiken als hij vergrendeld is";
+"Your phone sees the lock screen and you type your password there. Uses Screen Sharing of macOS, for devices that may always look and always control below." = "Je telefoon ziet het vergrendelscherm en daar typ je je wachtwoord. Gebruikt Scherm delen van macOS, voor apparaten die hieronder altijd mogen kijken en altijd mogen bedienen.";
+"Screen Sharing asks for the password of this Mac before it shows the lock screen. It stays in your Keychain, and is never sent to another device." = "Scherm delen vraagt het wachtwoord van deze Mac voordat het het vergrendelscherm laat zien. Het blijft in je sleutelhanger en gaat nooit naar een ander apparaat.";
+"Password of %@" = "Wachtwoord van %@";
+"Enter again" = "Opnieuw invoeren";
+"Screen Sharing is off, so devices cannot reach this Mac while it is locked." = "Scherm delen staat uit, dus apparaten kunnen deze Mac niet bereiken als hij vergrendeld is.";
+"Turn on Screen Sharing first, in System Settings under General, Sharing" = "Zet eerst Scherm delen aan, in Systeeminstellingen bij Algemeen, Delen";
+"That is not the password of this Mac." = "Dat is niet het wachtwoord van deze Mac.";
+"Screen Sharing does not answer. Turn it on in System Settings under General, Sharing." = "Scherm delen antwoordt niet. Zet het aan in Systeeminstellingen bij Algemeen, Delen.";
+"Screen Sharing did not let Tandem in: %@" = "Scherm delen liet Tandem niet binnen: %@";

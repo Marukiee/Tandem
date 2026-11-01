@@ -19,7 +19,7 @@
     <string name="screen_busy_title">%1$s is bezig</string>
     <string name="screen_busy_body">Een ander apparaat kijkt nu mee op %1$s.</string>
     <string name="screen_locked_title">%1$s is vergrendeld</string>
-    <string name="screen_locked_body">Een vergrendelde computer laat andere apps niets zien, dus Tandem kan hem niet tonen of bedienen. Ontgrendel %1$s daar en probeer opnieuw.</string>
+    <string name="screen_locked_body">Een vergrendelde computer laat andere apps niets zien. Ontgrendel %1$s daar, of maak een Mac vergrendeld bereikbaar: in Tandem op die Mac, bij Op afstand bedienen.</string>
     <string name="screen_unavailable_title">%1$s kan zijn scherm niet delen</string>
     <string name="screen_unavailable_body">Tandem op %1$s kan zijn scherm nog niet tonen. Kijk bij Wat werkt in de instellingen: daar staat wat er mist, met een knop om het daar te openen.</string>
     <string name="screen_noanswer_title">Geen antwoord van %1$s</string>

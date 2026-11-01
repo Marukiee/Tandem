@@ -281,6 +281,7 @@ struct ScreenSettings: View {
                     pane: "Privacy_Accessibility"
                 )
             }
+            LockedAccessSection()
 
             if !host.running.isEmpty {
                 Section("Right now") {

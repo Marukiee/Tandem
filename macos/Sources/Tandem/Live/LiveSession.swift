@@ -144,7 +144,7 @@ struct LiveCopy: Equatable {
         case .locked:
             return LiveCopy(
                 title: String(localized: "\(name) is locked"),
-                detail: String(localized: "A locked computer shows nothing to other apps. Unlock it there and try again."),
+                detail: String(localized: "A locked computer shows nothing to other apps. Unlock it there, or let a Mac be reached while it is locked: in Tandem on that Mac, under Remote control."),
                 symbol: "lock.fill", canRetry: true
             )
         case .failed:

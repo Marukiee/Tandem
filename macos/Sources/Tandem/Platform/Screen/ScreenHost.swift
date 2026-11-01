@@ -97,7 +97,8 @@ final class ScreenHost {
     /// What goes into `Hello.caps`. Only when this Mac can really do it: the switch is on and Screen Recording is
     /// allowed. Decided once, at start, because the Hello is.
     func capabilities() -> [String] {
-        advertised = enabled && ScreenCapturer.hasPermission
+        // A Mac that is only reached through Screen Sharing while it is locked still has a screen to offer.
+        advertised = enabled && (ScreenCapturer.hasPermission || LockedAccess.ready)
         guard advertised else { return [] }
         // Without Accessibility a phone can look but its clicks and keys go nowhere, which it is told.
         // A second screen needs the system to make a display of software, which it does not on every system.
@@ -107,7 +108,7 @@ final class ScreenHost {
     }
 
     /// Screen Recording was allowed after the app started, so the Hello has to be said again, which is a restart.
-    var needsRestart: Bool { enabled && ScreenCapturer.hasPermission && !advertised }
+    var needsRestart: Bool { enabled && (ScreenCapturer.hasPermission || LockedAccess.hasPassword) && !advertised }
 
     func attach(engine: TandemEngine, model: EngineModel) {
         self.engine = engine
@@ -137,10 +138,15 @@ final class ScreenHost {
 
         guard request.kind == .screen, request.codecs.isEmpty || request.codecs.contains(.h264) else { return deny(.unsupported) }
         guard enabled else { return deny(.policy) }
-        // The lock screen belongs to the system: an app sees nothing of it and cannot type into it. Said straight away, instead of a
-        // session that keeps failing and a phone that keeps trying (seen 2026-11-01, over Tailscale while away from the Mac).
-        guard !ScreenLock.isLocked else { return deny(.locked) }
-        guard ScreenCapturer.hasPermission else {
+        let controlPolicy = (try? engine.mediaPolicy(id: peer))?.control ?? .ask
+        // The lock screen belongs to the system: an app sees nothing of it and cannot type into it. Screen Sharing of macOS can, when it is
+        // set up for it; otherwise that is said straight away, instead of a session that keeps failing and a phone that keeps trying (seen
+        // 2026-11-01, over Tailscale while away from the Mac).
+        let locked = ScreenLock.isLocked
+        if locked {
+            guard lockedAllowed(request: request, preApproved: preApproved, controlPolicy: controlPolicy) else { return deny(.locked) }
+        }
+        guard locked || ScreenCapturer.hasPermission else {
             FloatingToast.show(String(localized: "Allow Tandem to record this Mac's screen in System Settings, under Screen Recording"), symbol: "rectangle.dashed.badge.record")
             return deny(.unavailable)
         }
@@ -158,7 +164,8 @@ final class ScreenHost {
 
         let name = model?.device(peer)?.name ?? String(localized: "A device")
         accessibility = AXIsProcessTrusted()
-        let controlPolicy = (try? engine.mediaPolicy(id: peer))?.control ?? .ask
+        // Nobody is at a locked Mac to answer a question, and its input goes through Screen Sharing, not through Accessibility.
+        if locked { return start(request: request, peer: peer, name: name, control: true, screenSharing: true) }
         let controlPossible = request.control && accessibility && controlPolicy != .never
 
         // The person pressed the button for this on this Mac a moment ago: that was the question, it is not asked again.
@@ -300,7 +307,13 @@ final class ScreenHost {
 
     // MARK: Start
 
-    private func start(request: TandemMediaRequest, peer: String, name: String, control: Bool) {
+    /// A locked Mac lets in only what it could without a question: a device that may always look and always control, asking for this
+    /// Mac's own display, with Screen Sharing ready for it.
+    private func lockedAllowed(request: TandemMediaRequest, preApproved: Bool, controlPolicy: TandemMediaPermission) -> Bool {
+        preApproved && controlPolicy == .always && !request.extend && LockedAccess.ready
+    }
+
+    private func start(request: TandemMediaRequest, peer: String, name: String, control: Bool, screenSharing: Bool = false) {
         guard let engine else { return }
         let id = request.session
         // Another device may have been let in to this Mac's own display while this one waited for its answer.
@@ -350,7 +363,8 @@ final class ScreenHost {
             let encoder = try ScreenEncoder(.init(width: size.width, height: size.height, fps: fps, bitrate: bitrate))
             live = ScreenHostSession(
                 id: id, peer: peer, engine: engine, encoder: encoder, display: display,
-                limits: (Int(request.maxWidth), Int(request.maxHeight)), baseFps: fps, startBitrate: bitrate, virtualDisplay: virtual
+                limits: (Int(request.maxWidth), Int(request.maxHeight)), baseFps: fps, startBitrate: bitrate, virtualDisplay: virtual,
+                screenSharing: screenSharing
             )
         } catch {
             displays[id] = nil
@@ -363,6 +377,7 @@ final class ScreenHost {
         }
         remotes[id] = Remote(id: id, peer: peer, name: name, control: control, offered: control, startedAt: Date(), width: size.width, height: size.height, extend: request.extend)
         ScreenPanels.shared.update()
+        if !request.extend { watchLock() }
         // The side is listened for while the display gets ready, not after: by the time the screen shows, it is on the right side.
         if request.extend { SideWatch.shared.screenStarted(peer) }
 
@@ -400,6 +415,7 @@ final class ScreenHost {
 
     private func failed(session: UInt64, error: Error) {
         guard let engine else { return }
+        if error is ScreenSharingClient.Failure { NSLog("Tandem: Screen Sharing for a locked Mac failed: %@", String(describing: error)) }
         let reason: TandemMediaEnd = ScreenLock.isLocked ? .locked : ScreenCapturer.isPermissionError(error) ? .unavailable : .error
         try? engine.mediaDeny(session: session, reason: reason)
         teardown(session: session, tell: false)
@@ -475,7 +491,7 @@ final class ScreenHost {
     /// Turns control on or off for one session, without ending it.
     func setControl(_ allowed: Bool, session: UInt64) {
         guard let engine, var running = remotes[session] else { return }
-        let granted = allowed && AXIsProcessTrusted()
+        let granted = allowed && (AXIsProcessTrusted() || registry.get(session)?.viaScreenSharing == true)
         try? engine.mediaUpdate(session: running.id, update: TandemMediaUpdate(width: nil, height: nil, rotation: nil, fps: nil, control: granted))
         running.control = granted
         remotes[session] = running
@@ -548,7 +564,68 @@ final class ScreenHost {
 
     func input(session: UInt64, input: TandemMediaInput) {
         guard let running = remotes[session], running.control, let live = registry.get(session) else { return }
+        if live.handleThroughScreenSharing(input) { return }
         model?.injector.handle(remote: input, in: live.geometry, from: running.peer)
+    }
+
+    // MARK: Locked and unlocked
+
+    /// Looks every second whether this Mac was locked or unlocked while its display is shown. Unlocked through Screen Sharing (the person
+    /// typed the password on the phone), the session goes on with the capture of the system, which is sharper and quicker; locked while
+    /// shown, it goes on through Screen Sharing when that is set up for this device, instead of a picture that stops.
+    @ObservationIgnored private var lockWatch: Task<Void, Never>?
+    @ObservationIgnored private var switching = false
+
+    private func watchLock() {
+        guard lockWatch == nil else { return }
+        lockWatch = Task { [weak self] in
+            var was = ScreenLock.isLocked
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard let self, self.mirror != nil else { break }
+                let now = ScreenLock.isLocked
+                if now != was || self.needsSwitch(locked: now) { self.lockChanged(locked: now) }
+                was = now
+            }
+            self?.lockWatch = nil
+        }
+    }
+
+    private func needsSwitch(locked: Bool) -> Bool {
+        guard let running = mirror, let live = registry.get(running.id) else { return false }
+        return live.viaScreenSharing && !locked
+    }
+
+    private func lockChanged(locked: Bool) {
+        guard let engine, let running = mirror, let live = registry.get(running.id), !switching else { return }
+        let toScreenSharing: Bool
+        if locked {
+            guard !live.viaScreenSharing else { return }
+            let policy = try? engine.mediaPolicy(id: running.peer)
+            guard policy?.screen == .always, policy?.control == .always, LockedAccess.ready else { return }
+            toScreenSharing = true
+        } else {
+            guard live.viaScreenSharing, ScreenCapturer.hasPermission else { return }
+            toScreenSharing = false
+        }
+        NSLog("Tandem: this Mac was %@, the screen of %@ goes on through %@", locked ? "locked" : "unlocked", running.name, toScreenSharing ? "Screen Sharing" : "the capture")
+        switching = true
+        Task { [weak self] in
+            defer { self?.switching = false }
+            do {
+                try await live.restart(screenSharing: toScreenSharing) { shape in
+                    guard shape.changed else { return }
+                    try engine.mediaUpdate(session: running.id, update: TandemMediaUpdate(
+                        width: UInt32(shape.width), height: UInt32(shape.height), rotation: 0, fps: UInt32(live.baseFps), control: nil
+                    ))
+                }
+                live.requestKeyframe(force: true)
+                // Back from Screen Sharing, the mouse and keyboard need Accessibility again.
+                if !toScreenSharing, let self, !AXIsProcessTrusted() { self.setControl(false, session: running.id) }
+            } catch {
+                self?.teardown(session: running.id, tell: true, reason: ScreenLock.isLocked ? .locked : .error)
+            }
+        }
     }
 
     // MARK: The display changes
@@ -557,7 +634,8 @@ final class ScreenHost {
     /// with the size that fits now, and the viewer is told the new shape before the first picture of it. Extra screens keep their own
     /// capture as long as the display stays what it was made as.
     func displayChanged(woke: Bool) {
-        guard let running = mirror, let live = registry.get(running.id), !recovering else { return }
+        // Screen Sharing follows the displays itself, and its picture is fitted into the one of the session.
+        guard let running = mirror, let live = registry.get(running.id), !recovering, !switching, !live.viaScreenSharing else { return }
         // Extra screens that come, go and move change the displays of the system without changing the one this session shows. After a
         // wake the stream may have stopped without a word, so that always starts again.
         if !woke, live.shows(ScreenCapturer.mainDisplay()) { return }
@@ -708,7 +786,7 @@ final class ScreenHostSession: @unchecked Sendable {
     private let limits: (width: Int, height: Int)
     private let lock = NSLock()
     private var encoder: ScreenEncoder
-    private var capturer = ScreenCapturer()
+    private var capturer: any ScreenSource
     private var display: ScreenCapturer.DisplayInfo
     private var accepted = false
     private var stopped = false
@@ -725,10 +803,20 @@ final class ScreenHostSession: @unchecked Sendable {
     let startedAt = Date()
 
     var isExtended: Bool { lock.withLock { virtualDisplay != nil } }
+    /// The pictures come from Screen Sharing, because this Mac is locked.
+    var viaScreenSharing: Bool { lock.withLock { capturer is ScreenSharingSource } }
+
+    /// Input for a session through Screen Sharing goes there; false when it is for the event posting of the system.
+    func handleThroughScreenSharing(_ input: TandemMediaInput) -> Bool {
+        guard let source = lock.withLock({ capturer as? ScreenSharingSource }) else { return false }
+        source.handle(input)
+        return true
+    }
 
     init(id: UInt64, peer: String, engine: TandemEngine, encoder: ScreenEncoder, display: ScreenCapturer.DisplayInfo,
-         limits: (Int, Int), baseFps: Int, startBitrate: Int, virtualDisplay: VirtualDisplay? = nil) {
+         limits: (Int, Int), baseFps: Int, startBitrate: Int, virtualDisplay: VirtualDisplay? = nil, screenSharing: Bool = false) {
         self.virtualDisplay = virtualDisplay
+        capturer = screenSharing ? ScreenSharingSource() : ScreenCapturer()
         self.id = id
         self.peer = peer
         self.engine = engine
@@ -752,7 +840,7 @@ final class ScreenHostSession: @unchecked Sendable {
         encoder.onFrame = { [weak self] frame in self?.push(frame) }
     }
 
-    private func wire(_ capturer: ScreenCapturer) {
+    private func wire(_ capturer: any ScreenSource) {
         capturer.onFrame = { [weak self] buffer in
             guard let self else { return }
             self.lock.lock()
@@ -787,7 +875,7 @@ final class ScreenHostSession: @unchecked Sendable {
     }
 
     func stop() async {
-        let (target, running) = lock.withLock { () -> (ScreenCapturer, ScreenEncoder) in
+        let (target, running) = lock.withLock { () -> (any ScreenSource, ScreenEncoder) in
             stopped = true
             return (capturer, encoder)
         }
@@ -895,7 +983,7 @@ final class ScreenHostSession: @unchecked Sendable {
     /// For a second screen that is turned, `reshape` gives the display its new shape while nothing captures it (a capture whose display
     /// changes under it stops, and the session with it), and `size` is the picture of that shape. When `reshape` says the display would
     /// not change, the picture stays as it was.
-    func restart(size wanted: (width: Int, height: Int)? = nil, reshape: (@MainActor () async -> Bool)? = nil, announce: (Shape) throws -> Void) async throws {
+    func restart(size wanted: (width: Int, height: Int)? = nil, screenSharing: Bool? = nil, reshape: (@MainActor () async -> Bool)? = nil, announce: (Shape) throws -> Void) async throws {
         let (oldCapture, oldEncoder, rate, rateBitrate) = lock.withLock { (capturer, encoder, fps, bitrate) }
         await oldCapture.stop()
         let reshaped = await reshape?() ?? true
@@ -918,7 +1006,7 @@ final class ScreenHostSession: @unchecked Sendable {
         }
         try announce(Shape(width: size.width, height: size.height, changed: changed))
 
-        let nextCapture = ScreenCapturer()
+        let nextCapture: any ScreenSource = (screenSharing ?? (oldCapture is ScreenSharingSource)) ? ScreenSharingSource() : ScreenCapturer()
         wire(nextCapture)
         lock.withLock {
             capturer = nextCapture
@@ -932,7 +1020,11 @@ final class ScreenHostSession: @unchecked Sendable {
 
 /// Whether this Mac shows its lock screen now.
 enum ScreenLock {
+    /// For a test: locked for as long as this file is there.
+    private static let debugFile = ProcessInfo.processInfo.environment["TANDEM_DEBUG_LOCKED"]
+
     static var isLocked: Bool {
+        if let debugFile { return FileManager.default.fileExists(atPath: debugFile) }
         guard let session = CGSessionCopyCurrentDictionary() as? [String: Any] else { return false }
         return session["CGSSessionScreenIsLocked"] as? Bool ?? false
     }

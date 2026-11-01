@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.61",
+    "date": "2026-11-01",
+    "en": { "title": "Reach a locked Mac", "new": ["Turn on Reach this Mac while it is locked under Remote control, and your phone shows the lock screen so you can unlock it from anywhere"] },
+    "nl": { "title": "Vergrendelde Mac bereiken", "new": ["Zet Deze Mac bereiken als hij vergrendeld is aan bij Op afstand bedienen, dan toont je telefoon het vergrendelscherm en ontgrendel je hem overal vandaan"] }
+  },
+  {
     "version": "0.2.60",
     "date": "2026-11-01",
     "en": { "title": "Says when a computer is locked", "new": ["Asking for the screen of a locked Mac or Linux computer now says it is locked, instead of trying again and again"] },

@@ -41,6 +41,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | SSH-terminal naar een computer | ja (JSch en xterm.js, nooit tegen een echte computer geprobeerd) | ja | ja | ja |
 | Hotspot van de telefoon vanaf de computer | bron | ja | nee (heeft geen Bluetooth-code) | nee (Bluetooth is er sinds 0.1.82, het verzoek niet) |
 | Zeggen dat een computer vergrendeld is als iemand zijn scherm vraagt | bron (nvt) | ja | nee (een vergrendelde Windows eindigt als fout, zoals voorheen) | ja (logind `LockedHint`) |
+| Een vergrendelde computer bereiken en ontgrendelen | bron (nvt) | ja (via Scherm delen van macOS) | nee (Windows heeft geen ingebouwde server voor het inlogscherm die een app mag gebruiken) | nee (het vergrendelscherm van GNOME en KDE laat geen app binnen; dat kan alleen met een eigen systeemdienst) |
 | Tweede scherm (een computer maakt een scherm voor een ander apparaat, ook aan te vragen vanaf de computer) | kijker (raakt aan = klikken) | host (virtueel beeldscherm) en kijker | kijker, geen host (stuurprogramma nodig) | host onder Wayland (met aanraken, nooit gezien) en kijker |
 | Bluetooth tussen apparaten zonder netwerk (klembord, meldingen) | wacht (telefoon) | wacht en zoekt | nee | wacht en zoekt (BlueZ, nooit tussen twee computers gezien) |
 | Computer wakker maken (Wake on LAN) vanaf de telefoon | ja | doel | doel | doel |

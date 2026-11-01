@@ -63,6 +63,16 @@ enum DebugSupport {
         }
         // `TANDEM_DEBUG_SCREEN=encode`: runs the screen encoder against a drawn picture and decodes the result, then quits.
         if variable("TANDEM_DEBUG_SCREEN") == "encode" { ScreenDebug.run(into: directory) }
+        // `TANDEM_DEBUG_SCREEN=always`: every device may look and control without a question, as a locked Mac needs.
+        if variable("TANDEM_DEBUG_SCREEN") == "always" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                guard let engine = EngineModel.shared.tandem else { return }
+                var policy = engine.mediaDefaultPolicy()
+                policy.screen = .always
+                policy.control = .always
+                try? engine.setMediaDefaultPolicy(policy: policy)
+            }
+        }
 
         if let mode = variable("TANDEM_DEBUG_CLIPBOARD") {
             seedClipboard()

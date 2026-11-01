@@ -19,7 +19,7 @@
     <string name="screen_busy_title">%1$s is busy</string>
     <string name="screen_busy_body">Another device is looking at %1$s right now.</string>
     <string name="screen_locked_title">%1$s is locked</string>
-    <string name="screen_locked_body">A locked computer shows nothing to other apps, so Tandem cannot show or use it. Unlock %1$s there and try again.</string>
+    <string name="screen_locked_body">A locked computer shows nothing to other apps. Unlock %1$s there, or let a Mac be reached while it is locked: in Tandem on that Mac, under Remote control.</string>
     <string name="screen_unavailable_title">%1$s cannot share its screen</string>
     <string name="screen_unavailable_body">Tandem on %1$s cannot show its screen yet. Look at What works in the settings: it says what is missing and opens it there.</string>
     <string name="screen_noanswer_title">No answer from %1$s</string>
