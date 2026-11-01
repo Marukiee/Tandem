@@ -1,4 +1,5 @@
 import SwiftUI
+import TandemCore
 
 /// Keeping this Mac awake to reach it from elsewhere, in General. The same switch is the cup in the panel.
 struct KeepAwakeSettings: View {
@@ -35,5 +36,24 @@ struct KeepAwakeButton: View {
         }
         .help(awake.on ? "Let this Mac sleep again" : "Keep this Mac awake")
         .disabled(awake.asking)
+    }
+}
+
+/// Keep awake of another computer, on its page: on while it shows the switch on there.
+struct RemoteKeepAwakeButton: View {
+    @Environment(EngineModel.self) private var model
+    let device: TandemDevice
+
+    var body: some View {
+        let awake = device.status.awake == true
+        GlassActionButton(title: awake ? "Kept awake" : "Keep awake", symbol: awake ? "cup.and.heat.waves.fill" : "cup.and.saucer", prominent: awake) {
+            // An older Tandem there has no such switch, which is said when it is pressed.
+            guard device.status.awake != nil else {
+                return model.showToast(String(localized: "Update Tandem on \(device.name) to keep it awake from here"))
+            }
+            Task { try? await model.tandem?.keepAwake(target: device.id, on: !awake) }
+        }
+        .disabled(!device.online)
+        .help(awake ? "Let this computer sleep again" : "Keep this computer awake, also with the lid closed")
     }
 }

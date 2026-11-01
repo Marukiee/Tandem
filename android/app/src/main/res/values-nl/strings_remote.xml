@@ -26,4 +26,8 @@
     <string name="remote_key_delete">Wissen</string>
     <string name="remote_key_enter">Enter</string>
     <string name="remote_speed">Snelheid van de aanwijzer</string>
+    <string name="keep_awake_title">Wakker houden</string>
+    <string name="keep_awake_sub">Blijft aan, ook met de klep dicht, zodat je hem van hieruit bereikt</string>
+    <string name="keep_awake_offline">Hij is offline. Zet het aan terwijl hij bereikbaar is</string>
+    <string name="keep_awake_update">Werk Tandem bij op %1$s om hem van hieruit wakker te houden</string>
 </resources>

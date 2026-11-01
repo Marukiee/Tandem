@@ -51,6 +51,7 @@ fn status(s: &TandemStatus) -> Value {
         "locked": s.locked,
         "freeStorage": s.free_storage,
         "asleep": s.asleep,
+        "awake": s.awake,
     })
 }
 

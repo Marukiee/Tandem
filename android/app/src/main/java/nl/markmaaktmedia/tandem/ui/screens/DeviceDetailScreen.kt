@@ -41,6 +41,7 @@ import nl.markmaaktmedia.tandem.ui.routeBounds
 import nl.markmaaktmedia.tandem.ui.routeKey
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
+import nl.markmaaktmedia.tandem.ui.components.SwitchRow
 import nl.markmaaktmedia.tandem.ui.components.ActionTile
 import nl.markmaaktmedia.tandem.ui.components.platformName
 import nl.markmaaktmedia.tandem.ui.components.BatteryRing
@@ -237,7 +238,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         val showFiles = device.online && "files" in device.caps
         // A computer that can make a screen of its own for this phone: the row is there when it says so, and not as a grey one that cannot work.
         val showDisplay = computer && "screen.extend" in device.caps
-        val controlRows = (if (computer) 4 else if (device.online) 1 else 0) + (if (showFiles) 1 else 0) + (if (showDisplay) 1 else 0)
+        val controlRows = (if (computer) 5 else if (device.online) 1 else 0) + (if (showFiles) 1 else 0) + (if (showDisplay) 1 else 0)
         if (controlRows > 0) {
             SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
             SettingsGroup {
@@ -264,6 +265,21 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                         whyNot = R.string.offline_trackpad,
                     )
                     nl.markmaaktmedia.tandem.ui.components.TerminalRow(row++, controlRows, device, { onTerminal(id) })
+                    // Keep awake there, switched from here: the switch shows what that computer says it is. An older Tandem there has none,
+                    // which is said when it is tapped.
+                    SwitchRow(
+                        row++, controlRows, TandemIcons.Coffee, stringResource(R.string.keep_awake_title), stringResource(R.string.keep_awake_sub),
+                        checked = device.status.awake == true,
+                        onChange = { on ->
+                            val why = when {
+                                !device.online -> context.getString(R.string.keep_awake_offline)
+                                device.status.awake == null -> context.getString(R.string.keep_awake_update, device.name)
+                                else -> null
+                            }
+                            if (why != null) android.widget.Toast.makeText(context, why, android.widget.Toast.LENGTH_SHORT).show()
+                            else scope.launch { runCatching { host.engine?.keepAwake(id, on) } }
+                        },
+                    )
                 } else if (device.online) {
                     nl.markmaaktmedia.tandem.ui.components.ControlRow(
                         row++, controlRows, TandemIcons.Ring, stringResource(R.string.tile_find), stringResource(R.string.find_row_sub),

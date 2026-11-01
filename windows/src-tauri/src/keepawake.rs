@@ -5,7 +5,10 @@
 use std::sync::Mutex;
 use std::time::Duration;
 
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
+use tandem_core::ffi::TandemStatus;
+
+use crate::state::AppState;
 
 use crate::{events, i18n, settings};
 
@@ -93,6 +96,7 @@ pub fn start(app: AppHandle) {
             loop {
                 std::thread::sleep(Duration::from_secs(60));
                 guard(&app);
+                announce(&app);
             }
         })
         .ok();
@@ -130,6 +134,39 @@ fn apply(app: &AppHandle) {
     let _ = lid;
     drop(held);
     crate::tray::rebuild(app);
+    announce(app);
+}
+
+/// What the other devices were last told, so the switch is said once per change and again when the engine was not there yet.
+static TOLD: Mutex<Option<Option<bool>>> = Mutex::new(None);
+
+/// The state of the switch in the status, for another device to show and switch. Nothing on a system without the means to hold it.
+fn announce(app: &AppHandle) {
+    let awake = available().then(|| settings::get(app).keep_awake);
+    let mut told = TOLD.lock().unwrap();
+    if *told == Some(awake) {
+        return;
+    }
+    let Ok(engine) = app.state::<AppState>().engine() else { return };
+    tauri::async_runtime::block_on(engine.update_status(TandemStatus { awake, ..Default::default() }));
+    *told = Some(awake);
+}
+
+/// Another device switched it on or off, which this computer says, with who.
+pub fn from_afar(app: &AppHandle, from: &str, on: bool) {
+    if !available() {
+        return;
+    }
+    if settings::get(app).keep_awake != on {
+        settings::update(app, |s| s.keep_awake = on);
+        let name = events::device_name(app, from);
+        events::toast(app, "Tandem", &i18n::t1(app, if on { "keep_awake_afar_on" } else { "keep_awake_afar_off" }, &name));
+        let _ = app.emit("settings", settings::get(app));
+    } else {
+        // Already so: said again, for a device that missed it.
+        *TOLD.lock().unwrap() = None;
+    }
+    configure(app);
 }
 
 /// On the battery and almost empty: let it sleep again, and say so.

@@ -135,6 +135,7 @@ object TandemIcons {
     val VisibilityOff: Painter @Composable get() = painterResource(R.drawable.sym_visibility_off)
     val Shield: Painter @Composable get() = painterResource(R.drawable.sym_shield)
     val Lock: Painter @Composable get() = painterResource(R.drawable.sym_lock)
+    val Coffee: Painter @Composable get() = painterResource(R.drawable.sym_coffee)
     val Update: Painter @Composable get() = painterResource(R.drawable.sym_system_update)
     val Sync: Painter @Composable get() = painterResource(R.drawable.sym_sync)
     val Person: Painter @Composable get() = painterResource(R.drawable.sym_person)

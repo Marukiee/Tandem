@@ -293,6 +293,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             }
         }
         TandemEvent::Ring { from, on } => crate::find::ring(app, from, on),
+        TandemEvent::KeepAwake { from, on } => crate::keepawake::from_afar(app, &from, on),
         TandemEvent::Ringing { from, on } => {
             let _ = app.emit("ringing", json!({ "id": from, "on": on }));
         }

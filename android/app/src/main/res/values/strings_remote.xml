@@ -26,4 +26,8 @@
     <string name="remote_key_delete">Delete</string>
     <string name="remote_key_enter">Enter</string>
     <string name="remote_speed">Pointer speed</string>
+    <string name="keep_awake_title">Keep awake</string>
+    <string name="keep_awake_sub">Stays on, also with the lid closed, so you can reach it from here</string>
+    <string name="keep_awake_offline">It is offline. Switch it on while it can be reached</string>
+    <string name="keep_awake_update">Update Tandem on %1$s to keep it awake from here</string>
 </resources>

@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.63",
+    "date": "2026-11-01",
+    "en": { "title": "Keep awake from afar", "new": ["Keep a computer awake from your phone or another computer, on the page of that computer"] },
+    "nl": { "title": "Op afstand wakker houden", "new": ["Houd een computer wakker vanaf je telefoon of een andere computer, op de pagina van die computer"] }
+  },
+  {
     "version": "0.2.62",
     "date": "2026-11-01",
     "en": { "title": "Keep awake", "new": ["A cup in the panel keeps your computer awake, also with the lid closed, so you can reach it from elsewhere", "What works shows whether this Mac can be reached while it is locked"] },

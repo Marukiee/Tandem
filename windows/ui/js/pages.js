@@ -287,6 +287,10 @@ export function DevicePage({ device }) {
           <${Icon} name=${extendOn ? "circle-x" : "device-desktop"} size=${17} />${extendOn ? t("extend_stop") : t("extend_to")}</button>`}
         ${isComputer && html`<button class="btn" disabled=${!device.online} title=${t("ssh_title")} onClick=${() => (sshReady ? openSsh() : say(sshReason))}>
           <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
+        ${isComputer && html`<button class=${"btn" + (device.status?.awake ? " on" : "")} disabled=${!device.online} title=${t("keep_awake_remote_tip")}
+          onClick=${() => (device.status?.awake == null ? say(t("keep_awake_update", device.name))
+            : call("keep_awake_remote", { id: device.id, on: !device.status.awake }).catch(failed))}>
+          <${Icon} name="coffee" size=${17} />${device.status?.awake ? t("keep_awake_kept") : t("keep_awake_remote")}</button>`}
         ${isComputer && html`<${PlaySoundButton} device=${device} />`}
         ${canPlay(device) && html`<${OutputButton} device=${device} />`}
         ${device.platform === "android" && html`<${MicButton} device=${device} />`}

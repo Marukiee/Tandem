@@ -273,6 +273,8 @@ pub struct TandemStatus {
     pub asleep: Option<bool>,
     pub wake_mac: Option<String>,
     pub muted: Option<bool>,
+    #[uniffi(default = None)]
+    pub awake: Option<bool>,
 }
 
 impl From<Status> for TandemStatus {
@@ -293,6 +295,7 @@ impl From<Status> for TandemStatus {
             asleep: s.asleep,
             wake_mac: s.wake_mac,
             muted: s.muted,
+            awake: s.awake,
         }
     }
 }
@@ -315,6 +318,7 @@ impl From<TandemStatus> for Status {
             asleep: s.asleep,
             wake_mac: s.wake_mac,
             muted: s.muted,
+            awake: s.awake,
             // The features go their own way, with `set_features`.
             features: None,
         }
@@ -1051,6 +1055,7 @@ pub enum TandemEvent {
     /// Another device is nearly empty, or full on the charger: for a notification, when the person wants those.
     BatteryAlert { from: String, level: u8, full: bool },
     Ring { from: String, on: bool },
+    KeepAwake { from: String, on: bool },
     /// `quiet` when the other device checks by itself: listen only when the microphone is free and allowed, without asking for it.
     SideListen { from: String, id: u64, quiet: bool },
     /// The answers of a device to `side_start`, which reads them itself: the apps can let them go by.
@@ -1175,6 +1180,7 @@ impl From<Event> for TandemEvent {
             Event::Dial { from, number } => TandemEvent::Dial { from: from.to_string(), number },
             Event::BatteryAlert { from, level, full } => TandemEvent::BatteryAlert { from: from.to_string(), level, full },
             Event::Ring { from, on } => TandemEvent::Ring { from: from.to_string(), on },
+            Event::KeepAwake { from, on } => TandemEvent::KeepAwake { from: from.to_string(), on },
             Event::SideListen { from, id, quiet } => TandemEvent::SideListen { from: from.to_string(), id, quiet },
             Event::SideReady { from, id } => TandemEvent::SideReady { from: from.to_string(), id },
             Event::SideHeard { from, id, .. } => TandemEvent::SideHeard { from: from.to_string(), id },
@@ -1812,6 +1818,11 @@ impl TandemEngine {
 
     pub async fn dial(&self, target: String, number: String) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::Dial { number }).await.map(|_| ())
+    }
+
+    /// Asks `target` to keep itself awake, or to let it sleep again.
+    pub async fn keep_awake(&self, target: String, on: bool) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::KeepAwake { on }).await.map(|_| ())
     }
 
     pub async fn ring(&self, target: String, on: bool) -> Result<(), TandemError> {

@@ -284,6 +284,7 @@ struct DeviceDetail: View {
                     }
                     .disabled(!device.online)
                     .help("Log in to this computer over SSH")
+                    RemoteKeepAwakeButton(device: device)
                 }
             }
         }

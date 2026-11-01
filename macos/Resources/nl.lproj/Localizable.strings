@@ -1320,3 +1320,9 @@
 "Keep awake turned off, the battery is at %lld%%." = "Wakker houden staat uit, de batterij is %lld%%.";
 "Without your password this Mac still sleeps when you close it" = "Zonder je wachtwoord slaapt deze Mac nog als je hem dichtdoet";
 "Tandem wants to keep this Mac awake with the lid closed." = "Tandem wil deze Mac wakker houden met de klep dicht.";
+"%@ keeps this Mac awake" = "%@ houdt deze Mac wakker";
+"%@ lets this Mac sleep again" = "%@ laat deze Mac weer slapen";
+"Kept awake" = "Wordt wakker gehouden";
+"Update Tandem on %@ to keep it awake from here" = "Werk Tandem bij op %@ om hem van hieruit wakker te houden";
+"Let this computer sleep again" = "Laat deze computer weer slapen";
+"Keep this computer awake, also with the lid closed" = "Houd deze computer wakker, ook met de klep dicht";

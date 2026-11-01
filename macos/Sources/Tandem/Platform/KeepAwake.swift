@@ -32,6 +32,10 @@ final class KeepAwake {
     }
     /// Asking for the administrator password right now.
     private(set) var asking = false
+    /// Told whenever it goes on or off, for the status the other devices see.
+    @ObservationIgnored var onChange: ((Bool) -> Void)?
+    /// A question for the password only makes sense to someone at this Mac, not to a device that switched it on from afar.
+    @ObservationIgnored private var mayAsk = true
 
     @ObservationIgnored private var assertion: IOPMAssertionID = 0
     @ObservationIgnored private var sessionAssertion: IOPMAssertionID = 0
@@ -46,9 +50,30 @@ final class KeepAwake {
     func toggle() { set(!on) }
 
     func set(_ wanted: Bool) {
+        mayAsk = true
+        change(wanted)
+    }
+
+    /// Another device switched it, which this Mac says, with who.
+    func setFromAfar(_ wanted: Bool, by name: String) {
+        // Already so: the status is said again, for a device that missed it.
+        guard wanted != on else {
+            onChange?(on)
+            return
+        }
+        mayAsk = false
+        change(wanted)
+        FloatingToast.show(
+            wanted ? String(localized: "\(name) keeps this Mac awake") : String(localized: "\(name) lets this Mac sleep again"),
+            symbol: wanted ? "cup.and.heat.waves.fill" : "cup.and.saucer"
+        )
+    }
+
+    private func change(_ wanted: Bool) {
         on = wanted
         UserDefaults.standard.set(wanted, forKey: Self.onKey)
         apply()
+        onChange?(wanted)
     }
 
     /// Undone when Tandem quits: a Mac that sleeps again when the app that kept it awake is gone is what a person expects.
@@ -142,6 +167,9 @@ final class KeepAwake {
         }
         // Turning it back on needs no question when there is nothing to undo.
         guard disabled || UserDefaults.standard.bool(forKey: Self.disabledKey) else { return }
+        // Switched on from afar before the password was ever given here: awake with the lid open, and the closed lid waits for the
+        // person at this Mac.
+        guard mayAsk else { return }
         asking = true
         let installed = await Task.detached(operation: { Self.installRule(thenDisable: disabled) }).value
         asking = false

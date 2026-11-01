@@ -276,6 +276,9 @@ final class EngineModel {
         LiveManager.shared.attach(engine: engine)
         VirtualCamera.shared.start()
         ScreenHost.shared.attach(engine: engine, model: self)
+        KeepAwake.shared.onChange = { awake in
+            Task { await engine.updateStatus(status: TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil, awake: awake)) }
+        }
         KeepAwake.shared.start()
         engine.setAudioSink(sink: PhoneSound.shared.sink)
         PointerShare.shared.start()
@@ -692,6 +695,9 @@ final class EngineModel {
 
         case let .ring(from, on):
             FindThisMac.shared.ring(from: from, on: on)
+
+        case let .keepAwake(from, on):
+            KeepAwake.shared.setFromAfar(on, by: device(from)?.name ?? String(localized: "A device"))
 
         case let .batteryAlert(from, level, full):
             // Settings, General: "Battery alerts", on unless turned off.
@@ -1303,7 +1309,7 @@ final class EngineModel {
 
     func pushStatus() {
         guard let engine else { return }
-        var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: false, wakeMac: WiredAddress.mac(), muted: OutputMute.isMuted())
+        var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: false, wakeMac: WiredAddress.mac(), muted: OutputMute.isMuted(), awake: KeepAwake.shared.on)
         status.battery = PowerReader.battery()
         status.network = TandemNetwork(
             kind: network.isOnline ? .wifi : .none,

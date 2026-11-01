@@ -193,6 +193,12 @@ pub async fn ring(state: State<'_, AppState>, id: String, on: bool) -> Reply<()>
     state.engine()?.ring(id, on).await.map_err(shown)
 }
 
+/// Keep awake of another computer, switched from here.
+#[tauri::command]
+pub async fn keep_awake_remote(state: State<'_, AppState>, id: String, on: bool) -> Reply<()> {
+    state.engine()?.keep_awake(id, on).await.map_err(shown)
+}
+
 // ---- Sending ------------------------------------------------------------------------
 
 fn mime_for(path: &std::path::Path) -> String {

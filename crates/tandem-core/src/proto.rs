@@ -194,6 +194,9 @@ pub enum Msg {
     /// The viewer of an extra screen was turned and wants the screen in its new shape (see `live::MediaResize`). Devices that do not
     /// know it skip it.
     MediaResize(crate::live::MediaResize),
+    /// Asks a computer to keep itself awake (or to let it sleep again), from afar: its status says how it is now. Devices that do not
+    /// know it skip it.
+    KeepAwake { on: bool },
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,
@@ -265,6 +268,10 @@ pub struct Status {
     /// of a computer shows it on the mute button, and follows it when the computer is unmuted by other means.
     #[serde(default)]
     pub muted: Option<bool>,
+    /// Keep awake is on (true) or off (false) on this computer, so another device can show it and switch it with `KeepAwake`. Nil on a
+    /// device that has no such switch.
+    #[serde(default)]
+    pub awake: Option<bool>,
     /// What this device can do for the others and whether it is ready for it: the whole list each time it changes.
     #[serde(default)]
     pub features: Option<Vec<Feature>>,
@@ -291,7 +298,7 @@ impl Status {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, features);
+        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, features);
     }
 }
 
@@ -1017,6 +1024,15 @@ mod tests {
         let (mut a, mut b) = tokio::io::duplex(1024);
         write_frame(&mut a, &vec![0u8; 200]).await.unwrap();
         assert!(read_frame(&mut b, 100).await.is_err());
+    }
+
+    #[test]
+    fn keep_awake_travels_and_its_state_is_merged() {
+        let bytes = encode(&Msg::KeepAwake { on: true }).unwrap();
+        assert!(matches!(decode_msg(&bytes).unwrap(), Msg::KeepAwake { on: true }));
+        let mut mine = Status { awake: Some(false), muted: Some(true), ..Default::default() };
+        mine.merge(&Status { awake: Some(true), ..Default::default() });
+        assert_eq!((mine.awake, mine.muted), (Some(true), Some(true)));
     }
 
     #[test]
