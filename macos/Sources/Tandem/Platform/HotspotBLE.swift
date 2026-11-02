@@ -60,6 +60,8 @@ final class BleHotspotClient: NSObject, CBCentralManagerDelegate, CBPeripheralDe
     static let actionOff: UInt8 = 2
     /// This Mac went on to another network: the phone turns its hotspot off unless others are on it, so any answer will do.
     static let actionLeave: UInt8 = 3
+    /// On, asked for with a button here: the phone lets that through a recent "off by hand", which only holds off this Mac by itself.
+    static let actionOnAsked: UInt8 = 4
 
     private enum Step { case idle, waitingForPower, scanning, connecting, discovering, subscribing, readingChallenge, writing, waitingForState }
 

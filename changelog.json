@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.72",
+    "date": "2026-11-02",
+    "en": { "title": "Off means off", "new": ["Turning the hotspot off on your phone keeps your computer from turning it on by itself for ten minutes; the button still does"] },
+    "nl": { "title": "Uit is uit", "new": ["Zet je de hotspot uit op je telefoon, dan zet je computer hem tien minuten niet vanzelf aan; met de knop kan het wel"] }
+  },
+  {
     "version": "0.2.71",
     "date": "2026-11-02",
     "en": { "title": "Hotspot, not in your bag", "new": ["A closed Mac that wakes for a moment no longer turns your hotspot on", "Cancel while the hotspot is being turned on or joined", "Screenshots from your phone no longer stay in Shared as if still arriving"] },

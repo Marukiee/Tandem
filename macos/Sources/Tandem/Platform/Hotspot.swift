@@ -179,7 +179,7 @@ final class HotspotCoordinator {
             }
             self.waitedForKnown = 0
             if let target = model.devices.first(where: { $0.platform == .android }) {
-                self.requestNow(target.id)
+                self.requestNow(target.id, byPerson: false)
             }
         }
     }
@@ -236,7 +236,8 @@ final class HotspotCoordinator {
 
     // MARK: Asking
 
-    func requestNow(_ id: String) {
+    /// `byPerson`: a button was pressed here. Only then does the phone turn it on again right after it was turned off there by hand.
+    func requestNow(_ id: String, byPerson: Bool = true) {
         guard let model, let engine = model.engineHandle else { return }
         heldOffUntil = .distantPast
         runTask?.cancel()
@@ -244,19 +245,19 @@ final class HotspotCoordinator {
         quicAnswer = nil
         model.hotspotStatus = .asking
         runTask = Task { [weak self] in
-            await self?.run(id: id, engine: engine)
+            await self?.run(id: id, engine: engine, byPerson: byPerson)
         }
     }
 
-    private func run(id: String, engine: TandemEngine) async {
+    private func run(id: String, engine: TandemEngine, byPerson: Bool) async {
         guard let model else { return }
         let name = model.device(id)?.name ?? "Phone"
         do {
             let answer: HotspotBleState
             if model.device(id)?.online == true {
-                answer = try await askOverNetwork(id: id, engine: engine)
+                answer = try await askOverNetwork(id: id, engine: engine, byPerson: byPerson)
             } else {
-                answer = try await ble.run(action: BleHotspotClient.actionOn, phoneId: id, engine: engine) { [weak self] state in
+                answer = try await ble.run(action: byPerson ? BleHotspotClient.actionOnAsked : BleHotspotClient.actionOn, phoneId: id, engine: engine) { [weak self] state in
                     Task { @MainActor in self?.showProgress(state) }
                 }
             }
@@ -267,6 +268,8 @@ final class HotspotCoordinator {
                 model.hotspotStatus = .failed(String(localized: "Nobody tapped the notification on your phone in time. Tap it next time, or start Shizuku so the phone can do it by itself."))
             default:
                 model.hotspotStatus = .failed(Self.reason(for: answer))
+                // The phone said no (turned off by hand a moment ago, battery, data limit): asking again in a few seconds is the same no.
+                heldOffUntil = Date().addingTimeInterval(Self.holdOff)
             }
         } catch is CancellationError {
             // A newer request or a stop took over.
@@ -286,8 +289,8 @@ final class HotspotCoordinator {
 
     /// When the phone is reachable over the normal connection, the same request goes
     /// over it, and the answer comes back as a state message.
-    private func askOverNetwork(id: String, engine: TandemEngine) async throws -> HotspotBleState {
-        try await engine.sendHotspot(target: id, hotspot: .request(reason: "mac-offline"))
+    private func askOverNetwork(id: String, engine: TandemEngine, byPerson: Bool) async throws -> HotspotBleState {
+        try await engine.sendHotspot(target: id, hotspot: .request(reason: byPerson ? "asked" : "mac-offline"))
         var waited = 0.0
         var limit = 45.0
         while waited < limit {
@@ -313,7 +316,7 @@ final class HotspotCoordinator {
         case .refusedBattery: String(localized: "Your phone's battery is too low to share its hotspot")
         case .refusedRoaming: String(localized: "Your phone is roaming, so it does not share its hotspot")
         case .refusedLimit: String(localized: "Your phone's daily data limit for the hotspot is reached")
-        case .disabled: String(localized: "Hotspot sharing is switched off on your phone")
+        case .disabled: String(localized: "Your phone does not share its hotspot now: sharing is off there, or you turned the hotspot off a moment ago")
         default: String(localized: "Your phone could not turn on its hotspot. Tap the notification on your phone, or make sure Shizuku is running so it can start by itself.")
         }
     }
@@ -433,6 +436,11 @@ final class HotspotCoordinator {
                 case .none:
                     // The phone turned it off: ours to follow, once we were using it, and not to ask for again right away.
                     if case .connected = model?.hotspotStatus {
+                        model?.hotspotStatus = .idle
+                        heldOffUntil = Date().addingTimeInterval(Self.holdOff)
+                    } else if case .joining = model?.hotspotStatus {
+                        // Turned off while this Mac was still joining it: just as much the person's no.
+                        runTask?.cancel()
                         model?.hotspotStatus = .idle
                         heldOffUntil = Date().addingTimeInterval(Self.holdOff)
                     }

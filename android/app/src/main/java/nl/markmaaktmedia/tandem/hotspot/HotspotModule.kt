@@ -149,7 +149,7 @@ class HotspotModule private constructor(private val context: Context) {
         when (event.hotspot) {
             is TandemHotspot.Request -> {
                 synchronized(quicAsked) { quicAsked += event.from }
-                controller.request(on = true)
+                controller.request(on = true, byPerson = (event.hotspot as TandemHotspot.Request).reason == "asked")
                 val now = controller.snapshot.value
                 if (now.phase == Phase.On) reply(event.from, now)
             }
@@ -215,7 +215,13 @@ class HotspotModule private constructor(private val context: Context) {
                 challenges = challenges,
                 myId = { graph.host.myId },
                 currentState = { controller.snapshot.value.let { it.bleState() to it.clients } },
-                onRequest = { action, _ -> if (action == HotspotProtocol.ACTION_LEAVE) controller.leave() else controller.request(on = action == HotspotProtocol.ACTION_ON) },
+                onRequest = { action, _ ->
+                    when (action) {
+                        HotspotProtocol.ACTION_LEAVE -> controller.leave()
+                        HotspotProtocol.ACTION_OFF -> controller.request(on = false)
+                        else -> controller.request(on = true, byPerson = action == HotspotProtocol.ACTION_ON_ASKED)
+                    }
+                },
                 sink = messenger,
             ).also { server = it }
             if (!current.running && !current.start()) Log.w(TAG, "the Bluetooth server did not start") else messenger.attach(current)

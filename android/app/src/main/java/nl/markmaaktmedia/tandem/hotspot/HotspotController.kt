@@ -105,18 +105,21 @@ class HotspotController(
     // for their own reasons is never turned off behind their back.
     @Volatile private var startedByUs = false
     @Volatile private var askedFor = false
+    /** When the person last switched the hotspot off by hand, while a computer was on it. For a while after, a request is a no: they
+     *  meant it, and the computer asking again by itself turned it back on against them (2026-11-02). */
+    @Volatile private var offByHandAt = 0L
 
     fun method(): HotspotMethod =
         if (shizuku.state.value == ShizukuState.Ready) HotspotMethod.Shizuku else HotspotMethod.Manual
 
     /** Asks for the hotspot on or off. Returns at once, the result is in [snapshot]. */
-    fun request(on: Boolean) {
+    fun request(on: Boolean, byPerson: Boolean = false) {
         if (on && _snapshot.value.phase != Phase.On) {
             // Set before the job runs, so a Mac that asks and immediately looks at the
             // state sees "starting" and not the stale "off".
             publish(HotspotSnapshot(Phase.Starting))
         }
-        submit { if (on) turnOn() else turnOff() }
+        submit { if (on) turnOn(byPerson) else turnOff() }
     }
 
     /**
@@ -189,7 +192,8 @@ class HotspotController(
         next.start()
     }
 
-    private suspend fun turnOn() {
+    /** [byPerson]: asked for with a button at the computer, which is a yes after an "off by hand" too; only the computer by itself is held off. */
+    private suspend fun turnOn(byPerson: Boolean = false) {
         val refusal = HotspotPolicy.refusal(
             enabled = enabled(),
             batteryPercent = PhoneConditions.batteryPercent(context),
@@ -200,6 +204,12 @@ class HotspotController(
         )
         if (refusal != null) {
             refuse(refusal)
+            return
+        }
+        if (byPerson) offByHandAt = 0L
+        if (offByHandAt != 0L && android.os.SystemClock.elapsedRealtime() - offByHandAt < OFF_BY_HAND_MS && !isOn()) {
+            Log.i(TAG, "turned off by hand a moment ago, not turning it on again")
+            refuse(Refusal.Disabled)
             return
         }
         askedFor = true
@@ -356,6 +366,7 @@ class HotspotController(
                 delay(if (dataLimitMb() > 0) WATCH_METERED_MS else WATCH_MS)
                 // The person may have switched it off by hand.
                 if (!isOn()) {
+                    if (askedFor || startedByUs) offByHandAt = android.os.SystemClock.elapsedRealtime()
                     finishOff()
                     syncStatus(false)
                     return@launch
@@ -400,6 +411,7 @@ class HotspotController(
         private const val TAG = "HotspotController"
         /** How long the Mac that left has to drop off the hotspot before the others are counted. */
         const val LEAVE_SETTLE_MS = 6_000L
+        const val OFF_BY_HAND_MS = 10 * 60_000L
         const val TEST_HOLD_MS = 20_000L
         private const val START_WAIT_MS = 20_000L
         private const val STOP_WAIT_MS = 10_000L
