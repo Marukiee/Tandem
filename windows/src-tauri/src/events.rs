@@ -165,8 +165,14 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             progress(app, offer, index, &peer, incoming, &name, done, total)
         }
         TandemEvent::Finished { offer, index, peer, incoming, name, size, location, error } => {
-            if !(incoming && (crate::drag::finished(app, &peer, offer, &name, &location, &error) || crate::insert::finished(app, &peer, offer, &location, &error)
-                || crate::clipfiles::finished(app, &peer, offer, &location, &error))) {
+            if incoming && (crate::drag::finished(app, &peer, offer, &name, &location, &error) || crate::insert::finished(app, &peer, offer, &location, &error)
+                || crate::clipfiles::finished(app, &peer, offer, &location, &error)) {
+                // Taken by a drop, an insert or the clipboard, which say it themselves: the row its progress made goes, or it stood at full
+                // forever (seen 2026-11-02 with screenshots from the phone).
+                let id = format!("{offer}-{index}-in");
+                app.state::<AppState>().data.lock().unwrap().transfers.retain(|t| t["id"] != id.as_str());
+                let _ = app.emit("transfer_gone", id);
+            } else {
                 finished(app, offer, index, &peer, incoming, &name, size, location, error)
             }
         }

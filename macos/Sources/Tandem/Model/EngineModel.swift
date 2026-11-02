@@ -525,8 +525,13 @@ final class EngineModel {
             updateTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, done: done, total: total)
 
         case let .finished(offer, index, peer, incoming, name, size, location, error):
-            if incoming, DragLanding.shared.finished(offer: offer, from: peer, name: name, location: location, error: error) { break }
-            if incoming, ClipboardFiles.shared.finished(offer: offer, from: peer, location: location, error: error) { break }
+            // Taken by a drop on the edge or by the clipboard: those say it themselves, but the row its progress made must still go, or it
+            // stood at full forever next to the finished file (seen 2026-11-02 with screenshots from the phone).
+            if incoming, DragLanding.shared.finished(offer: offer, from: peer, name: name, location: location, error: error)
+                || ClipboardFiles.shared.finished(offer: offer, from: peer, location: location, error: error) {
+                transfers.removeAll { $0.id == transferID(offer: offer, index: index, incoming: incoming) }
+                break
+            }
             finishTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, size: size, location: location, error: error)
 
         case let .notification(from, notification):
