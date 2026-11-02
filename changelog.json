@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.69",
+    "date": "2026-11-02",
+    "en": { "title": "Hotspot only when needed", "new": ["Turning the hotspot off on your phone no longer makes the Mac ask for it again right away", "The Mac leaves your hotspot by itself for a network it knows, like eduroam"] },
+    "nl": { "title": "Hotspot alleen als het moet", "new": ["Zet je de hotspot uit op je telefoon, dan vraagt de Mac hem niet meteen weer aan", "De Mac verlaat je hotspot vanzelf voor een netwerk dat hij kent, zoals eduroam"] }
+  },
+  {
     "version": "0.2.68",
     "date": "2026-11-02",
     "en": { "title": "Asleep, not offline", "new": ["A Mac that goes to sleep, also with the lid closed, now shows as asleep on your other devices"] },

@@ -63,6 +63,13 @@ final class HotspotCoordinator {
     private var wakeObserver: NSObjectProtocol?
     /// Looks in a row that found a known network nearby, so a network macOS will not join does not keep the hotspot away for good.
     private var waitedForKnown = 0
+    /// The hotspot went away while this Mac used it: most often the person turned it off on the phone, because a network of its own is
+    /// there (school, home). Asking for it again by itself right then turned it back on against them (2026-11-02); it waits until this
+    /// time, or until another network is there. The button still asks at once.
+    private var heldOffUntil = Date.distantPast
+    /// When the networks around were last looked at while on the hotspot.
+    private var lastScan = Date.distantPast
+    private static let holdOff: TimeInterval = 15 * 60
 
     static let enabledKey = "autoHotspot"
     static let delayKey = "hotspotDelay"
@@ -115,8 +122,19 @@ final class HotspotCoordinator {
             if saved.isEmpty || current == nil {
                 if sharing == nil, model.devices.first(where: { $0.id == activeDevice })?.online == true {
                     model.hotspotStatus = .idle
+                    heldOffUntil = Date().addingTimeInterval(Self.holdOff)
                 }
                 return
+            }
+            // A network of its own is near (school, home): that one goes first, and the phone keeps its battery.
+            if Date().timeIntervalSince(lastScan) > 30, let id = activeDevice {
+                lastScan = Date()
+                if await Task.detached(operation: { Self.leaveForKnown(except: saved) }).value {
+                    NSLog("Tandem: a known network is near, this Mac leaves the hotspot for it")
+                    heldOffUntil = Date().addingTimeInterval(Self.holdOff)
+                    leave(id)
+                    return
+                }
             }
             // An unreadable name is not proof of leaving: only a different network is. Moved on to it (by hand, or macOS did): the
             // phone turns the hotspot off when nobody else is on it.
@@ -135,8 +153,12 @@ final class HotspotCoordinator {
     /// near goes first: it is joined, and the phone is only asked when there is none.
     func networkChanged(online: Bool) {
         offlineTask?.cancel()
-        if online { waitedForKnown = 0 }
-        guard let model, !online, autoEnabled else { return }
+        if online {
+            waitedForKnown = 0
+            // Online through something else than the hotspot: the next time it is missed, it may be asked for again.
+            if case .connected = model?.hotspotStatus {} else { heldOffUntil = .distantPast }
+        }
+        guard let model, !online, autoEnabled, Date() >= heldOffUntil else { return }
         if model.hotspotStatus.isBusy { return }
         if case .connected = model.hotspotStatus { return }
         let chosen = UserDefaults.standard.object(forKey: Self.delayKey) as? Double ?? 8
@@ -144,7 +166,7 @@ final class HotspotCoordinator {
         let delay = max(chosen, settling)
         offlineTask = Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(delay))
-            guard !Task.isCancelled, let self, let model = self.model, !model.isOnline else { return }
+            guard !Task.isCancelled, let self, let model = self.model, !model.isOnline, Date() >= self.heldOffUntil else { return }
             let hotspot = UserDefaults.standard.string(forKey: Self.ssidKey)
             if self.waitedForKnown < Self.knownTries, await Task.detached(operation: { Self.joinKnownNearby(except: hotspot) }).value {
                 self.waitedForKnown += 1
@@ -178,6 +200,18 @@ final class HotspotCoordinator {
         return true
     }
 
+    /// On the hotspot, with a saved network of this Mac's own in good reach: the hotspot is let go, and macOS joins that network by
+    /// itself (a school network that asks for a login, like eduroam, only it can join). Needs the names of the networks around, which
+    /// macOS gives an app that may see the location; without that nothing is found and the hotspot stays.
+    nonisolated static func leaveForKnown(except hotspot: String) -> Bool {
+        guard let interface = CWWiFiClient.shared().interface(), interface.powerOn() else { return false }
+        let known = Set(WifiShare.known()).subtracting([hotspot])
+        guard !known.isEmpty, let found = try? interface.scanForNetworks(withSSID: nil) else { return false }
+        guard found.contains(where: { ($0.ssid.map(known.contains) ?? false) && $0.rssiValue > -75 }) else { return false }
+        interface.disassociate()
+        return true
+    }
+
     /// The phone connected to the core: over the hotspot, that is the moment it works.
     func deviceConnected(_ id: String) {}
 
@@ -185,6 +219,7 @@ final class HotspotCoordinator {
 
     func requestNow(_ id: String) {
         guard let model, let engine = model.engineHandle else { return }
+        heldOffUntil = .distantPast
         runTask?.cancel()
         activeDevice = id
         quicAnswer = nil
@@ -349,6 +384,7 @@ final class HotspotCoordinator {
                 // The hotspot itself went away: the phone is off or out of reach.
                 model.hotspotStatus = .idle
                 self.hotspotGateway = nil
+                self.heldOffUntil = Date().addingTimeInterval(Self.holdOff)
                 return
             }
             if let route = await HotspotWiFi.defaultRoute(), let known = self.hotspotGateway, route.gateway != known {
@@ -374,8 +410,11 @@ final class HotspotCoordinator {
                 case "disabled": quicAnswer = .disabled
                 case .some: quicAnswer = .failed
                 case .none:
-                    // The phone turned it off: ours to follow, once we were using it.
-                    if case .connected = model?.hotspotStatus { model?.hotspotStatus = .idle }
+                    // The phone turned it off: ours to follow, once we were using it, and not to ask for again right away.
+                    if case .connected = model?.hotspotStatus {
+                        model?.hotspotStatus = .idle
+                        heldOffUntil = Date().addingTimeInterval(Self.holdOff)
+                    }
                     quicAnswer = .off
                 }
             }
