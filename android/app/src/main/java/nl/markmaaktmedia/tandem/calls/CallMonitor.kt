@@ -131,6 +131,13 @@ class CallMonitor(
         }
     }
 
+    /** A device that was out of reach during a call is told how the call is now: its card had gone, or would count on after the end. */
+    fun resend(device: String) {
+        if (lastState == TelephonyManager.EXTRA_STATE_IDLE) return
+        val state = if (lastState == TelephonyManager.EXTRA_STATE_RINGING) TandemCallState.RINGING else TandemCallState.ACTIVE
+        scope.launch { order.withLock { send(listOf(device), state) } }
+    }
+
     private suspend fun send(targets: List<String>, state: TandemCallState) {
         runCatching {
             host.engine?.sendCall(

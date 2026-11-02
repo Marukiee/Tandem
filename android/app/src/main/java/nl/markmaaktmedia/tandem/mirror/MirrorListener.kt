@@ -204,10 +204,13 @@ class MirrorListener : NotificationListenerService() {
          * apps that are not from a store), and never for a call that the phone makes; the notification has it either way.
          */
         fun callTitle(): String? = runCatching {
-            instance?.activeNotifications.orEmpty()
-                .filter { it.notification.category == Notification.CATEGORY_CALL }
+            // A call of an app (Snapchat, WhatsApp) is a call notification too, often with the person in it: their name goes first.
+            val call = instance?.activeNotifications.orEmpty()
+                .filter { it.notification.category == Notification.CATEGORY_CALL || it.notification.extras.containsKey(Notification.EXTRA_CALL_PERSON) }
                 .maxByOrNull { it.postTime }
-                ?.notification?.extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+                ?.notification ?: return@runCatching null
+            val person = call.extras.getParcelable(Notification.EXTRA_CALL_PERSON, android.app.Person::class.java)?.name?.toString()
+            (person ?: call.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString())?.trim()?.takeIf { it.isNotEmpty() }
         }.getOrNull()
 
         /** Which device already has the icon of which app, as `device|package`. */

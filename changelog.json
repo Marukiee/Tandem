@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.70",
+    "date": "2026-11-02",
+    "en": { "title": "Calls that end", "new": ["A call card goes when the phone drops out during the call, and comes back right when it returns", "Calls in apps like Snapchat show who is calling"] },
+    "nl": { "title": "Gesprekken die eindigen", "new": ["Een belkaartje verdwijnt als de telefoon tijdens het gesprek wegvalt, en komt meteen terug als hij er weer is", "Gesprekken in apps als Snapchat laten zien wie er belt"] }
+  },
+  {
     "version": "0.2.69",
     "date": "2026-11-02",
     "en": { "title": "Hotspot only when needed", "new": ["Turning the hotspot off on your phone no longer makes the Mac ask for it again right away", "The Mac leaves your hotspot by itself for a network it knows, like eduroam"] },

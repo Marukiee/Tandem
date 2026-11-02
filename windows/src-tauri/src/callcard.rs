@@ -238,6 +238,26 @@ fn now_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
 }
 
+/// The phone went out of reach during a call: it cannot say the call ended, so its cards go after a while, unless it is back before that
+/// and says the call goes on (which changes the card, and the timer then does nothing).
+pub fn phone_gone(app: &AppHandle, device: &str) {
+    let marked: Vec<(String, u64)> = BOOK.lock().unwrap().cards.iter().filter(|c| c.device == device).map(|c| (c.key(), c.stamp)).collect();
+    if marked.is_empty() {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_secs(30));
+        let mut changed = false;
+        for (key, stamp) in marked {
+            changed |= BOOK.lock().unwrap().expire(&key, stamp);
+        }
+        if changed {
+            refresh(&app);
+        }
+    });
+}
+
 /// What a phone says about a call.
 pub fn received(app: &AppHandle, from: &str, call: &TandemCall) {
     let device_name = events::device_name(app, from);

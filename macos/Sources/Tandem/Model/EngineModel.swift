@@ -441,12 +441,14 @@ final class EngineModel {
         case .devicesChanged, .connected, .disconnected, .circleChanged:
             refreshDevices()
             if case let .connected(id) = event {
+                CallWindow.shared.phoneReachable(id, true)
                 hotspot.deviceConnected(id)
                 PointerShare.shared.announce(to: id)
                 SideWatch.shared.connected(id)
             }
             // A phone that drops while a button is held must not leave it held here.
             if case let .disconnected(id) = event {
+                CallWindow.shared.phoneReachable(id, false)
                 injector.sourceDisconnected(id)
                 PointerShare.shared.deviceGone(id)
                 PhoneSound.shared.stop(device: id)

@@ -115,7 +115,10 @@ class TandemService : LifecycleService() {
     private fun handle(event: TandemEvent) {
         val host = graph.host
         when (event) {
-            is TandemEvent.Connected -> status.resend()
+            is TandemEvent.Connected -> {
+                status.resend()
+                calls.resend(event.id)
+            }
 
             is TandemEvent.Progress -> {
                 val now = System.currentTimeMillis()

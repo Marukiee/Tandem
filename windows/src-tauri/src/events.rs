@@ -90,6 +90,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::DevicesChanged | TandemEvent::CircleChanged => refresh_devices(app),
         TandemEvent::TailscaleNeeded { id } => crate::tailscale::needed(app, &id),
         TandemEvent::Disconnected { id } => {
+            crate::callcard::phone_gone(app, &id);
             input::release_all();
             crate::sound::stop(&id);
             crate::output::stop_for(app, &id, None);

@@ -121,6 +121,15 @@ final class CallWindow {
         }
     }
 
+    /// The phone went out of reach during a call: it cannot say that the call ended, so a card that counts on would be wrong. It goes
+    /// after a while, unless the phone is back before that and says the call still goes on.
+    func phoneReachable(_ device: String, _ reachable: Bool) {
+        for card in cards where card.device == device && card.isActive {
+            // Back in reach, the phone says how the call is (`CallMonitor.resend`), which keeps the card or ends it.
+            if !reachable { expire(card.id, after: .seconds(30)) }
+        }
+    }
+
     /// A call this Mac asked a phone to place.
     func dialed(device: String, number: String, name: String?) {
         dialed = (device, number, name, Date())
