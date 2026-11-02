@@ -8,6 +8,8 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 - **Inloggen op afstand op een vergrendelde Mac** (gevraagd 2026-11-01): gebouwd in 0.2.61. De Mac logt zelf in op zijn eigen Scherm delen
   (127.0.0.1, Apple-login met het wachtwoord uit de sleutelhanger) en stuurt dat beeld als gewone H.264-sessie, dus elke kijker werkt.
   Na ontgrendelen gaat de sessie verder met de gewone opname. Werkt niet na een herstart, uitloggen of slaap.
+- **Slapen melden op Windows en Linux** (2026-11-02): de Mac zegt nu "slaapt" voor hij slaapt; Windows en Linux zeggen niets, en
+  heten dan offline. Linux met een delay-inhibitor van logind, Windows met `PBT_APMSUSPEND`.
 - **Mappen versturen, vanaf elk apparaat** (gevraagd 2026-11-01): een hele map sturen, met de mappen erin, van en naar Mac, Android,
   Windows en Linux.
 - **Linux vraagt steeds toestemming** (gemeld 2026-11-01): de InputCapture-portal van Fedora 44 is versie 1 en kan niets onthouden, dus

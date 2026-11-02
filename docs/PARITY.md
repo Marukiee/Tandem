@@ -47,6 +47,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Een andere computer op afstand wakker houden | ja (schakelaar op de pagina van een computer) | ja (knop op de pagina) | ja (knop op de pagina) | ja (knop op de pagina) |
 | Tweede scherm (een computer maakt een scherm voor een ander apparaat, ook aan te vragen vanaf de computer) | kijker (raakt aan = klikken) | host (virtueel beeldscherm) en kijker | kijker, geen host (stuurprogramma nodig) | host onder Wayland (met aanraken, nooit gezien) en kijker |
 | Bluetooth tussen apparaten zonder netwerk (klembord, meldingen) | wacht (telefoon) | wacht en zoekt | nee | wacht en zoekt (BlueZ, nooit tussen twee computers gezien) |
+| Zeggen dat hij gaat slapen, zodat anderen "slaapt" tonen in plaats van "offline" | nvt | ja (houdt het slapen even op tot het gezegd is) | nog niet (kan met `PBT_APMSUSPEND`) | nog niet (kan met een delay-inhibitor van logind op `PrepareForSleep`) |
 | Computer wakker maken (Wake on LAN) vanaf de telefoon | ja | doel | doel | doel |
 | Zoek mijn telefoon | bron | ja | ja | ja |
 | Muziek pauzeren tijdens een gesprek (telefoon belt: de computer pauzeert; computer belt: ook de telefoon) | pauzeert zelf (Android) | ja, beide kanten | telefoon belt: ja; computer belt: nee (nog geen herkenning van een gesprek op Windows) | idem |

@@ -1357,16 +1357,24 @@ final class EngineModel {
 
     /// Says "asleep" just before the Mac goes to sleep, so the phone can show that and try to wake it,
     /// and "awake" when it is back. Without the first, a sleeping Mac looks the same as one that is off.
+    @ObservationIgnored private let sleepGate = SleepGate()
+
     private func observeSleep() {
         let center = NSWorkspace.shared.notificationCenter
-        center.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+        sleepGate.beforeSleep = { [weak self] done in
             MainActor.assumeIsolated {
                 self?.stopSpeaker(tellPhone: true)
-                guard let engine = self?.engine else { return }
+                guard let engine = self?.engine else { return done() }
                 let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: true, wakeMac: WiredAddress.mac(), muted: nil)
-                Task { await engine.updateStatus(status: status) }
+                Task {
+                    await engine.updateStatus(status: status)
+                    // The status goes out on its own; a moment for it to leave before the network does.
+                    try? await Task.sleep(for: .milliseconds(800))
+                    done()
+                }
             }
         }
+        sleepGate.start()
         center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.pushStatus() }
         }

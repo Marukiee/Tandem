@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.68",
+    "date": "2026-11-02",
+    "en": { "title": "Asleep, not offline", "new": ["A Mac that goes to sleep, also with the lid closed, now shows as asleep on your other devices"] },
+    "nl": { "title": "Slaapt, niet offline", "new": ["Een Mac die gaat slapen, ook met de klep dicht, staat nu als slapend op je andere apparaten"] }
+  },
+  {
     "version": "0.2.67",
     "date": "2026-11-02",
     "en": { "title": "Messages that fit", "new": ["A locked or unavailable computer says what to do in the words of its own system", "Unlock a locked computer straight from its screen window when it allows it"] },
