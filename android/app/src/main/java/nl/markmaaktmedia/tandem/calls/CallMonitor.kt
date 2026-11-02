@@ -167,7 +167,30 @@ class CallMonitor(
                     @Suppress("DEPRECATION") telecom.endCall()
                     if (to != null) SmsManager.getDefault().sendTextMessage(to, null, action.message, null, null)
                 }
+                TandemCallAction.MoveToThisDevice -> routeAudioToDevice(true)
+                TandemCallAction.MoveBack -> routeAudioToDevice(false)
+                TandemCallAction.MuteMic -> toggleMic()
             }
+        }
+    }
+
+    private fun routeAudioToDevice(toMac: Boolean) {
+        // Route call audio to the Mac via the existing audio path.
+        val audio = context.getSystemService(android.media.AudioManager::class.java)
+        runCatching {
+            if (toMac) {
+                audio.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION)
+            } else {
+                audio.setMode(android.media.AudioManager.MODE_NORMAL)
+            }
+        }
+    }
+
+    private fun toggleMic() {
+        val audio = context.getSystemService(android.media.AudioManager::class.java)
+        runCatching {
+            val state = audio.isMicrophoneMuted
+            audio.setMicrophoneMute(!state)
         }
     }
 

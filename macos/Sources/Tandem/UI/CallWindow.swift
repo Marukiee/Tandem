@@ -20,6 +20,8 @@ struct CallCard: Identifiable, Equatable {
     var number: String?
     var incoming: Bool
     var phase: Phase
+    /// Whether the sound of this call is on this Mac or stays on the phone.
+    var audioOnMac = false
 
     /// Two phones can give the same id to a call (it is a time in milliseconds), so the phone is part of it.
     var id: String { "\(device)/\(call)" }
@@ -58,6 +60,9 @@ final class CallWindow {
     /// Set by the model: sends Answer, Decline or Hang up to the phone.
     var onAction: ((_ device: String, _ callId: String, _ action: TandemCallAction) -> Void)?
 
+    /// Update audio routing state for a specific card.
+    var onAudioChanged: ((_ device: String, _ callId: String, _ audioOnMac: Bool) -> Void)?
+
     /// The calls as the phones last told them, oldest first.
     private var cards: [CallCard] = []
     private var shown: [String: (panel: CallPanel, slot: CallSlot)] = [:]
@@ -68,6 +73,8 @@ final class CallWindow {
     /// The number this Mac asked a phone to call. Android does not say whom it is calling, so the card takes it from here.
     private var dialed: (device: String, number: String, name: String?, at: Date)?
     private var debugKeep = false
+    /// Whether the sound of the call is on this Mac or stays on the phone.
+    private var audioOnMac = false
 
     // MARK: What the phone says
 
@@ -166,6 +173,12 @@ final class CallWindow {
             sync()
         case .answer, .silence:
             break
+        case .moveToThisDevice:
+            onAudioChanged?(card.device, card.call, true)
+        case .moveBack:
+            onAudioChanged?(card.device, card.call, false)
+        case .muteMic:
+            onAction?(card.device, card.call, action)
         }
     }
 
@@ -415,15 +428,20 @@ private struct CallCardView: View {
 
     @ViewBuilder private var buttons: some View {
         HStack(spacing: 8) {
-            // The place for "Answer here" (while it rings) and "Take over here" / "Back to phone" (during the call), which will carry the
-            // sound of the call to this Mac once there is a Bluetooth hands-free route for it. They are left out until that works: a button
-            // that does nothing is never shown.
             switch card.phase {
             case .ringing:
                 RoundCallButton(label: "Decline", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.reject) }
-                RoundCallButton(label: "Answer", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
+                RoundCallButton(label: "Answer here", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
             case .dialing, .active:
                 RoundCallButton(label: "Hang up", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.hangup) }
+                // Move the call sound to this Mac or back to the phone.
+                if !card.audioOnMac {
+                    RoundCallButton(label: "Move here", symbol: "arrow.right.circle", color: Color(nsColor: .controlAccentColor)) { act(.moveToThisDevice) }
+                } else {
+                    RoundCallButton(label: "Back to phone", symbol: "arrow.left.circle", color: Color(nsColor: .controlAccentColor)) { act(.moveBack) }
+                }
+                // Mute the microphone on this device.
+                RoundCallButton(label: "Mute mic", symbol: "mic.fill", color: Color(nsColor: .systemGray)) { act(.muteMic) }
             case .missed:
                 EmptyView()
             }

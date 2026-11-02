@@ -523,6 +523,15 @@ scherm delen (kan niet, wel uitleggen), bellen via de Mac.
   geluid zelf werkt dan alleen met een andere weg: bellen via een VoIP-app (Wi-Fi bellen via Tandem, SIP) of de telefoon als
   Bluetooth-HID/HFP-apparaat, en die wegen zijn per stuk nog niet onderzocht.
 
+  Gebouwd op de Mac: knoppen "Naar hier verplaatsen" / "Call terugzetten" en mute-mic in de call card.
+  Na de Mac, deze punten voor Linux/Windows/Android bouwen:
+
+  - **Linux:** call panel met dezelfde knoppen (naar hier verplaatsen, call terugzetten, mute mic) in de Tauri-tray; audio routing via PipeWire naar de Mac of lokaal.
+  - **Windows:** call panel in het systeemvak met dezelfde knoppen; audio routing via Phone Link HFP-route.
+  - **Android:** Shizuku audio routing (geluid van de telefoon naar Mac/pc); mic mute via `AudioManager.setMicrophoneMute`.
+  - **Mute-mic overal:** een knop in elke call card die de microfoon op het huidige apparaat dempt, terug te zetten met dezelfde knop.
+  - **"Naar hier verplaatsen" wisselt naar "Call terugzetten":** de tekst en het icoon draaien om bij elk klikken, zodat de gebruiker ziet waar het geluid naartu gaat.
+
 - **Wat is er nieuw bij Updates en back-up (gevraagd 2026-10-06):** op Android staat Wat is er nieuw (`ChangelogScreen`) nu onder Over;
   het hoort in de categorie Updates en back-up van Instellingen (`settings_cat_updates`), bij de updatecontrole. Over houdt alleen
   versie en licenties. Op de Mac staat het blok Wat is er nieuw (`SettingsView.swift`) bij Over: dezelfde verhuizing naar de

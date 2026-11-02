@@ -527,6 +527,9 @@ pub enum CallActionKind {
     Silence,
     Hangup,
     RejectWithMessage(String),
+    MoveToThisDevice,
+    MoveBack,
+    MuteMic,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

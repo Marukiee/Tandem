@@ -689,6 +689,9 @@ pub enum TandemCallAction {
     Silence,
     Hangup,
     RejectWithMessage { message: String },
+    MoveToThisDevice,
+    MoveBack,
+    MuteMic,
 }
 
 impl From<CallActionKind> for TandemCallAction {
@@ -699,6 +702,9 @@ impl From<CallActionKind> for TandemCallAction {
             CallActionKind::Silence => TandemCallAction::Silence,
             CallActionKind::Hangup => TandemCallAction::Hangup,
             CallActionKind::RejectWithMessage(message) => TandemCallAction::RejectWithMessage { message },
+            CallActionKind::MoveToThisDevice => TandemCallAction::MoveToThisDevice,
+            CallActionKind::MoveBack => TandemCallAction::MoveBack,
+            CallActionKind::MuteMic => TandemCallAction::MuteMic,
         }
     }
 }
@@ -711,6 +717,9 @@ impl From<TandemCallAction> for CallActionKind {
             TandemCallAction::Silence => CallActionKind::Silence,
             TandemCallAction::Hangup => CallActionKind::Hangup,
             TandemCallAction::RejectWithMessage { message } => CallActionKind::RejectWithMessage(message),
+            TandemCallAction::MoveToThisDevice => CallActionKind::MoveToThisDevice,
+            TandemCallAction::MoveBack => CallActionKind::MoveBack,
+            TandemCallAction::MuteMic => CallActionKind::MuteMic,
         }
     }
 }
