@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.71",
+    "date": "2026-11-02",
+    "en": { "title": "Hotspot, not in your bag", "new": ["A closed Mac that wakes for a moment no longer turns your hotspot on", "Cancel while the hotspot is being turned on or joined"] },
+    "nl": { "title": "Hotspot, niet in je tas", "new": ["Een dichte Mac die even wakker wordt zet je hotspot niet meer aan", "Annuleer terwijl de hotspot aangaat of de Mac erbij aansluit"] }
+  },
+  {
     "version": "0.2.70",
     "date": "2026-11-02",
     "en": { "title": "Calls that end", "new": ["A call card goes when the phone drops out during the call, and comes back right when it returns", "Calls in apps like Snapchat show who is calling"] },

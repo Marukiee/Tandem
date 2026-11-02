@@ -207,6 +207,11 @@ private struct MenuHotspot: View {
                     Button("Try again") { model.hotspot.requestNow(phone.id) }
                         .buttonStyle(.tandemGlass)
                         .controlSize(.small)
+                } else if status.isBusy {
+                    // Asked for by mistake, or no longer needed: stopped on the phone too.
+                    Button("Cancel") { model.hotspot.stop(phone.id) }
+                        .buttonStyle(.tandemGlass)
+                        .controlSize(.small)
                 }
             }
         }

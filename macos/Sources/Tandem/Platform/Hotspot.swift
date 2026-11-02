@@ -168,6 +168,11 @@ final class HotspotCoordinator {
             try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled, let self, let model = self.model, !model.isOnline, Date() >= self.heldOffUntil else { return }
             let hotspot = UserDefaults.standard.string(forKey: Self.ssidKey)
+            // Nobody at this Mac: a closed lid that wakes in the dark for a moment (Power Nap) has no network and needs none. Asking then
+            // turned the hotspot on at home, in a bag (2026-11-02).
+            guard Self.someoneUsedThisMac() else { return }
+            // Still on a Wi-Fi of its own (home, school): that network is out for a moment, or asks for a login. The hotspot is no help.
+            if await Task.detached(operation: { Self.onOtherWiFi(than: hotspot) }).value { return }
             if self.waitedForKnown < Self.knownTries, await Task.detached(operation: { Self.joinKnownNearby(except: hotspot) }).value {
                 self.waitedForKnown += 1
                 return self.networkChanged(online: model.isOnline)
@@ -177,6 +182,20 @@ final class HotspotCoordinator {
                 self.requestNow(target.id)
             }
         }
+    }
+
+    /// A key or the pointer was used in the last few minutes.
+    nonisolated static func someoneUsedThisMac() -> Bool {
+        guard let any = CGEventType(rawValue: ~0) else { return true }
+        return CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: any) < 5 * 60
+    }
+
+    /// Joined to a Wi-Fi network that is not the hotspot.
+    nonisolated static func onOtherWiFi(than hotspot: String?) -> Bool {
+        guard let interface = CWWiFiClient.shared().interface(), interface.wlanChannel() != nil else { return false }
+        // Without the right to see names, a joined network still has a channel; the hotspot is only told apart by its name.
+        guard let ssid = interface.ssid() else { return hotspot == nil }
+        return ssid != hotspot
     }
 
     /// The seconds after a start or a wake in which the phone is not asked.
@@ -336,6 +355,8 @@ final class HotspotCoordinator {
         model.hotspotStatus = .idle
         hotspotGateway = nil
         ignoreNetworkUntil = Date().addingTimeInterval(25)
+        // Stopped or cancelled by the person: not asked for again by itself right after.
+        heldOffUntil = Date().addingTimeInterval(Self.holdOff)
         let online = model.device(id)?.online == true
         runTask = Task { [weak self] in
             guard let self else { return }
