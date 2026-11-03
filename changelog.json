@@ -1,303 +1,871 @@
 [
   {
+    "version": "0.2.80",
+    "date": "2026-11-03",
+    "en": {
+      "title": "Call stability fixes",
+      "new": [
+        "Fix crash when moving call audio before the engine is fully connected",
+        "Retry connection instead of failing immediately on fast taps"
+      ]
+    },
+    "nl": {
+      "title": "Bel-stabiliteit verbeterd",
+      "new": [
+        "Crash verholpen bij het verplaatsen van gesprekgeluid voordat de engine volledig verbonden is",
+        "Opnieuw proberen in plaats van direct falen bij snelle tikken"
+      ]
+    }
+  },
+  {
     "version": "0.2.76",
     "date": "2026-11-03",
-    "en": { "title": "Unified call", "new": ["Take a phone call on your Mac with the same sound, answer or decline from either side", "Move call audio to this Mac or back to the phone with one tap", "Mute your microphone on this device without ending the call"] },
-    "nl": { "title": "Eén belverbinding", "new": ["Neem een telefoongesprek over op je Mac met hetzelfde geluid, beantwoord of weiger vanaf elk apparaat", "Verplaats gesprekgeluid naar deze Mac of terug naar je telefoon met één tik", "Demp je microfoon op dit apparaat zonder het gesprek te beëindigen"] }
+    "en": {
+      "title": "Unified call",
+      "new": [
+        "Take a phone call on your Mac with the same sound, answer or decline from either side",
+        "Move call audio to this Mac or back to the phone with one tap",
+        "Mute your microphone on this device without ending the call"
+      ]
+    },
+    "nl": {
+      "title": "E\u00e9n belverbinding",
+      "new": [
+        "Neem een telefoongesprek over op je Mac met hetzelfde geluid, beantwoord of weiger vanaf elk apparaat",
+        "Verplaats gesprekgeluid naar deze Mac of terug naar je telefoon met \u00e9\u00e9n tik",
+        "Demp je microfoon op dit apparaat zonder het gesprek te be\u00ebindigen"
+      ]
+    }
   },
   {
     "version": "0.2.72",
     "date": "2026-11-02",
-    "en": { "title": "Off means off", "new": ["Turning the hotspot off on your phone keeps your computer from turning it on by itself for ten minutes; the button still does"] },
-    "nl": { "title": "Uit is uit", "new": ["Zet je de hotspot uit op je telefoon, dan zet je computer hem tien minuten niet vanzelf aan; met de knop kan het wel"] }
+    "en": {
+      "title": "Off means off",
+      "new": [
+        "Turning the hotspot off on your phone keeps your computer from turning it on by itself for ten minutes; the button still does"
+      ]
+    },
+    "nl": {
+      "title": "Uit is uit",
+      "new": [
+        "Zet je de hotspot uit op je telefoon, dan zet je computer hem tien minuten niet vanzelf aan; met de knop kan het wel"
+      ]
+    }
   },
   {
     "version": "0.2.71",
     "date": "2026-11-02",
-    "en": { "title": "Hotspot, not in your bag", "new": ["A closed Mac that wakes for a moment no longer turns your hotspot on", "Cancel while the hotspot is being turned on or joined", "Screenshots from your phone no longer stay in Shared as if still arriving"] },
-    "nl": { "title": "Hotspot, niet in je tas", "new": ["Een dichte Mac die even wakker wordt zet je hotspot niet meer aan", "Annuleer terwijl de hotspot aangaat of de Mac erbij aansluit", "Screenshots van je telefoon blijven niet meer in Gedeeld staan alsof ze nog binnenkomen"] }
+    "en": {
+      "title": "Hotspot, not in your bag",
+      "new": [
+        "A closed Mac that wakes for a moment no longer turns your hotspot on",
+        "Cancel while the hotspot is being turned on or joined",
+        "Screenshots from your phone no longer stay in Shared as if still arriving"
+      ]
+    },
+    "nl": {
+      "title": "Hotspot, niet in je tas",
+      "new": [
+        "Een dichte Mac die even wakker wordt zet je hotspot niet meer aan",
+        "Annuleer terwijl de hotspot aangaat of de Mac erbij aansluit",
+        "Screenshots van je telefoon blijven niet meer in Gedeeld staan alsof ze nog binnenkomen"
+      ]
+    }
   },
   {
     "version": "0.2.70",
     "date": "2026-11-02",
-    "en": { "title": "Calls that end", "new": ["A call card goes when the phone drops out during the call, and comes back right when it returns", "Calls in apps like Snapchat show who is calling"] },
-    "nl": { "title": "Gesprekken die eindigen", "new": ["Een belkaartje verdwijnt als de telefoon tijdens het gesprek wegvalt, en komt meteen terug als hij er weer is", "Gesprekken in apps als Snapchat laten zien wie er belt"] }
+    "en": {
+      "title": "Calls that end",
+      "new": [
+        "A call card goes when the phone drops out during the call, and comes back right when it returns",
+        "Calls in apps like Snapchat show who is calling"
+      ]
+    },
+    "nl": {
+      "title": "Gesprekken die eindigen",
+      "new": [
+        "Een belkaartje verdwijnt als de telefoon tijdens het gesprek wegvalt, en komt meteen terug als hij er weer is",
+        "Gesprekken in apps als Snapchat laten zien wie er belt"
+      ]
+    }
   },
   {
     "version": "0.2.69",
     "date": "2026-11-02",
-    "en": { "title": "Hotspot only when needed", "new": ["Turning the hotspot off on your phone no longer makes the Mac ask for it again right away", "The Mac leaves your hotspot by itself for a network it knows, like eduroam"] },
-    "nl": { "title": "Hotspot alleen als het moet", "new": ["Zet je de hotspot uit op je telefoon, dan vraagt de Mac hem niet meteen weer aan", "De Mac verlaat je hotspot vanzelf voor een netwerk dat hij kent, zoals eduroam"] }
+    "en": {
+      "title": "Hotspot only when needed",
+      "new": [
+        "Turning the hotspot off on your phone no longer makes the Mac ask for it again right away",
+        "The Mac leaves your hotspot by itself for a network it knows, like eduroam"
+      ]
+    },
+    "nl": {
+      "title": "Hotspot alleen als het moet",
+      "new": [
+        "Zet je de hotspot uit op je telefoon, dan vraagt de Mac hem niet meteen weer aan",
+        "De Mac verlaat je hotspot vanzelf voor een netwerk dat hij kent, zoals eduroam"
+      ]
+    }
   },
   {
     "version": "0.2.68",
     "date": "2026-11-02",
-    "en": { "title": "Asleep, not offline", "new": ["A Mac that goes to sleep, also with the lid closed, now shows as asleep on your other devices"] },
-    "nl": { "title": "Slaapt, niet offline", "new": ["Een Mac die gaat slapen, ook met de klep dicht, staat nu als slapend op je andere apparaten"] }
+    "en": {
+      "title": "Asleep, not offline",
+      "new": [
+        "A Mac that goes to sleep, also with the lid closed, now shows as asleep on your other devices"
+      ]
+    },
+    "nl": {
+      "title": "Slaapt, niet offline",
+      "new": [
+        "Een Mac die gaat slapen, ook met de klep dicht, staat nu als slapend op je andere apparaten"
+      ]
+    }
   },
   {
     "version": "0.2.67",
     "date": "2026-11-02",
-    "en": { "title": "Messages that fit", "new": ["A locked or unavailable computer says what to do in the words of its own system", "Unlock a locked computer straight from its screen window when it allows it"] },
-    "nl": { "title": "Meldingen die passen", "new": ["Een vergrendelde of onbereikbare computer zegt wat je moet doen in de woorden van zijn eigen systeem", "Ontgrendel een vergrendelde computer meteen vanuit het schermvenster als hij dat toestaat"] }
+    "en": {
+      "title": "Messages that fit",
+      "new": [
+        "A locked or unavailable computer says what to do in the words of its own system",
+        "Unlock a locked computer straight from its screen window when it allows it"
+      ]
+    },
+    "nl": {
+      "title": "Meldingen die passen",
+      "new": [
+        "Een vergrendelde of onbereikbare computer zegt wat je moet doen in de woorden van zijn eigen systeem",
+        "Ontgrendel een vergrendelde computer meteen vanuit het schermvenster als hij dat toestaat"
+      ]
+    }
   },
   {
     "version": "0.2.66",
     "date": "2026-11-01",
-    "en": { "title": "Unlock Linux from your phone", "new": ["Unlock a locked Linux computer with your fingerprint, from its page on your phone or Mac"] },
-    "nl": { "title": "Linux ontgrendelen vanaf je telefoon", "new": ["Ontgrendel een vergrendelde Linux-computer met je vingerafdruk, vanaf zijn pagina op je telefoon of Mac"] }
+    "en": {
+      "title": "Unlock Linux from your phone",
+      "new": [
+        "Unlock a locked Linux computer with your fingerprint, from its page on your phone or Mac"
+      ]
+    },
+    "nl": {
+      "title": "Linux ontgrendelen vanaf je telefoon",
+      "new": [
+        "Ontgrendel een vergrendelde Linux-computer met je vingerafdruk, vanaf zijn pagina op je telefoon of Mac"
+      ]
+    }
   },
   {
     "version": "0.2.65",
     "date": "2026-11-01",
-    "en": { "title": "Unlock with your fingerprint", "new": ["Unlock a locked Mac with your fingerprint on your phone, once per session", "Choose several devices at once under For in the settings of the Mac"] },
-    "nl": { "title": "Ontgrendelen met je vingerafdruk", "new": ["Ontgrendel een vergrendelde Mac met je vingerafdruk op je telefoon, één keer per sessie", "Kies onder Voor in de instellingen van de Mac meerdere apparaten tegelijk"] }
+    "en": {
+      "title": "Unlock with your fingerprint",
+      "new": [
+        "Unlock a locked Mac with your fingerprint on your phone, once per session",
+        "Choose several devices at once under For in the settings of the Mac"
+      ]
+    },
+    "nl": {
+      "title": "Ontgrendelen met je vingerafdruk",
+      "new": [
+        "Ontgrendel een vergrendelde Mac met je vingerafdruk op je telefoon, \u00e9\u00e9n keer per sessie",
+        "Kies onder Voor in de instellingen van de Mac meerdere apparaten tegelijk"
+      ]
+    }
   },
   {
     "version": "0.2.64",
     "date": "2026-11-01",
-    "en": { "title": "Clearer setup for a locked Mac", "new": ["Says what to change when Remote Management of macOS turns Tandem down"] },
-    "nl": { "title": "Duidelijker instellen voor een vergrendelde Mac", "new": ["Zegt wat je moet aanpassen als Extern beheer van macOS Tandem weigert"] }
+    "en": {
+      "title": "Clearer setup for a locked Mac",
+      "new": [
+        "Says what to change when Remote Management of macOS turns Tandem down"
+      ]
+    },
+    "nl": {
+      "title": "Duidelijker instellen voor een vergrendelde Mac",
+      "new": [
+        "Zegt wat je moet aanpassen als Extern beheer van macOS Tandem weigert"
+      ]
+    }
   },
   {
     "version": "0.2.63",
     "date": "2026-11-01",
-    "en": { "title": "Keep awake from afar", "new": ["Keep a computer awake from your phone or another computer, on the page of that computer"] },
-    "nl": { "title": "Op afstand wakker houden", "new": ["Houd een computer wakker vanaf je telefoon of een andere computer, op de pagina van die computer"] }
+    "en": {
+      "title": "Keep awake from afar",
+      "new": [
+        "Keep a computer awake from your phone or another computer, on the page of that computer"
+      ]
+    },
+    "nl": {
+      "title": "Op afstand wakker houden",
+      "new": [
+        "Houd een computer wakker vanaf je telefoon of een andere computer, op de pagina van die computer"
+      ]
+    }
   },
   {
     "version": "0.2.62",
     "date": "2026-11-01",
-    "en": { "title": "Keep awake", "new": ["A cup in the panel keeps your computer awake, also with the lid closed, so you can reach it from elsewhere", "What works shows whether this Mac can be reached while it is locked"] },
-    "nl": { "title": "Wakker houden", "new": ["Een kopje in het paneel houdt je computer wakker, ook met de klep dicht, zodat je hem overal vandaan bereikt", "Wat werkt laat zien of deze Mac vergrendeld bereikbaar is"] }
+    "en": {
+      "title": "Keep awake",
+      "new": [
+        "A cup in the panel keeps your computer awake, also with the lid closed, so you can reach it from elsewhere",
+        "What works shows whether this Mac can be reached while it is locked"
+      ]
+    },
+    "nl": {
+      "title": "Wakker houden",
+      "new": [
+        "Een kopje in het paneel houdt je computer wakker, ook met de klep dicht, zodat je hem overal vandaan bereikt",
+        "Wat werkt laat zien of deze Mac vergrendeld bereikbaar is"
+      ]
+    }
   },
   {
     "version": "0.2.61",
     "date": "2026-11-01",
-    "en": { "title": "Reach a locked Mac", "new": ["Turn on Reach this Mac while it is locked under Remote control, and your phone shows the lock screen so you can unlock it from anywhere"] },
-    "nl": { "title": "Vergrendelde Mac bereiken", "new": ["Zet Deze Mac bereiken als hij vergrendeld is aan bij Op afstand bedienen, dan toont je telefoon het vergrendelscherm en ontgrendel je hem overal vandaan"] }
+    "en": {
+      "title": "Reach a locked Mac",
+      "new": [
+        "Turn on Reach this Mac while it is locked under Remote control, and your phone shows the lock screen so you can unlock it from anywhere"
+      ]
+    },
+    "nl": {
+      "title": "Vergrendelde Mac bereiken",
+      "new": [
+        "Zet Deze Mac bereiken als hij vergrendeld is aan bij Op afstand bedienen, dan toont je telefoon het vergrendelscherm en ontgrendel je hem overal vandaan"
+      ]
+    }
   },
   {
     "version": "0.2.60",
     "date": "2026-11-01",
-    "en": { "title": "Says when a computer is locked", "new": ["Asking for the screen of a locked Mac or Linux computer now says it is locked, instead of trying again and again"] },
-    "nl": { "title": "Zegt wanneer een computer vergrendeld is", "new": ["Het scherm vragen van een vergrendelde Mac of Linux-computer zegt nu dat hij vergrendeld is, in plaats van steeds opnieuw te proberen"] }
+    "en": {
+      "title": "Says when a computer is locked",
+      "new": [
+        "Asking for the screen of a locked Mac or Linux computer now says it is locked, instead of trying again and again"
+      ]
+    },
+    "nl": {
+      "title": "Zegt wanneer een computer vergrendeld is",
+      "new": [
+        "Het scherm vragen van een vergrendelde Mac of Linux-computer zegt nu dat hij vergrendeld is, in plaats van steeds opnieuw te proberen"
+      ]
+    }
   },
   {
     "version": "0.2.59",
     "date": "2026-11-01",
-    "en": { "title": "Tidier device page", "new": ["The buttons of a device grouped by what they do", "Clear buttons next to the page title", "A sent file no longer stays at 100%"] },
-    "nl": { "title": "Rustigere apparaatpagina", "new": ["De knoppen van een apparaat gegroepeerd per functie", "Wisknoppen naast de titel van de pagina", "Een verstuurd bestand blijft niet meer op 100% hangen"] }
+    "en": {
+      "title": "Tidier device page",
+      "new": [
+        "The buttons of a device grouped by what they do",
+        "Clear buttons next to the page title",
+        "A sent file no longer stays at 100%"
+      ]
+    },
+    "nl": {
+      "title": "Rustigere apparaatpagina",
+      "new": [
+        "De knoppen van een apparaat gegroepeerd per functie",
+        "Wisknoppen naast de titel van de pagina",
+        "Een verstuurd bestand blijft niet meer op 100% hangen"
+      ]
+    }
   },
   {
     "version": "0.2.58",
     "date": "2026-10-30",
-    "en": { "title": "Hotspot joined by hand", "new": ["Joined your phone's hotspot yourself? Tandem sees it and offers to stop it"] },
-    "nl": { "title": "Hotspot met de hand gekozen", "new": ["Zelf op de hotspot van je telefoon gegaan? Tandem ziet het en biedt stoppen aan"] }
+    "en": {
+      "title": "Hotspot joined by hand",
+      "new": [
+        "Joined your phone's hotspot yourself? Tandem sees it and offers to stop it"
+      ]
+    },
+    "nl": {
+      "title": "Hotspot met de hand gekozen",
+      "new": [
+        "Zelf op de hotspot van je telefoon gegaan? Tandem ziet het en biedt stoppen aan"
+      ]
+    }
   },
   {
     "version": "0.2.57",
     "date": "2026-10-30",
-    "en": { "title": "Hotspot from the panel", "new": ["A hotspot button by your phone in the menu bar panel", "A received file leaves the panel after a few minutes", "Tandem shows up again under Screen Recording when you allow it"] },
-    "nl": { "title": "Hotspot vanuit het paneel", "new": ["Een hotspotknop bij je telefoon in het menubalkpaneel", "Een ontvangen bestand verdwijnt na een paar minuten uit het paneel", "Tandem staat weer bij Schermopname als je toestemming geeft"] }
+    "en": {
+      "title": "Hotspot from the panel",
+      "new": [
+        "A hotspot button by your phone in the menu bar panel",
+        "A received file leaves the panel after a few minutes",
+        "Tandem shows up again under Screen Recording when you allow it"
+      ]
+    },
+    "nl": {
+      "title": "Hotspot vanuit het paneel",
+      "new": [
+        "Een hotspotknop bij je telefoon in het menubalkpaneel",
+        "Een ontvangen bestand verdwijnt na een paar minuten uit het paneel",
+        "Tandem staat weer bij Schermopname als je toestemming geeft"
+      ]
+    }
   },
   {
     "version": "0.2.56",
     "date": "2026-10-29",
-    "en": { "title": "No more stuck transfers", "new": ["A file that arrived no longer stays in the list as if it were still coming in"] },
-    "nl": { "title": "Geen vastgelopen overdrachten meer", "new": ["Een binnengekomen bestand blijft niet meer in de lijst staan alsof het nog binnenkomt"] }
+    "en": {
+      "title": "No more stuck transfers",
+      "new": [
+        "A file that arrived no longer stays in the list as if it were still coming in"
+      ]
+    },
+    "nl": {
+      "title": "Geen vastgelopen overdrachten meer",
+      "new": [
+        "Een binnengekomen bestand blijft niet meer in de lijst staan alsof het nog binnenkomt"
+      ]
+    }
   },
   {
     "version": "0.2.54",
     "date": "2026-10-29",
-    "en": { "title": "Permissions after the switch", "new": ["Allowing Accessibility or Screen Recording again clears the old switch that no longer worked", "Calmer notice on the phone when something is still off on the Mac"] },
-    "nl": { "title": "Rechten na de overstap", "new": ["Toegankelijkheid of Schermopname opnieuw toestaan ruimt de oude schakelaar op die niet meer werkte", "Rustigere melding op de telefoon als er op de Mac nog iets uit staat"] }
+    "en": {
+      "title": "Permissions after the switch",
+      "new": [
+        "Allowing Accessibility or Screen Recording again clears the old switch that no longer worked",
+        "Calmer notice on the phone when something is still off on the Mac"
+      ]
+    },
+    "nl": {
+      "title": "Rechten na de overstap",
+      "new": [
+        "Toegankelijkheid of Schermopname opnieuw toestaan ruimt de oude schakelaar op die niet meer werkte",
+        "Rustigere melding op de telefoon als er op de Mac nog iets uit staat"
+      ]
+    }
   },
   {
     "version": "0.2.53",
     "date": "2026-10-29",
-    "en": { "title": "Your phone as webcam, speaker and microphone", "new": ["Tandem Camera: pick it in Zoom or FaceTime and your phone's camera turns on", "Tandem Speaker and Tandem Microphone in the sound menu", "Your phone's files in the Finder sidebar", "Signed and notarized through Apple. After this update macOS asks once more for its permissions"] },
-    "nl": { "title": "Je telefoon als webcam, speaker en microfoon", "new": ["Tandem Camera: kies hem in Zoom of FaceTime en de camera van je telefoon gaat aan", "Tandem Speaker en Tandem Microphone in het geluidsmenu", "De bestanden van je telefoon in de Finder-zijbalk", "Ondertekend en genotariseerd via Apple. Na deze update vraagt macOS nog een keer om de rechten"] }
+    "en": {
+      "title": "Your phone as webcam, speaker and microphone",
+      "new": [
+        "Tandem Camera: pick it in Zoom or FaceTime and your phone's camera turns on",
+        "Tandem Speaker and Tandem Microphone in the sound menu",
+        "Your phone's files in the Finder sidebar",
+        "Signed and notarized through Apple. After this update macOS asks once more for its permissions"
+      ]
+    },
+    "nl": {
+      "title": "Je telefoon als webcam, speaker en microfoon",
+      "new": [
+        "Tandem Camera: kies hem in Zoom of FaceTime en de camera van je telefoon gaat aan",
+        "Tandem Speaker en Tandem Microphone in het geluidsmenu",
+        "De bestanden van je telefoon in de Finder-zijbalk",
+        "Ondertekend en genotariseerd via Apple. Na deze update vraagt macOS nog een keer om de rechten"
+      ]
+    }
   },
   {
     "version": "0.2.52",
     "date": "2026-10-29",
-    "en": { "title": "Phone as a second screen", "new": ["The phone button in the menu bar now extends your Mac's screen to the phone"] },
-    "nl": { "title": "Telefoon als tweede scherm", "new": ["De telefoonknop in de menubalk breidt nu het scherm van je Mac uit naar je telefoon"] }
+    "en": {
+      "title": "Phone as a second screen",
+      "new": [
+        "The phone button in the menu bar now extends your Mac's screen to the phone"
+      ]
+    },
+    "nl": {
+      "title": "Telefoon als tweede scherm",
+      "new": [
+        "De telefoonknop in de menubalk breidt nu het scherm van je Mac uit naar je telefoon"
+      ]
+    }
   },
   {
     "version": "0.2.51",
     "date": "2026-10-29",
-    "en": { "title": "Smoother pointer", "new": ["The trackpad and the presentation pointer on your phone move the pointer as often as the screen measures your finger"] },
-    "nl": { "title": "Soepelere pointer", "new": ["Het trackpad en de presentatiepointer op je telefoon bewegen de pointer zo vaak als het scherm je vinger meet"] }
+    "en": {
+      "title": "Smoother pointer",
+      "new": [
+        "The trackpad and the presentation pointer on your phone move the pointer as often as the screen measures your finger"
+      ]
+    },
+    "nl": {
+      "title": "Soepelere pointer",
+      "new": [
+        "Het trackpad en de presentatiepointer op je telefoon bewegen de pointer zo vaak als het scherm je vinger meet"
+      ]
+    }
   },
   {
     "version": "0.2.50",
     "date": "2026-10-29",
-    "en": { "title": "Hotspot off when you leave", "new": ["When your Mac moves to another network, your phone turns its hotspot off if nothing else is on it"] },
-    "nl": { "title": "Hotspot uit als je weggaat", "new": ["Gaat je Mac naar een ander netwerk, dan zet je telefoon de hotspot uit als er niets anders op zit"] }
+    "en": {
+      "title": "Hotspot off when you leave",
+      "new": [
+        "When your Mac moves to another network, your phone turns its hotspot off if nothing else is on it"
+      ]
+    },
+    "nl": {
+      "title": "Hotspot uit als je weggaat",
+      "new": [
+        "Gaat je Mac naar een ander netwerk, dan zet je telefoon de hotspot uit als er niets anders op zit"
+      ]
+    }
   },
   {
     "version": "0.2.49",
     "date": "2026-10-29",
-    "en": { "title": "Your own Wi-Fi first", "new": ["After a restart your Mac joins a network it knows before it asks your phone for its hotspot"] },
-    "nl": { "title": "Eerst je eigen wifi", "new": ["Na een herstart verbindt je Mac eerst met een bekend netwerk voordat hij je telefoon om de hotspot vraagt"] }
+    "en": {
+      "title": "Your own Wi-Fi first",
+      "new": [
+        "After a restart your Mac joins a network it knows before it asks your phone for its hotspot"
+      ]
+    },
+    "nl": {
+      "title": "Eerst je eigen wifi",
+      "new": [
+        "Na een herstart verbindt je Mac eerst met een bekend netwerk voordat hij je telefoon om de hotspot vraagt"
+      ]
+    }
   },
   {
     "version": "0.2.48",
     "date": "2026-10-29",
-    "en": { "title": "Tidier settings", "new": ["The OBS setting is one small row with an explanation behind the (i)"] },
-    "nl": { "title": "Rustiger instellingen", "new": ["De OBS-instelling is een kleine regel met uitleg achter de (i)"] }
+    "en": {
+      "title": "Tidier settings",
+      "new": [
+        "The OBS setting is one small row with an explanation behind the (i)"
+      ]
+    },
+    "nl": {
+      "title": "Rustiger instellingen",
+      "new": [
+        "De OBS-instelling is een kleine regel met uitleg achter de (i)"
+      ]
+    }
   },
   {
     "version": "0.2.47",
     "date": "2026-10-29",
-    "en": { "title": "Phone camera in OBS", "new": ["The camera of your phone goes to OBS on your computer, without capturing a window"] },
-    "nl": { "title": "Telefooncamera in OBS", "new": ["De camera van je telefoon gaat naar OBS op je computer, zonder een venster op te nemen"] }
+    "en": {
+      "title": "Phone camera in OBS",
+      "new": [
+        "The camera of your phone goes to OBS on your computer, without capturing a window"
+      ]
+    },
+    "nl": {
+      "title": "Telefooncamera in OBS",
+      "new": [
+        "De camera van je telefoon gaat naar OBS op je computer, zonder een venster op te nemen"
+      ]
+    }
   },
   {
     "version": "0.2.46",
     "date": "2026-10-29",
-    "en": { "title": "Presentation remote", "new": ["Your phone is the clicker of a presentation on your computer: big buttons, the volume keys, and a pointer you aim with the phone"] },
-    "nl": { "title": "Presentatie-afstandsbediening", "new": ["Je telefoon is de clicker van een presentatie op je computer: grote knoppen, de volumeknoppen en een pointer die je met de telefoon richt"] }
+    "en": {
+      "title": "Presentation remote",
+      "new": [
+        "Your phone is the clicker of a presentation on your computer: big buttons, the volume keys, and a pointer you aim with the phone"
+      ]
+    },
+    "nl": {
+      "title": "Presentatie-afstandsbediening",
+      "new": [
+        "Je telefoon is de clicker van een presentatie op je computer: grote knoppen, de volumeknoppen en een pointer die je met de telefoon richt"
+      ]
+    }
   },
   {
     "version": "0.2.45",
     "date": "2026-10-29",
-    "en": { "title": "Quiet during calls", "new": ["Music pauses while your phone rings or your Mac is in a call, and plays again after"] },
-    "nl": { "title": "Stil tijdens gesprekken", "new": ["Muziek pauzeert als je telefoon overgaat of je Mac in gesprek is, en speelt daarna verder"] }
+    "en": {
+      "title": "Quiet during calls",
+      "new": [
+        "Music pauses while your phone rings or your Mac is in a call, and plays again after"
+      ]
+    },
+    "nl": {
+      "title": "Stil tijdens gesprekken",
+      "new": [
+        "Muziek pauzeert als je telefoon overgaat of je Mac in gesprek is, en speelt daarna verder"
+      ]
+    }
   },
   {
     "version": "0.2.44",
     "date": "2026-10-29",
-    "en": { "title": "Battery alerts", "new": ["A notification when another device is almost empty or fully charged"] },
-    "nl": { "title": "Batterijmeldingen", "new": ["Een melding als een ander apparaat bijna leeg of vol is"] }
+    "en": {
+      "title": "Battery alerts",
+      "new": [
+        "A notification when another device is almost empty or fully charged"
+      ]
+    },
+    "nl": {
+      "title": "Batterijmeldingen",
+      "new": [
+        "Een melding als een ander apparaat bijna leeg of vol is"
+      ]
+    }
   },
   {
     "version": "0.2.43",
     "date": "2026-10-29",
-    "en": { "title": "Ready for what comes", "new": ["The Mac app takes updates signed with Tandem's Apple Developer ID"] },
-    "nl": { "title": "Klaar voor wat komt", "new": ["De Mac-app neemt updates aan die met de Apple Developer ID van Tandem zijn ondertekend"] }
+    "en": {
+      "title": "Ready for what comes",
+      "new": [
+        "The Mac app takes updates signed with Tandem's Apple Developer ID"
+      ]
+    },
+    "nl": {
+      "title": "Klaar voor wat komt",
+      "new": [
+        "De Mac-app neemt updates aan die met de Apple Developer ID van Tandem zijn ondertekend"
+      ]
+    }
   },
   {
     "version": "0.2.42",
     "date": "2026-10-29",
-    "en": { "title": "Always means always", "new": ["Always allow for showing your screen no longer asks again"] },
-    "nl": { "title": "Altijd is altijd", "new": ["Altijd toestaan voor je scherm tonen vraagt het niet meer opnieuw"] }
+    "en": {
+      "title": "Always means always",
+      "new": [
+        "Always allow for showing your screen no longer asks again"
+      ]
+    },
+    "nl": {
+      "title": "Altijd is altijd",
+      "new": [
+        "Altijd toestaan voor je scherm tonen vraagt het niet meer opnieuw"
+      ]
+    }
   },
   {
     "version": "0.2.41",
     "date": "2026-10-29",
-    "en": { "title": "Codes come through", "new": ["A code in a text is copied on your computer again, also when Tandem may only read your texts"] },
-    "nl": { "title": "Codes komen door", "new": ["Een code in een sms wordt weer gekopieerd op je computer, ook als Tandem je sms alleen mag lezen"] }
+    "en": {
+      "title": "Codes come through",
+      "new": [
+        "A code in a text is copied on your computer again, also when Tandem may only read your texts"
+      ]
+    },
+    "nl": {
+      "title": "Codes komen door",
+      "new": [
+        "Een code in een sms wordt weer gekopieerd op je computer, ook als Tandem je sms alleen mag lezen"
+      ]
+    }
   },
   {
     "version": "0.2.40",
     "date": "2026-10-29",
-    "en": { "title": "Shizuku opens it", "new": ["With Shizuku, Tandem also gives itself permission to draw over other apps, so a second screen opens on the phone without a tap"] },
-    "nl": { "title": "Shizuku opent het", "new": ["Met Shizuku geeft Tandem zichzelf ook het recht om over andere apps te tonen, zodat een tweede scherm zonder tik op de telefoon opent"] }
+    "en": {
+      "title": "Shizuku opens it",
+      "new": [
+        "With Shizuku, Tandem also gives itself permission to draw over other apps, so a second screen opens on the phone without a tap"
+      ]
+    },
+    "nl": {
+      "title": "Shizuku opent het",
+      "new": [
+        "Met Shizuku geeft Tandem zichzelf ook het recht om over andere apps te tonen, zodat een tweede scherm zonder tik op de telefoon opent"
+      ]
+    }
   },
   {
     "version": "0.2.39",
     "date": "2026-10-29",
-    "en": { "title": "Straight to the screen", "new": ["A second screen started from the computer opens on the phone by itself, no notification to tap (with permission to draw over other apps)", "Send to someone nearby is a small button next to Quick Share"] },
-    "nl": { "title": "Meteen in beeld", "new": ["Een tweede scherm dat je op de computer start, opent op de telefoon vanzelf, zonder melding om op te tikken (met het recht om over andere apps te tonen)", "Naar iemand in de buurt sturen is een kleine knop naast Quick Share"] }
+    "en": {
+      "title": "Straight to the screen",
+      "new": [
+        "A second screen started from the computer opens on the phone by itself, no notification to tap (with permission to draw over other apps)",
+        "Send to someone nearby is a small button next to Quick Share"
+      ]
+    },
+    "nl": {
+      "title": "Meteen in beeld",
+      "new": [
+        "Een tweede scherm dat je op de computer start, opent op de telefoon vanzelf, zonder melding om op te tikken (met het recht om over andere apps te tonen)",
+        "Naar iemand in de buurt sturen is een kleine knop naast Quick Share"
+      ]
+    }
   },
   {
     "version": "0.2.38",
     "date": "2026-10-29",
-    "en": { "title": "The right buttons", "new": ["Show your Mac on your phone from the menu bar", "Computers in the menu bar get buttons to extend your screen and for the universal mouse"] },
-    "nl": { "title": "De juiste knoppen", "new": ["Toon je Mac op je telefoon vanuit de menubalk", "Computers in de menubalk krijgen knoppen om je scherm uit te breiden en voor de gedeelde muis"] }
+    "en": {
+      "title": "The right buttons",
+      "new": [
+        "Show your Mac on your phone from the menu bar",
+        "Computers in the menu bar get buttons to extend your screen and for the universal mouse"
+      ]
+    },
+    "nl": {
+      "title": "De juiste knoppen",
+      "new": [
+        "Toon je Mac op je telefoon vanuit de menubalk",
+        "Computers in de menubalk krijgen knoppen om je scherm uit te breiden en voor de gedeelde muis"
+      ]
+    }
   },
   {
     "version": "0.2.37",
     "date": "2026-10-29",
-    "en": { "title": "Fewer buttons", "new": ["The clipboard button under a device only shows when sharing the clipboard with it is off"] },
-    "nl": { "title": "Minder knoppen", "new": ["De klembordknop onder een apparaat staat er alleen als klembord delen ermee uit staat"] }
+    "en": {
+      "title": "Fewer buttons",
+      "new": [
+        "The clipboard button under a device only shows when sharing the clipboard with it is off"
+      ]
+    },
+    "nl": {
+      "title": "Minder knoppen",
+      "new": [
+        "De klembordknop onder een apparaat staat er alleen als klembord delen ermee uit staat"
+      ]
+    }
   },
   {
     "version": "0.2.36",
     "date": "2026-10-29",
-    "en": { "title": "Nothing twice", "new": ["The menu bar panel no longer shows sending twice: Find phone (Control Option F) took the tile"] },
-    "nl": { "title": "Niets dubbel", "new": ["Het menubalkpaneel toont sturen niet meer dubbel: Telefoon zoeken (Control Option F) kreeg het vakje"] }
+    "en": {
+      "title": "Nothing twice",
+      "new": [
+        "The menu bar panel no longer shows sending twice: Find phone (Control Option F) took the tile"
+      ]
+    },
+    "nl": {
+      "title": "Niets dubbel",
+      "new": [
+        "Het menubalkpaneel toont sturen niet meer dubbel: Telefoon zoeken (Control Option F) kreeg het vakje"
+      ]
+    }
   },
   {
     "version": "0.2.35",
     "date": "2026-10-29",
-    "en": { "title": "The right side at once", "new": ["Extending your screen to your phone finds which side it is on while the screen starts"] },
-    "nl": { "title": "Meteen aan de goede kant", "new": ["Scherm uitbreiden naar je telefoon zoekt al tijdens het starten aan welke kant hij staat"] }
+    "en": {
+      "title": "The right side at once",
+      "new": [
+        "Extending your screen to your phone finds which side it is on while the screen starts"
+      ]
+    },
+    "nl": {
+      "title": "Meteen aan de goede kant",
+      "new": [
+        "Scherm uitbreiden naar je telefoon zoekt al tijdens het starten aan welke kant hij staat"
+      ]
+    }
   },
   {
     "version": "0.2.34",
     "date": "2026-10-29",
-    "en": { "title": "Shortcuts for photo and scan", "new": ["Control Option P takes a photo with your phone, Control Option D scans a document"] },
-    "nl": { "title": "Sneltoetsen voor foto en scan", "new": ["Control Option P maakt een foto met je telefoon, Control Option D scant een document"] }
+    "en": {
+      "title": "Shortcuts for photo and scan",
+      "new": [
+        "Control Option P takes a photo with your phone, Control Option D scans a document"
+      ]
+    },
+    "nl": {
+      "title": "Sneltoetsen voor foto en scan",
+      "new": [
+        "Control Option P maakt een foto met je telefoon, Control Option D scant een document"
+      ]
+    }
   },
   {
     "version": "0.2.33",
     "date": "2026-10-29",
-    "en": { "title": "A tidier menu", "new": ["The menu bar panel puts your devices on one card, with four tiles you choose", "Settings, Shortcuts: a shortcut for everything Tandem does with one press"] },
-    "nl": { "title": "Een rustiger menu", "new": ["Het menubalkpaneel zet je apparaten op een kaart, met vier vakjes die je zelf kiest", "Instellingen, Sneltoetsen: een sneltoets voor alles wat Tandem met een druk doet"] }
+    "en": {
+      "title": "A tidier menu",
+      "new": [
+        "The menu bar panel puts your devices on one card, with four tiles you choose",
+        "Settings, Shortcuts: a shortcut for everything Tandem does with one press"
+      ]
+    },
+    "nl": {
+      "title": "Een rustiger menu",
+      "new": [
+        "Het menubalkpaneel zet je apparaten op een kaart, met vier vakjes die je zelf kiest",
+        "Instellingen, Sneltoetsen: een sneltoets voor alles wat Tandem met een druk doet"
+      ]
+    }
   },
   {
     "version": "0.2.32",
     "date": "2026-10-29",
-    "en": { "title": "Clean sound", "new": ["Your phone as a speaker no longer crackles over a hotspot or busy Wi-Fi"] },
-    "nl": { "title": "Schoon geluid", "new": ["Je telefoon als speaker kraakt niet meer over een hotspot of druk wifi"] }
+    "en": {
+      "title": "Clean sound",
+      "new": [
+        "Your phone as a speaker no longer crackles over a hotspot or busy Wi-Fi"
+      ]
+    },
+    "nl": {
+      "title": "Schoon geluid",
+      "new": [
+        "Je telefoon als speaker kraakt niet meer over een hotspot of druk wifi"
+      ]
+    }
   },
   {
     "version": "0.2.31",
     "date": "2026-10-27",
-    "en": { "title": "Choose many", "new": ["Shared: hold a file and drag to choose many on Android, Command or Shift-click on computers", "Quick Share on Android: the pill at the bottom slides between Receive and Send"] },
-    "nl": { "title": "Veel tegelijk", "new": ["Gedeeld: houd een bestand vast en sleep om er veel te kiezen op Android, Command- of Shift-klik op computers", "Quick Share op Android: de pill onderin schuift tussen Ontvangen en Versturen"] }
+    "en": {
+      "title": "Choose many",
+      "new": [
+        "Shared: hold a file and drag to choose many on Android, Command or Shift-click on computers",
+        "Quick Share on Android: the pill at the bottom slides between Receive and Send"
+      ]
+    },
+    "nl": {
+      "title": "Veel tegelijk",
+      "new": [
+        "Gedeeld: houd een bestand vast en sleep om er veel te kiezen op Android, Command- of Shift-klik op computers",
+        "Quick Share op Android: de pill onderin schuift tussen Ontvangen en Versturen"
+      ]
+    }
   },
   {
     "version": "0.2.30",
     "date": "2026-10-27",
-    "en": { "title": "Messages in their place", "new": ["Messages sit with Files, Notifications and Clipboard instead of under the phone"] },
-    "nl": { "title": "Berichten op hun plek", "new": ["Berichten staat bij Bestanden, Meldingen en Klembord in plaats van onder de telefoon"] }
+    "en": {
+      "title": "Messages in their place",
+      "new": [
+        "Messages sit with Files, Notifications and Clipboard instead of under the phone"
+      ]
+    },
+    "nl": {
+      "title": "Berichten op hun plek",
+      "new": [
+        "Berichten staat bij Bestanden, Meldingen en Klembord in plaats van onder de telefoon"
+      ]
+    }
   },
   {
     "version": "0.2.29",
     "date": "2026-10-27",
-    "en": { "title": "Wi-Fi when you have none", "new": ["A device without a network offers to take over the Wi-Fi of another one, never one it knows", "Your phone hands its Wi-Fi to your computers with Shizuku"] },
-    "nl": { "title": "Wifi als je er geen hebt", "new": ["Een apparaat zonder netwerk biedt aan de wifi van een ander over te nemen, nooit een die het al kent", "Je telefoon geeft zijn wifi aan je computers met Shizuku"] }
+    "en": {
+      "title": "Wi-Fi when you have none",
+      "new": [
+        "A device without a network offers to take over the Wi-Fi of another one, never one it knows",
+        "Your phone hands its Wi-Fi to your computers with Shizuku"
+      ]
+    },
+    "nl": {
+      "title": "Wifi als je er geen hebt",
+      "new": [
+        "Een apparaat zonder netwerk biedt aan de wifi van een ander over te nemen, nooit een die het al kent",
+        "Je telefoon geeft zijn wifi aan je computers met Shizuku"
+      ]
+    }
   },
   {
     "version": "0.2.28",
     "date": "2026-10-27",
-    "en": { "title": "One call, one card", "new": ["An incoming call shows one card on your computers", "Your phone no longer offers the Wi-Fi of your computer when it knows that network already"] },
-    "nl": { "title": "Een gesprek, een kaart", "new": ["Een inkomend gesprek toont een kaart op je computers", "Je telefoon biedt de wifi van je computer niet meer aan als hij dat netwerk al kent"] }
+    "en": {
+      "title": "One call, one card",
+      "new": [
+        "An incoming call shows one card on your computers",
+        "Your phone no longer offers the Wi-Fi of your computer when it knows that network already"
+      ]
+    },
+    "nl": {
+      "title": "Een gesprek, een kaart",
+      "new": [
+        "Een inkomend gesprek toont een kaart op je computers",
+        "Je telefoon biedt de wifi van je computer niet meer aan als hij dat netwerk al kent"
+      ]
+    }
   },
   {
     "version": "0.2.27",
     "date": "2026-10-26",
-    "en": { "title": "Files at a glance", "new": ["Shift-click chooses a range of files of another device", "Copying from another device shows how far it is, also in the Files app of Android"] },
-    "nl": { "title": "Bestanden in een oogopslag", "new": ["Shift-klik kiest een reeks bestanden van een ander apparaat", "Kopieren van een ander apparaat laat zien hoe ver het is, ook in de Bestanden-app van Android"] }
+    "en": {
+      "title": "Files at a glance",
+      "new": [
+        "Shift-click chooses a range of files of another device",
+        "Copying from another device shows how far it is, also in the Files app of Android"
+      ]
+    },
+    "nl": {
+      "title": "Bestanden in een oogopslag",
+      "new": [
+        "Shift-klik kiest een reeks bestanden van een ander apparaat",
+        "Kopieren van een ander apparaat laat zien hoe ver het is, ook in de Bestanden-app van Android"
+      ]
+    }
   },
   {
     "version": "0.2.26",
     "date": "2026-10-26",
-    "en": { "title": "No clipboard message", "new": ["A switch under Setup, Shizuku hides Android's message after every copy"] },
-    "nl": { "title": "Geen klembordmelding", "new": ["Een schakelaar onder Setup, Shizuku verbergt de melding van Android na elke kopie"] }
+    "en": {
+      "title": "No clipboard message",
+      "new": [
+        "A switch under Setup, Shizuku hides Android's message after every copy"
+      ]
+    },
+    "nl": {
+      "title": "Geen klembordmelding",
+      "new": [
+        "Een schakelaar onder Setup, Shizuku verbergt de melding van Android na elke kopie"
+      ]
+    }
   },
   {
     "version": "0.2.25",
     "date": "2026-10-26",
-    "en": { "title": "Clipboard with Shizuku as root", "new": ["Copies are sent and received again when Shizuku runs as root", "Setup opens Permissions, Shizuku and File access as pages of their own"] },
-    "nl": { "title": "Klembord met Shizuku als root", "new": ["Kopieren en ontvangen werkt weer als Shizuku als root draait", "Setup opent Rechten, Shizuku en Bestandstoegang als eigen pagina's"] }
+    "en": {
+      "title": "Clipboard with Shizuku as root",
+      "new": [
+        "Copies are sent and received again when Shizuku runs as root",
+        "Setup opens Permissions, Shizuku and File access as pages of their own"
+      ]
+    },
+    "nl": {
+      "title": "Klembord met Shizuku als root",
+      "new": [
+        "Kopieren en ontvangen werkt weer als Shizuku als root draait",
+        "Setup opent Rechten, Shizuku en Bestandstoegang als eigen pagina's"
+      ]
+    }
   },
   {
     "version": "0.2.24",
     "date": "2026-10-25",
-    "en": { "title": "A fuller battery widget", "new": ["The battery widget fills itself: one device large, a few as rows with their names"] },
-    "nl": { "title": "Een vollere batterijwidget", "new": ["De batterijwidget vult zichzelf: een apparaat groot, een paar als rijen met hun naam"] }
+    "en": {
+      "title": "A fuller battery widget",
+      "new": [
+        "The battery widget fills itself: one device large, a few as rows with their names"
+      ]
+    },
+    "nl": {
+      "title": "Een vollere batterijwidget",
+      "new": [
+        "De batterijwidget vult zichzelf: een apparaat groot, een paar als rijen met hun naam"
+      ]
+    }
   },
   {
     "version": "0.2.23",
     "date": "2026-10-25",
-    "en": { "title": "Who is calling", "new": ["The call card shows the name of whoever you are calling with, also for calls you make"] },
-    "nl": { "title": "Wie er belt", "new": ["Het belkaartje toont de naam van wie je spreekt, ook bij gesprekken die je zelf begint"] }
+    "en": {
+      "title": "Who is calling",
+      "new": [
+        "The call card shows the name of whoever you are calling with, also for calls you make"
+      ]
+    },
+    "nl": {
+      "title": "Wie er belt",
+      "new": [
+        "Het belkaartje toont de naam van wie je spreekt, ook bij gesprekken die je zelf begint"
+      ]
+    }
   },
   {
     "version": "0.2.22",
@@ -313,7 +881,7 @@
       "title": "Wat Tandem kan",
       "new": [
         "Een rondleiding langs alles wat Tandem kan, met wat elk onderdeel nodig heeft: nu instellen, later of niet",
-        "Eén herinnering een paar dagen later voor wat je voor later bewaarde"
+        "E\u00e9n herinnering een paar dagen later voor wat je voor later bewaarde"
       ]
     }
   },
@@ -350,11 +918,11 @@
       ]
     },
     "nl": {
-      "title": "Eén pagina om in te stellen",
+      "title": "E\u00e9n pagina om in te stellen",
       "new": [
         "De telefoon is stil terwijl zijn geluid op een ander apparaat speelt",
         "Wat de telefoon speelt staat op de computer, ook als Spotify daar hetzelfde nummer toont",
-        "Rechten, Shizuku en bestandstoegang op één pagina op Android",
+        "Rechten, Shizuku en bestandstoegang op \u00e9\u00e9n pagina op Android",
         "Berichten staat in de zijbalk onder de naam van de telefoon"
       ]
     }
@@ -442,7 +1010,7 @@
         "Het venster op Linux en Windows laadt weer",
         "Een oproep verschijnt als klein kaartje met Opnemen, Weigeren en Ophangen",
         "Zoek en bel de contacten van je telefoon vanuit Spotlight, GNOME en KDE",
-        "Wissel met één klik tussen de voor- en achtercamera van je telefoon",
+        "Wissel met \u00e9\u00e9n klik tussen de voor- en achtercamera van je telefoon",
         "Zoeken met geluid gebruikt eerst de stille toon"
       ]
     }
@@ -486,7 +1054,7 @@
         "Bel vanaf je computer: typ een naam of nummer en je telefoon belt",
         "Bestanden versturen vanaf Linux werkt weer",
         "Zet een schakelaar van Tandem op een ander apparaat van hieruit aan",
-        "Alle tegels voor Snelle instellingen op één plek op Android",
+        "Alle tegels voor Snelle instellingen op \u00e9\u00e9n plek op Android",
         "Computers bieden Downloads, Documenten en Bureaublad aan om te bekijken"
       ]
     }
@@ -545,7 +1113,7 @@
     "nl": {
       "title": "Netter",
       "new": [
-        "Eén zoekveld in de pagina, naast de filters, op elke pagina",
+        "E\u00e9n zoekveld in de pagina, naast de filters, op elke pagina",
         "Een gedeeld scherm sluit meteen als de andere kant stopt",
         "Wifi delen staat er alleen als het apparaat nog niet op dat netwerk zit"
       ]
@@ -595,7 +1163,7 @@
       "title": "Vind je computer, deel je wifi",
       "new": [
         "Laat een computer een geluid afspelen om hem te vinden, met het geluid van je eigen systeem, en zie waar hij het laatst was",
-        "Deel de wifi van je computer met één tik met je telefoon",
+        "Deel de wifi van je computer met \u00e9\u00e9n tik met je telefoon",
         "Sturen met Tandem vanuit Bestanden, Dolphin, Nemo en Windows Verkenner",
         "Mac: een rustiger ontwerp volgens de regels van Apple"
       ]
@@ -684,7 +1252,7 @@
       ]
     },
     "nl": {
-      "title": "Alle rechten op één plek",
+      "title": "Alle rechten op \u00e9\u00e9n plek",
       "new": [
         "Android: Rechten heeft nu ook Toegankelijkheid en Alle bestanden, met een knop naar elk",
         "Mac: bij hover groeit het glas van een knop gelijkmatig rond de tekst, die in het midden blijft"
@@ -923,7 +1491,7 @@
       "title": "Wat werkt",
       "new": [
         "De instellingen tonen per apparaat wat werkt, wat er mist en waarom",
-        "Open de goede instelling op een ander apparaat met één knop",
+        "Open de goede instelling op een ander apparaat met \u00e9\u00e9n knop",
         "Mediaknoppen zijn grijs als de computer ze niet mag bedienen, met de reden",
         "De pagina van een apparaat zegt wat daar niet werkt"
       ]
@@ -1711,7 +2279,7 @@
     "nl": {
       "title": "Ook op Windows een pagina voor muis en toetsenbord",
       "new": [
-        "Windows: een eigen pagina in de zijbalk voor één muis en toetsenbord over meer computers. Hij legt uit hoe het werkt, laat je de computer naast deze pc en de kant kiezen, en bevat de schakelaar waarmee andere computers en je telefoon deze pc mogen gebruiken, met een opmerking over de firewall. De keuze die in Instellingen stond is hierheen verhuisd"
+        "Windows: een eigen pagina in de zijbalk voor \u00e9\u00e9n muis en toetsenbord over meer computers. Hij legt uit hoe het werkt, laat je de computer naast deze pc en de kant kiezen, en bevat de schakelaar waarmee andere computers en je telefoon deze pc mogen gebruiken, met een opmerking over de firewall. De keuze die in Instellingen stond is hierheen verhuisd"
       ]
     }
   },
@@ -1736,7 +2304,7 @@
     "nl": {
       "title": "Een rustiger telefoonvenster en een pagina voor muis en toetsenbord",
       "new": [
-        "Mac: een eigen pagina in de zijbalk voor één muis en toetsenbord over meer computers. Hij legt uit hoe het werkt, laat zien wat deze Mac moet toestaan (Toegankelijkheid, met een knop), laat je kiezen waar elke computer staat en per computer of die deze Mac mag gebruiken. Eerst was er één schakelaar voor allemaal, in Instellingen. Een telefoon krijgt zijn eigen uitleg: toon zijn scherm en beweeg de muis in het venster",
+        "Mac: een eigen pagina in de zijbalk voor \u00e9\u00e9n muis en toetsenbord over meer computers. Hij legt uit hoe het werkt, laat zien wat deze Mac moet toestaan (Toegankelijkheid, met een knop), laat je kiezen waar elke computer staat en per computer of die deze Mac mag gebruiken. Eerst was er \u00e9\u00e9n schakelaar voor allemaal, in Instellingen. Een telefoon krijgt zijn eigen uitleg: toon zijn scherm en beweeg de muis in het venster",
         "Mac: het venster met het telefoonscherm heeft standaard geen titelbalk, zodat de telefoon het venster vult zonder zwarte randen. Ga met de muis naar de bovenkant en de knoppen van het venster en de naam van de telefoon komen tevoorschijn, en gaan weer weg als je wegbeweegt",
         "Mac: elke knop van het telefoonvenster toont meteen zijn naam als je eroverheen beweegt, boven de knoppen zodat het nooit buiten het venster valt",
         "Mac: het menu met de drie puntjes is een ronde knop zoals de andere, ook het cameramenu. De knop om op de telefoon te klikken en te typen kun je altijd indrukken: staat de telefoon het nog niet toe, dan zegt hij hoe je het aanzet, en staat het aan dan licht hij op en meldt hij het als je het omzet",
@@ -1791,7 +2359,7 @@
       ]
     },
     "nl": {
-      "title": "Een Windows-pc naast je Mac, met één muis en toetsenbord",
+      "title": "Een Windows-pc naast je Mac, met \u00e9\u00e9n muis en toetsenbord",
       "new": [
         "Windows: een pc kan de computer zijn waar de aanwijzer van een Mac naartoe gaat. Zet de pc aan een kant van de Mac bij Instellingen, Muis en toetsenbord over computers, en zet de instelling aan die een telefoon of andere computer de muis en het toetsenbord van de pc laat gebruiken. De aanwijzer komt binnen aan de tegenoverliggende kant van de pc en gaat terug naar de Mac bij de rand waar hij binnenkwam. Het is nog niet op een echte pc naast een Mac geprobeerd"
       ]
@@ -1808,7 +2376,7 @@
       ]
     },
     "nl": {
-      "title": "Eén muis en toetsenbord over meer computers (eerste versie, Mac naar Mac)",
+      "title": "E\u00e9n muis en toetsenbord over meer computers (eerste versie, Mac naar Mac)",
       "new": [
         "Instellingen, Muis en toetsenbord over computers: zeg aan welke kant van deze Mac een andere computer staat, en de aanwijzer gaat over als hij die rand raakt, met het toetsenbord erachteraan. De andere Mac moet het toestaan met Laat een andere computer deze Mac gebruiken. Control, Option en Command met Escape haalt de aanwijzer altijd terug. De aanwijzer komt ook vanzelf terug als hij de rand raakt waar hij binnenkwam",
         "Dit werkt voorlopig tussen Macs. Windows en Linux doen nog niet mee en het is nog niet op twee echte computers geprobeerd, dus meld wat niet werkt"
@@ -1974,7 +2542,7 @@
     "nl": {
       "title": "Duidelijker je Mac bedienen, en een telefoonscherm dat bijblijft",
       "new": [
-        "Deze Mac bedienen is een eigen kaart op de apparaatpagina en staat er altijd. Hij is grijs tot hij kan werken, met eronder de stappen op de Mac: Tandem bijwerken, Schermopname en Toegankelijkheid toestaan en één keer opnieuw starten. Hij zegt het ook als alleen Toegankelijkheid ontbreekt",
+        "Deze Mac bedienen is een eigen kaart op de apparaatpagina en staat er altijd. Hij is grijs tot hij kan werken, met eronder de stappen op de Mac: Tandem bijwerken, Schermopname en Toegankelijkheid toestaan en \u00e9\u00e9n keer opnieuw starten. Hij zegt het ook als alleen Toegankelijkheid ontbreekt",
         "De Mac bedienen vanaf je telefoon: tikken met twee vingers is de rechterknop, ingedrukt houden en bewegen is slepen, en ingedrukt houden zonder te bewegen is een gewone klik. De knoppen voor toetsenbord en aanwijzer ronden samen hun hoeken af zoals de trackpadknoppen",
         "Je Android-scherm op de Mac blijft bij als er niets beweegt: het beeld blijft niet meer op het oude staan tot je scrolt. De balk die zei dat je scherm te zien was staat standaard uit en de melding is kort",
         "Bedien je Android-telefoon vanaf de Mac: klik, sleep, scroll en typ in het venster van de telefoon met de muis en het toetsenbord. De rechterknop is Terug. De telefoon heeft Tandem-bediening nodig in de toegankelijkheidsinstellingen (Instellingen, Apparaten, de Mac, Laat klikken en typen toe) en zegt dat op de pagina. Zonder dat kan de Mac kijken maar niet aanraken en is de knop in het venster grijs",
@@ -2013,7 +2581,7 @@
     "nl": {
       "title": "Je Mac vanaf je telefoon en je telefoon op je Mac (eerste versie)",
       "new": [
-        "Bedien je Mac vanuit de Android-app: op de apparaatpagina van de Mac laat Deze computer bedienen het Mac-scherm zien en wordt aanraken muisklikken, bewegen, scrollen en een vastgehouden knop om te slepen. De Mac vraagt eerst toestemming voordat een telefoon mag kijken, laat zien dat iemand meekijkt en kan het direct stoppen. Het heeft Schermopname en Toegankelijkheid nodig en de Mac moet één keer opnieuw starten nadat je Schermopname toestaat",
+        "Bedien je Mac vanuit de Android-app: op de apparaatpagina van de Mac laat Deze computer bedienen het Mac-scherm zien en wordt aanraken muisklikken, bewegen, scrollen en een vastgehouden knop om te slepen. De Mac vraagt eerst toestemming voordat een telefoon mag kijken, laat zien dat iemand meekijkt en kan het direct stoppen. Het heeft Schermopname en Toegankelijkheid nodig en de Mac moet \u00e9\u00e9n keer opnieuw starten nadat je Schermopname toestaat",
         "Toon het scherm of de camera van je telefoon in een venster op de Mac, vanaf de Mac of vanaf de telefoon. Het venster kan gedraaid, gespiegeld, bovenaan gehouden en als plaatje gekopieerd worden. Het is een venster en geen virtuele webcam. Android vraagt altijd zelf om de opnametoestemming",
         "Dit is een eerste versie. Hij is stuk voor stuk getest en nog niet van begin tot eind tussen twee echte apparaten, dus meld wat niet werkt"
       ]
@@ -2053,9 +2621,9 @@
     "nl": {
       "title": "Bestanden selecteren, hotspotdata per maand en een rustigere speler",
       "new": [
-        "Bestanden op de Mac: zoek op naam, beperk tot foto's, video, documenten en meer, en kies meerdere bestanden door er één ingedrukt te houden en over de andere te bewegen. Een vinkje neemt de plaats van het icoon in, zodat je ziet wat je koos, en Download of Verwijder werkt op allemaal",
+        "Bestanden op de Mac: zoek op naam, beperk tot foto's, video, documenten en meer, en kies meerdere bestanden door er \u00e9\u00e9n ingedrukt te houden en over de andere te bewegen. Een vinkje neemt de plaats van het icoon in, zodat je ziet wat je koos, en Download of Verwijder werkt op allemaal",
         "Op de pagina van een apparaat heeft Recent een knop Alles bekijken die de pagina Gedeeld voor dat apparaat opent. Gedeeld is te doorzoeken en elk bestand heeft een eigen vak met voorbeeld en een menu achter drie puntjes, zoals op Android",
-        "De cover in de speler flitst niet meer weg tussen nummers. Meer dan één speler staat als één grote speler met de andere als kleine regels eronder, op de Mac en op Android. Tik op een regel om hem naar voren te halen",
+        "De cover in de speler flitst niet meer weg tussen nummers. Meer dan \u00e9\u00e9n speler staat als \u00e9\u00e9n grote speler met de andere als kleine regels eronder, op de Mac en op Android. Tik op een regel om hem naar voren te halen",
         "Een link die je vanaf je telefoon stuurt opent op de Mac en staat ook op je klembord",
         "Instellingen, Trackpad: stel de snelheid van de aanwijzer in, de scrolsnelheid en hoe lang je vasthoudt voordat slepen begint",
         "Hotspotdata wordt per maand geteld. Deze maand begint vanzelf opnieuw, eerdere maanden staan in een lijst met een balk, en je stelt de dag in waarop je maand begint zodat het bij je abonnement past. De ontwikkelaarsopties hebben hulpmiddelen om het met testdata te vullen",
@@ -2076,7 +2644,7 @@
     "nl": {
       "title": "Invoegen vanaf je telefoon",
       "new": [
-        "Je Mac kan je telefoon om een foto, een scan of een plaatje vragen en dat plakken waar je typt. Druk op de Mac op Control Option Command P of kies Insert from phone in het menu Services. De telefoon krijgt een melding, opent een camerascherm, de documentscanner of de galerij en stuurt het resultaat direct terug. Een scan komt als pdf. Sluit je het scherm aan één kant, dan stopt de andere kant ook",
+        "Je Mac kan je telefoon om een foto, een scan of een plaatje vragen en dat plakken waar je typt. Druk op de Mac op Control Option Command P of kies Insert from phone in het menu Services. De telefoon krijgt een melding, opent een camerascherm, de documentscanner of de galerij en stuurt het resultaat direct terug. Een scan komt als pdf. Sluit je het scherm aan \u00e9\u00e9n kant, dan stopt de andere kant ook",
         "Het camerascherm heeft een flitsschakelaar, een knop om van camera te wisselen en laat de foto zien voordat hij verstuurd wordt"
       ]
     }
@@ -2114,7 +2682,7 @@
       "title": "Klembordgeschiedenis, instellingen met zoekbalk en slepen met indrukken",
       "new": [
         "De Mac bewaart een klembordgeschiedenis: Control Option V opent een paneel met alles wat je onlangs hebt gekopieerd, tekst en plaatjes, met zoeken, vastzetten en Return om het te plakken waar je typt. Wachtwoordmanagers worden standaard overgeslagen en onder Instellingen, Klembord kies je hoeveel er bewaard wordt, hoe lang, van welke apps, en kun je alles wissen",
-        "Instellingen op Android beginnen met een overzicht van categorieën die als eigen pagina openen, met een zoekbalk die een instelling vindt op naam of op wat hij doet en er naartoe scrolt",
+        "Instellingen op Android beginnen met een overzicht van categorie\u00ebn die als eigen pagina openen, met een zoekbalk die een instelling vindt op naam of op wat hij doet en er naartoe scrolt",
         "De trackpadpagina sleept als een muisknop: houd het vlak ingedrukt en beweeg dan. Het vlak laat zien dat de knop ingedrukt is",
         "Het afgespeelde deel van de zoekbalk in de speler is een golf zolang de muziek speelt en een rechte lijn als die stopt",
         "Meldingen op de Mac met een verificatiecode krijgen een knop Kopieer code, en de telefoon en de Mac vinden codes nu op dezelfde manier"
@@ -2133,7 +2701,7 @@
     "nl": {
       "title": "Het icoon van de app bij je meldingen",
       "new": [
-        "Meldingen van je telefoon komen met het icoon van de app waar ze vandaan komen, bijvoorbeeld Snapchat of WhatsApp: als plaatje op de melding op de Mac en voor elke regel op de pagina Meldingen. De telefoon stuurt een icoon één keer per app en de Mac bewaart het"
+        "Meldingen van je telefoon komen met het icoon van de app waar ze vandaan komen, bijvoorbeeld Snapchat of WhatsApp: als plaatje op de melding op de Mac en voor elke regel op de pagina Meldingen. De telefoon stuurt een icoon \u00e9\u00e9n keer per app en de Mac bewaart het"
       ]
     }
   },
@@ -2151,7 +2719,7 @@
     "nl": {
       "title": "Je Mac en pc in de Bestanden-app",
       "new": [
-        "De bestanden van je Mac, pc en andere apparaten staan in de Bestanden-app van de telefoon en in elke bestandskiezer, naast de opslag van de telefoon zelf: openen, kopiëren, erin bewaren en mappen maken. Een groot bestand opent meteen en reist alleen zo ver als er gelezen wordt. Bestanden bekijken op een apparaatpagina opent de Bestanden-app op dat apparaat",
+        "De bestanden van je Mac, pc en andere apparaten staan in de Bestanden-app van de telefoon en in elke bestandskiezer, naast de opslag van de telefoon zelf: openen, kopi\u00ebren, erin bewaren en mappen maken. Een groot bestand opent meteen en reist alleen zo ver als er gelezen wordt. Bestanden bekijken op een apparaatpagina opent de Bestanden-app op dat apparaat",
         "De Mac heeft eigen instellingen voor wat andere apparaten met zijn bestanden mogen, onder Instellingen, Bestanden: voor alle apparaten of een apparaat, of ze iets mogen wijzigen of verwijderen, verborgen bestanden, een limiet op wat ze mogen sturen, welke mappen worden gedeeld (elk met een eigen schakelaar voor wijzigen) en een lijst van wat ze deden",
         "tandemd kan hetzelfde voor Linux en servers: tandemd files share, unshare, usual, on, off, write, delete, hidden en log"
       ]
@@ -2183,12 +2751,12 @@
         "De pagina Apparaten op de telefoon heeft een knop Apparaat koppelen zodra je een apparaat hebt, zodat het volgende niet verstopt zit"
       ],
       "better": [
-        "De bestanden van een telefoon openen op de Mac meteen in zijn map als er maar één wordt gedeeld, in plaats van een lijst met één map erin",
+        "De bestanden van een telefoon openen op de Mac meteen in zijn map als er maar \u00e9\u00e9n wordt gedeeld, in plaats van een lijst met \u00e9\u00e9n map erin",
         "De knoppen play en mute van de speler op een apparaatpagina komen los van de rij zolang ze aan staan, zoals de schakelaars bovenin het trackpad",
         "Het icoon van een apparaat indrukken op de telefoon laat de cirkel oplichten, niet een vierkant eromheen",
         "De rij met apparaten onder Bestandstoegang loopt door tot de randen van het scherm in plaats van eerder te worden afgesneden",
         "Voltooide wissen heeft een kruisje, en de teksten onder Bestandstoegang beginnen niet meer met Uit",
-        "De status van een apparaat in de Mac-instellingen staat op één lijn met zijn naam, en de welkomsttekst noemt Tailscale niet meer",
+        "De status van een apparaat in de Mac-instellingen staat op \u00e9\u00e9n lijn met zijn naam, en de welkomsttekst noemt Tailscale niet meer",
         "De batterij-pill en -ring op de telefoon gebruiken het gewone groen van de Mac zolang een apparaat oplaadt"
       ]
     }
@@ -2212,7 +2780,7 @@
       "title": "Bestanden van je telefoon bekijken op de Mac",
       "new": [
         "Bestanden bekijken op de pagina van een telefoon opent zijn mappen op de Mac: mappen en bestanden openen, uploaden (met de knop of door ze neer te zetten), downloaden naar waar ontvangen bestanden komen, mappen maken, hernoemen en verwijderen. Het gaat over dezelfde versleutelde verbinding als al het andere, rechtstreeks tussen je apparaten",
-        "Bestandstoegang onder Instellingen op de telefoon kiest wat andere apparaten kunnen zien en wijzigen: welke mappen, of ze iets mogen wijzigen of verwijderen, of verborgen bestanden getoond worden, een limiet op wat ze mogen sturen, andere keuzes voor één apparaat dan voor de rest, en een lijst van wat ze deden. Android vraagt je eenmalig om toegang tot alle bestanden toe te staan, en zolang je dat niet doet is er niets van de telefoon te zien",
+        "Bestandstoegang onder Instellingen op de telefoon kiest wat andere apparaten kunnen zien en wijzigen: welke mappen, of ze iets mogen wijzigen of verwijderen, of verborgen bestanden getoond worden, een limiet op wat ze mogen sturen, andere keuzes voor \u00e9\u00e9n apparaat dan voor de rest, en een lijst van wat ze deden. Android vraagt je eenmalig om toegang tot alle bestanden toe te staan, en zolang je dat niet doet is er niets van de telefoon te zien",
         "De bestanden van een telefoon kunnen ook als schijf in Finder openen, als experiment: Toon in Finder op de bestandenpagina. macOS vraagt eenmalig of Tandem netwerkschijven mag gebruiken",
         "tandemd heeft ls, get, put, mkdir, rm en mv voor de bestanden van een ander apparaat"
       ],
@@ -2238,7 +2806,7 @@
       "better": [
         "De Mac-app werkt niet meer hard voor niets als zijn venster open staat op een telefoon die oplaadt. De laadbliksem werd bij elk beeld van het scherm opnieuw getekend, waardoor de app op zo'n 30 procent van een kern zat zolang het venster openstond. Hij pulseert nu in de compositor van het systeem, en de app zit op zo'n 2 procent terwijl er op die pagina een nummer speelt en ruim onder 1 procent als er niets speelt",
         "Een gesloten venster op de Mac geeft zijn geheugen terug: de app zakt van zo'n 69 naar zo'n 41 MB als je het venster sluit, waar hij eerst gewoon bleef staan",
-        "De balk van de speler op de Mac en op Windows beweegt één keer per seconde in plaats van twee keer, en helemaal niet als de muziek op pauze staat, want elke keer dat een venster opnieuw wordt getekend kost stroom",
+        "De balk van de speler op de Mac en op Windows beweegt \u00e9\u00e9n keer per seconde in plaats van twee keer, en helemaal niet als de muziek op pauze staat, want elke keer dat een venster opnieuw wordt getekend kost stroom",
         "Op de telefoon stopt de Apparaten-pagina met tekenen als er niets verandert. De ringen om de bolletjes van online apparaten en de laadbliksem ademen een paar keer als ze verschijnen en rusten dan, waar ze het scherm eerst met 60 beelden per seconde bezig hielden zolang de pagina openstond"
       ]
     }
@@ -2273,7 +2841,7 @@
     "nl": {
       "title": "Voorbeelden bij Gedeeld, vastgezette apparaten en een app die minder accu vraagt",
       "new": [
-        "Gedeeld op de telefoon toont van elk bestand een voorbeeld in plaats van een vinkje, opent het met een tik en heeft achter drie puntjes een menu met wat het rechtermuisknopmenu op de Mac heeft: openen, tonen in Bestanden, pad kopiëren, uit de lijst halen en het bestand verwijderen",
+        "Gedeeld op de telefoon toont van elk bestand een voorbeeld in plaats van een vinkje, opent het met een tik en heeft achter drie puntjes een menu met wat het rechtermuisknopmenu op de Mac heeft: openen, tonen in Bestanden, pad kopi\u00ebren, uit de lijst halen en het bestand verwijderen",
         "Houd een apparaat op de Apparaten-pagina van de telefoon ingedrukt om het vast te pinnen. Vastgepinde apparaten staan bovenaan, daarna die verbonden zijn, en vanaf vier apparaten staan ze twee aan twee in kleinere kaarten, zodat ze allemaal passen",
         "Tandem voor Windows (nog steeds een experiment) werkt zichzelf nu bij: hij zoekt op GitHub naar een nieuwe versie, downloadt het installatiebestand, controleert de hash en de handtekening en voert het uit. De schakelaar en een knop staan in de instellingen",
         "Een Mac of pc zonder geluid meldt dat aan de telefoon, dus dempen staat als ingedrukt in de speler op de telefoon en gaat los als je op de computer het geluid weer aanzet"
@@ -2350,7 +2918,7 @@
       "better": [
         "Een telefoon in Bluetooth-bereik staat op de Mac als Via Bluetooth, en de hotspot kan vanaf de apparaatpagina worden aangevraagd als er helemaal geen netwerk is",
         "De speler heeft een dunne balk die groeit onder de aanwijzer, zonder het witte bolletje, in de app en in het kleine menu, waar de knoppen nu boven de balk staan. De cover zakt weg bij pauze, een nieuw nummer schuift binnen en de kaart krijgt een lichte tint van de kleur van de cover",
-        "De apparaatpagina zegt van wie het netwerk is (Telefoon op mobiele data), zegt Via hotspot in plaats van Internet als deze Mac op de hotspot van de telefoon zit, en toont hotspot en mobiele data als één chip",
+        "De apparaatpagina zegt van wie het netwerk is (Telefoon op mobiele data), zegt Via hotspot in plaats van Internet als deze Mac op de hotspot van de telefoon zit, en toont hotspot en mobiele data als \u00e9\u00e9n chip",
         "De hotspotdata worden geteld zoals ze worden gebruikt, dus een sessie die wordt afgebroken verliest ze niet meer"
       ],
       "fixed": [
