@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.2.81",
+    "date": "2026-11-03",
+    "en": {
+      "title": "Move call audio to Mac",
+      "new": [
+        "Mac now receives audio routing events so 'move here' actually moves sound"
+      ]
+    },
+    "nl": {
+      "title": "Geluid verplaatsen naar Mac",
+      "new": [
+        "Mac ontvangt nu audio routing events zodat 'verplaats hier' ook echt geluid verplaatst"
+      ]
+    }
+  },
+  {
     "version": "0.2.80",
     "date": "2026-11-03",
     "en": {
