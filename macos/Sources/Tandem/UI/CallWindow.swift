@@ -48,11 +48,11 @@ final class CallSlot {
 final class CallWindow {
     static let shared = CallWindow()
 
-    static let cardWidth: CGFloat = 320
-    /// Tight, like the call banner of FaceTime: 14 above and under the avatar and the three lines.
-    static let cardHeight: CGFloat = 78
-    /// Nested in the height of the card, which is much lower than the other floating cards.
-    static let cardRadius: CGFloat = 22
+    static let cardWidth: CGFloat = 420
+    /// More room for labels and a clearer layout.
+    static let cardHeight: CGFloat = 116
+    /// A bit larger radius to match the wider card.
+    static let cardRadius: CGFloat = 26
     /// Room around the card for its shadow, the same as the other floating cards (`FloatingCard`): a shadow that reaches past the edge of
     /// a window is cut off in a straight line.
     static let insets = EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28)
@@ -420,16 +420,16 @@ private struct CallCardView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 14) {
             // The picture and the words let the mouse through to the drag area under them; otherwise they would swallow the drag.
-            CallAvatar(name: card.name, size: 44)
+            CallAvatar(name: card.name, size: 48)
                 .allowsHitTesting(false)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(verbatim: card.title)
                     .font(.headline)
                     .lineLimit(1)
                     // A whole phone number fits, a long name gets a little smaller before it is cut off.
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.85)
                 status
                 Text("via \(card.deviceName)")
                     .font(.caption)
@@ -437,10 +437,10 @@ private struct CallCardView: View {
                     .lineLimit(1)
             }
             .allowsHitTesting(false)
-            Spacer(minLength: 8)
+            Spacer(minLength: 12)
             buttons
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 20)
         .frame(width: CallWindow.cardWidth, height: CallWindow.cardHeight)
         // Under the words and the picture, so the card can be dragged by anything that is not a button.
         .background(WindowDragArea(onDragged: onDragged))
@@ -470,25 +470,25 @@ private struct CallCardView: View {
     }
 
     @ViewBuilder private var buttons: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 12) {
             switch card.phase {
             case .ringing:
-                RoundCallButton(label: "Decline", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.reject) }
+                CallActionButton(label: "Decline", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.reject) }
                 if CallWindow.canTakeCalls {
-                    RoundCallButton(label: "Answer here", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
+                    CallActionButton(label: "Answer here", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
                 } else {
-                    RoundCallButton(label: "Answer on phone", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
+                    CallActionButton(label: "Answer on phone", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
                 }
             case .dialing, .active:
-                RoundCallButton(label: "Hang up", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.hangup) }
+                CallActionButton(label: "Hang up", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.hangup) }
                 // Move the call sound to this Mac or back to the phone.
                 if CallWindow.canTakeCalls && !card.audioOnMac {
-                    RoundCallButton(label: "Move here", symbol: "arrow.right.circle", color: Color(nsColor: .controlAccentColor)) { act(.moveToThisDevice) }
+                    CallActionButton(label: "Move here", symbol: "arrow.right.circle", color: Color(nsColor: .controlAccentColor)) { act(.moveToThisDevice) }
                 } else if card.audioOnMac {
-                    RoundCallButton(label: "Back to phone", symbol: "arrow.left.circle", color: Color(nsColor: .controlAccentColor)) { act(.moveBack) }
+                    CallActionButton(label: "Back to phone", symbol: "arrow.left.circle", color: Color(nsColor: .controlAccentColor)) { act(.moveBack) }
                 }
                 // Mute the microphone on this device.
-                RoundCallButton(label: "Mute mic", symbol: "mic.fill", color: Color(nsColor: .systemGray)) { act(.muteMic) }
+                CallActionButton(label: "Mute mic", symbol: "mic.fill", color: Color(nsColor: .systemGray)) { act(.muteMic) }
             case .missed:
                 EmptyView()
             }
@@ -542,8 +542,8 @@ private struct CallAvatar: View {
     }
 }
 
-/// A round button on the card. On glass, so a fill of its own and not more glass.
-private struct RoundCallButton: View {
+/// A button on the card with an icon and a visible label below it.
+private struct CallActionButton: View {
     let label: LocalizedStringKey
     let symbol: String
     let color: Color
@@ -551,18 +551,22 @@ private struct RoundCallButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(color))
-                .contentShape(Circle())
+            VStack(spacing: 4) {
+                Image(systemName: symbol)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+            .frame(width: 56)
+            .padding(.vertical, 8)
+            .background(Capsule().fill(color))
         }
         .buttonStyle(.bouncy)
         .focusEffectDisabled()
-        .help(Text(label))
         .accessibilityLabel(Text(label))
-        .transition(.scale(scale: 0.6).combined(with: .opacity))
+        .transition(.scale(scale: 0.7).combined(with: .opacity))
     }
 }
 

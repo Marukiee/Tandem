@@ -10,6 +10,7 @@ import android.provider.ContactsContract
 import android.telecom.TelecomManager
 import android.telephony.SmsManager
 import android.telephony.TelephonyManager
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -30,6 +31,8 @@ import uniffi.tandem_core.TandemEvent
  * Only the call itself is mirrored: who is calling and what state it is in. The audio
  * stays on the phone, because Android gives an app no way to carry it elsewhere.
  */
+private const val TAG = "Tandem/CallMonitor"
+
 class CallMonitor(
     private val context: Context,
     private val host: EngineHost,
@@ -158,31 +161,74 @@ class CallMonitor(
     fun handle(event: TandemEvent.CallAction) {
         val telecom = context.getSystemService(TelecomManager::class.java)
         runCatching {
+            Log.d(TAG, "handle action: ${event.action} callId=${event.callId} expected=$callId incoming=$incoming answered=$answered")
             when (val action = event.action) {
-                TandemCallAction.Answer -> telecom.acceptRingingCall()
-                TandemCallAction.Reject, TandemCallAction.Hangup -> @Suppress("DEPRECATION") telecom.endCall()
+                TandemCallAction.Answer -> {
+                    Log.d(TAG, "Answer call via telecom.acceptRingingCall()")
+                    telecom.acceptRingingCall()
+                }
+                TandemCallAction.Reject, TandemCallAction.Hangup -> {
+                    Log.d(TAG, "Reject/Hangup call via telecom.endCall()")
+                    @Suppress("DEPRECATION") telecom.endCall()
+                }
                 TandemCallAction.Silence -> silence()
                 is TandemCallAction.RejectWithMessage -> {
                     val to = number
+                    Log.d(TAG, "RejectWithMessage to=$to msg=${action.message}")
                     @Suppress("DEPRECATION") telecom.endCall()
                     if (to != null) SmsManager.getDefault().sendTextMessage(to, null, action.message, null, null)
                 }
-                TandemCallAction.MoveToThisDevice -> routeAudioToDevice(true)
-                TandemCallAction.MoveBack -> routeAudioToDevice(false)
-                TandemCallAction.MuteMic -> toggleMic()
+                TandemCallAction.MoveToThisDevice -> {
+                    Log.d(TAG, "MoveToThisDevice: route audio to Mac callId=$callId engine=${host.engine != null}")
+                    val success = routeAudioToDevice(true)
+                    if (success) {
+                        host.engine?.setAudioRouting(target = "", id = callId, audioOnMac = true)
+                        Log.d(TAG, "setAudioRouting target= empty id=$callId audioOnMac=true OK")
+                    } else {
+                        Log.e(TAG, "MoveToThisDevice FAILED: routeAudioToDevice returned false")
+                    }
+                }
+                TandemCallAction.MoveBack -> {
+                    Log.d(TAG, "MoveBack: route audio back to phone callId=$callId engine=${host.engine != null}")
+                    val success = routeAudioToDevice(false)
+                    if (success) {
+                        host.engine?.setAudioRouting(target = "", id = callId, audioOnMac = false)
+                        Log.d(TAG, "setAudioRouting target= empty id=$callId audioOnMac=false OK")
+                    } else {
+                        Log.e(TAG, "MoveBack FAILED: routeAudioToDevice returned false")
+                    }
+                }
+                TandemCallAction.MuteMic -> {
+                    Log.d(TAG, "MuteMic toggle")
+                    toggleMic()
+                }
             }
+        }.onFailure { e ->
+            Log.e(TAG, "handle action failed", e)
         }
     }
 
-    private fun routeAudioToDevice(toMac: Boolean) {
+    private fun routeAudioToDevice(toMac: Boolean): Boolean {
         // Route call audio to the Mac via the existing audio path.
-        val audio = context.getSystemService(android.media.AudioManager::class.java)
-        runCatching {
+        val audio = context.getSystemService(android.media.AudioManager::class.java) as android.media.AudioManager
+        return runCatching {
             if (toMac) {
                 audio.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION)
+                Log.d(TAG, "routeAudioToDevice: set MODE_IN_COMMUNICATION OK")
+                val wasSpeaker = audio.isSpeakerphoneOn
+                audio.setSpeakerphoneOn(true)
+                Log.d(TAG, "routeAudioToDevice: setSpeakerphoneOn(true) was=$wasSpeaker now=${audio.isSpeakerphoneOn}")
             } else {
                 audio.setMode(android.media.AudioManager.MODE_NORMAL)
+                Log.d(TAG, "routeAudioToDevice: set MODE_NORMAL OK")
+                val wasSpeaker = audio.isSpeakerphoneOn
+                audio.setSpeakerphoneOn(false)
+                Log.d(TAG, "routeAudioToDevice: setSpeakerphoneOn(false) was=$wasSpeaker now=${audio.isSpeakerphoneOn}")
             }
+            true
+        }.getOrElse { e ->
+            Log.e(TAG, "routeAudioToDevice failed", e)
+            false
         }
     }
 
