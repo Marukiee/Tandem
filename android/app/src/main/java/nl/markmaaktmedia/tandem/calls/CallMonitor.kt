@@ -91,8 +91,7 @@ class CallMonitor(
                 if (lastState == TelephonyManager.EXTRA_STATE_IDLE) {
                     // Reuse an existing call ID from the Mac instead of creating a new one.
                     // This ensures setAudioRouting targets the correct call when dialing out.
-                    val existingCall = CallWindow.shared.cards.firstOrNull { it.number == dialed?.first }
-                    callId = existingCall?.call ?: System.currentTimeMillis().toString()
+                    callId = if (callId.isEmpty()) System.currentTimeMillis().toString() else callId
                     incoming = false
                     // A call this phone makes brings no number with it; one a computer asked for a moment ago is that one.
                     dialed?.takeIf { System.currentTimeMillis() - it.second < DIALED_MS }?.let { (to, _) ->
