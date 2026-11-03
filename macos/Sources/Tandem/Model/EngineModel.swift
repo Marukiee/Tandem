@@ -318,7 +318,11 @@ final class EngineModel {
             Task { try? await self?.engine?.callAction(target: device, id: call, action: action) }
         }
         CallWindow.shared.onAudioChanged = { [weak self] device, call, audioOnMac in
-            Task { try? await self?.engine?.setAudioRouting(target: device, id: call, audioOnMac: audioOnMac) }
+            Task {
+                try? await self?.engine?.setAudioRouting(target: device, id: call, audioOnMac: audioOnMac)
+                // Update the card's audio state so the panel shows the correct button.
+                CallWindow.shared.updateCardAudio(device: device, callId: call, audioOnMac: audioOnMac)
+            }
         }
         notifier.onMirrorAction = { [weak self] device, key, button, reply, dismiss in
             Task { try? await self?.engine?.notificationAction(target: device, key: key, button: button, reply: reply, dismiss: dismiss) }

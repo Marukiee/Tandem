@@ -76,6 +76,23 @@ final class CallWindow {
     /// Whether the sound of the call is on this Mac or stays on the phone.
     private var audioOnMac = false
 
+    // MARK: Audio routing updates
+
+    /// Update a card's `audioOnMac` state when the user moves audio to/from the Mac.
+    func updateCardAudio(device: String, callId: String, audioOnMac: Bool) {
+        for slot in shown.values where slot.card.device == device && slot.call == callId {
+            if slot.card.audioOnMac != audioOnMac {
+                Log.d("CallWindow", "updateCardAudio card=\(slot.card.id) audioOnMac=\(audioOnMac)")
+            }
+            slot.card.audioOnMac = audioOnMac
+        }
+        // Also update the global state.
+        if self.audioOnMac != audioOnMac {
+            Log.d("CallWindow", "updateCardAudio global audioOnMac=\(audioOnMac)")
+        }
+        self.audioOnMac = audioOnMac
+    }
+
     // MARK: Permissions
 
     /// Check whether this Mac has the permissions to take calls from a phone.
@@ -197,9 +214,11 @@ final class CallWindow {
             if !CallWindow.canTakeCalls {
                 showCallPermissionsMessage()
             } else {
+                card.audioOnMac = true
                 onAudioChanged?(card.device, card.call, true)
             }
         case .moveBack:
+            card.audioOnMac = false
             onAudioChanged?(card.device, card.call, false)
         case .muteMic:
             onAction?(card.device, card.call, action)

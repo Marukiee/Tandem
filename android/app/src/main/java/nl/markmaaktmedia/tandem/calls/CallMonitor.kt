@@ -89,7 +89,10 @@ class CallMonitor(
             }
             TelephonyManager.EXTRA_STATE_OFFHOOK -> {
                 if (lastState == TelephonyManager.EXTRA_STATE_IDLE) {
-                    callId = System.currentTimeMillis().toString()
+                    // Reuse an existing call ID from the Mac instead of creating a new one.
+                    // This ensures setAudioRouting targets the correct call when dialing out.
+                    val existingCall = CallWindow.shared.cards.firstOrNull { it.number == dialed?.first }
+                    callId = existingCall?.call ?: System.currentTimeMillis().toString()
                     incoming = false
                     // A call this phone makes brings no number with it; one a computer asked for a moment ago is that one.
                     dialed?.takeIf { System.currentTimeMillis() - it.second < DIALED_MS }?.let { (to, _) ->
@@ -180,12 +183,24 @@ class CallMonitor(
                 }
                 TandemCallAction.MoveToThisDevice -> {
                     Log.d(TAG, "MoveToThisDevice: route audio to Mac callId=$callId engine=${host.engine != null}")
-                    val success = routeAudioToDevice(true)
+                    // Turn off speakerphone so audio goes through the phone's audio path to the Mac (Bluetooth/audio routing).
+                    val success = runCatching {
+                        val audio = context.getSystemService(android.media.AudioManager::class.java) as android.media.AudioManager
+                        audio.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION)
+                        Log.d(TAG, "routeAudioToDevice: set MODE_IN_COMMUNICATION OK")
+                        val wasSpeaker = audio.isSpeakerphoneOn
+                        audio.setSpeakerphoneOn(false)
+                        Log.d(TAG, "routeAudioToDevice: setSpeakerphoneOn(false) was=$wasSpeaker now=${audio.isSpeakerphoneOn}")
+                        true
+                    }.getOrElse { e ->
+                        Log.e(TAG, "MoveToThisDevice route failed", e)
+                        false
+                    }
                     if (success) {
                         scope.launch { host.engine?.setAudioRouting(target = host.myId, id = callId, audioOnMac = true) }
                         Log.d(TAG, "setAudioRouting target=${host.myId} id=$callId audioOnMac=true OK")
                     } else {
-                        Log.e(TAG, "MoveToThisDevice FAILED: routeAudioToDevice returned false")
+                        Log.e(TAG, "MoveToThisDevice FAILED: routing failed")
                     }
                 }
                 TandemCallAction.MoveBack -> {
@@ -210,20 +225,22 @@ class CallMonitor(
 
     private fun routeAudioToDevice(toMac: Boolean): Boolean {
         // Route call audio to the Mac via the existing audio path.
+        // When audio goes to Mac, turn OFF speakerphone so it uses the phone's audio path (Bluetooth/audio routing).
+        // When audio returns to phone, turn ON speakerphone for local playback.
         val audio = context.getSystemService(android.media.AudioManager::class.java) as android.media.AudioManager
         return runCatching {
             if (toMac) {
                 audio.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION)
                 Log.d(TAG, "routeAudioToDevice: set MODE_IN_COMMUNICATION OK")
                 val wasSpeaker = audio.isSpeakerphoneOn
-                audio.setSpeakerphoneOn(true)
-                Log.d(TAG, "routeAudioToDevice: setSpeakerphoneOn(true) was=$wasSpeaker now=${audio.isSpeakerphoneOn}")
+                audio.setSpeakerphoneOn(false)
+                Log.d(TAG, "routeAudioToDevice: setSpeakerphoneOn(false) was=$wasSpeaker now=${audio.isSpeakerphoneOn}")
             } else {
                 audio.setMode(android.media.AudioManager.MODE_NORMAL)
                 Log.d(TAG, "routeAudioToDevice: set MODE_NORMAL OK")
                 val wasSpeaker = audio.isSpeakerphoneOn
-                audio.setSpeakerphoneOn(false)
-                Log.d(TAG, "routeAudioToDevice: setSpeakerphoneOn(false) was=$wasSpeaker now=${audio.isSpeakerphoneOn}")
+                audio.setSpeakerphoneOn(true)
+                Log.d(TAG, "routeAudioToDevice: setSpeakerphoneOn(true) was=$wasSpeaker now=${audio.isSpeakerphoneOn}")
             }
             true
         }.getOrElse { e ->
