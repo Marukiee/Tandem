@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.2.82",
+    "date": "2026-11-04",
+    "en": {
+      "title": "Fix audio routing to Mac on Android",
+      "new": [
+        "Find Mac ID from devices list instead of using phone's own ID when sending setAudioRouting"
+      ]
+    },
+    "nl": {
+      "title": "Geluidsrouting naar Mac verholpen",
+      "new": [
+        "Mac ID wordt nu gevonden uit apparaatlijst in plaats van telefoon eigen ID bij setAudioRouting"
+      ]
+    }
+  },
+  {
     "version": "0.2.81",
     "date": "2026-11-03",
     "en": {
