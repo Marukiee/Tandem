@@ -182,8 +182,8 @@ class CallMonitor(
                     Log.d(TAG, "MoveToThisDevice: route audio to Mac callId=$callId engine=${host.engine != null}")
                     val success = routeAudioToDevice(true)
                     if (success) {
-                        scope.launch { host.engine?.setAudioRouting(target = "", id = callId, audioOnMac = true) }
-                        Log.d(TAG, "setAudioRouting target= empty id=$callId audioOnMac=true OK")
+                        scope.launch { host.engine?.setAudioRouting(target = host.myId, id = callId, audioOnMac = true) }
+                        Log.d(TAG, "setAudioRouting target=${host.myId} id=$callId audioOnMac=true OK")
                     } else {
                         Log.e(TAG, "MoveToThisDevice FAILED: routeAudioToDevice returned false")
                     }
@@ -192,8 +192,8 @@ class CallMonitor(
                     Log.d(TAG, "MoveBack: route audio back to phone callId=$callId engine=${host.engine != null}")
                     val success = routeAudioToDevice(false)
                     if (success) {
-                        scope.launch { host.engine?.setAudioRouting(target = "", id = callId, audioOnMac = false) }
-                        Log.d(TAG, "setAudioRouting target= empty id=$callId audioOnMac=false OK")
+                        scope.launch { host.engine?.setAudioRouting(target = host.myId, id = callId, audioOnMac = false) }
+                        Log.d(TAG, "setAudioRouting target=${host.myId} id=$callId audioOnMac=false OK")
                     } else {
                         Log.e(TAG, "MoveBack FAILED: routeAudioToDevice returned false")
                     }
