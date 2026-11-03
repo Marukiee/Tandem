@@ -69,6 +69,7 @@ pub enum Msg {
     AppIcon { app_id: String, png: ByteBuf },
     Call(CallMsg),
     CallAction(CallAction),
+    AudioRouting(AudioRouting),
     Dial { number: String },
     Ring { on: bool },
     /// Asks the device to record for `side::LISTEN_MS`: this one is about to play the tones of `side::pattern` (see `side.rs`).
@@ -536,6 +537,15 @@ pub enum CallActionKind {
 pub struct CallAction {
     pub id: String,
     pub action: CallActionKind,
+}
+
+/// Route audio of a call to this Mac or back to the phone.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AudioRouting {
+    pub id: String,
+    /// Whether the sound should go to this Mac.
+    #[serde(rename = "audioOnMac")]
+    pub audio_on_mac: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

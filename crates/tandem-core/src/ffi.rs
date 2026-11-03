@@ -1117,6 +1117,8 @@ pub enum TandemEvent {
     Wifi { from: String, msg: TandemWifi },
     /// Messages: on a phone a question to answer, on a computer the messages that changed there (see `sms`).
     Sms { from: String, msg: sms::TandemSmsEvent },
+    /// Audio routing of a call to this Mac or back to the phone.
+    AudioRouting { from: String, id: String, audio_on_mac: bool },
     /// A Focus was turned on or off on the device `origin` (passed on by `from`): turn this device's own on or off. `name` is what it
     /// is called there, empty when that device cannot tell. Only sent while `set_focus_sharing` says this device follows.
     Focus { from: String, origin: String, on: bool, name: String },
@@ -1266,6 +1268,9 @@ impl From<Event> for TandemEvent {
             Event::Ringing { from, on } => TandemEvent::Ringing { from: from.to_string(), on },
             Event::Wifi { from, msg } => TandemEvent::Wifi { from: from.to_string(), msg: msg.into() },
             Event::Sms { from, msg } => TandemEvent::Sms { from: from.to_string(), msg: msg.into() },
+            Event::AudioRouting { from, audio } => {
+                TandemEvent::AudioRouting { from: from.to_string(), id: audio.id, audio_on_mac: audio.audio_on_mac }
+            }
         }
     }
 }
@@ -1829,6 +1834,16 @@ impl TandemEngine {
     pub async fn call_action(&self, target: String, id: String, action: TandemCallAction) -> Result<(), TandemError> {
         let msg = crate::proto::Msg::CallAction(crate::proto::CallAction { id, action: action.into() });
         self.send(vec![target], msg).await.map(|_| ())
+    }
+
+    /// Route audio of a call to this Mac or back to the phone.
+    pub async fn set_audio_routing(&self, target: String, id: String, audio_on_mac: bool) -> Result<(), TandemError> {
+        self.send(
+            vec![target],
+            crate::proto::Msg::AudioRouting(crate::proto::AudioRouting { id, audio_on_mac }),
+        )
+        .await
+        .map(|_| ())
     }
 
     pub async fn dial(&self, target: String, number: String) -> Result<(), TandemError> {

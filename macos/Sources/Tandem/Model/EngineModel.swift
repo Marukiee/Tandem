@@ -317,6 +317,9 @@ final class EngineModel {
         CallWindow.shared.onAction = { [weak self] device, call, action in
             Task { try? await self?.engine?.callAction(target: device, id: call, action: action) }
         }
+        CallWindow.shared.onAudioChanged = { [weak self] device, call, audioOnMac in
+            Task { try? await self?.engine?.setAudioRouting(target: device, id: call, audioOnMac: audioOnMac) }
+        }
         notifier.onMirrorAction = { [weak self] device, key, button, reply, dismiss in
             Task { try? await self?.engine?.notificationAction(target: device, key: key, button: button, reply: reply, dismiss: dismiss) }
         }
@@ -657,7 +660,7 @@ final class EngineModel {
             // A Mac cannot be the Bluetooth speaker of a phone (A2DP sink) and does not say `audio.bt_sink`, so no phone asks it.
             break
 
-        case .notificationAction, .callAction, .dial, .captureRequested, .captureCancelled,
+        case .notificationAction, .callAction, .dial, .audioRouting, .captureRequested, .captureCancelled,
              .mediaRequested, .mediaBitrate:
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break

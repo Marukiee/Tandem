@@ -542,6 +542,7 @@ impl Inner {
             Msg::Ringing { on } => self.emit(Event::Ringing { from: id, on }),
             Msg::Sms(msg) => self.on_sms(id, msg).await,
             Msg::Focus(change) => self.focus_received(id, change),
+            Msg::AudioRouting(audio) => self.emit(Event::AudioRouting { from: id, audio }),
             Msg::Bye { .. } | Msg::Unknown => {}
         }
     }

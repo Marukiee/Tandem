@@ -1237,6 +1237,11 @@ public protocol TandemEngineProtocol: AnyObject, Sendable {
     func serveFilesAsDrive(id: String, name: String) async throws  -> TandemWebDav
     
     /**
+     * Route audio of a call to this Mac or back to the phone.
+     */
+    func setAudioRouting(target: String, id: String, audioOnMac: Bool) async throws 
+    
+    /**
      * Where the sound of other devices goes. Set it before anyone sends any.
      */
     func setAudioSink(sink: TandemAudioSink) 
@@ -2863,6 +2868,25 @@ open func serveFilesAsDrive(id: String, name: String)async throws  -> TandemWebD
             completeFunc: ffi_tandem_core_rust_future_complete_rust_buffer,
             freeFunc: ffi_tandem_core_rust_future_free_rust_buffer,
             liftFunc: FfiConverterTypeTandemWebDav_lift,
+            errorHandler: FfiConverterTypeTandemError_lift
+        )
+}
+    
+    /**
+     * Route audio of a call to this Mac or back to the phone.
+     */
+open func setAudioRouting(target: String, id: String, audioOnMac: Bool)async throws   {
+    return
+        try  await uniffiRustCallAsync(
+            rustFutureFunc: {
+                uniffi_tandem_core_fn_method_tandemengine_set_audio_routing(
+                        self.uniffiCloneHandle(),FfiConverterString.lower(target),FfiConverterString.lower(id),FfiConverterBool.lower(audioOnMac)
+                )
+            },
+            pollFunc: ffi_tandem_core_rust_future_poll_void,
+            completeFunc: ffi_tandem_core_rust_future_complete_void,
+            freeFunc: ffi_tandem_core_rust_future_free_void,
+            liftFunc: { $0 },
             errorHandler: FfiConverterTypeTandemError_lift
         )
 }
@@ -9660,15 +9684,18 @@ public struct FfiConverterTypeTandemCallAction: FfiConverterRustBuffer {
             writeInt(&buf, Int32(5))
             FfiConverterString.write(message, into: &buf)
             
+        
         case .moveToThisDevice:
             writeInt(&buf, Int32(6))
-            
+        
+        
         case .moveBack:
             writeInt(&buf, Int32(7))
-            
+        
+        
         case .muteMic:
             writeInt(&buf, Int32(8))
-            
+        
         }
     }
 }
@@ -10296,6 +10323,11 @@ public enum TandemEvent: Equatable, Hashable {
     case sms(from: String, msg: TandemSmsEvent
     )
     /**
+     * Audio routing of a call to this Mac or back to the phone.
+     */
+    case audioRouting(from: String, id: String, audioOnMac: Bool
+    )
+    /**
      * A Focus was turned on or off on the device `origin` (passed on by `from`): turn this device's own on or off. `name` is what it
      * is called there, empty when that device cannot tell. Only sent while `set_focus_sharing` says this device follows.
      */
@@ -10472,7 +10504,10 @@ public struct FfiConverterTypeTandemEvent: FfiConverterRustBuffer {
         case 51: return .sms(from: try FfiConverterString.read(from: &buf), msg: try FfiConverterTypeTandemSmsEvent.read(from: &buf)
         )
         
-        case 52: return .focus(from: try FfiConverterString.read(from: &buf), origin: try FfiConverterString.read(from: &buf), on: try FfiConverterBool.read(from: &buf), name: try FfiConverterString.read(from: &buf)
+        case 52: return .audioRouting(from: try FfiConverterString.read(from: &buf), id: try FfiConverterString.read(from: &buf), audioOnMac: try FfiConverterBool.read(from: &buf)
+        )
+        
+        case 53: return .focus(from: try FfiConverterString.read(from: &buf), origin: try FfiConverterString.read(from: &buf), on: try FfiConverterBool.read(from: &buf), name: try FfiConverterString.read(from: &buf)
         )
         
         default: throw UniffiInternalError.unexpectedEnumCase
@@ -10819,8 +10854,15 @@ public struct FfiConverterTypeTandemEvent: FfiConverterRustBuffer {
             FfiConverterTypeTandemSmsEvent.write(msg, into: &buf)
             
         
-        case let .focus(from,origin,on,name):
+        case let .audioRouting(from,id,audioOnMac):
             writeInt(&buf, Int32(52))
+            FfiConverterString.write(from, into: &buf)
+            FfiConverterString.write(id, into: &buf)
+            FfiConverterBool.write(audioOnMac, into: &buf)
+            
+        
+        case let .focus(from,origin,on,name):
+            writeInt(&buf, Int32(53))
             FfiConverterString.write(from, into: &buf)
             FfiConverterString.write(origin, into: &buf)
             FfiConverterBool.write(on, into: &buf)
@@ -15472,6 +15514,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_tandem_core_checksum_method_tandemengine_serve_files_as_drive() != 58985) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_tandem_core_checksum_method_tandemengine_set_audio_routing() != 43639) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_tandem_core_checksum_method_tandemengine_set_audio_sink() != 13571) {

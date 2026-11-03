@@ -76,6 +76,26 @@ final class CallWindow {
     /// Whether the sound of the call is on this Mac or stays on the phone.
     private var audioOnMac = false
 
+    // MARK: Permissions
+
+    /// Check whether this Mac has the permissions to take calls from a phone.
+    static var canTakeCalls: Bool {
+        let key = "callCanTakeCalls"
+        return UserDefaults.standard.object(forKey: key) as? Bool ?? true
+    }
+
+    /// Ask for call permissions and remember the answer.
+    static func askForCallPermissions() {
+        // On macOS we just toggle the setting; no system permission dialog.
+        UserDefaults.standard.set(true, forKey: "callCanTakeCalls")
+    }
+
+    /// Whether the user has dismissed the call permissions message permanently.
+    static var neverAskCallPermissionsAgain: Bool {
+        get { UserDefaults.standard.bool(forKey: "callNeverAskPermissions") }
+        set { UserDefaults.standard.set(newValue, forKey: "callNeverAskPermissions") }
+    }
+
     // MARK: What the phone says
 
     func received(_ call: TandemCall, from device: String, deviceName: String) {
@@ -174,12 +194,35 @@ final class CallWindow {
         case .answer, .silence:
             break
         case .moveToThisDevice:
-            onAudioChanged?(card.device, card.call, true)
+            if !CallWindow.canTakeCalls {
+                showCallPermissionsMessage()
+            } else {
+                onAudioChanged?(card.device, card.call, true)
+            }
         case .moveBack:
             onAudioChanged?(card.device, card.call, false)
         case .muteMic:
             onAction?(card.device, card.call, action)
         }
+    }
+
+    /// Show a message about taking calls on this Mac.
+    func showCallPermissionsMessage() {
+        if CallWindow.neverAskCallPermissionsAgain { return }
+        let body = String(localized: "You can also take calls on your laptop. Turn it on in Settings, then try again.")
+        Notifier.shared.post(
+            id: "call-permissions",
+            title: String(localized: "Take calls on this Mac"),
+            body: body,
+            userInfo: ["action": "open-settings"],
+            sound: false
+        )
+    }
+
+    /// Ask the user to allow taking calls on this Mac.
+    func askForCallPermissions() {
+        CallWindow.askForCallPermissions()
+        sync()
     }
 
     // MARK: Coming and going
@@ -431,13 +474,17 @@ private struct CallCardView: View {
             switch card.phase {
             case .ringing:
                 RoundCallButton(label: "Decline", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.reject) }
-                RoundCallButton(label: "Answer here", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
+                if CallWindow.canTakeCalls {
+                    RoundCallButton(label: "Answer here", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
+                } else {
+                    RoundCallButton(label: "Answer on phone", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
+                }
             case .dialing, .active:
                 RoundCallButton(label: "Hang up", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.hangup) }
                 // Move the call sound to this Mac or back to the phone.
-                if !card.audioOnMac {
+                if CallWindow.canTakeCalls && !card.audioOnMac {
                     RoundCallButton(label: "Move here", symbol: "arrow.right.circle", color: Color(nsColor: .controlAccentColor)) { act(.moveToThisDevice) }
-                } else {
+                } else if card.audioOnMac {
                     RoundCallButton(label: "Back to phone", symbol: "arrow.left.circle", color: Color(nsColor: .controlAccentColor)) { act(.moveBack) }
                 }
                 // Mute the microphone on this device.
