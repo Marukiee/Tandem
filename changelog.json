@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.76",
+    "date": "2026-11-03",
+    "en": { "title": "Unified call", "new": ["Take a phone call on your Mac with the same sound, answer or decline from either side", "Move call audio to this Mac or back to the phone with one tap", "Mute your microphone on this device without ending the call"] },
+    "nl": { "title": "Eén belverbinding", "new": ["Neem een telefoongesprek over op je Mac met hetzelfde geluid, beantwoord of weiger vanaf elk apparaat", "Verplaats gesprekgeluid naar deze Mac of terug naar je telefoon met één tik", "Demp je microfoon op dit apparaat zonder het gesprek te beëindigen"] }
+  },
+  {
     "version": "0.2.72",
     "date": "2026-11-02",
     "en": { "title": "Off means off", "new": ["Turning the hotspot off on your phone keeps your computer from turning it on by itself for ten minutes; the button still does"] },
