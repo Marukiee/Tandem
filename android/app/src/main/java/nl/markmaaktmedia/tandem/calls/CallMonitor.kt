@@ -189,7 +189,13 @@ class CallMonitor(
     private fun toggleMic() {
         val audio = context.getSystemService(android.media.AudioManager::class.java)
         runCatching {
-            val state = audio.isMicrophoneMuted
+            @Suppress("DEPRECATION")
+            val state = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                audio.isMicrophoneMuted
+            } else {
+                audio.getStreamVolume(android.media.AudioManager.STREAM_VOICE_CALL) == 0
+            }
+            @Suppress("DEPRECATION")
             audio.setMicrophoneMute(!state)
         }
     }
