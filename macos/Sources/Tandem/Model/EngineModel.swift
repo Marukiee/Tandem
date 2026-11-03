@@ -671,7 +671,7 @@ final class EngineModel {
             break
 
         case let .audioRouting(from, id, audioOnMac):
-            print("[EngineModel] audioRouting from=\(from) id=\(id) audioOnMac=\(audioOnMac)")
+            print("[EngineModel] audioRouting from=\(from) id=\(id) audioOnMac=\(audioOnMac) callback=\(CallWindow.shared.onAudioChanged != nil)")
             CallWindow.shared.onAudioChanged?(from, id, audioOnMac)
             CallWindow.shared.updateCardAudio(device: from, callId: id, audioOnMac: audioOnMac)
 
