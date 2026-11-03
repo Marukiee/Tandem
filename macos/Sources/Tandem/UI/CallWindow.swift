@@ -80,15 +80,17 @@ final class CallWindow {
 
     /// Update a card's `audioOnMac` state when the user moves audio to/from the Mac.
     func updateCardAudio(device: String, callId: String, audioOnMac: Bool) {
+        let key = "\(device)/\(callId)"
+        Log.d("CallWindow", "updateCardAudio key=\(key) audioOnMac=\(audioOnMac) global=\(self.audioOnMac)")
         for slot in shown.values where slot.card.device == device && slot.call == callId {
             if slot.card.audioOnMac != audioOnMac {
-                Log.d("CallWindow", "updateCardAudio card=\(slot.card.id) audioOnMac=\(audioOnMac)")
+                Log.d("CallWindow", "updateCardAudio card=\(slot.card.id) audioOnMac \(slot.card.audioOnMac) -> \(audioOnMac)")
             }
             slot.card.audioOnMac = audioOnMac
         }
         // Also update the global state.
         if self.audioOnMac != audioOnMac {
-            Log.d("CallWindow", "updateCardAudio global audioOnMac=\(audioOnMac)")
+            Log.d("CallWindow", "updateCardAudio global audioOnMac \(self.audioOnMac) -> \(audioOnMac)")
         }
         self.audioOnMac = audioOnMac
     }
@@ -212,12 +214,15 @@ final class CallWindow {
             break
         case .moveToThisDevice:
             if !CallWindow.canTakeCalls {
+                Log.d("CallWindow", "moveToThisDevice: canTakeCalls=false, show permissions message")
                 showCallPermissionsMessage()
             } else {
+                Log.d("CallWindow", "moveToThisDevice: card=\(card.id) audioOnMac \(card.audioOnMac) -> true")
                 card.audioOnMac = true
                 onAudioChanged?(card.device, card.call, true)
             }
         case .moveBack:
+            Log.d("CallWindow", "moveBack: card=\(card.id) audioOnMac \(card.audioOnMac) -> false")
             card.audioOnMac = false
             onAudioChanged?(card.device, card.call, false)
         case .muteMic:

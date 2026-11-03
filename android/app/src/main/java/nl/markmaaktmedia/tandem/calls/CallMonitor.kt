@@ -182,23 +182,28 @@ class CallMonitor(
                     if (to != null) SmsManager.getDefault().sendTextMessage(to, null, action.message, null, null)
                 }
                 TandemCallAction.MoveToThisDevice -> {
-                    Log.d(TAG, "MoveToThisDevice: route audio to Mac callId=$callId engine=${host.engine != null}")
+                    val myCallId = callId
+                    Log.d(TAG, "MoveToThisDevice: route audio to Mac callId=$myCallId engine=${host.engine != null}")
                     // Turn off speakerphone so audio goes through the phone's audio path to the Mac (Bluetooth/audio routing).
                     val success = runCatching {
                         val audio = context.getSystemService(android.media.AudioManager::class.java) as android.media.AudioManager
+                        val wasMode = audio.mode
                         audio.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION)
-                        Log.d(TAG, "routeAudioToDevice: set MODE_IN_COMMUNICATION OK")
+                        Log.d(TAG, "MoveToThisDevice: mode $wasMode -> ${audio.mode}")
                         val wasSpeaker = audio.isSpeakerphoneOn
                         audio.setSpeakerphoneOn(false)
-                        Log.d(TAG, "routeAudioToDevice: setSpeakerphoneOn(false) was=$wasSpeaker now=${audio.isSpeakerphoneOn}")
+                        Log.d(TAG, "MoveToThisDevice: speakerphone $wasSpeaker -> ${audio.isSpeakerphoneOn}")
                         true
                     }.getOrElse { e ->
                         Log.e(TAG, "MoveToThisDevice route failed", e)
                         false
                     }
                     if (success) {
-                        scope.launch { host.engine?.setAudioRouting(target = host.myId, id = callId, audioOnMac = true) }
-                        Log.d(TAG, "setAudioRouting target=${host.myId} id=$callId audioOnMac=true OK")
+                        scope.launch {
+                            Log.d(TAG, "MoveToThisDevice: setAudioRouting target=${host.myId} id=$myCallId audioOnMac=true")
+                            host.engine?.setAudioRouting(target = host.myId, id = myCallId, audioOnMac = true)
+                            Log.d(TAG, "MoveToThisDevice: setAudioRouting done")
+                        }
                     } else {
                         Log.e(TAG, "MoveToThisDevice FAILED: routing failed")
                     }
@@ -229,18 +234,18 @@ class CallMonitor(
         // When audio returns to phone, turn ON speakerphone for local playback.
         val audio = context.getSystemService(android.media.AudioManager::class.java) as android.media.AudioManager
         return runCatching {
+            val direction = if (toMac) "to Mac" else "back to phone"
+            Log.d(TAG, "routeAudioToDevice($direction): mode=${audio.mode} speakerphone=${audio.isSpeakerphoneOn}")
             if (toMac) {
                 audio.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION)
-                Log.d(TAG, "routeAudioToDevice: set MODE_IN_COMMUNICATION OK")
                 val wasSpeaker = audio.isSpeakerphoneOn
                 audio.setSpeakerphoneOn(false)
-                Log.d(TAG, "routeAudioToDevice: setSpeakerphoneOn(false) was=$wasSpeaker now=${audio.isSpeakerphoneOn}")
+                Log.d(TAG, "routeAudioToDevice($direction): mode=${audio.mode} speakerphone $wasSpeaker -> ${audio.isSpeakerphoneOn}")
             } else {
                 audio.setMode(android.media.AudioManager.MODE_NORMAL)
-                Log.d(TAG, "routeAudioToDevice: set MODE_NORMAL OK")
                 val wasSpeaker = audio.isSpeakerphoneOn
                 audio.setSpeakerphoneOn(true)
-                Log.d(TAG, "routeAudioToDevice: setSpeakerphoneOn(true) was=$wasSpeaker now=${audio.isSpeakerphoneOn}")
+                Log.d(TAG, "routeAudioToDevice($direction): mode=${audio.mode} speakerphone $wasSpeaker -> ${audio.isSpeakerphoneOn}")
             }
             true
         }.getOrElse { e ->

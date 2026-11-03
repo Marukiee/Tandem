@@ -318,6 +318,7 @@ final class EngineModel {
             Task { try? await self?.engine?.callAction(target: device, id: call, action: action) }
         }
         CallWindow.shared.onAudioChanged = { [weak self] device, call, audioOnMac in
+            Log.d("EngineModel", "onAudioChanged device=\(device) call=\(call) audioOnMac=\(audioOnMac)")
             Task {
                 try? await self?.engine?.setAudioRouting(target: device, id: call, audioOnMac: audioOnMac)
                 // Update the card's audio state so the panel shows the correct button.
