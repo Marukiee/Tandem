@@ -190,9 +190,12 @@ class CallMonitor(
         val audio = context.getSystemService(android.media.AudioManager::class.java)
         runCatching {
             @Suppress("DEPRECATION")
-            val state = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                audio.isMicrophoneMuted
-            } else {
+            // Gebruik reflection voor isMicrophoneMuted om API level issues te voorkomen
+            val state = try {
+                val field = android.media.AudioManager::class.java.getDeclaredField("isMicrophoneMuted")
+                field.isAccessible = true
+                field.getBoolean(audio) as Boolean
+            } catch (e: Exception) {
                 audio.getStreamVolume(android.media.AudioManager.STREAM_VOICE_CALL) == 0
             }
             @Suppress("DEPRECATION")
