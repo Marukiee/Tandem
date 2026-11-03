@@ -199,12 +199,13 @@ class CallMonitor(
                     }
                     if (success) {
                         scope.launch {
-                            Log.d(TAG, "MoveToThisDevice: setAudioRouting target=${host.myId} id=$myCallId audioOnMac=true")
+                            val macId = host.devices.value.find { it.id != host.myId && it.online == true }?.id ?: return@launch
+                            Log.d(TAG, "MoveToThisDevice: setAudioRouting target=$macId id=$myCallId audioOnMac=true")
                             var retries = 0
                             while (retries < 10) {
                                 val eng = host.engine
                                 if (eng != null) {
-                                    runCatching { eng.setAudioRouting(target = host.myId, id = myCallId, audioOnMac = true) }
+                                    runCatching { eng.setAudioRouting(target = macId, id = myCallId, audioOnMac = true) }
                                         .onFailure { e -> Log.e(TAG, "MoveToThisDevice setAudioRouting failed", e) }
                                     break
                                 }
@@ -223,11 +224,13 @@ class CallMonitor(
                     val success = routeAudioToDevice(false)
                     if (success) {
                         scope.launch {
+                            val macId = host.devices.value.find { it.id != host.myId && it.online == true }?.id ?: return@launch
+                            Log.d(TAG, "MoveBack: setAudioRouting target=$macId id=$callId audioOnMac=false")
                             var retries = 0
                             while (retries < 10) {
                                 val eng = host.engine
                                 if (eng != null) {
-                                    runCatching { eng.setAudioRouting(target = host.myId, id = callId, audioOnMac = false) }
+                                    runCatching { eng.setAudioRouting(target = macId, id = callId, audioOnMac = false) }
                                         .onFailure { e -> Log.e(TAG, "MoveBack setAudioRouting failed", e) }
                                     break
                                 }
@@ -235,7 +238,7 @@ class CallMonitor(
                                 kotlinx.coroutines.delay(100)
                                 retries++
                             }
-                            Log.d(TAG, "setAudioRouting target=${host.myId} id=$callId audioOnMac=false OK")
+                            Log.d(TAG, "setAudioRouting target=$macId id=$callId audioOnMac=false OK")
                         }
                     } else {
                         Log.e(TAG, "MoveBack FAILED: routeAudioToDevice returned false")
