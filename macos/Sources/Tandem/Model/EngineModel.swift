@@ -1,7 +1,7 @@
 import AppKit
+import TandemCore
 import Foundation
 import Observation
-import TandemCore
 
 struct TransferItem: Identifiable, Equatable {
     enum State { case active, done, failed }
@@ -318,7 +318,7 @@ final class EngineModel {
             Task { try? await self?.engine?.callAction(target: device, id: call, action: action) }
         }
         CallWindow.shared.onAudioChanged = { [weak self] device, call, audioOnMac in
-            Log.d("EngineModel", "onAudioChanged device=\(device) call=\(call) audioOnMac=\(audioOnMac)")
+            print("[EngineModel] onAudioChanged device=\(device) call=\(call) audioOnMac=\(audioOnMac)")
             Task {
                 try? await self?.engine?.setAudioRouting(target: device, id: call, audioOnMac: audioOnMac)
                 // Update the card's audio state so the panel shows the correct button.
