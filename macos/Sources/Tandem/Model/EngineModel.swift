@@ -665,10 +665,15 @@ final class EngineModel {
             // A Mac cannot be the Bluetooth speaker of a phone (A2DP sink) and does not say `audio.bt_sink`, so no phone asks it.
             break
 
-        case .notificationAction, .callAction, .dial, .audioRouting, .captureRequested, .captureCancelled,
+        case .notificationAction, .callAction, .dial, .captureRequested, .captureCancelled,
              .mediaRequested, .mediaBitrate:
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break
+
+        case let .audioRouting(from, id, audioOnMac):
+            print("[EngineModel] audioRouting from=\(from) id=\(id) audioOnMac=\(audioOnMac)")
+            CallWindow.shared.onAudioChanged?(from, id, audioOnMac)
+            CallWindow.shared.updateCardAudio(device: from, callId: id, audioOnMac: audioOnMac)
 
         case let .sideListen(from, id, quiet):
             // Another computer plays its sound to find out on which side of it this Mac stands: listen, and say what was heard.
