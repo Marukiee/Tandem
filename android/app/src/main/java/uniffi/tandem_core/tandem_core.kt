@@ -1186,6 +1186,8 @@ internal object IntegrityCheckingUniffiLib {
     ): Int
     external fun uniffi_tandem_core_checksum_method_tandemengine_serve_files_as_drive(
     ): Int
+    external fun uniffi_tandem_core_checksum_method_tandemengine_set_audio_routing(
+    ): Int
     external fun uniffi_tandem_core_checksum_method_tandemengine_set_audio_sink(
     ): Int
     external fun uniffi_tandem_core_checksum_method_tandemengine_set_camera_stream(
@@ -1569,6 +1571,8 @@ internal object UniffiLib {
     external fun uniffi_tandem_core_fn_method_tandemengine_send_wifi(`ptr`: Long,`target`: RustBuffer.ByValue,`wifi`: RustBuffer.ByValue,
     ): Long
     external fun uniffi_tandem_core_fn_method_tandemengine_serve_files_as_drive(`ptr`: Long,`id`: RustBuffer.ByValue,`name`: RustBuffer.ByValue,
+    ): Long
+    external fun uniffi_tandem_core_fn_method_tandemengine_set_audio_routing(`ptr`: Long,`target`: RustBuffer.ByValue,`id`: RustBuffer.ByValue,`audioOnMac`: Byte,
     ): Long
     external fun uniffi_tandem_core_fn_method_tandemengine_set_audio_sink(`ptr`: Long,`sink`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
@@ -2268,6 +2272,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_tandem_core_checksum_method_tandemengine_serve_files_as_drive() and 0xFFFF) != 58985) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if ((lib.uniffi_tandem_core_checksum_method_tandemengine_set_audio_routing() and 0xFFFF) != 43639) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if ((lib.uniffi_tandem_core_checksum_method_tandemengine_set_audio_sink() and 0xFFFF) != 13571) {
@@ -3770,6 +3777,11 @@ public interface TandemEngineInterface {
      * use for this and says so.
      */
     suspend fun `serveFilesAsDrive`(`id`: kotlin.String, `name`: kotlin.String): TandemWebDav
+    
+    /**
+     * Route audio of a call to this Mac or back to the phone.
+     */
+    suspend fun `setAudioRouting`(`target`: kotlin.String, `id`: kotlin.String, `audioOnMac`: kotlin.Boolean)
     
     /**
      * Where the sound of other devices goes. Set it before anyone sends any.
@@ -6017,6 +6029,34 @@ open class TandemEngine: Disposable, AutoCloseable, TandemEngineInterface
         { future -> UniffiLib.ffi_tandem_core_rust_future_free_rust_buffer(future) },
         // lift function
         { FfiConverterTypeTandemWebDav.lift(it) },
+        // Error FFI converter
+        TandemException.ErrorHandler,
+    )
+    }
+
+    
+    /**
+     * Route audio of a call to this Mac or back to the phone.
+     */
+    @Throws(TandemException::class)
+    @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE")
+    override suspend fun `setAudioRouting`(`target`: kotlin.String, `id`: kotlin.String, `audioOnMac`: kotlin.Boolean) {
+        return uniffiRustCallAsync(
+        callWithHandle { uniffiHandle ->
+            UniffiLib.uniffi_tandem_core_fn_method_tandemengine_set_audio_routing(
+                uniffiHandle,
+                
+        FfiConverterString.lower(`target`),
+        FfiConverterString.lower(`id`),
+        FfiConverterBoolean.lower(`audioOnMac`),
+            )
+        },
+        { future, callback, continuation -> UniffiLib.ffi_tandem_core_rust_future_poll_void(future, callback, continuation) },
+        { future, continuation -> UniffiLib.ffi_tandem_core_rust_future_complete_void(future, continuation) },
+        { future -> UniffiLib.ffi_tandem_core_rust_future_free_void(future) },
+        // lift function
+        { },
+        
         // Error FFI converter
         TandemException.ErrorHandler,
     )
@@ -13348,6 +13388,12 @@ sealed class TandemCallAction {
     
     object MuteMic : TandemCallAction()
     
+    
+
+    
+
+    
+    
 
 
     companion object
@@ -13405,9 +13451,24 @@ public object FfiConverterTypeTandemCallAction : FfiConverterRustBuffer<TandemCa
                 + FfiConverterString.allocationSize(value.`message`)
             )
         }
-        is TandemCallAction.MoveToThisDevice -> (4UL)
-        is TandemCallAction.MoveBack -> (4UL)
-        is TandemCallAction.MuteMic -> (4UL)
+        is TandemCallAction.MoveToThisDevice -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TandemCallAction.MoveBack -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
+        is TandemCallAction.MuteMic -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+            )
+        }
     }
 
     override fun write(value: TandemCallAction, buf: ByteBuffer) {
@@ -14338,6 +14399,20 @@ sealed class TandemEvent {
     }
     
     /**
+     * Audio routing of a call to this Mac or back to the phone.
+     */
+    data class AudioRouting(
+        val `from`: kotlin.String, 
+        val `id`: kotlin.String, 
+        val `audioOnMac`: kotlin.Boolean) : TandemEvent()
+        
+    {
+        
+
+        companion object
+    }
+    
+    /**
      * A Focus was turned on or off on the device `origin` (passed on by `from`): turn this device's own on or off. `name` is what it
      * is called there, empty when that device cannot tell. Only sent while `set_focus_sharing` says this device follows.
      */
@@ -14600,7 +14675,12 @@ public object FfiConverterTypeTandemEvent : FfiConverterRustBuffer<TandemEvent>{
                 FfiConverterString.read(buf),
                 FfiConverterTypeTandemSmsEvent.read(buf),
                 )
-            52 -> TandemEvent.Focus(
+            52 -> TandemEvent.AudioRouting(
+                FfiConverterString.read(buf),
+                FfiConverterString.read(buf),
+                FfiConverterBoolean.read(buf),
+                )
+            53 -> TandemEvent.Focus(
                 FfiConverterString.read(buf),
                 FfiConverterString.read(buf),
                 FfiConverterBoolean.read(buf),
@@ -15049,6 +15129,15 @@ public object FfiConverterTypeTandemEvent : FfiConverterRustBuffer<TandemEvent>{
                 + FfiConverterTypeTandemSmsEvent.allocationSize(value.`msg`)
             )
         }
+        is TandemEvent.AudioRouting -> {
+            // Add the size for the Int that specifies the variant plus the size needed for all fields
+            (
+                4UL
+                + FfiConverterString.allocationSize(value.`from`)
+                + FfiConverterString.allocationSize(value.`id`)
+                + FfiConverterBoolean.allocationSize(value.`audioOnMac`)
+            )
+        }
         is TandemEvent.Focus -> {
             // Add the size for the Int that specifies the variant plus the size needed for all fields
             (
@@ -15399,8 +15488,15 @@ public object FfiConverterTypeTandemEvent : FfiConverterRustBuffer<TandemEvent>{
                 FfiConverterTypeTandemSmsEvent.write(value.`msg`, buf)
                 Unit
             }
-            is TandemEvent.Focus -> {
+            is TandemEvent.AudioRouting -> {
                 buf.putInt(52)
+                FfiConverterString.write(value.`from`, buf)
+                FfiConverterString.write(value.`id`, buf)
+                FfiConverterBoolean.write(value.`audioOnMac`, buf)
+                Unit
+            }
+            is TandemEvent.Focus -> {
+                buf.putInt(53)
                 FfiConverterString.write(value.`from`, buf)
                 FfiConverterString.write(value.`origin`, buf)
                 FfiConverterBoolean.write(value.`on`, buf)

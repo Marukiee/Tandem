@@ -48,7 +48,7 @@ final class CallSlot {
 final class CallWindow {
     static let shared = CallWindow()
 
-    static let cardWidth: CGFloat = 420
+    static let cardWidth: CGFloat = 520
     /// More room for labels and a clearer layout.
     static let cardHeight: CGFloat = 116
     /// A bit larger radius to match the wider card.
@@ -420,15 +420,15 @@ private struct CallCardView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 16) {
             // The picture and the words let the mouse through to the drag area under them; otherwise they would swallow the drag.
-            CallAvatar(name: card.name, size: 48)
+            CallAvatar(name: card.name, size: 52)
                 .allowsHitTesting(false)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(verbatim: card.title)
+                    // A whole phone number fits, a long name gets a little smaller before it is cut off.
                     .font(.headline)
                     .lineLimit(1)
-                    // A whole phone number fits, a long name gets a little smaller before it is cut off.
                     .minimumScaleFactor(0.85)
                 status
                 Text("via \(card.deviceName)")
@@ -437,7 +437,6 @@ private struct CallCardView: View {
                     .lineLimit(1)
             }
             .allowsHitTesting(false)
-            Spacer(minLength: 12)
             buttons
         }
         .padding(.horizontal, 20)
@@ -551,16 +550,17 @@ private struct CallActionButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 4) {
+            VStack(spacing: 6) {
                 Image(systemName: symbol)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.white)
                 Text(label)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.9))
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.95))
             }
-            .frame(width: 56)
+            .frame(minWidth: 84, maxWidth: 96, minHeight: 68, maxHeight: 68)
             .padding(.vertical, 8)
+            .padding(.horizontal, 6)
             .background(Capsule().fill(color))
         }
         .buttonStyle(.bouncy)
