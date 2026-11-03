@@ -524,6 +524,11 @@ scherm delen (kan niet, wel uitleggen), bellen via de Mac.
   Bluetooth-HID/HFP-apparaat, en die wegen zijn per stuk nog niet onderzocht.
 
   Gebouwd op de Mac: knoppen "Naar hier verplaatsen" / "Call terugzetten" en mute-mic in de call card.
+
+- **2026-11-03:** Call panel moet opnieuw ontworpen worden. Na de laatste update hangt het panel na een crash; de knoppen zijn te groot
+  en passen niet meer in de layout. Claude moet een nieuw design maken dat robuuster is bij crashes en correct schakelt tussen
+  "Naar hier verplaatsen" en "Call terugzetten".
+
   Na de Mac, deze punten voor Linux/Windows/Android bouwen:
 
   - **Linux:** call panel met dezelfde knoppen (naar hier verplaatsen, call terugzetten, mute mic) in de Tauri-tray; audio routing via PipeWire naar de Mac of lokaal.
