@@ -13,6 +13,19 @@ Het begon als het KDE Connect-alternatief voor mensen op een Mac en groeide uit 
 
 > **Stand: het werkt en het groeit snel.** Android en Mac worden het meest gebruikt. Windows en Linux zijn experimenteel en zijn nog op weinig echte machines gezien. Elke release zegt wat er nieuw is, en `docs/PARITY.md` zegt per functie wat op welk systeem werkt.
 
+## Screenshots
+
+<p>
+  <img src="docs/screenshots/mac-devices.png" width="430" alt="De Mac-app met je apparaten en wat een telefoon kan">
+  <img src="docs/screenshots/mac-notifications.png" width="430" alt="Telefoonmeldingen op de Mac">
+</p>
+<p>
+  <img src="docs/screenshots/mac-phone-screen.png" width="150" alt="Het scherm van de telefoon in een venster op de Mac">
+  <img src="docs/screenshots/android-devices.png" width="190" alt="De Android-app met je apparaten">
+  <img src="docs/screenshots/android-device.png" width="190" alt="Eén apparaat op Android: batterij, muziek en versturen">
+  <img src="docs/screenshots/android-clipboard.png" width="190" alt="De klembordgeschiedenis op Android">
+</p>
+
 ## Wat het doet
 
 - **Elk apparaat als extra scherm, meerdere tegelijk.** Het scherm van je Mac loopt door naar een Linux-apparaat links en een Android-telefoon rechts, elk op zijn eigen scherpte. Tandem vindt zelfs **aan het geluid welke kant** een apparaat staat
