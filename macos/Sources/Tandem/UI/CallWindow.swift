@@ -11,6 +11,13 @@ struct CallCard: Identifiable, Equatable {
         /// Since when, by the clock of this Mac: the phone's own clock can be off by minutes.
         case active(since: Date)
         case missed
+        
+        var isRoutable: Bool {
+            switch self {
+            case .dialing, .active: return true
+            default: return false
+            }
+        }
     }
 
     let device: String
@@ -169,6 +176,9 @@ final class CallWindow {
             sync()
         case .answer, .silence, .muteMic:
             // The card changes when the phone says what happened, so it never shows a mute that did not take.
+            break
+        case .moveToMac, .moveBack:
+            // Audio routing: the card stays, only the audio path changes.
             break
         }
     }
@@ -438,7 +448,7 @@ private struct CallCardView: View {
             }
             // Call audio routing: move sound to this Mac, or back to the phone.
             // The Shizuku workaround reads call audio on Android and sends it over the network (docs/PARITY.md).
-            if card.phase == .active || card.phase == .dialing {
+            if card.phase.isRoutable {
                 RoundCallButton(
                     label: "Move here",
                     symbol: "iphone.home.fill",

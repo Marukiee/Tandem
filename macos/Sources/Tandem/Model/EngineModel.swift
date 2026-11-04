@@ -667,9 +667,9 @@ final class EngineModel {
             switch action {
             case .moveToMac:
                 // The Shizuku workaround reads call audio on Android and sends it over the network.
-                if let engine { try? await engine.sendCallAudioStart(target: from, stream: 1, sampleRate: 16000) }
+                if let engine { Task { try? await engine.sendCallAudioStart(target: from, stream: 1, sampleRate: 16000) } }
             case .moveBack:
-                if let engine { try? await engine.sendCallAudioStop(target: from, stream: 1) }
+                if let engine { Task { try? await engine.sendCallAudioStop(target: from, stream: 1) } }
             default:
                 break
             }
@@ -742,12 +742,15 @@ final class EngineModel {
             if !on { ringing.remove(from) }
         case let .wifi(from, message):
             WifiShare.shared.handle(from: from, message: message)
-        case .callAudioStart, .callAudioStop:
-            // Call audio via Shizuku workaround: Android reads the voice link and sends it over the network.
-            break
+        case let .callAudioStart(from, stream, sampleRate):
+            // The phone's other stream is the microphone of whoever holds it: played here it would only echo.
+            guard stream == PhoneSound.callVoiceStream else { return }
+            PhoneSound.shared.start(from: from, name: device(from)?.name ?? "?", stream: stream, sampleRate: sampleRate, channels: 1, engineModel: self)
+        case let .callAudioStop(from, stream):
+            // Per stream: the end of a call must not cut off other sound of the same phone.
+            PhoneSound.shared.stopped(device: from, stream: stream)
         case let .callAudioData(from, stream, seq, data):
-            // Incoming call audio packet from Android (Shizuku).
-            break
+            PhoneSound.shared.sink.onAudio(from: from, stream: stream, seq: seq, pcm: data)
         }
     }
 

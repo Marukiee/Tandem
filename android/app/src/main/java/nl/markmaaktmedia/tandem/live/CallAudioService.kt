@@ -215,11 +215,10 @@ class CallAudioService(private val context: Context) {
         const val ACTION_STOP = "nl.markmaaktmedia.tandem.CALL_AUDIO_STOP"
         const val EXTRA_PEER = "peer"
 
-        /** Stream ID for the other person's voice (captured via Shizuku). */
-        const val STREAM_VOICE: Byte = 10
+        // 10 is PhoneMicrophone.STREAM: the Mac would take call sound for the phone as its microphone.
+        const val STREAM_VOICE: Byte = 20
 
-        /** Stream ID for local microphone input. */
-        const val STREAM_MIC: Byte = 11
+        const val STREAM_MIC: Byte = 21
 
         fun start(context: Context, peerId: String): Boolean {
             return CallAudioService(context).start(peerId)
