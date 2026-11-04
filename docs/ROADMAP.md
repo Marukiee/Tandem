@@ -5,6 +5,9 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 
 ## Nieuwe functies (gekozen door Mark, 2026-10-29), nog te bouwen, op alle apparaten
 
+- **Testen zodra de Linux-laptop aan staat: een gesprek op de laptop** (gevraagd 2026-11-04): de laptop als Bluetooth-headset van de Xperia,
+  met de rol `hfp_hf` van PipeWire. Eerst kijken of dat los van Tandem echt werkt: verbinden, spraak beide kanten op tijdens een echt
+  gesprek, en wat er gebeurt met een Bluetooth-headset aan de laptop. Werkt het, dan pas de knop in het belkaartje op Linux bouwen.
 - **Inloggen op afstand op een vergrendelde Mac** (gevraagd 2026-11-01): gebouwd in 0.2.61. De Mac logt zelf in op zijn eigen Scherm delen
   (127.0.0.1, Apple-login met het wachtwoord uit de sleutelhanger) en stuurt dat beeld als gewone H.264-sessie, dus elke kijker werkt.
   Na ontgrendelen gaat de sessie verder met de gewone opname. Werkt niet na een herstart, uitloggen of slaap.
@@ -527,8 +530,9 @@ scherm delen (kan niet, wel uitleggen), bellen via de Mac.
   zijn ze weg, het belkaartje is weer compact, en dempen werkt nu echt, op de telefoon zelf, vanaf elke computer.
 
   Opnieuw gevraagd op 2026-11-04, ook via Magisk of Shizuku: die route blijft ongebouwd om de reden bij "Bellen met het geluid op de computer".
-  Wat nog kan: Linux als Bluetooth-headset van de telefoon (nog uit te zoeken, de laptop moet daarvoor aan staan) en een USB-Bluetooth-dongle aan de
-  Mac met een eigen Bluetooth-stack in Tandem (vraagt een dongle en veel werk, licentie van de stack uitzoeken, niet getest).
+  Wat nog kan: Linux als Bluetooth-headset van de telefoon (nog uit te zoeken, de laptop moet daarvoor aan staan), en voor de Mac een tweede
+  Bluetooth-radio die macOS niet beheert: een USB-dongle aan een Linux-VM of een Raspberry Pi die het geluid over het netwerk naar de Mac stuurt
+  (opzet staat in PhoneBridge, daar nog niet bevestigd). Niet rechtstreeks op de Mac: BTstack meldt daarbij kernel panics op macOS 26.0 tot 26.4.
 
 - **Wat is er nieuw bij Updates en back-up (gevraagd 2026-10-06):** op Android staat Wat is er nieuw (`ChangelogScreen`) nu onder Over;
   het hoort in de categorie Updates en back-up van Instellingen (`settings_cat_updates`), bij de updatecontrole. Over houdt alleen

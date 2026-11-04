@@ -69,7 +69,7 @@ Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een ech
 - **Het geluid van een telefoongesprek op de Mac** kan niet. Getest op 2026-11-04 op een MacBook met M2 Max (macOS 27) en de Xperia 1 VI (LineageOS 24, Android 17).
   Met `IOBluetoothHandsFreeDevice` krijgt de Mac een echte handsfree-verbinding: de telefoon maakt hem zijn actieve headset en meldt signaal, batterij en gesprek. Het
   spraakkanaal (SCO) gaat niet open. Vraagt de telefoon erom, dan weigert macOS het zelf (`SCO/eSCO reject (HOST_REJ_RESOURCES) ... SCO connect-accept declined` in de log
-  van bluetoothd); vraagt de Mac erom, dan geeft `connectSCO` meteen `kIOReturnUnsupported` (0xE00002C7), zonder dat het bluetoothd bereikt. Android laat apps ook niet bij
+  van bluetoothd); vraagt de Mac erom, dan geven `connectSCO` en `transferAudioToComputer` meteen `kIOReturnUnsupported` (0xE00002C7), zonder dat het bluetoothd bereikt. `IOBluetoothAddSCOAudioDevice` doet sinds macOS 10.9 niets meer, en PhoneBridge (github.com/hari157/PhoneBridge) vond op macOS 27 dezelfde weigering. Android laat apps ook niet bij
   gespreksgeluid (`VOICE_CALL` is voor systeemapps, `AudioPlaybackCapture` slaat telefonie over). Daarom heeft het belkaartje geen knop om het geluid te verplaatsen: een
   knop die niets doet wordt nooit getoond. Linux (BlueZ met PipeWire) is de plek waar het misschien wel kan, dat is nog niet nagekeken.
 - **Windows**: een scherm voor een ander apparaat maken (een stuurprogramma voor een virtueel beeldscherm, eenmalig met beheerdersrechten), Bluetooth
