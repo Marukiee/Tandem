@@ -275,7 +275,9 @@ aanbod: dezelfde eenmalige verlooptijd, en samen met de QR maximaal 5 pogingen.
 
 - **mDNS**: `_tandem._udp.local.`, met een TXT-veld `h` dat elk uur wisselt en alleen
   door leden van de circle te herkennen is. Een buitenstaander ziet niets waarmee hij
-  een apparaat kan volgen.
+  een apparaat kan volgen. Het veld `b` gaat omhoog als een apparaat wakker wordt of een
+  ander netwerk krijgt: een gewijzigd record is nieuws voor de anderen, en die bellen dan
+  meteen. mDNS gaat niet over mobiele data, tunnels (Tailscale) en containerbruggen.
 - **Onthouden adressen** uit eerdere verbindingen en de `Hello.candidates` van elke
   peer, inclusief het Tailscale-adres.
 - Alle bekende adressen worden gelijktijdig geprobeerd, met een klein voorsprongetje
