@@ -69,6 +69,17 @@ final class HotspotCoordinator {
     private var heldOffUntil = Date.distantPast
     /// When the networks around were last looked at while on the hotspot.
     private var lastScan = Date.distantPast
+    /// The gateways of the network this Mac is on now, without asking a tool for them every few seconds.
+    private var gateways: Set<String> = []
+    /// The gateway the phone was last tried at, so it is tried once per network.
+    private var triedGateway: String?
+    /// Asked for with a button: the person wants the hotspot, known network nearby or not.
+    private var keepHotspot = false
+    /// The networks this Mac moved to from the hotspot, and when. One that did not hold (no internet, a password that is gone) is not
+    /// tried again right away, which would keep throwing this Mac off the hotspot.
+    private var triedKnown: [String: Date] = [:]
+    private static let scanEvery: TimeInterval = 60
+    private static let triedKnownFor: TimeInterval = 30 * 60
     private static let holdOff: TimeInterval = 15 * 60
 
     static let enabledKey = "autoHotspot"
@@ -87,7 +98,14 @@ final class HotspotCoordinator {
         pathMonitor.pathUpdateHandler = { [weak self] path in
             let wired = path.status == .satisfied && path.usesInterfaceType(.wiredEthernet)
             let satisfied = path.status == .satisfied
-            Task { @MainActor in self?.pathChanged(wired: wired, satisfied: satisfied) }
+            let gateways = Set(path.gateways.compactMap { gateway -> String? in
+                guard case let .hostPort(host, _) = gateway, case let .ipv4(address) = host else { return nil }
+                return "\(address)"
+            })
+            Task { @MainActor in
+                self?.gateways = gateways
+                self?.pathChanged(wired: wired, satisfied: satisfied)
+            }
         }
         pathMonitor.start(queue: DispatchQueue(label: "tandem.hotspot.path"))
         watchTask?.cancel()
@@ -99,53 +117,68 @@ final class HotspotCoordinator {
         }
     }
 
-    /// The Mac may already be on the phone's hotspot, joined by hand or before Tandem started.
-    /// Without this the card offered to turn it on while it was in use.
+    /// Whether this Mac is on the phone's hotspot, joined by Tandem, by hand or by macOS. macOS hides the name of the current network from
+    /// an app without Location access, also from `networksetup`, while Android lets a phone be on Wi-Fi and share at once. What always
+    /// holds: the gateway of a hotspot is the phone, at the address the connection with it runs over.
     private func syncWithCurrentNetwork() async {
         guard let model, Date() >= ignoreNetworkUntil else { return }
         let saved = UserDefaults.standard.string(forKey: Self.ssidKey) ?? ""
-        // A phone with its hotspot on that is itself on mobile data, yet reached over the local network: the only network the two
-        // share is that hotspot. This needs no name, which macOS hides without Location access (seen 2026-10-30, joined by hand).
-        let sharing = model.devices.first { phone in
-            phone.platform == .android && phone.online && phone.route == .lan
-                && phone.status.hotspot == true && phone.status.network?.kind == .cellular
+        let phones = model.devices.filter { $0.platform == .android }
+        let atGateway = phones.first { phone in
+            phone.online && (model.engineHandle?.deviceAddress(id: phone.id)).map(gateways.contains) == true
         }
-        let current = saved.isEmpty ? nil : await Task.detached { CurrentWiFi.ssid() }.value
+        if let atGateway, let address = model.engineHandle?.deviceAddress(id: atGateway.id) { hotspotGateway = address }
+        // A phone on mobile data with its hotspot on, reached over the local network: the only network the two share is that hotspot.
+        let sharing = phones.first { $0.online && $0.route == .lan && $0.status.hotspot == true && $0.status.network?.kind == .cellular }
+        let current = saved.isEmpty ? nil : await Task.detached { CWWiFiClient.shared().interface()?.ssid() }.value
+        let byName = !saved.isEmpty && current == saved ? phones.first : nil
+        let joined = hotspotGateway.map(gateways.contains) == true
         switch model.hotspotStatus {
         case .idle, .failed:
-            let byName = !saved.isEmpty && current == saved ? model.devices.first(where: { $0.platform == .android }) : nil
-            guard let phone = sharing ?? byName else { return }
+            guard let phone = atGateway ?? sharing ?? byName else {
+                keepHotspot = false
+                tryPhoneAtGateway(phones)
+                return
+            }
             activeDevice = phone.id
             model.hotspotStatus = .connected(phone.name)
         case .connected:
-            // Seen by the link alone: once that is gone, so is the line. The hotspot is the phone's to keep or turn off.
-            if saved.isEmpty || current == nil {
-                if sharing == nil, model.devices.first(where: { $0.id == activeDevice })?.online == true {
-                    model.hotspotStatus = .idle
-                    heldOffUntil = Date().addingTimeInterval(Self.holdOff)
-                }
+            if atGateway != nil || sharing != nil || byName != nil || joined {
+                await moveToKnownNetwork(hotspot: saved)
                 return
             }
-            // A network of its own is near (school, home): that one goes first, and the phone keeps its battery.
-            if Date().timeIntervalSince(lastScan) > 30, let id = activeDevice {
-                lastScan = Date()
-                if await Task.detached(operation: { Self.leaveForKnown(except: saved) }).value {
-                    NSLog("Tandem: a known network is near, this Mac leaves the hotspot for it")
-                    heldOffUntil = Date().addingTimeInterval(Self.holdOff)
-                    leave(id)
-                    return
-                }
-            }
-            // An unreadable name is not proof of leaving: only a different network is. Moved on to it (by hand, or macOS did): the
-            // phone turns the hotspot off when nobody else is on it.
-            if let current, current != saved {
-                model.hotspotStatus = .idle
-                hotspotGateway = nil
-                if let id = activeDevice { leave(id) }
-            }
+            // No gateway says nothing yet: `pathChanged` is there for a network that went. Another one means this Mac moved on (by hand, or
+            // macOS did): the phone turns the hotspot off when nobody else is on it.
+            guard !gateways.isEmpty else { return }
+            model.hotspotStatus = .idle
+            hotspotGateway = nil
+            if let id = activeDevice { leave(id) }
         default:
             break
         }
+    }
+
+    /// Joined by macOS or by hand, the phone is not found by mDNS, which does not cross a hotspot reliably. Dialing its port at the gateway
+    /// finds it there; the key of the phone is checked as with any address, so a router that happens to answer is nothing.
+    private func tryPhoneAtGateway(_ phones: [TandemDevice]) {
+        guard let gateway = gateways.sorted().first, gateway != triedGateway, let engine = model?.engineHandle else { return }
+        triedGateway = gateway
+        for phone in phones where !phone.online && (phone.status.hotspot == true || phone.ble) {
+            try? engine.addAddress(id: phone.id, addr: "\(gateway):\(HotspotWiFi.port)")
+        }
+    }
+
+    /// A network of its own is near (school, home): that one goes first, and the phone keeps its battery. Not when the person asked for the
+    /// hotspot with a button: they may well know why.
+    private func moveToKnownNetwork(hotspot: String) async {
+        guard !keepHotspot, Date().timeIntervalSince(lastScan) >= Self.scanEvery, let id = activeDevice else { return }
+        lastScan = Date()
+        let skip = Set(triedKnown.filter { Date().timeIntervalSince($0.value) < Self.triedKnownFor }.keys).union([hotspot])
+        guard let name = await Task.detached(operation: { Self.joinKnown(except: skip) }).value else { return }
+        NSLog("Tandem: this Mac moves from the hotspot to %@", name)
+        triedKnown[name] = Date()
+        heldOffUntil = Date().addingTimeInterval(Self.holdOff)
+        leave(id)
     }
 
     /// Called whenever the network changes. Waits a few seconds before acting, because a Mac that lost Wi-Fi often gets it back on
@@ -219,16 +252,28 @@ final class HotspotCoordinator {
         return true
     }
 
-    /// On the hotspot, with a saved network of this Mac's own in good reach: the hotspot is let go, and macOS joins that network by
-    /// itself (a school network that asks for a login, like eduroam, only it can join). Needs the names of the networks around, which
-    /// macOS gives an app that may see the location; without that nothing is found and the hotspot stays.
-    nonisolated static func leaveForKnown(except hotspot: String) -> Bool {
-        guard let interface = CWWiFiClient.shared().interface(), interface.powerOn() else { return false }
-        let known = Set(WifiShare.known()).subtracting([hotspot])
-        guard !known.isEmpty, let found = try? interface.scanForNetworks(withSSID: nil) else { return false }
-        guard found.contains(where: { ($0.ssid.map(known.contains) ?? false) && $0.rssiValue > -75 }) else { return false }
-        interface.disassociate()
-        return true
+    /// On the hotspot, with a saved network of this Mac's own in good reach: this Mac goes there, the first of them in the order of macOS.
+    /// The names of a scan and of the saved networks come without Location access, unlike the name of the current network. Should joining
+    /// not work (a login macOS keeps to itself), leaving the hotspot makes macOS join one by itself. The name, or nil when none is near.
+    nonisolated static func joinKnown(except skip: Set<String>) -> String? {
+        guard let interface = CWWiFiClient.shared().interface(), interface.powerOn() else { return nil }
+        let known = WifiShare.known().filter { !skip.contains($0) }
+        guard !known.isEmpty, let found = try? interface.scanForNetworks(withSSID: nil) else { return nil }
+        let inReach = found.filter { $0.rssiValue > -75 }
+        guard let name = known.first(where: { name in inReach.contains { $0.ssid == name } }),
+              let best = inReach.filter({ $0.ssid == name }).max(by: { $0.rssiValue < $1.rssiValue })
+        else { return nil }
+        let enterprise = [CWSecurity.wpaEnterprise, .wpa2Enterprise, .wpa3Enterprise, .enterprise].contains { best.supportsSecurity($0) }
+        do {
+            if enterprise {
+                try interface.associate(toEnterpriseNetwork: best, identity: nil, username: nil, password: nil)
+            } else {
+                try interface.associate(to: best, password: nil)
+            }
+        } catch {
+            interface.disassociate()
+        }
+        return name
     }
 
     /// The phone connected to the core: over the hotspot, that is the moment it works.
@@ -240,6 +285,7 @@ final class HotspotCoordinator {
     func requestNow(_ id: String, byPerson: Bool = true) {
         guard let model, let engine = model.engineHandle else { return }
         heldOffUntil = .distantPast
+        keepHotspot = byPerson
         runTask?.cancel()
         activeDevice = id
         quicAnswer = nil

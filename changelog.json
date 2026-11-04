@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.85",
+    "date": "2026-11-04",
+    "en": { "title": "Hotspot seen, and left", "new": ["The panel shows when the Mac is on your hotspot, also when macOS hides the network's name", "The Mac moves from your hotspot to a network it knows, unless you asked for the hotspot with the button"] },
+    "nl": { "title": "Hotspot gezien, en verlaten", "new": ["Het paneel laat zien wanneer de Mac op je hotspot zit, ook als macOS de netwerknaam verbergt", "De Mac stapt van je hotspot over naar een netwerk dat hij kent, tenzij je de hotspot met de knop aanvroeg"] }
+  },
+  {
     "version": "0.2.84",
     "date": "2026-11-04",
     "en": {

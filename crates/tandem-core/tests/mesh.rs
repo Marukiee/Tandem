@@ -98,6 +98,11 @@ async fn pairing_joins_the_circle_and_connects() {
     assert_eq!(seen.len(), 1);
     assert_eq!(seen[0].name, "Mac");
     assert!(mac.engine.is_member() && phone.engine.is_member());
+
+    // What a computer compares with its gateway to find out that it is on this phone's hotspot.
+    let address = mac.engine.device_address(&phone.engine.id()).expect("a connected device has an address");
+    assert!(address.parse::<std::net::IpAddr>().is_ok_and(|ip| !ip.is_unspecified()), "{address}");
+    assert_eq!(mac.engine.device_address(&mac.engine.id()), None);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

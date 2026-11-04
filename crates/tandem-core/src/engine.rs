@@ -262,6 +262,12 @@ impl Engine {
         self.inner.devices()
     }
 
+    /// The IP address the connection with this device runs over right now. A computer on the hotspot of a phone sees that phone's address
+    /// as its gateway, which says so without the name of the network, which macOS hides from apps.
+    pub fn device_address(&self, id: &DeviceId) -> Option<String> {
+        self.inner.session_of(id).map(|session| session.remote.ip().to_canonical().to_string())
+    }
+
     /// Tell the engine the network changed (Wi-Fi to cellular, VPN up or down), so it
     /// reconnects right away instead of waiting for the next retry.
     pub fn network_changed(&self) {

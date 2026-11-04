@@ -1558,6 +1558,11 @@ impl TandemEngine {
     }
 
     /// Where a circle member can be reached right now, as `ip:port`. Dials at once.
+    /// The IP address the connection with this device runs over right now, nil when it is not connected.
+    pub fn device_address(&self, id: String) -> Option<String> {
+        self.engine.device_address(&DeviceId::parse(&id).ok()?)
+    }
+
     pub fn add_address(&self, id: String, addr: String) -> Result<(), TandemError> {
         let _guard = self.runtime.enter();
         let id = DeviceId::parse(&id)?;
