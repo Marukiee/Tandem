@@ -88,6 +88,12 @@ pub enum Event {
     MediaCommand { from: DeviceId, player: String, action: MediaAction, position_ms: Option<u64> },
     AudioStart { from: DeviceId, stream: u8, sample_rate: u32, channels: u8 },
     AudioStop { from: DeviceId, stream: u8 },
+    /// Call audio starting via Shizuku workaround. `stream` distinguishes voice (other person) from mic (local).
+    CallAudioStart { from: DeviceId, stream: u8, sample_rate: u32 },
+    /// Call audio stopping.
+    CallAudioStop { from: DeviceId, stream: u8 },
+    /// Raw PCM data for call audio (16 bit signed, mono).
+    CallAudioData { from: DeviceId, stream: u8, seq: u32, data: Box<[u8]> },
 
     /// Another device asks for the screen or the camera of this one. Same news as `MediaHost::on_request`; the
     /// callback is the one to act on, this is for whatever else wants to know.

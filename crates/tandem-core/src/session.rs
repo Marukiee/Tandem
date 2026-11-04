@@ -488,6 +488,17 @@ impl Inner {
                 }
             }
             Msg::AudioStop { stream } => self.emit(Event::AudioStop { from: id, stream }),
+            Msg::CallAudioStart { stream, sample_rate } => {
+                if (8_000..=48_000).contains(&sample_rate) {
+                    self.emit(Event::CallAudioStart { from: id, stream, sample_rate });
+                }
+            }
+            Msg::CallAudioStop { stream } => self.emit(Event::CallAudioStop { from: id, stream }),
+            Msg::CallAudioData { stream, seq, data } => {
+                if data.len() <= 64_000 {
+                    self.emit(Event::CallAudioData { from: id, stream, seq, data: data.into_boxed_slice() });
+                }
+            }
             Msg::MediaPlayers { mut players } => {
                 // A phone has a handful of sessions; more than this is a bug or an abuse.
                 players.truncate(16);

@@ -141,6 +141,16 @@ pub enum Msg {
     /// The sound stops. Either side says it: the sender when it is done, the receiver when it
     /// will not play it (switched off, or something else took the speaker).
     AudioStop { stream: u8 },
+    /// Call audio starting via Shizuku workaround. `stream` distinguishes voice (other person) from mic (local).
+    CallAudioStart { stream: u8, sample_rate: u32 },
+    /// Call audio stopping. Sent when the Shizuku capture ends.
+    CallAudioStop { stream: u8 },
+    /// Raw PCM data for call audio (16 bit signed, mono). Goes alongside regular AudioStart/AudioStop datagrams.
+    CallAudioData {
+        stream: u8,
+        seq: u32,
+        data: ByteBuf,
+    },
     /// Live video (a screen or a camera, and the control of a screen). See docs/SCREEN.md. The frames themselves do
     /// not travel as messages but as streams of their own.
     MediaRequest(crate::live::MediaRequest),

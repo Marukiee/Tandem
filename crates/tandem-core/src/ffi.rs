@@ -1094,6 +1094,12 @@ pub enum TandemEvent {
     /// The other device is about to send its sound: 16 bit signed samples, interleaved.
     AudioStart { from: String, stream: u8, sample_rate: u32, channels: u8 },
     AudioStop { from: String, stream: u8 },
+    /// Call audio starting via Shizuku workaround. `stream` distinguishes voice (other person) from mic (local).
+    CallAudioStart { from: String, stream: u8, sample_rate: u32 },
+    /// Call audio stopping.
+    CallAudioStop { from: String, stream: u8 },
+    /// Raw PCM data for call audio (16 bit signed, mono).
+    CallAudioData { from: String, stream: u8, seq: u32, data: Vec<u8> },
     /// Another device asks for the screen or the camera of this one. The same news as `TandemMediaHost.on_request`.
     MediaRequested { from: String, request: TandemMediaRequest, pre_approved: bool },
     MediaStarted { peer: String, session: u64, kind: TandemMediaKind, role: TandemMediaRole },
@@ -1222,6 +1228,15 @@ impl From<Event> for TandemEvent {
                 TandemEvent::AudioStart { from: from.to_string(), stream, sample_rate, channels }
             }
             Event::AudioStop { from, stream } => TandemEvent::AudioStop { from: from.to_string(), stream },
+            Event::CallAudioStart { from, stream, sample_rate } => {
+                TandemEvent::CallAudioStart { from: from.to_string(), stream, sample_rate }
+            }
+            Event::CallAudioStop { from, stream } => {
+                TandemEvent::CallAudioStop { from: from.to_string(), stream }
+            }
+            Event::CallAudioData { from, stream, seq, data } => {
+                TandemEvent::CallAudioData { from: from.to_string(), stream, seq, data: data.into_vec() }
+            }
             Event::MediaRequested { from, request, pre_approved } => {
                 TandemEvent::MediaRequested { from: from.to_string(), request: request.into(), pre_approved }
             }
@@ -1754,6 +1769,21 @@ impl TandemEngine {
 
     pub async fn send_audio_stop(&self, target: String, stream: u8) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::AudioStop { stream }).await.map(|_| ())
+    }
+
+    /// Call audio starting via Shizuku workaround. `stream` distinguishes voice (other person) from mic (local).
+    pub async fn send_call_audio_start(&self, target: String, stream: u8, sample_rate: u32) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::CallAudioStart { stream, sample_rate }).await.map(|_| ())
+    }
+
+    /// Call audio stopping.
+    pub async fn send_call_audio_stop(&self, target: String, stream: u8) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::CallAudioStop { stream }).await.map(|_| ())
+    }
+
+    /// Raw PCM data for call audio (16 bit signed, mono).
+    pub async fn send_call_audio_data(&self, target: String, stream: u8, seq: u32, data: Vec<u8>) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::CallAudioData { stream, seq, data: data.into() }).await.map(|_| ())
     }
 
     /// This device's players, whole list, to the devices that should show them.
