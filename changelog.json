@@ -1,15 +1,15 @@
 [
   {
+    "version": "0.2.91",
+    "date": "2026-11-04",
+    "en": { "title": "Updates work again", "new": ["Phone and Mac find new versions again", "Move here and Back to phone are gone: the sound of a call stays on the phone"] },
+    "nl": { "title": "Updates werken weer", "new": ["Telefoon en Mac vinden weer nieuwe versies", "Move here en Back to phone zijn weg: het geluid van een gesprek blijft op de telefoon"] }
+  },
+  {
     "version": "0.2.89",
     "date": "2026-11-04",
     "en": { "title": "The Mac builds again", "new": ["The Mac app is back in the release"] },
     "nl": { "title": "De Mac bouwt weer", "new": ["De Mac-app zit weer in de release"] }
-  },
-  {
-    "version": "0.2.87",
-    "date": "2026-11-04",
-    "en": { "title": "Call audio via Shizuku workaround", "new": ["Phone call sound goes to the Mac when SCO fails, using a Shizuku helper process with system permissions", "Works on normal Android (not just rooted), only needs an update of the Shizuku app", "Captures both the other person's voice and your microphone, sends them as PCM datagrams"] },
-    "nl": { "title": "Gespreksgeluid via Shizuku workaround", "new": ["Geluid van een telefoongesprek gaat naar de Mac wanneer SCO faalt, met een Shizuku hulpproces met systeemrechten", "Werkt op normale Android (niet alleen rooted), alleen Shizuku moet even geupdate worden", "Leest zowel het geluid van de ander als je eigen microfoon uit en stuurt ze als PCM datagrams"] }
   },
   {
     "version": "0.2.86",

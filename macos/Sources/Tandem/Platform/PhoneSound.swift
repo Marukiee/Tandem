@@ -34,7 +34,7 @@ final class PhoneSound {
 
     /// The stream number a device sends its own sound on. The Mac's sound towards a phone uses others, so they never mix up.
     nonisolated static let stream: UInt8 = 9
-    /// `CallAudioService.STREAM_VOICE` on Android.
+    /// The other person's voice in a call, once a device can send it. 10 is the phone as microphone.
     nonisolated static let callVoiceStream: UInt8 = 20
 
     private static let enabledKey = "phoneSoundEnabled"

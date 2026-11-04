@@ -19,7 +19,6 @@ import kotlinx.coroutines.sync.withLock
 import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.engine.EngineHost
 import nl.markmaaktmedia.tandem.engine.Permissions
-import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.mirror.MirrorListener
 import uniffi.tandem_core.TandemCall
 import uniffi.tandem_core.TandemCallAction
@@ -202,17 +201,6 @@ class CallMonitor(
                     audio.isMicrophoneMute = muted
                     mutedFromAfar = muted
                     scope.launch { order.withLock { tellMute() } }
-                }
-                TandemCallAction.MoveToMac -> {
-                    // Move call audio to the Mac via Shizuku workaround.
-                    if (event.id == callId && lastState == TelephonyManager.EXTRA_STATE_OFFHOOK) {
-                        val peer = context.graph.host.devices.value.firstOrNull { it.online }?.id ?: return@runCatching
-                        nl.markmaaktmedia.tandem.live.CallAudioService.start(context, peer)
-                    }
-                }
-                TandemCallAction.MoveBack -> {
-                    // Move call audio back to the phone.
-                    nl.markmaaktmedia.tandem.live.CallAudioService.stop(context)
                 }
             }
         }

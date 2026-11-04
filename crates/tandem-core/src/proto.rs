@@ -542,10 +542,6 @@ pub enum CallActionKind {
     RejectWithMessage(String),
     /// Turns the microphone of the phone off, or on again. The sound of a call stays on the phone (docs/PARITY.md says why).
     MuteMic,
-    /// Moves the call audio from the phone to this device.
-    MoveToMac,
-    /// Moves the call audio back from this device to the phone.
-    MoveBack,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -971,8 +967,8 @@ mod tests {
 
     #[test]
     fn moving_the_sound_of_a_call_from_an_older_mac_is_skipped() {
-        // 0.2.76 to 0.2.83 had these two buttons. A phone that has been updated before the Mac still hears them.
-        for sent in ["MoveToThisDevice", "MoveBackOld"] {
+        // 0.2.76 to 0.2.83 and 0.2.90 had buttons like these. A phone that has been updated before the Mac still hears them.
+        for sent in ["MoveToThisDevice", "MoveBack", "MoveToMac"] {
             let value = ciborium::Value::Map(vec![(
                 ciborium::Value::Text("CallAction".into()),
                 ciborium::Value::Map(vec![
