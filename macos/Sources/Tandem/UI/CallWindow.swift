@@ -421,8 +421,7 @@ private struct CallCardView: View {
 
     @ViewBuilder private var buttons: some View {
         HStack(spacing: 8) {
-            // No button to take the sound of a call to this Mac: macOS refuses the voice link of Bluetooth (docs/PARITY.md), and a button
-            // that does nothing is never shown. The red one stays on the left in every phase, so a second click on Answer cannot hang up.
+            // The red one stays on the left in every phase, so a second click on Answer cannot hang up.
             switch card.phase {
             case .ringing:
                 RoundCallButton(label: "Decline", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.reject) }
@@ -436,6 +435,20 @@ private struct CallCardView: View {
                 ) { act(.muteMic) }
             case .missed:
                 EmptyView()
+            }
+            // Call audio routing: move sound to this Mac, or back to the phone.
+            // The Shizuku workaround reads call audio on Android and sends it over the network (docs/PARITY.md).
+            if card.phase == .active || card.phase == .dialing {
+                RoundCallButton(
+                    label: "Move here",
+                    symbol: "iphone.home.fill",
+                    color: Color(nsColor: .systemBlue)
+                ) { act(.moveToMac) }
+                RoundCallButton(
+                    label: "Back to phone",
+                    symbol: "phone.home.fill",
+                    color: Color(nsColor: .systemGray)
+                ) { act(.moveBack) }
             }
         }
     }

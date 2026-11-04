@@ -663,7 +663,18 @@ final class EngineModel {
             // A Mac cannot be the Bluetooth speaker of a phone (A2DP sink) and does not say `audio.bt_sink`, so no phone asks it.
             break
 
-        case .notificationAction, .callAction, .dial, .captureRequested, .captureCancelled,
+        case let .callAction(from, id, action):
+            switch action {
+            case .moveToMac:
+                // The Shizuku workaround reads call audio on Android and sends it over the network.
+                if let engine { try? await engine.sendCallAudioStart(target: from, stream: 1, sampleRate: 16000) }
+            case .moveBack:
+                if let engine { try? await engine.sendCallAudioStop(target: from, stream: 1) }
+            default:
+                break
+            }
+
+        case .notificationAction, .dial, .captureRequested, .captureCancelled,
              .mediaRequested, .mediaBitrate:
             // The windows of the live video hear about their sessions from the core directly (see LiveManager).
             break
@@ -731,8 +742,11 @@ final class EngineModel {
             if !on { ringing.remove(from) }
         case let .wifi(from, message):
             WifiShare.shared.handle(from: from, message: message)
-        case .callAudioStart, .callAudioStop, .callAudioData:
-            // Nothing on this Mac plays the sound of a call yet.
+        case .callAudioStart, .callAudioStop:
+            // Call audio via Shizuku workaround: Android reads the voice link and sends it over the network.
+            break
+        case let .callAudioData(from, stream, seq, data):
+            // Incoming call audio packet from Android (Shizuku).
             break
         }
     }
