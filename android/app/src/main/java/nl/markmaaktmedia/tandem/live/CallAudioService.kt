@@ -1,18 +1,17 @@
 package nl.markmaaktmedia.tandem.live
 
 import android.content.Context
-import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
-import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.hotspot.ShizukuBridge
@@ -49,13 +48,13 @@ class CallAudioService(private val context: Context) {
 
     // ---- Capture settings -----------------------------------------------------------------------------------------------
 
-    private const val RATE = 16_000
-    private const val CHANNELS = 1
-    private const val SAMPLE_SIZE = 16
-    private const val FRAME_SIZE = CHANNELS * (SAMPLE_SIZE / 8)
-    private const val PACKET_MS = 20
-    private const val BUFFER_FRAMES = RATE * PACKET_MS / 1000
-    private const val BUFFER_SIZE = BUFFER_FRAMES * FRAME_SIZE
+    private val RATE = 16_000
+    private val CHANNELS = 1
+    private val SAMPLE_SIZE = 16
+    private val FRAME_SIZE = CHANNELS * (SAMPLE_SIZE / 8)
+    private val PACKET_MS = 20
+    private val BUFFER_FRAMES = RATE * PACKET_MS / 1000
+    private val BUFFER_SIZE = BUFFER_FRAMES * FRAME_SIZE
 
     // ---- Start / stop ---------------------------------------------------------------------------------------------------
 
@@ -96,7 +95,6 @@ class CallAudioService(private val context: Context) {
     // ---- Voice capture (other person's audio) ---------------------------------------------------------------------------
 
     private fun captureVoice(peer: String) {
-        val engine = context.graph.host.engine ?: return
         try {
             val config = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
@@ -110,7 +108,6 @@ class CallAudioService(private val context: Context) {
 
             // Shizuku gives us access to VOICE_CALL which regular apps cannot reach.
             val record = AudioRecord.Builder()
-                .setAudioAttributes(config)
                 .setAudioFormat(format)
                 .setBufferSizeInBytes(BUFFER_SIZE * 4)
                 .build()
@@ -135,7 +132,10 @@ class CallAudioService(private val context: Context) {
                 }
 
                 try {
-                    engine.sendCallAudioData(peer, STREAM_VOICE.toUByte(), seq++, bytes)
+                    val eng = context.graph.host.engine ?: continue
+                    GlobalScope.launch(Dispatchers.IO) {
+                        eng.sendCallAudioData(peer, STREAM_VOICE.toUByte(), seq++, bytes)
+                    }
                     failures = 0
                 } catch (e: Exception) {
                     if (++failures > 200) break
@@ -144,8 +144,11 @@ class CallAudioService(private val context: Context) {
         } catch (e: Exception) {
             Log.w(TAG, "voice capture failed", e)
         } finally {
-            context.graph.scope.launch(Dispatchers.IO) {
-                runCatching { engine.sendCallAudioStop(peer, STREAM_VOICE.toUByte()) }
+            val eng = context.graph.host.engine
+            if (eng != null) {
+                GlobalScope.launch(Dispatchers.IO) {
+                    runCatching { eng.sendCallAudioStop(peer, STREAM_VOICE.toUByte()) }
+                }
             }
         }
     }
@@ -153,12 +156,7 @@ class CallAudioService(private val context: Context) {
     // ---- Microphone capture (local voice) -------------------------------------------------------------------------------
 
     private fun captureMic(peer: String) {
-        val engine = context.graph.host.engine ?: return
         try {
-            val config = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build()
             val format = AudioFormat.Builder()
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                 .setSampleRate(RATE)
@@ -167,9 +165,7 @@ class CallAudioService(private val context: Context) {
 
             // AUDIO_SOURCE_VOICE_COMMUNICATION gives us the local mic during a call.
             val record = AudioRecord.Builder()
-                .setAudioAttributes(config)
                 .setAudioFormat(format)
-                .setRecordingSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
                 .setBufferSizeInBytes(BUFFER_SIZE * 4)
                 .build()
 
@@ -192,7 +188,10 @@ class CallAudioService(private val context: Context) {
                 }
 
                 try {
-                    engine.sendCallAudioData(peer, STREAM_MIC.toUByte(), seq++, bytes)
+                    val eng = context.graph.host.engine ?: continue
+                    GlobalScope.launch(Dispatchers.IO) {
+                        eng.sendCallAudioData(peer, STREAM_MIC.toUByte(), seq++, bytes)
+                    }
                     failures = 0
                 } catch (e: Exception) {
                     if (++failures > 200) break
@@ -201,8 +200,11 @@ class CallAudioService(private val context: Context) {
         } catch (e: Exception) {
             Log.w(TAG, "mic capture failed", e)
         } finally {
-            context.graph.scope.launch(Dispatchers.IO) {
-                runCatching { engine.sendCallAudioStop(peer, STREAM_MIC.toUByte()) }
+            val eng = context.graph.host.engine
+            if (eng != null) {
+                GlobalScope.launch(Dispatchers.IO) {
+                    runCatching { eng.sendCallAudioStop(peer, STREAM_MIC.toUByte()) }
+                }
             }
         }
     }
