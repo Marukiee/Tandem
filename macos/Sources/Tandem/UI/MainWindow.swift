@@ -26,6 +26,9 @@ struct MainWindow: View {
 
     @Environment(EngineModel.self) private var model
     @LocalState private var selection: SidebarSelection? = MainWindow.remembered
+    /// The device this window opened on while nothing was connected yet: the first one to connect takes over, unless the person went
+    /// somewhere else. At the start of the app the connections come a few seconds after the window.
+    @LocalState private var waitingOn: String?
     @LocalState private var showPairing = false
     /// The page a debug run asked for is chosen once, as soon as the devices it names have shown up.
     @LocalState private var debugChosen = false
@@ -38,6 +41,20 @@ struct MainWindow: View {
     /// The bar along the top, which goes once the sidebar is all the way in: taken away as it starts to slide, it moved the page in the
     /// middle of the slide and the sidebar came in two jerks. When the sidebar goes it comes at once, which is not seen.
     @LocalState private var barShown = false
+
+    /// A window that opens on a device that is not connected goes to one that is. Another page stays as it was left.
+    private func openOnConnected() {
+        guard case let .device(id) = selection, model.device(id)?.online == false else {
+            waitingOn = nil
+            return
+        }
+        if let connected = model.devices.first(where: \.online) {
+            selection = .device(connected.id)
+            waitingOn = nil
+        } else {
+            waitingOn = id
+        }
+    }
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
@@ -53,6 +70,7 @@ struct MainWindow: View {
                 .animation(.tandem, value: selection)
                 .onChange(of: selection) {
                     MainWindow.remembered = selection
+                    if selection != waitingOn.map({ .device($0) }) { waitingOn = nil }
                     settling = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { settling = false }
                 }
@@ -113,7 +131,13 @@ struct MainWindow: View {
             if case let .files(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
             if case let .messages(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
             chooseDebugPage()
-            if selection == nil, let first = ids.first { selection = .device(first) }
+            if selection == nil, let first = ids.first {
+                selection = .device(first)
+                openOnConnected()
+            }
+        }
+        .onChange(of: model.devices.filter(\.online).map(\.id)) {
+            if waitingOn != nil { openOnConnected() }
         }
         // What a device can do is only known once it has connected, which is after its name is.
         .onChange(of: model.devices.map { $0.caps.count }) { chooseDebugPage() }
@@ -123,8 +147,12 @@ struct MainWindow: View {
             } else if case let .device(id) = selection, model.device(id) == nil {
                 // The device that was open when the window went away has been removed since.
                 selection = model.devices.first.map { .device($0.id) }
+                openOnConnected()
             } else if selection == nil, let first = model.devices.first {
                 selection = .device(first.id)
+                openOnConnected()
+            } else {
+                openOnConnected()
             }
             if MainWindow.wantsPairing {
                 MainWindow.wantsPairing = false

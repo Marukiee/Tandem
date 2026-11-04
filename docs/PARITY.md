@@ -52,6 +52,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Zeggen dat hij gaat slapen, zodat anderen "slaapt" tonen in plaats van "offline" | nvt | ja (houdt het slapen even op tot het gezegd is) | nog niet (kan met `PBT_APMSUSPEND`) | nog niet (kan met een delay-inhibitor van logind op `PrepareForSleep`) |
 | Computer wakker maken (Wake on LAN) vanaf de telefoon | ja | doel | doel | doel |
 | Zoek mijn telefoon | bron | ja | ja | ja |
+| Openen op het apparaat dat verbonden is | ja (de lijst zet verbonden apparaten bovenaan) | ja | ja | ja |
 | Muziek pauzeren tijdens een gesprek (telefoon belt: de computer pauzeert; computer belt: ook de telefoon) | pauzeert zelf (Android) | ja, beide kanten | telefoon belt: ja; computer belt: nee (nog geen herkenning van een gesprek op Windows) | idem |
 | Sneltoetsen voor elke functie en vier vakjes naar keuze in het paneel | - | ja | nee (de plugin global-shortcut van Tauri ontbreekt nog) | nee (idem) |
 | Wifi overnemen als dit apparaat geen netwerk heeft, en eigen wifi doorgeven | ja; doorgeven alleen met Shizuku (Android geeft het wachtwoord alleen aan de shell) | ja | ja | ja |

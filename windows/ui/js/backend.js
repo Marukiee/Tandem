@@ -33,9 +33,16 @@ export async function listenDrops(onHover, onDrop) {
   });
 }
 
+/** The device the app opened on while nothing was connected yet: the first one to connect takes over, unless the person went elsewhere. */
+let waitingOn = null;
+
 function pick(devices) {
-  if (devices.some((d) => d.id === state.selected)) return state.selected;
-  return (devices.find((d) => d.online) || devices[0] || {}).id || null;
+  const connected = devices.find((d) => d.online);
+  const current = devices.find((d) => d.id === state.selected);
+  if (current && (current.id !== waitingOn || current.online || !connected || state.page !== "device")) return current.id;
+  const chosen = connected || devices[0];
+  waitingOn = chosen && !chosen.online ? chosen.id : null;
+  return chosen ? chosen.id : null;
 }
 
 function upsert(list, item, limit = 60) {

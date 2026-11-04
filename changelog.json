@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.95",
+    "date": "2026-11-04",
+    "en": { "title": "Opens on what is connected", "new": ["Tandem opens on the device that is connected"] },
+    "nl": { "title": "Opent op wat verbonden is", "new": ["Tandem opent op het apparaat dat verbonden is"] }
+  },
+  {
     "version": "0.2.94",
     "date": "2026-11-04",
     "en": { "title": "Updates keep working", "new": ["A release that is not finished no longer gets in the way of an update", "Move here and Back to phone are gone again: the sound of a call stays on the phone", "A device that is not connected shows its battery in grey", "The question about the sound of a screen can stop asking, per device", "What you type on a remote device stays in view and scrolls along"] },
