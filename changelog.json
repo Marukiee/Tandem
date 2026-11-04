@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.89",
+    "date": "2026-11-04",
+    "en": { "title": "The Mac builds again", "new": ["The Mac app is back in the release"] },
+    "nl": { "title": "De Mac bouwt weer", "new": ["De Mac-app zit weer in de release"] }
+  },
+  {
     "version": "0.2.87",
     "date": "2026-11-04",
     "en": { "title": "Call audio via Shizuku workaround", "new": ["Phone call sound goes to the Mac when SCO fails, using a Shizuku helper process with system permissions", "Works on normal Android (not just rooted), only needs an update of the Shizuku app", "Captures both the other person's voice and your microphone, sends them as PCM datagrams"] },

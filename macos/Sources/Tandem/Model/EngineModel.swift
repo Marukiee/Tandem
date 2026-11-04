@@ -731,6 +731,9 @@ final class EngineModel {
             if !on { ringing.remove(from) }
         case let .wifi(from, message):
             WifiShare.shared.handle(from: from, message: message)
+        case .callAudioStart, .callAudioStop, .callAudioData:
+            // Nothing on this Mac plays the sound of a call yet.
+            break
         }
     }
 
