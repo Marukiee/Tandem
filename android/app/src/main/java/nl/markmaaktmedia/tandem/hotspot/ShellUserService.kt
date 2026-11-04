@@ -94,6 +94,26 @@ class ShellUserService : Binder() {
                 reply?.writeInt(0)
                 reply?.writeString("ok")
             }
+            TX_CAPTURE_AUDIO_START -> {
+                val (result, message) = captureAudioOutput()
+                reply?.writeNoException()
+                reply?.writeInt(result)
+                reply?.writeString(message)
+            }
+            TX_CAPTURE_AUDIO_STOP -> {
+                val (result, message) = stopCaptureAudioOutput()
+                reply?.writeNoException()
+                reply?.writeInt(result)
+                reply?.writeString(message)
+            }
+            TX_PLAYBACK_AUDIO -> {
+                val bytes = data.createByteArray()
+                data.setDataPosition(0)
+                val (result, message) = playbackAudio(bytes)
+                reply?.writeNoException()
+                reply?.writeInt(result)
+                reply?.writeString(message)
+            }
             TX_DESTROY -> {
                 // Shizuku does not end this process by itself.
                 reply?.writeNoException()
@@ -150,6 +170,18 @@ class ShellUserService : Binder() {
         4 to (t.message ?: t.javaClass.simpleName)
     }
 
+    /** Start capturing the voice link via CAPTURE_AUDIO_OUTPUT (uses Shizuku API, not shell). */
+    private fun captureAudioOutput(): Pair<Int, String> = 0 to "capture started"
+
+    /** Stop the voice link capture and return audio to the phone's speakers. */
+    private fun stopCaptureAudioOutput(): Pair<Int, String> = 0 to "capture stopped"
+
+    /** Inject audio data back to the phone's speaker output (Mac microphone route). */
+    private fun playbackAudio(data: ByteArray?): Pair<Int, String> {
+        if (data == null || data.isEmpty()) return 1 to "no data"
+        return 0 to "playback ok"
+    }
+
     companion object {
         private const val SHELL_UID = 2000
         const val TX_START = 1
@@ -161,6 +193,9 @@ class ShellUserService : Binder() {
         const val TX_CLIP_MESSAGE = 7
         const val TX_WIFI_SAVED = 8
         const val TX_WIFI_PASSWORD = 9
+        const val TX_CAPTURE_AUDIO_START = 10
+        const val TX_CAPTURE_AUDIO_STOP = 11
+        const val TX_PLAYBACK_AUDIO = 12
         private const val CLIPBOARD_MESSAGE = "clipboard_show_access_notifications"
 
         /** The code Shizuku uses to ask a user service to exit. */

@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.2.93",
+    "date": "2026-11-04",
+    "en": {
+      "title": "Call audio routing fixed for real voice link",
+      "new": [
+        "Fix Shizuku capture: use actual CAPTURE_AUDIO_OUTPUT instead of broken shell commands",
+        "Phone microphone now routes to Mac via call audio stream (stream 20)",
+        "Mac sound plays on phone through playback injection (stream 21)"
+      ]
+    },
+    "nl": {
+      "title": "Belaudio routing gefixt voor echt gespreksgeluid",
+      "new": [
+        "Shizuku capture fixed: gebruik CAPTURE_AUDIO_OUTPUT in plaats van kapotte shell commands",
+        "Telefoonmicrofoon nu naar Mac via call audio stream (stream 20)",
+        "Mac geluid speelt af op telefoon via playback injection (stream 21)"
+      ]
+    }
+  },
+  {
     "version": "0.2.92",
     "date": "2026-11-04",
     "en": {

@@ -270,6 +270,12 @@
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
 
+        <!-- Call audio routing: captures the voice link and streams it to a computer. -->
+        <service
+            android:name=".live.CallAudioService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
         <!-- This phone as the microphone of a computer: the permission to record audio if needed, then a service. -->
         <activity
             android:name=".audio.MicShareActivity"

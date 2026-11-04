@@ -202,6 +202,16 @@ class CallMonitor(
                     mutedFromAfar = muted
                     scope.launch { order.withLock { tellMute() } }
                 }
+                TandemCallAction.MoveToMac -> {
+                    val target = event.from
+                    scope.launch { host.engine?.sendCallAudioStart(target, 20u, 16_000u) }
+                    nl.markmaaktmedia.tandem.live.CallAudioService.captureStart(context, target)
+                }
+                TandemCallAction.MoveBack -> {
+                    val target = event.from
+                    scope.launch { host.engine?.sendCallAudioStop(target, 20u) }
+                    nl.markmaaktmedia.tandem.live.CallAudioService.captureStop(context, target)
+                }
             }
         }
     }

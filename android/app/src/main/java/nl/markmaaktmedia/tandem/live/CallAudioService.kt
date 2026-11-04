@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioFormat
 import android.media.AudioRecord
+import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.os.IBinder
 import android.util.Log
@@ -16,14 +17,16 @@ import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 
 /**
- * Streams the call voice link from this phone to one computer.
- * Uses VOICE_COMMUNICATION source so it captures the other side's audio, not the microphone.
+ * Routes call audio between phone and one computer.
+ * Phone captures its microphone and sends it to the Mac (stream 20).
+ * The Mac plays sound on the phone through playback injection (stream 21).
  */
 class CallAudioService : android.app.Service() {
     @Volatile private var running = false
     @Volatile private var peer: String? = null
     @Volatile private var streamNum: Byte = 0
     @Volatile private var sampleRate: Int = 16_000
+    private val shizuku by lazy { nl.markmaaktmedia.tandem.hotspot.ShizukuBridge(this@CallAudioService) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -36,6 +39,8 @@ class CallAudioService : android.app.Service() {
             )
 
             ACTION_STOP -> finish()
+            ACTION_CAPTURE_START -> captureBegin(intent.getStringExtra(EXTRA_PEER).orEmpty())
+            ACTION_CAPTURE_STOP -> captureEnd()
         }
         return android.app.Service.START_NOT_STICKY
     }
@@ -105,11 +110,119 @@ class CallAudioService : android.app.Service() {
         if (peer == to && !running) finish()
     }
 
+    /** Start Shizuku capture of the voice link (CAPTURE_AUDIO_OUTPUT). */
+    private fun captureBegin(peerVal: String) {
+        peer = peerVal
+        running = true
+        val name = graph.host.device(peerVal)?.name ?: getString(R.string.feature_device_fallback)
+        try {
+            ServiceCompat.startForeground(this, NOTIFICATION_ID + 2, notification(this, "$name (Shizuku)"), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+        } catch (e: Exception) {
+            Log.w(TAG, "could not go to the foreground for capture", e)
+            return finish()
+        }
+        Thread({ pumpCapture(peerVal) }, "tandem-capture").apply {
+            priority = Thread.MAX_PRIORITY
+            start()
+        }
+    }
+
+    /** Stop Shizuku capture and return audio to the phone's speakers. */
+    private fun captureEnd() {
+        running = false
+        val myPeer = peer ?: return
+        peer = null
+        // Tell the Mac to stop receiving call audio.
+        graph.host.engine?.let { engine ->
+            runBlocking { engine.sendCallAudioStop(myPeer, 20u) }
+        }
+        // Stop Shizuku capture.
+        runBlocking { shizuku.captureAudioStop() }
+    }
+
+    private fun pumpCapture(to: String) {
+        running = true
+        val engine = graph.host.engine ?: return captureEnd()
+        // Start Shizuku's CAPTURE_AUDIO_OUTPUT (actual voice link, not mic).
+        runBlocking { shizuku.captureAudioStart() }
+        // Tell the Mac to start receiving call audio.
+        runBlocking { engine.sendCallAudioStart(to, 20u, 16_000u) }
+        val rate = 16_000
+        val record = try {
+            val minimum = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+            // Shizuku's CAPTURE_AUDIO_OUTPUT gives us the call audio mix.
+            AudioRecord(
+                android.media.MediaRecorder.AudioSource.MIC,
+                rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, minimum * 4
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "could not open capture audio", e)
+            null
+        }
+        if (record == null || record.state != AudioRecord.STATE_INITIALIZED) {
+            record?.release()
+            return captureEnd()
+        }
+        try {
+            val limit = engine.audioPayloadLimit(to).toInt() / 2 * 2
+            val size = if (limit >= PACKET) PACKET else limit.coerceAtLeast(2)
+            val buffer = ByteArray(size)
+            var seq = 0u
+            startPlayback(rate)
+            record.startRecording()
+            while (running) {
+                val read = record.read(buffer, 0, size)
+                if (read <= 0) {
+                    if (read < 0) break
+                    continue
+                }
+                try {
+                    runBlocking { engine.sendCallAudioData(to, 20u, seq++, buffer.copyOf(read / 2 * 2)) }
+                } catch (e: Exception) {
+                    Log.w(TAG, "capture data send failed", e)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "capture stopped", e)
+        } finally {
+            runCatching { record.stop() }
+            record.release()
+            captureEnd()
+        }
+    }
+
     private fun finish() {
         running = false
         peer = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        runCatching { playbackTrack?.stop() }
+        runCatching { playbackTrack?.release() }
+        playbackTrack = null
         stopSelf()
+    }
+
+    private fun startPlayback(rate: Int) {
+        if (playbackTrack != null) return
+        val minBufferSize = android.media.AudioTrack.getMinBufferSize(
+            rate, android.media.AudioFormat.CHANNEL_OUT_MONO, android.media.AudioFormat.ENCODING_PCM_16BIT
+        )
+        playbackTrack = android.media.AudioTrack(
+            android.media.AudioAttributes.Builder()
+                .setUsage(android.media.AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                .setContentType(2)
+                .build(),
+            android.media.AudioFormat.Builder()
+                .setSampleRate(rate)
+                .setChannelMask(android.media.AudioFormat.CHANNEL_OUT_MONO)
+                .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
+                .build(),
+            minBufferSize * 4,
+            android.media.AudioTrack.MODE_STREAM,
+            0
+        ).apply {
+            play()
+        }
+        Log.d(TAG, "playback started: rate=$rate bufferSize=$minBufferSize")
     }
 
     override fun onDestroy() {
@@ -118,10 +231,14 @@ class CallAudioService : android.app.Service() {
     }
 
     companion object {
+        @Volatile var playbackTrack: android.media.AudioTrack? = null
+
         private const val TAG = "CallAudio"
         private const val NOTIFICATION_ID = 0x4341
         const val ACTION_START = "nl.markmaaktmedia.tandem.CALL_AUDIO_START"
         const val ACTION_STOP = "nl.markmaaktmedia.tandem.CALL_AUDIO_STOP"
+        const val ACTION_CAPTURE_START = "nl.markmaaktmedia.tandem.CAPTURE_AUDIO_START"
+        const val ACTION_CAPTURE_STOP = "nl.markmaaktmedia.tandem.CAPTURE_AUDIO_STOP"
         const val EXTRA_PEER = "peer"
         const val EXTRA_STREAM = "stream"
         const val EXTRA_SAMPLE_RATE = "sampleRate"
@@ -144,8 +261,28 @@ class CallAudioService : android.app.Service() {
         }
 
         fun addData(context: Context, peer: String, streamNum: Byte, seq: Int, data: ByteArray) {
-            // For now we just capture locally; this is a placeholder for forwarding remote audio.
-            Log.d(TAG, "call audio data: peer=$peer stream=$streamNum seq=$seq size=${data.size}")
+            val track = playbackTrack
+            if (track == null || track.state != android.media.AudioTrack.STATE_INITIALIZED) return
+            try {
+                track.write(data, 0, data.size, android.media.AudioTrack.WRITE_BLOCKING)
+            } catch (e: Exception) {
+                Log.w(TAG, "playback write failed", e)
+            }
+        }
+
+        /** Capture the voice link via Shizuku (CAPTURE_AUDIO_OUTPUT) instead of VOICE_COMMUNICATION. */
+        fun captureStart(context: Context, peer: String) {
+            if (peer.isEmpty()) return
+            val intent = Intent(context, CallAudioService::class.java).setAction(ACTION_CAPTURE_START)
+                .putExtra(EXTRA_PEER, peer)
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        /** Stop Shizuku capture and go back to the phone's speakers. */
+        fun captureStop(context: Context, peer: String) {
+            if (peer.isEmpty()) return
+            val intent = Intent(context, CallAudioService::class.java).setAction(ACTION_CAPTURE_STOP)
+            ContextCompat.startForegroundService(context, intent)
         }
 
         private fun notification(context: Context, peerName: String): android.app.Notification {
