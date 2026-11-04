@@ -576,3 +576,36 @@ aan macOS zelf vastzitten (Diensten-menu, Controlecentrum, AirDrop-knop).
 - Hooguit twee agents tegelijk, laat ze vaak committen, en vraag ze Mac-testkopieen met `open -n -g -j`
   te starten en af te sluiten (anders vullen ze het Dock van de gebruiker).
 - Na elke afgeronde wijziging: changelog, tests, CI groen, tag, release controleren.
+
+## Shizuku/Magisk oplossing voor gespreksgeluid op Mac (2026-11-04)
+
+Claude AI analyseerde waarom het spraakkanaal (SCO) niet werkt en of een Shizuku-oplossing haalbaar is.
+
+### Het probleem
+- **Mac weigert SCO**: `bluetoothd` rejecteert met `HOST_REJ_RESOURCES`, `connectSCO` en `transferAudioToComputer` geven `kIOReturnUnsupported` (0xE00002C7)
+- **Android blokkeert**: apps krijgen geen toegang tot gespreksgeluid (`VOICE_CALL` alleen voor systeemapps)
+- `IOBluetoothAddSCOAudioDevice` doet sinds macOS 10.9 niets meer; PhoneBridge vond dezelfde weigering op macOS 27
+
+### De Shizuku-oplossing (werkingsprincipe)
+1. **Rechten**: hulpproces met systeemrechten via Magisk of Shizuku (Shizuku werkt ook op normale Android, alleen even updaten)
+2. **Stem van de ander**: proces leest gespreksgeluid uit en Tandem stuurt versleuteld naar Mac
+3. **Op de Mac**: Tandem speelt die stem af + neemt eigen stem op met Mac-microfoon
+4. **Jouw stem terug**: gaat naar telefoon, hulpproces zet het de gesprekslijn op; telefoon microfoon moet uit
+
+### Risico's en onzekerheden
+- **Stap 4 (stem terug)**: onzekerst - hangt af van Sony audiosoftware; werkt mogelijk niet op alle telefoons
+- **Vertraging**: geluid gaat twee keer over netwerk = grotere vertraging, praten door elkaar
+- **Echo**: Mac-speakers = echo terug, behalve met echo-onderdrukking
+- **Alleen voor Shizuku/Magisk**: werkt niet op gewone Android telefoon (geen systeemrechten)
+- **Elke Android-update kan het breken** (workaround op systeem-API's)
+
+### Zekerheid schatting: 70-80% dat het in de praktijk werkt
+- Afhankelijk van telefoonfabrikant (Sony is onzekerst)
+- Niet een "eenduidige oplossing" maar workaround die redelijk betrouwbaar zou moeten zijn
+- UI is verbeterd, alleen onderliggende techniek bouwen
+
+### Wat te bouwen (techniek, geen UI)
+- Shizuku hulpproces: gespreksgeluid uitlezen + terugzetzen naar gesprekslijn
+- Mac kant: audio stream ontvangen + afspelen + microfoon opnemen + terugsturen
+- Echo-onderdrukking op Mac
+- Netwerk buffering voor vertraging

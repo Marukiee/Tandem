@@ -51,6 +51,7 @@ Grep for an existing feature (for example `KeepAwake`) and copy how it goes thro
 - Do not change system settings of the computer, and do not install packages.
 - The sound of a phone call stays on the phone: a Mac refuses the voice link and Android keeps it from apps (tested, see `docs/PARITY.md`).
   Do not build buttons or messages that pretend otherwise. A button that does nothing is never shown.
+- Shizuku werkt op normale Android ook (niet alleen geroote toestellen), je moet het alleen even updaten. Zie `docs/ROADMAP.md` voor details.
 - Generated bindings stay out of git (`.gitignore`). Never force-add them and never edit them by hand: rebuild them with the scripts below.
 
 ## Build and test
