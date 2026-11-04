@@ -21,19 +21,6 @@ It started as the KDE Connect alternative for people on a Mac, and grew into Con
 > experimental and have been seen on few real machines so far. Each release says what is new, and
 > `docs/PARITY.md` says per feature what works on which system.
 
-## Screenshots
-
-<p>
-  <img src="docs/screenshots/mac-devices.png" width="430" alt="The Mac app with your devices and what a phone can do">
-  <img src="docs/screenshots/mac-notifications.png" width="430" alt="Phone notifications on the Mac">
-</p>
-<p>
-  <img src="docs/screenshots/mac-phone-screen.png" width="150" alt="The phone's screen in a window on the Mac">
-  <img src="docs/screenshots/android-devices.png" width="190" alt="The Android app with your devices">
-  <img src="docs/screenshots/android-device.png" width="190" alt="One device on Android: battery, music and sending">
-  <img src="docs/screenshots/android-clipboard.png" width="190" alt="The clipboard history on Android">
-</p>
-
 ## Highlights
 
 - **Any device as an extra screen, several at once.** Your Mac's screen extends to a Linux device on the left and
