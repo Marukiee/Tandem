@@ -32,7 +32,7 @@ final class CallPause {
         guard watch == nil else { return }
         watch = Task { @MainActor [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
+                try? await Task.sleep(for: .seconds(3), tolerance: .seconds(1))
                 self?.lookAtMicrophone()
             }
         }

@@ -65,7 +65,7 @@ class SmsBridge(
                 // Reading is what watching needs: a phone that may read but not send still passes on the codes that come in.
                 val granted = SmsAccess.canRead(context)
                 if (granted && observer == null) watch() else if (!granted && observer != null) unwatch()
-                delay(5_000)
+                delay(if (context.getSystemService(android.os.PowerManager::class.java).isInteractive) 5_000 else 60_000)
             }
         }
     }

@@ -3,16 +3,21 @@ package nl.markmaaktmedia.tandem.engine
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.IBinder
+import android.os.PowerManager
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -55,9 +60,9 @@ class TandemService : LifecycleService() {
         Channels.create(this)
         startForeground(NOTIFICATION_ID, foregroundNotification(emptyList()), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
 
-        // mDNS needs multicast packets, which Wi-Fi drops to save power unless asked. Asking costs power all day long,
-        // on a busy network more than anything else Tandem does, so it is only asked for while a paired device is
-        // missing and has to be found (see the collector of the device list below).
+        // mDNS needs multicast packets, which Wi-Fi drops to save power unless asked. Asking costs power all day long, on a busy network
+        // more than anything else Tandem does, so only while a paired device is missing and someone uses the phone or it just got another
+        // network. A laptop that is off all day must not cost that. With the screen off a device that returns dials this phone itself.
         multicast = getSystemService(WifiManager::class.java)
             .createMulticastLock("tandem").apply { setReferenceCounted(false) }
 
@@ -77,16 +82,42 @@ class TandemService : LifecycleService() {
         lifecycleScope.launch {
             host.devices.collectLatest { devices ->
                 // Everything paired is here: nobody to look for, so the Wi-Fi may filter multicast again.
-                val missing = devices.any { !it.online }
-                multicast?.let { lock ->
-                    if (missing && !lock.isHeld) lock.acquire() else if (!missing && lock.isHeld) lock.release()
-                }
+                someoneMissing = devices.any { !it.online }
+                lookForDevices()
                 val online = devices.filter { it.online }.map { it.name }
                 getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, foregroundNotification(online))
                 ShareShortcuts.update(this@TandemService, devices)
             }
         }
         lifecycleScope.launch { host.events.collect { graph.audio.onEvent(it); handle(it) } }
+        lifecycleScope.launch {
+            host.networkMoved.collectLatest {
+                lookingUntil = SystemClock.elapsedRealtime() + LOOK_AFTER_MOVE_MS
+                lookForDevices()
+                delay(LOOK_AFTER_MOVE_MS + 500)
+                lookForDevices()
+            }
+        }
+        registerReceiver(screenWatch, IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_SCREEN_OFF)
+        })
+    }
+
+    private var someoneMissing = false
+    private var lookingUntil = 0L
+    private val screenWatch = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            lookForDevices()
+            graph.quickShare.screenChanged(intent.action == Intent.ACTION_SCREEN_ON)
+        }
+    }
+
+    private fun lookForDevices() {
+        val lock = multicast ?: return
+        val inUse = getSystemService(PowerManager::class.java).isInteractive || SystemClock.elapsedRealtime() < lookingUntil
+        val wanted = someoneMissing && inUse
+        if (wanted && !lock.isHeld) lock.acquire() else if (!wanted && lock.isHeld) lock.release()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -97,6 +128,7 @@ class TandemService : LifecycleService() {
     override fun onBind(intent: Intent): IBinder? = super.onBind(intent)
 
     override fun onDestroy() {
+        runCatching { unregisterReceiver(screenWatch) }
         status.stop()
         screenshots.stop()
         calls.stop()
@@ -434,6 +466,7 @@ class TandemService : LifecycleService() {
 
     companion object {
         private const val NOTIFICATION_ID = 1
+        private const val LOOK_AFTER_MOVE_MS = 120_000L
         private const val PROGRESS_ID = 2
 
         fun start(context: Context) {

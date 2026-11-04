@@ -1,5 +1,11 @@
 [
   {
+    "version": "0.2.86",
+    "date": "2026-11-04",
+    "en": { "title": "Far less battery", "new": ["A phone no longer searches for devices over mobile data, which kept its radio awake", "Devices that are away are tried less often, and fewer of their old addresses", "A device that wakes or changes network says so, and connects at once", "The Mac and Linux look at permissions, the clipboard and the lock less often when nobody is there"] },
+    "nl": { "title": "Veel minder accu", "new": ["Een telefoon zoekt niet meer naar apparaten over mobiele data, wat de radio wakker hield", "Apparaten die weg zijn worden minder vaak geprobeerd, en minder van hun oude adressen", "Een apparaat dat wakker wordt of van netwerk wisselt meldt zich, en verbindt meteen", "De Mac en Linux kijken minder vaak naar rechten, klembord en vergrendeling als er niemand is"] }
+  },
+  {
     "version": "0.2.85",
     "date": "2026-11-04",
     "en": { "title": "Hotspot seen, and left", "new": ["The panel shows when the Mac is on your hotspot, also when macOS hides the network's name", "The Mac moves from your hotspot to a network it knows, unless you asked for the hotspot with the button"] },

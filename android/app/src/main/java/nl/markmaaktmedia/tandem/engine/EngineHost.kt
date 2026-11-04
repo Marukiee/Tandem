@@ -195,7 +195,6 @@ class EngineHost(
                     enableMdns = true,
                     caps = listOf("clipboard", "share", "notify", "call", "input", "battery", "hotspot", "screenshot", "media", "capture", "screen.view", "screen.extend.view", "side.listen", "pointer.in", "pointer.ping", "ring", "wifi.share", "wifi.join", "focus.share", "focus.follow", "audio.play", "audio.send", "audio.mic") +
                         nl.markmaaktmedia.tandem.live.LiveShare.caps(context) + nl.markmaaktmedia.tandem.messages.SmsBridge.caps(context),
-                    lowPower = true,
                 )
                 val started = TandemEngine.start(config, AndroidVault(context), AndroidFiles(context), Sink())
                 engine = started
@@ -447,7 +446,10 @@ class EngineHost(
 
     fun onNetworkChanged() {
         engine?.networkChanged()
+        networkMoved.tryEmit(Unit)
     }
+
+    val networkMoved = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
 
     companion object {
         private const val TAG = "EngineHost"

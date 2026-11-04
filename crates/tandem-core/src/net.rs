@@ -112,6 +112,9 @@ pub struct AddrBook {
 }
 
 const MAX_ADDRS: usize = 12;
+/// An address that never worked is forgotten soon, one that did after a month without the device. The newest always stays.
+const NEVER_WORKED_MS: u64 = 3 * 24 * 3600 * 1000;
+const WORKED_MS: u64 = 30 * 24 * 3600 * 1000;
 
 impl AddrBook {
     pub fn learn(&mut self, addr: SocketAddr, now: u64) {
@@ -137,6 +140,16 @@ impl AddrBook {
             self.addrs.sort_by_key(|a| std::cmp::Reverse(a.last_ok.max(a.seen)));
             self.addrs.truncate(MAX_ADDRS);
         }
+    }
+
+    /// Every address that is kept is dialled when the device is away: an old one is a cost, for nothing.
+    pub fn forget_old(&mut self, now: u64) {
+        let Some(newest) = self.addrs.iter().map(|a| a.last_ok.max(a.seen)).max() else { return };
+        self.addrs.retain(|a| {
+            let at = a.last_ok.max(a.seen);
+            let keep_for = if a.last_ok == 0 { NEVER_WORKED_MS } else { WORKED_MS };
+            at == newest || now.saturating_sub(at) < keep_for
+        });
     }
 
     /// Addresses in the order they should be tried: what worked most recently, then
@@ -262,6 +275,29 @@ mod tests {
         // Not again within a minute and a half.
         assert!(!needs_tailscale(5, &[tail.clone()], false, Some(minute)));
         assert!(needs_tailscale(5, &[tail], false, Some(minute * 2)));
+    }
+
+    #[test]
+    fn old_addresses_are_forgotten_and_the_newest_stays() {
+        let day = 24 * 3600 * 1000u64;
+        let now = 100 * day;
+        let at = |addr: &str, last_ok, seen| KnownAddr { addr: addr.into(), route: Route::Lan, last_ok, seen };
+        let mut book = AddrBook {
+            addrs: vec![
+                at("10.0.0.1:1", 0, now - 4 * day),
+                at("10.0.0.2:1", 0, now - day),
+                at("10.0.0.3:1", now - 20 * day, now - 20 * day),
+                at("10.0.0.4:1", now - 40 * day, now - 40 * day),
+            ],
+        };
+        book.forget_old(now);
+        let left: Vec<String> = book.ordered().into_iter().map(|a| a.addr).collect();
+        assert_eq!(left.len(), 2);
+        assert!(left.contains(&"10.0.0.2:1".to_string()) && left.contains(&"10.0.0.3:1".to_string()));
+
+        let mut gone = AddrBook { addrs: vec![at("10.0.0.5:1", now - 90 * day, now - 90 * day)] };
+        gone.forget_old(now);
+        assert!(!gone.is_empty());
     }
 
     #[test]

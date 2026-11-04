@@ -109,6 +109,9 @@ impl QuickShare {
         let daemon = ServiceDaemon::new().map_err(|e| Error::Connection(format!("mdns: {e}")))?;
         // The listener above takes IPv4 only: an IPv6 address in the announcement would be one that a sender picks and cannot reach.
         let _ = daemon.disable_interface(mdns_sd::IfKind::IPv6);
+        let _ = daemon.set_ip_check_interval(crate::discovery::ADDRESS_CHECK_SECS);
+        let mut quiet = crate::discovery::QuietInterfaces::default();
+        quiet.apply(&daemon);
         let instance = instance_name(&own_id);
         let info = encode_endpoint_info(device_name, kind);
         let txt = data_encoding::BASE64URL_NOPAD.encode(&info);
@@ -130,6 +133,14 @@ impl QuickShare {
         });
 
         let mut tasks = Vec::new();
+
+        let watched = daemon.clone();
+        tasks.push(tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+                quiet.apply(&watched);
+            }
+        }));
 
         // Others who can be found. The receiver is a blocking channel, so it is read on a thread of its own.
         let seen = inner.clone();

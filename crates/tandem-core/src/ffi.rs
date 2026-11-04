@@ -208,8 +208,6 @@ pub struct TandemConfig {
     pub port: u16,
     pub enable_mdns: bool,
     pub caps: Vec<String>,
-    /// Longer keep-alives for a phone that is idle, to spare the battery.
-    pub low_power: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
@@ -1439,10 +1437,6 @@ impl TandemEngine {
         cfg.port = config.port;
         cfg.enable_mdns = config.enable_mdns;
         cfg.caps = config.caps;
-        if config.low_power {
-            cfg.tuning.keep_alive = std::time::Duration::from_secs(25);
-            cfg.tuning.idle_timeout = std::time::Duration::from_secs(70);
-        }
 
         let engine = runtime
             .block_on(Engine::start(cfg, Arc::new(VaultAdapter(vault)), Arc::new(FilesAdapter(files))))

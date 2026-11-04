@@ -174,6 +174,12 @@ class QuickShareHost(
         }
     }
 
+    /** Who sends something looks at a phone that is on: with the screen off the Wi-Fi may filter multicast, which costs far less. */
+    fun screenChanged(on: Boolean) {
+        val held = lock ?: return
+        runCatching { if (on) held.acquire() else if (held.isHeld) held.release() }
+    }
+
     private suspend fun stop() = withContext(Dispatchers.IO) {
         service?.stop()
         service?.close()

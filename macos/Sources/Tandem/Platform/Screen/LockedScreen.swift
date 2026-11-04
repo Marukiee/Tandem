@@ -58,7 +58,15 @@ enum LockedAccess {
         }
     }
 
-    static var hasPassword: Bool { password() != nil }
+    /// Asked every time the features are looked at: the keychain says whether it is there without handing it out.
+    static var hasPassword: Bool {
+        if debugPassword != nil { return true }
+        let query: [CFString: Any] = [
+            kSecClass: kSecClassGenericPassword, kSecAttrService: service, kSecAttrAccount: user,
+            kSecUseAuthenticationUI: kSecUseAuthenticationUIFail,
+        ]
+        return SecItemCopyMatching(query as CFDictionary, nil) == errSecSuccess
+    }
 
     /// Remote Management is on instead of Screen Sharing. It lets in only the accounts it was given, not every administrator, so a right
     /// password can still be turned down (seen 2026-11-01).

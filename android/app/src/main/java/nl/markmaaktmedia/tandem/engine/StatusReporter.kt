@@ -45,10 +45,24 @@ class StatusReporter(
         }
     }
 
+    private var lastNetwork: Pair<Network, List<Boolean>>? = null
+
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) = networkChanged()
         override fun onLost(network: Network) = networkChanged()
-        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = networkChanged()
+        // This also comes with every change of signal strength, which is many times a minute. Trying every absent device again each time
+        // is what kept a battery and a radio busy; the status only goes out when it changed.
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            val kind = listOf(NetworkCapabilities.TRANSPORT_WIFI, NetworkCapabilities.TRANSPORT_CELLULAR, NetworkCapabilities.TRANSPORT_ETHERNET, NetworkCapabilities.TRANSPORT_VPN)
+                .map(capabilities::hasTransport) + capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            val now = network to kind
+            if (now != lastNetwork) {
+                lastNetwork = now
+                networkChanged()
+            } else {
+                schedule()
+            }
+        }
     }
 
     fun start() {

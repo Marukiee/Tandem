@@ -71,6 +71,7 @@ final class HotspotCoordinator {
     private var lastScan = Date.distantPast
     /// The gateways of the network this Mac is on now, without asking a tool for them every few seconds.
     private var gateways: Set<String> = []
+    private var networkMovedAt = Date()
     /// The gateway the phone was last tried at, so it is tried once per network.
     private var triedGateway: String?
     /// Asked for with a button: the person wants the hotspot, known network nearby or not.
@@ -105,16 +106,29 @@ final class HotspotCoordinator {
             Task { @MainActor in
                 self?.gateways = gateways
                 self?.pathChanged(wired: wired, satisfied: satisfied)
+                self?.watch()
             }
         }
         pathMonitor.start(queue: DispatchQueue(label: "tandem.hotspot.path"))
+        watch()
+    }
+
+    /// Looks at once and then keeps looking: quickly while something is going on with the network or the hotspot, with long gaps when not.
+    private func watch() {
+        networkMovedAt = Date()
         watchTask?.cancel()
         watchTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 await self?.syncWithCurrentNetwork()
-                try? await Task.sleep(for: .seconds(4))
+                let quiet = self?.nothingGoingOn ?? true
+                try? await Task.sleep(for: .seconds(quiet ? 20 : 4), tolerance: .seconds(quiet ? 5 : 1))
             }
         }
+    }
+
+    private var nothingGoingOn: Bool {
+        guard model?.hotspotStatus == .idle else { return false }
+        return Date().timeIntervalSince(networkMovedAt) > 60
     }
 
     /// Whether this Mac is on the phone's hotspot, joined by Tandem, by hand or by macOS. macOS hides the name of the current network from

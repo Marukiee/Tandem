@@ -199,8 +199,7 @@ final class EngineModel {
             appVersion: Bundle.main.appVersion,
             port: 47820,
             enableMdns: true,
-            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "ring", "wifi.share", "wifi.join", "sms.view", "focus.share", "focus.follow", "audio.send"] + ScreenHost.shared.capabilities(),
-            lowPower: false
+            caps: ["clipboard", "share", "notify", "call", "input", "battery", "hotspot", "media", "screen.view", "screen.extend.view", "camera.view", "ble.link", "side.listen", "audio.play", "pointer.ping", "pointer.ready", "ring", "wifi.share", "wifi.join", "sms.view", "focus.share", "focus.follow", "audio.send"] + ScreenHost.shared.capabilities()
         )
 
         let (stream, continuation) = AsyncStream.makeStream(of: TandemEvent.self)
@@ -271,6 +270,10 @@ final class EngineModel {
             self.pushStatus()
         }
         network.start()
+        // The network often looks the same after a wake, and the others have long given up on this Mac: it tries them now.
+        _ = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.engine?.networkChanged() }
+        }
 
         hotspot.attach(model: self)
         LiveManager.shared.attach(engine: engine)
@@ -303,6 +306,7 @@ final class EngineModel {
         statusTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.pushStatus() }
         }
+        statusTimer?.tolerance = 15
     }
 
     private func engineFailed(_ error: Error) {
@@ -404,7 +408,9 @@ final class EngineModel {
     func refreshDevices() {
         guard let engine else { return }
         let refusing = Set(devices.filter { $0.online && !Self.takesPointer($0) }.map(\.id))
-        devices = engine.devices()
+        // Every open or hidden view that shows a device is redone when this is set, also when nothing changed.
+        let fresh = engine.devices()
+        if fresh != devices { devices = fresh }
         // A phone that was there and just turned on taking this Mac's mouse (its switch or its tile) has its side measured now. One that
         // only came back is checked as a device that connects.
         for device in devices where Self.takesPointer(device) && refusing.contains(device.id) { SideWatch.shared.pointerAllowed(device.id) }
@@ -1405,7 +1411,7 @@ final class EngineModel {
             var lastOffline: String?
             var lastComputers: Set<String> = []
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(3))
+                try? await Task.sleep(for: .seconds(3), tolerance: .seconds(1))
                 guard let self, let engine = self.engine else { continue }
                 let messages = UserDefaults.standard.object(forKey: "bleMessages") as? Bool ?? true
                 // The beacon is also what the hotspot is asked for, so it is looked for when that is switched on.

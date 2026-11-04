@@ -3,9 +3,11 @@
 //! who works with the lid closed on purpose (the laptop on a dock, with another screen) turns that on in the settings. A locked screen
 //! cannot be used from outside at all (the desktop refuses to let a program play keys and the pointer then), so it is the same.
 
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
+
+use crate::state::AppState;
 
 use crate::settings;
 
@@ -39,8 +41,17 @@ pub fn start(app: AppHandle) {
         .spawn(move || {
             let mut was_closed = false;
             let mut was_locked = false;
+            let mut last_look = SystemTime::now();
             loop {
-                std::thread::sleep(Duration::from_millis(600));
+                std::thread::sleep(Duration::from_secs(1));
+                // Far more time went by than this slept: the computer was asleep, and the others have long given up on it. It tries them now.
+                let slept = last_look.elapsed().is_ok_and(|gone| gone > Duration::from_secs(20));
+                last_look = SystemTime::now();
+                if slept {
+                    if let Ok(engine) = app.state::<AppState>().engine() {
+                        engine.network_changed();
+                    }
+                }
                 let closed = tandem_winsys::lid_closed() == Some(true);
                 // The desktop refuses to open the portals for keys and the pointer while the screen is locked, and the first answer
                 // after the unlock is the one to ask for again, not the next time another computer pushes its pointer here.
@@ -49,7 +60,7 @@ pub fn start(app: AppHandle) {
                     crate::input::warm_up();
                 }
                 was_locked = now_locked;
-                if locked() || (closed && !usable_closed(&app)) {
+                if now_locked || (closed && !usable_closed(&app)) {
                     crate::input::shared_stop_here();
                     if !was_closed {
                         #[cfg(feature = "screen-host")]

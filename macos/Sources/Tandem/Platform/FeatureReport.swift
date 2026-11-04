@@ -13,8 +13,8 @@ enum FeatureReport {
     private static var automation: [String: OSStatus] = [:]
     private static var bluetooth: CBCentralManager?
 
-    /// Looks again every few seconds while Tandem runs: permissions are changed in System Settings, outside the app. The core sends it
-    /// on only when something changed.
+    /// Keeps looking while Tandem runs: permissions are changed in System Settings, outside the app. The core sends it on only when
+    /// something changed.
     static func start() {
         guard !running else { return }
         running = true
@@ -26,7 +26,9 @@ enum FeatureReport {
                     SetupTour.remindIfDue(features)
                     SetupTour.showIfNew()
                 }
-                try? await Task.sleep(for: .seconds(4))
+                // Quick while it can matter: someone is in Tandem or in System Settings. Otherwise a permission rarely changes.
+                let looking = NSApp.isActive || NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.apple.systempreferences"
+                try? await Task.sleep(for: .seconds(looking ? 4 : 30), tolerance: .seconds(looking ? 1 : 10))
             }
         }
     }

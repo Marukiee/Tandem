@@ -29,7 +29,9 @@ pub const ALPN_PAIR_CODE: &[u8] = b"tandem-pair-code/1";
 /// The name we present in the handshake. It carries no meaning: trust is the key.
 pub const SERVER_NAME: &str = "tandem";
 
-/// How aggressively a connection stays alive and how much data may be in flight.
+/// How aggressively a connection stays alive. A keep-alive of one side also resets the timer of the other, so the shortest on the connection
+/// is what counts: the same for everyone, or a computer on a charger keeps waking the phone. Connection trouble that an app notices (another
+/// network, a wake) is checked at once and does not wait for this.
 #[derive(Clone, Copy, Debug)]
 pub struct Tuning {
     pub keep_alive: Duration,
@@ -39,8 +41,8 @@ pub struct Tuning {
 impl Default for Tuning {
     fn default() -> Self {
         Tuning {
-            keep_alive: Duration::from_secs(15),
-            idle_timeout: Duration::from_secs(45),
+            keep_alive: Duration::from_secs(25),
+            idle_timeout: Duration::from_secs(70),
         }
     }
 }

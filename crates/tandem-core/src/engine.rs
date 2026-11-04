@@ -132,6 +132,8 @@ pub(crate) struct Inner {
     pub discovery: Mutex<Option<Discovery>>,
     pub accept_slots: Arc<Semaphore>,
     pub last_announce_hour: AtomicU64,
+    my_addresses: Mutex<Vec<std::net::IpAddr>>,
+    said_back: Mutex<Option<Instant>>,
     pub ble: Mutex<crate::ble::BleHub>,
     pub audio: RwLock<Option<Arc<dyn AudioSink>>>,
     pub ble_msg_id: std::sync::atomic::AtomicU8,
@@ -220,6 +222,8 @@ impl Engine {
             discovery: Mutex::new(None),
             accept_slots: Arc::new(Semaphore::new(16)),
             last_announce_hour: AtomicU64::new(discovery::current_hour()),
+            my_addresses: Mutex::new(Vec::new()),
+            said_back: Mutex::new(None),
             ble: Mutex::new(Default::default()),
             audio: RwLock::new(None),
             ble_msg_id: std::sync::atomic::AtomicU8::new(0),
@@ -867,6 +871,7 @@ impl Inner {
         }
         drop(peers);
         self.probe_sessions();
+        self.say_back();
         self.poke.notify_one();
     }
 
@@ -953,6 +958,44 @@ impl Inner {
                 self.persist_addresses();
             }
             self.refresh_announcement();
+            self.notice_new_addresses();
+        }
+    }
+
+    /// Not every app is told of every change of network (Linux and Windows are not), and it is what decides whether a device has to be
+    /// tried again at once.
+    fn notice_new_addresses(self: &Arc<Self>) {
+        let Ok(interfaces) = if_addrs::get_if_addrs() else { return };
+        let mut now: Vec<std::net::IpAddr> = interfaces.iter().filter(|i| !i.is_loopback()).map(|i| i.ip()).collect();
+        now.sort();
+        let first = {
+            let mut known = self.my_addresses.lock().unwrap();
+            if *known == now {
+                return;
+            }
+            let first = known.is_empty();
+            *known = now;
+            first
+        };
+        if let Some(discovery) = self.discovery.lock().unwrap().as_mut() {
+            discovery.stay_quiet();
+        }
+        if !first {
+            self.network_changed();
+        }
+    }
+
+    /// Says on the local network that this device is here again. A phone calls `network_changed` for each small change, so not every time.
+    fn say_back(&self) {
+        {
+            let mut last = self.said_back.lock().unwrap();
+            if last.is_some_and(|at| at.elapsed() < Duration::from_secs(30)) {
+                return;
+            }
+            *last = Some(Instant::now());
+        }
+        if let Some(discovery) = self.discovery.lock().unwrap().as_mut() {
+            let _ = discovery.say_back();
         }
     }
 
@@ -976,18 +1019,19 @@ impl Inner {
             for (id, peer) in peers.iter_mut() {
                 if peer.session.is_none() && !peer.dialing && now >= peer.next_dial && !peer.addrs.is_empty() {
                     peer.dialing = true;
-                    due.push((*id, peer.key, peer.addrs.ordered()));
+                    peer.addrs.forget_old(now_ms());
+                    due.push((*id, peer.key, peer.addrs.ordered(), peer.fail_count));
                 }
             }
         }
-        for (id, key, addrs) in due {
+        for (id, key, addrs, fails) in due {
             let this = self.clone();
-            tokio::spawn(async move { this.dial_peer(id, key, addrs).await });
+            tokio::spawn(async move { this.dial_peer(id, key, addrs, fails).await });
         }
     }
 
-    async fn dial_peer(self: Arc<Self>, id: DeviceId, key: [u8; 32], addrs: Vec<net::KnownAddr>) {
-        let sockets: Vec<SocketAddr> = addrs.iter().filter_map(|a| a.socket()).collect();
+    async fn dial_peer(self: Arc<Self>, id: DeviceId, key: [u8; 32], addrs: Vec<net::KnownAddr>, fails: u32) {
+        let sockets: Vec<SocketAddr> = addrs.iter().take(addresses_to_try(fails)).filter_map(|a| a.socket()).collect();
         let outcome = self.dial_any(Some(key), tls::ALPN_MAIN, &sockets).await;
         match outcome {
             Ok((connection, addr)) => {
@@ -1126,7 +1170,9 @@ impl Inner {
                 }
                 fresh = peer.session.is_none() && (peer.addrs.ordered().len() != before || peer.fail_count > 0);
                 if peer.session.is_none() {
+                    // It is here: every address again, the one just heard above all.
                     peer.next_dial = Instant::now();
+                    peer.fail_count = 0;
                 }
             }
         }
@@ -1191,12 +1237,24 @@ pub(crate) fn hash_text(text: &str) -> u64 {
     u64::from_le_bytes(hash.as_bytes()[..8].try_into().unwrap())
 }
 
+/// A device that has been gone for a while comes back by itself: it dials everyone when it starts, wakes or changes network, a phone also
+/// when its screen goes on, and it is seen on the local network. Trying it often costs each device a radio that never rests, so after the
+/// first minutes this is only for the case that it cannot reach this device.
 fn backoff(failures: u32) -> Duration {
-    let base = 1u64 << failures.min(5);
-    let millis = (base * 1000).min(30_000);
+    let millis = match failures {
+        0..=8 => ((1u64 << failures.min(5)) * 1000).min(30_000),
+        9..=12 => 60_000,
+        _ => 300_000,
+    };
     // A little jitter so two devices retrying together do not keep colliding.
     let jitter = rand_u64() % (millis / 5 + 1);
     Duration::from_millis(millis + jitter)
+}
+
+/// Each address that does not answer costs a few packets of more than a kilobyte. A device that stays away gets the best ones, and all of them
+/// once in a while, in case it is somewhere else now.
+fn addresses_to_try(failures: u32) -> usize {
+    if failures < 6 || failures % 4 == 0 { usize::MAX } else { 3 }
 }
 
 #[cfg(test)]
@@ -1207,6 +1265,17 @@ mod tests {
     fn backoff_grows_and_is_capped() {
         assert!(backoff(0) < Duration::from_millis(1300));
         assert!(backoff(3) >= Duration::from_secs(8));
-        assert!(backoff(20) <= Duration::from_millis(36_100));
+        assert!(backoff(8) <= Duration::from_millis(36_100));
+        assert!(backoff(10) >= Duration::from_secs(60));
+        assert!(backoff(20) >= Duration::from_secs(300));
+        assert!(backoff(20) <= Duration::from_secs(360));
+    }
+
+    #[test]
+    fn a_device_that_stays_away_gets_fewer_addresses_with_all_of_them_now_and_then() {
+        assert_eq!(addresses_to_try(0), usize::MAX);
+        assert_eq!(addresses_to_try(5), usize::MAX);
+        assert_eq!(addresses_to_try(6), 3);
+        assert_eq!(addresses_to_try(8), usize::MAX);
     }
 }

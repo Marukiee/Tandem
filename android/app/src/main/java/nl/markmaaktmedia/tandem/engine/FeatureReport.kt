@@ -35,7 +35,8 @@ object FeatureReport {
                     context.graph.host.engine?.setFeatures(features)
                     SetupTour.remindIfDue(context, features)
                 }
-                delay(5_000)
+                // A permission is changed by someone with the phone in their hand.
+                delay(if (context.getSystemService(android.os.PowerManager::class.java).isInteractive) 5_000 else 60_000)
             }
         }
     }

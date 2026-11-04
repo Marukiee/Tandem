@@ -30,11 +30,27 @@ final class ClipboardMonitor {
         guard timer == nil else { return }
         // What was copied while nobody was there to send it to is not news when somebody arrives.
         lastCount = NSPasteboard.general.changeCount
-        // Half a second, and the system may stretch it by as much again to run it together with other timers.
-        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.poll() }
+        schedule(every: Self.inUse)
+    }
+
+    /// macOS has no message for a new copy, so it has to be looked at. Half a second while someone is at this Mac (the system may stretch
+    /// it by as much again to run it together with other timers), and a Mac that nobody touches copies nothing, so slowly then.
+    private static let inUse: TimeInterval = 0.5
+    private static let nobodyThere: TimeInterval = 4
+
+    private func schedule(every interval: TimeInterval) {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.tick(every: interval) }
         }
-        timer?.tolerance = 0.5
+        timer?.tolerance = interval
+    }
+
+    private func tick(every interval: TimeInterval) {
+        poll()
+        guard timer != nil, let any = CGEventType(rawValue: ~0) else { return }
+        let wanted = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: any) < 30 ? Self.inUse : Self.nobodyThere
+        if wanted != interval { schedule(every: wanted) }
     }
 
     /// Looks at the pasteboard only while at least one device is connected: with nobody to tell, the polling is pure cost.

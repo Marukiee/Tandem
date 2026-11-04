@@ -201,7 +201,6 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         port: 47820,
         enable_mdns: true,
         caps,
-        low_power: false,
     };
     TandemEngine::start(
         config,
