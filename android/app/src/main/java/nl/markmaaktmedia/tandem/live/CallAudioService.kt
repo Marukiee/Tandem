@@ -49,8 +49,7 @@ class CallAudioService(private val context: Context) {
 
     // ---- Capture settings -----------------------------------------------------------------------------------------------
 
-    /** Sample rate for call audio (narrowband is fine for voice). */
-    private companion val RATE = 16_000
+    private const val RATE = 16_000
     private const val CHANNELS = 1
     private const val SAMPLE_SIZE = 16
     private const val FRAME_SIZE = CHANNELS * (SAMPLE_SIZE / 8)
@@ -71,7 +70,6 @@ class CallAudioService(private val context: Context) {
             Log.w(TAG, "Shizuku not ready for call audio")
             return false
         }
-
         voiceThread = Thread({ captureVoice(peerId) }, "tandem-call-voice").apply { start() }
         micThread = Thread({ captureMic(peerId) }, "tandem-call-mic").apply { start() }
         _running.value = true
@@ -137,7 +135,7 @@ class CallAudioService(private val context: Context) {
                 }
 
                 try {
-                    engine.sendCallAudio(peer, STREAM_VOICE.toUByte(), seq++, bytes)
+                    engine.sendCallAudioData(peer, STREAM_VOICE.toUByte(), seq++, bytes)
                     failures = 0
                 } catch (e: Exception) {
                     if (++failures > 200) break
@@ -194,7 +192,7 @@ class CallAudioService(private val context: Context) {
                 }
 
                 try {
-                    engine.sendCallAudio(peer, STREAM_MIC.toUByte(), seq++, bytes)
+                    engine.sendCallAudioData(peer, STREAM_MIC.toUByte(), seq++, bytes)
                     failures = 0
                 } catch (e: Exception) {
                     if (++failures > 200) break
