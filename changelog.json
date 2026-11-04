@@ -1,27 +1,95 @@
 [
   {
+    "version": "0.2.92",
+    "date": "2026-11-04",
+    "en": {
+      "title": "Call audio routing buttons",
+      "new": [
+        "Move here and Back to phone: route the voice link of a call between phone and Mac",
+        "Clear logs for testing on real devices"
+      ]
+    },
+    "nl": {
+      "title": "Knoppen voor belgeluid",
+      "new": [
+        "Move here en Back to phone: het geluid van een gesprek tussen telefoon en Mac verplaatsen",
+        "Duidige logs om te testen op echte apparaten"
+      ]
+    }
+  },
+  {
     "version": "0.2.91",
     "date": "2026-11-04",
-    "en": { "title": "Updates work again", "new": ["Phone and Mac find new versions again", "Move here and Back to phone are gone: the sound of a call stays on the phone"] },
-    "nl": { "title": "Updates werken weer", "new": ["Telefoon en Mac vinden weer nieuwe versies", "Move here en Back to phone zijn weg: het geluid van een gesprek blijft op de telefoon"] }
+    "en": {
+      "title": "Updates work again",
+      "new": [
+        "Phone and Mac find new versions again",
+        "Move here and Back to phone are gone: the sound of a call stays on the phone"
+      ]
+    },
+    "nl": {
+      "title": "Updates werken weer",
+      "new": [
+        "Telefoon en Mac vinden weer nieuwe versies",
+        "Move here en Back to phone zijn weg: het geluid van een gesprek blijft op de telefoon"
+      ]
+    }
   },
   {
     "version": "0.2.89",
     "date": "2026-11-04",
-    "en": { "title": "The Mac builds again", "new": ["The Mac app is back in the release"] },
-    "nl": { "title": "De Mac bouwt weer", "new": ["De Mac-app zit weer in de release"] }
+    "en": {
+      "title": "The Mac builds again",
+      "new": [
+        "The Mac app is back in the release"
+      ]
+    },
+    "nl": {
+      "title": "De Mac bouwt weer",
+      "new": [
+        "De Mac-app zit weer in de release"
+      ]
+    }
   },
   {
     "version": "0.2.86",
     "date": "2026-11-04",
-    "en": { "title": "Far less battery", "new": ["A phone no longer searches for devices over mobile data, which kept its radio awake", "Devices that are away are tried less often, and fewer of their old addresses", "A device that wakes or changes network says so, and connects at once", "The Mac and Linux look at permissions, the clipboard and the lock less often when nobody is there"] },
-    "nl": { "title": "Veel minder accu", "new": ["Een telefoon zoekt niet meer naar apparaten over mobiele data, wat de radio wakker hield", "Apparaten die weg zijn worden minder vaak geprobeerd, en minder van hun oude adressen", "Een apparaat dat wakker wordt of van netwerk wisselt meldt zich, en verbindt meteen", "De Mac en Linux kijken minder vaak naar rechten, klembord en vergrendeling als er niemand is"] }
+    "en": {
+      "title": "Far less battery",
+      "new": [
+        "A phone no longer searches for devices over mobile data, which kept its radio awake",
+        "Devices that are away are tried less often, and fewer of their old addresses",
+        "A device that wakes or changes network says so, and connects at once",
+        "The Mac and Linux look at permissions, the clipboard and the lock less often when nobody is there"
+      ]
+    },
+    "nl": {
+      "title": "Veel minder accu",
+      "new": [
+        "Een telefoon zoekt niet meer naar apparaten over mobiele data, wat de radio wakker hield",
+        "Apparaten die weg zijn worden minder vaak geprobeerd, en minder van hun oude adressen",
+        "Een apparaat dat wakker wordt of van netwerk wisselt meldt zich, en verbindt meteen",
+        "De Mac en Linux kijken minder vaak naar rechten, klembord en vergrendeling als er niemand is"
+      ]
+    }
   },
   {
     "version": "0.2.85",
     "date": "2026-11-04",
-    "en": { "title": "Hotspot seen, and left", "new": ["The panel shows when the Mac is on your hotspot, also when macOS hides the network's name", "The Mac moves from your hotspot to a network it knows, unless you asked for the hotspot with the button"] },
-    "nl": { "title": "Hotspot gezien, en verlaten", "new": ["Het paneel laat zien wanneer de Mac op je hotspot zit, ook als macOS de netwerknaam verbergt", "De Mac stapt van je hotspot over naar een netwerk dat hij kent, tenzij je de hotspot met de knop aanvroeg"] }
+    "en": {
+      "title": "Hotspot seen, and left",
+      "new": [
+        "The panel shows when the Mac is on your hotspot, also when macOS hides the network's name",
+        "The Mac moves from your hotspot to a network it knows, unless you asked for the hotspot with the button"
+      ]
+    },
+    "nl": {
+      "title": "Hotspot gezien, en verlaten",
+      "new": [
+        "Het paneel laat zien wanneer de Mac op je hotspot zit, ook als macOS de netwerknaam verbergt",
+        "De Mac stapt van je hotspot over naar een netwerk dat hij kent, tenzij je de hotspot met de knop aanvroeg"
+      ]
+    }
   },
   {
     "version": "0.2.84",
