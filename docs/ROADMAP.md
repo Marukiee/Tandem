@@ -343,6 +343,11 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
 
 ## 0. Eerst op echte toestellen bekijken (kost weinig, voorkomt bouwen op zand)
 
+- **Android: knoppen onderin doen niets na koppelen via een link** (gevonden 2026-11-05): een `tandem://`-link opende een tweede
+  `MainActivity` bovenop de eerste. Daarna deden de tabs onderin soms niets en kwam bij een tweede tik alleen het toetsenbord omhoog,
+  tot de app opnieuw startte. Op de emulator bij 4 van de 8 pogingen, afhankelijk van de timing. Opgelost met
+  `launchMode="singleTask"`: 0 van de 10 pogingen, en je komt na het koppelen terug waar je was. Staat op `main` voor de volgende versie.
+  Nog zien op de echte telefoon: koppelen door een QR-code te scannen met de camera-app, en een link uit een andere app openen.
 - Je Mac bedienen vanuit Android, van begin tot eind (Schermopname en Toegankelijkheid, herstart na
   toestemming, prompt op de Mac, aanraken, slepen, scrollen, opnieuw verbinden).
 - Telefoonscherm en telefooncamera in een Mac-venster (toestemmingsdialoog van Android, de encoder
