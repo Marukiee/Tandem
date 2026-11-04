@@ -164,6 +164,7 @@ fn offer_network(app: &AppHandle, from: &str, network: &TandemWifiNetwork) {
         allow: i18n::t(app, "wifi_join"),
         always: String::new(),
         deny: i18n::t(app, "wifi_not_now"),
+        remember: String::new(),
         control: false,
     };
     if crate::ask::ask(app, question) == Answer::Deny {
@@ -277,6 +278,7 @@ fn offered(app: &AppHandle, from: &str, network: &TandemWifiNetwork, password: &
         allow: i18n::t(app, "wifi_join"),
         always: String::new(),
         deny: i18n::t(app, "wifi_not_now"),
+        remember: String::new(),
         control: false,
     };
     if crate::ask::ask(app, question) == Answer::Deny {

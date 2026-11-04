@@ -10,7 +10,8 @@ import { t } from "./i18n.js";
 const AWAY = 0.45;
 
 /** Green, yellow under 20, red under 10. On the charger it is green whatever its level: it is getting better. */
-export function tint(level, charging) {
+export function tint(level, charging, away) {
+  if (away) return "var(--text-3)";
   if (charging) return "var(--ok)";
   if (level < 10) return "var(--bad)";
   if (level < 20) return "var(--batt-low)";
@@ -63,7 +64,7 @@ function Ring({ item, size, onOpen, wide }) {
     <span class="batt-ring" style=${`width:${size}px;height:${size}px`}>
       <svg width=${size} height=${size}>
         <circle cx=${size / 2} cy=${size / 2} r=${r} fill="none" stroke="var(--line-strong)" stroke-width=${stroke} />
-        <circle cx=${size / 2} cy=${size / 2} r=${r} fill="none" stroke=${tint(item.level, item.charging)} stroke-width=${stroke} stroke-linecap="round"
+        <circle cx=${size / 2} cy=${size / 2} r=${r} fill="none" stroke=${tint(item.level, item.charging, item.away)} stroke-width=${stroke} stroke-linecap="round"
           stroke-dasharray=${`${c * arc} ${c}`} style="transition: stroke-dasharray 0.8s cubic-bezier(0.2, 0.9, 0.3, 1), stroke 0.45s ease" />
       </svg>
       <svg class=${"batt-shape" + (item.playing ? " on" : "")} width=${shape} height=${shape} aria-hidden="true"><path d=${cookie(shape)} /></svg>

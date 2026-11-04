@@ -981,7 +981,8 @@
 "Play the sound of %@ on your headphones?" = "Het geluid van %@ op je koptelefoon?";
 "Your headphones are in. The sound can play here instead of there." = "Je koptelefoon is aangesloten. Het geluid kan hier spelen in plaats van daar.";
 "Play here" = "Hier afspelen";
-"Always here" = "Altijd hier";
+"Don't ask again for this device" = "Niet meer vragen voor dit apparaat";
+"Ask again for all devices" = "Weer vragen voor alle apparaten";
 "Leave it there" = "Daar laten";
 
 /* Files carried under the pointer */

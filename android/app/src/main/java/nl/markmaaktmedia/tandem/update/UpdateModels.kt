@@ -45,6 +45,22 @@ sealed interface UpdateState {
  */
 object VersionComparator {
 
+    /**
+     * The newest release that has [file]. A release can stand there without it, while it is being built or because its
+     * build failed. That is no news, and it must not hide the release before it.
+     */
+    fun newest(releases: org.json.JSONArray, file: String): org.json.JSONObject? {
+        var newest: org.json.JSONObject? = null
+        for (i in 0 until releases.length()) {
+            val release = releases.getJSONObject(i)
+            if (release.optBoolean("draft") || release.optBoolean("prerelease")) continue
+            val assets = release.optJSONArray("assets") ?: continue
+            if ((0 until assets.length()).none { assets.getJSONObject(it).optString("name") == file }) continue
+            if (newest == null || isNewer(release.optString("tag_name"), newest.optString("tag_name"))) newest = release
+        }
+        return newest
+    }
+
     fun isNewer(candidate: String, current: String): Boolean =
         compare(candidate, current) > 0
 

@@ -73,12 +73,10 @@ final class PhoneSound {
         if PhoneMicrophone.shared.started(from: id, stream: stream, sampleRate: sampleRate, channels: channels) { return }
         // The sound of a screen this Mac looks at and asked for plays also when sound from other devices is off.
         guard enabled || ScreenSound.asked.contains(id), engineModel.speaker.device != id else {
-            print("[PhoneSound] start refused: enabled=\(enabled) speakerDevice=\(engineModel.speaker.device ?? "none") streamTarget=\(id)")
             Task { try? await engineModel.tandem?.sendAudioStop(target: id, stream: stream) }
             return
         }
         let again = players[id] != nil
-        print("[PhoneSound] start: from=\(id) name=\(name) stream=\(stream) rate=\(sampleRate) channels=\(channels) again=\(again)")
         stopEngine(id)
         let channelCount = AVAudioChannelCount(max(1, min(2, Int(channels))))
         guard let format = AVAudioFormat(standardFormatWithSampleRate: Double(sampleRate), channels: channelCount) else { return }
@@ -97,7 +95,6 @@ final class PhoneSound {
         do {
             try created.start()
         } catch {
-            print("[PhoneSound] engine start failed: \(error)")
             Task { try? await engineModel.tandem?.sendAudioStop(target: id, stream: stream) }
             return
         }
@@ -109,8 +106,7 @@ final class PhoneSound {
 
     /// The device went away, or the person turned this off.
     func stop(device id: String, tell: Bool = false) {
-        guard let player = players[id] else { print("[PhoneSound] stop: no player for \(id)"); return }
-        print("[PhoneSound] stop: from=\(id) stream=\(player.stream) tell=\(tell)")
+        guard let player = players[id] else { return }
         stopEngine(id)
         if tell, let model = EngineModel.shared.tandem {
             Task { try? await model.sendAudioStop(target: id, stream: player.stream) }
@@ -119,12 +115,8 @@ final class PhoneSound {
 
     /// The device stopped sending `stream`. A stop of another stream of the same device is about something else.
     func stopped(device id: String, stream: UInt8) {
-        print("[PhoneSound] stopped: from=\(id) stream=\(stream)")
         if PhoneMicrophone.shared.stopped(from: id, stream: stream) { return }
-        guard players[id]?.stream == stream else {
-            print("[PhoneSound] stopped: stream mismatch (expected \(players[id]?.stream ?? 0), got \(stream))")
-            return
-        }
+        guard players[id]?.stream == stream else { return }
         stopEngine(id)
     }
 

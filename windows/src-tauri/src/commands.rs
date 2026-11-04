@@ -434,6 +434,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["screenSoundAsk"].as_bool() {
             current.screen_sound_ask = v;
         }
+        if patch["screenSoundForget"].as_bool() == Some(true) {
+            current.screen_sound_devices.clear();
+        }
         if let Some(v) = patch["pointerShare"].as_bool() {
             if v && !current.pointer_share {
                 crate::side::mouse_turned_on(&app);

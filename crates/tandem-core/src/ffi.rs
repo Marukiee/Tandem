@@ -690,10 +690,6 @@ pub enum TandemCallAction {
     Hangup,
     RejectWithMessage { message: String },
     MuteMic,
-    /// Routes the voice link of a call from the phone to this device.
-    MoveToMac,
-    /// Sends the voice link back to the phone.
-    MoveBack,
 }
 
 impl From<CallActionKind> for TandemCallAction {
@@ -705,8 +701,6 @@ impl From<CallActionKind> for TandemCallAction {
             CallActionKind::Hangup => TandemCallAction::Hangup,
             CallActionKind::RejectWithMessage(message) => TandemCallAction::RejectWithMessage { message },
             CallActionKind::MuteMic => TandemCallAction::MuteMic,
-            CallActionKind::MoveToMac => TandemCallAction::MoveToMac,
-            CallActionKind::MoveBack => TandemCallAction::MoveBack,
         }
     }
 }
@@ -720,8 +714,6 @@ impl From<TandemCallAction> for CallActionKind {
             TandemCallAction::Hangup => CallActionKind::Hangup,
             TandemCallAction::RejectWithMessage { message } => CallActionKind::RejectWithMessage(message),
             TandemCallAction::MuteMic => CallActionKind::MuteMic,
-            TandemCallAction::MoveToMac => CallActionKind::MoveToMac,
-            TandemCallAction::MoveBack => CallActionKind::MoveBack,
         }
     }
 }

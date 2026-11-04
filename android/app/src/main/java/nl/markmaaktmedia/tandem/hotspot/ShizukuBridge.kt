@@ -124,13 +124,6 @@ class ShizukuBridge(private val context: Context) {
         return runCatching { context.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
     }
 
-    /** Who Shizuku runs as: 0 for root, 2000 for the shell, null when it is not running. */
-    fun serverUid(): Int? = try {
-        if (Shizuku.pingBinder()) Shizuku.getUid() else null
-    } catch (_: Throwable) {
-        null
-    }
-
     // ---- Calls -----------------------------------------------------------------
 
     suspend fun start(): ShellResult = call(ShellUserService.TX_START)
@@ -156,14 +149,12 @@ class ShizukuBridge(private val context: Context) {
     suspend fun clipboardMessage(show: Boolean?): ShellResult =
         call(ShellUserService.TX_CLIP_MESSAGE) { it.writeInt(when (show) { true -> 1; false -> 0; null -> -1 }) }
 
-    /** Start capturing the voice link via CAPTURE_AUDIO_OUTPUT. */
-    suspend fun captureAudioStart(): ShellResult = call(ShellUserService.TX_CAPTURE_AUDIO_START)
-
-    /** Stop the voice link capture and return audio to the phone's speakers. */
-    suspend fun captureAudioStop(): ShellResult = call(ShellUserService.TX_CAPTURE_AUDIO_STOP)
-
-    /** Send playback audio data back to the phone (Mac microphone route). */
-    suspend fun playbackAudio(data: ByteArray): ShellResult = call(ShellUserService.TX_PLAYBACK_AUDIO) { it.writeByteArray(data) }
+    /** Who Shizuku runs as: 0 for root, 2000 for the shell, null when it is not running. */
+    fun serverUid(): Int? = try {
+        if (Shizuku.pingBinder()) Shizuku.getUid() else null
+    } catch (_: Throwable) {
+        null
+    }
 
     private suspend fun call(code: Int, write: (Parcel) -> Unit = {}): ShellResult = withContext(Dispatchers.IO) {
         if (refresh() != ShizukuState.Ready) return@withContext ShellResult(false, "Shizuku is not ready")

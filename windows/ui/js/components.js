@@ -64,13 +64,13 @@ function useCountUp(target, ms = 520) {
 
 /** The battery as a ring. The arc only closes at 100, and a bolt (not a word) says it is charging. Everything that changes moves: the arc
  *  runs, the colour fades, the number counts, and the bolt grows in (or out) and takes the number with it. */
-export function BatteryRing({ battery, size = 66 }) {
+export function BatteryRing({ battery, size = 66, connected = true }) {
   const level = battery.level;
   const stroke = size * 0.11;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const arc = level >= 100 ? 1 : (level / 100) * 0.945;
-  const colour = battery.charging ? "var(--ok)" : level <= 15 ? "var(--bad)" : "var(--accent)";
+  const colour = !connected ? "var(--text-3)" : battery.charging ? "var(--ok)" : level <= 15 ? "var(--bad)" : "var(--accent)";
   const shown = useCountUp(level);
   return html`<div class="ring" style=${`width:${size}px;height:${size}px`} title=${t("battery") + " " + level + "%"}>
     <svg width=${size} height=${size}>
@@ -80,7 +80,7 @@ export function BatteryRing({ battery, size = 66 }) {
     </svg>
     <div class="mid">
       <span class="num" style=${`font-size:${size * 0.29}px`}>${shown}</span>
-      <span class=${"bolt-wrap" + (battery.charging ? " on" : "")} style=${`--h:${size * 0.2}px`}>
+      <span class=${"bolt-wrap" + (battery.charging && connected ? " on" : "")} style=${`--h:${size * 0.2}px`}>
         <${Icon} name="bolt" size=${size * 0.2} class="bolt" filled=${true} stroke=${1.5} />
       </span>
     </div>

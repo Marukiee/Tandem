@@ -14,6 +14,8 @@ pub enum Answer {
     Allow,
     Always,
     Deny,
+    /// A no with the box "don't ask again" ticked. Only a question with a `remember` text gets this answer.
+    Never,
 }
 
 /// What the card says. The words are made here, in the language of the app, so the page has nothing to translate.
@@ -25,6 +27,8 @@ pub struct Question {
     pub allow: String,
     pub always: String,
     pub deny: String,
+    /// The text of a box that makes this answer stick. Empty: no box.
+    pub remember: String,
     /// The mouse and keyboard are asked for too.
     pub control: bool,
 }
@@ -80,13 +84,15 @@ pub fn ask_state() -> Vec<Question> {
 }
 
 #[tauri::command]
-pub fn ask_answer(id: u64, answer: String) {
-    let answer = match answer.as_str() {
-        "allow" => Answer::Allow,
-        "always" => Answer::Always,
-        _ => Answer::Deny,
-    };
-    if let Some((_, tx)) = PENDING.lock().unwrap().iter().find(|(q, _)| q.id == id) {
+pub fn ask_answer(id: u64, answer: String, remember: Option<bool>) {
+    if let Some((question, tx)) = PENDING.lock().unwrap().iter().find(|(q, _)| q.id == id) {
+        let remember = remember.unwrap_or(false) && !question.remember.is_empty();
+        let answer = match (answer.as_str(), remember) {
+            ("always", _) | ("allow", true) => Answer::Always,
+            ("allow", false) => Answer::Allow,
+            (_, true) => Answer::Never,
+            _ => Answer::Deny,
+        };
         let _ = tx.send(answer);
     }
 }

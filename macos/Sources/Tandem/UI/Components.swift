@@ -618,11 +618,14 @@ enum DeviceIconChoice: CaseIterable {
 struct BatteryRing: View {
     let battery: TandemBattery
     var size: CGFloat = 64
+    /// Not connected: the level is what it last said, so it is grey and does not say it charges.
+    var connected = true
     /// False until it is on screen: the ring then fills from nothing and the number counts up, so a device that connects again
     /// brings its battery in, instead of a full ring that is suddenly there.
     @LocalState private var shown = false
 
     private var tint: Color {
+        if !connected { return .gray }
         if battery.charging { return .green }
         if battery.level <= 15 { return Palette.urgent }
         return Palette.indigo
@@ -648,7 +651,7 @@ struct BatteryRing: View {
                     .font(.system(size: size * 0.28, weight: .bold, design: .rounded))
                     .contentTransition(.numericText(value: Double(shown ? battery.level : 0)))
                     .animation(.tandem, value: battery.level)
-                if battery.charging {
+                if battery.charging && connected {
                     PulsingSymbol(name: "bolt.fill", pointSize: size * 0.16, color: .systemGreen)
                         .frame(width: size * 0.2, height: size * 0.2)
                 }

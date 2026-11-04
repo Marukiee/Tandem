@@ -46,7 +46,8 @@
     <string name="screen_sound_title">Het geluid van %1$s op je koptelefoon?</string>
     <string name="screen_sound_body">Je koptelefoon is aangesloten. Het geluid kan hier spelen in plaats van daar.</string>
     <string name="screen_sound_here">Hier afspelen</string>
-    <string name="screen_sound_always">Altijd hier afspelen</string>
+    <string name="screen_sound_remember">Niet meer vragen voor dit apparaat</string>
+    <string name="screen_sound_forget">Weer vragen voor alle apparaten</string>
     <string name="screen_sound_there">Daar laten</string>
     <string name="screen_sound_request_title">%1$s wil het geluid van deze telefoon</string>
     <string name="screen_sound_request_text">Tik om het te delen, samen met het scherm</string>

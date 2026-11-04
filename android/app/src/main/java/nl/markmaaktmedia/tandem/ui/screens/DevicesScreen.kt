@@ -266,7 +266,7 @@ fun DeviceCard(
             if (pinned) {
                 Icon(TandemIcons.Pin, stringResource(R.string.device_pinned), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
             }
-            ArrivingBattery(device.status.battery) { BatteryBadge(it) }
+            ArrivingBattery(device.status.battery) { BatteryBadge(it, connected = device.online) }
         }
 
         BatchStrip(device.id)
@@ -345,7 +345,7 @@ private fun CompactDeviceCard(
             DeviceGlyph(device.platform, device.online, size = 44.dp, deviceId = device.id)
             Spacer(Modifier.weight(1f))
             if (pinned) Icon(TandemIcons.Pin, stringResource(R.string.device_pinned), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-            ArrivingBattery(device.status.battery) { BatteryBadge(it) }
+            ArrivingBattery(device.status.battery) { BatteryBadge(it, connected = device.online) }
         }
         BatchStrip(device.id)
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {

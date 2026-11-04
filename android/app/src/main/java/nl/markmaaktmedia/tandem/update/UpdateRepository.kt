@@ -23,6 +23,7 @@ import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.engine.Channels
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
@@ -94,14 +95,14 @@ class UpdateRepository(
         _state.value = UpdateState.Idle
     }
 
-    /** The feed answered 404: nothing has been published yet, which is not a failure. */
+    /** The feed answered, without a release this app can install, which is not a failure. */
     @Volatile
     private var noReleaseYet = false
 
     private suspend fun fetchLatest(): ReleaseInfo? = withContext(Dispatchers.IO) {
         noReleaseYet = false
         val request = Request.Builder()
-            .url("https://api.github.com/repos/${BuildConfig.GITHUB_OWNER}/${BuildConfig.GITHUB_REPO}/releases/latest")
+            .url("https://api.github.com/repos/${BuildConfig.GITHUB_OWNER}/${BuildConfig.GITHUB_REPO}/releases?per_page=10")
             .header("Accept", "application/vnd.github+json")
             .header("X-GitHub-Api-Version", "2022-11-28")
             .header("User-Agent", "Tandem/${BuildConfig.VERSION_NAME}")
@@ -110,9 +111,12 @@ class UpdateRepository(
             client.newCall(request).execute().use { response ->
                 if (response.code == 404) noReleaseYet = true
                 if (!response.isSuccessful) return@use null
-                val root = JSONObject(response.body?.string().orEmpty())
+                val root = VersionComparator.newest(JSONArray(response.body?.string().orEmpty()), APK_NAME)
+                if (root == null) {
+                    noReleaseYet = true
+                    return@use null
+                }
                 val tag = root.optString("tag_name")
-                if (tag.isBlank()) return@use null
                 val assets = root.optJSONArray("assets")
                 var apk: JSONObject? = null
                 var sha: String? = null
@@ -121,13 +125,6 @@ class UpdateRepository(
                     val name = asset.optString("name")
                     if (name == APK_NAME) apk = asset
                     if (name == "$APK_NAME.sha256") sha = asset.optString("browser_download_url")
-                }
-                // Fall back to any APK, so a differently named asset still works.
-                if (apk == null) {
-                    for (i in 0 until (assets?.length() ?: 0)) {
-                        val asset = assets!!.getJSONObject(i)
-                        if (asset.optString("name").endsWith(".apk", ignoreCase = true)) { apk = asset; break }
-                    }
                 }
                 ReleaseInfo(
                     tag = tag,

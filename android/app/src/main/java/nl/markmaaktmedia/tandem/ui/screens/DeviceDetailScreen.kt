@@ -123,7 +123,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    nl.markmaaktmedia.tandem.ui.components.ArrivingBattery(device.status.battery) { BatteryRing(it, size = 68.dp) }
+                    nl.markmaaktmedia.tandem.ui.components.ArrivingBattery(device.status.battery) { BatteryRing(it, size = 68.dp, connected = device.online) }
                 }
                 androidx.compose.animation.AnimatedVisibility(
                     visible = choosingIcon,

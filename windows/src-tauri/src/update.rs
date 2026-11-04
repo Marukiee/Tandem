@@ -19,7 +19,7 @@ use tauri::{AppHandle, Emitter};
 
 use crate::settings;
 
-const LATEST: &str = "https://api.github.com/repos/Marukiee/Tandem/releases/latest";
+const RELEASES: &str = "https://api.github.com/repos/Marukiee/Tandem/releases?per_page=10";
 const DOWNLOADS: &str = "https://github.com/Marukiee/Tandem/releases/download/";
 /// The file of a release that is the program, by system.
 fn installer_name() -> &'static str {
@@ -137,7 +137,7 @@ pub fn check(app: &AppHandle, manual: bool) {
     set(app, State::Checking);
     let current = app.package_info().version.to_string();
     match fetch_latest() {
-        Ok(release) if is_newer(&release.version, &current) => {
+        Ok(Some(release)) if is_newer(&release.version, &current) => {
             log::info!("version {} is out, this is {current}", release.version);
             set(app, State::Available(release));
         }
@@ -153,12 +153,30 @@ pub fn check(app: &AppHandle, manual: bool) {
     }
 }
 
-fn fetch_latest() -> Result<Release, String> {
-    let body = curl(&["--header", "Accept: application/vnd.github+json", LATEST])?;
-    parse_release(&String::from_utf8_lossy(&body))
+fn fetch_latest() -> Result<Option<Release>, String> {
+    let body = curl(&["--header", "Accept: application/vnd.github+json", RELEASES])?;
+    newest_release(&String::from_utf8_lossy(&body))
 }
 
-/// The release feed, reduced to what the updater needs.
+/// The newest release with a download for this system. A release can stand there without it, while it is being built or because its
+/// build failed. That is no news, and it must not hide the release before it.
+pub fn newest_release(json: &str) -> Result<Option<Release>, String> {
+    let root: Value = serde_json::from_str(json).map_err(|e| format!("the release feed is not readable: {e}"))?;
+    let releases = root.as_array().ok_or("the release feed is not a list")?;
+    let mut newest: Option<Release> = None;
+    for release in releases {
+        if release["draft"].as_bool() == Some(true) || release["prerelease"].as_bool() == Some(true) {
+            continue;
+        }
+        let Ok(found) = parse_release(&release.to_string()) else { continue };
+        if newest.as_ref().map_or(true, |best| is_newer(&found.version, &best.version)) {
+            newest = Some(found);
+        }
+    }
+    Ok(newest)
+}
+
+/// One release of the feed, reduced to what the updater needs.
 pub fn parse_release(json: &str) -> Result<Release, String> {
     let root: Value = serde_json::from_str(json).map_err(|e| format!("the release feed is not readable: {e}"))?;
     let tag = root["tag_name"].as_str().filter(|t| !t.is_empty()).ok_or("the release feed has no version")?;
@@ -474,6 +492,28 @@ mod tests {
         let feed = r#"{ "tag_name": "v0.2.0", "assets": [ { "name": "Tandem.apk", "browser_download_url": "https://github.com/Marukiee/Tandem/releases/download/v0.2.0/Tandem.apk" } ] }"#;
         assert!(parse_release(feed).is_err());
         assert!(parse_release("not json").is_err());
+    }
+
+    /// v0.2.92 stood on GitHub as the newest without the files of a release, and hid v0.2.91.
+    #[test]
+    fn a_release_without_a_download_does_not_hide_the_one_before() {
+        let name = installer_name();
+        let usable = |tag: &str, extra: &str| {
+            format!(r#"{{ "tag_name": "{tag}", "assets": [ {{ "name": "{name}", "browser_download_url": "https://github.com/Marukiee/Tandem/releases/download/{tag}/{name}" }} ]{extra} }}"#)
+        };
+        let unfinished = r#"{ "tag_name": "v0.2.92", "assets": [ { "name": "app-debug.apk", "browser_download_url": "https://github.com/Marukiee/Tandem/releases/download/v0.2.92/app-debug.apk" } ] }"#;
+        let list = [
+            unfinished.to_string(),
+            usable("linux-preview", r#", "prerelease": true"#),
+            usable("v0.2.95", r#", "draft": true"#),
+            usable("v0.2.90", ""),
+            usable("v0.2.91", ""),
+        ]
+        .join(",");
+        let newest = newest_release(&format!("[{list}]")).unwrap().unwrap();
+        assert_eq!(newest.version, "0.2.91");
+        assert!(newest_release("[]").unwrap().is_none());
+        assert!(newest_release("not json").is_err());
     }
 
     #[test]

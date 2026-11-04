@@ -30,8 +30,9 @@ object ScreenSound {
     fun viewStarted(context: Context, peer: String) {
         val graph = context.graph
         graph.scope.launch {
-            if (graph.prefs.screenSound.first() == "here") ask(context, peer, true)
-            else if (graph.prefs.screenSoundAsk.first() && headphones(context)) question.value = peer
+            val own = graph.prefs.screenSoundDevices.first()[peer]
+            if ((own ?: graph.prefs.screenSound.first()) == "here") ask(context, peer, true)
+            else if (own == null && graph.prefs.screenSoundAsk.first() && headphones(context)) question.value = peer
         }
     }
 

@@ -251,7 +251,7 @@ export function DevicePage({ device }) {
           <div class="chips">${deviceChips(device)}</div>
           ${!device.online && html`<div class="small muted">${t("reconnecting")}</div>`}
         </div>
-        ${battery && html`<${BatteryRing} battery=${battery} size=${72} />`}
+        ${battery && html`<${BatteryRing} battery=${battery} size=${72} connected=${device.online} />`}
       </div>
       <${HeadPlayers} device=${device} players=${players} />
     </div>
@@ -1070,6 +1070,9 @@ function RemoteSettings({ s, patch }) {
       <//>
       <${SettingRow} icon="volume" title=${t("screen_sound_ask")} sub=${t("screen_sound_ask_sub")} on=${s.screenSoundAsk !== false}
         disabled=${s.screenSound === "here"} onChange=${(v) => patch({ screenSoundAsk: v })} />
+      ${Object.keys(s.screenSoundDevices || {}).length > 0 && html`<${SettingRow} icon="volume" title=${t("screen_sound_forget")}>
+        <button class="btn" onClick=${() => patch({ screenSoundForget: true })}>${t("screen_sound_forget_button")}</button>
+      <//>`}
     </div>
     ${state.canHost && html`<h2>${t("remote_per_device")}</h2>`}
     ${!state.canHost ? null : people.length === 0

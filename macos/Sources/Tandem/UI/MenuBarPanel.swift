@@ -281,7 +281,7 @@ private struct MenuDeviceRow: View {
                                     .transition(.opacity)
                             }
                             if let battery = device.status.battery {
-                                Image(systemName: batterySymbol(battery)).font(.caption2).foregroundStyle(.secondary)
+                                Image(systemName: batterySymbol(battery, online: device.online)).font(.caption2).foregroundStyle(.secondary)
                                 Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                             }
                             if device.online, let rtt = device.rttMs {
@@ -401,8 +401,8 @@ private struct MenuDeviceRow: View {
         SideWatch.shared.moved(device.id)
     }
 
-    private func batterySymbol(_ battery: TandemBattery) -> String {
-        if battery.charging { return "battery.100percent.bolt" }
+    private func batterySymbol(_ battery: TandemBattery, online: Bool) -> String {
+        if battery.charging && online { return "battery.100percent.bolt" }
         switch battery.level {
         case ..<13: return "battery.0percent"
         case ..<38: return "battery.25percent"

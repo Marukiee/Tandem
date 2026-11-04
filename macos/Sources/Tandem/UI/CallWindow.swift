@@ -159,17 +159,6 @@ final class CallWindow {
     // MARK: Buttons
 
     func act(_ card: CallCard, _ action: TandemCallAction) {
-        let label = switch action {
-        case .answer: "Answer"
-        case .reject: "Reject"
-        case .silence: "Silence"
-        case .hangup: "Hang up"
-        case .muteMic: "Mute mic"
-        case .moveToMac: "Move to Mac"
-        case .moveBack: "Back to phone"
-        case .rejectWithMessage: "Reject with message"
-        }
-        print("[CallWindow] \(label) -> device=\(card.device) call=\(card.call)")
         onAction?(card.device, card.call, action)
         switch action {
         case .reject, .hangup, .rejectWithMessage:
@@ -181,9 +170,6 @@ final class CallWindow {
         case .answer, .silence, .muteMic:
             // The card changes when the phone says what happened, so it never shows a mute that did not take.
             break
-        case .moveToMac, .moveBack:
-            // These are fire-and-forget; the phone handles them and reports back.
-            print("[CallWindow] \(action == .moveToMac ? "Move call audio to this Mac" : "Send call audio back to phone") -> peer=\(card.device) call=\(card.call)")
         }
     }
 
@@ -448,17 +434,6 @@ private struct CallCardView: View {
                     symbol: card.muted ? "mic.slash.fill" : "mic.fill",
                     color: Color(nsColor: card.muted ? .systemOrange : .systemGray)
                 ) { act(.muteMic) }
-                // Call audio routing buttons. Shown when the call can send its voice link to this Mac.
-                RoundCallButton(
-                    label: "Move here",
-                    symbol: "arrow.right.circle",
-                    color: Color(nsColor: .systemBlue)
-                ) { act(.moveToMac) }
-                RoundCallButton(
-                    label: "Back to phone",
-                    symbol: "arrow.left.circle",
-                    color: Color(nsColor: .systemGray)
-                ) { act(.moveBack) }
             case .missed:
                 EmptyView()
             }

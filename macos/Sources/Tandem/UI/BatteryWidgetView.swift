@@ -53,7 +53,9 @@ enum BatteryWidgetStyle {
     static let awayOpacity = 0.4
 
     /// A battery on the charger is green whatever its level, as on iOS: it is getting better.
-    static func tint(level: Int, charging: Bool) -> Color {
+    static func tint(level: Int, charging: Bool, away: Bool = false) -> Color {
+        // What a device that is away last said is not its color now.
+        if away { return .gray }
         if charging { return .green }
         if level < 10 { return .red }
         if level < 20 { return .yellow }
@@ -81,7 +83,7 @@ struct BatteryWidgetRing: View {
             Circle().stroke(BatteryWidgetStyle.track, lineWidth: line)
             Circle()
                 .trim(from: 0, to: BatteryWidgetStyle.arc(device.level))
-                .stroke(BatteryWidgetStyle.tint(level: device.level, charging: device.charging), style: StrokeStyle(lineWidth: line, lineCap: .round))
+                .stroke(BatteryWidgetStyle.tint(level: device.level, charging: device.charging, away: device.away), style: StrokeStyle(lineWidth: line, lineCap: .round))
                 .rotationEffect(.degrees(-90))
             // Green on the charger, as the system's own widget shows it.
             Image(systemName: device.symbol)

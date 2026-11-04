@@ -76,6 +76,8 @@ pub struct Settings {
     pub screen_sound: String,
     /// With "there": ask, when headphones are in, whether it should come here this time.
     pub screen_sound_ask: bool,
+    /// The answers given with "Don't ask again", per device: "here" or "there". They go before the choice for all devices.
+    pub screen_sound_devices: std::collections::HashMap<String, String>,
     /// The shared mouse: the pointer goes over to the screens that are arranged next to this one. Off keeps the arrangement.
     pub pointer_share: bool,
     /// "Send with Tandem" in the menus of the file manager (see `sendwith.rs`).
@@ -146,6 +148,7 @@ impl Default for Settings {
             sound_delay: "normal".into(),
             screen_sound: "there".into(),
             screen_sound_ask: true,
+            screen_sound_devices: Default::default(),
             pointer_share: true,
             file_manager_send: true,
             contacts_search: true,

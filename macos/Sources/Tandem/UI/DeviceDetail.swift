@@ -141,7 +141,7 @@ struct DeviceDetail: View {
                     Spacer(minLength: 0)
 
                     if let battery = device.status.battery {
-                        BatteryRing(battery: battery, size: 74)
+                        BatteryRing(battery: battery, size: 74, connected: device.online)
                             .transition(.scale.combined(with: .opacity))
                     }
                 }

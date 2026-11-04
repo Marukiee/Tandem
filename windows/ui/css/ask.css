@@ -4,3 +4,4 @@ body.ask .qs-head { align-items: flex-start; }
 body.ask .qs-icon { margin-top: 2px; }
 body.ask .qs-buttons { justify-content: flex-end; flex-wrap: wrap; }
 body.ask .qs-buttons .quiet { margin-right: auto; }
+body.ask .ask-remember { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: 10px; cursor: pointer; }

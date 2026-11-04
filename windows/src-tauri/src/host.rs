@@ -460,7 +460,7 @@ impl TandemMediaHost for Host {
             };
             let (allow, always, deny) = (i18n::t(&this.app, "host_allow"), i18n::t(&this.app, "host_always"), i18n::t(&this.app, "host_deny"));
             let title = i18n::t1(&this.app, if request.extend { "host_ask_extend_title" } else { "host_ask_title" }, &name);
-            let question = crate::ask::Question { id: 0, title, body, allow, always, deny, control: wants_control };
+            let question = crate::ask::Question { id: 0, title, body, allow, always, deny, remember: String::new(), control: wants_control };
             let answer = crate::ask::ask(&this.app, question);
             let remembered = answer == crate::ask::Answer::Always;
             let allowed = answer != crate::ask::Answer::Deny;

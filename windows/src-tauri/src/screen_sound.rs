@@ -36,11 +36,12 @@ fn ask_for(app: &AppHandle, peer: &str, on: bool) {
 /// the person says so.
 pub fn view_started(app: &AppHandle, peer: String) {
     let chosen = settings::get(app);
-    if chosen.screen_sound == "here" {
+    let own = chosen.screen_sound_devices.get(&peer).cloned();
+    if own.as_deref().unwrap_or(&chosen.screen_sound) == "here" {
         ask_for(app, &peer, true);
         return;
     }
-    if !chosen.screen_sound_ask || !headphones() {
+    if own.is_some() || !chosen.screen_sound_ask || !headphones() {
         return;
     }
     let app = app.clone();
@@ -53,15 +54,23 @@ pub fn view_started(app: &AppHandle, peer: String) {
                 title: i18n::t1(&app, "screen_sound_title", &name),
                 body: i18n::t(&app, "screen_sound_body"),
                 allow: i18n::t(&app, "screen_sound_here"),
-                always: i18n::t(&app, "screen_sound_always"),
+                always: String::new(),
                 deny: i18n::t(&app, "screen_sound_there"),
+                remember: i18n::t(&app, "screen_sound_remember"),
                 control: false,
             };
             match crate::ask::ask(&app, question) {
                 crate::ask::Answer::Allow => ask_for(&app, &peer, true),
                 crate::ask::Answer::Always => {
-                    crate::settings::update(&app, |s| s.screen_sound = "here".into());
+                    crate::settings::update(&app, |s| {
+                        s.screen_sound_devices.insert(peer.clone(), "here".into());
+                    });
                     ask_for(&app, &peer, true);
+                }
+                crate::ask::Answer::Never => {
+                    crate::settings::update(&app, |s| {
+                        s.screen_sound_devices.insert(peer.clone(), "there".into());
+                    });
                 }
                 crate::ask::Answer::Deny => {}
             }

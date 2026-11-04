@@ -11,6 +11,8 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.CancellationException
@@ -357,7 +359,7 @@ private fun HomeTabs(nav: Nav) {
     }
 }
 
-/** With headphones in, when a screen of a computer opens here: play its sound here this time, always, or leave it there. */
+/** With headphones in, when a screen of a computer opens here: play its sound here or leave it there, and whether to remember that for this computer. */
 @Composable
 private fun ScreenSoundQuestion() {
     val context = LocalContext.current
@@ -365,24 +367,30 @@ private fun ScreenSoundQuestion() {
     val peer by sound.question.collectAsState()
     val asking = peer ?: return
     val name = context.graph.host.device(asking)?.name ?: asking
-    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var dontAsk by androidx.compose.runtime.remember(asking) { androidx.compose.runtime.mutableStateOf(false) }
+    // Not a scope of this dialog: answering closes it, and that must not stop the answer from being saved.
+    val answer = { choice: String ->
+        sound.question.value = null
+        if (choice == "here") sound.ask(context, asking, true)
+        if (dontAsk) context.graph.scope.launch { context.graph.prefs.rememberScreenSound(asking, choice) }
+        Unit
+    }
     nl.markmaaktmedia.tandem.ui.components.TandemDialog(
         title = androidx.compose.ui.res.stringResource(R.string.screen_sound_title, name),
         onDismiss = { sound.question.value = null },
         icon = TandemIcons.VolumeUp,
         body = androidx.compose.ui.res.stringResource(R.string.screen_sound_body),
         actions = {
-            nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton(androidx.compose.ui.res.stringResource(R.string.screen_sound_there), { sound.question.value = null })
-            nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton(androidx.compose.ui.res.stringResource(R.string.screen_sound_here), {
-                sound.question.value = null
-                sound.ask(context, asking, true)
-            })
+            nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton(androidx.compose.ui.res.stringResource(R.string.screen_sound_there), { answer("there") })
+            nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton(androidx.compose.ui.res.stringResource(R.string.screen_sound_here), { answer("here") })
         },
     ) {
-        androidx.compose.material3.TextButton(onClick = {
-            sound.question.value = null
-            sound.ask(context, asking, true)
-            scope.launch { context.graph.prefs.setScreenSound("here") }
-        }) { androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(R.string.screen_sound_always)) }
+        androidx.compose.foundation.layout.Row(
+            androidx.compose.ui.Modifier.fillMaxWidth().clickable { dontAsk = !dontAsk },
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            androidx.compose.material3.Checkbox(dontAsk, { dontAsk = it })
+            androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(R.string.screen_sound_remember))
+        }
     }
 }

@@ -253,6 +253,13 @@ struct ScreenSettings: View {
                     )
                 )
                 .disabled(ScreenSound.choice == "here")
+                if !ScreenSound.remembered.isEmpty {
+                    Button("Ask again for all devices") {
+                        UserDefaults.standard.removeObject(forKey: ScreenSound.devicesKey)
+                        tick += 1
+                    }
+                    .buttonStyle(.tandemGlass)
+                }
             }
             Section {
                 DescribedToggle(

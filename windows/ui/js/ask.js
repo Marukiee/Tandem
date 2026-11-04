@@ -8,16 +8,20 @@ import { setLanguage } from "./i18n.js";
 let items = [];
 
 function Card({ item }) {
-  const answer = (value) => call("ask_answer", { id: item.id, answer: value });
+  const answer = (value, event) => {
+    const box = event.currentTarget.closest(".qs-card").querySelector("input[type=checkbox]");
+    call("ask_answer", { id: item.id, answer: value, remember: !!(box && box.checked) });
+  };
   return html`<div class="qs-card">
     <div class="qs-head">
       <div class="qs-icon"><${Icon} name=${item.control ? "pointer" : "device-desktop"} size=${20} /></div>
       <div><div class="qs-title">${item.title}</div><div class="qs-sub">${item.body}</div></div>
     </div>
+    ${item.remember && html`<label class="ask-remember"><input type="checkbox" />${item.remember}</label>`}
     <div class="qs-buttons">
-      <button class="btn quiet" onClick=${() => answer("deny")}>${item.deny}</button>
-      ${item.always && html`<button class="btn" onClick=${() => answer("always")}>${item.always}</button>`}
-      <button class="btn accent" onClick=${() => answer("allow")}>${item.allow}</button>
+      <button class="btn quiet" onClick=${(e) => answer("deny", e)}>${item.deny}</button>
+      ${item.always && html`<button class="btn" onClick=${(e) => answer("always", e)}>${item.always}</button>`}
+      <button class="btn accent" onClick=${(e) => answer("allow", e)}>${item.allow}</button>
     </div>
   </div>`;
 }

@@ -579,8 +579,9 @@ aan macOS zelf vastzitten (Diensten-menu, Controlecentrum, AirDrop-knop).
 
 ## Shizuku/Magisk oplossing voor gespreksgeluid op Mac (2026-11-04)
 
-Niet gebouwd, om de reden bij "Bellen met het geluid op de computer". `CallAudioService` (0.2.87 tot 0.2.90) las geen gespreksgeluid maar de gewone
-microfoon, stopte nooit en is in 0.2.91 weg, samen met de knoppen. Wat hieronder staat is de analyse van toen, geen plan.
+Geparkeerd door Mark op 2026-11-04. Niet gebouwd, om de reden bij "Bellen met het geluid op de computer". `CallAudioService` (0.2.87 tot 0.2.90) las geen gespreksgeluid maar de gewone
+microfoon, stopte nooit en is in 0.2.91 weg, samen met de knoppen. 0.2.92 en 0.2.93 brachten ze terug, met Shizuku-functies die alleen "gelukt" meldden; beide releases zijn niet afgekomen en in 0.2.94 is het weer weg.
+Wat hieronder staat is de analyse van toen, geen plan.
 
 Claude AI analyseerde waarom het spraakkanaal (SCO) niet werkt en of een Shizuku-oplossing haalbaar is.
 

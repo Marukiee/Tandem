@@ -203,7 +203,7 @@ private struct DeviceRow: View {
                 Spacer(minLength: 0)
                 if let battery = device.status.battery {
                     HStack(spacing: 2) {
-                        if battery.charging { Image(systemName: "bolt.fill").font(.caption2).foregroundStyle(.green) }
+                        if battery.charging && device.online { Image(systemName: "bolt.fill").font(.caption2).foregroundStyle(.green) }
                         Text("\(battery.level)%")
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.secondary)

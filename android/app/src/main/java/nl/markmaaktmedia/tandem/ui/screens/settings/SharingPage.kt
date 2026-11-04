@@ -188,7 +188,9 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         SettingsGroup {
             val screenSound by prefs.screenSound.collectAsState(initial = "there")
             val screenSoundAsk by prefs.screenSoundAsk.collectAsState(initial = true)
-            ContentRow(0, 2, TandemIcons.VolumeUp, stringResource(R.string.screen_sound_section)) {
+            val screenSoundDevices by prefs.screenSoundDevices.collectAsState(initial = emptyMap())
+            val screenSoundRows = if (screenSoundDevices.isEmpty()) 2 else 3
+            ContentRow(0, screenSoundRows, TandemIcons.VolumeUp, stringResource(R.string.screen_sound_section)) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.screen_sound_where_sub), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     SegmentedPillRow(
@@ -202,9 +204,12 @@ internal fun SharingPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                 }
             }
             SwitchRow(
-                1, 2, TandemIcons.VolumeUp, stringResource(R.string.screen_sound_ask), stringResource(R.string.screen_sound_ask_sub),
+                1, screenSoundRows, TandemIcons.VolumeUp, stringResource(R.string.screen_sound_ask), stringResource(R.string.screen_sound_ask_sub),
                 screenSoundAsk && screenSound == "there", { scope.launch { prefs.setScreenSoundAsk(it) } }, enabled = screenSound == "there",
             )
+            if (screenSoundDevices.isNotEmpty()) {
+                ActionRow(2, 3, TandemIcons.VolumeUp, stringResource(R.string.screen_sound_forget), onClick = { scope.launch { prefs.forgetScreenSoundDevices() } })
+            }
         }
     }
 

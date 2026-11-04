@@ -10,18 +10,29 @@ import TandemCore
 enum ScreenSound {
     static let whereKey = "screenSound"
     static let askKey = "screenSoundAsk"
+    static let devicesKey = "screenSoundDevices"
 
     /// "there" (the default) or "here".
     static var choice: String { UserDefaults.standard.string(forKey: whereKey) ?? "there" }
     static var askWithHeadphones: Bool { UserDefaults.standard.object(forKey: askKey) as? Bool ?? true }
 
+    /// The answers given with "Don't ask again", per device: "here" or "there". They go before the choice for all devices.
+    static var remembered: [String: String] { UserDefaults.standard.dictionary(forKey: devicesKey) as? [String: String] ?? [:] }
+
+    static func remember(_ peer: String, _ answer: String) {
+        var all = remembered
+        all[peer] = answer
+        UserDefaults.standard.set(all, forKey: devicesKey)
+    }
+
     /// The devices whose sound this Mac asked for, because it looks at their screen.
     private(set) static var asked: Set<String> = []
 
     static func viewStarted(_ peer: String) {
-        if choice == "here" {
+        let own = remembered[peer]
+        if (own ?? choice) == "here" {
             ask(peer, on: true)
-        } else if askWithHeadphones, Headphones.connected, let device = EngineModel.shared.device(peer) {
+        } else if own == nil, askWithHeadphones, Headphones.connected, let device = EngineModel.shared.device(peer) {
             SoundPrompt.shared.ask(device)
         }
     }
@@ -63,7 +74,8 @@ enum Headphones {
     }
 }
 
-/// The question when headphones are in and a screen of another device opens here: play its sound here this time, always, or not.
+/// The question when headphones are in and a screen of another device opens here: play its sound here or leave it there, and
+/// whether to remember that for this device.
 @MainActor
 final class SoundPrompt {
     static let shared = SoundPrompt()
@@ -110,6 +122,7 @@ final class SoundPrompt {
 private struct SoundPromptView: View {
     let device: TandemDevice
     let close: () -> Void
+    @State private var remember = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -118,17 +131,17 @@ private struct SoundPromptView: View {
                 title: Text("Play the sound of \(device.name) on your headphones?"),
                 message: Text("Your headphones are in. The sound can play here instead of there.")
             )
+            Toggle("Don't ask again for this device", isOn: $remember).toggleStyle(.checkbox)
             // The answer that is not a yes at the left, the main answer at the right, as everywhere on the Mac.
             HStack(spacing: 8) {
-                Button("Leave it there", action: close).buttonStyle(.tandemGlass)
-                Spacer(minLength: 0)
-                Button("Always here") {
-                    UserDefaults.standard.set("here", forKey: ScreenSound.whereKey)
-                    ScreenSound.ask(device.id, on: true)
+                Button("Leave it there") {
+                    if remember { ScreenSound.remember(device.id, "there") }
                     close()
                 }
                 .buttonStyle(.tandemGlass)
+                Spacer(minLength: 0)
                 Button("Play here") {
+                    if remember { ScreenSound.remember(device.id, "here") }
                     ScreenSound.ask(device.id, on: true)
                     close()
                 }

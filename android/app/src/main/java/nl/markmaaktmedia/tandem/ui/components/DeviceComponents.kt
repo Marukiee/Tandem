@@ -354,7 +354,7 @@ fun RollingNumber(
  * while it charges the ring turns the green of the online dot and a bolt breathes under the number.
  */
 @Composable
-fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp = 64.dp) {
+fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp = 64.dp, connected: Boolean = true) {
     val level = battery.level.toInt()
     val extras = LocalTandemExtraColors.current
     // Only a full battery closes the ring: at 97 percent a closed circle with a flaw would read as full. It fills from nothing when it
@@ -365,6 +365,8 @@ fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp 
     val sweep = fill.value
     val tint by animateColorAsState(
         when {
+            // Not connected: this is what it last said, not how it is now.
+            !connected -> MaterialTheme.colorScheme.outline
             battery.charging -> extras.charging
             level <= 15 -> extras.urgent
             else -> MaterialTheme.colorScheme.primary
@@ -390,7 +392,7 @@ fun BatteryRing(battery: TandemBattery, modifier: Modifier = Modifier, size: Dp 
             )
             // The bolt grows in under the number, which makes room by moving up, and breathes while it lasts.
             AnimatedVisibility(
-                visible = battery.charging,
+                visible = battery.charging && connected,
                 enter = fadeIn(TandemMotion.fadeSpec()) + expandVertically(TandemMotion.spatial()),
                 exit = fadeOut(TandemMotion.fadeSpec()) + shrinkVertically(TandemMotion.spatial()),
             ) {
@@ -430,15 +432,17 @@ fun ArrivingBattery(battery: TandemBattery?, content: @Composable (TandemBattery
 
 /** A compact percentage with a bolt while charging, for list rows. */
 @Composable
-fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
+fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier, connected: Boolean = true) {
     val level = battery.level.toInt()
-    val low = level <= 15 && !battery.charging
+    // Not connected: this is what it last said, so it is plain grey and does not say it charges.
+    val charging = battery.charging && connected
+    val low = level <= 15 && !battery.charging && connected
     val extras = LocalTandemExtraColors.current
     val base = MaterialTheme.colorScheme.surfaceContainerHighest
     // Charging is the plain green the Mac shows for it, on the ring and on this pill.
     val container by animateColorAsState(
         when {
-            battery.charging -> lerp(base, extras.charging, 0.22f)
+            charging -> lerp(base, extras.charging, 0.22f)
             low -> extras.urgentContainer
             else -> base
         },
@@ -446,7 +450,7 @@ fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
     )
     val content by animateColorAsState(
         when {
-            battery.charging -> extras.charging
+            charging -> extras.charging
             low -> extras.onUrgentContainer
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },
@@ -461,7 +465,7 @@ fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         AnimatedContent(
-            targetState = battery.charging,
+            targetState = charging,
             transitionSpec = { (scaleIn(TandemMotion.bouncy(), initialScale = 0.3f) + fadeIn()) togetherWith (scaleOut(TandemMotion.spatial(), targetScale = 0.3f) + fadeOut()) },
             label = "batteryIcon",
         ) { charging ->

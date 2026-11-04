@@ -68,6 +68,7 @@ class TandemPrefs(private val context: Context) {
         val audioOutput = booleanPreferencesKey("audio_output")
         val screenSound = stringPreferencesKey("screen_sound")
         val screenSoundAsk = booleanPreferencesKey("screen_sound_ask")
+        val screenSoundDevices = stringSetPreferencesKey("screen_sound_devices")
         val pinnedDevices = stringSetPreferencesKey("pinned_devices")
         val padSpeed = longPreferencesKey("pad_speed")
         val audioDelay = longPreferencesKey("audio_delay")
@@ -126,6 +127,10 @@ class TandemPrefs(private val context: Context) {
     val screenSound: Flow<String> = data.map { it[Keys.screenSound] ?: "there" }
     /** With "there": ask, when headphones are in, whether it should come here this time. */
     val screenSoundAsk: Flow<Boolean> = data.map { it[Keys.screenSoundAsk] ?: true }
+    /** The answers given with "Don't ask again", per device: "here" or "there". They go before the choice for all devices. */
+    val screenSoundDevices: Flow<Map<String, String>> = data.map { prefs ->
+        (prefs[Keys.screenSoundDevices] ?: emptySet()).associate { it.substringBefore('=') to it.substringAfter('=') }
+    }
 
     /** Apps whose playback is never shared. Everything else is. */
     val mediaExcluded: Flow<Set<String>> = data.map { it[Keys.mediaExcluded] ?: emptySet() }
@@ -278,6 +283,15 @@ class TandemPrefs(private val context: Context) {
     suspend fun setAudioOutput(value: Boolean) = set(Keys.audioOutput, value)
     suspend fun setScreenSound(value: String) = set(Keys.screenSound, value)
     suspend fun setScreenSoundAsk(value: Boolean) = set(Keys.screenSoundAsk, value)
+    suspend fun rememberScreenSound(device: String, answer: String) {
+        context.store.edit { p ->
+            val others = (p[Keys.screenSoundDevices] ?: emptySet()).filterNot { it.startsWith("$device=") }
+            p[Keys.screenSoundDevices] = others.toSet() + "$device=$answer"
+        }
+    }
+    suspend fun forgetScreenSoundDevices() {
+        context.store.edit { it.remove(Keys.screenSoundDevices) }
+    }
 
     suspend fun setMediaApp(packageName: String, allowed: Boolean) {
         context.store.edit { p ->

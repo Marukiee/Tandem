@@ -90,7 +90,7 @@ function Nav() {
           <div class=${"sub" + (d.online ? " ok" : d.ble ? " ble" : "")}>${d.online ? t("connected") + (d.rttMs != null ? " · " + d.rttMs + " ms" : "") : d.ble ? t("over_bluetooth") : t("not_connected")}</div>
         </div>
         ${battery && html`<span class="small muted" style="display:flex;align-items:center;gap:2px">
-          ${battery.charging && html`<${Icon} name="bolt" size=${13} filled=${true} class="ok-text" />`}${battery.level}%</span>`}
+          ${battery.charging && d.online && html`<${Icon} name="bolt" size=${13} filled=${true} class="ok-text" />`}${battery.level}%</span>`}
       </div>`];
     })}
     <div class="row addrow" onClick=${() => set({ dialog: { kind: "pair" } })}><${Icon} name="plus" size=${18} />${t("add_device")}</div>

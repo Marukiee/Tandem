@@ -106,7 +106,7 @@ final class Updater {
         state = .checking
         installFailed = false
         do {
-            var request = URLRequest(url: URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases/latest")!)
+            var request = URLRequest(url: URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases?per_page=10")!)
             request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
             request.setValue("Tandem/\(currentVersion)", forHTTPHeaderField: "User-Agent")
             request.timeoutInterval = 20
@@ -119,13 +119,18 @@ final class Updater {
                 return
             }
             guard (response as? HTTPURLResponse)?.statusCode == 200,
-                  let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let tag = json["tag_name"] as? String
+                  let releases = try JSONSerialization.jsonObject(with: data) as? [[String: Any]]
             else { throw UpdateError.feed }
 
             lastChecked = Date()
             UserDefaults.standard.set(lastChecked, forKey: "updateLastChecked")
 
+            guard let json = VersionComparator.newest(in: releases, with: assetName),
+                  let tag = json["tag_name"] as? String
+            else {
+                state = .upToDate
+                return
+            }
             let version = VersionComparator.normalise(tag)
             guard VersionComparator.isNewer(version, than: currentVersion) else {
                 state = .upToDate
@@ -160,7 +165,7 @@ final class Updater {
             }
         } catch {
             // A check nobody asked for stays quiet when it fails.
-            state = manual ? .failed(String(localized: "Could not reach GitHub")) : .idle
+            state = manual ? .failed((error as? UpdateError)?.message ?? String(localized: "Could not reach GitHub")) : .idle
         }
     }
 
@@ -342,6 +347,25 @@ enum UpdateError: Error {
 /// Compares versions the way a person reads them, so "1.10.0" beats "1.9.0". A suffix
 /// after the numbers ("-rc1") counts as older than the plain release.
 enum VersionComparator {
+    /// The newest release that has `file`. A release can stand there without it, while it is being built or because its build failed.
+    /// That is no news, and it must not hide the release before it.
+    static func newest(in releases: [[String: Any]], with file: String) -> [String: Any]? {
+        var newest: [String: Any]?
+        var newestTag = ""
+        for release in releases {
+            guard release["draft"] as? Bool != true, release["prerelease"] as? Bool != true,
+                  let tag = release["tag_name"] as? String,
+                  let assets = release["assets"] as? [[String: Any]],
+                  assets.contains(where: { $0["name"] as? String == file })
+            else { continue }
+            if newest == nil || isNewer(tag, than: newestTag) {
+                newest = release
+                newestTag = tag
+            }
+        }
+        return newest
+    }
+
     static func normalise(_ raw: String) -> String {
         var text = raw.trimmingCharacters(in: .whitespaces)
         if text.hasPrefix("v") || text.hasPrefix("V") { text.removeFirst() }

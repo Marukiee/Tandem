@@ -36,6 +36,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
@@ -73,22 +74,33 @@ fun KeyboardPanel(
     }
 }
 
+private const val MOST_KEPT = 2000
+private const val TAIL_KEPT = 1000
+
+/**
+ * Only cuts off what scrolled out of view long ago, so it is never seen, and not while the phone keyboard
+ * is composing a word or the cursor stands somewhere else.
+ */
+internal fun keptTail(field: TextFieldValue): TextFieldValue {
+    if (field.text.length <= MOST_KEPT || field.composition != null || field.selection.end != field.text.length) return field
+    val tail = field.text.takeLast(TAIL_KEPT)
+    return TextFieldValue(tail, TextRange(tail.length))
+}
+
 @Composable
 private fun TypingField(onText: (String) -> Unit, onKey: (Short) -> Unit) {
     val focus = remember { FocusRequester() }
     var value by remember { mutableStateOf(TextFieldValue("")) }
     LaunchedEffect(Unit) { focus.requestFocus() }
 
-    // What is typed goes straight across, so the field only ever holds the last few
-    // letters. It is there for the phone keyboard to type into, not to be read back.
+    // What is typed goes straight across and stays in view: the field scrolls along with the cursor.
     BasicTextField(
         value = value,
         onValueChange = { new ->
             val edit = TextDiff.between(value.text, new.text)
             repeat(edit.deleted) { onKey(MacKeys.DELETE) }
             if (edit.inserted.isNotEmpty()) onText(edit.inserted)
-            // Emptied between words, so the phone keyboard's own composing is never cut.
-            value = if (new.text.length > 40 && new.composition == null) TextFieldValue("") else new
+            value = keptTail(new)
         },
         modifier = Modifier
             .fillMaxWidth()
