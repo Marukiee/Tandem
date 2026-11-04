@@ -142,6 +142,8 @@
 "Missed call" = "Gemist gesprek";
 "Calling…" = "Bellen…";
 "Hang up" = "Ophangen";
+"Mute" = "Dempen";
+"Unmute" = "Dempen opheffen";
 "via %@" = "via %@";
 "Clipboard from %@" = "Klembord van %@";
 "Text from %@ is on your clipboard" = "Tekst van %@ staat op je klembord";

@@ -4,13 +4,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
 import android.telecom.TelecomManager
 import android.telephony.SmsManager
 import android.telephony.TelephonyManager
-import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -28,11 +28,10 @@ import uniffi.tandem_core.TandemEvent
 /**
  * Shows incoming calls on your other devices and lets you answer or decline there.
  *
- * Only the call itself is mirrored: who is calling and what state it is in. The audio
- * stays on the phone, because Android gives an app no way to carry it elsewhere.
+ * Only the call itself is mirrored: who is calling, what state it is in and whether the
+ * microphone is muted. The audio stays on the phone, because Android gives an app no way to
+ * carry it elsewhere and a Mac refuses the voice link of Bluetooth (docs/PARITY.md).
  */
-private const val TAG = "Tandem/CallMonitor"
-
 class CallMonitor(
     private val context: Context,
     private val host: EngineHost,
@@ -52,6 +51,11 @@ class CallMonitor(
      * and handled side by side both saw a phone that was not ringing yet: two calls, two cards on the computers (seen 2026-10-27).
      */
     private val order = Mutex()
+    private val audio: AudioManager get() = context.getSystemService(AudioManager::class.java)
+    /** Muted from a computer, so it is undone when the call ends: left on, it would silence the microphone for everything on the phone. */
+    private var mutedFromAfar = false
+    /** What the computers last heard, so a change is told once. */
+    private var saidMuted = false
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -61,15 +65,29 @@ class CallMonitor(
         }
     }
 
+    /** The mute button of the phone app does not change the call state: this is how the cards on the computers keep up with it. */
+    private val muteWatcher = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            scope.launch { order.withLock { tellMute() } }
+        }
+    }
+
     fun start() {
         context.registerReceiver(receiver, IntentFilter(TelephonyManager.ACTION_PHONE_STATE_CHANGED), Context.RECEIVER_EXPORTED)
+        context.registerReceiver(muteWatcher, IntentFilter(AudioManager.ACTION_MICROPHONE_MUTE_CHANGED), Context.RECEIVER_NOT_EXPORTED)
     }
 
     fun stop() {
         runCatching { context.unregisterReceiver(receiver) }
+        runCatching { context.unregisterReceiver(muteWatcher) }
     }
 
     private suspend fun onState(state: String, incomingNumber: String?) {
+        // Before anything below can return: with every computer gone the microphone still has to come back.
+        if (state == TelephonyManager.EXTRA_STATE_IDLE && mutedFromAfar) {
+            mutedFromAfar = false
+            runCatching { audio.isMicrophoneMute = false }
+        }
         if (!prefs.callMirror.first() || !Permissions.phone(context)) return
         val targets = host.devices.value.filter { it.online }.map { it.id }
         if (targets.isEmpty()) return
@@ -89,9 +107,7 @@ class CallMonitor(
             }
             TelephonyManager.EXTRA_STATE_OFFHOOK -> {
                 if (lastState == TelephonyManager.EXTRA_STATE_IDLE) {
-                    // Reuse an existing call ID from the Mac instead of creating a new one.
-                    // This ensures setAudioRouting targets the correct call when dialing out.
-                    callId = if (callId.isEmpty()) System.currentTimeMillis().toString() else callId
+                    callId = System.currentTimeMillis().toString()
                     incoming = false
                     // A call this phone makes brings no number with it; one a computer asked for a moment ago is that one.
                     dialed?.takeIf { System.currentTimeMillis() - it.second < DIALED_MS }?.let { (to, _) ->
@@ -144,12 +160,20 @@ class CallMonitor(
     }
 
     private suspend fun send(targets: List<String>, state: TandemCallState) {
+        val muted = audio.isMicrophoneMute
+        saidMuted = muted
         runCatching {
             host.engine?.sendCall(
                 targets,
-                TandemCall(callId, state, incoming, number, name, System.currentTimeMillis().toULong()),
+                TandemCall(callId, state, incoming, number, name, System.currentTimeMillis().toULong(), muted),
             )
         }
+    }
+
+    /** Only during a call: outside one there is no card, and the microphone is none of its business. */
+    private suspend fun tellMute() {
+        if (lastState != TelephonyManager.EXTRA_STATE_OFFHOOK || audio.isMicrophoneMute == saidMuted) return
+        send(host.devices.value.filter { it.online }.map { it.id }, TandemCallState.ACTIVE)
     }
 
     private fun lookup(number: String): String? = runCatching {
@@ -163,137 +187,22 @@ class CallMonitor(
     fun handle(event: TandemEvent.CallAction) {
         val telecom = context.getSystemService(TelecomManager::class.java)
         runCatching {
-            Log.d(TAG, "handle action: ${event.action} callId=${event.id} expected=$callId incoming=$incoming answered=$answered")
             when (val action = event.action) {
-                TandemCallAction.Answer -> {
-                    Log.d(TAG, "Answer call via telecom.acceptRingingCall()")
-                    telecom.acceptRingingCall()
-                }
-                TandemCallAction.Reject, TandemCallAction.Hangup -> {
-                    Log.d(TAG, "Reject/Hangup call via telecom.endCall()")
-                    @Suppress("DEPRECATION") telecom.endCall()
-                }
+                TandemCallAction.Answer -> telecom.acceptRingingCall()
+                TandemCallAction.Reject, TandemCallAction.Hangup -> @Suppress("DEPRECATION") telecom.endCall()
                 TandemCallAction.Silence -> silence()
                 is TandemCallAction.RejectWithMessage -> {
                     val to = number
-                    Log.d(TAG, "RejectWithMessage to=$to msg=${action.message}")
                     @Suppress("DEPRECATION") telecom.endCall()
                     if (to != null) SmsManager.getDefault().sendTextMessage(to, null, action.message, null, null)
                 }
-                TandemCallAction.MoveToThisDevice -> {
-                    val myCallId = callId
-                    Log.d(TAG, "MoveToThisDevice: route audio to Mac callId=$myCallId engine=${host.engine != null}")
-                    // Turn off speakerphone so audio goes through the phone's audio path to the Mac (Bluetooth/audio routing).
-                    val success = runCatching {
-                        val audio = context.getSystemService(android.media.AudioManager::class.java) as android.media.AudioManager
-                        val wasMode = audio.mode
-                        audio.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION)
-                        Log.d(TAG, "MoveToThisDevice: mode $wasMode -> ${audio.mode}")
-                        val wasSpeaker = audio.isSpeakerphoneOn
-                        audio.setSpeakerphoneOn(false)
-                        Log.d(TAG, "MoveToThisDevice: speakerphone $wasSpeaker -> ${audio.isSpeakerphoneOn}")
-                        true
-                    }.getOrElse { e ->
-                        Log.e(TAG, "MoveToThisDevice route failed", e)
-                        false
-                    }
-                    if (success) {
-                        scope.launch {
-                            val macId = host.devices.value.find { it.id != host.myId && it.online == true }?.id ?: return@launch
-                            Log.d(TAG, "MoveToThisDevice: setAudioRouting target=$macId id=$myCallId audioOnMac=true")
-                            var retries = 0
-                            while (retries < 10) {
-                                val eng = host.engine
-                                if (eng != null) {
-                                    runCatching { eng.setAudioRouting(target = macId, id = myCallId, audioOnMac = true) }
-                                        .onFailure { e -> Log.e(TAG, "MoveToThisDevice setAudioRouting failed", e) }
-                                    break
-                                }
-                                Log.d(TAG, "MoveToThisDevice: engine null, retry $retries")
-                                kotlinx.coroutines.delay(100)
-                                retries++
-                            }
-                            Log.d(TAG, "MoveToThisDevice: setAudioRouting done")
-                        }
-                    } else {
-                        Log.e(TAG, "MoveToThisDevice FAILED: routing failed")
-                    }
-                }
-                TandemCallAction.MoveBack -> {
-                    Log.d(TAG, "MoveBack: route audio back to phone callId=$callId engine=${host.engine != null}")
-                    val success = routeAudioToDevice(false)
-                    if (success) {
-                        scope.launch {
-                            val macId = host.devices.value.find { it.id != host.myId && it.online == true }?.id ?: return@launch
-                            Log.d(TAG, "MoveBack: setAudioRouting target=$macId id=$callId audioOnMac=false")
-                            var retries = 0
-                            while (retries < 10) {
-                                val eng = host.engine
-                                if (eng != null) {
-                                    runCatching { eng.setAudioRouting(target = macId, id = callId, audioOnMac = false) }
-                                        .onFailure { e -> Log.e(TAG, "MoveBack setAudioRouting failed", e) }
-                                    break
-                                }
-                                Log.d(TAG, "MoveBack: engine null, retry $retries")
-                                kotlinx.coroutines.delay(100)
-                                retries++
-                            }
-                            Log.d(TAG, "setAudioRouting target=$macId id=$callId audioOnMac=false OK")
-                        }
-                    } else {
-                        Log.e(TAG, "MoveBack FAILED: routeAudioToDevice returned false")
-                    }
-                }
-                TandemCallAction.MuteMic -> {
-                    Log.d(TAG, "MuteMic toggle")
-                    toggleMic()
+                TandemCallAction.MuteMic -> if (event.id == callId && lastState == TelephonyManager.EXTRA_STATE_OFFHOOK) {
+                    val muted = !audio.isMicrophoneMute
+                    audio.isMicrophoneMute = muted
+                    mutedFromAfar = muted
+                    scope.launch { order.withLock { tellMute() } }
                 }
             }
-        }.onFailure { e ->
-            Log.e(TAG, "handle action failed", e)
-        }
-    }
-
-    private fun routeAudioToDevice(toMac: Boolean): Boolean {
-        // Route call audio to the Mac via the existing audio path.
-        // When audio goes to Mac, turn OFF speakerphone so it uses the phone's audio path (Bluetooth/audio routing).
-        // When audio returns to phone, turn ON speakerphone for local playback.
-        val audio = context.getSystemService(android.media.AudioManager::class.java) as android.media.AudioManager
-        return runCatching {
-            val direction = if (toMac) "to Mac" else "back to phone"
-            Log.d(TAG, "routeAudioToDevice($direction): mode=${audio.mode} speakerphone=${audio.isSpeakerphoneOn}")
-            if (toMac) {
-                audio.setMode(android.media.AudioManager.MODE_IN_COMMUNICATION)
-                val wasSpeaker = audio.isSpeakerphoneOn
-                audio.setSpeakerphoneOn(false)
-                Log.d(TAG, "routeAudioToDevice($direction): mode=${audio.mode} speakerphone $wasSpeaker -> ${audio.isSpeakerphoneOn}")
-            } else {
-                audio.setMode(android.media.AudioManager.MODE_NORMAL)
-                val wasSpeaker = audio.isSpeakerphoneOn
-                audio.setSpeakerphoneOn(true)
-                Log.d(TAG, "routeAudioToDevice($direction): mode=${audio.mode} speakerphone $wasSpeaker -> ${audio.isSpeakerphoneOn}")
-            }
-            true
-        }.getOrElse { e ->
-            Log.e(TAG, "routeAudioToDevice failed", e)
-            false
-        }
-    }
-
-    private fun toggleMic() {
-        val audio = context.getSystemService(android.media.AudioManager::class.java)
-        runCatching {
-            @Suppress("DEPRECATION")
-            // Gebruik reflection voor isMicrophoneMuted om API level issues te voorkomen
-            val state = try {
-                val field = android.media.AudioManager::class.java.getDeclaredField("isMicrophoneMuted")
-                field.isAccessible = true
-                field.getBoolean(audio) as Boolean
-            } catch (e: Exception) {
-                audio.getStreamVolume(android.media.AudioManager.STREAM_VOICE_CALL) == 0
-            }
-            @Suppress("DEPRECATION")
-            audio.setMicrophoneMute(!state)
         }
     }
 

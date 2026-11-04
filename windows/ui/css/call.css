@@ -83,6 +83,8 @@ body.call { background: transparent; margin: 0; padding: 24px; overflow: hidden;
 .call-button:active { transform: scale(0.96); }
 .call-button.red { background: #e5484d; }
 .call-button.green { background: #30a46c; }
+.call-button.gray { background: #8e8e93; }
+.call-button.orange { background: #f5820b; }
 /* The receiver put down. */
 .call-button.red svg { transform: rotate(135deg); }
 

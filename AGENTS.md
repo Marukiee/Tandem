@@ -49,6 +49,9 @@ Grep for an existing feature (for example `KeepAwake`) and copy how it goes thro
 - Do not add dependencies (crates, Gradle libraries, Swift packages) without asking Mark.
 - Do not touch keystores, secrets, signing or `scripts/setup-secrets.sh`.
 - Do not change system settings of the computer, and do not install packages.
+- The sound of a phone call stays on the phone: a Mac refuses the voice link and Android keeps it from apps (tested, see `docs/PARITY.md`).
+  Do not build buttons or messages that pretend otherwise. A button that does nothing is never shown.
+- Generated bindings stay out of git (`.gitignore`). Never force-add them and never edit them by hand: rebuild them with the scripts below.
 
 ## Build and test
 

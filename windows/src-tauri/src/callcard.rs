@@ -58,6 +58,8 @@ pub struct Card {
     pub number: Option<String>,
     pub incoming: bool,
     pub phase: Phase,
+    /// Whether the microphone of the phone is off, as the phone last said.
+    pub muted: bool,
     /// When the call was answered, by the clock of this computer: the phone's clock can be off by minutes.
     pub since_ms: Option<u64>,
     /// Changes with every update, so a timer set for an older state does nothing.
@@ -176,6 +178,7 @@ impl Book {
             number: call.number.clone(),
             incoming: call.incoming,
             phase,
+            muted: call.muted,
             since_ms,
             stamp,
         };
@@ -222,6 +225,7 @@ fn fill(card: &mut Card, call: &TandemCall, device_name: &str) {
     if call.number.is_some() {
         card.number = call.number.clone();
     }
+    card.muted = call.muted;
 }
 
 // ---- The window ------------------------------------------------------------------------------------------------------------------
@@ -299,6 +303,7 @@ fn snapshot() -> (Value, usize) {
                 "name": c.name,
                 "number": c.number,
                 "phase": c.phase.name(),
+                "muted": c.muted,
                 "since": c.since_ms,
             })
         })
@@ -402,16 +407,18 @@ pub fn call_cards() -> Value {
     snapshot().0
 }
 
-/// Answer, Decline or Hang up, pressed on a card.
+/// Answer, Decline, Hang up or Mute, pressed on a card.
 #[tauri::command]
 pub fn call_action(app: AppHandle, state: State<'_, AppState>, device: String, call: String, action: String) -> Result<(), String> {
     let action = match action.as_str() {
         "answer" => TandemCallAction::Answer,
         "reject" => TandemCallAction::Reject,
         "hangup" => TandemCallAction::Hangup,
+        // The card changes when the phone says what happened, so it never shows a mute that did not take.
+        "mute" => TandemCallAction::MuteMic,
         other => return Err(format!("not an action for a call: {other}")),
     };
-    let closes = action != TandemCallAction::Answer;
+    let closes = matches!(action, TandemCallAction::Reject | TandemCallAction::Hangup);
     if closes && BOOK.lock().unwrap().close(&key(&device, &call), Instant::now()) {
         refresh(&app);
     }
@@ -429,7 +436,7 @@ mod tests {
     use super::*;
 
     fn call(id: &str, state: TandemCallState, name: Option<&str>, number: Option<&str>, incoming: bool) -> TandemCall {
-        TandemCall { id: id.into(), state, incoming, number: number.map(Into::into), name: name.map(Into::into), ts: 0 }
+        TandemCall { id: id.into(), state, incoming, number: number.map(Into::into), name: name.map(Into::into), ts: 0, muted: false }
     }
 
     #[test]
@@ -453,6 +460,21 @@ mod tests {
         assert_eq!(book.cards[0].phase, Phase::Active);
         assert_eq!(book.cards[0].since_ms, Some(5_000));
         assert_eq!(book.cards[0].number.as_deref(), Some("+316"));
+    }
+
+    #[test]
+    fn the_card_shows_what_the_phone_says_about_its_microphone() {
+        let mut book = Book::default();
+        let now = Instant::now();
+        let mut active = call("1", TandemCallState::Active, Some("Sanne"), None, true);
+        book.received("phone", "Pixel", &active, 1, now);
+        assert!(!book.cards[0].muted);
+        active.muted = true;
+        assert!(book.received("phone", "Pixel", &active, 2, now).changed);
+        assert!(book.cards[0].muted);
+        active.muted = false;
+        book.received("phone", "Pixel", &active, 3, now);
+        assert!(!book.cards[0].muted);
     }
 
     #[test]

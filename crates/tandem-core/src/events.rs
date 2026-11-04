@@ -2,7 +2,7 @@
 
 use crate::ids::DeviceId;
 use crate::proto::{
-    self, CallAction, CallMsg, AudioRouting as ProtoAudioRouting, CaptureKind, CaptureWhy, HotspotMsg, InputMsg, MediaAction, MediaPlayer, NotificationAction, NotificationMsg, ShareOffer,
+    self, CallAction, CallMsg, CaptureKind, CaptureWhy, HotspotMsg, InputMsg, MediaAction, MediaPlayer, NotificationAction, NotificationMsg, ShareOffer,
 };
 
 #[derive(Clone, Debug)]
@@ -58,7 +58,6 @@ pub enum Event {
     Call { from: DeviceId, call: CallMsg },
     CallAction { from: DeviceId, action: CallAction },
     /// Audio routing of a call to this Mac or back to the phone.
-    AudioRouting { from: DeviceId, audio: ProtoAudioRouting },
     Dial { from: DeviceId, number: String },
     /// Another device is nearly empty (not charging, at or below `battery_alert::LOW`) or full on the charger.
     BatteryAlert { from: DeviceId, level: u8, full: bool },

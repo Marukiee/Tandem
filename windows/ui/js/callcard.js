@@ -1,4 +1,4 @@
-// The floating window of a call on a phone: who, which phone, and Answer and Decline while it rings, Hang up while it goes on.
+// The floating window of a call on a phone: who, which phone, and Answer and Decline while it rings, Hang up and Mute while it goes on.
 // The talking stays on the phone. The Rust side keeps the cards; this page draws them and lets the gone ones fade before they leave.
 import { html, render } from "../vendor/preact-htm.js";
 import { call, listen } from "./backend.js";
@@ -59,14 +59,15 @@ function Card({ card, gone }) {
       <div class="call-via" data-tauri-drag-region>${t("call_via", card.deviceName)}</div>
     </div>
     <div class="call-buttons" key=${card.phase === "ringing" ? "two" : "one"}>
-      ${/* The place for "Answer here" (while it rings) and "Take over here" / "Back to phone" (during the call), which will carry the
-           sound of the call to this computer once there is a Bluetooth hands-free route for it. Left out until that works: a button that
-           does nothing is never shown. */ null}
+      ${/* No button to take the sound of a call to this computer: there is no such route in Tandem (docs/PARITY.md), and a button that does
+           nothing is never shown. The red one stays on the left in every phase, so a second click on Answer cannot hang up. */ null}
       ${card.phase === "ringing" && html`
         <${Button} tone="red" icon="phone" label=${t("call_decline")} onClick=${() => act(card, "reject")} />
         <${Button} tone="green" icon="phone" label=${t("call_answer")} onClick=${() => act(card, "answer")} />`}
       ${(card.phase === "active" || card.phase === "dialing") && html`
-        <${Button} tone="red" icon="phone" label=${t("call_hangup")} onClick=${() => act(card, "hangup")} />`}
+        <${Button} tone="red" icon="phone" label=${t("call_hangup")} onClick=${() => act(card, "hangup")} />
+        <${Button} tone=${card.muted ? "orange" : "gray"} icon=${card.muted ? "microphone-off" : "microphone"}
+          label=${t(card.muted ? "call_unmute" : "call_mute")} onClick=${() => act(card, "mute")} />`}
     </div>
   </div>`;
 }

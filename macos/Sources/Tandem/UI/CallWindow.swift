@@ -20,8 +20,8 @@ struct CallCard: Identifiable, Equatable {
     var number: String?
     var incoming: Bool
     var phase: Phase
-    /// Whether the sound of this call is on this Mac or stays on the phone.
-    var audioOnMac = false
+    /// Whether the microphone of the phone is off, as the phone last said.
+    var muted = false
 
     /// Two phones can give the same id to a call (it is a time in milliseconds), so the phone is part of it.
     var id: String { "\(device)/\(call)" }
@@ -48,20 +48,17 @@ final class CallSlot {
 final class CallWindow {
     static let shared = CallWindow()
 
-    static let cardWidth: CGFloat = 520
-    /// More room for labels and a clearer layout.
-    static let cardHeight: CGFloat = 116
-    /// A bit larger radius to match the wider card.
-    static let cardRadius: CGFloat = 26
+    static let cardWidth: CGFloat = 320
+    /// Tight, like the call banner of FaceTime: 14 above and under the avatar and the three lines.
+    static let cardHeight: CGFloat = 78
+    /// Nested in the height of the card, which is much lower than the other floating cards.
+    static let cardRadius: CGFloat = 22
     /// Room around the card for its shadow, the same as the other floating cards (`FloatingCard`): a shadow that reaches past the edge of
     /// a window is cut off in a straight line.
     static let insets = EdgeInsets(top: 12, leading: 28, bottom: 36, trailing: 28)
 
     /// Set by the model: sends Answer, Decline or Hang up to the phone.
     var onAction: ((_ device: String, _ callId: String, _ action: TandemCallAction) -> Void)?
-
-    /// Update audio routing state for a specific card.
-    var onAudioChanged: ((_ device: String, _ callId: String, _ audioOnMac: Bool) -> Void)?
 
     /// The calls as the phones last told them, oldest first.
     private var cards: [CallCard] = []
@@ -73,47 +70,6 @@ final class CallWindow {
     /// The number this Mac asked a phone to call. Android does not say whom it is calling, so the card takes it from here.
     private var dialed: (device: String, number: String, name: String?, at: Date)?
     private var debugKeep = false
-    /// Whether the sound of the call is on this Mac or stays on the phone.
-    private var audioOnMac = false
-
-    // MARK: Audio routing updates
-
-    /// Update a card's `audioOnMac` state when the user moves audio to/from the Mac.
-    func updateCardAudio(device: String, callId: String, audioOnMac: Bool) {
-        let key = "\(device)/\(callId)"
-        print("[CallWindow] updateCardAudio key=\(key) audioOnMac=\(audioOnMac) global=\(self.audioOnMac)")
-        for slot in shown.values where slot.slot.card.device == device && slot.slot.card.call == callId {
-            if slot.slot.card.audioOnMac != audioOnMac {
-                print("[CallWindow] updateCardAudio card=\(slot.slot.card.id) audioOnMac \(slot.slot.card.audioOnMac) -> \(audioOnMac)")
-            }
-            slot.slot.card.audioOnMac = audioOnMac
-        }
-        // Also update the global state.
-        if self.audioOnMac != audioOnMac {
-            print("[CallWindow] updateCardAudio global audioOnMac \(self.audioOnMac) -> \(audioOnMac)")
-        }
-        self.audioOnMac = audioOnMac
-    }
-
-    // MARK: Permissions
-
-    /// Check whether this Mac has the permissions to take calls from a phone.
-    static var canTakeCalls: Bool {
-        let key = "callCanTakeCalls"
-        return UserDefaults.standard.object(forKey: key) as? Bool ?? true
-    }
-
-    /// Ask for call permissions and remember the answer.
-    static func askForCallPermissions() {
-        // On macOS we just toggle the setting; no system permission dialog.
-        UserDefaults.standard.set(true, forKey: "callCanTakeCalls")
-    }
-
-    /// Whether the user has dismissed the call permissions message permanently.
-    static var neverAskCallPermissionsAgain: Bool {
-        get { UserDefaults.standard.bool(forKey: "callNeverAskPermissions") }
-        set { UserDefaults.standard.set(newValue, forKey: "callNeverAskPermissions") }
-    }
 
     // MARK: What the phone says
 
@@ -184,7 +140,7 @@ final class CallWindow {
     private func card(for call: TandemCall, device: String, deviceName: String, phase: CallCard.Phase) -> CallCard {
         var card = CallCard(
             device: device, call: call.id, deviceName: deviceName,
-            name: call.name, number: call.number, incoming: call.incoming, phase: phase
+            name: call.name, number: call.number, incoming: call.incoming, phase: phase, muted: call.muted
         )
         if !call.incoming, call.number == nil, let dialed, dialed.device == device, Date().timeIntervalSince(dialed.at) < 60 {
             card.number = dialed.number
@@ -197,6 +153,7 @@ final class CallWindow {
         cards[index].deviceName = deviceName
         if let name = call.name { cards[index].name = name }
         if let number = call.number { cards[index].number = number }
+        cards[index].muted = call.muted
     }
 
     // MARK: Buttons
@@ -210,47 +167,10 @@ final class CallWindow {
             closedHere = closedHere.filter { Date().timeIntervalSince($0.value) < 600 }
             remove(card.id)
             sync()
-        case .answer, .silence:
+        case .answer, .silence, .muteMic:
+            // The card changes when the phone says what happened, so it never shows a mute that did not take.
             break
-        case .moveToThisDevice:
-            if !CallWindow.canTakeCalls {
-                print("[CallWindow] moveToThisDevice: canTakeCalls=false")
-                showCallPermissionsMessage()
-            } else {
-                print("[CallWindow] moveToThisDevice: card=\(card.id) audioOnMac \(card.audioOnMac) -> true")
-                if let idx = cards.firstIndex(where: { $0.id == card.id }) {
-                    cards[idx].audioOnMac = true
-                }
-                onAudioChanged?(card.device, card.call, true)
-            }
-        case .moveBack:
-            print("[CallWindow] moveBack: card=\(card.id) audioOnMac \(card.audioOnMac) -> false")
-            if let idx = cards.firstIndex(where: { $0.id == card.id }) {
-                cards[idx].audioOnMac = false
-            }
-            onAudioChanged?(card.device, card.call, false)
-        case .muteMic:
-            onAction?(card.device, card.call, action)
         }
-    }
-
-    /// Show a message about taking calls on this Mac.
-    func showCallPermissionsMessage() {
-        if CallWindow.neverAskCallPermissionsAgain { return }
-        let body = String(localized: "You can also take calls on your laptop. Turn it on in Settings, then try again.")
-        Notifier.shared.post(
-            id: "call-permissions",
-            title: String(localized: "Take calls on this Mac"),
-            body: body,
-            userInfo: ["action": "open-settings"],
-            sound: false
-        )
-    }
-
-    /// Ask the user to allow taking calls on this Mac.
-    func askForCallPermissions() {
-        CallWindow.askForCallPermissions()
-        sync()
     }
 
     // MARK: Coming and going
@@ -346,11 +266,11 @@ final class CallWindow {
 
     // MARK: Debug
 
-    /// `TANDEM_DEBUG_CALL=ringing|dialing|active|missed|stack|cycle`: a made up call on a made up phone, for the snapshot harness.
+    /// `TANDEM_DEBUG_CALL=ringing|dialing|active|muted|missed|stack|cycle`: a made up call on a made up phone, for the snapshot harness.
     func debugShow(_ stage: String) {
         debugKeep = true
-        func call(_ id: String, _ state: TandemCallState, incoming: Bool = true, name: String? = "Sanne de Vries", number: String? = "+31 6 12345678") -> TandemCall {
-            TandemCall(id: id, state: state, incoming: incoming, number: number, name: name, ts: 0)
+        func call(_ id: String, _ state: TandemCallState, incoming: Bool = true, name: String? = "Sanne de Vries", number: String? = "+31 6 12345678", muted: Bool = false) -> TandemCall {
+            TandemCall(id: id, state: state, incoming: incoming, number: number, name: name, ts: 0, muted: muted)
         }
         let phone = "debug-phone"
         let other = "debug-phone-2"
@@ -359,6 +279,8 @@ final class CallWindow {
             received(call("1", .dialing, incoming: false), from: phone, deviceName: "Maruks Telefoon")
         case "active":
             received(call("1", .active), from: phone, deviceName: "Maruks Telefoon")
+        case "muted":
+            received(call("1", .active, muted: true), from: phone, deviceName: "Maruks Telefoon")
         case "missed":
             received(call("1", .ringing), from: phone, deviceName: "Maruks Telefoon")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.received(call("1", .missed), from: phone, deviceName: "Maruks Telefoon") }
@@ -448,16 +370,16 @@ private struct CallCardView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 10) {
             // The picture and the words let the mouse through to the drag area under them; otherwise they would swallow the drag.
-            CallAvatar(name: card.name, size: 52)
+            CallAvatar(name: card.name, size: 44)
                 .allowsHitTesting(false)
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: card.title)
-                    // A whole phone number fits, a long name gets a little smaller before it is cut off.
                     .font(.headline)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                    // A whole phone number fits, a long name gets a little smaller before it is cut off.
+                    .minimumScaleFactor(0.8)
                 status
                 Text("via \(card.deviceName)")
                     .font(.caption)
@@ -465,9 +387,10 @@ private struct CallCardView: View {
                     .lineLimit(1)
             }
             .allowsHitTesting(false)
+            Spacer(minLength: 8)
             buttons
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
         .frame(width: CallWindow.cardWidth, height: CallWindow.cardHeight)
         // Under the words and the picture, so the card can be dragged by anything that is not a button.
         .background(WindowDragArea(onDragged: onDragged))
@@ -497,25 +420,20 @@ private struct CallCardView: View {
     }
 
     @ViewBuilder private var buttons: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
+            // No button to take the sound of a call to this Mac: macOS refuses the voice link of Bluetooth (docs/PARITY.md), and a button
+            // that does nothing is never shown. The red one stays on the left in every phase, so a second click on Answer cannot hang up.
             switch card.phase {
             case .ringing:
-                CallActionButton(label: "Decline", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.reject) }
-                if CallWindow.canTakeCalls {
-                    CallActionButton(label: "Answer here", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
-                } else {
-                    CallActionButton(label: "Answer on phone", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
-                }
+                RoundCallButton(label: "Decline", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.reject) }
+                RoundCallButton(label: "Answer", symbol: "phone.fill", color: Color(nsColor: .systemGreen)) { act(.answer) }
             case .dialing, .active:
-                CallActionButton(label: "Hang up", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.hangup) }
-                // Move the call sound to this Mac or back to the phone.
-                if CallWindow.canTakeCalls && !card.audioOnMac {
-                    CallActionButton(label: "Move here", symbol: "arrow.right.circle", color: Color(nsColor: .controlAccentColor)) { act(.moveToThisDevice) }
-                } else if card.audioOnMac {
-                    CallActionButton(label: "Back to phone", symbol: "arrow.left.circle", color: Color(nsColor: .controlAccentColor)) { act(.moveBack) }
-                }
-                // Mute the microphone on this device.
-                CallActionButton(label: "Mute mic", symbol: "mic.fill", color: Color(nsColor: .systemGray)) { act(.muteMic) }
+                RoundCallButton(label: "Hang up", symbol: "phone.down.fill", color: Color(nsColor: .systemRed)) { act(.hangup) }
+                RoundCallButton(
+                    label: card.muted ? "Unmute" : "Mute",
+                    symbol: card.muted ? "mic.slash.fill" : "mic.fill",
+                    color: Color(nsColor: card.muted ? .systemOrange : .systemGray)
+                ) { act(.muteMic) }
             case .missed:
                 EmptyView()
             }
@@ -569,8 +487,8 @@ private struct CallAvatar: View {
     }
 }
 
-/// A button on the card with an icon and a visible label below it.
-private struct CallActionButton: View {
+/// A round button on the card. On glass, so a fill of its own and not more glass.
+private struct RoundCallButton: View {
     let label: LocalizedStringKey
     let symbol: String
     let color: Color
@@ -578,23 +496,18 @@ private struct CallActionButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(.white)
-                Text(label)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.95))
-            }
-            .frame(minWidth: 84, maxWidth: 96, minHeight: 68, maxHeight: 68)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 6)
-            .background(Capsule().fill(color))
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(color))
+                .contentShape(Circle())
         }
         .buttonStyle(.bouncy)
         .focusEffectDisabled()
+        .help(Text(label))
         .accessibilityLabel(Text(label))
-        .transition(.scale(scale: 0.7).combined(with: .opacity))
+        .transition(.scale(scale: 0.6).combined(with: .opacity))
     }
 }
 

@@ -272,8 +272,8 @@ Open, kan zonder dat die toegang er is, nog niet gedaan:
   8. Focus en Niet storen gelijk op alle apparaten. Gebouwd (2026-10-24, op de Android-emulator gezien, niet op echte toestellen): Android een eigen
      modus "Focus van <apparaat>", Linux GNOME en KDE, Windows alleen lezen, Mac lezen en zetten met de eigen opdracht Tandem Focus (één klik, vraagt iCloud).
   9. Een tablet met pen als tekentablet voor de Mac (druk en kanteling, zoals de Apple Pencil bij Sidecar). Haalbaar met de invoer van een tweede scherm.
-  10. Bellen met het geluid op de computer (microfoon en luidspreker van de Mac). Via Bluetooth kan het op de Mac niet (macOS geeft het
-      gespreksgeluid niet aan een app). De weg via de telefoon zelf (de systeem-API's voor het afvangen van gespreksgeluid, met de rechten van de
+  10. Bellen met het geluid op de computer (microfoon en luidspreker van de Mac). Via Bluetooth kan het op de Mac niet (getest op 2026-11-04: de handsfree-verbinding komt
+      op, macOS weigert het spraakkanaal, zie `docs/PARITY.md`). De weg via de telefoon zelf (de systeem-API's voor het afvangen van gespreksgeluid, met de rechten van de
       shell via Shizuku) is niet gebouwd: de agent die het zou bouwen stopte (2026-10-24) omdat een veiligheidscontrole het afvangen van het
       geluid van een gesprek met geleende rechten tegenhield. Wat wel kan zonder die weg: Linux als Bluetooth-headset van de telefoon (PipeWire
       met de rol `hfp_hf`) en Windows via Telefoonkoppeling. Nog uit te zoeken of Tandem dat op Linux kan aanzetten.
@@ -516,26 +516,19 @@ scherm delen (kan niet, wel uitleggen), bellen via de Mac.
   de Mac, zoals de Continuity-integratie tussen iPhone en Mac, en een melding op de Mac als je bezig bent met bellen om het gesprek
   naar deze Mac te verplaatsen. Eerlijk antwoord: het geluid van een gewoon gesprek is voor een app op Android niet te pakken. Het
   opnemen van gespreksgeluid (`VOICE_CALL`) en het afspelen van geluid in het gesprek is voor niet-systeemapps geblokkeerd, en
-  `AudioPlaybackCapture` slaat telefonie over. macOS kan zich ook niet als headset (Bluetooth HFP) aan een Android-telefoon
-  aanbieden, dat kan alleen met een iPhone. Windows kan dat wel (Phone Link doet het via HFP), dus voor de pc is er een weg. Wat
+  `AudioPlaybackCapture` slaat telefonie over. Een Mac kan wel handsfree van een Android-telefoon zijn, maar weigert het spraakkanaal
+  (getest op 2026-11-04, de uitkomst staat in `docs/PARITY.md`). Windows kan dat wel (Phone Link doet het via HFP), dus voor de pc is er een weg. Wat
   Tandem op de Mac wel kan, zonder dat geluid: de melding met naam en nummer, opnemen, ophangen, dempen en luidspreker aanzetten
   (`TelecomManager`, `ANSWER_PHONE_CALLS`) vanaf de Mac, en een venster als er gebeld wordt met die knoppen. Het verplaatsen van het
   geluid zelf werkt dan alleen met een andere weg: bellen via een VoIP-app (Wi-Fi bellen via Tandem, SIP) of de telefoon als
   Bluetooth-HID/HFP-apparaat, en die wegen zijn per stuk nog niet onderzocht.
 
-  Gebouwd op de Mac: knoppen "Naar hier verplaatsen" / "Call terugzetten" en mute-mic in de call card.
+  De knoppen "Naar hier verplaatsen" en "Call terugzetten" (0.2.76 tot 0.2.83) verplaatsten nooit geluid: ze zetten alleen een vlag. In 0.2.84
+  zijn ze weg, het belkaartje is weer compact, en dempen werkt nu echt, op de telefoon zelf, vanaf elke computer.
 
-- **2026-11-03:** Call panel moet opnieuw ontworpen worden. Na de laatste update hangt het panel na een crash; de knoppen zijn te groot
-  en passen niet meer in de layout. Claude moet een nieuw design maken dat robuuster is bij crashes en correct schakelt tussen
-  "Naar hier verplaatsen" en "Call terugzetten".
-
-  Na de Mac, deze punten voor Linux/Windows/Android bouwen:
-
-  - **Linux:** call panel met dezelfde knoppen (naar hier verplaatsen, call terugzetten, mute mic) in de Tauri-tray; audio routing via PipeWire naar de Mac of lokaal.
-  - **Windows:** call panel in het systeemvak met dezelfde knoppen; audio routing via Phone Link HFP-route.
-  - **Android:** Shizuku audio routing (geluid van de telefoon naar Mac/pc); mic mute via `AudioManager.setMicrophoneMute`.
-  - **Mute-mic overal:** een knop in elke call card die de microfoon op het huidige apparaat dempt, terug te zetten met dezelfde knop.
-  - **"Naar hier verplaatsen" wisselt naar "Call terugzetten":** de tekst en het icoon draaien om bij elk klikken, zodat de gebruiker ziet waar het geluid naartu gaat.
+  Opnieuw gevraagd op 2026-11-04, ook via Magisk of Shizuku: die route blijft ongebouwd om de reden bij "Bellen met het geluid op de computer".
+  Wat nog kan: Linux als Bluetooth-headset van de telefoon (nog uit te zoeken, de laptop moet daarvoor aan staan) en een USB-Bluetooth-dongle aan de
+  Mac met een eigen Bluetooth-stack in Tandem (vraagt een dongle en veel werk, licentie van de stack uitzoeken, niet getest).
 
 - **Wat is er nieuw bij Updates en back-up (gevraagd 2026-10-06):** op Android staat Wat is er nieuw (`ChangelogScreen`) nu onder Over;
   het hoort in de categorie Updates en back-up van Instellingen (`settings_cat_updates`), bij de updatecontrole. Over houdt alleen

@@ -89,6 +89,8 @@ enum Command {
     Clip { device: String, text: Vec<String> },
     /// Ask a device for the password of the Wi-Fi it is on, as a device without a network does after a yes.
     WifiAsk { device: String, ssid: String },
+    /// Press a button on a call of a phone, as the card on a computer does: answer, reject, hangup or mute.
+    CallAct { device: String, id: String, action: String },
     /// Remove a device from the circle for good.
     Remove { device: String },
     /// Print this device's id and name.
@@ -331,6 +333,21 @@ async fn execute(engine: &Engine, command: &Command) -> Result<String> {
             }
             Ok("asked\n".to_string())
         }
+        Command::CallAct { device, id, action } => {
+            use tandem_core::proto::{CallAction, CallActionKind, Msg};
+            let target = resolve(engine, device)?;
+            let action = match action.as_str() {
+                "answer" => CallActionKind::Answer,
+                "reject" => CallActionKind::Reject,
+                "hangup" => CallActionKind::Hangup,
+                "mute" => CallActionKind::MuteMic,
+                other => bail!("not an action for a call: {other}"),
+            };
+            if engine.send_msg(&[target], Msg::CallAction(CallAction { id: id.clone(), action })).await.is_empty() {
+                bail!("that device is not connected right now");
+            }
+            Ok("sent\n".to_string())
+        }
         Command::Remove { device } => {
             let id = resolve(engine, device)?;
             engine.remove_device(id).await?;
@@ -525,6 +542,7 @@ fn command_line(command: &Command) -> Option<String> {
         }
         Command::Clip { device, text } => vec!["clip".into(), device.clone(), text.join(" ")],
         Command::WifiAsk { device, ssid } => vec!["wifi-ask".into(), device.clone(), ssid.clone()],
+        Command::CallAct { device, id, action } => vec!["call-act".into(), device.clone(), id.clone(), action.clone()],
         Command::Remove { device } => vec!["remove".into(), device.clone()],
         Command::PairShow => vec!["pair-show".into()],
         Command::Ls { device, path } => vec!["ls".into(), device.clone(), path.clone()],
@@ -586,6 +604,7 @@ fn parse_line(line: &str) -> Option<Command> {
         "clip" => Some(Command::Clip { device: rest.first()?.clone(), text: vec![rest.get(1)?.clone()] }),
         "remove" => Some(Command::Remove { device: rest.first()?.clone() }),
         "wifi-ask" => Some(Command::WifiAsk { device: rest.first()?.clone(), ssid: rest.get(1)?.clone() }),
+        "call-act" => Some(Command::CallAct { device: rest.first()?.clone(), id: rest.get(1)?.clone(), action: rest.get(2)?.clone() }),
         "ls" => Some(Command::Ls { device: rest.first()?.clone(), path: rest.get(1)?.clone() }),
         "sms" => Some(Command::Sms { device: rest.first()?.clone(), thread: rest.get(1).and_then(|t| t.parse().ok()) }),
         "sms-send" => Some(Command::SmsSend { device: rest.first()?.clone(), number: rest.get(1)?.clone(), text: vec![rest.get(2)?.clone()] }),
@@ -682,10 +701,11 @@ fn print_event(engine: &Engine, event: &Event) {
             other => println!("wifi from {}: {other:?}", name_of(from)),
         },
         Event::Call { from, call } => println!(
-            "call {} from {}: {:?}, {}",
+            "call {} from {}: {:?}{}, {}",
             call.id,
             name_of(from),
             call.state,
+            if call.muted { " muted" } else { "" },
             call.name.as_deref().or(call.number.as_deref()).unwrap_or("unknown number")
         ),
         Event::ShareOffered { from, offer } => {
@@ -818,6 +838,7 @@ async fn main() -> Result<()> {
                 other,
                 Command::Send { .. }
                     | Command::Clip { .. }
+                    | Command::CallAct { .. }
                     | Command::Ls { .. }
                     | Command::Sms { .. }
                     | Command::SmsSend { .. }
@@ -837,7 +858,7 @@ async fn main() -> Result<()> {
             }
             print!("{}", execute(&engine, other).await?);
             // A message is on its way when the call returns, not read yet: closing at once lost the clipboard on a phone.
-            if matches!(other, Command::Clip { .. }) {
+            if matches!(other, Command::Clip { .. } | Command::CallAct { .. }) {
                 tokio::time::sleep(Duration::from_millis(1500)).await;
             }
             if matches!(other, Command::Send { .. }) {

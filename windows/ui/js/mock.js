@@ -356,9 +356,10 @@ export async function call(command, args) {
     case "ask_answer": return null;
     case "call_cards": return callCards;
     case "call_action": {
-      // Answer turns the card into a call that goes on; Decline and Hang up take it away, as the phone would report.
+      // Answer turns the card into a call that goes on; Mute changes it; Decline and Hang up take it away, as the phone would report.
       const key = args.device + "/" + args.call;
-      callCards = args.action === "answer"
+      if (args.action === "mute") callCards = callCards.map((c) => (c.key === key ? { ...c, muted: !c.muted } : c));
+      else callCards = args.action === "answer"
         ? callCards.map((c) => (c.key === key ? { ...c, phase: "active", since: Date.now() } : c))
         : callCards.filter((c) => c.key !== key);
       setTimeout(() => emit("call-cards", callCards), 300);

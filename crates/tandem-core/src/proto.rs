@@ -69,7 +69,6 @@ pub enum Msg {
     AppIcon { app_id: String, png: ByteBuf },
     Call(CallMsg),
     CallAction(CallAction),
-    AudioRouting(AudioRouting),
     Dial { number: String },
     Ring { on: bool },
     /// Asks the device to record for `side::LISTEN_MS`: this one is about to play the tones of `side::pattern` (see `side.rs`).
@@ -519,6 +518,9 @@ pub struct CallMsg {
     #[serde(default)]
     pub name: Option<String>,
     pub ts: u64,
+    /// Whether the microphone of the phone is off. The phone says it, so a card on a computer shows what is really so.
+    #[serde(default)]
+    pub muted: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -528,8 +530,7 @@ pub enum CallActionKind {
     Silence,
     Hangup,
     RejectWithMessage(String),
-    MoveToThisDevice,
-    MoveBack,
+    /// Turns the microphone of the phone off, or on again. The sound of a call stays on the phone (docs/PARITY.md says why).
     MuteMic,
 }
 
@@ -537,15 +538,6 @@ pub enum CallActionKind {
 pub struct CallAction {
     pub id: String,
     pub action: CallActionKind,
-}
-
-/// Route audio of a call to this Mac or back to the phone.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AudioRouting {
-    pub id: String,
-    /// Whether the sound should go to this Mac.
-    #[serde(rename = "audioOnMac")]
-    pub audio_on_mac: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -941,6 +933,43 @@ mod tests {
         let mut bytes = Vec::new();
         ciborium::into_writer(&future, &mut bytes).unwrap();
         assert!(matches!(decode_msg(&bytes).unwrap(), Msg::Unknown));
+    }
+
+    #[test]
+    fn a_call_from_an_old_phone_is_not_muted_and_a_new_one_says_so() {
+        #[derive(Serialize)]
+        struct OldCall {
+            id: String,
+            state: CallState,
+            incoming: bool,
+            ts: u64,
+        }
+        let old = OldCall { id: "1".into(), state: CallState::Active, incoming: true, ts: 5 };
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&old, &mut bytes).unwrap();
+        assert!(!decode::<CallMsg>(&bytes).unwrap().muted);
+
+        let new = CallMsg { id: "1".into(), state: CallState::Active, incoming: true, number: None, name: None, ts: 5, muted: true };
+        let mut bytes = Vec::new();
+        ciborium::into_writer(&new, &mut bytes).unwrap();
+        assert!(decode::<CallMsg>(&bytes).unwrap().muted);
+    }
+
+    #[test]
+    fn moving_the_sound_of_a_call_from_an_older_mac_is_skipped() {
+        // 0.2.76 to 0.2.83 had these two buttons. A phone that has been updated before the Mac still hears them.
+        for sent in ["MoveToThisDevice", "MoveBack"] {
+            let value = ciborium::Value::Map(vec![(
+                ciborium::Value::Text("CallAction".into()),
+                ciborium::Value::Map(vec![
+                    (ciborium::Value::Text("id".into()), ciborium::Value::Text("1".into())),
+                    (ciborium::Value::Text("action".into()), ciborium::Value::Text(sent.into())),
+                ]),
+            )]);
+            let mut bytes = Vec::new();
+            ciborium::into_writer(&value, &mut bytes).unwrap();
+            assert!(matches!(decode_msg(&bytes).unwrap(), Msg::Unknown), "{sent}");
+        }
     }
 
     #[test]

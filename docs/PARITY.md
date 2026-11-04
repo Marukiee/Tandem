@@ -13,6 +13,8 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Bestanden, klembord, links, tekst sturen en ontvangen | ja | ja | ja | ja |
 | Meldingen van de telefoon tonen op de computer | bron | ja | ja | ja |
 | Antwoorden op meldingen, bellen en gemiste oproepen tonen | bron | ja (zwevend belvenster) | deels (meldingen als toon; zwevend belvenster met Opnemen, Weigeren en Ophangen, nooit gezien) | deels (idem; onder Wayland kiest het bureaublad de plek van het belvenster en houdt het niet bovenop) |
+| De microfoon van de telefoon dempen tijdens een gesprek, vanaf het belvenster | bron (zegt zelf of hij gedempt is, ook als dat op de telefoon gebeurt) | ja | ja (nooit gezien) | ja (nooit gezien) |
+| Het geluid van een gesprek op de computer (praten via de microfoon en luidsprekers) | bron | nee, zie hieronder | nee, wel los van Tandem met Telefoonkoppeling | nee, volgens eerdere notities wel los van Tandem via Bluetooth (niet nagekeken) |
 | Muziek van de telefoon bedienen vanaf de computer | bron | ja | ja (mediatoetsen van het systeem) | ja (MPRIS, getest op een sessiebus in CI) |
 | Klembordgeschiedenis | ja | ja | ja | ja |
 | Een screenshot staat meteen op het klembord van de andere apparaten (schakelaar in de klembordinstellingen, alleen naar apparaten met klembord aan; bij de ontvanger alleen als klembord, nooit als bestand dat blijft) | ja (MediaStore, map Screenshots) | ja (map uit `com.apple.screencapture`, met Control via het klembord) | ja (map Screenshots, Knipprogramma via het klembord, eenmaal) | ja (map Screenshots in Afbeeldingen, ook vertaald; GNOME via het klembord, eenmaal; nooit gezien) |
@@ -64,6 +66,12 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 
 Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een echte test:
 
+- **Het geluid van een telefoongesprek op de Mac** kan niet. Getest op 2026-11-04 op een MacBook met M2 Max (macOS 27) en de Xperia 1 VI (LineageOS 24, Android 17).
+  Met `IOBluetoothHandsFreeDevice` krijgt de Mac een echte handsfree-verbinding: de telefoon maakt hem zijn actieve headset en meldt signaal, batterij en gesprek. Het
+  spraakkanaal (SCO) gaat niet open. Vraagt de telefoon erom, dan weigert macOS het zelf (`SCO/eSCO reject (HOST_REJ_RESOURCES) ... SCO connect-accept declined` in de log
+  van bluetoothd); vraagt de Mac erom, dan geeft `connectSCO` meteen `kIOReturnUnsupported` (0xE00002C7), zonder dat het bluetoothd bereikt. Android laat apps ook niet bij
+  gespreksgeluid (`VOICE_CALL` is voor systeemapps, `AudioPlaybackCapture` slaat telefonie over). Daarom heeft het belkaartje geen knop om het geluid te verplaatsen: een
+  knop die niets doet wordt nooit getoond. Linux (BlueZ met PipeWire) is de plek waar het misschien wel kan, dat is nog niet nagekeken.
 - **Windows**: een scherm voor een ander apparaat maken (een stuurprogramma voor een virtueel beeldscherm, eenmalig met beheerdersrechten), Bluetooth
   tussen apparaten (WinRT), het hotspotverzoek aan de telefoon. En alles nalopen op een echte Windows-pc: dat is nooit gedaan.
 - **Linux**: het hotspotverzoek aan de telefoon (de Bluetooth-kant is er), de gedeelde muis als hoofd onder X11 (`XInput2` met grabs), en

@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.2.84",
+    "date": "2026-11-04",
+    "en": {
+      "title": "Mute that mutes",
+      "new": [
+        "Mute on the call card really mutes your phone's microphone and shows when it is on",
+        "The call card is compact again",
+        "Move here and Back to phone are gone: macOS does not let a call's sound through"
+      ]
+    },
+    "nl": {
+      "title": "Dempen dat dempt",
+      "new": [
+        "Dempen op het belkaartje zet echt de microfoon van je telefoon uit en laat zien wanneer dat zo is",
+        "Het belkaartje is weer compact",
+        "Naar hier verplaatsen en Terug naar telefoon zijn weg: macOS laat het geluid van een gesprek niet door"
+      ]
+    }
+  },
+  {
     "version": "0.2.82",
     "date": "2026-11-04",
     "en": {
