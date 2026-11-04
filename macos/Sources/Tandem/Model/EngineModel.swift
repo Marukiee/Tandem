@@ -732,12 +732,20 @@ final class EngineModel {
         case let .wifi(from, message):
             WifiShare.shared.handle(from: from, message: message)
         case let .callAudioStart(from, stream, sampleRate):
-            guard stream == PhoneSound.callVoiceStream else { return }
+            if stream != PhoneSound.callVoiceStream {
+                print("[EngineModel] call audio start: stream \(stream) != expected \(PhoneSound.callVoiceStream), ignoring")
+                return
+            }
+            print("[EngineModel] call audio start: from=\(from) stream=\(stream) rate=\(sampleRate)")
             PhoneSound.shared.start(from: from, name: device(from)?.name ?? "?", stream: stream, sampleRate: sampleRate, channels: 1, engineModel: self)
+
         case let .callAudioStop(from, stream):
             // Per stream: the end of a call must not cut off other sound of the same phone.
+            print("[EngineModel] call audio stop: from=\(from) stream=\(stream)")
             PhoneSound.shared.stopped(device: from, stream: stream)
+
         case let .callAudioData(from, stream, seq, data):
+            print("[EngineModel] call audio data: from=\(from) stream=\(stream) seq=\(seq) size=\(data.count) bytes")
             PhoneSound.shared.sink.onAudio(from: from, stream: stream, seq: seq, pcm: data)
         }
     }

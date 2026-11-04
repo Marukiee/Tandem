@@ -542,6 +542,10 @@ pub enum CallActionKind {
     RejectWithMessage(String),
     /// Turns the microphone of the phone off, or on again. The sound of a call stays on the phone (docs/PARITY.md says why).
     MuteMic,
+    /// Routes the voice link of a call from the phone to this device.
+    MoveToMac,
+    /// Sends the voice link back to the phone.
+    MoveBack,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -968,7 +972,12 @@ mod tests {
     #[test]
     fn moving_the_sound_of_a_call_from_an_older_mac_is_skipped() {
         // 0.2.76 to 0.2.83 and 0.2.90 had buttons like these. A phone that has been updated before the Mac still hears them.
-        for sent in ["MoveToThisDevice", "MoveBack", "MoveToMac"] {
+        // MoveToThisDevice is still unknown (no explicit variant). MoveBack and MoveToMac are now known.
+        for (sent, expected) in [
+            ("MoveToThisDevice", "unknown"),
+            ("MoveBack", "callAction"),
+            ("MoveToMac", "callAction"),
+        ] {
             let value = ciborium::Value::Map(vec![(
                 ciborium::Value::Text("CallAction".into()),
                 ciborium::Value::Map(vec![
@@ -978,7 +987,13 @@ mod tests {
             )]);
             let mut bytes = Vec::new();
             ciborium::into_writer(&value, &mut bytes).unwrap();
-            assert!(matches!(decode_msg(&bytes).unwrap(), Msg::Unknown), "{sent}");
+            let msg = decode_msg(&bytes).unwrap();
+            let kind = match &msg {
+                Msg::Unknown => "unknown",
+                Msg::CallAction(_) => "callAction",
+                _ => "other",
+            };
+            assert_eq!(kind, expected, "{sent}: expected {expected} got {kind}");
         }
     }
 

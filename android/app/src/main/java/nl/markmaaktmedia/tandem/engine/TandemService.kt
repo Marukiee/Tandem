@@ -219,6 +219,9 @@ class TandemService : LifecycleService() {
             is TandemEvent.Wifi -> nl.markmaaktmedia.tandem.wifi.WifiShare.get(this).onEvent(event)
             is TandemEvent.Sms -> sms.onEvent(event)
             is TandemEvent.Focus -> focus.follow(event)
+            is TandemEvent.CallAudioStart -> nl.markmaaktmedia.tandem.live.CallAudioService.start(this, event.from, event.stream.toByte(), event.sampleRate.toInt())
+            is TandemEvent.CallAudioStop -> nl.markmaaktmedia.tandem.live.CallAudioService.stop(this, event.from, event.stream.toByte())
+            is TandemEvent.CallAudioData -> nl.markmaaktmedia.tandem.live.CallAudioService.addData(this, event.from, event.stream.toByte(), event.seq.toInt(), event.data)
 
             else -> Unit
         }
