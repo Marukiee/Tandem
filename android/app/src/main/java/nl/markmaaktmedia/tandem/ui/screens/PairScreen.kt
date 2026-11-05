@@ -199,12 +199,36 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit) {
         }
     }
 
-    // A pairing link opened from outside the app (a tandem:// link) joins straight away.
+    // A pairing link opened from outside the app (a tandem:// link) can come from any page or app, and the device behind it would get this
+    // phone's notifications, clipboard and files. So it asks first.
+    var askLink by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         context.graph.pairLink.value?.let { link ->
             context.graph.pairLink.value = null
-            join(link)
+            askLink = link
         }
+    }
+    askLink?.let { link ->
+        nl.markmaaktmedia.tandem.ui.components.TandemDialog(
+            title = stringResource(R.string.pair_link_title),
+            body = stringResource(R.string.pair_link_body),
+            icon = TandemIcons.Link,
+            onDismiss = { askLink = null },
+            showClose = false,
+            actions = {
+                nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton(
+                    label = stringResource(R.string.pair_link_yes),
+                    onClick = {
+                        askLink = null
+                        join(link)
+                    },
+                )
+                nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton(
+                    label = stringResource(R.string.action_cancel),
+                    onClick = { askLink = null },
+                )
+            },
+        )
     }
 
     LaunchedEffect(joined) {

@@ -257,7 +257,9 @@ class EngineHost(
             }
 
             is TandemEvent.ShareText -> {
-                if (event.open && event.isUrl) {
+                // Only a web link opens by itself: another kind could start anything on this phone.
+                val web = Uri.parse(event.text).scheme?.lowercase() in setOf("http", "https")
+                if (event.open && event.isUrl && web) {
                     runCatching {
                         context.startActivity(
                             android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(event.text))

@@ -498,7 +498,8 @@ final class EngineModel {
             showToast(String(localized: "Clipboard from \(name)"))
 
         case let .shareText(from, text, isUrl, open):
-            if open, isUrl, let url = URL(string: text) {
+            // Only a web link opens by itself: another kind could start an app or a file on this Mac.
+            if open, isUrl, let url = URL(string: text), ["http", "https"].contains(url.scheme?.lowercased()) {
                 // The link opens, and it also stays on the clipboard (and in its history) to paste it somewhere else.
                 recordIncoming(text, from: from)
                 clipboard?.apply(text)
@@ -572,7 +573,10 @@ final class EngineModel {
             CallPause.shared.call(call.state, on: from)
 
         case let .input(from, input):
-            if !PointerShare.shared.controlled(input, from: from) { injector.handle(input, from: from) }
+            if PointerShare.shared.controlled(input, from: from) { break }
+            // "Never" for control of this Mac goes for the trackpad and keyboard of a phone too.
+            if (try? tandem?.mediaPolicy(id: from))?.control == .never { break }
+            injector.handle(input, from: from)
 
         case let .pointerShare(from, message):
             PointerShare.shared.received(message, from: from)
@@ -1336,7 +1340,14 @@ final class EngineModel {
             if !urls.isEmpty { DevicePicker.send(urls) }
             return
         }
-        pair(uri: url.absoluteString)
+        // Any page or app can open such a link, and the device behind it would get this Mac's clipboard and files. So it asks first.
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Pair with this device?")
+        alert.informativeText = String(localized: "A link asks to pair. That device will get your clipboard, notifications and files. Only go on if you started this yourself.")
+        alert.addButton(withTitle: String(localized: "Pair"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        NSApp.activate(ignoringOtherApps: true)
+        if alert.runModal() == .alertFirstButtonReturn { pair(uri: url.absoluteString) }
     }
 
     // MARK: Status

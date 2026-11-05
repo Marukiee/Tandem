@@ -96,6 +96,9 @@
     <string name="remove_body">Het wordt op elk apparaat verwijderd en komt pas terug als je het opnieuw koppelt.</string>
     <string name="remove_confirm">Definitief verwijderen</string>
     <string name="action_cancel">Annuleren</string>
+    <string name="pair_link_title">Koppelen met dit apparaat?</string>
+    <string name="pair_link_body">Een link vraagt om te koppelen. Dat apparaat krijgt je meldingen, klembord en bestanden. Ga alleen door als je dit zelf hebt gestart.</string>
+    <string name="pair_link_yes">Koppelen</string>
     <string name="action_clear">Voltooide wissen</string>
     <string name="transfers_empty_title">Nog niets</string>
     <string name="transfers_empty_body">Bestanden die je verstuurt en ontvangt staan hier.</string>

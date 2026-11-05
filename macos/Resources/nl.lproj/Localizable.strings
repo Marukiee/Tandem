@@ -1371,3 +1371,8 @@
 "Switch this phone between sound, vibrate and do not disturb" = "Wissel deze telefoon tussen geluid, trillen en niet storen";
 "Update Tandem on %@ to switch its sound from here" = "Werk Tandem bij op %@ om het geluid hiervandaan te wisselen";
 "Do not disturb needs access: allow Tandem in the settings of %@" = "Niet storen heeft toegang nodig: sta Tandem toe in de instellingen van %@";
+
+/* A pairing link from outside */
+"Pair with this device?" = "Koppelen met dit apparaat?";
+"A link asks to pair. That device will get your clipboard, notifications and files. Only go on if you started this yourself." = "Een link vraagt om te koppelen. Dat apparaat krijgt je klembord, meldingen en bestanden. Ga alleen door als je dit zelf hebt gestart.";
+"Pair" = "Koppelen";

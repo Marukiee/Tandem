@@ -13,7 +13,11 @@ use crate::{events, i18n, settings};
 
 /// logind is there to ask: only on Linux, and only where `loginctl` is.
 pub fn available() -> bool {
-    cfg!(target_os = "linux") && std::process::Command::new("loginctl").arg("--version").output().is_ok_and(|out| out.status.success())
+    // Looked at every few seconds, and it does not change while the app runs.
+    static THERE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *THERE.get_or_init(|| {
+        cfg!(target_os = "linux") && std::process::Command::new("loginctl").arg("--version").output().is_ok_and(|out| out.status.success())
+    })
 }
 
 fn offered(app: &AppHandle) -> bool {

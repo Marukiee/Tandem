@@ -11,6 +11,7 @@ struct ControlState: Codable {
     var ringing = false
     var extendTarget: String?
     var phone: String?
+    var key: String?
 
     static func read() -> ControlState {
         // The sandbox of the extension has its own home; the one of the person is what the app writes in.
@@ -27,7 +28,10 @@ func tell(_ action: String, _ value: Bool) async {
     var parts = URLComponents()
     parts.scheme = "tandem"
     parts.host = "control"
-    parts.queryItems = [URLQueryItem(name: "action", value: action), URLQueryItem(name: "value", value: value ? "true" : "false")]
+    parts.queryItems = [
+        URLQueryItem(name: "action", value: action), URLQueryItem(name: "value", value: value ? "true" : "false"),
+        URLQueryItem(name: "key", value: ControlState.read().key),
+    ]
     guard let url = parts.url else { return }
     let configuration = NSWorkspace.OpenConfiguration()
     configuration.activates = false

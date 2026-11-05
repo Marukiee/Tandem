@@ -99,6 +99,9 @@
     <string name="remove_body">It is removed on every device and only comes back if you pair it again.</string>
     <string name="remove_confirm">Remove for good</string>
     <string name="action_cancel">Cancel</string>
+    <string name="pair_link_title">Pair with this device?</string>
+    <string name="pair_link_body">A link asks to pair. That device will get your notifications, clipboard and files. Only go on if you started this yourself.</string>
+    <string name="pair_link_yes">Pair</string>
     <string name="action_clear">Clear finished</string>
     <string name="transfers_empty_title">Nothing yet</string>
     <string name="transfers_empty_body">Files you send and receive show up here.</string>

@@ -17,7 +17,11 @@ final class ControlBridge {
         /// Whether there is a device to extend to, and a phone to find, so a button can say it has nothing to act on.
         var extendTarget: String?
         var phone: String?
+        /// Comes along with a press, so a link on a web page cannot turn these on.
+        var key: String?
     }
+
+    private let key = UUID().uuidString
 
     private var timer: Timer?
     private var last: State?
@@ -67,6 +71,7 @@ final class ControlBridge {
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         let action = items.first { $0.name == "action" }?.value ?? ""
         let on = items.first { $0.name == "value" }?.value == "true"
+        guard items.first(where: { $0.name == "key" })?.value == key else { return }
         switch action {
         case "quickshare":
             QuickShare.shared.enabled = on
