@@ -51,6 +51,8 @@ jobs:
         with:
           node-version: 22
       - run: for f in windows/ui/js/*.js; do node --check "$f"; done
+      # A key without text shows the key itself to a person, and one without Dutch shows English: only on the page where it is used.
+      - run: node scripts/check-ui-text.mjs
 
   android:
     name: Android

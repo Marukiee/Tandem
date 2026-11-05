@@ -24,6 +24,21 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # The tests of the app itself (not the core, CI has those): they run on nothing else on Windows.
+  tests:
+    name: Tests of the Windows app
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: windows/src-tauri -> target
+      - name: Test
+        working-directory: windows/src-tauri
+        run: cargo test --workspace
+
   app:
     name: Windows app
     runs-on: windows-latest
@@ -55,95 +70,18 @@ jobs:
           path: dist-windows/*
           if-no-files-found: error
 
-      # Installs the app on the runner, starts it and takes pictures of the screen, so what it looks like on Windows can
-      # be checked without a Windows PC. The log of the app goes in the pictures' folder too. The runner may have no
-      # screen to take a picture of; that is not a failure.
-      - name: Start the app and take screenshots
-        continue-on-error: true
+      # A crash, a window that does not open or a file that does not arrive turns this run red, and then there is no preview and no
+      # release. See the script for what it tries; the pictures, the logs and every text it read land in the artifact "smoke".
+      - name: Try the app
         shell: pwsh
-        run: |
-          function Shot($name) {
-            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-            $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-            $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-            $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-            $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
-            New-Item -ItemType Directory -Force screenshots | Out-Null
-            $bitmap.Save("screenshots/$name.png")
-          }
-          $log = Join-Path $env:LOCALAPPDATA "nl.markmaaktmedia.tandem\logs\tandem.log"
-          # The app says in its log what it has done, which is how to know it is ready: a cold start of the web view can
-          # take a long time on a new machine.
-          function WaitFor($pattern, $seconds) {
-            $until = (Get-Date).AddSeconds($seconds)
-            while ((Get-Date) -lt $until) {
-              if ((Test-Path $log) -and (Select-String -Path $log -Pattern $pattern -Quiet)) { return $true }
-              Start-Sleep -Milliseconds 500
-            }
-            return $false
-          }
-          function ShowLog($title) {
-            Write-Host "---- $title"
-            Get-ChildItem (Split-Path $log) -Filter "*.log" -ErrorAction SilentlyContinue | ForEach-Object {
-              Write-Host "-- $($_.Name)"
-              Get-Content $_.FullName | Write-Host
-              Copy-Item $_.FullName "screenshots/$title-$($_.Name)" -ErrorAction SilentlyContinue
-            }
-          }
-          New-Item -ItemType Directory -Force screenshots | Out-Null
-          $setup = Get-ChildItem dist-windows -Filter "Tandem-Windows-x64-setup.exe"
-          Start-Process $setup.FullName -ArgumentList "/S" -Wait
-          $exe = Get-ChildItem $env:LOCALAPPDATA -Recurse -Include "Tandem.exe", "tandem-windows.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $exe) { Get-ChildItem $env:LOCALAPPDATA -Directory | ForEach-Object { Write-Host $_.FullName }; throw "the installer put no Tandem.exe on the machine" }
+        run: ./scripts/windows-smoke.ps1 -Setup dist-windows/Tandem-Windows-x64-setup.exe -Daemon dist-windows/tandemd-windows-x86_64.zip -Out smoke
 
-          # What Tandem and the web views of Windows that it keeps alive hold, in megabytes. The point of putting windows away
-          # is that this drops when nothing is on the screen.
-          function Memory($label) {
-            $mine = Get-Process -Name Tandem -ErrorAction SilentlyContinue
-            $views = Get-Process -Name msedgewebview2 -ErrorAction SilentlyContinue
-            $own = ($mine | Measure-Object -Property WorkingSet64 -Sum).Sum / 1MB
-            $web = ($views | Measure-Object -Property WorkingSet64 -Sum).Sum / 1MB
-            Write-Host ("memory {0}: Tandem {1:N0} MB, {2} web view processes {3:N0} MB, together {4:N0} MB" -f $label, $own, @($views).Count, $web, ($own + $web))
-          }
-
-          # The console of the runner is out of the way, so the window of the app is what is in the picture.
-          (New-Object -ComObject Shell.Application).MinimizeAll()
-          $env:TANDEM_PANEL_KEPT_SECONDS = "6"
-          Write-Host "starting $($exe.FullName)"
-          Start-Process $exe.FullName
-          Write-Host "the engine is up: $(WaitFor 'the engine runs' 90)"
-          Write-Host "the window is up: $(WaitFor 'the main window shows' 120)"
-          Start-Sleep -Seconds 4
-          Shot "app-main"
-          Memory "window open"
-
-          # Closing the window gives the web view back.
-          (Get-Process -Name Tandem | Select-Object -First 1).CloseMainWindow() | Out-Null
-          Start-Sleep -Seconds 10
-          Memory "window closed"
-
-          # The panel from the corner: made when asked for, away again a few seconds after it was closed.
-          Start-Process $exe.FullName -ArgumentList "--panel"
-          Write-Host "the panel opened: $(WaitFor 'the panel opens' 90)"
-          Start-Sleep -Seconds 3
-          Shot "app-panel-second"
-          Memory "panel open"
-          Start-Process $exe.FullName -ArgumentList "--panel"
-          Start-Sleep -Seconds 14
-          Memory "panel closed and put away"
-          ShowLog "main"
-          Stop-Process -Name Tandem -Force -ErrorAction SilentlyContinue
-          Start-Sleep -Seconds 3
-
-          # A start with --panel opens the small panel in the corner, where a click on the tray icon would put it.
-          Remove-Item (Split-Path $log) -Recurse -Force -ErrorAction SilentlyContinue
-          Start-Process $exe.FullName -ArgumentList "--panel"
-          Write-Host "the panel opened: $(WaitFor 'the panel opens' 90)"
-          Start-Sleep -Seconds 3
-          Shot "app-panel"
-          Start-Sleep -Seconds 4
-          ShowLog "panel"
-          Get-Process | Where-Object { $_.ProcessName -match "Tandem" } | Select-Object ProcessName, Id, Responding | Format-Table | Out-String | Write-Host
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: smoke
+          path: smoke/*
+          if-no-files-found: ignore
 
       # The pages with pretend data, drawn by the Edge on the runner: the same engine as the window of the app, with
       # the fonts and the font smoothing of Windows.
@@ -198,3 +136,27 @@ jobs:
             gh release create windows-preview --prerelease --latest=false --title "$title" --notes "$notes"
           fi
           gh release upload windows-preview dist-windows/Tandem-Windows-x64-setup.exe dist-windows/Tandem-Windows-x64-setup.exe.sha256 dist-windows/tandemd-windows-x86_64.zip dist-windows/tandemd-windows-x86_64.zip.sha256 --clobber
+
+  # The same app on Windows 11 on ARM: the one desktop Windows there is a runner for, and the installer people on a Snapdragon laptop get
+  # runs there through emulation. Not a gate yet: what it says first has to prove itself.
+  arm:
+    name: On Windows 11 on ARM
+    needs: app
+    runs-on: windows-11-arm
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          name: windows
+          path: dist-windows
+      - name: Try the app
+        shell: pwsh
+        run: ./scripts/windows-smoke.ps1 -Setup dist-windows/Tandem-Windows-x64-setup.exe -Daemon dist-windows/tandemd-windows-x86_64.zip -Out smoke
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: smoke-arm
+          path: smoke/*
+          if-no-files-found: ignore

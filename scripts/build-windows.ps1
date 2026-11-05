@@ -23,8 +23,16 @@ try {
     $text = (Get-Content $conf -Raw) -replace '"version":\s*"[^"]*"', ('"version": "' + $Version + '"')
     Set-Content $conf $text -NoNewline
 
-    npx --yes "@tauri-apps/cli@2" build --ci
-    if ($LASTEXITCODE -ne 0) { throw "the app did not build" }
+    # The bundler downloads NSIS from GitHub, which has answered 504 before and turned a good build red. Only that gets another try:
+    # the compiled program is still there, so it costs seconds, and a mistake in the code fails at once.
+    foreach ($try in 1..3) {
+        $output = Join-Path $env:TEMP "tandem-tauri-build.log"
+        npx --yes "@tauri-apps/cli@2" build --ci 2>&1 | Tee-Object -FilePath $output
+        if ($LASTEXITCODE -eq 0) { break }
+        if ($try -eq 3 -or -not (Select-String -Path $output -Pattern "failed to bundle project" -Quiet)) { throw "the app did not build" }
+        Write-Host "the bundler could not finish, trying again"
+        Start-Sleep -Seconds (30 * $try)
+    }
 
     $setup = Get-ChildItem "src-tauri/target/release/bundle/nsis" -Filter "*-setup.exe" | Select-Object -First 1
     if (-not $setup) { throw "the build made no installer" }
