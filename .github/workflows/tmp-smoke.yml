@@ -25,33 +25,24 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          function Look($what) {
-            Write-Host "=== $what"
-            Start-Sleep -Seconds 20
-            Get-CimInstance Win32_Process -Filter "name='msedgewebview2.exe'" | Where-Object { $_.CommandLine -match "Tandem.exe" -and $_.CommandLine -notmatch "--type=" } | ForEach-Object { Write-Host $_.CommandLine }
-            netstat -ano | Select-String "LISTENING" | Select-String ":9222" | Write-Host
-            try { (Invoke-WebRequest "http://127.0.0.1:9222/json/list" -TimeoutSec 5).Content | Write-Host } catch { Write-Host "no answer: $($_.Exception.Message)" }
-            Stop-Process -Name Tandem -Force -ErrorAction SilentlyContinue
-            Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-            Start-Sleep -Seconds 3
-          }
-          whoami /groups | Select-String "Mandatory" | Write-Host
-          (Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System).EnableLUA | Write-Host
-          Get-ChildItem HKLM:\SOFTWARE\Policies\Microsoft\Edge -Recurse -ErrorAction SilentlyContinue | Write-Host
           $setup = Get-Item dist-windows/Tandem-Windows-x64-setup.exe
           Start-Process $setup.FullName -ArgumentList "/S" -Wait
-          $exe = "$env:LOCALAPPDATA\Tandem\Tandem.exe"
-
-          $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222"
-          Start-Process $exe
-          Look "environment variable, Start-Process"
-
-          Start-Process $exe -NoNewWindow
-          Look "environment variable, no shell"
-          Remove-Item Env:\WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS
-
-          $key = "HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments"
-          New-Item -Path $key -Force | Out-Null
-          New-ItemProperty -Path $key -Name "Tandem.exe" -Value "--remote-debugging-port=9222" -Force | Out-Null
-          Start-Process $exe
-          Look "policy in the registry"
+          $log = Join-Path $env:RUNNER_TEMP "inner.log"
+          $inner = Join-Path $env:RUNNER_TEMP "inner.ps1"
+          @"
+          Start-Transcript -Path '$log'
+          whoami /groups | Select-String 'Mandatory Label'
+          `$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9222'
+          Start-Process '$env:LOCALAPPDATA\Tandem\Tandem.exe'
+          Start-Sleep -Seconds 20
+          Get-CimInstance Win32_Process -Filter "name='msedgewebview2.exe'" | Where-Object { `$_.CommandLine -match 'Tandem.exe' -and `$_.CommandLine -notmatch '--type=' } | ForEach-Object { `$_.CommandLine }
+          try { (Invoke-WebRequest 'http://127.0.0.1:9222/json/list' -UseBasicParsing -TimeoutSec 5).Content } catch { "no answer: `$(`$_.Exception.Message)" }
+          Stop-Transcript
+          "@ | Set-Content $inner
+          $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$inner`""
+          $principal = New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$env:USERNAME" -LogonType Interactive -RunLevel Limited
+          Register-ScheduledTask -TaskName TandemTest -Action $action -Principal $principal -Force | Out-Null
+          Start-ScheduledTask -TaskName TandemTest
+          Start-Sleep -Seconds 40
+          Write-Host "task state: $((Get-ScheduledTask -TaskName TandemTest).State), result $((Get-ScheduledTaskInfo -TaskName TandemTest).LastTaskResult)"
+          Get-Content $log -ErrorAction SilentlyContinue | Write-Host
