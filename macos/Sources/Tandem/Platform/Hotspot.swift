@@ -13,6 +13,8 @@ enum HotspotStatus: Equatable {
     case joining(String)
     case connected(String)
     case failed(String)
+    /// The phone's daily limit is used up. Not a plain failure: there is something to do about it from here.
+    case limitReached
 
     var isBusy: Bool {
         switch self {
@@ -30,6 +32,7 @@ enum HotspotStatus: Equatable {
         case let .joining(name): String(localized: "Joining \(name)")
         case let .connected(name): String(localized: "Using the hotspot of \(name)")
         case let .failed(reason): reason
+        case .limitReached: String(localized: "Daily hotspot limit reached")
         }
     }
 }
@@ -296,7 +299,10 @@ final class HotspotCoordinator {
     // MARK: Asking
 
     /// `byPerson`: a button was pressed here. Only then does the phone turn it on again right after it was turned off there by hand.
-    func requestNow(_ id: String, byPerson: Bool = true) {
+    /// Once, for today: the phone adds to its daily limit and turns the hotspot on.
+    func requestExtra(_ id: String) { requestNow(id, extra: true) }
+
+    func requestNow(_ id: String, byPerson: Bool = true, extra: Bool = false) {
         guard let model, let engine = model.engineHandle else { return }
         heldOffUntil = .distantPast
         keepHotspot = byPerson
@@ -305,19 +311,19 @@ final class HotspotCoordinator {
         quicAnswer = nil
         model.hotspotStatus = .asking
         runTask = Task { [weak self] in
-            await self?.run(id: id, engine: engine, byPerson: byPerson)
+            await self?.run(id: id, engine: engine, byPerson: byPerson, extra: extra)
         }
     }
 
-    private func run(id: String, engine: TandemEngine, byPerson: Bool) async {
+    private func run(id: String, engine: TandemEngine, byPerson: Bool, extra: Bool) async {
         guard let model else { return }
         let name = model.device(id)?.name ?? "Phone"
         do {
             let answer: HotspotBleState
             if model.device(id)?.online == true {
-                answer = try await askOverNetwork(id: id, engine: engine, byPerson: byPerson)
+                answer = try await askOverNetwork(id: id, engine: engine, reason: extra ? "extra" : byPerson ? "asked" : "mac-offline")
             } else {
-                answer = try await ble.run(action: byPerson ? BleHotspotClient.actionOnAsked : BleHotspotClient.actionOn, phoneId: id, engine: engine) { [weak self] state in
+                answer = try await ble.run(action: extra ? BleHotspotClient.actionOnExtra : byPerson ? BleHotspotClient.actionOnAsked : BleHotspotClient.actionOn, phoneId: id, engine: engine) { [weak self] state in
                     Task { @MainActor in self?.showProgress(state) }
                 }
             }
@@ -327,7 +333,7 @@ final class HotspotCoordinator {
             case .manual:
                 model.hotspotStatus = .failed(String(localized: "Nobody tapped the notification on your phone in time. Tap it next time, or start Shizuku so the phone can do it by itself."))
             default:
-                model.hotspotStatus = .failed(Self.reason(for: answer))
+                model.hotspotStatus = answer == .refusedLimit ? .limitReached : .failed(Self.reason(for: answer))
                 // The phone said no (turned off by hand a moment ago, battery, data limit): asking again in a few seconds is the same no.
                 heldOffUntil = Date().addingTimeInterval(Self.holdOff)
             }
@@ -349,8 +355,8 @@ final class HotspotCoordinator {
 
     /// When the phone is reachable over the normal connection, the same request goes
     /// over it, and the answer comes back as a state message.
-    private func askOverNetwork(id: String, engine: TandemEngine, byPerson: Bool) async throws -> HotspotBleState {
-        try await engine.sendHotspot(target: id, hotspot: .request(reason: byPerson ? "asked" : "mac-offline"))
+    private func askOverNetwork(id: String, engine: TandemEngine, reason: String) async throws -> HotspotBleState {
+        try await engine.sendHotspot(target: id, hotspot: .request(reason: reason))
         var waited = 0.0
         var limit = 45.0
         while waited < limit {

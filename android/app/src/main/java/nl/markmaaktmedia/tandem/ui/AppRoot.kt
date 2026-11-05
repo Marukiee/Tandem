@@ -380,17 +380,20 @@ private fun ScreenSoundQuestion() {
         onDismiss = { sound.question.value = null },
         icon = TandemIcons.VolumeUp,
         body = androidx.compose.ui.res.stringResource(R.string.screen_sound_body),
+        showClose = false,
         actions = {
             nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton(androidx.compose.ui.res.stringResource(R.string.screen_sound_there), { answer("there") })
             nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton(androidx.compose.ui.res.stringResource(R.string.screen_sound_here), { answer("here") })
         },
-    ) {
-        androidx.compose.foundation.layout.Row(
-            androidx.compose.ui.Modifier.fillMaxWidth().clickable { dontAsk = !dontAsk },
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        ) {
-            androidx.compose.material3.Checkbox(dontAsk, { dontAsk = it })
-            androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(R.string.screen_sound_remember))
-        }
-    }
+        footer = {
+            androidx.compose.foundation.layout.Row(
+                androidx.compose.ui.Modifier.fillMaxWidth().clickable { dontAsk = !dontAsk },
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                androidx.compose.material3.Checkbox(dontAsk, { dontAsk = it })
+                androidx.compose.material3.Text(androidx.compose.ui.res.stringResource(R.string.screen_sound_remember))
+            }
+        },
+    )
 }

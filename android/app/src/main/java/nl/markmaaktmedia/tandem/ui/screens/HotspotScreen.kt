@@ -88,6 +88,7 @@ fun HotspotScreen(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.ui.Route
     val enabled by graph.prefs.hotspotForMac.collectAsState(initial = false)
     val roaming by module.prefs.allowRoaming.collectAsState(initial = false)
     val limitMb by module.prefs.dataLimitMb.collectAsState(initial = 0L)
+    val extra by module.prefs.dataExtra.collectAsState(initial = "" to 0L)
     val totalBytes by module.prefs.dataUsedBytes.collectAsState(initial = 0L)
     val days by module.prefs.dailyUsage.collectAsState(initial = emptyMap())
     val monthStartDay by module.prefs.monthStartDay.collectAsState(initial = 1)
@@ -208,6 +209,8 @@ fun HotspotScreen(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.ui.Route
                 limitMb = limitMb,
                 todayBytes = todayBytes,
                 onLimit = { scope.launch { module.prefs.setDataLimitMb(it) } },
+                extraMb = extra.second.takeIf { extra.first == nl.markmaaktmedia.tandem.hotspot.HotspotUsage.dayKey(System.currentTimeMillis()) } ?: 0L,
+                onExtra = { module.giveExtra() },
             )
         }
 
@@ -264,7 +267,7 @@ fun HotspotScreen(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.ui.Route
  * smooth to drag and still ends on a value that means something.
  */
 @Composable
-private fun DataLimitCard(limitMb: Long, todayBytes: Long, onLimit: (Long) -> Unit) {
+private fun DataLimitCard(limitMb: Long, todayBytes: Long, onLimit: (Long) -> Unit, extraMb: Long, onExtra: () -> Unit) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -331,6 +334,17 @@ private fun DataLimitCard(limitMb: Long, todayBytes: Long, onLimit: (Long) -> Un
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(stringResource(R.string.hotspot_data_none), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
             Text("10 GB", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        // Once, for today: the limit set above stays what it is, and is back tomorrow.
+        if (limitMb > 0) {
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (extraMb > 0) stringResource(R.string.hotspot_extra_today, limitLabel(extraMb)) else stringResource(R.string.hotspot_extra_hint),
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f).padding(end = 12.dp),
+                )
+                nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton(stringResource(R.string.hotspot_extra_button), onExtra)
+            }
         }
     }
 }

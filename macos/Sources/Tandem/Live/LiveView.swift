@@ -120,7 +120,7 @@ struct LiveView: View {
         let name = session.phoneName
         switch session.phase {
         case .requesting:
-            StateCard(copy: .requesting(name: name, kind: session.kind, computer: peerIsComputer), busy: true, footnote: footnote)
+            RequestingCard(name: name, kind: session.kind, computer: peerIsComputer, footnote: footnote)
         case .active:
             if !session.hasPicture {
                 StateCard(copy: .firstPicture(kind: session.kind), busy: true, footnote: nil)
@@ -464,6 +464,28 @@ private struct MenuRow: View {
 }
 
 /// What a window says while there is no picture: waiting, starting, or why it ended, with the way on.
+/// A device that does not ask takes a few seconds as well, and this end cannot tell the two apart: only after this
+/// long is a question likely, so only then does it say what to do about one.
+private struct RequestingCard: View {
+    let name: String
+    let kind: TandemMediaKind
+    let computer: Bool
+    let footnote: String?
+    @LocalState private var long = false
+
+    var body: some View {
+        StateCard(
+            copy: long ? .requesting(name: name, kind: kind, computer: computer) : .connecting(name: name, kind: kind, computer: computer),
+            busy: true,
+            footnote: long ? footnote : nil
+        )
+        .task {
+            try? await Task.sleep(for: .seconds(8))
+            long = true
+        }
+    }
+}
+
 private struct StateCard: View {
     let copy: LiveCopy
     let busy: Bool

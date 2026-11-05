@@ -68,6 +68,19 @@ class HotspotPrefs(private val context: Context) {
         context.hotspotStore.edit { it[limitKey] = value }
     }
 
+    private val extraDayKey = androidx.datastore.preferences.core.stringPreferencesKey("data_extra_day")
+    private val extraMbKey = androidx.datastore.preferences.core.longPreferencesKey("data_extra_mb")
+
+    /** The day an extra on the limit was given, and how much. The limit itself stays what it was set to. */
+    val dataExtra: Flow<Pair<String, Long>> = context.hotspotStore.data.map { (it[extraDayKey] ?: "") to (it[extraMbKey] ?: 0L) }
+
+    suspend fun addDataExtra(day: String, mb: Long) {
+        context.hotspotStore.edit { prefs ->
+            prefs[extraMbKey] = mb + if (prefs[extraDayKey] == day) prefs[extraMbKey] ?: 0L else 0L
+            prefs[extraDayKey] = day
+        }
+    }
+
     /** Adds to the running total and to the day it was used on, in one write, as it is used. */
     suspend fun addDataUsed(bytes: Long, at: Long = System.currentTimeMillis()) {
         if (bytes <= 0) return

@@ -309,6 +309,9 @@
     <string name="hotspot_allow_bluetooth">Bluetooth toestaan</string>
     <string name="hotspot_allow_notifications">Meldingen toestaan</string>
     <string name="hotspot_allow_sub">Je computer vraagt via Bluetooth en jij krijgt een melding</string>
+    <string name="hotspot_extra_button">1 GB extra</string>
+    <string name="hotspot_extra_hint">Eenmalig: morgen geldt de limiet weer.</string>
+    <string name="hotspot_extra_today">%1$s extra voor vandaag.</string>
     <string name="hotspot_data_limit">Daglimiet voor data</string>
     <string name="hotspot_data_limit_body">De hotspot zet zichzelf uit, en weigert nieuwe verzoeken, zodra je computer zoveel heeft gebruikt op één dag. Vandaag gebruikt: %1$s.</string>
     <string name="hotspot_data_none">Geen limiet</string>

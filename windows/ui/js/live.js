@@ -27,6 +27,7 @@ let phoneRotation = 0;
 let extraRotation = 0;
 let pinned = false;
 let hasPicture = false;
+let askTimer = null;
 let lastAsk = 0;
 // Clicking and typing on the phone: the phone says whether it lets this computer, and the person turns it on and off.
 let controlGranted = false;
@@ -225,11 +226,16 @@ async function start() {
   document.title = name;
   if (info.accepted) controlGranted = Boolean(info.accepted.control);
   showControl();
-  say(t(kind === "camera" ? "live_waiting_camera" : "live_waiting_screen", name));
+  // A device that does not ask takes a few seconds as well: only after this long is a question likely.
+  say(t("live_connecting", name));
+  askTimer = setTimeout(() => {
+    if (!hasPicture) say(t(kind === "camera" ? "live_waiting_camera" : "live_waiting_screen", name));
+  }, 8000);
   bar.hidden = false;
 }
 
 listen("live-accepted", (accepted) => {
+  clearTimeout(askTimer);
   controlGranted = Boolean(accepted && accepted.control);
   showControl();
   if (!hasPicture) say(t("live_first_picture"));

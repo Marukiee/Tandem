@@ -61,6 +61,10 @@ fun TandemDialog(
     actions: @Composable () -> Unit = {},
     /** Spoken label for the corner close button. */
     closeLabel: String = "",
+    /** Off for a question whose buttons already say every answer. */
+    showClose: Boolean = true,
+    /** Under the buttons, for what goes with whichever answer is chosen. */
+    footer: (@Composable () -> Unit)? = null,
     content: (@Composable () -> Unit)? = null,
 ) {
     var shown by remember { mutableStateOf(false) }
@@ -108,17 +112,19 @@ fun TandemDialog(
              */
             // Floated rather than laid out, so the padding stays symmetric and the
             // title lands in the middle of the dialog instead of a little to the left.
-            Box(modifier = Modifier.fillMaxWidth()) {
-                TandemIconButton(
-                    icon = TandemIcons.Close,
-                    contentDescription = closeLabel,
-                    onClick = onDismiss,
-                    size = 34,
-                    iconSize = 17,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 6.dp, y = (-8).dp),
-                )
+            if (showClose) {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    TandemIconButton(
+                        icon = TandemIcons.Close,
+                        contentDescription = closeLabel,
+                        onClick = onDismiss,
+                        size = 34,
+                        iconSize = 17,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 6.dp, y = (-8).dp),
+                    )
+                }
             }
 
             if (icon != null) {
@@ -173,6 +179,10 @@ fun TandemDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 actions()
+            }
+            if (footer != null) {
+                VSpace(10)
+                footer()
             }
         }
     }

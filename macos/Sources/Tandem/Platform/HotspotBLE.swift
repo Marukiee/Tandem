@@ -62,6 +62,8 @@ final class BleHotspotClient: NSObject, CBCentralManagerDelegate, CBPeripheralDe
     static let actionLeave: UInt8 = 3
     /// On, asked for with a button here: the phone lets that through a recent "off by hand", which only holds off this Mac by itself.
     static let actionOnAsked: UInt8 = 4
+    /// As `actionOnAsked`, with more of the daily limit for today.
+    static let actionOnExtra: UInt8 = 5
 
     private enum Step { case idle, waitingForPower, scanning, connecting, discovering, subscribing, readingChallenge, writing, waitingForState }
 

@@ -115,9 +115,18 @@ class HotspotNotifications(private val context: Context) {
                 .setContentText(context.getString(R.string.hotspot_limit_text, limitMb))
                 .setAutoCancel(true)
                 .setContentIntent(openSettings())
+                .addAction(
+                    0, context.getString(R.string.hotspot_extra_button),
+                    PendingIntent.getBroadcast(
+                        context, 1, Intent(context, HotspotActionReceiver::class.java).setAction(HotspotActionReceiver.EXTRA),
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                    ),
+                )
                 .build(),
         )
     }
+
+    fun cancelLimit() = manager.cancel(LIMIT_ID)
 
     fun cancelAll() {
         cancelRequest()
@@ -172,9 +181,14 @@ class OpenTetherSettingsActivity : Activity() {
 class HotspotActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == STOP) HotspotModule.current?.controller?.request(on = false)
+        if (intent.action == EXTRA) HotspotModule.current?.let {
+            it.giveExtra()
+            it.controller.request(on = true, byPerson = true)
+        }
     }
 
     companion object {
         const val STOP = "nl.markmaaktmedia.tandem.HOTSPOT_STOP"
+        const val EXTRA = "nl.markmaaktmedia.tandem.HOTSPOT_EXTRA"
     }
 }

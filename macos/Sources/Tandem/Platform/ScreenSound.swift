@@ -131,7 +131,6 @@ private struct SoundPromptView: View {
                 title: Text("Play the sound of \(device.name) on your headphones?"),
                 message: Text("Your headphones are in. The sound can play here instead of there.")
             )
-            Toggle("Don't ask again for this device", isOn: $remember).toggleStyle(.checkbox)
             // The answer that is not a yes at the left, the main answer at the right, as everywhere on the Mac.
             HStack(spacing: 8) {
                 Button("Leave it there") {
@@ -148,6 +147,7 @@ private struct SoundPromptView: View {
                 .buttonStyle(.tandemGlassProminent)
             }
             .controlSize(.large)
+            Toggle("Don't ask again for this device", isOn: $remember).toggleStyle(.checkbox)
         }
         .floatingCard(width: 420)
     }

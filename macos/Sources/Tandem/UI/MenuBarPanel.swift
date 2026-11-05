@@ -193,20 +193,31 @@ private struct MenuHotspot: View {
                 }
             }
             .frame(width: 24, height: 24)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Hotspot").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                Text(status.text).font(.callout).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+            // Always the same height: a text too long for its line takes the place of the word above it, and what still
+            // does not fit is there when the pointer rests on it. So the panel does not jump when the text changes.
+            ViewThatFits(in: .horizontal) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Hotspot").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Text(status.text).font(.callout).lineLimit(1)
+                }
+                Text(status.text).font(.callout).lineLimit(2)
             }
-            Spacer(minLength: 4)
+            .frame(maxWidth: .infinity, minHeight: 30, maxHeight: 30, alignment: .leading)
+            .help(status.text)
             if let phone = model.hotspotPhone {
                 if case .connected = status {
                     Button("Stop") { model.hotspot.stop(phone.id) }
                         .buttonStyle(.tandemGlass)
                         .controlSize(.small)
                 } else if case .failed = status {
-                    Button("Try again") { model.hotspot.requestNow(phone.id) }
+                    Button("Retry") { model.hotspot.requestNow(phone.id) }
                         .buttonStyle(.tandemGlass)
                         .controlSize(.small)
+                } else if case .limitReached = status {
+                    Button("1 GB extra") { model.hotspot.requestExtra(phone.id) }
+                        .buttonStyle(.tandemGlass)
+                        .controlSize(.small)
+                        .help("Once, for today: your phone shares 1 GB more. The limit is back tomorrow.")
                 } else if status.isBusy {
                     // Asked for by mistake, or no longer needed: stopped on the phone too.
                     Button("Cancel") { model.hotspot.stop(phone.id) }
@@ -224,14 +235,14 @@ private struct MenuHotspot: View {
     private func symbol(_ status: HotspotStatus) -> String {
         switch status {
         case .connected: "personalhotspot"
-        case .failed: "exclamationmark.triangle.fill"
+        case .failed, .limitReached: "exclamationmark.triangle.fill"
         default: "wifi"
         }
     }
 
     private func tint(_ status: HotspotStatus) -> Color {
         switch status {
-        case .failed: Palette.urgent
+        case .failed, .limitReached: Palette.urgent
         default: Palette.indigo
         }
     }
@@ -371,7 +382,12 @@ private struct MenuDeviceRow: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .hoverHighlight(radius: 18, tint: targeted ? Palette.indigo : .primary, selected: targeted)
+        // Lights up for a file dragged onto it. Only the buttons in it answer to the pointer.
+        .background {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Palette.indigo.opacity(targeted ? 0.16 : 0))
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .scaleEffect(targeted ? 1.02 : 1)
         .animation(.tandemSpringy, value: targeted)
         .animation(.tandem, value: device.online)

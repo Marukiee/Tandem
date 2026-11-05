@@ -312,6 +312,9 @@
     <string name="hotspot_allow_bluetooth">Allow Bluetooth</string>
     <string name="hotspot_allow_notifications">Allow notifications</string>
     <string name="hotspot_allow_sub">Your computer asks over Bluetooth, and you get a notification</string>
+    <string name="hotspot_extra_button">1 GB extra</string>
+    <string name="hotspot_extra_hint">Just once: the limit is back tomorrow.</string>
+    <string name="hotspot_extra_today">%1$s extra for today.</string>
     <string name="hotspot_data_limit">Daily data limit</string>
     <string name="hotspot_data_limit_body">The hotspot switches itself off, and says no to new requests, once your computer has used this much in a day. Used today: %1$s.</string>
     <string name="hotspot_data_none">No limit</string>

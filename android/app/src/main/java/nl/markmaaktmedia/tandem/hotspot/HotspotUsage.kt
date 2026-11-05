@@ -14,6 +14,13 @@ object HotspotUsage {
     /** How many days are kept: enough for a year of months and a little more. */
     const val KEEP_DAYS = 400
 
+    /** What one tap on "extra for today" adds to the daily limit. */
+    const val EXTRA_MB = 1024L
+
+    /** The limit that counts on [today]: the extra was only for the day it was given on, and with no limit there is nothing to add to. */
+    fun limitToday(limitMb: Long, extraDay: String, extraMb: Long, today: String): Long =
+        if (limitMb > 0 && extraDay == today) limitMb + extraMb else limitMb
+
     fun dayKey(epochMs: Long, zone: ZoneId = ZoneId.systemDefault()): String =
         Instant.ofEpochMilli(epochMs).atZone(zone).toLocalDate().toString()
 

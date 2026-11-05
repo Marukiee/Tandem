@@ -8,7 +8,7 @@
     <string name="display_hint">Sleep vensters naar de rand van het scherm op die computer om ze hier te brengen</string>
     <string name="screen_connecting">Verbinden met %1$s</string>
     <string name="screen_waiting_approval">Wachten op %1$s</string>
-    <string name="screen_waiting_approval_sub">Kies Sta toe in de vraag die op %1$s is verschenen.</string>
+    <string name="screen_waiting_approval_sub">Staat er een vraag op %1$s? Kies dan Sta toe.</string>
     <string name="screen_first_picture">Wachten op het eerste beeld</string>
     <string name="screen_reconnecting">Verbinding weg, opnieuw verbinden</string>
     <string name="screen_reconnecting_try">Nieuwe poging, poging %1$d</string>

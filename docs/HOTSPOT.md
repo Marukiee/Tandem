@@ -82,6 +82,8 @@ De telefoon controleert met `verify_member`: alleen een huidig lid van de circle
 geldige handtekening telt. Een goed verzoek krijgt een ATT-succes, een slecht verzoek ATT-fout
 `0x80` (bewust niet "onvoldoende authenticatie", want dat laat de Mac koppelen via Bluetooth).
 
+**Actie 5** is hetzelfde als actie 4 (aan, op verzoek van de persoon), met eenmalig 1 GB bovenop de daglimiet voor vandaag. Over QUIC is dat `Request` met de reden `extra`.
+
 **Statuscodes** (byte 0 van state): 0 uit, 1 start, 2 aan, 3 handmatig (tik op de melding),
 4 mislukt, 5 verzoek niet vertrouwd, 6 accu te laag, 7 roaming, 8 uitgezet op de telefoon,
 9 daglimiet voor data bereikt.

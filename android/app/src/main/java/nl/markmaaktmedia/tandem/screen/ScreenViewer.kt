@@ -498,7 +498,8 @@ class ScreenViewer(
 
     private companion object {
         const val TAG = "ScreenViewer"
-        const val WAITING_AFTER_MS = 1500L
+        // A device that does not ask takes a few seconds as well, and this end cannot tell the two apart: only after this long is a question likely.
+        const val WAITING_AFTER_MS = 8000L
         const val ONLINE_WAIT_MS = 60_000L
         const val PAUSE_LIMIT_MS = 20_000L
         const val UNLOCK_AWAY_MS = 5 * 60_000L

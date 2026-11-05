@@ -662,6 +662,11 @@ struct HotspotCard: View {
                         if case .failed = model.hotspotStatus {
                             Button("Try again") { model.hotspot.requestNow(device.id) }.buttonStyle(.tandemGlass)
                         }
+                        if case .limitReached = model.hotspotStatus {
+                            Button("1 GB extra") { model.hotspot.requestExtra(device.id) }
+                                .buttonStyle(.tandemGlass)
+                                .help("Once, for today: your phone shares 1 GB more. The limit is back tomorrow.")
+                        }
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)

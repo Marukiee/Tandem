@@ -76,4 +76,11 @@ class HotspotUsageTest {
         assertEquals(9, BleState.RefusedLimit.code)
         assertEquals("limit", HotspotPolicy.errorCode(Refusal.Limit))
     }
+
+    @Test
+    fun anExtraOnTheLimitCountsOnlyOnItsOwnDay() {
+        assertEquals(1524L, HotspotUsage.limitToday(500L, "2026-11-05", 1024L, "2026-11-05"))
+        assertEquals(500L, HotspotUsage.limitToday(500L, "2026-11-04", 1024L, "2026-11-05"))
+        assertEquals(0L, HotspotUsage.limitToday(0L, "2026-11-05", 1024L, "2026-11-05"))
+    }
 }

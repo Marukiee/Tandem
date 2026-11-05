@@ -8,7 +8,7 @@
     <string name="display_hint">Move windows to the edge of the screen on that computer to bring them here</string>
     <string name="screen_connecting">Connecting to %1$s</string>
     <string name="screen_waiting_approval">Waiting for %1$s</string>
-    <string name="screen_waiting_approval_sub">Choose Allow in the question that appeared on %1$s.</string>
+    <string name="screen_waiting_approval_sub">If a question appeared on %1$s, choose Allow there.</string>
     <string name="screen_first_picture">Waiting for the first picture</string>
     <string name="screen_reconnecting">Connection lost, reconnecting</string>
     <string name="screen_reconnecting_try">Trying again, attempt %1$d</string>

@@ -1,9 +1,13 @@
 [
   {
     "version": "0.2.95",
-    "date": "2026-11-04",
-    "en": { "title": "Opens on what is connected", "new": ["Tandem opens on the device that is connected", "A pairing link no longer leaves the bottom buttons stuck"] },
-    "nl": { "title": "Opent op wat verbonden is", "new": ["Tandem opent op het apparaat dat verbonden is", "Een koppellink laat de knoppen onderin niet meer vastlopen"] }
+    "date": "2026-11-05",
+    "en": { "title": "Opens on what is connected", "new": ["Tandem opens on the device that is connected", "A pairing link no longer leaves the bottom buttons stuck",
+        "1 GB extra on the hotspot limit, once, from the Mac or the phone",
+        "Tidier hotspot card and sound question"] },
+    "nl": { "title": "Opent op wat verbonden is", "new": ["Tandem opent op het apparaat dat verbonden is", "Een koppellink laat de knoppen onderin niet meer vastlopen",
+        "1 GB extra op de hotspotlimiet, eenmalig, vanaf de Mac of de telefoon",
+        "Rustigere hotspotkaart en geluidsvraag"] }
   },
   {
     "version": "0.2.94",

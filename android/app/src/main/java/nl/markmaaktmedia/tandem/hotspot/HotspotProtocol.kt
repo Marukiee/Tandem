@@ -38,6 +38,8 @@ object HotspotProtocol {
     const val ACTION_LEAVE = 3
     /** On, asked for by the person at the computer (a button), not by the computer by itself: it goes through a recent "off by hand". */
     const val ACTION_ON_ASKED = 4
+    /** As [ACTION_ON_ASKED], with [HotspotUsage.EXTRA_MB] more for today: the person chose to go over the daily limit once. */
+    const val ACTION_ON_EXTRA = 5
 
     /** Sent as the client count when the phone cannot tell. */
     const val CLIENTS_UNKNOWN = 255

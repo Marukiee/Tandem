@@ -75,6 +75,13 @@ struct LiveCopy: Equatable {
         )
     }
 
+    static func connecting(name: String, kind: TandemMediaKind, computer: Bool) -> LiveCopy {
+        LiveCopy(
+            title: String(localized: "Connecting to \(name)"),
+            detail: "", symbol: kind == .camera ? "camera" : computer ? "display" : "iphone.gen3", canRetry: false
+        )
+    }
+
     static func firstPicture(kind: TandemMediaKind) -> LiveCopy {
         LiveCopy(
             title: kind == .camera ? String(localized: "Starting the camera") : String(localized: "Starting the screen"),

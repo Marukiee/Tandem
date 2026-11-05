@@ -40,6 +40,7 @@ class HotspotModule private constructor(private val context: Context) {
     @Volatile private var enabled = false
     @Volatile private var allowRoaming = false
     @Volatile private var dataLimitMb = 0L
+    @Volatile private var dataExtra = "" to 0L
 
     /** The days as stored, with what was just counted added at once, so the limit does not wait for the write. */
     @Volatile private var days: Map<String, Long> = emptyMap()
@@ -55,7 +56,7 @@ class HotspotModule private constructor(private val context: Context) {
         allowRoaming = { allowRoaming },
         macConnected = { graph.host.devices.value.any { it.online && it.platform == TandemPlatform.MAC_OS } },
         onStatusChanged = { onStatusChanged() },
-        dataLimitMb = { dataLimitMb },
+        dataLimitMb = { HotspotUsage.limitToday(dataLimitMb, dataExtra.first, dataExtra.second, HotspotUsage.dayKey(System.currentTimeMillis())) },
         onDataUsed = { bytes ->
             val now = System.currentTimeMillis()
             days = HotspotUsage.add(days, HotspotUsage.dayKey(now), bytes)
@@ -110,6 +111,7 @@ class HotspotModule private constructor(private val context: Context) {
         jobs += scope.launch { graph.prefs.bluetoothMessages.collectLatest { messagesOn = it; reconcile() } }
         jobs += scope.launch { prefs.allowRoaming.collectLatest { allowRoaming = it } }
         jobs += scope.launch { prefs.dataLimitMb.collectLatest { dataLimitMb = it } }
+        jobs += scope.launch { prefs.dataExtra.collectLatest { dataExtra = it } }
         jobs += scope.launch { prefs.dailyUsage.collectLatest { days = it } }
         jobs += scope.launch { graph.host.state.collectLatest { reconcile() } }
         jobs += scope.launch { controller.snapshot.collectLatest { publish(it) } }
@@ -143,13 +145,24 @@ class HotspotModule private constructor(private val context: Context) {
         if (current === this) current = null
     }
 
+    /** More for today only, and at once: the request that comes right after it must not be refused for the old limit. */
+    fun giveExtra() {
+        val today = HotspotUsage.dayKey(System.currentTimeMillis())
+        val had = dataExtra.takeIf { it.first == today }?.second ?: 0L
+        dataExtra = today to had + HotspotUsage.EXTRA_MB
+        notifications.cancelLimit()
+        scope.launch { prefs.addDataExtra(today, HotspotUsage.EXTRA_MB) }
+    }
+
     // ---- Over QUIC -------------------------------------------------------------
 
     fun onEvent(event: TandemEvent.Hotspot) {
         when (event.hotspot) {
             is TandemHotspot.Request -> {
                 synchronized(quicAsked) { quicAsked += event.from }
-                controller.request(on = true, byPerson = (event.hotspot as TandemHotspot.Request).reason == "asked")
+                val reason = (event.hotspot as TandemHotspot.Request).reason
+                if (reason == "extra") giveExtra()
+                controller.request(on = true, byPerson = reason == "asked" || reason == "extra")
                 val now = controller.snapshot.value
                 if (now.phase == Phase.On) reply(event.from, now)
             }
@@ -219,6 +232,10 @@ class HotspotModule private constructor(private val context: Context) {
                     when (action) {
                         HotspotProtocol.ACTION_LEAVE -> controller.leave()
                         HotspotProtocol.ACTION_OFF -> controller.request(on = false)
+                        HotspotProtocol.ACTION_ON_EXTRA -> {
+                            giveExtra()
+                            controller.request(on = true, byPerson = true)
+                        }
                         else -> controller.request(on = true, byPerson = action == HotspotProtocol.ACTION_ON_ASKED)
                     }
                 },
