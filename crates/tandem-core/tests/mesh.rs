@@ -575,6 +575,23 @@ async fn a_name_that_was_chosen_survives_a_restart() {
     assert_eq!(again.name(), "Linux Laptop");
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_new_name_reaches_a_device_that_stays_connected() {
+    let laptop = node("laptop").await;
+    let phone = node("phone").await;
+    pair(&laptop, &phone).await;
+    let laptop_id = laptop.engine.id();
+    wait_until("the phone sees the laptop", || phone.engine.devices().iter().any(|d| d.id == laptop_id && d.online)).await;
+
+    laptop.engine.rename_self("Woonkamer").await.unwrap();
+
+    wait_until("the phone shows the new name", || {
+        phone.engine.devices().iter().any(|d| d.id == laptop_id && d.name == "Woonkamer")
+    })
+    .await;
+    assert!(phone.engine.devices().iter().any(|d| d.id == laptop_id && d.online), "without a new connection");
+}
+
 /// A thread pool of its own for one device, so everything that device is doing can be dropped at once.
 struct Lane(Option<tokio::runtime::Runtime>);
 

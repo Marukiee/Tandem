@@ -10,7 +10,7 @@ use quinn::{RecvStream, SendStream};
 use tokio::sync::{Notify, mpsc};
 use tracing::{debug, info, warn};
 
-use crate::circle::StatementId;
+use crate::circle::{Action, Statement, StatementId};
 use crate::engine::Inner;
 use crate::error::{Error, Result};
 use crate::events::Event;
@@ -377,6 +377,26 @@ impl Inner {
         }
     }
 
+    /// What a device said its name was when it connected is out of date once it renames itself, and it stays connected.
+    fn forget_old_names(&self, new: &[Statement]) {
+        let renamed: Vec<(DeviceId, String)> = {
+            let circle = self.circle.read().unwrap();
+            new.iter()
+                .filter_map(|s| match &s.action {
+                    // The name the circle settled on: of two statements that cross, this one need not be the winner.
+                    Action::Rename { subject, .. } => circle.member(subject).map(|m| (*subject, m.name.clone())),
+                    _ => None,
+                })
+                .collect()
+        };
+        let mut peers = self.peers.lock().unwrap();
+        for (id, name) in renamed {
+            if let Some(hello) = peers.get_mut(&id).and_then(|p| p.hello.as_mut()) {
+                hello.name = name;
+            }
+        }
+    }
+
     pub(crate) async fn handle_msg(self: &Arc<Self>, id: DeviceId, msg: Msg) {
         match msg {
             Msg::CircleSync { statements } => {
@@ -385,6 +405,7 @@ impl Inner {
                 let changed = self.circle.write().unwrap().merge(statements.clone());
                 if changed {
                     let new: Vec<_> = statements.into_iter().filter(|s| !before.contains(&s.id())).collect();
+                    self.forget_old_names(&new);
                     self.persist_circle();
                     // Pass it on first: a device that was just removed should still hear it.
                     self.gossip(new, Some(id)).await;
