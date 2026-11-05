@@ -3,7 +3,10 @@
 import sys
 
 args = sys.argv[1:]
-if "-o" in args:
+if any(a.startswith("-out:") for a in args):
+    # The archiver of a Windows target.
+    open(next(a for a in args if a.startswith("-out:"))[5:], "wb").close()
+elif "-o" in args:
     open(args[args.index("-o") + 1], "wb").close()
 elif any(a.startswith("-Fo") for a in args):
     open(next(a for a in args if a.startswith("-Fo"))[3:], "wb").close()
