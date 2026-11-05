@@ -39,10 +39,7 @@ jobs:
           try { (Invoke-WebRequest 'http://127.0.0.1:9222/json/list' -UseBasicParsing -TimeoutSec 5).Content } catch { "no answer: `$(`$_.Exception.Message)" }
           Stop-Transcript
           "@ | Set-Content $inner
-          $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$inner`""
-          $principal = New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$env:USERNAME" -LogonType Interactive -RunLevel Limited
-          Register-ScheduledTask -TaskName TandemTest -Action $action -Principal $principal -Force | Out-Null
-          Start-ScheduledTask -TaskName TandemTest
+          runas /trustlevel:0x20000 /env "powershell.exe -NoProfile -ExecutionPolicy Bypass -File $inner"
+          Write-Host "runas said $LASTEXITCODE"
           Start-Sleep -Seconds 40
-          Write-Host "task state: $((Get-ScheduledTask -TaskName TandemTest).State), result $((Get-ScheduledTaskInfo -TaskName TandemTest).LastTaskResult)"
           Get-Content $log -ErrorAction SilentlyContinue | Write-Host
