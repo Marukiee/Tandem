@@ -413,6 +413,10 @@ Gezien op een echte Windows 11-laptop, zonder fout: stil installeren, eerste sta
 bijwerken over de draaiende app, herstart na een harde stop, schermopname en encoder (5 ms per beeld, 23 beelden per seconde bij een stilstaand
 bureaublad), geen crash in het foutenlogboek.
 
+Gezien over echt wifi, de laptop tegen `tandemd` op een Mac, zonder scherm of klembord aan te raken: koppelen met de link van de app, 100 MB beide kanten (ongeveer 10 seconden per
+keer, hash gelijk), een bestand ontvangen terwijl de app alleen in het systeemvak zit en geen webview heeft (27 MB geheugen), verbinding vanzelf terug na een harde stop,
+en de aanwijzer van een andere computer die zonder toestemming meteen wordt teruggestuurd.
+
 Nog niet geprobeerd, en een test op de runner kan dat niet: een echte hand op een echte muis (het pad zonder testmarkering), de echte Mac aan
 de andere kant, geluid, Bluetooth, vergrendelen, de klep, UIPI, toetsenbordindelingen. Dat vraagt een drukke ronde op de laptop.
 
@@ -430,8 +434,11 @@ Open, alleen uit de code gelezen, nog niet gezien:
 - Schermopname met GDI maakt per beeld een nieuwe bitmap, `CAPTUREBLT` kan de aanwijzer laten knipperen, alleen het hoofdscherm, en beveiligde
   video blijft zwart. De echte oplossing staat hierboven (Windows.Graphics.Capture).
 - Een klik op een melding doet op Windows niets, en de instelling zegt voorgoed "Replies are not possible from here yet".
-- Firewall: Tandem maakt geen regel en merkt niet dat hij geblokkeerd wordt. Op een account zonder beheerdersrechten kan niemand de vraag van
-  Windows beantwoorden. De app zou dat moeten zien en uitleggen.
+- Firewall: Tandem maakt geen regel en merkt niet dat hij geblokkeerd wordt. Op de laptop staan de regels die de vraag van Windows maakte alleen op het profiel Privé, dus op
+  een netwerk dat Windows als Openbaar ziet (de standaard bij nieuwe wifi) is Tandem vermoedelijk onbereikbaar zonder melding. Op een account zonder beheerdersrechten kan niemand die vraag
+  beantwoorden. De app zou dit moeten zien en uitleggen.
+- **Besluit nodig:** Windows biedt bij de eerste start Downloads, Documenten en Bureaublad aan, en elk gekoppeld apparaat mag daar lezen, schrijven en verwijderen zonder dat iemand dat
+  heeft gekozen (`offer_usual_folders`, gezien over wifi). De instelling staat er wel, maar pas als je hem opzoekt. De core laat een computer juist niets aanbieden wat niemand heeft gezien, en op de Mac is het een knop ("Share the usual folders").
 - De installer en de app zijn niet ondertekend, terwijl ze hooks, invoer en schermopname gebruiken. SmartScreen en virusscanners kunnen daarover
   vallen.
 - Wisselen van wifi zonder slaapstand wordt de core op Windows niet verteld (`network_changed` alleen na een slaapgat).
