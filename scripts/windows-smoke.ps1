@@ -62,10 +62,10 @@ public static class SmokeHands {
     }
     public static void Move(int dx, int dy) { Mouse(dx, dy, 1); }
     public static void Left(bool down) { Mouse(0, 0, down ? 2u : 4u); }
-    public static void Key(ushort vk, bool down) {
+    public static uint Key(ushort vk, bool down) {
         var input = new Input { type = 1 };
         input.what.key = new KeyInput { vk = vk, flags = down ? 0u : 2u, extra = Mark };
-        Send(input);
+        return SendInput(1, new[] { input }, Marshal.SizeOf(typeof(Input)));
     }
     public static void Put(int x, int y) { SetCursorPos(x, y); }
     public static Point At() { Point point; GetCursorPos(out point); return point; }
@@ -440,7 +440,8 @@ $form.Add_Shown({ Save })
 $form.Controls.Add($box)
 [System.Windows.Forms.Application]::Run($form)
 '@
-    $testWindow = Start-Process powershell.exe -PassThru -WindowStyle Hidden -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$windowScript`"", "`"$windowState`""
+    # Not hidden: that would hide the first window it shows, which is this one.
+    $testWindow = Start-Process powershell.exe -PassThru -NoNewWindow -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$windowScript`"", "`"$windowState`""
     [void](WaitFor { Test-Path $windowState } 30)
     function WindowClicks {
         try { return [int]([IO.File]::ReadAllLines($windowState)[0]) } catch { return -1 }
@@ -539,9 +540,9 @@ $form.Controls.Add($box)
         [SmokeHands]::Left($false)
         Check ([bool](WaitFor { HelperSaid "Button \{ button: 0, down: false" } 5)) "a click reaches the other computer"
         $text = WindowText
-        [SmokeHands]::Key(0x41, $true)
-        [SmokeHands]::Key(0x41, $false)
-        Check ([bool](WaitFor { HelperSaid "Key \{ code: 0, down: false" } 5)) "a key reaches the other computer"
+        $sent = "$([SmokeHands]::Key(0x41, $true)) $([SmokeHands]::Key(0x41, $false))"
+        Check ([bool](WaitFor { HelperSaid "Key \{ code: 0, down: false" } 5)) "a key reaches the other computer" "Windows took $sent"
+        Shot "8-this-pc-has-the-mouse"
         Start-Sleep -Seconds 1
         Check ((WindowClicks) -eq $clicks -and (WindowText) -ceq $text) "and neither does anything on this PC" "clicks $clicks to $(WindowClicks), box '$text' to '$(WindowText)'"
 
@@ -554,10 +555,10 @@ $form.Controls.Add($box)
 
         Check (Cross) "it goes over a second time"
         $released = HelperCount "Release"
-        foreach ($key in 0x11, 0x12, 0x10) { [SmokeHands]::Key($key, $true) }
-        [SmokeHands]::Key(0x1B, $true)
-        [SmokeHands]::Key(0x1B, $false)
-        foreach ($key in 0x10, 0x12, 0x11) { [SmokeHands]::Key($key, $false) }
+        foreach ($key in 0x11, 0x12, 0x10) { [void][SmokeHands]::Key($key, $true) }
+        [void][SmokeHands]::Key(0x1B, $true)
+        [void][SmokeHands]::Key(0x1B, $false)
+        foreach ($key in 0x10, 0x12, 0x11) { [void][SmokeHands]::Key($key, $false) }
         Check ([bool](WaitFor { (HelperCount "Release") -gt $released } 5)) "Ctrl+Alt+Shift+Esc takes it back and says so"
         Check ([bool](WaitFor { BackAtTheEdge } 5)) "the pointer is where it left" "at $([SmokeHands]::At().X)"
 
