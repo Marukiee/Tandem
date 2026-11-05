@@ -212,6 +212,15 @@ function App([string]$command, $arguments = @{}) {
     return Evaluate $page "window.__TAURI__.core.invoke('$command', $json)"
 }
 
+# Whether the app really answers: a frozen one still counts as responding to Windows.
+function AppAnswers {
+    try {
+        $page = FindPage $mainPage 10
+        if (-not $page) { $page = FindPage "panel\.html" 5 }
+        return (Evaluate $page "window.__TAURI__.core.invoke('get_state').then(() => true)" 15) -eq $true
+    } catch { return $false }
+}
+
 # Every page in both languages: the words are kept for reading, and what is plainly wrong fails the test.
 function WalkPages([string]$pattern, [string]$label) {
     $page = FindPage $pattern
@@ -608,10 +617,34 @@ Part "Windows open and close" {
     Check (@(Get-Process -Name Tandem -ErrorAction SilentlyContinue).Count -eq 1) "there is still one Tandem"
     [void](Memory "panel open")
 
+    # What Open Tandem in the panel does. A plain command that makes a window freezes the whole app, and the process still counts as responding.
+    $before = LogCount "the main window shows"
+    $panel = FindPage "panel\.html" 10
+    if ($panel) {
+        try { [void](Evaluate $panel "window.__TAURI__.core.invoke('show_main', {})" 20) } catch { Write-Host "show_main: $_" }
+        Check ([bool](WaitFor { (LogCount "the main window shows") -gt $before } 60)) "the panel opens the closed main window"
+        Check (AppAnswers) "and the app still answers"
+    } else {
+        Write-Host "the panel went away by itself, so it could not be asked"
+    }
+    foreach ($process in @(Get-Process -Name Tandem -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 })) { [void]$process.CloseMainWindow() }
+    Start-Sleep -Seconds 3
+
     $before = LogCount "the main window shows"
     Start-Process $exe
     Check ([bool](WaitFor { (LogCount "the main window shows") -gt $before } 60)) "a second start brings the main window back"
     Check (AppResponds) "the app responds"
+
+    # The login window of Terminal, which froze the app in the same way.
+    try { [void](Evaluate (FindPage $mainPage) "window.__TAURI__.core.invoke('ssh_open', { id: 'smoke', name: 'Smoke', address: '127.0.0.1' })" 20) } catch { Write-Host "ssh_open: $_" }
+    $login = FindPage "ssh\.html" 20
+    Check ([bool]$login) "Terminal opens its login window"
+    Check (AppAnswers) "and the app still answers"
+    if ($login) {
+        Start-Sleep -Seconds 2
+        Check ([bool](Evaluate $login "document.body.innerText.trim().length > 0" 15)) "the login window has something to say"
+        try { [void](Evaluate $login "window.__TAURI__.window.getCurrentWindow().close()" 5) } catch {}
+    }
 }
 
 # ---- Updates, crashes, the end --------------------------------------------------------------------------------------------------

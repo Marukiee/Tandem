@@ -573,13 +573,15 @@ unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) 
                 WM_RBUTTONUP => tell(Seen::Button { button: 1, down: false }),
                 WM_MBUTTONDOWN => tell(Seen::Button { button: 2, down: true }),
                 WM_MBUTTONUP => tell(Seen::Button { button: 2, down: false }),
+                // A step of the wheel is 120. It goes out as 40 points because that is one click on a receiving PC:
+                // at 12 it took three steps to scroll anything there.
                 WM_MOUSEWHEEL => {
                     let delta = (info.mouseData >> 16) as i16 as i32;
-                    tell(Seen::Scroll { dx: 0, dy: delta / 10 })
+                    tell(Seen::Scroll { dx: 0, dy: delta / 3 })
                 }
                 WM_MOUSEHWHEEL => {
                     let delta = (info.mouseData >> 16) as i16 as i32;
-                    tell(Seen::Scroll { dx: delta / 10, dy: 0 })
+                    tell(Seen::Scroll { dx: delta / 3, dy: 0 })
                 }
                 _ => false,
             }

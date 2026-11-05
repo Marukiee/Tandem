@@ -60,7 +60,8 @@ async fn tokio_probe(ips: Vec<String>) -> Reply<Option<String>> {
 }
 
 /// The window in which the login happens. It asks who to log in as, and then calls `ssh_start`.
-#[tauri::command]
+// Not on the main thread: WebView2 makes a window by waiting on that thread, and a plain command sits on it, which froze the whole app.
+#[tauri::command(async)]
 pub fn ssh_open(app: AppHandle, id: String, name: String, address: String) -> Reply<()> {
     let label = format!("ssh-{}", NEXT.fetch_add(1, Ordering::Relaxed));
     let url = format!(

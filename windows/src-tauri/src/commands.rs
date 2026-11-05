@@ -635,7 +635,9 @@ pub fn open_downloads(app: AppHandle) -> Reply<()> {
 /// window to tell.
 static OPEN_DEVICE: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
 
-#[tauri::command]
+// Not on the main thread: with the main window closed this makes a new one, and WebView2 waits on that thread for it. As a plain command
+// a click on Open Tandem in the panel froze the whole app.
+#[tauri::command(async)]
 pub fn show_main(app: AppHandle, device: Option<String>) {
     if let Some(id) = device {
         if app.get_webview_window("main").is_some() {

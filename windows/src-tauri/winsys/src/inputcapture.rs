@@ -506,12 +506,13 @@ fn listen(stream: std::os::unix::net::UnixStream, handler: Arc<dyn Fn(Captured) 
                 steps.1 += discrete.discrete_dy;
             }
             EiEvent::Frame(_) => {
-                // A step of the wheel is 120; the program counts twelve to a step and turns the other way (down is positive here).
+                // A step of the wheel is 120; the program counts forty to a step, one click on a receiving PC, and turns the
+                // other way (down is positive here).
                 let (dx, dy) = if steps != (0, 0) {
-                    (-steps.0 / 10, -steps.1 / 10)
+                    (-steps.0 / 3, -steps.1 / 3)
                 } else {
                     // Smooth movement is in pixels, of which about fifteen are a step.
-                    ((-smooth.0 * 0.8) as i32, (-smooth.1 * 0.8) as i32)
+                    ((-smooth.0 * 40.0 / 15.0) as i32, (-smooth.1 * 40.0 / 15.0) as i32)
                 };
                 smooth = (0.0, 0.0);
                 steps = (0, 0);
