@@ -89,8 +89,8 @@ Open, wacht op toegang tot de Linux-pc (Mark regelt dat na de weekreset, SSH met
   barrieres bij de randen werken, of de snelheid klopt) en voor X11 (XInput2 met grabs, nog niet gebouwd).
 - Scherm van de Linux-pc delen (PipeWire en een encoder) en Linux als bediend scherm; een eigen updatepad; Flatpak of AUR.
 
-Open, wacht op een echte Windows-pc: alles van sectie 2 voor Windows (scherm delen vanaf de pc, Windows Graphics Capture en Media
-Foundation, hotspot) en alles nalopen.
+Open, Windows: alles van sectie 2 (scherm delen vanaf de pc, Windows Graphics Capture en Media Foundation, hotspot). Een echte pc om op te
+testen is er sinds 2026-11-05, wat daar gevonden is staat in sectie 2.
 
 Open, kan zonder dat die toegang er is, nog niet gedaan:
 - Menubalkpaneel en sneltoetsen (gevraagd 2026-10-29): op de Mac in 0.2.33, een kaart met de apparaten, vier vakjes naar keuze en een lijst
@@ -394,6 +394,44 @@ Volgorde, van goedkoop naar duur:
 4. Invoegen vanaf je telefoon (ontvangen en plakken), geluid van de telefoon, hotspot en Bluetooth
    voor zover Windows dat toelaat.
 Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mark laten proberen.
+
+### Stabiliteit: wat gevonden is (ronde van 2026-11-05)
+
+Hoe Windows nu getest wordt: `scripts/windows-smoke.ps1` draait de echte installer in elke Windows-run en maakt de run rood bij een fout,
+op `windows-latest` en (mag falen) op `windows-11-arm`. De tests van de app draaien voor het eerst op Windows. `scripts/check-windows.sh` is
+de typecheck voor Windows vanaf de Mac. Hetzelfde script is op een echte laptop gedraaid (Windows 11 Home, Intel, nl-NL).
+
+Gezien op een echte Windows 11-laptop, zonder fout: stil installeren, eerste start, venster en paneel, één instantie bij een tweede start,
+bijwerken over de draaiende app, herstart na een harde stop, schermopname en encoder (5 ms per beeld, 23 beelden per seconde bij een stilstaand
+bureaublad), geen crash in het foutenlogboek.
+
+Open, gezien:
+- **Wat is er nieuw op Windows gaat grotendeels over de Mac.** 170 van de 434 regels in `changelog.json` noemen de Mac ("The Mac builds
+  again", "macOS does not let a call's sound through"). Een veld per regel met de systemen waar die over gaat lost het op, plus een filter in
+  `whats_new`. Dat vraagt een besluit over `changelog.json`. De test slaat deze lijst nu over, anders blijft de run altijd rood.
+
+Open, alleen uit de code gelezen, nog niet gezien:
+- De hooks van de gedeelde muis hebben geen bewaker. Windows haalt een trage hook stil weg (`LowLevelHooksTimeout`), en daarna doet de muis
+  niets meer zonder melding. De handler gebruikt `.lock().unwrap()` binnen `extern "system"`: een paniek daar neemt het hele programma mee.
+- Geluid: een fout in een stream wordt alleen gelogd en de stream gaat niet opnieuw open als het standaardapparaat wisselt
+  (`IMMNotificationClient` ontbreekt).
+- Schermopname met GDI maakt per beeld een nieuwe bitmap, `CAPTUREBLT` kan de aanwijzer laten knipperen, alleen het hoofdscherm, en beveiligde
+  video blijft zwart. De echte oplossing staat hierboven (Windows.Graphics.Capture).
+- Een klik op een melding doet op Windows niets, en de instelling zegt voorgoed "Replies are not possible from here yet".
+- Firewall: Tandem maakt geen regel en merkt niet dat hij geblokkeerd wordt. Op een account zonder beheerdersrechten kan niemand de vraag van
+  Windows beantwoorden. De app zou dat moeten zien en uitleggen.
+- De installer en de app zijn niet ondertekend, terwijl ze hooks, invoer en schermopname gebruiken. SmartScreen en virusscanners kunnen daarover
+  vallen.
+- Wisselen van wifi zonder slaapstand wordt de core op Windows niet verteld (`network_changed` alleen na een slaapgat).
+- Verwijderen laat `%APPDATA%\Microsoft\Windows\SendTo\* (Tandem).lnk` staan, en misschien de instelling van de klep. Nakijken of
+  `lid::restore` ook loopt na een crash en bij afsluiten van Windows (`RunEvent::Exit` komt dan misschien niet).
+- Een niet-verhoogd proces kan geen verhoogde vensters of UAC bedienen (UIPI). Testen, en dan in `docs/PARITY.md`.
+- Toetsenbordindelingen via `key_of`, en Win+L terwijl de muis bij een andere computer is: nog niet geprobeerd.
+- Klembord dat als geheim gemarkeerd is: op Linux doet de code nog niets, terwijl `clip_secret_note` het belooft.
+
+Verholpen in deze ronde: de login-terminal hoorde op Windows nooit dat ssh klaar was; geheim klembord op Windows; console die even oplicht bij
+het openen van een instelling; "1 things" in meervoud; bestandsbeheerders van Linux genoemd op Windows; twee ontbrekende vertalingen
+(`cancelled`, `cancel_transfer`); een 504 bij het downloaden van NSIS maakte de build rood; de tests van de app draaiden nergens.
 
 ## 3. Linux
 
