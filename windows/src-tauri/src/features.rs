@@ -199,8 +199,10 @@ pub fn open(page: &str) {
             "notifications" => "ms-settings:notifications",
             _ => "ms-settings:",
         };
+        use std::os::windows::process::CommandExt;
         let mut command = std::process::Command::new("cmd");
-        command.args(["/C", "start", "", uri]);
+        // No console window flashing up.
+        command.args(["/C", "start", "", uri]).creation_flags(0x0800_0000);
         let _ = command.spawn();
     }
     #[cfg(not(windows))]

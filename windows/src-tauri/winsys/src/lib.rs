@@ -230,6 +230,11 @@ mod imp {
         String::new()
     }
 
+    /// Whether the program that copied this said it is not for others. Only Windows has a way to say it that can be read here.
+    pub fn clipboard_is_secret() -> bool {
+        false
+    }
+
     /// Linux has the X server tell it (`clipwatch.rs`); elsewhere the caller has to look by itself.
     pub fn watch_clipboard(on_change: impl Fn() + Send + Sync + 'static) -> bool {
         #[cfg(target_os = "linux")]
@@ -346,7 +351,7 @@ mod imp {
     }
 }
 
-pub use imp::{Capture, Grabber, Media, battery, describe, desktop, lid_closed, screen, screen_locked, warp, watch_clipboard};
+pub use imp::{Capture, Grabber, Media, battery, describe, desktop, lid_closed, screen, screen_locked, warp, clipboard_is_secret, watch_clipboard};
 
 /// Keeps Windows from sleeping for as long as it lives. Windows ties the request to the thread that made it, so a thread of its own
 /// waits here until the guard is dropped. Nothing on other systems, where `systemd-inhibit` does it.

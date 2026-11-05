@@ -38,6 +38,10 @@ pub fn start(app: AppHandle) {
             } else {
                 std::thread::sleep(Duration::from_millis(1500));
             }
+            // A password from a password manager: not to other devices and not in the history, which the settings promise.
+            if tandem_winsys::clipboard_is_secret() {
+                continue;
+            }
             // Files copied in the file manager also put their names on the clipboard as text: they go as files. Only when told of a
             // change, since reading a picture every second and a half would cost too much.
             if listening && crate::clipfiles::copied_files(&app, &mut board) {

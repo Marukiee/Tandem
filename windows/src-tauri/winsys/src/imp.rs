@@ -17,7 +17,7 @@ use windows::Media::{
 use windows::Storage::Streams::{DataWriter, InMemoryRandomAccessStream, RandomAccessStreamReference};
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Dwm::{DWMWA_CLOAKED, DwmGetWindowAttribute};
-use windows::Win32::System::DataExchange::AddClipboardFormatListener;
+use windows::Win32::System::DataExchange::{AddClipboardFormatListener, IsClipboardFormatAvailable, RegisterClipboardFormatW};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
 use windows::Win32::System::WinRT::{ISystemMediaTransportControlsInterop, RO_INIT_MULTITHREADED, RoInitialize};
@@ -266,6 +266,22 @@ pub fn describe(window: isize) -> String {
 
 static CLIPBOARD_CHANGED: std::sync::OnceLock<Box<dyn Fn() + Send + Sync>> = std::sync::OnceLock::new();
 
+/// Whether the program that copied this said it is not for others: a password manager puts one of these formats next to the text, which
+/// is the way Windows has for it (its own clipboard history and cloud clipboard go by them too). A program only adds the last two to opt
+/// out, so having them is enough, without reading whether they say 0.
+pub fn clipboard_is_secret() -> bool {
+    let marks = [
+        w!("ExcludeClipboardContentFromMonitorProcessing"),
+        w!("Clipboard Viewer Ignore"),
+        w!("CanIncludeInClipboardHistory"),
+        w!("CanUploadToCloudClipboard"),
+    ];
+    marks.into_iter().any(|name| unsafe {
+        let format = RegisterClipboardFormatW(name);
+        format != 0 && IsClipboardFormatAvailable(format).is_ok()
+    })
+}
+
 /// Calls `on_change` each time the clipboard changes, whichever program changed it, and costs nothing in between: the
 /// system sends the message, nobody has to look. It comes more than once for one copy (once for each format a program
 /// puts on it), so the caller waits a moment and looks once. True when the system accepted the listener.
@@ -430,11 +446,20 @@ fn tell(seen: Seen) -> bool {
     HANDLER.get().is_some_and(|handler| handler(seen))
 }
 
+/// A machine without a person has no hands on its mouse, and everything else that is made by a program is ignored by the hooks. Events
+/// that scripts/windows-smoke.ps1 marks with this number count as hands, and only when it started this program with `TANDEM_TEST_HANDS`.
+const TEST_HANDS: usize = 0x5441_4E44;
+static TEST_HANDS_COUNT: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| std::env::var_os("TANDEM_TEST_HANDS").is_some());
+
+fn hands_of_the_test(mark: usize) -> bool {
+    mark == TEST_HANDS && *TEST_HANDS_COUNT
+}
+
 unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     if code >= 0 {
         // Mouse events that this program made itself (putting the pointer back in the middle) are not the hands.
         let info = unsafe { &*(lparam.0 as *const MSLLHOOKSTRUCT) };
-        let injected = info.flags & 0x1 != 0;
+        let injected = info.flags & 0x1 != 0 && !hands_of_the_test(info.dwExtraInfo);
         let swallow = if injected {
             false
         } else {
@@ -483,7 +508,7 @@ unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) 
 unsafe extern "system" fn keyboard_hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     if code >= 0 {
         let info = unsafe { &*(lparam.0 as *const KBDLLHOOKSTRUCT) };
-        let injected = info.flags.0 & 0x10 != 0;
+        let injected = info.flags.0 & 0x10 != 0 && !hands_of_the_test(info.dwExtraInfo);
         if !injected {
             let down = match wparam.0 as u32 {
                 WM_KEYDOWN | WM_SYSKEYDOWN => Some(true),
