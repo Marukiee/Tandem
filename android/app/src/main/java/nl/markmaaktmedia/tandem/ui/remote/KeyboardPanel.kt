@@ -44,12 +44,13 @@ import androidx.compose.ui.unit.dp
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
+import uniffi.tandem_core.TandemPlatform
 
 private val FieldHeight = 48.dp
 private val ModHeight = 40.dp
 private val KeyHeight = 44.dp
 
-private class ModifierKey(val bit: Int, val icon: @Composable () -> Painter, val label: Int)
+private class ModifierKey(val bit: Int, val icon: (@Composable () -> Painter)?, val label: Int)
 
 /**
  * A typing field and the keys a phone keyboard does not have.
@@ -65,11 +66,13 @@ fun KeyboardPanel(
     onToggleMod: (Int) -> Unit,
     onText: (String) -> Unit,
     onKey: (Short) -> Unit,
+    platform: TandemPlatform?,
+    systemBit: Int,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TypingField(onText, onKey)
-        ModifierKeys(mods, onToggleMod)
+        ModifierKeys(mods, onToggleMod, platform, systemBit)
         KeyCluster(onKey)
     }
 }
@@ -144,13 +147,24 @@ private fun TypingField(onText: (String) -> Unit, onKey: (Short) -> Unit) {
 }
 
 @Composable
-private fun ModifierKeys(mods: Int, onToggle: (Int) -> Unit) {
+private fun ModifierKeys(mods: Int, onToggle: (Int) -> Unit, platform: TandemPlatform?, systemBit: Int) {
     val keys = listOf(
         ModifierKey(Mods.SHIFT, { TandemIcons.KeyShift }, R.string.remote_mod_shift),
         ModifierKey(Mods.CTRL, { TandemIcons.KeyControl }, R.string.remote_mod_ctrl),
-        ModifierKey(Mods.OPTION, { TandemIcons.KeyOption }, R.string.remote_mod_option),
-        ModifierKey(Mods.COMMAND, { TandemIcons.KeyCommand }, R.string.remote_mod_command),
-    )
+    ) + when (platform) {
+        TandemPlatform.WINDOWS -> listOf(
+            ModifierKey(Mods.OPTION, null, R.string.remote_mod_alt),
+            ModifierKey(systemBit, null, R.string.remote_mod_win),
+        )
+        TandemPlatform.LINUX -> listOf(
+            ModifierKey(Mods.OPTION, null, R.string.remote_mod_alt),
+            ModifierKey(systemBit, null, R.string.remote_mod_super),
+        )
+        else -> listOf(
+            ModifierKey(Mods.OPTION, { TandemIcons.KeyOption }, R.string.remote_mod_option),
+            ModifierKey(Mods.COMMAND, { TandemIcons.KeyCommand }, R.string.remote_mod_command),
+        )
+    }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(JoinGap)) {
         keys.forEachIndexed { index, key ->
             val armed = mods and key.bit != 0
@@ -168,8 +182,10 @@ private fun ModifierKeys(mods: Int, onToggle: (Int) -> Unit) {
                 onUp = { inside -> if (inside) onToggle(key.bit) },
             ) { tint ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(key.icon(), null, tint = tint, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
+                    key.icon?.let { icon ->
+                        Icon(icon(), null, tint = tint, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                    }
                     Text(label, style = MaterialTheme.typography.labelMedium, color = tint, maxLines = 1)
                 }
             }

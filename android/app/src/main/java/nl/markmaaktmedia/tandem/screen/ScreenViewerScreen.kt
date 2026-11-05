@@ -558,6 +558,8 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
                     onToggleMod = { bit -> mods = mods xor bit },
                     onText = ::typeText,
                     onKey = ::pressKey,
+                    platform = device?.platform,
+                    systemBit = Keys.META,
                 )
             }
         }

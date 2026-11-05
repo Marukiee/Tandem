@@ -17,6 +17,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -71,12 +72,14 @@ import nl.markmaaktmedia.tandem.ui.remote.SwipeDirection
 import nl.markmaaktmedia.tandem.ui.remote.TouchpadClassifier
 import nl.markmaaktmedia.tandem.ui.remote.TouchpadConfig
 import nl.markmaaktmedia.tandem.ui.remote.TouchpadOutput
+import nl.markmaaktmedia.tandem.ui.remote.swipeKeys
 import nl.markmaaktmedia.tandem.ui.remote.touchpad
 import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.SquircleShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import uniffi.tandem_core.TandemInput
+import uniffi.tandem_core.TandemPlatform
 
 /** The gap between every block of the screen. */
 private val Gap = 12.dp
@@ -144,7 +147,8 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
     val padSpeed by prefs.padSpeed.collectAsState(initial = 100)
     val padScroll by prefs.padScroll.collectAsState(initial = 100)
     val padHold by prefs.padHoldMs.collectAsState(initial = 280)
-    val classifier = remember(link, haptics, slop, swipeDistance, padSpeed, padScroll, padHold) {
+    val platform = device?.platform
+    val classifier = remember(link, haptics, slop, swipeDistance, padSpeed, padScroll, padHold, platform) {
         TouchpadClassifier(
             TouchpadConfig(
                 slop = slop, swipeDistance = swipeDistance, holdMs = padHold.toLong(),
@@ -156,18 +160,9 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
                 override fun click(button: Int, count: Int) = link.click(button, count)
                 override fun button(button: Int, down: Boolean) = link.hold(button, down)
 
-                // Three fingers up or down open Mission Control and App Exposé, left and
-                // right change space. The Mac maps all four to Ctrl plus an arrow.
-                override fun swipe(direction: SwipeDirection) = link.key(
-                    when (direction) {
-                        SwipeDirection.Up -> MacKeys.UP
-                        SwipeDirection.Down -> MacKeys.DOWN
-                        // As on a real trackpad: swiping left pulls in the space to the right.
-                        SwipeDirection.Left -> MacKeys.RIGHT
-                        SwipeDirection.Right -> MacKeys.LEFT
-                    },
-                    Mods.CTRL,
-                )
+                override fun swipe(direction: SwipeDirection) {
+                    swipeKeys(platform, direction)?.let { link.key(it.code, it.mods) }
+                }
 
                 override fun feedback(kind: PadFeedback) {
                     haptics.performHapticFeedback(
@@ -241,7 +236,7 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
         )
         val corner by animateDpAsState(if (dragging) PadCornerHeld else PadCorner, TandemMotion.springy(), label = "padCorner")
         val padShape = remember(corner) { SquircleShape(corner) }
-        Box(
+        BoxWithConstraints(
             Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -251,6 +246,7 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
                 .touchpad(classifier),
             contentAlignment = Alignment.Center,
         ) {
+            val roomForAllLines = maxHeight > 190.dp
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(TandemIcons.Touch, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(40.dp))
                 Text(
@@ -264,10 +260,24 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 )
                 Text(
-                    stringResource(R.string.remote_hint_three),
+                    stringResource(
+                        when (platform) {
+                            TandemPlatform.WINDOWS -> R.string.remote_hint_three_windows
+                            TandemPlatform.LINUX -> R.string.remote_hint_three_linux
+                            else -> R.string.remote_hint_three
+                        },
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 )
+                // A computer that does not allow it stays silent here, and says why on its own screen.
+                if (roomForAllLines) {
+                    Text(
+                        stringResource(R.string.remote_hint_allow),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    )
+                }
             }
             DraggingLabel(dragging, Modifier.align(Alignment.TopCenter).padding(top = 16.dp))
         }
@@ -297,6 +307,8 @@ fun RemoteScreen(id: String, onBack: () -> Unit) {
                     onToggleMod = { bit -> mods = mods xor bit },
                     onText = ::typeText,
                     onKey = ::pressKey,
+                    platform = platform,
+                    systemBit = Mods.SYSTEM,
                 )
             }
         }

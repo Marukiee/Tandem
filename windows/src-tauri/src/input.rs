@@ -429,6 +429,10 @@ fn modifiers(mods: u8) -> Vec<Key> {
     if mods & 4 != 0 {
         keys.push(Key::Alt);
     }
+    // Only a phone sends this: the Windows key or Super itself, for what has no other way to be asked for.
+    if mods & 16 != 0 {
+        keys.push(Key::Meta);
+    }
     keys
 }
 

@@ -6,6 +6,9 @@ object Mods {
     const val CTRL = 2
     const val OPTION = 4
     const val COMMAND = 8
+
+    /** The Windows key or Super itself. On those computers Command becomes Ctrl, for what comes from a Mac's keyboard. */
+    const val SYSTEM = 16
 }
 
 /** macOS virtual key codes, which is what the Mac side expects in Key messages. */
@@ -14,6 +17,7 @@ object MacKeys {
     const val TAB: Short = 48
     const val DELETE: Short = 51
     const val ESCAPE: Short = 53
+    const val D: Short = 2
     const val LEFT: Short = 123
     const val RIGHT: Short = 124
     const val DOWN: Short = 125

@@ -3,6 +3,9 @@
     <string name="remote_hint_drag">Houd ingedrukt en beweeg om te slepen</string>
     <string name="remote_dragging">Slepen</string>
     <string name="remote_hint_three">Drie vingers voor Mission Control en Spaces</string>
+    <string name="remote_hint_three_windows">Drie vingers voor Taakweergave en bureaubladen</string>
+    <string name="remote_hint_three_linux">Drie vingers naar links of rechts wisselen van werkruimte</string>
+    <string name="remote_hint_allow">Gebeurt er niets? Sta het toe in Tandem op de computer</string>
     <string name="remote_mouse_buttons">Muisknoppen</string>
     <string name="remote_left">Links</string>
     <string name="remote_right">Rechts</string>
@@ -17,6 +20,9 @@
     <string name="remote_mod_ctrl">Ctrl</string>
     <string name="remote_mod_option">Option</string>
     <string name="remote_mod_command">Cmd</string>
+    <string name="remote_mod_alt">Alt</string>
+    <string name="remote_mod_win">Win</string>
+    <string name="remote_mod_super">Super</string>
     <string name="remote_key_esc">Esc</string>
     <string name="remote_key_tab">Tab</string>
     <string name="remote_key_up">Pijl omhoog</string>
