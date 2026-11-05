@@ -40,7 +40,7 @@ static TOLD: Mutex<Option<(Option<bool>, Option<bool>)>> = Mutex::new(None);
 
 pub fn announce(app: &AppHandle) {
     let offer = offered(app);
-    let now = (available().then_some(offer), Some(offer && locked()));
+    let now = (available().then_some(offer), Some(offer && crate::lid::locked()));
     let mut told = TOLD.lock().unwrap();
     if *told == Some(now) {
         return;
@@ -52,7 +52,7 @@ pub fn announce(app: &AppHandle) {
 
 /// Another device asks to unlock. Everything is checked here again: the switch, the device, and that the screen is locked at all.
 pub fn from_afar(app: &AppHandle, from: &str) {
-    if !offered(app) || !locked() {
+    if !offered(app) || !crate::lid::locked() {
         return;
     }
     let Ok(engine) = app.state::<AppState>().engine() else { return };
@@ -91,9 +91,3 @@ fn session() -> String {
     std::env::var("XDG_SESSION_ID").unwrap_or_else(|_| "auto".into())
 }
 
-fn locked() -> bool {
-    std::process::Command::new("loginctl")
-        .args(["show-session", &session(), "-p", "LockedHint", "--value"])
-        .output()
-        .is_ok_and(|out| String::from_utf8_lossy(&out.stdout).trim() == "yes")
-}

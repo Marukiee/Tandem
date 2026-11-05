@@ -428,7 +428,7 @@ impl TandemMediaHost for Host {
             return;
         }
         // A locked screen shows nothing that can be sent and takes no input: said at once, so the viewer does not keep trying.
-        if screen_locked() {
+        if crate::lid::locked() {
             let _ = engine.media_deny(request.session, TandemMediaEnd::Locked);
             return;
         }
@@ -1101,21 +1101,4 @@ mod tests {
         let kinds: Vec<u8> = data.windows(5).filter(|w| w[..4] == [0, 0, 0, 1]).map(|w| w[4] & 0x1F).collect();
         assert!(kinds.contains(&7) && kinds.contains(&8), "{kinds:?}");
     }
-}
-
-/// Whether the session of this computer shows its lock screen, as logind knows it.
-#[cfg(target_os = "linux")]
-fn screen_locked() -> bool {
-    let session = std::env::var("XDG_SESSION_ID").unwrap_or_else(|_| "auto".into());
-    std::process::Command::new("loginctl")
-        .args(["show-session", &session, "-p", "LockedHint", "--value"])
-        .output()
-        .map(|out| String::from_utf8_lossy(&out.stdout).trim() == "yes")
-        .unwrap_or(false)
-}
-
-/// Not known on Windows yet, see docs/PARITY.md: a locked Windows ends the session as an error, as before.
-#[cfg(not(target_os = "linux"))]
-fn screen_locked() -> bool {
-    false
 }

@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.2.98",
+    "date": "2026-11-05",
+    "en": {
+      "title": "Safer links",
+      "new": [
+        "A pairing link asks first",
+        "Only web links open by themselves",
+        "Lighter, without old code"
+      ]
+    },
+    "nl": {
+      "title": "Veiligere links",
+      "new": [
+        "Een koppellink vraagt het eerst",
+        "Alleen weblinks openen vanzelf",
+        "Lichter, zonder oude code"
+      ]
+    }
+  },
+  {
     "version": "0.2.97",
     "date": "2026-11-05",
     "en": {
