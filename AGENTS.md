@@ -66,7 +66,8 @@ After every change, build what you touched. Fix errors before going on.
   `export ANDROID_HOME=$HOME/Library/Android/sdk JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home`,
   then `cd android && ./gradlew --console=plain -q :app:testDebugUnitTest :app:assembleDebug`
 - **Linux code on this Mac**: `scripts/check-linux.sh` (a `cargo check` of the Tauri app for Linux; compiles, does not run).
-- **Windows**: only builds in CI on GitHub.
+- **Windows**: builds and runs in CI only. `scripts/check-windows.sh -p tandem-windows --tests` type checks it from this Mac (compiles, does not
+  run). `scripts/windows-smoke.ps1` tries the real installer in every run of `windows.yml`, the artifact `smoke` holds its summary and screenshots.
 
 An exhaustive `switch`/`when`/`match` on a core enum breaks in every app when you add a variant: build all of them.
 

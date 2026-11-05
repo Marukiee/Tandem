@@ -5,7 +5,7 @@ er voor de Mac is moet ook op Windows en Linux werken, en tussen alle systemen o
 andersom), niet alleen telefoon naar computer. Een kruisje betekent dat het er nog niet is, een streepje dat het niet past bij dat systeem.
 
 Betekenis: `ja` gebouwd (en nergens op een echt toestel gezien tenzij er `bekeken` staat), `deels` er is een stuk van, `nee` ontbreekt.
-Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en moet na elke versie bijgewerkt worden. Van Windows en Linux is bijna niets op een echt toestel gezien.
+Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en moet na elke versie bijgewerkt worden. Van Linux is bijna niets op een echt toestel gezien. Windows is in 2026-11 voor het eerst op een echte laptop gezien, en de functies die `scripts/windows-smoke.ps1` probeert draaien in elke CI-run; wat wel en niet gezien is staat in `docs/ROADMAP.md` (Stabiliteit bij Windows).
 
 | Functie | Android | Mac | Windows | Linux |
 | --- | --- | --- | --- | --- |
@@ -76,7 +76,7 @@ Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een ech
   gespreksgeluid (`VOICE_CALL` is voor systeemapps, `AudioPlaybackCapture` slaat telefonie over). Daarom heeft het belkaartje geen knop om het geluid te verplaatsen: een
   knop die niets doet wordt nooit getoond. Linux (BlueZ met PipeWire) is de plek waar het misschien wel kan, dat is nog niet nagekeken.
 - **Windows**: een scherm voor een ander apparaat maken (een stuurprogramma voor een virtueel beeldscherm, eenmalig met beheerdersrechten), Bluetooth
-  tussen apparaten (WinRT), het hotspotverzoek aan de telefoon. En alles nalopen op een echte Windows-pc: dat is nooit gedaan.
+  tussen apparaten (WinRT), het hotspotverzoek aan de telefoon. En alles nalopen op een echte Windows-pc: begonnen in 2026-11, geluid, Bluetooth, vergrendelen en een echte muis zijn nog niet geprobeerd.
 - **Linux**: het hotspotverzoek aan de telefoon (de Bluetooth-kant is er), de gedeelde muis als hoofd onder X11 (`XInput2` met grabs), en
   Bluetooth, tweede scherm, bediening onder Wayland en de melding bij slechte verbinding nalopen op de echte laptop.
 - **Overal**: Windows en Linux moeten dezelfde functies als de Mac kunnen aanbieden, niet alleen tonen: geluid van een computer naar een andere

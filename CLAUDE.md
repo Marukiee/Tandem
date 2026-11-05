@@ -146,7 +146,12 @@ In een verse werkmap (worktree) ontbreken de git-genegeerde bouwresultaten. Eers
   schrijft zijn koppellink naar `pairing-uri.txt` in de debugmap, `tandemd pair-show` toont die van een daemon). Een
   systeemdialoog van de emulator (stylus) kan de app laten lijken te hangen. Schermfoto's: `adb exec-out screencap -p`.
 - **Windows:** de UI staat in `windows/ui` en draait ook in een gewone browser met `mock.js`
-  (`python3 -m http.server`). De hele app laat zich alleen in CI bouwen.
+  (`python3 -m http.server`). De hele app laat zich alleen in CI bouwen. Vanaf de Mac is `scripts/check-windows.sh -p tandem-windows --tests` een typecheck
+  (er wordt niets gelinkt). `scripts/windows-smoke.ps1` installeert in elke run van `windows.yml` de echte build en probeert koppelen, klembord, bestanden,
+  de gedeelde muis in beide rollen, bijwerken, een harde stop en verwijderen; de artifact `smoke` bevat de samenvatting, de teksten en de schermfoto's. Het stuurt de app via de
+  debugpoort van de webview (`TANDEM_TEST_DEBUG_PORT`, want in een verhoogd proces negeert WebView2 zijn eigen variabele) met `tandemd` als tweede computer
+  (`--pretend-cap pointer.ping --pretend-pointer-screen BxH`, `tandemd pointer`). `TANDEM_TEST_HANDS=1` laat de hooks gemarkeerde testinvoer meetellen, wat
+  niets zegt over een echte hand op een echte muis. SSH naar een pc heeft geen bureaublad: starten met een geplande taak met `LogonType Interactive`.
 - **Linux-code controleren op de Mac:** `scripts/check-linux.sh` doet `cargo check` van de Tauri-app voor Linux, met een nep-pkg-config
   en een nep-C-compiler (er wordt niets gelinkt). Zo compileert de Linux-code hier ook; of hij werkt, blijkt pas op een echte Linux-pc.
 - **Schijfruimte:** een agent-werkmap met zijn eigen `target/` is gauw 5 GB, en de debug-mappen van `target/` en `windows/src-tauri/target/` groeien tot 30 GB zonder dat cargo ooit opruimt (het project stond op 150 GB). Draai `scripts/clean-build.sh` na een ronde met agents en af en toe tussendoor; `--check` laat zien wat het zou doen.

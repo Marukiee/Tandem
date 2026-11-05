@@ -399,11 +399,22 @@ Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mar
 
 Hoe Windows nu getest wordt: `scripts/windows-smoke.ps1` draait de echte installer in elke Windows-run en maakt de run rood bij een fout,
 op `windows-latest` en (mag falen) op `windows-11-arm`. De tests van de app draaien voor het eerst op Windows. `scripts/check-windows.sh` is
-de typecheck voor Windows vanaf de Mac. Hetzelfde script is op een echte laptop gedraaid (Windows 11 Home, Intel, nl-NL).
+de typecheck voor Windows vanaf de Mac. Hetzelfde script is op een echte laptop gedraaid (Windows 11 Home, Intel, nl-NL), toen nog zonder
+klembord, bestanden en gedeelde muis: de tweede computer van het script kreeg het verkeerde id. Dat is hersteld, de volledige ronde op die
+laptop moet nog.
+
+Gezien op de testmachine van GitHub (`windows-latest`, zonder geluid, Bluetooth of klep), zonder fout: koppelen, elke pagina lezen, klembord beide
+kanten, geheim klembord blijft hier, bestanden beide kanten, de gedeelde muis in beide rollen, bijwerken, harde stop, verwijderen. De muis
+met gemarkeerde testinvoer (`TANDEM_TEST_HANDS`), want de hooks negeren wat een programma instuurt. Bestuurd: aanwijzer, klik, toets, shift,
+tekst met accenten, terug aan de rand, een vastgehouden knop laat los bij stilte, de strook aan de rand komt en gaat. Hoofd: oversteken, de echte aanwijzer blijft staan,
+toetsen blijven hier weg, terug aan de rand, Ctrl+Alt+Shift+Esc, en bij een weggevallen verbinding komt de aanwijzer thuis.
 
 Gezien op een echte Windows 11-laptop, zonder fout: stil installeren, eerste start, venster en paneel, één instantie bij een tweede start,
 bijwerken over de draaiende app, herstart na een harde stop, schermopname en encoder (5 ms per beeld, 23 beelden per seconde bij een stilstaand
 bureaublad), geen crash in het foutenlogboek.
+
+Nog niet geprobeerd, en een test op de runner kan dat niet: een echte hand op een echte muis (het pad zonder testmarkering), de echte Mac aan
+de andere kant, geluid, Bluetooth, vergrendelen, de klep, UIPI, toetsenbordindelingen. Dat vraagt een drukke ronde op de laptop.
 
 Open, gezien:
 - **Wat is er nieuw op Windows gaat grotendeels over de Mac.** 170 van de 434 regels in `changelog.json` noemen de Mac ("The Mac builds
@@ -413,6 +424,7 @@ Open, gezien:
 Open, alleen uit de code gelezen, nog niet gezien:
 - De hooks van de gedeelde muis hebben geen bewaker. Windows haalt een trage hook stil weg (`LowLevelHooksTimeout`), en daarna doet de muis
   niets meer zonder melding. De handler gebruikt `.lock().unwrap()` binnen `extern "system"`: een paniek daar neemt het hele programma mee.
+  En `see()` houdt `INNER` vast terwijl `neighbours` in de hook de locks van de instellingen en de data pakt, wat zo'n hook juist traag kan maken.
 - Geluid: een fout in een stream wordt alleen gelogd en de stream gaat niet opnieuw open als het standaardapparaat wisselt
   (`IMMNotificationClient` ontbreekt).
 - Schermopname met GDI maakt per beeld een nieuwe bitmap, `CAPTUREBLT` kan de aanwijzer laten knipperen, alleen het hoofdscherm, en beveiligde
@@ -423,14 +435,14 @@ Open, alleen uit de code gelezen, nog niet gezien:
 - De installer en de app zijn niet ondertekend, terwijl ze hooks, invoer en schermopname gebruiken. SmartScreen en virusscanners kunnen daarover
   vallen.
 - Wisselen van wifi zonder slaapstand wordt de core op Windows niet verteld (`network_changed` alleen na een slaapgat).
-- Verwijderen laat `%APPDATA%\Microsoft\Windows\SendTo\* (Tandem).lnk` staan, en misschien de instelling van de klep. Nakijken of
-  `lid::restore` ook loopt na een crash en bij afsluiten van Windows (`RunEvent::Exit` komt dan misschien niet).
+- Verwijderen laat misschien de instelling van de klep staan. Nakijken of `lid::restore` ook loopt na een crash en bij afsluiten van Windows
+  (`RunEvent::Exit` komt dan misschien niet).
 - Een niet-verhoogd proces kan geen verhoogde vensters of UAC bedienen (UIPI). Testen, en dan in `docs/PARITY.md`.
 - Toetsenbordindelingen via `key_of`, en Win+L terwijl de muis bij een andere computer is: nog niet geprobeerd.
 - Klembord dat als geheim gemarkeerd is: op Linux doet de code nog niets, terwijl `clip_secret_note` het belooft.
 
-Verholpen in deze ronde: de login-terminal hoorde op Windows nooit dat ssh klaar was; geheim klembord op Windows; console die even oplicht bij
-het openen van een instelling; "1 things" in meervoud; bestandsbeheerders van Linux genoemd op Windows; twee ontbrekende vertalingen
+Verholpen in deze ronde: de login-terminal hoorde op Windows nooit dat ssh klaar was; geheim klembord op Windows; verwijderen liet de koppelingen in
+"Sturen naar" staan; console die even oplicht bij het openen van een instelling; "1 things" in meervoud; bestandsbeheerders van Linux genoemd op Windows; twee ontbrekende vertalingen
 (`cancelled`, `cancel_transfer`); een 504 bij het downloaden van NSIS maakte de build rood; de tests van de app draaiden nergens.
 
 ## 3. Linux
@@ -454,7 +466,8 @@ het openen van een instelling; "1 things" in meervoud; bestandsbeheerders van Li
 - Onderzoek en ontwerp staan in docs/INPUT_SHARING.md (Input Leap, lan-mouse, Universal Control). In de kern staat het bericht
   `PointerShareMsg` en de rekenlogica (`pointer_share.rs`) met tests.
 - Gedaan, nog niet op echte computers naast elkaar gezien: de Mac als hoofd en bestuurd (0.1.49), Windows bestuurd (0.1.50),
-  Windows als hoofd met hooks (0.1.51). Instellingen en een toets om terug te halen staan op Mac en Windows.
+  Windows als hoofd met hooks (0.1.51). Instellingen en een toets om terug te halen staan op Mac en Windows. Windows in beide rollen draait nu in elke
+  CI-run tegen `tandemd` als tweede computer, met gemarkeerde testinvoer (zie Stabiliteit bij Windows).
 - Nog niet: Linux (zien van invoer via libei of evdev, afspelen via libei of XTest), een gedeeld klembord bij de overgang,
   ketens van meer dan twee computers, toetsvertaling voor andere indelingen dan US.
 - Gedaan in 0.1.71 (beide kanten): de computer die de aanwijzer van een andere gebruikt krijgt aan de rand waar die zit een dropzone (Mac `EdgeDrop`, Windows en Linux `edge.rs`), en een computer die de aanwijzer deelt krijgt bestanden met de herkomst `Drag` zonder vragen en zet ze neer (Finder-venster of bureaublad, `DragLanding`, `drag.rs`). Nog niet: echt loslaten op de plek van de aanwijzer met een systeemsleep op de ontvanger (op het scherm waar de aanwijzer staat), en Windows of Linux als hoofd met een dropzone.

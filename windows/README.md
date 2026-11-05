@@ -49,5 +49,6 @@ Not yet: the hotspot, Bluetooth, sound to the phone, automatic updates, folders,
 `Tandem.exe --minimized` starts it in the tray (what starting with Windows does) and `Tandem.exe --panel` opens
 the small panel in the corner of the screen, which is how CI takes a picture of it.
 
-Nothing here has been run on a real Windows PC yet by the people who wrote it. The installer is not signed, so
-Windows SmartScreen asks once whether to run it.
+`scripts/windows-smoke.ps1` installs the real build and tries it, in every run of the workflow. It has also been run on one
+real Windows 11 laptop; `docs/ROADMAP.md` says what has been seen and what has not. The installer is not signed, so Windows
+SmartScreen asks once whether to run it.

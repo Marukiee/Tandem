@@ -360,6 +360,15 @@ Part "Every page, with a device" {
     if ($pairedWell) { WalkPages $mainPage "the main window with a computer paired" }
 }
 
+$sendTo = Join-Path $env:APPDATA "Microsoft\Windows\SendTo"
+$helperLink = Join-Path $sendTo "SmokeHelper (Tandem).lnk"
+
+if ($pairedWell) {
+    Part "Send to in Explorer" {
+        Check ([bool](WaitFor { Test-Path $helperLink } 20)) "a paired device gets a link in Send to"
+    }
+}
+
 if ($pairedWell) {
     Part "Clipboard" {
         $word = "smoke-" + [Guid]::NewGuid().ToString("N")
@@ -648,6 +657,7 @@ Part "Removing a device, and quitting" {
     if ($pairedWell) {
         [void](App "remove_device" @{ id = $script:helperId })
         Check ([bool](WaitFor { @((App "get_state").devices | Where-Object { $_.id -eq $script:helperId }).Count -eq 0 } 20)) "a removed device is gone from the app"
+        Check ([bool](WaitFor { -not (Test-Path $helperLink) } 20)) "a removed device loses its link in Send to"
     }
     # Quit itself sits in the menu of the icon, out of reach here. With closing to the tray off, closing the window goes the same way.
     [void](App "set_settings" @{ patch = @{ closeToTray = $false } })
@@ -669,8 +679,11 @@ if (-not $KeepInstalled) {
     Part "Uninstall" {
         $uninstall = Join-Path $installed "uninstall.exe"
         Check (Test-Path $uninstall) "there is an uninstaller"
+        # By now the device has been removed, and with it its link. A person uninstalls with their devices still there.
+        Set-Content $helperLink ""
         Start-Process $uninstall -ArgumentList "/S" -Wait
         Check ([bool](WaitFor { -not (Test-Path $exe) } 60)) "the uninstaller removes Tandem.exe"
+        Check (@(Get-ChildItem $sendTo -Filter "* (Tandem).lnk").Count -eq 0) "the uninstaller leaves no links in Send to"
         $run = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -ErrorAction SilentlyContinue
         Check (-not ($run.PSObject.Properties.Name -match "Tandem")) "nothing is left that starts Tandem with Windows"
     }
