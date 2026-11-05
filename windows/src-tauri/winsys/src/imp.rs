@@ -456,6 +456,11 @@ impl Capture {
             .spawn(|| unsafe {
                 let module = GetModuleHandleW(None).ok().map(|m| HINSTANCE(m.0));
                 let mut hooks = set_hooks(module);
+                // Input from before the hooks existed is no input they missed.
+                let mut last = LASTINPUTINFO { cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };
+                if GetLastInputInfo(&mut last).as_bool() {
+                    HOOK_SAW.store(last.dwTime, Ordering::Relaxed);
+                }
                 let _ = SetTimer(None, 0, 5000, None);
                 // Hooks of this kind are called by way of the message loop of the thread that set them.
                 let mut message = MSG::default();

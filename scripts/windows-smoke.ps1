@@ -72,6 +72,7 @@ public static class SmokeHands {
     public static int Width { get { return GetSystemMetrics(0); } }
     public static int Height { get { return GetSystemMetrics(1); } }
     public static bool LeftIsDown { get { return (GetAsyncKeyState(1) & 0x8000) != 0; } }
+    public static bool IsDown(int key) { return (GetAsyncKeyState(key) & 0x8000) != 0; }
 }
 "@
 
@@ -571,6 +572,27 @@ $form.Controls.Add($box)
         [SmokeHands]::Move(20, 0)
         Start-Sleep -Milliseconds 200
         Check ([SmokeHands]::At().X -gt 200) "and the mouse works on this PC again" "at $([SmokeHands]::At().X)"
+
+        # Held here before the pointer left: its release has to reach this PC too, or Shift stays down here.
+        [void][SmokeHands]::Key(0x10, $true)
+        Check (Cross) "it goes over with Shift held"
+        [void][SmokeHands]::Key(0x10, $false)
+        Start-Sleep -Milliseconds 300
+        Check (-not [SmokeHands]::IsDown(0x10)) "Shift that went down here also comes up here"
+        Say @("leave", "0.5")
+        [void](WaitFor { BackAtTheEdge } 5)
+
+        # With a button held the edge is a wall: a drag on this PC stays on this PC.
+        $entered = HelperCount "Enter \{"
+        [SmokeHands]::Put(([SmokeHands]::Width - 30), $middle[1])
+        [SmokeHands]::Left($true)
+        for ($i = 0; $i -lt 60; $i++) {
+            [SmokeHands]::Move(4, 0)
+            Start-Sleep -Milliseconds 30
+        }
+        Start-Sleep -Milliseconds 500
+        Check ((HelperCount "Enter \{") -eq $entered) "with a button held the pointer stays on this PC"
+        [SmokeHands]::Left($false)
 
         Check (Cross) "it goes over a second time"
         $released = HelperCount "Release"

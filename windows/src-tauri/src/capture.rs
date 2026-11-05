@@ -29,11 +29,23 @@ struct Inner {
     remote: Option<(String, Edge)>,
     saved: (i32, i32),
     mods: u8,
+    /// Mouse buttons down on this PC while the pointer is here: with one held the edge is a wall, because the release would go to the other
+    /// computer and the pointer is put in the middle of the screen, which would end a drag there.
+    held_here: BTreeSet<u8>,
+    /// Keys and buttons that went down while the pointer was away, see `is_theirs`.
+    went_down_away: BTreeSet<u16>,
     /// When the pointer went over, so a pointer that comes straight back can be told from one that was used.
     entered: Option<Instant>,
 }
 
-static INNER: Mutex<Inner> = Mutex::new(Inner { remote: None, saved: (0, 0), mods: 0, entered: None });
+static INNER: Mutex<Inner> = Mutex::new(Inner {
+    remote: None,
+    saved: (0, 0),
+    mods: 0,
+    held_here: BTreeSet::new(),
+    went_down_away: BTreeSet::new(),
+    entered: None,
+});
 /// Computers that say how they are (the capability `pointer.ready`) and say they cannot take the pointer now. The edge towards one is a
 /// wall until it says it can, so the pointer does not go over and come straight back again and again.
 static NOT_READY: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
@@ -242,6 +254,13 @@ pub fn pointer_at() -> Option<String> {
 fn see(seen: Seen) -> bool {
     let mut inner = INNER.lock().unwrap();
     let Some((device, edge)) = inner.remote.clone() else {
+        if let Seen::Button { button, down } = seen {
+            if down { inner.held_here.insert(button); } else { inner.held_here.remove(&button); }
+            return false;
+        }
+        if !inner.held_here.is_empty() {
+            return false;
+        }
         // The pointer is here: does it run into an edge where a screen sits?
         let (Seen::Move { dx, dy, x, y }, Some(app)) = (seen, APP.get()) else { return false };
         // The edge is that of all the screens together, so a second screen on the far side is no reason to leave.
@@ -268,6 +287,7 @@ fn see(seen: Seen) -> bool {
         inner.saved = (x, y);
         inner.remote = Some((device.clone(), edge));
         inner.mods = 0;
+        inner.went_down_away.clear();
         inner.entered = Some(Instant::now());
         drop(inner);
         started(device, edge, along);
@@ -279,7 +299,12 @@ fn see(seen: Seen) -> bool {
             let clamp = |v: i32| v.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
             send(Out::Input(device, TandemInput::Pointer { dx: clamp(dx), dy: clamp(dy) }));
         }
-        Seen::Button { button, down } => send(Out::Input(device, TandemInput::Button { button, down })),
+        Seen::Button { button, down } => {
+            if !is_theirs(&mut inner.went_down_away, BUTTON_CODES + u16::from(button), down) {
+                return false;
+            }
+            send(Out::Input(device, TandemInput::Button { button, down }));
+        }
         Seen::Scroll { dx, dy } => {
             let clamp = |v: i32| v.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
             send(Out::Input(device, TandemInput::Scroll { dx: clamp(dx), dy: clamp(dy) }));
@@ -303,14 +328,33 @@ fn see(seen: Seen) -> bool {
             if bit != 0 {
                 if down { inner.mods |= bit } else { inner.mods &= !bit }
             }
+            let theirs = is_theirs(&mut inner.went_down_away, vk, down);
             let mac_mods = mac_mods(inner.mods);
             drop(inner);
+            if !theirs {
+                return false;
+            }
             if let Some(code) = mac_code(vk) {
                 send(Out::Input(device, TandemInput::Key { code, down, mods: mac_mods }));
             }
         }
     }
     true
+}
+
+/// Above every key code, so a button and a key are never taken for each other.
+const BUTTON_CODES: u16 = 0x1000;
+
+/// Whether a key or button that moves belongs to the other computer. What went down while the pointer was away does. What went down on
+/// this PC, before the pointer left or past a hook that answered too late, has to come up here as well, or it stays down on this PC and
+/// the keyboard behaves as if Shift or Ctrl is held.
+fn is_theirs(went_down_away: &mut BTreeSet<u16>, code: u16, down: bool) -> bool {
+    if down {
+        went_down_away.insert(code);
+        true
+    } else {
+        went_down_away.remove(&code)
+    }
 }
 
 /// The modifiers in the order of a Mac keyboard (shift 1, control 2, option 4, command 8) for the ones held here (shift 1,
@@ -547,6 +591,7 @@ mod linux {
             inner.saved = (x, y);
             inner.remote = Some((device.clone(), edge));
             inner.mods = 0;
+            inner.went_down_away.clear();
             inner.entered = Some(Instant::now());
         }
         started(device, edge, along);
@@ -579,6 +624,16 @@ mod tests {
         assert_eq!(mac_mods(1 | 2), 1 | 8);
         assert_eq!(mac_mods(8), 2);
         assert_eq!(mac_mods(0), 0);
+    }
+
+    #[test]
+    fn what_went_down_here_comes_up_here() {
+        let mut away = BTreeSet::new();
+        assert!(!is_theirs(&mut away, 0x10, false), "Shift was held before the pointer left");
+        assert!(is_theirs(&mut away, 0x41, true));
+        assert!(is_theirs(&mut away, 0x41, true), "a key that repeats");
+        assert!(is_theirs(&mut away, 0x41, false));
+        assert!(!is_theirs(&mut away, 0x41, false), "only one release of it was theirs");
     }
 
     #[test]
