@@ -3,17 +3,21 @@
     "version": "0.2.97",
     "date": "2026-11-05",
     "en": {
-      "title": "Codes from texts arrive",
+      "title": "Codes arrive, sound mode and lock",
       "new": [
         "Codes from texts reach your computers, also when the connection was just gone",
-        "See hidden codes as well with Shizuku"
+        "See hidden codes as well with Shizuku",
+        "Switch your phone between sound, vibrate and do not disturb from another device",
+        "Lock any device from another one"
       ]
     },
     "nl": {
-      "title": "Codes uit sms'jes komen aan",
+      "title": "Codes komen aan, geluidsstand en vergrendelen",
       "new": [
         "Codes uit sms'jes komen op je computers, ook als de verbinding net weg was",
-        "Zie met Shizuku ook verborgen codes"
+        "Zie met Shizuku ook verborgen codes",
+        "Wissel je telefoon tussen geluid, trillen en niet storen vanaf een ander apparaat",
+        "Vergrendel elk apparaat vanaf een ander"
       ]
     }
   },

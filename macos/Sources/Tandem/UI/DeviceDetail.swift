@@ -128,7 +128,8 @@ struct DeviceDetail: View {
                                 if device.platform != .android, let ssid = device.lastSeen?.ssid {
                                     Chip(symbol: "wifi", text: "\(ssid)")
                                 }
-                                if device.status.dnd == true {
+                                // A phone says it on its button in the Sound group.
+                                if device.status.dnd == true, device.status.sound == nil {
                                     Chip(symbol: "moon.fill", text: "Do not disturb")
                                 }
                             }
@@ -285,9 +286,12 @@ struct DeviceDetail: View {
                     .disabled(!device.online)
                     .help("Log in to this computer over SSH")
                     RemoteKeepAwakeButton(device: device)
-                    if device.online, device.status.unlock == true, device.status.locked == true {
-                        RemoteUnlockButton(device: device)
-                    }
+                }
+                // Lock and unlock are one place: what is locked and can be opened from here offers that instead.
+                if isComputer, device.online, device.status.unlock == true, device.status.locked == true {
+                    RemoteUnlockButton(device: device)
+                } else {
+                    RemoteLockButton(device: device)
                 }
             }
         }
@@ -321,6 +325,7 @@ struct DeviceDetail: View {
                         model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
                     }
                     .disabled(!device.online)
+                    SoundModeButton(device: device)
                 }
                 // This Mac's sound on a computer that plays the sound of other devices. What can go wrong there is said when it is
                 // pressed.

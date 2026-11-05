@@ -175,7 +175,7 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                             },
                         )
                     }
-                    if (device.status.dnd == true) StatusChip(TandemIcons.Dnd, stringResource(R.string.status_dnd))
+                    if (device.status.dnd == true && device.status.sound == null) StatusChip(TandemIcons.Dnd, stringResource(R.string.status_dnd))
                     if (device.status.hotspot == true) StatusChip(TandemIcons.Hotspot, stringResource(R.string.status_hotspot_on), tint = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -240,8 +240,10 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         val showDisplay = computer && "screen.extend" in device.caps
         // Locked, and it lets this phone unlock it (a computer whose person switched that on): the row is there only then.
         val showUnlock = computer && device.online && device.status.unlock == true && device.status.locked == true
-        val controlRows = (if (computer) 5 else if (device.online) 1 else 0) + (if (showFiles) 1 else 0) + (if (showDisplay) 1 else 0) +
-            (if (showUnlock) 1 else 0)
+        // Lock and unlock are one place: what is locked and can be opened from here offers that instead.
+        val showLock = !showUnlock && (computer || device.online)
+        val controlRows = (if (computer) 5 else if (device.online) 2 else 0) + (if (showFiles) 1 else 0) + (if (showDisplay) 1 else 0) +
+            (if (showUnlock || showLock) 1 else 0)
         if (controlRows > 0) {
             SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
             SettingsGroup {
@@ -304,7 +306,9 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                         row++, controlRows, TandemIcons.Ring, stringResource(R.string.tile_find), stringResource(R.string.find_row_sub),
                         ready = true, onClick = { scope.launch { runCatching { host.engine?.ring(id, true) } } },
                     )
+                    nl.markmaaktmedia.tandem.ui.components.SoundModeRow(row++, controlRows, device)
                 }
+                if (showLock) nl.markmaaktmedia.tandem.ui.components.LockRow(row++, controlRows, device)
                 // Its files, in the Files app of the system, next to the storage of this phone.
                 if (showFiles) {
                     ActionRow(

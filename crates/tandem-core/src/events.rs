@@ -66,6 +66,10 @@ pub enum Event {
     KeepAwake { from: DeviceId, on: bool },
     /// Another device asks this computer to unlock its screen; the app checks that it offers this and that the device may.
     Unlock { from: DeviceId },
+    /// Another device asks this device to lock its screen.
+    Lock { from: DeviceId },
+    /// Another device asks this phone to switch how it sounds.
+    SoundMode { from: DeviceId, mode: crate::proto::SoundMode },
     /// Another device is about to play tones to find out on which side of it this one stands: record and answer with `side_heard`.
     /// `quiet` when it checks by itself, without the person asking.
     SideListen { from: DeviceId, id: u64, quiet: bool },

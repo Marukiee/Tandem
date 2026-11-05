@@ -194,6 +194,40 @@ function wifiWorthSharing(device, here) {
   return net.kind !== "wifi";
 }
 
+/** Locks another device. Grey while it cannot, and a press says what is missing there; for a phone that opens the setting on it. */
+function LockButton({ device }) {
+  const lock = device.status?.lock;
+  const press = () => {
+    if (lock == null) return say(t("lock_update", device.name));
+    if (lock) return call("lock_remote", { id: device.id }).catch((e) => say(String(e)));
+    if (device.platform !== "android") return say(t("lock_cant", device.name));
+    say(t("lock_access", device.name));
+    call("features_open_on", { id: device.id, page: "accessibility" }).catch((e) => say(String(e)));
+  };
+  return html`<button class=${"btn" + (lock === true ? "" : " grey")} disabled=${!device.online} title=${t("lock_tip")} onClick=${press}>
+    <${Icon} name="lock" size=${17} />${device.status?.locked ? t("lock_locked") : t("lock_title")}</button>`;
+}
+
+/** How a phone sounds, and one press to the next: sound, vibrate, do not disturb. Without access to the last one it is skipped, and said why. */
+function SoundModeButton({ device }) {
+  const mode = device.status?.sound;
+  const canDnd = device.status?.soundDnd === true;
+  const icon = { vibrate: "vibrate", silent: "volume-off", dnd: "moon" }[mode] || "volume";
+  const title = { vibrate: t("sound_vibrate"), silent: t("sound_silent"), dnd: t("dnd"), sound: t("sound_on") }[mode] || t("sound_mode");
+  const press = () => {
+    if (mode == null) return say(t("sound_update", device.name));
+    if (mode === "dnd" && !canDnd) {
+      say(t("sound_access", device.name));
+      return call("features_open_on", { id: device.id, page: "dnd-access" }).catch((e) => say(String(e)));
+    }
+    const next = mode === "sound" ? "vibrate" : mode === "dnd" || !canDnd ? "sound" : "dnd";
+    if (mode !== "sound" && next === "sound" && !canDnd) say(t("sound_access", device.name));
+    call("set_sound_mode", { id: device.id, mode: next }).catch((e) => say(String(e)));
+  };
+  return html`<button class=${"btn" + (mode && mode !== "sound" ? " on" : "")} disabled=${!device.online} title=${t("sound_tip")} onClick=${press}>
+    <${Icon} name=${icon} size=${17} />${title}</button>`;
+}
+
 export function DevicePage({ device }) {
   const wifiHere = useWifiHere();
   const [ringing, setRinging] = useState(false);
@@ -292,6 +326,7 @@ export function DevicePage({ device }) {
             : call("keep_awake_remote", { id: device.id, on: !device.status.awake }).catch(failed))}>
           <${Icon} name="coffee" size=${17} />${device.status?.awake ? t("keep_awake_kept") : t("keep_awake_remote")}</button>`}
         ${isComputer && html`<${PlaySoundButton} device=${device} />`}
+        <${LockButton} device=${device} />
         ${canPlay(device) && html`<${OutputButton} device=${device} />`}
         ${device.platform === "android" && html`<${MicButton} device=${device} />`}
         ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
@@ -299,7 +334,8 @@ export function DevicePage({ device }) {
         <button class="btn" disabled=${!device.online} title=${t("insert_scan_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "document" }).catch(failed)}>
           <${Icon} name="file" size=${17} />${t("insert_scan")}</button>`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
-          <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}`}
+          <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}
+        ${device.platform === "android" && html`<${SoundModeButton} device=${device} />`}`}
     </div>
 
     ${isComputer && sshChecked && !sshAddress && html`<div class="small muted" style="margin:-4px 2px 0">${sshReason}</div>`}

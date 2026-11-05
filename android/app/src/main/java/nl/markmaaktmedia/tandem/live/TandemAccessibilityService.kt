@@ -20,13 +20,14 @@ import nl.markmaaktmedia.tandem.graph
  * What lets a computer click and type on this phone while it shows the screen. Android gives an app no other way to touch
  * the screen, so this is a service the person turns on in the system settings, and it does nothing at all until a
  * computer that was allowed to control the phone sends input. It reads nothing from the screen except the field that is
- * being typed in.
+ * being typed in. It also locks the phone when another device asks for that.
  */
 class TandemAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
         runCatching { graph.live.accessibilityChanged() }
+        nl.markmaaktmedia.tandem.engine.StatusReporter.changed()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) = Unit
@@ -36,6 +37,7 @@ class TandemAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         if (instance === this) instance = null
         runCatching { graph.live.accessibilityChanged() }
+        nl.markmaaktmedia.tandem.engine.StatusReporter.changed()
         super.onDestroy()
     }
 

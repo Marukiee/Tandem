@@ -186,6 +186,9 @@ class TandemService : LifecycleService() {
 
             is TandemEvent.Ring -> if (event.on) FindPhone.start(this) else FindPhone.stop()
             is TandemEvent.Ringing -> FindDevices.reported(this, event.from, event.on)
+            is TandemEvent.Lock -> nl.markmaaktmedia.tandem.live.TandemAccessibilityService.instance
+                ?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)
+            is TandemEvent.SoundMode -> PhoneSoundMode.set(this, event.mode)
 
             is TandemEvent.CallAction -> calls.handle(event)
             is TandemEvent.Dial -> calls.dial(event.number)

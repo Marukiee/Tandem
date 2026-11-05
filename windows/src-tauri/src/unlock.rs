@@ -42,7 +42,7 @@ pub fn announce(app: &AppHandle) {
         return;
     }
     let Ok(engine) = app.state::<AppState>().engine() else { return };
-    tauri::async_runtime::block_on(engine.update_status(TandemStatus { unlock: now.0, locked: now.1, ..Default::default() }));
+    tauri::async_runtime::block_on(engine.update_status(TandemStatus { unlock: now.0, locked: now.1, lock: Some(can_lock()), ..Default::default() }));
     *told = Some(now);
 }
 
@@ -64,6 +64,23 @@ pub fn from_afar(app: &AppHandle, from: &str) {
         log::info!("loginctl could not unlock this session");
     }
     announce(app);
+}
+
+/// This computer can lock its screen when another device asks: logind on Linux, the system call on Windows.
+pub fn can_lock() -> bool {
+    cfg!(windows) || available()
+}
+
+/// Another device asks to lock this screen.
+pub fn lock_now() {
+    let done = if cfg!(windows) {
+        std::process::Command::new("rundll32.exe").args(["user32.dll,LockWorkStation"]).status()
+    } else {
+        std::process::Command::new("loginctl").args(["lock-session", &session()]).status()
+    };
+    if !done.is_ok_and(|s| s.success()) {
+        log::info!("this computer could not lock its screen");
+    }
 }
 
 fn session() -> String {

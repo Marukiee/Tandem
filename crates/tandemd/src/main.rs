@@ -91,6 +91,10 @@ enum Command {
     WifiAsk { device: String, ssid: String },
     /// Press a button on a call of a phone, as the card on a computer does: answer, reject, hangup or mute.
     CallAct { device: String, id: String, action: String },
+    /// Ask a device to lock its screen.
+    Lock { device: String },
+    /// Ask a phone to switch how it sounds: sound, vibrate, silent or dnd.
+    SoundMode { device: String, mode: String },
     /// Remove a device from the circle for good.
     Remove { device: String },
     /// Print this device's id and name.
@@ -270,7 +274,11 @@ fn describe(engine: &Engine) -> String {
             .battery
             .map(|b| format!(", battery {}%{}", b.level, if b.charging { " charging" } else { "" }))
             .unwrap_or_default();
-        out.push_str(&format!("{}  {}  {:?}  {}{}\n", d.id.short(), d.name, d.platform, state, battery));
+        let sound = d.status.sound.and_then(tandem_core::proto::SoundMode::from_wire).map(|m| format!(", sound {m:?}")).unwrap_or_default();
+        let sound = sound + &d.status.sound_dnd.map(|on| format!(", sound dnd {on}")).unwrap_or_default();
+        let lock = d.status.lock.map(|on| format!(", lock {on}")).unwrap_or_default();
+        let locked = d.status.locked.map(|on| format!(", locked {on}")).unwrap_or_default();
+        out.push_str(&format!("{}  {}  {:?}  {}{}{}{}{}\n", d.id.short(), d.name, d.platform, state, battery, sound, lock, locked));
     }
     out
 }
@@ -344,6 +352,28 @@ async fn execute(engine: &Engine, command: &Command) -> Result<String> {
                 other => bail!("not an action for a call: {other}"),
             };
             if engine.send_msg(&[target], Msg::CallAction(CallAction { id: id.clone(), action })).await.is_empty() {
+                bail!("that device is not connected right now");
+            }
+            Ok("sent\n".to_string())
+        }
+        Command::Lock { device } => {
+            let id = resolve(engine, device)?;
+            if engine.send_msg(&[id], tandem_core::proto::Msg::Lock {}).await.is_empty() {
+                bail!("that device is not connected right now");
+            }
+            Ok("sent\n".to_string())
+        }
+        Command::SoundMode { device, mode } => {
+            use tandem_core::proto::SoundMode as M;
+            let id = resolve(engine, device)?;
+            let mode = match mode.as_str() {
+                "sound" => M::Sound,
+                "vibrate" => M::Vibrate,
+                "silent" => M::Silent,
+                "dnd" => M::DoNotDisturb,
+                _ => bail!("say sound, vibrate, silent or dnd"),
+            };
+            if engine.send_msg(&[id], tandem_core::proto::Msg::SetSoundMode { mode: mode.wire() }).await.is_empty() {
                 bail!("that device is not connected right now");
             }
             Ok("sent\n".to_string())
@@ -543,6 +573,8 @@ fn command_line(command: &Command) -> Option<String> {
         Command::Clip { device, text } => vec!["clip".into(), device.clone(), text.join(" ")],
         Command::WifiAsk { device, ssid } => vec!["wifi-ask".into(), device.clone(), ssid.clone()],
         Command::CallAct { device, id, action } => vec!["call-act".into(), device.clone(), id.clone(), action.clone()],
+        Command::Lock { device } => vec!["lock".into(), device.clone()],
+        Command::SoundMode { device, mode } => vec!["sound-mode".into(), device.clone(), mode.clone()],
         Command::Remove { device } => vec!["remove".into(), device.clone()],
         Command::PairShow => vec!["pair-show".into()],
         Command::Ls { device, path } => vec!["ls".into(), device.clone(), path.clone()],
@@ -603,6 +635,8 @@ fn parse_line(line: &str) -> Option<Command> {
         }),
         "clip" => Some(Command::Clip { device: rest.first()?.clone(), text: vec![rest.get(1)?.clone()] }),
         "remove" => Some(Command::Remove { device: rest.first()?.clone() }),
+        "lock" => Some(Command::Lock { device: rest.first()?.clone() }),
+        "sound-mode" => Some(Command::SoundMode { device: rest.first()?.clone(), mode: rest.get(1)?.clone() }),
         "wifi-ask" => Some(Command::WifiAsk { device: rest.first()?.clone(), ssid: rest.get(1)?.clone() }),
         "call-act" => Some(Command::CallAct { device: rest.first()?.clone(), id: rest.get(1)?.clone(), action: rest.get(2)?.clone() }),
         "ls" => Some(Command::Ls { device: rest.first()?.clone(), path: rest.get(1)?.clone() }),

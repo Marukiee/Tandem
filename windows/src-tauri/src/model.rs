@@ -3,6 +3,7 @@
 
 use serde_json::{Value, json};
 use tandem_core::ffi::{
+    TandemSoundMode,
     TandemDevice, TandemMediaPlayer, TandemNetKind, TandemNotification, TandemPlatform, TandemRoute, TandemShareItem,
     TandemShareOrigin, TandemStatus,
 };
@@ -52,6 +53,14 @@ fn status(s: &TandemStatus) -> Value {
         "freeStorage": s.free_storage,
         "asleep": s.asleep,
         "awake": s.awake,
+        "sound": s.sound.map(|mode| match mode {
+            TandemSoundMode::Sound => "sound",
+            TandemSoundMode::Vibrate => "vibrate",
+            TandemSoundMode::Silent => "silent",
+            TandemSoundMode::DoNotDisturb => "dnd",
+        }),
+        "soundDnd": s.sound_dnd,
+        "lock": s.lock,
     })
 }
 

@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -41,7 +42,9 @@ class StatusReporter(
             // A phone that slept was away for the others, who only try it again after a while: it tries them itself as soon as it is
             // in a hand again, so a computer's pointer can come over at once.
             if (intent.action == Intent.ACTION_SCREEN_ON || intent.action == Intent.ACTION_USER_PRESENT) host.onNetworkChanged()
-            schedule()
+            // How it sounds was just changed, perhaps from another device that waits to show it.
+            val sound = intent.action == AudioManager.RINGER_MODE_CHANGED_ACTION || intent.action == NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED
+            schedule(if (sound) 150 else 1500)
         }
     }
 
@@ -70,16 +73,20 @@ class StatusReporter(
             addAction(Intent.ACTION_BATTERY_CHANGED)
             addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
             addAction(NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED)
+            addAction(NotificationManager.ACTION_NOTIFICATION_POLICY_ACCESS_GRANTED_CHANGED)
+            addAction(AudioManager.RINGER_MODE_CHANGED_ACTION)
             addAction(Intent.ACTION_USER_PRESENT)
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
         }
         context.registerReceiver(receiver, filter)
+        current = this
         connectivity.registerDefaultNetworkCallback(networkCallback)
         schedule()
     }
 
     fun stop() {
+        if (current === this) current = null
         runCatching { context.unregisterReceiver(receiver) }
         runCatching { connectivity.unregisterNetworkCallback(networkCallback) }
     }
@@ -111,6 +118,9 @@ class StatusReporter(
                 asleep = null,
                 wakeMac = null,
                 muted = null,
+                sound = now.sound.takeIf { it != last.sound },
+                soundDnd = now.soundDnd.takeIf { it != last.soundDnd },
+                lock = now.lock.takeIf { it != last.lock },
             )
             last = now
             host.pushStatus(change)
@@ -156,7 +166,20 @@ class StatusReporter(
             asleep = null,
             wakeMac = null,
             muted = null,
+            sound = PhoneSoundMode.read(context),
+            soundDnd = FocusMode.canUse(context),
+            lock = nl.markmaaktmedia.tandem.live.TandemAccessibilityService.instance != null,
         )
+    }
+
+    companion object {
+        @Volatile
+        private var current: StatusReporter? = null
+
+        /** Something changed that sends no broadcast: the accessibility service came or went. */
+        fun changed() {
+            current?.schedule()
+        }
     }
 }
 

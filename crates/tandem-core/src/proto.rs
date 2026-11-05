@@ -210,6 +210,11 @@ pub enum Msg {
     /// The person at another device showed it is them (a fingerprint there): unlock this computer's screen, when its status offers
     /// it with `unlock`. Devices that do not know it skip it.
     Unlock {},
+    /// Asks a phone to switch how it sounds (a number of `SoundMode`), from afar: its status says how it is now. Devices that do not
+    /// know it skip it.
+    SetSoundMode { mode: u8 },
+    /// Asks a device to lock its screen, when its status offers that with `lock`. Devices that do not know it skip it.
+    Lock {},
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,
@@ -289,9 +294,49 @@ pub struct Status {
     /// control. Whether it is locked now is `locked`.
     #[serde(default)]
     pub unlock: Option<bool>,
+    /// How this phone sounds now, a number of `SoundMode`, so another device can show it and switch it with `SetSoundMode`. Nil on a
+    /// device that has no such switch.
+    #[serde(default)]
+    pub sound: Option<u8>,
+    /// Do Not Disturb of this phone can be switched from afar: Android gave Tandem access to it.
+    #[serde(default)]
+    pub sound_dnd: Option<bool>,
+    /// This device can be locked from afar with `Lock` right now. Nil on a device that does not know that message.
+    #[serde(default)]
+    pub lock: Option<bool>,
     /// What this device can do for the others and whether it is ready for it: the whole list each time it changes.
     #[serde(default)]
     pub features: Option<Vec<Feature>>,
+}
+
+/// How a phone sounds. A number on the wire, so a kind that a newer app adds does not make its whole status unreadable here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SoundMode {
+    Sound,
+    Vibrate,
+    Silent,
+    DoNotDisturb,
+}
+
+impl SoundMode {
+    pub fn wire(self) -> u8 {
+        match self {
+            SoundMode::Sound => 0,
+            SoundMode::Vibrate => 1,
+            SoundMode::Silent => 2,
+            SoundMode::DoNotDisturb => 3,
+        }
+    }
+
+    pub fn from_wire(mode: u8) -> Option<Self> {
+        match mode {
+            0 => Some(SoundMode::Sound),
+            1 => Some(SoundMode::Vibrate),
+            2 => Some(SoundMode::Silent),
+            3 => Some(SoundMode::DoNotDisturb),
+            _ => None,
+        }
+    }
 }
 
 /// Something a device does for the others, and whether it can right now. When it cannot, `why` says what is missing (a permission, a
@@ -315,7 +360,7 @@ impl Status {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, features);
+        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features);
     }
 }
 
@@ -1092,6 +1137,21 @@ mod tests {
         let mut mine = Status { unlock: Some(false), locked: Some(true), ..Default::default() };
         mine.merge(&Status { unlock: Some(true), ..Default::default() });
         assert_eq!((mine.unlock, mine.locked), (Some(true), Some(true)));
+    }
+
+    #[test]
+    fn lock_and_sound_mode_travel_and_their_state_is_merged() {
+        assert!(matches!(decode_msg(&encode(&Msg::Lock {}).unwrap()).unwrap(), Msg::Lock {}));
+        let bytes = encode(&Msg::SetSoundMode { mode: SoundMode::DoNotDisturb.wire() }).unwrap();
+        assert!(matches!(decode_msg(&bytes).unwrap(), Msg::SetSoundMode { mode: 3 }));
+        let mut mine = Status { sound: Some(0), lock: Some(false), sound_dnd: Some(true), ..Default::default() };
+        mine.merge(&Status { sound: Some(1), lock: Some(true), ..Default::default() });
+        assert_eq!((mine.sound, mine.lock, mine.sound_dnd), (Some(1), Some(true), Some(true)));
+        // A kind from a newer app is not one of ours, and the status around it still reads.
+        assert_eq!(SoundMode::from_wire(9), None);
+        let newer = Status { sound: Some(9), ..Default::default() };
+        let bytes = encode(&Msg::Status(newer.clone())).unwrap();
+        assert!(matches!(decode_msg(&bytes).unwrap(), Msg::Status(got) if got == newer));
     }
 
     #[test]

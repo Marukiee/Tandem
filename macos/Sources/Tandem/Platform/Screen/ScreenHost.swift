@@ -1087,4 +1087,21 @@ enum ScreenLock {
         guard let session = CGSessionCopyCurrentDictionary() as? [String: Any] else { return false }
         return session["CGSSessionScreenIsLocked"] as? Bool ?? false
     }
+
+    /// macOS has no public way to lock the screen; this is what the Lock Screen item of the Apple menu calls.
+    private static let lockCall: (@convention(c) () -> Int32)? = {
+        guard let library = dlopen("/System/Library/PrivateFrameworks/login.framework/Versions/Current/login", RTLD_LAZY),
+              let call = dlsym(library, "SACLockScreenImmediate") else { return nil }
+        return unsafeBitCast(call, to: (@convention(c) () -> Int32).self)
+    }()
+
+    static var canLock: Bool { lockCall != nil }
+
+    static func lockNow() {
+        if let debugFile {
+            FileManager.default.createFile(atPath: debugFile, contents: nil)
+            return
+        }
+        _ = lockCall?()
+    }
 }

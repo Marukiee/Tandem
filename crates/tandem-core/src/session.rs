@@ -455,6 +455,13 @@ impl Inner {
             Msg::SideMoved => self.emit(Event::SideMoved { from: id }),
             Msg::KeepAwake { on } => self.emit(Event::KeepAwake { from: id, on }),
             Msg::Unlock {} => self.emit(Event::Unlock { from: id }),
+            Msg::Lock {} => self.emit(Event::Lock { from: id }),
+            // A kind from a newer app means nothing here.
+            Msg::SetSoundMode { mode } => {
+                if let Some(mode) = crate::proto::SoundMode::from_wire(mode) {
+                    self.emit(Event::SoundMode { from: id, mode });
+                }
+            }
             Msg::OpenSettings { page } => self.emit(Event::OpenSettings { from: id, page }),
             Msg::SoundRequest { on } => self.emit(Event::SoundRequested { from: id, on }),
             Msg::MicRequest { on } => self.emit(Event::MicRequested { from: id, on }),

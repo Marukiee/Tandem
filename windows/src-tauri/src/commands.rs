@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 
 use serde_json::{Value, json};
-use tandem_core::ffi::{TandemMediaAction, TandemOutgoingFile, TandemShareOrigin};
+use tandem_core::ffi::{TandemMediaAction, TandemOutgoingFile, TandemShareOrigin, TandemSoundMode};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_autostart::ManagerExt as _;
 use tauri_plugin_dialog::DialogExt;
@@ -195,6 +195,22 @@ pub async fn ring(state: State<'_, AppState>, id: String, on: bool) -> Reply<()>
 }
 
 /// Keep awake of another computer, switched from here.
+#[tauri::command]
+pub async fn lock_remote(state: State<'_, AppState>, id: String) -> Reply<()> {
+    state.engine()?.lock(id).await.map_err(shown)
+}
+
+#[tauri::command]
+pub async fn set_sound_mode(state: State<'_, AppState>, id: String, mode: String) -> Reply<()> {
+    let mode = match mode.as_str() {
+        "sound" => TandemSoundMode::Sound,
+        "vibrate" => TandemSoundMode::Vibrate,
+        "dnd" => TandemSoundMode::DoNotDisturb,
+        _ => return Err("unknown sound mode".to_string()),
+    };
+    state.engine()?.set_sound_mode(id, mode).await.map_err(shown)
+}
+
 #[tauri::command]
 pub async fn keep_awake_remote(state: State<'_, AppState>, id: String, on: bool) -> Reply<()> {
     state.engine()?.keep_awake(id, on).await.map_err(shown)

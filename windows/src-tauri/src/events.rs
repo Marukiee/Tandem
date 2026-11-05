@@ -302,6 +302,9 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::Ring { from, on } => crate::find::ring(app, from, on),
         TandemEvent::KeepAwake { from, on } => crate::keepawake::from_afar(app, &from, on),
         TandemEvent::Unlock { from } => crate::unlock::from_afar(app, &from),
+        TandemEvent::Lock { .. } => crate::unlock::lock_now(),
+        // A computer has no ringer: only a phone offers this in its status.
+        TandemEvent::SoundMode { .. } => {}
         TandemEvent::Ringing { from, on } => {
             let _ = app.emit("ringing", json!({ "id": from, "on": on }));
         }

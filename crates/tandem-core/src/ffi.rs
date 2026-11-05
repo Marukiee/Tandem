@@ -275,6 +275,45 @@ pub struct TandemStatus {
     pub awake: Option<bool>,
     #[uniffi(default = None)]
     pub unlock: Option<bool>,
+    #[uniffi(default = None)]
+    pub sound: Option<TandemSoundMode>,
+    #[uniffi(default = None)]
+    pub sound_dnd: Option<bool>,
+    #[uniffi(default = None)]
+    pub lock: Option<bool>,
+}
+
+/// How a phone sounds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemSoundMode {
+    Sound,
+    Vibrate,
+    Silent,
+    DoNotDisturb,
+}
+
+impl From<crate::proto::SoundMode> for TandemSoundMode {
+    fn from(mode: crate::proto::SoundMode) -> Self {
+        use crate::proto::SoundMode as M;
+        match mode {
+            M::Sound => TandemSoundMode::Sound,
+            M::Vibrate => TandemSoundMode::Vibrate,
+            M::Silent => TandemSoundMode::Silent,
+            M::DoNotDisturb => TandemSoundMode::DoNotDisturb,
+        }
+    }
+}
+
+impl From<TandemSoundMode> for crate::proto::SoundMode {
+    fn from(mode: TandemSoundMode) -> Self {
+        use crate::proto::SoundMode as M;
+        match mode {
+            TandemSoundMode::Sound => M::Sound,
+            TandemSoundMode::Vibrate => M::Vibrate,
+            TandemSoundMode::Silent => M::Silent,
+            TandemSoundMode::DoNotDisturb => M::DoNotDisturb,
+        }
+    }
 }
 
 impl From<Status> for TandemStatus {
@@ -297,6 +336,9 @@ impl From<Status> for TandemStatus {
             muted: s.muted,
             awake: s.awake,
             unlock: s.unlock,
+            sound: s.sound.and_then(crate::proto::SoundMode::from_wire).map(Into::into),
+            sound_dnd: s.sound_dnd,
+            lock: s.lock,
         }
     }
 }
@@ -321,6 +363,9 @@ impl From<TandemStatus> for Status {
             muted: s.muted,
             awake: s.awake,
             unlock: s.unlock,
+            sound: s.sound.map(|mode| crate::proto::SoundMode::from(mode).wire()),
+            sound_dnd: s.sound_dnd,
+            lock: s.lock,
             // The features go their own way, with `set_features`.
             features: None,
         }
@@ -1064,6 +1109,8 @@ pub enum TandemEvent {
     Ring { from: String, on: bool },
     KeepAwake { from: String, on: bool },
     Unlock { from: String },
+    Lock { from: String },
+    SoundMode { from: String, mode: TandemSoundMode },
     /// `quiet` when the other device checks by itself: listen only when the microphone is free and allowed, without asking for it.
     SideListen { from: String, id: u64, quiet: bool },
     /// The answers of a device to `side_start`, which reads them itself: the apps can let them go by.
@@ -1198,6 +1245,8 @@ impl From<Event> for TandemEvent {
             Event::Ring { from, on } => TandemEvent::Ring { from: from.to_string(), on },
             Event::KeepAwake { from, on } => TandemEvent::KeepAwake { from: from.to_string(), on },
             Event::Unlock { from } => TandemEvent::Unlock { from: from.to_string() },
+            Event::Lock { from } => TandemEvent::Lock { from: from.to_string() },
+            Event::SoundMode { from, mode } => TandemEvent::SoundMode { from: from.to_string(), mode: mode.into() },
             Event::SideListen { from, id, quiet } => TandemEvent::SideListen { from: from.to_string(), id, quiet },
             Event::SideReady { from, id } => TandemEvent::SideReady { from: from.to_string(), id },
             Event::SideHeard { from, id, .. } => TandemEvent::SideHeard { from: from.to_string(), id },
@@ -1871,6 +1920,17 @@ impl TandemEngine {
     /// Asks `target` to keep itself awake, or to let it sleep again.
     pub async fn keep_awake(&self, target: String, on: bool) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::KeepAwake { on }).await.map(|_| ())
+    }
+
+    /// Asks `target` to lock its screen.
+    pub async fn lock(&self, target: String) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::Lock {}).await.map(|_| ())
+    }
+
+    /// Asks the phone `target` to switch how it sounds.
+    pub async fn set_sound_mode(&self, target: String, mode: TandemSoundMode) -> Result<(), TandemError> {
+        let mode = crate::proto::SoundMode::from(mode).wire();
+        self.send(vec![target], crate::proto::Msg::SetSoundMode { mode }).await.map(|_| ())
     }
 
     pub async fn ring(&self, target: String, on: bool) -> Result<(), TandemError> {

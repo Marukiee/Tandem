@@ -1357,3 +1357,17 @@
 "Once, for today: your phone shares 1 GB more. The limit is back tomorrow." = "Eenmalig, voor vandaag: je telefoon deelt 1 GB meer. Morgen geldt de limiet weer.";
 "Connecting to %@" = "Verbinden met %@";
 "Daily hotspot limit reached" = "Daglimiet van de hotspot bereikt";
+
+/* Lock and sound mode from afar */
+"Lock" = "Vergrendelen";
+"Locked" = "Vergrendeld";
+"Lock the screen of this device" = "Vergrendel het scherm van dit apparaat";
+"%@ cannot be locked from here" = "%@ kan niet hiervandaan vergrendeld worden";
+"Update Tandem on %@ to lock it from here" = "Werk Tandem bij op %@ om het hiervandaan te vergrendelen";
+"Vibrate" = "Trillen";
+"Silent" = "Stil";
+"Sound on" = "Geluid aan";
+"Sound mode" = "Geluidsstand";
+"Switch this phone between sound, vibrate and do not disturb" = "Wissel deze telefoon tussen geluid, trillen en niet storen";
+"Update Tandem on %@ to switch its sound from here" = "Werk Tandem bij op %@ om het geluid hiervandaan te wisselen";
+"Do not disturb needs access: allow Tandem in the settings of %@" = "Niet storen heeft toegang nodig: sta Tandem toe in de instellingen van %@";

@@ -125,7 +125,8 @@ export function deviceChips(d) {
     }
     if (hotspot) chips.push(html`<${Chip} icon="antenna-bars-5" tone="accent">${t("hotspot_on")}<//>`);
   }
-  if (d.status && d.status.dnd) chips.push(html`<${Chip} icon="moon">${t("dnd")}<//>`);
+  // A phone says it on its button.
+  if (d.status && d.status.dnd && d.status.sound == null) chips.push(html`<${Chip} icon="moon">${t("dnd")}<//>`);
   return chips;
 }
 

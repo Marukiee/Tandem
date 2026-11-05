@@ -718,6 +718,13 @@ final class EngineModel {
             // This Mac is unlocked from inside a session, through Screen Sharing (`ScreenHost`), not with this message.
             break
 
+        case .lock:
+            ScreenLock.lockNow()
+
+        case .soundMode:
+            // A computer has no ringer: only a phone offers this in its status.
+            break
+
         case let .batteryAlert(from, level, full):
             // Settings, General: "Battery alerts", on unless turned off.
             guard UserDefaults.standard.object(forKey: "batteryAlerts") as? Bool ?? true, let name = device(from)?.name else { return }
@@ -1337,6 +1344,7 @@ final class EngineModel {
     func pushStatus() {
         guard let engine else { return }
         var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: false, wakeMac: WiredAddress.mac(), muted: OutputMute.isMuted(), awake: KeepAwake.shared.on)
+        status.lock = ScreenLock.canLock
         status.battery = PowerReader.battery()
         status.network = TandemNetwork(
             kind: network.isOnline ? .wifi : .none,

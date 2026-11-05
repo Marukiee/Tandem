@@ -189,6 +189,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_state,
             commands::keep_awake_remote,
+            commands::lock_remote,
+            commands::set_sound_mode,
             ask::ask_state,
             ask::ask_answer,
             quickshare::qs_state,

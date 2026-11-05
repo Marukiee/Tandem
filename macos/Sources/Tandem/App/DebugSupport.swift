@@ -303,8 +303,13 @@ enum DebugSupport {
     }
 
     private static func showDevicePageWindow(_ kind: String) {
-        let status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
+        var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
         let phone = kind == "android"
+        // The buttons in the states that look different: a phone on vibrate that cannot be locked yet.
+        if phone {
+            status.sound = .vibrate
+            status.lock = false
+        }
         let device = TandemDevice(
             id: "debug", name: phone ? "Pixel 9" : "Linux Laptop", platform: phone ? .android : .linux, online: true, route: nil, rttMs: 7, status: status,
             appVersion: "0.1.76", caps: phone ? ["files", "media.screen", "media.camera"] : ["screen.host"], vouchedByRemoved: false, clipboardEnabled: true,
