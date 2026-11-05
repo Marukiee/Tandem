@@ -13,7 +13,7 @@ use std::time::Duration;
 use portable_pty::{CommandBuilder, MasterPty, PtySize, native_pty_system};
 use serde_json::{Value, json};
 use tauri::ipc::{Channel, InvokeResponseBody};
-use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl};
 
 use crate::state::AppState;
 
@@ -69,7 +69,7 @@ pub fn ssh_open(app: AppHandle, id: String, name: String, address: String) -> Re
         urlencode(&name),
         urlencode(&address)
     );
-    WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url.into()))
+    crate::tray::new_window(&app, &label, WebviewUrl::App(url.into()))
         .title(name)
         .inner_size(860.0, 560.0)
         .min_inner_size(360.0, 240.0)
@@ -134,6 +134,8 @@ pub fn ssh_start(
 
     let id = NEXT.fetch_add(1, Ordering::Relaxed);
     LOGINS.lock().unwrap().insert(id, Login { master: pair.master, writer, child });
+    #[cfg(windows)]
+    close_console_at_the_end(id);
 
     std::thread::Builder::new()
         .name("tandem-ssh".into())
@@ -156,6 +158,26 @@ pub fn ssh_start(
         })
         .map_err(|e| e.to_string())?;
     Ok(id)
+}
+
+/// On Windows what is read from a terminal stays open for as long as its console does, also after the program in it ended, so the window
+/// would never hear that the login is over. The console is closed when ssh is gone, and only then the reader gets to the end.
+#[cfg(windows)]
+fn close_console_at_the_end(id: u64) {
+    let _ = std::thread::Builder::new().name("tandem-ssh-end".into()).spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            let mut logins = LOGINS.lock().unwrap();
+            let Some(login) = logins.get_mut(&id) else { return };
+            if !matches!(login.child.try_wait(), Ok(None)) {
+                let ended = logins.remove(&id);
+                // Closing a console can wait for the reader, which may want this lock when it is done.
+                drop(logins);
+                drop(ended);
+                return;
+            }
+        }
+    });
 }
 
 #[tauri::command]
@@ -212,23 +234,71 @@ mod tests {
     #[test]
     fn a_login_runs_in_a_terminal_and_its_output_comes_back() {
         let pair = native_pty_system().openpty(PtySize { rows: 24, cols: 80, pixel_width: 0, pixel_height: 0 }).unwrap();
-        let mut command = CommandBuilder::new("echo");
-        command.arg("hello from the pty");
-        let mut child = pair.slave.spawn_command(command).unwrap();
+        #[cfg(windows)]
+        let command = {
+            let mut command = CommandBuilder::new("cmd");
+            command.args(["/C", "echo hello from the pty"]);
+            command
+        };
+        #[cfg(not(windows))]
+        let command = {
+            let mut command = CommandBuilder::new("echo");
+            command.arg("hello from the pty");
+            command
+        };
+        let child = pair.slave.spawn_command(command).unwrap();
         drop(pair.slave);
         let mut reader = pair.master.try_clone_reader().unwrap();
-        let mut text = String::new();
-        let mut buffer = [0u8; 256];
-        while let Ok(n) = reader.read(&mut buffer) {
-            if n == 0 {
-                break;
+        let mut writer = pair.master.take_writer().unwrap();
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let mut buffer = [0u8; 256];
+            while let Ok(n) = reader.read(&mut buffer) {
+                if n == 0 || tx.send(String::from_utf8_lossy(&buffer[..n]).into_owned()).is_err() {
+                    break;
+                }
             }
-            text.push_str(&String::from_utf8_lossy(&buffer[..n]));
+        });
+        // The ids of this test keep clear of the ones `NEXT` gives out.
+        let id = u64::MAX;
+        #[cfg(windows)]
+        {
+            LOGINS.lock().unwrap().insert(id, Login { master: pair.master, writer: Box::new(std::io::sink()), child });
+            close_console_at_the_end(id);
+        }
+        #[cfg(not(windows))]
+        let mut child = child;
+
+        let mut text = String::new();
+        let mut asked = false;
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        // The channel closing is the end of the output: that is what tells the window the login is over.
+        loop {
+            let left = deadline.saturating_duration_since(std::time::Instant::now());
+            match rx.recv_timeout(left) {
+                Ok(part) => {
+                    text.push_str(&part);
+                    // A console of Windows first asks where its cursor is and waits for the answer; in the window xterm.js gives it.
+                    if !asked && text.contains("\x1b[6n") {
+                        asked = true;
+                        let _ = writer.write_all(b"\x1b[1;1R");
+                        let _ = writer.flush();
+                    }
+                }
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+                // On a Mac and Linux the end only comes once the other side of the terminal is closed too, which is what the output is enough for here.
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => panic!("the login did not end, output so far: {text:?}"),
+            }
+            #[cfg(not(windows))]
             if text.contains("hello from the pty") {
                 break;
             }
         }
+        #[cfg(not(windows))]
         let _ = child.wait();
+        #[cfg(windows)]
+        assert!(!LOGINS.lock().unwrap().contains_key(&id));
+        let _ = id;
         assert!(text.contains("hello from the pty"), "{text:?}");
     }
 }

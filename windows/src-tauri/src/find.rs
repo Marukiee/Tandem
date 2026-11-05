@@ -146,7 +146,7 @@ fn card(app: &AppHandle, show: bool) {
     let window = match existing {
         Some(window) => window,
         None => {
-            let built = tauri::WebviewWindowBuilder::new(app, "find-card", tauri::WebviewUrl::App("find.html".into()))
+            let built = crate::tray::new_window(app, "find-card", tauri::WebviewUrl::App("find.html".into()))
                 .title("Tandem")
                 .inner_size(CARD_WIDTH, CARD_HEIGHT)
                 .decorations(false)

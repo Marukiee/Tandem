@@ -12,7 +12,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde_json::{Value, json};
 use tandem_core::ffi::{TandemCall, TandemCallAction, TandemCallState};
-use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, State, WebviewUrl};
 
 use crate::{events, i18n, state::AppState};
 
@@ -360,7 +360,7 @@ fn window(app: &AppHandle, count: usize) {
     }
     let (x, y) = place(app);
     // Placed and shown by the builder itself: on Windows a later `show()` activates the window and takes the keys from what is typed.
-    let built = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("call.html".into()))
+    let built = crate::tray::new_window(app, LABEL, WebviewUrl::App("call.html".into()))
         .title("Tandem")
         .inner_size(size.width, size.height)
         .position(x, y)

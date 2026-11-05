@@ -12,7 +12,7 @@ use tandem_core::ffi::TandemShareOrigin;
 use tandem_core::pointer_share::Edge;
 use tauri::{AppHandle, Manager, State};
 #[cfg(not(target_os = "linux"))]
-use tauri::{DragDropEvent, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri::{DragDropEvent, PhysicalPosition, PhysicalSize, WebviewUrl, WindowEvent};
 
 use crate::state::AppState;
 use crate::{commands, input};
@@ -98,7 +98,7 @@ fn show(app: &AppHandle, edge: Edge) {
     hide(app);
     let Ok(Some(monitor)) = app.primary_monitor() else { return };
     let (x, y, width, height) = zone_rect((monitor.position().x, monitor.position().y), (monitor.size().width, monitor.size().height), monitor.scale_factor(), edge);
-    let built = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("edge.html".into()))
+    let built = crate::tray::new_window(app, LABEL, WebviewUrl::App("edge.html".into()))
         .decorations(false)
         .transparent(true)
         .always_on_top(true)

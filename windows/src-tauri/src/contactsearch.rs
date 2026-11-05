@@ -292,7 +292,8 @@ mod tests {
     fn the_file_for_gnome_points_at_the_provider_and_the_app() {
         // Kept in step by hand with `tandem_winsys::searchprovider` (only built on Linux) and the desktop file that the package
         // names after `mainBinaryName`.
-        let ini = include_str!("../linux/nl.markmaaktmedia.tandem.search-provider.ini");
+        // Git on Windows checks text out with its own line ends.
+        let ini = include_str!("../linux/nl.markmaaktmedia.tandem.search-provider.ini").replace("\r\n", "\n");
         assert!(ini.contains("BusName=nl.markmaaktmedia.tandem.SearchProvider\n"));
         assert!(ini.contains("ObjectPath=/nl/markmaaktmedia/tandem/SearchProvider\n"));
         let conf: Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();

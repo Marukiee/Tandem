@@ -195,10 +195,24 @@ pub fn show_main(app: &AppHandle) {
     });
 }
 
+/// Every window of the app starts here. WebView2 takes one set of browser arguments per program and does not open a window that asks
+/// for another set, so they cannot differ from window to window.
+pub fn new_window<'a, R: tauri::Runtime, M: Manager<R>>(manager: &'a M, label: &str, url: WebviewUrl) -> WebviewWindowBuilder<'a, R, M> {
+    let builder = WebviewWindowBuilder::new(manager, label, url);
+    // For scripts/windows-smoke.ps1. A process that runs elevated, as on a test machine of GitHub, has WebView2's own variable for this
+    // ignored, so the port is asked for here. It gives what that variable gives on any other PC.
+    #[cfg(windows)]
+    if let Some(port) = std::env::var("TANDEM_TEST_DEBUG_PORT").ok().and_then(|port| port.parse::<u16>().ok()) {
+        // Giving arguments replaces the ones wry gives by itself, so those are given again.
+        return builder.additional_browser_args(&format!("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --remote-debugging-port={port}"));
+    }
+    builder
+}
+
 /// Made hidden and shown when its page is there, so what appears is the window and not an empty box that fills in.
 fn create_main(app: &AppHandle) {
     let shown = app.clone();
-    let built = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+    let built = new_window(app, "main", WebviewUrl::App("index.html".into()))
         .title("Tandem")
         .inner_size(1040.0, 720.0)
         .min_inner_size(860.0, 560.0)
@@ -295,7 +309,7 @@ fn toggle_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
 fn create_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
     *app.state::<AppState>().pending_panel.lock().unwrap() = Some(click);
     let late = app.clone();
-    let built = WebviewWindowBuilder::new(app, "panel", WebviewUrl::App("panel.html".into()))
+    let built = new_window(app, "panel", WebviewUrl::App("panel.html".into()))
         .title("Tandem")
         .inner_size(PANEL_WIDTH, 540.0)
         .visible(false)

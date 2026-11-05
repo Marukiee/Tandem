@@ -135,7 +135,7 @@ fn card(app: &AppHandle, count: usize) {
             place(app, &window, height);
         }
         None => {
-            let built = tauri::WebviewWindowBuilder::new(app, "qs-card", tauri::WebviewUrl::App("qs.html".into()))
+            let built = crate::tray::new_window(app, "qs-card", tauri::WebviewUrl::App("qs.html".into()))
                 .title("Quick Share")
                 .inner_size(392.0, height)
                 .decorations(false)

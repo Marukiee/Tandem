@@ -121,7 +121,7 @@ fn card(app: &AppHandle, count: usize) {
             place(app, &window, height);
         }
         None => {
-            let built = tauri::WebviewWindowBuilder::new(app, "ask-card", tauri::WebviewUrl::App("ask.html".into()))
+            let built = crate::tray::new_window(app, "ask-card", tauri::WebviewUrl::App("ask.html".into()))
                 .title("Tandem")
                 .inner_size(WIDTH, height)
                 .decorations(false)

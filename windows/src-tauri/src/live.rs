@@ -15,7 +15,7 @@ use tandem_core::ffi::{
     TandemMediaViewer, TandemMediaWant,
 };
 use tauri::ipc::{Channel, InvokeResponseBody};
-use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl};
 
 use crate::state::AppState;
 
@@ -424,7 +424,7 @@ pub fn start(app: &AppHandle, id: String, camera: bool, facing: TandemMediaFacin
     );
     // The shape before the first picture says it (see `live_fit`): wide for a camera or the screen of a computer, tall for a phone.
     let (width, height) = if camera || computer { (860.0, 560.0) } else { (440.0, 820.0) };
-    let built = WebviewWindowBuilder::new(app, &label, WebviewUrl::App(format!("live.html?session={session}").into()))
+    let built = crate::tray::new_window(app, &label, WebviewUrl::App(format!("live.html?session={session}").into()))
         .title(name)
         .inner_size(width, height)
         .min_inner_size(240.0, 240.0)
