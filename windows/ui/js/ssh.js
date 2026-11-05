@@ -3,7 +3,7 @@
 import { html, render } from "../vendor/preact-htm.js";
 import { call, listen, native } from "./backend.js";
 import { ResizeEdges, WindowButtons } from "./chrome.js";
-import { setPlatform, t } from "./i18n.js";
+import { setLanguage, setPlatform, t } from "./i18n.js";
 import { set } from "./store.js";
 
 const params = new URLSearchParams(location.search);
@@ -18,6 +18,8 @@ const problem = document.getElementById("problem");
 const holder = document.getElementById("term");
 
 async function start() {
+  const app = await call("get_state").catch(() => null);
+  setLanguage(app?.settings.language, app?.systemLanguage);
   const info = await call("ssh_info", { label }).catch(() => ({ platform: "windows" }));
   setPlatform(info.platform);
   set({ platform: info.platform });

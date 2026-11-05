@@ -360,7 +360,7 @@ const nl = {
   live_control_step3: "3. Zet Tandem aan en sta het toe. Is de schakelaar grijs: kies bij App-info van Tandem eerst Beperkte instellingen toestaan.",
   live_control_wakes: "De knop hier wordt vanzelf actief zodra de telefoon het toestaat.",
   insert_photo: "Foto van telefoon", insert_photo_tip: "Maakt een foto met de telefoon en zet hem op het klembord van deze computer",
-  insert_scan: "Scan docs", insert_scan_tip: "Scant een document met de telefoon en zet het op het klembord van deze computer",
+  insert_scan: "Document scannen", insert_scan_tip: "Scant een document met de telefoon en zet het op het klembord van deze computer",
   phone_sound: "Het geluid van andere apparaten hier afspelen", phone_sound_sub: "Als een ander apparaat deze computer als speaker gebruikt, speelt zijn geluid hier. Er kunnen er meer tegelijk spelen. Android vraagt elke keer eerst",
   send_with_title: "Sturen met Tandem", send_with_sub: "Je apparaten in het menu Sturen naar van de Verkenner", "send_with_sub@linux": "Je apparaten in het menu van bestanden in de bestandsbeheerder: Bestanden, Dolphin en Nemo",
   files_host_title: "Je mappen voor andere apparaten", files_host_on: "Laat andere apparaten in mijn mappen kijken", files_host_on_sub: "Alleen de mappen hieronder, alleen apparaten van je circle. Uit tot je het aanzet",

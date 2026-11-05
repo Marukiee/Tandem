@@ -4,7 +4,7 @@ import { html, render } from "../vendor/preact-htm.js";
 import { call, listen } from "./backend.js";
 import { ResizeEdges, WindowButtons } from "./chrome.js";
 import { iconMarkup } from "./icons.js";
-import { setPlatform, t } from "./i18n.js";
+import { setLanguage, setPlatform, t } from "./i18n.js";
 import { set } from "./store.js";
 
 const tauri = window.__TAURI__;
@@ -185,6 +185,8 @@ async function onFrame(buffer) {
 const leave = () => { call("live_stop", { session }).catch(() => {}).finally(() => window.close()); };
 
 async function start() {
+  const app = await call("get_state").catch(() => null);
+  setLanguage(app?.settings.language, app?.systemLanguage);
   const text = (key) => t(key);
   const round = (id, icon, label) => {
     const button = document.getElementById(id);
