@@ -18,13 +18,18 @@ internal object CodeDelivery {
     private val sent = HashMap<String, Long>()
     private var last = 0L
 
+    /** The newest code. An older one is not sent again: on the other side it would land on the clipboard over this one. */
+    @Volatile private var newest: String? = null
+
     /** True the first time [code] is seen, and marks it. */
     @Synchronized
     fun firstTime(code: String): Boolean {
         val now = System.currentTimeMillis()
         sent.values.removeAll { now - it > ONCE_MS }
         last = now
-        return sent.put(code, now) == null
+        val first = sent.put(code, now) == null
+        if (first) newest = code
+        return first
     }
 
     /** A code went out a moment ago, so a notification Android emptied at about the same time has nothing to add. */
@@ -47,6 +52,7 @@ internal object CodeDelivery {
             val age = System.currentTimeMillis() - start
             if (age >= USABLE_MS || (left.isEmpty() && repeats == AGAIN_MS.size)) return
             delay(RETRY_MS)
+            if (notification.otp != newest) return
             if (repeats < AGAIN_MS.size && System.currentTimeMillis() - start >= AGAIN_MS[repeats]) {
                 left = targets
                 repeats++

@@ -42,6 +42,7 @@ class MirrorListener : NotificationListenerService() {
         super.onListenerConnected()
         _connected.value = true
         instance = this
+        boundAllowed = CodeGrant.allowed(applicationContext)
         val graph = applicationContext.graph
         eventJob?.cancel()
         eventJob = graph.scope.launch {
@@ -50,6 +51,9 @@ class MirrorListener : NotificationListenerService() {
             }
         }
     }
+
+    /** Whether the app-op was there at this binding. Once is enough: on a phone that keeps hiding anyway, binding again would change nothing. */
+    @Volatile private var boundAllowed = false
 
     override fun onListenerDisconnected() {
         _connected.value = false
@@ -81,7 +85,10 @@ class MirrorListener : NotificationListenerService() {
             // if so this has nothing to add, and otherwise it says at least that something came in.
             if (hiddenByAndroid(sbn)) {
                 // Allowed since Android bound this service, which only counts from the next binding on.
-                if (CodeGrant.allowed(applicationContext)) rebind(applicationContext)
+                if (!boundAllowed && CodeGrant.allowed(applicationContext)) {
+                    boundAllowed = true
+                    rebind(applicationContext)
+                }
                 delay(HIDDEN_WAIT_MS)
                 if (CodeDelivery.justSent(HIDDEN_WAIT_MS * 2)) return@launch
             }
