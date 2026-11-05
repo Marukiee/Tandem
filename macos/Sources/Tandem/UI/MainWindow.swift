@@ -56,7 +56,8 @@ struct MainWindow: View {
         }
     }
 
-    var body: some View {
+    // Three parts, not one long chain: as one chain the compiler on the release machines ran out of time on it.
+    private var window: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             Sidebar(selection: $selection, showPairing: $showPairing)
                 .navigationSplitViewColumnWidth(min: 250, ideal: 280, max: 340)
@@ -104,6 +105,10 @@ struct MainWindow: View {
         }
         .animation(.tandemSpringy, value: showPairing)
         .callConfirmation()
+    }
+
+    private var windowWithQuestions: some View {
+        window
         .alert("This device was removed", isPresented: Binding(
             get: { model.removedFromCircle },
             set: { model.removedFromCircle = $0 }
@@ -126,7 +131,15 @@ struct MainWindow: View {
         } message: { _ in
             Text("The file is removed from this Mac. It stays on the device it came from.")
         }
-        .onChange(of: model.devices.map(\.id)) { _, ids in
+    }
+
+    private var deviceIDs: [String] { model.devices.map(\.id) }
+    private var onlineIDs: [String] { model.devices.filter(\.online).map(\.id) }
+    private var capCounts: [Int] { model.devices.map { $0.caps.count } }
+
+    var body: some View {
+        windowWithQuestions
+        .onChange(of: deviceIDs) { _, ids in
             if case let .device(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
             if case let .files(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
             if case let .messages(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
@@ -136,11 +149,11 @@ struct MainWindow: View {
                 openOnConnected()
             }
         }
-        .onChange(of: model.devices.filter(\.online).map(\.id)) {
+        .onChange(of: onlineIDs) {
             if waitingOn != nil { openOnConnected() }
         }
         // What a device can do is only known once it has connected, which is after its name is.
-        .onChange(of: model.devices.map { $0.caps.count }) { chooseDebugPage() }
+        .onChange(of: capCounts) { chooseDebugPage() }
         .onAppear {
             if let debug = DebugSupport.initialSelection(devices: model.devices) {
                 selection = debug
