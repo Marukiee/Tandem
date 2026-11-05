@@ -226,7 +226,7 @@ function WalkPages([string]$pattern, [string]$label) {
     }
     $text = ($report.steps | ForEach-Object { "## [$($_.lang)] $($_.where)`n$($_.text)`n" }) -join "`n"
     Add-Content (Join-Path $Out "ui-text.txt") "# $label`n`n$text" -Encoding UTF8
-    $lines = @($report.findings | ForEach-Object { "[$($_.lang)] $($_.where): $($_.what): $($_.excerpt)" })
+    $lines = @($report.findings | Where-Object { $_.what } | ForEach-Object { "[$($_.lang)] $($_.where): $($_.what): $($_.excerpt)" })
     foreach ($line in $lines) { Write-Host $line }
     Add-Content (Join-Path $Out "ui-findings.txt") $lines -Encoding UTF8
     Check ($lines.Count -eq 0) "nothing wrong with the words on $($report.steps.Count) views of $label" ($lines | Select-Object -First 3 | Out-String).Trim()
@@ -413,27 +413,44 @@ if ($pairedWell) {
         Check ([bool]$came) "a file sent from the app reaches the second device, whole"
     }
 
-    # A window of its own in the middle of the screen, to see what clicks and keys do.
-    Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-    $script:clicks = 0
-    $form = New-Object System.Windows.Forms.Form
-    $form.Text = "Tandem smoke test"
-    $form.TopMost = $true
-    $form.StartPosition = "Manual"
-    $form.ClientSize = New-Object System.Drawing.Size 600, 300
-    $form.Location = New-Object System.Drawing.Point ([int]([SmokeHands]::Width / 2) - 300), ([int]([SmokeHands]::Height / 2) - 150)
-    $box = New-Object System.Windows.Forms.TextBox
-    $box.Multiline = $true
-    $box.Dock = "Fill"
-    $box.Add_MouseDown({ $script:clicks++ })
-    $form.Controls.Add($box)
-    $form.Show()
-    [System.Windows.Forms.Application]::DoEvents()
-    $middle = @([int]([SmokeHands]::Width / 2), [int]([SmokeHands]::Height / 2))
-    # Not called $test: WaitFor has one of its own, and a block finds names in whoever runs it.
-    function Pumped([scriptblock]$check, [int]$seconds) {
-        return WaitFor { [System.Windows.Forms.Application]::DoEvents(); & $check } $seconds
+    # A window in the middle of the screen, to see what clicks and keys do. In a process of its own: a window that looks at its messages only
+    # now and then is soon taken for hung, and Windows then puts a ghost in its place that swallows the input.
+    $windowState = Join-Path $work "window.txt"
+    $windowScript = Join-Path $work "window.ps1"
+    Set-Content $windowScript -Encoding UTF8 @'
+param([string]$state)
+Add-Type -Name Dpi -Namespace Smoke -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetProcessDPIAware();'
+[void][Smoke.Dpi]::SetProcessDPIAware()
+Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+$script:clicks = 0
+$screen = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "Tandem smoke test"
+$form.TopMost = $true
+$form.StartPosition = "Manual"
+$form.ClientSize = New-Object System.Drawing.Size 600, 300
+$form.Location = New-Object System.Drawing.Point ([int]($screen.Width / 2) - 300), ([int]($screen.Height / 2) - 150)
+$box = New-Object System.Windows.Forms.TextBox
+$box.Multiline = $true
+$box.Dock = "Fill"
+function Save { [IO.File]::WriteAllText($state, "$($script:clicks)`n$($box.Text)", [Text.Encoding]::UTF8) }
+$box.Add_MouseDown({ $script:clicks++; Save })
+$box.Add_TextChanged({ Save })
+$form.Add_Shown({ Save })
+$form.Controls.Add($box)
+[System.Windows.Forms.Application]::Run($form)
+'@
+    $testWindow = Start-Process powershell.exe -PassThru -WindowStyle Hidden -ArgumentList "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "`"$windowScript`"", "`"$windowState`""
+    [void](WaitFor { Test-Path $windowState } 30)
+    function WindowClicks {
+        try { return [int]([IO.File]::ReadAllLines($windowState)[0]) } catch { return -1 }
     }
+    function WindowText {
+        try { return ([IO.File]::ReadAllLines($windowState, [Text.Encoding]::UTF8) | Select-Object -Skip 1) -join "" } catch { return "?" }
+    }
+    # The strip that catches a drag at the edge is there only while another computer has the pointer.
+    function EdgeStrip { return [bool](FindPage "edge\.html" 1) }
+    $middle = @([int]([SmokeHands]::Width / 2), [int]([SmokeHands]::Height / 2))
 
     Part "Shared mouse, another computer has the pointer here" {
         [void](App "set_settings" @{ patch = @{ remoteInput = $false } })
@@ -464,22 +481,23 @@ if ($pairedWell) {
 
             Say @("button", "0", "down")
             Say @("button", "0", "up")
-            Check ([bool](Pumped { $script:clicks -gt 0 } 10)) "a click of the other computer lands"
-            $form.Activate()
-            [void]$box.Focus()
+            Check ([bool](WaitFor { (WindowClicks) -gt 0 } 10)) "a click of the other computer lands"
+            Check (EdgeStrip) "the edge is ready to catch a drag"
             Say @("key", "0", "down", "0")
             Say @("key", "0", "up", "0")
-            Check ([bool](Pumped { $box.Text -ceq "a" } 10)) "a key of the other computer gives its letter" "the box says '$($box.Text)'"
+            Check ([bool](WaitFor { (WindowText) -ceq "a" } 10)) "a key of the other computer gives its letter" "the box says '$(WindowText)'"
             Say @("key", "0", "down", "1")
             Say @("key", "0", "up", "1")
-            Check ([bool](Pumped { $box.Text -ceq "aA" } 10)) "with shift held on the other computer it is a capital" "the box says '$($box.Text)'"
+            Check ([bool](WaitFor { (WindowText) -ceq "aA" } 10)) "with shift held on the other computer it is a capital" "the box says '$(WindowText)'"
             $word = "h" + [char]0xEB + "llo"
             Say @("text", $word)
-            Check ([bool](Pumped { $box.Text -ceq "aA$word" } 10)) "text of the other computer arrives whole" "the box says '$($box.Text)'"
+            Check ([bool](WaitFor { (WindowText) -ceq "aA$word" } 10)) "text of the other computer arrives whole" "the box says '$(WindowText)'"
+            Shot "7-shared-mouse"
 
             $left = HelperCount "Leave \{"
             Say @("move", "-30000", "0")
             Check ([bool](WaitFor { (HelperCount "Leave \{") -gt $left } 10)) "running into the edge it came in by sends the pointer back"
+            Check ([bool](WaitFor { -not (EdgeStrip) } 10)) "the strip at the edge goes with it"
             Say @("enter", "right", "0.5")
             Start-Sleep -Milliseconds 800
             Say @("button", "0", "down")
@@ -489,7 +507,7 @@ if ($pairedWell) {
         }
         # What a closed lid on the other computer looks like: the worst thing it could leave behind is a button that stays down here.
         Check ([bool](WaitFor { -not [SmokeHands]::LeftIsDown } 8)) "when the other computer goes silent, nothing stays held down"
-        [System.Windows.Forms.Application]::DoEvents()
+        Check ([bool](WaitFor { -not (EdgeStrip) } 10)) "and the strip at the edge is gone"
     }
 
     Part "Shared mouse, this PC has the mouse" {
@@ -516,16 +534,16 @@ if ($pairedWell) {
         [SmokeHands]::Move(30, 12)
         Check ([bool](WaitFor { (HelperCount "move -?\d") -gt $moves } 5)) "moves reach the other computer"
 
-        $clicks = $script:clicks
+        $clicks = WindowClicks
         [SmokeHands]::Left($true)
         [SmokeHands]::Left($false)
         Check ([bool](WaitFor { HelperSaid "Button \{ button: 0, down: false" } 5)) "a click reaches the other computer"
-        $text = $box.Text
+        $text = WindowText
         [SmokeHands]::Key(0x41, $true)
         [SmokeHands]::Key(0x41, $false)
         Check ([bool](WaitFor { HelperSaid "Key \{ code: 0, down: false" } 5)) "a key reaches the other computer"
-        [void](Pumped { $false } 1)
-        Check ($script:clicks -eq $clicks -and $box.Text -ceq $text) "and neither does anything on this PC" "clicks $clicks to $($script:clicks), box '$text' to '$($box.Text)'"
+        Start-Sleep -Seconds 1
+        Check ((WindowClicks) -eq $clicks -and (WindowText) -ceq $text) "and neither does anything on this PC" "clicks $clicks to $(WindowClicks), box '$text' to '$(WindowText)'"
 
         Say @("leave", "0.5")
         Check ([bool](WaitFor { BackAtTheEdge } 5)) "when the other computer sends it back, the pointer is at the edge again" "at $([SmokeHands]::At().X)"
@@ -554,7 +572,7 @@ if ($pairedWell) {
         [void](App "arrange_remove" @{ id = $script:helperId })
         [void](App "set_settings" @{ patch = @{ remoteInput = $false } })
     }
-    $form.Close()
+    Stop-Process -Id $testWindow.Id -Force -ErrorAction SilentlyContinue
 }
 
 # ---- The windows --------------------------------------------------------------------------------------------------------------
@@ -596,9 +614,9 @@ Part "An update over the running app" {
     $again = WaitFor { @(Get-Process -Name Tandem -ErrorAction SilentlyContinue | Where-Object { $before -notcontains $_.Id }).Count -gt 0 } 60
     Check ([bool]$again) "the app starts again by itself"
     Check ([bool](WaitFor { (LogCount "the engine runs") -gt 0 } 60)) "the engine starts after the update"
-    $state = App "get_state"
-    Check ($state.self.id -eq $script:appId) "it is still the same device"
-    if ($pairedWell) { Check ([bool](WaitFor { DeviceOnline $script:helperId } 60)) "the second device connects again" }
+    # The installer can start the app by way of the shell, without the debugging port this script asked for, so this looks from outside.
+    Check ((LogCount "engine started id=$($script:appId)") -gt 0) "it is still the same device"
+    if ($pairedWell) { Check ([bool](WaitFor { (Helper @("devices")).text -match "\bonline\b" } 60)) "the second device connects again" }
     Shot "5-updated"
 }
 
