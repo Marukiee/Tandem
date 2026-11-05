@@ -410,11 +410,10 @@ impl Engine {
     pub async fn sms_ask(&self, peer: DeviceId, ask: impl FnOnce(u64) -> SmsMsg) -> Result<SmsMsg> {
         let id = crate::engine::rand_u64();
         let question = ask(id).tidy();
-        if let SmsMsg::Send { to, text, .. } = &question {
-            if let Some(problem) = send_problem(to, text) {
+        if let SmsMsg::Send { to, text, .. } = &question
+            && let Some(problem) = send_problem(to, text) {
                 return Err(Error::invalid(problem));
             }
-        }
         // Listening before asking, so an answer that is quick is not missed.
         let mut events = self.subscribe();
         self.inner.send_to(&peer, Msg::Sms(question)).await?;
@@ -506,13 +505,12 @@ impl Inner {
                 let _ = self.send_to(&from, Msg::Sms(SmsMsg::Refused { req, why })).await;
                 return;
             }
-            if let SmsMsg::Send { to, text, .. } = &msg {
-                if let Some(problem) = send_problem(to, text) {
+            if let SmsMsg::Send { to, text, .. } = &msg
+                && let Some(problem) = send_problem(to, text) {
                     let answer = SmsMsg::Sent { req, thread: None, error: Some(problem.into()) };
                     let _ = self.send_to(&from, Msg::Sms(answer)).await;
                     return;
                 }
-            }
         }
         self.emit(Event::Sms { from, msg });
     }

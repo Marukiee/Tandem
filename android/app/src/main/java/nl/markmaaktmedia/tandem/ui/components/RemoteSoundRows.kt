@@ -21,7 +21,7 @@ fun SoundModeRow(index: Int, total: Int, device: TandemDevice) {
     val mode = device.status.sound
     val canDnd = device.status.soundDnd == true
     val (icon, title) = when (mode) {
-        TandemSoundMode.VIBRATE -> TandemIcons.VolumeDown to stringResource(R.string.sound_mode_vibrate)
+        TandemSoundMode.VIBRATE -> TandemIcons.Vibration to stringResource(R.string.sound_mode_vibrate)
         TandemSoundMode.SILENT -> TandemIcons.VolumeOff to stringResource(R.string.sound_mode_silent)
         TandemSoundMode.DO_NOT_DISTURB -> TandemIcons.Dnd to stringResource(R.string.status_dnd)
         else -> TandemIcons.VolumeUp to stringResource(R.string.sound_mode_sound)

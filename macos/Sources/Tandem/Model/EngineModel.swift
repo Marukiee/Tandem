@@ -170,8 +170,6 @@ final class EngineModel {
     @ObservationIgnored private var outgoingSources: [String: String] = [:]
 
     var isTransferring: Bool { transfers.contains { $0.state == .active } }
-    /// True while this Mac's connection is a phone's personal hotspot.
-    var networkUsesHotspot: Bool { network.usesCellularHotspot }
     var onlineCount: Int { devices.filter(\.online).count }
     /// "2 of 3 connected", for the sidebar and the menu bar panel.
     var connectionSummary: String {
@@ -348,12 +346,6 @@ final class EngineModel {
     func copyCode(_ code: String) {
         putOnClipboard(code)
         FloatingToast.show(String(localized: "Code \(code) copied"), symbol: "key.fill")
-    }
-
-    /// The dev build (bundle id ending in .dev) keeps everything apart from the real app,
-    /// so testing never touches the real identity, pairings or preferences.
-    nonisolated static var isDevBuild: Bool {
-        Bundle.main.bundleIdentifier?.hasSuffix(".dev") == true
     }
 
     private struct StoredTransfer: Codable {
@@ -1540,7 +1532,6 @@ extension Bundle {
         (infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.0.0"
     }
 }
-
 
 /// A notification a phone showed, kept for the Notifications page.
 struct MirroredNotification: Identifiable, Equatable {

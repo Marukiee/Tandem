@@ -277,53 +277,6 @@ extension ButtonStyle where Self == TandemGlassStyle {
     static func tandemGlassProminent(tint: Color) -> TandemGlassStyle { TandemGlassStyle(prominent: true, tint: tint) }
 }
 
-/// Views side by side, each as wide as it needs to be, on to the next line when the row is full.
-struct WrapRow: Layout {
-    var spacing: CGFloat = 10
-
-    private struct Line {
-        var indices: [Int] = []
-        var width: CGFloat = 0
-        var height: CGFloat = 0
-    }
-
-    private func lines(_ subviews: Subviews, fitting width: CGFloat) -> [Line] {
-        var result: [Line] = [Line()]
-        for index in subviews.indices {
-            let size = subviews[index].sizeThatFits(.unspecified)
-            let needed = (result[result.count - 1].indices.isEmpty ? 0 : spacing) + size.width
-            if !result[result.count - 1].indices.isEmpty, result[result.count - 1].width + needed > width {
-                result.append(Line())
-            }
-            let first = result[result.count - 1].indices.isEmpty
-            result[result.count - 1].width += (first ? 0 : spacing) + size.width
-            result[result.count - 1].height = max(result[result.count - 1].height, size.height)
-            result[result.count - 1].indices.append(index)
-        }
-        return result
-    }
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? .infinity
-        let rows = lines(subviews, fitting: width)
-        let height = rows.reduce(0) { $0 + $1.height } + spacing * CGFloat(max(rows.count - 1, 0))
-        return CGSize(width: width.isFinite ? width : (rows.map(\.width).max() ?? 0), height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var y = bounds.minY
-        for line in lines(subviews, fitting: bounds.width) {
-            var x = bounds.minX
-            for index in line.indices {
-                let size = subviews[index].sizeThatFits(.unspecified)
-                subviews[index].place(at: CGPoint(x: x, y: y + (line.height - size.height) / 2), anchor: .topLeading, proposal: ProposedViewSize(size))
-                x += size.width + spacing
-            }
-            y += line.height + spacing
-        }
-    }
-}
-
 // MARK: Round icon buttons for the menu bar panel
 
 /// An action as a row on a card: the symbol in a disc and the name next to it, as the tiles of the menu bar panel. Under the pointer the

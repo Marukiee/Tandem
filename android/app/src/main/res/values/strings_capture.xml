@@ -22,9 +22,6 @@
     <string name="capture_close">Close</string>
     <string name="capture_retake">Retake</string>
     <string name="capture_use_photo">Use photo</string>
-    <string name="capture_use_scan">Use scan</string>
-    <string name="capture_doc_hint">Fit the page in the frame</string>
-    <string name="capture_crop_hint">Drag the corners to the edges of the page</string>
 
     <string name="capture_perm_title">Allow the camera</string>
     <string name="capture_perm_text">Tandem needs the camera to take this for %1$s. It goes straight to %1$s and is not kept in your gallery.</string>
@@ -32,8 +29,6 @@
     <string name="capture_perm_settings">Open settings</string>
     <string name="capture_perm_not_now">Not now</string>
 
-    <string name="capture_scan_start">Scan</string>
-    <string name="capture_pick_start">Choose picture</string>
     <string name="capture_cancel">Cancel</string>
     <string name="capture_waiting_scan">Opening the scanner</string>
     <string name="capture_waiting_pick">Opening your pictures</string>

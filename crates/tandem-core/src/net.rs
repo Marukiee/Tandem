@@ -180,7 +180,7 @@ pub fn make_endpoint(identity: &Identity, port: u16, tuning: Tuning) -> Result<q
     let runtime = quinn::default_runtime().ok_or_else(|| Error::Connection("no async runtime".into()))?;
     let mut endpoint =
         quinn::Endpoint::new(quinn::EndpointConfig::default(), Some(server), socket, runtime)
-            .map_err(|e| Error::connection(e))?;
+            .map_err(Error::connection)?;
     // Clients built per connection carry their own pinned verifier, so the endpoint
     // default is never used.
     let _ = &mut endpoint;
@@ -271,9 +271,9 @@ mod tests {
         assert!(needs_tailscale(2, &[lan.clone(), tail.clone()], false, None));
         // Nothing to turn on when this device already has a tailnet address, or the other one has none.
         assert!(!needs_tailscale(5, &[lan.clone(), tail.clone()], true, None));
-        assert!(!needs_tailscale(5, &[lan.clone()], false, None));
+        assert!(!needs_tailscale(5, std::slice::from_ref(&lan), false, None));
         // Not again within a minute and a half.
-        assert!(!needs_tailscale(5, &[tail.clone()], false, Some(minute)));
+        assert!(!needs_tailscale(5, std::slice::from_ref(&tail), false, Some(minute)));
         assert!(needs_tailscale(5, &[tail], false, Some(minute * 2)));
     }
 

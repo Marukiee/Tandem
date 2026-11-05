@@ -859,7 +859,6 @@ final class ScreenHostSession: @unchecked Sendable {
     private var virtualDisplay: VirtualDisplay?
     let startedAt = Date()
 
-    var isExtended: Bool { lock.withLock { virtualDisplay != nil } }
     /// The pictures come from Screen Sharing, because this Mac is locked.
     var viaScreenSharing: Bool { lock.withLock { capturer is ScreenSharingSource } }
 

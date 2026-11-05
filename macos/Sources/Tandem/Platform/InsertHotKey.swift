@@ -109,16 +109,6 @@ struct InsertShortcut: Equatable {
 
     var text: String { keycaps.joined() }
 
-    /// Turns the modifiers of an event into Carbon's.
-    static func carbon(_ flags: NSEvent.ModifierFlags) -> UInt32 {
-        var bits: UInt32 = 0
-        if flags.contains(.control) { bits |= UInt32(controlKey) }
-        if flags.contains(.option) { bits |= UInt32(optionKey) }
-        if flags.contains(.shift) { bits |= UInt32(shiftKey) }
-        if flags.contains(.command) { bits |= UInt32(cmdKey) }
-        return bits
-    }
-
     /// A name for keys that have no letter on them.
     static func label(for event: NSEvent) -> String {
         switch Int(event.keyCode) {

@@ -198,11 +198,10 @@ impl Assembler {
     /// Time passed. Gives up on a frame that was waited for long enough.
     pub fn tick(&mut self, now: Instant, gap_wait: Duration) -> Step {
         let mut step = Step::default();
-        if let Some(since) = self.gap_since {
-            if now.duration_since(since) >= gap_wait && !self.in_progress.contains(&self.next) {
+        if let Some(since) = self.gap_since
+            && now.duration_since(since) >= gap_wait && !self.in_progress.contains(&self.next) {
                 self.break_chain(now, &mut step);
             }
-        }
         step
     }
 

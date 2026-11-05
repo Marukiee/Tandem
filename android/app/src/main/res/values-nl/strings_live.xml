@@ -12,7 +12,6 @@
     <string name="live_ask_body_screen">Het ziet alles op je scherm tot je stopt. Er blijft een melding staan waarmee je altijd kunt stoppen.</string>
     <string name="live_ask_body_camera">Het ziet wat je camera ziet tot je stopt. Er blijft een melding staan waarmee je altijd kunt stoppen.</string>
     <string name="live_allow">Toestaan</string>
-    <string name="live_allow_always">%1$s altijd toestaan</string>
     <string name="live_deny">Weigeren</string>
     <string name="live_cancel">Annuleren</string>
     <string name="live_stop">Stoppen</string>

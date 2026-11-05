@@ -117,11 +117,10 @@ impl<S: AsyncRead + AsyncWrite + Unpin> Link<S> {
     /// Opens a frame that came in. A plain one is the answer to the connection request: the only thing that is not sealed after
     /// the handshake.
     fn open(&mut self, bytes: &[u8]) -> Result<OfflineFrame> {
-        if let Ok(plain) = OfflineFrame::decode(bytes) {
-            if plain.v1.as_ref().and_then(|v1| v1.r#type) == Some(OfflineType::ConnectionResponse as i32) {
+        if let Ok(plain) = OfflineFrame::decode(bytes)
+            && plain.v1.as_ref().and_then(|v1| v1.r#type) == Some(OfflineType::ConnectionResponse as i32) {
                 return Ok(plain);
             }
-        }
         let channel = self.channel.as_mut().ok_or_else(|| bad("a sealed message came before the handshake was done"))?;
         let message = channel.open(bytes)?;
         OfflineFrame::decode(message.as_slice()).map_err(|_| bad("a frame does not parse"))

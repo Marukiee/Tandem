@@ -302,7 +302,7 @@ mod tests {
         let tail = (LISTEN_MS as usize * rate as usize / 1000).saturating_sub(pad + stereo.len() / 2);
         let channel = |c: usize, gain: f32| -> Vec<f32> {
             let mut v = vec![0.0f32; pad];
-            v.extend(stereo.chunks_exact(2).map(|s| s[c] * gain));
+            v.extend(stereo.as_chunks::<2>().0.iter().map(|s| s[c] * gain));
             v.extend(std::iter::repeat_n(0.0, tail));
             v
         };
@@ -409,7 +409,7 @@ mod tests {
     fn another_sample_rate_reads_the_same() {
         let rate = 44_100;
         let stereo = pattern(rate);
-        let mono: Vec<f32> = stereo.chunks_exact(2).map(|s| s[0] * 0.4 + s[1] * 0.9).collect();
+        let mono: Vec<f32> = stereo.as_chunks::<2>().0.iter().map(|s| s[0] * 0.4 + s[1] * 0.9).collect();
         assert_eq!(decide(analyze(&mono, rate).unwrap()), Side::Right);
     }
 
@@ -420,7 +420,7 @@ mod tests {
         assert!(p.iter().all(|s| s.abs() <= QUIET.amplitude + 1e-4));
         assert!(duration_of(&QUIET) + 0.6 < LISTEN_MS as f32 / 1000.0, "{}", duration_of(&QUIET));
         // A click would be heard: what the fades leave below 15 kHz has to be far under what is in the band.
-        let left: Vec<f32> = p.chunks_exact(2).map(|s| s[0]).collect();
+        let left: Vec<f32> = p.as_chunks::<2>().0.iter().map(|s| s[0]).collect();
         let size = left.len().next_power_of_two();
         let mut spectrum: Vec<Complex32> = left.iter().map(|&s| Complex32::new(s, 0.0)).collect();
         spectrum.resize(size, Complex32::new(0.0, 0.0));
@@ -542,7 +542,7 @@ mod tests {
         }
         if let Ok(path) = std::env::var("TANDEM_SIDE_READ") {
             let bytes = std::fs::read(&path).unwrap();
-            let samples: Vec<f32> = bytes.chunks_exact(4).map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]])).collect();
+            let samples: Vec<f32> = bytes.as_chunks::<4>().0.iter().map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]])).collect();
             let mut planner = FftPlanner::new();
             for (name, signal) in [("audible", &AUDIBLE), ("quiet", &QUIET)] {
                 match analyze_for(signal, &samples, RATE, &mut planner) {

@@ -1544,10 +1544,6 @@ impl TandemEngine {
         self.engine.devices().into_iter().map(Into::into).collect()
     }
 
-    pub fn is_member(&self) -> bool {
-        self.engine.is_member()
-    }
-
     /// Call when Wi-Fi, mobile data or the VPN changed.
     pub fn network_changed(&self) {
         let _guard = self.runtime.enter();
@@ -1661,10 +1657,6 @@ impl TandemEngine {
     pub fn accept_offer(&self, from: String, offer: u64) -> Result<(), TandemError> {
         let _guard = self.runtime.enter();
         self.engine.accept_offer(DeviceId::parse(&from)?, offer).map_err(Into::into)
-    }
-
-    pub fn is_connected(&self, id: String) -> bool {
-        DeviceId::parse(&id).map(|id| self.engine.is_connected(&id)).unwrap_or(false)
     }
 
     /// The addresses this device was seen at (no port), the likeliest first.

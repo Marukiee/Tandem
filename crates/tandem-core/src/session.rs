@@ -156,8 +156,8 @@ impl Inner {
                 return Err(Error::NotTrusted);
             };
             let mut kept = None;
-            if let Some(existing) = &peer.session {
-                if existing.conn.close_reason().is_none() {
+            if let Some(existing) = &peer.session
+                && existing.conn.close_reason().is_none() {
                     // Two connections at once: keep the one dialed by the lower id, so
                     // both ends make the same choice without talking about it.
                     let new_dialer = if dialer { self.my_id } else { id };
@@ -168,7 +168,6 @@ impl Inner {
                         retire(existing.conn.clone());
                     }
                 }
-            }
             if kept.is_none() {
                 peer.session = Some(session.clone());
                 peer.hello = Some(hello.clone());
@@ -352,13 +351,12 @@ impl Inner {
         let mut was_current = false;
         {
             let mut peers = self.peers.lock().unwrap();
-            if let Some(peer) = peers.get_mut(&id) {
-                if peer.session.as_ref().map(|s| s.serial) == Some(session.serial) {
+            if let Some(peer) = peers.get_mut(&id)
+                && peer.session.as_ref().map(|s| s.serial) == Some(session.serial) {
                     peer.session = None;
                     peer.next_dial = Instant::now() + Duration::from_millis(400);
                     was_current = true;
                 }
-            }
         }
         if was_current {
             info!(peer = %id, "disconnected");
@@ -403,9 +401,9 @@ impl Inner {
                 let alert = {
                     let mut peers = self.peers.lock().unwrap();
                     peers.get_mut(&id).and_then(|peer| {
-                        let before = peer.status.battery.clone();
+                        let before = peer.status.battery;
                         peer.status.merge(&status);
-                        let after = peer.status.battery.clone()?;
+                        let after = peer.status.battery?;
                         let mut said = self.battery_said.lock().unwrap();
                         let said = said.entry(id).or_default();
                         crate::battery_alert::check(before.as_ref(), &after, said).map(|alert| (alert, after.level))
@@ -427,11 +425,10 @@ impl Inner {
             Msg::ShareOffer(offer) => self.clone().on_share_offer(id, offer),
             Msg::ShareReply(reply) => {
                 debug!(peer = %id, offer = reply.id, accepted = reply.accepted, "share reply");
-                if !reply.accepted {
-                    if let Some(offer) = self.out_offers.lock().unwrap().get_mut(&reply.id) {
+                if !reply.accepted
+                    && let Some(offer) = self.out_offers.lock().unwrap().get_mut(&reply.id) {
                         offer.targets.remove(&id);
                     }
-                }
             }
             Msg::ShareCancel { id: offer } => self.on_share_cancel(id, offer),
             Msg::ShareText(text) => {
@@ -597,6 +594,21 @@ fn probe(session: Arc<Session>) {
     });
 }
 
+/// A connection that lost to another one between the same two devices (both dialed at once). Closing it at once lost what was
+/// already on its way on it, a message sent the moment the devices met; so it is still read for a moment, then closed. Both ends
+/// make the same choice, so the other end stops sending on it too.
+/// How a device is now, said again in full by every connection when it starts.
+fn is_state(msg: &Msg) -> bool {
+    matches!(msg, Msg::Status(_) | Msg::Focus(_) | Msg::Wifi(crate::wifi::WifiMsg::Network { .. }))
+}
+
+fn retire(conn: quinn::Connection) {
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        conn.close(2u32.into(), b"duplicate connection");
+    });
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -621,19 +633,4 @@ mod tests {
         assert_eq!(parse_datagram(&[9, 0, 0, 0, 0]), None);
         assert_eq!(parse_datagram(&[1, 0]), None);
     }
-}
-
-/// A connection that lost to another one between the same two devices (both dialed at once). Closing it at once lost what was
-/// already on its way on it, a message sent the moment the devices met; so it is still read for a moment, then closed. Both ends
-/// make the same choice, so the other end stops sending on it too.
-/// How a device is now, said again in full by every connection when it starts.
-fn is_state(msg: &Msg) -> bool {
-    matches!(msg, Msg::Status(_) | Msg::Focus(_) | Msg::Wifi(crate::wifi::WifiMsg::Network { .. }))
-}
-
-fn retire(conn: quinn::Connection) {
-    tokio::spawn(async move {
-        tokio::time::sleep(Duration::from_secs(2)).await;
-        conn.close(2u32.into(), b"duplicate connection");
-    });
 }

@@ -12,7 +12,6 @@
     <string name="live_ask_body_screen">It sees everything on your screen until you stop it. A notification stays and you can stop it there at any time.</string>
     <string name="live_ask_body_camera">It sees what your camera sees until you stop it. A notification stays and you can stop it there at any time.</string>
     <string name="live_allow">Allow</string>
-    <string name="live_allow_always">Always allow %1$s</string>
     <string name="live_deny">Deny</string>
     <string name="live_cancel">Cancel</string>
     <string name="live_stop">Stop</string>

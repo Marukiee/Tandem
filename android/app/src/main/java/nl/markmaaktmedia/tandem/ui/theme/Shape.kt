@@ -118,4 +118,3 @@ val GroupedSpacing = 2.dp
 
 val CardSquircle = SquircleShape(28.dp)
 val SheetSquircle = SquircleShape(36.dp)
-val ChipSquircle = SquircleShape(16.dp)

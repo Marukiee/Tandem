@@ -490,14 +490,13 @@ impl Engine {
         }
         let Some(input) = input.sanitized() else { return Ok(()) };
         // A position that is late is worth nothing, so it is not sent over a stream that would deliver it late.
-        if let MediaInput::PointerAbs { x, y } = &input {
-            if let Some(conn) = self.inner.session_of(&viewer.peer) {
+        if let MediaInput::PointerAbs { x, y } = &input
+            && let Some(conn) = self.inner.session_of(&viewer.peer) {
                 let counter = viewer.pointer_counter.fetch_add(1, Ordering::Relaxed);
                 if conn.conn.send_datagram(pointer_datagram(session, counter, *x, *y)).is_ok() {
                     return Ok(());
                 }
             }
-        }
         self.inner.live_send(viewer.peer, Msg::MediaInput { session, input });
         Ok(())
     }
@@ -1004,11 +1003,10 @@ impl Inner {
         {
             let mut st = host.st.lock().unwrap();
             // Datagrams can swap places. A position older than the last one is dropped.
-            if let Some(last) = st.last_pointer {
-                if counter == last || (counter.wrapping_sub(last) as i16) < 0 {
+            if let Some(last) = st.last_pointer
+                && (counter == last || (counter.wrapping_sub(last) as i16) < 0) {
                     return;
                 }
-            }
             st.last_pointer = Some(counter);
         }
         self.live_input(&host, MediaInput::PointerAbs { x, y });
@@ -1079,12 +1077,11 @@ impl Inner {
         }
         self.emit(Event::MediaEnded { peer: viewer.peer, session: viewer.id, kind: viewer.kind, role: MediaRole::Viewer, reason });
         // A session that ran says so from the task that hands over frames, so nothing can follow it.
-        if was == Phase::Pending {
-            if let Some(app) = self.live_viewer_cb() {
+        if was == Phase::Pending
+            && let Some(app) = self.live_viewer_cb() {
                 let id = viewer.id;
                 tokio::spawn(async move { guarded("on_ended", || app.on_ended(id, reason)) });
             }
-        }
     }
 
     // ---- The connection ----

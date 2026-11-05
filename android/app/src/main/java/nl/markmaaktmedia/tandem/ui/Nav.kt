@@ -79,9 +79,6 @@ class Nav {
         return true
     }
 
-    fun popTo(route: Route) {
-        while (stack.size > 1 && top != route) stack.removeAt(stack.lastIndex)
-    }
 }
 
 /**

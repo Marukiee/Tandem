@@ -4,8 +4,6 @@
     <string name="tile_control_mac">Bedien deze Mac</string>
     <string name="tile_display">Word zijn tweede scherm</string>
     <string name="display_row_sub">Deze telefoon wordt een extra scherm van die computer</string>
-    <string name="display_title">Tweede scherm</string>
-    <string name="display_hint">Sleep vensters naar de rand van het scherm op die computer om ze hier te brengen</string>
     <string name="screen_connecting">Verbinden met %1$s</string>
     <string name="screen_waiting_approval">Wachten op %1$s</string>
     <string name="screen_waiting_approval_sub">Staat er een vraag op %1$s? Kies dan Sta toe.</string>
@@ -34,8 +32,6 @@
     <string name="screen_touch_mode">Het scherm direct aanraken</string>
     <string name="screen_trackpad_mode">Het scherm als trackpad gebruiken</string>
     <string name="screen_fit">Passend maken</string>
-    <string name="screen_show_bar">Toon knoppen</string>
-    <string name="screen_stats_hint">Houd ingedrukt voor details</string>
     <string name="screen_stats_toggle">Toon de cijfers van de verbinding</string>
     <string name="screen_stats_fps">%1$d fps</string>
     <string name="screen_stats_bitrate">%1$.1f Mbit/s</string>
@@ -54,8 +50,6 @@
     <string name="control_setup_4">Sluit Tandem op de Mac af en open hem opnieuw. Deze knop gaat aan zodra dat klaar is.</string>
     <string name="control_no_access">Toegankelijkheid staat uit op de Mac, dus je kunt kijken maar niet klikken of typen. Sta het toe voor Tandem in Systeeminstellingen, Privacy en beveiliging, en start Tandem op de Mac opnieuw.</string>
     <string name="section_control">Bediening</string>
-    <string name="screen_hint_trackpad">Beweeg één vinger om de aanwijzer te sturen. Tik om te klikken, tik met twee vingers voor een rechtermuisklik. Houd ingedrukt en beweeg om te slepen. Twee vingers die bewegen scrollen, knijpen zoomt.</string>
-    <string name="screen_hint_touch">Raak aan om te klikken waar je aanraakt. Tik met twee vingers voor een rechtermuisklik. Houd ingedrukt en beweeg om te slepen. Twee vingers die bewegen scrollen, knijpen zoomt.</string>
     <string name="control_no_access_computer">Die computer laat je zijn muis en toetsenbord niet gebruiken, dus je kunt kijken maar niet klikken of typen. Kies Toestaan als hij vraagt.</string>
     <string name="offline_control">De computer moet online zijn om hem te zien en te bedienen</string>
     <string name="offline_trackpad">De computer moet online zijn om dit als trackpad te gebruiken</string>

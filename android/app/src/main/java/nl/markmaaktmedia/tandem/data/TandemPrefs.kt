@@ -224,8 +224,6 @@ class TandemPrefs(private val context: Context) {
         return root.optString("language").ifBlank { "system" }
     }
 
-    suspend fun snapshotMirrorApps(): Set<String> = mirrorApps.first()
-
     /** Whether notifications from this app go to the other devices, whichever mode is on. */
     suspend fun mirrors(packageName: String): Boolean {
         val p = data.first()

@@ -4,8 +4,6 @@
     <string name="tile_control_mac">Control this Mac</string>
     <string name="tile_display">Be its second screen</string>
     <string name="display_row_sub">This phone becomes an extra screen of that computer</string>
-    <string name="display_title">Second screen</string>
-    <string name="display_hint">Move windows to the edge of the screen on that computer to bring them here</string>
     <string name="screen_connecting">Connecting to %1$s</string>
     <string name="screen_waiting_approval">Waiting for %1$s</string>
     <string name="screen_waiting_approval_sub">If a question appeared on %1$s, choose Allow there.</string>
@@ -34,8 +32,6 @@
     <string name="screen_touch_mode">Touch the screen directly</string>
     <string name="screen_trackpad_mode">Use the screen as a trackpad</string>
     <string name="screen_fit">Fit to screen</string>
-    <string name="screen_show_bar">Show controls</string>
-    <string name="screen_stats_hint">Long press for details</string>
     <string name="screen_stats_toggle">Show the numbers of the connection</string>
     <string name="screen_stats_fps">%1$d fps</string>
     <string name="screen_stats_bitrate">%1$.1f Mbit/s</string>
@@ -54,8 +50,6 @@
     <string name="control_setup_4">Quit Tandem on the Mac and open it again. This button turns on when that is done.</string>
     <string name="control_no_access">Accessibility is off on the Mac, so you can look but not click or type. Allow it for Tandem in System Settings, Privacy and Security, then restart Tandem on the Mac.</string>
     <string name="section_control">Control</string>
-    <string name="screen_hint_trackpad">Move one finger to steer the pointer. Tap to click, tap with two fingers for a right click. Press and hold, then move, to drag. Two fingers moving scroll, pinch zooms.</string>
-    <string name="screen_hint_touch">Touch to click where you touch. Tap with two fingers for a right click. Press and hold, then move, to drag. Two fingers moving scroll, pinch zooms.</string>
     <string name="control_no_access_computer">That computer does not let you use its mouse and keyboard, so you can look but not click or type. Choose Allow when it asks.</string>
     <string name="offline_control">The computer has to be online to see and control it</string>
     <string name="offline_trackpad">The computer has to be online to use this as its trackpad</string>

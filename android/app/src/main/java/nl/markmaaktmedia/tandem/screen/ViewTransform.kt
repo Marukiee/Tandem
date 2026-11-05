@@ -79,8 +79,6 @@ class ViewTransform {
         clamp()
     }
 
-    fun zoomTo(target: Float, focalX: Float, focalY: Float) = zoomBy(target / zoom, focalX, focalY)
-
     /** A picture smaller than the view stays in the middle; a larger one cannot be dragged away from the edges. */
     private fun clamp() {
         val slackX = max(0f, (pictureWidth - viewWidth) / 2f)

@@ -2,7 +2,7 @@
 
 use crate::ids::DeviceId;
 use crate::proto::{
-    self, CallAction, CallMsg, CaptureKind, CaptureWhy, HotspotMsg, InputMsg, MediaAction, MediaPlayer, NotificationAction, NotificationMsg, ShareOffer,
+    CallAction, CallMsg, CaptureKind, CaptureWhy, HotspotMsg, InputMsg, MediaAction, MediaPlayer, NotificationAction, NotificationMsg, ShareOffer,
 };
 
 #[derive(Clone, Debug)]

@@ -57,8 +57,6 @@ object Permissions {
         Manifest.permission.SEND_SMS,
     )
 
-    val phonePermissions = phoneEssential + phoneOptional
-
     /** True once calls can be mirrored. The extras are reported by [phoneOptionalMissing]. */
     fun phone(context: Context) = phoneEssential.all { granted(context, it) }
 
@@ -97,11 +95,6 @@ object Permissions {
         val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         runCatching { context.startActivity(intent) }
-    }
-
-    fun openDndSettings(context: Context) {
-        context.getSystemService(NotificationManager::class.java)
-        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     /** Nudges the system to rebind our listener after the person turned access on. */

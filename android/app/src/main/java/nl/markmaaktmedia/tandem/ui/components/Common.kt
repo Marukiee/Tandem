@@ -86,39 +86,6 @@ fun CountBadge(
     }
 }
 
-/** A pill label: category, state, count. */
-@Composable
-fun PillBadge(
-    text: String,
-    modifier: Modifier = Modifier,
-    icon: Painter? = null,
-    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
-    contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
-) {
-    Row(
-        modifier = modifier
-            .clip(PillShape)
-            .background(containerColor)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        if (icon != null) {
-            Icon(
-                painter = icon,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(14.dp),
-            )
-        }
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = contentColor,
-        )
-    }
-}
-
 /**
  * A round icon button.
  *
@@ -151,64 +118,6 @@ fun TandemIconButton(
             contentDescription = contentDescription,
             tint = tint,
             modifier = Modifier.size(iconSize.dp),
-        )
-    }
-}
-
-/**
- * The question mark next to a setting that needs a sentence of explanation.
- *
- * It opens a small panel rather than expanding in place. Expanding pushed every row
- * below it down the screen, so reading one explanation moved everything the user was
- * looking at, and closing it moved it all back. A panel leaves the page alone.
- *
- * Settings that explain themselves do not get one: a page where every row has a help
- * button is a page that failed to name its rows.
- */
-@Composable
-fun HelpTip(
-    text: String,
-    modifier: Modifier = Modifier,
-    title: String? = null,
-) {
-    var open by remember { mutableStateOf(false) }
-
-    Box(
-        // Required, not preferred: inside a Row that is short of space a plain size
-        // gets overruled and the circle comes out as an oval.
-        modifier = modifier
-            .requiredSize(22.dp)
-            .clip(androidx.compose.foundation.shape.CircleShape)
-            // Outlined rather than filled, so it matches the switches it sits next to
-            // and whatever is behind the bar shows through instead of a solid disc.
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant,
-                shape = androidx.compose.foundation.shape.CircleShape,
-            )
-            .bouncyClickable(onClickLabel = text) { open = true },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            painter = TandemIcons.Help,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(12.dp),
-        )
-    }
-
-    if (open) {
-        TandemDialog(
-            title = title ?: stringResource(nl.markmaaktmedia.tandem.R.string.help_title),
-            body = text,
-            icon = TandemIcons.Idea,
-            onDismiss = { open = false },
-            actions = {
-                PrimaryPillButton(
-                    label = stringResource(nl.markmaaktmedia.tandem.R.string.generic_ok),
-                    onClick = { open = false },
-                )
-            },
         )
     }
 }
@@ -604,39 +513,6 @@ private const val CommitFraction = 0.35f
 internal fun revealShown(x: Float, side: Int): Float =
     if (side == 0) kotlin.math.abs(x) else maxOf(0f, x * side)
 
-/** A tappable suggestion under an empty chat. */
-@Composable
-fun SuggestionChip(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    icon: Painter? = null,
-) {
-    Row(
-        modifier = modifier
-            .clip(PillShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .bouncyClickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        if (icon != null) {
-            Icon(
-                painter = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(16.dp),
-            )
-        }
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
-}
-
 /** The filled pill used for the one primary action on a screen. */
 @Composable
 fun PrimaryPillButton(
@@ -698,17 +574,6 @@ fun SecondaryPillButton(
         icon = icon,
         container = MaterialTheme.colorScheme.surfaceContainerHigh,
         content = MaterialTheme.colorScheme.onSurface,
-    )
-}
-
-/** A hairline that separates without drawing attention to itself. */
-@Composable
-fun SoftDivider(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     )
 }
 

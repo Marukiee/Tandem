@@ -66,7 +66,7 @@ pub struct WifiNetwork {
 /// (`connected` false), as a network it knows it joins by itself, and one the sender can hand over. Whether the sender can be reached
 /// now, and what the person already said no to, is up to the app.
 pub fn worth_offering(network: &WifiNetwork, connected: bool, known: &[String]) -> bool {
-    !connected && !network.locked && !network.ssid.is_empty() && network.security.shareable() && !known.iter().any(|k| *k == network.ssid)
+    !connected && !network.locked && !network.ssid.is_empty() && network.security.shareable() && !known.contains(&network.ssid)
 }
 
 /// A Wi-Fi password. Empty for an open network.

@@ -260,24 +260,6 @@ class LiveShare(
         _changes.tryEmit(Change.RequestGone(session))
     }
 
-    /** "Always allow this Mac": kept by the core, so nothing in the way can overrule it. */
-    fun allowAlways(peer: String, kind: TandemMediaKind, control: Boolean = false) {
-        val engine = host.engine ?: return
-        runCatching {
-            val policy = engine.mediaPolicy(peer)
-            // A Mac that asks to click and type as well is only asked no more when that is allowed for good too: the core
-            // does not call a request approved while one part of it still has to be asked.
-            engine.setMediaPolicy(
-                peer,
-                if (kind == TandemMediaKind.CAMERA) {
-                    policy.copy(camera = TandemMediaPermission.ALWAYS)
-                } else {
-                    policy.copy(screen = TandemMediaPermission.ALWAYS, control = if (control) TandemMediaPermission.ALWAYS else policy.control)
-                },
-            )
-        }
-    }
-
     /**
      * The person turned the accessibility service on or off while a screen is being shown: the Mac is told at once, so
      * the button for clicking on its side wakes up without showing the screen again.
@@ -323,8 +305,6 @@ class LiveShare(
     }
 
     fun isSharingAny(): Boolean = shares.isNotEmpty()
-
-    fun isSharing(peer: String, kind: TandemMediaKind): Boolean = _active.value.any { it.peer == peer && it.kind == kind }
 
     fun serviceGone(gone: LiveShareService) {
         if (service === gone) service = null

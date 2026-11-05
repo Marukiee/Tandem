@@ -22,9 +22,6 @@
     <string name="capture_close">Sluit</string>
     <string name="capture_retake">Opnieuw</string>
     <string name="capture_use_photo">Gebruik foto</string>
-    <string name="capture_use_scan">Gebruik scan</string>
-    <string name="capture_doc_hint">Zet de pagina in het kader</string>
-    <string name="capture_crop_hint">Sleep de hoeken naar de randen van de pagina</string>
 
     <string name="capture_perm_title">Sta de camera toe</string>
     <string name="capture_perm_text">Tandem heeft de camera nodig om dit voor %1$s te maken. Het gaat direct naar %1$s en blijft niet in je galerij staan.</string>
@@ -32,8 +29,6 @@
     <string name="capture_perm_settings">Open instellingen</string>
     <string name="capture_perm_not_now">Niet nu</string>
 
-    <string name="capture_scan_start">Scannen</string>
-    <string name="capture_pick_start">Afbeelding kiezen</string>
     <string name="capture_cancel">Annuleer</string>
     <string name="capture_waiting_scan">De scanner wordt geopend</string>
     <string name="capture_waiting_pick">Je afbeeldingen worden geopend</string>

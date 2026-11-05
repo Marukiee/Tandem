@@ -161,7 +161,6 @@ class EngineHost(
     val events: SharedFlow<TandemEvent> = _events.asSharedFlow()
 
     private val _removed = MutableStateFlow(false)
-    val removedFromCircle: StateFlow<Boolean> = _removed.asStateFlow()
 
     @Volatile
     var engine: TandemEngine? = null
@@ -457,8 +456,5 @@ class EngineHost(
         private const val TAG = "EngineHost"
         /** The same as on the Mac: what a copy may send by itself. */
         const val CLIPBOARD_FILES_LIMIT = 50L * 1024 * 1024
-        fun markSensitive(clip: ClipData) {
-            clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
-        }
     }
 }

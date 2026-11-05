@@ -214,11 +214,6 @@ class ScreenViewer(
         runCatching { host.engine?.mediaSendInput(current, input) }
     }
 
-    fun setPointerSpeed(value: Float) {
-        prefs.pointerSpeed = value
-        pointerMapper.speed = value
-    }
-
     var directTouch: Boolean
         get() = prefs.directTouch
         set(value) {

@@ -787,8 +787,8 @@ impl Inner {
         }
         let gone: Vec<DeviceId> = peers.keys().filter(|id| !wanted.contains(id)).copied().collect();
         for id in gone {
-            if let Some(peer) = peers.remove(&id) {
-                if let Some(session) = peer.session {
+            if let Some(peer) = peers.remove(&id)
+                && let Some(session) = peer.session {
                     // Give the last message (often the removal itself) time to leave
                     // before the connection goes away.
                     tokio::spawn(async move {
@@ -796,7 +796,6 @@ impl Inner {
                         session.conn.close(3u32.into(), b"removed from circle");
                     });
                 }
-            }
         }
         drop(peers);
         self.poke.notify_one();
@@ -815,11 +814,10 @@ impl Inner {
         };
         let mut peers = self.peers.lock().unwrap();
         for (key, book) in saved {
-            if let Ok(id) = DeviceId::parse(&key) {
-                if let Some(peer) = peers.get_mut(&id) {
+            if let Ok(id) = DeviceId::parse(&key)
+                && let Some(peer) = peers.get_mut(&id) {
                     peer.addrs = book;
                 }
-            }
         }
     }
 
@@ -1185,11 +1183,10 @@ impl Inner {
     fn refresh_announcement(&self) {
         // The hint changes every hour, so re-announce when the hour turned over.
         let hour = discovery::current_hour();
-        if self.last_announce_hour.swap(hour, Ordering::Relaxed) != hour {
-            if let Some(discovery) = self.discovery.lock().unwrap().as_mut() {
+        if self.last_announce_hour.swap(hour, Ordering::Relaxed) != hour
+            && let Some(discovery) = self.discovery.lock().unwrap().as_mut() {
                 let _ = discovery.announce();
             }
-        }
     }
 
     pub fn clean_up_offers(&self) {
@@ -1254,7 +1251,7 @@ fn backoff(failures: u32) -> Duration {
 /// Each address that does not answer costs a few packets of more than a kilobyte. A device that stays away gets the best ones, and all of them
 /// once in a while, in case it is somewhere else now.
 fn addresses_to_try(failures: u32) -> usize {
-    if failures < 6 || failures % 4 == 0 { usize::MAX } else { 3 }
+    if failures < 6 || failures.is_multiple_of(4) { usize::MAX } else { 3 }
 }
 
 #[cfg(test)]

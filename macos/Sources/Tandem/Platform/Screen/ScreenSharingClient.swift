@@ -336,8 +336,6 @@ final class ScreenSharingClient: @unchecked Sendable {
         sendPointer(state)
     }
 
-    var pointerPosition: (x: Int, y: Int) { pointerLock.withLock { (pointer.x, pointer.y) } }
-
     func key(_ keysym: UInt32, down: Bool) {
         try? send([4, down ? 1 : 0, 0, 0] + be32(keysym))
     }

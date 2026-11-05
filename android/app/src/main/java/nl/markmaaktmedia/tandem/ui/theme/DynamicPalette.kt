@@ -74,8 +74,6 @@ enum class ColourSeed(val storageKey: String, val seed: Color) {
         fun fromKey(value: String?): ColourSeed =
             entries.firstOrNull { it.storageKey == value } ?: default
 
-        /** Everything except wallpaper, which is presented as its own switch. */
-        val swatches: List<ColourSeed> = entries.filter { it != WALLPAPER }
     }
 }
 

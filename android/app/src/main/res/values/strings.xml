@@ -31,7 +31,6 @@
     <string name="transfer_from">From %1$s</string>
     <string name="transfer_to">To %1$s</string>
     <string name="transfer_failed">Failed</string>
-    <string name="action_open">Open</string>
     <string name="tab_devices">Devices</string>
     <string name="tab_transfers">Shared</string>
     <string name="tab_settings">Settings</string>
@@ -50,10 +49,8 @@
         <item quantity="other">%1$d devices online</item>
     </plurals>
     <string name="update_available">Tandem %1$s is available</string>
-    <string name="update_now">Update</string>
     <string name="update_later">Later</string>
     <string name="update_downloading">Downloading %1$d%%</string>
-    <string name="update_ready">The update is ready</string>
     <string name="update_install">Install</string>
     <string name="update_failed">The update did not work</string>
     <string name="update_retry">Try again</string>
@@ -80,12 +77,7 @@
     <string name="net_other">Network</string>
     <string name="status_dnd">Do not disturb</string>
     <string name="status_hotspot_on">Hotspot on</string>
-    <string name="action_send_files">Send files</string>
-    <string name="action_send_clipboard_long">Send clipboard</string>
-    <string name="action_remote">Trackpad and keyboard</string>
-    <string name="action_ring">Find device</string>
     <string name="section_recent">Recent</string>
-    <string name="section_this_device">This device</string>
     <string name="setting_clipboard">Sync clipboard</string>
     <string name="setting_clipboard_sub">Text and links you copy show up on both devices</string>
     <string name="setting_notifications_from">Show notifications from this device</string>
@@ -121,8 +113,6 @@
     <string name="settings_screenshot_sub">After a screenshot, a notification lets you send it to a device in one tap</string>
     <string name="settings_send_screenshots">Send screenshots to your devices</string>
     <string name="settings_send_screenshots_sub">A screenshot you take is on the clipboard of the devices that share the clipboard with this phone</string>
-    <string name="settings_bg_clipboard">Sync clipboard in the background</string>
-    <string name="settings_bg_clipboard_sub">Android only lets an app read the clipboard while it is on screen. Use the Send clipboard tile, or grant the advanced permission on the Permissions page.</string>
     <string name="settings_notifications">Notifications and calls</string>
     <string name="settings_mirror">Send notifications to your devices</string>
     <string name="settings_mirror_sub">They show up on your computers, where you can reply</string>
@@ -189,11 +179,8 @@
     <string name="appearance_black">Pure black</string>
     <string name="appearance_black_sub">Saves battery on an OLED screen</string>
     <string name="appearance_colour">Colour</string>
-    <string name="appearance_wallpaper">Colours from your wallpaper</string>
-    <string name="appearance_wallpaper_sub">Material You, the same as the rest of your phone</string>
     <string name="appearance_accent">Accent</string>
     <string name="appearance_style">Palette style</string>
-    <string name="access_title">Permissions</string>
     <string name="access_intro">Tandem only asks for what a feature needs, and everything is optional. Turn things on here and try them without a second device.</string>
     <string name="access_allowed">Allowed</string>
     <string name="perm_notifications">Notifications</string>
@@ -227,7 +214,6 @@
     <string name="onb_title">Your devices, as one</string>
     <string name="onb_body">Send files, share the clipboard and see your notifications on your computer. Direct between your own devices, encrypted, no account.</string>
     <string name="onb_start">Get started</string>
-    <string name="onb_skip">Skip</string>
     <string name="onb_continue">Continue</string>
     <string name="onb_later">Later</string>
     <string name="onb_pair_now">Pair now</string>
@@ -248,13 +234,11 @@
     <string name="share_sending">Sending</string>
     <string name="action_close">Close</string>
     <string name="share_summary_text">Text</string>
-    <string name="share_summary_link">Link</string>
     <string name="share_summary_screenshot">Screenshot</string>
     <string name="share_summary_clipboard">Clipboard</string>
     <string name="share_empty">Nothing to send</string>
     <string name="share_clipboard_empty">The clipboard is empty</string>
     <string name="share_not_ready">Tandem is still starting. Try again in a moment.</string>
-    <string name="share_all_devices">All devices</string>
     <string name="screenshot_title">Share this screenshot?</string>
     <string name="screenshot_text">Send it to your devices in one tap</string>
     <string name="screenshot_to">To %1$s</string>
@@ -277,7 +261,6 @@
         <item quantity="one">%1$s wants to send %2$d file</item>
         <item quantity="other">%1$s wants to send %2$d files</item>
     </plurals>
-    <string name="section_with_device">With %1$s</string>
     <string name="settings_backup">Backup</string>
     <string name="backup_export">Save settings to a file</string>
     <string name="backup_export_sub">Look, notifications and sharing options. Pairings and keys stay on this phone.</string>
@@ -291,7 +274,6 @@
     <string name="language_restart_body">Tandem restarts to change the language. Your devices stay connected.</string>
     <string name="language_restart_confirm">Restart</string>
     <string name="language_restart_cancel">Not now</string>
-    <string name="tile_files">Files</string>
     <string name="section_send">Send</string>
     <string name="row_send_files">Send files</string>
     <string name="row_send_clipboard">Send clipboard</string>
@@ -305,16 +287,11 @@
     <string name="dev_section">Developer</string>
     <string name="update_download">Download</string>
     <string name="update_on_version">You have %1$s</string>
-    <string name="update_allow_install">Android will ask once to let Tandem install apps</string>
     <string name="update_banner_title">Update %1$s</string>
     <string name="swipe_delete">Remove</string>
-    <string name="remote_more">More</string>
     <string name="remote_media">Media controls</string>
     <string name="section_preferences">Preferences</string>
     <string name="hotspot_needs_permissions">Allow Bluetooth and notifications first, then this can be turned on</string>
-    <string name="hotspot_allow_bluetooth">Allow Bluetooth</string>
-    <string name="hotspot_allow_notifications">Allow notifications</string>
-    <string name="hotspot_allow_sub">Your computer asks over Bluetooth, and you get a notification</string>
     <string name="hotspot_extra_button">1 GB extra</string>
     <string name="hotspot_extra_hint">Just once: the limit is back tomorrow.</string>
     <string name="hotspot_extra_today">%1$s extra for today.</string>
@@ -346,7 +323,6 @@
     <string name="hotspot_usage_title">Used by your computer</string>
     <string name="hotspot_usage_today">Today</string>
     <string name="hotspot_usage_yesterday">Yesterday</string>
-    <string name="hotspot_usage_total">In total</string>
     <string name="hotspot_usage_since">since %1$s</string>
     <string name="hotspot_usage_month">This month</string>
     <string name="hotspot_usage_months">Earlier months</string>
@@ -392,7 +368,6 @@
     <string name="transfer_delete_failed">The file could not be deleted</string>
     <string name="media_idle_title">Nothing playing</string>
     <string name="media_idle_hint">Press play to start something</string>
-    <string name="update_confirm_title">Finish the update</string>
     <string name="update_confirm_hint">Android wants you to confirm</string>
     <string name="update_ready_title">Tandem %1$s is ready to install</string>
     <string name="update_ready_text">Tap to finish the update</string>
@@ -427,9 +402,6 @@
     <string name="media_apps_intro">Every app that plays music or video can show what it plays on your computers. Switch off the ones that should stay private.</string>
     <string name="media_access_missing">Reading what plays needs notification access, the same permission that sends notifications to your computers.</string>
     <string name="media_apps_empty">No music apps found yet. Start something playing and come back.</string>
-    <string name="media_now_playing">Now playing</string>
-    <string name="media_previous">Previous</string>
-    <string name="media_next">Next</string>
     <string name="media_play">Play</string>
     <string name="media_pause">Pause</string>
     <string name="settings_audio_output">Speaker for your other devices</string>

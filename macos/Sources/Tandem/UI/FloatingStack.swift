@@ -35,11 +35,6 @@ final class FloatingStack {
         layout(animated: true, appearing: nil)
     }
 
-    /// The size of a card changed (its content grew): the ones under it make room.
-    func relayout() {
-        layout(animated: true, appearing: nil)
-    }
-
     private func layout(animated: Bool, appearing: NSPanel?) {
         guard let screen = NSScreen.main else { return }
         let area = screen.visibleFrame

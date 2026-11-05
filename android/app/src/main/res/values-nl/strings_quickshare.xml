@@ -12,11 +12,9 @@
     <string name="quickshare_nearby_share">In de buurt, met Quick Share</string>
     <string name="quickshare_searching">Zoeken naar apparaten in de buurt</string>
     <string name="quickshare_off_hint">Zet Quick Share aan bij Instellingen om naar apparaten in de buurt te versturen</string>
-    <string name="quickshare_sending_to">Versturen naar %1$s</string>
     <string name="quickshare_pin_compare">Pincode %1$s. Die moet hetzelfde zijn op het andere apparaat.</string>
     <string name="quickshare_refused">%1$s zei nee</string>
     <string name="quickshare_failed">De overdracht is niet gelukt</string>
-    <string name="quickshare_off_note">Uit. Niemand kan deze telefoon vinden of er met Quick Share naartoe sturen.</string>
     <string name="settings_cat_quickshare">Quick Share</string>
     <string name="quickshare_channel_ask">Quick Share-verzoeken</string>
     <string name="quickshare_channel_ask_desc">Iemand wil je iets sturen met Quick Share</string>
@@ -33,8 +31,6 @@
     <string name="quickshare_received_from">Ontvangen van %1$s</string>
     <string name="quickshare_stopped">De overdracht is gestopt</string>
     <string name="quickshare_failed_early">Het ging fout voordat er iets werd aangeboden (%1$s)</string>
-    <string name="quickshare_row_on">Aan, zichtbaar voor iedereen in de buurt</string>
-    <string name="quickshare_row_off">Uit</string>
     <string name="tile_quickshare_label">Quick Share</string>
     <string name="tile_quickshare_on">Aan</string>
     <string name="tile_quickshare_off">Uit</string>

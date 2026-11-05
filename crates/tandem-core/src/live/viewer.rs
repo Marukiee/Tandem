@@ -364,11 +364,10 @@ async fn run_delivery(inner: Arc<Inner>, viewer: Arc<ViewerSession>) {
                 discontinuity: item.discontinuity,
                 data: item.frame.data,
             };
-            if viewer.kind == MediaKind::Camera {
-                if let Some(out) = inner.live.camera_out.lock().unwrap().as_mut() {
+            if viewer.kind == MediaKind::Camera
+                && let Some(out) = inner.live.camera_out.lock().unwrap().as_mut() {
                     out.push(&frame);
                 }
-            }
             crate::live::guarded("on_frame", || app.on_frame(viewer.id, frame));
         }
     }

@@ -7,20 +7,7 @@ import SwiftUI
 /// and the one in the toolbar read as a single thing changing places. The toolbar copy is
 /// a real toolbar item, which macOS draws on glass, so it stays readable over any content.
 extension View {
-    /// Sets `compact` when the scroll view around this has scrolled the page title away.
-    func trackCompactTitle(_ compact: Binding<Bool>, after threshold: CGFloat = 64) -> some View {
-        scrollEdgeEffectStyle(.soft, for: .top)
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentOffset.y + geometry.contentInsets.top > threshold
-            } action: { _, isCompact in
-                withAnimation(.bouncy(duration: 0.45, extraBounce: 0.04)) { compact.wrappedValue = isCompact }
-            }
-    }
 
-    /// The title inside the page, leaving as the toolbar's copy arrives.
-    func titleHandoff(_ compact: Bool) -> some View {
-        modifier(TitleHandoff(compact: compact))
-    }
 }
 
 private struct TitleHandoff: ViewModifier {

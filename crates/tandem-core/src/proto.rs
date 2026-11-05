@@ -1126,7 +1126,7 @@ mod tests {
     #[tokio::test]
     async fn oversized_frames_are_refused() {
         let (mut a, mut b) = tokio::io::duplex(1024);
-        write_frame(&mut a, &vec![0u8; 200]).await.unwrap();
+        write_frame(&mut a, &[0u8; 200]).await.unwrap();
         assert!(read_frame(&mut b, 100).await.is_err());
     }
 

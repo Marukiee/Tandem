@@ -191,12 +191,3 @@ fun ContentRow(index: Int, total: Int, icon: Painter, title: String, content: @C
     }
 }
 
-/** The dot next to a permission: green when granted, dim when not. */
-@Composable
-fun StatusDot(on: Boolean, modifier: Modifier = Modifier) {
-    val color by animateColorAsState(
-        if (on) nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors.current.online else MaterialTheme.colorScheme.outline,
-        TandemMotion.colourSpec(), label = "statusDot",
-    )
-    Box(modifier.size(10.dp).background(color, CircleShape))
-}

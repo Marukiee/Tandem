@@ -355,11 +355,3 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         Spacer(Modifier.height(24.dp))
     }
 }
-
-fun openLocation(context: Context, location: String) {
-    val uri = android.net.Uri.parse(location)
-    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW)
-        .setDataAndType(uri, context.contentResolver.getType(uri) ?: "*/*")
-        .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-    runCatching { context.startActivity(intent) }
-}

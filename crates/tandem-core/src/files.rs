@@ -458,13 +458,11 @@ fn resolve(policy: &FilePolicy, path: &str, need: Need) -> std::result::Result<R
         real.push(part);
     }
     inside(&root, &real)?;
-    if !policy.hidden && real != root {
-        if let Ok(meta) = std::fs::metadata(&real) {
-            if is_hidden_on_disk(&meta) {
+    if !policy.hidden && real != root
+        && let Ok(meta) = std::fs::metadata(&real)
+            && is_hidden_on_disk(&meta) {
                 return Err(FsFail::new(FsCode::NotFound, "not found"));
             }
-        }
-    }
     Ok(Resolved { share, root, real, rest: rest.iter().map(|s| s.to_string()).collect() })
 }
 

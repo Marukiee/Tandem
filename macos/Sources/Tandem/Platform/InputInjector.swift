@@ -46,8 +46,6 @@ final class InputInjector {
         return flags
     }
 
-    var isTrusted: Bool { AXIsProcessTrusted() }
-
     func requestPermissionIfNeeded() -> Bool {
         if AXIsProcessTrusted() { return true }
         if Date().timeIntervalSince(lastPermissionPrompt) > 30 {

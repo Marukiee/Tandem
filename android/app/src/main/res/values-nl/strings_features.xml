@@ -31,7 +31,6 @@
     </plurals>
     <string name="features_this_phone">Deze telefoon</string>
     <string name="features_open_here">Openen</string>
-    <string name="features_open_on">Open op %1$s</string>
     <string name="features_offline">Niet verbonden. Wat daar werkt verschijnt zodra er verbinding is.</string>
     <string name="features_old">Werk Tandem bij op %1$s om te zien wat daar werkt.</string>
     <string name="features_opened">Kijk op %1$s: daar staat de instelling open</string>
@@ -41,7 +40,6 @@
     <string name="features_row_sub">Wat elk apparaat kan, en wat het nog nodig heeft</string>
     <string name="perm_microphone">Microfoon</string>
     <string name="perm_microphone_why">Alleen om te horen aan welke kant van een computer de telefoon staat, met Tandem open.</string>
-    <string name="media_not_allowed">%1$s kan deze knoppen nog niet bedienen</string>
 
     <string name="screen_sound_title">Het geluid van %1$s op je koptelefoon?</string>
     <string name="screen_sound_body">Je koptelefoon is aangesloten. Het geluid kan hier spelen in plaats van daar.</string>

@@ -28,7 +28,6 @@
     <string name="transfer_from">Van %1$s</string>
     <string name="transfer_to">Naar %1$s</string>
     <string name="transfer_failed">Mislukt</string>
-    <string name="action_open">Openen</string>
     <string name="tab_devices">Apparaten</string>
     <string name="tab_transfers">Gedeeld</string>
     <string name="tab_settings">Instellingen</string>
@@ -47,10 +46,8 @@
         <item quantity="other">%1$d apparaten online</item>
     </plurals>
     <string name="update_available">Tandem %1$s is beschikbaar</string>
-    <string name="update_now">Bijwerken</string>
     <string name="update_later">Later</string>
     <string name="update_downloading">Downloaden %1$d%%</string>
-    <string name="update_ready">De update staat klaar</string>
     <string name="update_install">Installeren</string>
     <string name="update_failed">De update is mislukt</string>
     <string name="update_retry">Probeer opnieuw</string>
@@ -77,12 +74,7 @@
     <string name="net_other">Netwerk</string>
     <string name="status_dnd">Niet storen</string>
     <string name="status_hotspot_on">Hotspot aan</string>
-    <string name="action_send_files">Bestanden sturen</string>
-    <string name="action_send_clipboard_long">Klembord sturen</string>
-    <string name="action_remote">Trackpad en toetsenbord</string>
-    <string name="action_ring">Zoek apparaat</string>
     <string name="section_recent">Recent</string>
-    <string name="section_this_device">Dit apparaat</string>
     <string name="setting_clipboard">Klembord synchroniseren</string>
     <string name="setting_clipboard_sub">Tekst en links die je kopieert staan op beide apparaten</string>
     <string name="setting_notifications_from">Meldingen van dit apparaat tonen</string>
@@ -118,8 +110,6 @@
     <string name="settings_screenshot_sub">Na een screenshot kun je hem met één tik naar een apparaat sturen</string>
     <string name="settings_send_screenshots">Stuur screenshots naar je apparaten</string>
     <string name="settings_send_screenshots_sub">Een screenshot die je maakt staat op het klembord van de apparaten die het klembord met deze telefoon delen</string>
-    <string name="settings_bg_clipboard">Klembord op de achtergrond synchroniseren</string>
-    <string name="settings_bg_clipboard_sub">Android laat een app het klembord alleen lezen als hij in beeld is. Gebruik de tegel Klembord sturen, of geef de geavanceerde toestemming op de Rechten-pagina.</string>
     <string name="settings_notifications">Meldingen en gesprekken</string>
     <string name="settings_mirror">Meldingen doorsturen</string>
     <string name="settings_mirror_sub">Ze verschijnen op je computers, waar je ook kunt antwoorden</string>
@@ -186,11 +176,8 @@
     <string name="appearance_black">Puur zwart</string>
     <string name="appearance_black_sub">Spaart batterij op een OLED-scherm</string>
     <string name="appearance_colour">Kleur</string>
-    <string name="appearance_wallpaper">Kleuren van je achtergrond</string>
-    <string name="appearance_wallpaper_sub">Material You, net als de rest van je telefoon</string>
     <string name="appearance_accent">Accent</string>
     <string name="appearance_style">Paletstijl</string>
-    <string name="access_title">Rechten</string>
     <string name="access_intro">Tandem vraagt alleen wat een functie nodig heeft, en alles is optioneel. Zet dingen hier aan en probeer ze zonder tweede apparaat.</string>
     <string name="access_allowed">Toegestaan</string>
     <string name="perm_notifications">Meldingen</string>
@@ -224,7 +211,6 @@
     <string name="onb_title">Je apparaten als één</string>
     <string name="onb_body">Stuur bestanden, deel je klembord en zie je meldingen op je computer. Direct tussen je eigen apparaten, versleuteld, zonder account.</string>
     <string name="onb_start">Beginnen</string>
-    <string name="onb_skip">Overslaan</string>
     <string name="onb_continue">Verder</string>
     <string name="onb_later">Later</string>
     <string name="onb_pair_now">Nu koppelen</string>
@@ -245,13 +231,11 @@
     <string name="share_sending">Versturen</string>
     <string name="action_close">Sluiten</string>
     <string name="share_summary_text">Tekst</string>
-    <string name="share_summary_link">Link</string>
     <string name="share_summary_screenshot">Screenshot</string>
     <string name="share_summary_clipboard">Klembord</string>
     <string name="share_empty">Niets om te sturen</string>
     <string name="share_clipboard_empty">Het klembord is leeg</string>
     <string name="share_not_ready">Tandem is nog aan het starten. Probeer het zo opnieuw.</string>
-    <string name="share_all_devices">Alle apparaten</string>
     <string name="screenshot_title">Deze screenshot delen?</string>
     <string name="screenshot_text">Stuur hem met één tik naar je apparaten</string>
     <string name="screenshot_to">Naar %1$s</string>
@@ -274,7 +258,6 @@
         <item quantity="one">%1$s wil %2$d bestand sturen</item>
         <item quantity="other">%1$s wil %2$d bestanden sturen</item>
     </plurals>
-    <string name="section_with_device">Met %1$s</string>
     <string name="settings_backup">Back-up</string>
     <string name="backup_export">Instellingen opslaan in een bestand</string>
     <string name="backup_export_sub">Uiterlijk, meldingen en deelopties. Koppelingen en sleutels blijven op deze telefoon.</string>
@@ -288,7 +271,6 @@
     <string name="language_restart_body">Tandem start opnieuw op om de taal te wisselen. Je apparaten blijven verbonden.</string>
     <string name="language_restart_confirm">Herstarten</string>
     <string name="language_restart_cancel">Niet nu</string>
-    <string name="tile_files">Bestanden</string>
     <string name="section_send">Versturen</string>
     <string name="row_send_files">Bestanden versturen</string>
     <string name="row_send_clipboard">Klembord versturen</string>
@@ -302,16 +284,11 @@
     <string name="dev_section">Ontwikkelaar</string>
     <string name="update_download">Download</string>
     <string name="update_on_version">Je hebt %1$s</string>
-    <string name="update_allow_install">Android vraagt één keer of Tandem apps mag installeren</string>
     <string name="update_banner_title">Update %1$s</string>
     <string name="swipe_delete">Verwijder</string>
-    <string name="remote_more">Meer</string>
     <string name="remote_media">Mediaknoppen</string>
     <string name="section_preferences">Voorkeuren</string>
     <string name="hotspot_needs_permissions">Sta eerst Bluetooth en meldingen toe, dan kun je dit aanzetten</string>
-    <string name="hotspot_allow_bluetooth">Bluetooth toestaan</string>
-    <string name="hotspot_allow_notifications">Meldingen toestaan</string>
-    <string name="hotspot_allow_sub">Je computer vraagt via Bluetooth en jij krijgt een melding</string>
     <string name="hotspot_extra_button">1 GB extra</string>
     <string name="hotspot_extra_hint">Eenmalig: morgen geldt de limiet weer.</string>
     <string name="hotspot_extra_today">%1$s extra voor vandaag.</string>
@@ -343,7 +320,6 @@
     <string name="hotspot_usage_title">Gebruikt door je computer</string>
     <string name="hotspot_usage_today">Vandaag</string>
     <string name="hotspot_usage_yesterday">Gisteren</string>
-    <string name="hotspot_usage_total">In totaal</string>
     <string name="hotspot_usage_since">sinds %1$s</string>
     <string name="hotspot_usage_month">Deze maand</string>
     <string name="hotspot_usage_months">Eerdere maanden</string>
@@ -403,9 +379,6 @@
     <string name="media_apps_intro">Elke app die muziek of video afspeelt kan tonen wat hij speelt op je computers. Zet de apps uit die privé moeten blijven.</string>
     <string name="media_access_missing">Lezen wat er speelt heeft toegang tot meldingen nodig, dezelfde toestemming die meldingen naar je computers stuurt.</string>
     <string name="media_apps_empty">Nog geen muziek-apps gevonden. Start iets en kom terug.</string>
-    <string name="media_now_playing">Speelt nu</string>
-    <string name="media_previous">Vorige</string>
-    <string name="media_next">Volgende</string>
     <string name="media_play">Afspelen</string>
     <string name="media_pause">Pauzeren</string>
     <string name="settings_audio_output">Speaker voor je andere apparaten</string>
@@ -430,7 +403,6 @@
     <string name="transfer_delete_failed">Het bestand kon niet worden verwijderd</string>
     <string name="media_idle_title">Er speelt niets</string>
     <string name="media_idle_hint">Druk op afspelen om iets te starten</string>
-    <string name="update_confirm_title">Rond de update af</string>
     <string name="update_confirm_hint">Android wil dat je bevestigt</string>
     <string name="update_ready_title">Tandem %1$s staat klaar om te installeren</string>
     <string name="update_ready_text">Tik om de update af te ronden</string>

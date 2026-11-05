@@ -234,8 +234,6 @@ final class InsertHUDController {
 
     // MARK: Debug
 
-    var isShown: Bool { panel?.isVisible == true }
-
     /// Lights a tile, for the snapshot harness.
     func debugHighlight(_ index: Int?) { interaction.highlighted = index }
 }

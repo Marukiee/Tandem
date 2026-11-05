@@ -296,13 +296,6 @@ pub async fn send_clipboard(state: State<'_, AppState>, ids: Vec<String>) -> Rep
     Ok(reached.len())
 }
 
-#[tauri::command]
-pub async fn send_text(state: State<'_, AppState>, ids: Vec<String>, text: String) -> Reply<usize> {
-    let url = model::is_url(&text);
-    let reached = state.engine()?.send_text(ids, text, url, false).await.map_err(shown)?;
-    Ok(reached.len())
-}
-
 // ---- Receiving ----------------------------------------------------------------------
 
 fn forget_offer(app: &AppHandle, from: &str, offer: &str) {
@@ -346,18 +339,6 @@ pub async fn media_command(
         other => return Err(format!("unknown action {other}")),
     };
     state.engine()?.send_media_command(id, player, action, position_ms).await.map_err(shown)
-}
-
-#[tauri::command]
-pub async fn notification_action(
-    state: State<'_, AppState>,
-    id: String,
-    key: String,
-    button: String,
-    reply: Option<String>,
-    dismiss: bool,
-) -> Reply<()> {
-    state.engine()?.notification_action(id, key, button, reply, dismiss).await.map_err(shown)
 }
 
 #[tauri::command]
@@ -667,13 +648,6 @@ pub fn show_main(app: AppHandle, device: Option<String>) {
 }
 
 #[tauri::command]
-pub fn hide_panel(app: AppHandle) {
-    if let Some(panel) = app.get_webview_window("panel") {
-        let _ = panel.hide();
-    }
-}
-
-#[tauri::command]
 pub fn resize_panel(app: AppHandle, height: f64) {
     tray::resize_panel(&app, height);
 }
@@ -711,12 +685,6 @@ pub fn open_logs(app: AppHandle) -> Reply<()> {
     std::fs::create_dir_all(&dir).map_err(shown)?;
     app.opener().open_path(dir.to_string_lossy(), None::<&str>).map_err(shown)
 }
-
-#[tauri::command]
-pub fn quit_app(app: AppHandle) {
-    tray::quit_app(&app);
-}
-
 
 // ---- Backup, what is new, and what the desktop was asked ---------------------------------------------------------
 

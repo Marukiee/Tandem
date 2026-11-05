@@ -10,9 +10,7 @@ typealias LocalState<Value> = SwiftUI.State<Value>
 enum Palette {
     static let indigo = Color(hex: 0x5B5BD6)
     static let indigoLight = Color(hex: 0x9E9DF0)
-    static let indigoDeep = Color(hex: 0x2E2C6B)
     static let rose = Color(hex: 0xFFB0CB)
-    static let roseDeep = Color(hex: 0x934464)
     static let urgent = Color(hex: 0xE8613C)
 }
 

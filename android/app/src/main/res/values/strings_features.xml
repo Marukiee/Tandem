@@ -33,7 +33,6 @@
     </plurals>
     <string name="features_this_phone">This phone</string>
     <string name="features_open_here">Open</string>
-    <string name="features_open_on">Open on %1$s</string>
     <string name="features_offline">Not connected. What works there shows up when it connects.</string>
     <string name="features_old">Update Tandem on %1$s to see what works there.</string>
     <string name="features_opened">Look at %1$s: the setting is open there</string>
@@ -43,7 +42,6 @@
     <string name="features_row_sub">What each device can do, and what it still needs</string>
     <string name="perm_microphone">Microphone</string>
     <string name="perm_microphone_why">Only to hear on which side of a computer the phone stands, with Tandem open.</string>
-    <string name="media_not_allowed">%1$s cannot press these buttons yet</string>
 
     <!-- The sound of a screen -->
     <string name="screen_sound_title">Play the sound of %1$s on your headphones?</string>

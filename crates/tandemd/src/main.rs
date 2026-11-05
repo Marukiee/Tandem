@@ -769,8 +769,8 @@ async fn main() -> Result<()> {
     let data_dir = cli.data_dir.clone().unwrap_or_else(default_data_dir);
 
     // Most commands go to the daemon when there is one.
-    if let Some(line) = command_line(&cli.command) {
-        if let Some(reply) = ask_daemon(&data_dir, &line).await? {
+    if let Some(line) = command_line(&cli.command)
+        && let Some(reply) = ask_daemon(&data_dir, &line).await? {
             let (status, body) = reply.split_once('\n').unwrap_or((&reply, ""));
             if status == "ok" && matches!(cli.command, Command::PairShow) {
                 let mut lines = body.lines();
@@ -787,7 +787,6 @@ async fn main() -> Result<()> {
             }
             return Ok(());
         }
-    }
 
     let (engine, data_dir) = start_engine(&cli).await?;
     match &cli.command {
@@ -796,12 +795,11 @@ async fn main() -> Result<()> {
             if let Some(clip) = &cli.pretend_screen {
                 pretend_screen::install(&engine, clip, cli.pretend_screen_size.as_deref())?;
             }
-            if let Some(text) = &cli.pretend_battery {
-                if let Ok(level) = text.trim_end_matches('+').parse::<u8>() {
+            if let Some(text) = &cli.pretend_battery
+                && let Ok(level) = text.trim_end_matches('+').parse::<u8>() {
                     let battery = tandem_core::proto::Battery { level, charging: text.ends_with('+'), power_save: false };
                     engine.update_status(tandem_core::proto::Status { battery: Some(battery), ..Default::default() }).await;
                 }
-            }
             // A machine without a screen has no Do Not Disturb of its own: its Focus is what `tandemd focus` says, and what it follows.
             engine.set_focus_sharing(true, true);
             engine.focus_local(false, "").await;
@@ -904,12 +902,11 @@ async fn main() -> Result<()> {
                 };
                 let _ = tokio::time::timeout(Duration::from_secs(3600), async {
                     while remaining > 0 {
-                        if let Ok(Event::Finished(done)) = events.recv().await {
-                            if !done.incoming {
+                        if let Ok(Event::Finished(done)) = events.recv().await
+                            && !done.incoming {
                                 println!("{}", if done.error.is_none() { format!("sent {}", done.name) } else { format!("failed {}", done.name) });
                                 remaining -= 1;
                             }
-                        }
                     }
                 })
                 .await;

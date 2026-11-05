@@ -37,7 +37,7 @@ mod tests {
     fn the_same_track_here_does_not_hide_the_phone() {
         let mac = player("Spotify", "Blinding Lights", "The Weeknd", Some(200_040));
         let phone = player("com.spotify.music", "Blinding Lights", "The Weeknd", Some(200_000));
-        assert_eq!(visible(&[mac], &[phone.clone()]), vec![phone]);
+        assert_eq!(visible(&[mac], std::slice::from_ref(&phone)), vec![phone]);
     }
 
     #[test]

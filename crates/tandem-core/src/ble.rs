@@ -478,7 +478,7 @@ mod tests {
     #[test]
     fn a_new_message_drops_a_half_finished_one() {
         let first = fragment(1, &vec![1u8; 300], 100).unwrap();
-        let second = fragment(2, &vec![2u8; 150], 100).unwrap();
+        let second = fragment(2, &[2u8; 150], 100).unwrap();
         let mut rebuilt = Reassembler::default();
         assert!(rebuilt.push(&first[0]).is_none());
         let mut done = None;

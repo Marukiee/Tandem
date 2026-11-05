@@ -84,11 +84,10 @@ impl Inner {
             return Err(Error::invalid("nothing to send"));
         }
         for file in &mut files {
-            if file.size == 0 {
-                if let Ok(opened) = self.files.open_read(&file.source) {
+            if file.size == 0
+                && let Ok(opened) = self.files.open_read(&file.source) {
                     file.size = opened.metadata().map(|m| m.len()).unwrap_or(0);
                 }
-            }
         }
 
         let (online, offline): (Vec<DeviceId>, Vec<DeviceId>) =
@@ -144,11 +143,10 @@ impl Inner {
         if let Some(entry) = self.in_offers.lock().unwrap().get(&(peer, offer)) {
             entry.cancel.cancel();
         }
-        if let Some(out) = self.out_offers.lock().unwrap().get_mut(&offer) {
-            if out.targets.remove(&peer) && out.targets.is_empty() {
+        if let Some(out) = self.out_offers.lock().unwrap().get_mut(&offer)
+            && out.targets.remove(&peer) && out.targets.is_empty() {
                 out.cancel.cancel();
             }
-        }
     }
 
     /// Starts receiving an offer that was waiting for a yes.
@@ -276,14 +274,11 @@ impl Inner {
             let notified = self.sessions_changed.notified();
             tokio::pin!(notified);
             notified.as_mut().enable();
-            if let Some(session) = self.session_of(&peer) {
-                if session.conn.close_reason().is_none() {
+            if let Some(session) = self.session_of(&peer)
+                && session.conn.close_reason().is_none() {
                     return Some(session);
                 }
-            }
-            if self.circle.read().unwrap().member(&peer).is_none() {
-                return None;
-            }
+            self.circle.read().unwrap().member(&peer)?;
             let remaining = deadline.checked_duration_since(Instant::now())?;
             tokio::select! {
                 _ = notified => {}
@@ -527,11 +522,10 @@ impl Inner {
         let Ok(entries) = std::fs::read_dir(dir) else { return };
         let cutoff = std::time::SystemTime::now() - Duration::from_secs(3 * 24 * 3600);
         for entry in entries.flatten() {
-            if let Ok(modified) = entry.metadata().and_then(|m| m.modified()) {
-                if modified < cutoff {
+            if let Ok(modified) = entry.metadata().and_then(|m| m.modified())
+                && modified < cutoff {
                     let _ = std::fs::remove_file(entry.path());
                 }
-            }
         }
         // Pictures for the clipboard are removed by the app once they are on it; this catches what a crash or a quit left behind.
         if let Ok(entries) = std::fs::read_dir(self.store.dir().join(CLIPBOARD_DIR)) {
@@ -546,11 +540,10 @@ impl Inner {
         if let Ok(entries) = std::fs::read_dir(outgoing) {
             let old = std::time::SystemTime::now() - Duration::from_secs(24 * 3600);
             for entry in entries.flatten() {
-                if let Ok(modified) = entry.metadata().and_then(|m| m.modified()) {
-                    if modified < old {
+                if let Ok(modified) = entry.metadata().and_then(|m| m.modified())
+                    && modified < old {
                         let _ = std::fs::remove_file(entry.path());
                     }
-                }
             }
         }
     }

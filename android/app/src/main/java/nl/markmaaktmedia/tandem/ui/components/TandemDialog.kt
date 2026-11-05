@@ -188,51 +188,6 @@ fun TandemDialog(
     }
 }
 
-/**
- * The dialog shown when something failed.
- *
- * Always has a copy button. A failure message is the one piece of text in the app
- * that someone needs to get off the phone and into a report, and selecting a
- * paragraph out of a dialog with a fingertip is not a way to do that.
- */
-@Composable
-fun TandemErrorDialog(
-    title: String,
-    message: String,
-    onDismiss: () -> Unit,
-    confirmLabel: String,
-    copyLabel: String,
-    retryLabel: String? = null,
-    onRetry: (() -> Unit)? = null,
-) {
-    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
-
-    TandemDialog(
-        title = title,
-        body = message,
-        icon = TandemIcons.Error,
-        iconTint = MaterialTheme.colorScheme.error,
-        onDismiss = onDismiss,
-        closeLabel = confirmLabel,
-        actions = {
-            SecondaryPillButton(
-                label = copyLabel,
-                icon = TandemIcons.Copy,
-                onClick = {
-                    clipboard.setText(androidx.compose.ui.text.AnnotatedString(message))
-                },
-            )
-            if (retryLabel != null && onRetry != null) {
-                PrimaryPillButton(
-                    label = retryLabel,
-                    icon = TandemIcons.Refresh,
-                    onClick = { onDismiss(); onRetry() },
-                )
-            }
-        },
-    )
-}
-
 /** Confirmation for something that cannot be undone. */
 @Composable
 fun TandemConfirmDialog(

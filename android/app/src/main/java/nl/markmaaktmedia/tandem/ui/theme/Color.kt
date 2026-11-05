@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.Color
  * the same indigo, which is what ties the icon to the app it opens.
  */
 object TandemPalette {
-    val Indigo10 = Color(0xFF0B0A2B)
     val Indigo20 = Color(0xFF1B1A4A)
     val Indigo30 = Color(0xFF2E2C6B)
     val Indigo40 = Color(0xFF454391)
@@ -24,14 +23,12 @@ object TandemPalette {
     val Indigo90 = Color(0xFFE2E1FF)
     val Indigo95 = Color(0xFFF1F0FF)
 
-    val Rose10 = Color(0xFF3A0720)
     val Rose20 = Color(0xFF561433)
     val Rose30 = Color(0xFF742C4B)
     val Rose40 = Color(0xFF934464)
     val Rose80 = Color(0xFFFFB0CB)
     val Rose90 = Color(0xFFFFD9E4)
 
-    val Neutral0 = Color(0xFF000000)
     val Neutral6 = Color(0xFF0E0E13)
     val Neutral10 = Color(0xFF15141B)
     val Neutral12 = Color(0xFF1A1922)
