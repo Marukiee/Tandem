@@ -1,0 +1,37 @@
+name: Tmp smoke
+on:
+  push:
+    branches: [claude/funny-newton-2730df]
+    paths: ["scripts/windows-smoke*", ".github/workflows/tmp-smoke.yml"]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Get the build
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 42095350216 -n windows -D dist-windows
+      - name: Look at the port
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $setup = Get-Item dist-windows/Tandem-Windows-x64-setup.exe
+          Start-Process $setup.FullName -ArgumentList "/S" -Wait
+          $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222"
+          Start-Process "$env:LOCALAPPDATA\Tandem\Tandem.exe"
+          Start-Sleep -Seconds 25
+          Get-CimInstance Win32_Process -Filter "name='msedgewebview2.exe'" | Select-Object -First 1 -ExpandProperty CommandLine | Write-Host
+          netstat -ano | Select-String "LISTENING" | Select-String "9222|127.0.0.1:9" | Write-Host
+          try { (Invoke-WebRequest "http://127.0.0.1:9222/json/list" -TimeoutSec 5).Content | Write-Host } catch { Write-Host "no answer: $($_.Exception.Message)" }
+          Stop-Process -Name Tandem -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 3
