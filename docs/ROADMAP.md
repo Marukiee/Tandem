@@ -395,62 +395,62 @@ Volgorde, van goedkoop naar duur:
    voor zover Windows dat toelaat.
 Alles in CI testen (de app laat zich alleen daar bouwen) en op de laptop van Mark laten proberen.
 
-### Stabiliteit: wat gevonden is (ronde van 2026-11-05)
+### Stabiliteit: wat gevonden is (ronde van 2026-11-05 en 2026-11-06)
 
 Hoe Windows nu getest wordt: `scripts/windows-smoke.ps1` draait de echte installer in elke Windows-run en maakt de run rood bij een fout,
-op `windows-latest` en (mag falen) op `windows-11-arm`. De tests van de app draaien voor het eerst op Windows. `scripts/check-windows.sh` is
-de typecheck voor Windows vanaf de Mac. Hetzelfde script is op een echte laptop gedraaid (Windows 11 Home, Intel, nl-NL), toen nog zonder
-klembord, bestanden en gedeelde muis: de tweede computer van het script kreeg het verkeerde id. Dat is hersteld, de volledige ronde op die
-laptop moet nog.
+op `windows-latest` en (mag falen) op `windows-11-arm`. De tests van de app draaien op Windows. `scripts/check-windows.sh` is de typecheck
+voor Windows vanaf de Mac. Op `windows-11-arm` faalt de run voorlopig: het firewallvenster slikt daar klikken en toetsen weg, en daarna vallen een paar stappen om. Op `windows-latest` en op de laptop is
+het script groen. Een app die vastloopt telt voor Windows nog als reagerend, daarom vraagt het script nu of de app echt antwoordt.
 
-Gezien op de testmachine van GitHub (`windows-latest`, zonder geluid, Bluetooth of klep), zonder fout: koppelen, elke pagina lezen, klembord beide
-kanten, geheim klembord blijft hier, bestanden beide kanten, de gedeelde muis in beide rollen, bijwerken, harde stop, verwijderen. De muis
-met gemarkeerde testinvoer (`TANDEM_TEST_HANDS`), want de hooks negeren wat een programma instuurt. Bestuurd: aanwijzer, klik, toets, shift,
-tekst met accenten, terug aan de rand, een vastgehouden knop laat los bij stilte, de strook aan de rand komt en gaat. Hoofd: oversteken, de echte aanwijzer blijft staan,
-toetsen blijven hier weg, terug aan de rand, Ctrl+Alt+Shift+Esc, en bij een weggevallen verbinding komt de aanwijzer thuis.
+**Twee bevriezingen, alleen gevonden door de knoppen echt te gebruiken.** `ssh_open` en `show_main` waren gewone commando's, die draaien op de hoofdthread, en WebView2 wacht op die thread op een nieuw
+venster. Daardoor liep de hele app vast, tot een harde stop: bij elke klik op Terminal, en bij een klik op Tandem openen of op een apparaat in het paneel als het hoofdvenster dicht was. Hersteld, en
+het script gaat nu door allebei. Regel voor nieuwe code: een commando dat een venster kan maken is `#[tauri::command(async)]`.
 
-Gezien op een echte Windows 11-laptop, zonder fout: stil installeren, eerste start, venster en paneel, één instantie bij een tweede start,
-bijwerken over de draaiende app, herstart na een harde stop, schermopname en encoder (5 ms per beeld, 23 beelden per seconde bij een stilstaand
-bureaublad), geen crash in het foutenlogboek.
+Gezien op een echte laptop (Windows 11 Home, Intel, nl-NL, 2048x1280, echt wifi). Hoe, staat erachter:
+- **Het hele script** op de laptop, 0 fouten: stil installeren, eerste start, alle pagina's, koppelen, Sturen naar, klembord, bestanden, gedeelde muis in beide rollen, bijwerken over de draaiende app, harde stop, encoder, verwijderen.
+- **Tegen `tandemd` op een Mac** (de app bestuurd over de debugpoort, `tandemd` als tweede computer): koppelen; 100 MB beide kanten, hash gelijk, ongeveer 10 seconden; verbinding terug 5 seconden na een harde stop; een bestand ontvangen met alleen het systeemvak (27 MB geheugen); 11 minuten zonder herverbinding; klembord beide kanten (4 KB, accenten, Japans), ook een plaatje en een gekopieerd bestand; geschiedenis zoeken, vastzetten, verwijderen; klembord uit per apparaat; aanbod afwijzen en aannemen; lopende overdracht stoppen, geen half bestand; mappen van de laptop bekijken vanaf de Mac (maken, plaatsen, ophalen, verplaatsen, verwijderen), buiten de map komen geweigerd op 5 manieren, schrijven en verwijderen uit geweigerd; `--send --to` zoals de link van Sturen naar; een schermafbeelding in de echte map komt aan; Quick Share aan en uit; update-check tegen de echte feed; automatisch starten aan en uit; een bevroren computer staat na 75 seconden als weg en is 1 seconde na ontdooien terug.
+- **Tegen de echte Android-app in een emulator**: verbinden, batterij, meldingen en een echte toast, verwijderen van een melding, telefoon laten rinkelen, bestanden beide kanten met hash, gedeelde tekst in de geschiedenis, telefoon bladeren, sms in en uit, code uit een sms met een knop Kopiëren, belvenster met Weigeren, Opnemen, Dempen en Ophangen, bellen vanaf de laptop, geluidsstand, telefoon vergrendelen, telefoonscherm in een venster met klik, Zoek mijn apparaat vanaf de telefoon (volume 75 tijdens het rinkelen, daarna terug), een nieuwe naam komt binnen 2 seconden aan zonder nieuwe verbinding.
+- **De telefoon bedient de laptop**, gelezen in een testvenster op de laptop: trackpad alleen als het is toegestaan, tik is klik, vasthouden en bewegen drukt de knop in, knoppen links en rechts, typen, Enter, Tab, pijlen, wissen, Esc, Ctrl, Shift, Alt, Win, volume omhoog, omlaag en dempen veranderen het echte volume. Presentatie: volgende en vorige. Twee of drie vingers kan `adb` niet, die zijn alleen met tests van de eenheid gedekt.
+- **Het scherm van de laptop op de telefoon**: vraag in het Nederlands, Weigeren met uitleg, Toestaan geeft 2048x1280 op 20 tot 24 beelden per seconde, de laptop toont wie kijkt met een knop Stop, klik en typen komen aan, eenmalig toestaan vraagt de volgende keer opnieuw.
+- **De gedeelde muis**, met gemarkeerde testinvoer. Laptop heeft de muis: oversteken naar een computer, wiel in de goede richting, terug aan de rand, Ctrl+Alt+Shift+Esc. Oversteken naar de telefoon: de pijl verschijnt, volgt, een klik opent een app, terug over de rand. Een andere computer heeft de muis hier: klik, wiel (lijst beweegt), tekst met accent, Shift plus letter, Win+D.
+- **Elke pagina en negen tabbladen van de instellingen**, Nederlands, licht en donker, met een telefoon en een computer gekoppeld. Het paneel. Het venster met het telefoonscherm en de loginvensters spreken nu Nederlands.
+- `hasLid` klopt nu op de laptop. De klep zelf is niet dichtgedaan.
 
-Gezien over echt wifi, de laptop tegen `tandemd` op een Mac, zonder scherm of klembord aan te raken: koppelen met de link van de app, 100 MB beide kanten (ongeveer 10 seconden per
-keer, hash gelijk), een bestand ontvangen terwijl de app alleen in het systeemvak zit en geen webview heeft (27 MB geheugen), verbinding vanzelf terug na een harde stop,
-en de aanwijzer van een andere computer die zonder toestemming meteen wordt teruggestuurd.
-
-Nog niet geprobeerd, en een test op de runner kan dat niet: een echte hand op een echte muis (het pad zonder testmarkering), de echte Mac aan
-de andere kant, geluid, Bluetooth, vergrendelen, de klep, UIPI, toetsenbordindelingen. Dat vraagt een drukke ronde op de laptop.
+Verholpen in deze ronde:
+- De twee bevriezingen hierboven.
+- Terwijl de aanwijzer weg was slikte de hook elke loslating, ook van een toets die hier was ingedrukt. Shift vasthouden tijdens het oversteken bleef hier hangen. Eén keer in een test bleven Ctrl, Alt en Shift zo hangen terwijl de hook de indrukking niet had gezien. Waarom die ene keer is niet bewezen (twee keer dezelfde stappen daarna gingen goed, vermoedelijk antwoordde de hook één keer te laat), maar er blijft nu niets meer hangen: een loslating gaat alleen naar de andere computer als de indrukking dat ook deed.
+- Met een muisknop ingedrukt kon de aanwijzer de rand over, en dan ging de loslating mee en eindigde een sleep hier nooit. De rand is nu een muur zolang een knop vastzit.
+- Een stap van het muiswiel vanaf Windows en Linux was 12 punten, terwijl een pc aan de andere kant er 40 wil voor één klik. Drie stappen voor één klik. Nu 40.
+- Windows zei dat er geen klep was (`lid_closed`), dus de aanwijzer kwam niet thuis bij het dichtklappen. Nu met `PowerSettingRegisterNotification`, dat elke verandering meteen meldt.
+- Hooks die Windows weghaalde kwamen niet terug. Nu vergelijkt een timer `GetLastInputInfo` met wat de hook zag, en zet ze dan opnieuw. Een paniek in de handler neemt het programma niet meer mee. Op een echt weggehaalde hook is dit nooit gezien.
+- Een nieuw wifi-netwerk zonder slaapstand werd de core niet verteld. Nu merkt de thread van de klep dat de adressen veranderen (Windows en Linux).
+- Een nieuwe naam bereikte een apparaat dat verbonden bleef pas na een nieuwe verbinding (core, met een test).
+- De telefoon had voor een Windows- of Linux-computer de toetsen van een Mac en stuurde bij drie vingers Mac-sneltoetsen. Nu Alt en Win of Super, Taakweergave en bureaubladen, de hint per systeem, en een regel wat te doen als er niets gebeurt. De Win-toets is een nieuw bit (16) in de modifiers; een oudere computer negeert het en typt dan alleen de letter.
+- Het venster met het telefoonscherm en het loginvenster waren in het Engels. "Scan docs" en de tekst dat een telefoon geen rand heeft klopten niet.
+- De login-terminal hoorde op Windows nooit dat ssh klaar was; geheim klembord op Windows; verwijderen liet de koppelingen in Sturen naar staan; een console die even oplichtte bij het openen van een instelling; "1 things" in meervoud; bestandsbeheerders van Linux genoemd op Windows; twee ontbrekende vertalingen; een 504 bij het downloaden van NSIS maakte de build rood; de tests van de app draaiden nergens.
 
 Open, gezien:
-- **Wat is er nieuw op Windows gaat grotendeels over de Mac.** 170 van de 434 regels in `changelog.json` noemen de Mac ("The Mac builds
-  again", "macOS does not let a call's sound through"). Een veld per regel met de systemen waar die over gaat lost het op, plus een filter in
-  `whats_new`. Dat vraagt een besluit over `changelog.json`. De test slaat deze lijst nu over, anders blijft de run altijd rood.
+- **Een bestand gaat niet verder na een harde stop van de ontvanger.** 400 MB stopte op 395 MB, de verbinding was na 5 seconden terug, en daarna gebeurt er niets. Het `.part`-bestand blijft 3 dagen staan, de ontvanger is het aanbod vergeten. Oplossing: geaccepteerde aanbiedingen bewaren naast het `.part`-bestand en na het verbinden opnieuw ophalen.
+- **Wat is er nieuw op Windows gaat grotendeels over de Mac.** 170 van de 434 regels in `changelog.json` noemen de Mac. Een veld per regel met de systemen waar die over gaat lost het op, plus een filter in `whats_new`. Dat vraagt een besluit over `changelog.json`. Het script slaat deze lijst nu over.
+- **Besluit nodig:** Windows biedt bij de eerste start Downloads, Documenten en Bureaublad aan, en elk gekoppeld apparaat mag daar lezen, schrijven en verwijderen zonder dat iemand dat heeft gekozen (`offer_usual_folders`). Op de Mac is het een knop (`macos/Sources/Tandem/UI/FileSettings.swift`).
+- Een bestand sturen naar een apparaat dat weg is zegt `offline` en wordt niet bewaard. Dat is zo bedoeld, maar de pagina zegt er nog weinig over. Een bevroren computer staat pas na 75 seconden als weg.
+- `webcam_start` geeft de kale tekst `webcam-not-here` (de knop is grijs, dus niemand ziet hem nu). De statistieken op de telefoon bij het scherm van de laptop tonen 0,0 Mbit/s en doel 0,0 Mbit/s. De naam boven het trackpad wordt afgesneden zonder puntjes.
+- De telefoon antwoordt `Pong` op `Ping`, ook als hij de aanwijzer niet meer heeft (`PointerIn.kt`). In theorie blijft de aanwijzer dan weg, tot Ctrl+Alt+Shift+Esc. Niet gezien.
+- De eerste `Size` na het verbinden kwam voor een `Release` aan (venster van 1,5 seconde, alleen in het log gezien).
 
 Open, alleen uit de code gelezen, nog niet gezien:
-- De hooks van de gedeelde muis hebben geen bewaker. Windows haalt een trage hook stil weg (`LowLevelHooksTimeout`), en daarna doet de muis
-  niets meer zonder melding. De handler gebruikt `.lock().unwrap()` binnen `extern "system"`: een paniek daar neemt het hele programma mee.
-  En `see()` houdt `INNER` vast terwijl `neighbours` in de hook de locks van de instellingen en de data pakt, wat zo'n hook juist traag kan maken.
-- Geluid: een fout in een stream wordt alleen gelogd en de stream gaat niet opnieuw open als het standaardapparaat wisselt
-  (`IMMNotificationClient` ontbreekt).
-- Schermopname met GDI maakt per beeld een nieuwe bitmap, `CAPTUREBLT` kan de aanwijzer laten knipperen, alleen het hoofdscherm, en beveiligde
-  video blijft zwart. De echte oplossing staat hierboven (Windows.Graphics.Capture).
-- Een klik op een melding doet op Windows niets, en de instelling zegt voorgoed "Replies are not possible from here yet".
-- Firewall: Tandem maakt geen regel en merkt niet dat hij geblokkeerd wordt. Op de laptop staan de regels die de vraag van Windows maakte alleen op het profiel Privé, dus op
-  een netwerk dat Windows als Openbaar ziet (de standaard bij nieuwe wifi) is Tandem vermoedelijk onbereikbaar zonder melding. Op een account zonder beheerdersrechten kan niemand die vraag
-  beantwoorden. De app zou dit moeten zien en uitleggen.
-- **Besluit nodig:** Windows biedt bij de eerste start Downloads, Documenten en Bureaublad aan, en elk gekoppeld apparaat mag daar lezen, schrijven en verwijderen zonder dat iemand dat
-  heeft gekozen (`offer_usual_folders`, gezien over wifi). De instelling staat er wel, maar pas als je hem opzoekt. De core laat een computer juist niets aanbieden wat niemand heeft gezien, en op de Mac is het een knop ("Share the usual folders").
-- De installer en de app zijn niet ondertekend, terwijl ze hooks, invoer en schermopname gebruiken. SmartScreen en virusscanners kunnen daarover
-  vallen.
-- Wisselen van wifi zonder slaapstand wordt de core op Windows niet verteld (`network_changed` alleen na een slaapgat).
-- Verwijderen laat misschien de instelling van de klep staan. Nakijken of `lid::restore` ook loopt na een crash en bij afsluiten van Windows
-  (`RunEvent::Exit` komt dan misschien niet).
-- Een niet-verhoogd proces kan geen verhoogde vensters of UAC bedienen (UIPI). Testen, en dan in `docs/PARITY.md`.
-- Toetsenbordindelingen via `key_of`, en Win+L terwijl de muis bij een andere computer is: nog niet geprobeerd.
+- Op de Mac kan het probleem met een loslating hetzelfde zijn: de tap van `PointerShare.swift` stuurt elke `keyUp` door. Nog na te lopen. Een muiswiel op een Mac telt 10 punten per regel, dus op een pc ongeveer 4 stappen voor één klik; `ScrollCarry` zou per ontvanger moeten schalen, want Mac naar Mac is goed zo.
+- `see()` houdt `INNER` vast terwijl `neighbours` de locks van de instellingen en de data pakt, wat de hook traag kan maken. Het meest waarschijnlijke vervolg op de ene keer dat toetsen hingen.
+- Geluid: een fout in een stream wordt alleen gelogd en de stream gaat niet opnieuw open als het standaardapparaat wisselt.
+- Schermopname met GDI maakt per beeld een nieuwe bitmap, `CAPTUREBLT` kan de aanwijzer laten knipperen, alleen het hoofdscherm, en beveiligde video blijft zwart.
+- Een klik op een melding doet op Windows niets, en de instelling zegt "Replies are not possible from here yet".
+- Firewall: Tandem maakt geen regel en merkt niet dat hij geblokkeerd wordt. De regels die de vraag van Windows maakte staan alleen op Privé, dus op een netwerk dat Windows als Openbaar ziet is Tandem vermoedelijk onbereikbaar zonder melding. Op een account zonder beheerdersrechten kan niemand die vraag beantwoorden.
+- De installer en de app zijn niet ondertekend, terwijl ze hooks, invoer en schermopname gebruiken.
+- Of `lid::restore` ook loopt na een crash en bij afsluiten van Windows.
 - Klembord dat als geheim gemarkeerd is: op Linux doet de code nog niets, terwijl `clip_secret_note` het belooft.
+- De fout dat de telefoon geen antwoord krijgt als invoer wordt geweigerd: de laptop toont het wel, de telefoon heeft alleen de vaste regel.
 
-Verholpen in deze ronde: de login-terminal hoorde op Windows nooit dat ssh klaar was; geheim klembord op Windows; verwijderen liet de koppelingen in
-"Sturen naar" staan; console die even oplicht bij het openen van een instelling; "1 things" in meervoud; bestandsbeheerders van Linux genoemd op Windows; twee ontbrekende vertalingen
-(`cancelled`, `cancel_transfer`); een 504 bij het downloaden van NSIS maakte de build rood; de tests van de app draaiden nergens.
+Nog niet geprobeerd, en dat kan alleen met iemand aan de laptop: een echte hand op een echte muis (het pad zonder testmarkering), de klep echt dicht, wifi uit en aan, vergrendelen met Win+L terwijl de muis weg is, UIPI (een verhoogd venster bedienen), toetsenbordindelingen, het menu van het systeemvak, slepen op de strook aan de rand. Ook niet: geluid (`output_start`, de microfoon) en camera in een emulator zonder geluid, echte Quick Share met een ander apparaat, de telefoon in de echte wereld, "Wi-Fi delen" en de Terminal van de telefoon met een wachtwoord (bewust niet: dat leest een echt wachtwoord).
 
 ## 3. Linux
 
