@@ -15,16 +15,19 @@ use windows::Media::{
     SystemMediaTransportControlsTimelineProperties,
 };
 use windows::Storage::Streams::{DataWriter, InMemoryRandomAccessStream, RandomAccessStreamReference};
-use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
+use windows::Win32::Foundation::{ERROR_SUCCESS, HANDLE, HINSTANCE, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows::Win32::Graphics::Dwm::{DWMWA_CLOAKED, DwmGetWindowAttribute};
 use windows::Win32::System::DataExchange::{AddClipboardFormatListener, IsClipboardFormatAvailable, RegisterClipboardFormatW};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
+use windows::Win32::System::Power::{
+    DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS, GetPwrCapabilities, GetSystemPowerStatus, POWERBROADCAST_SETTING,
+    PowerSettingRegisterNotification, SYSTEM_POWER_CAPABILITIES, SYSTEM_POWER_STATUS,
+};
 use windows::Win32::System::WinRT::{ISystemMediaTransportControlsInterop, RO_INIT_MULTITHREADED, RoInitialize};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DispatchMessageW, EnumChildWindows, GWL_EXSTYLE, GWL_STYLE, GetClassNameW,
+    CreateWindowExW, DEVICE_NOTIFY_CALLBACK, DefWindowProcW, DispatchMessageW, EnumChildWindows, GWL_EXSTYLE, GWL_STYLE, GetClassNameW,
     GetForegroundWindow, GetMessageW, GetWindowLongPtrW, GetWindowRect, HWND_MESSAGE, IsIconic, IsWindowVisible, MSG,
-    RegisterClassW, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE, WM_CLIPBOARDUPDATE, WNDCLASSW,
+    PBT_POWERSETTINGCHANGE, RegisterClassW, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE, WM_CLIPBOARDUPDATE, WNDCLASSW,
 };
 use windows::core::{BOOL, HSTRING, Ref, factory, w};
 
@@ -331,11 +334,12 @@ unsafe extern "system" fn clipboard_proc(window: HWND, message: u32, wparam: WPA
 // ---- Seeing the mouse and the keyboard ---------------------------------------------------------------------------------
 
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU32, Ordering};
 
 use windows::Win32::Foundation::POINT;
+use windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, GetSystemMetrics, HHOOK, KBDLLHOOKSTRUCT, MSLLHOOKSTRUCT, SM_CXSCREEN,
+    CallNextHookEx, GetSystemMetrics, HHOOK, KBDLLHOOKSTRUCT, MSLLHOOKSTRUCT, SM_CXSCREEN, SetTimer, UnhookWindowsHookEx, WM_TIMER,
     SM_CXVIRTUALSCREEN, SM_CYSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SetCursorPos, SetWindowsHookExW, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP,
     WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEHWHEEL, WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_RBUTTONDOWN,
     WM_RBUTTONUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
@@ -383,9 +387,45 @@ pub fn screen_locked() -> Option<bool> {
     }
 }
 
-/// Windows tells a lid by the power settings, which this does not read: there the lid is not asked about.
+/// The lid as Windows last told it. There is no call to ask it: Windows tells whoever subscribes, once straight away and then
+/// at every change.
+static LID_CLOSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// {BA3E0F4D-B817-4094-A2D1-D56379E6A0F3}, which the crate only has behind a feature that brings in much more.
+const GUID_LIDSWITCH_STATE_CHANGE: windows::core::GUID = windows::core::GUID::from_u128(0xba3e0f4d_b817_4094_a2d1_d56379e6a0f3);
+
+unsafe extern "system" fn lid_changed(_context: *const c_void, kind: u32, setting: *const c_void) -> u32 {
+    if kind == PBT_POWERSETTINGCHANGE && !setting.is_null() {
+        let setting = unsafe { &*(setting as *const POWERBROADCAST_SETTING) };
+        if setting.PowerSetting == GUID_LIDSWITCH_STATE_CHANGE && setting.DataLength >= 1 {
+            LID_CLOSED.store(setting.Data[0] == 0, std::sync::atomic::Ordering::Relaxed);
+        }
+    }
+    0
+}
+
+/// Whether the lid is closed, or nothing on a machine without one.
 pub fn lid_closed() -> Option<bool> {
-    None
+    static PRESENT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    let present = *PRESENT.get_or_init(|| {
+        let mut capabilities = SYSTEM_POWER_CAPABILITIES::default();
+        if !unsafe { GetPwrCapabilities(&mut capabilities) } || !capabilities.LidPresent {
+            return false;
+        }
+        // For as long as the app runs, so these are never handed back.
+        let parameters = Box::leak(Box::new(DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS { Callback: Some(lid_changed), Context: std::ptr::null_mut() }));
+        let mut registration = std::ptr::null_mut();
+        let result = unsafe {
+            PowerSettingRegisterNotification(
+                &GUID_LIDSWITCH_STATE_CHANGE,
+                DEVICE_NOTIFY_CALLBACK,
+                HANDLE(parameters as *mut DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS as *mut c_void),
+                &mut registration,
+            )
+        };
+        result == ERROR_SUCCESS
+    });
+    present.then(|| LID_CLOSED.load(std::sync::atomic::Ordering::Relaxed))
 }
 
 /// Holds "system required" until the guard of `StayAwake` is dropped, which ends the wait.
@@ -415,14 +455,27 @@ impl Capture {
             .name("tandem-hooks".into())
             .spawn(|| unsafe {
                 let module = GetModuleHandleW(None).ok().map(|m| HINSTANCE(m.0));
-                let mouse: Option<HHOOK> = SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook), module, 0).ok();
-                let keyboard: Option<HHOOK> = SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook), module, 0).ok();
-                if mouse.is_none() || keyboard.is_none() {
-                    log::warn!("the hooks on the mouse and keyboard were not accepted");
-                }
+                let mut hooks = set_hooks(module);
+                let _ = SetTimer(None, 0, 5000, None);
                 // Hooks of this kind are called by way of the message loop of the thread that set them.
                 let mut message = MSG::default();
                 while GetMessageW(&mut message, None, 0, 0).as_bool() {
+                    if message.message == WM_TIMER {
+                        // A hook that answers too slowly is taken away by Windows, without a word. The shared mouse would
+                        // just stop until the next start.
+                        let mut last = LASTINPUTINFO { cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32, dwTime: 0 };
+                        if GetLastInputInfo(&mut last).as_bool() && missed_input(last.dwTime, HOOK_SAW.load(Ordering::Relaxed)) {
+                            if SET_AGAIN.fetch_add(1, Ordering::Relaxed) < 5 {
+                                log::warn!("the hooks did not see the last input, they are set again");
+                            }
+                            for hook in hooks.into_iter().flatten() {
+                                let _ = UnhookWindowsHookEx(hook);
+                            }
+                            hooks = set_hooks(module);
+                            HOOK_SAW.store(last.dwTime, Ordering::Relaxed);
+                        }
+                        continue;
+                    }
                     let _ = TranslateMessage(&message);
                     DispatchMessageW(&message);
                 }
@@ -442,8 +495,40 @@ impl Capture {
     }
 }
 
+/// The moment of the last event the hooks were called for, in the ticks of Windows.
+static HOOK_SAW: AtomicU32 = AtomicU32::new(0);
+static SET_AGAIN: AtomicU32 = AtomicU32::new(0);
+
+unsafe fn set_hooks(module: Option<HINSTANCE>) -> [Option<HHOOK>; 2] {
+    let mouse = unsafe { SetWindowsHookExW(WH_MOUSE_LL, Some(mouse_hook), module, 0) }.ok();
+    let keyboard = unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(keyboard_hook), module, 0) }.ok();
+    if mouse.is_none() || keyboard.is_none() {
+        log::warn!("the hooks on the mouse and keyboard were not accepted");
+    }
+    [mouse, keyboard]
+}
+
+/// Whether Windows heard input well after the last the hooks heard of. Ticks wrap around every 49 days. A window of an
+/// administrator also looks like this, since its input is kept from the hooks: setting them again then does no harm.
+fn missed_input(last_input: u32, hook_saw: u32) -> bool {
+    last_input.wrapping_sub(hook_saw) as i32 > 2000
+}
+
+#[test]
+fn input_the_hooks_did_not_see_is_noticed() {
+    assert!(!missed_input(10_000, 10_000));
+    assert!(!missed_input(11_000, 10_000));
+    assert!(missed_input(13_000, 10_000));
+    // The hooks heard something after the last input Windows counted.
+    assert!(!missed_input(10_000, 13_000));
+    // Over the point where the ticks wrap around.
+    assert!(missed_input(3_000, u32::MAX - 500));
+    assert!(!missed_input(100, u32::MAX - 500));
+}
+
+/// A panic that crosses into Windows ends the whole app, which is worse than one event that goes nowhere.
 fn tell(seen: Seen) -> bool {
-    HANDLER.get().is_some_and(|handler| handler(seen))
+    std::panic::catch_unwind(|| HANDLER.get().is_some_and(|handler| handler(seen))).unwrap_or(false)
 }
 
 /// A machine without a person has no hands on its mouse, and everything else that is made by a program is ignored by the hooks. Events
@@ -459,6 +544,7 @@ unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) 
     if code >= 0 {
         // Mouse events that this program made itself (putting the pointer back in the middle) are not the hands.
         let info = unsafe { &*(lparam.0 as *const MSLLHOOKSTRUCT) };
+        HOOK_SAW.store(info.time, Ordering::Relaxed);
         let injected = info.flags & 0x1 != 0 && !hands_of_the_test(info.dwExtraInfo);
         let swallow = if injected {
             false
@@ -508,6 +594,7 @@ unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) 
 unsafe extern "system" fn keyboard_hook(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     if code >= 0 {
         let info = unsafe { &*(lparam.0 as *const KBDLLHOOKSTRUCT) };
+        HOOK_SAW.store(info.time, Ordering::Relaxed);
         let injected = info.flags.0 & 0x10 != 0 && !hands_of_the_test(info.dwExtraInfo);
         if !injected {
             let down = match wparam.0 as u32 {

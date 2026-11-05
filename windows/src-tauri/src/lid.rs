@@ -42,8 +42,23 @@ pub fn start(app: AppHandle) {
             let mut was_closed = false;
             let mut was_locked = false;
             let mut last_look = SystemTime::now();
+            let mut addresses = tandem_core::net::local_candidates(0, false);
+            let mut seconds = 0u32;
             loop {
                 std::thread::sleep(Duration::from_secs(1));
+                // Nothing here says the network changed. Unnoticed, a switch to another Wi-Fi only shows once the old
+                // connections time out, over a minute later.
+                seconds = seconds.wrapping_add(1);
+                if seconds % 5 == 0 {
+                    let now = tandem_core::net::local_candidates(0, false);
+                    if now != addresses {
+                        log::info!("the addresses of this computer changed");
+                        addresses = now;
+                        if let Ok(engine) = app.state::<AppState>().engine() {
+                            engine.network_changed();
+                        }
+                    }
+                }
                 // Far more time went by than this slept: the computer was asleep, and the others have long given up on it. It tries them now.
                 let slept = last_look.elapsed().is_ok_and(|gone| gone > Duration::from_secs(20));
                 last_look = SystemTime::now();
