@@ -13,6 +13,7 @@ use clap::{Parser, Subcommand};
 use tandem_core::events::Event;
 use tandem_core::files::{FilePolicy, Share, default_shares};
 use tandem_core::platform::DesktopFiles;
+use tandem_core::pointer_share::PointerShareMsg;
 use tandem_core::proto::ShareOrigin;
 use tandem_core::sms::SmsMsg;
 use tandem_core::store::{FileSecretStore, Store};
@@ -63,6 +64,10 @@ struct Cli {
     /// Claim a capability this daemon does not have (repeat for more), to see what the apps offer for it, e.g. `audio.bt_sink`.
     #[arg(long, global = true, hide = true)]
     pretend_cap: Vec<String>,
+    /// Take in the pointer of another computer as a screen of this size would, written 1920x1080, and print every move, to try that
+    /// computer's side of the shared mouse.
+    #[arg(long, global = true, hide = true)]
+    pretend_pointer_screen: Option<String>,
     #[command(subcommand)]
     command: Command,
 }
@@ -97,6 +102,14 @@ enum Command {
     SoundMode { device: String, mode: String },
     /// Remove a device from the circle for good.
     Remove { device: String },
+    /// Say one thing of the shared mouse to a device, to try its side: `enter right 0.5`, `leave 0.5`, `release`, `ping`, `move 10 -5`,
+    /// `scroll 0 -4`, `button 0 down`, `key 0 down 0`, `text hello`.
+    #[command(hide = true)]
+    Pointer {
+        device: String,
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        what: Vec<String>,
+    },
     /// Print this device's id and name.
     Whoami,
     /// List a folder of another device: `tandemd ls phone /Phone/DCIM`. Without a path, the folders it offers.
@@ -363,6 +376,13 @@ async fn execute(engine: &Engine, command: &Command) -> Result<String> {
             }
             Ok("sent\n".to_string())
         }
+        Command::Pointer { device, what } => {
+            let id = resolve(engine, device)?;
+            if engine.send_msg(&[id], pointer_message(what)?).await.is_empty() {
+                bail!("that device is not connected right now");
+            }
+            Ok("sent\n".to_string())
+        }
         Command::SoundMode { device, mode } => {
             use tandem_core::proto::SoundMode as M;
             let id = resolve(engine, device)?;
@@ -514,6 +534,60 @@ fn files_policy(engine: &Engine, device: Option<&str>, action: Option<&FilesActi
     Ok(describe_policy(engine, target.as_ref(), &policy))
 }
 
+/// A size written 1920x1080.
+fn screen_size(text: &str) -> Result<(u32, u32)> {
+    let (width, height) = text.split_once('x').context("a size is written 1920x1080")?;
+    Ok((width.parse()?, height.parse()?))
+}
+
+/// What a computer that takes the pointer in answers, and without which the one that has the mouse takes it back within two seconds.
+async fn pretend_pointer(engine: &Engine, event: &Event, width: u32, height: u32) {
+    use tandem_core::proto::{InputMsg, Msg};
+    match event {
+        Event::PointerShare { from, msg: PointerShareMsg::Enter { .. } } => {
+            engine.send_msg(&[*from], Msg::PointerShare(PointerShareMsg::Size { width, height })).await;
+        }
+        Event::PointerShare { from, msg: PointerShareMsg::Ping } => {
+            engine.send_msg(&[*from], Msg::PointerShare(PointerShareMsg::Pong)).await;
+        }
+        Event::Input { input: InputMsg::Pointer { dx, dy }, .. } => println!("move {dx} {dy}"),
+        _ => {}
+    }
+}
+
+/// The message that `tandemd pointer` was asked to say.
+fn pointer_message(what: &[String]) -> Result<tandem_core::proto::Msg> {
+    use tandem_core::pointer_share::{Edge, PointerShareMsg as Share};
+    use tandem_core::proto::{InputMsg as Input, Msg};
+    let words: Vec<&str> = what.iter().map(String::as_str).collect();
+    let pressed = |state: &str| match state {
+        "down" => Ok(true),
+        "up" => Ok(false),
+        other => bail!("down or up, not {other:?}"),
+    };
+    Ok(match words.as_slice() {
+        ["enter", edge, along] => {
+            let edge = match *edge {
+                "left" => Edge::Left,
+                "right" => Edge::Right,
+                "top" => Edge::Top,
+                "bottom" => Edge::Bottom,
+                other => bail!("left, right, top or bottom, not {other:?}"),
+            };
+            Msg::PointerShare(Share::Enter { edge, along: along.parse()? })
+        }
+        ["leave", along] => Msg::PointerShare(Share::Leave { along: along.parse()? }),
+        ["release"] => Msg::PointerShare(Share::Release),
+        ["ping"] => Msg::PointerShare(Share::Ping),
+        ["move", dx, dy] => Msg::Input(Input::Pointer { dx: dx.parse()?, dy: dy.parse()? }),
+        ["scroll", dx, dy] => Msg::Input(Input::Scroll { dx: dx.parse()?, dy: dy.parse()? }),
+        ["button", button, state] => Msg::Input(Input::Button { button: button.parse()?, down: pressed(state)? }),
+        ["key", code, state, mods] => Msg::Input(Input::Key { code: code.parse()?, down: pressed(state)?, mods: mods.parse()? }),
+        ["text", text @ ..] => Msg::Input(Input::Text(text.join(" "))),
+        _ => bail!("what should be said to it? {words:?}"),
+    })
+}
+
 /// The answer of a phone about its messages, as lines: conversations newest first, the messages of one oldest first.
 fn sms_text(answer: SmsMsg) -> Result<String> {
     let mut out = String::new();
@@ -576,6 +650,7 @@ fn command_line(command: &Command) -> Option<String> {
         Command::Lock { device } => vec!["lock".into(), device.clone()],
         Command::SoundMode { device, mode } => vec!["sound-mode".into(), device.clone(), mode.clone()],
         Command::Remove { device } => vec!["remove".into(), device.clone()],
+        Command::Pointer { device, what } => [vec!["pointer".to_string(), device.clone()], what.clone()].concat(),
         Command::PairShow => vec!["pair-show".into()],
         Command::Ls { device, path } => vec!["ls".into(), device.clone(), path.clone()],
         Command::Sms { device, thread } => vec!["sms".into(), device.clone(), thread.map(|t| t.to_string()).unwrap_or_default()],
@@ -636,6 +711,7 @@ fn parse_line(line: &str) -> Option<Command> {
         "clip" => Some(Command::Clip { device: rest.first()?.clone(), text: vec![rest.get(1)?.clone()] }),
         "remove" => Some(Command::Remove { device: rest.first()?.clone() }),
         "lock" => Some(Command::Lock { device: rest.first()?.clone() }),
+        "pointer" => Some(Command::Pointer { device: rest.first()?.clone(), what: rest[1..].to_vec() }),
         "sound-mode" => Some(Command::SoundMode { device: rest.first()?.clone(), mode: rest.get(1)?.clone() }),
         "wifi-ask" => Some(Command::WifiAsk { device: rest.first()?.clone(), ssid: rest.get(1)?.clone() }),
         "call-act" => Some(Command::CallAct { device: rest.first()?.clone(), id: rest.get(1)?.clone(), action: rest.get(2)?.clone() }),
@@ -715,6 +791,9 @@ fn print_event(engine: &Engine, event: &Event) {
             notification.title,
             if notification.otp.is_some() { "found" } else { "none" }
         ),
+        // Twice a second for as long as a pointer is away: that would drown out everything else.
+        Event::PointerShare { msg: PointerShareMsg::Ping | PointerShareMsg::Pong, .. } => {}
+        Event::PointerShare { from, msg } => println!("pointer from {}: {msg:?}", name_of(from)),
         // Keys and clicks, one line each; a pointer that moves would flood the screen, so those only as a dot.
         Event::Input { from, input } => match input {
             tandem_core::proto::InputMsg::Pointer { .. } => {
@@ -804,6 +883,7 @@ async fn main() -> Result<()> {
             engine.set_focus_sharing(true, true);
             engine.focus_local(false, "").await;
             let mut events = engine.subscribe();
+            let pretend_pointer_screen = cli.pretend_pointer_screen.as_deref().map(screen_size).transpose()?;
             let control_dir = data_dir.clone();
             let control = tokio::spawn({
                 let engine = engine.clone();
@@ -833,6 +913,9 @@ async fn main() -> Result<()> {
                             }
                             if let Event::Focus { on, name, .. } = &event {
                                 engine.focus_local(*on, name).await;
+                            }
+                            if let Some((width, height)) = pretend_pointer_screen {
+                                pretend_pointer(&engine, &event, width, height).await;
                             }
                             print_event(&engine, &event)
                         }

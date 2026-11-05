@@ -14,8 +14,23 @@
 
   const report = { steps: [], findings: [], macWords: [] };
 
+  // What's new is the changelog of every system together, read here as it is written there. It is listed on the roadmap as one thing.
+  function withoutTheNews(read) {
+    const hidden = [];
+    for (const heading of document.querySelectorAll("h2")) {
+      if (heading.innerText.trim() !== i18n.t("whats_new")) continue;
+      for (let element = heading; element; element = element.nextElementSibling) {
+        hidden.push([element, element.style.display]);
+        element.style.display = "none";
+      }
+    }
+    const value = read();
+    for (const [element, display] of hidden) element.style.display = display;
+    return value;
+  }
+
   function look(lang, where, names) {
-    let text = (document.body.innerText || "").replace(/\s*\n\s*/g, "\n").trim();
+    let text = withoutTheNews(() => document.body.innerText || "").replace(/\s*\n\s*/g, "\n").trim();
     // The name of a device or a file is somebody's own word, not one of ours.
     for (const name of names) text = text.split(name).join("");
     report.steps.push({ lang, where, text });

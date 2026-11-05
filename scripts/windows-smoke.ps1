@@ -1,12 +1,14 @@
 <#
 Tries the Windows app the way a person does, on this machine, and fails when something is wrong: it installs, starts, shows its
-windows, pairs with a second device, moves the clipboard and files both ways, survives an update and a crash, and goes away again.
+windows, pairs with a second device, moves the clipboard and files both ways, shares its mouse in both roles, survives an update and
+a crash, and goes away again.
 
     pwsh scripts/windows-smoke.ps1 -Setup dist-windows/Tandem-Windows-x64-setup.exe -Daemon dist-windows/tandemd-windows-x86_64.zip
 
-The second device is tandemd on this same machine. The app is driven through the debugging port of its web view, which needs nothing
-in the app itself and nothing installed. What it finds lands in -Out (summary.md, screenshots, logs, every text on every page).
-It needs a desktop: run it in a logged-in session, not straight from SSH. It takes over the clipboard and the screen while it runs.
+The second device is tandemd on this same machine. The app is driven through the debugging port of its web view and asks for that port
+when TANDEM_TEST_DEBUG_PORT is set; nothing gets installed for it. What it finds lands in -Out (summary.md, screenshots, logs, every
+text on every page). It needs a desktop: run it in a logged-in session, not straight from SSH. It takes over the clipboard, the mouse,
+the keyboard and the screen while it runs, so nobody can use the machine meanwhile.
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Setup,
@@ -32,6 +34,46 @@ $installed = Join-Path $env:LOCALAPPDATA "Tandem"
 $exe = Join-Path $installed "Tandem.exe"
 $log = Join-Path $env:LOCALAPPDATA "nl.markmaaktmedia.tandem\logs\tandem.log"
 $mainPage = "index\.html|tauri\.localhost/?$"
+
+# The hands of a person, as far as a script can be them. The hooks of the app ignore input that a program makes, unless it carries the
+# mark that TEST_HANDS in winsys/src/imp.rs looks for. All in pixels of the screen, whatever the scale of the display.
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class SmokeHands {
+    public struct Point { public int X, Y; }
+    [StructLayout(LayoutKind.Sequential)] struct MouseInput { public int dx, dy; public uint data, flags, time; public IntPtr extra; }
+    [StructLayout(LayoutKind.Sequential)] struct KeyInput { public ushort vk, scan; public uint flags, time; public IntPtr extra; }
+    [StructLayout(LayoutKind.Explicit)] struct Either { [FieldOffset(0)] public MouseInput mouse; [FieldOffset(0)] public KeyInput key; }
+    [StructLayout(LayoutKind.Sequential)] struct Input { public uint type; public Either what; }
+    [DllImport("user32.dll")] static extern uint SendInput(uint count, Input[] inputs, int size);
+    [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
+    [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] static extern bool GetCursorPos(out Point point);
+    [DllImport("user32.dll")] static extern int GetSystemMetrics(int index);
+    [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
+    static readonly IntPtr Mark = new IntPtr(0x54414E44);
+    static SmokeHands() { SetProcessDPIAware(); }
+    static void Send(Input input) { SendInput(1, new[] { input }, Marshal.SizeOf(typeof(Input))); }
+    static void Mouse(int dx, int dy, uint flags) {
+        var input = new Input { type = 0 };
+        input.what.mouse = new MouseInput { dx = dx, dy = dy, flags = flags, extra = Mark };
+        Send(input);
+    }
+    public static void Move(int dx, int dy) { Mouse(dx, dy, 1); }
+    public static void Left(bool down) { Mouse(0, 0, down ? 2u : 4u); }
+    public static void Key(ushort vk, bool down) {
+        var input = new Input { type = 1 };
+        input.what.key = new KeyInput { vk = vk, flags = down ? 0u : 2u, extra = Mark };
+        Send(input);
+    }
+    public static void Put(int x, int y) { SetCursorPos(x, y); }
+    public static Point At() { Point point; GetCursorPos(out point); return point; }
+    public static int Width { get { return GetSystemMetrics(0); } }
+    public static int Height { get { return GetSystemMetrics(1); } }
+    public static bool LeftIsDown { get { return (GetAsyncKeyState(1) & 0x8000) != 0; } }
+}
+"@
 
 function Note([string]$text) {
     Write-Host $text
@@ -146,6 +188,8 @@ function Evaluate($page, [string]$expression, [int]$seconds = 120) {
                 $text = ($message.params.args | ForEach-Object { if ($_.value) { $_.value } else { $_.description } }) -join " "
                 $script:pageErrors[[string]$text] = $page.url
             } elseif ($message.id -eq 2) {
+                # The page went away while it was being asked: an answer of the debugger, with nothing of the page in it.
+                if ($message.error) { throw "the debugger said: $($message.error.message)" }
                 $details = $message.result.exceptionDetails
                 if ($details) {
                     $why = $(if ($details.exception.value) { $details.exception.value } elseif ($details.exception.description) { $details.exception.description } else { $details.text })
@@ -175,6 +219,11 @@ function WalkPages([string]$pattern, [string]$label) {
         return
     }
     $report = Evaluate $page (Get-Content $walk -Raw -Encoding UTF8)
+    # Nothing piped into a loop still goes round once, which would read as a finding with nothing in it.
+    if (-not $report) {
+        Check $false "$label could be looked at" "the page gave no report"
+        return
+    }
     $text = ($report.steps | ForEach-Object { "## [$($_.lang)] $($_.where)`n$($_.text)`n" }) -join "`n"
     Add-Content (Join-Path $Out "ui-text.txt") "# $label`n`n$text" -Encoding UTF8
     $lines = @($report.findings | ForEach-Object { "[$($_.lang)] $($_.where): $($_.what): $($_.excerpt)" })
@@ -211,8 +260,25 @@ function Helper([string[]]$arguments, [int]$seconds = 60) {
     return [pscustomobject]@{ ok = ($process.ExitCode -eq 0); text = ($output.Result + $errors.Result).Trim() }
 }
 
+function StartHelper {
+    # Its screen is as big as this one, so the whole edge of this one leads to it.
+    $script:helper = Start-Process $tandemd -PassThru -NoNewWindow -RedirectStandardOutput $helperOut -RedirectStandardError "$helperOut.err" `
+        -ArgumentList "--data-dir", "`"$helperData`"", "--download-dir", "`"$helperFiles`"", "--name", "SmokeHelper", "--port", "47901", `
+        "--pretend-cap", "pointer.ping", "--pretend-pointer-screen", "$([SmokeHands]::Width)x$([SmokeHands]::Height)", "run"
+}
+
 function HelperSaid([string]$pattern) {
     return (Test-Path $helperOut) -and (Select-String -Path $helperOut -Pattern $pattern -Quiet)
+}
+
+function HelperCount([string]$pattern) {
+    if (-not (Test-Path $helperOut)) { return 0 }
+    return @(Select-String -Path $helperOut -Pattern $pattern).Count
+}
+
+function Say([string[]]$what) {
+    $said = Helper (@("pointer", $script:appId) + $what) 20
+    if (-not $said.ok) { throw "tandemd pointer $($what -join ' '): $($said.text)" }
 }
 
 function DeviceOnline([string]$id) {
@@ -225,8 +291,8 @@ $script:helperId = $null
 
 # ---- Install and start --------------------------------------------------------------------------------------------------------
 
-# The port is asked for from outside, so the build that is tested is the build people get.
-$env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=$DebugPort"
+$env:TANDEM_TEST_DEBUG_PORT = "$DebugPort"
+$env:TANDEM_TEST_HANDS = "1"
 # The panel goes away a few seconds after it closes instead of a few minutes, so that can be seen here too.
 $env:TANDEM_PANEL_KEPT_SECONDS = "6"
 
@@ -256,6 +322,8 @@ Part "First start" {
     $state = App "get_state"
     Check ($state.ready -and -not $state.error) "the window sees a running engine" "$($state.error)"
     $script:appId = $state.self.id
+    # A run that stopped halfway leaves its second device behind on a machine that keeps the app.
+    foreach ($old in @($state.devices | Where-Object { $_.name -eq "SmokeHelper" })) { [void](App "remove_device" @{ id = $old.id }) }
     Note "- version $($state.version), running as $($state.self.name) on port $($state.self.port), language $($state.systemLanguage)"
     Note "- Windows $([Environment]::OSVersion.Version) $env:PROCESSOR_ARCHITECTURE"
 }
@@ -270,19 +338,23 @@ Part "Every page, nothing paired yet" {
 Part "Pairing" {
     New-Item -ItemType Directory -Force $helperData, $helperFiles | Out-Null
     Expand-Archive $Daemon (Join-Path $work "daemon") -Force
-    $script:helper = Start-Process $tandemd -PassThru -NoNewWindow -RedirectStandardOutput $helperOut -RedirectStandardError "$helperOut.err" `
-        -ArgumentList "--data-dir", "`"$helperData`"", "--download-dir", "`"$helperFiles`"", "--name", "SmokeHelper", "--port", "47901", "run"
+    StartHelper
     Check ([bool](WaitFor { Test-Path (Join-Path $helperData "tandemd.port") } 30)) "the second device runs"
     $offer = App "create_pairing"
     Check ([bool]$offer.uri) "the app gives a pairing link with a code" "code of $("$($offer.code)".Length) digits"
     $paired = Helper @("pair", $offer.uri)
     Check $paired.ok "the second device pairs with the link" $paired.text
-    $script:helperId = ($paired.text -replace "^paired with\s*", "").Trim()
+    $script:helperId = ((Helper @("whoami")).text -split "\s+")[0]
     Check ([bool](WaitFor { DeviceOnline $script:helperId } 30)) "the app shows the second device as connected"
     Shot "3-paired"
 }
 
 $pairedWell = $script:helperId -and (DeviceOnline $script:helperId)
+
+if (-not $pairedWell) {
+    # What was never tried must not look like what went well.
+    foreach ($what in "the pages with a device", "the clipboard", "files", "the shared mouse", "removing a device") { Check $false "$what could not be tried without a second device" }
+}
 
 Part "Every page, with a device" {
     if ($pairedWell) { WalkPages $mainPage "the main window with a computer paired" }
@@ -298,6 +370,19 @@ if ($pairedWell) {
         $word = "smoke-" + [Guid]::NewGuid().ToString("N")
         Set-Clipboard $word
         Check ([bool](WaitFor { HelperSaid $word } 20)) "what is copied in Windows reaches the second device"
+
+        # The way a password manager copies: the settings promise this stays here. The copy before this one shows the way itself works.
+        $word = "smoke-secret-" + [Guid]::NewGuid().ToString("N")
+        Add-Type -AssemblyName System.Windows.Forms
+        $data = New-Object System.Windows.Forms.DataObject
+        $data.SetText($word)
+        $data.SetData("ExcludeClipboardContentFromMonitorProcessing", (New-Object IO.MemoryStream (, [byte[]](0, 0, 0, 0))))
+        [System.Windows.Forms.Clipboard]::SetDataObject($data, $true)
+        Start-Sleep -Seconds 6
+        Check ((Get-Clipboard -Raw) -match $word) "a copy marked as secret is on the clipboard"
+        Check (-not (HelperSaid $word)) "a copy marked as secret does not reach the second device"
+        $history = (App "clip_history") | ConvertTo-Json -Depth 6 -Compress
+        Check ($history -notmatch $word) "a copy marked as secret stays out of the history"
     }
 
     Part "Files" {
@@ -327,6 +412,149 @@ if ($pairedWell) {
         } 60
         Check ([bool]$came) "a file sent from the app reaches the second device, whole"
     }
+
+    # A window of its own in the middle of the screen, to see what clicks and keys do.
+    Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+    $script:clicks = 0
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "Tandem smoke test"
+    $form.TopMost = $true
+    $form.StartPosition = "Manual"
+    $form.ClientSize = New-Object System.Drawing.Size 600, 300
+    $form.Location = New-Object System.Drawing.Point ([int]([SmokeHands]::Width / 2) - 300), ([int]([SmokeHands]::Height / 2) - 150)
+    $box = New-Object System.Windows.Forms.TextBox
+    $box.Multiline = $true
+    $box.Dock = "Fill"
+    $box.Add_MouseDown({ $script:clicks++ })
+    $form.Controls.Add($box)
+    $form.Show()
+    [System.Windows.Forms.Application]::DoEvents()
+    $middle = @([int]([SmokeHands]::Width / 2), [int]([SmokeHands]::Height / 2))
+    # Not called $test: WaitFor has one of its own, and a block finds names in whoever runs it.
+    function Pumped([scriptblock]$check, [int]$seconds) {
+        return WaitFor { [System.Windows.Forms.Application]::DoEvents(); & $check } $seconds
+    }
+
+    Part "Shared mouse, another computer has the pointer here" {
+        [void](App "set_settings" @{ patch = @{ remoteInput = $false } })
+        $left = HelperCount "Leave \{"
+        Say @("enter", "right", "0.5")
+        Check ([bool](WaitFor { (HelperCount "Leave \{") -gt $left } 10)) "without permission the pointer is handed straight back"
+
+        [void](App "set_settings" @{ patch = @{ remoteInput = $true } })
+        [SmokeHands]::Put($middle[0], $middle[1])
+        $sizes = HelperCount "Size \{"
+        Say @("enter", "right", "0.5")
+        Check ([bool](WaitFor { [SmokeHands]::At().X -le 1 } 10)) "the pointer comes in at the side where the other computer stands" "at $([SmokeHands]::At().X),$([SmokeHands]::At().Y)"
+        Check ([Math]::Abs([SmokeHands]::At().Y - $middle[1]) -le 3) "halfway down, as it left the other screen" "at $([SmokeHands]::At().Y) of $([SmokeHands]::Height)"
+        Check ([bool](WaitFor { (HelperCount "Size \{") -gt $sizes } 10)) "this PC says how big its screen is"
+
+        $pinger = Start-Process powershell.exe -WindowStyle Hidden -PassThru -ArgumentList "-NoProfile", "-Command", `
+            "while (`$true) { & '$tandemd' --data-dir '$helperData' pointer $($script:appId) ping *> `$null; Start-Sleep -Milliseconds 300 }"
+        try {
+            # The pointer takes its speed from Windows, so it is steered by looking where it went.
+            $there = $false
+            for ($i = 0; $i -lt 10 -and -not $there; $i++) {
+                $at = [SmokeHands]::At()
+                $dx = $middle[0] - $at.X
+                $dy = $middle[1] - $at.Y
+                if ([Math]::Abs($dx) -le 100 -and [Math]::Abs($dy) -le 100) { $there = $true } else { Say @("move", "$dx", "$dy"); Start-Sleep -Milliseconds 200 }
+            }
+            Check $there "moves of the other computer move the pointer" "at $([SmokeHands]::At().X),$([SmokeHands]::At().Y), wanted $($middle -join ',')"
+
+            Say @("button", "0", "down")
+            Say @("button", "0", "up")
+            Check ([bool](Pumped { $script:clicks -gt 0 } 10)) "a click of the other computer lands"
+            $form.Activate()
+            [void]$box.Focus()
+            Say @("key", "0", "down", "0")
+            Say @("key", "0", "up", "0")
+            Check ([bool](Pumped { $box.Text -ceq "a" } 10)) "a key of the other computer gives its letter" "the box says '$($box.Text)'"
+            Say @("key", "0", "down", "1")
+            Say @("key", "0", "up", "1")
+            Check ([bool](Pumped { $box.Text -ceq "aA" } 10)) "with shift held on the other computer it is a capital" "the box says '$($box.Text)'"
+            $word = "h" + [char]0xEB + "llo"
+            Say @("text", $word)
+            Check ([bool](Pumped { $box.Text -ceq "aA$word" } 10)) "text of the other computer arrives whole" "the box says '$($box.Text)'"
+
+            $left = HelperCount "Leave \{"
+            Say @("move", "-30000", "0")
+            Check ([bool](WaitFor { (HelperCount "Leave \{") -gt $left } 10)) "running into the edge it came in by sends the pointer back"
+            Say @("enter", "right", "0.5")
+            Start-Sleep -Milliseconds 800
+            Say @("button", "0", "down")
+            Check ([bool](WaitFor { [SmokeHands]::LeftIsDown } 10)) "a button can be held down from the other computer"
+        } finally {
+            Stop-Process -Id $pinger.Id -Force -ErrorAction SilentlyContinue
+        }
+        # What a closed lid on the other computer looks like: the worst thing it could leave behind is a button that stays down here.
+        Check ([bool](WaitFor { -not [SmokeHands]::LeftIsDown } 8)) "when the other computer goes silent, nothing stays held down"
+        [System.Windows.Forms.Application]::DoEvents()
+    }
+
+    Part "Shared mouse, this PC has the mouse" {
+        [void](App "set_settings" @{ patch = @{ pointerShare = $true } })
+        [void](App "arrange_place" @{ id = $script:helperId; x = [SmokeHands]::Width; y = 0; width = [SmokeHands]::Width; height = [SmokeHands]::Height; snap = 40 })
+
+        function Cross {
+            $before = HelperCount "Enter \{"
+            [SmokeHands]::Put(([SmokeHands]::Width - 30), $middle[1])
+            for ($i = 0; $i -lt 60; $i++) {
+                [SmokeHands]::Move(4, 0)
+                Start-Sleep -Milliseconds 30
+            }
+            return [bool](WaitFor { (HelperCount "Enter \{") -gt $before } 5)
+        }
+        function BackAtTheEdge { return [SmokeHands]::At().X -ge ([SmokeHands]::Width - 3) }
+
+        Check (Cross) "the pointer goes over at the edge where the other screen is"
+        Start-Sleep -Milliseconds 500
+        $at = [SmokeHands]::At()
+        Check ([Math]::Abs($at.X - $middle[0]) -le 3 -and [Math]::Abs($at.Y - $middle[1]) -le 3) "while it is away the real pointer stays put" "at $($at.X),$($at.Y)"
+
+        $moves = HelperCount "move -?\d"
+        [SmokeHands]::Move(30, 12)
+        Check ([bool](WaitFor { (HelperCount "move -?\d") -gt $moves } 5)) "moves reach the other computer"
+
+        $clicks = $script:clicks
+        [SmokeHands]::Left($true)
+        [SmokeHands]::Left($false)
+        Check ([bool](WaitFor { HelperSaid "Button \{ button: 0, down: false" } 5)) "a click reaches the other computer"
+        $text = $box.Text
+        [SmokeHands]::Key(0x41, $true)
+        [SmokeHands]::Key(0x41, $false)
+        Check ([bool](WaitFor { HelperSaid "Key \{ code: 0, down: false" } 5)) "a key reaches the other computer"
+        [void](Pumped { $false } 1)
+        Check ($script:clicks -eq $clicks -and $box.Text -ceq $text) "and neither does anything on this PC" "clicks $clicks to $($script:clicks), box '$text' to '$($box.Text)'"
+
+        Say @("leave", "0.5")
+        Check ([bool](WaitFor { BackAtTheEdge } 5)) "when the other computer sends it back, the pointer is at the edge again" "at $([SmokeHands]::At().X)"
+        [SmokeHands]::Put(200, 200)
+        [SmokeHands]::Move(20, 0)
+        Start-Sleep -Milliseconds 200
+        Check ([SmokeHands]::At().X -gt 200) "and the mouse works on this PC again" "at $([SmokeHands]::At().X)"
+
+        Check (Cross) "it goes over a second time"
+        $released = HelperCount "Release"
+        foreach ($key in 0x11, 0x12, 0x10) { [SmokeHands]::Key($key, $true) }
+        [SmokeHands]::Key(0x1B, $true)
+        [SmokeHands]::Key(0x1B, $false)
+        foreach ($key in 0x10, 0x12, 0x11) { [SmokeHands]::Key($key, $false) }
+        Check ([bool](WaitFor { (HelperCount "Release") -gt $released } 5)) "Ctrl+Alt+Shift+Esc takes it back and says so"
+        Check ([bool](WaitFor { BackAtTheEdge } 5)) "the pointer is where it left" "at $([SmokeHands]::At().X)"
+
+        Check (Cross) "it goes over a third time"
+        Start-Sleep -Seconds 1
+        Stop-Process -Id $script:helper.Id -Force -ErrorAction SilentlyContinue
+        Check ([bool](WaitFor { BackAtTheEdge } 8)) "when the other computer goes away, the pointer comes home by itself" "at $([SmokeHands]::At().X)"
+
+        Copy-Item $helperOut (Join-Path $Out "helper-mouse.log") -Force
+        StartHelper
+        Check ([bool](WaitFor { DeviceOnline $script:helperId } 30)) "the other computer connects again"
+        [void](App "arrange_remove" @{ id = $script:helperId })
+        [void](App "set_settings" @{ patch = @{ remoteInput = $false } })
+    }
+    $form.Close()
 }
 
 # ---- The windows --------------------------------------------------------------------------------------------------------------
@@ -345,11 +573,11 @@ Part "Windows open and close" {
     $before = LogCount "the panel opens"
     Start-Process $exe -ArgumentList "--panel"
     Check ([bool](WaitFor { (LogCount "the panel opens") -gt $before } 90)) "a second start with --panel opens the panel"
-    Start-Sleep -Seconds 2
+    # First the words: the panel goes when it loses focus, and on a machine in use that can be any moment.
+    WalkPages "panel\.html" "the panel"
     Shot "4-panel"
     Check (@(Get-Process -Name Tandem -ErrorAction SilentlyContinue).Count -eq 1) "there is still one Tandem"
     [void](Memory "panel open")
-    WalkPages "panel\.html" "the panel"
 
     $before = LogCount "the main window shows"
     Start-Process $exe
@@ -402,9 +630,18 @@ Part "Removing a device, and quitting" {
         [void](App "remove_device" @{ id = $script:helperId })
         Check ([bool](WaitFor { @((App "get_state").devices | Where-Object { $_.id -eq $script:helperId }).Count -eq 0 } 20)) "a removed device is gone from the app"
     }
-    try { [void](App "quit_app") } catch { }
+    # Quit itself sits in the menu of the icon, out of reach here. With closing to the tray off, closing the window goes the same way.
+    [void](App "set_settings" @{ patch = @{ closeToTray = $false } })
+    @(Get-Process -Name Tandem) | ForEach-Object { [void]$_.CloseMainWindow() }
     Check ([bool](WaitFor { -not (AppRuns) } 30)) "Quit ends the app"
     SaveLog "the last run"
+    if ($KeepInstalled) {
+        # The machine goes on being used, with the choice the way it was.
+        Start-Process $exe
+        [void](WaitFor { (LogCount "the engine runs") -gt 0 } 60)
+        [void](App "set_settings" @{ patch = @{ closeToTray = $true } })
+        Stop-Process -Name Tandem -Force -ErrorAction SilentlyContinue
+    }
 }
 
 if ($script:helper) { Stop-Process -Id $script:helper.Id -Force -ErrorAction SilentlyContinue }
