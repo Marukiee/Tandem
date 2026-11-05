@@ -11,6 +11,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.engine.Permissions
 import nl.markmaaktmedia.tandem.graph
@@ -119,6 +120,11 @@ class HotspotModule private constructor(private val context: Context) {
         // update, the app-op that skips the screen recording question is checked and set again if it went.
         jobs += scope.launch {
             shizuku.state.collectLatest { if (it == ShizukuState.Ready) nl.markmaaktmedia.tandem.live.ProjectionGrant.ensure(context) }
+        }
+        jobs += scope.launch {
+            combine(shizuku.state, graph.prefs.copyCodes) { state, _ -> state }.collectLatest {
+                if (it == ShizukuState.Ready) nl.markmaaktmedia.tandem.messages.CodeGrant.sync(context)
+            }
         }
         jobs += scope.launch {
             while (true) {

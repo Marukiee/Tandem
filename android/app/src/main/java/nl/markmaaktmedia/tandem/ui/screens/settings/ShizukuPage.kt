@@ -48,6 +48,8 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
     val shizuku = HotspotModule.get(context).shizuku
     val state by shizuku.state.collectAsState()
     val projection by ProjectionGrant.state.collectAsState()
+    val codes by nl.markmaaktmedia.tandem.messages.CodeGrant.state.collectAsState()
+    val codesWanted by context.graph.prefs.copyCodes.collectAsState(initial = true)
     var uid by remember { mutableStateOf<Int?>(null) }
     // Android names the Wi-Fi to Tandem only with Location: without the name the phone cannot say which network it hands over.
     val wifiShare = remember { nl.markmaaktmedia.tandem.wifi.WifiShare.get(context) }
@@ -72,6 +74,7 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
             shizuku.refresh()
             uid = shizuku.serverUid()
             ProjectionGrant.allowed(context)
+            nl.markmaaktmedia.tandem.messages.CodeGrant.allowed(context)
             wifiNamed = wifiShare.canSeeNearby()
             delay(2_000)
         }
@@ -81,6 +84,7 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
     LaunchedEffect(state) {
         if (state == ShizukuState.Ready) {
             ProjectionGrant.ensure(context)
+            nl.markmaaktmedia.tandem.messages.CodeGrant.sync(context)
             shizuku.clipboardMessage(null).takeIf { it.ok }?.let { messageShown = it.message != "0" }
         }
     }
@@ -130,17 +134,17 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
 
     SectionHeader(stringResource(R.string.shizuku_section_uses))
     SettingsGroup {
-        SettingsTarget(FocusKeys.ShizukuHotspot, 0, 5) {
+        SettingsTarget(FocusKeys.ShizukuHotspot, 0, 6) {
             ActionRow(
-                0, 5, TandemIcons.Hotspot, stringResource(R.string.shizuku_use_hotspot),
+                0, 6, TandemIcons.Hotspot, stringResource(R.string.shizuku_use_hotspot),
                 stringResource(if (ready) R.string.shizuku_use_hotspot_on else R.string.shizuku_use_hotspot_off),
                 onClick = { onOpen(Route.Hotspot) },
                 trailing = if (ready) done else null,
             )
         }
-        SettingsTarget(FocusKeys.ShizukuProjection, 1, 5) {
+        SettingsTarget(FocusKeys.ShizukuProjection, 1, 6) {
             ActionRow(
-                1, 5, TandemIcons.VolumeUp, stringResource(R.string.shizuku_use_projection),
+                1, 6, TandemIcons.VolumeUp, stringResource(R.string.shizuku_use_projection),
                 stringResource(
                     when {
                         projection -> R.string.shizuku_use_projection_on
@@ -158,9 +162,28 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
                 trailing = if (projection) done else null,
             )
         }
-        SettingsTarget(FocusKeys.ShizukuClipboard, 2, 5) {
+        ActionRow(
+            2, 6, TandemIcons.Key, stringResource(R.string.shizuku_use_codes),
+            stringResource(
+                when {
+                    !codesWanted -> R.string.shizuku_use_codes_unwanted
+                    codes -> R.string.shizuku_use_codes_on
+                    ready -> R.string.shizuku_use_projection_set
+                    else -> R.string.shizuku_use_codes_off
+                },
+            ),
+            onClick = {
+                when {
+                    !codesWanted || codes -> Unit
+                    ready -> scope.launch { nl.markmaaktmedia.tandem.messages.CodeGrant.sync(context) }
+                    else -> nextStep()
+                }
+            },
+            trailing = if (codes) done else null,
+        )
+        SettingsTarget(FocusKeys.ShizukuClipboard, 3, 6) {
             SwitchRow(
-                2, 5, TandemIcons.Paste, stringResource(R.string.shizuku_use_clipboard),
+                3, 6, TandemIcons.Paste, stringResource(R.string.shizuku_use_clipboard),
                 clipProblem ?: stringResource(if (clipWatching) R.string.shizuku_use_clipboard_on else R.string.shizuku_use_clipboard_sub),
                 clipOn,
                 { on -> scope.launch { context.graph.prefs.setClipboardShizuku(on) } },
@@ -171,7 +194,7 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
         // Android tells about every read of the clipboard by another app, so also about each copy the shell hears for Tandem. It has no
         // way to leave out one app: hiding it is Android's own switch Show clipboard access, for every app, which the shell may set.
         SwitchRow(
-            3, 5, TandemIcons.Shield, stringResource(R.string.shizuku_clipboard_message),
+            4, 6, TandemIcons.Shield, stringResource(R.string.shizuku_clipboard_message),
             stringResource(R.string.shizuku_clipboard_message_sub),
             messageShown == false,
             { hide ->
@@ -182,7 +205,7 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
             onBlocked = nextStep,
         )
         ActionRow(
-            4, 5, TandemIcons.Wifi, stringResource(R.string.shizuku_use_wifi),
+            5, 6, TandemIcons.Wifi, stringResource(R.string.shizuku_use_wifi),
             stringResource(
                 when {
                     !ready -> R.string.shizuku_use_wifi_off

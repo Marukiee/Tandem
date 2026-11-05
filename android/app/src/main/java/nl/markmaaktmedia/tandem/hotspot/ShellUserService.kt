@@ -55,6 +55,13 @@ class ShellUserService : Binder() {
                 reply?.writeInt(result)
                 reply?.writeString(message)
             }
+            TX_SENSITIVE_NOTIFICATIONS -> {
+                val pkg = data.readString().orEmpty()
+                val (result, message) = allowSensitiveNotifications(pkg, data.readInt() == 1)
+                reply?.writeNoException()
+                reply?.writeInt(result)
+                reply?.writeString(message)
+            }
             TX_CLIP_WATCH -> {
                 val to = data.readStrongBinder()
                 val (result, message) = if (to == null) 1 to "no one to tell" else clipboard.watch(to)
@@ -121,6 +128,12 @@ class ShellUserService : Binder() {
         return if (projection.first != 0) projection else overlay
     }
 
+    /** `appops set <package> RECEIVE_SENSITIVE_NOTIFICATIONS`, see [nl.markmaaktmedia.tandem.messages.CodeGrant]. */
+    private fun allowSensitiveNotifications(pkg: String, allow: Boolean): Pair<Int, String> {
+        if (!PACKAGE.matches(pkg)) return 1 to "not a package name"
+        return command("/system/bin/cmd", "appops", "set", pkg, "RECEIVE_SENSITIVE_NOTIFICATIONS", if (allow) "allow" else "default")
+    }
+
     /**
      * Android's own switch Show clipboard access (under Privacy), which the shell may write: [show] 1 or 0 sets it, anything else only
      * reads it. The message says "Shell pasted from your clipboard" after every copy Tandem hears, and Android has no way to leave out one
@@ -161,6 +174,7 @@ class ShellUserService : Binder() {
         const val TX_CLIP_MESSAGE = 7
         const val TX_WIFI_SAVED = 8
         const val TX_WIFI_PASSWORD = 9
+        const val TX_SENSITIVE_NOTIFICATIONS = 10
         private const val CLIPBOARD_MESSAGE = "clipboard_show_access_notifications"
 
         /** The code Shizuku uses to ask a user service to exit. */

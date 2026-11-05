@@ -24,6 +24,8 @@ const WEAK_MIN_DIGITS: usize = 6;
 const WEAK_MAX_TEXT: usize = 240;
 /// A year is a number that often follows a word like "code" by accident, so it needs the word right before it.
 const NEAR_YEAR: usize = 14;
+/// A code of letters and digits says less than a number does, so the word must come first and close by: "code: K7P2X".
+const NEAR_LETTERS: usize = 14;
 
 /// The one-time code in `text`, or `None`. Digits only for a plain code ("123-456" and "123 456"
 /// come back as "123456"). The letters in front of a dash ("G-123456", "FB-12345") are a tag the
@@ -39,6 +41,7 @@ pub fn find_code(text: &str) -> Option<String> {
 
     let mut candidates = digit_candidates(&chars);
     candidates.extend(dashed_candidates(&chars));
+    candidates.extend(letter_candidates(&chars));
     if candidates.is_empty() {
         return None;
     }
@@ -58,6 +61,8 @@ struct Candidate {
     digits: usize,
     /// Looks like a year, which is the number most likely to follow a keyword by accident.
     year: bool,
+    /// Letters and digits with no dash, which is only a code right after a word that says so.
+    letters: bool,
 }
 
 // ---- Numbers ------------------------------------------------------------------------
@@ -132,7 +137,7 @@ fn push_candidate(chars: &[char], start: usize, end: usize, value: String, out: 
     }
     let digits = value.len();
     let year = digits == 4 && value.parse::<u32>().is_ok_and(|y| (1900..=2099).contains(&y));
-    out.push(Candidate { start, end, value, digits, year });
+    out.push(Candidate { start, end, value, digits, year, letters: false });
 }
 
 /// What stands right before and after a number decides whether it can be a code at all: an amount
@@ -276,7 +281,39 @@ fn dashed_candidates(chars: &[char]) -> Vec<Candidate> {
         }
         let digits = token.chars().filter(|c| c.is_ascii_digit()).count();
         let value = if letters_then_digits { right.to_string() } else { token };
-        out.push(Candidate { start, end, value, digits, year: false });
+        out.push(Candidate { start, end, value, digits, year: false, letters: false });
+    }
+    out
+}
+
+/// Codes of capitals and digits with no dash: "K7P2X", "AB12CD". [`nearest`] only takes them right after a word like "code".
+fn letter_candidates(chars: &[char]) -> Vec<Candidate> {
+    let n = chars.len();
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < n {
+        if !chars[i].is_alphanumeric() {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while i < n && chars[i].is_alphanumeric() {
+            i += 1;
+        }
+        let token = &chars[start..i];
+        let fits = (4..=8).contains(&token.len())
+            && token.iter().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+            && token.iter().any(char::is_ascii_digit)
+            && token.iter().any(char::is_ascii_uppercase)
+            // Letters and then digits ("ABC1234") is how a reference looks. A code that is one mixes them.
+            && token.windows(2).filter(|w| w[0].is_ascii_digit() != w[1].is_ascii_digit()).count() >= 2;
+        let before = start.checked_sub(1).map(|j| chars[j]);
+        let after = chars.get(i).copied();
+        let joined = |c: Option<char>| c.is_some_and(|c| "/@#$€£+%_-".contains(c));
+        if fits && !joined(before) && !joined(after) {
+            let digits = token.iter().filter(|c| c.is_ascii_digit()).count();
+            out.push(Candidate { start, end: i, value: token.iter().collect(), digits, year: false, letters: true });
+        }
     }
     out
 }
@@ -322,6 +359,12 @@ const STRONG: &[(&str, Shape)] = &[
     ("wachtwoord", Shape::Word),
     ("passcode", Shape::Word),
     ("verif", Shape::Prefix),
+    // "tweestapsverificatie": the word at the end of a longer one.
+    ("verificatie", Shape::Suffix),
+    ("verification", Shape::Suffix),
+    ("authenticatie", Shape::Suffix),
+    ("autorisatie", Shape::Suffix),
+    ("token", Shape::Word),
     ("authenti", Shape::Prefix),
     ("inlog", Shape::Prefix),
     ("login", Shape::Word),
@@ -344,6 +387,11 @@ const ACTIONS: &[(&str, Shape)] = &[
     ("authorize", Shape::Prefix),
     ("authorise", Shape::Prefix),
     ("autoriseer", Shape::Prefix),
+    ("aanmeld", Shape::Prefix),
+    ("enter", Shape::Word),
+    ("use", Shape::Word),
+    ("voer", Shape::Word),
+    ("gebruik", Shape::Word),
 ];
 
 const BRANDS: &[&str] = &[
@@ -449,7 +497,14 @@ fn nearest(candidate: &Candidate, marks: &[Mark], chars: &[char]) -> Option<(u8,
                 distance <= NEAR_WEAK && chars.len() <= WEAK_MAX_TEXT && candidate.digits >= WEAK_MIN_DIGITS
             }
         };
-        if !allowed || crosses_sentence(&chars[from..to]) {
+        if !allowed {
+            continue;
+        }
+        let between = &chars[from..to];
+        if ends_sentence(between) || (has_line_break(between) && !(mark.class == Class::Strong && alone_on_line(candidate, chars))) {
+            continue;
+        }
+        if candidate.letters && !(mark.class == Class::Strong && mark.end <= candidate.start && distance <= NEAR_LETTERS) {
             continue;
         }
         if candidate.year && !(mark.class == Class::Strong && mark.end <= candidate.start && distance <= NEAR_YEAR) {
@@ -461,14 +516,28 @@ fn nearest(candidate: &Candidate, marks: &[Mark], chars: &[char]) -> Option<(u8,
     best
 }
 
-/// A full stop, question mark, exclamation mark or line break between the two means they are not
-/// about each other: "Code expired. 1234 euro" is not a code.
-fn crosses_sentence(between: &[char]) -> bool {
-    between.iter().enumerate().any(|(i, c)| match c {
-        '\n' | '\r' => true,
-        '.' | '!' | '?' => between.get(i + 1).is_none_or(|next| is_gap(*next)),
-        _ => false,
+/// A full stop, question mark or exclamation mark between the two means they are not about each
+/// other: "Code expired. 1234 euro" is not a code.
+fn ends_sentence(between: &[char]) -> bool {
+    between.iter().enumerate().any(|(i, c)| {
+        matches!(c, '.' | '!' | '?') && between.get(i + 1).is_none_or(|next| is_gap(*next) || is_line_break(*next))
     })
+}
+
+fn is_line_break(c: char) -> bool {
+    matches!(c, '\n' | '\r')
+}
+
+/// A line break separates a word from a number too, unless the number has its line to itself: many
+/// messages say "Your code:" and put the code on the next line.
+fn has_line_break(between: &[char]) -> bool {
+    between.iter().any(|c| is_line_break(*c))
+}
+
+fn alone_on_line(candidate: &Candidate, chars: &[char]) -> bool {
+    let before = chars[..candidate.start].iter().rev().take_while(|c| !is_line_break(**c));
+    let after = chars[candidate.end..].iter().take_while(|c| !is_line_break(**c));
+    before.clone().all(|c| is_gap(*c)) && after.clone().all(|c| is_gap(*c) || *c == '.')
 }
 
 #[cfg(test)]
@@ -485,6 +554,48 @@ mod tests {
 
     fn none(text: &str) {
         assert_eq!(code(text), None, "text: {text}");
+    }
+
+    // ---- On a line of its own, words that were missing, letters and digits ------------
+
+    #[test]
+    fn code_on_its_own_line() {
+        expect("Code\n123456", "123456");
+        expect("Dit is je code voor Acme:\n\n123456\n\nDeel deze code nooit", "123456");
+        expect("123456\nis je code", "123456");
+        expect("Your verification code:\r\n 123456.\r\nValid for 5 minutes", "123456");
+    }
+
+    #[test]
+    fn a_line_break_still_separates() {
+        none("Code expired.\n1234 euro");
+        none("Your code\n1234 euro is due");
+        none("Code expired.\n123456");
+        none("ING\n123456");
+    }
+
+    #[test]
+    fn words_that_were_missing() {
+        expect("Tweestapsverificatie: 123456", "123456");
+        expect("Token: 123456", "123456");
+        expect("Gebruik 123456 om je aan te melden", "123456");
+        expect("Aanmelden bij Acme: 123456", "123456");
+        expect("Enter 123456 to continue", "123456");
+        expect("Voer 123456 in op de website", "123456");
+    }
+
+    #[test]
+    fn letters_and_digits_after_the_word() {
+        expect("Je Steam Guard code: K7P2X", "K7P2X");
+        expect("Your code is AB12CD", "AB12CD");
+    }
+
+    #[test]
+    fn letters_and_digits_on_their_own_are_no_code() {
+        none("Your flight KL1234 leaves at gate B12");
+        none("AB12CD is your parking spot");
+        none("Use the XR2000 today");
+        none("Security update for model A1B2 is available from our store today");
     }
 
     // ---- English --------------------------------------------------------------------

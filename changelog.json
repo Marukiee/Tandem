@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.2.97",
+    "date": "2026-11-05",
+    "en": {
+      "title": "Codes from texts arrive",
+      "new": [
+        "Codes from texts reach your computers, also when the connection was just gone",
+        "See hidden codes as well with Shizuku"
+      ]
+    },
+    "nl": {
+      "title": "Codes uit sms'jes komen aan",
+      "new": [
+        "Codes uit sms'jes komen op je computers, ook als de verbinding net weg was",
+        "Zie met Shizuku ook verborgen codes"
+      ]
+    }
+  },
+  {
     "version": "0.2.96",
     "date": "2026-11-05",
     "en": { "title": "Opens on what is connected", "new": ["Tandem opens on the device that is connected", "A pairing link no longer leaves the bottom buttons stuck",

@@ -19,4 +19,5 @@
     <string name="feature_messages_why">Tandem may not read the text messages on this phone yet</string>
     <string name="perm_messages">Text messages</string>
     <string name="perm_messages_why">To show your conversations on your computers and send texts from there.</string>
+    <string name="settings_codes_hidden">Android hides codes from notifications. Tap to let Tandem read your texts.</string>
 </resources>

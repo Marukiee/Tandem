@@ -17,10 +17,13 @@ import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import nl.markmaaktmedia.tandem.graph
 import uniffi.tandem_core.TandemButton
+import kotlinx.coroutines.delay
 import uniffi.tandem_core.TandemEvent
 import uniffi.tandem_core.TandemNotification
 import uniffi.tandem_core.TandemPlatform
 import uniffi.tandem_core.tandemFindCode
+import nl.markmaaktmedia.tandem.messages.CodeDelivery
+import nl.markmaaktmedia.tandem.messages.CodeGrant
 
 /**
  * Sends this phone's notifications to your other devices, and carries their replies
@@ -74,7 +77,22 @@ class MirrorListener : NotificationListenerService() {
             val targets = graph.host.devices.value.filter { it.platform != TandemPlatform.ANDROID }.map { it.id }
             if (targets.isEmpty()) return@launch
             active[sbn.key] = sbn
-            val notification = convert(sbn) ?: return@launch
+            // Android took the text out of this one because of a code. The message itself may bring that code a moment later (see SmsBridge);
+            // if so this has nothing to add, and otherwise it says at least that something came in.
+            if (hiddenByAndroid(sbn)) {
+                // Allowed since Android bound this service, which only counts from the next binding on.
+                if (CodeGrant.allowed(applicationContext)) rebind(applicationContext)
+                delay(HIDDEN_WAIT_MS)
+                if (CodeDelivery.justSent(HIDDEN_WAIT_MS * 2)) return@launch
+            }
+            val notification = convert(sbn, graph.prefs.copyCodes.first()) ?: return@launch
+            val code = notification.otp
+            if (code != null) {
+                if (!CodeDelivery.firstTime(code)) return@launch
+                sendIcon(graph, sbn, targets)
+                CodeDelivery.deliver(graph.host, targets, notification) { _lastSent.value = System.currentTimeMillis() }
+                return@launch
+            }
             sendIcon(graph, sbn, targets)
             // The core says who it reached, and fails when it reached nobody, so a non-empty answer is a real send.
             val reached = runCatching { graph.host.engine?.sendNotification(targets, notification) }.getOrNull()
@@ -108,7 +126,13 @@ class MirrorListener : NotificationListenerService() {
         return graph.prefs.mirrors(sbn.packageName)
     }
 
-    private fun convert(sbn: StatusBarNotification): TandemNotification? {
+    /** A notification that Android emptied for an app like this one is rebuilt by the system, so it says it comes from Android itself. */
+    private fun hiddenByAndroid(sbn: StatusBarNotification): Boolean {
+        val info: ApplicationInfo? = sbn.notification.extras.getParcelable("android.appInfo", ApplicationInfo::class.java)
+        return info?.packageName == "android" && sbn.packageName != "android"
+    }
+
+    private fun convert(sbn: StatusBarNotification, findCode: Boolean): TandemNotification? {
         val n = sbn.notification
         val extras = n.extras
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
@@ -118,7 +142,12 @@ class MirrorListener : NotificationListenerService() {
         // The app's own label, taken from the notification itself so no package
         // visibility permission is needed.
         val info: ApplicationInfo? = extras.getParcelable("android.appInfo", ApplicationInfo::class.java)
-        val appName = info?.loadLabel(packageManager)?.toString() ?: sbn.packageName
+        val hidden = hiddenByAndroid(sbn)
+        val appName = when {
+            !hidden -> info?.loadLabel(packageManager)?.toString() ?: sbn.packageName
+            // Not "Android System", which is what the rebuilt notification says it is.
+            else -> runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(sbn.packageName, 0)).toString() }.getOrDefault(sbn.packageName)
+        }
 
         val buttons = n.actions.orEmpty().mapIndexedNotNull { index, action ->
             val label = action.title?.toString() ?: return@mapIndexedNotNull null
@@ -138,7 +167,7 @@ class MirrorListener : NotificationListenerService() {
             buttons = buttons,
             // The core's detector first, which knows about banks, dashed codes and what is not a code. The older
             // patterns below stay as a net under it, so nothing that was found before is lost.
-            otp = "$title $text".let { tandemFindCode(it) ?: OtpDetector.find(it) },
+            otp = if (findCode) "$title $text".let { tandemFindCode(it) ?: OtpDetector.find(it) } else null,
             progressDone = null,
             progressTotal = null,
         )
@@ -196,6 +225,15 @@ class MirrorListener : NotificationListenerService() {
     }
 
     companion object {
+        private const val HIDDEN_WAIT_MS = 2_500L
+
+        /** Android decides at binding whether this service may see codes, so a change of [CodeGrant] needs a new one. */
+        suspend fun rebind(context: android.content.Context) {
+            runCatching { instance?.requestUnbind() }
+            delay(1_000)
+            runCatching { requestRebind(android.content.ComponentName(context, MirrorListener::class.java)) }
+        }
+
         @Volatile private var instance: MirrorListener? = null
 
         /**

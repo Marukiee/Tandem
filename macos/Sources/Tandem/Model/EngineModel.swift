@@ -51,7 +51,7 @@ final class EngineModel {
     }
     @ObservationIgnored private var saveTransfersTask: Task<Void, Never>?
     /// The last code that came in, and when, so the same one is copied and announced once.
-    @ObservationIgnored private var lastCode: (code: String, at: Date)?
+    @ObservationIgnored private var lastCode: (code: String, key: String, at: Date)?
     var pairing = PairingState()
     var myName = EngineModel.savedName ?? Host.current().localizedName ?? "Mac"
     var myId = ""
@@ -548,13 +548,15 @@ final class EngineModel {
             let shown = device(from)?.notificationsEnabled ?? true
             // The same code can come twice: from the notification of the messages app and from the message itself (see SmsBridge).
             let again = code != nil && lastCode?.code == code && Date().timeIntervalSince(lastCode?.at ?? .distantPast) < 120
-            if let code { lastCode = (code, Date()) }
+            // The phone sends a code a few times, because it cannot tell a dead link from a live one. The first one counts.
+            let repeated = again && lastCode?.key == notification.key
+            if let code { lastCode = (code, notification.key, Date()) }
             if let code, !again, UserDefaults.standard.object(forKey: "copyCodes") as? Bool ?? true {
                 putOnClipboard(code)
                 showToast(String(localized: "Code \(code) copied"))
                 if shown { Notifier.shared.postCodeCopied(code: code, deviceName: deviceName, key: notification.key) }
             }
-            guard shown else { return }
+            guard shown, !repeated else { return }
             Notifier.shared.postMirrored(device: from, deviceName: deviceName, notification: notification, code: code)
             remember(notification, from: from, deviceName: deviceName, code: code)
 

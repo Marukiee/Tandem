@@ -28,4 +28,8 @@
     <string name="shizuku_use_wifi_on">Je computers bieden aan hem over te nemen als ze geen netwerk hebben</string>
     <string name="shizuku_use_wifi_off">Android laat alleen de shell het wachtwoord van een wifinetwerk lezen</string>
     <string name="shizuku_use_wifi_location">Geef Tandem ook Locatie: zonder verbergt Android de naam van de wifi</string>
+    <string name="shizuku_use_codes">Codes uit elke melding</string>
+    <string name="shizuku_use_codes_on">Android verbergt codes niet meer voor Tandem, dus ze komen ook op je computers uit sms\'jes die het achterhoudt, RCS en andere apps</string>
+    <string name="shizuku_use_codes_off">Android verbergt codes in meldingen, dus alleen codes uit gewone sms\'jes komen op je computers</string>
+    <string name="shizuku_use_codes_unwanted">Codes kopiëren staat uit onder Meldingen</string>
 </resources>

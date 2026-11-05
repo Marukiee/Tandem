@@ -213,12 +213,12 @@ class SmsBridge(
     /**
      * A code in a text that just came in goes to the computers as a notification with that code, which they copy and say so. Since
      * Android 15 an app that reads notifications gets the text of one with a code hidden ("sensitive notification content"), so the
-     * notification of the messages app no longer brings it; the message itself, which Tandem may read for Messages, does. The
-     * computers leave out a code they copied a moment ago, for a phone where the notification still brings it too.
+     * notification of the messages app no longer brings it; the message itself, which Tandem may read for Messages, does. Where the
+     * notification does bring it (with [CodeGrant]), whichever comes first sends it.
      */
     private suspend fun sendCodes(engine: TandemEngine, changed: List<TandemSmsMessage>) {
         val prefs = context.graph.prefs
-        if (!prefs.mirrorNotifications.first()) return
+        if (!prefs.mirrorNotifications.first() || !prefs.copyCodes.first()) return
         val now = System.currentTimeMillis()
         val fresh = changed.filter { it.status == TandemSmsStatus.RECEIVED && now - it.date.toLong() < CODE_FRESH_MS && codesSent.add(key(it)) }
         if (codesSent.size > 500) codesSent.clear()
@@ -233,12 +233,13 @@ class SmsBridge(
         }.getOrDefault(context.getString(R.string.setting_messages))
         for (m in fresh) {
             val code = tandemFindCode(m.body) ?: continue
+            if (!CodeDelivery.firstTime(code)) continue
             val sender = safely { reader.conversations(setOf(m.thread.toLong())) }?.firstOrNull()?.name?.ifBlank { null } ?: m.address
             val notification = TandemNotification(
                 key = "tandem-code-${key(m)}", appId = app, appName = label, title = sender, text = m.body, subText = null,
                 ts = m.date, ongoing = false, silent = false, buttons = emptyList(), otp = code, progressDone = null, progressTotal = null,
             )
-            runCatching { engine.sendNotification(targets, notification) }
+            scope.launch { CodeDelivery.deliver(host, targets, notification) }
         }
     }
 

@@ -28,4 +28,8 @@
     <string name="shizuku_use_wifi_on">Your computers offer to take it over when they have no network</string>
     <string name="shizuku_use_wifi_off">Android lets only the shell read the password of a Wi-Fi network</string>
     <string name="shizuku_use_wifi_location">Allow Location for Tandem too: without it Android hides the name of the Wi-Fi</string>
+    <string name="shizuku_use_codes">Codes from every notification</string>
+    <string name="shizuku_use_codes_on">Android no longer hides codes from Tandem, so they also reach your computers from texts it holds back, RCS and other apps</string>
+    <string name="shizuku_use_codes_off">Android hides codes in notifications, so only codes from plain texts reach your computers</string>
+    <string name="shizuku_use_codes_unwanted">Copy codes is off under Notifications</string>
 </resources>

@@ -491,13 +491,18 @@ fn phone_notification(app: &AppHandle, from: &str, n: &TandemNotification) {
     let name = device_name(app, from);
     let settings = settings::get(app);
     // A code is copied also when the notifications of that device are not shown here: copying codes has its own switch.
-    if settings.copy_codes {
-        if let Some(code) = n.otp.as_ref().filter(|code| first_time(code)) {
+    let again = n.otp.as_ref().is_some_and(|code| !first_time(code));
+    if settings.copy_codes && !again {
+        if let Some(code) = &n.otp {
             clip::apply(app, code);
             toast(app, &i18n::t1(app, "code_copied", code), &name);
         }
     }
     if !allowed(app, from, "notifications") {
+        return;
+    }
+    // The phone sends a code a few times, because it cannot tell a dead link from a live one. The first one counts.
+    if again && app.state::<AppState>().data.lock().unwrap().notifications.iter().any(|old| old["device"] == from && old["key"] == n.key) {
         return;
     }
     let value = model::notification(from, &name, n);

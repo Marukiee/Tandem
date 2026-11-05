@@ -134,6 +134,12 @@ class ShizukuBridge(private val context: Context) {
     /** Lets Android skip its screen recording question for [pkg] (see [ShellUserService]). */
     suspend fun allowProjection(pkg: String): ShellResult = call(ShellUserService.TX_ALLOW_PROJECTION) { it.writeString(pkg) }
 
+    /** Lets [pkg] see notifications with a code in them, or takes that back (see [nl.markmaaktmedia.tandem.messages.CodeGrant]). */
+    suspend fun allowSensitiveNotifications(pkg: String, allow: Boolean): ShellResult = call(ShellUserService.TX_SENSITIVE_NOTIFICATIONS) {
+        it.writeString(pkg)
+        it.writeInt(if (allow) 1 else 0)
+    }
+
     /** Every copy on this phone goes to [to] (see [ShellClipboard]); called again it only checks that it still does. */
     suspend fun watchClipboard(to: IBinder): ShellResult = call(ShellUserService.TX_CLIP_WATCH) { it.writeStrongBinder(to) }
 
