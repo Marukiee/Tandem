@@ -109,10 +109,11 @@ function WaitFor([scriptblock]$test, [int]$seconds) {
 function Shot([string]$name) {
     try {
         Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-        $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-        $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+        # In real pixels: what .NET says about the screen is scaled at 125% and cuts off the picture.
+        $size = New-Object System.Drawing.Size ([SmokeHands]::Width), ([SmokeHands]::Height)
+        $bitmap = New-Object System.Drawing.Bitmap $size.Width, $size.Height
         $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-        $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+        $graphics.CopyFromScreen([System.Drawing.Point]::Empty, [System.Drawing.Point]::Empty, $size)
         $bitmap.Save((Join-Path $Out "$name.png"))
         $graphics.Dispose()
         $bitmap.Dispose()
