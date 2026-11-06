@@ -5,7 +5,7 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 
 ## Nieuwe functies (gekozen door Mark, 2026-10-29), nog te bouwen, op alle apparaten
 
-- **Knoppenblok op de apparaatpagina is niet mooi** (gemeld 2026-11-06, op de Mac bij een Windows-apparaat): de drie kolommen Share, Screen en Sound hebben 4, 5 en 2 knoppen maar zijn even hoog, dus Sound is voor de helft leeg en Share houdt onderaan een gat. Ook loopt de rij met status-chips door naar een tweede regel. Opnieuw indelen zonder lege vlakken, op alle apparaten, en met Mark nalopen wat hij precies lelijk vindt.
+- **Status-chips op de apparaatpagina** (gemeld 2026-11-06): de rij chips bovenaan loopt soms door naar een tweede regel. De knoppen zelf zijn gedaan: computers hebben op de Mac drie kolommen van vier, wat niet kan is grijs en zegt waarom. Op Linux en Windows staan ze nog als losse knoppen achter elkaar, niet in kolommen; op Android is het een lijst.
 - **Uit de securitycheck van 2026-11-05, nog te doen**: Dependabot staat uit op de repo en `cargo audit` is hier niet geinstalleerd, dus afhankelijkheden zijn niet nagelopen (keuze van Mark). Op de Mac telt een gekoppeld apparaat zonder "nooit" als mag bedienen, op Linux en Windows moet `remote_input` per apparaat aan: gelijktrekken? `Dial` belt zonder vraag voor elk gekoppeld apparaat. `networksetup` krijgt het wifi-wachtwoord als argument als `CoreWLAN` faalt.
 - **`tandemd` met een lang pad**: is de map van `--data-dir` te lang voor een Unix-socket, dan start elk commando stil een eigen engine in plaats van de draaiende te vragen. Moet een duidelijke fout worden.
 - **Garmin Forerunner 255 in Tandem** (gevraagd 2026-11-05): het horloge blijft zoals het is, zonder eigen app erop. Tandem op de telefoon
@@ -82,6 +82,66 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 - **Telefoon als webcam op Windows:** een virtuele camera met `MFCreateVirtualCamera` (Windows 11), zodat Zoom, Teams en OBS hem zien.
 - **De telefooncamera als bron in OBS** (gebouwd in 0.2.47 als MPEG-TS over UDP in plaats van SRT, nog niet in OBS gezien): Tandem zet het beeld als stream op de eigen computer (`srt://127.0.0.1:...`), in OBS een
   Mediabron met dat adres; een knop "Kopieer OBS-adres". Op Mac, Windows en Linux.
+
+## Horloge: gekozen functies, uitgewerkt (gekozen door Mark, 2026-11-06), nog te bouwen
+
+Bouwt voort op `claude/horloge-link` (zie `docs/WATCH.md` daar). Het horloge blijft geen lid van de circle: alles naar een computer loopt
+via de telefoon, met een eigen schakelaar in Tandem op de telefoon. Nieuwe berichten komen achteraan in `Messages.kt`, oude versies slaan
+ze over. Wat een computer nodig heeft, komt op Mac, Linux en Windows tegelijk. Wat alleen op telefoon en horloge kan, krijgt een regel in
+`docs/PARITY.md`. Volgorde van bouwen: de stille meting bij punt 1 loopt mee, dan 2, 5, 8 en 3 (na de proef daar), en 1 alleen als de meting goed is. Niet gekozen: goedkeuren
+op je pols, presenteren met de kroon, spraaknotitie.
+
+- **1. Telefoon vergeten**
+  - Wat: loop je weg zonder telefoon, dan trilt je pols één keer en staat er een kaart met "Laat rinkelen". Die knop laat de telefoon
+    rinkelen zodra hij weer in bereik is (`FindDevice`).
+  - Het probleem (opmerking van Mark): thuis kan de link ook wegvallen, bijvoorbeeld als de telefoon op een andere verdieping ligt. Met maar een paar
+    stappen zou het dan vaak onterecht trillen. Of dit handig genoeg is, weten we pas na een meting.
+  - Eerst meten: een week lang alleen op het echte horloge in een logbestand zetten wanneer het zou trillen, zonder te trillen. Mark bekijkt dan welke momenten
+    terecht waren. Veel onterecht thuis? Dan niet bouwen.
+  - Wanneer (voorstel voor de meting): de link is weg (`onLinkDown` in `WatchLink`) en je zet daarna binnen 5 minuten minstens 200 stappen (`StepTracker`),
+    ongeveer 150 m. Rondlopen in huis haalt dat meestal niet. Op de fiets of in de auto zet je geen stappen en merkt het dit dus niet.
+  - Niet: tijdens een slaapopname, aan de lader, of als het horloge af is (die toestanden kent het horloge al). Eén seintje per keer weg.
+  - Nieuw: alleen op het horloge, geen nieuw bericht. Een schakelaar op het horloge, **standaard uit**.
+  - Nog bekijken: of Bluetooth uitzetten op de telefoon vals alarm geeft als je dan gaat lopen. Zo ja, een kort afscheidsbericht van de telefoon.
+- **2. Seintje van je computer**
+  - Wat: `tandem notify "Render klaar"` op de computer laat je pols trillen, met de naam van de computer en die tekst. Zonder verbonden
+    horloge wordt het een gewone melding op de telefoon. Is er geen telefoon bereikbaar, dan is het seintje weg en geeft de opdracht een
+    foutcode, zodat een script dat merkt.
+  - Waarvoor: DaVinci kan na een render een script starten (op versie 21.1 nakijken), Claude Code met een hook als een sessie op je wacht,
+    en elk eigen script.
+  - Ingang: Linux en Windows via `tauri_plugin_single_instance`, dat de argumenten al aan de draaiende app geeft. `tandemd` als extra
+    commando. Op de Mac een Unix-socket met alleen rechten voor de gebruiker, zoals bij `tandemd`. Bewust geen `tandem://`-adres: dan kan elke website je pols laten trillen.
+  - Computerkant gebouwd op `claude/horloge-computer`. Telefoonkant nog te doen.
+  - Kern: de bestaande `send_notification` met een eigen app-id. `TandemService.kt` doet nu niets met `TandemEvent.Notification`; daar
+    komt de doorgifte naar `WatchNotifications`. Eerst nakijken of de telefoon die meldingen elders verwerkt.
+  - Grenzen: tekst hooguit 200 tekens, hooguit één seintje per 10 s per computer, per computer uit te zetten op de telefoon.
+  - Pariteit: Android als bron heeft geen opdrachtregel, dat komt als uitzondering in `docs/PARITY.md`.
+- **3. Snelknoppen op het horloge**
+  - Wat: een tegel met hooguit vier knoppen die je zelf kiest, in Tandem op de telefoon, bij de instellingen van het horloge. De indeling volgt het aantal.
+    Keuzes: computer vergrendelen, computer wekken, computer wakker houden, hotspot aan of uit, geluidsstand van de telefoon, telefoon laten rinkelen, stille slaap.
+    Standaard de eerste twee, plus hotspot en geluidsstand. Met meer computers kies je er een op het horloge; de laatste keuze blijft staan.
+  - Bericht: nieuw `QuickAction` (soort, doel-id) van horloge naar telefoon, die de bestaande telefooncode aanroept (`lock`,
+    `setSoundMode`, Wake on LAN, hotspot). Nieuw `QuickState` van telefoon naar horloge: de gekozen knoppen, geluidsstand, hotspot, en per computer of hij kan
+    vergrendelen, slaapt of verbonden is.
+  - Wat niet kan: de knop is grijs en zegt bij het tikken waarom, zoals overal in Tandem. Elke knop trilt kort als het gelukt is.
+  - Schakelaar per computer op de telefoon. Vergrendelen mag nu al van elk gekoppeld apparaat, wekken ook; deze knoppen voegen geen nieuwe macht toe.
+  - Vraagt: `androidx.wear.tiles` en `protolayout`, dus akkoord van Mark. Dezelfde knoppen komen ook als scherm in de app, zodat ze ook werken als tegels niet kunnen.
+  - **Eerst een proef van een uur op het echte horloge**: een lege tegel. Pas als die op de Pixel Watch 2 verschijnt, wordt de tegel gebouwd.
+- **4. Batterijen op de wijzerplaat**: nog niet (besluit van Mark, 2026-11-06). Kan later op de `DeviceBatteries` die al binnenkomen.
+- **5. Muziek stopt als je slaapt**
+  - Wat: slaap je in, dan pauzeert alles wat speelt: op de telefoon, op verbonden computers en via de telefoon ook Sonos, als dat daar als mediasessie loopt.
+  - Wanneer: tijdens een slaapopname, na 25 minuten stil (de drempel van `SleepAutoDetector`), dus niet meteen als je bedtime mode met de hand aanzet.
+  - Bericht: nieuw `Asleep` (id van de nacht) van horloge naar telefoon. `SleepMode` kan dit niet dragen: die wordt na elke verbinding herhaald. Het id zorgt dat het één keer per nacht gebeurt. Was de link weg, dan telt het bericht alleen als het jonger is dan 10 minuten.
+  - Telefoon: `WatchMedia` pauzeert de eigen spelers, `sendMediaCommand` die op computers, alleen wat echt speelt.
+  - Schakelaars op de telefoon, naast "Stille slaap": "Muziek pauzeren" (standaard uit) en apart "Computers vergrendelen" (standaard uit), want iemand anders kan dan achter de computer zitten.
+  - De vraag na een nacht (wens van Mark): staat "Muziek pauzeren" uit en speelde er nog minstens 30 minuten muziek nadat je in slaap viel, dan krijg je na het opstaan een melding: "Er speelde muziek door terwijl je sliep. Voortaan vanzelf uitzetten?" Knoppen: "Ja, voortaan", "Nu niet", "Niet meer vragen". "Ja" zet de schakelaar aan. "Nu niet" vraagt pas na een volgende keer opnieuw, hooguit één keer per week. `Asleep` wordt daarvoor altijd gestuurd, ook als de schakelaar uit staat; de telefoon onthoudt alleen of er toen iets speelde.
+  - Later: de betere herkenning uit "De hele dag hartslag bijhouden" neemt de drempel van 25 minuten over.
+- **8. Muziek op je computer bedienen**
+  - Wat: de horloge-player toont ook wat op een computer speelt, met de computernaam erbij. Afspelen, volgende, vorige en de kroon voor het volume werken daar ook.
+  - Telefoon: `MediaMirror` krijgt de spelers van computers al binnen (`TandemEvent.MediaPlayers`, `_remote`). `WatchMedia` voegt die samen met de eigen spelers via `tandem_media_visible`, met het apparaat-id vooraan in het speler-id. `perform` stuurt zo'n speler door met `sendMediaCommand`.
+  - Volgorde: `PlayerRules` blijft gelden: wat speelt vooraan, hooguit drie spelers. Hoes: `MediaArt` van de computer door `smallCover` (WebP van 152 bij 152, hooguit 6 KB).
+  - Kern: `MediaAction` heeft geen volume. Nieuw `VolumeUp` en `VolumeDown`; oudere apparaten lezen dat als `Other`. Mac, Linux en Windows zetten het volume van het systeem.
+  - Computerkant gebouwd op `claude/horloge-computer`: Linux en Windows sturen nu hun spelers, alle computers hebben het volume. Nog niet op een echte Linux- of Windows-computer gezien. De hoes ontbreekt daar nog (art 0): MPRIS geeft een adres, Windows een stream. Telefoonkant nog te doen; bekijk wat er in `MediaMirror` achter `share` zit, die instelling blijft gelden.
 
 ## Open lijst voor een grote ronde (bijgewerkt 2026-10-09, na versie 0.1.73)
 

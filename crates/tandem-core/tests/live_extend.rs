@@ -12,6 +12,8 @@ use tandem_core::live::{
 };
 use tandem_core::platform::DesktopFiles;
 use tandem_core::store::{FileSecretStore, Store};
+use tandem_core::events::Event;
+use tandem_core::proto::Msg;
 use tandem_core::{DeviceId, Engine, EngineConfig};
 
 struct Node {
@@ -306,4 +308,58 @@ async fn a_second_screen_that_is_turned_is_resized_within_its_session() {
     // A camera is not a screen made for the phone, so it has no shape to change.
     let camera = phone.engine.media_request(mac.engine.id(), MediaWant::new(MediaKind::Camera)).unwrap();
     assert!(phone.engine.media_resize(MediaResize { session: camera, ..upright }).is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn only_a_device_that_looks_at_the_screen_can_ask_for_its_sound() {
+    let laptop = node("Laptop").await;
+    let mac = node("Mac").await;
+    let offer = mac.engine.create_pairing_offer().unwrap();
+    laptop.engine.pair_with_uri(&offer.uri).await.unwrap();
+    wait_until("connected", || online(&laptop, mac.engine.id()) && online(&mac, laptop.engine.id())).await;
+    let host = Arc::new(Host::default());
+    mac.engine.set_media_host(host.clone());
+    laptop.engine.set_media_viewer(Viewer::new(Instant::now()));
+
+    let mut at_mac = mac.engine.subscribe();
+    let asked = |engine: Engine, on: bool, to: DeviceId| async move { engine.send_msg(&[to], Msg::SoundRequest { on }).await };
+    let heard = async |events: &mut tokio::sync::broadcast::Receiver<Event>, within: Duration| {
+        tokio::time::timeout(within, async {
+            loop {
+                if let Ok(Event::SoundRequested { on, .. }) = events.recv().await {
+                    return on;
+                }
+            }
+        })
+        .await
+        .ok()
+    };
+
+    // Nobody looks at the screen: the app never hears of it.
+    asked(laptop.engine.clone(), true, mac.engine.id()).await;
+    assert_eq!(heard(&mut at_mac, Duration::from_secs(1)).await, None);
+
+    let mut want = MediaWant::new(MediaKind::Screen);
+    want.max_width = 1920;
+    want.max_height = 1080;
+    want.max_fps = 30;
+    let session = laptop.engine.media_request(mac.engine.id(), want).unwrap();
+    wait_until("the request", || !host.requests.lock().unwrap().is_empty()).await;
+    // Still only asked, not allowed.
+    asked(laptop.engine.clone(), true, mac.engine.id()).await;
+    assert_eq!(heard(&mut at_mac, Duration::from_secs(1)).await, None);
+
+    mac.engine
+        .media_accept(session, MediaAnswer { codec: MediaCodec::H264, width: 1920, height: 1080, fps: 30, bitrate: 8_000_000, control: false })
+        .unwrap();
+    asked(laptop.engine.clone(), true, mac.engine.id()).await;
+    assert_eq!(heard(&mut at_mac, Duration::from_secs(30)).await, Some(true));
+
+    // Stopping needs nothing.
+    mac.engine.media_stop(session).unwrap();
+    asked(laptop.engine.clone(), false, mac.engine.id()).await;
+    assert_eq!(heard(&mut at_mac, Duration::from_secs(30)).await, Some(false));
+    // And after the session it is over.
+    asked(laptop.engine.clone(), true, mac.engine.id()).await;
+    assert_eq!(heard(&mut at_mac, Duration::from_secs(1)).await, None);
 }

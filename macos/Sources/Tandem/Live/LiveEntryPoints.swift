@@ -17,34 +17,38 @@ struct LiveActionRow: View {
 
     var body: some View {
         // A computer that shows its screen, like a remote desktop: look at it, and use it when it allows that.
-        if device.isComputer, device.caps.contains("screen.host") {
+        if device.isComputer {
             let ready = device.online
+            let hosts = device.caps.contains("screen.host")
             let running = LiveManager.shared.session(of: .screen, on: device.id) != nil
             // What is on is blue, and pressing it again turns it off.
             GlassActionButton(title: running ? "Stop controlling" : "Control computer", symbol: running ? "stop.circle.fill" : "display", prominent: running) {
                 if let session = LiveManager.shared.session(of: .screen, on: device.id), !session.extend { LiveManager.shared.stop(session) }
+                else if !hosts { model.showToast(String(localized: "\(device.name) does not share its screen. Allow that in Tandem on that computer.")) }
                 else { LiveManager.shared.start(device: device, kind: .screen) }
             }
+            .opacity(ready && !hosts ? 0.5 : 1)
             .disabled(!ready)
             .help("Shows the screen of this computer in a window. It asks first, and then you can use its mouse and keyboard.")
             // A screen that computer makes for this one, next to the ones it has: windows are moved to it with the mouse of that computer.
-            if device.caps.contains("screen.extend") {
-                let secondRunning = LiveManager.shared.session(of: .screen, on: device.id)?.extend == true
-                // Named from where the extra screen appears: this Mac becomes a screen of that computer.
-                GlassActionButton(
-                    title: secondRunning ? "Stop being its screen" : "Be its second screen",
-                    symbol: secondRunning ? "stop.circle.fill" : "rectangle.righthalf.inset.filled.arrow.right",
-                    prominent: secondRunning
-                ) {
-                    if secondRunning, let session = LiveManager.shared.session(of: .screen, on: device.id) { LiveManager.shared.stop(session) }
-                    else { LiveManager.shared.start(device: device, kind: .screen, extend: true) }
-                }
-                .disabled(!ready)
-                .help("This Mac becomes an extra screen of that computer. Move windows to it with the mouse of that computer.")
+            let extends = device.caps.contains("screen.extend")
+            let secondRunning = LiveManager.shared.session(of: .screen, on: device.id)?.extend == true
+            // Named from where the extra screen appears: this Mac becomes a screen of that computer.
+            GlassActionButton(
+                title: secondRunning ? "Stop being its screen" : "Be its second screen",
+                symbol: secondRunning ? "stop.circle.fill" : "rectangle.righthalf.inset.filled.arrow.right",
+                prominent: secondRunning
+            ) {
+                if secondRunning, let session = LiveManager.shared.session(of: .screen, on: device.id) { LiveManager.shared.stop(session) }
+                else if !extends { model.showToast(String(localized: "\(device.name) cannot make an extra screen")) }
+                else { LiveManager.shared.start(device: device, kind: .screen, extend: true) }
             }
+            .opacity(ready && !extends ? 0.5 : 1)
+            .disabled(!ready)
+            .help("This Mac becomes an extra screen of that computer. Move windows to it with the mouse of that computer.")
         }
         // This Mac's own extra screen, shown on that device: it makes the screen, the device is told to look at it.
-        if device.caps.contains("screen.extend.view") || device.platform == .android {
+        if device.isComputer || device.platform == .android {
             // On while this Mac shows a screen of its own on that device; pressing it then ends it.
             let extending = ScreenHost.shared.isExtending(to: device.id)
             // The other way round: this Mac gets an extra screen, shown on that device.
@@ -63,6 +67,7 @@ struct LiveActionRow: View {
                     ScreenHost.shared.offerExtend(to: device)
                 }
             }
+            .opacity(device.online && !device.caps.contains("screen.extend.view") ? 0.5 : 1)
             .disabled(!device.online && !extending)
             .help("This Mac gets an extra screen, shown on that device. Move windows to it with your mouse.")
         }

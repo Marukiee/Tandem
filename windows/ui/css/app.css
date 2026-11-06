@@ -171,7 +171,7 @@ h2 { font: 600 16px var(--font-display); margin: 6px 2px 0; }
   border: 1px solid var(--line-strong);
   background: var(--card);
   cursor: default;
-  transition: background 0.12s, border-color 0.12s, transform 0.08s;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.08s;
 }
 .btn:hover { background: var(--hover); }
 .btn:active { background: var(--press); transform: scale(0.985); }
