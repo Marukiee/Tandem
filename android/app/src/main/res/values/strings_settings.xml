@@ -139,4 +139,6 @@
     <string name="settings_kw_watch">watch, wear, pixel watch, pair, couple, wrist</string>
     <string name="settings_kw_watch_mouse">watch, mouse, gyro, pointer, pinch, presentation</string>
     <string name="settings_kw_watch_quiet">watch, sleep, quiet, do not disturb, bedtime</string>
+    <string name="settings_kw_health">health, sleep, workout, heart rate, steps, nights</string>
+    <string name="settings_kw_health_show">health, show, without watch, turn on</string>
 </resources>

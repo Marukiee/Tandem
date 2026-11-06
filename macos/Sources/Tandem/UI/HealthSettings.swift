@@ -4,15 +4,32 @@ import TandemCore
 /// The nights and workouts of the watch, by way of the phone. Which devices get them is a switch on the phone: only that one has a watch.
 struct HealthSettings: View {
     @Environment(EngineModel.self) private var model
+    @AppStorage("showHealth") private var showHealth = false
+
+    private var hasWatch: Bool { model.devices.contains { $0.status.watch?.paired == true } }
+    private var records: [TandemHealthRecord] { model.healthRecords.filter { $0.kind != .unknown } }
 
     var body: some View {
         Form {
-            Section {
-                ForEach(model.healthRecords.filter { $0.kind != .unknown }.prefix(60), id: \.id) { record in
-                    if record.kind == .workout { WorkoutRow(record: record) } else { SleepRow(record: record) }
+            // Without a watch this is one more page that stays empty, unless someone asked for it.
+            if !hasWatch {
+                Section {
+                    Toggle("Show without a watch", isOn: $showHealth)
+                } footer: {
+                    Text("This shows by itself once one of your phones has a watch.")
                 }
-            } footer: {
-                Text("Sleep stages are an estimate from heart rate and movement, not a sleep lab.")
+            }
+            if hasWatch || showHealth {
+                Section {
+                    if records.isEmpty {
+                        Text("Nothing here right now. Your phone decides which devices get them.").foregroundStyle(.secondary)
+                    }
+                    ForEach(records.prefix(60), id: \.id) { record in
+                        if record.kind == .workout { WorkoutRow(record: record) } else { SleepRow(record: record) }
+                    }
+                } footer: {
+                    Text("Sleep stages are an estimate from heart rate and movement, not a sleep lab.")
+                }
             }
         }
         .formStyle(.grouped)

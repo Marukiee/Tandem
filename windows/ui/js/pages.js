@@ -875,7 +875,7 @@ export function SettingsPage() {
     <div><h1>${t("settings")}</h1></div>
     <div class="settings-body">
       <nav class="settings-nav" aria-label=${t("settings")}>
-        ${SECTIONS.filter(([id]) => id !== "health" || (state.health || []).length > 0 || section === "health").map(([id, label, icon]) => html`<button key=${id} class=${section === id ? "on" : ""} onClick=${() => open(id)}>
+        ${SECTIONS.map(([id, label, icon]) => html`<button key=${id} class=${section === id ? "on" : ""} onClick=${() => open(id)}>
           <${Icon} name=${icon} size=${17} /><span>${t(label)}</span></button>`)}
       </nav>
       <div class="settings-content" key=${section}>
@@ -1177,14 +1177,25 @@ function HealthRecord({ r }) {
 }
 
 // What a phone gave this computer from its watch. Which devices get them is a switch on the phone: only that one has a watch.
+function healthShown() {
+  try { return localStorage.getItem("healthShown") === "1"; } catch { return false; }
+}
+
 function HealthSection() {
+  const [shown, setShown] = useState(healthShown);
+  const hasWatch = (state.devices || []).some((d) => d.status?.watch?.paired);
   const records = (state.health || []).filter((r) => r.kind !== "unknown").slice(0, 60);
+  const change = (on) => {
+    setShown(on);
+    try { localStorage.setItem("healthShown", on ? "1" : "0"); } catch { /* the choice only lasts until this window closes */ }
+  };
   return html`<div style="display:flex;flex-direction:column;gap:12px">
     <h2>${t("tab_health")}</h2>
-    ${records.length === 0
+    ${!hasWatch && html`<div class="card flush"><${SettingRow} icon="moon" title=${t("health_show")} sub=${t("health_show_sub")} on=${shown} onChange=${change} /></div>`}
+    ${(hasWatch || shown) && (records.length === 0
       ? html`<div class="muted">${t("health_empty")}</div>`
       : html`<div class="card flush">${records.map((r) => html`<${HealthRecord} key=${r.id} r=${r} />`)}</div>
-        <div class="muted">${t("health_estimate")}</div>`}
+        <div class="muted">${t("health_estimate")}</div>`)}
   </div>`;
 }
 

@@ -1392,3 +1392,6 @@
 "Heart rate %lld on average, %lld lowest" = "Hartslag gemiddeld %lld, laagste %lld";
 "Heart rate %lld on average, %lld highest" = "Hartslag gemiddeld %lld, hoogste %lld";
 "%lld steps" = "%lld stappen";
+"Show without a watch" = "Ook zonder horloge tonen";
+"This shows by itself once one of your phones has a watch." = "Dit verschijnt vanzelf zodra een van je telefoons een horloge heeft.";
+"Nothing here right now. Your phone decides which devices get them." = "Hier staat nu niets. Je telefoon bepaalt welke apparaten ze krijgen.";

@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -40,6 +39,7 @@ import nl.markmaaktmedia.tandem.ui.components.SectionHeader
 import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
 import nl.markmaaktmedia.tandem.ui.components.SwitchRow
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
+import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemHealthKind
@@ -48,7 +48,16 @@ import uniffi.tandem_core.TandemSleepStage
 
 private const val SHOWN = 30
 
-private fun List<TandemHealthRecord>.latestNight() = firstOrNull { it.kind == TandemHealthKind.SLEEP }
+/** With a watch, or for someone who turned it on. For everyone else this would be one more page that stays empty. */
+@Composable
+internal fun rememberHealthAvailable(): Boolean {
+    val graph = LocalContext.current.graph
+    val watch by graph.watch.state.collectAsState()
+    val shown by graph.prefs.healthShown.collectAsState(initial = false)
+    return watch.paired || shown
+}
+
+internal fun List<TandemHealthRecord>.latestNight() = firstOrNull { it.kind == TandemHealthKind.SLEEP }
 
 /** The newest night, large: this is what the page gets opened for in the morning. Nothing at all while there is none. */
 @Composable
@@ -134,7 +143,7 @@ private fun SleepLines(record: TandemHealthRecord) {
 @Composable
 private fun StageBar(record: TandemHealthRecord, height: Dp) {
     if (record.stages.isEmpty()) return
-    Row(Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(height / 2))) {
+    Row(Modifier.fillMaxWidth().height(height).clip(PillShape)) {
         record.stages.forEach { run ->
             Box(Modifier.weight(run.seconds.toFloat()).fillMaxHeight().background(stageColor(run.stage)))
         }
@@ -204,7 +213,7 @@ private fun stageColor(stage: TandemSleepStage): Color = when (stage) {
 }
 
 @Composable
-private fun duration(minutes: Int): String =
+internal fun duration(minutes: Int): String =
     if (minutes >= 60) stringResource(R.string.health_duration_hm, minutes / 60, minutes % 60)
     else stringResource(R.string.health_duration_m, minutes)
 
@@ -215,9 +224,7 @@ private fun duration(minutes: Int): String =
 @Composable
 internal fun HealthDeviceSection(device: TandemDevice) {
     val graph = LocalContext.current.graph
-    val watch by graph.watch.state.collectAsState()
-    val records by graph.host.healthRecords.collectAsState()
-    if ("health" !in device.caps || !(watch.paired || records.isNotEmpty())) return
+    if ("health" !in device.caps || !rememberHealthAvailable()) return
     val engine = graph.host.engine
     val scope = rememberCoroutineScope()
     var allowed by remember(device.id) { mutableStateOf(engine?.healthAllowed(device.id) ?: false) }

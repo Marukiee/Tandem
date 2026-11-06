@@ -2,6 +2,10 @@ package nl.markmaaktmedia.tandem.ui.screens.settings
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -54,6 +58,7 @@ import nl.markmaaktmedia.tandem.ui.screens.battery
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
+import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.watch.WatchState
 import uniffi.tandem_core.TandemPlatform
 
@@ -73,8 +78,6 @@ internal fun WatchPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                 SettingsGroup {
                     ActionRow(0, 1, TandemIcons.Watch, stringResource(R.string.watch_pair), null, onClick = { onOpen(Route.PairWatch) })
                 }
-                LatestNight()
-                EarlierNights()
             }
         }
     }
@@ -105,7 +108,11 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
             TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
         }
         WatchHeader(state)
-        AnimatedVisibility(!hasListener) {
+        AnimatedVisibility(
+            !hasListener,
+            enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
+            exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
+        ) {
             SettingsGroup {
                 ActionRow(
                     0, 1, TandemIcons.Notifications, stringResource(R.string.watch_needs_listener), stringResource(R.string.watch_needs_listener_sub),
@@ -113,7 +120,6 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
                 )
             }
         }
-        LatestNight()
 
         SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
@@ -146,21 +152,23 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
         SectionHeader(stringResource(R.string.watch_section_wrist), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
             ActionRow(
-                0, 2, TandemIcons.Notifications, stringResource(R.string.watch_row_notifications), stringResource(R.string.watch_row_same_apps),
+                0, 3, TandemIcons.Sleep, stringResource(R.string.settings_cat_health), stringResource(R.string.health_row_sub),
+                onClick = { onOpen(Route.SettingsPage(SettingsPageId.Health)) },
+            )
+            ActionRow(
+                1, 3, TandemIcons.Notifications, stringResource(R.string.watch_row_notifications), stringResource(R.string.watch_row_same_apps),
                 onClick = { onOpen(Route.MirrorApps) },
             )
             ActionRow(
-                1, 2, TandemIcons.Music, stringResource(R.string.watch_row_music), stringResource(R.string.watch_row_same_apps),
+                2, 3, TandemIcons.Music, stringResource(R.string.watch_row_music), stringResource(R.string.watch_row_same_apps),
                 onClick = { onOpen(Route.MediaApps) },
             )
         }
 
-        // Above the older nights: that list grows, and this should not move further down with it.
         Spacer(Modifier.height(12.dp))
         SettingsGroup {
             ActionRow(0, 1, TandemIcons.Delete, stringResource(R.string.watch_unpair), stringResource(R.string.watch_unpair_sub), watch::unpair, danger = true)
         }
-        EarlierNights()
         Spacer(Modifier.height(24.dp))
     }
 }

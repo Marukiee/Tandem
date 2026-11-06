@@ -95,6 +95,7 @@ toegevoegd en onbekende types genegeerd.
 - De dienst die de verbinding openhoudt heeft geen kaart in de lijst. Hij geeft als tijd 1 op en dan weigert het systeem de melding als te oud (`Ignored enqueue for old` in logcat), terwijl de dienst gewoon foreground blijft. Stopt een latere Wear OS daarmee, dan komt alleen de kaart terug.
 
 ## Slaap en training
+- Alles staat op een eigen pagina Gezondheid (`HealthPage` op de telefoon, een eigen onderdeel in de instellingen op de computers). Zonder horloge in de kring staat daar alleen de schakelaar "Ook zonder horloge tonen", per apparaat bewaard. De nachten zelf blijven bewaard als een horloge wordt ontkoppeld.
 - Opnemen: versnellingsmeter op 25 Hz, hartslag, stappen, off-body en huidtemperatuur (als die toestemming er is), in batches uit de
   sensorhub zodat de processor kan slapen. Een bestand per sessie in de externe app-map (`Android/data/.../files/raw`), 30 dagen
   bewaard. Alleen daar kan een release-build een nacht over USB afgeven.

@@ -17,6 +17,7 @@ enum class SettingsPageId(val key: String) {
     Notifications("notifications"),
     Trackpad("trackpad"),
     Watch("watch"),
+    Health("health"),
     Updates("updates"),
     Shizuku("shizuku"),
     About("about"),
@@ -38,6 +39,7 @@ internal enum class SettingsCategory(
     Notifications(R.string.settings_notifications, { TandemIcons.Notifications }, Route.SettingsPage(SettingsPageId.Notifications)),
     Trackpad(R.string.settings_cat_trackpad, { TandemIcons.Mouse }, Route.SettingsPage(SettingsPageId.Trackpad)),
     Watch(R.string.settings_cat_watch, { TandemIcons.Watch }, Route.SettingsPage(SettingsPageId.Watch)),
+    Health(R.string.settings_cat_health, { TandemIcons.Sleep }, Route.SettingsPage(SettingsPageId.Health)),
     Features(R.string.features_title, { TandemIcons.CheckCircle }, Route.Features),
     /** Permissions, Shizuku and file access, each a page that the page Setup opens; the three below are those pages, also for the search. */
     Setup(R.string.setup_title, { TandemIcons.Shield }, Route.Setup),
@@ -61,6 +63,7 @@ internal object FocusKeys {
     const val Language = "look.language"
     const val WatchMouse = "watch.mouse"
     const val WatchQuiet = "watch.quiet"
+    const val HealthShow = "health.show"
 
     const val PhoneName = "sharing.name"
     const val PhoneId = "sharing.id"
@@ -159,6 +162,7 @@ internal object SettingsCatalog {
     private val notifications = Route.SettingsPage(SettingsPageId.Notifications)
     private val trackpad = Route.SettingsPage(SettingsPageId.Trackpad)
     private val watch = Route.SettingsPage(SettingsPageId.Watch)
+    private val health = Route.SettingsPage(SettingsPageId.Health)
     private val quickShare = Route.SettingsPage(SettingsPageId.QuickShare)
     private val tiles = Route.SettingsPage(SettingsPageId.Tiles)
     private val shizuku = Route.SettingsPage(SettingsPageId.Shizuku)
@@ -293,6 +297,13 @@ internal object SettingsCatalog {
         SettingsEntry(
             "watch_quiet", R.string.watch_quiet, R.string.settings_kw_watch_quiet, SettingsCategory.Watch, watch,
             { TandemIcons.Sleep }, subtitle = R.string.watch_quiet_sub, focus = FocusKeys.WatchQuiet,
+        ),
+
+        // Health
+        SettingsEntry("health", R.string.settings_cat_health, R.string.settings_kw_health, SettingsCategory.Health, health, { TandemIcons.Sleep }),
+        SettingsEntry(
+            "health_show", R.string.health_show, R.string.settings_kw_health_show, SettingsCategory.Health, health,
+            { TandemIcons.Sleep }, subtitle = R.string.health_show_sub, focus = FocusKeys.HealthShow,
         ),
 
         // Trackpad

@@ -76,10 +76,7 @@ struct SettingsView: View {
     @Environment(EngineModel.self) private var model
     @LocalState private var selection: SettingsSection = DebugSupport.initialSettingsSection() ?? .general
 
-    /// Sleep and workouts only exist here once a phone gave some to this Mac.
-    private var sections: [SettingsSection] {
-        SettingsSection.allCases.filter { $0 != .health || !model.healthRecords.isEmpty || selection == .health }
-    }
+    private var sections: [SettingsSection] { SettingsSection.allCases }
 
     var body: some View {
         NavigationSplitView {

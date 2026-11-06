@@ -98,6 +98,7 @@ internal fun rememberCategorySummaries(): Map<SettingsCategory, String> {
             watchState.paired -> stringResource(R.string.watch_searching)
             else -> stringResource(R.string.watch_sum_unpaired)
         },
+        SettingsCategory.Health to healthSummary(),
         SettingsCategory.Hotspot to stringResource(
             when {
                 !hotspotReady -> R.string.hotspot_row_setup
@@ -138,4 +139,16 @@ private fun summaryOnOf(done: Int, of: Int): String = when (done) {
     of -> stringResource(R.string.settings_sum_all_on)
     0 -> stringResource(R.string.settings_sum_all_off)
     else -> stringResource(R.string.settings_sum_on_of, done, of)
+}
+
+/** Off, nothing yet, or what the page is opened for. */
+@Composable
+private fun healthSummary(): String {
+    val records by LocalContext.current.graph.host.healthRecords.collectAsState()
+    val night = records.latestNight()
+    return when {
+        !rememberHealthAvailable() -> stringResource(R.string.health_sum_off)
+        night == null -> stringResource(R.string.health_sum_none)
+        else -> duration(night.sleepMinutes.toInt())
+    }
 }

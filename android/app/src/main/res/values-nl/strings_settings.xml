@@ -138,4 +138,6 @@
     <string name="settings_kw_watch">horloge, smartwatch, wear, pixel watch, koppelen, pols</string>
     <string name="settings_kw_watch_mouse">horloge, muis, gyro, aanwijzer, pinch, presentatie</string>
     <string name="settings_kw_watch_quiet">horloge, slaap, stil, niet storen, bedtijd</string>
+    <string name="settings_kw_health">gezondheid, slaap, training, hartslag, stappen, nachten</string>
+    <string name="settings_kw_health_show">gezondheid, tonen, zonder horloge, aanzetten</string>
 </resources>

@@ -581,4 +581,11 @@
     <string name="health_night_span">%1$s to %2$s</string>
     <string name="health_efficiency">Asleep %1$d%% of the night</string>
     <string name="health_awake">Awake %1$s</string>
+    <string name="settings_cat_health">Health</string>
+    <string name="health_show">Show without a watch</string>
+    <string name="health_show_sub">Health shows by itself once a watch is paired.</string>
+    <string name="health_none">No nights yet. Sleep with your watch on and they show up here.</string>
+    <string name="health_sum_off">Off</string>
+    <string name="health_sum_none">No nights yet</string>
+    <string name="health_row_sub">Sleep and workouts</string>
 </resources>
