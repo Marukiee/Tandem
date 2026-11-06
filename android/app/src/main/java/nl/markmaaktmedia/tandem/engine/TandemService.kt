@@ -187,6 +187,7 @@ class TandemService : LifecycleService() {
             }
 
             is TandemEvent.Ring -> if (event.on) FindPhone.start(this) else FindPhone.stop()
+            is TandemEvent.RingWatch -> applicationContext.graph.watch.ringWatch(event.on)
             is TandemEvent.Ringing -> FindDevices.reported(this, event.from, event.on)
             is TandemEvent.Lock -> nl.markmaaktmedia.tandem.live.TandemAccessibilityService.instance
                 ?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)

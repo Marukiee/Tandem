@@ -109,6 +109,10 @@ export function deviceChips(d) {
       ? html`<${Chip} icon="bluetooth" tone="accent">${t("over_bluetooth")}<//>`
       : html`<${Chip} icon="cloud-off">${t("not_connected")}<//>`);
   if (!d.online) return chips;
+  const watch = d.status && d.status.watch;
+  if (watch && watch.paired) {
+    chips.push(html`<${Chip} icon="device-watch">${watch.online ? (watch.level != null ? t("watch_level", watch.level) : t("watch")) : t("watch_away")}<//>`);
+  }
   if (d.route) chips.push(html`<${Chip} icon=${d.route === "lan" ? "wifi" : "link"}>${t(routeText[d.route])}<//>`);
   if (d.rttMs != null) chips.push(html`<${Chip}>${d.rttMs} ms<//>`);
   const net = d.status && d.status.network;

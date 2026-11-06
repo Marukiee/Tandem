@@ -200,6 +200,12 @@ pub async fn ring(state: State<'_, AppState>, id: String, on: bool) -> Reply<()>
     state.engine()?.ring(id, on).await.map_err(shown)
 }
 
+/// The watch of a phone, which only that phone talks to.
+#[tauri::command]
+pub async fn ring_watch(state: State<'_, AppState>, id: String, on: bool) -> Reply<()> {
+    state.engine()?.ring_watch(id, on).await.map_err(shown)
+}
+
 /// Keep awake of another computer, switched from here.
 #[tauri::command]
 pub async fn lock_remote(state: State<'_, AppState>, id: String) -> Reply<()> {

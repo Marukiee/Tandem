@@ -282,6 +282,30 @@ pub struct TandemStatus {
     pub sound_dnd: Option<bool>,
     #[uniffi(default = None)]
     pub lock: Option<bool>,
+    #[uniffi(default = None)]
+    pub watch: Option<TandemWatchStatus>,
+}
+
+/// The watch paired with a phone, which only that phone talks to.
+#[derive(Clone, Debug, Default, PartialEq, Eq, uniffi::Record)]
+pub struct TandemWatchStatus {
+    pub paired: bool,
+    pub online: bool,
+    pub level: Option<u8>,
+    pub charging: bool,
+    pub ringing: bool,
+}
+
+impl From<crate::proto::WatchStatus> for TandemWatchStatus {
+    fn from(w: crate::proto::WatchStatus) -> Self {
+        TandemWatchStatus { paired: w.paired, online: w.online, level: w.level, charging: w.charging, ringing: w.ringing }
+    }
+}
+
+impl From<TandemWatchStatus> for crate::proto::WatchStatus {
+    fn from(w: TandemWatchStatus) -> Self {
+        crate::proto::WatchStatus { paired: w.paired, online: w.online, level: w.level, charging: w.charging, ringing: w.ringing }
+    }
 }
 
 /// How a phone sounds.
@@ -340,6 +364,7 @@ impl From<Status> for TandemStatus {
             sound: s.sound.and_then(crate::proto::SoundMode::from_wire).map(Into::into),
             sound_dnd: s.sound_dnd,
             lock: s.lock,
+            watch: s.watch.map(Into::into),
         }
     }
 }
@@ -367,6 +392,7 @@ impl From<TandemStatus> for Status {
             sound: s.sound.map(|mode| crate::proto::SoundMode::from(mode).wire()),
             sound_dnd: s.sound_dnd,
             lock: s.lock,
+            watch: s.watch.map(Into::into),
             // The features go their own way, with `set_features`.
             features: None,
         }
@@ -1110,6 +1136,7 @@ pub enum TandemEvent {
     /// Another device is nearly empty, or full on the charger: for a notification, when the person wants those.
     BatteryAlert { from: String, level: u8, full: bool },
     Ring { from: String, on: bool },
+    RingWatch { from: String, on: bool },
     KeepAwake { from: String, on: bool },
     Unlock { from: String },
     Lock { from: String },
@@ -1247,6 +1274,7 @@ impl From<Event> for TandemEvent {
             Event::Dial { from, number } => TandemEvent::Dial { from: from.to_string(), number },
             Event::BatteryAlert { from, level, full } => TandemEvent::BatteryAlert { from: from.to_string(), level, full },
             Event::Ring { from, on } => TandemEvent::Ring { from: from.to_string(), on },
+            Event::RingWatch { from, on } => TandemEvent::RingWatch { from: from.to_string(), on },
             Event::KeepAwake { from, on } => TandemEvent::KeepAwake { from: from.to_string(), on },
             Event::Unlock { from } => TandemEvent::Unlock { from: from.to_string() },
             Event::Lock { from } => TandemEvent::Lock { from: from.to_string() },
@@ -1931,6 +1959,11 @@ impl TandemEngine {
 
     pub async fn ring(&self, target: String, on: bool) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::Ring { on }).await.map(|_| ())
+    }
+
+    /// Asks the phone `target` to make its watch ring, or stop.
+    pub async fn ring_watch(&self, target: String, on: bool) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::RingWatch { on }).await.map(|_| ())
     }
 
     /// This device plays its sound because of `Ring` (`on`), or stopped: the devices that asked are told.

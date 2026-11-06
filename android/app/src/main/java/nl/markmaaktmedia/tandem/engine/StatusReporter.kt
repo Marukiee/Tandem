@@ -17,10 +17,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import nl.markmaaktmedia.tandem.graph
 import uniffi.tandem_core.TandemBattery
 import uniffi.tandem_core.TandemNetKind
 import uniffi.tandem_core.TandemNetwork
 import uniffi.tandem_core.TandemStatus
+import uniffi.tandem_core.TandemWatchStatus
 
 /**
  * Tells the other devices how this phone is doing: battery, network, do not disturb.
@@ -69,6 +71,8 @@ class StatusReporter(
     }
 
     fun start() {
+        // The watch only talks to this phone, so the others hear about it from here.
+        scope.launch { context.graph.watch.state.collect { schedule(WATCH_DELAY_MS) } }
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_BATTERY_CHANGED)
             addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
@@ -121,6 +125,7 @@ class StatusReporter(
                 sound = now.sound.takeIf { it != last.sound },
                 soundDnd = now.soundDnd.takeIf { it != last.soundDnd },
                 lock = now.lock.takeIf { it != last.lock },
+                watch = now.watch.takeIf { it != last.watch },
             )
             last = now
             host.pushStatus(change)
@@ -169,10 +174,16 @@ class StatusReporter(
             sound = PhoneSoundMode.read(context),
             soundDnd = FocusMode.canUse(context),
             lock = nl.markmaaktmedia.tandem.live.TandemAccessibilityService.instance != null,
+            watch = context.graph.watch.takeIf { it.supported }?.state?.value?.let { watch ->
+                TandemWatchStatus(watch.paired, watch.ready, watch.batteryLevel?.toUByte(), watch.charging, watch.ringing)
+            },
         )
     }
 
     companion object {
+        /** Quickly, because someone may be waiting for a watch to stop ringing, but not for each step of a pairing. */
+        private const val WATCH_DELAY_MS = 300L
+
         @Volatile
         private var current: StatusReporter? = null
 

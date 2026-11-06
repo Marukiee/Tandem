@@ -228,6 +228,14 @@ function SoundModeButton({ device }) {
     <${Icon} name=${icon} size=${17} />${title}</button>`;
 }
 
+/** Finds the watch of a phone. It only talks to that phone, so it goes through there, and it rings or not as that phone says. */
+function WatchButton({ device }) {
+  const watch = device.status.watch;
+  const press = () => call("ring_watch", { id: device.id, on: !watch.ringing }).catch(failed);
+  return html`<button class="btn" disabled=${!device.online || !watch.online} title=${watch.online ? "" : t("watch_away")} onClick=${press}>
+    <${Icon} name=${watch.ringing ? "bell-off" : "device-watch"} size=${17} />${watch.ringing ? t("stop_ringing") : t("find_watch")}</button>`;
+}
+
 export function DevicePage({ device }) {
   const wifiHere = useWifiHere();
   const [ringing, setRinging] = useState(false);
@@ -335,6 +343,7 @@ export function DevicePage({ device }) {
           <${Icon} name="file" size=${17} />${t("insert_scan")}</button>`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
           <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}
+        ${device.status?.watch?.paired && html`<${WatchButton} device=${device} />`}
         ${device.platform === "android" && html`<${SoundModeButton} device=${device} />`}`}
     </div>
 

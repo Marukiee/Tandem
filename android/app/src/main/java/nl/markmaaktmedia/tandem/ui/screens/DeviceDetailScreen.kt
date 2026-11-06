@@ -30,6 +30,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -321,6 +322,27 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
 
         // A sound to find a computer by, and where it was last seen.
         if (computer) nl.markmaaktmedia.tandem.ui.components.FindComputerSection(device)
+
+        // The watch of that phone, which only talks to that phone.
+        device.status.watch?.takeIf { it.paired }?.let { watch ->
+            SectionHeader(stringResource(R.string.settings_cat_watch), top = 12.dp, bottom = 0.dp)
+            SettingsGroup {
+                ActionRow(
+                    0, 1, TandemIcons.Ring,
+                    stringResource(if (watch.ringing) R.string.watch_find_stop else R.string.watch_find),
+                    when {
+                        !watch.online -> stringResource(R.string.watch_not_connected)
+                        watch.level != null -> stringResource(if (watch.charging) R.string.watch_battery_charging else R.string.watch_battery, watch.level!!.toInt())
+                        else -> stringResource(R.string.watch_find_sub)
+                    },
+                    {
+                        if (device.online && watch.online) scope.launch { runCatching { host.engine?.ringWatch(id, !watch.ringing) } }
+                        else android.widget.Toast.makeText(context, R.string.watch_not_connected, android.widget.Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = if (device.online && watch.online) Modifier else Modifier.alpha(0.6f),
+                )
+            }
+        }
 
         // What does not work on it now, and the button that turns it on there.
         FeatureNotice(device)

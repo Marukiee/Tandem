@@ -64,6 +64,8 @@ pub enum Event {
     /// Another device is nearly empty (not charging, at or below `battery_alert::LOW`) or full on the charger.
     BatteryAlert { from: DeviceId, level: u8, full: bool },
     Ring { from: DeviceId, on: bool },
+    /// Another device asks this phone to make its watch ring, or stop.
+    RingWatch { from: DeviceId, on: bool },
     /// Another device asks this computer to keep itself awake, or to let it sleep again.
     KeepAwake { from: DeviceId, on: bool },
     /// Another device asks this computer to unlock its screen; the app checks that it offers this and that the device may.

@@ -218,6 +218,7 @@ pub fn run() {
             commands::guests_by_default,
             commands::set_guests_by_default,
             commands::ring,
+            commands::ring_watch,
             commands::send_paths,
             commands::pick_and_send,
             commands::send_clipboard,

@@ -715,6 +715,10 @@ final class EngineModel {
         case let .ring(from, on):
             FindThisMac.shared.ring(from: from, on: on)
 
+        // Only a phone has a watch.
+        case .ringWatch:
+            break
+
         case let .keepAwake(from, on):
             KeepAwake.shared.setFromAfar(on, by: device(from)?.name ?? String(localized: "A device"))
 
@@ -1207,6 +1211,11 @@ final class EngineModel {
             ringing.remove(id)
         }
         Task { try? await engine?.ring(target: id, on: on) }
+    }
+
+    /// The watch says itself whether it rings: the phone passes that on in its status.
+    func ringWatch(_ id: String, on: Bool) {
+        Task { try? await engine?.ringWatch(target: id, on: on) }
     }
 
     // MARK: Devices

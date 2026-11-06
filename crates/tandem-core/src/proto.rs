@@ -71,6 +71,8 @@ pub enum Msg {
     CallAction(CallAction),
     Dial { number: String },
     Ring { on: bool },
+    /// Asks a phone to make the watch paired with it ring, or stop.
+    RingWatch { on: bool },
     /// Asks the device to record for `side::LISTEN_MS`: this one is about to play the tones of `side::pattern` (see `side.rs`).
     /// `quiet`: the quiet sweeps of a check that nobody asked for. The device then does not ask for its microphone, and does not listen
     /// while it is in use. An older device does not know the field and listens as it always did.
@@ -314,6 +316,24 @@ pub struct Status {
     /// What this device can do for the others and whether it is ready for it: the whole list each time it changes.
     #[serde(default)]
     pub features: Option<Vec<Feature>>,
+    /// The watch paired with this phone. It only talks to this phone, so this is how the others know about it: the whole of it each time
+    /// it changes, with `paired` false once there is none any more. Nil on a device that cannot have one.
+    #[serde(default)]
+    pub watch: Option<WatchStatus>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WatchStatus {
+    #[serde(default)]
+    pub paired: bool,
+    #[serde(default)]
+    pub online: bool,
+    #[serde(default)]
+    pub level: Option<u8>,
+    #[serde(default)]
+    pub charging: bool,
+    #[serde(default)]
+    pub ringing: bool,
 }
 
 /// How a phone sounds. A number on the wire, so a kind that a newer app adds does not make its whole status unreadable here.
@@ -367,7 +387,7 @@ impl Status {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features);
+        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch);
     }
 }
 
@@ -837,6 +857,17 @@ pub fn bytes(data: Vec<u8>) -> ByteBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_watch_of_a_phone_stays_known_until_the_phone_says_otherwise() {
+        let mut known = Status::default();
+        let paired = WatchStatus { paired: true, online: true, level: Some(80), ..Default::default() };
+        known.merge(&Status { watch: Some(paired), ..Default::default() });
+        known.merge(&Status { dnd: Some(true), ..Default::default() });
+        assert_eq!(known.watch.as_ref().and_then(|w| w.level), Some(80));
+        known.merge(&Status { watch: Some(WatchStatus::default()), ..Default::default() });
+        assert_eq!(known.watch.as_ref().map(|w| w.paired), Some(false));
+    }
 
     #[test]
     fn messages_round_trip() {

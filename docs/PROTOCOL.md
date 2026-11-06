@@ -156,6 +156,8 @@ aan gaat. Een oudere versie kent het veld niet en slaat het over.
 
 ### Apparaat zoeken
 
+`RingWatch { on }` vraagt een telefoon om het horloge te laten rinkelen dat ermee gekoppeld is, of ermee te stoppen. Dat horloge praat alleen met die telefoon; in `Status.watch` zegt de telefoon of er een gekoppeld is, of het verbonden is, de batterij en of het rinkelt. Een oudere versie kent beide niet en slaat ze over.
+
 `Ring { on }` vraagt een apparaat om zijn geluid te laten horen (`on: true`) of ermee te stoppen. Een apparaat dat `ring`
 in zijn `caps` heeft, antwoordt de vragers met `Ringing { on }`: `true` zodra het geluid speelt, `false` als het stopt
 (op dat apparaat zelf, na een paar minuten, of op verzoek). Zo laat de knop bij de vrager zien wat er echt gebeurt. Een

@@ -295,6 +295,10 @@ private struct MenuDeviceRow: View {
                                 Image(systemName: batterySymbol(battery, online: device.online)).font(.caption2).foregroundStyle(.secondary)
                                 Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                             }
+                            if let watch = device.status.watch, watch.paired, watch.online, let level = watch.level {
+                                Image(systemName: "applewatch").font(.caption2).foregroundStyle(.secondary)
+                                Text("\(level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            }
                             if device.online, let rtt = device.rttMs {
                                 // The dot separates it from what comes before; with nothing before it, it stands alone.
                                 let alone = reach == .network && device.status.battery == nil

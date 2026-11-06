@@ -201,6 +201,12 @@ private struct DeviceRow: View {
                     .lineLimit(1)
                 }
                 Spacer(minLength: 0)
+                if let watch = device.status.watch, watch.paired, watch.online, let level = watch.level {
+                    Label("\(level)%", systemImage: "applewatch")
+                        .labelStyle(.titleAndIcon)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                }
                 if let battery = device.status.battery {
                     HStack(spacing: 2) {
                         if battery.charging && device.online { Image(systemName: "bolt.fill").font(.caption2).foregroundStyle(.green) }

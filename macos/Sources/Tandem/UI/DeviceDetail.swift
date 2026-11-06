@@ -128,6 +128,9 @@ struct DeviceDetail: View {
                                 if device.platform != .android, let ssid = device.lastSeen?.ssid {
                                     Chip(symbol: "wifi", text: "\(ssid)")
                                 }
+                                if let watch = device.status.watch, watch.paired {
+                                    Chip(symbol: "applewatch", text: watch.online ? watch.level.map { "Watch \(Int($0))%" } ?? "Watch" : "Watch away")
+                                }
                                 // A phone says it on its button in the Sound group.
                                 if device.status.dnd == true, device.status.sound == nil {
                                     Chip(symbol: "moon.fill", text: "Do not disturb")
@@ -325,6 +328,18 @@ struct DeviceDetail: View {
                         model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
                     }
                     .disabled(!device.online)
+                    // The watch only talks to this phone, so this is where this Mac hears about it.
+                    if let watch = device.status.watch, watch.paired {
+                        GlassActionButton(
+                            title: watch.ringing ? "Stop ringing" : "Find watch",
+                            symbol: watch.ringing ? "bell.slash.fill" : "applewatch.radiowaves.left.and.right",
+                            prominent: watch.ringing
+                        ) {
+                            model.ringWatch(device.id, on: !watch.ringing)
+                        }
+                        .disabled(!device.online || !watch.online)
+                        .help(watch.online ? "" : "The watch is not connected to this phone")
+                    }
                     SoundModeButton(device: device)
                 }
                 // This Mac's sound on a computer that plays the sound of other devices. What can go wrong there is said when it is
