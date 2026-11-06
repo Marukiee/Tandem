@@ -89,6 +89,48 @@ class LivePlanTest {
     }
 
     @Test
+    fun aWobbleNearACornerDoesNotTurnThePicture() {
+        val held = HeldWay()
+        assertEquals(0, held.seen(0, 0))
+        // Back and forth over the corner at 45 degrees.
+        for (i in 1..40) assertNull(held.seen(if (i % 2 == 0) 40 else 60, i * 100L))
+    }
+
+    @Test
+    fun thePictureTurnsOnceWhenTheHandStaysPastTheCorner() {
+        val held = HeldWay()
+        held.seen(0, 0)
+        assertNull(held.seen(80, 1000))
+        assertNull(held.seen(85, 1000 + HeldWay.SETTLE_MS - 1))
+        assertEquals(3, held.seen(90, 1000 + HeldWay.SETTLE_MS))
+        assertNull(held.seen(90, 1000 + HeldWay.SETTLE_MS + 1))
+        // And the way back the same, from where it is now.
+        assertNull(held.seen(30, 4000))
+        assertNull(held.seen(330, 5000))
+        assertNull(held.seen(340, 5000 + HeldWay.SETTLE_MS - 1))
+        assertEquals(0, held.seen(350, 5000 + HeldWay.SETTLE_MS))
+    }
+
+    @Test
+    fun aHandThatComesBackStartsTheWaitAgain() {
+        val held = HeldWay()
+        held.seen(0, 0)
+        assertNull(held.seen(80, 1000))
+        assertNull(held.seen(50, 1300))
+        assertNull(held.seen(80, 1650))
+        assertNull(held.seen(80, 1650 + HeldWay.SETTLE_MS - 1))
+        assertEquals(3, held.seen(80, 1650 + HeldWay.SETTLE_MS))
+    }
+
+    @Test
+    fun aPhoneLyingFlatKeepsItsWay() {
+        val held = HeldWay()
+        held.seen(180, 0)
+        assertNull(held.seen(-1, 5000))
+        assertNull(held.seen(170, 6000))
+    }
+
+    @Test
     fun theSensorAngleBecomesASurfaceRotation() {
         assertEquals(0, LivePlan.surfaceRotation(0))
         assertEquals(0, LivePlan.surfaceRotation(350))

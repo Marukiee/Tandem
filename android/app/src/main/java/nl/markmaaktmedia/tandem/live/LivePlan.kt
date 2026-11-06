@@ -84,6 +84,51 @@ object LivePlan {
     fun megabits(bitsPerSecond: Int): String = String.format(java.util.Locale.US, "%.1f Mbit/s", bitsPerSecond / 1_000_000.0)
 }
 
+/**
+ * Which way the phone is held, for the picture. The sensor reports every wobble: taken as it comes, a phone held near a corner flips the
+ * picture back and forth, and every viewer follows. So the hand has to be clearly past the corner, and stay there for a moment.
+ */
+class HeldWay {
+    private var current: Int? = null
+    private var waiting: Int? = null
+    private var since = 0L
+
+    /** Takes the angle of the sensor. Gives the rotation to change to, or null when it stays as it is. */
+    fun seen(sensorDegrees: Int, nowMs: Long): Int? {
+        val way = LivePlan.surfaceRotation(sensorDegrees) ?: return null
+        val now = current
+        if (now == null) {
+            current = way
+            return way
+        }
+        if (offCentre(sensorDegrees, now) <= PAST_CORNER) {
+            waiting = null
+            return null
+        }
+        if (waiting != way) {
+            waiting = way
+            since = nowMs
+            return null
+        }
+        if (nowMs - since < SETTLE_MS) return null
+        current = way
+        waiting = null
+        return way
+    }
+
+    /** How far the angle is from straight in that way of holding it. `Surface.ROTATION_*` runs the other way round from the sensor. */
+    private fun offCentre(degrees: Int, way: Int): Int {
+        val apart = kotlin.math.abs(degrees - (4 - way) % 4 * 90)
+        return minOf(apart, 360 - apart)
+    }
+
+    companion object {
+        /** A corner is 45 degrees from straight; this is 20 past it. */
+        private const val PAST_CORNER = 65
+        const val SETTLE_MS = 600L
+    }
+}
+
 /** The bits of Annex B the host needs to look at. */
 object AnnexBScan {
     /** The NAL unit types in an access unit, in order. */

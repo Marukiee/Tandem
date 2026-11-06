@@ -2,6 +2,7 @@ package nl.markmaaktmedia.tandem.live
 
 import android.content.Context
 import android.os.Handler
+import android.os.SystemClock
 import android.os.Looper
 import android.util.Log
 import android.util.Size
@@ -140,9 +141,18 @@ class CameraPipeline(
 
     /** The picture is turned for the way the phone is held, whether or not the screen follows. */
     private fun followTheHand(made: Preview) {
+        val held = HeldWay()
+        var last = OrientationEventListener.ORIENTATION_UNKNOWN
+        val look = Runnable {
+            if (!stopped) held.seen(last, SystemClock.elapsedRealtime())?.let { if (made.targetRotation != it) made.targetRotation = it }
+        }
         val listener = object : OrientationEventListener(context) {
             override fun onOrientationChanged(degrees: Int) {
-                LivePlan.surfaceRotation(degrees)?.let { if (made.targetRotation != it) made.targetRotation = it }
+                last = degrees
+                look.run()
+                // The sensor says nothing while the angle stays exactly the same: a phone put down past a corner is looked at once more.
+                main.removeCallbacks(look)
+                main.postDelayed(look, HeldWay.SETTLE_MS + 50)
             }
         }
         if (listener.canDetectOrientation()) listener.enable()
