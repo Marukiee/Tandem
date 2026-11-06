@@ -48,6 +48,10 @@ class LinkService : Service() {
             .setContentIntent(open)
             .setOngoing(true)
             .setLocalOnly(true)
+            // The system refuses to list a notification this old, and on a watch this card would otherwise sit above everything for good.
+            // The service still counts as foreground. Should a later Wear OS stop doing this, the card simply comes back, without a time.
+            .setWhen(1)
+            .setShowWhen(false)
             .build()
         try {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)

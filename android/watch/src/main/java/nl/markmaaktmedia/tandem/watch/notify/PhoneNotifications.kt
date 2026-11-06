@@ -7,9 +7,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.core.app.NotificationCompat
 import androidx.core.app.RemoteInput
+import java.io.File
 import nl.markmaaktmedia.tandem.watch.R
+import nl.markmaaktmedia.tandem.watch.protocol.Message
 import nl.markmaaktmedia.tandem.watch.protocol.NotificationMsg
 
 /**
@@ -18,6 +22,7 @@ import nl.markmaaktmedia.tandem.watch.protocol.NotificationMsg
  */
 class PhoneNotifications(private val context: Context) {
     private val manager = context.getSystemService(NotificationManager::class.java)
+    private val icons = File(context.noBackupFilesDir, "app-icons")
 
     init {
         manager.createNotificationChannel(
@@ -25,9 +30,23 @@ class PhoneNotifications(private val context: Context) {
         )
     }
 
+    fun keepIcon(icon: Message.AppIcon) {
+        if (icon.image.size > Message.AppIcon.MAX_BYTES || !PACKAGE_NAME.matches(icon.appId)) return
+        runCatching {
+            icons.mkdirs()
+            File(icons, icon.appId).writeBytes(icon.image)
+        }
+    }
+
+    private fun iconOf(appId: String): Bitmap? =
+        File(icons, appId).takeIf { PACKAGE_NAME.matches(appId) && it.isFile }?.let { BitmapFactory.decodeFile(it.path) }
+
     fun post(n: NotificationMsg) {
+        // Wear OS ignores the small icon and draws this one in its place, with Tandem's as a badge. Without one Tandem's own stays.
+        val icon = iconOf(n.appId)
         val builder = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_tandem)
+            .setLargeIcon(icon)
             .setContentTitle(n.title.ifBlank { n.appName })
             .setContentText(n.text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(n.text))
@@ -45,6 +64,7 @@ class PhoneNotifications(private val context: Context) {
             .setPublicVersion(
                 NotificationCompat.Builder(context, CHANNEL)
                     .setSmallIcon(R.drawable.ic_stat_tandem)
+                    .setLargeIcon(icon)
                     .setContentTitle(context.getString(R.string.hidden_notification, n.appName))
                     .build(),
             )
@@ -73,8 +93,10 @@ class PhoneNotifications(private val context: Context) {
         shownTags().filterNot(current::contains).forEach(::remove)
     }
 
+    /** The icons go too: they say which apps were on the phone this watch is no longer paired with. */
     fun clear() {
         shownTags().forEach(::remove)
+        icons.deleteRecursively()
     }
 
     private fun shownTags() = manager.activeNotifications
@@ -84,6 +106,9 @@ class PhoneNotifications(private val context: Context) {
     private companion object {
         const val CHANNEL = "phone"
         const val NOTIFICATION_ID = 100
+
+        /** The file name comes from the other side of the link, and no package name can climb out of the folder. */
+        val PACKAGE_NAME = Regex("[A-Za-z][A-Za-z0-9_.]*")
     }
 }
 

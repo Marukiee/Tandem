@@ -94,6 +94,9 @@ class WatchBridge(
     private val alerted = HashSet<String>()
     private val outbound = OutboundQueue()
 
+    /** Per connection, not for good: what was on its way when the link dropped never arrived, and an icon is small enough to send again. */
+    private val iconsSent = HashSet<String>()
+
     @Volatile private var mirrorAll = true
 
     @Volatile private var mirrorExcluded: Set<String> = emptySet()
@@ -248,6 +251,7 @@ class WatchBridge(
         handler.post {
             engine?.unpair()
             outbound.clear()
+            iconsSent.clear()
             alerted.clear()
             endPointer()
             _state.update { WatchState() }
@@ -280,6 +284,7 @@ class WatchBridge(
             val source = notifications ?: return@post
             val notification = source.toMessage(sbn, source.ranking()) ?: return@post
             val first = alerted.add(notification.key)
+            sendIcon(notification.appId)
             enqueue(Message.Notification(if (first) notification else notification.copy(silent = true)))
         }
     }
@@ -307,8 +312,16 @@ class WatchBridge(
 
     private fun sendNotificationSync() {
         val current = notifications?.snapshot().orEmpty().filter { mirrors(it.appId) }
-        NotificationRules.sync(current, alerted::contains, System.currentTimeMillis()).forEach(::enqueue)
+        NotificationRules.sync(current, alerted::contains, System.currentTimeMillis()).forEach { message ->
+            if (message is Message.Notification) sendIcon(message.notification.appId)
+            enqueue(message)
+        }
         current.forEach { alerted.add(it.key) }
+    }
+
+    /** Ahead of the notification in the same queue, so the first one from an app already looks right. */
+    private fun sendIcon(appId: String) {
+        if (iconsSent.add(appId)) notifications?.icon(appId)?.let(::enqueue)
     }
 
     private fun sendFullState() {
@@ -416,7 +429,7 @@ class WatchBridge(
             is Message.HealthRecord -> onHealthRecord(message)
             is Message.Ping, is Message.Pong, is Message.Unknown -> Unit
             // These only travel from phone to watch.
-            is Message.NotificationSnapshot, is Message.Notification, is Message.NotificationRemoved,
+            is Message.NotificationSnapshot, is Message.Notification, is Message.NotificationRemoved, is Message.AppIcon,
             is Message.HealthAck,
             is Message.Call, is Message.MediaPlayers, is Message.MediaArt, is Message.PointerTargets, is Message.DeviceBatteries,
             -> Unit
@@ -446,6 +459,7 @@ class WatchBridge(
     override fun onFailure(failure: LinkFailure) {
         Log.i(TAG, "Link failure: $failure")
         outbound.clear()
+        iconsSent.clear()
         _state.update {
             it.copy(ready = false, code = null, pairingOpen = if (failure == LinkFailure.PAIRING_FAILED) false else it.pairingOpen)
         }
@@ -465,6 +479,7 @@ class WatchBridge(
     override fun onLinkDown() {
         engine?.onTransportDown()
         outbound.clear()
+        iconsSent.clear()
         // The watch cannot say it stopped over a link that is gone.
         endPointer()
         handler.removeCallbacks(authTimeout)

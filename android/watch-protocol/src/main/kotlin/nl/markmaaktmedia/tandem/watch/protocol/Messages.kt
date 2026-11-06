@@ -109,6 +109,17 @@ sealed interface Message {
      */
     data class NotificationAction(val key: String, val button: String, val reply: String?, val dismiss: Boolean) : Message
 
+    /** Phone to watch: the icon of an app, ahead of its [Notification]. The watch keeps it, so it only crosses the link once per connection. */
+    data class AppIcon(val appId: String, val image: ByteArray) : Message {
+        override fun equals(other: Any?) = other is AppIcon && appId == other.appId && image.contentEquals(other.image)
+
+        override fun hashCode() = 31 * appId.hashCode() + image.contentHashCode()
+
+        companion object {
+            const val MAX_BYTES = 6 * 1024
+        }
+    }
+
     /** Phone to watch. A null [call] means no call is in progress. */
     data class Call(val call: CallMsg?) : Message
     data class CallAction(val id: String, val kind: CallActionKind) : Message
@@ -200,6 +211,7 @@ object MessageCodec {
     private const val NOTIF = 0x11
     private const val NOTIF_REMOVED = 0x12
     private const val NOTIF_ACTION = 0x13
+    private const val APP_ICON = 0x14
     private const val CALL = 0x20
     private const val CALL_ACTION = 0x21
     private const val MEDIA_PLAYERS = 0x30
@@ -237,6 +249,7 @@ object MessageCodec {
                 .str(message.button)
                 .optStr(message.reply)
                 .bool(message.dismiss)
+            is Message.AppIcon -> w.u8(APP_ICON).str(message.appId).bytes(message.image)
             is Message.Call -> {
                 w.u8(CALL).bool(message.call != null)
                 message.call?.let { w.bytes(encodeCall(it)) }
@@ -296,6 +309,7 @@ object MessageCodec {
                 reply = r.optStr(),
                 dismiss = r.bool(),
             )
+            APP_ICON -> Message.AppIcon(r.str(), r.bytes())
             CALL -> Message.Call(if (r.bool()) decodeCall(r.bytes()) else null)
             CALL_ACTION -> Message.CallAction(r.str(), enumAt<CallActionKind>(r.u8()))
             MEDIA_PLAYERS -> Message.MediaPlayers(r.list { decodePlayer(it.bytes()) })

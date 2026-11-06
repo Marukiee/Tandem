@@ -5,6 +5,9 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.RemoteInput
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Path
 import android.os.Bundle
 import android.os.Parcelable
 import android.service.notification.NotificationListenerService
@@ -13,6 +16,8 @@ import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
 import android.telecom.TelecomManager
 import android.util.Log
+import java.io.ByteArrayOutputStream
+import nl.markmaaktmedia.tandem.watch.protocol.Message
 import nl.markmaaktmedia.tandem.watch.protocol.NotifButton
 import nl.markmaaktmedia.tandem.watch.protocol.NotificationMsg
 import nl.markmaaktmedia.tandem.watch.protocol.NotificationRules
@@ -112,6 +117,20 @@ class WatchNotifications(private val listener: NotificationListenerService) {
         )
     }
 
+    /** The launcher icon of an app, cut round like everything else on a watch. Null when it cannot be had, and the watch then shows its own. */
+    fun icon(appId: String): Message.AppIcon? = runCatching {
+        val bitmap = Bitmap.createBitmap(ICON_PIXELS, ICON_PIXELS, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val middle = ICON_PIXELS / 2f
+        canvas.clipPath(Path().apply { addCircle(middle, middle, middle, Path.Direction.CW) })
+        packageManager.getApplicationIcon(appId).apply { setBounds(0, 0, ICON_PIXELS, ICON_PIXELS) }.draw(canvas)
+        ICON_QUALITIES.firstNotNullOfOrNull { quality ->
+            val out = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, quality, out)
+            out.toByteArray().takeIf { it.size <= Message.AppIcon.MAX_BYTES }
+        }?.let { Message.AppIcon(appId, it) }
+    }.getOrNull()
+
     /** Chat apps keep the newest text in MessagingStyle; EXTRA_TEXT often only says "3 new messages". */
     private fun lastMessage(extras: Bundle): String? {
         val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES, Parcelable::class.java) ?: return null
@@ -129,5 +148,7 @@ class WatchNotifications(private val listener: NotificationListenerService) {
 
     private companion object {
         const val TAG = "TandemWatch"
+        const val ICON_PIXELS = 96
+        val ICON_QUALITIES = listOf(80, 60, 40)
     }
 }

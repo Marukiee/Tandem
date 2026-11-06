@@ -327,6 +327,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             is Message.NotificationSnapshot -> notifications?.reconcile(message.keys)
             is Message.Notification -> notifications?.post(message.notification)
             is Message.NotificationRemoved -> notifications?.remove(message.key)
+            is Message.AppIcon -> notifications?.keepIcon(message)
             is Message.Call -> {
                 calls?.update(message.call)
                 _ui.update { it.copy(call = message.call) }

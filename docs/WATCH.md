@@ -63,6 +63,7 @@ getoond is en jonger is dan 10 minuten trilt. Zo gaat er bij een onderbreking ni
 | 0x11 | Notification | T naar H | key, app_id, app_name, title, text, sub_text?, ts, ongoing, silent, buttons (id, title, is_reply), otp?, progress? |
 | 0x12 | NotificationRemoved | T naar H | key |
 | 0x13 | NotificationAction | H naar T | key, button, reply?, dismiss |
+| 0x14 | AppIcon | T naar H | app_id, image (ronde WebP van 96 bij 96, hooguit 6 KB; vóór de eerste melding van die app, per verbinding één keer) |
 | 0x20 | Call | T naar H | null of: id, state, incoming, number?, name?, ts, muted |
 | 0x21 | CallAction | H naar T | id, kind |
 | 0x30 | MediaPlayers | T naar H | id, app, title, artist, album, playing, position_ms, duration_ms, art_key |
@@ -85,7 +86,9 @@ toegevoegd en onbekende types genegeerd.
   "Praat op je telefoon".
 - Eenmalige codes komen niet op het horloge: de telefoon maskeert ze. Vanaf Android 15 verbergt het systeem zulke meldingen
   bovendien zelf voor apps als deze ("Sensitive notification content hidden").
-- Meldingen zijn gewone Wear OS-meldingen. Ontkoppelen haalt ze van het horloge.
+- Meldingen zijn gewone Wear OS-meldingen. Ontkoppelen haalt ze van het horloge, en ook de bewaarde app-iconen.
+- Het app-icoon staat er als large icon: het small icon tekent Wear OS niet, en bovenaan blijft de naam "Tandem" met een klein badge. De naam vervangen (`android.substName`) negeert het horloge.
+- De dienst die de verbinding openhoudt heeft geen kaart in de lijst. Hij geeft als tijd 1 op en dan weigert het systeem de melding als te oud (`Ignored enqueue for old` in logcat), terwijl de dienst gewoon foreground blijft. Stopt een latere Wear OS daarmee, dan komt alleen de kaart terug.
 
 ## Slaap en training
 - Opnemen: versnellingsmeter op 25 Hz, hartslag, stappen, off-body en huidtemperatuur (als die toestemming er is), in batches uit de
