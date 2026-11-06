@@ -142,6 +142,26 @@ kleiner). Getraind thuis en getest in het lab is die fout 2 tot 6 minuten groter
 zulke kleine verschillen kunnen ook toeval zijn. De meting gebruikt een net per deel; het model dat meegaat, middelt er drie over alle
 nachten en is niet apart te meten.
 
+De tabellen hierboven lezen de nacht met de geleerde overgangen zoals ze zijn. Dat streek bijna elk kort moment wakker weg: op 64% van de
+nachten bleef geen minuut wakker over, terwijl dat er echt 2% zijn. Daarom tellen de overgangen in de app voor 0,4 mee en krijgt wakker er
+0,6 bij (`SleepModel`), zonder de netwerken opnieuw te trainen. De getallen zijn gekozen uit een raster in `training/postproc.py`, midden in
+een vlak gebied en dus niet afgesteld op een nacht. Op een echte nacht met een bevestigd moment wakker bleef dat moment nu staan, en kwam
+er verder niets bij.
+
+| Meting | Was | Nu | 95%-interval van het verschil, per persoon |
+| --- | --- | --- | --- |
+| Kappa, alle nachten | 0,554 | 0,557 | -0,001 tot +0,007 |
+| Wakker tegen slaap | 0,623 | 0,616 | -0,021 tot +0,008 |
+| Mediane fout in minuten wakker tijdens de nacht | 10 | 8 | -4,5 tot -1,5 |
+| Nachten zonder een minuut wakker (echt 2%) | 64% | 32% | |
+| Wakker gevonden, en klopt | 57%, 77% | 65%, 66% | |
+| Getraind thuis, getest in het lab: kappa | 0,543 | 0,542 | -0,011 tot +0,008 |
+| Idem, wakker tegen slaap | 0,513 | 0,532 | -0,008 tot +0,045 |
+| Idem, nachten zonder een minuut wakker (echt 0%) | 68% | 45% | |
+
+De prijs: in het lab wordt de mediane fout voor licht groter (44 naar 56 minuten) en die voor REM kleiner (30 naar 24). Korte momenten wakker
+blijven gemist worden: het model ziet 2,1 wisselingen per uur waar het er echt 5,5 zijn, en schat de tijd wakker nog 5 minuten te laag.
+
 Ter vergelijking: menselijke scorers onderling rond 0,76, commerciële wearables in onafhankelijke vergelijkingen rond 0,2 tot 0,5
 (secundaire bronnen). Nog niet gemeten: hoe dit model het op de hartslag en beweging van de Pixel doet. Beide datasets komen van een
 Apple Watch, en bij de Pixel is geen slaaplab.

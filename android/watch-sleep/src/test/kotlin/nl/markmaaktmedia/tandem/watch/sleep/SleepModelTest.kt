@@ -4,6 +4,7 @@ import java.io.DataInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.abs
+import kotlin.math.ln
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -58,6 +59,19 @@ class SleepModelTest {
         val path = model.stages(rows)
         val differ = path.indices.count { path[it].ordinal != golden.path[it] }
         assertTrue(differ <= golden.rows / 100, "$differ epochs differ")
+    }
+
+    @Test
+    fun `a few minutes the network calls awake stay in the night`() {
+        fun epochs(count: Int, wake: Double, light: Double) = List(count) {
+            val rest = (1 - wake - light) / 2
+            floatArrayOf(ln(wake).toFloat(), ln(light).toFloat(), ln(rest).toFloat(), ln(rest).toFloat())
+        }
+        val night = epochs(120, 0.02, 0.9) + epochs(16, 0.55, 0.35) + epochs(120, 0.02, 0.9)
+        val stages = SleepModel.load().decode(night.toTypedArray())
+        assertEquals(SleepStage.LIGHT, stages[60])
+        assertEquals(SleepStage.WAKE, stages[128])
+        assertEquals(SleepStage.LIGHT, stages[200])
     }
 
     @Test

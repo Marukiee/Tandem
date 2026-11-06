@@ -55,6 +55,12 @@ def viterbi(logp,T,prior):
     for i in range(n-1,0,-1): o[i-1]=b[i,o[i]]
     return o
 
+# How a night is read, measured with postproc.py, see README. SleepModel.kt holds the same two numbers.
+TRANSITION_WEIGHT=.4;WAKE_BOOST=.6
+def read_night(logp,T,prior):
+    l=logp.copy();l[:,0]+=WAKE_BOOST
+    return viterbi(l,T*TRANSITION_WEIGHT,prior)
+
 class Net(nn.Module):
     def __init__(s,din,h=48,layers=2,drop=0.25):
         super().__init__()
@@ -108,8 +114,12 @@ def folds(nights,k=5,seed=1):
     return [set(subs[i::k]) for i in range(k)]
 
 if __name__=='__main__':
-    a=argparse.ArgumentParser();a.add_argument('--pattern',default='*');a.add_argument('--epochs',type=int,default=40);a.add_argument('--h',type=int,default=48);a.add_argument('--k',type=int,default=5);a.add_argument('--gbm',action='store_true');a.add_argument('--drop',default='');a.add_argument('--fdir',default='fc');a.add_argument('--holdout',default='');a.add_argument('--nomotion',action='store_true');a.add_argument('--wpow',type=float,default=0.25)
+    a=argparse.ArgumentParser();a.add_argument('--pattern',default='*');a.add_argument('--epochs',type=int,default=40);a.add_argument('--h',type=int,default=48);a.add_argument('--k',type=int,default=5);a.add_argument('--gbm',action='store_true');a.add_argument('--drop',default='');a.add_argument('--fdir',default='fc');a.add_argument('--holdout',default='');a.add_argument('--nomotion',action='store_true');a.add_argument('--wpow',type=float,default=0.25);a.add_argument('--dump',default='')
     o=a.parse_args()
+    if o.dump: os.makedirs(o.dump,exist_ok=True)
+    def dump(n,lp,T):
+        # What the network said about a night it never saw: postproc.py compares ways to read that without training again.
+        if o.dump: np.savez_compressed(f"{o.dump}/{n['name']}.npz",lp=lp,y=n['y'],T=T,subject=n['subject'],source=n['source'])
     nights=load(o.pattern,o.fdir);print(len(nights),'nights',len({n['subject'] for n in nights}),'subjects',flush=True)
     if o.drop:
         keep=[i for i,x in enumerate(NAMES) if x not in o.drop.split(',')]
@@ -120,7 +130,9 @@ if __name__=='__main__':
     if o.holdout:
         tr=[n for n in nights if n['source']!=o.holdout];te=[n for n in nights if n['source']==o.holdout]
         T=transitions(tr);prior=np.log(np.array([.7,.25,.01,.04]));net=train_net(tr,epochs=o.epochs,h=o.h,seed=0,wpow=o.wpow)
-        lp=[net_logp(net,n) for n in te];report(te,[x.argmax(1) for x in lp],f'train others, test {o.holdout}: gru');report(te,[viterbi(x,T,prior) for x in lp],f'train others, test {o.holdout}: gru+viterbi');sys.exit()
+        lp=[net_logp(net,n) for n in te]
+        for n,x in zip(te,lp): dump(n,x,T)
+        report(te,[x.argmax(1) for x in lp],f'train others, test {o.holdout}: gru');report(te,[read_night(x,T,prior) for x in lp],f'train others, test {o.holdout}: gru+viterbi');sys.exit()
     base=np.bincount(np.concatenate([n['y'] for n in nights])[np.concatenate([n['y'] for n in nights])>=0],minlength=4);print('class share',np.round(base/base.sum(),3))
     pn=[None]*len(nights);pv=[None]*len(nights);t0=time.time()
     for fi,test in enumerate(folds(nights,o.k)):
@@ -128,7 +140,7 @@ if __name__=='__main__':
         net=train_net(tr,epochs=o.epochs,h=o.h,seed=fi,wpow=o.wpow)
         for i,n in enumerate(nights):
             if n['subject'] in test:
-                lp=net_logp(net,n);pn[i]=lp.argmax(1);pv[i]=viterbi(lp,T,prior)
+                lp=net_logp(net,n);pn[i]=lp.argmax(1);pv[i]=read_night(lp,T,prior);dump(n,lp,T)
         print('fold',fi,'done',round(time.time()-t0),'s',flush=True)
     report(nights,pn,'gru')
     report(nights,pv,'gru+viterbi')

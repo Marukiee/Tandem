@@ -54,6 +54,25 @@ python -I train.py --k 3 --nomotion
 python -I train.py --holdout sa --nomotion
 ```
 
+Manieren vergelijken om een nacht te lezen, zonder opnieuw te trainen: `--dump` bewaart wat het netwerk zei over nachten die het niet zag, en
+`postproc.py` rekent daarop een raster door. Met `--best` daarna de keuze tegen de ongewogen lezing, per dataset en met een interval per persoon.
+
+```bash
+python -I train.py --k 3 --dump work/dump_k3
+```
+
+```bash
+python -I train.py --holdout sa --dump work/dump_sa
+```
+
+```bash
+python -I postproc.py work/dump_k3
+```
+
+```bash
+python -I postproc.py --best 0.4,0.6 work/dump_k3
+```
+
 Het model maken dat meegaat, op alle nachten:
 
 ```bash
@@ -70,6 +89,9 @@ Daarna `out/sleep_model.bin` naar `src/main/resources/` en `out/golden_night.*` 
 - **Beweging gaat mee**, zelfde verdeling met en zonder (`--nomotion`): kappa van 0,546 naar 0,554, wakker tegen slaap van 0,578 naar 0,623.
   Getraind thuis en getest in het lab: kappa van 0,514 naar 0,543, wakker tegen slaap van 0,443 naar 0,513. De mediane fout per fase wordt
   wel 2 tot 6 minuten groter, op wakker in de eerste meting na.
+
+- **Overgangen voor 0,4 en wakker 0,6 erbij** bij het lezen van de nacht (`TRANSITION_WEIGHT` en `WAKE_BOOST`, in `train.py` en `SleepModel.kt`): nachten
+  zonder een minuut wakker van 64% naar 32% (echt 2%), mediane fout in minuten wakker van 10 naar 8, kappa niet slechter. Cijfers in `docs/WATCH.md`.
 
 ## Eigenaardigheden van de data
 Sommige `motion.csv`-bestanden in `bidsleep-dataset` stoppen midden in een regel; `load_bid.py` slaat die regel over. Acht van de 284

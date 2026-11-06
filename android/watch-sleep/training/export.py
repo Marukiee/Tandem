@@ -3,7 +3,7 @@ import argparse, os, struct, sys
 import numpy as np, torch
 HERE=os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0,HERE)
 from features import *
-from train import load, train_net, transitions, Net, net_logp, viterbi
+from train import load, train_net, transitions, Net, net_logp, read_night
 from tws import write_tws, read_tws
 
 PRIOR=np.log(np.array([.7,.25,.01,.04]))
@@ -58,7 +58,7 @@ if __name__=='__main__':
     X=features_of(f'{o.out}/golden_night.tws')
     n=dict(X=X)
     lp=np.mean([torch.log_softmax(net(torch.from_numpy(X[None])),-1)[0].detach().numpy() for net in nets],axis=0)
-    path=viterbi(lp,T,PRIOR)
+    path=read_night(lp,T,PRIOR)
     with open(f'{o.out}/golden_night.bin','wb') as f:
         f.write(struct.pack('<2i',X.shape[0],X.shape[1]));f.write(X.astype('<f4').tobytes());f.write(lp.astype('<f4').tobytes());f.write(path.astype('<i4').tobytes())
     print('nights',len(nights),'golden epochs',X.shape[0],'stages',np.bincount(path,minlength=4),'model kB',os.path.getsize(f'{o.out}/sleep_model.bin')//1024)
