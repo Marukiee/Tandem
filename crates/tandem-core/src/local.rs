@@ -30,7 +30,8 @@ where
     let reply = match secret {
         None => handler(line).await,
         // A line that does not start with the secret came from a program that could not read the file.
-        Some(secret) => match line.trim_end().strip_prefix(secret) {
+        // Only the end of the line goes: a tab at the end belongs to the command, as an empty last argument.
+        Some(secret) => match line.trim_end_matches(['\r', '\n']).strip_prefix(secret) {
             Some(command) => handler(command.trim_start().to_string()).await,
             None => "error\nnot allowed\n".to_string(),
         },
@@ -140,3 +141,26 @@ pub use imp::serve;
 pub use imp::ask;
 /// Takes away what `serve` left in the folder.
 pub use imp::forget;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn answer(line: &str, secret: Option<&str>) -> String {
+        let mut reply = Vec::new();
+        answer_on(line.as_bytes(), &mut reply, secret, &|command: String| async move { format!("[{command}]") }).await;
+        String::from_utf8(reply).unwrap()
+    }
+
+    #[tokio::test]
+    async fn an_empty_last_argument_survives_with_and_without_a_secret() {
+        assert_eq!(answer("notify\t\n", None).await, "[notify\t\n]");
+        assert_eq!(answer("abc notify\t\n", Some("abc")).await, "[notify\t]");
+        assert_eq!(answer("abc notify\t\r\n", Some("abc")).await, "[notify\t]");
+    }
+
+    #[tokio::test]
+    async fn a_line_without_the_secret_is_refused() {
+        assert_eq!(answer("wrong notify\thallo\n", Some("abc")).await, "error\nnot allowed\n");
+    }
+}
