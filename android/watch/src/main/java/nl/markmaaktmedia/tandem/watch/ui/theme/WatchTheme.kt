@@ -105,6 +105,18 @@ object TandemMotion {
 
     fun <T> fadeSpec(): FiniteAnimationSpec<T> = tween(durationMillis = 260, easing = Standard)
 
+    /** What leaves: gone before what comes has settled, so two things are never in one spot for long. */
+    fun <T> fadeOutSpec(): FiniteAnimationSpec<T> = tween(durationMillis = 140, easing = Standard)
+
+    /** A colour only ever eases: a bouncing colour looks like a bug. */
+    fun <T> colourSpec(): FiniteAnimationSpec<T> = tween(durationMillis = 320, easing = Standard)
+
+    /** Movement without overshoot: a title that moves up, a wave that calms down. */
+    fun <T> moveSpec(): FiniteAnimationSpec<T> = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow)
+
+    /** Under a finger: fast, because someone is waiting for it, and with a little bounce. */
+    fun <T> pressSpec(): FiniteAnimationSpec<T> = spring(dampingRatio = 0.55f, stiffness = 600f)
+
     /** For a shape that changes: a little past the mark and back, the character of Material You. */
     fun <T> shapeSpec(): FiniteAnimationSpec<T> = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow)
 }

@@ -100,4 +100,39 @@ class PlayerRulesTest {
         val before = listOf(player("b", playing = true), player("a"))
         assertEquals("a", PlayerRules.keptPick("a", before, before))
     }
+
+    @Test
+    fun aPressCountsAtOnceAndKeepsItsPlaceInTheTrack() {
+        val playing = player("music", playing = true).copy(positionMs = 10_000, durationMs = 60_000)
+        val expected = PlayerRules.pressed(listOf(playing), "music", sinceShownMs = 5_000, nowMs = 100)!!
+        val shown = PlayerRules.withExpected(listOf(playing), expected).single()
+        assertEquals(false, shown.playing)
+        assertEquals(15_000, shown.positionMs)
+    }
+
+    @Test
+    fun anOldUpdateDoesNotFlipTheButtonBack() {
+        val before = player("music", playing = true)
+        val expected = PlayerRules.pressed(listOf(before), "music", 0, nowMs = 100)
+        assertEquals(expected, PlayerRules.keptExpected(expected, listOf(before), nowMs = 200))
+    }
+
+    @Test
+    fun thePhoneAgreeingEndsTheExpectation() {
+        val expected = PlayerRules.pressed(listOf(player("music", playing = true)), "music", 0, nowMs = 100)
+        assertNull(PlayerRules.keptExpected(expected, listOf(player("music", playing = false)), nowMs = 200))
+    }
+
+    @Test
+    fun aPressThatGotLostShowsTheTruthAgain() {
+        val before = player("music", playing = true)
+        val expected = PlayerRules.pressed(listOf(before), "music", 0, nowMs = 100)
+        assertNull(PlayerRules.keptExpected(expected, listOf(before), nowMs = 100 + PlayerRules.EXPECT_MS))
+    }
+
+    @Test
+    fun aPlayerThatLeftTakesTheExpectationWithIt() {
+        val expected = PlayerRules.pressed(listOf(player("music")), "music", 0, nowMs = 100)
+        assertNull(PlayerRules.keptExpected(expected, emptyList(), nowMs = 200))
+    }
 }

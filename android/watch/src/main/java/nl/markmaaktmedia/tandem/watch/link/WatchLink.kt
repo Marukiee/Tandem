@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.SystemClock
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,7 @@ import nl.markmaaktmedia.tandem.watch.notify.PhoneNotifications
 import nl.markmaaktmedia.tandem.watch.protocol.CallActionKind
 import nl.markmaaktmedia.tandem.watch.protocol.CallMsg
 import nl.markmaaktmedia.tandem.watch.protocol.DeviceBattery
+import nl.markmaaktmedia.tandem.watch.protocol.ExpectedPlay
 import nl.markmaaktmedia.tandem.watch.protocol.LinkEngine
 import nl.markmaaktmedia.tandem.watch.protocol.LinkFailure
 import nl.markmaaktmedia.tandem.watch.protocol.LinkListener
@@ -82,6 +84,14 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     private var outbox: HealthOutbox? = null
     private var status: Message.WatchStatus? = null
     private var pingId = 0L
+    private var fromPhone: List<MediaPlayer> = emptyList()
+    private var expected: ExpectedPlay? = null
+    private var playersShownAt = 0L
+
+    private val expectedOver = Runnable {
+        expected = null
+        showPlayers()
+    }
 
     private val pairingTimeout = Runnable { cancelPairing() }
     private val pongTimeout = Runnable {
@@ -178,7 +188,37 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     }
 
     fun sendMediaCommand(playerId: String, kind: MediaCommandKind) {
-        handler.post { engine?.send(Message.MediaCommand(playerId, kind)) }
+        handler.post {
+            engine?.send(Message.MediaCommand(playerId, kind))
+            if (kind == MediaCommandKind.PLAY_PAUSE) showPress(playerId)
+        }
+    }
+
+    private fun showPress(playerId: String) {
+        val now = SystemClock.elapsedRealtime()
+        expected = PlayerRules.pressed(_ui.value.players, playerId, now - playersShownAt, now) ?: return
+        handler.removeCallbacks(expectedOver)
+        handler.postDelayed(expectedOver, PlayerRules.EXPECT_MS)
+        showPlayers()
+    }
+
+    private fun showPlayers() {
+        playersShownAt = SystemClock.elapsedRealtime()
+        val players = PlayerRules.withExpected(fromPhone, expected)
+        _ui.update { ui ->
+            ui.copy(
+                players = players,
+                pickedPlayer = PlayerRules.keptPick(ui.pickedPlayer, ui.players, players),
+                covers = ui.covers.filterKeys { key -> players.any { it.artKey == key } },
+            )
+        }
+        showOnSystem()
+    }
+
+    private fun forgetPlayers() {
+        fromPhone = emptyList()
+        expected = null
+        handler.removeCallbacks(expectedOver)
     }
 
     /** Going to another player, from a small cover or a swipe. */
@@ -312,6 +352,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     private fun forgetPhoneData() {
         notifications?.clear()
         calls?.update(null)
+        forgetPlayers()
         mediaSession?.show(null, null)
     }
 
@@ -354,14 +395,10 @@ object WatchLink : LinkListener, WatchBleClient.Events {
                 _ui.update { it.copy(call = message.call) }
             }
             is Message.MediaPlayers -> {
-                _ui.update { ui ->
-                    ui.copy(
-                        players = message.players,
-                        pickedPlayer = PlayerRules.keptPick(ui.pickedPlayer, ui.players, message.players),
-                        covers = ui.covers.filterKeys { key -> message.players.any { it.artKey == key } },
-                    )
-                }
-                showOnSystem()
+                fromPhone = message.players
+                expected = PlayerRules.keptExpected(expected, fromPhone, SystemClock.elapsedRealtime())
+                if (expected == null) handler.removeCallbacks(expectedOver)
+                showPlayers()
             }
             is Message.MediaArt -> {
                 _ui.update { it.copy(covers = it.covers + (message.key to message)) }
@@ -421,6 +458,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         // What built up while the link was gone would land as one big jump of the pointer.
         clearPointerMovement()
         calls?.update(null)
+        forgetPlayers()
         _ui.update {
             it.copy(
                 connected = false,

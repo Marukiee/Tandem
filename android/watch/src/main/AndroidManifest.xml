@@ -18,6 +18,10 @@
     <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
     <uses-permission android:name="android.permission.health.READ_SKIN_TEMPERATURE" />
 
+    <queries>
+        <package android:name="com.google.android.wearable.media.sessions" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

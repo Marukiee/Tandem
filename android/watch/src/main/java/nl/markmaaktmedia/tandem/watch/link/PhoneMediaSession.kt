@@ -26,7 +26,8 @@ import nl.markmaaktmedia.tandem.watch.ui.PlayerActivity
 class PhoneMediaSession(private val context: Context, private val send: (String, MediaCommandKind) -> Unit) {
     private val session = MediaSession(context, "TandemPhone")
     private val notifications = context.getSystemService(NotificationManager::class.java)
-    private val openPlayer = PendingIntent.getActivity(context, 0, Intent(context, PlayerActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+    private val ownPlayer = PendingIntent.getActivity(context, 0, Intent(context, PlayerActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+    private val fromWatchFace = systemPlayer()?.let { PendingIntent.getActivity(context, 1, it, PendingIntent.FLAG_IMMUTABLE) } ?: ownPlayer
     private var player: MediaPlayer? = null
     private var metadataOf: Triple<String, String, String>? = null
     private var coverImage: Bitmap? = null
@@ -46,7 +47,8 @@ class PhoneMediaSession(private val context: Context, private val send: (String,
                 override fun onSkipToPrevious() = pressIf(true, MediaCommandKind.PREVIOUS)
             },
         )
-        session.setSessionActivity(openPlayer)
+        // This is what the icon on the watch face opens, as measured on a Pixel Watch 2. The notification below does not decide that.
+        session.setSessionActivity(fromWatchFace)
         notifications.createNotificationChannel(
             NotificationChannel(CHANNEL, context.getString(R.string.channel_music), NotificationManager.IMPORTANCE_MIN),
         )
@@ -60,6 +62,10 @@ class PhoneMediaSession(private val context: Context, private val send: (String,
             },
         )
     }
+
+    /** What the icon on the watch face opens: the system's own player opens from that icon with an animation that an app cannot make. */
+    private fun systemPlayer(): Intent? =
+        Intent(ACTION_MEDIA_CONTROLS).setPackage(SYSTEM_MEDIA_APP).takeIf { context.packageManager.resolveActivity(it, 0) != null }
 
     private fun pressIf(wanted: Boolean, kind: MediaCommandKind) {
         val id = player?.id ?: return
@@ -121,7 +127,7 @@ class PhoneMediaSession(private val context: Context, private val send: (String,
                 .setContentText(shown.artist)
                 .setShowWhen(false)
                 .setLargeIcon(coverImage)
-                .setContentIntent(openPlayer)
+                .setContentIntent(ownPlayer)
                 .setCategory(Notification.CATEGORY_TRANSPORT)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .setOngoing(shown.playing)
@@ -132,6 +138,8 @@ class PhoneMediaSession(private val context: Context, private val send: (String,
     }
 
     private companion object {
+        const val ACTION_MEDIA_CONTROLS = "com.google.android.wearable.action.MEDIA_CONTROLS"
+        const val SYSTEM_MEDIA_APP = "com.google.android.wearable.media.sessions"
         const val CHANNEL = "music"
         const val NOTIFICATION_ID = 300
         const val VOLUME_STEPS = 20

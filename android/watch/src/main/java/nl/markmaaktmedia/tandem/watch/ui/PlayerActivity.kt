@@ -14,8 +14,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -231,8 +229,8 @@ internal fun PlayerScreen(players: List<MediaPlayer>, player: MediaPlayer, cover
     val image = rememberCover(covers[player.artKey])
     val colors = remember(image) { image?.let { runCatching { coverColors(it) }.getOrNull() } }
     val scheme = MaterialTheme.colorScheme
-    val accent by animateColorAsState(colors?.accent ?: scheme.primary, tween(480), label = "accent")
-    val onAccent by animateColorAsState(colors?.onAccent ?: scheme.onPrimary, tween(480), label = "onAccent")
+    val accent by animateColorAsState(colors?.accent ?: scheme.primary, TandemMotion.colourSpec(), label = "accent")
+    val onAccent by animateColorAsState(colors?.onAccent ?: scheme.onPrimary, TandemMotion.colourSpec(), label = "onAccent")
     val time = rememberPlayingTime(player.playing)
 
     val focus = remember { FocusRequester() }
@@ -299,8 +297,8 @@ internal fun PlayerScreen(players: List<MediaPlayer>, player: MediaPlayer, cover
                 AnimatedContent(
                     targetState = player.title.ifBlank { player.app } to player.artist,
                     transitionSpec = {
-                        (slideInVertically(spring(0.8f, 400f)) { it / 2 } + fadeIn(tween(220, 60)))
-                            .togetherWith(slideOutVertically(spring(0.8f, 400f)) { -it / 2 } + fadeOut(tween(120)))
+                        (slideInVertically(TandemMotion.moveSpec()) { it / 2 } + fadeIn(TandemMotion.fadeSpec()))
+                            .togetherWith(slideOutVertically(TandemMotion.moveSpec()) { -it / 2 } + fadeOut(TandemMotion.fadeOutSpec()))
                     },
                     label = "title",
                 ) { (title, artist) ->
@@ -349,13 +347,13 @@ private const val SWIPE_DP = 24
  */
 @Composable
 private fun TurningCover(image: Bitmap?, playing: Boolean, time: LongState, size: Dp) {
-    val scale by animateFloatAsState(if (playing) 1f else 0.86f, spring(0.55f, 380f), label = "coverSize")
+    val scale by animateFloatAsState(if (playing) 1f else 0.86f, TandemMotion.shapeSpec(), label = "coverSize")
     val cookie = remember { CookieShape() }
     AnimatedContent(
         targetState = image,
         transitionSpec = {
-            (scaleIn(spring(0.6f, 420f), initialScale = 0.6f) + fadeIn(tween(200)))
-                .togetherWith(scaleOut(tween(220), targetScale = 1.15f) + fadeOut(tween(200)))
+            (scaleIn(TandemMotion.shapeSpec(), initialScale = 0.6f) + fadeIn(TandemMotion.fadeSpec()))
+                .togetherWith(scaleOut(TandemMotion.fadeSpec(), targetScale = 1.15f) + fadeOut(TandemMotion.fadeOutSpec()))
         },
         contentAlignment = Alignment.Center,
         label = "cover",
@@ -399,7 +397,7 @@ private fun OtherPlayer(player: MediaPlayer?, covers: Map<String, Message.MediaA
     val image = rememberCover(covers[player.artKey])
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    val dip by animateFloatAsState(if (pressed) 0.85f else 1f, spring(0.5f, 600f), label = "otherDip")
+    val dip by animateFloatAsState(if (pressed) 0.85f else 1f, TandemMotion.pressSpec(), label = "otherDip")
     val haptics = LocalHapticFeedback.current
     Box(
         Modifier
@@ -453,8 +451,8 @@ private const val WAVE_CYCLES_PER_MS = 0.00055f
 @Composable
 private fun WaveRing(player: MediaPlayer, time: LongState, accent: Color) {
     val since = remember(player.id, player.positionMs, player.playing) { SystemClock.elapsedRealtime() }
-    val amplitude by animateFloatAsState(if (player.playing) 1f else 0f, spring(0.9f, 220f), label = "wave")
-    val fill by animateColorAsState(if (player.playing) accent else lerp(accent, PlayerTrack, 0.5f), tween(320), label = "fill")
+    val amplitude by animateFloatAsState(if (player.playing) 1f else 0f, TandemMotion.moveSpec(), label = "wave")
+    val fill by animateColorAsState(if (player.playing) accent else lerp(accent, PlayerTrack, 0.5f), TandemMotion.colourSpec(), label = "fill")
     val wave = remember { Path() }
     val live = player.durationMs <= 0
     Canvas(Modifier.fillMaxSize()) {
@@ -533,8 +531,8 @@ private fun TransportGroup(player: MediaPlayer, accent: Color, onAccent: Color) 
 private fun GroupButton(icon: Painter, label: String, start: Boolean, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    val inner by animateDpAsState(if (pressed) TRANSPORT_OUTER else 8.dp, spring(0.55f, 600f), label = "inner")
-    val grow by animateDpAsState(if (pressed) TRANSPORT_SIDE + 6.dp else TRANSPORT_SIDE, spring(0.5f, 600f), label = "grow")
+    val inner by animateDpAsState(if (pressed) TRANSPORT_OUTER else 8.dp, TandemMotion.pressSpec(), label = "inner")
+    val grow by animateDpAsState(if (pressed) TRANSPORT_SIDE + 6.dp else TRANSPORT_SIDE, TandemMotion.pressSpec(), label = "grow")
     val shape = if (start) {
         RoundedCornerShape(TRANSPORT_OUTER, inner, inner, TRANSPORT_OUTER)
     } else {
@@ -563,7 +561,7 @@ private fun PlayButton(playing: Boolean, accent: Color, onAccent: Color, onClick
             playing -> 11.dp
             else -> TRANSPORT_OUTER
         },
-        spring(0.55f, 500f),
+        TandemMotion.pressSpec(),
         label = "playCorner",
     )
     val width by animateDpAsState(
@@ -572,7 +570,7 @@ private fun PlayButton(playing: Boolean, accent: Color, onAccent: Color, onClick
             playing -> 58.dp
             else -> 52.dp
         },
-        spring(0.55f, 500f),
+        TandemMotion.pressSpec(),
         label = "playWidth",
     )
     Box(
@@ -586,8 +584,8 @@ private fun PlayButton(playing: Boolean, accent: Color, onAccent: Color, onClick
         AnimatedContent(
             targetState = playing,
             transitionSpec = {
-                (scaleIn(spring(0.5f, 700f), initialScale = 0.4f) + fadeIn(tween(120)))
-                    .togetherWith(scaleOut(tween(120), targetScale = 0.4f) + fadeOut(tween(100)))
+                (scaleIn(TandemMotion.pressSpec(), initialScale = 0.4f) + fadeIn(TandemMotion.fadeOutSpec()))
+                    .togetherWith(scaleOut(TandemMotion.fadeOutSpec(), targetScale = 0.4f) + fadeOut(TandemMotion.fadeOutSpec()))
             },
             label = "playIcon",
         ) { now ->
