@@ -302,6 +302,11 @@ pub fn shared_any() -> bool {
     SHARED.lock().unwrap().is_some()
 }
 
+/// Another computer has its pointer on this screen.
+pub fn used_here() -> bool {
+    SHARED.lock().unwrap().is_some()
+}
+
 pub fn shared_is(device: &str) -> bool {
     SHARED.lock().unwrap().as_ref().is_some_and(|s| s.device == device)
 }
@@ -792,11 +797,11 @@ fn run(rx: mpsc::Receiver<Msg>) {
                     rest_x -= f32::from(dx) / PIXELS_PER_CLICK;
                     let (clicks_y, clicks_x) = (rest_y.trunc(), rest_x.trunc());
                     if clicks_y != 0.0 {
-                        let _ = enigo.scroll(-(clicks_y as i32), Axis::Vertical);
+                        let _ = enigo.scroll(clicks_y as i32, Axis::Vertical);
                         rest_y -= clicks_y;
                     }
                     if clicks_x != 0.0 {
-                        let _ = enigo.scroll(-(clicks_x as i32), Axis::Horizontal);
+                        let _ = enigo.scroll(clicks_x as i32, Axis::Horizontal);
                         rest_x -= clicks_x;
                     }
                 }
@@ -833,9 +838,9 @@ fn run(rx: mpsc::Receiver<Msg>) {
                     let _ = enigo.move_mouse(gain(dx).round() as i32, gain(dy).round() as i32, Coordinate::Rel);
                 }
                 TandemInput::Scroll { dx, dy } => {
-                    // The phone counts up as positive; the wheel of a mouse counts down as positive.
+                    // Positive moves the content down or to the right, the way fingers do; the wheel of a mouse counts the other way.
                     rest_y -= f32::from(dy) / PIXELS_PER_CLICK;
-                    rest_x += f32::from(dx) / PIXELS_PER_CLICK;
+                    rest_x -= f32::from(dx) / PIXELS_PER_CLICK;
                     let (clicks_y, clicks_x) = (rest_y.trunc(), rest_x.trunc());
                     if clicks_y != 0.0 {
                         let _ = enigo.scroll(clicks_y as i32, Axis::Vertical);

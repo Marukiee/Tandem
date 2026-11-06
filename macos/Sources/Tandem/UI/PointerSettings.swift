@@ -74,7 +74,7 @@ struct PointerSettings: View {
                         ArrangementEditor(share: share, devices: neighbourChoices)
                             .padding(.vertical, 4)
                         ForEach(neighbourChoices, id: \.id) { device in
-                            LabeledContent(device.name) {
+                            LabeledContent {
                                 HStack(spacing: 10) {
                                     Group {
                                         if share.layout[device.id] == nil { Text("Not placed") } else { Text(sideText(share.layout[device.id]?.edge ?? "")) }
@@ -88,6 +88,11 @@ struct PointerSettings: View {
                                     if share.layout[device.id] != nil {
                                         Button("Remove") { share.layout[device.id] = nil }
                                     }
+                                }
+                            } label: {
+                                Text(device.name)
+                                if share.layout[device.id] != nil, share.saysNo(device.id) {
+                                    Text("Does not take the pointer now. Allow this Mac in Tandem there, under Mouse and keyboard.")
                                 }
                             }
                         }

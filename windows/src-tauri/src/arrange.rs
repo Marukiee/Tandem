@@ -27,6 +27,11 @@ pub struct Spot {
 
 static SIZES: LazyLock<Mutex<HashMap<String, (i32, i32)>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
+/// Something the page shows changed.
+pub fn refresh(app: &AppHandle) {
+    let _ = app.emit("arrangement", state_of(app));
+}
+
 /// A computer said how big its screen is.
 pub fn learned(device: &str, width: i32, height: i32) {
     if width > 0 && height > 0 {
@@ -156,6 +161,7 @@ fn state_of(app: &AppHandle) -> Value {
                 "platform": d["platform"],
                 "online": d["online"],
                 "listens": d["caps"].as_array().is_some_and(|caps| caps.iter().any(|c| c == "side.listen")),
+                "notReady": crate::capture::unready(id),
                 "width": size.map(|s| s.0),
                 "height": size.map(|s| s.1),
                 "placed": spot.and_then(placement_of).map(|p| json!({ "edge": edge_text(p.edge), "offset": p.offset })),

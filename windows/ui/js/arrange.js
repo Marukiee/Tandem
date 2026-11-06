@@ -135,6 +135,7 @@ export function ArrangementEditor() {
     ${devices.map((d) => boxFor(d, unplaced.indexOf(d)))}
     ${unplaced.length > 0 && html`<div class="arrange-hint">${t("arrange_hint")}</div>`}
   </div>
+  ${devices.filter((d) => d.placed && d.online && d.notReady).map((d) => html`<div class="small" key=${d.id} style="margin-top:8px">${t("pointer_not_taken", d.name)}</div>`)}
   <${SideFinder} devices=${devices} />
   ${capture.state === "starting" && html`<div class="small muted" style="margin-top:8px">${t("capture_starting")}</div>`}
   ${capture.state === "locked" && html`<div class="small muted" style="margin-top:8px">${t("capture_locked")}</div>`}

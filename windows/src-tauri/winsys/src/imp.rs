@@ -586,7 +586,8 @@ unsafe extern "system" fn mouse_hook(code: i32, wparam: WPARAM, lparam: LPARAM) 
                 }
                 WM_MOUSEHWHEEL => {
                     let delta = (info.mouseData >> 16) as i16 as i32;
-                    tell(Seen::Scroll { dx: delta / 3, dy: 0 })
+                    // Windows counts a tilt to the right as positive; the wire counts the content moving to the right, as the other systems do.
+                    tell(Seen::Scroll { dx: -delta / 3, dy: 0 })
                 }
                 _ => false,
             }

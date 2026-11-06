@@ -75,7 +75,9 @@ class PointerIn(
             is TandemPointerShare.Enter -> enter(from, msg.edge, msg.along)
             is TandemPointerShare.Ping -> {
                 touch(from)
-                say(from, TandemPointerShare.Pong)
+                // Only the computer that has the pointer asks. When this phone does not know of that, the two went apart (messages crossed), and
+                // its pointer is gone on both screens until it is told.
+                say(from, if (isPeer(from)) TandemPointerShare.Pong else TandemPointerShare.Leave(0.5f))
             }
             is TandemPointerShare.Pong, is TandemPointerShare.Size -> touch(from)
             is TandemPointerShare.Leave, is TandemPointerShare.Release -> if (isPeer(from)) end(tell = false)

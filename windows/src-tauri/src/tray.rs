@@ -105,13 +105,18 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let extending = EXTENDING.lock().unwrap().clone();
     let extend = Submenu::with_id(app, "extend", i18n::t(app, "tray_extend"), true)?;
     let mut any = false;
-    for device in devices.iter().filter(online).filter(|d| has(d, "screen.extend.view")) {
-        let on = extending.contains(&id(device));
-        extend.append(&CheckMenuItem::with_id(app, format!("extend:{}", id(device)), name(device), true, on, None::<&str>)?)?;
-        any = true;
-    }
-    if !any {
-        extend.append(&MenuItem::with_id(app, "extend-none", i18n::t(app, "tray_none"), false, None::<&str>)?)?;
+    // Windows cannot make a screen yet (see docs/PARITY.md): the menu says so instead of offering devices.
+    if cfg!(windows) {
+        extend.append(&MenuItem::with_id(app, "extend-soon", i18n::t(app, "extend_soon"), false, None::<&str>)?)?;
+    } else {
+        for device in devices.iter().filter(online).filter(|d| has(d, "screen.extend.view")) {
+            let on = extending.contains(&id(device));
+            extend.append(&CheckMenuItem::with_id(app, format!("extend:{}", id(device)), name(device), true, on, None::<&str>)?)?;
+            any = true;
+        }
+        if !any {
+            extend.append(&MenuItem::with_id(app, "extend-none", i18n::t(app, "tray_none"), false, None::<&str>)?)?;
+        }
     }
 
     let find = Submenu::with_id(app, "find", i18n::t(app, "tray_find_phone"), true)?;

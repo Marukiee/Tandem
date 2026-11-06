@@ -272,11 +272,11 @@ function Helper([string[]]$arguments, [int]$seconds = 60) {
     return [pscustomobject]@{ ok = ($process.ExitCode -eq 0); text = ($output.Result + $errors.Result).Trim() }
 }
 
-function StartHelper {
+function StartHelper([string[]]$more = @()) {
     # Its screen is as big as this one, so the whole edge of this one leads to it.
-    $script:helper = Start-Process $tandemd -PassThru -NoNewWindow -RedirectStandardOutput $helperOut -RedirectStandardError "$helperOut.err" `
-        -ArgumentList "--data-dir", "`"$helperData`"", "--download-dir", "`"$helperFiles`"", "--name", "SmokeHelper", "--port", "47901", `
-        "--pretend-cap", "pointer.ping", "--pretend-pointer-screen", "$([SmokeHands]::Width)x$([SmokeHands]::Height)", "run"
+    $arguments = @("--data-dir", "`"$helperData`"", "--download-dir", "`"$helperFiles`"", "--name", "SmokeHelper", "--port", "47901", 
+        "--pretend-cap", "pointer.ping", "--pretend-pointer-screen", "$([SmokeHands]::Width)x$([SmokeHands]::Height)") + $more + @("run")
+    $script:helper = Start-Process $tandemd -PassThru -NoNewWindow -RedirectStandardOutput $helperOut -RedirectStandardError "$helperOut.err" -ArgumentList $arguments
 }
 
 function HelperSaid([string]$pattern) {
@@ -520,6 +520,9 @@ $form.Controls.Add($box)
             Say @("move", "-30000", "0")
             Check ([bool](WaitFor { (HelperCount "Leave \{") -gt $left } 10)) "running into the edge it came in by sends the pointer back"
             Check ([bool](WaitFor { -not (EdgeStrip) } 10)) "the strip at the edge goes with it"
+            # The pings above keep coming: from a computer that does not have the pointer here, as far as this PC knows.
+            $left = HelperCount "Leave \{"
+            Check ([bool](WaitFor { (HelperCount "Leave \{") -gt $left } 10)) "a computer that thinks it still has the pointer is told it does not"
             Say @("enter", "right", "0.5")
             Start-Sleep -Milliseconds 800
             Say @("button", "0", "down")
@@ -610,8 +613,26 @@ $form.Controls.Add($box)
         Check ([bool](WaitFor { BackAtTheEdge } 8)) "when the other computer goes away, the pointer comes home by itself" "at $([SmokeHands]::At().X)"
 
         Copy-Item $helperOut (Join-Path $Out "helper-mouse.log") -Force
-        StartHelper
+        # One that says how it is: when it says no, the edge is a wall and the settings say why.
+        StartHelper @("--pretend-cap", "pointer.ready")
         Check ([bool](WaitFor { DeviceOnline $script:helperId } 30)) "the other computer connects again"
+        function SaysNo { return @((App "arrange_state").devices | Where-Object { $_.id -eq $script:helperId -and $_.notReady }).Count -gt 0 }
+        [void](WaitFor { @((App "get_state").devices | Where-Object { $_.id -eq $script:helperId -and $_.caps -contains "pointer.ready" }).Count -gt 0 } 15)
+        Say @("release")
+        Check ([bool](WaitFor { SaysNo } 10)) "a computer that says it cannot take the pointer: the settings say so"
+        $entered = HelperCount "Enter \{"
+        [SmokeHands]::Put(([SmokeHands]::Width - 30), $middle[1])
+        for ($i = 0; $i -lt 60; $i++) {
+            [SmokeHands]::Move(4, 0)
+            Start-Sleep -Milliseconds 30
+        }
+        Start-Sleep -Milliseconds 500
+        Check ((HelperCount "Enter \{") -eq $entered) "and the edge towards it is a wall"
+        Say @("size", "$([SmokeHands]::Width)", "$([SmokeHands]::Height)")
+        Check ([bool](WaitFor { -not (SaysNo) } 10)) "when it says it can again, the settings say so too"
+        Check (Cross) "and the pointer goes over"
+        Say @("leave", "0.5")
+        [void](WaitFor { BackAtTheEdge } 5)
         [void](App "arrange_remove" @{ id = $script:helperId })
         [void](App "set_settings" @{ patch = @{ remoteInput = $false } })
     }

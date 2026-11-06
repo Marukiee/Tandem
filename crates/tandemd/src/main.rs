@@ -102,7 +102,7 @@ enum Command {
     SoundMode { device: String, mode: String },
     /// Remove a device from the circle for good.
     Remove { device: String },
-    /// Say one thing of the shared mouse to a device, to try its side: `enter right 0.5`, `leave 0.5`, `release`, `ping`, `move 10 -5`,
+    /// Say one thing of the shared mouse to a device, to try its side: `enter right 0.5`, `leave 0.5`, `release`, `ping`, `size 1920 1080`, `move 10 -5`,
     /// `scroll 0 -4`, `button 0 down`, `key 0 down 0`, `text hello`.
     #[command(hide = true)]
     Pointer {
@@ -579,6 +579,7 @@ fn pointer_message(what: &[String]) -> Result<tandem_core::proto::Msg> {
         ["leave", along] => Msg::PointerShare(Share::Leave { along: along.parse()? }),
         ["release"] => Msg::PointerShare(Share::Release),
         ["ping"] => Msg::PointerShare(Share::Ping),
+        ["size", width, height] => Msg::PointerShare(Share::Size { width: width.parse()?, height: height.parse()? }),
         ["move", dx, dy] => Msg::Input(Input::Pointer { dx: dx.parse()?, dy: dy.parse()? }),
         ["scroll", dx, dy] => Msg::Input(Input::Scroll { dx: dx.parse()?, dy: dy.parse()? }),
         ["button", button, state] => Msg::Input(Input::Button { button: button.parse()?, down: pressed(state)? }),

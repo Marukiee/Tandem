@@ -250,6 +250,8 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                     let taken = settings::pointer_allowed(app, &from)
                         && crate::commands::input_blocked().is_none()
                         && !crate::lid::blocked(app)
+                        // Not while the pointer of this computer is over there: a computer that is used from here cannot also use this one.
+                        && crate::capture::pointer_at().is_none()
                         && input::ready();
                     log::info!("pointer: {} comes in ({}), {}", device_name(app, &from), if matches!(edge, tandem_core::ffi::TandemEdge::Left | tandem_core::ffi::TandemEdge::Right) { "side" } else { "top or bottom" }, if taken { "taken" } else { "handed back" });
                     if taken {
@@ -281,8 +283,11 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 Share::Ping => {
                     input::pinged(&from);
                     crate::capture::heard(&from, false);
+                    // Only the computer that has the pointer asks. When this one does not know of that, the two went apart (messages crossed),
+                    // and its pointer is gone on both screens until it is told.
+                    let answer = if input::shared_is(&from) { Share::Pong } else { Share::Leave { along: 0.5 } };
                     if let Ok(engine) = app.state::<AppState>().engine() {
-                        tauri::async_runtime::spawn(async move { let _ = engine.send_pointer_share(from, Share::Pong).await; });
+                        tauri::async_runtime::spawn(async move { let _ = engine.send_pointer_share(from, answer).await; });
                     }
                 }
                 Share::Pong => crate::capture::heard(&from, true),

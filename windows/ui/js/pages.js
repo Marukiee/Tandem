@@ -313,8 +313,9 @@ export function DevicePage({ device }) {
         ${isComputer && hasCap("screen.extend") && html`<button class=${"btn" + (displayOn ? " on" : "")} disabled=${!device.online && !displayOn} title=${t("display_tip")}
           onClick=${() => (displayOn ? call("display_stop") : call("display_start", { id: device.id, name: device.name, mac: device.platform === "macos" })).catch(failed)}>
           <${Icon} name=${displayOn ? "circle-x" : "device-laptop"} size=${17} />${displayOn ? t("display_stop_screen") : t("display_use")}</button>`}
-        ${(isComputer || device.platform === "android") && html`<button class=${"btn" + (extendOn ? " on" : "")} disabled=${!device.online && !extendOn} title=${t("extend_tip")}
+        ${(isComputer || device.platform === "android") && html`<button class=${"btn" + (extendOn ? " on" : "") + (state.platform === "windows" ? " soon" : "")} disabled=${!device.online && !extendOn} title=${state.platform === "windows" ? t("extend_soon") : t("extend_tip")}
           onClick=${() => (extendOn ? call("display_offer_stop", { id: device.id }).catch(failed)
+            : state.platform === "windows" ? say(t("extend_soon"))
             : !hasCap("screen.extend.view") ? say(t("extend_update"))
             : !state.canExtend ? say(t("extend_cant_here"))
             : call("display_offer", { id: device.id }).then(() => say(t("extend_asked", device.name))).catch(failed))}>

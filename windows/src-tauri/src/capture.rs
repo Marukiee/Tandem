@@ -6,7 +6,7 @@
 //! computer. When the other computer says the pointer came back, or the keys Control, Alt and Shift with Escape are pressed,
 //! the pointer returns.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -17,7 +17,7 @@ use tandem_core::pointer_share::{self, Edge};
 use tandem_winsys::{Capture, Seen};
 use tauri::{AppHandle, Manager};
 
-use crate::{input, settings, state::AppState};
+use crate::{events, i18n, input, settings, state::AppState};
 
 enum Out {
     Input(String, TandemInput),
@@ -36,6 +36,8 @@ struct Inner {
     went_down_away: BTreeSet<u16>,
     /// When the pointer went over, so a pointer that comes straight back can be told from one that was used.
     entered: Option<Instant>,
+    /// When it came back: a wobble at that edge is not a person who wants to go over again.
+    back_at: Option<Instant>,
 }
 
 static INNER: Mutex<Inner> = Mutex::new(Inner {
@@ -45,13 +47,38 @@ static INNER: Mutex<Inner> = Mutex::new(Inner {
     held_here: BTreeSet::new(),
     went_down_away: BTreeSet::new(),
     entered: None,
+    back_at: None,
 });
 /// Computers that say how they are (the capability `pointer.ready`) and say they cannot take the pointer now. The edge towards one is a
 /// wall until it says it can, so the pointer does not go over and come straight back again and again.
 static NOT_READY: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
 
-fn unready(device: &str) -> bool {
+pub fn unready(device: &str) -> bool {
     NOT_READY.lock().unwrap().contains(device)
+}
+
+/// When the person was last told why the edge towards a computer stays shut.
+static WALL_TOLD: Mutex<BTreeMap<String, Instant>> = Mutex::new(BTreeMap::new());
+/// Not at every push: someone with a locked laptop next to the screen runs into that edge all day.
+const WALL_EVERY: Duration = Duration::from_secs(300);
+
+/// The pointer ran into a computer that says it cannot take it now. It does not say why, and without a word this looks like a shared
+/// mouse that is broken.
+fn tell_wall(device: &str) {
+    let Some(app) = APP.get() else { return };
+    {
+        let mut told = WALL_TOLD.lock().unwrap();
+        if told.get(device).is_some_and(|at| at.elapsed() < WALL_EVERY) {
+            return;
+        }
+        told.insert(device.to_string(), Instant::now());
+    }
+    let (app, device) = (app.clone(), device.to_string());
+    // On a thread of its own: this runs in the hook of the mouse, which may not wait.
+    std::thread::spawn(move || {
+        let name = events::device_name(&app, &device);
+        events::toast(&app, "Tandem", &i18n::t1(&app, "pointer_not_taken", &name));
+    });
 }
 
 /// That computer says whether it can take the pointer now. Only believed from one that says so by itself, which also says when it can again.
@@ -65,11 +92,13 @@ pub fn readiness(device: &str, ready: bool) {
     if !says {
         return;
     }
-    let mut set = NOT_READY.lock().unwrap();
-    if ready {
-        set.remove(device);
-    } else {
-        set.insert(device.to_string());
+    let changed = {
+        let mut set = NOT_READY.lock().unwrap();
+        if ready { set.remove(device) } else { set.insert(device.to_string()) }
+    };
+    // The settings say so too, so nobody has to find out by running into the edge.
+    if changed {
+        crate::arrange::refresh(app);
     }
 }
 /// For the settings and the sizes of the other screens, which the hooks cannot get at otherwise.
@@ -252,6 +281,7 @@ pub fn pointer_at() -> Option<String> {
 
 /// What the hands did. True when it is for the other computer and has to go no further on this one.
 fn see(seen: Seen) -> bool {
+    let used_here = input::used_here();
     let mut inner = INNER.lock().unwrap();
     let Some((device, edge)) = inner.remote.clone() else {
         if let Seen::Button { button, down } = seen {
@@ -263,6 +293,10 @@ fn see(seen: Seen) -> bool {
         }
         // The pointer is here: does it run into an edge where a screen sits?
         let (Seen::Move { dx, dy, x, y }, Some(app)) = (seen, APP.get()) else { return false };
+        // Hands on this PC while another computer has the pointer here: going over now would leave both computers thinking they have it.
+        if used_here || inner.back_at.is_some_and(|at| at.elapsed() < Duration::from_millis(150)) {
+            return false;
+        }
         // The edge is that of all the screens together, so a second screen on the far side is no reason to leave.
         let (left, top, w, h) = tandem_winsys::desktop();
         let (w, h) = (w.max(1), h.max(1));
@@ -282,6 +316,7 @@ fn see(seen: Seen) -> bool {
         };
         let (device, along) = found;
         if unready(&device) {
+            tell_wall(&device);
             return false;
         }
         inner.saved = (x, y);
@@ -415,7 +450,11 @@ fn desktop_box() -> (i32, i32, i32, i32) {
 }
 
 fn come_back(along: Option<f32>) {
-    let remote = INNER.lock().unwrap().remote.take();
+    let remote = {
+        let mut inner = INNER.lock().unwrap();
+        inner.back_at = Some(Instant::now());
+        inner.remote.take()
+    };
     if let Some((device, edge)) = remote {
         restore(along, &device, edge);
     }
@@ -583,7 +622,11 @@ mod linux {
         // The place on the edge says which computer it is, as for the hooks of Windows.
         let Some((index, along)) = layout::cross(edge, position, &list) else { return give_back() };
         let device = list[index].id.clone();
+        if input::used_here() {
+            return give_back();
+        }
         if unready(&device) {
+            tell_wall(&device);
             return give_back();
         }
         {

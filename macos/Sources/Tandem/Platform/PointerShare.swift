@@ -127,9 +127,9 @@ final class PointerShare {
     }
 
     /// Computers that said they cannot take the pointer now (locked, asleep, not allowed, no permission), or gave it straight back. The
-    /// edge towards one is a plain wall until it says it can: no jump over and no message. Only for a computer that keeps saying how it
-    /// is (the capability `pointer.ready`); one that does not is tried as before.
-    @ObservationIgnored private var unready: Set<String> = []
+    /// edge towards one is a plain wall until it says it can: no jump over. Why is said at a push there (`tellWall`) and in Settings. Only for
+    /// a computer that keeps saying how it is (the capability `pointer.ready`); one that does not is tried as before.
+    private var unready: Set<String> = []
     /// A drag (a photo, a file, text) that went over with the pointer and has not been let go yet. While the button is down it stays over there,
     /// and it does not go over a second time.
     @ObservationIgnored private var carriedDrag = false
@@ -148,14 +148,26 @@ final class PointerShare {
         model.device(id)?.features.contains { $0.id == "pointer" && !$0.ready } ?? false
     }
 
+    /// That computer keeps saying it cannot take the pointer now.
+    func saysNo(_ id: String) -> Bool {
+        guard unready.contains(id), let device = model.device(id), device.online else { return false }
+        return device.caps.contains("pointer.ready")
+    }
+
     /// The pointer was pushed against an edge where a device sits that does not take it: why, now and then.
     private func tellWall(edge: String) {
-        guard let id = layout.first(where: { $0.value.edge == edge && refusesPointer($0.key) })?.key,
-              let missing = model.device(id)?.features.first(where: { $0.id == "pointer" && !$0.ready }),
-              Date().timeIntervalSince(wallToldAt[id] ?? .distantPast) > 30
-        else { return }
-        wallToldAt[id] = Date()
-        FloatingToast.show(missing.why, symbol: "cursorarrow.slash")
+        let here = layout.filter { $0.value.edge == edge }.map(\.key)
+        if let id = here.first(where: { refusesPointer($0) }),
+           let missing = model.device(id)?.features.first(where: { $0.id == "pointer" && !$0.ready }) {
+            guard Date().timeIntervalSince(wallToldAt[id] ?? .distantPast) > 30 else { return }
+            wallToldAt[id] = Date()
+            FloatingToast.show(missing.why, symbol: "cursorarrow.slash")
+        } else if let id = here.first(where: { saysNo($0) }), let name = model.device(id)?.name,
+                  // Not at every push: someone with a locked laptop next to the screen runs into that edge all day.
+                  Date().timeIntervalSince(wallToldAt[id] ?? .distantPast) > 300 {
+            wallToldAt[id] = Date()
+            FloatingToast.show(String(localized: "\(name) does not take the pointer now. Allow this Mac in Tandem there, under Mouse and keyboard. A locked screen there stops it too."), symbol: "cursorarrow.slash")
+        }
     }
 
     private func declined(_ id: String) -> Bool {
@@ -192,6 +204,7 @@ final class PointerShare {
     @ObservationIgnored private var heardAt = Date()
     /// When the pointer went over, so a computer that hands it straight back can be told apart from one that was used.
     @ObservationIgnored private var wentOverAt = Date.distantPast
+    @ObservationIgnored private var cameBackAt = Date.distantPast
     @ObservationIgnored private var watchTask: Task<Void, Never>?
     /// The buttons held down while the pointer is over there, so they are let go over there when the pointer comes home.
     @ObservationIgnored private var heldButtons: Set<UInt8> = []
@@ -359,7 +372,8 @@ final class PointerShare {
         // Also while a button is down, but only with something in the drag: a photo, a file or selected text runs into the edge too,
         // and that is when it has to go over. Resizing a window or selecting text against the edge does not.
         let dragged = type == .leftMouseDragged
-        guard type == .mouseMoved || dragged, !neighbours.isEmpty else { return false }
+        // Not while another computer has the pointer here: the tap also sees the moves that computer plays, and its own pointer at this edge is not a push.
+        guard type == .mouseMoved || dragged, !neighbours.isEmpty, controlledBy == nil else { return false }
         let at = event.location
         let dx = event.getDoubleValueField(.mouseEventDeltaX)
         let dy = event.getDoubleValueField(.mouseEventDeltaY)
@@ -370,7 +384,8 @@ final class PointerShare {
         if at.x <= area.minX && dx < 0 { pushes.append(("left", Int(at.y - area.minY))) }
         if at.y <= area.minY && dy < 0 && atOwnEdge(at, bottom: false) { pushes.append(("top", Int(at.x - area.minX))) }
         if at.y >= area.maxY - 1 && dy > 0 && atOwnEdge(at, bottom: true) { pushes.append(("bottom", Int(at.x - area.minX))) }
-        guard !pushes.isEmpty else { return false }
+        // A moment after it came back: a wobble at the edge it came back to is not a person who wants to go over again.
+        guard !pushes.isEmpty, Date().timeIntervalSince(cameBackAt) > 0.15 else { return false }
         let list = reachable()
         for push in pushes {
             // Only where a screen really is next to this one: along the rest of the edge there is a wall.
@@ -410,7 +425,7 @@ final class PointerShare {
         wentOverAt = Date()
         // The size of that screen is known from before: the pointer is followed over there from the first movement.
         if let size = sizes[device] {
-            remoteTracker = RemoteTracker(width: Double(size.width), height: Double(size.height), edge: edge, along: Double(along))
+            remoteTracker = RemoteTracker(width: Double(size.width), height: Double(size.height), edge: edge, along: Double(along), margin: countMargin(device, width: Double(size.width), height: Double(size.height)))
         }
         // A drag in progress (a photo, a file, selected text) goes over with the pointer.
         let dragging = NSEvent.pressedMouseButtons & 1 != 0
@@ -530,6 +545,7 @@ final class PointerShare {
         PointerLog.write("comes back from \(model.device(remote.device)?.name ?? remote.device), button down: \(NSEvent.pressedMouseButtons & 1 != 0), carried drag: \(carriedDrag)")
         if carriedDrag { lastDragCount = NSPasteboard(name: .drag).changeCount }
         self.remote = nil
+        cameBackAt = Date()
         watchTask?.cancel()
         watchTask = nil
         remoteTracker = nil
@@ -559,6 +575,19 @@ final class PointerShare {
         }
     }
 
+    /// A computer that answers pings says by itself when the pointer runs into the edge, from where the pointer really is.
+    private func saysWhereTheEdgeIs(_ device: String) -> Bool {
+        model.device(device)?.caps.contains("pointer.ping") == true
+    }
+
+    /// How far past the edge it came in by the count of this Mac may run before it takes the pointer home by itself. The pointer over there
+    /// has a speed of its own (Windows speeds up a quick move), so the count runs ahead of it or behind: taken for the truth, the pointer
+    /// jumped home from the middle of that screen. For a computer that says where the edge is, the count only catches one that stays
+    /// silent about it.
+    private func countMargin(_ device: String, width: Double, height: Double) -> Double {
+        saysWhereTheEdgeIs(device) ? max(width, height) : 30
+    }
+
     private static let escape: CGKeyCode = 53
     /// How far back past the place it came in the pointer goes before this Mac takes it back by itself, in pixels.
     private static let wayOut = 400.0
@@ -573,11 +602,11 @@ final class PointerShare {
             if dx != 0 || dy != 0 { send(.pointer(dx: Int16(clamping: dx), dy: Int16(clamping: dy))) }
             // The other computer says when the pointer runs into the edge it came in by. One that cannot (it does not move the
             // pointer, or never answers) would keep it for good, so this Mac follows the pointer over there by counting, and takes it
-            // home when it has gone back out. A drag with the left button down over there stays: that computer catches it at the edge.
+            // home when it has gone back out (see `countMargin`). A drag with the left button down over there stays: that computer catches it at the edge.
             var homeward = false
             if remoteTracker != nil {
                 homeward = remoteTracker!.moved(dx: Double(dx), dy: Double(dy))
-            } else if let edge = remote?.edge {
+            } else if let edge = remote?.edge, !saysWhereTheEdgeIs(device) {
                 switch edge {
                 case "right": travelled += Double(dx)
                 case "left": travelled -= Double(dx)
@@ -673,6 +702,9 @@ final class PointerShare {
             // Not while this Mac's own pointer is over there: a computer that is used from here cannot also use this one.
             guard isAllowed(device), remote == nil, controlledBy == nil || controlledBy == device, model.tandem != nil else {
                 PointerLog.write("\(model.device(device)?.name ?? device) wants this Mac: handed back (allowed: \(isAllowed(device)), own pointer away: \(remote != nil), used by: \(controlledBy ?? "nobody"))")
+                // The hands on that computer pushed towards this Mac while the pointer of this Mac was over there. It takes the answer as the
+                // end of this pointer over there too, so it comes home: kept away, it would be gone on both screens.
+                if remote?.device == device { comeBack(along: nil) }
                 // Not allowed: the pointer is handed straight back.
                 Task { try? await model.tandem?.sendPointerShare(target: device, msg: .leave(along: along)) }
                 return
@@ -716,7 +748,10 @@ final class PointerShare {
             // From a computer that is not using this Mac it says that it cannot take a pointer now (from one that is, it is taking it back).
             if !usedByIt, model.device(device)?.caps.contains("pointer.ready") == true { unready.insert(device) }
         case .ping:
-            Task { try? await model.tandem?.sendPointerShare(target: device, msg: .pong) }
+            // Only the computer that has the pointer asks. When this Mac does not know of that, the two went apart (messages crossed), and its
+            // pointer is gone on both screens until it is told.
+            let answer: TandemPointerShare = controlledBy == device ? .pong : .leave(along: 0.5)
+            Task { try? await model.tandem?.sendPointerShare(target: device, msg: answer) }
         case .pong:
             break
         case let .size(width, height):
@@ -727,7 +762,7 @@ final class PointerShare {
             // Only right after the pointer went over: the same news now and then later (that computer says it can take a pointer) must not
             // put the count of where the pointer is back at the place it came in.
             if let remote, remote.device == device, Date().timeIntervalSince(wentOverAt) < 2.5 {
-                remoteTracker = RemoteTracker(width: Double(width), height: Double(height), edge: remote.edge, along: enterAlong)
+                remoteTracker = RemoteTracker(width: Double(width), height: Double(height), edge: remote.edge, along: enterAlong, margin: countMargin(device, width: Double(width), height: Double(height)))
             }
         case .carry:
             // Only a Mac or a PC at the mouse sends this, and then to a computer that has its own way of putting text where it is dropped.
