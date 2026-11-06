@@ -433,6 +433,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
                 _ui.update { WatchUi() }
                 client?.stop()
             }
+            is Message.SmartWakeAlarm -> appContext?.let { TrackingStore(it).smartWakeAlarmMs = message.atMs }
             is Message.StepGoal -> {
                 appContext?.let { TrackingStore(it).stepGoal = message.steps }
                 Tracking.publishStepGoal(message.steps)

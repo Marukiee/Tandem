@@ -29,6 +29,7 @@ import nl.markmaaktmedia.tandem.watch.sleep.MARK_WORN
 import nl.markmaaktmedia.tandem.watch.sleep.RawRecord
 import nl.markmaaktmedia.tandem.watch.sleep.SleepAnalyzer
 import nl.markmaaktmedia.tandem.watch.sleep.SleepAutoDetector
+import nl.markmaaktmedia.tandem.watch.sleep.SmartWake
 import nl.markmaaktmedia.tandem.watch.sleep.WorkoutAnalyzer
 import nl.markmaaktmedia.tandem.watch.sleep.readRawLog
 import nl.markmaaktmedia.tandem.watch.ui.MainActivity
@@ -58,6 +59,7 @@ class TrackingService : Service(), SensorEventListener {
 
     private val flushLoop = object : Runnable {
         override fun run() {
+            if (kind == TrackingKind.SLEEP) followAlarm()
             // At most a minute of data is lost if the battery dies.
             writer?.flush()
             handler.postDelayed(this, FLUSH_MS)
@@ -112,14 +114,18 @@ class TrackingService : Service(), SensorEventListener {
             log.write(RawRecord.Mark(now, requested.name))
             if (stillSince != 0L) log.write(RawRecord.Mark(stillSince, SleepAutoDetector.STILL_SINCE))
             register(requested)
+            shortBatches = false
+            if (requested == TrackingKind.SLEEP) followAlarm()
             handler.postDelayed(flushLoop, FLUSH_MS)
             Tracking.publishActive(requested, now)
             if (requested == TrackingKind.SLEEP) WatchLink.setSleepMode(true)
         }
     }
 
-    private fun register(requested: TrackingKind) {
-        val batchUs = if (requested == TrackingKind.SLEEP) SLEEP_BATCH_US else WORKOUT_BATCH_US
+    private var smartWake: SmartWake? = null
+    private var shortBatches = false
+
+    private fun register(requested: TrackingKind, batchUs: Int = if (requested == TrackingKind.SLEEP) SLEEP_BATCH_US else WORKOUT_BATCH_US) {
         wakeUpOrPlain(Sensor.TYPE_ACCELEROMETER)?.let { sensors.registerListener(this, it, ACCEL_PERIOD_US, batchUs, handler) }
         wakeUpOrPlain(Sensor.TYPE_HEART_RATE)
             ?.let { sensors.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL, batchUs, handler) }
@@ -144,9 +150,10 @@ class TrackingService : Service(), SensorEventListener {
         val log = writer ?: return
         val time = clockOffsetMs + event.timestamp / 1_000_000
         when (event.sensor.type) {
-            Sensor.TYPE_ACCELEROMETER -> log.write(
-                RawRecord.Accel(time, toUnits(event.values[0]), toUnits(event.values[1]), toUnits(event.values[2])),
-            )
+            Sensor.TYPE_ACCELEROMETER -> {
+                log.write(RawRecord.Accel(time, toUnits(event.values[0]), toUnits(event.values[1]), toUnits(event.values[2])))
+                considerWaking(time, event.values)
+            }
             Sensor.TYPE_HEART_RATE -> log.write(RawRecord.HeartRate(time, event.values[0].toInt(), event.accuracy))
             Sensor.TYPE_STEP_COUNTER -> log.write(RawRecord.Steps(time, event.values[0].toLong()))
             Sensor.TYPE_LOW_LATENCY_OFFBODY_DETECT -> log.write(RawRecord.Mark(time, if (event.values[0] > 0.5f) MARK_WORN else MARK_OFF))
@@ -154,6 +161,26 @@ class TrackingService : Service(), SensorEventListener {
                 log.write(RawRecord.SkinTemperature(time, (event.values[0] * 100).toInt()))
             }
         }
+    }
+
+    /** Again during the night: a phone that moves its alarm should not have to wait for the next night. */
+    private fun followAlarm() {
+        val alarm = TrackingStore(this).smartWakeAlarmMs
+        if (smartWake?.alarmMs == alarm) return
+        smartWake = alarm.takeIf { it > System.currentTimeMillis() }?.let { SmartWake(it) }
+    }
+
+    /** Stays with the night it started in. The batches get shorter once it counts: a wake-up five minutes late is no gentle wake-up. */
+    private fun considerWaking(time: Long, values: FloatArray) {
+        val wake = smartWake ?: return
+        if (time < wake.windowStartMs) return
+        if (!shortBatches) {
+            shortBatches = true
+            sensors.unregisterListener(this)
+            register(TrackingKind.SLEEP, SMART_WAKE_BATCH_US)
+        }
+        val g = SensorManager.GRAVITY_EARTH
+        if (wake.onSample(time, values[0] / g, values[1] / g, values[2] / g)) GentleWake.start(this, wake.alarmMs)
     }
 
     private fun toUnits(metersPerSecond: Float): Short =
@@ -243,6 +270,7 @@ class TrackingService : Service(), SensorEventListener {
         /** 25 Hz: enough for wrist movement, and about 5 MB for a night. */
         private const val ACCEL_PERIOD_US = 40_000
         private const val SLEEP_BATCH_US = 5 * 60 * 1_000_000
+        private const val SMART_WAKE_BATCH_US = 30 * 1_000_000
         private const val WORKOUT_BATCH_US = 10 * 1_000_000
         private const val FLUSH_MS = 60_000L
         private const val FLUSH_WAIT_MS = 1_500L

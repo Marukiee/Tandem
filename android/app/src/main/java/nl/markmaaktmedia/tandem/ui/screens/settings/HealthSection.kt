@@ -130,9 +130,16 @@ internal fun HealthToday() {
             }
         }
     }
+    val smartWake by graph.prefs.smartWake.collectAsState(initial = false)
     SettingsGroup {
+        SettingsTarget(FocusKeys.HealthSmartWake, 0, 2) {
+            SwitchRow(
+                0, 2, TandemIcons.Schedule, stringResource(R.string.health_smart_wake), stringResource(R.string.health_smart_wake_sub), smartWake,
+                { on -> scope.launch { graph.prefs.setSmartWake(on) } },
+            )
+        }
         PadSlider(
-            0, 1, stringResource(R.string.health_goal), stringResource(R.string.health_goal_sub), goal, 2000..30000, 500,
+            1, 2, stringResource(R.string.health_goal), stringResource(R.string.health_goal_sub), goal, 2000..30000, 500,
             { number(it.toLong()) }, TandemIcons.Workout,
         ) { value -> scope.launch { graph.prefs.setStepGoal(value) } }
     }

@@ -1,8 +1,5 @@
 package nl.markmaaktmedia.tandem.watch.sleep
 
-import kotlin.math.abs
-import kotlin.math.atan2
-import kotlin.math.sqrt
 
 sealed interface AutoSleepDecision {
     /** Went to sleep around [stillSinceMs]: the detector only knows that some time after it happened. */
@@ -26,13 +23,7 @@ class SleepAutoDetector {
     private var minuteMoved = false
     private var minuteUsable = true
 
-    private var windowStart = -1L
-    private var sumX = 0.0
-    private var sumY = 0.0
-    private var sumZ = 0.0
-    private var sumSquares = 0.0
-    private var count = 0
-    private var previousAngle: Double? = null
+    private val motion = WristMotion()
 
     private val minutes = ArrayDeque<Boolean>()
     private var offWristMinutes = 0
@@ -75,7 +66,7 @@ class SleepAutoDetector {
     fun onSample(timeMs: Long, x: Float, y: Float, z: Float): AutoSleepDecision? {
         if (minuteStart >= 0 && timeMs - minuteStart > MAX_GAP_MS) resetAfterGap()
         if (minuteStart < 0) minuteStart = timeMs
-        addToWindow(timeMs, x, y, z)
+        if (motion.add(timeMs, x, y, z)) minuteMoved = true
         if (!worn || charging) minuteUsable = false
         if (timeMs - minuteStart < MINUTE_MS) return null
         val decision = closeMinute(minuteStart)
@@ -89,42 +80,7 @@ class SleepAutoDetector {
         minuteStart = -1
         minuteMoved = false
         minuteUsable = true
-        windowStart = -1
-        clearWindow()
-        previousAngle = null
-    }
-
-    private fun clearWindow() {
-        count = 0
-        sumX = 0.0
-        sumY = 0.0
-        sumZ = 0.0
-        sumSquares = 0.0
-    }
-
-    private fun addToWindow(timeMs: Long, x: Float, y: Float, z: Float) {
-        if (windowStart < 0) windowStart = timeMs
-        if (timeMs - windowStart >= WINDOW_MS) closeWindow(timeMs)
-        sumX += x
-        sumY += y
-        sumZ += z
-        sumSquares += x * x + y * y + z * z
-        count++
-    }
-
-    private fun closeWindow(timeMs: Long) {
-        if (count > 1) {
-            val angle = Math.toDegrees(atan2(sumZ / count, sqrt((sumX / count) * (sumX / count) + (sumY / count) * (sumY / count))))
-            // Over all axes, because a hand can shake across gravity without the length of the vector changing at all.
-            val meanSquared = (sumX * sumX + sumY * sumY + sumZ * sumZ) / (count.toDouble() * count)
-            val variance = (sumSquares / count - meanSquared).coerceAtLeast(0.0)
-            val before = previousAngle
-            // A change of posture, or the small shaking of a hand that types or walks while the wrist stays level.
-            if ((before != null && abs(angle - before) > MOVE_DEGREES) || sqrt(variance) > SHAKE_G) minuteMoved = true
-            previousAngle = angle
-        }
-        windowStart = timeMs
-        clearWindow()
+        motion.clear()
     }
 
     private fun closeMinute(startMs: Long): AutoSleepDecision? {
@@ -168,9 +124,6 @@ class SleepAutoDetector {
         const val STILL_SINCE = "still_since"
 
         private const val MINUTE_MS = 60_000L
-        private const val WINDOW_MS = 5_000L
-        private const val MOVE_DEGREES = 5.0
-        private const val SHAKE_G = 0.02
         private const val MAX_GAP_MS = 12 * MINUTE_MS
         private const val START_STILL_MINUTES = 25
         private const val START_MAX_MOVED_MINUTES = 2

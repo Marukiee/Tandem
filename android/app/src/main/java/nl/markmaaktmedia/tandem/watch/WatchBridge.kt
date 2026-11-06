@@ -1,6 +1,7 @@
 package nl.markmaaktmedia.tandem.watch
 
 import android.annotation.SuppressLint
+import android.app.AlarmManager
 import android.app.NotificationManager
 import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
@@ -104,6 +105,12 @@ class WatchBridge(
     private val media = WatchMedia(context, handler, { mediaExcluded }, { cover -> enqueue(cover) }) { publishPlayers() }
     private var computerPlayers: List<MediaPlayer> = emptyList()
     private var stepGoal = TandemPrefs.DEFAULT_STEP_GOAL
+    private var smartWake = false
+    private val alarmChanged = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            handler.post { sendAlarm() }
+        }
+    }
     private val quiet = WatchSleepQuiet(context, handler)
     private var running = false
     private var active = false
@@ -182,6 +189,15 @@ class WatchBridge(
                 }
             }
         }
+        context.registerReceiver(alarmChanged, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), Context.RECEIVER_NOT_EXPORTED)
+        jobs += scope.launch {
+            prefs.smartWake.collect { on ->
+                handler.post {
+                    smartWake = on
+                    sendAlarm()
+                }
+            }
+        }
         jobs += scope.launch {
             prefs.stepGoal.collect { goal ->
                 handler.post {
@@ -229,6 +245,7 @@ class WatchBridge(
     }
 
     fun stop() {
+        runCatching { context.unregisterReceiver(alarmChanged) }
         jobs.forEach { it.cancel() }
         jobs.clear()
         handler.post {
@@ -372,6 +389,12 @@ class WatchBridge(
         publishBatteries()
         enqueue(Message.Ringing(phoneRinging))
         enqueue(Message.StepGoal(stepGoal))
+        sendAlarm()
+    }
+
+    private fun sendAlarm() {
+        val next = context.getSystemService(AlarmManager::class.java).nextAlarmClock?.triggerTime ?: 0L
+        enqueue(Message.SmartWakeAlarm(if (smartWake) next else 0L))
     }
 
     private fun publishPlayers() {
@@ -521,7 +544,7 @@ class WatchBridge(
             is Message.Ping, is Message.Pong, is Message.Unknown -> Unit
             // These only travel from phone to watch.
             is Message.NotificationSnapshot, is Message.Notification, is Message.NotificationRemoved, is Message.AppIcon,
-            is Message.HealthAck, is Message.StepGoal,
+            is Message.HealthAck, is Message.StepGoal, is Message.SmartWakeAlarm,
             is Message.Call, is Message.MediaPlayers, is Message.MediaArt, is Message.PointerTargets, is Message.DeviceBatteries,
             -> Unit
         }

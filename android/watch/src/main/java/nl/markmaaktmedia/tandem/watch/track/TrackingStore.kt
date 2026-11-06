@@ -86,6 +86,11 @@ class TrackingStore(context: Context) {
         stepsInMinute = prefs.getLong("steps_in_minute", 0),
     )
 
+    /** The next alarm to wake someone before, 0 for none. Kept here so a night on a watch without its phone still has it. */
+    var smartWakeAlarmMs: Long
+        get() = prefs.getLong("smart_wake_alarm", 0)
+        set(value) = prefs.edit().putLong("smart_wake_alarm", value).apply()
+
     var stepGoal: Int
         get() = prefs.getInt("step_goal", DEFAULT_STEP_GOAL)
         set(value) = prefs.edit().putInt("step_goal", value).apply()

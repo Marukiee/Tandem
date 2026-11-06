@@ -97,6 +97,7 @@ toegevoegd en onbekende types genegeerd.
 - De dienst die de verbinding openhoudt heeft geen kaart in de lijst. Hij geeft als tijd 1 op en dan weigert het systeem de melding als te oud (`Ignored enqueue for old` in logcat), terwijl de dienst gewoon foreground blijft. Stopt een latere Wear OS daarmee, dan komt alleen de kaart terug.
 
 ## Slaap en training
+- Zacht wakker worden (standaard uit, `SmartWake`): tijdens een slaapopname trilt het horloge in het halfuur voor de wekker op de telefoon, zodra de pols beweegt, en anders 2 minuten ervoor. Mensen bewegen in lichte slaap meer dan in diepe; meer weet een pols hier niet van. De wekker zelf gaat gewoon af. Nog niet getoetst op echte nachten.
 - Op het horloge staat dit los van de rest: een eigen icoon "Tandem Health" uit dezelfde app (`HealthActivity`), zodat er geen tweede koppeling of update voor nodig is. "Health" alleen zou er twee keer staan, naast die van Google.
 - Alles staat op een eigen pagina Gezondheid (`HealthPage` op de telefoon, een eigen onderdeel in de instellingen op de computers). Zonder horloge in de kring staat daar alleen de schakelaar "Ook zonder horloge tonen", per apparaat bewaard. De nachten zelf blijven bewaard als een horloge wordt ontkoppeld.
 - Opnemen: versnellingsmeter op 25 Hz, hartslag, stappen, off-body en huidtemperatuur (als die toestemming er is), in batches uit de

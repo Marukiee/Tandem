@@ -168,6 +168,9 @@ sealed interface Message {
     /** Watch to phone: so Tandem can show this watch next to the other devices. */
     data class WatchStatus(val level: Int, val charging: Boolean, val stepsToday: Long = 0, val activeMinutesToday: Int = 0) : Message
 
+    /** Phone to watch: the next alarm on the phone, 0 when there is none or when the person does not want waking early. */
+    data class SmartWakeAlarm(val atMs: Long) : Message
+
     /** Phone to watch: how many steps a day the person aims for. */
     data class StepGoal(val steps: Int) : Message
 
@@ -232,6 +235,7 @@ object MessageCodec {
     private const val SLEEP_MODE = 0x43
     private const val RINGING = 0x44
     private const val STEP_GOAL = 0x45
+    private const val SMART_WAKE_ALARM = 0x46
     private const val HEALTH_RECORD = 0x50
     private const val HEALTH_ACK = 0x51
     private const val POINTER_TARGETS = 0x70
@@ -288,6 +292,7 @@ object MessageCodec {
             }
             is Message.WatchStatus -> w.u8(WATCH_STATUS).u8(message.level).bool(message.charging).varint(message.stepsToday).varint(message.activeMinutesToday.toLong())
             is Message.StepGoal -> w.u8(STEP_GOAL).varint(message.steps.toLong())
+            is Message.SmartWakeAlarm -> w.u8(SMART_WAKE_ALARM).varint(message.atMs)
             is Message.SleepMode -> w.u8(SLEEP_MODE).bool(message.on)
             is Message.HealthRecord -> {
                 w.u8(HEALTH_RECORD).str(message.id).bool(message.workout).varint(message.startMs).varint(message.endMs)
@@ -344,6 +349,7 @@ object MessageCodec {
             )
             WATCH_STATUS -> Message.WatchStatus(r.u8(), r.bool(), if (r.remaining > 0) r.varint() else 0, if (r.remaining > 0) r.varint().toInt() else 0)
             STEP_GOAL -> Message.StepGoal(r.varint().toInt())
+            SMART_WAKE_ALARM -> Message.SmartWakeAlarm(r.varint())
             SLEEP_MODE -> Message.SleepMode(r.bool())
             HEALTH_RECORD -> Message.HealthRecord(
                 id = r.str(),

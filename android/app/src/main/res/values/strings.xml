@@ -627,4 +627,6 @@
     <string name="health_week_steps">%1$s steps a day</string>
     <string name="health_week_steps_before">%1$s steps a day, last week %2$s</string>
     <string name="health_week_active">%1$d of 150 active minutes</string>
+    <string name="health_smart_wake">Wake me gently</string>
+    <string name="health_smart_wake_sub">Your watch buzzes softly in the half hour before your alarm, when your wrist moves. Works during a sleep recording. Your alarm still goes off.</string>
 </resources>

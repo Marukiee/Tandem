@@ -79,6 +79,7 @@ class TandemPrefs(private val context: Context) {
         val healthShown = booleanPreferencesKey("health_shown")
         val nudgeMuted = stringSetPreferencesKey("nudge_muted")
         val stepGoal = intPreferencesKey("step_goal")
+        val smartWake = booleanPreferencesKey("smart_wake")
         val watchMouse = booleanPreferencesKey("watch_mouse")
         val watchSleepQuiet = booleanPreferencesKey("watch_sleep_quiet")
         val focusFollowOnly = booleanPreferencesKey("focus_follow_only")
@@ -172,6 +173,9 @@ class TandemPrefs(private val context: Context) {
     val healthShown: Flow<Boolean> = data.map { it[Keys.healthShown] ?: false }
     suspend fun setHealthShown(value: Boolean) = set(Keys.healthShown, value)
 
+    /** Off until asked for: being woken earlier than your alarm is not something to get by surprise. */
+    val smartWake: Flow<Boolean> = data.map { it[Keys.smartWake] ?: false }
+    suspend fun setSmartWake(value: Boolean) = set(Keys.smartWake, value)
     val stepGoal: Flow<Int> = data.map { it[Keys.stepGoal] ?: DEFAULT_STEP_GOAL }
     suspend fun setStepGoal(value: Int) = set(Keys.stepGoal, value)
 

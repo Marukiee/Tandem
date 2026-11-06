@@ -64,6 +64,7 @@ internal object FocusKeys {
     const val WatchMouse = "watch.mouse"
     const val WatchQuiet = "watch.quiet"
     const val HealthShow = "health.show"
+    const val HealthSmartWake = "health.smart_wake"
 
     const val PhoneName = "sharing.name"
     const val PhoneId = "sharing.id"
@@ -304,6 +305,11 @@ internal object SettingsCatalog {
         SettingsEntry(
             "health_show", R.string.health_show, R.string.settings_kw_health_show, SettingsCategory.Health, health,
             { TandemIcons.Sleep }, subtitle = R.string.health_show_sub, focus = FocusKeys.HealthShow,
+        ),
+
+        SettingsEntry(
+            "health_smart_wake", R.string.health_smart_wake, R.string.settings_kw_health_smart_wake, SettingsCategory.Health, health,
+            { TandemIcons.Schedule }, subtitle = R.string.health_smart_wake_sub, focus = FocusKeys.HealthSmartWake,
         ),
 
         // Trackpad

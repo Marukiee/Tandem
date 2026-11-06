@@ -624,4 +624,6 @@
     <string name="health_week_steps">%1$s stappen per dag</string>
     <string name="health_week_steps_before">%1$s stappen per dag, vorige week %2$s</string>
     <string name="health_week_active">%1$d van 150 actieve minuten</string>
+    <string name="health_smart_wake">Zacht wakker worden</string>
+    <string name="health_smart_wake_sub">Je horloge trilt zacht in het halfuur voor je wekker, als je pols beweegt. Werkt tijdens een slaapopname. Je wekker gaat gewoon af.</string>
 </resources>
