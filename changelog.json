@@ -1,7 +1,7 @@
 [
   {
     "version": "0.3.0",
-    "date": "2026-11-06",
+    "date": "2026-11-07",
     "en": {
       "title": "Your watch",
       "new": [
@@ -9,7 +9,11 @@
         "Calls, notifications and music on your wrist",
         "Sleep and workouts, on the computers you choose",
         "See your watch and find it from your computers",
-        "A health page with a sleep score and your resting heart rate"
+        "A program on a computer can buzz your watch",
+        "A health page with sleep score, resting heart rate and a step goal",
+        "A soft wake-up in the half hour before your alarm",
+        "A heads-up when your resting heart rate stays high",
+        "Export your health data, or import it from Health Connect"
       ]
     },
     "nl": {
@@ -19,7 +23,11 @@
         "Gesprekken, meldingen en muziek om je pols",
         "Slaap en trainingen, op de computers die jij kiest",
         "Zie je horloge en zoek het vanaf je computers",
-        "Een pagina Gezondheid met slaapscore en rusthartslag"
+        "Een programma op een computer kan je horloge laten trillen",
+        "Een pagina Gezondheid met slaapscore, rusthartslag en stappendoel",
+        "Zacht wakker worden in het halfuur voor je wekker",
+        "Een seintje als je rusthartslag hoog blijft",
+        "Exporteer je gezondheidsgegevens of importeer ze uit Health Connect"
       ]
     }
   },

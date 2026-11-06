@@ -206,19 +206,23 @@ pub fn is_release_download(url: &str) -> bool {
 }
 
 /// Whether `candidate` is a later version than `current`, read the way a person reads them: 0.1.10 comes after 0.1.9.
+/// With the same numbers a suffix is a test build of the plain version, so whoever runs one is offered the real one, as on the Mac and Android.
 pub fn is_newer(candidate: &str, current: &str) -> bool {
-    let numbers = |text: &str| -> Vec<u64> {
-        text.trim_start_matches(['v', 'V'])
-            .split(['-', '+'])
-            .next()
-            .unwrap_or("")
-            .split('.')
-            .map(|part| part.chars().take_while(char::is_ascii_digit).collect::<String>().parse().unwrap_or(0))
-            .collect()
+    let parts = |text: &str| -> (Vec<u64>, String) {
+        let text = text.trim_start_matches(['v', 'V']);
+        let (numbers, suffix) = text.split_once(['-', '+']).unwrap_or((text, ""));
+        let numbers = numbers.split('.').map(|part| part.chars().take_while(char::is_ascii_digit).collect::<String>().parse().unwrap_or(0)).collect();
+        (numbers, suffix.to_lowercase())
     };
-    let (a, b) = (numbers(candidate), numbers(current));
+    let ((a, a_suffix), (b, b_suffix)) = (parts(candidate), parts(current));
     let size = a.len().max(b.len());
-    (0..size).map(|i| (a.get(i).copied().unwrap_or(0), b.get(i).copied().unwrap_or(0))).find(|(x, y)| x != y).is_some_and(|(x, y)| x > y)
+    match (0..size).map(|i| (a.get(i).copied().unwrap_or(0), b.get(i).copied().unwrap_or(0))).find(|(x, y)| x != y) {
+        Some((x, y)) => x > y,
+        None if a_suffix == b_suffix => false,
+        None if a_suffix.is_empty() => true,
+        None if b_suffix.is_empty() => false,
+        None => a_suffix > b_suffix,
+    }
 }
 
 /// The hash from a `.sha256` file as `sha256sum` writes it: the hash, then the name.
@@ -538,6 +542,11 @@ mod tests {
         assert!(!is_newer("0.1.25", "0.1.26"));
         // A suffix does not count as a later number.
         assert!(!is_newer("0.1.26-preview", "0.1.26"));
+        // Whoever runs a test build is offered the real version with the same numbers.
+        assert!(is_newer("0.3.0", "0.3.0-watch.1"));
+        assert!(is_newer("0.3.0", "0.3.0+watch.1"));
+        assert!(is_newer("0.3.0-watch.2", "0.3.0-watch.1"));
+        assert!(!is_newer("0.3.0-watch.1", "0.3.0-watch.1"));
     }
 
     #[test]

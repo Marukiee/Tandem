@@ -50,7 +50,7 @@ class ScreenGalleryActivity : ComponentActivity() {
         Tracking.publishActive(if (screen == "home_recording" || screen == "health_recording") TrackingKind.SLEEP else null, System.currentTimeMillis() - 83 * 60_000)
         Tracking.publishSleep(LastSleep(true, 441, 93, StageMinutes(230, 90, 121)))
         Tracking.publishWorkout(LastWorkout(47, 138))
-        Tracking.publishSteps(8412)
+        Tracking.publishSteps(8412, 34)
         // The bars of a phone image, which a watch does not have.
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowCompat.getInsetsController(window, window.decorView).hide(WindowInsetsCompat.Type.systemBars())
