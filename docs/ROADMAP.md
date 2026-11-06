@@ -75,16 +75,20 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 Bouwt voort op `claude/horloge-link` (zie `docs/WATCH.md` daar). Het horloge blijft geen lid van de circle: alles naar een computer loopt
 via de telefoon, met een eigen schakelaar in Tandem op de telefoon. Nieuwe berichten komen achteraan in `Messages.kt`, oude versies slaan
 ze over. Wat een computer nodig heeft, komt op Mac, Linux en Windows tegelijk. Wat alleen op telefoon en horloge kan, krijgt een regel in
-`docs/PARITY.md`. Volgorde van bouwen: 1, 2, 5, 8, en 4 en 3 na de proef bij punt 4. Niet gekozen: goedkeuren op je pols, presenteren met
-de kroon, spraaknotitie.
+`docs/PARITY.md`. Volgorde van bouwen: de stille meting bij punt 1 loopt mee, dan 2, 5, 8 en 3 (na de proef daar), en 1 alleen als de meting goed is. Niet gekozen: goedkeuren
+op je pols, presenteren met de kroon, spraaknotitie.
 
 - **1. Telefoon vergeten**
   - Wat: loop je weg zonder telefoon, dan trilt je pols één keer en staat er een kaart met "Laat rinkelen". Die knop laat de telefoon
     rinkelen zodra hij weer in bereik is (`FindDevice`).
-  - Wanneer: de link is minstens 60 s weg (`onLinkDown` in `WatchLink`) en je hebt in die tijd minstens 30 stappen gezet (`StepTracker`).
-    Door de stappen trilt het niet als de telefoon naast je opnieuw opstart of de app wordt bijgewerkt.
+  - Het probleem (opmerking van Mark): thuis kan de link ook wegvallen, bijvoorbeeld als de telefoon op een andere verdieping ligt. Met maar een paar
+    stappen zou het dan vaak onterecht trillen. Of dit handig genoeg is, weten we pas na een meting.
+  - Eerst meten: een week lang alleen op het echte horloge in een logbestand zetten wanneer het zou trillen, zonder te trillen. Mark bekijkt dan welke momenten
+    terecht waren. Veel onterecht thuis? Dan niet bouwen.
+  - Wanneer (voorstel voor de meting): de link is weg (`onLinkDown` in `WatchLink`) en je zet daarna binnen 5 minuten minstens 200 stappen (`StepTracker`),
+    ongeveer 150 m. Rondlopen in huis haalt dat meestal niet. Op de fiets of in de auto zet je geen stappen en merkt het dit dus niet.
   - Niet: tijdens een slaapopname, aan de lader, of als het horloge af is (die toestanden kent het horloge al). Eén seintje per keer weg.
-  - Nieuw: alleen op het horloge, geen nieuw bericht. Een schakelaar op het horloge, standaard aan.
+  - Nieuw: alleen op het horloge, geen nieuw bericht. Een schakelaar op het horloge, **standaard uit**.
   - Nog bekijken: of Bluetooth uitzetten op de telefoon vals alarm geeft als je dan gaat lopen. Zo ja, een kort afscheidsbericht van de telefoon.
 - **2. Seintje van je computer**
   - Wat: `tandem notify "Render klaar"` op de computer laat je pols trillen, met de naam van de computer en die tekst. Zonder verbonden
@@ -99,26 +103,24 @@ de kroon, spraaknotitie.
   - Grenzen: tekst hooguit 200 tekens, hooguit één seintje per 10 s per computer, per computer uit te zetten op de telefoon.
   - Pariteit: Android als bron heeft geen opdrachtregel, dat komt als uitzondering in `docs/PARITY.md`.
 - **3. Snelknoppen op het horloge**
-  - Wat: een tegel met vier knoppen: computer vergrendelen, computer wekken, hotspot aan of uit, geluidsstand van de telefoon. Met meer
-    computers kies je er een op het horloge; de laatste keuze blijft staan.
+  - Wat: een tegel met hooguit vier knoppen die je zelf kiest, in Tandem op de telefoon, bij de instellingen van het horloge. De indeling volgt het aantal.
+    Keuzes: computer vergrendelen, computer wekken, computer wakker houden, hotspot aan of uit, geluidsstand van de telefoon, telefoon laten rinkelen, stille slaap.
+    Standaard de eerste twee, plus hotspot en geluidsstand. Met meer computers kies je er een op het horloge; de laatste keuze blijft staan.
   - Bericht: nieuw `QuickAction` (soort, doel-id) van horloge naar telefoon, die de bestaande telefooncode aanroept (`lock`,
-    `setSoundMode`, Wake on LAN, hotspot). Nieuw `QuickState` van telefoon naar horloge: geluidsstand, hotspot, en per computer of hij kan
+    `setSoundMode`, Wake on LAN, hotspot). Nieuw `QuickState` van telefoon naar horloge: de gekozen knoppen, geluidsstand, hotspot, en per computer of hij kan
     vergrendelen, slaapt of verbonden is.
   - Wat niet kan: de knop is grijs en zegt bij het tikken waarom, zoals overal in Tandem. Elke knop trilt kort als het gelukt is.
   - Schakelaar per computer op de telefoon. Vergrendelen mag nu al van elk gekoppeld apparaat, wekken ook; deze knoppen voegen geen nieuwe macht toe.
-  - Vraagt: `androidx.wear.tiles` en `protolayout`, dus akkoord van Mark, en de proef bij punt 4. Dezelfde knoppen komen ook als scherm in de app, zodat ze ook werken als tegels niet kunnen.
-- **4. Batterijen op de wijzerplaat**
-  - Wat: twee keuzes voor de wijzerplaat: "Telefoon" en "Computer" (welke computer kies je in de app). Een ring met het percentage; de lader is te zien aan het icoon.
-  - Gegevens: `DeviceBatteries` komt al binnen. Bij elke wijziging vraagt de app de wijzerplaat om te verversen.
-  - Bewaren: de laatste waarde blijft bewaard. Is de link langer dan een uur weg, dan grijs en zonder cijfer, zodat er geen oud getal staat.
-  - Vraagt: `androidx.wear.watchface:watchface-complications-data-source`, dus akkoord van Mark.
-  - **Eerst een proef van een uur op het echte horloge**: een lege tegel en een lege koppeling. Pas als die op de Pixel Watch 2 verschijnen, worden 3 en 4 gebouwd.
+  - Vraagt: `androidx.wear.tiles` en `protolayout`, dus akkoord van Mark. Dezelfde knoppen komen ook als scherm in de app, zodat ze ook werken als tegels niet kunnen.
+  - **Eerst een proef van een uur op het echte horloge**: een lege tegel. Pas als die op de Pixel Watch 2 verschijnt, wordt de tegel gebouwd.
+- **4. Batterijen op de wijzerplaat**: nog niet (besluit van Mark, 2026-11-06). Kan later op de `DeviceBatteries` die al binnenkomen.
 - **5. Muziek stopt als je slaapt**
   - Wat: slaap je in, dan pauzeert alles wat speelt: op de telefoon, op verbonden computers en via de telefoon ook Sonos, als dat daar als mediasessie loopt.
   - Wanneer: tijdens een slaapopname, na 25 minuten stil (de drempel van `SleepAutoDetector`), dus niet meteen als je bedtime mode met de hand aanzet.
   - Bericht: nieuw `Asleep` (id van de nacht) van horloge naar telefoon. `SleepMode` kan dit niet dragen: die wordt na elke verbinding herhaald. Het id zorgt dat het één keer per nacht gebeurt. Was de link weg, dan telt het bericht alleen als het jonger is dan 10 minuten.
   - Telefoon: `WatchMedia` pauzeert de eigen spelers, `sendMediaCommand` die op computers, alleen wat echt speelt.
   - Schakelaars op de telefoon, naast "Stille slaap": "Muziek pauzeren" (standaard uit) en apart "Computers vergrendelen" (standaard uit), want iemand anders kan dan achter de computer zitten.
+  - De vraag na een nacht (wens van Mark): staat "Muziek pauzeren" uit en speelde er nog minstens 30 minuten muziek nadat je in slaap viel, dan krijg je na het opstaan een melding: "Er speelde muziek door terwijl je sliep. Voortaan vanzelf uitzetten?" Knoppen: "Ja, voortaan", "Nu niet", "Niet meer vragen". "Ja" zet de schakelaar aan. "Nu niet" vraagt pas na een volgende keer opnieuw, hooguit één keer per week. `Asleep` wordt daarvoor altijd gestuurd, ook als de schakelaar uit staat; de telefoon onthoudt alleen of er toen iets speelde.
   - Later: de betere herkenning uit "De hele dag hartslag bijhouden" neemt de drempel van 25 minuten over.
 - **8. Muziek op je computer bedienen**
   - Wat: de horloge-player toont ook wat op een computer speelt, met de computernaam erbij. Afspelen, volgende, vorige en de kroon voor het volume werken daar ook.
