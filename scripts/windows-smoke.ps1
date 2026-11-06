@@ -242,7 +242,7 @@ function WalkPages([string]$pattern, [string]$label) {
     foreach ($line in $lines) { Write-Host $line }
     Add-Content (Join-Path $Out "ui-findings.txt") $lines -Encoding UTF8
     Check ($lines.Count -eq 0) "nothing wrong with the words on $($report.steps.Count) views of $label" ($lines | Select-Object -First 3 | Out-String).Trim()
-    foreach ($mac in @($report.macWords)) { Add-Content (Join-Path $Out "ui-mac-words.txt") "[$($mac.lang)] $($mac.where): $($mac.line)" -Encoding UTF8 }
+    foreach ($mac in @($report.macWords | Where-Object { $_.line })) { Add-Content (Join-Path $Out "ui-mac-words.txt") "[$($mac.lang)] $($mac.where): $($mac.line)" -Encoding UTF8 }
 }
 
 # ---- The second device -----------------------------------------------------------------------------------------------------------
