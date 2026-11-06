@@ -556,8 +556,19 @@ class WatchBridge(
         val engine = host.engine ?: return
         scope.launch {
             runCatching { engine.addHealthRecords(listOf(message.toTandem())) }
-                .onSuccess { handler.post { enqueue(Message.HealthAck(message.id)) } }
+                .onSuccess {
+                    handler.post { enqueue(Message.HealthAck(message.id)) }
+                    writeToHealthConnect(listOf(message.toTandem()))
+                }
                 .onFailure { Log.w(TAG, "Could not keep a health record", it) }
+        }
+    }
+
+    /** A failure here costs nothing: the record is safe on this phone, and turning the switch on again writes everything. */
+    private fun writeToHealthConnect(records: List<TandemHealthRecord>) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+        scope.launch(Dispatchers.IO) {
+            if (prefs.healthConnectWrite.first()) runCatching { HealthConnectImport.write(context, records) }
         }
     }
 

@@ -639,4 +639,10 @@
     <string name="health_import_done">%1$d items read</string>
     <string name="health_import_failed">Could not read Health Connect</string>
     <string name="health_import_denied">Health Connect did not allow this</string>
+    <string name="health_write">Also write to Health Connect</string>
+    <string name="health_write_sub">Other apps on this phone then see your nights, workouts and steps.</string>
+    <string name="health_write_failed">Could not write to Health Connect</string>
+    <string name="health_compared">Compared with %1$s</string>
+    <string name="health_compared_sum">%1$d nights, on average %2$s apart</string>
+    <string name="health_compared_line">%1$s: Tandem %2$s, other app %3$s</string>
 </resources>

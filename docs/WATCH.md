@@ -98,6 +98,7 @@ toegevoegd en onbekende types genegeerd.
 
 ## Slaap en training
 - Zacht wakker worden (standaard uit, `SmartWake`): tijdens een slaapopname trilt het horloge in het halfuur voor de wekker op de telefoon, zodra de pols beweegt, en anders 2 minuten ervoor. Mensen bewegen in lichte slaap meer dan in diepe; meer weet een pols hier niet van. De wekker zelf gaat gewoon af. Nog niet getoetst op echte nachten.
+- Health Connect (Android 14 en hoger, de API van het systeem, geen extra bibliotheek): importeren slaat over wat Tandem zelf schreef en wat het zelf al gemeten heeft, zodat niets dubbel telt. Nachten die een andere app ook mat, staan na een import naast elkaar. Wegschrijven staat standaard uit; de id van een record gaat mee, dus twee keer schrijven vervangt. Onze rusthartslag is de laagste van de nacht, wat Fitbit of Google daar zo noemen is een andere meting en dus niet te vergelijken.
 - Op het horloge staat dit los van de rest: een eigen icoon "Tandem Health" uit dezelfde app (`HealthActivity`), zodat er geen tweede koppeling of update voor nodig is. "Health" alleen zou er twee keer staan, naast die van Google.
 - Alles staat op een eigen pagina Gezondheid (`HealthPage` op de telefoon, een eigen onderdeel in de instellingen op de computers). Zonder horloge in de kring staat daar alleen de schakelaar "Ook zonder horloge tonen", per apparaat bewaard. De nachten zelf blijven bewaard als een horloge wordt ontkoppeld.
 - Opnemen: versnellingsmeter op 25 Hz, hartslag, stappen, off-body en huidtemperatuur (als die toestemming er is), in batches uit de
