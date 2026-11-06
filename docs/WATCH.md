@@ -68,7 +68,7 @@ getoond is en jonger is dan 10 minuten trilt. Zo gaat er bij een onderbreking ni
 | 0x21 | CallAction | H naar T | id, kind |
 | 0x30 | MediaPlayers | T naar H | id, app, title, artist, album, playing, position_ms, duration_ms, art_key |
 | 0x31 | MediaCommand | H naar T | player id, kind |
-| 0x32 | MediaArt | T naar H | key, image (WebP van 152 bij 152, hooguit 6 KB; alleen als hij verandert) |
+| 0x32 | MediaArt | T naar H | key, image (WebP van 152 bij 152, hooguit 6 KB; alleen als hij verandert), player id |
 | 0x40 | FindDevice | beide | ring |
 | 0x41 | DeviceBatteries | T naar H | id, name, level, charging per apparaat |
 | 0x42 | WatchStatus | H naar T | level, charging |
@@ -87,6 +87,10 @@ toegevoegd en onbekende types genegeerd.
 - Eenmalige codes komen niet op het horloge: de telefoon maskeert ze. Vanaf Android 15 verbergt het systeem zulke meldingen
   bovendien zelf voor apps als deze ("Sensitive notification content hidden").
 - Meldingen zijn gewone Wear OS-meldingen. Ontkoppelen haalt ze van het horloge, en ook de bewaarde app-iconen.
+- De player werkt als die van Drip: wat speelt staat vooraan, daarna wat als laatste speelde (`PlayerRules`), dus een pauze laat hem staan en de volgende uit de lijst van het systeem neemt het niet over. Hooguit drie players, elk met een eigen hoes; wisselen met de kleine hoesjes of door naar links te vegen, want naar rechts sluit een scherm op een horloge. Een keuze houdt op als die player weg is of als iets anders begint te spelen. Sluit een app zijn mediasessie echt af, dan is hij ook hier weg.
+- Het horloge heeft een eigen mediasessie met wat de telefoon speelt (`PhoneMediaSession`). Daardoor behandelt Wear OS het als muziek op het horloge, met zijn eigen player en bediening; elke druk gaat naar de telefoon.
+- Een sessie alleen is niet genoeg: de media-app van Wear OS kijkt pas als een `MediaStyle`-melding naar de sessie wijst. Die app zet dan het icoon op de wijzerplaat en een rij in de meldingen; tikken daarop opent de `sessionActivity`, dus onze player. De melding zelf staat op de laagste belangrijkheid, anders staat de muziek twee keer in de lijst. Het icoon is er alleen zolang er echt iets speelt: bij pauze haalt het systeem het weg, wat het bij elke player doet. De volumeknop gaat alleen tijdens het spelen naar de telefoon; bij pauze regelt hij het volume van het horloge.
+- Een sessie zonder titel of in de staat `NONE` telt niet als player. De NOS-app houdt er zo een open, en die stond na een herstart vooraan.
 - Het app-icoon staat er als large icon: het small icon tekent Wear OS niet, en bovenaan blijft de naam "Tandem" met een klein badge. De naam vervangen (`android.substName`) negeert het horloge.
 - De dienst die de verbinding openhoudt heeft geen kaart in de lijst. Hij geeft als tijd 1 op en dan weigert het systeem de melding als te oud (`Ignored enqueue for old` in logcat), terwijl de dienst gewoon foreground blijft. Stopt een latere Wear OS daarmee, dan komt alleen de kaart terug.
 

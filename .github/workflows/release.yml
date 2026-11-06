@@ -102,7 +102,8 @@ jobs:
 
       - name: Build the signed APK
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon -PversionName="$VERSION" -PversionCode="$CODE"
+        # Only the phone app: the watch app is not part of a version yet.
+        run: ./gradlew :app:assembleRelease --no-daemon -PversionName="$VERSION" -PversionCode="$CODE"
 
       # Gradle falls back to the debug key when the keystore is missing, and the
       # build still succeeds. This makes that a failure instead of a bad release.
