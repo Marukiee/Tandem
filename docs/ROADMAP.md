@@ -70,6 +70,63 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 - **De telefooncamera als bron in OBS** (gebouwd in 0.2.47 als MPEG-TS over UDP in plaats van SRT, nog niet in OBS gezien): Tandem zet het beeld als stream op de eigen computer (`srt://127.0.0.1:...`), in OBS een
   Mediabron met dat adres; een knop "Kopieer OBS-adres". Op Mac, Windows en Linux.
 
+## Horloge: gekozen functies, uitgewerkt (gekozen door Mark, 2026-11-06), nog te bouwen
+
+Bouwt voort op `claude/horloge-link` (zie `docs/WATCH.md` daar). Het horloge blijft geen lid van de circle: alles naar een computer loopt
+via de telefoon, met een eigen schakelaar in Tandem op de telefoon. Nieuwe berichten komen achteraan in `Messages.kt`, oude versies slaan
+ze over. Wat een computer nodig heeft, komt op Mac, Linux en Windows tegelijk. Wat alleen op telefoon en horloge kan, krijgt een regel in
+`docs/PARITY.md`. Volgorde van bouwen: 1, 2, 5, 8, en 4 en 3 na de proef bij punt 4. Niet gekozen: goedkeuren op je pols, presenteren met
+de kroon, spraaknotitie.
+
+- **1. Telefoon vergeten**
+  - Wat: loop je weg zonder telefoon, dan trilt je pols één keer en staat er een kaart met "Laat rinkelen". Die knop laat de telefoon
+    rinkelen zodra hij weer in bereik is (`FindDevice`).
+  - Wanneer: de link is minstens 60 s weg (`onLinkDown` in `WatchLink`) en je hebt in die tijd minstens 30 stappen gezet (`StepTracker`).
+    Door de stappen trilt het niet als de telefoon naast je opnieuw opstart of de app wordt bijgewerkt.
+  - Niet: tijdens een slaapopname, aan de lader, of als het horloge af is (die toestanden kent het horloge al). Eén seintje per keer weg.
+  - Nieuw: alleen op het horloge, geen nieuw bericht. Een schakelaar op het horloge, standaard aan.
+  - Nog bekijken: of Bluetooth uitzetten op de telefoon vals alarm geeft als je dan gaat lopen. Zo ja, een kort afscheidsbericht van de telefoon.
+- **2. Seintje van je computer**
+  - Wat: `tandem notify "Render klaar"` op de computer laat je pols trillen, met de naam van de computer en die tekst. Zonder verbonden
+    horloge wordt het een gewone melding op de telefoon. Is er geen telefoon bereikbaar, dan is het seintje weg en geeft de opdracht een
+    foutcode, zodat een script dat merkt.
+  - Waarvoor: DaVinci kan na een render een script starten (op versie 21.1 nakijken), Claude Code met een hook als een sessie op je wacht,
+    en elk eigen script.
+  - Ingang: Linux en Windows via `tauri_plugin_single_instance`, dat de argumenten al aan de draaiende app geeft. `tandemd` als extra
+    commando. Op de Mac een Unix-socket met alleen rechten voor de gebruiker, zoals bij `tandemd`. Bewust geen `tandem://`-adres: dan kan elke website je pols laten trillen.
+  - Kern: de bestaande `send_notification` met een eigen app-id. `TandemService.kt` doet nu niets met `TandemEvent.Notification`; daar
+    komt de doorgifte naar `WatchNotifications`. Eerst nakijken of de telefoon die meldingen elders verwerkt.
+  - Grenzen: tekst hooguit 200 tekens, hooguit één seintje per 10 s per computer, per computer uit te zetten op de telefoon.
+  - Pariteit: Android als bron heeft geen opdrachtregel, dat komt als uitzondering in `docs/PARITY.md`.
+- **3. Snelknoppen op het horloge**
+  - Wat: een tegel met vier knoppen: computer vergrendelen, computer wekken, hotspot aan of uit, geluidsstand van de telefoon. Met meer
+    computers kies je er een op het horloge; de laatste keuze blijft staan.
+  - Bericht: nieuw `QuickAction` (soort, doel-id) van horloge naar telefoon, die de bestaande telefooncode aanroept (`lock`,
+    `setSoundMode`, Wake on LAN, hotspot). Nieuw `QuickState` van telefoon naar horloge: geluidsstand, hotspot, en per computer of hij kan
+    vergrendelen, slaapt of verbonden is.
+  - Wat niet kan: de knop is grijs en zegt bij het tikken waarom, zoals overal in Tandem. Elke knop trilt kort als het gelukt is.
+  - Schakelaar per computer op de telefoon. Vergrendelen mag nu al van elk gekoppeld apparaat, wekken ook; deze knoppen voegen geen nieuwe macht toe.
+  - Vraagt: `androidx.wear.tiles` en `protolayout`, dus akkoord van Mark, en de proef bij punt 4. Dezelfde knoppen komen ook als scherm in de app, zodat ze ook werken als tegels niet kunnen.
+- **4. Batterijen op de wijzerplaat**
+  - Wat: twee keuzes voor de wijzerplaat: "Telefoon" en "Computer" (welke computer kies je in de app). Een ring met het percentage; de lader is te zien aan het icoon.
+  - Gegevens: `DeviceBatteries` komt al binnen. Bij elke wijziging vraagt de app de wijzerplaat om te verversen.
+  - Bewaren: de laatste waarde blijft bewaard. Is de link langer dan een uur weg, dan grijs en zonder cijfer, zodat er geen oud getal staat.
+  - Vraagt: `androidx.wear.watchface:watchface-complications-data-source`, dus akkoord van Mark.
+  - **Eerst een proef van een uur op het echte horloge**: een lege tegel en een lege koppeling. Pas als die op de Pixel Watch 2 verschijnen, worden 3 en 4 gebouwd.
+- **5. Muziek stopt als je slaapt**
+  - Wat: slaap je in, dan pauzeert alles wat speelt: op de telefoon, op verbonden computers en via de telefoon ook Sonos, als dat daar als mediasessie loopt.
+  - Wanneer: tijdens een slaapopname, na 25 minuten stil (de drempel van `SleepAutoDetector`), dus niet meteen als je bedtime mode met de hand aanzet.
+  - Bericht: nieuw `Asleep` (id van de nacht) van horloge naar telefoon. `SleepMode` kan dit niet dragen: die wordt na elke verbinding herhaald. Het id zorgt dat het één keer per nacht gebeurt. Was de link weg, dan telt het bericht alleen als het jonger is dan 10 minuten.
+  - Telefoon: `WatchMedia` pauzeert de eigen spelers, `sendMediaCommand` die op computers, alleen wat echt speelt.
+  - Schakelaars op de telefoon, naast "Stille slaap": "Muziek pauzeren" (standaard uit) en apart "Computers vergrendelen" (standaard uit), want iemand anders kan dan achter de computer zitten.
+  - Later: de betere herkenning uit "De hele dag hartslag bijhouden" neemt de drempel van 25 minuten over.
+- **8. Muziek op je computer bedienen**
+  - Wat: de horloge-player toont ook wat op een computer speelt, met de computernaam erbij. Afspelen, volgende, vorige en de kroon voor het volume werken daar ook.
+  - Telefoon: `MediaMirror` krijgt de spelers van computers al binnen (`TandemEvent.MediaPlayers`, `_remote`). `WatchMedia` voegt die samen met de eigen spelers via `tandem_media_visible`, met het apparaat-id vooraan in het speler-id. `perform` stuurt zo'n speler door met `sendMediaCommand`.
+  - Volgorde: `PlayerRules` blijft gelden: wat speelt vooraan, hooguit drie spelers. Hoes: `MediaArt` van de computer door `smallCover` (WebP van 152 bij 152, hooguit 6 KB).
+  - Kern: `MediaAction` heeft geen volume. Nieuw `VolumeUp` en `VolumeDown`; oudere apparaten lezen dat als `Other`. Mac, Linux en Windows zetten het volume van het systeem.
+  - Nog bekijken: of Mac, Linux en Windows hun spelers nu echt sturen (`docs/PARITY.md` noemt alleen de andere richting), en wat er in `MediaMirror` achter `share` zit. Die instelling blijft gelden.
+
 ## Open lijst voor een grote ronde (bijgewerkt 2026-10-09, na versie 0.1.73)
 
 Een regel per punt wat nog open staat, met waar het uitgewerkt is. Elk nieuw verzoek van Mark komt hier bij en in zijn sectie; een punt
