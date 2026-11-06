@@ -327,7 +327,7 @@ class WatchBridge(
     private fun sendFullState() {
         enqueue(Message.Call(calls.state))
         sendNotificationSync()
-        media.cover?.let { enqueue(it) }
+        media.covers.forEach(::enqueue)
         enqueue(Message.MediaPlayers(media.players))
         publishTargets()
         publishBatteries()

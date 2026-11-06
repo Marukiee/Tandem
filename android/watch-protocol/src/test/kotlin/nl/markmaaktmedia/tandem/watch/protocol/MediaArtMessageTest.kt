@@ -44,6 +44,29 @@ class MediaArtMessageTest {
     }
 
     @Test
+    fun eachPlayerKeepsItsOwnCoverInTheQueue() {
+        val queue = OutboundQueue()
+        queue.offer(Message.MediaArt("one", ByteArray(4), "music"))
+        queue.offer(Message.MediaArt("two", ByteArray(4), "news"))
+        queue.offer(Message.MediaArt("three", ByteArray(4), "music"))
+        assertEquals("two", (queue.poll() as Message.MediaArt).key)
+        assertEquals("three", (queue.poll() as Message.MediaArt).key)
+        assertNull(queue.poll())
+    }
+
+    @Test
+    fun aCoverKnowsWhoseItIs() {
+        val cover = Message.MediaArt("abc", ByteArray(8), "com.example.music")
+        assertEquals(cover, MessageCodec.decode(MessageCodec.encode(cover)))
+    }
+
+    @Test
+    fun aPhoneThatDoesNotSayWhoseACoverIsStillGetsThrough() {
+        val old = ByteWriter().u8(0x32).str("abc").bytes(ByteArray(8)).toByteArray()
+        assertEquals("", (MessageCodec.decode(old) as Message.MediaArt).playerId)
+    }
+
+    @Test
     fun aCallOvertakesACover() {
         val queue = OutboundQueue()
         queue.offer(art("cover"))

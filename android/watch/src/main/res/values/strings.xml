@@ -22,6 +22,7 @@
     <string name="pause">Pause</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
+    <string name="go_to_player">Go to %1$s</string>
     <string name="volume_down">Volume down</string>
     <string name="volume_up">Volume up</string>
     <string name="health">Health</string>
@@ -70,6 +71,7 @@
     <string name="find_phone_stop">Stop ringing</string>
     <string name="watch_ringing">Looking for this watch</string>
     <string name="found_it">Found it</string>
+    <string name="channel_music">Music on your phone</string>
     <string name="channel_find">Find this watch</string>
     <string name="devices">Devices</string>
     <string name="battery_row">%1$s, %2$d%%</string>

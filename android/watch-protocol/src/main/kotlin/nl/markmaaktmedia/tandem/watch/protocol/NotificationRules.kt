@@ -61,8 +61,8 @@ class OutboundQueue(private val capacity: Int = 64) {
             }
             is Message.CallAction -> urgent.addLast(message)
             is Message.MediaArt -> {
-                // Skipping through an album: only the cover of where it ended up is worth the airtime.
-                normal.removeAll { it is Message.MediaArt }
+                // Skipping through an album: only the cover of where it ended up is worth the airtime. Other players keep theirs.
+                normal.removeAll { it is Message.MediaArt && it.playerId == message.playerId }
                 normal.addLast(message)
             }
             else -> {

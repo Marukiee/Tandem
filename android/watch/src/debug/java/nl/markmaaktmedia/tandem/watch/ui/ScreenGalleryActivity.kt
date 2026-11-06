@@ -12,6 +12,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -67,19 +71,20 @@ class ScreenGalleryActivity : ComponentActivity() {
     private fun Gallery(screen: String, long: Boolean) {
         val player = player(long)
         val art = cover(player.artKey)
+        val covers = mapOf(art.key to art)
         val ready = WatchUi(
             paired = true,
             connected = true,
             ready = true,
             players = listOf(player),
-            cover = art,
+            covers = covers,
             pointerEnabled = true,
             pointerTargets = listOf(PointerTarget("mac", computer(long), true, true)),
             batteries = listOf(DeviceBattery("phone", phone(long), 84, true), DeviceBattery("mac", computer(long), 62, false)),
         )
         when (screen) {
             "home", "home_recording" -> Home(ready)
-            "home_idle" -> Home(ready.copy(players = emptyList(), cover = null))
+            "home_idle" -> Home(ready.copy(players = emptyList(), covers = emptyMap()))
             "home_found" -> Home(ready.copy(ringing = true, findingPhone = true))
             "home_call" -> Home(ready.copy(call = call(long, CallStatus.ACTIVE)))
             "home_unpaired" -> Home(WatchUi())
@@ -89,14 +94,27 @@ class ScreenGalleryActivity : ComponentActivity() {
             "wait" -> PairingWait()
             "call_ring" -> CallScreen(call(long, CallStatus.RINGING))
             "call_active" -> CallScreen(call(long, CallStatus.ACTIVE))
-            "player" -> PlayerScreen(player, art)
-            "player_paused" -> PlayerScreen(player.copy(playing = false), art)
-            "player_plain" -> PlayerScreen(player.copy(artKey = ""), null)
+            "player" -> PlayerScreen(listOf(player), player, covers) {}
+            "player_paused" -> player.copy(playing = false).let { PlayerScreen(listOf(it), it, covers) {} }
+            "player_plain" -> player.copy(artKey = "").let { PlayerScreen(listOf(it), it, emptyMap()) {} }
+            "player_live" -> player.copy(durationMs = 0).let { PlayerScreen(listOf(it), it, covers) {} }
+            "player_many" -> ManyPlayers(player, covers)
             "pointer_moving" -> PointerFace(computer(long), "moving", true)
             "pointer_paused" -> PointerFace(computer(long), "paused", true)
             "pointer_presentation" -> PointerFace(computer(long), "presentation", true)
             "pointer_lost" -> PointerFace(computer(long), "moving", false)
         }
+    }
+
+    /** Going from one to the other works here as it does on the watch. */
+    @Composable
+    private fun ManyPlayers(player: MediaPlayer, covers: Map<String, Message.MediaArt>) {
+        val news = player.copy(id = "news", app = "NOS", title = "NOS Journaal", artist = "NOS", playing = false, artKey = "news")
+        val radio = player.copy(id = "radio", app = "Radio", title = "NPO Radio 2", artist = "", playing = false, durationMs = 0, artKey = "")
+        val all = listOf(player, news, radio)
+        val more = covers + ("news" to cover("news", Color.rgb(230, 90, 60), Color.rgb(250, 210, 120)))
+        var picked by remember { mutableStateOf(player.id) }
+        PlayerScreen(all, all.first { it.id == picked }, more) { picked = it }
     }
 
     private fun player(long: Boolean) = MediaPlayer(
@@ -125,10 +143,10 @@ class ScreenGalleryActivity : ComponentActivity() {
         muted = false,
     )
 
-    private fun cover(key: String): Message.MediaArt {
+    private fun cover(key: String, from: Int = Color.rgb(90, 140, 220), to: Int = Color.rgb(240, 190, 160)): Message.MediaArt {
         val bitmap = Bitmap.createBitmap(152, 152, Bitmap.Config.ARGB_8888)
         val paint = Paint().apply {
-            shader = LinearGradient(0f, 0f, 152f, 152f, Color.rgb(90, 140, 220), Color.rgb(240, 190, 160), Shader.TileMode.CLAMP)
+            shader = LinearGradient(0f, 0f, 152f, 152f, from, to, Shader.TileMode.CLAMP)
         }
         Canvas(bitmap).drawRect(0f, 0f, 152f, 152f, paint)
         val out = ByteArrayOutputStream()

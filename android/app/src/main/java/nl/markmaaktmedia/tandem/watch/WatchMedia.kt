@@ -14,6 +14,8 @@ import nl.markmaaktmedia.tandem.mirror.MirrorListener
 import nl.markmaaktmedia.tandem.watch.protocol.MediaCommandKind
 import nl.markmaaktmedia.tandem.watch.protocol.MediaPlayer
 import nl.markmaaktmedia.tandem.watch.protocol.Message
+import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
+import nl.markmaaktmedia.tandem.watch.protocol.SessionView
 import java.io.ByteArrayOutputStream
 import kotlin.math.abs
 import kotlin.math.min
@@ -28,16 +30,18 @@ class WatchMedia(
 ) {
     private val sessions = context.getSystemService(MediaSessionManager::class.java)
     private val component = ComponentName(context, MirrorListener::class.java)
-    private val callbacks = HashMap<MediaController, MediaController.Callback>()
+    /** In the order of the system, which is the last word when nothing else tells two players apart. */
+    private val callbacks = LinkedHashMap<MediaController, MediaController.Callback>()
     private var last: List<MediaPlayer> = emptyList()
     private var listening = false
     private var lastSentAt = 0L
-    private var coverStale = true
-    private var coverPackage: String? = null
+    private val coverOfPlayer = HashMap<String, Message.MediaArt>()
+    private val staleCovers = HashSet<String>()
+    private val wasPlaying = HashSet<String>()
+    private val playedAt = HashMap<String, Long>()
 
-    /** The cover of the first player, for a watch that just connected. */
-    var cover: Message.MediaArt? = null
-        private set
+    /** The covers of the players on the watch, the one in front first, for a watch that just connected. */
+    val covers: List<Message.MediaArt> get() = last.mapNotNull { coverOfPlayer[it.id] }
 
     private val publishRunnable = Runnable { publish() }
 
@@ -66,8 +70,8 @@ class WatchMedia(
         callbacks.clear()
         handler.removeCallbacks(publishRunnable)
         last = emptyList()
-        cover = null
-        coverStale = true
+        coverOfPlayer.clear()
+        staleCovers.clear()
     }
 
     fun perform(playerId: String, kind: MediaCommandKind) {
@@ -91,12 +95,12 @@ class WatchMedia(
     private fun follow(controllers: List<MediaController>) {
         callbacks.forEach { (controller, callback) -> controller.unregisterCallback(callback) }
         callbacks.clear()
-        coverStale = true
         controllers.forEach { controller ->
+            staleCovers += controller.packageName
             val callback = object : MediaController.Callback() {
                 override fun onPlaybackStateChanged(state: PlaybackState?) = schedulePublish()
                 override fun onMetadataChanged(metadata: MediaMetadata?) {
-                    coverStale = true
+                    staleCovers += controller.packageName
                     schedulePublish()
                 }
                 override fun onSessionDestroyed() = schedulePublish()
@@ -115,16 +119,30 @@ class WatchMedia(
 
     private fun publish() {
         val left = excluded()
-        val shown = callbacks.keys
+        val found = callbacks.keys
             .filter { it.packageName !in left }
             .mapNotNull { controller -> toPlayer(controller)?.let { controller to it } }
-            .sortedByDescending { (_, player) -> player.playing }
-            .take(3)
-        // Only the first has a cover: the watch shows only that one, and the link is too slow to fill up on the others.
-        val art = shown.firstOrNull()?.let { (controller, _) -> coverOf(controller) }
-        if (art != null && art.key != cover?.key) onCover(art)
-        cover = art
-        val players = shown.mapIndexed { index, (_, player) -> if (index == 0 && art != null) player.copy(artKey = art.key) else player }
+        found.forEach { (_, player) -> notePlaying(player) }
+        val views = found.map { (controller, player) ->
+            val state = controller.playbackState?.state
+            val song = listOf(player.title, player.artist).filter { it.isNotBlank() }.joinToString("|")
+            SessionView(
+                id = player.id,
+                song = song,
+                playing = player.playing,
+                usable = song.isNotBlank() && state != null && state !in NOTHING_TO_OFFER,
+                lastPlayingAt = playedAt[player.id] ?: 0L,
+            )
+        }
+        val shown = PlayerRules.order(views).mapNotNull { id -> found.firstOrNull { (_, player) -> player.id == id } }
+        coverOfPlayer.keys.retainAll(shown.map { (_, player) -> player.id }.toSet())
+        // The one in front first: its cover is the one being looked at, and the link takes a moment for each.
+        val players = shown.map { (controller, player) ->
+            val before = coverOfPlayer[player.id]
+            val art = coverOf(controller)
+            if (art != null && art.key != before?.key) onCover(art)
+            player.copy(artKey = art?.key.orEmpty())
+        }
         // Position changes on every update, so that alone is no reason to send: the watch works out how time passes by itself.
         if (players.map { it.copy(positionMs = 0) } == last.map { it.copy(positionMs = 0) } && !jumped(players)) return
         last = players
@@ -132,12 +150,18 @@ class WatchMedia(
         onChange(players)
     }
 
+    /** The moment a player pauses counts as well: that is what keeps it in front of the ones that have been waiting longer. */
+    private fun notePlaying(player: MediaPlayer) {
+        if (player.playing == player.id in wasPlaying) return
+        playedAt[player.id] = SystemClock.elapsedRealtime()
+        if (player.playing) wasPlaying += player.id else wasPlaying -= player.id
+    }
+
     /** Someone moved through the track, so the ring on the watch would be wrong from here on. */
-    private fun jumped(players: List<MediaPlayer>): Boolean {
-        val now = players.firstOrNull() ?: return false
-        val before = last.firstOrNull() ?: return false
+    private fun jumped(players: List<MediaPlayer>): Boolean = players.any { now ->
+        val before = last.firstOrNull { it.id == now.id } ?: return@any false
         val expected = before.positionMs + if (before.playing) SystemClock.elapsedRealtime() - lastSentAt else 0
-        return abs(now.positionMs - expected) > JUMP_MS
+        abs(now.positionMs - expected) > JUMP_MS
     }
 
     private fun positionNow(state: PlaybackState): Long {
@@ -148,15 +172,16 @@ class WatchMedia(
 
     /** Only makes a new image when the track changed: players also report every pause and every jump in position. */
     private fun coverOf(controller: MediaController): Message.MediaArt? {
-        if (!coverStale && controller.packageName == coverPackage) return cover
-        coverStale = false
-        coverPackage = controller.packageName
-        val metadata = controller.metadata ?: return null
-        val bitmap = COVER_KEYS.firstNotNullOfOrNull { metadata.getBitmap(it) } ?: return null
-        return runCatching { smallCover(bitmap) }.getOrNull()
+        val id = controller.packageName
+        if (id !in staleCovers) return coverOfPlayer[id]
+        staleCovers -= id
+        val bitmap = controller.metadata?.let { metadata -> COVER_KEYS.firstNotNullOfOrNull { metadata.getBitmap(it) } }
+        val art = bitmap?.let { source -> runCatching { smallCover(source, id) }.getOrNull() }
+        if (art == null) coverOfPlayer -= id else coverOfPlayer[id] = art
+        return art
     }
 
-    private fun smallCover(source: Bitmap): Message.MediaArt? {
+    private fun smallCover(source: Bitmap, playerId: String): Message.MediaArt? {
         val side = min(source.width, source.height)
         val square = Bitmap.createBitmap(source, (source.width - side) / 2, (source.height - side) / 2, side, side)
         val small = Bitmap.createScaledBitmap(square, COVER_PIXELS, COVER_PIXELS, true)
@@ -165,7 +190,7 @@ class WatchMedia(
             small.compress(Bitmap.CompressFormat.WEBP_LOSSY, quality, out)
             val image = out.toByteArray()
             // Named after what is in it: players send the same cover again as a new object, and that should not cross the link twice.
-            if (image.size <= Message.MediaArt.MAX_BYTES) return Message.MediaArt(image.contentHashCode().toUInt().toString(16), image)
+            if (image.size <= Message.MediaArt.MAX_BYTES) return Message.MediaArt(image.contentHashCode().toUInt().toString(16), image, playerId)
         }
         return null
     }
@@ -195,6 +220,7 @@ class WatchMedia(
         /** The size it has on the watch, at the density of the Pixel Watch. */
         const val COVER_PIXELS = 152
         const val JUMP_MS = 3_000L
+        val NOTHING_TO_OFFER = setOf(PlaybackState.STATE_NONE, PlaybackState.STATE_STOPPED, PlaybackState.STATE_ERROR)
         val COVER_QUALITIES = intArrayOf(70, 50, 30)
     }
 }

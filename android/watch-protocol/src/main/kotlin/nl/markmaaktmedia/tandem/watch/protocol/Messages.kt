@@ -127,11 +127,14 @@ sealed interface Message {
     data class MediaPlayers(val players: List<MediaPlayer>) : Message
     data class MediaCommand(val playerId: String, val kind: MediaCommandKind) : Message
 
-    /** Phone to watch: a cover, as a small image. Only when it changes, because over Bluetooth this takes a second or two. */
-    data class MediaArt(val key: String, val image: ByteArray) : Message {
-        override fun equals(other: Any?) = other is MediaArt && key == other.key && image.contentEquals(other.image)
+    /**
+     * Phone to watch: a cover, as a small image. Only when it changes, because over Bluetooth this takes a second or two.
+     * [playerId] says whose it is, so that a player's newer cover replaces only that player's in the queue.
+     */
+    data class MediaArt(val key: String, val image: ByteArray, val playerId: String = "") : Message {
+        override fun equals(other: Any?) = other is MediaArt && key == other.key && playerId == other.playerId && image.contentEquals(other.image)
 
-        override fun hashCode() = 31 * key.hashCode() + image.contentHashCode()
+        override fun hashCode() = 31 * (31 * key.hashCode() + playerId.hashCode()) + image.contentHashCode()
 
         companion object {
             const val MAX_BYTES = 6 * 1024
@@ -260,7 +263,7 @@ object MessageCodec {
                 message.players.forEach { w.bytes(encodePlayer(it)) }
             }
             is Message.MediaCommand -> w.u8(MEDIA_COMMAND).str(message.playerId).u8(message.kind.ordinal)
-            is Message.MediaArt -> w.u8(MEDIA_ART).str(message.key).bytes(message.image)
+            is Message.MediaArt -> w.u8(MEDIA_ART).str(message.key).bytes(message.image).str(message.playerId)
             is Message.PointerTargets -> {
                 w.u8(POINTER_TARGETS).bool(message.enabled).varint(message.targets.size.toLong())
                 message.targets.forEach { w.bytes(encodeTarget(it)) }
@@ -314,7 +317,8 @@ object MessageCodec {
             CALL_ACTION -> Message.CallAction(r.str(), enumAt<CallActionKind>(r.u8()))
             MEDIA_PLAYERS -> Message.MediaPlayers(r.list { decodePlayer(it.bytes()) })
             MEDIA_COMMAND -> Message.MediaCommand(r.str(), enumAt<MediaCommandKind>(r.u8()))
-            MEDIA_ART -> Message.MediaArt(r.str(), r.bytes())
+            // The player was added later: a phone that has not been updated yet sends nothing here.
+            MEDIA_ART -> Message.MediaArt(r.str(), r.bytes(), if (r.remaining > 0) r.str() else "")
             POINTER_TARGETS -> Message.PointerTargets(r.bool(), r.list { decodeTarget(it.bytes()) })
             POINTER_SESSION -> Message.PointerSession(r.optStr())
             POINTER_MOVE -> Message.PointerMove(r.svarint(), r.svarint())

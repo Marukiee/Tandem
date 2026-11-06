@@ -24,6 +24,7 @@ import nl.markmaaktmedia.tandem.watch.protocol.LinkListener
 import nl.markmaaktmedia.tandem.watch.protocol.MediaCommandKind
 import nl.markmaaktmedia.tandem.watch.protocol.MediaPlayer
 import nl.markmaaktmedia.tandem.watch.protocol.Message
+import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
 import nl.markmaaktmedia.tandem.watch.protocol.PointerTarget
 import nl.markmaaktmedia.tandem.watch.protocol.Role
 import nl.markmaaktmedia.tandem.watch.track.HealthOutbox
@@ -37,7 +38,10 @@ data class WatchUi(
     val failure: LinkFailure? = null,
     val call: CallMsg? = null,
     val players: List<MediaPlayer> = emptyList(),
-    val cover: Message.MediaArt? = null,
+    /** By the key the players refer to them with. */
+    val covers: Map<String, Message.MediaArt> = emptyMap(),
+    /** The player gone to on the watch, see [PlayerRules.keptPick]. */
+    val pickedPlayer: String? = null,
     val pointerEnabled: Boolean = false,
     val pointerTargets: List<PointerTarget> = emptyList(),
     val batteries: List<DeviceBattery> = emptyList(),
@@ -66,6 +70,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     private var engine: LinkEngine? = null
     private var client: WatchBleClient? = null
     private var notifications: PhoneNotifications? = null
+    private var mediaSession: PhoneMediaSession? = null
     private var calls: CallAlerts? = null
     private var finder: FindAlerts? = null
     private var pointerTarget: String? = null
@@ -112,6 +117,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             client = WatchBleClient(app, handler, this)
             notifications = PhoneNotifications(app)
             calls = CallAlerts(app)
+            mediaSession = PhoneMediaSession(app, ::sendMediaCommand)
             finder = FindAlerts(app, handler) { ringing ->
                 _ui.update { it.copy(ringing = ringing) }
                 engine?.send(Message.Ringing(ringing))
@@ -173,6 +179,20 @@ object WatchLink : LinkListener, WatchBleClient.Events {
 
     fun sendMediaCommand(playerId: String, kind: MediaCommandKind) {
         handler.post { engine?.send(Message.MediaCommand(playerId, kind)) }
+    }
+
+    /** Going to another player, from a small cover or a swipe. */
+    fun pickPlayer(id: String) {
+        handler.post {
+            _ui.update { it.copy(pickedPlayer = id) }
+            showOnSystem()
+        }
+    }
+
+    private fun showOnSystem() {
+        val ui = _ui.value
+        val shown = PlayerRules.shown(ui.players, ui.pickedPlayer)
+        mediaSession?.show(shown, shown?.let { ui.covers[it.artKey] })
     }
 
     /** Steer this computer from now on. Movement is summed here and sent as soon as the link can take it. */
@@ -292,6 +312,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     private fun forgetPhoneData() {
         notifications?.clear()
         calls?.update(null)
+        mediaSession?.show(null, null)
     }
 
     // LinkListener
@@ -332,8 +353,20 @@ object WatchLink : LinkListener, WatchBleClient.Events {
                 calls?.update(message.call)
                 _ui.update { it.copy(call = message.call) }
             }
-            is Message.MediaPlayers -> _ui.update { it.copy(players = message.players) }
-            is Message.MediaArt -> _ui.update { it.copy(cover = message) }
+            is Message.MediaPlayers -> {
+                _ui.update { ui ->
+                    ui.copy(
+                        players = message.players,
+                        pickedPlayer = PlayerRules.keptPick(ui.pickedPlayer, ui.players, message.players),
+                        covers = ui.covers.filterKeys { key -> message.players.any { it.artKey == key } },
+                    )
+                }
+                showOnSystem()
+            }
+            is Message.MediaArt -> {
+                _ui.update { it.copy(covers = it.covers + (message.key to message)) }
+                showOnSystem()
+            }
             is Message.PointerTargets -> _ui.update {
                 it.copy(pointerEnabled = message.enabled, pointerTargets = message.targets)
             }
@@ -395,13 +428,15 @@ object WatchLink : LinkListener, WatchBleClient.Events {
                 code = null,
                 call = null,
                 players = emptyList(),
-                cover = null,
+                covers = emptyMap(),
+                pickedPlayer = null,
                 pointerEnabled = false,
                 pointerTargets = emptyList(),
                 batteries = emptyList(),
                 findingPhone = false,
             )
         }
+        showOnSystem()
     }
 
     override fun onChunk(chunk: ByteArray) {

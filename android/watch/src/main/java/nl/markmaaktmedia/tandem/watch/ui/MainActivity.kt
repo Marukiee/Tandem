@@ -68,6 +68,7 @@ import nl.markmaaktmedia.tandem.watch.link.WatchLink
 import nl.markmaaktmedia.tandem.watch.link.WatchUi
 import nl.markmaaktmedia.tandem.watch.protocol.CallStatus
 import nl.markmaaktmedia.tandem.watch.protocol.LinkFailure
+import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
 import nl.markmaaktmedia.tandem.watch.track.AutoSleep
 import nl.markmaaktmedia.tandem.watch.track.LastSleep
 import nl.markmaaktmedia.tandem.watch.track.Tracking
@@ -273,8 +274,8 @@ internal fun Home(ui: WatchUi) {
                 item(key = "recording") { TrackingButton(kind, tracking, askAccess, rimRow(spec), SurfaceTransformation(spec)) }
             }
 
-            ui.players.firstOrNull()?.let { player ->
-                item(key = "media") { NowPlayingButton(player, ui.cover, rimRow(spec), SurfaceTransformation(spec)) }
+            PlayerRules.shown(ui.players, ui.pickedPlayer)?.let { player ->
+                item(key = "media") { NowPlayingButton(player, ui.covers[player.artKey], rimRow(spec), SurfaceTransformation(spec)) }
             }
 
             if (ui.ready) {
