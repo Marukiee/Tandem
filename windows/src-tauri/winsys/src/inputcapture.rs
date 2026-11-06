@@ -3,7 +3,8 @@
 //! The desktop watches the pointer at the places on the edges of the screens where another computer sits (the barriers of the
 //! InputCapture portal). When the pointer runs into one, the desktop stops giving the mouse and keyboard to its windows and hands
 //! them to this program instead, through libei (which `reis` speaks). [`WaylandCapture::release`] gives them back, and says where
-//! the pointer is to be put. The person is asked once, and the desktop remembers the answer (a token in a file).
+//! the pointer is to be put. The person is asked once, and from version 2 of the portal the desktop remembers the answer (a token in a
+//! file). Version 1, which Fedora 44 has, cannot: it asks at every session, so the app opens one only when the person wants it (see `remembers`).
 
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
@@ -86,7 +87,17 @@ pub fn available() -> bool {
     crate::portal::portal_property("org.freedesktop.portal.InputCapture", "SupportedCapabilities").is_some_and(|caps| caps & 0b11 != 0)
 }
 
+/// Whether the desktop keeps the answer from one start to the next.
+pub fn remembers() -> bool {
+    crate::portal::portal_property("org.freedesktop.portal.InputCapture", "version").is_some_and(|version| version >= 2)
+}
+
 impl WaylandCapture {
+    /// Asks again after a no, or after the desktop closed the session where it cannot remember the answer.
+    pub fn retry(&self) {
+        let _ = self.cmd.try_send(Cmd::Changed);
+    }
+
     /// Sets the capture up on a thread of its own. The first time the desktop asks the person; this does not wait for that.
     pub fn start(handler: impl Fn(Captured) + Send + Sync + 'static) -> WaylandCapture {
         let (cmd, rx) = async_channel::unbounded();
@@ -217,17 +228,17 @@ fn run(rx: async_channel::Receiver<Cmd>, handler: Arc<dyn Fn(Captured) + Send + 
                 let refused = error.contains("cancelled");
                 *shared.reason.lock().unwrap() = error;
                 shared.state.store(2, Ordering::Relaxed);
-                if refused {
-                    // The person said no to the question of the desktop: it is not asked again by itself (that was every half minute), only
-                    // when the screens next to this one change, which is the person saying they want it after all.
+                if refused || !remembers() {
+                    // The person said no to the question of the desktop, or it would have to ask again: it is not asked by itself (that was
+                    // every half minute), only when the screens next to this one change or the button is pressed, which is the person saying
+                    // they want it after all.
                     match rx.recv_blocking() {
                         Ok(Cmd::Changed) => continue,
                         Ok(Cmd::Stop) | Err(_) => return,
                         Ok(_) => continue,
                     }
                 }
-                // The desktop closed the session (it does that when the screen locks): one more try a little later, which asks again only
-                // where the desktop cannot remember the answer.
+                // The desktop closed the session (it does that when the screen locks): one more try a little later, which it answers itself.
                 for _ in 0..30 {
                     std::thread::sleep(Duration::from_secs(1));
                     while let Ok(cmd) = rx.try_recv() {

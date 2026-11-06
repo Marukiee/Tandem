@@ -212,6 +212,12 @@ pub async fn ring_watch(state: State<'_, AppState>, id: String, on: bool) -> Rep
     state.engine()?.ring_watch(id, on).await.map_err(shown)
 }
 
+/// The button under the screens: the desktop may ask now for this computer's mouse and keyboard.
+#[tauri::command]
+pub fn capture_start(app: AppHandle) {
+    capture::person_wants(&app);
+}
+
 /// Keep awake of another computer, switched from here.
 #[tauri::command]
 pub async fn lock_remote(state: State<'_, AppState>, id: String) -> Reply<()> {
@@ -455,6 +461,7 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["pointerShare"].as_bool() {
             if v && !current.pointer_share {
                 crate::side::mouse_turned_on(&app);
+                crate::capture::person_wants(&app);
             }
             current.pointer_share = v;
         }
