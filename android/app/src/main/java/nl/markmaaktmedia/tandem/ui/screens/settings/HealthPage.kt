@@ -36,6 +36,7 @@ internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
     val watch by graph.watch.state.collectAsState()
     val shown by graph.prefs.healthShown.collectAsState(initial = false)
     val records by graph.host.healthRecords.collectAsState()
+    val insights = rememberHealthInsights()
 
     SettingsPageFrame(stringResource(R.string.settings_cat_health), onBack) {
         Spacer(Modifier.height(16.dp))
@@ -52,7 +53,9 @@ internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                 }
             }
             if (watch.paired || shown) {
-                LatestNight()
+                HealthAlert(insights)
+                LatestNight(insights)
+                HealthTrends(insights)
                 EarlierNights()
                 if (records.none { it.kind != TandemHealthKind.UNKNOWN }) {
                     Text(

@@ -94,6 +94,41 @@ pub fn health_record(r: &tandem_core::ffi::health::TandemHealthRecord) -> Value 
     })
 }
 
+pub fn health_insights(i: &tandem_core::ffi::health::TandemHealthInsights) -> Value {
+    let week = |w: &tandem_core::ffi::health::TandemWeekSummary| {
+        json!({
+            "nights": w.nights,
+            "meanSleepMinutes": w.mean_sleep_minutes,
+            "meanScore": w.mean_score,
+            "meanResting": w.mean_resting,
+            "workouts": w.workouts,
+            "workoutMinutes": w.workout_minutes,
+            "workoutSteps": w.workout_steps,
+        })
+    };
+    json!({
+        "latestNight": i.latest_night.as_ref().map(|n| json!({
+            "id": n.id,
+            "score": n.score,
+            "durationScore": n.duration_score,
+            "continuityScore": n.continuity_score,
+            "stagesScore": n.stages_score,
+            "wakeMoments": n.wake_moments.iter().map(|m| json!({ "startMs": m.start_ms, "minutes": m.minutes })).collect::<Vec<_>>(),
+        })),
+        "resting": i.resting.as_ref().map(|r| json!({ "latest": r.latest, "usual": r.usual, "nightsNeeded": r.nights_needed })),
+        "regularity": i.regularity.as_ref().map(|r| json!({
+            "bedtimeMinutes": r.bedtime_minutes,
+            "bedtimeSpreadMinutes": r.bedtime_spread_minutes,
+            "wakeMinutes": r.wake_minutes,
+            "wakeSpreadMinutes": r.wake_spread_minutes,
+        })),
+        "regularityNightsNeeded": i.regularity_nights_needed,
+        "alertAboveUsual": i.alert_above_usual,
+        "thisWeek": week(&i.this_week),
+        "lastWeek": week(&i.last_week),
+    })
+}
+
 pub fn device(d: &TandemDevice) -> Value {
     json!({
         "id": d.id,

@@ -10,6 +10,7 @@ pub mod ffi;
 pub mod find;
 pub mod focus;
 pub mod health;
+pub mod health_insights;
 pub mod hotspot;
 pub mod identity;
 pub mod ids;

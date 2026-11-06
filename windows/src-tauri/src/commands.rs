@@ -155,6 +155,12 @@ pub async fn rename_self(state: State<'_, AppState>, name: String) -> Reply<()> 
     state.engine()?.rename_self(name).await.map_err(shown)
 }
 
+/// What the nights say together. `offset` is how many minutes the clock of this computer is ahead of UTC.
+#[tauri::command]
+pub fn health_insights(state: State<'_, AppState>, offset: i32) -> Reply<serde_json::Value> {
+    Ok(crate::model::health_insights(&state.engine()?.health_insights(offset)))
+}
+
 /// The nights and workouts on this computer, the newest first.
 #[tauri::command]
 pub fn health_records(state: State<'_, AppState>) -> Reply<Vec<serde_json::Value>> {

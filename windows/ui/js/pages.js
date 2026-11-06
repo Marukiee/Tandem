@@ -1177,12 +1177,53 @@ function HealthRecord({ r }) {
 }
 
 // What a phone gave this computer from its watch. Which devices get them is a switch on the phone: only that one has a watch.
+// What the nights say together. The sums are the core's, so this says the same as the phone.
+function HealthInsights({ i }) {
+  const quiet = "font-size:12px;opacity:.7";
+  const clock = (minutes) => `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  const row = "padding:12px 16px;display:flex;flex-direction:column;gap:4px";
+  const waiting = (needed) => html`<div style=${quiet}>${t("health_nights_more", needed)}</div>`;
+  const night = i.latestNight;
+  if (!night) return null;
+  const now = i.thisWeek, before = i.lastWeek;
+  return html`
+    ${i.alertAboveUsual != null && html`<div class="card" style="display:flex;gap:12px;align-items:flex-start"><${Icon} name="heart" size=${20} /><div>${t("health_alert", i.alertAboveUsual)}</div></div>`}
+    <div class="card flush"><div style=${row}>
+      <strong>${t("health_score")}</strong>
+      <div style="font-size:28px;font-weight:700">${night.score}</div>
+      <div style=${quiet}>${night.stagesScore != null ? t("health_score_parts", night.durationScore, night.continuityScore, night.stagesScore) : t("health_score_parts_plain", night.durationScore, night.continuityScore)}</div>
+      ${night.wakeMoments.map((m) => html`<div key=${m.startMs} style=${quiet}>${t("health_wake_moment", new Date(m.startMs).toLocaleTimeString(language() === "nl" ? "nl" : "en", { hour: "2-digit", minute: "2-digit" }), healthDuration(m.minutes))}</div>`)}
+    </div></div>
+    <h3>${t("health_trends")}</h3>
+    <div class="card flush">
+      <div style=${row}><strong>${t("health_resting")}</strong>
+        ${!i.resting ? waiting(1) : i.resting.usual != null ? html`<div>${t("health_resting_usual", i.resting.latest, i.resting.usual)}</div>` : html`<div>${t("health_resting_line", i.resting.latest)}</div>${waiting(i.resting.nightsNeeded)}`}
+      </div>
+      <div style=${row}><strong>${t("health_regular")}</strong>
+        ${i.regularity
+          ? html`<div>${t("health_regular_bed", clock(i.regularity.bedtimeMinutes), healthDuration(i.regularity.bedtimeSpreadMinutes))}</div><div>${t("health_regular_wake", clock(i.regularity.wakeMinutes), healthDuration(i.regularity.wakeSpreadMinutes))}</div>`
+          : waiting(i.regularityNightsNeeded)}
+      </div>
+      <div style=${row}><strong>${t("health_week")}</strong>
+        ${now.meanSleepMinutes != null && html`<div>${before.meanSleepMinutes != null ? t("health_week_sleep_before", healthDuration(now.meanSleepMinutes), healthDuration(before.meanSleepMinutes)) : t("health_week_sleep", healthDuration(now.meanSleepMinutes))}</div>`}
+        ${now.meanScore != null && html`<div>${before.meanScore != null ? t("health_week_score_before", now.meanScore, before.meanScore) : t("health_week_score", now.meanScore)}</div>`}
+        ${now.meanResting != null && html`<div>${before.meanResting != null ? t("health_week_resting_before", now.meanResting, before.meanResting) : t("health_week_resting", now.meanResting)}</div>`}
+        ${now.workouts > 0 && html`<div>${t("health_week_workouts", now.workouts, healthDuration(now.workoutMinutes))}</div>`}
+        ${now.meanSleepMinutes == null && now.workouts === 0 && html`<div style=${quiet}>${t("health_week_empty")}</div>`}
+      </div>
+    </div>`;
+}
+
 function healthShown() {
   try { return localStorage.getItem("healthShown") === "1"; } catch { return false; }
 }
 
 function HealthSection() {
   const [shown, setShown] = useState(healthShown);
+  const [insights, setInsights] = useState(null);
+  useEffect(() => {
+    call("health_insights", { offset: -new Date().getTimezoneOffset() }).then(setInsights).catch(() => setInsights(null));
+  }, [state.health]);
   const hasWatch = (state.devices || []).some((d) => d.status?.watch?.paired);
   const records = (state.health || []).filter((r) => r.kind !== "unknown").slice(0, 60);
   const change = (on) => {
@@ -1192,6 +1233,7 @@ function HealthSection() {
   return html`<div style="display:flex;flex-direction:column;gap:12px">
     <h2>${t("tab_health")}</h2>
     ${!hasWatch && html`<div class="card flush"><${SettingRow} icon="moon" title=${t("health_show")} sub=${t("health_show_sub")} on=${shown} onChange=${change} /></div>`}
+    ${(hasWatch || shown) && insights && html`<${HealthInsights} i=${insights} />`}
     ${(hasWatch || shown) && (records.length === 0
       ? html`<div class="muted">${t("health_empty")}</div>`
       : html`<div class="card flush">${records.map((r) => html`<${HealthRecord} key=${r.id} r=${r} />`)}</div>

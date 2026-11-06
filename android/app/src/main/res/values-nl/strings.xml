@@ -585,4 +585,31 @@
     <string name="health_sum_off">Uit</string>
     <string name="health_sum_none">Nog geen nachten</string>
     <string name="health_row_sub">Slaap en trainingen</string>
+    <string name="health_alert">Je rusthartslag is al twee nachten %1$d slagen hoger dan normaal. Dat kan betekenen dat je lichaam ergens mee bezig is, bijvoorbeeld een opkomende verkoudheid. Dit is geen diagnose.</string>
+    <string name="health_score_parts">Duur %1$d, rust %2$d, fasen %3$d</string>
+    <string name="health_score_parts_plain">Duur %1$d, rust %2$d</string>
+    <string name="health_wake_moment">Wakker om %1$s, %2$s</string>
+    <string name="health_trends">Over meer nachten</string>
+    <string name="health_resting">Rusthartslag</string>
+    <string name="health_resting_line">%1$d bpm</string>
+    <string name="health_resting_usual">%1$d bpm, meestal %2$d</string>
+    <string name="health_regular">Regelmaat</string>
+    <string name="health_regular_bed">Naar bed rond %1$s, plus of min %2$s</string>
+    <string name="health_regular_wake">Op rond %1$s, plus of min %2$s</string>
+    <string name="health_week">Deze week</string>
+    <string name="health_week_sleep">%1$s per nacht</string>
+    <string name="health_week_sleep_before">%1$s per nacht, vorige week %2$s</string>
+    <string name="health_week_score">Score %1$d</string>
+    <string name="health_week_score_before">Score %1$d, vorige week %2$d</string>
+    <string name="health_week_resting">Rust %1$d bpm</string>
+    <string name="health_week_resting_before">Rust %1$d bpm, vorige week %2$d</string>
+    <string name="health_week_empty">Deze week nog niets.</string>
+    <plurals name="health_nights_more">
+        <item quantity="one">Nog %d nacht om dit te tonen</item>
+        <item quantity="other">Nog %d nachten om dit te tonen</item>
+    </plurals>
+    <plurals name="health_week_workouts">
+        <item quantity="one">%1$d training, %2$s</item>
+        <item quantity="other">%1$d trainingen, %2$s</item>
+    </plurals>
 </resources>

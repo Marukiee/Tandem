@@ -1,7 +1,8 @@
 //! Nights and workouts for the apps (see `crate::health`).
 
 use crate::health::{HealthKind, HealthRecord, SleepStage, StageRun};
-use crate::ids::DeviceId;
+use crate::health_insights::{HealthInsights, NightInsight, Regularity, RestingHeart, WeekSummary, insights};
+use crate::ids::{DeviceId, now_ms};
 
 use super::{TandemEngine, TandemError, join_error};
 
@@ -135,8 +136,132 @@ impl From<TandemHealthRecord> for HealthRecord {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemWakeMoment {
+    pub start_ms: u64,
+    pub minutes: u32,
+}
+
+/// The newest night, with the parts of its score so a page can say why. All from 0 to 100.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemNightInsight {
+    pub id: String,
+    pub score: u32,
+    pub duration_score: u32,
+    pub continuity_score: u32,
+    /// None when the stages could not be told apart.
+    pub stages_score: Option<u32>,
+    pub wake_moments: Vec<TandemWakeMoment>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemRestingHeart {
+    pub latest: u32,
+    /// None until there are enough nights, see `nights_needed`.
+    pub usual: Option<u32>,
+    pub nights_needed: u32,
+}
+
+/// Bedtime and wake time as minutes after midnight, local time, and how far a usual night is from those.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemRegularity {
+    pub bedtime_minutes: u32,
+    pub bedtime_spread_minutes: u32,
+    pub wake_minutes: u32,
+    pub wake_spread_minutes: u32,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemWeekSummary {
+    pub nights: u32,
+    pub mean_sleep_minutes: Option<u32>,
+    pub mean_score: Option<u32>,
+    pub mean_resting: Option<u32>,
+    pub workouts: u32,
+    pub workout_minutes: u32,
+    pub workout_steps: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemHealthInsights {
+    pub latest_night: Option<TandemNightInsight>,
+    pub resting: Option<TandemRestingHeart>,
+    pub regularity: Option<TandemRegularity>,
+    /// How many nights are still missing for `regularity`. 0 once it is there.
+    pub regularity_nights_needed: u32,
+    /// How many beats per minute the last two nights are above usual, when they are. Not a diagnosis.
+    pub alert_above_usual: Option<u32>,
+    /// The last seven days, and the seven before that.
+    pub this_week: TandemWeekSummary,
+    pub last_week: TandemWeekSummary,
+}
+
+impl From<NightInsight> for TandemNightInsight {
+    fn from(n: NightInsight) -> Self {
+        Self {
+            id: n.id,
+            score: n.score,
+            duration_score: n.duration_score,
+            continuity_score: n.continuity_score,
+            stages_score: n.stages_score,
+            wake_moments: n.wake_moments.into_iter().map(|m| TandemWakeMoment { start_ms: m.start_ms, minutes: m.minutes }).collect(),
+        }
+    }
+}
+
+impl From<RestingHeart> for TandemRestingHeart {
+    fn from(r: RestingHeart) -> Self {
+        Self { latest: r.latest, usual: r.usual, nights_needed: r.nights_needed }
+    }
+}
+
+impl From<Regularity> for TandemRegularity {
+    fn from(r: Regularity) -> Self {
+        Self {
+            bedtime_minutes: r.bedtime_minutes,
+            bedtime_spread_minutes: r.bedtime_spread_minutes,
+            wake_minutes: r.wake_minutes,
+            wake_spread_minutes: r.wake_spread_minutes,
+        }
+    }
+}
+
+impl From<WeekSummary> for TandemWeekSummary {
+    fn from(w: WeekSummary) -> Self {
+        Self {
+            nights: w.nights,
+            mean_sleep_minutes: w.mean_sleep_minutes,
+            mean_score: w.mean_score,
+            mean_resting: w.mean_resting,
+            workouts: w.workouts,
+            workout_minutes: w.workout_minutes,
+            workout_steps: w.workout_steps,
+        }
+    }
+}
+
+impl From<HealthInsights> for TandemHealthInsights {
+    fn from(i: HealthInsights) -> Self {
+        Self {
+            latest_night: i.latest_night.map(Into::into),
+            resting: i.resting.map(Into::into),
+            regularity: i.regularity.map(Into::into),
+            regularity_nights_needed: i.regularity_nights_needed,
+            alert_above_usual: i.alert.map(|a| a.above_usual),
+            this_week: i.this_week.into(),
+            last_week: i.last_week.into(),
+        }
+    }
+}
+
 #[uniffi::export(async_runtime = "tokio")]
 impl TandemEngine {
+    /// What the nights say together: score, resting heart rate, regularity, this week next to the last. `utc_offset_minutes` is what
+    /// a local clock is ahead of UTC, because only the apps know where they are.
+    pub fn health_insights(&self, utc_offset_minutes: i32) -> TandemHealthInsights {
+        insights(&self.engine.health_records(), now_ms(), utc_offset_minutes).into()
+    }
+
     /// Every night and workout this device has, the newest first.
     pub fn health_records(&self) -> Vec<TandemHealthRecord> {
         self.engine.health_records().into_iter().map(Into::into).collect()

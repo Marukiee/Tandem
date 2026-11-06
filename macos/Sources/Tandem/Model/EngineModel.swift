@@ -43,6 +43,7 @@ final class EngineModel {
 
     var devices: [TandemDevice] = []
     var healthRecords: [TandemHealthRecord] = []
+    var healthInsights: TandemHealthInsights?
     /// A device that is paired from now on starts as a guest: clipboard and notifications off, files asked about first.
     var guestsByDefault = false
     // What was sent and received outlives the app, so an update (which restarts it) no longer
@@ -401,6 +402,7 @@ final class EngineModel {
 
     func refreshHealth() {
         healthRecords = engine?.healthRecords() ?? []
+        healthInsights = engine?.healthInsights(utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60))
     }
 
     func refreshDevices() {

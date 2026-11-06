@@ -588,4 +588,31 @@
     <string name="health_sum_off">Off</string>
     <string name="health_sum_none">No nights yet</string>
     <string name="health_row_sub">Sleep and workouts</string>
+    <string name="health_alert">Your resting heart rate has been %1$d beats above usual for two nights. That can mean your body is dealing with something, like a cold coming on. This is not a diagnosis.</string>
+    <string name="health_score_parts">Length %1$d, calm %2$d, stages %3$d</string>
+    <string name="health_score_parts_plain">Length %1$d, calm %2$d</string>
+    <string name="health_wake_moment">Awake at %1$s, %2$s</string>
+    <string name="health_trends">Over more nights</string>
+    <string name="health_resting">Resting heart rate</string>
+    <string name="health_resting_line">%1$d bpm</string>
+    <string name="health_resting_usual">%1$d bpm, usually %2$d</string>
+    <string name="health_regular">Regularity</string>
+    <string name="health_regular_bed">To bed around %1$s, give or take %2$s</string>
+    <string name="health_regular_wake">Up around %1$s, give or take %2$s</string>
+    <string name="health_week">This week</string>
+    <string name="health_week_sleep">%1$s a night</string>
+    <string name="health_week_sleep_before">%1$s a night, last week %2$s</string>
+    <string name="health_week_score">Score %1$d</string>
+    <string name="health_week_score_before">Score %1$d, last week %2$d</string>
+    <string name="health_week_resting">Resting %1$d bpm</string>
+    <string name="health_week_resting_before">Resting %1$d bpm, last week %2$d</string>
+    <string name="health_week_empty">Nothing this week yet.</string>
+    <plurals name="health_nights_more">
+        <item quantity="one">%d more night to show this</item>
+        <item quantity="other">%d more nights to show this</item>
+    </plurals>
+    <plurals name="health_week_workouts">
+        <item quantity="one">%1$d workout, %2$s</item>
+        <item quantity="other">%1$d workouts, %2$s</item>
+    </plurals>
 </resources>
