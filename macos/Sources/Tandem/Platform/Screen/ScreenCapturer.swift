@@ -3,10 +3,11 @@ import CoreMedia
 import Foundation
 import ScreenCaptureKit
 
-/// The main display as a stream of pictures, with the pointer drawn into them.
+/// The main display as a stream of pictures, with the pointer drawn into them unless the viewer shows its own.
 ///
 /// The pointer is part of the picture on purpose: the wire has no separate cursor, and a pointer that is in the video is
-/// always where the Mac believes it is, whoever moved it (the person at the Mac, or the phone).
+/// always where the Mac believes it is, whoever moved it (the person at the Mac, or the phone). A computer that controls this Mac
+/// shows its own pointer over the picture: this one would be a second one, a little behind.
 final class ScreenCapturer: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
     enum Failure: Error, CustomStringConvertible {
         case noPermission
@@ -37,6 +38,12 @@ final class ScreenCapturer: NSObject, SCStreamOutput, SCStreamDelegate, @uncheck
     private var stream: SCStream?
     private var configuration: SCStreamConfiguration?
     private let queue = DispatchQueue(label: "nl.markmaaktmedia.tandem.screen-capture", qos: .userInteractive)
+    private let showsPointer: Bool
+
+    init(showsPointer: Bool = true) {
+        self.showsPointer = showsPointer
+        super.init()
+    }
 
     static var hasPermission: Bool { CGPreflightScreenCaptureAccess() }
 
@@ -76,7 +83,7 @@ final class ScreenCapturer: NSObject, SCStreamOutput, SCStreamDelegate, @uncheck
         configuration.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(max(1, fps)))
         // What the encoder takes without converting anything.
         configuration.pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
-        configuration.showsCursor = true
+        configuration.showsCursor = showsPointer
         configuration.queueDepth = 5
         configuration.scalesToFit = true
         configuration.colorSpaceName = CGColorSpace.sRGB

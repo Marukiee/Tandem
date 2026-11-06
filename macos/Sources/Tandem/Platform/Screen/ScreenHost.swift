@@ -375,7 +375,9 @@ final class ScreenHost {
             live = ScreenHostSession(
                 id: id, peer: peer, engine: engine, encoder: encoder, display: display,
                 limits: (Int(request.maxWidth), Int(request.maxHeight)), baseFps: fps, startBitrate: bitrate, virtualDisplay: virtual,
-                screenSharing: screenSharing
+                screenSharing: screenSharing,
+                // A display made for a viewer has only this pointer, and a phone shows none of its own.
+                showsPointer: request.extend || !(control && model?.device(peer)?.isComputer == true)
             )
         } catch {
             displays[id] = nil
@@ -871,10 +873,13 @@ final class ScreenHostSession: @unchecked Sendable {
         return true
     }
 
+    private let showsPointer: Bool
+
     init(id: UInt64, peer: String, engine: TandemEngine, encoder: ScreenEncoder, display: ScreenCapturer.DisplayInfo,
-         limits: (Int, Int), baseFps: Int, startBitrate: Int, virtualDisplay: VirtualDisplay? = nil, screenSharing: Bool = false) {
+         limits: (Int, Int), baseFps: Int, startBitrate: Int, virtualDisplay: VirtualDisplay? = nil, screenSharing: Bool = false, showsPointer: Bool = true) {
         self.virtualDisplay = virtualDisplay
-        capturer = screenSharing ? ScreenSharingSource() : ScreenCapturer()
+        self.showsPointer = showsPointer
+        capturer = screenSharing ? ScreenSharingSource() : ScreenCapturer(showsPointer: showsPointer)
         self.id = id
         self.peer = peer
         self.engine = engine
@@ -1064,7 +1069,7 @@ final class ScreenHostSession: @unchecked Sendable {
         }
         try announce(Shape(width: size.width, height: size.height, changed: changed))
 
-        let nextCapture: any ScreenSource = (screenSharing ?? (oldCapture is ScreenSharingSource)) ? ScreenSharingSource() : ScreenCapturer()
+        let nextCapture: any ScreenSource = (screenSharing ?? (oldCapture is ScreenSharingSource)) ? ScreenSharingSource() : ScreenCapturer(showsPointer: showsPointer)
         wire(nextCapture)
         lock.withLock {
             capturer = nextCapture
