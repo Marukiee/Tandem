@@ -48,7 +48,7 @@ def features_of(path):
     return night_features(act,peak,turn,ang,ok,g,n)
 
 if __name__=='__main__':
-    a=argparse.ArgumentParser();a.add_argument('--wpow',type=float,default=.25);a.add_argument('--fdir',default='fc');a.add_argument('--nets',type=int,default=3);a.add_argument('--epochs',type=int,default=25);a.add_argument('--h',type=int,default=48);a.add_argument('--out',default='out');o=a.parse_args()
+    a=argparse.ArgumentParser();a.add_argument('--wpow',type=float,default=.25);a.add_argument('--fdir',default='fc');a.add_argument('--nets',type=int,default=3);a.add_argument('--epochs',type=int,default=40);a.add_argument('--h',type=int,default=48);a.add_argument('--out',default='out');o=a.parse_args()
     os.makedirs(o.out,exist_ok=True)
     nights=load('*',o.fdir);T=transitions(nights)
     nets=[train_net(nights,epochs=o.epochs,h=o.h,seed=100+i,wpow=o.wpow) for i in range(o.nets)]

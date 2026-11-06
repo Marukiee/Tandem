@@ -44,6 +44,16 @@ python -I train.py --k 3
 python -I train.py --holdout sa
 ```
 
+Wat beweging toevoegt: dezelfde twee runs zonder.
+
+```bash
+python -I train.py --k 3 --nomotion
+```
+
+```bash
+python -I train.py --holdout sa --nomotion
+```
+
 Het model maken dat meegaat, op alle nachten:
 
 ```bash
@@ -57,6 +67,13 @@ Daarna `out/sleep_model.bin` naar `src/main/resources/` en `out/golden_night.*` 
 - **Klassegewichten `wpow` 0,25** in plaats van 0,5: bij 0,5 overschat het diepe slaap en REM op nachten uit het lab.
 - **BiGRU tegen LightGBM** op dezelfde kenmerken: 0,50 tegen 0,42.
 - **Viterbi**: kost een fractie kappa, maar geeft een nacht zonder onmogelijke sprongen.
+- **Beweging gaat mee**, zelfde verdeling met en zonder (`--nomotion`): kappa van 0,546 naar 0,554, wakker tegen slaap van 0,578 naar 0,623.
+  Getraind thuis en getest in het lab: kappa van 0,514 naar 0,543, wakker tegen slaap van 0,443 naar 0,513. De mediane fout per fase wordt
+  wel 2 tot 6 minuten groter, op wakker in de eerste meting na.
+
+## Eigenaardigheden van de data
+Sommige `motion.csv`-bestanden in `bidsleep-dataset` stoppen midden in een regel; `load_bid.py` slaat die regel over. Acht van de 284
+nachten hebben voor minder dan de helft van de nacht beweging, `Bidslab42/3` maar 4 minuten. Ze tellen mee.
 
 ## Naamsvermelding
 Beide datasets staan onder ODC-BY 1.0, zie `docs/WATCH.md`. DREAMT is niet gebruikt: daar zit een gebruiksovereenkomst op.

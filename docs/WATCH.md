@@ -108,23 +108,36 @@ De Pixel Watch 2 geeft een gewone app alleen bpm rond 0,5 Hz. PPG, ECG en losse 
 cijfers van onderzoek met losse hartslagen (Fonseca 2023: kappa 0,64).
 
 ### Hoe goed het is
-Eerlijk gemeten: nachten van mensen die het model niet zag. Kappa, vier klassen (wakker, licht, diep, REM). Deze cijfers komen uit de
-evaluatie in `training/`.
+Eerlijk gemeten: nachten van mensen die het model niet zag, 284 nachten van 78 mensen. Kappa, vier klassen (wakker, licht, diep, REM).
+Deze cijfers komen uit de evaluatie in `training/`. "Alleen hartslag" is dezelfde training met dezelfde verdeling van mensen, met de
+bewegingskenmerken op nul.
 
-| Meting, alleen hartslag | Kappa | Mediaan per nacht |
+| Meting | Alleen hartslag | Met beweging |
 | --- | --- | --- |
-| Nachten thuis, hele mensen apart gehouden | 0,549 | 0,562 |
-| Getraind op nachten thuis, getest op nachten in een slaaplab | 0,505 | 0,522 |
+| Alle nachten, hele mensen apart gehouden | 0,546 | 0,554 |
+| Mediaan per nacht | 0,563 | 0,564 |
+| Wakker tegen slaap (twee klassen) | 0,578 | 0,623 |
+| Alleen de nachten thuis | 0,550 | 0,557 |
+| Alleen de nachten in een slaaplab | 0,515 | 0,528 |
+| Getraind op nachten thuis, getest op nachten in een slaaplab | 0,514 | 0,543 |
+| Idem, wakker tegen slaap | 0,443 | 0,513 |
 
-| Fase | Gevonden | Klopt | Mediane fout per nacht |
+| Fase, met beweging | Gevonden | Klopt | Mediane fout per nacht |
 | --- | --- | --- | --- |
-| Wakker | 57% | 73% | 12 min |
-| Licht | 73% | 69% | 29 min |
-| Diep | 69% | 72% | 20 min |
-| REM | 68% | 67% | 24 min |
+| Wakker | 57% | 77% | 11 min |
+| Licht | 74% | 69% | 33 min |
+| Diep | 69% | 71% | 23 min |
+| REM | 70% | 68% | 26 min |
+
+Beweging helpt vooral bij de vraag of iemand wakker is, en wanneer een model nachten uit een andere omgeving krijgt. Op de fasen zelf doet
+het weinig: over alle nachten stijgt de kappa 0,008, en de mediane fout is voor licht, diep en REM 2 tot 3 minuten groter (wakker 2
+kleiner). Getraind thuis en getest in het lab is die fout 2 tot 6 minuten groter, ook voor wakker. Elke variant is een keer gemeten, dus
+zulke kleine verschillen kunnen ook toeval zijn. De meting gebruikt een net per deel; het model dat meegaat, middelt er drie over alle
+nachten en is niet apart te meten.
 
 Ter vergelijking: menselijke scorers onderling rond 0,76, commerciële wearables in onafhankelijke vergelijkingen rond 0,2 tot 0,5
-(secundaire bronnen). Nog niet gemeten: hoe dit model het op de hartslag van de Pixel doet, want daar is geen slaaplab bij.
+(secundaire bronnen). Nog niet gemeten: hoe dit model het op de hartslag en beweging van de Pixel doet. Beide datasets komen van een
+Apple Watch, en bij de Pixel is geen slaaplab.
 
 ### Naar de computers
 `HealthRecord` gaat met een blijvende wachtrij (`HealthOutbox`) naar de telefoon, één tegelijk, en blijft staan tot `HealthAck`. De
