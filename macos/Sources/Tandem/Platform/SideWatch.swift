@@ -217,10 +217,11 @@ enum AudioRoute {
         }
     }
 
-    /// Whether the sweeps can come out of the Mac's own speakers: not when they are off or nearly off, when something is plugged into the
-    /// jack (the built-in output then is the headphones), or while this Mac's sound is sent to a phone, which could hear its own speaker.
+    /// Whether the sweeps can come out of the Mac's own speakers: not when they are off or nearly off (unless `evenIfLow`, for a search that
+    /// turns them up itself), when something is plugged into the jack (the built-in output then is the headphones), or while this Mac's
+    /// sound is sent to a phone, which could hear its own speaker.
     @MainActor
-    static func speakersCanPlay() -> Bool {
+    static func speakersCanPlay(evenIfLow: Bool = false) -> Bool {
         if EngineModel.shared.speaker.device != nil { return false }
         guard let output = builtInSpeakers() else { return false }
         let transport: UInt32 = value(output, kAudioDevicePropertyTransportType, kAudioObjectPropertyScopeGlobal) ?? kAudioDeviceTransportTypeUnknown
@@ -235,6 +236,7 @@ enum AudioRoute {
            source == headphones || (transport == kAudioDeviceTransportTypeBuiltIn && source != internalSpeaker) {
             return false
         }
+        if evenIfLow { return true }
         if let muted: UInt32 = value(output, kAudioDevicePropertyMute, kAudioObjectPropertyScopeOutput), muted != 0 { return false }
         if let volume: Float32 = value(output, kAudioHardwareServiceDeviceProperty_VirtualMainVolume, kAudioObjectPropertyScopeOutput), volume < 0.05 {
             return false

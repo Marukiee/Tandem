@@ -98,9 +98,9 @@ enum OutputLoudness {
         AudioObjectSetPropertyData(device, &property, 0, nil, UInt32(MemoryLayout<T>.size), &value)
     }
 
-    /// Unmutes the output and brings a low volume up to `level`. Gives what was there, to put back.
-    static func raise(to level: Float32 = 0.75) -> Before? {
-        guard let device = AudioDevices.defaultOutput() else { return nil }
+    /// Unmutes the output (the default one unless another is named) and brings a low volume up to `level`. Gives what was there, to put back.
+    static func raise(to level: Float32 = 0.75, on output: AudioObjectID? = nil) -> Before? {
+        guard let device = output ?? AudioDevices.defaultOutput() else { return nil }
         var before = Before(device: device, set: level)
         for element in OutputMute.elements {
             if let muted = read(device, kAudioDevicePropertyMute, element, UInt32(0)), muted != 0 {

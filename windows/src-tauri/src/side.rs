@@ -29,6 +29,9 @@ static SCHEDULE: LazyLock<Arc<TandemSideSchedule>> = LazyLock::new(TandemSideSch
 /// this every check of it would look like a change and say so again.
 static APPLIED: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
+/// How loud the sound of this computer is at least while a search the person started plays.
+const SEARCH_VOLUME: f32 = 0.75;
+
 /// Whether this computer has a microphone to listen with.
 pub fn can_listen() -> bool {
     cpal::default_host().default_input_device().is_some()
@@ -183,6 +186,32 @@ pub fn listen(app: &AppHandle, from: String, id: u64, quiet: bool) {
 /// audible ones.
 pub async fn find(app: &AppHandle, id: &str, audible: bool) -> Result<String, String> {
     let audible = audible || settings::get(app).side_sound == "audible";
+    // The sound up for as long as the search takes: at a low volume the device hears nothing, which looks as if it did not listen. Not in
+    // headphones, and not for a check by itself, which nobody asked for right now and which would make music jump up.
+    let before = tauri::async_runtime::spawn_blocking(|| if goes_to_speakers() { tandem_winsys::find::raise(SEARCH_VOLUME) } else { None }).await.ok().flatten();
+    if let Some(before) = before {
+        log::info!("side: the sound goes up for the search, it was {:?}", before.volume);
+    }
+    let side = search(app, id, audible).await;
+    if let Some(before) = before {
+        tauri::async_runtime::spawn_blocking(move || tandem_winsys::find::restore(before)).await.ok();
+    }
+    let Some(side) = side? else { return Ok("not-listening".into()) };
+    let text = match side {
+        TandemSide::Left => "left",
+        TandemSide::Right => "right",
+        TandemSide::Unsure => "unsure",
+        TandemSide::NotHeard => "not-heard",
+    };
+    if matches!(side, TandemSide::Left | TandemSide::Right) {
+        arrange::put(app, id, text);
+        return Ok(text.to_string());
+    }
+    Ok(if audible { text.to_string() } else { format!("quiet-{text}") })
+}
+
+/// The sweeps and the answer to them. `None`: the device did not start listening.
+async fn search(app: &AppHandle, id: &str, audible: bool) -> Result<Option<TandemSide>, String> {
     let side = if audible {
         let engine = app.state::<AppState>().engine()?;
         let _turn = TURN.lock().await;
@@ -192,7 +221,7 @@ pub async fn find(app: &AppHandle, id: &str, audible: bool) -> Result<String, St
                 Ok(probe) => probe,
                 Err(error) => {
                     log::info!("side: {id} did not start listening: {error}");
-                    return Ok("not-listening".into());
+                    return Ok(None);
                 }
             };
             let _ = tauri::async_runtime::spawn_blocking(move || play(loudness)).await;
@@ -208,17 +237,7 @@ pub async fn find(app: &AppHandle, id: &str, audible: bool) -> Result<String, St
         log::info!("side: {id} heard the quiet sound: {side:?}");
         side
     };
-    let text = match side {
-        TandemSide::Left => "left",
-        TandemSide::Right => "right",
-        TandemSide::Unsure => "unsure",
-        TandemSide::NotHeard => "not-heard",
-    };
-    if matches!(side, TandemSide::Left | TandemSide::Right) {
-        arrange::put(app, id, text);
-        return Ok(text.to_string());
-    }
-    Ok(if audible { text.to_string() } else { format!("quiet-{text}") })
+    Ok(Some(side))
 }
 
 #[tauri::command]
@@ -373,16 +392,9 @@ async fn check(app: &AppHandle, id: &str) -> TandemSide {
     if played { side } else { TandemSide::NotHeard }
 }
 
-/// Whether the quiet sweeps would come out of speakers in this room: not into headphones or Bluetooth, not with the sound off or nearly
-/// off, and not while this computer sends its sound to a device that looks at its screen (that device could hear its own speaker).
+/// Whether the quiet sweeps would come out of speakers in this room: see `goes_to_speakers`, and not with the sound off or nearly off.
 fn speakers_can_play() -> bool {
-    if crate::output::sending() || crate::screen_sound::headphones() {
-        return false;
-    }
-    let Some(device) = cpal::default_host().default_output_device() else { return false };
-    // Windows names the output after what is plugged in.
-    let name = device.name().unwrap_or_default().to_lowercase();
-    if ["headphone", "headset", "earphone", "airpods", "buds", "hands-free"].iter().any(|word| name.contains(word)) {
+    if !goes_to_speakers() {
         return false;
     }
     #[cfg(target_os = "linux")]
@@ -390,6 +402,18 @@ fn speakers_can_play() -> bool {
         return false;
     }
     true
+}
+
+/// Not into headphones or Bluetooth, and not while this computer sends its sound to a device that looks at its screen (that device could
+/// hear its own speaker).
+fn goes_to_speakers() -> bool {
+    if crate::output::sending() || crate::screen_sound::headphones() {
+        return false;
+    }
+    let Some(device) = cpal::default_host().default_output_device() else { return false };
+    // Windows names the output after what is plugged in.
+    let name = device.name().unwrap_or_default().to_lowercase();
+    !["headphone", "headset", "earphone", "airpods", "buds", "hands-free"].iter().any(|word| name.contains(word))
 }
 
 /// The default sink of PulseAudio or PipeWire is muted, or below a twentieth of its volume. Without `pactl` this is not known, and taken

@@ -152,13 +152,15 @@ enum SideFinder {
         var side = TandemSide.notHeard
         var audible = audibleChosen
         lastProblem = nil
-        guard AudioRoute.speakersCanPlay() else {
-            PointerLog.write("side: \(device.name): nothing played, the Mac's own speakers are off, nearly off, or headphones are plugged in")
+        guard AudioRoute.speakersCanPlay(evenIfLow: true) else {
+            PointerLog.write("side: \(device.name): nothing played, headphones are plugged in or the sound goes elsewhere")
             lastProblem = .speakers
             return .notHeard
         }
         if !audible {
             do {
+                let before = louder()
+                defer { if let before { OutputLoudness.restore(before) } }
                 PointerLog.write("side: \(device.name): asked to listen for the quiet sound")
                 let id = try await engine.sideCheckStart(target: device.id)
                 let played = await SideTone.playQuiet()
@@ -175,6 +177,8 @@ enum SideFinder {
             }
         }
         if audible {
+            let before = louder()
+            defer { if let before { OutputLoudness.restore(before) } }
             for loudness in [tandemSideFirstLoudness(), 1] {
                 do {
                     PointerLog.write("side: \(device.name): asked to listen, audible at \(loudness)")
@@ -196,6 +200,13 @@ enum SideFinder {
         default: break
         }
         return side
+    }
+
+    /// The speakers up for a search the person started: at a low volume the other device hears nothing, which looks as if it did not listen.
+    /// Not for a check by itself, which nobody asked for right now and which would make music jump up.
+    @MainActor
+    private static func louder() -> OutputLoudness.Before? {
+        AudioRoute.builtInSpeakers().flatMap { OutputLoudness.raise(on: $0) }
     }
 
     /// The quiet sweeps were not heard: may the audible ones play? Not now when nobody answers.
@@ -253,14 +264,14 @@ enum SideFinder {
             case .notListening:
                 return String(localized: "\(name) did not start listening. Its microphone may be in use by another app or not allowed for Tandem, or the phone is not reachable right now.")
             case .speakers:
-                return String(localized: "The speakers of this Mac are off or very low, or headphones are plugged in. Turn them up and try again.")
+                return String(localized: "Headphones are plugged into this Mac, or its sound goes to another device. This needs its own speakers.")
             }
         }
         return switch side {
         case .left: String(localized: "\(name) stands on the left")
         case .right: String(localized: "\(name) stands on the right")
         case .unsure: String(localized: "Both sides sounded about the same. Put \(name) more to one side, or choose the side yourself.")
-        case .notHeard: String(localized: "\(name) did not hear it. Turn the sound of this Mac up, and let Tandem use the microphone there.")
+        case .notHeard: String(localized: "\(name) did not hear it. Let Tandem use the microphone there, or choose the side yourself.")
         }
     }
 }
