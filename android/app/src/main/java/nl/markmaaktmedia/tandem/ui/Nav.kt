@@ -10,6 +10,7 @@ sealed interface Route {
     data object Home : Route
     data class Device(val id: String) : Route
     data object Pair : Route
+    data object PairWatch : Route
     data class Remote(val id: String) : Route
 
     /** The phone as the clicker of a presentation on a computer. */
@@ -101,6 +102,7 @@ private fun routeFromKey(key: String): Route? = when {
     key == "home" -> Route.Home
     key.startsWith("device:") -> Route.Device(key.removePrefix("device:"))
     key == "pair" -> Route.Pair
+    key == "pair-watch" -> Route.PairWatch
     key.startsWith("remote:") -> Route.Remote(key.removePrefix("remote:"))
     key.startsWith("presentation:") -> Route.Presentation(key.removePrefix("presentation:"))
     key.startsWith("devsettings:") -> Route.DeviceSettings(key.removePrefix("devsettings:"))

@@ -65,12 +65,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -100,7 +97,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.engine.EngineState
+import nl.markmaaktmedia.tandem.engine.Permissions
 import nl.markmaaktmedia.tandem.graph
+import nl.markmaaktmedia.tandem.ui.components.PermissionStatus
 import nl.markmaaktmedia.tandem.ui.components.PillSpinner
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
 import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
@@ -111,14 +110,17 @@ import nl.markmaaktmedia.tandem.ui.components.rememberPermissionRequests
 import nl.markmaaktmedia.tandem.ui.components.rememberPermissionStatus
 import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.PillShape
+import nl.markmaaktmedia.tandem.ui.theme.SheetRadius
 import nl.markmaaktmedia.tandem.ui.theme.SheetSquircle
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
+import nl.markmaaktmedia.tandem.ui.theme.squircleBrackets
+import nl.markmaaktmedia.tandem.watch.WatchState
 import uniffi.tandem_core.TandemException
 import java.util.concurrent.Executors
 import kotlin.math.abs
 
-private enum class PairMode { Scan, Show }
+private enum class PairMode { Scan, Show, Watch }
 
 /**
  * Why a pairing attempt failed, in the words of the app rather than the core.
@@ -162,19 +164,29 @@ private fun pairFailure(error: Throwable): PairFailure {
     }
 }
 
-/** Pairing: scan another device's code, or show this device's own. */
+/** Pairing: scan another device's code, show this device's own, or couple a watch. */
 @Composable
-fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, onPairWatch: () -> Unit) {
+fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, startWithWatch: Boolean = false) {
     val context = LocalContext.current
     val host = context.graph.host
-    val watchState by context.graph.watch.state.collectAsState()
+    val watch = context.graph.watch
+    val watchState by watch.state.collectAsState()
+    val bluetooth = rememberPermissionStatus()
     val scope = rememberCoroutineScope()
 
-    var mode by remember { mutableStateOf(PairMode.Scan) }
+    var mode by remember { mutableStateOf(if (startWithWatch && !watch.state.value.paired) PairMode.Watch else PairMode.Scan) }
     var busy by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<PairFailure?>(null) }
     var joined by remember { mutableStateOf<String?>(null) }
+    var watchRound by remember { mutableStateOf(0) }
     val spent = remember { mutableSetOf<String>() }
+
+    // Open only while this tab is: during that time any watch nearby can offer itself to this phone.
+    val wantsWatch = mode == PairMode.Watch && joined == null && !watchState.paired && watch.supported && bluetooth.bluetooth
+    LaunchedEffect(wantsWatch, watchRound) { if (wantsWatch) watch.beginPairing() else watch.cancelPairing() }
+    DisposableEffect(Unit) { onDispose { watch.cancelPairing() } }
+    val watchName = stringResource(R.string.settings_cat_watch)
+    LaunchedEffect(watchState.paired) { if (watchState.paired && mode == PairMode.Watch) joined = watchName }
 
     fun join(uri: String) {
         if (busy || joined != null) return
@@ -257,7 +269,12 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, onPairWatch: () -> Unit
                 PairedSuccess(done)
             } else {
                 Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    PairModeSwitch(mode, onSelect = { mode = it }, modifier = Modifier.fillMaxWidth())
+                    PairModeSwitch(
+                        modes = if (watchState.paired) listOf(PairMode.Scan, PairMode.Show) else PairMode.entries,
+                        mode = mode,
+                        onSelect = { mode = it },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                     Spacer(Modifier.height(20.dp))
                     Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         AnimatedContent(
@@ -276,6 +293,14 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, onPairWatch: () -> Unit
                                     locked = busy,
                                 )
                                 PairMode.Show -> ShowPanel()
+                                PairMode.Watch -> WatchPanel(
+                                    state = watchState,
+                                    supported = watch.supported,
+                                    status = bluetooth,
+                                    onMatch = watch::confirmPairing,
+                                    onDiffers = watch::cancelPairing,
+                                    onRetry = { watchRound++ },
+                                )
                             }
                         }
                     }
@@ -295,10 +320,6 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, onPairWatch: () -> Unit
                         exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
                     ) {
                         PasteRow(onSubmit = ::join)
-                    }
-                    if (!watchState.paired) {
-                        Spacer(Modifier.height(8.dp))
-                        SecondaryPillButton(stringResource(R.string.watch_pair), onPairWatch, icon = TandemIcons.Watch)
                     }
                     Spacer(Modifier.height(12.dp))
                 }
@@ -331,22 +352,22 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, onPairWatch: () -> Unit
 }
 
 /**
- * Scan or show, as two halves of the same width with one pill travelling between them.
+ * The ways to pair, as parts of the same width with one pill travelling between them.
  * Same stretch and squash as the navigation pill, so the two move like one object. The
  * shared segmented row sizes each choice to its label, which is right for filters and
- * wrong here, where two equal choices should look equal.
+ * wrong here, where equal choices should look equal.
  */
 @Composable
-private fun PairModeSwitch(mode: PairMode, onSelect: (PairMode) -> Unit, modifier: Modifier = Modifier) {
+private fun PairModeSwitch(modes: List<PairMode>, mode: PairMode, onSelect: (PairMode) -> Unit, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
-    val target = mode.ordinal.toFloat()
+    val target = modes.indexOf(mode).coerceAtLeast(0).toFloat()
     val position = remember { Animatable(target) }
     LaunchedEffect(target) { position.animateTo(target, TandemMotion.spatial()) }
 
     Box(modifier.clip(PillShape).background(scheme.surfaceContainerHigh).padding(4.dp)) {
         Box(
             Modifier
-                .fillMaxWidth(0.5f)
+                .fillMaxWidth(1f / modes.size)
                 .height(SwitchHeight)
                 .graphicsLayer {
                     translationX = position.value * size.width
@@ -358,7 +379,7 @@ private fun PairModeSwitch(mode: PairMode, onSelect: (PairMode) -> Unit, modifie
                 .background(scheme.primary),
         )
         Row {
-            PairMode.entries.forEach { option ->
+            modes.forEach { option ->
                 val selected = option == mode
                 val content by animateColorAsState(
                     if (selected) scheme.onPrimary else scheme.onSurfaceVariant,
@@ -373,9 +394,24 @@ private fun PairModeSwitch(mode: PairMode, onSelect: (PairMode) -> Unit, modifie
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 ) {
-                    Icon(if (option == PairMode.Scan) TandemIcons.QrScan else TandemIcons.QrShow, null, tint = content, modifier = Modifier.size(20.dp))
+                    Icon(
+                        when (option) {
+                            PairMode.Scan -> TandemIcons.QrScan
+                            PairMode.Show -> TandemIcons.QrShow
+                            PairMode.Watch -> TandemIcons.Watch
+                        },
+                        null,
+                        tint = content,
+                        modifier = Modifier.size(20.dp),
+                    )
                     Text(
-                        stringResource(if (option == PairMode.Scan) R.string.pair_scan else R.string.pair_show),
+                        stringResource(
+                            when (option) {
+                                PairMode.Scan -> R.string.pair_tab_scan
+                                PairMode.Show -> R.string.pair_tab_show
+                                PairMode.Watch -> R.string.settings_cat_watch
+                            },
+                        ),
                         style = MaterialTheme.typography.labelLarge,
                         color = content,
                         maxLines = 1,
@@ -565,7 +601,7 @@ private fun CameraPreview(onCode: (String) -> Unit, active: Boolean) {
 private fun ViewfinderCorners(locked: Boolean) {
     val found = LocalTandemExtraColors.current.online
     val color by animateColorAsState(if (locked) found else Color.White.copy(alpha = 0.92f), TandemMotion.colourSpec(), label = "cornerColour")
-    val inset by animateDpAsState(if (locked) 58.dp else 34.dp, TandemMotion.springy(), label = "cornerInset")
+    val inset by animateDpAsState(if (locked) 26.dp else 16.dp, TandemMotion.springy(), label = "cornerInset")
     val transition = rememberInfiniteTransition(label = "viewfinder")
     val pulse by transition.animateFloat(
         0.9f, 1f,
@@ -573,18 +609,174 @@ private fun ViewfinderCorners(locked: Boolean) {
         label = "pulse",
     )
     Canvas(Modifier.fillMaxSize().padding(inset)) {
-        val arm = size.minDimension * 0.16f * (if (locked) 1f else pulse)
-        val width = 6.dp.toPx()
-        val w = size.width
-        val h = size.height
-        fun corner(x: Float, y: Float, dx: Float, dy: Float) {
-            drawLine(color, Offset(x, y), Offset(x + dx * arm, y), width, StrokeCap.Round)
-            drawLine(color, Offset(x, y), Offset(x, y + dy * arm), width, StrokeCap.Round)
+        // The curve of the picture they sit on, smaller by the distance to its edge, so that the two run parallel.
+        val radius = (SheetRadius - inset).toPx()
+        val arm = size.minDimension * 0.07f * (if (locked) 1f else pulse)
+        drawPath(squircleBrackets(0f, 0f, size.width, size.height, radius, arm), color, style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round))
+    }
+}
+
+// ---- A watch -------------------------------------------------------------------
+
+private enum class WatchStep { TooOld, NeedsBluetooth, Looking, Compare, Confirming, Stopped }
+
+/** Coupling a watch, one thing to do at a time. The words on the steps are the ones on the watch's own button. */
+@Composable
+private fun WatchPanel(
+    state: WatchState,
+    supported: Boolean,
+    status: PermissionStatus,
+    onMatch: () -> Unit,
+    onDiffers: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    val requests = rememberPermissionRequests(status)
+    // Closed before it ever opened is only the moment it takes to start, not something that went wrong.
+    var seenOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(state.pairingOpen) { if (state.pairingOpen) seenOpen = true }
+    var confirmed by remember(state.code) { mutableStateOf(false) }
+    val step = when {
+        !supported -> WatchStep.TooOld
+        !status.bluetooth -> WatchStep.NeedsBluetooth
+        state.code != null -> if (confirmed) WatchStep.Confirming else WatchStep.Compare
+        seenOpen && !state.pairingOpen -> WatchStep.Stopped
+        else -> WatchStep.Looking
+    }
+    AnimatedContent(
+        targetState = step,
+        transitionSpec = { (fadeIn(TandemMotion.fadeSpec()) + scaleIn(TandemMotion.springy(), 0.96f)) togetherWith fadeOut(TandemMotion.fadeSpec()) },
+        contentAlignment = Alignment.Center,
+        label = "watchStep",
+    ) { current ->
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            when (current) {
+                WatchStep.TooOld -> WatchNote(TandemIcons.Watch, stringResource(R.string.watch_needs_android_13))
+                WatchStep.NeedsBluetooth -> {
+                    val blocked = status.isBlocked(Permissions.bluetoothPermissions.toList())
+                    WatchNote(TandemIcons.Bluetooth, stringResource(if (blocked) R.string.perm_blocked else R.string.watch_bluetooth_why))
+                    PrimaryPillButton(stringResource(if (blocked) R.string.perm_open_app_info else R.string.action_allow), requests::bluetooth)
+                }
+                WatchStep.Looking -> {
+                    WatchBeacon()
+                    Column(
+                        Modifier.fillMaxWidth().clip(SheetSquircle).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        WatchInstruction(1, stringResource(R.string.watch_step_open))
+                        WatchInstruction(2, stringResource(R.string.watch_step_tap))
+                    }
+                    WatchProgress(stringResource(R.string.watch_waiting))
+                }
+                WatchStep.Compare -> {
+                    Text(
+                        stringResource(R.string.watch_code_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
+                    )
+                    WatchCode(state.code.orEmpty())
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        PrimaryPillButton(
+                            stringResource(R.string.watch_code_match),
+                            {
+                                confirmed = true
+                                onMatch()
+                            },
+                            Modifier.fillMaxWidth(),
+                            icon = TandemIcons.Check,
+                        )
+                        SecondaryPillButton(stringResource(R.string.watch_code_differs), onDiffers, Modifier.fillMaxWidth())
+                    }
+                }
+                WatchStep.Confirming -> {
+                    WatchCode(state.code.orEmpty())
+                    WatchProgress(stringResource(R.string.watch_confirm_on_watch))
+                }
+                WatchStep.Stopped -> {
+                    WatchNote(TandemIcons.Watch, stringResource(R.string.watch_pair_stopped), stringResource(R.string.watch_pair_stopped_body))
+                    PrimaryPillButton(
+                        stringResource(R.string.watch_pair_again),
+                        {
+                            seenOpen = false
+                            onRetry()
+                        },
+                        icon = TandemIcons.Refresh,
+                    )
+                }
+            }
         }
-        corner(0f, 0f, 1f, 1f)
-        corner(w, 0f, -1f, 1f)
-        corner(0f, h, 1f, -1f)
-        corner(w, h, -1f, -1f)
+    }
+}
+
+/** A watch with rings going out from it, for as long as the phone is looking for one. */
+@Composable
+private fun WatchBeacon() {
+    val ring = MaterialTheme.colorScheme.primary
+    val transition = rememberInfiniteTransition(label = "beacon")
+    val wave by transition.animateFloat(0f, 1f, infiniteRepeatable(tween(2600, easing = LinearEasing)), label = "wave")
+    Box(Modifier.size(196.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val inner = 54.dp.toPx()
+            val outer = size.minDimension / 2 - 2.dp.toPx()
+            for (i in 0..1) {
+                val phase = (wave + i * 0.5f) % 1f
+                drawCircle(ring.copy(alpha = (1f - phase) * 0.4f), inner + (outer - inner) * phase, style = Stroke(3.dp.toPx()))
+            }
+        }
+        Box(Modifier.size(108.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+            Icon(TandemIcons.Watch, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(52.dp))
+        }
+    }
+}
+
+@Composable
+private fun WatchInstruction(number: Int, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Box(Modifier.size(34.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary), contentAlignment = Alignment.Center) {
+            Text(number.toString(), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimary)
+        }
+        Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+@Composable
+private fun WatchProgress(text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        PillSpinner(size = 22.dp)
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Big, because it gets read off and compared with a much smaller screen an arm's length away. */
+@Composable
+private fun WatchCode(code: String) {
+    Box(
+        Modifier.fillMaxWidth().clip(SheetSquircle).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(vertical = 36.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            code,
+            style = MaterialTheme.typography.displayLarge.copy(fontFeatureSettings = "tnum", letterSpacing = 3.sp),
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun WatchNote(icon: androidx.compose.ui.graphics.painter.Painter, title: String, body: String? = null) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.size(84.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(38.dp))
+        }
+        Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
+        body?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        }
     }
 }
 
@@ -714,19 +906,8 @@ private fun CodeFrame(locked: Boolean) {
         val right = size.width - left
         val bottom = size.height - top
         // The curve runs parallel to the tile inside it: the tile's corner plus the space between them.
-        val r = (36.dp + FrameSpace - 10.dp).toPx()
-        val arm = 16.dp.toPx()
-        val path = Path().apply {
-            moveTo(left, top + r + arm); lineTo(left, top + r)
-            arcTo(Rect(left, top, left + 2 * r, top + 2 * r), 180f, 90f, false); lineTo(left + r + arm, top)
-            moveTo(right - r - arm, top); lineTo(right - r, top)
-            arcTo(Rect(right - 2 * r, top, right, top + 2 * r), 270f, 90f, false); lineTo(right, top + r + arm)
-            moveTo(right, bottom - r - arm); lineTo(right, bottom - r)
-            arcTo(Rect(right - 2 * r, bottom - 2 * r, right, bottom), 0f, 90f, false); lineTo(right - r - arm, bottom)
-            moveTo(left + r + arm, bottom); lineTo(left + r, bottom)
-            arcTo(Rect(left, bottom - 2 * r, left + 2 * r, bottom), 90f, 90f, false); lineTo(left, bottom - r - arm)
-        }
-        drawPath(path, colour, style = stroke)
+        val r = (SheetRadius + FrameSpace - 10.dp).toPx()
+        drawPath(squircleBrackets(left, top, right, bottom, r, 16.dp.toPx()), colour, style = stroke)
     }
 }
 

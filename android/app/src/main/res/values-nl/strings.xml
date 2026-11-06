@@ -56,6 +56,8 @@
     <string name="pair_title">Apparaat koppelen</string>
     <string name="pair_scan">Scan een code</string>
     <string name="pair_show">Toon mijn code</string>
+    <string name="pair_tab_scan">Scan code</string>
+    <string name="pair_tab_show">Toon code</string>
     <string name="pair_connecting">Verbinden</string>
     <string name="pair_new_device">Nieuw apparaat</string>
     <string name="pair_done">Gekoppeld met %1$s</string>
@@ -526,13 +528,17 @@
     <string name="watch_sum_battery">Verbonden, %1$d%%</string>
     <string name="watch_needs_android_13">Voor een horloge is Android 13 of nieuwer op deze telefoon nodig</string>
     <string name="watch_pair">Koppel een horloge</string>
-    <string name="watch_pair_sub">Open Tandem op het horloge en start daar ook het koppelen</string>
     <string name="watch_waiting">Wacht op je horloge</string>
-    <string name="watch_waiting_sub">Kies Koppel met telefoon in Tandem op het horloge</string>
-    <string name="watch_cancel">Stop</string>
     <string name="watch_code_title">Staat deze code op je horloge?</string>
     <string name="watch_code_match">Klopt</string>
     <string name="watch_code_differs">Klopt niet</string>
+    <string name="watch_step_open">Open Tandem op je horloge</string>
+    <string name="watch_step_tap">Tik op Koppel met telefoon</string>
+    <string name="watch_confirm_on_watch">Tik nu op het vinkje op je horloge</string>
+    <string name="watch_pair_stopped">Koppelen gestopt</string>
+    <string name="watch_pair_stopped_body">Houd je horloge dichtbij, met Bluetooth aan, en probeer het opnieuw</string>
+    <string name="watch_pair_again">Opnieuw proberen</string>
+    <string name="watch_bluetooth_why">Tandem gebruikt Bluetooth om je horloge te vinden</string>
     <string name="watch_connected">Verbonden</string>
     <string name="watch_searching">Zoekt je horloge</string>
     <string name="watch_battery">Batterij %1$d%%</string>
@@ -553,6 +559,11 @@
     <string name="watch_quiet_trigger">Terwijl je horloge je slaap opneemt</string>
     <string name="watch_unpair">Horloge ontkoppelen</string>
     <string name="watch_unpair_sub">Werkt ook als het horloge buiten bereik is</string>
+    <string name="watch_section_wrist">Op je pols</string>
+    <string name="watch_row_notifications">Meldingen</string>
+    <string name="watch_row_music">Muziek</string>
+    <string name="watch_row_same_apps">Dezelfde apps als op je computers</string>
+    <string name="watch_chip_recording">Neemt je slaap op</string>
     <string name="health_share">Slaap en trainingen</string>
     <string name="health_share_sub">Geeft dit apparaat wat je horloge heeft gemeten. Uit: het vergeet ze weer.</string>
     <string name="health_estimate">Slaapfasen zijn een schatting uit hartslag en beweging, geen slaaplab.</string>
@@ -565,4 +576,9 @@
     <string name="health_steps">%1$d stappen</string>
     <string name="health_duration_hm">%1$d u %2$d m</string>
     <string name="health_duration_m">%1$d m</string>
+    <string name="health_sleep_title">Slaap</string>
+    <string name="health_earlier">Eerder</string>
+    <string name="health_night_span">%1$s tot %2$s</string>
+    <string name="health_efficiency">%1$d%% van de nacht geslapen</string>
+    <string name="health_awake">Wakker %1$s</string>
 </resources>

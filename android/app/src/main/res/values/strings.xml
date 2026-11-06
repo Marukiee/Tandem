@@ -59,6 +59,8 @@
     <string name="pair_title">Pair a device</string>
     <string name="pair_scan">Scan a code</string>
     <string name="pair_show">Show my code</string>
+    <string name="pair_tab_scan">Scan code</string>
+    <string name="pair_tab_show">Show code</string>
     <string name="pair_connecting">Connecting</string>
     <string name="pair_new_device">New device</string>
     <string name="pair_done">Paired with %1$s</string>
@@ -529,13 +531,17 @@
     <string name="watch_sum_battery">Connected, %1$d%%</string>
     <string name="watch_needs_android_13">A watch needs Android 13 or newer on this phone</string>
     <string name="watch_pair">Pair a watch</string>
-    <string name="watch_pair_sub">Open Tandem on the watch and start pairing there too</string>
     <string name="watch_waiting">Waiting for your watch</string>
-    <string name="watch_waiting_sub">Choose Pair with phone in Tandem on the watch</string>
-    <string name="watch_cancel">Stop</string>
     <string name="watch_code_title">Does your watch show this code?</string>
     <string name="watch_code_match">Matches</string>
     <string name="watch_code_differs">Does not match</string>
+    <string name="watch_step_open">Open Tandem on your watch</string>
+    <string name="watch_step_tap">Tap Pair with phone</string>
+    <string name="watch_confirm_on_watch">Now tap the check on your watch</string>
+    <string name="watch_pair_stopped">Pairing stopped</string>
+    <string name="watch_pair_stopped_body">Keep your watch close, with Bluetooth on, and try again</string>
+    <string name="watch_pair_again">Try again</string>
+    <string name="watch_bluetooth_why">Tandem uses Bluetooth to find your watch</string>
     <string name="watch_connected">Connected</string>
     <string name="watch_searching">Looking for your watch</string>
     <string name="watch_battery">Battery %1$d%%</string>
@@ -556,6 +562,11 @@
     <string name="watch_quiet_trigger">While your watch records your sleep</string>
     <string name="watch_unpair">Unpair watch</string>
     <string name="watch_unpair_sub">Also works when the watch is out of reach</string>
+    <string name="watch_section_wrist">On your wrist</string>
+    <string name="watch_row_notifications">Notifications</string>
+    <string name="watch_row_music">Music</string>
+    <string name="watch_row_same_apps">The same apps as on your computers</string>
+    <string name="watch_chip_recording">Recording your sleep</string>
     <string name="health_share">Sleep and workouts</string>
     <string name="health_share_sub">Gives this device what your watch measured. Off: it forgets them again.</string>
     <string name="health_estimate">Sleep stages are an estimate from heart rate and movement, not a sleep lab.</string>
@@ -568,4 +579,9 @@
     <string name="health_steps">%1$d steps</string>
     <string name="health_duration_hm">%1$d h %2$d m</string>
     <string name="health_duration_m">%1$d m</string>
+    <string name="health_sleep_title">Sleep</string>
+    <string name="health_earlier">Earlier</string>
+    <string name="health_night_span">%1$s to %2$s</string>
+    <string name="health_efficiency">Asleep %1$d%% of the night</string>
+    <string name="health_awake">Awake %1$s</string>
 </resources>

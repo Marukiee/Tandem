@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- A debug build installs next to the normal app, with its own devices. Under the same name nobody can tell which one is open. -->
+    <string name="app_name" translatable="false">Tandem-dev</string>
+</resources>

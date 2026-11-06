@@ -3,6 +3,8 @@ package nl.markmaaktmedia.tandem.ui.screens.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import android.text.format.DateUtils
 import kotlinx.coroutines.launch
@@ -35,6 +39,7 @@ import nl.markmaaktmedia.tandem.ui.components.ContentRow
 import nl.markmaaktmedia.tandem.ui.components.SectionHeader
 import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
 import nl.markmaaktmedia.tandem.ui.components.SwitchRow
+import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemHealthKind
@@ -43,13 +48,62 @@ import uniffi.tandem_core.TandemSleepStage
 
 private const val SHOWN = 30
 
-/** The nights and workouts on this phone, the newest first. Nothing at all while there are none. */
+private fun List<TandemHealthRecord>.latestNight() = firstOrNull { it.kind == TandemHealthKind.SLEEP }
+
+/** The newest night, large: this is what the page gets opened for in the morning. Nothing at all while there is none. */
 @Composable
-internal fun HealthHistory() {
+internal fun LatestNight() {
+    val context = LocalContext.current
+    val records by context.graph.host.healthRecords.collectAsState()
+    val night = records.latestNight() ?: return
+    val date = DateUtils.formatDateTime(
+        context, night.endMs.toLong(),
+        DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_ALL or DateUtils.FORMAT_NO_YEAR,
+    )
+    val from = DateUtils.formatDateTime(context, night.startMs.toLong(), DateUtils.FORMAT_SHOW_TIME)
+    val until = DateUtils.formatDateTime(context, night.endMs.toLong(), DateUtils.FORMAT_SHOW_TIME)
+    val scheme = MaterialTheme.colorScheme
+
+    SectionHeader(stringResource(R.string.health_sleep_title), top = 12.dp, bottom = 0.dp)
+    Column(
+        Modifier.fillMaxWidth().clip(CardSquircle).background(scheme.surfaceContainer).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(Modifier.size(56.dp).clip(CircleShape).background(scheme.primaryContainer), contentAlignment = Alignment.Center) {
+                Icon(TandemIcons.Sleep, null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(28.dp))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(duration(night.sleepMinutes.toInt()), style = MaterialTheme.typography.headlineMedium, color = scheme.onSurface)
+                Text(
+                    "$date · ${stringResource(R.string.health_night_span, from, until)}",
+                    style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
+                )
+            }
+        }
+        StageBar(night, 14.dp)
+        StageLegends(night)
+        Text(
+            stringResource(R.string.health_efficiency, night.efficiencyPercent.toInt()),
+            style = MaterialTheme.typography.bodyMedium, color = scheme.onSurface,
+        )
+        HeartRateLine(night)
+    }
+    Text(
+        stringResource(R.string.health_estimate),
+        style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp),
+    )
+}
+
+/** Everything else on this phone, the newest first. The list that grows, so it belongs at the end of a page. */
+@Composable
+internal fun EarlierNights() {
     val records by LocalContext.current.graph.host.healthRecords.collectAsState()
-    val shown = records.filter { it.kind != TandemHealthKind.UNKNOWN }.take(SHOWN)
+    val latest = records.latestNight()
+    val shown = records.filter { it.kind != TandemHealthKind.UNKNOWN && it !== latest }.take(SHOWN)
     if (shown.isEmpty()) return
-    SectionHeader(stringResource(R.string.health_share), top = 16.dp, bottom = 0.dp)
+    SectionHeader(stringResource(R.string.health_earlier), top = 16.dp, bottom = 0.dp)
     SettingsGroup {
         shown.forEachIndexed { index, record ->
             ContentRow(
@@ -64,11 +118,6 @@ internal fun HealthHistory() {
             }
         }
     }
-    Text(
-        stringResource(R.string.health_estimate),
-        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
 }
 
 @Composable
@@ -77,23 +126,37 @@ private fun SleepLines(record: TandemHealthRecord) {
         stringResource(R.string.health_sleep_line, duration(record.sleepMinutes.toInt()), record.efficiencyPercent.toInt()),
         style = MaterialTheme.typography.bodyMedium,
     )
-    if (record.stages.isNotEmpty()) {
-        Row(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp))) {
-            record.stages.forEach { run ->
-                Box(Modifier.weight(run.seconds.toFloat()).fillMaxHeight().background(stageColor(run.stage)))
-            }
+    StageBar(record, 10.dp)
+    StageLegends(record)
+    HeartRateLine(record)
+}
+
+@Composable
+private fun StageBar(record: TandemHealthRecord, height: Dp) {
+    if (record.stages.isEmpty()) return
+    Row(Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(height / 2))) {
+        record.stages.forEach { run ->
+            Box(Modifier.weight(run.seconds.toFloat()).fillMaxHeight().background(stageColor(run.stage)))
         }
     }
+}
+
+@Composable
+private fun StageLegends(record: TandemHealthRecord) {
     val light = record.lightMinutes
     val deep = record.deepMinutes
     val rem = record.remMinutes
-    if (light != null && deep != null && rem != null) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StageLegend(TandemSleepStage.LIGHT, stringResource(R.string.health_light, duration(light.toInt())))
-            StageLegend(TandemSleepStage.DEEP, stringResource(R.string.health_deep, duration(deep.toInt())))
-            StageLegend(TandemSleepStage.REM, stringResource(R.string.health_rem, duration(rem.toInt())))
-        }
+    if (light == null || deep == null || rem == null) return
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        StageLegend(TandemSleepStage.LIGHT, stringResource(R.string.health_light, duration(light.toInt())))
+        StageLegend(TandemSleepStage.DEEP, stringResource(R.string.health_deep, duration(deep.toInt())))
+        StageLegend(TandemSleepStage.REM, stringResource(R.string.health_rem, duration(rem.toInt())))
+        if (record.awakeMinutes > 0u) StageLegend(TandemSleepStage.WAKE, stringResource(R.string.health_awake, duration(record.awakeMinutes.toInt())))
     }
+}
+
+@Composable
+private fun HeartRateLine(record: TandemHealthRecord) {
     val mean = record.heartRateMean
     val low = record.heartRateLow
     if (mean != null && low != null) {

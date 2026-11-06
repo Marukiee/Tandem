@@ -85,12 +85,41 @@ class SquircleShape(private val radius: Dp) : Shape {
         return Outline.Generic(path)
     }
 
-    private companion object {
-        /** Corner reach along the edge. Higher spreads the curve further out. */
-        const val SMOOTHING = 1.28f
+}
 
-        /** Control point distance. Tuned against the reach so the join stays smooth. */
-        const val CONTROL = 0.34f
+/** Corner reach along the edge. Higher spreads the curve further out. */
+private const val SMOOTHING = 1.28f
+
+/** Control point distance. Tuned against the reach so the join stays smooth. */
+private const val CONTROL = 0.34f
+
+/**
+ * Only the corners of a [SquircleShape], each with a straight [arm] on both ends, to frame something with. For brackets that run
+ * parallel to a squircle they sit in or around, [radius] is the radius of that squircle minus or plus the distance between the two.
+ */
+fun squircleBrackets(left: Float, top: Float, right: Float, bottom: Float, radius: Float, arm: Float): Path {
+    val extend = radius * SMOOTHING
+    val control = radius * CONTROL
+    return Path().apply {
+        moveTo(left, top + extend + arm)
+        lineTo(left, top + extend)
+        cubicTo(left, top + control, left + control, top, left + extend, top)
+        lineTo(left + extend + arm, top)
+
+        moveTo(right - extend - arm, top)
+        lineTo(right - extend, top)
+        cubicTo(right - control, top, right, top + control, right, top + extend)
+        lineTo(right, top + extend + arm)
+
+        moveTo(right, bottom - extend - arm)
+        lineTo(right, bottom - extend)
+        cubicTo(right, bottom - control, right - control, bottom, right - extend, bottom)
+        lineTo(right - extend - arm, bottom)
+
+        moveTo(left + extend + arm, bottom)
+        lineTo(left + extend, bottom)
+        cubicTo(left + control, bottom, left, bottom - control, left, bottom - extend)
+        lineTo(left, bottom - extend - arm)
     }
 }
 
@@ -117,4 +146,5 @@ fun groupedShape(index: Int, total: Int): RoundedCornerShape {
 val GroupedSpacing = 2.dp
 
 val CardSquircle = SquircleShape(28.dp)
-val SheetSquircle = SquircleShape(36.dp)
+val SheetRadius = 36.dp
+val SheetSquircle = SquircleShape(SheetRadius)

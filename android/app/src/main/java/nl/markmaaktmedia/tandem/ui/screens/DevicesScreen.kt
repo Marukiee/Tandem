@@ -272,7 +272,7 @@ fun DevicesScreen(
     }
 }
 
-private fun WatchState.battery() = batteryLevel?.let { TandemBattery(it.toUByte(), charging, false) }
+internal fun WatchState.battery() = batteryLevel?.let { TandemBattery(it.toUByte(), charging, false) }
 
 /** Looks like [DeviceCard]. It has no files or clipboard to send, so its button is the one thing a watch is reached for. */
 @Composable

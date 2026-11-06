@@ -30,6 +30,7 @@ fun routeKey(route: Route): String = when (route) {
     Route.Home -> "home"
     is Route.Device -> "device:${route.id}"
     Route.Pair -> "pair"
+    Route.PairWatch -> "pair-watch"
     is Route.Remote -> "remote:${route.id}"
     is Route.Presentation -> "presentation:${route.id}"
     is Route.Screen -> "screen:${route.id}"
