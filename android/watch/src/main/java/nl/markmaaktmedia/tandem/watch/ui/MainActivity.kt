@@ -39,7 +39,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
@@ -57,11 +56,9 @@ import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
-import androidx.wear.compose.material3.SwitchButton
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TimeText
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
-import kotlinx.coroutines.delay
 import nl.markmaaktmedia.tandem.watch.R
 import nl.markmaaktmedia.tandem.watch.link.LinkService
 import nl.markmaaktmedia.tandem.watch.link.WatchLink
@@ -69,12 +66,7 @@ import nl.markmaaktmedia.tandem.watch.link.WatchUi
 import nl.markmaaktmedia.tandem.watch.protocol.CallStatus
 import nl.markmaaktmedia.tandem.watch.protocol.LinkFailure
 import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
-import nl.markmaaktmedia.tandem.watch.track.AutoSleep
-import nl.markmaaktmedia.tandem.watch.track.LastSleep
 import nl.markmaaktmedia.tandem.watch.track.Tracking
-import nl.markmaaktmedia.tandem.watch.track.TrackingKind
-import nl.markmaaktmedia.tandem.watch.track.TrackingService
-import nl.markmaaktmedia.tandem.watch.track.TrackingUi
 import nl.markmaaktmedia.tandem.watch.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.watch.ui.theme.TandemWatchTheme
 
@@ -90,7 +82,7 @@ private val RUNTIME_PERMISSIONS = arrayOf(
 )
 
 /** Asked for together with the others, but saying no costs nothing: a night is simply logged without skin temperature. */
-private val ASKED_PERMISSIONS = RUNTIME_PERMISSIONS + "android.permission.health.READ_SKIN_TEMPERATURE"
+internal val ASKED_PERMISSIONS = RUNTIME_PERMISSIONS + "android.permission.health.READ_SKIN_TEMPERATURE"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -336,36 +328,13 @@ internal fun Home(ui: WatchUi) {
                 }
             }
 
-            item(key = "health_header") {
-                ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.health)) }
-            }
-            if (tracking.active != TrackingKind.SLEEP) {
-                tracking.lastSleep?.let { last ->
-                    item(key = "last_night") { LastNight(last, rimContent(spec)) }
-                }
-            }
-            item(key = "auto_sleep") {
-                SwitchButton(
-                    checked = tracking.autoSleep,
-                    onCheckedChange = { on ->
-                        AutoSleep.setEnabled(context, on)
-                        if (on && !TrackingService.canRun(context)) askAccess()
-                    },
+            item(key = "health") {
+                FilledTonalButton(
+                    onClick = { context.startActivity(Intent(context, HealthActivity::class.java)) },
                     modifier = rimRow(spec),
                     transformation = SurfaceTransformation(spec),
-                    label = { Text(stringResource(R.string.auto_sleep)) },
-                )
-            }
-            if (tracking.active != TrackingKind.WORKOUT) {
-                item(key = "workout") { TrackingButton(TrackingKind.WORKOUT, tracking, askAccess, rimRow(spec), SurfaceTransformation(spec)) }
-            }
-            item(key = "steps") {
-                Text(
-                    stringResource(R.string.steps_today, tracking.stepsToday),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = rimContent(spec).padding(vertical = 4.dp),
+                    icon = { Icon(painterResource(R.drawable.sym_favorite), null) },
+                    label = { Text(stringResource(R.string.health)) },
                 )
             }
 
@@ -376,21 +345,7 @@ internal fun Home(ui: WatchUi) {
         }
     }
 
-    // Sleep is noticed by itself, so starting it by hand can wait at the end of the list.
-    if (tracking.active == null) {
-        ScreenScaffold(
-            scrollState = list,
-            edgeButton = {
-                EdgeButton(
-                    onClick = { toggleTracking(context, TrackingKind.SLEEP, active = false, askAccess) },
-                    buttonSize = EdgeButtonSize.Medium,
-                ) { Text(stringResource(R.string.sleep_start)) }
-            },
-            content = rows,
-        )
-    } else {
-        ScreenScaffold(scrollState = list, content = rows)
-    }
+    ScreenScaffold(scrollState = list, content = rows)
 }
 
 @Composable
@@ -479,99 +434,5 @@ private fun SteerButton(ui: WatchUi, presentation: Boolean, modifier: Modifier, 
     )
 }
 
-/** How the last night went, on a cookie with the moon. The stages are numbers under each other: as a sentence they fill the screen. */
-@Composable
-private fun LastNight(last: LastSleep, modifier: Modifier) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier.padding(vertical = 4.dp)) {
-        CookieIcon(R.drawable.sym_bedtime, size = 40.dp)
-        Text(
-            if (last.found) stringResource(R.string.sleep_last, durationText(last.minutes), last.efficiencyPercent) else stringResource(R.string.sleep_none),
-            style = if (last.found) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodySmall,
-            color = if (last.found) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp),
-        )
-        last.stages?.let { stages ->
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(top = 4.dp)) {
-                StageColumn(R.string.stage_light, stages.light)
-                StageColumn(R.string.stage_deep, stages.deep)
-                StageColumn(R.string.stage_rem, stages.rem)
-            }
-        }
-    }
-}
-
-@Composable
-private fun StageColumn(label: Int, minutes: Int) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(stringResource(label), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(stringResource(R.string.stage_time, minutes / 60, minutes % 60), style = MaterialTheme.typography.labelMedium)
-    }
-}
-
-private fun toggleTracking(context: Context, kind: TrackingKind, active: Boolean, onNeedAccess: () -> Unit) {
-    when {
-        active -> {
-            TrackingService.stop(context)
-            if (kind == TrackingKind.SLEEP) AutoSleep.onStoppedByHand()
-        }
-        TrackingService.canRun(context) -> TrackingService.start(context, kind)
-        else -> onNeedAccess()
-    }
-}
-
-@Composable
-private fun TrackingButton(
-    kind: TrackingKind,
-    tracking: TrackingUi,
-    onNeedAccess: () -> Unit,
-    modifier: Modifier,
-    transformation: androidx.wear.compose.material3.SurfaceTransformation,
-) {
-    val context = LocalContext.current
-    val active = tracking.active == kind
-    val otherActive = tracking.active != null && !active
-    val icon = if (kind == TrackingKind.SLEEP) R.drawable.sym_bedtime else R.drawable.sym_monitoring
-    val label = when {
-        kind == TrackingKind.SLEEP && active -> R.string.sleep_stop
-        kind == TrackingKind.SLEEP -> R.string.sleep_start
-        active -> R.string.workout_stop
-        else -> R.string.workout_start
-    }
-    val detail = when {
-        active -> elapsedText(tracking.startedAtMs)
-        kind == TrackingKind.SLEEP -> null
-        else -> tracking.lastWorkout?.let { stringResource(R.string.workout_last, durationText(it.minutes), it.meanHeartRate) }
-    }
-    Button(
-        onClick = { toggleTracking(context, kind, active, onNeedAccess) },
-        modifier = modifier,
-        transformation = transformation,
-        colors = if (active) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors(),
-        // Two recordings at once would fight over the same sensors.
-        enabled = !otherActive,
-        icon = { Icon(painterResource(icon), null) },
-        label = { Text(stringResource(label)) },
-        secondaryLabel = detail?.let { text -> { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
-    )
-}
-
-@Composable
-private fun elapsedText(startedAtMs: Long): String {
-    var now by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(startedAtMs) {
-        while (true) {
-            delay(30_000)
-            now = System.currentTimeMillis()
-        }
-    }
-    return durationText(((now - startedAtMs) / 60_000).toInt().coerceAtLeast(0))
-}
-
-@Composable
-private fun durationText(minutes: Int): String =
-    if (minutes >= 60) stringResource(R.string.duration_hm, minutes / 60, minutes % 60)
-    else stringResource(R.string.duration_m, minutes)
-
-private fun missingPermissions(context: Context) =
+internal fun missingPermissions(context: Context) =
     RUNTIME_PERMISSIONS.filter { context.checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }

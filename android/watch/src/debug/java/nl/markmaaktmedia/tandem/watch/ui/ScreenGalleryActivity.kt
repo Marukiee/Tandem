@@ -47,7 +47,7 @@ class ScreenGalleryActivity : ComponentActivity() {
         val screen = intent.getStringExtra("screen") ?: "home"
         val long = intent.getBooleanExtra("long", false)
         Tracking.load(this)
-        Tracking.publishActive(if (screen == "home_recording") TrackingKind.SLEEP else null, System.currentTimeMillis() - 83 * 60_000)
+        Tracking.publishActive(if (screen == "home_recording" || screen == "health_recording") TrackingKind.SLEEP else null, System.currentTimeMillis() - 83 * 60_000)
         Tracking.publishSleep(LastSleep(true, 441, 93, StageMinutes(230, 90, 121)))
         Tracking.publishWorkout(LastWorkout(47, 138))
         Tracking.publishSteps(8412)
@@ -84,6 +84,7 @@ class ScreenGalleryActivity : ComponentActivity() {
         )
         when (screen) {
             "home", "home_recording" -> Home(ready)
+            "health", "health_recording" -> HealthScreen()
             "home_idle" -> Home(ready.copy(players = emptyList(), covers = emptyMap()))
             "home_found" -> Home(ready.copy(ringing = true, findingPhone = true))
             "home_call" -> Home(ready.copy(call = call(long, CallStatus.ACTIVE)))

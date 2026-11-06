@@ -25,6 +25,7 @@
     <string name="go_to_player">Go to %1$s</string>
     <string name="volume_down">Volume down</string>
     <string name="volume_up">Volume up</string>
+    <string name="health_app">Tandem Health</string>
     <string name="health">Health</string>
     <string name="sleep_start">Start sleep</string>
     <string name="sleep_stop">Stop sleep</string>

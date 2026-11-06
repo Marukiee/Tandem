@@ -43,6 +43,19 @@
         </activity>
 
         <activity
+            android:name=".ui.HealthActivity"
+            android:exported="true"
+            android:icon="@mipmap/ic_health"
+            android:label="@string/health_app"
+            android:launchMode="singleTask"
+            android:taskAffinity=".health">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".ui.CallActivity"
             android:exported="false"
             android:launchMode="singleInstance"

@@ -25,6 +25,7 @@
     <string name="go_to_player">Ga naar %1$s</string>
     <string name="volume_down">Zachter</string>
     <string name="volume_up">Harder</string>
+    <string name="health_app">Tandem Gezondheid</string>
     <string name="health">Gezondheid</string>
     <string name="sleep_start">Start slaap</string>
     <string name="sleep_stop">Stop slaap</string>
