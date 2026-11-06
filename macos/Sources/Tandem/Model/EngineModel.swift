@@ -401,6 +401,22 @@ final class EngineModel {
 
     // MARK: Events
 
+    /// A table a spreadsheet can open. The phone has the same button; importing is only for a phone, which has Health Connect.
+    func exportHealth() {
+        guard let engine else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.commaSeparatedText]
+        panel.nameFieldStringValue = "tandem-health.csv"
+        panel.canCreateDirectories = true
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try engine.healthExportCsv(utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60)).write(to: url, atomically: true, encoding: .utf8)
+            showToast(String(localized: "Saved"))
+        } catch {
+            showToast(error.localizedDescription)
+        }
+    }
+
     func refreshHealth() {
         healthRecords = engine?.healthRecords() ?? []
         healthInsights = engine?.healthInsights(utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60))

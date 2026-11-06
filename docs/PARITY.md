@@ -70,6 +70,8 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Een horloge (Wear OS) koppelen, met meldingen, bellen, muziek, zoeken, batterijen, muis en stille slaap (zie `docs/WATCH.md`) | ja, bekeken (emulators, nog niet op de echte Xperia) | - | - | - |
 | Slaap en trainingen van het horloge bekijken. De telefoon kiest per apparaat wie ze krijgt, standaard niemand; uitzetten laat dat apparaat ze vergeten. De pagina Gezondheid is alleen gevuld met een gekoppeld horloge, of als ze op dat apparaat is aangezet | bron (schakelaar per apparaat) | ja, bekeken (emulator naar een aparte Tandem Dev) | ja, pagina alleen bekeken met `mock.js`, nooit op een echt toestel | ja, pagina alleen bekeken met `mock.js`, nooit op een echt toestel |
 | Zacht wakker worden voor de wekker | ja, nog niet op echte nachten getoetst | kan niet: de wekker staat op de telefoon en het trillen is om je pols | kan niet, zelfde reden | kan niet, zelfde reden |
+| Gezondheid exporteren als tabel | ja | ja | ja | ja |
+| Importeren uit Health Connect | ja, nog niet met echte gegevens getest | kan niet: Health Connect bestaat alleen op Android | kan niet, zelfde reden | kan niet, zelfde reden |
 
 ## Wat er nog mist
 

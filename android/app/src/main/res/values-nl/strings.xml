@@ -626,4 +626,14 @@
     <string name="health_week_active">%1$d van 150 actieve minuten</string>
     <string name="health_smart_wake">Zacht wakker worden</string>
     <string name="health_smart_wake_sub">Je horloge trilt zacht in het halfuur voor je wekker, als je pols beweegt. Werkt tijdens een slaapopname. Je wekker gaat gewoon af.</string>
+    <string name="health_your_data">Je gegevens</string>
+    <string name="health_export">Exporteren</string>
+    <string name="health_export_sub">Al je nachten, trainingen en stappen als tabel voor een spreadsheet.</string>
+    <string name="health_export_done">Opgeslagen</string>
+    <string name="health_export_failed">Het bestand kon niet worden opgeslagen</string>
+    <string name="health_import">Importeren uit Health Connect</string>
+    <string name="health_import_sub">Nachten, trainingen en stappen van het afgelopen jaar, uit andere apps op deze telefoon.</string>
+    <string name="health_import_done">%1$d onderdelen gelezen</string>
+    <string name="health_import_failed">Health Connect kon niet worden gelezen</string>
+    <string name="health_import_denied">Health Connect stond dit niet toe</string>
 </resources>

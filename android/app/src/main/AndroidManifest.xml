@@ -19,6 +19,10 @@
          itself over the lock screen, and the pill that says it is going on. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <!-- Only asked for when someone chooses to import from Health Connect. -->
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.READ_EXERCISE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
@@ -123,6 +127,18 @@
         </activity>
 
         <!-- Share to Quick Share: the same sheet, with only the devices nearby. This phone has no Quick Share of Google. -->
+        <!-- Health Connect shows this when someone asks why this app wants to read their health data. -->
+        <activity-alias
+            android:name=".HealthPermissionsRationale"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
+
         <activity-alias
             android:name=".share.QuickShareTarget"
             android:targetActivity=".share.ShareTargetActivity"

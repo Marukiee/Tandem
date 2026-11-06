@@ -31,6 +31,11 @@ struct HealthSettings: View {
                 } footer: {
                     Text("Sleep stages are an estimate from heart rate and movement, not a sleep lab.")
                 }
+                Section {
+                    Button("Export") { model.exportHealth() }
+                } footer: {
+                    Text("All your nights, workouts and steps as a table for a spreadsheet.")
+                }
             }
         }
         .formStyle(.grouped)

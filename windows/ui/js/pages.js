@@ -1245,6 +1245,9 @@ function HealthSection() {
       ? html`<div class="muted">${t("health_empty")}</div>`
       : html`<div class="card flush">${records.map((r) => html`<${HealthRecord} key=${r.id} r=${r} />`)}</div>
         <div class="muted">${t("health_estimate")}</div>`)}
+    ${(hasWatch || shown) && records.length > 0 && html`<div class="card flush"><${SettingRow} icon="download" title=${t("health_export")} sub=${t("health_export_sub")}>
+      <button onClick=${() => call("health_export", { offset: -new Date().getTimezoneOffset() }).then((path) => path && say(t("health_saved"))).catch((e) => say(String(e)))}>${t("health_export")}</button>
+    <//></div>`}
   </div>`;
 }
 

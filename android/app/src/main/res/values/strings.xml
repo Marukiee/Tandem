@@ -629,4 +629,14 @@
     <string name="health_week_active">%1$d of 150 active minutes</string>
     <string name="health_smart_wake">Wake me gently</string>
     <string name="health_smart_wake_sub">Your watch buzzes softly in the half hour before your alarm, when your wrist moves. Works during a sleep recording. Your alarm still goes off.</string>
+    <string name="health_your_data">Your data</string>
+    <string name="health_export">Export</string>
+    <string name="health_export_sub">All your nights, workouts and steps as a table for a spreadsheet.</string>
+    <string name="health_export_done">Saved</string>
+    <string name="health_export_failed">Could not save the file</string>
+    <string name="health_import">Import from Health Connect</string>
+    <string name="health_import_sub">Nights, workouts and steps of the last year, from other apps on this phone.</string>
+    <string name="health_import_done">%1$d items read</string>
+    <string name="health_import_failed">Could not read Health Connect</string>
+    <string name="health_import_denied">Health Connect did not allow this</string>
 </resources>

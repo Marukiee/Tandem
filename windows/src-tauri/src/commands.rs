@@ -161,6 +161,21 @@ pub fn health_insights(state: State<'_, AppState>, offset: i32) -> Reply<serde_j
     Ok(crate::model::health_insights(&state.engine()?.health_insights(offset)))
 }
 
+/// All nights, workouts and steps as a table a spreadsheet can open. None when the person cancelled.
+#[tauri::command]
+pub async fn health_export(app: AppHandle, state: State<'_, AppState>, offset: i32) -> Reply<Option<String>> {
+    let csv = state.engine()?.health_export_csv(offset);
+    let dialog = app.clone();
+    let target = tauri::async_runtime::spawn_blocking(move || {
+        dialog.dialog().file().add_filter("CSV", &["csv"]).set_file_name("tandem-health.csv").blocking_save_file()
+    })
+    .await
+    .map_err(shown)?;
+    let Some(path) = target.and_then(|t| t.into_path().ok()) else { return Ok(None) };
+    std::fs::write(&path, csv).map_err(shown)?;
+    Ok(Some(path.to_string_lossy().into_owned()))
+}
+
 /// The nights and workouts on this computer, the newest first.
 #[tauri::command]
 pub fn health_records(state: State<'_, AppState>) -> Reply<Vec<serde_json::Value>> {

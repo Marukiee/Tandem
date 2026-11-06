@@ -248,6 +248,7 @@ pub fn run() {
             commands::set_device_settings,
             commands::health_records,
             commands::health_insights,
+            commands::health_export,
             commands::guests_by_default,
             commands::set_guests_by_default,
             commands::ring,

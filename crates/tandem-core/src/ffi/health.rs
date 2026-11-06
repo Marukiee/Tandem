@@ -1,7 +1,7 @@
 //! Nights and workouts for the apps (see `crate::health`).
 
 use crate::health::{HealthKind, HealthRecord, SleepStage, StageRun};
-use crate::health_insights::{HealthInsights, NightInsight, Regularity, RestingHeart, WeekSummary, insights};
+use crate::health_insights::{HealthInsights, NightInsight, Regularity, RestingHeart, WeekSummary, export_csv, insights};
 use crate::ids::{DeviceId, now_ms};
 
 use super::{TandemEngine, TandemError, join_error};
@@ -272,6 +272,11 @@ impl TandemEngine {
     /// a local clock is ahead of UTC, because only the apps know where they are.
     pub fn health_insights(&self, utc_offset_minutes: i32) -> TandemHealthInsights {
         insights(&self.engine.health_records(), now_ms(), utc_offset_minutes).into()
+    }
+
+    /// Everything as a table a spreadsheet can open, in local time.
+    pub fn health_export_csv(&self, utc_offset_minutes: i32) -> String {
+        export_csv(&self.engine.health_records(), utc_offset_minutes)
     }
 
     /// Every night and workout this device has, the newest first.

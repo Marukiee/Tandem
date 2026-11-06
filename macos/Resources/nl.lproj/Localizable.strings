@@ -1425,3 +1425,6 @@
 "%lld steps a day, last week %lld" = "%lld stappen per dag, vorige week %lld";
 "%lld steps a day" = "%lld stappen per dag";
 "%lld of 150 active minutes" = "%lld van 150 actieve minuten";
+"Export" = "Exporteren";
+"All your nights, workouts and steps as a table for a spreadsheet." = "Al je nachten, trainingen en stappen als tabel voor een spreadsheet.";
+"Saved" = "Opgeslagen";

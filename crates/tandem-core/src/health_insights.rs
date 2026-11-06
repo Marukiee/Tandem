@@ -243,6 +243,62 @@ fn is_night(record: &HealthRecord) -> bool {
     record.kind == HealthKind::Sleep && record.sleep_minutes >= MIN_NIGHT_MINUTES
 }
 
+/// Year, month and day of a number of days since 1970, by the calendar everyone uses. Howard Hinnant's method.
+fn civil_date(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let day = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let month = (if mp < 10 { mp + 3 } else { mp - 9 }) as u32;
+    (yoe + era * 400 + i64::from(month <= 2), month, day)
+}
+
+fn local_stamp(ms: u64, utc_offset_minutes: i32) -> String {
+    let minutes = (ms / MINUTE_MS) as i64 + i64::from(utc_offset_minutes);
+    let (year, month, day) = civil_date(minutes.div_euclid(1440));
+    let clock = minutes.rem_euclid(1440);
+    format!("{year:04}-{month:02}-{day:02} {:02}:{:02}", clock / 60, clock % 60)
+}
+
+/// Everything as one table a spreadsheet can open, oldest first, in local time. Your own numbers should never be stuck in one app.
+pub fn export_csv(records: &[HealthRecord], utc_offset_minutes: i32) -> String {
+    let optional = |value: Option<u32>| value.map(|v| v.to_string()).unwrap_or_default();
+    let mut sorted: Vec<&HealthRecord> = records.iter().filter(|r| r.kind != HealthKind::Unknown).collect();
+    sorted.sort_by_key(|r| r.start_ms);
+    let mut out = String::from(
+        "kind,start,end,sleep_minutes,awake_minutes,awakenings,efficiency_percent,light_minutes,deep_minutes,rem_minutes,heart_rate_mean,heart_rate_low,heart_rate_high,steps,active_minutes\n",
+    );
+    for r in sorted {
+        let kind = match r.kind {
+            HealthKind::Sleep => "sleep",
+            HealthKind::Workout => "workout",
+            HealthKind::Day => "day",
+            HealthKind::Unknown => continue,
+        };
+        out.push_str(&format!(
+            "{kind},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+            local_stamp(r.start_ms, utc_offset_minutes),
+            local_stamp(r.end_ms, utc_offset_minutes),
+            r.sleep_minutes,
+            r.awake_minutes,
+            r.awakenings,
+            r.efficiency_percent,
+            optional(r.light_minutes),
+            optional(r.deep_minutes),
+            optional(r.rem_minutes),
+            optional(r.heart_rate_mean),
+            optional(r.heart_rate_low),
+            optional(r.heart_rate_high),
+            r.steps,
+            r.active_minutes,
+        ));
+    }
+    out
+}
+
 pub fn insights(records: &[HealthRecord], now_ms: u64, utc_offset_minutes: i32) -> HealthInsights {
     let mut nights: Vec<&HealthRecord> = records.iter().filter(|r| is_night(r)).collect();
     nights.sort_by_key(|night| std::cmp::Reverse(night.end_ms));
@@ -454,6 +510,29 @@ mod tests {
         assert_eq!(result.this_week.active_minutes, 40);
         assert_eq!(result.last_week.mean_steps, Some(1));
         assert_eq!(result.latest_night, None);
+    }
+
+    #[test]
+    fn the_export_is_one_table_in_local_time() {
+        let mut older = night("a", 0, 0, 450, Some(50));
+        older.light_minutes = Some(200);
+        let newer = night("b", 0, 1, 400, None);
+        let csv = export_csv(&[newer, older], 60);
+        let lines: Vec<&str> = csv.lines().collect();
+        assert_eq!(lines.len(), 3);
+        assert!(lines[0].starts_with("kind,start,end,"));
+        let (y, m, d) = civil_date((MIDNIGHT / DAY_MS) as i64);
+        assert!(lines[1].starts_with(&format!("sleep,{y:04}-{m:02}-{d:02} 01:00,")), "{}", lines[1]);
+        assert_eq!(lines[1].split(',').count(), 15);
+        assert_eq!(lines[1].split(',').nth(7), Some("200"));
+        assert_eq!(lines[2].split(',').nth(12), Some(""));
+    }
+
+    #[test]
+    fn dates_come_out_right() {
+        assert_eq!(civil_date(0), (1970, 1, 1));
+        assert_eq!(civil_date(19_782), (2024, 2, 29));
+        assert_eq!(civil_date(-1), (1969, 12, 31));
     }
 
     #[test]
