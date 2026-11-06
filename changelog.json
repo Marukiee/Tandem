@@ -1,6 +1,6 @@
 [
   {
-    "version": "0.2.100",
+    "version": "0.3.0",
     "date": "2026-11-06",
     "en": {
       "title": "Your watch",
@@ -8,7 +8,8 @@
         "A Pixel Watch joins as a device of its own",
         "Calls, notifications and music on your wrist",
         "Sleep and workouts, on the computers you choose",
-        "See your watch and find it from your computers"
+        "See your watch and find it from your computers",
+        "A health page with a sleep score and your resting heart rate"
       ]
     },
     "nl": {
@@ -17,7 +18,8 @@
         "Een Pixel Watch hoort er nu bij als eigen apparaat",
         "Gesprekken, meldingen en muziek om je pols",
         "Slaap en trainingen, op de computers die jij kiest",
-        "Zie je horloge en zoek het vanaf je computers"
+        "Zie je horloge en zoek het vanaf je computers",
+        "Een pagina Gezondheid met slaapscore en rusthartslag"
       ]
     }
   },
