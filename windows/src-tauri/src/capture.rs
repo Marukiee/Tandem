@@ -169,6 +169,13 @@ pub fn can_share() -> bool {
     }
 }
 
+/// The person wants the mouse of this computer on the others: where the desktop has to ask at every start, it asks now.
+pub fn person_wants(app: &AppHandle) {
+    #[cfg(target_os = "linux")]
+    linux::person_wants(app);
+    configure(app);
+}
+
 /// How the capture of the mouse is doing, for the settings: `ready`, `starting` (the desktop is asking the person), or `failed`.
 pub fn status() -> serde_json::Value {
     #[cfg(target_os = "linux")]
@@ -403,6 +410,9 @@ mod linux {
     use tandem_winsys::inputcapture::{self, Captured, Side, State, Stretch, WaylandCapture};
 
     static CAPTURE: OnceLock<WaylandCapture> = OnceLock::new();
+    /// The person pressed Start or turned the shared mouse on since this app started. Where the desktop cannot remember the answer it would
+    /// otherwise ask at every start, also of someone who only uses the mouse of the other computer here, which needs none of this.
+    static ASKED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     /// Another computer's pointer is on this screen. Its moves are played through the desktop's own input, and when that pointer ran into
     /// a barrier GNOME took the mouse: a drag in Files was dropped, and some seconds later the desktop closed the session that plays the
     /// moves. So there are no barriers while it is here.
@@ -423,6 +433,17 @@ mod linux {
         *ANSWER.get_or_init(|| tandem_winsys::portal::is_wayland() && inputcapture::available())
     }
 
+    pub fn person_wants(_app: &AppHandle) {
+        ASKED.store(true, std::sync::atomic::Ordering::Relaxed);
+        if let Some(capture) = CAPTURE.get() {
+            capture.retry();
+        }
+    }
+
+    fn may_start() -> bool {
+        ASKED.load(std::sync::atomic::Ordering::Relaxed) || inputcapture::remembers()
+    }
+
     pub fn status() -> serde_json::Value {
         // A locked screen is the commonest reason that the desktop will not hand anything over, and the one to say first.
         if tandem_winsys::screen_locked() == Some(true) {
@@ -435,9 +456,18 @@ mod linux {
                     State::Starting => "starting",
                     State::Failed => "failed",
                 };
-                serde_json::json!({ "state": state, "reason": capture.reason() })
+                let reason = capture.reason();
+                // Nothing tries again by itself after a no, or where the desktop would ask again: the button does.
+                let press = matches!(capture.state(), State::Failed) && (reason.contains("cancelled") || !inputcapture::remembers());
+                serde_json::json!({ "state": state, "reason": reason, "press": press })
             }
-            None => serde_json::json!({ "state": "idle", "reason": "" }),
+            None => {
+                let waiting = supported() && APP.get().is_some_and(|app| {
+                    let current = settings::get(app);
+                    current.pointer_share && !current.layout.is_empty()
+                });
+                serde_json::json!({ "state": if waiting { "asks" } else { "idle" }, "reason": "" })
+            }
         }
     }
 
@@ -451,6 +481,9 @@ mod linux {
             return;
         }
         if CAPTURE.get().is_none() {
+            if !may_start() {
+                return;
+            }
             let _ = CAPTURE.set(WaylandCapture::start(handle));
             // The computers come and go and their screens are measured when they say hello, so the barriers follow.
             let watcher = app.clone();

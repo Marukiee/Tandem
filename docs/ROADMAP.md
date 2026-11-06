@@ -21,9 +21,7 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
   heten dan offline. Linux met een delay-inhibitor van logind, Windows met `PBT_APMSUSPEND`.
 - **Mappen versturen, vanaf elk apparaat** (gevraagd 2026-11-01): een hele map sturen, met de mappen erin, van en naar Mac, Android,
   Windows en Linux.
-- **Linux vraagt steeds toestemming** (gemeld 2026-11-01): de InputCapture-portal van Fedora 44 is versie 1 en kan niets onthouden, dus
-  GNOME vraagt bij elke start om de muis en het toetsenbord te vangen (de universele muis). Opties: die sessie pas openen als de
-  universele muis echt gebruikt wordt. Voor scherm en invoer bewaart Tandem al tokens; nagaan wanneer GNOME daar toch weer vraagt.
+- **Linux vraagt steeds toestemming** (gemeld 2026-11-01, opnieuw 2026-11-06): de InputCapture-portal van Fedora 44 is versie 1 en kan niets onthouden. Tandem opent die sessie daar nu pas als iemand op Start drukt onder de schermen of de gedeelde muis aanzet. Nog na te gaan: wanneer GNOME toch weer vraagt om scherm en invoer, want daarvoor bewaart Tandem al tokens. Eventueel een snelle Start in het traymenu.
 - **Ontgrendelen met een vingerafdruk** (gevraagd 2026-11-01): gebouwd in 0.2.65 voor de Mac als bron, Android en de Mac als kijker,
   in 0.2.66 ook een vergrendelde Linux-pc (logind) met een knop Ontgrendel op zijn pagina. De
   telefoon controleert de vingerafdruk en de Mac gaat daarop af. Open: Windows Hello op een Windows-kijker (vraagt de `windows`-crate,

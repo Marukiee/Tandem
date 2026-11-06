@@ -216,7 +216,7 @@ let guestsMock = false;
 function arrangement() {
   return {
     main: MAIN,
-    capture: { state: new URLSearchParams(location.search).get("capture") || "ready", reason: "no permission" },
+    capture: { state: new URLSearchParams(location.search).get("capture") || "ready", reason: "no permission", press: new URLSearchParams(location.search).get("capture") === "failed" },
     devices: devices.filter((d) => d.platform !== "android" || true).map((d) => {
       const spot = layout.find((s) => s.id === d.id);
       const size = SIZES[d.id];

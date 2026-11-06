@@ -7,7 +7,8 @@
       "new": [
         "A computer's page always has all its buttons",
         "What cannot be used now is grey and says why",
-        "A device hears a computer's sound only while it looks at its screen"
+        "A device hears a computer's sound only while it looks at its screen",
+        "Linux stops asking about the mouse at every start"
       ]
     },
     "nl": {
@@ -15,7 +16,8 @@
       "new": [
         "De pagina van een computer heeft altijd al zijn knoppen",
         "Wat nu niet kan is grijs en zegt waarom",
-        "Een apparaat hoort het geluid van een computer alleen als het naar het scherm kijkt"
+        "Een apparaat hoort het geluid van een computer alleen als het naar het scherm kijkt",
+        "Linux vraagt niet meer bij elke start om de muis"
       ]
     }
   },

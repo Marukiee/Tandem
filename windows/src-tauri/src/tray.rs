@@ -58,8 +58,10 @@ pub fn build(app: &AppHandle) -> tauri::Result<()> {
                     crate::settings::update(app, |s| s.pointer_share = !s.pointer_share);
                     if crate::settings::get(app).pointer_share {
                         crate::side::mouse_turned_on(app);
+                        crate::capture::person_wants(app);
+                    } else {
+                        crate::capture::configure(app);
                     }
-                    crate::capture::configure(app);
                     rebuild(app);
                 }
                 _ => {

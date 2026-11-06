@@ -138,7 +138,11 @@ export function ArrangementEditor() {
   <${SideFinder} devices=${devices} />
   ${capture.state === "starting" && html`<div class="small muted" style="margin-top:8px">${t("capture_starting")}</div>`}
   ${capture.state === "locked" && html`<div class="small muted" style="margin-top:8px">${t("capture_locked")}</div>`}
-  ${capture.state === "failed" && html`<div class="small muted" style="margin-top:8px">${t("capture_failed", capture.reason || "?")}</div>`}
+  ${capture.state === "failed" && !capture.press && html`<div class="small muted" style="margin-top:8px">${t("capture_failed", capture.reason || "?")}</div>`}
+  ${(capture.state === "asks" || capture.press) && html`<div style="display:flex;margin-top:8px;gap:12px;align-items:center">
+    <div class="small muted grow">${capture.state === "asks" ? t("capture_asks") : t("capture_refused")}</div>
+    <button class="btn small" onClick=${() => call("capture_start").then(load).catch(failed)}>${t("capture_start")}</button>
+  </div>`}
   </div>`;
 }
 
