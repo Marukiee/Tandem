@@ -78,7 +78,7 @@ pub fn health_record(r: &tandem_core::ffi::health::TandemHealthRecord) -> Value 
     };
     json!({
         "id": r.id,
-        "kind": match r.kind { K::Sleep => "sleep", K::Workout => "workout", K::Unknown => "unknown" },
+        "kind": match r.kind { K::Sleep => "sleep", K::Workout => "workout", K::Day => "day", K::Unknown => "unknown" },
         "startMs": r.start_ms,
         "endMs": r.end_ms,
         "sleepMinutes": r.sleep_minutes,
@@ -104,6 +104,8 @@ pub fn health_insights(i: &tandem_core::ffi::health::TandemHealthInsights) -> Va
             "workouts": w.workouts,
             "workoutMinutes": w.workout_minutes,
             "workoutSteps": w.workout_steps,
+            "meanSteps": w.mean_steps,
+            "activeMinutes": w.active_minutes,
         })
     };
     json!({

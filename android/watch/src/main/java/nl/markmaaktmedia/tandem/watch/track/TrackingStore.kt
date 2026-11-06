@@ -28,8 +28,13 @@ data class TrackingUi(
     val lastSleep: LastSleep? = null,
     val lastWorkout: LastWorkout? = null,
     val stepsToday: Long = 0,
+    val activeMinutesToday: Int = 0,
+    val stepGoal: Int = DEFAULT_STEP_GOAL,
     val autoSleep: Boolean = true,
 )
+
+/** Where the research on steps and health stops finding much more per step. The person can pick their own on the phone. */
+const val DEFAULT_STEP_GOAL = 8000
 
 object Tracking {
     private val _ui = MutableStateFlow(TrackingUi())
@@ -45,6 +50,8 @@ object Tracking {
                 lastSleep = store.loadSleep(),
                 lastWorkout = store.loadWorkout(),
                 stepsToday = store.loadSteps().todayOrZero(),
+                activeMinutesToday = store.loadSteps().activeTodayOrZero(),
+                stepGoal = store.stepGoal,
                 autoSleep = store.autoSleep,
             )
         }
@@ -53,7 +60,8 @@ object Tracking {
     fun publishActive(kind: TrackingKind?, startedAtMs: Long) = _ui.update { it.copy(active = kind, startedAtMs = startedAtMs) }
     fun publishSleep(sleep: LastSleep) = _ui.update { it.copy(lastSleep = sleep) }
     fun publishWorkout(workout: LastWorkout) = _ui.update { it.copy(lastWorkout = workout) }
-    fun publishSteps(steps: Long) = _ui.update { it.copy(stepsToday = steps) }
+    fun publishSteps(steps: Long, activeMinutes: Int) = _ui.update { it.copy(stepsToday = steps, activeMinutesToday = activeMinutes) }
+    fun publishStepGoal(steps: Int) = _ui.update { it.copy(stepGoal = steps) }
     fun publishAutoSleep(on: Boolean) = _ui.update { it.copy(autoSleep = on) }
 }
 
@@ -73,13 +81,23 @@ class TrackingStore(context: Context) {
         day = prefs.getString("steps_day", "").orEmpty(),
         steps = prefs.getLong("steps_count", 0),
         lastTotal = prefs.getLong("steps_total", -1),
+        activeMinutes = prefs.getInt("steps_active", 0),
+        minute = prefs.getLong("steps_minute", -1),
+        stepsInMinute = prefs.getLong("steps_in_minute", 0),
     )
+
+    var stepGoal: Int
+        get() = prefs.getInt("step_goal", DEFAULT_STEP_GOAL)
+        set(value) = prefs.edit().putInt("step_goal", value).apply()
 
     fun saveSteps(state: DailySteps) {
         prefs.edit()
             .putString("steps_day", state.day)
             .putLong("steps_count", state.steps)
             .putLong("steps_total", state.lastTotal)
+            .putInt("steps_active", state.activeMinutes)
+            .putLong("steps_minute", state.minute)
+            .putLong("steps_in_minute", state.stepsInMinute)
             .apply()
     }
 

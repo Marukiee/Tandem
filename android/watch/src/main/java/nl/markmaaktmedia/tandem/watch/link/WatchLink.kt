@@ -30,6 +30,8 @@ import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
 import nl.markmaaktmedia.tandem.watch.protocol.PointerTarget
 import nl.markmaaktmedia.tandem.watch.protocol.Role
 import nl.markmaaktmedia.tandem.watch.track.HealthOutbox
+import nl.markmaaktmedia.tandem.watch.track.Tracking
+import nl.markmaaktmedia.tandem.watch.track.TrackingStore
 
 data class WatchUi(
     val paired: Boolean = false,
@@ -84,6 +86,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     private var outbox: HealthOutbox? = null
     private var status: Message.WatchStatus? = null
     private var pingId = 0L
+    private var appContext: Context? = null
     private var fromPhone: List<MediaPlayer> = emptyList()
     private var expected: ExpectedPlay? = null
     private var playersShownAt = 0L
@@ -121,6 +124,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         handler.post {
             if (running) return@post
             running = true
+            appContext = app
             if (outbox == null) outbox = HealthOutbox(app)
             val link = LinkEngine(Role.WATCH, SecureLinkKeyStore(app), this)
             engine = link
@@ -337,11 +341,21 @@ object WatchLink : LinkListener, WatchBleClient.Events {
 
     fun reportBattery(level: Int, charging: Boolean) {
         handler.post {
-            val next = Message.WatchStatus(level, charging)
-            if (next == status) return@post
-            status = next
-            engine?.send(next)
+            reportStatus((status ?: Message.WatchStatus(level, charging)).copy(level = level, charging = charging))
         }
+    }
+
+    /** At most once per batch of the step sensor, so a few times an hour. */
+    fun reportSteps(steps: Long, activeMinutes: Int) {
+        handler.post {
+            status?.let { reportStatus(it.copy(stepsToday = steps, activeMinutesToday = activeMinutes)) }
+        }
+    }
+
+    private fun reportStatus(next: Message.WatchStatus) {
+        if (next == status) return
+        status = next
+        engine?.send(next)
     }
 
     private fun updateClient() {
@@ -418,6 +432,10 @@ object WatchLink : LinkListener, WatchBleClient.Events {
                 forgetPhoneData()
                 _ui.update { WatchUi() }
                 client?.stop()
+            }
+            is Message.StepGoal -> {
+                appContext?.let { TrackingStore(it).stepGoal = message.steps }
+                Tracking.publishStepGoal(message.steps)
             }
             is Message.Pong -> handler.removeCallbacks(pongTimeout)
             is Message.Ping, is Message.Unknown -> Unit

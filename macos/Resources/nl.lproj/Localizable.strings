@@ -1422,3 +1422,6 @@
 "%@ cannot make an extra screen" = "%@ kan geen extra scherm maken";
 "%@ cannot take over a Wi-Fi network" = "%@ kan geen wifinetwerk overnemen";
 "%@ is already on Wi-Fi" = "%@ zit al op wifi";
+"%lld steps a day, last week %lld" = "%lld stappen per dag, vorige week %lld";
+"%lld steps a day" = "%lld stappen per dag";
+"%lld of 150 active minutes" = "%lld van 150 actieve minuten";

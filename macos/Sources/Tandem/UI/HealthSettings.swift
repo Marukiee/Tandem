@@ -7,7 +7,7 @@ struct HealthSettings: View {
     @AppStorage("showHealth") private var showHealth = false
 
     private var hasWatch: Bool { model.devices.contains { $0.status.watch?.paired == true } }
-    private var records: [TandemHealthRecord] { model.healthRecords.filter { $0.kind != .unknown } }
+    private var records: [TandemHealthRecord] { model.healthRecords.filter { $0.kind == .sleep || $0.kind == .workout } }
 
     var body: some View {
         Form {
@@ -127,10 +127,18 @@ private struct HealthInsightSections: View {
                     Text("Resting \(Int(resting)) bpm")
                 }
             }
+            if let steps = now.meanSteps {
+                if let was = before.meanSteps {
+                    Text("\(Int(steps)) steps a day, last week \(Int(was))")
+                } else {
+                    Text("\(Int(steps)) steps a day")
+                }
+                Text("\(Int(now.activeMinutes)) of 150 active minutes")
+            }
             if now.workouts > 0 {
                 Text("\(Int(now.workouts)) workouts, \(minutesText(Int(now.workoutMinutes)))")
             }
-            if now.meanSleepMinutes == nil && now.workouts == 0 {
+            if now.meanSleepMinutes == nil && now.workouts == 0 && now.meanSteps == nil {
                 Text("Nothing this week yet.").foregroundStyle(.secondary)
             }
         }

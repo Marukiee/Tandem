@@ -41,12 +41,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import android.text.format.DateUtils
+import java.text.NumberFormat
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.TimeZone
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.ContentRow
 import nl.markmaaktmedia.tandem.ui.components.RollingNumber
@@ -100,7 +102,45 @@ internal fun HealthAlert(insights: TandemHealthInsights?) {
     }
 }
 
-/** The score as a ring, the same way a battery is one: it grows to its value when it comes on screen. */
+/** Steps come in a few times an hour, and only a watch counts them. A computer sees whole days. */
+@Composable
+internal fun HealthToday() {
+    val graph = LocalContext.current.graph
+    val scope = rememberCoroutineScope()
+    val watch by graph.watch.state.collectAsState()
+    val goal by graph.prefs.stepGoal.collectAsState(initial = TandemPrefs.DEFAULT_STEP_GOAL)
+    if (!watch.paired) return
+    val scheme = MaterialTheme.colorScheme
+    SectionHeader(stringResource(R.string.health_today), top = 12.dp, bottom = 0.dp)
+    Column(
+        Modifier.fillMaxWidth().clip(CardSquircle).background(scheme.surfaceContainer).padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            ScoreRing((watch.stepsToday * 100 / goal.coerceAtLeast(1)).coerceAtMost(100).toInt(), 68.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    stringResource(R.string.health_steps_goal, number(watch.stepsToday), number(goal.toLong())),
+                    style = MaterialTheme.typography.titleMedium, color = scheme.onSurface,
+                )
+                Text(
+                    stringResource(R.string.health_active_today, watch.activeMinutesToday),
+                    style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+    SettingsGroup {
+        PadSlider(
+            0, 1, stringResource(R.string.health_goal), stringResource(R.string.health_goal_sub), goal, 2000..30000, 500,
+            { number(it.toLong()) }, TandemIcons.Workout,
+        ) { value -> scope.launch { graph.prefs.setStepGoal(value) } }
+    }
+}
+
+private fun number(value: Long): String = NumberFormat.getIntegerInstance().format(value)
+
+/** A share of something as a ring, the same way a battery is one: it grows to its value when it comes on screen. */
 @Composable
 private fun ScoreRing(score: Int, size: Dp) {
     val fill = remember { Animatable(0f) }
@@ -284,10 +324,18 @@ private fun WeekLines(week: TandemWeekSummary, before: TandemWeekSummary) {
             else stringResource(R.string.health_week_resting, resting.toInt()),
         )
     }
+    week.meanSteps?.let { steps ->
+        val was = before.meanSteps
+        TrendLine(
+            if (was != null) stringResource(R.string.health_week_steps_before, number(steps.toLong()), number(was.toLong()))
+            else stringResource(R.string.health_week_steps, number(steps.toLong())),
+        )
+        TrendLine(stringResource(R.string.health_week_active, week.activeMinutes.toInt()))
+    }
     if (week.workouts > 0u) {
         TrendLine(pluralStringResource(R.plurals.health_week_workouts, week.workouts.toInt(), week.workouts.toInt(), duration(week.workoutMinutes.toInt())))
     }
-    if (sleep == null && week.workouts == 0u) {
+    if (sleep == null && week.workouts == 0u && week.meanSteps == null) {
         Text(stringResource(R.string.health_week_empty), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
@@ -297,7 +345,7 @@ private fun WeekLines(week: TandemWeekSummary, before: TandemWeekSummary) {
 internal fun EarlierNights() {
     val records by LocalContext.current.graph.host.healthRecords.collectAsState()
     val latest = records.latestNight()
-    val shown = records.filter { it.kind != TandemHealthKind.UNKNOWN && it !== latest }.take(SHOWN)
+    val shown = records.filter { (it.kind == TandemHealthKind.SLEEP || it.kind == TandemHealthKind.WORKOUT) && it !== latest }.take(SHOWN)
     if (shown.isEmpty()) return
     SectionHeader(stringResource(R.string.health_earlier), top = 16.dp, bottom = 0.dp)
     SettingsGroup {

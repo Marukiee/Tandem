@@ -1214,8 +1214,9 @@ function HealthInsights({ i }) {
         ${now.meanSleepMinutes != null && html`<div>${before.meanSleepMinutes != null ? t("health_week_sleep_before", healthDuration(now.meanSleepMinutes), healthDuration(before.meanSleepMinutes)) : t("health_week_sleep", healthDuration(now.meanSleepMinutes))}</div>`}
         ${now.meanScore != null && html`<div>${before.meanScore != null ? t("health_week_score_before", now.meanScore, before.meanScore) : t("health_week_score", now.meanScore)}</div>`}
         ${now.meanResting != null && html`<div>${before.meanResting != null ? t("health_week_resting_before", now.meanResting, before.meanResting) : t("health_week_resting", now.meanResting)}</div>`}
+        ${now.meanSteps != null && html`<div>${before.meanSteps != null ? t("health_week_steps_before", now.meanSteps, before.meanSteps) : t("health_week_steps", now.meanSteps)}</div><div>${t("health_week_active", now.activeMinutes)}</div>`}
         ${now.workouts > 0 && html`<div>${t("health_week_workouts", now.workouts, healthDuration(now.workoutMinutes))}</div>`}
-        ${now.meanSleepMinutes == null && now.workouts === 0 && html`<div style=${quiet}>${t("health_week_empty")}</div>`}
+        ${now.meanSleepMinutes == null && now.workouts === 0 && now.meanSteps == null && html`<div style=${quiet}>${t("health_week_empty")}</div>`}
       </div>
     </div>`;
 }
@@ -1231,7 +1232,7 @@ function HealthSection() {
     call("health_insights", { offset: -new Date().getTimezoneOffset() }).then(setInsights).catch(() => setInsights(null));
   }, [state.health]);
   const hasWatch = (state.devices || []).some((d) => d.status?.watch?.paired);
-  const records = (state.health || []).filter((r) => r.kind !== "unknown").slice(0, 60);
+  const records = (state.health || []).filter((r) => r.kind === "sleep" || r.kind === "workout").slice(0, 60);
   const change = (on) => {
     setShown(on);
     try { localStorage.setItem("healthShown", on ? "1" : "0"); } catch { /* the choice only lasts until this window closes */ }

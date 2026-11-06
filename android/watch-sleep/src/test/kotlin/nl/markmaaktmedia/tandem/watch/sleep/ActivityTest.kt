@@ -45,4 +45,33 @@ class DailyStepsTest {
         state = state.update("a", 50)
         assertEquals(250, state.steps)
     }
+
+    @Test
+    fun `a brisk minute counts once`() {
+        var state = DailySteps().update("a", 1000, 10)
+        for (total in 1010L..1150L step 10) state = state.update("a", total, 11)
+        assertEquals(1, state.activeMinutes)
+    }
+
+    @Test
+    fun `an easy walk is no active minute`() {
+        var state = DailySteps().update("a", 1000, 10)
+        for (minute in 11L..20L) state = state.update("a", 1000 + (minute - 10) * 40, minute)
+        assertEquals(0, state.activeMinutes)
+    }
+
+    @Test
+    fun `minutes reported in one go count as the minutes they were`() {
+        val state = DailySteps().update("a", 1000, 10).update("a", 1500, 15)
+        assertEquals(5, state.activeMinutes)
+        val steady = DailySteps().update("a", 1000, 10).update("a", 1200, 15)
+        assertEquals(2, steady.activeMinutes)
+    }
+
+    @Test
+    fun `a new day starts its active minutes from nothing`() {
+        val state = DailySteps().update("a", 1000, 10).update("a", 1200, 11).update("b", 1210, 12)
+        assertEquals(0, state.activeMinutes)
+        assertEquals(10, state.steps)
+    }
 }

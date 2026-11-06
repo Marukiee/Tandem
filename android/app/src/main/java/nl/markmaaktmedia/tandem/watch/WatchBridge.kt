@@ -66,6 +66,8 @@ data class WatchState(
     val pairingOpen: Boolean = false,
     val code: String? = null,
     val batteryLevel: Int? = null,
+    val stepsToday: Long = 0,
+    val activeMinutesToday: Int = 0,
     val charging: Boolean = false,
     val ringing: Boolean = false,
     val sleeping: Boolean = false,
@@ -101,6 +103,7 @@ class WatchBridge(
     private val calls = WatchCalls(context, handler) { update -> enqueue(Message.Call(update)) }
     private val media = WatchMedia(context, handler, { mediaExcluded }, { cover -> enqueue(cover) }) { publishPlayers() }
     private var computerPlayers: List<MediaPlayer> = emptyList()
+    private var stepGoal = TandemPrefs.DEFAULT_STEP_GOAL
     private val quiet = WatchSleepQuiet(context, handler)
     private var running = false
     private var active = false
@@ -176,6 +179,14 @@ class WatchBridge(
                     mouseOn = on
                     if (!on) endPointer()
                     publishTargets()
+                }
+            }
+        }
+        jobs += scope.launch {
+            prefs.stepGoal.collect { goal ->
+                handler.post {
+                    stepGoal = goal
+                    enqueue(Message.StepGoal(goal))
                 }
             }
         }
@@ -360,6 +371,7 @@ class WatchBridge(
         publishTargets()
         publishBatteries()
         enqueue(Message.Ringing(phoneRinging))
+        enqueue(Message.StepGoal(stepGoal))
     }
 
     private fun publishPlayers() {
@@ -503,13 +515,13 @@ class WatchBridge(
             is Message.PointerKey -> pointer?.key(message.code.toShort(), message.mods)
             is Message.FindDevice -> main.post { if (message.ring) FindPhone.start(context) else FindPhone.stop() }
             is Message.Ringing -> _state.update { it.copy(ringing = message.on) }
-            is Message.WatchStatus -> _state.update { it.copy(batteryLevel = message.level, charging = message.charging) }
+            is Message.WatchStatus -> _state.update { it.copy(stepsToday = message.stepsToday, activeMinutesToday = message.activeMinutesToday, batteryLevel = message.level, charging = message.charging) }
             is Message.SleepMode -> onSleepMode(message.on)
             is Message.HealthRecord -> onHealthRecord(message)
             is Message.Ping, is Message.Pong, is Message.Unknown -> Unit
             // These only travel from phone to watch.
             is Message.NotificationSnapshot, is Message.Notification, is Message.NotificationRemoved, is Message.AppIcon,
-            is Message.HealthAck,
+            is Message.HealthAck, is Message.StepGoal,
             is Message.Call, is Message.MediaPlayers, is Message.MediaArt, is Message.PointerTargets, is Message.DeviceBatteries,
             -> Unit
         }
@@ -602,7 +614,11 @@ private fun TandemMediaPlayer.forWatch(device: String, deviceName: String, at: L
 
 private fun Message.HealthRecord.toTandem() = TandemHealthRecord(
     id = id,
-    kind = if (workout) TandemHealthKind.WORKOUT else TandemHealthKind.SLEEP,
+    kind = when {
+        day -> TandemHealthKind.DAY
+        workout -> TandemHealthKind.WORKOUT
+        else -> TandemHealthKind.SLEEP
+    },
     startMs = startMs.toULong(),
     endMs = endMs.toULong(),
     sleepMinutes = sleepMinutes.toUInt(),
@@ -628,4 +644,5 @@ private fun Message.HealthRecord.toTandem() = TandemHealthRecord(
     heartRateLow = heartRateLow?.toUInt(),
     heartRateHigh = heartRateHigh?.toUInt(),
     steps = steps.toULong(),
+    activeMinutes = activeMinutes.toUInt(),
 )

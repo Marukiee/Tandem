@@ -616,4 +616,12 @@
     <string name="channel_nudge_desc">Als een programma op een computer je wil bereiken en je horloge er niet is</string>
     <string name="setting_nudge">Seintjes van deze computer</string>
     <string name="setting_nudge_sub">Een programma op deze computer kan je horloge laten trillen, of deze telefoon als het horloge weg is.</string>
+    <string name="health_today">Vandaag</string>
+    <string name="health_steps_goal">%1$s van %2$s stappen</string>
+    <string name="health_active_today">%1$d actieve minuten</string>
+    <string name="health_goal">Stappendoel</string>
+    <string name="health_goal_sub">Stappen per dag. Je horloge laat het ook zien.</string>
+    <string name="health_week_steps">%1$s stappen per dag</string>
+    <string name="health_week_steps_before">%1$s stappen per dag, vorige week %2$s</string>
+    <string name="health_week_active">%1$d van 150 actieve minuten</string>
 </resources>

@@ -10,6 +10,8 @@ use super::{TandemEngine, TandemError, join_error};
 pub enum TandemHealthKind {
     Sleep,
     Workout,
+    /// The steps of one whole day.
+    Day,
     /// From a newer version: show nothing for it.
     Unknown,
 }
@@ -52,6 +54,8 @@ pub struct TandemHealthRecord {
     pub heart_rate_low: Option<u32>,
     pub heart_rate_high: Option<u32>,
     pub steps: u64,
+    #[uniffi(default = 0)]
+    pub active_minutes: u32,
 }
 
 impl From<HealthRecord> for TandemHealthRecord {
@@ -61,6 +65,7 @@ impl From<HealthRecord> for TandemHealthRecord {
             kind: match r.kind {
                 HealthKind::Sleep => TandemHealthKind::Sleep,
                 HealthKind::Workout => TandemHealthKind::Workout,
+                HealthKind::Day => TandemHealthKind::Day,
                 HealthKind::Unknown => TandemHealthKind::Unknown,
             },
             start_ms: r.start_ms,
@@ -90,6 +95,7 @@ impl From<HealthRecord> for TandemHealthRecord {
             heart_rate_low: r.heart_rate_low,
             heart_rate_high: r.heart_rate_high,
             steps: r.steps,
+            active_minutes: r.active_minutes,
         }
     }
 }
@@ -101,6 +107,7 @@ impl From<TandemHealthRecord> for HealthRecord {
             kind: match r.kind {
                 TandemHealthKind::Sleep => HealthKind::Sleep,
                 TandemHealthKind::Workout => HealthKind::Workout,
+                TandemHealthKind::Day => HealthKind::Day,
                 TandemHealthKind::Unknown => HealthKind::Unknown,
             },
             start_ms: r.start_ms,
@@ -130,6 +137,7 @@ impl From<TandemHealthRecord> for HealthRecord {
             heart_rate_low: r.heart_rate_low,
             heart_rate_high: r.heart_rate_high,
             steps: r.steps,
+            active_minutes: r.active_minutes,
             added_ms: 0,
             origin: None,
         }
@@ -173,6 +181,8 @@ pub struct TandemRegularity {
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct TandemWeekSummary {
+    pub mean_steps: Option<u32>,
+    pub active_minutes: u32,
     pub nights: u32,
     pub mean_sleep_minutes: Option<u32>,
     pub mean_score: Option<u32>,
@@ -236,6 +246,8 @@ impl From<WeekSummary> for TandemWeekSummary {
             workouts: w.workouts,
             workout_minutes: w.workout_minutes,
             workout_steps: w.workout_steps,
+            mean_steps: w.mean_steps,
+            active_minutes: w.active_minutes,
         }
     }
 }

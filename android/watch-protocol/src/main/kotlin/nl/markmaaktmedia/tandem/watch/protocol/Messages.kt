@@ -166,7 +166,10 @@ sealed interface Message {
     data class DeviceBatteries(val devices: List<DeviceBattery>) : Message
 
     /** Watch to phone: so Tandem can show this watch next to the other devices. */
-    data class WatchStatus(val level: Int, val charging: Boolean) : Message
+    data class WatchStatus(val level: Int, val charging: Boolean, val stepsToday: Long = 0, val activeMinutesToday: Int = 0) : Message
+
+    /** Phone to watch: how many steps a day the person aims for. */
+    data class StepGoal(val steps: Int) : Message
 
     /**
      * Watch to phone: the wearer sleeps or not. Sent again after each reconnect, so the receiver must treat it as the
@@ -193,6 +196,9 @@ sealed interface Message {
         val heartRateLow: Int?,
         val heartRateHigh: Int?,
         val steps: Long,
+        /** A whole day of steps rather than a night or a workout. */
+        val day: Boolean = false,
+        val activeMinutes: Int = 0,
     ) : Message
 
     /** Phone to watch: this record is safe on the phone, the watch can let go of it. */
@@ -225,6 +231,7 @@ object MessageCodec {
     private const val WATCH_STATUS = 0x42
     private const val SLEEP_MODE = 0x43
     private const val RINGING = 0x44
+    private const val STEP_GOAL = 0x45
     private const val HEALTH_RECORD = 0x50
     private const val HEALTH_ACK = 0x51
     private const val POINTER_TARGETS = 0x70
@@ -279,7 +286,8 @@ object MessageCodec {
                 w.u8(DEVICE_BATTERIES).varint(message.devices.size.toLong())
                 message.devices.forEach { w.bytes(ByteWriter().str(it.id).str(it.name).u8(it.level).bool(it.charging).toByteArray()) }
             }
-            is Message.WatchStatus -> w.u8(WATCH_STATUS).u8(message.level).bool(message.charging)
+            is Message.WatchStatus -> w.u8(WATCH_STATUS).u8(message.level).bool(message.charging).varint(message.stepsToday).varint(message.activeMinutesToday.toLong())
+            is Message.StepGoal -> w.u8(STEP_GOAL).varint(message.steps.toLong())
             is Message.SleepMode -> w.u8(SLEEP_MODE).bool(message.on)
             is Message.HealthRecord -> {
                 w.u8(HEALTH_RECORD).str(message.id).bool(message.workout).varint(message.startMs).varint(message.endMs)
@@ -289,6 +297,7 @@ object MessageCodec {
                     .varint(message.stages.size.toLong())
                 message.stages.forEach { w.u8(it.stage).varint(it.seconds.toLong()) }
                 w.optional(message.heartRateMean).optional(message.heartRateLow).optional(message.heartRateHigh).varint(message.steps)
+                    .bool(message.day).varint(message.activeMinutes.toLong())
             }
             is Message.HealthAck -> w.u8(HEALTH_ACK).str(message.id)
             is Message.Unknown -> w.u8(message.type).raw(message.payload)
@@ -333,7 +342,8 @@ object MessageCodec {
                     DeviceBattery(d.str(), d.str(), d.u8(), d.bool())
                 },
             )
-            WATCH_STATUS -> Message.WatchStatus(r.u8(), r.bool())
+            WATCH_STATUS -> Message.WatchStatus(r.u8(), r.bool(), if (r.remaining > 0) r.varint() else 0, if (r.remaining > 0) r.varint().toInt() else 0)
+            STEP_GOAL -> Message.StepGoal(r.varint().toInt())
             SLEEP_MODE -> Message.SleepMode(r.bool())
             HEALTH_RECORD -> Message.HealthRecord(
                 id = r.str(),
@@ -352,6 +362,8 @@ object MessageCodec {
                 heartRateLow = r.optional(),
                 heartRateHigh = r.optional(),
                 steps = r.varint(),
+                day = r.remaining > 0 && r.bool(),
+                activeMinutes = if (r.remaining > 0) r.varint().toInt() else 0,
             )
             HEALTH_ACK -> Message.HealthAck(r.str())
             else -> Message.Unknown(type, r.rest())

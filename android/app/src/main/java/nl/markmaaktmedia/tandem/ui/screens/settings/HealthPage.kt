@@ -54,10 +54,11 @@ internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
             }
             if (watch.paired || shown) {
                 HealthAlert(insights)
+                HealthToday()
                 LatestNight(insights)
                 HealthTrends(insights)
                 EarlierNights()
-                if (records.none { it.kind != TandemHealthKind.UNKNOWN }) {
+                if (records.none { it.kind == TandemHealthKind.SLEEP || it.kind == TandemHealthKind.WORKOUT }) {
                     Text(
                         stringResource(R.string.health_none),
                         style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,

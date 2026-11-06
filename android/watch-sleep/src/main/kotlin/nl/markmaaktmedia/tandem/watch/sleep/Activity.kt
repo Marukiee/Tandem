@@ -33,14 +33,42 @@ object WorkoutAnalyzer {
  * Turns the step sensor's running total into steps per day. The total only resets when the watch restarts, so a
  * total lower than the last one means a restart and counts from zero rather than going negative.
  */
-data class DailySteps(val day: String = "", val steps: Long = 0, val lastTotal: Long = -1) {
-    fun update(today: String, total: Long): DailySteps {
+data class DailySteps(
+    val day: String = "",
+    val steps: Long = 0,
+    val lastTotal: Long = -1,
+    val activeMinutes: Int = 0,
+    val minute: Long = -1,
+    val stepsInMinute: Long = 0,
+) {
+    /** [atMinute] is when the steps were taken, in minutes on any clock that only goes up. */
+    fun update(today: String, total: Long, atMinute: Long = -1): DailySteps {
         val delta = when {
             lastTotal < 0 -> 0
             total >= lastTotal -> total - lastTotal
             else -> total
         }
-        val base = if (today == day) steps else 0
-        return DailySteps(today, base + delta, total)
+        val sameDay = today == day
+        val elapsed = if (minute < 0 || atMinute < 0) 0 else atMinute - minute
+        val active = when {
+            atMinute < 0 -> 0
+            // One step at a time: the moment this minute gets there.
+            elapsed <= 0 -> if (stepsInMinute < ACTIVE_STEPS_PER_MINUTE && stepsInMinute + delta >= ACTIVE_STEPS_PER_MINUTE) 1 else 0
+            // A sensor that batches can report many minutes in one go, and those steps were not all taken in this minute.
+            else -> minOf(elapsed, delta / ACTIVE_STEPS_PER_MINUTE).toInt()
+        }
+        return DailySteps(
+            day = today,
+            steps = (if (sameDay) steps else 0) + delta,
+            lastTotal = total,
+            activeMinutes = (if (sameDay) activeMinutes else 0) + active,
+            minute = if (atMinute < 0) minute else atMinute,
+            stepsInMinute = if (elapsed <= 0) stepsInMinute + delta else delta,
+        )
+    }
+
+    companion object {
+        /** About where walking becomes brisk: research on step rates puts moderate effort at 100 steps a minute. */
+        const val ACTIVE_STEPS_PER_MINUTE = 100L
     }
 }

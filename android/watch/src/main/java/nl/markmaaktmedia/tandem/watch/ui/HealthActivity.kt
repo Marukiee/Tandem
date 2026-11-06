@@ -111,7 +111,7 @@ internal fun HealthScreen() {
             }
             item(key = "steps") {
                 Text(
-                    stringResource(R.string.steps_today, tracking.stepsToday),
+                    stringResource(R.string.steps_of_goal, tracking.stepsToday, tracking.stepGoal, tracking.activeMinutesToday),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

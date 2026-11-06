@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -72,7 +73,7 @@ internal fun TrackpadPage(onBack: () -> Unit) {
 
 /** A row with a title, the value on the right, a line of explanation and a slider that ticks at every step. */
 @Composable
-private fun PadSlider(
+internal fun PadSlider(
     index: Int,
     total: Int,
     title: String,
@@ -81,13 +82,14 @@ private fun PadSlider(
     range: IntRange,
     step: Int,
     label: @Composable (Int) -> String,
+    icon: Painter = TandemIcons.Mouse,
     onCommit: (Int) -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
     var moved by remember(value) { mutableFloatStateOf(value.toFloat()) }
     var lastStep by remember(value) { mutableFloatStateOf(value.toFloat()) }
     fun snap(raw: Float) = ((raw / step).roundToInt() * step).coerceIn(range.first, range.last)
-    ContentRow(index, total, TandemIcons.Mouse, title) {
+    ContentRow(index, total, icon, title) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(Modifier.fillMaxWidth()) {
                 Text(body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))

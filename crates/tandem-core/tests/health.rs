@@ -70,6 +70,7 @@ fn night(id: &str, start_ms: u64) -> HealthRecord {
         heart_rate_low: Some(46),
         heart_rate_high: None,
         steps: 0,
+        active_minutes: 0,
         added_ms: 0,
         origin: None,
     }

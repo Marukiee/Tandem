@@ -67,6 +67,9 @@ pub struct WeekSummary {
     pub workouts: u32,
     pub workout_minutes: u32,
     pub workout_steps: u64,
+    /// Over the days the watch counted, which may be fewer than seven.
+    pub mean_steps: Option<u32>,
+    pub active_minutes: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -222,6 +225,7 @@ fn week_of(records: &[HealthRecord], from_ms: u64, until_ms: u64) -> WeekSummary
     let inside = |ms: u64| ms >= from_ms && ms < until_ms;
     let nights: Vec<&HealthRecord> = records.iter().filter(|r| is_night(r) && inside(r.end_ms)).collect();
     let workouts: Vec<&HealthRecord> = records.iter().filter(|r| r.kind == HealthKind::Workout && inside(r.start_ms)).collect();
+    let days: Vec<&HealthRecord> = records.iter().filter(|r| r.kind == HealthKind::Day && inside(r.end_ms)).collect();
     WeekSummary {
         nights: nights.len() as u32,
         mean_sleep_minutes: mean(nights.iter().map(|night| night.sleep_minutes)),
@@ -230,6 +234,8 @@ fn week_of(records: &[HealthRecord], from_ms: u64, until_ms: u64) -> WeekSummary
         workouts: workouts.len() as u32,
         workout_minutes: workouts.iter().map(|w| (w.end_ms.saturating_sub(w.start_ms) / MINUTE_MS) as u32).sum(),
         workout_steps: workouts.iter().map(|w| w.steps).sum(),
+        mean_steps: mean(days.iter().map(|d| d.steps.min(u64::from(u32::MAX)) as u32)),
+        active_minutes: days.iter().map(|d| d.active_minutes).sum(),
     }
 }
 
@@ -280,6 +286,7 @@ mod tests {
             heart_rate_low: low,
             heart_rate_high: None,
             steps: 0,
+            active_minutes: 0,
             added_ms: 0,
             origin: None,
         }
@@ -428,6 +435,25 @@ mod tests {
         assert_eq!(result.this_week.workout_steps, 4000);
         assert_eq!(result.this_week.mean_sleep_minutes, Some(450));
         assert_eq!(result.last_week.workouts, 0);
+    }
+
+    #[test]
+    fn a_week_counts_the_days_of_steps() {
+        let day = |name: &str, n: u64, steps: u64, active: u32| {
+            let mut record = night(name, 0, n, 0, None);
+            record.kind = HealthKind::Day;
+            record.end_ms = record.start_ms + DAY_MS;
+            record.steps = steps;
+            record.active_minutes = active;
+            record
+        };
+        let records = vec![day("d1", 1, 6000, 10), day("d2", 2, 10000, 30), day("old", 0, 1, 1)];
+        let now = records[1].end_ms + 3_600_000 + 5 * DAY_MS;
+        let result = insights(&records, now, 0);
+        assert_eq!(result.this_week.mean_steps, Some(8000));
+        assert_eq!(result.this_week.active_minutes, 40);
+        assert_eq!(result.last_week.mean_steps, Some(1));
+        assert_eq!(result.latest_night, None);
     }
 
     #[test]

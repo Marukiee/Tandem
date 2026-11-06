@@ -7,8 +7,11 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import nl.markmaaktmedia.tandem.watch.link.WatchLink
+import nl.markmaaktmedia.tandem.watch.protocol.Message
 import nl.markmaaktmedia.tandem.watch.sleep.DailySteps
 import java.time.LocalDate
+import java.time.ZoneId
 
 /** Steps all day. The sensor batches in hardware, so this costs next to nothing. */
 class StepTracker(private val context: Context) : SensorEventListener {
@@ -27,16 +30,49 @@ class StepTracker(private val context: Context) : SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        state = state.update(LocalDate.now().toString(), event.values[0].toLong())
+        val before = state
+        val today = LocalDate.now().toString()
+        // The clock of the event and not the one of now: a batch arrives minutes after the steps were taken.
+        state = state.update(today, event.values[0].toLong(), event.timestamp / NANOS_PER_MINUTE)
         store.saveSteps(state)
-        Tracking.publishSteps(state.steps)
+        Tracking.publishSteps(state.steps, state.activeMinutes)
+        WatchLink.reportSteps(state.steps, state.activeMinutes)
+        if (before.day.isNotEmpty() && before.day != today) WatchLink.sendHealth(context, before.toDayRecord())
     }
 
     override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
 
     private companion object {
         const val BATCH_US = 5 * 60 * 1_000_000
+        const val NANOS_PER_MINUTE = 60_000_000_000L
     }
 }
 
 internal fun DailySteps.todayOrZero(): Long = if (day == LocalDate.now().toString()) steps else 0
+
+internal fun DailySteps.activeTodayOrZero(): Int = if (day == LocalDate.now().toString()) activeMinutes else 0
+
+/** A finished day. Its id is the date, so a day that is sent twice is still one day. */
+private fun DailySteps.toDayRecord(): Message.HealthRecord {
+    val start = LocalDate.parse(day).atStartOfDay(ZoneId.systemDefault())
+    return Message.HealthRecord(
+        id = "day-$day",
+        workout = false,
+        startMs = start.toInstant().toEpochMilli(),
+        endMs = start.plusDays(1).toInstant().toEpochMilli(),
+        sleepMinutes = 0,
+        awakeMinutes = 0,
+        awakenings = 0,
+        efficiencyPercent = 0,
+        lightMinutes = null,
+        deepMinutes = null,
+        remMinutes = null,
+        stages = emptyList(),
+        heartRateMean = null,
+        heartRateLow = null,
+        heartRateHigh = null,
+        steps = steps,
+        day = true,
+        activeMinutes = activeMinutes,
+    )
+}

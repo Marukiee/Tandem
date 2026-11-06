@@ -619,4 +619,12 @@
     <string name="channel_nudge_desc">When a program on a computer wants to reach you and your watch is not there</string>
     <string name="setting_nudge">Nudges from this computer</string>
     <string name="setting_nudge_sub">A program on this computer can buzz your watch, or this phone when the watch is away.</string>
+    <string name="health_today">Today</string>
+    <string name="health_steps_goal">%1$s of %2$s steps</string>
+    <string name="health_active_today">%1$d active minutes</string>
+    <string name="health_goal">Step goal</string>
+    <string name="health_goal_sub">Steps a day. Your watch shows it too.</string>
+    <string name="health_week_steps">%1$s steps a day</string>
+    <string name="health_week_steps_before">%1$s steps a day, last week %2$s</string>
+    <string name="health_week_active">%1$d of 150 active minutes</string>
 </resources>

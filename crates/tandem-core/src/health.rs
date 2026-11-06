@@ -22,8 +22,8 @@ use crate::store::{DeviceSettings, Store};
 pub const CAP: &str = "health";
 
 const FILE: &str = "health.cbor";
-/// A night and a workout a day for two years. Beyond this the oldest go, so the file cannot keep growing.
-const MAX_RECORDS: usize = 1500;
+/// A night, a workout and a day of steps for two years. Beyond this the oldest go, so the file cannot keep growing.
+const MAX_RECORDS: usize = 2200;
 /// A night is at most a few kilobytes, so this stays far under what one message may hold, also for a first sync of everything.
 const BATCH: usize = 50;
 
@@ -32,6 +32,8 @@ const BATCH: usize = 50;
 pub enum HealthKind {
     Sleep,
     Workout,
+    /// The steps of one whole day.
+    Day,
     /// From a newer version.
     #[serde(other)]
     Unknown,
@@ -90,6 +92,9 @@ pub struct HealthRecord {
     pub heart_rate_high: Option<u32>,
     #[serde(default)]
     pub steps: u64,
+    /// Minutes of brisk walking, for a day.
+    #[serde(default)]
+    pub active_minutes: u32,
     /// When the device that passes it on got it, by that device's clock and never the same twice. How far another device got.
     #[serde(default)]
     pub added_ms: u64,
@@ -320,6 +325,7 @@ mod tests {
             heart_rate_low: Some(47),
             heart_rate_high: None,
             steps: 0,
+            active_minutes: 0,
             added_ms: 0,
             origin: None,
         }
