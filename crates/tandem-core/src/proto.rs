@@ -215,6 +215,13 @@ pub enum Msg {
     SetSoundMode { mode: u8 },
     /// Asks a device to lock its screen, when its status offers that with `lock`. Devices that do not know it skip it.
     Lock {},
+    /// How far this device got with the nights and workouts of the one it tells: the newest `added_ms` it has from it. Sent to a
+    /// device that connects and says `health`. See `health`.
+    HealthHave { newest: u64 },
+    /// Nights and workouts, to a device the person chose. See `health`.
+    HealthRecords { records: Vec<crate::health::HealthRecord> },
+    /// The person no longer wants this device to have the nights and workouts of the one that says this. See `health`.
+    HealthForget {},
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,

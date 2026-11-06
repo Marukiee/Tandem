@@ -6,7 +6,7 @@ import TandemCore
 
 /// The sections of the Settings window, in the order System Settings would list them.
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case general, devices, features, shortcuts, files, clipboard, screen, pointer, quickShare, access, hotspot, updates, about
+    case general, devices, features, shortcuts, files, clipboard, screen, pointer, quickShare, access, hotspot, health, updates, about
 
     var id: String { rawValue }
 
@@ -23,6 +23,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .quickShare: "Quick Share"
         case .access: "Access"
         case .hotspot: "Hotspot"
+        case .health: "Sleep and workouts"
         case .updates: "Updates"
         case .about: "About"
         }
@@ -41,6 +42,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .quickShare: "arrow.up.arrow.down.circle"
         case .access: "hand.raised"
         case .hotspot: "personalhotspot"
+        case .health: "bed.double"
         case .updates: "arrow.down.circle"
         case .about: "info.circle"
         }
@@ -60,6 +62,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .quickShare: 560
         case .access: 460
         case .hotspot: 470
+        case .health: 620
         case .updates: 330
         case .about: 360
         }
@@ -70,11 +73,17 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 /// the sections grew, and the ones that did not fit went into a menu behind two arrows. A sidebar has room for all of them and
 /// scrolls when there are more.
 struct SettingsView: View {
+    @Environment(EngineModel.self) private var model
     @LocalState private var selection: SettingsSection = DebugSupport.initialSettingsSection() ?? .general
+
+    /// Sleep and workouts only exist here once a phone gave some to this Mac.
+    private var sections: [SettingsSection] {
+        SettingsSection.allCases.filter { $0 != .health || !model.healthRecords.isEmpty || selection == .health }
+    }
 
     var body: some View {
         NavigationSplitView {
-            List(SettingsSection.allCases, selection: $selection) { section in
+            List(sections, selection: $selection) { section in
                 Label(section.title, systemImage: section.symbol)
                     .tag(section)
             }
@@ -105,6 +114,7 @@ struct SettingsView: View {
         case .quickShare: QuickShareSettings()
         case .access: AccessSettings()
         case .hotspot: HotspotSettings()
+        case .health: HealthSettings()
         case .updates: UpdateSettings()
         case .about: AboutSettings()
         }

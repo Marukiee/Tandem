@@ -92,6 +92,9 @@ class EngineHost(
     private val _devices = MutableStateFlow<List<TandemDevice>>(emptyList())
     val devices: StateFlow<List<TandemDevice>> = _devices.asStateFlow()
 
+    private val _healthRecords = MutableStateFlow<List<uniffi.tandem_core.TandemHealthRecord>>(emptyList())
+    val healthRecords: StateFlow<List<uniffi.tandem_core.TandemHealthRecord>> = _healthRecords.asStateFlow()
+
     // The history of what was sent and received outlives the app: it is read back at start, so an
     // update (which restarts the app) no longer empties the Shared tab.
     private val historyFile = File(context.filesDir, "transfers.json")
@@ -201,6 +204,7 @@ class EngineHost(
                 mediaViewer?.let { started.setMediaViewer(it) }
                 _state.value = EngineState.Running
                 refreshDevices()
+                refreshHealth()
             } catch (e: Exception) {
                 Log.e(TAG, "engine failed to start", e)
                 _state.value = EngineState.Failed(e.message ?: e.toString())
@@ -213,6 +217,10 @@ class EngineHost(
         engine = null
         _state.value = EngineState.Stopped
         scope.launch(Dispatchers.IO) { runCatching { current.shutdown() }; runCatching { current.close() } }
+    }
+
+    fun refreshHealth() {
+        engine?.let { _healthRecords.value = it.healthRecords() }
     }
 
     fun refreshDevices() {
@@ -240,6 +248,8 @@ class EngineHost(
         when (event) {
             is TandemEvent.DevicesChanged, is TandemEvent.Connected, is TandemEvent.Disconnected,
             is TandemEvent.CircleChanged, is TandemEvent.Paired -> refreshDevices()
+
+            is TandemEvent.HealthChanged -> refreshHealth()
 
             is TandemEvent.RemovedFromCircle -> _removed.value = true
 

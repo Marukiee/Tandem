@@ -78,6 +78,7 @@ class TandemService : LifecycleService() {
         FeatureReport.start(this, lifecycleScope)
         nl.markmaaktmedia.tandem.wifi.WifiShare.get(this).start()
         focus = FocusShare(this, host, graph.prefs, lifecycleScope).also { it.start() }
+        graph.watch.start()
 
         lifecycleScope.launch {
             host.devices.collectLatest { devices ->
@@ -136,6 +137,7 @@ class TandemService : LifecycleService() {
         listenerWatchdog.stop()
         sms.stop()
         focus.stop()
+        graph.watch.stop()
         graph.media.stop()
         graph.audio.stop(tell = true)
         multicast?.takeIf { it.isHeld }?.release()

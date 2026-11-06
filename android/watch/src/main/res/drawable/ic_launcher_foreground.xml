@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- The Mac icon, measured the same way: the visible 72dp of an adaptive icon stands for
+         the 824 point plate, so the pills keep the same size, lean (32 degrees, the top to
+         the left) and overlap. The light pill is in front. -->
+    <group android:translateY="1.6">
+        <group android:pivotX="60.82" android:pivotY="54" android:rotation="-32">
+            <path android:fillColor="#000000" android:fillAlpha="0.22" android:pathData="M53.39,40.89a7.43,7.43 0 0 1 14.85,0v26.21a7.43,7.43 0 0 1 -14.85,0z" />
+        </group>
+    </group>
+    <group android:pivotX="60.82" android:pivotY="54" android:rotation="-32">
+        <path android:pathData="M53.39,40.89a7.43,7.43 0 0 1 14.85,0v26.21a7.43,7.43 0 0 1 -14.85,0z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:startX="54" android:startY="74.53" android:endX="54" android:endY="33.47" android:type="linear">
+                <item android:offset="0" android:color="#FFB0CB" />
+                <item android:offset="1" android:color="#E8779F" />
+            </gradient>
+        </aapt:attr>
+        </path>
+    </group>
+    <group android:translateY="1.6">
+        <group android:pivotX="47.18" android:pivotY="54" android:rotation="-32">
+            <path android:fillColor="#000000" android:fillAlpha="0.22" android:pathData="M39.76,40.89a7.43,7.43 0 0 1 14.85,0v26.21a7.43,7.43 0 0 1 -14.85,0z" />
+        </group>
+    </group>
+    <group android:pivotX="47.18" android:pivotY="54" android:rotation="-32">
+        <path android:pathData="M39.76,40.89a7.43,7.43 0 0 1 14.85,0v26.21a7.43,7.43 0 0 1 -14.85,0z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:startX="54" android:startY="74.53" android:endX="54" android:endY="33.47" android:type="linear">
+                <item android:offset="0" android:color="#FFFFFF" />
+                <item android:offset="1" android:color="#C9C8FA" />
+            </gradient>
+        </aapt:attr>
+        </path>
+    </group>
+</vector>

@@ -22,3 +22,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Tandem"
 include(":app")
+include(":watch", ":watch-protocol", ":watch-sleep")

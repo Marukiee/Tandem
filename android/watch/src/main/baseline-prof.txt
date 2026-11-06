@@ -1,0 +1,6 @@
+# Compiled ahead of time on install, so the first scroll after an update is as smooth as the tenth.
+HSPLnl/markmaaktmedia/tandem/watch/ui/**->**(**)**
+HSPLnl/markmaaktmedia/tandem/watch/link/WatchLink;->**(**)**
+HSPLnl/markmaaktmedia/tandem/watch/track/Tracking;->**(**)**
+HSPLandroidx/wear/compose/foundation/lazy/**->**(**)**
+HSPLandroidx/wear/compose/material3/**->**(**)**

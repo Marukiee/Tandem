@@ -99,6 +99,7 @@ object FindPhone {
 
     private fun report(context: Context, on: Boolean) {
         val graph = context.graph
+        graph.watch.onPhoneRinging(on)
         graph.scope.launch { runCatching { graph.host.engine?.ringing(on) } }
     }
 

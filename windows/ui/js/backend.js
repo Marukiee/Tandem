@@ -100,6 +100,8 @@ export async function connect() {
 
 async function follow() {
   await listen("devices", (devices) => set({ devices, selected: pick(devices) }));
+  await listen("health", (health) => set({ health }));
+  call("health_records").then((health) => set({ health })).catch(() => {});
   await listen("open-device", (id) => set({ selected: id, page: "device" }));
   await listen("open-page", (page) => set({ page }));
   await listen("transfer", (item) => set({ transfers: upsert(state.transfers, item) }));

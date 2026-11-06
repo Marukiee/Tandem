@@ -42,6 +42,7 @@ final class EngineModel {
     static let shared = EngineModel()
 
     var devices: [TandemDevice] = []
+    var healthRecords: [TandemHealthRecord] = []
     /// A device that is paired from now on starts as a guest: clipboard and notifications off, files asked about first.
     var guestsByDefault = false
     // What was sent and received outlives the app, so an update (which restarts it) no longer
@@ -250,6 +251,7 @@ final class EngineModel {
         }
         ready = true
         refreshDevices()
+        refreshHealth()
         FeatureReport.start()
         LocalNetwork.start()
 
@@ -397,6 +399,10 @@ final class EngineModel {
 
     // MARK: Events
 
+    func refreshHealth() {
+        healthRecords = engine?.healthRecords() ?? []
+    }
+
     func refreshDevices() {
         guard let engine else { return }
         let refusing = Set(devices.filter { $0.online && !Self.takesPointer($0) }.map(\.id))
@@ -436,6 +442,8 @@ final class EngineModel {
     private func handle(_ event: TandemEvent) {
         InsertFromPhone.shared.observe(event)
         switch event {
+        case .healthChanged:
+            refreshHealth()
         case .devicesChanged, .connected, .disconnected, .circleChanged:
             refreshDevices()
             if case let .connected(id) = event {

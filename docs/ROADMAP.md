@@ -7,6 +7,18 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 
 - **Uit de securitycheck van 2026-11-05, nog te doen**: Dependabot staat uit op de repo en `cargo audit` is hier niet geinstalleerd, dus afhankelijkheden zijn niet nagelopen (keuze van Mark). Op de Mac telt een gekoppeld apparaat zonder "nooit" als mag bedienen, op Linux en Windows moet `remote_input` per apparaat aan: gelijktrekken? `Dial` belt zonder vraag voor elk gekoppeld apparaat. `networksetup` krijgt het wifi-wachtwoord als argument als `CoreWLAN` faalt.
 - **`tandemd` met een lang pad**: is de map van `--data-dir` te lang voor een Unix-socket, dan start elk commando stil een eigen engine in plaats van de draaiende te vragen. Moet een duidelijke fout worden.
+- **Garmin Forerunner 255 in Tandem** (gevraagd 2026-11-05): het horloge blijft zoals het is, zonder eigen app erop. Tandem op de telefoon
+  spreekt Garmins eigen Bluetooth-protocol (GFDI, nagebouwd, niet officieel): meldingen, bellen, muziek, en slaap, stappen en trainingen
+  als FIT-bestanden. Gadgetbridge laat zien dat het kan: het noemt de 255 en 255 Music "mostly supported", koppelen zonder Garmin-app, en
+  slaap via de widgets. Eerst met Gadgetbridge op een echt horloge kijken hoe goed het is. Gadgetbridge is voor zover bekend AGPL, dus de
+  licentie bekijken voordat er code wordt overgenomen. Muis, pinch en eigen analyse van ruwe slaapdata kunnen hiermee niet; de muis kan
+  misschien met een Connect IQ-app (Bluetooth als centrale, de 255 staat op Garmins lijst, gyrosnelheid nog niet nagekeken).
+- **Sonos op het horloge** (gevraagd 2026-11-06): kijken of de Sonos-bediening uit de PixelPlayer-mod ook op de Pixel Watch kan, via de telefoon.
+- **De hele dag hartslag bijhouden en inslapen daaraan herkennen** (gevraagd 2026-11-06): continu meten en conclusies trekken, zoals de daling als iemand gaat slapen, in plaats van steeds bedtime mode aanzetten. Bedtime mode wordt dan een aanwijzing dat iemand bijna gaat slapen. Eerst meten wat het de batterij kost.
+- **Rustig wakker worden met het horloge** (gevraagd 2026-11-06): instelbaar dat het horloge vlak voor de wekker op de telefoon zacht begint te trillen en langzaam sterker wordt, zodat je al een beetje wakker bent als de wekker afgaat. De telefoon kent de volgende wekker en geeft die door aan het horloge.
+- **Middagdutjes herkennen** (gevraagd 2026-11-06): de automatische slaapherkenning luistert nu alleen van 21:00 tot 11:00. Eventueel ook overdag, als dat geen batterij of foute meldingen kost.
+- **Sport op het horloge** (gekozen 2026-11-05): trainingen met GPS op de Pixel Watch 2, met afstand, tempo en route, en die gegevens
+  naar telefoon en computers, net als de slaapgegevens.
 - **Testen zodra de Linux-laptop aan staat: een gesprek op de laptop** (gevraagd 2026-11-04): de laptop als Bluetooth-headset van de Xperia,
   met de rol `hfp_hf` van PipeWire. Eerst kijken of dat los van Tandem echt werkt: verbinden, spraak beide kanten op tijdens een echt
   gesprek, en wat er gebeurt met een Bluetooth-headset aan de laptop. Werkt het, dan pas de knop in het belkaartje op Linux bouwen.

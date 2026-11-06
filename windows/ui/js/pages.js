@@ -842,7 +842,7 @@ function FilesHostSection({ s, patch: patchSettings }) {
 // The settings, in sections like the settings of the Mac: what belongs together is together, and a section is a page of its own.
 const SECTIONS = [
   ["general", "tab_general", "settings"], ["features", "tab_features", "circle-check"], ["clipboard", "tab_clipboard", "clipboard"], ["files", "tab_files", "files"], ["remote", "tab_remote", "device-desktop"],
-  ["mouse", "tab_mouse", "pointer"], ["quickshare", "tab_quickshare", "quickshare"], ["updates", "tab_updates", "download"], ["about", "about", "info-circle"],
+  ["mouse", "tab_mouse", "pointer"], ["quickshare", "tab_quickshare", "quickshare"], ["health", "tab_health", "moon"], ["updates", "tab_updates", "download"], ["about", "about", "info-circle"],
 ];
 
 function rememberedSection() {
@@ -866,7 +866,7 @@ export function SettingsPage() {
     <div><h1>${t("settings")}</h1></div>
     <div class="settings-body">
       <nav class="settings-nav" aria-label=${t("settings")}>
-        ${SECTIONS.map(([id, label, icon]) => html`<button key=${id} class=${section === id ? "on" : ""} onClick=${() => open(id)}>
+        ${SECTIONS.filter(([id]) => id !== "health" || (state.health || []).length > 0 || section === "health").map(([id, label, icon]) => html`<button key=${id} class=${section === id ? "on" : ""} onClick=${() => open(id)}>
           <${Icon} name=${icon} size=${17} /><span>${t(label)}</span></button>`)}
       </nav>
       <div class="settings-content" key=${section}>
@@ -877,6 +877,7 @@ export function SettingsPage() {
         ${section === "remote" && html`<${RemoteSettings} s=${s} patch=${patch} />`}
         ${section === "mouse" && html`<${MouseSection} s=${s} patch=${patch} />`}
         ${section === "quickshare" && html`<${QuickShareSection} s=${s} patch=${patch} />`}
+        ${section === "health" && html`<${HealthSection} />`}
         ${section === "updates" && html`<${UpdateSettings} s=${s} patch=${patch} />`}
         ${section === "about" && html`<${AboutSettings} />`}
       </div>
@@ -1131,6 +1132,53 @@ function RemoteSettings({ s, patch }) {
 }
 
 // Looking for a newer Tandem, and what changed in the versions that came out.
+const STAGE_COLORS = { deep: "var(--accent)", light: "color-mix(in srgb, var(--accent) 40%, transparent)", rem: "#a06ee0" };
+
+function healthDuration(minutes) {
+  return minutes >= 60 ? t("health_hm", Math.floor(minutes / 60), minutes % 60) : t("health_m", minutes);
+}
+
+function StageLegend({ stage, text }) {
+  return html`<span style="display:inline-flex;align-items:center;gap:4px">
+    <span style=${`width:8px;height:8px;border-radius:50%;background:${STAGE_COLORS[stage]}`}></span>${text}</span>`;
+}
+
+function HealthRecord({ r }) {
+  // A night that starts before midnight belongs to the morning it ends in.
+  const day = new Date(r.kind === "workout" ? r.startMs : r.endMs).toLocaleDateString(language() === "nl" ? "nl" : "en", { weekday: "short", day: "numeric", month: "short" });
+  const quiet = "font-size:12px;opacity:.7";
+  const known = r.lightMinutes != null && r.deepMinutes != null && r.remMinutes != null;
+  return html`<div style="padding:12px 16px;display:flex;flex-direction:column;gap:6px">
+    <strong>${day}</strong>
+    ${r.kind === "workout"
+      ? html`<div>${healthDuration(Math.round((r.endMs - r.startMs) / 60000))}</div>
+        ${r.heartRateMean != null && r.heartRateHigh != null && html`<div style=${quiet}>${t("health_heart_workout", r.heartRateMean, r.heartRateHigh)}</div>`}
+        ${r.steps > 0 && html`<div style=${quiet}>${t("health_steps", r.steps)}</div>`}`
+      : html`<div>${t("health_asleep", healthDuration(r.sleepMinutes), r.efficiencyPercent)}</div>
+        ${r.stages.length > 0 && html`<div style="display:flex;height:10px;border-radius:5px;overflow:hidden">
+          ${r.stages.map((run) => html`<div style=${`flex:${run.seconds};background:${STAGE_COLORS[run.stage] || "rgba(128,128,128,.25)"}`}></div>`)}
+        </div>`}
+        ${known && html`<div style=${`display:flex;gap:12px;${quiet}`}>
+          <${StageLegend} stage="light" text=${t("health_light", healthDuration(r.lightMinutes))} />
+          <${StageLegend} stage="deep" text=${t("health_deep", healthDuration(r.deepMinutes))} />
+          <${StageLegend} stage="rem" text=${t("health_rem", healthDuration(r.remMinutes))} />
+        </div>`}
+        ${r.heartRateMean != null && r.heartRateLow != null && html`<div style=${quiet}>${t("health_heart_night", r.heartRateMean, r.heartRateLow)}</div>`}`}
+  </div>`;
+}
+
+// What a phone gave this computer from its watch. Which devices get them is a switch on the phone: only that one has a watch.
+function HealthSection() {
+  const records = (state.health || []).filter((r) => r.kind !== "unknown").slice(0, 60);
+  return html`<div style="display:flex;flex-direction:column;gap:12px">
+    <h2>${t("tab_health")}</h2>
+    ${records.length === 0
+      ? html`<div class="muted">${t("health_empty")}</div>`
+      : html`<div class="card flush">${records.map((r) => html`<${HealthRecord} key=${r.id} r=${r} />`)}</div>
+        <div class="muted">${t("health_estimate")}</div>`}
+  </div>`;
+}
+
 function UpdateSettings({ s, patch }) {
   const [news, setNews] = useState([]);
   useEffect(() => { call("whats_new").then(setNews).catch(() => {}); }, []);

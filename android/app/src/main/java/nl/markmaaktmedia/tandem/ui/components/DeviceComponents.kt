@@ -190,11 +190,13 @@ fun DeviceGlyph(
     onTile: Boolean = false,
     /** With the id, the icon the person picked for this device is used. */
     deviceId: String? = null,
+    /** An icon that is settled, for what has no id and no choice: a [DeviceIconChoice] key. */
+    pickedIcon: String? = null,
     /** Makes the glyph a button. It is set here and not through [modifier] so the press lights up the circle, not the square around it. */
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
 ) {
-    val picked = rememberPickedIcon(deviceId)
+    val picked = pickedIcon ?: rememberPickedIcon(deviceId)
     val container by animateColorAsState(
         when {
             onTile && online -> MaterialTheme.colorScheme.surface

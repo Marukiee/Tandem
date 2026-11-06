@@ -155,6 +155,12 @@ pub async fn rename_self(state: State<'_, AppState>, name: String) -> Reply<()> 
     state.engine()?.rename_self(name).await.map_err(shown)
 }
 
+/// The nights and workouts on this computer, the newest first.
+#[tauri::command]
+pub fn health_records(state: State<'_, AppState>) -> Reply<Vec<serde_json::Value>> {
+    Ok(state.engine()?.health_records().iter().map(crate::model::health_record).collect())
+}
+
 #[tauri::command]
 pub fn set_device_settings(
     app: AppHandle,

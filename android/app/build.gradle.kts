@@ -105,6 +105,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":watch-protocol"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     // Only for com.google.android.material.color.utilities, the Material You scheme

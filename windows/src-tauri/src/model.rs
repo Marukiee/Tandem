@@ -64,6 +64,33 @@ fn status(s: &TandemStatus) -> Value {
     })
 }
 
+pub fn health_record(r: &tandem_core::ffi::health::TandemHealthRecord) -> Value {
+    use tandem_core::ffi::health::{TandemHealthKind as K, TandemSleepStage as S};
+    let stage = |stage: S| match stage {
+        S::Wake => "wake",
+        S::Light => "light",
+        S::Deep => "deep",
+        S::Rem => "rem",
+        S::Unknown => "unknown",
+    };
+    json!({
+        "id": r.id,
+        "kind": match r.kind { K::Sleep => "sleep", K::Workout => "workout", K::Unknown => "unknown" },
+        "startMs": r.start_ms,
+        "endMs": r.end_ms,
+        "sleepMinutes": r.sleep_minutes,
+        "efficiencyPercent": r.efficiency_percent,
+        "lightMinutes": r.light_minutes,
+        "deepMinutes": r.deep_minutes,
+        "remMinutes": r.rem_minutes,
+        "stages": r.stages.iter().map(|run| json!({ "stage": stage(run.stage), "seconds": run.seconds })).collect::<Vec<_>>(),
+        "heartRateMean": r.heart_rate_mean,
+        "heartRateLow": r.heart_rate_low,
+        "heartRateHigh": r.heart_rate_high,
+        "steps": r.steps,
+    })
+}
+
 pub fn device(d: &TandemDevice) -> Value {
     json!({
         "id": d.id,

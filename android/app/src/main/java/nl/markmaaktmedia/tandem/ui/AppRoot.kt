@@ -288,7 +288,15 @@ private fun RouteBody(route: Route, nav: Nav) {
     when (route) {
         Route.Home -> HomeTabs(nav)
         is Route.Device -> DeviceDetailScreen(route.id, onBack = { nav.pop() }, onRemote = { nav.push(Route.Remote(it)) }, onScreen = { nav.push(Route.Screen(it)) }, onDisplay = { nav.push(Route.Display(it)) }, onTerminal = { nav.push(Route.Terminal(it)) }, onPresentation = { nav.push(Route.Presentation(it)) }, onSettings = { nav.push(Route.DeviceSettings(it)) })
-        Route.Pair -> PairScreen(onBack = { nav.pop() }, onPaired = { nav.pop() })
+        Route.Pair -> PairScreen(
+            onBack = { nav.pop() },
+            onPaired = { nav.pop() },
+            // In place of this page, so that back leads home from the watch and not to the camera.
+            onPairWatch = {
+                nav.pop()
+                nav.push(Route.SettingsPage(nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId.Watch))
+            },
+        )
         is Route.Remote -> RemoteScreen(route.id, onBack = { nav.pop() })
         is Route.Presentation -> nl.markmaaktmedia.tandem.ui.screens.PresentationScreen(route.id, onBack = { nav.pop() })
         is Route.Screen -> nl.markmaaktmedia.tandem.screen.ScreenViewerScreen(route.id, onBack = { nav.pop() })
@@ -333,7 +341,7 @@ private fun HomeTabs(nav: Nav) {
             label = "tabs",
         ) { tab ->
             when (tab) {
-                0 -> DevicesScreen(onOpenDevice = { nav.push(Route.Device(it)) }, onPair = { nav.push(Route.Pair) }, bottomPadding = barSpace, listState = nav.devicesList)
+                0 -> DevicesScreen(onOpenDevice = { nav.push(Route.Device(it)) }, onPair = { nav.push(Route.Pair) }, onOpenWatch = { nav.push(Route.SettingsPage(nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId.Watch)) }, bottomPadding = barSpace, listState = nav.devicesList)
                 1 -> TransfersScreen(bottomPadding = barSpace, listState = nav.transfersList)
                 else -> SettingsScreen(bottomPadding = barSpace, onOpen = { nav.push(it) }, listState = nav.settingsList)
             }

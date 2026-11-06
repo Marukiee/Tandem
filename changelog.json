@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.2.99",
+    "date": "2026-11-06",
+    "en": {
+      "title": "Your watch",
+      "new": [
+        "A Pixel Watch joins as a device of its own",
+        "Calls, notifications and music on your wrist",
+        "Sleep and workouts, on the computers you choose"
+      ]
+    },
+    "nl": {
+      "title": "Je horloge",
+      "new": [
+        "Een Pixel Watch hoort er nu bij als eigen apparaat",
+        "Gesprekken, meldingen en muziek om je pols",
+        "Slaap en trainingen, op de computers die jij kiest"
+      ]
+    }
+  },
+{
     "version": "0.2.98",
     "date": "2026-11-05",
     "en": {

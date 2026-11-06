@@ -164,9 +164,10 @@ private fun pairFailure(error: Throwable): PairFailure {
 
 /** Pairing: scan another device's code, or show this device's own. */
 @Composable
-fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit) {
+fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, onPairWatch: () -> Unit) {
     val context = LocalContext.current
     val host = context.graph.host
+    val watchState by context.graph.watch.state.collectAsState()
     val scope = rememberCoroutineScope()
 
     var mode by remember { mutableStateOf(PairMode.Scan) }
@@ -294,6 +295,10 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit) {
                         exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
                     ) {
                         PasteRow(onSubmit = ::join)
+                    }
+                    if (!watchState.paired) {
+                        Spacer(Modifier.height(8.dp))
+                        SecondaryPillButton(stringResource(R.string.watch_pair), onPairWatch, icon = TandemIcons.Watch)
                     }
                     Spacer(Modifier.height(12.dp))
                 }

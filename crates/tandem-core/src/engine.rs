@@ -141,6 +141,7 @@ pub(crate) struct Inner {
     /// The Wi-Fi network this device is on, as the app last said (see `wifi`).
     pub wifi: Mutex<Option<crate::wifi::WifiNetwork>>,
     pub(crate) focus: Mutex<crate::focus::FocusSync>,
+    pub(crate) health: Mutex<crate::health::Health>,
 }
 
 /// Where the sound of the other device goes. Called on the connection's own task for every
@@ -189,6 +190,7 @@ impl Engine {
         let live = crate::live::Live::new(store.clone());
         let find = crate::find::Find::load(&store);
         let focus = Mutex::new(crate::focus::FocusSync::load(&store));
+        let health = Mutex::new(crate::health::Health::load(&store));
 
         let inner = Arc::new(Inner {
             my_name: RwLock::new(my_name),
@@ -230,6 +232,7 @@ impl Engine {
             find,
             wifi: Mutex::new(None),
             focus,
+            health,
         });
 
         // The peers must exist before their saved addresses can be attached to them.
@@ -646,11 +649,13 @@ impl Inner {
         self.my_name.read().unwrap().clone()
     }
 
-    /// What this device can do for the others: what the app says, and always letting them look at its files.
+    /// What this device can do for the others: what the app says, always letting them look at its files, and keeping health records.
     pub fn caps(&self) -> Vec<String> {
         let mut caps = self.cfg.caps.clone();
-        if !caps.iter().any(|c| c == "files") {
-            caps.push("files".into());
+        for always in ["files", crate::health::CAP] {
+            if !caps.iter().any(|c| c == always) {
+                caps.push(always.into());
+            }
         }
         caps
     }
@@ -768,6 +773,7 @@ impl Inner {
             HashSet::new()
         };
         self.find.forget_others(&wanted);
+        self.health_keep_only(&wanted);
         let mut peers = self.peers.lock().unwrap();
         for member in &members {
             if member.id == self.my_id || !wanted.contains(&member.id) {

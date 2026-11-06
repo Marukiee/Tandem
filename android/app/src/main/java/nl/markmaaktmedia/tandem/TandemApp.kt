@@ -28,6 +28,9 @@ class Graph(app: Application) {
     /** This phone as the next screen of a computer's shared mouse. */
     val pointerIn = nl.markmaaktmedia.tandem.live.PointerIn(app, host, prefs, scope)
     val clipHistory = nl.markmaaktmedia.tandem.data.ClipHistory(app)
+
+    /** The watch, with its own link: it has no network, so it cannot be a device in the circle. */
+    val watch = nl.markmaaktmedia.tandem.watch.WatchBridge(app, host, prefs, scope)
     val quickShare = nl.markmaaktmedia.tandem.quickshare.QuickShareHost(app, scope) { host.myName }
 
     /** This phone as the viewer of a Mac's screen. */

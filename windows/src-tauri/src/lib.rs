@@ -214,6 +214,7 @@ pub fn run() {
             commands::remove_device,
             commands::rename_self,
             commands::set_device_settings,
+            commands::health_records,
             commands::guests_by_default,
             commands::set_guests_by_default,
             commands::ring,

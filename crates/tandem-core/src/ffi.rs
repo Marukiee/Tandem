@@ -21,6 +21,7 @@ use crate::proto::{
 use crate::store::{DeviceSettings, SecretStore};
 use crate::transfer::OutgoingFile;
 
+pub mod health;
 pub mod sms;
 pub mod side_check;
 
@@ -1076,6 +1077,8 @@ impl From<crate::pointer_share::PointerShareMsg> for TandemPointerShare {
 #[derive(Clone, Debug, uniffi::Enum)]
 pub enum TandemEvent {
     DevicesChanged,
+    /// The nights and workouts on this device changed: read them again with `health_records`.
+    HealthChanged,
     Connected { id: String },
     Disconnected { id: String },
     /// A device cannot be reached on the local network and is known by a Tailscale address, while Tailscale is off here. The app may turn it on.
@@ -1174,6 +1177,7 @@ impl From<Event> for TandemEvent {
     fn from(event: Event) -> Self {
         match event {
             Event::DevicesChanged => TandemEvent::DevicesChanged,
+            Event::HealthChanged => TandemEvent::HealthChanged,
             Event::Connected { id } => TandemEvent::Connected { id: id.to_string() },
             Event::Disconnected { id } => TandemEvent::Disconnected { id: id.to_string() },
             Event::TailscaleNeeded { id } => TandemEvent::TailscaleNeeded { id: id.to_string() },

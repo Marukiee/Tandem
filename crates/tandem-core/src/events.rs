@@ -33,6 +33,8 @@ pub struct TransferDone {
 pub enum Event {
     /// Devices, their online state or their status changed. Ask for the list again.
     DevicesChanged,
+    /// The nights and workouts on this device changed (see `health`).
+    HealthChanged,
     Connected { id: DeviceId },
     Disconnected { id: DeviceId },
     /// A device cannot be reached on any address of the local network, it is known by a Tailscale address, and this device has no

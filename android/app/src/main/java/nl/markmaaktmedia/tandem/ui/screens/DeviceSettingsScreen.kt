@@ -90,6 +90,7 @@ fun DeviceSettingsScreen(id: String, onBack: () -> Unit) {
             SwitchRow(2, 3, TandemIcons.Download, stringResource(R.string.setting_auto_accept), stringResource(R.string.setting_auto_accept_sub), device.autoAccept, { set(autoAccept = it) })
         }
         nl.markmaaktmedia.tandem.messages.MessagesDeviceSection(device)
+        nl.markmaaktmedia.tandem.ui.screens.settings.HealthDeviceSection(device)
 
         // What this device may ask of this phone: its screen, its camera, and clicking and typing.
         LiveDeviceSection(device, permissions = true)

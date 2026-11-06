@@ -297,6 +297,12 @@ export async function call(command, args) {
     case "portal_forget": return null;
     case "settings_export": return "C:\\Users\\Mark\\tandem-settings.json";
     case "settings_import": return state.settings;
+    case "health_records": return empty ? [] : [
+      { id: "night", kind: "sleep", startMs: now - 9 * 3600000, endMs: now - 3600000, sleepMinutes: 441, efficiencyPercent: 92, lightMinutes: 230, deepMinutes: 90, remMinutes: 121, heartRateMean: 57, heartRateLow: 46, heartRateHigh: null, steps: 0,
+        stages: [["light", 40], ["deep", 50], ["light", 30], ["rem", 25], ["wake", 3], ["light", 60], ["deep", 40], ["rem", 40], ["light", 100], ["rem", 56]].map(([stage, m]) => ({ stage, seconds: m * 60 })) },
+      { id: "unknown", kind: "sleep", startMs: now - 33 * 3600000, endMs: now - 25 * 3600000, sleepMinutes: 390, efficiencyPercent: 88, lightMinutes: null, deepMinutes: null, remMinutes: null, heartRateMean: null, heartRateLow: null, heartRateHigh: null, steps: 0, stages: [] },
+      { id: "run", kind: "workout", startMs: now - 50 * 3600000, endMs: now - 50 * 3600000 + 47 * 60000, sleepMinutes: 0, efficiencyPercent: 0, lightMinutes: null, deepMinutes: null, remMinutes: null, heartRateMean: 138, heartRateLow: null, heartRateHigh: 171, steps: 5120, stages: [] },
+    ];
     case "whats_new": return [
       { version: "0.1.74", date: "2026-10-09", en: { title: "A steadier shared mouse", new: ["Drag screens next to each other", "Linux updates itself"] }, nl: { title: "Een stabielere gedeelde muis", new: ["Sleep schermen naast elkaar", "Linux werkt zichzelf bij"] } },
       { version: "0.1.73", date: "2026-10-09", en: { title: "Fixes", new: ["The pointer comes back at once"] }, nl: { title: "Fixes", new: ["De muis komt direct terug"] } },

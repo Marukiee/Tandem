@@ -40,3 +40,8 @@ macos/Sources/tandem_coreFFI/include/
 
 # Output of scripts/build-windows.ps1
 /dist-windows/
+
+# Build output of the watch modules.
+android/watch/build/
+android/watch-protocol/build/
+android/watch-sleep/build/

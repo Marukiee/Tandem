@@ -88,6 +88,12 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             crate::side::connected(app, id);
         }
         TandemEvent::DevicesChanged | TandemEvent::CircleChanged => refresh_devices(app),
+        TandemEvent::HealthChanged => {
+            if let Ok(engine) = app.state::<AppState>().engine() {
+                let list: Vec<Value> = engine.health_records().iter().map(model::health_record).collect();
+                let _ = app.emit("health", list);
+            }
+        }
         TandemEvent::TailscaleNeeded { id } => crate::tailscale::needed(app, &id),
         TandemEvent::Disconnected { id } => {
             crate::callcard::phone_gone(app, &id);

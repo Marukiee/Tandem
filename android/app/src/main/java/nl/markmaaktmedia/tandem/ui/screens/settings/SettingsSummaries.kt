@@ -58,6 +58,7 @@ internal fun rememberCategorySummaries(): Map<SettingsCategory, String> {
     val codes by prefs.copyCodes.collectAsState(initial = true)
     val calls by prefs.callMirror.collectAsState(initial = true)
     val focus by prefs.focusShare.collectAsState(initial = true)
+    val watchState by graph.watch.state.collectAsState()
     val sharing = onOf(listOf(screenshot, ble, mediaShare, audioOutput))
     val notifications = onOf(listOf(mirror, codes, calls, focus))
 
@@ -92,6 +93,11 @@ internal fun rememberCategorySummaries(): Map<SettingsCategory, String> {
         SettingsCategory.Notifications to summaryOnOf(notifications.first, notifications.second),
         SettingsCategory.Permissions to stringResource(R.string.settings_sum_permissions, granted.count { it }, granted.size),
         SettingsCategory.Setup to stringResource(R.string.settings_sum_permissions, granted.count { it }, granted.size),
+        SettingsCategory.Watch to when {
+            watchState.ready -> watchState.batteryLevel?.let { stringResource(R.string.watch_sum_battery, it) } ?: stringResource(R.string.watch_connected)
+            watchState.paired -> stringResource(R.string.watch_searching)
+            else -> stringResource(R.string.watch_sum_unpaired)
+        },
         SettingsCategory.Hotspot to stringResource(
             when {
                 !hotspotReady -> R.string.hotspot_row_setup

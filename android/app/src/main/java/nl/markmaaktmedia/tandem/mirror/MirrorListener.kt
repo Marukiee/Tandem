@@ -44,6 +44,7 @@ class MirrorListener : NotificationListenerService() {
         instance = this
         boundAllowed = CodeGrant.allowed(applicationContext)
         val graph = applicationContext.graph
+        graph.watch.onListener(this)
         eventJob?.cancel()
         eventJob = graph.scope.launch {
             graph.host.events.collect { event ->
@@ -58,6 +59,7 @@ class MirrorListener : NotificationListenerService() {
     override fun onListenerDisconnected() {
         _connected.value = false
         instance = null
+        applicationContext.graph.watch.onListener(null)
         eventJob?.cancel()
         super.onListenerDisconnected()
     }
@@ -70,6 +72,7 @@ class MirrorListener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val graph = applicationContext.graph
         if (sbn.packageName == packageName) return
+        graph.watch.onPosted(sbn)
         graph.scope.launch {
             if (!graph.prefs.mirrorNotifications.first()) return@launch
             if (!shouldMirror(sbn, graph)) return@launch
@@ -109,6 +112,7 @@ class MirrorListener : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         val graph = applicationContext.graph
+        graph.watch.onRemoved(sbn.key)
         if (active.remove(sbn.key) == null) return
         graph.scope.launch {
             val targets = graph.host.devices.value.map { it.id }

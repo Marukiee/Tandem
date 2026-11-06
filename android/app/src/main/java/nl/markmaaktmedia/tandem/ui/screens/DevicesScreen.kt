@@ -49,6 +49,7 @@ import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.ArrivingBattery
 import nl.markmaaktmedia.tandem.ui.components.BatteryBadge
 import nl.markmaaktmedia.tandem.ui.components.DeviceGlyph
+import nl.markmaaktmedia.tandem.ui.components.DeviceIconChoice
 import nl.markmaaktmedia.tandem.ui.components.EmptyState
 import nl.markmaaktmedia.tandem.ui.components.PresenceDot
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
@@ -58,17 +59,37 @@ import nl.markmaaktmedia.tandem.ui.components.SwipeToPin
 import nl.markmaaktmedia.tandem.ui.components.bouncyClickable
 import nl.markmaaktmedia.tandem.ui.components.platformIcon
 import nl.markmaaktmedia.tandem.ui.components.routeName
+import nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId
 import nl.markmaaktmedia.tandem.ui.theme.CardSquircle
 import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
+import nl.markmaaktmedia.tandem.watch.WatchState
 import nl.markmaaktmedia.tandem.wifi.rememberWifiOffer
 import nl.markmaaktmedia.tandem.wifi.wifiOfferItem
+import uniffi.tandem_core.TandemBattery
 import uniffi.tandem_core.TandemDevice
+import uniffi.tandem_core.TandemPlatform
+
+/** A card on the first page: a device in the circle, or the watch, which only ever talks to this phone and so is not in the circle. */
+private sealed interface HomeCard {
+    val id: String
+
+    data class Device(val device: TandemDevice) : HomeCard {
+        override val id get() = device.id
+    }
+
+    data object Watch : HomeCard {
+        override val id get() = "watch"
+    }
+}
+
+private val WatchRoute = Route.SettingsPage(SettingsPageId.Watch)
 
 @Composable
 fun DevicesScreen(
     onOpenDevice: (String) -> Unit,
     onPair: () -> Unit,
+    onOpenWatch: () -> Unit,
     bottomPadding: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
     listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
@@ -88,14 +109,30 @@ fun DevicesScreen(
         }
     }
 
-    val online = devices.count { it.online }
+    val watch = context.graph.watch
+    val watchState by watch.state.collectAsState()
+    val watchName = stringResource(R.string.settings_cat_watch)
+
+    val online = devices.count { it.online } + if (watchState.ready) 1 else 0
     val prefs = context.graph.prefs
     val pinned by prefs.pinnedDevices.collectAsState(initial = emptySet())
-    val togglePin: (TandemDevice) -> Unit = { device -> scope.launch { prefs.setPinned(device.id, device.id !in pinned) } }
-    val ordered = androidx.compose.runtime.remember(devices, pinned) {
+    val togglePin: (HomeCard) -> Unit = { card -> scope.launch { prefs.setPinned(card.id, card.id !in pinned) } }
+    val ordered = androidx.compose.runtime.remember(devices, pinned, watchState.paired, watchState.ready, watchName) {
+        val cards: List<HomeCard> = devices.map { HomeCard.Device(it) } + listOfNotNull(HomeCard.Watch.takeIf { watchState.paired })
         orderDevices(
-            devices, pinned, id = { it.id }, name = { it.name },
-            reach = { if (it.online) 0 else if (it.ble) 1 else if (it.status.asleep == true) 2 else 3 },
+            cards, pinned, id = { it.id },
+            name = { card ->
+                when (card) {
+                    is HomeCard.Device -> card.device.name
+                    HomeCard.Watch -> watchName
+                }
+            },
+            reach = { card ->
+                when (card) {
+                    is HomeCard.Device -> card.device.let { if (it.online) 0 else if (it.ble) 1 else if (it.status.asleep == true) 2 else 3 }
+                    HomeCard.Watch -> if (watchState.ready) 0 else 3
+                }
+            },
         )
     }
     // Up to three devices get a card of their own with buttons; more than that go two by two, smaller, so they fit.
@@ -114,7 +151,7 @@ fun DevicesScreen(
                     Text(
                         when {
                             state is EngineState.Failed -> stringResource(R.string.engine_failed)
-                            devices.isEmpty() -> stringResource(R.string.devices_none)
+                            ordered.isEmpty() -> stringResource(R.string.devices_none)
                             online == 0 -> stringResource(R.string.devices_none_online)
                             else -> pluralStringResource(R.plurals.devices_online, online, online)
                         },
@@ -123,7 +160,7 @@ fun DevicesScreen(
                     )
                 }
                 // With no device yet the page has its own button in the middle; after that this is the way to the next one.
-                if (devices.isNotEmpty()) SecondaryPillButton(stringResource(R.string.action_pair), onPair, icon = TandemIcons.Add)
+                if (ordered.isNotEmpty()) SecondaryPillButton(stringResource(R.string.action_pair), onPair, icon = TandemIcons.Add)
             }
         }
 
@@ -142,7 +179,7 @@ fun DevicesScreen(
             }
         }
 
-        if (devices.isEmpty() && state !is EngineState.Failed) {
+        if (ordered.isEmpty() && state !is EngineState.Failed) {
             item(key = "empty") {
                 Box(Modifier.fillMaxWidth().height(420.dp)) {
                     EmptyState(
@@ -157,60 +194,172 @@ fun DevicesScreen(
         if (compact) {
             items(ordered.chunked(2), key = { row -> row.joinToString("+") { it.id } }) { row ->
                 Row(Modifier.fillMaxWidth().animateItem(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    row.forEach { device ->
+                    row.forEach { card ->
                         SwipeToPin(
-                            item = device,
-                            key = device.id,
-                            pinned = device.id in pinned,
+                            item = card,
+                            key = card.id,
+                            pinned = card.id in pinned,
                             onToggle = togglePin,
                             shape = CardSquircle,
                             modifier = Modifier.weight(1f),
                         ) {
-                            CompactDeviceCard(
-                                device = device,
-                                pinned = device.id in pinned,
-                                modifier = Modifier.fillMaxWidth().routeBounds(routeKey(Route.Device(device.id))),
-                                onOpen = { onOpenDevice(device.id) },
-                            )
+                            when (card) {
+                                is HomeCard.Device -> CompactDeviceCard(
+                                    device = card.device,
+                                    pinned = card.id in pinned,
+                                    modifier = Modifier.fillMaxWidth().routeBounds(routeKey(Route.Device(card.id))),
+                                    onOpen = { onOpenDevice(card.id) },
+                                )
+                                HomeCard.Watch -> CompactWatchCard(
+                                    state = watchState,
+                                    pinned = card.id in pinned,
+                                    modifier = Modifier.fillMaxWidth().routeBounds(routeKey(WatchRoute)),
+                                    onOpen = onOpenWatch,
+                                )
+                            }
                         }
                     }
                     if (row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
         }
-        if (!compact) items(ordered, key = { it.id }) { device ->
-          // The swipe is keyed on the device id, so a status update does not reset a swipe that is under way.
+        if (!compact) items(ordered, key = { it.id }) { card ->
+          // The swipe is keyed on the id, so a status update does not reset a swipe that is under way.
           SwipeToPin(
-            item = device,
-            key = device.id,
-            pinned = device.id in pinned,
+            item = card,
+            key = card.id,
+            pinned = card.id in pinned,
             onToggle = togglePin,
             shape = CardSquircle,
             modifier = Modifier.animateItem(),
           ) {
-            DeviceCard(
-                device = device,
-                pinned = device.id in pinned,
-                modifier = Modifier.routeBounds(routeKey(Route.Device(device.id))),
-                onOpen = { onOpenDevice(device.id) },
-                onSendFiles = { pickerTarget = device.id; picker.launch(arrayOf("*/*")) },
-                onSendClipboard = {
-                    val clip = host.readClipboard()
-                    if (clip != null) scope.launch { host.sendClipboard(listOf(device.id), clip) }
-                },
-                onWake = {
-                    val mac = device.status.wakeMac ?: return@DeviceCard
-                    scope.launch {
-                        val sent = nl.markmaaktmedia.tandem.engine.WakeOnLan.send(context, mac)
-                        android.widget.Toast.makeText(
-                            context,
-                            context.getString(if (sent) R.string.wake_sent else R.string.wake_failed),
-                            android.widget.Toast.LENGTH_LONG,
-                        ).show()
-                    }
-                },
-            )
+            when (card) {
+                is HomeCard.Device -> {
+                    val device = card.device
+                    DeviceCard(
+                        device = device,
+                        pinned = device.id in pinned,
+                        modifier = Modifier.routeBounds(routeKey(Route.Device(device.id))),
+                        onOpen = { onOpenDevice(device.id) },
+                        onSendFiles = { pickerTarget = device.id; picker.launch(arrayOf("*/*")) },
+                        onSendClipboard = {
+                            val clip = host.readClipboard()
+                            if (clip != null) scope.launch { host.sendClipboard(listOf(device.id), clip) }
+                        },
+                        onWake = {
+                            val mac = device.status.wakeMac ?: return@DeviceCard
+                            scope.launch {
+                                val sent = nl.markmaaktmedia.tandem.engine.WakeOnLan.send(context, mac)
+                                android.widget.Toast.makeText(
+                                    context,
+                                    context.getString(if (sent) R.string.wake_sent else R.string.wake_failed),
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                            }
+                        },
+                    )
+                }
+                HomeCard.Watch -> WatchCard(
+                    state = watchState,
+                    pinned = card.id in pinned,
+                    modifier = Modifier.routeBounds(routeKey(WatchRoute)),
+                    onOpen = onOpenWatch,
+                    onRing = { watch.ringWatch(!watchState.ringing) },
+                )
+            }
           }
+        }
+    }
+}
+
+private fun WatchState.battery() = batteryLevel?.let { TandemBattery(it.toUByte(), charging, false) }
+
+/** Looks like [DeviceCard]. It has no files or clipboard to send, so its button is the one thing a watch is reached for. */
+@Composable
+private fun WatchCard(
+    state: WatchState,
+    pinned: Boolean,
+    onOpen: () -> Unit,
+    onRing: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(CardSquircle)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .bouncyClickable(onClick = onOpen)
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            DeviceGlyph(TandemPlatform.OTHER, state.ready, pickedIcon = DeviceIconChoice.Watch.key)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(stringResource(R.string.settings_cat_watch), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    PresenceDot(state.ready)
+                    Text(
+                        if (state.ready) {
+                            listOf(stringResource(R.string.status_online), stringResource(R.string.status_bluetooth)).joinToString(" · ")
+                        } else {
+                            stringResource(R.string.watch_searching)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
+            if (pinned) {
+                Icon(TandemIcons.Pin, stringResource(R.string.device_pinned), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            }
+            ArrivingBattery(state.battery()) { BatteryBadge(it, connected = state.ready) }
+        }
+
+        AnimatedVisibility(
+            visible = state.ready,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                QuickAction(TandemIcons.Ring, stringResource(if (state.ringing) R.string.watch_find_stop else R.string.watch_find), onRing)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompactWatchCard(
+    state: WatchState,
+    pinned: Boolean,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .clip(CardSquircle)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .bouncyClickable(onClick = onOpen)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DeviceGlyph(TandemPlatform.OTHER, state.ready, size = 44.dp, pickedIcon = DeviceIconChoice.Watch.key)
+            Spacer(Modifier.weight(1f))
+            if (pinned) Icon(TandemIcons.Pin, stringResource(R.string.device_pinned), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+            ArrivingBattery(state.battery()) { BatteryBadge(it, connected = state.ready) }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(stringResource(R.string.settings_cat_watch), style = MaterialTheme.typography.titleSmall, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                PresenceDot(state.ready)
+                Text(
+                    stringResource(if (state.ready) R.string.status_online else R.string.status_offline),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

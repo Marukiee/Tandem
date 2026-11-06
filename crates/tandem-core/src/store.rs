@@ -102,6 +102,9 @@ pub struct DeviceSettings {
     /// May read the text messages of this phone and send them from it (see `sms`).
     #[serde(default = "yes")]
     pub messages: bool,
+    /// Gets the nights and workouts this device took from a watch (see `health`). Off until the person says so.
+    #[serde(default)]
+    pub health: bool,
 }
 
 fn yes() -> bool {
@@ -110,14 +113,14 @@ fn yes() -> bool {
 
 impl Default for DeviceSettings {
     fn default() -> Self {
-        DeviceSettings { clipboard: true, auto_accept: true, notifications: true, messages: true }
+        DeviceSettings { clipboard: true, auto_accept: true, notifications: true, messages: true, health: false }
     }
 }
 
 impl DeviceSettings {
     /// What a guest gets: nothing of theirs comes into the clipboard, no notifications, files are asked about first, and no messages.
     pub fn guest() -> DeviceSettings {
-        DeviceSettings { clipboard: false, auto_accept: false, notifications: false, messages: false }
+        DeviceSettings { clipboard: false, auto_accept: false, notifications: false, messages: false, health: false }
     }
 }
 

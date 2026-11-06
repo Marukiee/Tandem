@@ -1376,3 +1376,15 @@
 "Pair with this device?" = "Koppelen met dit apparaat?";
 "A link asks to pair. That device will get your clipboard, notifications and files. Only go on if you started this yourself." = "Een link vraagt om te koppelen. Dat apparaat krijgt je klembord, meldingen en bestanden. Ga alleen door als je dit zelf hebt gestart.";
 "Pair" = "Koppelen";
+
+"Sleep and workouts" = "Slaap en trainingen";
+"Sleep stages are an estimate from heart rate and movement, not a sleep lab." = "Slaapfasen zijn een schatting uit hartslag en beweging, geen slaaplab.";
+"%lld h %lld m" = "%lld u %lld m";
+"%lld m" = "%lld m";
+"%lld%% of the night" = "%lld%% van de nacht";
+"Light" = "Licht";
+"Deep" = "Diep";
+"REM" = "REM";
+"Heart rate %lld on average, %lld lowest" = "Hartslag gemiddeld %lld, laagste %lld";
+"Heart rate %lld on average, %lld highest" = "Hartslag gemiddeld %lld, hoogste %lld";
+"%lld steps" = "%lld stappen";

@@ -75,6 +75,8 @@ class TandemPrefs(private val context: Context) {
         val padScroll = longPreferencesKey("pad_scroll")
         val padHold = longPreferencesKey("pad_hold_ms")
         val focusShare = booleanPreferencesKey("focus_share")
+        val watchMouse = booleanPreferencesKey("watch_mouse")
+        val watchSleepQuiet = booleanPreferencesKey("watch_sleep_quiet")
         val focusFollowOnly = booleanPreferencesKey("focus_follow_only")
         val addedTiles = stringSetPreferencesKey("added_tiles")
     }
@@ -157,6 +159,12 @@ class TandemPrefs(private val context: Context) {
 
     /** Focus the same on every device. On by default: nothing happens until a Focus is turned on somewhere. */
     val focusShare: Flow<Boolean> = data.map { it[Keys.focusShare] ?: true }
+
+    /** Off until asked for: a watch that can steer a computer is a way in to that computer. */
+    val watchMouse: Flow<Boolean> = data.map { it[Keys.watchMouse] ?: false }
+    val watchSleepQuiet: Flow<Boolean> = data.map { it[Keys.watchSleepQuiet] ?: true }
+    suspend fun setWatchMouse(value: Boolean) = set(Keys.watchMouse, value)
+    suspend fun setWatchSleepQuiet(value: Boolean) = set(Keys.watchSleepQuiet, value)
     /** Only follow the other devices, and keep the Do Not Disturb of this phone to itself. */
     val focusFollowOnly: Flow<Boolean> = data.map { it[Keys.focusFollowOnly] ?: false }
     suspend fun setFocusShare(value: Boolean) = set(Keys.focusShare, value)

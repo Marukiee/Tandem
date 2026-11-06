@@ -16,6 +16,7 @@ enum class SettingsPageId(val key: String) {
     Tiles("tiles"),
     Notifications("notifications"),
     Trackpad("trackpad"),
+    Watch("watch"),
     Updates("updates"),
     Shizuku("shizuku"),
     About("about"),
@@ -36,6 +37,7 @@ internal enum class SettingsCategory(
     Sharing(R.string.settings_cat_sharing, { TandemIcons.Devices }, Route.SettingsPage(SettingsPageId.Sharing)),
     Notifications(R.string.settings_notifications, { TandemIcons.Notifications }, Route.SettingsPage(SettingsPageId.Notifications)),
     Trackpad(R.string.settings_cat_trackpad, { TandemIcons.Mouse }, Route.SettingsPage(SettingsPageId.Trackpad)),
+    Watch(R.string.settings_cat_watch, { TandemIcons.Watch }, Route.SettingsPage(SettingsPageId.Watch)),
     Features(R.string.features_title, { TandemIcons.CheckCircle }, Route.Features),
     /** Permissions, Shizuku and file access, each a page that the page Setup opens; the three below are those pages, also for the search. */
     Setup(R.string.setup_title, { TandemIcons.Shield }, Route.Setup),
@@ -57,6 +59,8 @@ internal object FocusKeys {
     const val AppearanceAccent = "appearance.accent"
     const val AppearanceStyle = "appearance.style"
     const val Language = "look.language"
+    const val WatchMouse = "watch.mouse"
+    const val WatchQuiet = "watch.quiet"
 
     const val PhoneName = "sharing.name"
     const val PhoneId = "sharing.id"
@@ -154,6 +158,7 @@ internal object SettingsCatalog {
     private val sharing = Route.SettingsPage(SettingsPageId.Sharing)
     private val notifications = Route.SettingsPage(SettingsPageId.Notifications)
     private val trackpad = Route.SettingsPage(SettingsPageId.Trackpad)
+    private val watch = Route.SettingsPage(SettingsPageId.Watch)
     private val quickShare = Route.SettingsPage(SettingsPageId.QuickShare)
     private val tiles = Route.SettingsPage(SettingsPageId.Tiles)
     private val shizuku = Route.SettingsPage(SettingsPageId.Shizuku)
@@ -277,6 +282,17 @@ internal object SettingsCatalog {
         SettingsEntry(
             "notif_focus", R.string.focus_share, R.string.settings_kw_notif_focus, SettingsCategory.Notifications, notifications,
             { TandemIcons.Dnd }, subtitle = R.string.focus_share_sub, focus = FocusKeys.FocusShare,
+        ),
+
+        // Watch
+        SettingsEntry("watch", R.string.settings_cat_watch, R.string.settings_kw_watch, SettingsCategory.Watch, watch, { TandemIcons.Watch }),
+        SettingsEntry(
+            "watch_mouse", R.string.watch_mouse, R.string.settings_kw_watch_mouse, SettingsCategory.Watch, watch,
+            { TandemIcons.Mouse }, subtitle = R.string.watch_mouse_sub, focus = FocusKeys.WatchMouse,
+        ),
+        SettingsEntry(
+            "watch_quiet", R.string.watch_quiet, R.string.settings_kw_watch_quiet, SettingsCategory.Watch, watch,
+            { TandemIcons.Sleep }, subtitle = R.string.watch_quiet_sub, focus = FocusKeys.WatchQuiet,
         ),
 
         // Trackpad

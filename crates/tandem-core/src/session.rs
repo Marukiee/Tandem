@@ -209,6 +209,9 @@ impl Inner {
         if let Some(focus) = self.focus_catch_up(&hello.caps) {
             let _ = session.tx.send(focus).await;
         }
+        if let Some(health) = self.health_catch_up(id, &hello.caps) {
+            let _ = session.tx.send(health).await;
+        }
         self.ble_on_connected(id).await;
         self.wifi_on_connected(id).await;
         let known = self.introductions(&id);
@@ -557,6 +560,9 @@ impl Inner {
             Msg::Ringing { on } => self.emit(Event::Ringing { from: id, on }),
             Msg::Sms(msg) => self.on_sms(id, msg).await,
             Msg::Focus(change) => self.focus_received(id, change),
+            Msg::HealthHave { newest } => self.health_have(id, newest).await,
+            Msg::HealthRecords { records } => self.health_received(id, records),
+            Msg::HealthForget {} => self.health_forget(id),
             Msg::Bye { .. } | Msg::Unknown => {}
         }
     }
