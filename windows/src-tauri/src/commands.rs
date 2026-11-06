@@ -492,6 +492,9 @@ pub fn set_settings(app: AppHandle, state: State<'_, AppState>, patch: Value) ->
         if let Some(v) = patch["systemMedia"].as_bool() {
             current.system_media = v;
         }
+        if let Some(v) = patch["shareMedia"].as_bool() {
+            current.share_media = v;
+        }
         if let Some(v) = patch["autoUpdate"].as_bool() {
             current.auto_update = v;
         }

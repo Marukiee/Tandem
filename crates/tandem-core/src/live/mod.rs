@@ -606,6 +606,13 @@ impl Engine {
 // ---- Inside the engine ------------------------------------------------------------------
 
 impl Inner {
+    /// Whether `id` looks at the screen of this device right now, which the person here allowed.
+    pub(crate) fn hosts_screen_for(&self, id: &DeviceId) -> bool {
+        self.live.sessions.lock().unwrap().values().map(Entry::info).any(|s| {
+            s.peer == *id && s.role == MediaRole::Host && s.kind == MediaKind::Screen && s.state == MediaState::Active
+        })
+    }
+
     /// Queues a control message without ever waiting: these are called from threads that must not block.
     pub(crate) fn live_send(&self, peer: DeviceId, msg: Msg) {
         let Some(session) = self.session_of(&peer) else { return };

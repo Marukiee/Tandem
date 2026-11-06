@@ -300,6 +300,9 @@ final class MacMedia {
         case .seek:
             guard let positionMs else { return completion(.failed) }
             verb = "set player position to \(Double(positionMs) / 1000)"
+        case .volumeUp, .volumeDown:
+            // The volume of the Mac, not of a player: `EngineModel` handles those.
+            return completion(.failed)
         }
         // `tell application id` would launch a closed app: the check above makes sure it is open.
         let source = "tell application id \"\(player)\" to \(verb)"

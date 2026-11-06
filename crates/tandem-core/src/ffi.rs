@@ -547,6 +547,8 @@ pub enum TandemMediaAction {
     Next,
     Previous,
     Seek,
+    VolumeUp,
+    VolumeDown,
 }
 
 impl From<TandemMediaAction> for crate::proto::MediaAction {
@@ -559,6 +561,8 @@ impl From<TandemMediaAction> for crate::proto::MediaAction {
             TandemMediaAction::Next => M::Next,
             TandemMediaAction::Previous => M::Previous,
             TandemMediaAction::Seek => M::Seek,
+            TandemMediaAction::VolumeUp => M::VolumeUp,
+            TandemMediaAction::VolumeDown => M::VolumeDown,
         }
     }
 }
@@ -1351,6 +1355,8 @@ impl From<Event> for TandemEvent {
                     M::Next => Some(TandemMediaAction::Next),
                     M::Previous => Some(TandemMediaAction::Previous),
                     M::Seek => Some(TandemMediaAction::Seek),
+                    M::VolumeUp => Some(TandemMediaAction::VolumeUp),
+                    M::VolumeDown => Some(TandemMediaAction::VolumeDown),
                     M::Other => None,
                 };
                 TandemEvent::MediaCommand { from: from.to_string(), player, action, position_ms }
@@ -1360,6 +1366,12 @@ impl From<Event> for TandemEvent {
             Event::Sms { from, msg } => TandemEvent::Sms { from: from.to_string(), msg: msg.into() },
         }
     }
+}
+
+/// `Tandem notify "Render done"`: asks the Tandem that runs on this machine to say it on the wrist. `None` when it went out, otherwise why not.
+#[uniffi::export]
+pub fn tandem_notify(data_dir: String, text: String) -> Option<String> {
+    crate::nudge::ask(std::path::Path::new(&data_dir), &text).err()
 }
 
 /// The players of the other device worth showing next to this device's own: the ones that play
@@ -1884,6 +1896,16 @@ impl TandemEngine {
         self.send(vec![target], crate::proto::Msg::MediaCommand { player, action: action.into(), position_ms })
             .await
             .map(|_| ())
+    }
+
+    /// Lets commands on this machine send a nudge (see `tandem_notify`), for as long as the engine runs.
+    pub fn serve_notify(&self, data_dir: String) {
+        let engine = self.engine.clone();
+        self.runtime.spawn(async move {
+            if let Err(e) = crate::nudge::serve(engine, std::path::Path::new(&data_dir)).await {
+                tracing::warn!("cannot listen for commands on this machine: {e}");
+            }
+        });
     }
 
     pub async fn send_notification(

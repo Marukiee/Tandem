@@ -57,6 +57,14 @@ final class WifiShare: NSObject {
         return theirs.kind != .wifi
     }
 
+    /// Why handing over this Mac's Wi-Fi would not help that device now, said when the grey button is pressed. `nil` when it would.
+    func whyNotShare(with device: TandemDevice) -> String? {
+        if !device.caps.contains("wifi.join") { return String(localized: "\(device.name) cannot take over a Wi-Fi network") }
+        if worthSharing(with: device) { return nil }
+        if current == nil { return String(localized: "This Mac is not on Wi-Fi") }
+        return String(localized: "\(device.name) is already on Wi-Fi")
+    }
+
     /// Reads the network again and tells the core, which passes on only a change.
     func refresh() {
         Task { @MainActor in

@@ -316,6 +316,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         }
         TandemEvent::Wifi { from, msg } => crate::wifi::handle(app, from, msg),
         TandemEvent::Focus { on, .. } => crate::focus::follow(on),
+        TandemEvent::MediaCommand { player, action, position_ms, .. } => crate::players::command(app, player, action, position_ms),
         _ => {}
     }
 }

@@ -1065,7 +1065,6 @@
 "Files you send and receive. Click one to open it, Command or Shift-click to choose more, right click for more." = "Bestanden die je stuurt en ontvangt. Klik om te openen, Command- of Shift-klik om meer te kiezen, rechtsklik voor meer.";
 "Move 1 file to the Trash?" = "1 bestand naar de prullenmand verplaatsen?";
 "Move %lld files to the Trash?" = "%lld bestanden naar de prullenmand verplaatsen?";
-"Move to Trash" = "Naar prullenmand";
 "Move to Trash…" = "Naar prullenmand…";
 "Files you sent stay where they were." = "Bestanden die je stuurde blijven waar ze waren.";
 "1 chosen" = "1 gekozen";
@@ -1418,3 +1417,8 @@
 "Resting %lld bpm" = "Rust %lld bpm";
 "%lld workouts, %@" = "%lld trainingen, %@";
 "Nothing this week yet." = "Deze week nog niets.";
+"Computer" = "Computer";
+"%@ does not share its screen. Allow that in Tandem on that computer." = "%@ deelt zijn scherm niet. Sta dat toe in Tandem op die computer.";
+"%@ cannot make an extra screen" = "%@ kan geen extra scherm maken";
+"%@ cannot take over a Wi-Fi network" = "%@ kan geen wifinetwerk overnemen";
+"%@ is already on Wi-Fi" = "%@ zit al op wifi";

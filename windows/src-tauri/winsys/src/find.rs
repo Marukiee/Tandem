@@ -164,6 +164,13 @@ pub fn output() -> Option<(f32, bool)> {
     }
 }
 
+/// A step up or down on the volume of this computer, for the crown of a watch.
+pub fn step_output(up: bool) {
+    const STEP: f32 = 0.05;
+    let Some((level, _)) = output() else { return };
+    set_volume((level + if up { STEP } else { -STEP }).clamp(0.0, 1.0));
+}
+
 fn set_volume(level: f32) {
     #[cfg(windows)]
     win::set_volume(level);

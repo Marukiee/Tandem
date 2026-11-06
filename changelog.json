@@ -1,6 +1,6 @@
 [
   {
-    "version": "0.2.99",
+    "version": "0.2.100",
     "date": "2026-11-06",
     "en": {
       "title": "Your watch",
@@ -21,7 +21,27 @@
       ]
     }
   },
-{
+  {
+    "version": "0.2.99",
+    "date": "2026-11-06",
+    "en": {
+      "title": "Fuller device pages",
+      "new": [
+        "A computer's page always has all its buttons",
+        "What cannot be used now is grey and says why",
+        "A device hears a computer's sound only while it looks at its screen"
+      ]
+    },
+    "nl": {
+      "title": "Vollere apparaatpagina's",
+      "new": [
+        "De pagina van een computer heeft altijd al zijn knoppen",
+        "Wat nu niet kan is grijs en zegt waarom",
+        "Een apparaat hoort het geluid van een computer alleen als het naar het scherm kijkt"
+      ]
+    }
+  },
+  {
     "version": "0.2.98",
     "date": "2026-11-05",
     "en": {

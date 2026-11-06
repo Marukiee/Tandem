@@ -202,11 +202,13 @@ fn build(app: &AppHandle) -> Result<Arc<TandemEngine>, String> {
         enable_mdns: true,
         caps,
     };
-    TandemEngine::start(
+    let engine = TandemEngine::start(
         config,
         Arc::new(Vault(FileSecretStore::new(store))),
         Arc::new(Files { app: app.clone() }),
         Arc::new(Sink { app: app.clone() }),
     )
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    engine.serve_notify(data_dir.to_string_lossy().into_owned());
+    Ok(engine)
 }
