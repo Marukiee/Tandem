@@ -612,4 +612,8 @@
         <item quantity="one">%1$d training, %2$s</item>
         <item quantity="other">%1$d trainingen, %2$s</item>
     </plurals>
+    <string name="channel_nudge">Seintjes van je computers</string>
+    <string name="channel_nudge_desc">Als een programma op een computer je wil bereiken en je horloge er niet is</string>
+    <string name="setting_nudge">Seintjes van deze computer</string>
+    <string name="setting_nudge_sub">Een programma op deze computer kan je horloge laten trillen, of deze telefoon als het horloge weg is.</string>
 </resources>

@@ -221,7 +221,7 @@ class TandemService : LifecycleService() {
             is TandemEvent.CaptureRequested -> postCaptureRequest(event)
             is TandemEvent.CaptureCancelled -> getSystemService(NotificationManager::class.java).cancel(captureNotificationId(event.id.toLong()))
 
-            is TandemEvent.Notification -> Unit
+            is TandemEvent.Notification -> if (event.notification.appId == NUDGE_APP_ID) applicationContext.graph.watch.nudge(event.from, event.notification)
             is TandemEvent.Wifi -> nl.markmaaktmedia.tandem.wifi.WifiShare.get(this).onEvent(event)
             is TandemEvent.Sms -> sms.onEvent(event)
             is TandemEvent.Focus -> focus.follow(event)
@@ -484,3 +484,6 @@ class TandemService : LifecycleService() {
         }
     }
 }
+
+/** `tandem_core::nudge::APP_ID`: what a computer calls a nudge. All other notifications are shown by a computer, not by a phone. */
+private const val NUDGE_APP_ID = "tandem.nudge"

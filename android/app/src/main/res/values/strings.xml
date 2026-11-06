@@ -615,4 +615,8 @@
         <item quantity="one">%1$d workout, %2$s</item>
         <item quantity="other">%1$d workouts, %2$s</item>
     </plurals>
+    <string name="channel_nudge">Nudges from your computers</string>
+    <string name="channel_nudge_desc">When a program on a computer wants to reach you and your watch is not there</string>
+    <string name="setting_nudge">Nudges from this computer</string>
+    <string name="setting_nudge_sub">A program on this computer can buzz your watch, or this phone when the watch is away.</string>
 </resources>

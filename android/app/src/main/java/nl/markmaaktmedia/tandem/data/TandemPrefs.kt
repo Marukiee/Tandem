@@ -76,6 +76,7 @@ class TandemPrefs(private val context: Context) {
         val padHold = longPreferencesKey("pad_hold_ms")
         val focusShare = booleanPreferencesKey("focus_share")
         val healthShown = booleanPreferencesKey("health_shown")
+        val nudgeMuted = stringSetPreferencesKey("nudge_muted")
         val watchMouse = booleanPreferencesKey("watch_mouse")
         val watchSleepQuiet = booleanPreferencesKey("watch_sleep_quiet")
         val focusFollowOnly = booleanPreferencesKey("focus_follow_only")
@@ -168,6 +169,13 @@ class TandemPrefs(private val context: Context) {
     /** A paired watch shows Health by itself, so this only matters without one. */
     val healthShown: Flow<Boolean> = data.map { it[Keys.healthShown] ?: false }
     suspend fun setHealthShown(value: Boolean) = set(Keys.healthShown, value)
+
+    /** The computers that may not nudge. A list of the ones that are off, so a new computer can do it from the start. */
+    val nudgeMuted: Flow<Set<String>> = data.map { it[Keys.nudgeMuted].orEmpty() }
+    suspend fun setNudgeAllowed(device: String, allowed: Boolean) {
+        val now = nudgeMuted.first()
+        set(Keys.nudgeMuted, if (allowed) now - device else now + device)
+    }
     suspend fun setWatchMouse(value: Boolean) = set(Keys.watchMouse, value)
     suspend fun setWatchSleepQuiet(value: Boolean) = set(Keys.watchSleepQuiet, value)
     /** Only follow the other devices, and keep the Do Not Disturb of this phone to itself. */

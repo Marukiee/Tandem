@@ -91,6 +91,7 @@ fun DeviceSettingsScreen(id: String, onBack: () -> Unit) {
         }
         nl.markmaaktmedia.tandem.messages.MessagesDeviceSection(device)
         nl.markmaaktmedia.tandem.ui.screens.settings.HealthDeviceSection(device)
+        nl.markmaaktmedia.tandem.ui.screens.settings.NudgeDeviceSection(device)
 
         // What this device may ask of this phone: its screen, its camera, and clicking and typing.
         LiveDeviceSection(device, permissions = true)

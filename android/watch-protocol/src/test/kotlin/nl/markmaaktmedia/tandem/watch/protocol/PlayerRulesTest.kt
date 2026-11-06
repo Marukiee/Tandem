@@ -135,4 +135,29 @@ class PlayerRulesTest {
         val expected = PlayerRules.pressed(listOf(player("music")), "music", 0, nowMs = 100)
         assertNull(PlayerRules.keptExpected(expected, emptyList(), nowMs = 200))
     }
+
+    @Test
+    fun aComputerPlayerKnowsWhereItLives() {
+        val id = PlayerRules.computerPlayerId("abc", "spotify:main")
+        assertEquals("abc" to "spotify:main", PlayerRules.computerPlayer(id))
+        assertNull(PlayerRules.computerPlayer("com.spotify.music"))
+    }
+
+    @Test
+    fun whatPlaysOnAComputerGoesBeforeAPausedPhone() {
+        val phone = player("phone")
+        val computer = player("mac", playing = true)
+        assertEquals(listOf("mac", "phone"), PlayerRules.withComputers(listOf(phone), listOf(computer)).map { it.id })
+    }
+
+    @Test
+    fun whenNothingPlaysThePhoneGoesFirst() {
+        assertEquals(listOf("phone", "mac"), PlayerRules.withComputers(listOf(player("phone")), listOf(player("mac"))).map { it.id })
+    }
+
+    @Test
+    fun computersDoNotPushThePlayersOffTheList() {
+        val many = (1..5).map { player("c$it") }
+        assertEquals(PlayerRules.MAX_PLAYERS, PlayerRules.withComputers(listOf(player("phone")), many).size)
+    }
 }

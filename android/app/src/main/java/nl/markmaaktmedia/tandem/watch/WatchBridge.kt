@@ -1,6 +1,7 @@
 package nl.markmaaktmedia.tandem.watch
 
 import android.annotation.SuppressLint
+import android.app.NotificationManager
 import android.bluetooth.BluetoothAdapter
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -11,40 +12,52 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
+import android.os.SystemClock
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.data.TandemPrefs
+import nl.markmaaktmedia.tandem.engine.Channels
 import nl.markmaaktmedia.tandem.engine.EngineHost
 import nl.markmaaktmedia.tandem.engine.FindPhone
 import nl.markmaaktmedia.tandem.engine.Permissions
+import nl.markmaaktmedia.tandem.media.RemotePlayers
 import nl.markmaaktmedia.tandem.ui.remote.RemoteLink
 import nl.markmaaktmedia.tandem.watch.protocol.CallMsg
 import nl.markmaaktmedia.tandem.watch.protocol.DeviceBattery
 import nl.markmaaktmedia.tandem.watch.protocol.LinkEngine
 import nl.markmaaktmedia.tandem.watch.protocol.LinkFailure
 import nl.markmaaktmedia.tandem.watch.protocol.LinkListener
+import nl.markmaaktmedia.tandem.watch.protocol.MediaCommandKind
 import nl.markmaaktmedia.tandem.watch.protocol.MediaPlayer
 import nl.markmaaktmedia.tandem.watch.protocol.Message
-import nl.markmaaktmedia.tandem.watch.protocol.StageRun
-import uniffi.tandem_core.TandemHealthKind
-import uniffi.tandem_core.TandemHealthRecord
-import uniffi.tandem_core.TandemSleepStage
-import uniffi.tandem_core.TandemStageRun
 import nl.markmaaktmedia.tandem.watch.protocol.NotificationMsg
 import nl.markmaaktmedia.tandem.watch.protocol.NotificationRules
 import nl.markmaaktmedia.tandem.watch.protocol.OutboundQueue
+import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
 import nl.markmaaktmedia.tandem.watch.protocol.PointerTarget
 import nl.markmaaktmedia.tandem.watch.protocol.Role
+import nl.markmaaktmedia.tandem.watch.protocol.StageRun
+import uniffi.tandem_core.TandemHealthKind
+import uniffi.tandem_core.TandemHealthRecord
+import uniffi.tandem_core.TandemMediaAction
+import uniffi.tandem_core.TandemMediaPlayer
+import uniffi.tandem_core.TandemNotification
 import uniffi.tandem_core.TandemPlatform
+import uniffi.tandem_core.TandemSleepStage
+import uniffi.tandem_core.TandemStageRun
 
 data class WatchState(
     val paired: Boolean = false,
@@ -69,6 +82,7 @@ class WatchBridge(
     private val host: EngineHost,
     private val prefs: TandemPrefs,
     private val scope: CoroutineScope,
+    private val remotePlayers: StateFlow<Map<String, RemotePlayers>>,
 ) : LinkListener, PhoneBleServer.Events {
     val supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
@@ -85,7 +99,8 @@ class WatchBridge(
     private var server: PhoneBleServer? = null
     private var notifications: WatchNotifications? = null
     private val calls = WatchCalls(context, handler) { update -> enqueue(Message.Call(update)) }
-    private val media = WatchMedia(context, handler, { mediaExcluded }, { cover -> enqueue(cover) }) { update -> enqueue(Message.MediaPlayers(update)) }
+    private val media = WatchMedia(context, handler, { mediaExcluded }, { cover -> enqueue(cover) }) { publishPlayers() }
+    private var computerPlayers: List<MediaPlayer> = emptyList()
     private val quiet = WatchSleepQuiet(context, handler)
     private var running = false
     private var active = false
@@ -161,6 +176,19 @@ class WatchBridge(
                     mouseOn = on
                     if (!on) endPointer()
                     publishTargets()
+                }
+            }
+        }
+        jobs += scope.launch {
+            combine(remotePlayers, host.devices) { remote, devices ->
+                remote.flatMap { (device, entry) ->
+                    val name = devices.firstOrNull { it.id == device }?.name ?: return@flatMap emptyList()
+                    entry.players.map { player -> player.forWatch(device, name, entry.at) }
+                }
+            }.collect { players ->
+                handler.post {
+                    computerPlayers = players
+                    publishPlayers()
                 }
             }
         }
@@ -328,10 +356,58 @@ class WatchBridge(
         enqueue(Message.Call(calls.state))
         sendNotificationSync()
         media.covers.forEach(::enqueue)
-        enqueue(Message.MediaPlayers(media.players))
+        publishPlayers()
         publishTargets()
         publishBatteries()
         enqueue(Message.Ringing(phoneRinging))
+    }
+
+    private fun publishPlayers() {
+        enqueue(Message.MediaPlayers(PlayerRules.withComputers(media.players, computerPlayers)))
+    }
+
+    private fun sendToComputer(device: String, player: String, kind: MediaCommandKind) {
+        val action = when (kind) {
+            MediaCommandKind.PLAY_PAUSE -> TandemMediaAction.TOGGLE
+            MediaCommandKind.NEXT -> TandemMediaAction.NEXT
+            MediaCommandKind.PREVIOUS -> TandemMediaAction.PREVIOUS
+            MediaCommandKind.VOLUME_UP -> TandemMediaAction.VOLUME_UP
+            MediaCommandKind.VOLUME_DOWN -> TandemMediaAction.VOLUME_DOWN
+        }
+        scope.launch(Dispatchers.IO) { runCatching { host.engine?.sendMediaCommand(device, player, action, null) } }
+    }
+
+    /**
+     * A program on a computer says something short. It goes to the wrist when the watch is there and otherwise stays on this phone,
+     * so it is never lost because a watch is charging.
+     */
+    fun nudge(from: String, notification: TandemNotification) {
+        scope.launch {
+            if (from in prefs.nudgeMuted.first()) return@launch
+            handler.post {
+                if (engine?.isReady == true) {
+                    enqueue(
+                        Message.Notification(
+                            NotificationMsg(
+                                key = notification.key, appId = notification.appId, appName = notification.appName, title = notification.title,
+                                text = notification.text, subText = null, ts = notification.ts.toLong(), ongoing = false, silent = false,
+                                buttons = emptyList(), otp = null, progress = null,
+                            ),
+                        ),
+                    )
+                } else if (Channels.canPost(context)) {
+                    context.getSystemService(NotificationManager::class.java).notify(
+                        notification.key, NUDGE_NOTIFICATION,
+                        NotificationCompat.Builder(context, Channels.NUDGE)
+                            .setSmallIcon(R.drawable.ic_stat_tandem)
+                            .setContentTitle(notification.title)
+                            .setContentText(notification.text)
+                            .setAutoCancel(true)
+                            .build(),
+                    )
+                }
+            }
+        }
     }
 
     private fun publishTargets() {
@@ -416,7 +492,10 @@ class WatchBridge(
             }
             is Message.NotificationAction -> notifications?.perform(message.key, message.button, message.reply, message.dismiss)
             is Message.CallAction -> calls.perform(message.kind)
-            is Message.MediaCommand -> media.perform(message.playerId, message.kind)
+            is Message.MediaCommand -> {
+                val computer = PlayerRules.computerPlayer(message.playerId)
+                if (computer != null) sendToComputer(computer.first, computer.second, message.kind) else media.perform(message.playerId, message.kind)
+            }
             is Message.PointerSession -> startPointer(message.targetId)
             is Message.PointerMove -> pointer?.pointer(message.dx, message.dy)
             is Message.PointerScroll -> pointer?.scroll(message.dx, message.dy)
@@ -502,6 +581,23 @@ class WatchBridge(
         const val AUTH_WINDOW_MS = 30_000L
         const val UNPAIR_FLUSH_MS = 500L
     }
+}
+
+private const val NUDGE_NOTIFICATION = 7301
+
+/** The watch counts the position on by itself from here, so it has to be where the player is now and not where it was when it said so. */
+private fun TandemMediaPlayer.forWatch(device: String, deviceName: String, at: Long): MediaPlayer {
+    val position = positionMs?.toLong() ?: 0L
+    return MediaPlayer(
+        id = PlayerRules.computerPlayerId(device, id),
+        app = deviceName,
+        title = title,
+        artist = artist,
+        album = album,
+        playing = playing,
+        positionMs = position + if (playing) SystemClock.elapsedRealtime() - at else 0L,
+        durationMs = durationMs?.toLong() ?: 0L,
+    )
 }
 
 private fun Message.HealthRecord.toTandem() = TandemHealthRecord(

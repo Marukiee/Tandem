@@ -18,6 +18,23 @@ data class ExpectedPlay(val playerId: String, val playing: Boolean, val position
 object PlayerRules {
     const val MAX_PLAYERS = 3
 
+    private const val COMPUTER = "computer:"
+
+    /** A player on a computer has an id that says where it is, so a press knows where to go. The watch itself sees no difference. */
+    fun computerPlayerId(device: String, player: String): String = "$COMPUTER$device:$player"
+
+    /** The device and the player of an id made by [computerPlayerId], or null for a player on the phone. */
+    fun computerPlayer(id: String): Pair<String, String>? {
+        if (!id.startsWith(COMPUTER)) return null
+        val rest = id.removePrefix(COMPUTER)
+        val split = rest.indexOf(':')
+        return if (split <= 0) null else rest.take(split) to rest.drop(split + 1)
+    }
+
+    /** What plays comes first wherever it plays. Among the rest the phone goes first: that is the one on the wrist of its owner. */
+    fun withComputers(phone: List<MediaPlayer>, computers: List<MediaPlayer>): List<MediaPlayer> =
+        (phone + computers).sortedByDescending { it.playing }.take(MAX_PLAYERS)
+
     /** Long enough for an app that answers slowly, short enough that a press that got lost does not keep showing the wrong thing. */
     const val EXPECT_MS = 4_000L
 

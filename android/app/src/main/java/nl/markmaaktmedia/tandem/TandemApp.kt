@@ -30,7 +30,7 @@ class Graph(app: Application) {
     val clipHistory = nl.markmaaktmedia.tandem.data.ClipHistory(app)
 
     /** The watch, with its own link: it has no network, so it cannot be a device in the circle. */
-    val watch = nl.markmaaktmedia.tandem.watch.WatchBridge(app, host, prefs, scope)
+    val watch = nl.markmaaktmedia.tandem.watch.WatchBridge(app, host, prefs, scope, media.remote)
     val quickShare = nl.markmaaktmedia.tandem.quickshare.QuickShareHost(app, scope) { host.myName }
 
     /** This phone as the viewer of a Mac's screen. */
