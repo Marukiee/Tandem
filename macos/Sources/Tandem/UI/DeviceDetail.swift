@@ -236,6 +236,8 @@ struct DeviceDetail: View {
         }
         .animation(.tandemFade, value: device.online)
         .animation(.tandemFade, value: device.ble)
+        .animation(.tandemFade, value: device.caps)
+        .animation(.tandemFade, value: device.status.lock)
         // A button that turns on gets other words and so another width: the pills next to it move over smoothly, not in a jump.
         .animation(.tandem, value: liveState)
         .task(id: "\(device.id)-\(device.online)") {
@@ -254,11 +256,13 @@ struct DeviceDetail: View {
         ActionGroup(title: "Share") {
             GlassActionButton(title: "Send files", symbol: "paperplane.fill", prominent: true) { pickFiles() }
                 .disabled(!device.online)
+                .help("Send files to \(device.name)")
             // Small enough for Bluetooth, so it works with no network as long as a link is up.
             GlassActionButton(title: "Send clipboard", symbol: "doc.on.clipboard") {
                 model.sendClipboard(to: [device.id])
             }
             .disabled(!(device.online || device.ble))
+            .help("Send clipboard to \(device.name)")
             WifiShareButton(device: device)
             // A computer offers Downloads, Documents and Desktop as well now, so every device with files can be browsed.
             let browsable = device.caps.contains("files")
@@ -267,6 +271,7 @@ struct DeviceDetail: View {
             }
             .opacity(device.online && !browsable ? 0.5 : 1)
             .disabled(!device.online)
+            .help("Browse files on \(device.name)")
         }
         if isComputer || device.platform == .android {
             ActionGroup(title: "Screen") {

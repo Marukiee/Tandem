@@ -460,7 +460,15 @@ impl Inner {
                 }
             }
             Msg::OpenSettings { page } => self.emit(Event::OpenSettings { from: id, page }),
-            Msg::SoundRequest { on } => self.emit(Event::SoundRequested { from: id, on }),
+            // The sound of this device is for one that looks at its screen, which the person allowed. Without that, any device of the
+            // circle could listen along without anyone being asked. Stopping is always fine.
+            Msg::SoundRequest { on } => {
+                if !on || self.hosts_screen_for(&id) {
+                    self.emit(Event::SoundRequested { from: id, on });
+                } else {
+                    warn!("{id} asked for the sound of this device without looking at its screen");
+                }
+            }
             Msg::MicRequest { on } => self.emit(Event::MicRequested { from: id, on }),
             Msg::BtSpeaker { on, name } => self.emit(Event::BtSpeakerRequested { from: id, on, name }),
             Msg::BtSpeakerState { on, error } => self.emit(Event::BtSpeakerState { from: id, on, error }),

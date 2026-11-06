@@ -297,10 +297,10 @@ export function DevicePage({ device }) {
     <${Offers} device=${device} />
 
     <div class="actions">
-        <button class="btn" disabled=${!device.online} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
+        <button class="btn" disabled=${!device.online} title=${t("clipboard_tip", device.name)} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
         <button class=${"btn" + (wifiWhy ? " grey" : "")} disabled=${!device.online && !device.ble} title=${t("wifi_share_tip", device.name)} onClick=${() => (wifiWhy ? say(wifiWhy) : call("wifi_share", { id: device.id }).then(say).catch(failed))}>
           <${Icon} name="wifi" size=${17} />${t("wifi_share")}</button>
-        <button class=${"btn" + (hasCap("files") || !device.online ? "" : " grey")} disabled=${!device.online} onClick=${() => (hasCap("files") ? set({ page: "files", selected: device.id }) : say(t("update_on", device.name)))}>
+        <button class=${"btn" + (hasCap("files") || !device.online ? "" : " grey")} disabled=${!device.online} title=${t("browse_tip", device.name)} onClick=${() => (hasCap("files") ? set({ page: "files", selected: device.id }) : say(t("update_on", device.name)))}>
           <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>
         ${(isComputer || device.platform === "android") && html`${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${() => (hasCap("screen.host") ? show("screen") : say(t("live_update_phone")))}>
           <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}

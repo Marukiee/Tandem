@@ -14,6 +14,7 @@ struct WifiShareButton: View {
             if let why { model.showToast(why) } else { WifiShare.shared.share(with: device) }
         }
             .opacity(reachable && why != nil ? 0.5 : 1)
+            .animation(.tandemFade, value: why)
             .disabled(!reachable)
             .help("Send the name and password of this Mac's Wi-Fi to \(device.name)")
     }
