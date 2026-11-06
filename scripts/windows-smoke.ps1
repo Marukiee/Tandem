@@ -210,7 +210,8 @@ function App([string]$command, $arguments = @{}) {
     $page = FindPage $mainPage
     if (-not $page) { throw "the main window has no web view to ask" }
     $json = $arguments | ConvertTo-Json -Compress -Depth 6
-    return Evaluate $page "window.__TAURI__.core.invoke('$command', $json)"
+    # A web view that has only just started answers before its page has the bridge to the app.
+    return Evaluate $page "new Promise((ready) => { const look = () => (window.__TAURI__ ? ready() : setTimeout(look, 100)); look(); }).then(() => window.__TAURI__.core.invoke('$command', $json))"
 }
 
 # Whether the app really answers: a frozen one still counts as responding to Windows.
