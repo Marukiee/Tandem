@@ -229,7 +229,15 @@ fn watch() {
         .name("tandem-share-ping".into())
         .spawn(|| loop {
             std::thread::sleep(Duration::from_millis(pointer_share::PING_EVERY_MS));
-            let Some((device, _)) = INNER.lock().unwrap().remote.clone() else { continue };
+            let (remote, entered) = {
+                let inner = INNER.lock().unwrap();
+                (inner.remote.clone(), inner.entered)
+            };
+            let Some((device, _)) = remote else { continue };
+            // Not right behind the crossing: a computer that has not taken the pointer in yet would answer that it does not have it.
+            if entered.is_some_and(|at| at.elapsed() < Duration::from_millis(pointer_share::PING_EVERY_MS)) {
+                continue;
+            }
             let quiet = PONGED.load(std::sync::atomic::Ordering::Relaxed)
                 && HEARD.lock().unwrap().map_or(true, |t| t.elapsed() > Duration::from_millis(pointer_share::PING_PATIENCE_MS));
             if quiet {

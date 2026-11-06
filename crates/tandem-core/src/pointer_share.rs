@@ -44,6 +44,8 @@ pub enum PointerShareMsg {
     Release,
     /// Sent every half second by the computer that has the pointer, for as long as it has it. The other one answers with
     /// [`PointerShareMsg::Pong`]. A link that stops answering (a lid that was closed, a network that went) gives the pointer back at once.
+    /// One that does not know it has the pointer answers with [`PointerShareMsg::Leave`]: the two went apart, and the pointer is gone on
+    /// both screens until the sender is told.
     Ping,
     Pong,
     /// How big the screen is that took the pointer in, in the units it moves the pointer in. Sent right after `Enter`, so the main
