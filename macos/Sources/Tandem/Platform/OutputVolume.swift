@@ -53,6 +53,20 @@ final class OutputVolume: @unchecked Sendable {
         read()
     }
 
+    /// A step up or down on the volume of this Mac, as big as a press on the volume key.
+    static func step(up: Bool) {
+        var id = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioObjectID>.size)
+        var address = Self.address(kAudioHardwarePropertyDefaultOutputDevice, kAudioObjectPropertyScopeGlobal)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &id) == noErr else { return }
+        var volume: Float32 = 0
+        size = UInt32(MemoryLayout<Float32>.size)
+        address = Self.address(kAudioHardwareServiceDeviceProperty_VirtualMainVolume, kAudioDevicePropertyScopeOutput)
+        guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, &volume) == noErr else { return }
+        volume = min(max(volume + (up ? 1 : -1) / 16, 0), 1)
+        _ = AudioObjectSetPropertyData(id, &address, 0, nil, size, &volume)
+    }
+
     private func read() {
         lock.lock()
         let id = device

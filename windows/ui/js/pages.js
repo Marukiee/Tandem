@@ -1005,6 +1005,7 @@ function GeneralSettings({ s, patch }) {
     <h2>${t("sound_media")}</h2>
     <div class="card flush">
       <${SettingRow} icon="music" title=${t("system_media")} sub=${t("system_media_sub")} on=${s.systemMedia} onChange=${(v) => patch({ systemMedia: v })} />
+      <${SettingRow} icon="music" title=${t("share_media")} sub=${t("share_media_sub")} on=${s.shareMedia} onChange=${(v) => patch({ shareMedia: v })} />
       <${SettingRow} icon="volume" title=${t("phone_sound")} sub=${t("phone_sound_sub")} on=${s.phoneSound} onChange=${(v) => patch({ phoneSound: v })} />
       <${SettingRow} icon="hourglass" title=${t("sound_delay")} sub=${t("sound_delay_sub")} disabled=${!s.phoneSound}>
         <select value=${s.soundDelay || "normal"} disabled=${!s.phoneSound} onChange=${(e) => patch({ soundDelay: e.target.value })}>

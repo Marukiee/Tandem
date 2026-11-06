@@ -565,6 +565,9 @@ pub enum MediaAction {
     Next,
     Previous,
     Seek,
+    /// The volume of the device, whichever player is meant. An older device reads this as `Other` and does nothing.
+    VolumeUp,
+    VolumeDown,
     #[serde(other)]
     Other,
 }

@@ -1,8 +1,26 @@
 import AppKit
 import CoreSpotlight
 import SwiftUI
+import TandemCore
 
+/// `Tandem notify "Render done"` from a script: asks the Tandem that already runs, and ends with its answer so the script can hear it.
+/// Anything else is an ordinary start of the app.
 @main
+enum Launch {
+    @MainActor static func main() {
+        let arguments = CommandLine.arguments
+        if arguments.count > 1, arguments[1] == "notify" {
+            let text = arguments.dropFirst(2).joined(separator: " ")
+            if let problem = tandemNotify(dataDir: AppIdentity.dataDirectory().path, text: text) {
+                FileHandle.standardError.write(Data((problem + "\n").utf8))
+                exit(1)
+            }
+            exit(0)
+        }
+        TandemApp.main()
+    }
+}
+
 struct TandemApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @LocalState private var model = EngineModel.shared

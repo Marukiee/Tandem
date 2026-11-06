@@ -46,6 +46,7 @@ mod insert;
 mod live;
 mod logfile;
 mod media;
+mod players;
 mod messages;
 mod model;
 mod names;
@@ -71,6 +72,35 @@ mod video;
 mod virtual_audio;
 
 use tauri::{Manager, RunEvent, WindowEvent};
+
+/// `Tandem notify "Render done"`: a command for scripts, which asks the Tandem that already runs and ends with its answer. It does not go
+/// through the single-instance plugin, because a script has to hear whether it worked. `None` when this start is an ordinary one.
+pub fn command() -> Option<i32> {
+    let mut args = std::env::args().skip(1);
+    if args.next().as_deref() != Some("notify") {
+        return None;
+    }
+    let text = args.collect::<Vec<_>>().join(" ");
+    // Where Tauri puts `app_data_dir`. There is no app yet to ask.
+    #[cfg(windows)]
+    let base = std::env::var_os("APPDATA").map(std::path::PathBuf::from);
+    #[cfg(not(windows))]
+    let base = std::env::var_os("XDG_DATA_HOME")
+        .filter(|d| !d.is_empty())
+        .map(std::path::PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| std::path::Path::new(&h).join(".local/share")));
+    let answer = match base {
+        Some(base) => tandem_core::nudge::ask(&base.join("nl.markmaaktmedia.tandem"), &text),
+        None => Err("no folder for the data of this user".to_string()),
+    };
+    Some(match answer {
+        Ok(()) => 0,
+        Err(why) => {
+            eprintln!("{why}");
+            1
+        }
+    })
+}
 
 pub fn run() {
     tauri::Builder::default()
@@ -109,6 +139,7 @@ pub fn run() {
             }
             tray::build(&handle)?;
             media::start(&handle);
+            players::start(&handle);
             power::start(handle.clone());
             find::start_whereabouts(&handle);
             lid::start(handle.clone());

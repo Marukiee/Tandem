@@ -95,6 +95,8 @@ enum Command {
     Lock { device: String },
     /// Ask a phone to switch how it sounds: sound, vibrate, silent or dnd.
     SoundMode { device: String, mode: String },
+    /// Say something short on the wrist of whoever has the phone: `tandemd notify "Render done"`.
+    Notify { text: Vec<String> },
     /// Remove a device from the circle for good.
     Remove { device: String },
     /// Print this device's id and name.
@@ -363,6 +365,10 @@ async fn execute(engine: &Engine, command: &Command) -> Result<String> {
             }
             Ok("sent\n".to_string())
         }
+        Command::Notify { text } => {
+            let reached = engine.nudge(&text.join(" ")).await.map_err(|e| anyhow::anyhow!("{e}"))?;
+            Ok(format!("sent to {reached} phone(s)\n"))
+        }
         Command::SoundMode { device, mode } => {
             use tandem_core::proto::SoundMode as M;
             let id = resolve(engine, device)?;
@@ -574,6 +580,7 @@ fn command_line(command: &Command) -> Option<String> {
         Command::WifiAsk { device, ssid } => vec!["wifi-ask".into(), device.clone(), ssid.clone()],
         Command::CallAct { device, id, action } => vec!["call-act".into(), device.clone(), id.clone(), action.clone()],
         Command::Lock { device } => vec!["lock".into(), device.clone()],
+        Command::Notify { text } => vec!["notify".into(), text.join(" ")],
         Command::SoundMode { device, mode } => vec!["sound-mode".into(), device.clone(), mode.clone()],
         Command::Remove { device } => vec!["remove".into(), device.clone()],
         Command::PairShow => vec!["pair-show".into()],
@@ -625,6 +632,7 @@ fn parse_line(line: &str) -> Option<Command> {
     let rest: Vec<String> = parts.map(str::to_string).collect();
     match name {
         "whoami" => Some(Command::Whoami),
+        "notify" => Some(Command::Notify { text: rest }),
         "devices" => Some(Command::Devices),
         "pair-show" => Some(Command::PairShow),
         "pair" if !rest.is_empty() => Some(Command::Pair { uri: rest.join(" ") }),

@@ -13,16 +13,16 @@ pub fn play(names: &[String]) {
 }
 
 #[cfg(target_os = "linux")]
-mod imp {
+pub(crate) mod imp {
     use zbus::blocking::{Connection, Proxy};
 
-    const PREFIX: &str = "org.mpris.MediaPlayer2.";
+    pub(crate) const PREFIX: &str = "org.mpris.MediaPlayer2.";
     /// Tandem's own player, which shows what the phone plays: the phone pauses that by itself in a call.
-    const OWN: &str = "org.mpris.MediaPlayer2.tandem";
-    const PATH: &str = "/org/mpris/MediaPlayer2";
-    const PLAYER: &str = "org.mpris.MediaPlayer2.Player";
+    pub(crate) const OWN: &str = "org.mpris.MediaPlayer2.tandem";
+    pub(crate) const PATH: &str = "/org/mpris/MediaPlayer2";
+    pub(crate) const PLAYER: &str = "org.mpris.MediaPlayer2.Player";
 
-    fn players(bus: &Connection) -> Vec<String> {
+    pub(crate) fn players(bus: &Connection) -> Vec<String> {
         let Ok(dbus) = Proxy::new(bus, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus") else { return Vec::new() };
         let names: Vec<String> = dbus.call("ListNames", &()).unwrap_or_default();
         names.into_iter().filter(|n| n.starts_with(PREFIX) && n != OWN).collect()
@@ -58,12 +58,12 @@ mod imp {
 }
 
 #[cfg(windows)]
-mod imp {
+pub(crate) mod imp {
     use windows::Media::Control::{
         GlobalSystemMediaTransportControlsSessionManager as Manager, GlobalSystemMediaTransportControlsSessionPlaybackStatus as Status,
     };
 
-    fn sessions() -> Vec<windows::Media::Control::GlobalSystemMediaTransportControlsSession> {
+    pub(crate) fn sessions() -> Vec<windows::Media::Control::GlobalSystemMediaTransportControlsSession> {
         let Ok(manager) = Manager::RequestAsync().and_then(|op| op.join()) else { return Vec::new() };
         manager.GetSessions().map(|list| list.into_iter().collect()).unwrap_or_default()
     }

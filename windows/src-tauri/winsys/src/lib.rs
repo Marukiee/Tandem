@@ -85,6 +85,7 @@ pub mod btspeaker;
 pub mod wifi;
 pub mod focus;
 pub mod pausemedia;
+pub mod players;
 #[cfg(windows)]
 mod imp;
 /// Windows: a drag of files of the system, started under the pointer for files that came over with a drag.

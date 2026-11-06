@@ -335,6 +335,8 @@ class MediaMirror(
                     TandemMediaAction.NEXT -> controls.skipToNext()
                     TandemMediaAction.PREVIOUS -> controls.skipToPrevious()
                     TandemMediaAction.SEEK -> event.positionMs?.let { controls.seekTo(it.toLong()) }
+                    // Only a computer does something with these: nothing on a phone sends them to a phone.
+                    TandemMediaAction.VOLUME_UP, TandemMediaAction.VOLUME_DOWN -> Unit
                 }
             }.onFailure { Log.w(TAG, "could not $action ${event.player}", it) }
         }

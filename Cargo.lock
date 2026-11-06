@@ -2436,7 +2436,6 @@ dependencies = [
  "anyhow",
  "clap",
  "dirs",
- "getrandom 0.4.3",
  "hostname",
  "qrcode",
  "tandem-core",

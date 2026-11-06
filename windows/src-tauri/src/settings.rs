@@ -47,6 +47,8 @@ pub struct Settings {
     /// What the phone plays shows in the media controls of Windows (by the volume, on the lock screen), and the media
     /// keys of the keyboard control it.
     pub system_media: bool,
+    /// What plays on this computer shows on the phones, and they can press its buttons and turn its volume.
+    pub share_media: bool,
     /// Play the sound of a phone here when it sends it.
     pub phone_sound: bool,
     /// A laptop with its lid closed keeps being used from other computers. Off: a pointer that was sent here goes back the moment
@@ -133,6 +135,7 @@ impl Default for Settings {
             layout: Vec::new(),
             quick_share: false,
             system_media: true,
+            share_media: true,
             phone_sound: true,
             keep_when_lid_closed: false,
             keep_awake: false,

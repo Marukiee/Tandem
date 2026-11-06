@@ -241,6 +241,7 @@ final class EngineModel {
 
     private func engineStarted(_ engine: TandemEngine) {
         self.engine = engine
+        engine.serveNotify(dataDir: Self.supportDirectory().path)
         Self.offerUsualFolders(engine)
         myId = engine.id()
         myName = engine.name()
@@ -609,6 +610,10 @@ final class EngineModel {
 
         case let .mediaCommand(_, player, action, position):
             guard mediaShare, let action else { return }
+            if action == .volumeUp || action == .volumeDown {
+                OutputVolume.step(up: action == .volumeUp)
+                return
+            }
             macMedia.perform(action, player: player, positionMs: position) { [weak self] outcome in
                 if outcome == .notAllowed {
                     self?.showToast(String(localized: "Allow Tandem to control Spotify and Music in System Settings, under Privacy and Security, Automation"))
