@@ -5,6 +5,7 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 
 ## Nieuwe functies (gekozen door Mark, 2026-10-29), nog te bouwen, op alle apparaten
 
+- **Knoppenblok op de apparaatpagina is niet mooi** (gemeld 2026-11-06, op de Mac bij een Windows-apparaat): de drie kolommen Share, Screen en Sound hebben 4, 5 en 2 knoppen maar zijn even hoog, dus Sound is voor de helft leeg en Share houdt onderaan een gat. Ook loopt de rij met status-chips door naar een tweede regel. Opnieuw indelen zonder lege vlakken, op alle apparaten, en met Mark nalopen wat hij precies lelijk vindt.
 - **Uit de securitycheck van 2026-11-05, nog te doen**: Dependabot staat uit op de repo en `cargo audit` is hier niet geinstalleerd, dus afhankelijkheden zijn niet nagelopen (keuze van Mark). Op de Mac telt een gekoppeld apparaat zonder "nooit" als mag bedienen, op Linux en Windows moet `remote_input` per apparaat aan: gelijktrekken? `Dial` belt zonder vraag voor elk gekoppeld apparaat. `networksetup` krijgt het wifi-wachtwoord als argument als `CoreWLAN` faalt.
 - **`tandemd` met een lang pad**: is de map van `--data-dir` te lang voor een Unix-socket, dan start elk commando stil een eigen engine in plaats van de draaiende te vragen. Moet een duidelijke fout worden.
 - **Testen zodra de Linux-laptop aan staat: een gesprek op de laptop** (gevraagd 2026-11-04): de laptop als Bluetooth-headset van de Xperia,
