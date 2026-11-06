@@ -208,7 +208,9 @@ bekeken in de browser met `mock.js`.
 
 Op de echte Pixel Watch 2 (Android 17), nog zonder telefoon: installeren, achtergronddienst, hartslag om de pols (0,52 Hz, ook met
 het scherm uit), vanzelf starten en stoppen, en scrollen: bij 16 veegbewegingen 0,28% haperende beelden in de `fast`-build, tegen 22%
-in debug. Daarom draait een horloge de `fast`-build (R8, ingekorte resources, debug-sleutel), geen debug.
+in debug. Daarom draait een test-horloge de `fast`-build (R8, ingekorte resources, debug-sleutel), geen debug. Sinds 0.3.0 hoort bij
+elke versie een `Tandem-watch.apk` met de release-sleutel, dezelfde als de telefoon-app. Een `fast`-build installeert daar niet overheen:
+wisselen van sleutel kan alleen door de app te verwijderen, en dat wist de gegevens op het horloge.
 
 **Nog niet getest:** Bluetooth tussen het echte horloge en de Xperia, de muis in een echte computer, de kroon, pinch om de pols
 (alleen op kunstmatige data afgesteld), een hele nacht, Doze en de batterij over een nacht. Een emulator bewijst niet dat de echte Bluetooth-stack zich hetzelfde gedraagt.

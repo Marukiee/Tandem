@@ -24,6 +24,7 @@ def which_file(version: str) -> str:
 | You have | Download |
 | --- | --- |
 | Android phone | `Tandem-{v}.apk` |
+| Pixel Watch | `Tandem-watch-{v}.apk`, installed from a computer with `adb install -r` |
 | Mac (Apple silicon) | `Tandem-{v}-macOS.zip` |
 | Windows 10 or 11 | `Tandem-{v}-Windows-x64-setup.exe` |
 | Fedora, openSUSE (Linux) | `Tandem-{v}-Linux-x64.rpm`, or the AppImage |

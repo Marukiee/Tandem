@@ -100,20 +100,20 @@ jobs:
       - name: Build the core and the bindings
         run: ./scripts/build-core-android.sh
 
-      - name: Build the signed APK
+      - name: Build the signed APKs
         working-directory: android
-        # Only the phone app: the watch app is not part of a version yet.
-        run: ./gradlew :app:assembleRelease --no-daemon -PversionName="$VERSION" -PversionCode="$CODE"
+        run: ./gradlew :app:assembleRelease :watch:assembleRelease --no-daemon -PversionName="$VERSION" -PversionCode="$CODE"
 
       # Gradle falls back to the debug key when the keystore is missing, and the
       # build still succeeds. This makes that a failure instead of a bad release.
       - name: Check the signing key
         run: |
           set -euo pipefail
-          apk=android/app/build/outputs/apk/release/app-release.apk
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk" | tee certs.txt
-          grep -q "SHA-256 digest: $EXPECTED_SHA256" certs.txt \
-            || { echo "::error::the APK is not signed with the Tandem release key"; exit 1; }
+          for apk in android/app/build/outputs/apk/release/app-release.apk android/watch/build/outputs/apk/release/watch-release.apk; do
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk" | tee certs.txt
+            grep -q "SHA-256 digest: $EXPECTED_SHA256" certs.txt \
+              || { echo "::error::$apk is not signed with the Tandem release key"; exit 1; }
+          done
 
       - name: Name the files
         run: |
@@ -123,6 +123,10 @@ jobs:
           cp "$apk" "dist/Tandem-v$VERSION.apk"
           cp "$apk" dist/Tandem.apk
           (cd dist && sha256sum Tandem.apk > Tandem.apk.sha256)
+          watch=android/watch/build/outputs/apk/release/watch-release.apk
+          cp "$watch" "dist/Tandem-watch-v$VERSION.apk"
+          cp "$watch" dist/Tandem-watch.apk
+          (cd dist && sha256sum Tandem-watch.apk > Tandem-watch.apk.sha256)
 
       - uses: actions/upload-artifact@v7
         with:

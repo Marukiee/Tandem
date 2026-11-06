@@ -36,7 +36,7 @@ dan komen telefoon en Mac gewoon uit, alleen zonder Windows-bestanden.
 
 | Job | Resultaat |
 | --- | --- |
-| Android | Getekende APK. Faalt als hij niet met de release-sleutel is getekend. |
+| Android | Getekende APK's van telefoon en horloge. Faalt als een van beide niet met de release-sleutel is getekend. |
 | Mac | App gebouwd, getekend met het Mac-certificaat, gezipt en van een Ed25519-handtekening voorzien |
 | Linux | `tandemd` voor x86_64 en aarch64, elk op een eigen runner, gebouwd op Ubuntu 22.04 zodat hij ook op Debian 12 en de Raspberry Pi draait |
 | Windows | Het installatieprogramma van de app (NSIS, per gebruiker, ongetekend) en `tandemd.exe`, gebouwd met `scripts/build-windows.ps1` |
@@ -45,6 +45,7 @@ dan komen telefoon en Mac gewoon uit, alleen zonder Windows-bestanden.
 Bestanden in de release:
 
 - `Tandem.apk`, `Tandem.apk.sha256` en `Tandem-vX.Y.Z.apk` voor Android
+- `Tandem-watch.apk`, `Tandem-watch.apk.sha256` en `Tandem-watch-vX.Y.Z.apk` voor het horloge
 - `Tandem-macOS.zip`, `Tandem-macOS.zip.sha256` en `Tandem-macOS.zip.sig` voor de Mac
 - `tandemd-linux-x86_64.tar.gz` en `tandemd-linux-aarch64.tar.gz`, elk met een `.sha256`
   en een kopie met het versienummer in de naam
