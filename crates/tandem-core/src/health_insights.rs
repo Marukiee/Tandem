@@ -126,7 +126,7 @@ fn wake_moments(record: &HealthRecord) -> Vec<WakeMoment> {
     let mut moments = Vec::new();
     for run in &record.stages {
         if run.stage == SleepStage::Wake && run.seconds >= MIN_WAKE_SECONDS {
-            moments.push(WakeMoment { start_ms: at, minutes: (run.seconds + 30) / 60 });
+            moments.push(WakeMoment { start_ms: at, minutes: run.seconds / 60 });
         }
         at += u64::from(run.seconds) * 1000;
     }

@@ -396,7 +396,9 @@ private fun stageColor(stage: TandemSleepStage): Color = when (stage) {
     TandemSleepStage.DEEP -> MaterialTheme.colorScheme.primary
     TandemSleepStage.LIGHT -> MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
     TandemSleepStage.REM -> MaterialTheme.colorScheme.tertiary
-    TandemSleepStage.WAKE, TandemSleepStage.UNKNOWN -> MaterialTheme.colorScheme.outlineVariant
+    // The moments people look for, so they stand out. Not a warning colour: being awake for a bit is nothing to worry about.
+    TandemSleepStage.WAKE -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+    TandemSleepStage.UNKNOWN -> MaterialTheme.colorScheme.outlineVariant
 }
 
 @Composable

@@ -586,8 +586,8 @@
     <string name="health_sum_none">Nog geen nachten</string>
     <string name="health_row_sub">Slaap en trainingen</string>
     <string name="health_alert">Je rusthartslag is al twee nachten %1$d slagen hoger dan normaal. Dat kan betekenen dat je lichaam ergens mee bezig is, bijvoorbeeld een opkomende verkoudheid. Dit is geen diagnose.</string>
-    <string name="health_score_parts">Duur %1$d, rust %2$d, fasen %3$d</string>
-    <string name="health_score_parts_plain">Duur %1$d, rust %2$d</string>
+    <string name="health_score_parts">Slaapscore, uit duur %1$d, rust %2$d en fasen %3$d</string>
+    <string name="health_score_parts_plain">Slaapscore, uit duur %1$d en rust %2$d</string>
     <string name="health_wake_moment">Wakker om %1$s, %2$s</string>
     <string name="health_trends">Over meer nachten</string>
     <string name="health_resting">Rusthartslag</string>

@@ -57,9 +57,9 @@ private struct HealthInsightSections: View {
                     Text(verbatim: "\(night.score)").font(.title2.bold()).monospacedDigit()
                 }
                 if let stages = night.stagesScore {
-                    Text("Length \(Int(night.durationScore)), calm \(Int(night.continuityScore)), stages \(Int(stages))").font(.caption).foregroundStyle(.secondary)
+                    Text("From length \(Int(night.durationScore)), calm \(Int(night.continuityScore)) and stages \(Int(stages))").font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Text("Length \(Int(night.durationScore)), calm \(Int(night.continuityScore))").font(.caption).foregroundStyle(.secondary)
+                    Text("From length \(Int(night.durationScore)) and calm \(Int(night.continuityScore))").font(.caption).foregroundStyle(.secondary)
                 }
                 ForEach(night.wakeMoments, id: \.startMs) { moment in
                     Text("Awake at \(clock(moment.startMs)), \(minutesText(Int(moment.minutes)))").font(.caption).foregroundStyle(.secondary)

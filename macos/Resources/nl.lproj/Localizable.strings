@@ -1398,8 +1398,8 @@
 "Your resting heart rate has been %lld beats above usual for two nights. That can mean your body is dealing with something, like a cold coming on. This is not a diagnosis." = "Je rusthartslag is al twee nachten %lld slagen hoger dan normaal. Dat kan betekenen dat je lichaam ergens mee bezig is, bijvoorbeeld een opkomende verkoudheid. Dit is geen diagnose.";
 "Latest night" = "Laatste nacht";
 "Sleep score" = "Slaapscore";
-"Length %lld, calm %lld, stages %lld" = "Duur %lld, rust %lld, fasen %lld";
-"Length %lld, calm %lld" = "Duur %lld, rust %lld";
+"From length %lld, calm %lld and stages %lld" = "Uit duur %lld, rust %lld en fasen %lld";
+"From length %lld and calm %lld" = "Uit duur %lld en rust %lld";
 "Awake at %@, %@" = "Wakker om %@, %@";
 "Over more nights" = "Over meer nachten";
 "Resting heart rate" = "Rusthartslag";
