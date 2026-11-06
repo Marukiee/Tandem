@@ -259,34 +259,18 @@ struct DeviceDetail: View {
                 model.sendClipboard(to: [device.id])
             }
             .disabled(!(device.online || device.ble))
-            if device.caps.contains("wifi.join"), WifiShare.shared.worthSharing(with: device) { WifiShareButton(device: device) }
+            WifiShareButton(device: device)
             // A computer offers Downloads, Documents and Desktop as well now, so every device with files can be browsed.
-            if device.caps.contains("files") {
-                GlassActionButton(title: "Browse files", symbol: "folder") { onBrowse() }
-                    .disabled(!device.online)
+            let browsable = device.caps.contains("files")
+            GlassActionButton(title: "Browse files", symbol: "folder") {
+                if browsable { onBrowse() } else { model.showToast(String(localized: "Update Tandem on \(device.name)")) }
             }
+            .opacity(device.online && !browsable ? 0.5 : 1)
+            .disabled(!device.online)
         }
         if isComputer || device.platform == .android {
             ActionGroup(title: "Screen") {
                 LiveActionRow(device: device)
-                // A computer can be logged in to from here. The button looks the same whether that is set up there or not: someone may
-                // not want it, so what is missing is only said when the button is pressed.
-                if isComputer {
-                    GlassActionButton(title: "Terminal", symbol: "terminal") {
-                        Task {
-                            var address = sshAddress
-                            if address == nil { address = await SSHAccess.reachableAddress(of: device) }
-                            if let address {
-                                SSHAccess.open(device, at: address)
-                            } else {
-                                model.showToast(SSHAccess.reason(for: device))
-                            }
-                        }
-                    }
-                    .disabled(!device.online)
-                    .help("Log in to this computer over SSH")
-                    RemoteKeepAwakeButton(device: device)
-                }
                 // Lock and unlock are one place: what is locked and can be opened from here offers that instead.
                 if isComputer, device.online, device.status.unlock == true, device.status.locked == true {
                     RemoteUnlockButton(device: device)
@@ -295,51 +279,72 @@ struct DeviceDetail: View {
                 }
             }
         }
-        if isComputer || device.platform == .android {
+        if device.platform == .android {
             ActionGroup(title: "Sound") {
-                if device.platform == .android {
-                    // This Mac's sound on the phone, one press from the top, as the button in the menu bar has it. It is the same as picking
-                    // the phone in the sound menu.
-                    let speaking = model.speaker.device == device.id
-                    GlassActionButton(
-                        title: speaking ? "Stop phone output" : "Phone as output",
-                        symbol: speaking ? "speaker.wave.3.fill" : "speaker.wave.2",
-                        prominent: speaking
-                    ) { model.toggleSpeaker(for: device.id) }
-                    .disabled(!device.online && !speaking)
-                    // The phone as the microphone of this Mac. Grey only when it is away; what else is missing is said when it is pressed.
-                    let listening = PhoneMicrophone.shared.state.device == device.id
-                    GlassActionButton(
-                        title: listening ? "Stop phone microphone" : "Phone as microphone",
-                        symbol: listening ? "mic.fill" : "mic",
-                        prominent: listening
-                    ) { PhoneMicrophone.shared.toggle(for: device.id) }
-                    .disabled(!device.online && !listening)
-                    let ringing = model.ringing.contains(device.id)
-                    GlassActionButton(
-                        title: ringing ? "Stop ringing" : "Find phone",
-                        symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right",
-                        prominent: ringing
-                    ) {
-                        model.ring(device.id, on: !ringing)
-                        model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
+                // This Mac's sound on the phone, one press from the top, as the button in the menu bar has it. It is the same as picking
+                // the phone in the sound menu.
+                let speaking = model.speaker.device == device.id
+                GlassActionButton(
+                    title: speaking ? "Stop phone output" : "Phone as output",
+                    symbol: speaking ? "speaker.wave.3.fill" : "speaker.wave.2",
+                    prominent: speaking
+                ) { model.toggleSpeaker(for: device.id) }
+                .disabled(!device.online && !speaking)
+                // The phone as the microphone of this Mac. Grey only when it is away; what else is missing is said when it is pressed.
+                let listening = PhoneMicrophone.shared.state.device == device.id
+                GlassActionButton(
+                    title: listening ? "Stop phone microphone" : "Phone as microphone",
+                    symbol: listening ? "mic.fill" : "mic",
+                    prominent: listening
+                ) { PhoneMicrophone.shared.toggle(for: device.id) }
+                .disabled(!device.online && !listening)
+                let ringing = model.ringing.contains(device.id)
+                GlassActionButton(
+                    title: ringing ? "Stop ringing" : "Find phone",
+                    symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right",
+                    prominent: ringing
+                ) {
+                    model.ring(device.id, on: !ringing)
+                    model.showToast(ringing ? String(localized: "Stopped ringing") : String(localized: "Your phone is ringing"))
+                }
+                .disabled(!device.online)
+                SoundModeButton(device: device)
+            }
+        }
+        // What is done with that computer itself. Four rows, like the other groups: what it cannot do is grey and says why when pressed.
+        if isComputer {
+            ActionGroup(title: "Computer") {
+                // It can be logged in to from here. The button looks the same whether that is set up there or not: someone may not want
+                // it, so what is missing is only said when the button is pressed.
+                GlassActionButton(title: "Terminal", symbol: "terminal") {
+                    Task {
+                        var address = sshAddress
+                        if address == nil { address = await SSHAccess.reachableAddress(of: device) }
+                        if let address {
+                            SSHAccess.open(device, at: address)
+                        } else {
+                            model.showToast(SSHAccess.reason(for: device))
+                        }
                     }
-                    .disabled(!device.online)
-                    SoundModeButton(device: device)
                 }
-                // This Mac's sound on a computer that plays the sound of other devices. What can go wrong there is said when it is
-                // pressed.
-                if isComputer, device.caps.contains("audio.play") {
-                    let speaking = model.speaker.device == device.id
-                    GlassActionButton(
-                        title: speaking ? "Stop speaker" : "Use as speaker",
-                        symbol: speaking ? "speaker.wave.3.fill" : "speaker.wave.2",
-                        prominent: speaking
-                    ) { model.toggleSpeaker(for: device.id) }
-                    .disabled(!device.online && !speaking)
-                    .help("Play the sound of this Mac on \(device.name)")
+                .disabled(!device.online)
+                .help("Log in to this computer over SSH")
+                RemoteKeepAwakeButton(device: device)
+                // This Mac's sound on a computer that plays the sound of other devices. What can go wrong there is said when it is pressed.
+                let speaking = model.speaker.device == device.id
+                let plays = device.caps.contains("audio.play")
+                GlassActionButton(
+                    title: speaking ? "Stop speaker" : "Use as speaker",
+                    symbol: speaking ? "speaker.wave.3.fill" : "speaker.wave.2",
+                    prominent: speaking
+                ) {
+                    if plays || speaking { model.toggleSpeaker(for: device.id) }
+                    else { model.showToast(String(localized: "Update Tandem on \(device.name)")) }
                 }
-                if isComputer { PlaySoundButton(device: device) }
+                .opacity(device.online && !plays ? 0.5 : 1)
+                .disabled(!device.online && !speaking)
+                .help("Play the sound of this Mac on \(device.name)")
+                PlaySoundButton(device: device)
             }
         }
     }

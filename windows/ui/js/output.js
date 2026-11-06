@@ -18,9 +18,11 @@ export function OutputButton({ device }) {
   const on = state.output === device.id;
   // On Linux it goes through Tandem Speaker, which plays nowhere else; on Windows it keeps playing here too.
   const started = state.platform === "linux" ? "output_started_linux" : "output_started";
-  const press = () => (on ? call("output_stop") : call("output_start", { id: device.id }).then(() => say(t(started, device.name))))
+  const plays = canPlay(device);
+  const press = () => (on ? call("output_stop") : !plays ? Promise.resolve(say(t("update_on", device.name)))
+    : call("output_start", { id: device.id }).then(() => say(t(started, device.name))))
     .catch((e) => say(String(e && e.message ? e.message : e)));
-  return html`<button class=${"btn" + (on ? " on" : "")} disabled=${!device.online && !on} title=${t("output_tip", device.name)} onClick=${press}>
+  return html`<button class=${"btn" + (on ? " on" : plays || !device.online ? "" : " grey")} disabled=${!device.online && !on} title=${t("output_tip", device.name)} onClick=${press}>
     <${Icon} name=${on ? "circle-x" : "volume"} size=${17} />${on ? t("output_stop") : t("output_use")}</button>`;
 }
 

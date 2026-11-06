@@ -78,7 +78,8 @@ struct RemoteLockButton: View {
                 model.showToast(String(localized: "Update Tandem on \(device.name) to lock it from here"))
             }
         }
-        .opacity(device.status.lock == true ? 1 : 0.5)
+        // Away it is grey already: a second fade made it paler than the buttons next to it.
+        .opacity(device.online && device.status.lock != true ? 0.5 : 1)
         .disabled(!device.online)
         .help("Lock the screen of this device")
     }

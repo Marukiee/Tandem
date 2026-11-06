@@ -5,7 +5,7 @@ import { ArrangementEditor } from "./arrange.js";
 import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, fmtSize, platformIcon } from "./components.js";
 import { Icon } from "./icons.js";
 import { FindSoundRow, LastSeen, PlaySoundButton } from "./find.js";
-import { canPlay, MicButton, OutputButton } from "./output.js";
+import { MicButton, OutputButton } from "./output.js";
 import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
 
@@ -246,6 +246,10 @@ export function DevicePage({ device }) {
   }).catch(failed);
   const battery = device.status && device.status.battery;
   const hasCap = (cap) => Array.isArray(device.caps) && device.caps.includes(cap);
+  // Why this computer's Wi-Fi is no use to that device now, said when the grey button is pressed.
+  const wifiWhy = !hasCap("wifi.join") ? t("wifi_cant", device.name)
+    : wifiWorthSharing(device, wifiHere) ? null
+    : wifiHere ? t("wifi_already", device.name) : t("wifi_not_here");
   // A second screen that is shown here from this device, and a screen that this computer made for it: each button then says how to stop.
   const displayOn = state.displays.some((d) => d.peer === device.id);
   const extendOn = state.hosting.some((h) => h.peer === device.id && h.extend);
@@ -294,10 +298,10 @@ export function DevicePage({ device }) {
 
     <div class="actions">
         <button class="btn" disabled=${!device.online} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
-        ${hasCap("wifi.join") && wifiWorthSharing(device, wifiHere) && html`<button class="btn" disabled=${!device.online && !device.ble} title=${t("wifi_share_tip", device.name)} onClick=${() => call("wifi_share", { id: device.id }).then(say).catch(failed)}>
-          <${Icon} name="wifi" size=${17} />${t("wifi_share")}</button>`}
-        ${hasCap("files") && html`<button class="btn" disabled=${!device.online} onClick=${() => set({ page: "files", selected: device.id })}>
-          <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>`}
+        <button class=${"btn" + (wifiWhy ? " grey" : "")} disabled=${!device.online && !device.ble} title=${t("wifi_share_tip", device.name)} onClick=${() => (wifiWhy ? say(wifiWhy) : call("wifi_share", { id: device.id }).then(say).catch(failed))}>
+          <${Icon} name="wifi" size=${17} />${t("wifi_share")}</button>
+        <button class=${"btn" + (hasCap("files") || !device.online ? "" : " grey")} disabled=${!device.online} onClick=${() => (hasCap("files") ? set({ page: "files", selected: device.id }) : say(t("update_on", device.name)))}>
+          <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>
         ${(isComputer || device.platform === "android") && html`${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${() => (hasCap("screen.host") ? show("screen") : say(t("live_update_phone")))}>
           <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} title=${t("live_camera_tip")} onClick=${() => (hasCap("camera.host") ? show("camera") : say(t("live_update_phone")))}>
@@ -308,10 +312,12 @@ export function DevicePage({ device }) {
             : !hasCap("camera.host") ? say(t("live_update_phone"))
             : call("webcam_start", { id: device.id, name: device.name }).then(() => say(t("webcam_asked", device.name))).catch(failed))}>
           <${Icon} name=${webcamOn ? "circle-x" : "video"} size=${17} />${webcamOn ? t("webcam_stop") : t("webcam_use")}</button>`}
-        ${isComputer && hasCap("screen.host") && html`<button class="btn" disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => show("screen")}>
+        ${isComputer && html`<button class=${"btn" + (hasCap("screen.host") || !device.online ? "" : " grey")} disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => (hasCap("screen.host") ? show("screen") : say(t("host_off", device.name)))}>
           <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
-        ${isComputer && hasCap("screen.extend") && html`<button class=${"btn" + (displayOn ? " on" : "")} disabled=${!device.online && !displayOn} title=${t("display_tip")}
-          onClick=${() => (displayOn ? call("display_stop") : call("display_start", { id: device.id, name: device.name, mac: device.platform === "macos" })).catch(failed)}>
+        ${isComputer && html`<button class=${"btn" + (displayOn ? " on" : hasCap("screen.extend") || !device.online ? "" : " grey")} disabled=${!device.online && !displayOn} title=${t("display_tip")}
+          onClick=${() => (displayOn ? call("display_stop").catch(failed)
+            : !hasCap("screen.extend") ? say(t("display_cant", device.name))
+            : call("display_start", { id: device.id, name: device.name, mac: device.platform === "macos" }).catch(failed))}>
           <${Icon} name=${displayOn ? "circle-x" : "device-laptop"} size=${17} />${displayOn ? t("display_stop_screen") : t("display_use")}</button>`}
         ${(isComputer || device.platform === "android") && html`<button class=${"btn" + (extendOn ? " on" : "")} disabled=${!device.online && !extendOn} title=${t("extend_tip")}
           onClick=${() => (extendOn ? call("display_offer_stop", { id: device.id }).catch(failed)
@@ -319,15 +325,15 @@ export function DevicePage({ device }) {
             : !state.canExtend ? say(t("extend_cant_here"))
             : call("display_offer", { id: device.id }).then(() => say(t("extend_asked", device.name))).catch(failed))}>
           <${Icon} name=${extendOn ? "circle-x" : "device-desktop"} size=${17} />${extendOn ? t("extend_stop") : t("extend_to")}</button>`}
+        <${LockButton} device=${device} />
         ${isComputer && html`<button class="btn" disabled=${!device.online} title=${t("ssh_title")} onClick=${() => (sshReady ? openSsh() : say(sshReason))}>
           <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
         ${isComputer && html`<button class=${"btn" + (device.status?.awake ? " on" : "")} disabled=${!device.online} title=${t("keep_awake_remote_tip")}
           onClick=${() => (device.status?.awake == null ? say(t("keep_awake_update", device.name))
             : call("keep_awake_remote", { id: device.id, on: !device.status.awake }).catch(failed))}>
           <${Icon} name="coffee" size=${17} />${device.status?.awake ? t("keep_awake_kept") : t("keep_awake_remote")}</button>`}
+        ${(isComputer || device.platform === "android") && html`<${OutputButton} device=${device} />`}
         ${isComputer && html`<${PlaySoundButton} device=${device} />`}
-        <${LockButton} device=${device} />
-        ${canPlay(device) && html`<${OutputButton} device=${device} />`}
         ${device.platform === "android" && html`<${MicButton} device=${device} />`}
         ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
           <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>
@@ -338,7 +344,6 @@ export function DevicePage({ device }) {
         ${device.platform === "android" && html`<${SoundModeButton} device=${device} />`}`}
     </div>
 
-    ${isComputer && sshChecked && !sshAddress && html`<div class="small muted" style="margin:-4px 2px 0">${sshReason}</div>`}
     ${isComputer && html`<${LastSeen} device=${device} />`}
 
     <div class=${"drop" + (state.dropping ? " over" : "") + (device.online ? " click" : " off")} role="button" tabindex="0"

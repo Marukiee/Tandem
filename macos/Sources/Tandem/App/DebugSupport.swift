@@ -92,7 +92,7 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_ARRANGE") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showArrangementWindow() }
         }
-        // `TANDEM_DEBUG_DEVICEPAGE=linux|android`: the page of a made up device, for the layout of its buttons.
+        // `TANDEM_DEBUG_DEVICEPAGE=linux|linux-away|android`: the page of a made up device, for the layout of its buttons.
         if let kind = variable("TANDEM_DEBUG_DEVICEPAGE") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showDevicePageWindow(kind) }
         }
@@ -311,7 +311,7 @@ enum DebugSupport {
             status.lock = false
         }
         let device = TandemDevice(
-            id: "debug", name: phone ? "Pixel 9" : "Linux Laptop", platform: phone ? .android : .linux, online: true, route: nil, rttMs: 7, status: status,
+            id: "debug", name: phone ? "Pixel 9" : "Linux Laptop", platform: phone ? .android : .linux, online: kind != "linux-away", route: nil, rttMs: 7, status: status,
             appVersion: "0.1.76", caps: phone ? ["files", "media.screen", "media.camera"] : ["screen.host"], vouchedByRemoved: false, clipboardEnabled: true,
             autoAccept: true, notificationsEnabled: true, ble: false, features: []
         )
