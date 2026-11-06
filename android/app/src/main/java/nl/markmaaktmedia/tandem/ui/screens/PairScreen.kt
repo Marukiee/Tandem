@@ -285,13 +285,26 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, startWithWatch: Boolean
                                     (fadeOut(TandemMotion.fadeSpec()) + slideOutHorizontally(TandemMotion.spatial()) { if (forward) -it / 6 else it / 6 })
                             },
                             label = "pairMode",
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize(),
                         ) { m ->
                             when (m) {
-                                PairMode.Scan -> ScanPanel(
-                                    onCode = { code -> if (code !in spent) join(code) },
-                                    active = !busy && failure == null,
-                                    locked = busy,
-                                )
+                                // Gone at once when another tab is chosen: a camera picture sliding away only looks like a delay. The
+                                // field under it goes along, because a row that folds away under this box would move everything down.
+                                PairMode.Scan -> if (mode == PairMode.Scan) {
+                                    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                            ScanPanel(
+                                                onCode = { code -> if (code !in spent) join(code) },
+                                                active = !busy && failure == null,
+                                                locked = busy,
+                                            )
+                                        }
+                                        PasteRow(onSubmit = ::join)
+                                    }
+                                } else {
+                                    Spacer(Modifier.fillMaxSize())
+                                }
                                 PairMode.Show -> ShowPanel()
                                 PairMode.Watch -> WatchPanel(
                                     state = watchState,
@@ -313,13 +326,6 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, startWithWatch: Boolean
                             PillSpinner(size = 22.dp)
                             Text(stringResource(R.string.pair_connecting), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                    }
-                    AnimatedVisibility(
-                        visible = mode == PairMode.Scan,
-                        enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
-                        exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
-                    ) {
-                        PasteRow(onSubmit = ::join)
                     }
                     Spacer(Modifier.height(12.dp))
                 }

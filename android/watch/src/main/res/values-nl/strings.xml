@@ -58,7 +58,7 @@
     <string name="steer">Computer</string>
     <string name="mouse">Muis</string>
     <string name="presentation">Presentatie</string>
-    <string name="pointer_off">Zet dit aan in Tandem op je telefoon</string>
+    <string name="mouse_allowed">Computer besturen</string>
     <string name="pointer_none">Geen computers gevonden</string>
     <string name="pointer_offline">%1$s is niet online</string>
     <string name="pointer_no_input">Sta eerst invoer toe op %1$s</string>

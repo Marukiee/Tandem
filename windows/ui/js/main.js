@@ -12,6 +12,21 @@ import { CallDialog, useCallAsk } from "./calls.js";
 import { TourPage, maybeShowTour } from "./tour.js";
 
 /** The update, at the foot of the sidebar: what is out, how far the download is, and what went wrong. */
+// The watch only talks to its phone, so its page is the page of the phone. It still is a device of its own to look for.
+function watchRow(d) {
+  const watch = d.status && d.status.watch;
+  if (!watch || !watch.paired) return null;
+  const reachable = d.online && watch.online;
+  return html`<div class=${"row" + (reachable ? "" : " dim")} key=${d.id + "-watch"} onClick=${() => set({ selected: d.id, page: "device" })}>
+    <span style="width:36px;height:36px;display:flex;align-items:center;justify-content:center"><${Icon} name="device-watch" size=${20} /></span>
+    <div class="grow">
+      <div class="name ellipsis">${t("watch")}</div>
+      <div class=${"sub" + (reachable ? " ok" : "")}>${reachable ? t("connected") : t("watch_away")}</div>
+    </div>
+    ${watch.level != null && html`<span class="small muted">${watch.level}%</span>`}
+  </div>`;
+}
+
 function UpdateBanner() {
   const u = state.update;
   const failed = (e) => say(String(e && e.message ? e.message : e));
@@ -91,7 +106,7 @@ function Nav() {
         </div>
         ${battery && html`<span class="small muted" style="display:flex;align-items:center;gap:2px">
           ${battery.charging && d.online && html`<${Icon} name="bolt" size=${13} filled=${true} class="ok-text" />`}${battery.level}%</span>`}
-      </div>`];
+      </div>`, watchRow(d)];
     })}
     <div class="row addrow" onClick=${() => set({ dialog: { kind: "pair" } })}><${Icon} name="plus" size=${18} />${t("add_device")}</div>
     <div class="spacer"></div>

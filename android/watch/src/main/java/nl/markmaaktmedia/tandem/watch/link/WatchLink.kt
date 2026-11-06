@@ -239,6 +239,14 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         mediaSession?.show(shown, shown?.let { ui.covers[it.artKey] })
     }
 
+    /** The same switch as on the phone: the phone keeps it, and answers with the list of computers as usual. */
+    fun setMouseEnabled(on: Boolean) {
+        handler.post {
+            _ui.update { it.copy(pointerEnabled = on) }
+            engine?.send(Message.MouseEnabled(on))
+        }
+    }
+
     /** Steer this computer from now on. Movement is summed here and sent as soon as the link can take it. */
     fun startPointer(targetId: String) {
         handler.post {
@@ -443,7 +451,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             // These only travel from watch to phone.
             is Message.HealthRecord, Message.SyncRequest, is Message.NotificationAction, is Message.CallAction, is Message.MediaCommand,
             is Message.PointerSession, is Message.PointerMove, is Message.PointerScroll, is Message.PointerClick,
-            is Message.PointerKey, is Message.WatchStatus, is Message.SleepMode,
+            is Message.PointerKey, is Message.WatchStatus, is Message.SleepMode, is Message.MouseEnabled,
             -> Unit
         }
     }

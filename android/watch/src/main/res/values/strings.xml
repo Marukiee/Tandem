@@ -58,7 +58,7 @@
     <string name="steer">Computer</string>
     <string name="mouse">Mouse</string>
     <string name="presentation">Presentation</string>
-    <string name="pointer_off">Turn this on in Tandem on your phone</string>
+    <string name="mouse_allowed">Steer a computer</string>
     <string name="pointer_none">No computers found</string>
     <string name="pointer_offline">%1$s is not online</string>
     <string name="pointer_no_input">Allow input on %1$s first</string>

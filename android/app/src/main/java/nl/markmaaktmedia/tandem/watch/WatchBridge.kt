@@ -539,6 +539,7 @@ class WatchBridge(
             is Message.FindDevice -> main.post { if (message.ring) FindPhone.start(context) else FindPhone.stop() }
             is Message.Ringing -> _state.update { it.copy(ringing = message.on) }
             is Message.WatchStatus -> _state.update { it.copy(stepsToday = message.stepsToday, activeMinutesToday = message.activeMinutesToday, batteryLevel = message.level, charging = message.charging) }
+            is Message.MouseEnabled -> scope.launch { prefs.setWatchMouse(message.on) }
             is Message.SleepMode -> onSleepMode(message.on)
             is Message.HealthRecord -> onHealthRecord(message)
             is Message.Ping, is Message.Pong, is Message.Unknown -> Unit

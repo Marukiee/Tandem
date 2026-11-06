@@ -56,6 +56,7 @@ import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
+import androidx.wear.compose.material3.SwitchButton
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.TimeText
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
@@ -172,11 +173,12 @@ internal fun PairingWait() {
     ScreenScaffold {
         Box(Modifier.fillMaxSize()) {
             Column(
-                Modifier.fillMaxSize().padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 58.dp),
+                // As far up as the time allows, because the button takes the whole bottom of a round screen.
+                Modifier.fillMaxSize().padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 74.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
             ) {
-                TurningCookieIcon(R.drawable.sym_smartphone, size = 56.dp)
+                TurningCookieIcon(R.drawable.sym_smartphone, size = 40.dp)
                 Text(stringResource(R.string.pair_wait), style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)
             }
             EdgeButton(
@@ -274,8 +276,19 @@ internal fun Home(ui: WatchUi) {
                 item(key = "steer_header") {
                     ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.steer)) }
                 }
-                item(key = "mouse") { SteerButton(ui, false, rimRow(spec), SurfaceTransformation(spec)) }
-                item(key = "presentation") { SteerButton(ui, true, rimRow(spec), SurfaceTransformation(spec)) }
+                item(key = "mouse_allowed") {
+                    SwitchButton(
+                        checked = ui.pointerEnabled,
+                        onCheckedChange = { WatchLink.setMouseEnabled(it) },
+                        modifier = rimRow(spec),
+                        transformation = SurfaceTransformation(spec),
+                        label = { Text(stringResource(R.string.mouse_allowed)) },
+                    )
+                }
+                if (ui.pointerEnabled) {
+                    item(key = "mouse") { SteerButton(ui, false, rimRow(spec), SurfaceTransformation(spec)) }
+                    item(key = "presentation") { SteerButton(ui, true, rimRow(spec), SurfaceTransformation(spec)) }
+                }
                 item(key = "find_phone") {
                     FilledTonalButton(
                         onClick = { WatchLink.findPhone(!ui.findingPhone) },
@@ -415,7 +428,6 @@ private fun SteerButton(ui: WatchUi, presentation: Boolean, modifier: Modifier, 
     val context = LocalContext.current
     val target = ui.pointerTargets.firstOrNull { it.online && it.allowsInput }
     val why: String? = when {
-        !ui.pointerEnabled -> stringResource(R.string.pointer_off)
         ui.pointerTargets.isEmpty() -> stringResource(R.string.pointer_none)
         target != null -> null
         ui.pointerTargets.any { it.online } ->

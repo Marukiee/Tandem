@@ -168,6 +168,9 @@ sealed interface Message {
     /** Watch to phone: so Tandem can show this watch next to the other devices. */
     data class WatchStatus(val level: Int, val charging: Boolean, val stepsToday: Long = 0, val activeMinutesToday: Int = 0) : Message
 
+    /** Watch to phone: the switch for steering a computer was changed on the wrist. */
+    data class MouseEnabled(val on: Boolean) : Message
+
     /** Phone to watch: the next alarm on the phone, 0 when there is none or when the person does not want waking early. */
     data class SmartWakeAlarm(val atMs: Long) : Message
 
@@ -244,6 +247,7 @@ object MessageCodec {
     private const val POINTER_SCROLL = 0x73
     private const val POINTER_CLICK = 0x74
     private const val POINTER_KEY = 0x75
+    private const val MOUSE_ENABLED = 0x76
 
     fun encode(message: Message): ByteArray {
         val w = ByteWriter()
@@ -292,6 +296,7 @@ object MessageCodec {
             }
             is Message.WatchStatus -> w.u8(WATCH_STATUS).u8(message.level).bool(message.charging).varint(message.stepsToday).varint(message.activeMinutesToday.toLong())
             is Message.StepGoal -> w.u8(STEP_GOAL).varint(message.steps.toLong())
+            is Message.MouseEnabled -> w.u8(MOUSE_ENABLED).bool(message.on)
             is Message.SmartWakeAlarm -> w.u8(SMART_WAKE_ALARM).varint(message.atMs)
             is Message.SleepMode -> w.u8(SLEEP_MODE).bool(message.on)
             is Message.HealthRecord -> {
@@ -349,6 +354,7 @@ object MessageCodec {
             )
             WATCH_STATUS -> Message.WatchStatus(r.u8(), r.bool(), if (r.remaining > 0) r.varint() else 0, if (r.remaining > 0) r.varint().toInt() else 0)
             STEP_GOAL -> Message.StepGoal(r.varint().toInt())
+            MOUSE_ENABLED -> Message.MouseEnabled(r.bool())
             SMART_WAKE_ALARM -> Message.SmartWakeAlarm(r.varint())
             SLEEP_MODE -> Message.SleepMode(r.bool())
             HEALTH_RECORD -> Message.HealthRecord(

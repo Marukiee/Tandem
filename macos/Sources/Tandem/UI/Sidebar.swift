@@ -52,6 +52,14 @@ struct Sidebar: View {
                     } content: {
                         DeviceRow(device: device)
                     }
+                    // The watch only talks to this phone, so its page is the page of the phone. It still is a device of its own to look for.
+                    if let watch = device.status.watch, watch.paired {
+                        SidebarButton(selected: false, chosen: chosen) {
+                            selection = .device(device.id)
+                        } content: {
+                            WatchRow(watch: watch, online: device.online)
+                        }
+                    }
                 }
 
                 Text("Shared")
@@ -201,12 +209,6 @@ private struct DeviceRow: View {
                     .lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                if let watch = device.status.watch, watch.paired, watch.online, let level = watch.level {
-                    Label("\(level)%", systemImage: "applewatch")
-                        .labelStyle(.titleAndIcon)
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
                 if let battery = device.status.battery {
                     HStack(spacing: 2) {
                         if battery.charging && device.online { Image(systemName: "bolt.fill").font(.caption2).foregroundStyle(.green) }
@@ -223,6 +225,36 @@ private struct DeviceRow: View {
         .opacity(reach.reachable ? 1 : 0.6)
         .animation(.tandem, value: device.online)
         .animation(.tandem, value: reach.reachable)
+    }
+}
+
+private struct WatchRow: View {
+    let watch: TandemWatchStatus
+    let online: Bool
+
+    var body: some View {
+        let reachable = online && watch.online
+        HStack(spacing: 11) {
+            Image(systemName: "applewatch")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Palette.indigo)
+                .frame(width: 38, height: 38)
+                .background(Palette.indigo.opacity(0.14), in: Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Watch").font(.callout.weight(.semibold)).lineLimit(1)
+                Text(reachable ? "Connected" : "Watch away")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(reachable ? Color.green : Color.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            if let level = watch.level {
+                Text("\(level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 3)
+        .opacity(reachable ? 1 : 0.6)
+        .animation(.tandem, value: reachable)
     }
 }
 
