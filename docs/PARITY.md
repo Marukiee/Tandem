@@ -18,8 +18,6 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Muziek van de telefoon bedienen vanaf de computer | bron | ja | ja (mediatoetsen van het systeem) | ja (MPRIS, getest op een sessiebus in CI) |
 | Muziek en volume van de computer bedienen vanaf de telefoon en het horloge | bediening | ja | ja, zonder hoes | ja, zonder hoes |
 | Een seintje naar de telefoon of het horloge vanaf de computer (`Tandem notify "tekst"`) | ontvangt | ja | ja | ja |
-| Muziek en volume van de computer bedienen vanaf de telefoon en het horloge | bediening | ja | ja, zonder hoes | ja, zonder hoes |
-| Een seintje naar de telefoon of het horloge vanaf de computer (`Tandem notify "tekst"`) | ontvangt | ja | ja | ja |
 | Het horloge van de telefoon zien (verbonden, batterij) en laten rinkelen | ja, op de pagina van de telefoon | ja, op de pagina van de telefoon, in de zijbalk en het menu | ja, op de pagina van de telefoon en in het paneel | ja, op de pagina van de telefoon en in het paneel |
 | Klembordgeschiedenis | ja | ja | ja | ja |
 | Een screenshot staat meteen op het klembord van de andere apparaten (schakelaar in de klembordinstellingen, alleen naar apparaten met klembord aan; bij de ontvanger alleen als klembord, nooit als bestand dat blijft) | ja (MediaStore, map Screenshots) | ja (map uit `com.apple.screencapture`, met Control via het klembord) | ja (map Screenshots, Knipprogramma via het klembord, eenmaal) | ja (map Screenshots in Afbeeldingen, ook vertaald; GNOME via het klembord, eenmaal; nooit gezien) |
