@@ -524,9 +524,6 @@
     <string name="presentation_pointer">Pointer</string>
     <string name="presentation_pointing">Aiming</string>
     <string name="settings_cat_watch">Watch</string>
-    <string name="settings_kw_watch">watch, wear, pixel watch, pair, couple, wrist</string>
-    <string name="settings_kw_watch_mouse">watch, mouse, gyro, pointer, pinch, presentation</string>
-    <string name="settings_kw_watch_quiet">watch, sleep, quiet, do not disturb, bedtime</string>
     <string name="watch_sum_unpaired">Not paired</string>
     <string name="watch_sum_battery">Connected, %1$d%%</string>
     <string name="watch_needs_android_13">A watch needs Android 13 or newer on this phone</string>

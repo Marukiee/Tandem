@@ -521,9 +521,6 @@
     <string name="presentation_pointer">Pointer</string>
     <string name="presentation_pointing">Richten</string>
     <string name="settings_cat_watch">Horloge</string>
-    <string name="settings_kw_watch">horloge, smartwatch, wear, pixel watch, koppelen, pols</string>
-    <string name="settings_kw_watch_mouse">horloge, muis, gyro, aanwijzer, pinch, presentatie</string>
-    <string name="settings_kw_watch_quiet">horloge, slaap, stil, niet storen, bedtijd</string>
     <string name="watch_sum_unpaired">Niet gekoppeld</string>
     <string name="watch_sum_battery">Verbonden, %1$d%%</string>
     <string name="watch_needs_android_13">Voor een horloge is Android 13 of nieuwer op deze telefoon nodig</string>

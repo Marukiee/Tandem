@@ -135,4 +135,7 @@
     <string name="settings_kw_features">functies rechten toestemming werkt werken kapot mist toegestaan</string>
     <string name="settings_kw_notif_find_sound">telefoon zoeken kwijt overgaan beltoon wekker geluid hard</string>
     <string name="settings_kw_notif_focus">focus, niet storen, stil, modus, slapen, werk, volgen, alle apparaten, dnd</string>
+    <string name="settings_kw_watch">horloge, smartwatch, wear, pixel watch, koppelen, pols</string>
+    <string name="settings_kw_watch_mouse">horloge, muis, gyro, aanwijzer, pinch, presentatie</string>
+    <string name="settings_kw_watch_quiet">horloge, slaap, stil, niet storen, bedtijd</string>
 </resources>

@@ -136,4 +136,7 @@
     <string name="settings_kw_features">features permissions works working broken missing allowed</string>
     <string name="settings_kw_notif_find_sound">find phone lost ring ringtone alarm sound loud</string>
     <string name="settings_kw_notif_focus">focus, do not disturb, dnd, quiet, silent, mode, sleep, work, follow, all devices</string>
+    <string name="settings_kw_watch">watch, wear, pixel watch, pair, couple, wrist</string>
+    <string name="settings_kw_watch_mouse">watch, mouse, gyro, pointer, pinch, presentation</string>
+    <string name="settings_kw_watch_quiet">watch, sleep, quiet, do not disturb, bedtime</string>
 </resources>

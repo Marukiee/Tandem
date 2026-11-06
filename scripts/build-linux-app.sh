@@ -19,7 +19,8 @@ python3 - "$version" <<'PY'
 import json, sys
 path = "src-tauri/tauri.conf.json"
 conf = json.load(open(path))
-conf["version"] = sys.argv[1]
+# A package version cannot hold the dash of a test version like 0.2.99-watch.1. The names of the files keep it.
+conf["version"] = sys.argv[1].replace("-", "+")
 json.dump(conf, open(path, "w"), indent=2)
 PY
 # The web view of Linux has no video decoder to speak of, so the app brings one (see windows/src-tauri/src/video.rs).
