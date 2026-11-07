@@ -87,6 +87,16 @@ class WatchMedia(
         }
     }
 
+    /** Pauses every player on this phone that plays now. True when one did. */
+    fun pauseAll(): Boolean {
+        val playing = callbacks.keys.filter { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+        playing.forEach { it.transportControls.pause() }
+        return playing.isNotEmpty()
+    }
+
+    /** Whether any player on this phone plays now. */
+    val anyPlaying: Boolean get() = callbacks.keys.any { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+
     /** The crown on the watch turned through the song. */
     fun seek(playerId: String, positionMs: Long) {
         callbacks.keys.firstOrNull { it.packageName == playerId }?.transportControls?.seekTo(positionMs.coerceAtLeast(0))

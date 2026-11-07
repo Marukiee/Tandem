@@ -594,6 +594,16 @@
         <item quantity="one">%d more night</item>
         <item quantity="other">%d more nights</item>
     </plurals>
+    <string name="sleep_pause_music">Pause music when you fall asleep</string>
+    <string name="sleep_pause_music_sub">On this phone and on your computers, as soon as the watch notices you sleep</string>
+    <string name="sleep_lock_computers">Lock computers when you fall asleep</string>
+    <string name="sleep_lock_computers_sub">Off by itself: someone else may be at the computer</string>
+    <string name="sleep_music_channel">Music while you slept</string>
+    <string name="sleep_music_title">Music played on while you slept</string>
+    <string name="sleep_music_text">Music played on for half an hour or more after you fell asleep. Stop it by itself from now on?</string>
+    <string name="sleep_music_yes">Yes, from now on</string>
+    <string name="sleep_music_not_now">Not now</string>
+    <string name="sleep_music_never">Do not ask again</string>
     <string name="watch_glance_night">Last night</string>
     <string name="watch_glance_score">Sleep score %1$d</string>
     <string name="watch_section_wrist">On your wrist</string>

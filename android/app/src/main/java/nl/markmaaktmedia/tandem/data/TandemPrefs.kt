@@ -88,6 +88,10 @@ class TandemPrefs(private val context: Context) {
         val healthConnectWrite = booleanPreferencesKey("health_connect_write")
         val watchMouse = booleanPreferencesKey("watch_mouse")
         val watchSleepQuiet = booleanPreferencesKey("watch_sleep_quiet")
+        val sleepPauseMusic = booleanPreferencesKey("sleep_pause_music")
+        val sleepLockComputers = booleanPreferencesKey("sleep_lock_computers")
+        val sleepMusicNeverAsk = booleanPreferencesKey("sleep_music_never_ask")
+        val sleepMusicAskedAt = longPreferencesKey("sleep_music_asked_at")
         val focusFollowOnly = booleanPreferencesKey("focus_follow_only")
         val addedTiles = stringSetPreferencesKey("added_tiles")
     }
@@ -174,6 +178,16 @@ class TandemPrefs(private val context: Context) {
     /** Off until asked for: a watch that can steer a computer is a way in to that computer. */
     val watchMouse: Flow<Boolean> = data.map { it[Keys.watchMouse] ?: false }
     val watchSleepQuiet: Flow<Boolean> = data.map { it[Keys.watchSleepQuiet] ?: true }
+    /** Off until asked for: music that stops by itself is not something to get by surprise. */
+    val sleepPauseMusic: Flow<Boolean> = data.map { it[Keys.sleepPauseMusic] ?: false }
+    suspend fun setSleepPauseMusic(value: Boolean) = set(Keys.sleepPauseMusic, value)
+    /** Off until asked for: someone else may be at the computer. */
+    val sleepLockComputers: Flow<Boolean> = data.map { it[Keys.sleepLockComputers] ?: false }
+    suspend fun setSleepLockComputers(value: Boolean) = set(Keys.sleepLockComputers, value)
+    val sleepMusicNeverAsk: Flow<Boolean> = data.map { it[Keys.sleepMusicNeverAsk] ?: false }
+    suspend fun setSleepMusicNeverAsk(value: Boolean) = set(Keys.sleepMusicNeverAsk, value)
+    val sleepMusicAskedAt: Flow<Long> = data.map { it[Keys.sleepMusicAskedAt] ?: 0L }
+    suspend fun setSleepMusicAskedAt(value: Long) = set(Keys.sleepMusicAskedAt, value)
 
     /** A paired watch shows Health by itself, so this only matters without one. */
     val healthShown: Flow<Boolean> = data.map { it[Keys.healthShown] ?: false }

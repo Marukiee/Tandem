@@ -99,6 +99,8 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
     val scope = rememberCoroutineScope()
     val mouse by prefs.watchMouse.collectAsState(initial = false)
     val sleepQuiet by prefs.watchSleepQuiet.collectAsState(initial = true)
+    val pauseMusic by prefs.sleepPauseMusic.collectAsState(initial = false)
+    val lockComputers by prefs.sleepLockComputers.collectAsState(initial = false)
 
     var canQuiet by remember { mutableStateOf(FocusMode.canUse(context)) }
     var renaming by remember { mutableStateOf(false) }
@@ -134,11 +136,11 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
         SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
             ActionRow(
-                0, 4, TandemIcons.Watch, stringResource(R.string.watch_name_row), state.name ?: stringResource(R.string.settings_cat_watch),
+                0, 6, TandemIcons.Watch, stringResource(R.string.watch_name_row), state.name ?: stringResource(R.string.settings_cat_watch),
                 { renaming = true },
             )
             ActionRow(
-                1, 4, TandemIcons.Ring,
+                1, 6, TandemIcons.Ring,
                 stringResource(if (state.ringing) R.string.watch_find_stop else R.string.watch_find),
                 stringResource(R.string.watch_find_sub),
                 onClick = {
@@ -147,20 +149,28 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
                 },
                 modifier = if (state.ready) Modifier else Modifier.alpha(0.6f),
             )
-            SettingsTarget(FocusKeys.WatchMouse, 2, 4) {
+            SettingsTarget(FocusKeys.WatchMouse, 2, 6) {
                 SwitchRow(
-                    2, 4, TandemIcons.Mouse, stringResource(R.string.watch_mouse), stringResource(R.string.watch_mouse_sub), mouse,
+                    2, 6, TandemIcons.Mouse, stringResource(R.string.watch_mouse), stringResource(R.string.watch_mouse_sub), mouse,
                     { on -> scope.launch { prefs.setWatchMouse(on) } },
                 )
             }
-            SettingsTarget(FocusKeys.WatchQuiet, 3, 4) {
+            SettingsTarget(FocusKeys.WatchQuiet, 3, 6) {
                 SwitchRow(
-                    3, 4, TandemIcons.Sleep, stringResource(R.string.watch_quiet), stringResource(R.string.watch_quiet_sub), sleepQuiet,
+                    3, 6, TandemIcons.Sleep, stringResource(R.string.watch_quiet), stringResource(R.string.watch_quiet_sub), sleepQuiet,
                     { on -> scope.launch { prefs.setWatchSleepQuiet(on) } },
                     blocked = if (canQuiet) null else stringResource(R.string.watch_quiet_blocked),
                     onBlocked = { runCatching { context.startActivity(FocusMode.accessIntent()) } },
                 )
             }
+            SwitchRow(
+                4, 6, TandemIcons.Music, stringResource(R.string.sleep_pause_music), stringResource(R.string.sleep_pause_music_sub), pauseMusic,
+                { on -> scope.launch { prefs.setSleepPauseMusic(on) } },
+            )
+            SwitchRow(
+                5, 6, TandemIcons.Lock, stringResource(R.string.sleep_lock_computers), stringResource(R.string.sleep_lock_computers_sub), lockComputers,
+                { on -> scope.launch { prefs.setSleepLockComputers(on) } },
+            )
         }
 
         // The same choices as on the health page and on the computers' page of the watch: this is where someone looks for them too.

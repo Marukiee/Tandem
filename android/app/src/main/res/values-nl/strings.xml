@@ -591,6 +591,16 @@
         <item quantity="one">Nog %d nacht</item>
         <item quantity="other">Nog %d nachten</item>
     </plurals>
+    <string name="sleep_pause_music">Muziek pauzeren als je in slaap valt</string>
+    <string name="sleep_pause_music_sub">Op deze telefoon en op je computers, zodra het horloge merkt dat je slaapt</string>
+    <string name="sleep_lock_computers">Computers vergrendelen als je in slaap valt</string>
+    <string name="sleep_lock_computers_sub">Staat uit: er kan iemand anders achter de computer zitten</string>
+    <string name="sleep_music_channel">Muziek terwijl je sliep</string>
+    <string name="sleep_music_title">Er speelde muziek door terwijl je sliep</string>
+    <string name="sleep_music_text">Er speelde nog een halfuur of langer muziek nadat je in slaap viel. Voortaan vanzelf uitzetten?</string>
+    <string name="sleep_music_yes">Ja, voortaan</string>
+    <string name="sleep_music_not_now">Nu niet</string>
+    <string name="sleep_music_never">Niet meer vragen</string>
     <string name="watch_glance_night">Afgelopen nacht</string>
     <string name="watch_glance_score">Slaapscore %1$d</string>
     <string name="watch_section_wrist">Op je pols</string>

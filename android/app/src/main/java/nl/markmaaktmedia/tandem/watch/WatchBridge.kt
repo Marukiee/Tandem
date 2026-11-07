@@ -691,7 +691,49 @@ class WatchBridge(
         scope.launch {
             val wanted = prefs.watchSleepQuiet.first()
             handler.post { if (!on || wanted) quiet.turn(on) }
+            if (on) fellAsleep() else wokeUp()
         }
+    }
+
+    /** Whether music still played half an hour after falling asleep, with pausing it switched off: then the morning asks. */
+    private var playedThrough = false
+    private val checkMusic = Runnable { if (_state.value.sleeping && musicPlaying()) playedThrough = true }
+
+    private fun musicPlaying(): Boolean = media.anyPlaying || computerPlayers.any { it.playing }
+
+    private suspend fun fellAsleep() {
+        playedThrough = false
+        val pause = prefs.sleepPauseMusic.first()
+        val lock = prefs.sleepLockComputers.first()
+        handler.post {
+            if (pause) {
+                media.pauseAll()
+                computerPlayers.filter { it.playing }.forEach { player ->
+                    val (device, id) = PlayerRules.computerPlayer(player.id) ?: return@forEach
+                    scope.launch(Dispatchers.IO) { runCatching { host.engine?.sendMediaCommand(device, id, TandemMediaAction.PAUSE, null) } }
+                }
+            } else if (musicPlaying()) {
+                handler.removeCallbacks(checkMusic)
+                handler.postDelayed(checkMusic, MUSIC_THROUGH_MS)
+            }
+        }
+        if (lock) {
+            host.devices.value.filter { it.platform != TandemPlatform.ANDROID && it.online }.forEach { computer ->
+                scope.launch(Dispatchers.IO) { runCatching { host.engine?.lock(computer.id) } }
+            }
+        }
+    }
+
+    /** Music played on for half an hour of sleep: ask once whether it should stop by itself from now on, at most once a week. */
+    private suspend fun wokeUp() {
+        handler.removeCallbacks(checkMusic)
+        if (!playedThrough) return
+        playedThrough = false
+        if (prefs.sleepPauseMusic.first() || prefs.sleepMusicNeverAsk.first()) return
+        val now = System.currentTimeMillis()
+        if (now - prefs.sleepMusicAskedAt.first() < WEEK_MS) return
+        prefs.setSleepMusicAskedAt(now)
+        SleepMusicQuestion.ask(context)
     }
 
     override fun onFailure(failure: LinkFailure) {
@@ -737,6 +779,8 @@ class WatchBridge(
     }
 
     private companion object {
+        const val MUSIC_THROUGH_MS = 30 * 60_000L
+        const val WEEK_MS = 7 * 24 * 3_600_000L
         const val TAG = "TandemWatch"
         const val PAIRING_WINDOW_MS = 2 * 60_000L
         const val AUTH_WINDOW_MS = 30_000L
