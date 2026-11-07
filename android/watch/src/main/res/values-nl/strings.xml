@@ -87,7 +87,7 @@
     <string name="tune_pinch">Knijp elke keer als het scherm het zegt</string>
     <string name="tune_move">Beweeg je arm alsof je stuurt. Niet knijpen</string>
     <string name="tune_pinch_moving">Beweeg, en knijp als het scherm het zegt</string>
-    <string name="tune_other">Maak een vuist, tik op tafel, draai je pols</string>
+    <string name="tune_other">Nu niet knijpen: maak een vuist, tik op tafel, draai je pols</string>
     <string name="tune_done">Klaar, dank je</string>
     <string name="tune_left">%1$d s, %2$d keer knijpen gezien</string>
     <string name="hid_pairing">Sta het koppelen toe op je computer</string>

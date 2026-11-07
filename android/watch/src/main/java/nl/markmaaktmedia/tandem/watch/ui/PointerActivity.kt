@@ -114,6 +114,9 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     private val testing by lazy { targetId.isEmpty() && hidAddress == null }
     private var pinches by mutableIntStateOf(0)
     private var pulse by mutableIntStateOf(0)
+    /** Counts the pinches heard, so the screen can light up for each: a buzz alone did not say whether it was the pinch or a tap. */
+    private var flashes by mutableIntStateOf(0)
+    private var flashDouble by mutableStateOf(false)
     private var movingUi by mutableStateOf(true)
 
     // Raw motion for tuning the pinch detector on real wrists. Not in a release.
@@ -273,6 +276,8 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                     tuning?.write(RawRecord.Mark(event.timestamp / 1_000_000, if (heard == Pinch.DOUBLE) "pinch2" else "pinch"))
                     runOnUiThread {
                         pinches++
+                        flashDouble = heard == Pinch.DOUBLE
+                        flashes++
                         // One pinch is the left button, two in a row the right one, as a tap and a tap with two fingers are.
                         if (heard == Pinch.DOUBLE) secondary() else primary()
                     }
@@ -457,8 +462,22 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                     scale = { scale.value },
                     turn = { turn.value },
                 )
+                PinchFlash(flashes, flashDouble)
             }
         }
+    }
+
+    /** The whole screen lights up for a moment when a pinch is heard: the primary colour for one, the tertiary for two in a row. */
+    @Composable
+    private fun PinchFlash(count: Int, double: Boolean) {
+        val glow = remember { Animatable(0f) }
+        LaunchedEffect(count) {
+            if (count == 0) return@LaunchedEffect
+            glow.snapTo(1f)
+            glow.animateTo(0f, androidx.compose.animation.core.tween(FLASH_MS))
+        }
+        val colour = if (double) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
+        Box(Modifier.fillMaxSize().background(colour.copy(alpha = FLASH_ALPHA * glow.value)))
     }
 
     companion object {
@@ -468,6 +487,8 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         /** 200 times a second, the most Android gives without a special permission, and what a knock needs. */
         private const val SAMPLE_US = 5_000
         private const val EXTRA_HID = "hid"
+        private const val FLASH_MS = 450
+        private const val FLASH_ALPHA = 0.6f
         private const val BUZZ_QUIET_NS = 450_000_000L
         private const val CUE_FIRST_MS = 1_500L
         private const val CUE_EVERY_MS = 2_500L

@@ -168,7 +168,7 @@ class WatchBridge(
             if (level < 0 || scale <= 0) return
             val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
             handler.post {
-                ownBattery = DeviceBattery("", host.myName, level * 100 / scale, plugged)
+                ownBattery = DeviceBattery("", host.myName, level * 100 / scale, plugged, DeviceBattery.PHONE)
                 publishBatteries()
             }
         }
@@ -255,7 +255,8 @@ class WatchBridge(
                     )
                 }
                 val others = devices.filter { it.online }.mapNotNull { device ->
-                    device.status.battery?.let { DeviceBattery(device.id, device.name, it.level.toInt(), it.charging) }
+                    val kind = if (device.platform == TandemPlatform.ANDROID) DeviceBattery.PHONE else DeviceBattery.COMPUTER
+                    device.status.battery?.let { DeviceBattery(device.id, device.name, it.level.toInt(), it.charging, kind) }
                 }
                 handler.post {
                     targets = computers

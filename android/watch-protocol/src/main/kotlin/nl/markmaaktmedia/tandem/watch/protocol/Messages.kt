@@ -75,7 +75,13 @@ enum class MediaCommandKind { PLAY_PAUSE, NEXT, PREVIOUS, VOLUME_UP, VOLUME_DOWN
 data class PointerTarget(val id: String, val name: String, val online: Boolean, val allowsInput: Boolean)
 
 /** A device in the circle with its battery, for the overview on the watch. */
-data class DeviceBattery(val id: String, val name: String, val level: Int, val charging: Boolean)
+/** [kind] is [DeviceBattery.PHONE] or [DeviceBattery.COMPUTER], for its icon; 0 from a phone older than this. */
+data class DeviceBattery(val id: String, val name: String, val level: Int, val charging: Boolean, val kind: Int = 0) {
+    companion object {
+        const val PHONE = 1
+        const val COMPUTER = 2
+    }
+}
 
 /**
  * Everything that travels over the encrypted link.
@@ -344,7 +350,7 @@ object MessageCodec {
             is Message.Ringing -> w.u8(RINGING).bool(message.on)
             is Message.DeviceBatteries -> {
                 w.u8(DEVICE_BATTERIES).varint(message.devices.size.toLong())
-                message.devices.forEach { w.bytes(ByteWriter().str(it.id).str(it.name).u8(it.level).bool(it.charging).toByteArray()) }
+                message.devices.forEach { w.bytes(ByteWriter().str(it.id).str(it.name).u8(it.level).bool(it.charging).u8(it.kind).toByteArray()) }
             }
             is Message.WatchStatus -> w.u8(WATCH_STATUS).u8(message.level).bool(message.charging).varint(message.stepsToday).varint(message.activeMinutesToday.toLong())
             is Message.StepGoal -> w.u8(STEP_GOAL).varint(message.steps.toLong())
@@ -410,7 +416,7 @@ object MessageCodec {
             DEVICE_BATTERIES -> Message.DeviceBatteries(
                 r.list {
                     val d = ByteReader(it.bytes())
-                    DeviceBattery(d.str(), d.str(), d.u8(), d.bool())
+                    DeviceBattery(d.str(), d.str(), d.u8(), d.bool(), if (d.remaining > 0) d.u8() else 0)
                 },
             )
             WATCH_STATUS -> Message.WatchStatus(r.u8(), r.bool(), if (r.remaining > 0) r.varint() else 0, if (r.remaining > 0) r.varint().toInt() else 0)

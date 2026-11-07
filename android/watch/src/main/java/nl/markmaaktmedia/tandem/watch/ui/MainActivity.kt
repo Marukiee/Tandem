@@ -326,38 +326,12 @@ private fun HomePage(ui: WatchUi, settled: Boolean, missing: List<String>, askAc
             }
 
             PlayerRules.shown(ui.players, ui.pickedPlayer)?.let { player ->
-                item(key = "media") { NowPlayingButton(player, ui.covers[player.artKey], rimRow(spec), SurfaceTransformation(spec)) }
+                item(key = "media") { PlayerCard(player, ui.covers[player.artKey], spec) }
             }
 
-            item(key = "today") {
-                val numbers = java.text.NumberFormat.getIntegerInstance()
-                val details = listOfNotNull(
-                    tracking.heartNow?.let { stringResource(R.string.home_heart, it) },
-                    tracking.lastSleep?.takeIf { it.found }?.let { stringResource(R.string.home_slept, durationText(it.minutes)) },
-                ).joinToString(", ")
-                FilledTonalButton(
-                    onClick = { context.startActivity(Intent(context, HealthActivity::class.java)) },
-                    modifier = rimRow(spec),
-                    transformation = SurfaceTransformation(spec),
-                    icon = { Icon(painterResource(R.drawable.sym_favorite), null) },
-                    label = { Text(stringResource(R.string.home_steps, numbers.format(tracking.stepsToday), numbers.format(tracking.stepGoal))) },
-                    secondaryLabel = if (details.isEmpty()) null else { { Text(details) } },
-                )
-            }
+            item(key = "today") { TodayTiles(tracking, spec) }
 
-            if (ui.batteries.isNotEmpty()) {
-                ui.batteries.forEachIndexed { index, device ->
-                    item(key = "battery$index") {
-                        Text(
-                            stringResource(R.string.battery_row, device.name, device.level),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = rimContent(spec).padding(horizontal = 14.dp, vertical = 2.dp),
-                        )
-                    }
-                }
-            }
+            if (ui.batteries.isNotEmpty()) item(key = "batteries") { BatteryRow(ui.batteries, spec) }
         }
     }
 }

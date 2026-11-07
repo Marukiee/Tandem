@@ -87,7 +87,7 @@
     <string name="tune_pinch">Pinch each time the screen says so</string>
     <string name="tune_move">Move your arm as if steering. Do not pinch</string>
     <string name="tune_pinch_moving">Move, and pinch when the screen says so</string>
-    <string name="tune_other">Make a fist, tap the table, turn your wrist</string>
+    <string name="tune_other">No pinching now: make a fist, tap the table, turn your wrist</string>
     <string name="tune_done">Done, thank you</string>
     <string name="tune_left">%1$d s, %2$d pinches seen</string>
     <string name="hid_pairing">Accept the pairing on your computer</string>
