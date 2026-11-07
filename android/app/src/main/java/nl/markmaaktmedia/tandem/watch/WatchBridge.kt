@@ -604,6 +604,16 @@ class WatchBridge(
                 val computer = PlayerRules.computerPlayer(message.playerId)
                 if (computer != null) sendToComputer(computer.first, computer.second, message.kind) else media.perform(message.playerId, message.kind)
             }
+            is Message.MediaSeek -> {
+                val computer = PlayerRules.computerPlayer(message.playerId)
+                if (computer != null) {
+                    scope.launch(Dispatchers.IO) {
+                        runCatching { host.engine?.sendMediaCommand(computer.first, computer.second, TandemMediaAction.SEEK, message.positionMs.toULong()) }
+                    }
+                } else {
+                    media.seek(message.playerId, message.positionMs)
+                }
+            }
             is Message.PointerSession -> startPointer(message.targetId)
             is Message.PointerMove -> if (pointer != null) movePointer(message.dx, message.dy)
             is Message.PointerScroll -> pointer?.scroll(message.dx, message.dy)

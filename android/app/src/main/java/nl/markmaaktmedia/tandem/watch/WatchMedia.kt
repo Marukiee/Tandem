@@ -87,6 +87,11 @@ class WatchMedia(
         }
     }
 
+    /** The crown on the watch turned through the song. */
+    fun seek(playerId: String, positionMs: Long) {
+        callbacks.keys.firstOrNull { it.packageName == playerId }?.transportControls?.seekTo(positionMs.coerceAtLeast(0))
+    }
+
     private fun adjustVolume(direction: Int) {
         context.getSystemService(AudioManager::class.java)
             ?.adjustStreamVolume(AudioManager.STREAM_MUSIC, direction, AudioManager.FLAG_SHOW_UI)

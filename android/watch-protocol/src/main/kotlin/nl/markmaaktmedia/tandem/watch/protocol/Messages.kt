@@ -134,6 +134,9 @@ sealed interface Message {
     data class MediaPlayers(val players: List<MediaPlayer>) : Message
     data class MediaCommand(val playerId: String, val kind: MediaCommandKind) : Message
 
+    /** Watch to phone: go to [positionMs] in what the player plays, from turning the crown. */
+    data class MediaSeek(val playerId: String, val positionMs: Long) : Message
+
     /**
      * Phone to watch: a cover, as a small image. Only when it changes, because over Bluetooth this takes a second or two.
      * [playerId] says whose it is, so that a player's newer cover replaces only that player's in the queue.
@@ -282,6 +285,7 @@ object MessageCodec {
     private const val MEDIA_PLAYERS = 0x30
     private const val MEDIA_COMMAND = 0x31
     private const val MEDIA_ART = 0x32
+    private const val MEDIA_SEEK = 0x33
     private const val FIND_DEVICE = 0x40
     private const val DEVICE_BATTERIES = 0x41
     private const val WATCH_STATUS = 0x42
@@ -340,6 +344,7 @@ object MessageCodec {
             }
             is Message.MediaCommand -> w.u8(MEDIA_COMMAND).str(message.playerId).u8(message.kind.ordinal)
             is Message.MediaArt -> w.u8(MEDIA_ART).str(message.key).bytes(message.image).str(message.playerId)
+            is Message.MediaSeek -> w.u8(MEDIA_SEEK).str(message.playerId).varint(message.positionMs)
             is Message.PointerTargets -> {
                 w.u8(POINTER_TARGETS).bool(message.enabled).varint(message.targets.size.toLong())
                 message.targets.forEach { w.bytes(encodeTarget(it)) }
@@ -409,6 +414,7 @@ object MessageCodec {
             MEDIA_PLAYERS -> Message.MediaPlayers(r.list { decodePlayer(it.bytes()) })
             MEDIA_COMMAND -> Message.MediaCommand(r.str(), enumAt<MediaCommandKind>(r.u8()))
             // The player was added later: a phone that has not been updated yet sends nothing here.
+            MEDIA_SEEK -> Message.MediaSeek(r.str(), r.varint())
             MEDIA_ART -> Message.MediaArt(r.str(), r.bytes(), if (r.remaining > 0) r.str() else "")
             POINTER_TARGETS -> Message.PointerTargets(r.bool(), r.list { decodeTarget(it.bytes()) }, r.remaining > 0 && r.bool())
             POINTER_SESSION -> Message.PointerSession(r.optStr())

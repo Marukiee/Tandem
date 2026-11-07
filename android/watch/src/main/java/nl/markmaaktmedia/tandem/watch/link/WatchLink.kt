@@ -198,6 +198,10 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         return true
     }
 
+    fun seekMedia(playerId: String, positionMs: Long) {
+        handler.post { engine?.send(Message.MediaSeek(playerId, positionMs)) }
+    }
+
     fun sendMediaCommand(playerId: String, kind: MediaCommandKind) {
         handler.post {
             engine?.send(Message.MediaCommand(playerId, kind))
@@ -497,7 +501,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             is Message.AppVersion, is Message.UpdateWant, is Message.UpdateState,
             is Message.HeartToday, is Message.HealthRecord, Message.SyncRequest, is Message.NotificationAction, is Message.CallAction, is Message.MediaCommand,
             is Message.PointerSession, is Message.PointerMove, is Message.PointerScroll, is Message.PointerClick,
-            is Message.PointerKey, is Message.PointerButton, is Message.WatchStatus, is Message.SleepMode, is Message.MouseEnabled,
+            is Message.PointerKey, is Message.PointerButton, is Message.MediaSeek, is Message.WatchStatus, is Message.SleepMode, is Message.MouseEnabled,
             -> Unit
         }
     }

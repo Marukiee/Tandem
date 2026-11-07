@@ -280,6 +280,7 @@ class MessageCodecTest {
         Message.StepGoal(8000),
         Message.HeartAllDay(false),
         Message.SmartWakeAlarm(1_700_000_000_000),
+        Message.MediaSeek("com.example.music", 93_500),
         Message.AppVersion(301, "0.3.1", "ab12"),
         Message.UpdateOffer(302, "0.3.2", 5_400_000, ByteArray(32) { it.toByte() }),
         Message.UpdateWant(302, 16_384),

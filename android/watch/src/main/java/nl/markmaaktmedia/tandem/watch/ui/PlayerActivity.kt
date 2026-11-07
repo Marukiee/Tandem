@@ -223,6 +223,18 @@ private fun rememberPlayingTime(playing: Boolean): LongState {
 
 private const val FRAME_MS = 50L
 private const val COOKIE_TURN_MS = 24_000f
+/** Five seconds a step of the crown: a song of four minutes is a few turns from end to end. */
+private const val SEEK_STEP_MS = 5_000L
+private const val SEEK_SETTLE_MS = 450L
+private const val SEEK_HOLD_MS = 1_500L
+
+/** Where the song is now, counting on from what the phone last said while it plays. */
+private fun playedNow(player: MediaPlayer): Long = player.positionMs
+
+private fun clock(ms: Long): String {
+    val seconds = ms / 1000
+    return "%d:%02d".format(seconds / 60, seconds % 60)
+}
 
 @Composable
 internal fun PlayerScreen(players: List<MediaPlayer>, player: MediaPlayer, covers: Map<String, Message.MediaArt>, onPick: (String) -> Unit) {
@@ -239,6 +251,18 @@ internal fun PlayerScreen(players: List<MediaPlayer>, player: MediaPlayer, cover
     var volumeUp by remember { mutableStateOf(true) }
     var volumeTurns by remember { mutableIntStateOf(0) }
     var volumeShown by remember { mutableStateOf(false) }
+    /** Where the crown has turned to in the song, while it turns: the ring shows it at once, the phone is told when it stops. */
+    var scrub by remember(player.id) { mutableStateOf<Long?>(null) }
+    var scrubTurns by remember { mutableIntStateOf(0) }
+    val seekable = player.durationMs > 0
+    LaunchedEffect(scrubTurns) {
+        val to = scrub ?: return@LaunchedEffect
+        delay(SEEK_SETTLE_MS)
+        WatchLink.seekMedia(player.id, to)
+        // The phone answers with the new place; until then the ring stays where it was turned to, instead of jumping back first.
+        delay(SEEK_HOLD_MS)
+        scrub = null
+    }
     LaunchedEffect(Unit) { focus.requestFocus() }
     LaunchedEffect(volumeTurns) {
         if (volumeTurns == 0) return@LaunchedEffect
@@ -256,9 +280,15 @@ internal fun PlayerScreen(players: List<MediaPlayer>, player: MediaPlayer, cover
                 .focusRequester(focus)
                 .focusable()
                 .onRotaryScrollEvent { event ->
-                    // The crown is the volume, as in Google's own media controls: the screen has room for the music and nothing else.
                     val steps = crown.update(event.verticalScrollPixels)
-                    if (steps != 0) {
+                    // The crown goes through the song, shown on the ring around the edge as it turns. A radio has no length: there it is
+                    // the volume, as in Google's own media controls.
+                    if (steps != 0 && seekable) {
+                        val from = scrub ?: playedNow(player)
+                        scrub = (from + steps * SEEK_STEP_MS).coerceIn(0, player.durationMs)
+                        scrubTurns++
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    } else if (steps != 0) {
                         volumeUp = steps > 0
                         volumeTurns++
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -283,7 +313,16 @@ internal fun PlayerScreen(players: List<MediaPlayer>, player: MediaPlayer, cover
                 },
             contentAlignment = Alignment.Center,
         ) {
-            WaveRing(player, time, accent)
+            WaveRing(player, time, accent, scrub)
+            scrub?.let { to ->
+                // The place turned to, large over the cover, while the crown turns.
+                Text(
+                    "${clock(to)} / ${clock(player.durationMs)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    modifier = Modifier.align(Alignment.Center).background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+            }
             Column(
                 Modifier.fillMaxSize().padding(start = 22.dp, end = 22.dp, top = 24.dp, bottom = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -449,7 +488,7 @@ private const val WAVE_CYCLES_PER_MS = 0.00055f
  * the wave then runs the whole way, without a handle. The top stays open for the time.
  */
 @Composable
-private fun WaveRing(player: MediaPlayer, time: LongState, accent: Color) {
+private fun WaveRing(player: MediaPlayer, time: LongState, accent: Color, scrub: Long? = null) {
     val since = remember(player.id, player.positionMs, player.playing) { SystemClock.elapsedRealtime() }
     val amplitude by animateFloatAsState(if (player.playing) 1f else 0f, TandemMotion.moveSpec(), label = "wave")
     val fill by animateColorAsState(if (player.playing) accent else lerp(accent, PlayerTrack, 0.5f), TandemMotion.colourSpec(), label = "fill")
@@ -457,7 +496,7 @@ private fun WaveRing(player: MediaPlayer, time: LongState, accent: Color) {
     val live = player.durationMs <= 0
     Canvas(Modifier.fillMaxSize()) {
         // Read here and not above: a new step then redraws this and nothing else.
-        val played = time.longValue.let { player.positionMs + if (player.playing) SystemClock.elapsedRealtime() - since else 0 }
+        val played = scrub ?: time.longValue.let { player.positionMs + if (player.playing) SystemClock.elapsedRealtime() - since else 0 }
         val fraction = if (live) 1f else (played.toFloat() / player.durationMs).coerceIn(0f, 1f)
         val width = 4.dp.toPx()
         val radius = size.minDimension / 2 - RING_INSET.toPx()
@@ -514,7 +553,7 @@ private val TRANSPORT_SIDE = 40.dp
  * meet. A pressed button swells and rounds its inner corners; its neighbours make room.
  */
 @Composable
-private fun TransportGroup(player: MediaPlayer, accent: Color, onAccent: Color) {
+internal fun TransportGroup(player: MediaPlayer, accent: Color, onAccent: Color) {
     val haptics = LocalHapticFeedback.current
     val press = { kind: MediaCommandKind ->
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)

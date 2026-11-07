@@ -61,7 +61,7 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
     val colours = remember(image) { image?.let(::coverColors) }
     Box(
         rimContent(spec)
-            .height(164.dp)
+            .height(116.dp)
             // As round as the screen it is on: a card with corners showed its hard edges against the round glass.
             .clip(RoundedCornerShape(percent = 50))
             .background(MaterialTheme.colorScheme.surfaceContainer)
@@ -74,56 +74,26 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
         // Dark enough to read on any cover, darkest under the buttons.
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Black.copy(alpha = 0.7f)))))
         Column(
-            Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 12.dp),
+            Modifier.fillMaxSize().padding(horizontal = 26.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.SpaceEvenly,
         ) {
-            if (image != null) {
-                Image(
-                    image.asImageBitmap(),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(42.dp).clip(CircleShape),
-                )
-            } else {
-                Icon(painterResource(R.drawable.sym_music_note), null, tint = Color.White, modifier = Modifier.size(28.dp))
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    player.title.ifBlank { player.app },
-                    style = MaterialTheme.typography.titleSmall,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                )
-                if (player.artist.isNotBlank()) {
-                    Text(
-                        player.artist,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.75f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                    )
+            // The cover and the name on one line, so the card takes little of the screen.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (image != null) {
+                    Image(image.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(30.dp).clip(CircleShape))
+                } else {
+                    Icon(painterResource(R.drawable.sym_music_note), null, tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+                Column {
+                    Text(player.title.ifBlank { player.app }, style = MaterialTheme.typography.labelLarge, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (player.artist.isNotBlank()) {
+                        Text(player.artist, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { WatchLink.sendMediaCommand(player.id, MediaCommandKind.PREVIOUS) }, modifier = Modifier.size(38.dp)) {
-                    Icon(painterResource(R.drawable.sym_skip_previous), null, tint = Color.White)
-                }
-                FilledIconButton(
-                    onClick = { WatchLink.sendMediaCommand(player.id, MediaCommandKind.PLAY_PAUSE) },
-                    modifier = Modifier.size(44.dp),
-                    colors = colours?.let { IconButtonDefaults.filledIconButtonColors(containerColor = it.accent, contentColor = it.onAccent) }
-                        ?: IconButtonDefaults.filledIconButtonColors(),
-                ) {
-                    Icon(painterResource(if (player.playing) R.drawable.sym_pause else R.drawable.sym_play_arrow), null)
-                }
-                IconButton(onClick = { WatchLink.sendMediaCommand(player.id, MediaCommandKind.NEXT) }, modifier = Modifier.size(38.dp)) {
-                    Icon(painterResource(R.drawable.sym_skip_next), null, tint = Color.White)
-                }
-            }
+            // The same joined buttons as the player itself, the middle one in the colour of the cover.
+            TransportGroup(player, colours?.accent ?: MaterialTheme.colorScheme.primary, colours?.onAccent ?: MaterialTheme.colorScheme.onPrimary)
         }
     }
 }
