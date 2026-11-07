@@ -4,15 +4,20 @@ import kotlin.math.hypot
 
 data class Touch(val id: Long, val x: Float, val y: Float)
 
-enum class ScreenGesture { TAP, TWO_FINGER_TAP, HOLD, HOLD_END, SLIDE }
+/** [SWIPE_RIGHT] leaves the screen, as everywhere on a watch; any other slide pauses the pointer. */
+enum class ScreenGesture { TAP, TWO_FINGER_TAP, HOLD, HOLD_END, SLIDE, SWIPE_RIGHT }
 
 /**
  * What a screen this small can tell apart, from raw fingers. No Android in here, so the rules are unit tested. A tap and a hold part at
  * the same moment, so there is no length of touch that does nothing. Once a hold has started, a finger that slides keeps holding: only
  * lifting it lets go, because that is what a drag is.
  */
-class ScreenGestures(private val slop: Float = 24f, private val holdMs: Long = 300) {
+class ScreenGestures(private val slop: Float = 24f, private val holdMs: Long = 300, private val swipe: Float = 90f) {
     private var startMs = -1L
+    private var lastX = 0f
+    private var lastY = 0f
+    private var firstX = 0f
+    private var firstY = 0f
     private var most = 0
     private var moved = false
     private var fired = false
@@ -30,7 +35,11 @@ class ScreenGestures(private val slop: Float = 24f, private val holdMs: Long = 3
             val result = when {
                 startMs < 0 -> null
                 fired -> ScreenGesture.HOLD_END
-                moved -> if (most == 1) ScreenGesture.SLIDE else null
+                moved -> when {
+                    most != 1 -> null
+                    lastX - firstX > swipe && lastX - firstX > 2 * kotlin.math.abs(lastY - firstY) -> ScreenGesture.SWIPE_RIGHT
+                    else -> ScreenGesture.SLIDE
+                }
                 nowMs - startMs > holdMs -> null
                 most >= 2 -> ScreenGesture.TWO_FINGER_TAP
                 else -> ScreenGesture.TAP
@@ -42,7 +51,13 @@ class ScreenGestures(private val slop: Float = 24f, private val holdMs: Long = 3
             origins.clear()
             return result
         }
-        if (startMs < 0) startMs = nowMs
+        if (startMs < 0) {
+            startMs = nowMs
+            firstX = touches[0].x
+            firstY = touches[0].y
+        }
+        lastX = touches[0].x
+        lastY = touches[0].y
         most = maxOf(most, touches.size)
         if (!fired) {
             for (touch in touches) {
@@ -69,6 +84,11 @@ class ScreenGestures(private val slop: Float = 24f, private val holdMs: Long = 3
  * Not tuned against real wrists yet: the numbers are a start, and raw recordings will set them.
  */
 class PinchDetector(private val minPeak: Float = 1.2f, private val peakOverNoise: Float = 4f) {
+    /**
+     * Until this sensor time nothing counts: the watch buzzes for a pinch, the buzz is a knock in the same sensor, and the next pinch
+     * it seemed to be buzzed again. That loop was the pointer that clicked by itself, every 0.4 s.
+     */
+    @Volatile var quietUntilNs = 0L
     private var lastNs = 0L
     private val slow = FloatArray(3)
     private var noise = 0f
@@ -93,6 +113,10 @@ class PinchDetector(private val minPeak: Float = 1.2f, private val peakOverNoise
         slow[2] += (z - slow[2]) * follow
         val knock = hypot(hypot(x - slow[0], y - slow[1]), z - slow[2])
 
+        if (timestampNs < quietUntilNs) {
+            peaksInBurst = 0
+            return false
+        }
         val threshold = maxOf(minPeak, noise * peakOverNoise)
         val isPeak = knock > threshold && timestampNs - lastPeakNs > REFRACTORY_NS
         // A knock must not teach the filter that this much movement is normal.

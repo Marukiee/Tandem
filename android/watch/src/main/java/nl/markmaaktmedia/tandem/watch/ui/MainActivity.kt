@@ -491,6 +491,20 @@ private fun MorePage(ui: WatchUi) {
                         label = { Text(stringResource(R.string.pinch_test)) },
                     )
                 }
+                item(key = "hid_test") {
+                    FilledTonalButton(
+                        onClick = {
+                            // The address is put there by hand over adb for now; later Tandem on the computer passes it on.
+                            val address = runCatching { java.io.File(context.getExternalFilesDir(null), "hid-address.txt").readText().trim().uppercase() }.getOrNull()
+                            if (address.isNullOrEmpty()) Toast.makeText(context, R.string.hid_no_address, Toast.LENGTH_LONG).show()
+                            else PointerActivity.openBluetooth(context, address)
+                        },
+                        modifier = rimRow(spec),
+                        transformation = SurfaceTransformation(spec),
+                        icon = { Icon(painterResource(R.drawable.sym_bluetooth), null) },
+                        label = { Text(stringResource(R.string.hid_test)) },
+                    )
+                }
                 item(key = "wake_buzz") {
                     FilledTonalButton(
                         onClick = { GentleWake.tryOnce(context) },

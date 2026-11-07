@@ -53,6 +53,7 @@ import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.watch.R
+import nl.markmaaktmedia.tandem.watch.link.HidMouse
 import nl.markmaaktmedia.tandem.watch.link.WatchLink
 import nl.markmaaktmedia.tandem.watch.pointer.CrownSteps
 import nl.markmaaktmedia.tandem.watch.pointer.GyroPointer
@@ -101,9 +102,14 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
 
     private val presentation by lazy { intent.getBooleanExtra(EXTRA_PRESENTATION, false) }
     private val targetId by lazy { intent.getStringExtra(EXTRA_TARGET).orEmpty() }
+    /** The Bluetooth address of a computer to be the mouse of directly, without the phone. */
+    private val hidAddress by lazy { intent.getStringExtra(EXTRA_HID) }
+    private var hid: HidMouse? = null
+    private var hidState by mutableStateOf(HidMouse.Status.STARTING)
+    private var hidWhy by mutableStateOf("")
 
     /** Without a computer this only counts pinches and records them, to tune the detector on a real wrist. */
-    private val testing by lazy { targetId.isEmpty() }
+    private val testing by lazy { targetId.isEmpty() && hidAddress == null }
     private var pinches by mutableIntStateOf(0)
     private var pulse by mutableIntStateOf(0)
     private var movingUi by mutableStateOf(true)
@@ -116,16 +122,18 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
      * The test goes through steps and says each one, with a buzz when the next begins. What the wrist was asked to do is written next
      * to the motion, so a real pinch can be told from what only looks like one: moving the arm, a fist, a tap on the table.
      */
-    private enum class TuningStep(val seconds: Int, val text: Int) {
+    private enum class TuningStep(val seconds: Int, val text: Int, val cued: Boolean = false) {
         STILL(5, R.string.tune_still),
-        PINCH(25, R.string.tune_pinch),
+        PINCH(30, R.string.tune_pinch, cued = true),
         MOVE(15, R.string.tune_move),
-        PINCH_MOVING(25, R.string.tune_pinch_moving),
+        PINCH_MOVING(30, R.string.tune_pinch_moving, cued = true),
         OTHER(20, R.string.tune_other),
         DONE(0, R.string.tune_done),
     }
     private var step by mutableStateOf(TuningStep.STILL)
     private var stepLeft by mutableIntStateOf(0)
+    /** The screen says "pinch now": each pinch then has a moment it belongs to, which a recording needs to learn from. */
+    private var cue by mutableStateOf(false)
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
     private val stepTick = object : Runnable {
         override fun run() {
@@ -137,20 +145,36 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
             beginStep(TuningStep.entries[step.ordinal + 1])
         }
     }
+    private val cueTick = object : Runnable {
+        override fun run() {
+            if (!step.cued) return
+            cue = true
+            mark("cue")
+            main.postDelayed({ cue = false }, CUE_SHOWN_MS)
+            main.postDelayed(this, CUE_EVERY_MS)
+        }
+    }
+
+    /** In the time of the sensor, so the marks line up with the motion. */
+    private fun mark(label: String) {
+        val now = android.os.SystemClock.elapsedRealtimeNanos() / 1_000_000
+        sensorHandler.post { tuning?.write(RawRecord.Mark(now, label)) }
+    }
 
     private fun beginStep(next: TuningStep) {
         step = next
         stepLeft = next.seconds
-        val label = "step:${next.name.lowercase()}"
-        sensorHandler.post { tuning?.write(RawRecord.Mark(System.currentTimeMillis(), label)) }
-        val vibrator = getSystemService(android.os.Vibrator::class.java)
+        cue = false
+        main.removeCallbacks(cueTick)
+        mark("step:${next.name.lowercase()}")
         if (next == TuningStep.DONE) {
             listenToPinch = false
-            vibrator?.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 120, 120, 120), -1))
             sensorHandler.post { stopTuningLog() }
+            // Only now: a buzz while it records is a knock in the very sensor it records.
+            getSystemService(android.os.Vibrator::class.java)?.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 120, 120, 120), -1))
             return
         }
-        if (next != TuningStep.STILL) vibrator?.vibrate(android.os.VibrationEffect.createOneShot(250, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        if (next.cued) main.postDelayed(cueTick, CUE_FIRST_MS)
         main.postDelayed(stepTick, 1_000)
     }
 
@@ -174,7 +198,17 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
 
     override fun onResume() {
         super.onResume()
-        if (!testing) WatchLink.startPointer(targetId)
+        if (hidAddress != null) {
+            val mouse = HidMouse(applicationContext, hidAddress!!)
+            hid = mouse
+            mouse.onStatus = { status ->
+                hidState = status
+                hidWhy = mouse.lastFailure
+            }
+            mouse.start()
+        } else if (!testing) {
+            WatchLink.startPointer(targetId)
+        }
         gyro.sensitivity = PointerPrefs.speed.value.sensitivity
         listenToPinch = testing || PointerPrefs.pinch.value
         gyro.reset()
@@ -192,12 +226,15 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         // Never leave a button down on the computer: a watch that goes dark mid-drag lets go here.
         if (holding) {
             holding = false
-            if (!testing) WatchLink.holdPointer(BUTTON_LEFT, false)
+            if (!testing) outHold(BUTTON_LEFT, false)
         }
         touching = false
         sensors.unregisterListener(this)
         main.removeCallbacks(stepTick)
-        if (!testing) WatchLink.stopPointer()
+        main.removeCallbacks(cueTick)
+        hid?.stop()
+        hid = null
+        if (!testing && hidAddress == null) WatchLink.stopPointer()
         sensorHandler.post { stopTuningLog() }
         super.onPause()
     }
@@ -215,8 +252,9 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent) {
         when (event.sensor.type) {
-            Sensor.TYPE_GYROSCOPE -> if (moving && !touching) {
-                gyro.update(event.timestamp, event.values[1], event.values[2])?.let { WatchLink.movePointer(it.dx, it.dy) }
+            Sensor.TYPE_GYROSCOPE -> {
+                tuning?.write(RawRecord.Gyro(event.timestamp / 1_000_000, milli(event.values[0]), milli(event.values[1]), milli(event.values[2])))
+                if (moving && !touching) gyro.update(event.timestamp, event.values[1], event.values[2])?.let { outMove(it.dx, it.dy) }
             }
             Sensor.TYPE_ACCELEROMETER -> {
                 val x = event.values[0]
@@ -233,6 +271,8 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
             }
         }
     }
+
+    private fun milli(value: Float): Short = (value * 1000).toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
 
     private fun unit(value: Float): Short =
         (value / SensorManager.GRAVITY_EARTH * ACCEL_UNITS_PER_G)
@@ -258,19 +298,19 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
 
     /** A tap on the screen, or a double pinch for when the other hand is not free. */
     private fun primary() {
-        feedback()
         if (testing) return
-        if (presentation) WatchLink.sendKey(KEY_RIGHT) else WatchLink.clickPointer(BUTTON_LEFT)
+        feedback()
+        if (presentation) outKey(KEY_RIGHT) else outClick(BUTTON_LEFT)
     }
 
     private fun onGesture(gesture: ScreenGesture) {
         val canHold = WatchLink.ui.value.pointerCanHold
         when (gesture) {
-            ScreenGesture.TAP -> primary()
+            ScreenGesture.TAP -> if (testing) feedback() else primary()
             ScreenGesture.TWO_FINGER_TAP -> {
                 feedback()
                 if (testing) return
-                if (presentation) WatchLink.sendKey(KEY_LEFT) else WatchLink.clickPointer(BUTTON_RIGHT)
+                if (presentation) outKey(KEY_LEFT) else outClick(BUTTON_RIGHT)
             }
             ScreenGesture.HOLD -> when {
                 presentation -> {
@@ -279,26 +319,28 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                 }
                 testing -> feedback()
                 // A phone that cannot hold a button still gets the right click a long press always was.
-                !canHold -> {
+                !canHold && hid == null -> {
                     feedback()
-                    WatchLink.clickPointer(BUTTON_RIGHT)
+                    outClick(BUTTON_RIGHT)
                 }
                 else -> {
                     feedback()
                     gyro.reset()
                     holding = true
-                    WatchLink.holdPointer(BUTTON_LEFT, true)
+                    outHold(BUTTON_LEFT, true)
                 }
             }
             ScreenGesture.HOLD_END -> if (holding) {
                 holding = false
-                WatchLink.holdPointer(BUTTON_LEFT, false)
+                outHold(BUTTON_LEFT, false)
                 feedback()
             }
             ScreenGesture.SLIDE -> if (!presentation) {
                 feedback()
                 setMoving(!moving)
             }
+            // As everywhere on a watch: the screen takes every touch, so the system can not do this for it.
+            ScreenGesture.SWIPE_RIGHT -> finish()
         }
     }
 
@@ -309,8 +351,17 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
 
     private fun feedback() {
         window.decorView.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
+        // The buzz is a knock in the sensor the pinches come from: without this it was heard as the next pinch, and that one buzzed again.
+        pinch.quietUntilNs = android.os.SystemClock.elapsedRealtimeNanos() + BUZZ_QUIET_NS
         pulse++
     }
+
+    // Where the pointer goes: straight to the computer over Bluetooth, or by way of the phone.
+    private fun outMove(dx: Int, dy: Int) = hid?.move(dx, dy) ?: WatchLink.movePointer(dx, dy)
+    private fun outClick(button: Int) = hid?.click(button) ?: WatchLink.clickPointer(button)
+    private fun outHold(button: Int, down: Boolean) = hid?.hold(button, down) ?: WatchLink.holdPointer(button, down)
+    private fun outKey(code: Int) = hid?.key(code) ?: WatchLink.sendKey(code)
+    private fun outScroll(steps: Int) = hid?.scroll(steps) ?: WatchLink.scrollPointer(0, steps)
 
     @Composable
     private fun PointerScreen(name: String, ready: Boolean, canHold: Boolean) {
@@ -338,9 +389,9 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                         if (presentation) {
                             val steps = crown.update(event.verticalScrollPixels)
                             if (steps != 0) feedback()
-                            repeat(kotlin.math.abs(steps)) { WatchLink.sendKey(if (steps > 0) KEY_RIGHT else KEY_LEFT) }
+                            repeat(kotlin.math.abs(steps)) { outKey(if (steps > 0) KEY_RIGHT else KEY_LEFT) }
                         } else {
-                            WatchLink.scrollPointer(0, event.verticalScrollPixels.toInt())
+                            if (hid != null) outScroll(-(event.verticalScrollPixels / CROWN_PER_WHEEL).toInt()) else WatchLink.scrollPointer(0, event.verticalScrollPixels.toInt())
                         }
                         true
                     }
@@ -368,10 +419,16 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                 PointerContent(
                     name = name,
                     status = if (testing) {
-                        stringResource(step.text)
+                        stringResource(if (cue) R.string.tune_now else step.text)
+                    } else if (hidAddress != null && hidState != HidMouse.Status.CONNECTED) {
+                        when (hidState) {
+                            HidMouse.Status.PAIRING -> stringResource(R.string.hid_pairing)
+                            HidMouse.Status.FAILED -> hidWhy
+                            else -> stringResource(R.string.hid_connecting)
+                        }
                     } else stringResource(
                         when {
-                            !ready -> R.string.phone_not_connected
+                            !ready && hidAddress == null -> R.string.phone_not_connected
                             presentation -> R.string.presentation_hint
                             holding -> R.string.mouse_holding
                             movingUi -> R.string.mouse_moving
@@ -398,12 +455,23 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
 
         /** 200 times a second, the most Android gives without a special permission, and what a knock needs. */
         private const val SAMPLE_US = 5_000
+        private const val EXTRA_HID = "hid"
+        private const val BUZZ_QUIET_NS = 450_000_000L
+        private const val CUE_FIRST_MS = 1_500L
+        private const val CUE_EVERY_MS = 2_500L
+        private const val CUE_SHOWN_MS = 900L
+        private const val CROWN_PER_WHEEL = 40f
         private const val BUTTON_LEFT = 0
         private const val BUTTON_RIGHT = 1
 
         /** Tandem's input uses Mac key codes everywhere; each computer translates them. */
         private const val KEY_LEFT = 123
         private const val KEY_RIGHT = 124
+
+        /** Straight to a computer over Bluetooth, as its mouse. For now only from the test buttons, with an address put there by hand. */
+        fun openBluetooth(context: Context, address: String) {
+            context.startActivity(Intent(context, PointerActivity::class.java).putExtra(EXTRA_HID, address))
+        }
 
         fun open(context: Context, targetId: String, presentation: Boolean) {
             context.startActivity(

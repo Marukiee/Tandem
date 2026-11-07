@@ -42,7 +42,7 @@ class NightFeatures {
                     offSince = -1
                 }
             }
-            is RawRecord.Steps, is RawRecord.SkinTemperature -> Unit
+            is RawRecord.Steps, is RawRecord.SkinTemperature, is RawRecord.Gyro -> Unit
         }
     }
 

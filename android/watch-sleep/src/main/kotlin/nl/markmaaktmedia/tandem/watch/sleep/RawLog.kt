@@ -23,6 +23,8 @@ sealed interface RawRecord {
     /** In hundredths of a degree Celsius. Not used yet: the open sleep data has none to learn from, and old nights can not be measured again. */
     data class SkinTemperature(override val timeMs: Long, val centiDegrees: Int) : RawRecord
     data class Mark(override val timeMs: Long, val label: String) : RawRecord
+    /** Rotation in thousandths of a radian per second. Only in recordings for tuning the mouse: a night does not need it. */
+    data class Gyro(override val timeMs: Long, val x: Short, val y: Short, val z: Short) : RawRecord
 }
 
 const val ACCEL_UNITS_PER_G = 2048f
@@ -35,9 +37,10 @@ private const val TYPE_HEART_RATE = 2
 private const val TYPE_STEPS = 3
 private const val TYPE_MARK = 4
 private const val TYPE_SKIN = 5
+private const val TYPE_GYRO = 6
 
 class RawLogWriter(private val out: OutputStream, writeHeader: Boolean) {
-    private val last = LongArray(TYPE_SKIN + 1)
+    private val last = LongArray(TYPE_GYRO + 1)
 
     init {
         if (writeHeader) out.write(MAGIC)
@@ -64,6 +67,12 @@ class RawLogWriter(private val out: OutputStream, writeHeader: Boolean) {
             is RawRecord.SkinTemperature -> {
                 header(TYPE_SKIN, record.timeMs)
                 varint(record.centiDegrees.coerceAtLeast(0).toLong())
+            }
+            is RawRecord.Gyro -> {
+                header(TYPE_GYRO, record.timeMs)
+                short(record.x)
+                short(record.y)
+                short(record.z)
             }
             is RawRecord.Mark -> {
                 header(TYPE_MARK, record.timeMs)
@@ -118,12 +127,12 @@ fun forEachRawRecord(input: InputStream, visit: (RawRecord) -> Unit) {
         return
     }
     require(magic.contentEquals(MAGIC)) { "not a TWS1 log" }
-    val last = LongArray(TYPE_SKIN + 1)
+    val last = LongArray(TYPE_GYRO + 1)
     try {
         while (true) {
             val type = data.read()
             if (type < 0) break
-            if (type !in TYPE_ACCEL..TYPE_SKIN) break
+            if (type !in TYPE_ACCEL..TYPE_GYRO) break
             val raw = readVarint(data)
             val delta = (raw ushr 1) xor -(raw and 1)
             val time = last[type] + delta
@@ -134,6 +143,7 @@ fun forEachRawRecord(input: InputStream, visit: (RawRecord) -> Unit) {
                     TYPE_HEART_RATE -> RawRecord.HeartRate(time, data.readUnsignedByte(), data.readUnsignedByte())
                     TYPE_STEPS -> RawRecord.Steps(time, readVarint(data))
                     TYPE_SKIN -> RawRecord.SkinTemperature(time, readVarint(data).toInt())
+                    TYPE_GYRO -> RawRecord.Gyro(time, readShort(data), readShort(data), readShort(data))
                     else -> {
                         val bytes = ByteArray(readVarint(data).toInt().coerceIn(0, 4096))
                         data.readFully(bytes)

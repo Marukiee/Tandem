@@ -128,6 +128,17 @@ class ScreenGesturesTest {
     }
 
     @Test
+    fun `a swipe to the right leaves, one to the left only pauses`() {
+        val g = ScreenGestures()
+        g.onFrame(0, listOf(finger(x = 60f)))
+        g.onFrame(80, listOf(finger(x = 260f)))
+        assertEquals(ScreenGesture.SWIPE_RIGHT, g.onFrame(120, emptyList()))
+        g.onFrame(200, listOf(finger(x = 260f)))
+        g.onFrame(280, listOf(finger(x = 60f)))
+        assertEquals(ScreenGesture.SLIDE, g.onFrame(320, emptyList()))
+    }
+
+    @Test
     fun `a resting finger holds once and lets go when it is lifted`() {
         val g = ScreenGestures()
         g.onFrame(0, listOf(finger()))
@@ -237,8 +248,9 @@ class PinchDetectorTest {
     private val gravity = 9.81f
 
     /** [knocks] are times in ms; each is a sharp bump over 10 ms. Also adds a little sensor noise. */
-    private fun count(ms: Int, knocks: List<Int>, arm: (Float) -> Float = { 0f }): Int {
+    private fun count(ms: Int, knocks: List<Int>, quietUntilMs: Int = 0, arm: (Float) -> Float = { 0f }): Int {
         val detector = PinchDetector()
+        detector.quietUntilNs = 1_000_000_000L + quietUntilMs * 1_000_000L
         val random = Random(2)
         var detected = 0
         var t = 1_000_000_000L
@@ -263,6 +275,9 @@ class PinchDetectorTest {
 
     @Test
     fun `shaking is nothing`() = assertEquals(0, count(3000, listOf(800, 950, 1100, 1250, 1400)))
+
+    @Test
+    fun `what comes while the watch buzzes itself is nothing`() = assertEquals(0, count(2000, listOf(800, 1050), quietUntilMs = 1200))
 
     @Test
     fun `moving the arm is nothing`() {
