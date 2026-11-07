@@ -105,6 +105,8 @@
     <string name="table_tap">Tap the table with your index finger when the screen says so</string>
     <string name="table_slide">Slide your hand over the table as if moving a mouse. Do not tap</string>
     <string name="table_slide_tap">Slide, and tap when the screen says so</string>
+    <string name="table_mouse">Table mouse</string>
+    <string name="table_mouse_sub">Hand on the table, tap to click</string>
     <string name="channel_music">Music on your phone</string>
     <string name="channel_find">Find this watch</string>
     <string name="battery_row">%1$s, %2$d%%</string>

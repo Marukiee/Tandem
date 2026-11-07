@@ -62,7 +62,8 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
     Box(
         rimContent(spec)
             .height(164.dp)
-            .clip(RoundedCornerShape(32.dp))
+            // As round as the screen it is on: a card with corners showed its hard edges against the round glass.
+            .clip(RoundedCornerShape(percent = 50))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable { PlayerActivity.open(context) },
         contentAlignment = Alignment.Center,
@@ -73,7 +74,7 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
         // Dark enough to read on any cover, darkest under the buttons.
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Black.copy(alpha = 0.7f)))))
         Column(
-            Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp),
+            Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -82,7 +83,7 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
                     image.asImageBitmap(),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)),
+                    modifier = Modifier.size(42.dp).clip(CircleShape),
                 )
             } else {
                 Icon(painterResource(R.drawable.sym_music_note), null, tint = Color.White, modifier = Modifier.size(28.dp))
@@ -107,7 +108,7 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
                     )
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { WatchLink.sendMediaCommand(player.id, MediaCommandKind.PREVIOUS) }, modifier = Modifier.size(38.dp)) {
                     Icon(painterResource(R.drawable.sym_skip_previous), null, tint = Color.White)
                 }

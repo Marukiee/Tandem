@@ -85,7 +85,12 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     private lateinit var sensors: SensorManager
     /** Follows where the forearm points, whatever way the wrist is turned (see [ArmPointer]). */
     private val gyro = ArmPointer()
-    private val pinch = PinchDetector()
+    /**
+     * The hand on a table as on a mouse: a tap of a finger on the table is softer than a pinch in the air (1.2 to 3.4 m/s2 in a recording,
+     * against 2.4 to 5.8), and the wrist stays stiller while it slides (under 1.3 rad/s).
+     */
+    private val tableMode by lazy { intent.getBooleanExtra(EXTRA_TABLE_MODE, false) }
+    private val pinch by lazy { if (tableMode) PinchDetector(minKnock = 1.25f, maxTurn = 1.3f) else PinchDetector() }
 
     /** Only the sensor thread reads these; they change rarely and a sample late does no harm. */
     @Volatile private var moving = true
@@ -233,8 +238,10 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         } else if (!testing) {
             WatchLink.startPointer(targetId)
         }
-        gyro.sensitivity = PointerPrefs.speed.value.sensitivity
-        listenToPinch = testing || PointerPrefs.pinch.value
+        // On a table the watch moves much less than the hand that slides it, so the same slide must go further.
+        gyro.sensitivity = PointerPrefs.speed.value.sensitivity * (if (tableMode) TABLE_GAIN else 1f)
+        // On a table the taps are how it clicks, whatever is set for pinching in the air.
+        listenToPinch = testing || tableMode || PointerPrefs.pinch.value
         gyro.reset()
         pinch.reset()
         startTuningLog()
@@ -507,6 +514,8 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         private const val SAMPLE_US = 5_000
         private const val EXTRA_HID = "hid"
         private const val EXTRA_TABLE = "table"
+        private const val EXTRA_TABLE_MODE = "table_mode"
+        private const val TABLE_GAIN = 3f
         private const val MOUSE_CHANNEL = "mouse"
         /** Its own: see the other numbers in the watch app. */
         private const val MOUSE_NOTIFICATION = 360
@@ -525,8 +534,10 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         private const val KEY_RIGHT = 124
 
         /** Straight to a computer over Bluetooth, as its mouse: the computer said its address. The first time its system asks to pair. */
-        fun openBluetooth(context: Context, address: String, presentation: Boolean = false) {
-            context.startActivity(Intent(context, PointerActivity::class.java).putExtra(EXTRA_HID, address).putExtra(EXTRA_PRESENTATION, presentation))
+        fun openBluetooth(context: Context, address: String, presentation: Boolean = false, table: Boolean = false) {
+            context.startActivity(
+                Intent(context, PointerActivity::class.java).putExtra(EXTRA_HID, address).putExtra(EXTRA_PRESENTATION, presentation).putExtra(EXTRA_TABLE_MODE, table),
+            )
         }
 
         /**
@@ -563,11 +574,12 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
             context.startActivity(Intent(context, PointerActivity::class.java).putExtra(EXTRA_TARGET, "").putExtra(EXTRA_TABLE, true))
         }
 
-        fun open(context: Context, targetId: String, presentation: Boolean) {
+        fun open(context: Context, targetId: String, presentation: Boolean, table: Boolean = false) {
             context.startActivity(
                 Intent(context, PointerActivity::class.java)
                     .putExtra(EXTRA_TARGET, targetId)
-                    .putExtra(EXTRA_PRESENTATION, presentation),
+                    .putExtra(EXTRA_PRESENTATION, presentation)
+                    .putExtra(EXTRA_TABLE_MODE, table),
             )
         }
     }

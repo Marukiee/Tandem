@@ -345,6 +345,7 @@ private fun ControlsPage(ui: WatchUi) {
         TransformingLazyColumn(state = list, contentPadding = padding.withRoomAbove(), modifier = Modifier.fillMaxSize()) {
             pageTitle(R.string.page_controls, spec)
             item(key = "mouse") { SteerButton(ui, false, rimRow(spec), SurfaceTransformation(spec)) }
+            item(key = "table") { SteerButton(ui, false, rimRow(spec), SurfaceTransformation(spec), table = true) }
             item(key = "presentation") { SteerButton(ui, true, rimRow(spec), SurfaceTransformation(spec)) }
             item(key = "find_phone") {
                 // Grey while the phone is away: it can not hear it then. The button says so when pressed.
@@ -567,7 +568,7 @@ private fun failureText(failure: LinkFailure): Int? = when (failure) {
  * this opens the first that can be steered; choosing between them comes with the settings in Tandem.
  */
 @Composable
-private fun SteerButton(ui: WatchUi, presentation: Boolean, modifier: Modifier, transformation: androidx.wear.compose.material3.SurfaceTransformation) {
+private fun SteerButton(ui: WatchUi, presentation: Boolean, modifier: Modifier, transformation: androidx.wear.compose.material3.SurfaceTransformation, table: Boolean = false) {
     val context = LocalContext.current
     // Over Bluetooth the computer needs neither Tandem online nor its permission to steer: it sees an ordinary mouse.
     val target = ui.pointerTargets.firstOrNull { it.btAddress != null } ?: ui.pointerTargets.firstOrNull { it.online && it.allowsInput }
@@ -583,12 +584,13 @@ private fun SteerButton(ui: WatchUi, presentation: Boolean, modifier: Modifier, 
         onClick = {
             if (why != null) Toast.makeText(context, why, Toast.LENGTH_SHORT).show()
             // Straight over Bluetooth when the computer said its address: one hop less, and the steadiest pointer.
-            else target!!.btAddress?.let { PointerActivity.openBluetooth(context, it, presentation) } ?: PointerActivity.open(context, target.id, presentation)
+            else target!!.btAddress?.let { PointerActivity.openBluetooth(context, it, presentation, table) } ?: PointerActivity.open(context, target.id, presentation, table)
         },
         modifier = modifier.alpha(if (why == null) 1f else 0.5f),
         transformation = transformation,
-        icon = { Icon(painterResource(if (presentation) R.drawable.sym_play_arrow else R.drawable.sym_link), null) },
-        label = { Text(stringResource(if (presentation) R.string.presentation else R.string.mouse)) },
+        icon = { Icon(painterResource(when { presentation -> R.drawable.sym_play_arrow; table -> R.drawable.sym_laptop; else -> R.drawable.sym_link }), null) },
+        label = { Text(stringResource(when { presentation -> R.string.presentation; table -> R.string.table_mouse; else -> R.string.mouse })) },
+        secondaryLabel = if (table) { { Text(stringResource(R.string.table_mouse_sub)) } } else null,
     )
 }
 
