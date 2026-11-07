@@ -6,7 +6,7 @@ import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, 
 import { Icon } from "./icons.js";
 import { FindSoundRow, LastSeen, PlaySoundButton } from "./find.js";
 import { MicButton, OutputButton } from "./output.js";
-import { HealthContent } from "./health.js";
+import { HealthContent, WatchGlance } from "./health.js";
 import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
 
@@ -237,6 +237,14 @@ function WatchButton({ device }) {
     <${Icon} name=${watch.ringing ? "bell-off" : "device-watch"} size=${17} />${watch.ringing ? t("stop_ringing") : t("find_watch")}</button>`;
 }
 
+/**
+ * A group of the buttons of a device page, as the Mac has them: a card with a small heading and a row per button. Side by side when
+ * there is room and under each other when there is not; pills as wide as their words wrapped into ragged lines.
+ */
+function ActionGroup({ title, wide, children }) {
+  return html`<div class=${"agroup" + (wide ? " wide" : "")}><div class="agroup-title">${title}</div>${children}</div>`;
+}
+
 export function DevicePage({ device }) {
   const wifiHere = useWifiHere();
   const [ringing, setRinging] = useState(false);
@@ -305,22 +313,16 @@ export function DevicePage({ device }) {
 
     <${Offers} device=${device} />
 
-    <div class="actions">
+    <div class="agroups">
+      <${ActionGroup} title=${t("group_share")}>
+        <button class="btn accent" disabled=${!device.online} title=${t("drop_click")} onClick=${send}><${Icon} name="send" size=${17} />${t("send_files")}</button>
         <button class="btn" disabled=${!device.online} title=${t("clipboard_tip", device.name)} onClick=${clipboard}><${Icon} name="clipboard" size=${17} />${t("send_clipboard")}</button>
         <button class=${"btn" + (wifiWhy ? " grey" : "")} disabled=${!device.online && !device.ble} title=${t("wifi_share_tip", device.name)} onClick=${() => (wifiWhy ? say(wifiWhy) : call("wifi_share", { id: device.id }).then(say).catch(failed))}>
           <${Icon} name="wifi" size=${17} />${t("wifi_share")}</button>
         <button class=${"btn" + (hasCap("files") || !device.online ? "" : " grey")} disabled=${!device.online} title=${t("browse_tip", device.name)} onClick=${() => (hasCap("files") ? set({ page: "files", selected: device.id }) : say(t("update_on", device.name)))}>
           <${Icon} name="folder-open" size=${17} />${t("browse_files")}</button>
-        ${(isComputer || device.platform === "android") && html`${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${() => (hasCap("screen.host") ? show("screen") : say(t("live_update_phone")))}>
-          <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
-        ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} title=${t("live_camera_tip")} onClick=${() => (hasCap("camera.host") ? show("camera") : say(t("live_update_phone")))}>
-          <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
-        ${device.platform === "android" && html`<button class=${"btn" + (webcamOn ? " on" : "") + (state.platform === "linux" ? "" : " grey")} disabled=${!device.online && !webcamOn} title=${t("webcam_tip")}
-          onClick=${() => (webcamOn ? call("webcam_stop", { id: device.id }).catch(failed)
-            : state.platform !== "linux" ? say(t("webcam_not_here"))
-            : !hasCap("camera.host") ? say(t("live_update_phone"))
-            : call("webcam_start", { id: device.id, name: device.name }).then(() => say(t("webcam_asked", device.name))).catch(failed))}>
-          <${Icon} name=${webcamOn ? "circle-x" : "video"} size=${17} />${webcamOn ? t("webcam_stop") : t("webcam_use")}</button>`}
+      <//>
+      ${(isComputer || device.platform === "android") && html`<${ActionGroup} title=${t("group_screen")}>
         ${isComputer && html`<button class=${"btn" + (hasCap("screen.host") || !device.online ? "" : " grey")} disabled=${!device.online} title=${t("host_view_tip")} onClick=${() => (hasCap("screen.host") ? show("screen") : say(t("host_off", device.name)))}>
           <${Icon} name="device-desktop" size=${17} />${t("host_view")}</button>`}
         ${isComputer && html`<button class=${"btn" + (displayOn ? " on" : hasCap("screen.extend") || !device.online ? "" : " grey")} disabled=${!device.online && !displayOn} title=${t("display_tip")}
@@ -328,29 +330,47 @@ export function DevicePage({ device }) {
             : !hasCap("screen.extend") ? say(t("display_cant", device.name))
             : call("display_start", { id: device.id, name: device.name, mac: device.platform === "macos" }).catch(failed))}>
           <${Icon} name=${displayOn ? "circle-x" : "device-laptop"} size=${17} />${displayOn ? t("display_stop_screen") : t("display_use")}</button>`}
-        ${(isComputer || device.platform === "android") && html`<button class=${"btn" + (extendOn ? " on" : "")} disabled=${!device.online && !extendOn} title=${t("extend_tip")}
+        <button class=${"btn" + (extendOn ? " on" : "")} disabled=${!device.online && !extendOn} title=${t("extend_tip")}
           onClick=${() => (extendOn ? call("display_offer_stop", { id: device.id }).catch(failed)
             : !hasCap("screen.extend.view") ? say(t("extend_update"))
             : !state.canExtend ? say(t("extend_cant_here"))
             : call("display_offer", { id: device.id }).then(() => say(t("extend_asked", device.name))).catch(failed))}>
-          <${Icon} name=${extendOn ? "circle-x" : "device-desktop"} size=${17} />${extendOn ? t("extend_stop") : t("extend_to")}</button>`}
+          <${Icon} name=${extendOn ? "circle-x" : "device-desktop"} size=${17} />${extendOn ? t("extend_stop") : t("extend_to")}</button>
+        ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${() => (hasCap("screen.host") ? show("screen") : say(t("live_update_phone")))}>
+          <${Icon} name="device-mobile" size=${17} />${t("live_show_screen")}</button>`}
+        ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} title=${t("live_camera_tip")} onClick=${() => (hasCap("camera.host") ? show("camera") : say(t("live_update_phone")))}>
+          <${Icon} name="camera" size=${17} />${t("live_show_camera")}</button>`}
         <${LockButton} device=${device} />
-        ${isComputer && html`<button class="btn" disabled=${!device.online} title=${t("ssh_title")} onClick=${() => (sshReady ? openSsh() : say(sshReason))}>
-          <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>`}
-        ${isComputer && html`<button class=${"btn" + (device.status?.awake ? " on" : "")} disabled=${!device.online} title=${t("keep_awake_remote_tip")}
+      <//>`}
+      ${device.platform === "android" && html`<${ActionGroup} title=${t("group_sound")}>
+        <${OutputButton} device=${device} />
+        <${MicButton} device=${device} />
+        <button class=${"btn" + (ringing ? " on" : "")} disabled=${!device.online} onClick=${ring}>
+          <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>
+        <${SoundModeButton} device=${device} />
+      <//>`}
+      ${isComputer && html`<${ActionGroup} title=${t("group_computer")}>
+        <button class="btn" disabled=${!device.online} title=${t("ssh_title")} onClick=${() => (sshReady ? openSsh() : say(sshReason))}>
+          <${Icon} name="terminal" size=${17} />${t("ssh_terminal")}</button>
+        <button class=${"btn" + (device.status?.awake ? " on" : "")} disabled=${!device.online} title=${t("keep_awake_remote_tip")}
           onClick=${() => (device.status?.awake == null ? say(t("keep_awake_update", device.name))
             : call("keep_awake_remote", { id: device.id, on: !device.status.awake }).catch(failed))}>
-          <${Icon} name="coffee" size=${17} />${device.status?.awake ? t("keep_awake_kept") : t("keep_awake_remote")}</button>`}
-        ${(isComputer || device.platform === "android") && html`<${OutputButton} device=${device} />`}
-        ${isComputer && html`<${PlaySoundButton} device=${device} />`}
-        ${device.platform === "android" && html`<${MicButton} device=${device} />`}
-        ${device.platform === "android" && hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
+          <${Icon} name="coffee" size=${17} />${device.status?.awake ? t("keep_awake_kept") : t("keep_awake_remote")}</button>
+        <${OutputButton} device=${device} />
+        <${PlaySoundButton} device=${device} />
+      <//>`}
+      ${device.platform === "android" && html`<${ActionGroup} title=${t("group_camera")} wide>
+        <button class=${"btn" + (webcamOn ? " on" : "") + (state.platform === "linux" ? "" : " grey")} disabled=${!device.online && !webcamOn} title=${t("webcam_tip")}
+          onClick=${() => (webcamOn ? call("webcam_stop", { id: device.id }).catch(failed)
+            : state.platform !== "linux" ? say(t("webcam_not_here"))
+            : !hasCap("camera.host") ? say(t("live_update_phone"))
+            : call("webcam_start", { id: device.id, name: device.name }).then(() => say(t("webcam_asked", device.name))).catch(failed))}>
+          <${Icon} name=${webcamOn ? "circle-x" : "video"} size=${17} />${webcamOn ? t("webcam_stop") : t("webcam_use")}</button>
+        ${hasCap("capture") && html`<button class="btn" disabled=${!device.online} title=${t("insert_photo_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "photo" }).catch(failed)}>
           <${Icon} name="camera" size=${17} />${t("insert_photo")}</button>
         <button class="btn" disabled=${!device.online} title=${t("insert_scan_tip")} onClick=${() => call("capture_request", { id: device.id, kind: "document" }).catch(failed)}>
           <${Icon} name="file" size=${17} />${t("insert_scan")}</button>`}
-        ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
-          <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}
-        ${device.platform === "android" && html`<${SoundModeButton} device=${device} />`}`}
+      <//>`}
     </div>
 
     ${isComputer && html`<${LastSeen} device=${device} />`}
@@ -391,8 +411,27 @@ export function watchName(device) {
  */
 export function WatchPage({ device }) {
   const watch = device.status && device.status.watch;
+  const [insights, setInsights] = useState(null);
+  // A switch shows what was pressed at once; the phone's status says what came of it a moment later and takes over.
+  const [wanted, setWanted] = useState({});
+  const settings = watch && watch.settings;
+  useEffect(() => {
+    call("health_insights", { offset: -new Date().getTimezoneOffset() }).then(setInsights).catch(() => setInsights(null));
+  }, [state.health]);
+  useEffect(() => setWanted({}), [JSON.stringify(settings)]);
   if (!watch || !watch.paired) return null;
   const reachable = device.online && watch.online;
+  const why = device.online ? "" : t("watch_phone_away");
+  const shown = settings && { ...settings, ...wanted };
+  const change = (patch) => {
+    setWanted((before) => ({ ...before, ...patch }));
+    call("set_watch_settings", { id: device.id, ...patch }).catch(failed);
+  };
+  const openHealth = () => set({ page: "settings", settingsWanted: { section: "health", at: Date.now() } });
+  const toggle = (icon, key, title, sub) => html`<${SettingRow} icon=${icon} title=${t(title)} sub=${t(sub)} why=${why}>
+    <${Switch} on=${shown[key]} label=${t(title)} disabled=${!device.online} onChange=${(on) => change({ [key]: on })} />
+  <//>`;
+  const goal = shown ? shown.stepGoal : 0;
   return html`<div class="wrap">
     <div class="card" style=${reachable ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
       <div class="head">
@@ -401,35 +440,59 @@ export function WatchPage({ device }) {
           <div class="title ellipsis">${watchName(device)}</div>
           <div class="small muted">${t("watch_by_way_of", device.name)}</div>
           <div class="chips">
-            <${Chip} icon=${reachable ? "check" : "device-watch"}>${reachable ? t("connected") : t("watch_away")}<//>
-            ${reachable && watch.level != null && html`<${Chip} icon="device-watch">${watch.level}%<//>`}
+            <${Chip} icon=${reachable ? "circle-check" : "device-watch"} tone=${reachable ? "ok" : ""}>${reachable ? t("connected") : t("watch_away")}<//>
+            ${reachable && watch.sleeping && html`<${Chip} icon="moon" tone="accent">${t("watch_recording")}<//>`}
           </div>
         </div>
+        ${watch.level != null && html`<${BatteryRing} battery=${{ level: watch.level, charging: !!watch.charging, powerSave: false }} size=${72} connected=${reachable} />`}
       </div>
     </div>
 
-    <div class="actions">
-      <${WatchButton} device=${device} />
-      <button class="btn" onClick=${() => set({ selected: device.id, page: "device" })}><${Icon} name="device-mobile" size=${17} />${t("open_device", device.name)}</button>
+    <${WatchGlance} i=${insights} records=${state.health} onOpen=${openHealth} />
+
+    <div class="agroups">
+      <${ActionGroup} title=${t("watch")}>
+        <${WatchButton} device=${device} />
+        <button class="btn" onClick=${openHealth}><${Icon} name="moon" size=${17} />${t("tab_health")}</button>
+        <button class="btn" onClick=${() => set({ selected: device.id, page: "device" })}><${Icon} name="device-mobile" size=${17} />${t("open_device", device.name)}</button>
+      <//>
     </div>
 
     <h2>${t("settings")}</h2>
     <div class="card flush">
-      <${SettingRow} icon="pencil" title=${t("watch_name")} sub=${t("watch_name_sub", watchName(device))} why=${device.online ? "" : t("watch_phone_away")}>
+      <${SettingRow} icon="pencil" title=${t("watch_name")} sub=${t("watch_name_sub", watchName(device))} why=${why}>
         <button class="btn small" disabled=${!device.online} onClick=${() => set({ dialog: { kind: "rename-watch", id: device.id } })}>${t("rename")}</button>
       <//>
-      <${SettingRow} icon="moon" title=${t("tab_health")} sub=${t("watch_health_sub")}>
-        <button class="btn small" onClick=${() => set({ page: "settings", settingsWanted: { section: "health", at: Date.now() } })}>${t("open")}</button>
-      <//>
+      ${shown ? html`
+        ${toggle("pointer", "mouse", "watch_mouse", "watch_mouse_sub")}
+        ${toggle("moon", "sleepQuiet", "watch_quiet", "watch_quiet_sub")}
+        ${toggle("alarm", "smartWake", "watch_wake", "watch_wake_sub")}
+        ${toggle("heart", "heartAllDay", "watch_heart", "watch_heart_sub")}
+        <${SettingRow} icon="walk" title=${t("watch_goal")} sub=${t("watch_goal_sub")} why=${why}>
+          <div class="goal">
+            <button class="btn small" disabled=${!device.online || goal <= STEP_GOAL_MIN} title=${t("watch_goal_less")} aria-label=${t("watch_goal_less")}
+              onClick=${() => change({ stepGoal: Math.max(STEP_GOAL_MIN, goal - STEP_GOAL_STEP) })}><${Icon} name="minus" size=${14} /></button>
+            <span class="num">${goal.toLocaleString(language() === "nl" ? "nl" : "en")}</span>
+            <button class="btn small" disabled=${!device.online || goal >= STEP_GOAL_MAX} title=${t("watch_goal_more")} aria-label=${t("watch_goal_more")}
+              onClick=${() => change({ stepGoal: Math.min(STEP_GOAL_MAX, goal + STEP_GOAL_STEP) })}><${Icon} name="plus" size=${14} /></button>
+          </div>
+        <//>`
+      // A phone with an older Tandem does not say them: a switch that shows off could be wrong, so none is shown.
+      : html`<${SettingRow} icon="download" title=${t("watch_more_title")} sub=${t("watch_more_update", device.name)}><span></span><//>`}
     </div>
 
     <div class="card flush" style="margin-top:18px">
-      <${SettingRow} icon="trash" title=${t("watch_unpair")} sub=${t("watch_unpair_sub")} why=${device.online ? "" : t("watch_phone_away")}>
+      <${SettingRow} icon="trash" title=${t("watch_unpair")} sub=${t("watch_unpair_sub")} why=${why}>
         <button class="btn danger small" disabled=${!device.online} onClick=${() => set({ dialog: { kind: "unpair-watch", id: device.id } })}>${t("watch_unpair_button")}</button>
       <//>
     </div>
   </div>`;
 }
+
+/** The step goals the phone offers, so both say the same. */
+const STEP_GOAL_MIN = 2000;
+const STEP_GOAL_MAX = 30000;
+const STEP_GOAL_STEP = 500;
 
 // ---- Shared, notifications, settings --------------------------------------------------
 

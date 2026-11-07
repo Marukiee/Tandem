@@ -255,6 +255,7 @@ pub fn run() {
             commands::ring_watch,
             commands::rename_watch,
             commands::unpair_watch,
+            commands::set_watch_settings,
             commands::send_paths,
             commands::pick_and_send,
             commands::send_clipboard,

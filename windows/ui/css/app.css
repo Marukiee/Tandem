@@ -310,9 +310,20 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 .head-players .list { display: flex; flex-direction: column; gap: 16px; padding-top: 16px;
   transform: translateY(-8px); transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
 .head-players.open .list { transform: none; }
-/* The buttons of a device page, in groups with a small heading, each button as wide as the others and starting at the left. */
-.agroup { display: flex; flex-direction: column; gap: 8px; }
-.agroup-title { font: 600 12px var(--font); color: var(--text-2); padding-left: 4px; }
+/* The buttons of a device page in groups, as the Mac has them: a card per group with a row per button, side by side while they fit and
+   under each other when they do not. A row is the icon in a round badge and the words; what is on, or the main button, has a full badge. */
+.agroups { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; align-items: stretch; }
+.agroup { display: flex; flex-direction: column; padding: 6px; border-radius: 18px; background: var(--hover); }
+.agroup-title { font: 600 12px var(--font); color: var(--text-2); padding: 6px 10px 4px; }
+/* What the Mac has no group for: a strip across under the others, its buttons side by side, so the groups above stay as they are there. */
+.agroup.wide { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.agroup.wide .agroup-title { grid-column: 1 / -1; }
+.agroup .btn { width: 100%; justify-content: flex-start; gap: 12px; min-height: 44px; padding: 6px 8px; border: none; border-radius: 12px;
+  background: transparent; font-size: 14px; font-weight: 500; text-align: left; }
+.agroup .btn:hover { background: var(--hover); }
+.agroup .btn .icon { box-sizing: content-box; flex: none; width: 17px; height: 17px; padding: 7px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+.agroup .btn.on, .agroup .btn.accent { background: transparent; color: var(--accent); }
+.agroup .btn.on .icon, .agroup .btn.accent .icon { background: var(--accent); color: #fff; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .actions .btn { width: auto; justify-content: center; box-sizing: border-box; padding-inline: 16px; }
 .drop {
@@ -569,6 +580,14 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .health-more { line-height: 1.45; }
 .health-row { display: flex; align-items: center; gap: 16px; }
 .health-big { font-size: 30px; font-weight: 650; line-height: 1.1; white-space: nowrap; }
+/* The numbers on the page of the watch: side by side, each a card that opens the health page. */
+.glances { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.glance { display: flex; flex-direction: column; gap: 6px; text-align: left; font: inherit; color: inherit; cursor: default; min-width: 0; }
+.glance:hover { background: var(--hover); }
+.glance .health-big { font-size: 24px; }
+.glance-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+.goal { display: flex; align-items: center; gap: 6px; }
+.goal .num { min-width: 56px; text-align: center; font-variant-numeric: tabular-nums; }
 .health-unit { font-size: 14px; font-weight: 500; color: var(--text-2); margin: 0 2px; }
 .health-chart { display: flex; flex-direction: column; gap: 6px; }
 .health-chart.grow-x { flex: 1; min-width: 0; }

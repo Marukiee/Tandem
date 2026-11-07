@@ -63,6 +63,11 @@ fn status(s: &TandemStatus) -> Value {
         "lock": s.lock,
         "watch": s.watch.as_ref().map(|w| json!({
             "paired": w.paired, "online": w.online, "level": w.level, "charging": w.charging, "ringing": w.ringing, "name": w.name,
+            "sleeping": w.sleeping,
+            // Null from a phone older than these: the page then shows no switch that could be wrong.
+            "settings": w.settings.as_ref().map(|s| json!({
+                "mouse": s.mouse, "sleepQuiet": s.sleep_quiet, "smartWake": s.smart_wake, "heartAllDay": s.heart_all_day, "stepGoal": s.step_goal,
+            })),
         })),
     })
 }

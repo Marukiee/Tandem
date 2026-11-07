@@ -239,6 +239,21 @@ pub async fn unpair_watch(state: State<'_, AppState>, id: String) -> Reply<()> {
     state.engine()?.unpair_watch(id).await.map_err(shown)
 }
 
+/// What is set for the watch, kept on its phone: what is left out stays as it is. The phone's status says what came of it.
+#[tauri::command]
+pub async fn set_watch_settings(
+    state: State<'_, AppState>,
+    id: String,
+    mouse: Option<bool>,
+    sleep_quiet: Option<bool>,
+    smart_wake: Option<bool>,
+    heart_all_day: Option<bool>,
+    step_goal: Option<u32>,
+) -> Reply<()> {
+    let change = tandem_core::ffi::TandemWatchSettingsChange { mouse, sleep_quiet, smart_wake, heart_all_day, step_goal };
+    state.engine()?.set_watch_settings(id, change).await.map_err(shown)
+}
+
 /// The button under the screens: the desktop may ask now for this computer's mouse and keyboard.
 #[tauri::command]
 pub fn capture_start(app: AppHandle) {
