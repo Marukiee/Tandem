@@ -140,5 +140,6 @@
     <string name="settings_kw_watch_quiet">horloge, slaap, stil, niet storen, bedtijd</string>
     <string name="settings_kw_health">gezondheid, slaap, training, hartslag, stappen, nachten</string>
     <string name="settings_kw_health_show">gezondheid, tonen, zonder horloge, aanzetten</string>
+    <string name="settings_kw_health_heart_all_day">hartslag, pols, hele dag, meten, batterij</string>
     <string name="settings_kw_health_smart_wake">slim wekken, wakker, zacht, wekker, trillen, lichte slaap</string>
 </resources>

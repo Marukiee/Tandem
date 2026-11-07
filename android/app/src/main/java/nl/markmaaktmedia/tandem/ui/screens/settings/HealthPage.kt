@@ -125,10 +125,11 @@ internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
             }
             if (watch.paired || shown) {
                 HealthAlert(insights)
-                HealthToday()
                 LatestNight(insights)
-                HealthTrends(insights)
+                HealthDay(insights)
+                HealthWeek(insights)
                 EarlierNights()
+                HealthChoices()
                 SectionHeader(stringResource(R.string.health_your_data), top = 16.dp, bottom = 0.dp)
                 SettingsGroup {
                     val canImport = HealthConnectImport.available(context)

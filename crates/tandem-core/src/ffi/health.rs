@@ -215,6 +215,24 @@ pub struct TandemHealthInsights {
     pub latest_day_heart: Option<TandemDayHeart>,
     /// The naps of the last seven days, newest first.
     pub naps: Vec<TandemNap>,
+    /// Always seven days, the oldest first and today last.
+    pub week: Vec<TandemWeekDay>,
+}
+
+/// One day of the last seven. Nothing measured is None and not zero.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemWeekDay {
+    /// Local midnight.
+    pub start_ms: u64,
+    pub sleep_minutes: Option<u32>,
+    pub score: Option<u32>,
+    pub resting: Option<u32>,
+    /// When the night began and ended, in minutes from this midnight. Negative is the evening before.
+    pub bed_minutes: Option<i32>,
+    pub wake_minutes: Option<i32>,
+    pub steps: Option<u64>,
+    pub active_minutes: Option<u32>,
+    pub nap_minutes: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -302,6 +320,21 @@ impl From<HealthInsights> for TandemHealthInsights {
                 .naps
                 .into_iter()
                 .map(|n| TandemNap { start_ms: n.start_ms, end_ms: n.end_ms, sleep_minutes: n.sleep_minutes, heart_rate_mean: n.heart_rate_mean })
+                .collect(),
+            week: i
+                .week
+                .into_iter()
+                .map(|d| TandemWeekDay {
+                    start_ms: d.start_ms,
+                    sleep_minutes: d.sleep_minutes,
+                    score: d.score,
+                    resting: d.resting,
+                    bed_minutes: d.bed_minutes,
+                    wake_minutes: d.wake_minutes,
+                    steps: d.steps,
+                    active_minutes: d.active_minutes,
+                    nap_minutes: d.nap_minutes,
+                })
                 .collect(),
             this_week: i.this_week.into(),
             last_week: i.last_week.into(),

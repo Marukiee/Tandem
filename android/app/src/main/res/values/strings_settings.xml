@@ -141,5 +141,6 @@
     <string name="settings_kw_watch_quiet">watch, sleep, quiet, do not disturb, bedtime</string>
     <string name="settings_kw_health">health, sleep, workout, heart rate, steps, nights</string>
     <string name="settings_kw_health_show">health, show, without watch, turn on</string>
+    <string name="settings_kw_health_heart_all_day">heart rate, pulse, all day, measure, battery</string>
     <string name="settings_kw_health_smart_wake">smart alarm, wake, gentle, alarm, vibrate, light sleep</string>
 </resources>

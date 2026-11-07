@@ -98,6 +98,24 @@ pub struct NapInsight {
     pub heart_rate_mean: Option<u32>,
 }
 
+/// One day of the last seven, for a row of bars. Nothing measured is None and not zero: a day without a watch is not a day without sleep.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct WeekDay {
+    /// Local midnight.
+    pub start_ms: u64,
+    /// The night that ended on this morning. The longest, if a morning somehow has two.
+    pub sleep_minutes: Option<u32>,
+    pub score: Option<u32>,
+    pub resting: Option<u32>,
+    /// When that night began and ended, in minutes from this midnight. Negative is the evening before.
+    pub bed_minutes: Option<i32>,
+    pub wake_minutes: Option<i32>,
+    /// Today is not here on a computer: a day becomes a record once it is over.
+    pub steps: Option<u64>,
+    pub active_minutes: Option<u32>,
+    pub nap_minutes: u32,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HealthInsights {
     pub latest_night: Option<NightInsight>,
@@ -113,6 +131,8 @@ pub struct HealthInsights {
     pub latest_day_heart: Option<DayHeart>,
     /// The last seven days, newest first.
     pub naps: Vec<NapInsight>,
+    /// Always seven days, the oldest first and today last.
+    pub week: Vec<WeekDay>,
 }
 
 fn scale(value: f64, zero: f64, full: f64) -> f64 {
@@ -266,6 +286,35 @@ fn week_of(records: &[HealthRecord], from_ms: u64, until_ms: u64) -> WeekSummary
     }
 }
 
+fn local_day(ms: u64, utc_offset_minutes: i32) -> i64 {
+    ((ms / MINUTE_MS) as i64 + i64::from(utc_offset_minutes)).div_euclid(1440)
+}
+
+fn week_days(records: &[HealthRecord], now_ms: u64, utc_offset_minutes: i32) -> Vec<WeekDay> {
+    let today = local_day(now_ms, utc_offset_minutes);
+    (today - 6..=today)
+        .map(|day| {
+            let midnight_minutes = day * 1440 - i64::from(utc_offset_minutes);
+            let from_midnight = |ms: u64| ((ms / MINUTE_MS) as i64 - midnight_minutes) as i32;
+            let on_day = |ms: u64| local_day(ms, utc_offset_minutes) == day;
+            let night = records.iter().filter(|r| is_night(r) && on_day(r.end_ms)).max_by_key(|r| r.sleep_minutes);
+            // A day runs from midnight to midnight, so its end is already the next day.
+            let counted = records.iter().find(|r| r.kind == HealthKind::Day && on_day(r.start_ms));
+            WeekDay {
+                start_ms: midnight_minutes.max(0) as u64 * MINUTE_MS,
+                sleep_minutes: night.map(|n| n.sleep_minutes),
+                score: night.map(score_of),
+                resting: night.and_then(|n| n.heart_rate_low),
+                bed_minutes: night.map(|n| from_midnight(n.start_ms)),
+                wake_minutes: night.map(|n| from_midnight(n.end_ms)),
+                steps: counted.map(|d| d.steps),
+                active_minutes: counted.map(|d| d.active_minutes),
+                nap_minutes: records.iter().filter(|r| is_nap(r) && on_day(r.end_ms)).map(|n| n.sleep_minutes).sum(),
+            }
+        })
+        .collect()
+}
+
 fn is_night(record: &HealthRecord) -> bool {
     record.kind == HealthKind::Sleep && record.sleep_minutes >= MIN_NIGHT_MINUTES
 }
@@ -370,6 +419,7 @@ pub fn insights(records: &[HealthRecord], now_ms: u64, utc_offset_minutes: i32) 
                 })
                 .collect()
         },
+        week: week_days(records, now_ms, utc_offset_minutes),
     }
 }
 
@@ -405,6 +455,59 @@ mod tests {
             added_ms: 0,
             origin: None,
         }
+    }
+
+    #[test]
+    fn a_week_is_always_seven_days_with_today_last() {
+        let now = MIDNIGHT + 10 * DAY_MS + 9 * 60 * MINUTE_MS;
+        let week = insights(&[], now, 0).week;
+        assert_eq!(week.len(), 7);
+        assert_eq!(week[6].start_ms, MIDNIGHT + 10 * DAY_MS);
+        assert_eq!(week[0].start_ms, MIDNIGHT + 4 * DAY_MS);
+        assert_eq!(week[6].sleep_minutes, None);
+    }
+
+    #[test]
+    fn a_night_belongs_to_the_morning_it_ends_in() {
+        let now = MIDNIGHT + 10 * DAY_MS + 9 * 60 * MINUTE_MS;
+        // To bed at 23:00 on the evening before, up at 7:00.
+        let last = night("last", -60, 10, 480, Some(47));
+        let week = insights(&[last], now, 0).week;
+        assert_eq!(week[6].sleep_minutes, Some(480));
+        assert_eq!(week[6].bed_minutes, Some(-60));
+        assert_eq!(week[6].wake_minutes, Some(420));
+        assert_eq!(week[6].resting, Some(47));
+        assert!(week[6].score.is_some());
+        assert_eq!(week[5].sleep_minutes, None);
+    }
+
+    #[test]
+    fn the_days_of_a_week_are_local_days() {
+        let now = MIDNIGHT + 10 * DAY_MS + 9 * 60 * MINUTE_MS;
+        // Up at 23:30 UTC: that is the next morning, two hours ahead of UTC.
+        let late = night("late", 23 * 60 + 30 - 480, 9, 480, None);
+        let week = insights(&[late], now, 120).week;
+        assert_eq!(week[6].sleep_minutes, Some(480));
+        assert_eq!(week[6].wake_minutes, Some(90));
+        assert_eq!(week[6].start_ms, MIDNIGHT + 10 * DAY_MS - 120 * MINUTE_MS);
+    }
+
+    #[test]
+    fn a_day_gives_its_steps_to_the_day_it_began_on_and_a_nap_stays_a_nap() {
+        let now = MIDNIGHT + 10 * DAY_MS + 9 * 60 * MINUTE_MS;
+        let mut day = night("day", 0, 8, 0, None);
+        day.kind = HealthKind::Day;
+        day.start_ms = MIDNIGHT + 8 * DAY_MS;
+        day.end_ms = MIDNIGHT + 9 * DAY_MS;
+        day.steps = 8412;
+        day.active_minutes = 34;
+        let nap = night("nap", 14 * 60, 8, 35, Some(55));
+        let week = insights(&[day, nap], now, 0).week;
+        assert_eq!(week[4].steps, Some(8412));
+        assert_eq!(week[4].active_minutes, Some(34));
+        assert_eq!(week[4].nap_minutes, 35);
+        assert_eq!(week[4].sleep_minutes, None);
+        assert_eq!(week[5].steps, None);
     }
 
     #[test]
