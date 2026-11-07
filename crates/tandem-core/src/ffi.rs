@@ -284,6 +284,9 @@ pub struct TandemStatus {
     pub lock: Option<bool>,
     #[uniffi(default = None)]
     pub watch: Option<TandemWatchStatus>,
+    /// A computer's Bluetooth address, for a watch to be its mouse straight over Bluetooth.
+    #[uniffi(default = None)]
+    pub bt_address: Option<String>,
 }
 
 /// Long enough for any name a person gives a watch, short enough for a row in a sidebar.
@@ -444,6 +447,7 @@ impl From<Status> for TandemStatus {
             sound_dnd: s.sound_dnd,
             lock: s.lock,
             watch: s.watch.map(Into::into),
+            bt_address: s.bt_address,
         }
     }
 }
@@ -472,6 +476,7 @@ impl From<TandemStatus> for Status {
             sound_dnd: s.sound_dnd,
             lock: s.lock,
             watch: s.watch.map(Into::into),
+            bt_address: s.bt_address,
             // The features go their own way, with `set_features`.
             features: None,
         }

@@ -326,6 +326,9 @@ pub struct Status {
     /// it changes, with `paired` false once there is none any more. Nil on a device that cannot have one.
     #[serde(default)]
     pub watch: Option<WatchStatus>,
+    /// The Bluetooth address of a computer, so a watch can be its mouse straight over Bluetooth (by way of the phone it learns it).
+    #[serde(default)]
+    pub bt_address: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -438,7 +441,7 @@ impl Status {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
             };
         }
-        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch);
+        take!(battery, network, hotspot, dnd, locked, free_storage, asleep, wake_mac, muted, awake, unlock, sound, sound_dnd, lock, features, watch, bt_address);
     }
 }
 

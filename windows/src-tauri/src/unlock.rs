@@ -46,8 +46,37 @@ pub fn announce(app: &AppHandle) {
         return;
     }
     let Ok(engine) = app.state::<AppState>().engine() else { return };
-    tauri::async_runtime::block_on(engine.update_status(TandemStatus { unlock: now.0, locked: now.1, lock: Some(can_lock()), ..Default::default() }));
+    // The Bluetooth address goes with it, so a watch can be the mouse of this computer straight over Bluetooth.
+    tauri::async_runtime::block_on(engine.update_status(TandemStatus {
+        unlock: now.0,
+        locked: now.1,
+        lock: Some(can_lock()),
+        bt_address: bluetooth_address(),
+        ..Default::default()
+    }));
     *told = Some(now);
+}
+
+/// This computer's Bluetooth address, "AA:BB:CC:DD:EE:FF". On Linux the first adapter says it in sysfs; on Windows that needs more of
+/// the Windows API than this app has, so it is not given yet and the watch steers by way of the phone there.
+fn bluetooth_address() -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        let adapters = std::fs::read_dir("/sys/class/bluetooth").ok()?;
+        for adapter in adapters.flatten() {
+            if let Ok(address) = std::fs::read_to_string(adapter.path().join("address")) {
+                let address = address.trim().to_uppercase();
+                if address.len() == 17 && address != "00:00:00:00:00:00" {
+                    return Some(address);
+                }
+            }
+        }
+        None
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        None
+    }
 }
 
 /// Another device asks to unlock. Everything is checked here again: the switch, the device, and that the screen is locked at all.

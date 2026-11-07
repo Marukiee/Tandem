@@ -1421,6 +1421,7 @@ final class EngineModel {
         guard let engine else { return }
         var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: false, wakeMac: WiredAddress.mac(), muted: OutputMute.isMuted(), awake: KeepAwake.shared.on)
         status.lock = ScreenLock.canLock
+        status.btAddress = BluetoothAddress.mine()
         status.battery = PowerReader.battery()
         status.network = TandemNetwork(
             kind: network.isOnline ? .wifi : .none,

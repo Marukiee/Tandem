@@ -501,9 +501,9 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         private const val KEY_LEFT = 123
         private const val KEY_RIGHT = 124
 
-        /** Straight to a computer over Bluetooth, as its mouse. For now only from the test buttons, with an address put there by hand. */
-        fun openBluetooth(context: Context, address: String) {
-            context.startActivity(Intent(context, PointerActivity::class.java).putExtra(EXTRA_HID, address))
+        /** Straight to a computer over Bluetooth, as its mouse: the computer said its address. The first time its system asks to pair. */
+        fun openBluetooth(context: Context, address: String, presentation: Boolean = false) {
+            context.startActivity(Intent(context, PointerActivity::class.java).putExtra(EXTRA_HID, address).putExtra(EXTRA_PRESENTATION, presentation))
         }
 
         fun open(context: Context, targetId: String, presentation: Boolean) {

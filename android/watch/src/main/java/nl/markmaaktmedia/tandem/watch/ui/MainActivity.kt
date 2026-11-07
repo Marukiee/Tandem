@@ -560,7 +560,8 @@ private fun failureText(failure: LinkFailure): Int? = when (failure) {
 @Composable
 private fun SteerButton(ui: WatchUi, presentation: Boolean, modifier: Modifier, transformation: androidx.wear.compose.material3.SurfaceTransformation) {
     val context = LocalContext.current
-    val target = ui.pointerTargets.firstOrNull { it.online && it.allowsInput }
+    // Over Bluetooth the computer needs neither Tandem online nor its permission to steer: it sees an ordinary mouse.
+    val target = ui.pointerTargets.firstOrNull { it.btAddress != null } ?: ui.pointerTargets.firstOrNull { it.online && it.allowsInput }
     val why: String? = when {
         !ui.pointerEnabled -> stringResource(R.string.pointer_off)
         ui.pointerTargets.isEmpty() -> stringResource(R.string.pointer_none)
@@ -572,7 +573,8 @@ private fun SteerButton(ui: WatchUi, presentation: Boolean, modifier: Modifier, 
     FilledTonalButton(
         onClick = {
             if (why != null) Toast.makeText(context, why, Toast.LENGTH_SHORT).show()
-            else PointerActivity.open(context, target!!.id, presentation)
+            // Straight over Bluetooth when the computer said its address: one hop less, and the steadiest pointer.
+            else target!!.btAddress?.let { PointerActivity.openBluetooth(context, it, presentation) } ?: PointerActivity.open(context, target.id, presentation)
         },
         modifier = modifier.alpha(if (why == null) 1f else 0.5f),
         transformation = transformation,

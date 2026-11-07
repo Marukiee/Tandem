@@ -252,6 +252,7 @@ class WatchBridge(
                         device.online,
                         // A computer that was not allowed to move its pointer says so with this feature.
                         allowsInput = device.features.firstOrNull { it.id == "control" }?.ready != false,
+                        btAddress = device.status.btAddress,
                     )
                 }
                 val others = devices.filter { it.online }.mapNotNull { device ->

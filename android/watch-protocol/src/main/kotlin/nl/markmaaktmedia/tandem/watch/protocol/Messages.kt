@@ -72,7 +72,8 @@ data class MediaPlayer(
 enum class MediaCommandKind { PLAY_PAUSE, NEXT, PREVIOUS, VOLUME_UP, VOLUME_DOWN }
 
 /** A computer in the circle. [allowsInput] is that computer's own switch for playing back input from elsewhere. */
-data class PointerTarget(val id: String, val name: String, val online: Boolean, val allowsInput: Boolean)
+/** [btAddress]: the computer said its Bluetooth address, so the watch can be its mouse straight over Bluetooth. Null from older ones. */
+data class PointerTarget(val id: String, val name: String, val online: Boolean, val allowsInput: Boolean, val btAddress: String? = null)
 
 /** A device in the circle with its battery, for the overview on the watch. */
 /** [kind] is [DeviceBattery.PHONE] or [DeviceBattery.COMPUTER], for its icon; 0 from a phone older than this. */
@@ -468,11 +469,11 @@ object MessageCodec {
     private fun ByteReader.optional(): Int? = varint().toInt().let { if (it == 0) null else it - 1 }
 
     private fun encodeTarget(t: PointerTarget): ByteArray =
-        ByteWriter().str(t.id).str(t.name).bool(t.online).bool(t.allowsInput).toByteArray()
+        ByteWriter().str(t.id).str(t.name).bool(t.online).bool(t.allowsInput).str(t.btAddress.orEmpty()).toByteArray()
 
     private fun decodeTarget(data: ByteArray): PointerTarget {
         val r = ByteReader(data)
-        return PointerTarget(id = r.str(), name = r.str(), online = r.bool(), allowsInput = r.bool())
+        return PointerTarget(id = r.str(), name = r.str(), online = r.bool(), allowsInput = r.bool(), btAddress = if (r.remaining > 0) r.str().ifEmpty { null } else null)
     }
 
     private fun encodeNotification(n: NotificationMsg): ByteArray {
