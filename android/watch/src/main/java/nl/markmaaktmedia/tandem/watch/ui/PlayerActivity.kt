@@ -169,10 +169,10 @@ private fun SmallCover(image: Bitmap?, playing: Boolean, size: Dp) {
     }
 }
 
-private data class PlayerColors(val accent: Color, val onAccent: Color)
+internal data class PlayerColors(val accent: Color, val onAccent: Color)
 
 /** Takes its colour from the cover, the way the watch face colours the rest. A cover without a clear colour leaves the theme alone. */
-private fun coverColors(cover: Bitmap): PlayerColors? {
+internal fun coverColors(cover: Bitmap): PlayerColors? {
     val small = Bitmap.createScaledBitmap(cover, COLOR_SAMPLES, COLOR_SAMPLES, true)
     val hsv = FloatArray(3)
     var x = 0.0

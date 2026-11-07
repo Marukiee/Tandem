@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -29,6 +30,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumnItemScope
@@ -36,6 +38,7 @@ import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.FilledIconButton
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.IconButton
+import androidx.wear.compose.material3.IconButtonDefaults
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.lazy.TransformationSpec
@@ -48,38 +51,75 @@ import nl.markmaaktmedia.tandem.watch.protocol.Message
 import nl.markmaaktmedia.tandem.watch.track.TrackingUi
 
 /**
- * What plays, as its cover with the name over it and the three buttons a hand looks for, right on the home screen: the player that was a
- * row of text needed a tap before anything could be done. A tap on the cover opens the whole player.
+ * What plays, right on the home screen: the cover blurred behind it, the cover itself small and sharp in the middle, the name under it,
+ * and the three buttons a hand looks for, the middle one in the colour of the cover. A tap on the card opens the whole player.
  */
 @Composable
 internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cover: Message.MediaArt?, spec: TransformationSpec) {
     val context = LocalContext.current
     val image = remember(cover?.key) { cover?.let { runCatching { BitmapFactory.decodeByteArray(it.image, 0, it.image.size) }.getOrNull() } }
+    val colours = remember(image) { image?.let(::coverColors) }
     Box(
         rimContent(spec)
-            .height(136.dp)
-            .clip(RoundedCornerShape(30.dp))
+            .height(164.dp)
+            .clip(RoundedCornerShape(32.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable { PlayerActivity.open(context) },
+        contentAlignment = Alignment.Center,
     ) {
-        image?.let { Image(it.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
-        // Dark enough under the words and the buttons to read them on any cover.
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.2f), Color.Black.copy(alpha = 0.78f)))))
-        Column(Modifier.fillMaxSize().padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 8.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            Column {
-                Text(player.title.ifBlank { player.app }, style = MaterialTheme.typography.titleSmall, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        image?.let {
+            Image(it.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().blur(24.dp))
+        }
+        // Dark enough to read on any cover, darkest under the buttons.
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Black.copy(alpha = 0.7f)))))
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            if (image != null) {
+                Image(
+                    image.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)),
+                )
+            } else {
+                Icon(painterResource(R.drawable.sym_music_note), null, tint = Color.White, modifier = Modifier.size(28.dp))
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    player.title.ifBlank { player.app },
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
                 if (player.artist.isNotBlank()) {
-                    Text(player.artist, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        player.artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.75f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                    )
                 }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { WatchLink.sendMediaCommand(player.id, MediaCommandKind.PREVIOUS) }) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { WatchLink.sendMediaCommand(player.id, MediaCommandKind.PREVIOUS) }, modifier = Modifier.size(38.dp)) {
                     Icon(painterResource(R.drawable.sym_skip_previous), null, tint = Color.White)
                 }
-                FilledIconButton(onClick = { WatchLink.sendMediaCommand(player.id, MediaCommandKind.PLAY_PAUSE) }) {
+                FilledIconButton(
+                    onClick = { WatchLink.sendMediaCommand(player.id, MediaCommandKind.PLAY_PAUSE) },
+                    modifier = Modifier.size(44.dp),
+                    colors = colours?.let { IconButtonDefaults.filledIconButtonColors(containerColor = it.accent, contentColor = it.onAccent) }
+                        ?: IconButtonDefaults.filledIconButtonColors(),
+                ) {
                     Icon(painterResource(if (player.playing) R.drawable.sym_pause else R.drawable.sym_play_arrow), null)
                 }
-                IconButton(onClick = { WatchLink.sendMediaCommand(player.id, MediaCommandKind.NEXT) }) {
+                IconButton(onClick = { WatchLink.sendMediaCommand(player.id, MediaCommandKind.NEXT) }, modifier = Modifier.size(38.dp)) {
                     Icon(painterResource(R.drawable.sym_skip_next), null, tint = Color.White)
                 }
             }
