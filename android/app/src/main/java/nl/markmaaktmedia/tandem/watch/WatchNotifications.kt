@@ -68,6 +68,7 @@ class WatchNotifications(private val listener: NotificationListenerService) {
         if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return null
         if (n.flags and Notification.FLAG_ONGOING_EVENT != 0 || n.flags and Notification.FLAG_FOREGROUND_SERVICE != 0) return null
         if (n.category == Notification.CATEGORY_CALL && sbn.packageName == defaultDialer()) return null
+        if (NotificationRules.isPlayer(n.category, n.extras.containsKey(Notification.EXTRA_MEDIA_SESSION), n.extras.getString(Notification.EXTRA_TEMPLATE))) return null
 
         val rank = Ranking()
         val importance = if (ranking?.getRanking(sbn.key, rank) == true) rank.importance else NotificationManager.IMPORTANCE_DEFAULT

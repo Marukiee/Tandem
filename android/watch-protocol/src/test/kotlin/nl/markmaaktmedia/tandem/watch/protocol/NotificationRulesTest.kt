@@ -98,4 +98,14 @@ class OutboundQueueTest {
         assertEquals(Message.NotificationRemoved("k4"), queue.poll())
         assertNull(queue.poll())
     }
+
+    @Test
+    fun `the notification of a music app is a player, not something to read`() {
+        assertTrue(NotificationRules.isPlayer("transport", false, null))
+        assertTrue(NotificationRules.isPlayer(null, true, null))
+        assertTrue(NotificationRules.isPlayer(null, false, "androidx.media.app.NotificationCompat\$MediaStyle"))
+        assertTrue(NotificationRules.isPlayer(null, false, "android.app.Notification\$DecoratedMediaCustomViewStyle"))
+        assertFalse(NotificationRules.isPlayer("msg", false, "android.app.Notification\$MessagingStyle"))
+        assertFalse(NotificationRules.isPlayer(null, false, null))
+    }
 }

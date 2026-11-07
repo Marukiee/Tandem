@@ -14,6 +14,14 @@ object NotificationRules {
     private val OTP_DIGITS = Regex("(?<![\\d.,/-])\\d{4,8}(?![\\d.,/-])")
 
     /** Finds a one-time code. It needs a nearby word like "code", so ordinary numbers are not hidden. */
+    /**
+     * The notification of a music app, by its category, its media session or its template. The watch shows the player as a player of its
+     * own, so it would stand twice, and at the top of the list: paused it is no longer ongoing, so nothing else kept it off.
+     */
+    fun isPlayer(category: String?, hasMediaSession: Boolean, template: String?): Boolean =
+        category == "transport" || hasMediaSession ||
+            template?.endsWith("MediaStyle") == true || template?.endsWith("MediaCustomViewStyle") == true
+
     fun findOtp(title: String, text: String): String? {
         val all = "$title $text"
         if (!OTP_CONTEXT.containsMatchIn(all)) return null
