@@ -5,13 +5,25 @@
     "en": {
       "title": "Back where you were",
       "new": [
-        "One backup with the settings of all your devices, and after a reset a device finds itself in it"
+        "One backup with the settings of all your devices, and after a reset a device finds itself in it",
+        "The watch as the mouse of a computer straight over Bluetooth, started from the computer too",
+        "Pinch once to click, twice for the right button, and a table mouse that clicks with a tap",
+        "The watch app starts on a home screen, with the player, today and your batteries",
+        "Turn the crown in the player to go through a song",
+        "The Mac keeps its sound when the watch connects, and plays on the watch only when you choose it",
+        "Pairing a watch again says why, and replaces the old one"
       ]
     },
     "nl": {
       "title": "Terug waar je was",
       "new": [
-        "Eén back-up met de instellingen van al je apparaten, en na een reset vindt een apparaat zichzelf erin terug"
+        "Eén back-up met de instellingen van al je apparaten, en na een reset vindt een apparaat zichzelf erin terug",
+        "Het horloge als muis van een computer, rechtstreeks via Bluetooth, en ook te starten vanaf de computer",
+        "Eén keer knijpen om te klikken, twee keer voor rechts, en een tafelmuis die klikt met een tik",
+        "De horloge-app begint op een beginscherm, met de speler, vandaag en je batterijen",
+        "Draai aan de kroon in de speler om door een nummer te gaan",
+        "De Mac houdt zijn geluid als het horloge verbindt, en speelt alleen op het horloge als je dat kiest",
+        "Opnieuw een horloge koppelen zegt waarom, en vervangt het oude"
       ]
     }
   },
