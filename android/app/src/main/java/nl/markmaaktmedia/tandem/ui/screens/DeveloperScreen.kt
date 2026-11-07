@@ -1,5 +1,6 @@
 package nl.markmaaktmedia.tandem.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -37,8 +39,10 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
  */
 @Composable
 fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
-    val graph = LocalContext.current.graph
+    val context = LocalContext.current
+    val graph = context.graph
     val updater = graph.updater
+    val watchState by graph.watch.state.collectAsState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     Column(
@@ -65,7 +69,6 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         SectionHeader(stringResource(R.string.dev_pieces))
         SettingsGroup {
             ActionRow(0, 3, TandemIcons.Update, stringResource(R.string.dev_update), stringResource(R.string.dev_update_sub), { scope.launch { graph.prefs.setDismissedUpdate(""); updater.showPreview() } })
-            val context = LocalContext.current
             val fake by nl.markmaaktmedia.tandem.media.FakePlayer.running.collectAsState()
             SwitchRow(
                 1, 3, TandemIcons.Music, stringResource(R.string.dev_player), stringResource(R.string.dev_player_sub), fake,
@@ -76,6 +79,20 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
 
         // The hotspot counts mobile data per day and per month. These put numbers in it so the lists can be seen and tried,
         // and take them out again.
+        if (watchState.paired) {
+            SectionHeader(stringResource(R.string.settings_cat_watch))
+            SettingsGroup {
+                ActionRow(
+                    0, 1, TandemIcons.Schedule, stringResource(R.string.dev_wake_buzz), stringResource(R.string.dev_wake_buzz_sub),
+                    {
+                        if (watchState.ready) graph.watch.tryWakeBuzz()
+                        else Toast.makeText(context, R.string.watch_not_connected, Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = if (watchState.ready) Modifier else Modifier.alpha(0.6f),
+                )
+            }
+        }
+
         SectionHeader(stringResource(R.string.dev_hotspot))
         SettingsGroup {
             val context = LocalContext.current

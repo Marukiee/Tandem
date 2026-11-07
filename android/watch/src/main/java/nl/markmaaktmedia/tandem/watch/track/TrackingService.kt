@@ -154,7 +154,7 @@ class TrackingService : Service(), SensorEventListener {
         when (event.sensor.type) {
             Sensor.TYPE_ACCELEROMETER -> {
                 log.write(RawRecord.Accel(time, toUnits(event.values[0]), toUnits(event.values[1]), toUnits(event.values[2])))
-                considerWaking(time, event.values)
+                considerWaking(time)
             }
             Sensor.TYPE_HEART_RATE -> {
                 log.write(RawRecord.HeartRate(time, event.values[0].toInt(), event.accuracy))
@@ -176,17 +176,19 @@ class TrackingService : Service(), SensorEventListener {
         smartWake = alarm.takeIf { it > System.currentTimeMillis() }?.let { SmartWake(it) }
     }
 
-    /** Stays with the night it started in. The batches get shorter once it counts: a wake-up five minutes late is no gentle wake-up. */
-    private fun considerWaking(time: Long, values: FloatArray) {
+    /**
+     * Stays with the night it started in. The batches get shorter before it counts: a whole long batch fits between now and the moment,
+     * and waiting for one could mean missing it.
+     */
+    private fun considerWaking(time: Long) {
         val wake = smartWake ?: return
-        if (time < wake.windowStartMs) return
+        if (time < wake.windowStartMs - SMART_WAKE_PREPARE_MS) return
         if (!shortBatches) {
             shortBatches = true
             sensors.unregisterListener(this)
             register(TrackingKind.SLEEP, SMART_WAKE_BATCH_US)
         }
-        val g = SensorManager.GRAVITY_EARTH
-        if (wake.onSample(time, values[0] / g, values[1] / g, values[2] / g)) GentleWake.start(this, wake.alarmMs)
+        if (wake.isTime(time)) GentleWake.start(this, wake.alarmMs)
     }
 
     private fun toUnits(metersPerSecond: Float): Short =
@@ -278,6 +280,7 @@ class TrackingService : Service(), SensorEventListener {
         private const val ACCEL_PERIOD_US = 40_000
         private const val SLEEP_BATCH_US = 5 * 60 * 1_000_000
         private const val SMART_WAKE_BATCH_US = 30 * 1_000_000
+        private const val SMART_WAKE_PREPARE_MS = 6 * 60_000L
         private const val WORKOUT_BATCH_US = 10 * 1_000_000
         private const val FLUSH_MS = 60_000L
         private const val FLUSH_WAIT_MS = 1_500L

@@ -66,26 +66,39 @@ internal class WristMotion {
 }
 
 /**
- * Wakes someone gently before their alarm, at a moment their wrist moves. People move more in light sleep than in deep sleep, and this
- * asks no more of a wrist than that. It only adds something: the alarm itself still goes off on the phone.
+ * Starts waking someone gently a few minutes before their alarm. It only adds something: the alarm itself still goes off on the phone.
  */
 class SmartWake(val alarmMs: Long) {
-    private val motion = WristMotion()
     private var done = false
 
     val windowStartMs: Long get() = alarmMs - WINDOW_MS
 
-    /** Samples in g, in order. True once: now is the time. */
-    fun onSample(timeMs: Long, x: Float, y: Float, z: Float): Boolean {
+    /** True once: now is the time. */
+    fun isTime(timeMs: Long): Boolean {
         if (done || timeMs < windowStartMs || timeMs >= alarmMs) return false
-        val moved = motion.add(timeMs, x, y, z)
-        if (!moved && timeMs < alarmMs - LAST_CHANCE_MS) return false
         done = true
         return true
     }
 
     companion object {
-        const val WINDOW_MS = 30 * 60_000L
-        const val LAST_CHANCE_MS = 2 * 60_000L
+        const val WINDOW_MS = 5 * 60_000L
     }
+}
+
+/** A long buzz that grows from barely there to full strength, so it reaches someone before it startles them. */
+object WakePulse {
+    const val LENGTH_MS = 7_000L
+    private const val STEP_MS = 200L
+    private const val SOFTEST = 25
+    private const val STRONGEST = 255
+    private val steps = (LENGTH_MS / STEP_MS).toInt()
+
+    val timings: LongArray get() = LongArray(steps) { STEP_MS }
+
+    /** Slow at first: the first part of a motor's range is what is felt as soft. */
+    val amplitudes: IntArray
+        get() = IntArray(steps) { step ->
+            val done = step.toFloat() / (steps - 1)
+            (SOFTEST + (STRONGEST - SOFTEST) * done * done).toInt()
+        }
 }

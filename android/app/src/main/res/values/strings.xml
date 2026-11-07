@@ -627,8 +627,10 @@
     <string name="health_week_steps">%1$s steps a day</string>
     <string name="health_week_steps_before">%1$s steps a day, last week %2$s</string>
     <string name="health_week_active">%1$d of 150 active minutes</string>
+    <string name="dev_wake_buzz">Try the wake-up buzz</string>
+    <string name="dev_wake_buzz_sub">Your watch buzzes once, the way it does before your alarm</string>
     <string name="health_smart_wake">Wake me gently</string>
-    <string name="health_smart_wake_sub">Your watch buzzes softly in the half hour before your alarm, when your wrist moves. Works during a sleep recording. Your alarm still goes off.</string>
+    <string name="health_smart_wake_sub">Five minutes before your alarm your watch starts buzzing, in long pulses that grow from soft to strong. Works during a sleep recording. Your alarm still goes off.</string>
     <string name="health_your_data">Your data</string>
     <string name="health_export">Export</string>
     <string name="health_export_sub">All your nights, workouts and steps as a table for a spreadsheet.</string>

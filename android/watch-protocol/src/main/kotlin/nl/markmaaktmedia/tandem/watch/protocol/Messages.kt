@@ -183,6 +183,9 @@ sealed interface Message {
     /** Either way: the switch for measuring all day was changed. */
     data class HeartAllDay(val on: Boolean) : Message
 
+    /** Phone to watch: one wake-up buzz now, to feel what a morning will be like. */
+    data object TryWakeBuzz : Message
+
     /**
      * Watch to phone: the wearer sleeps or not. Sent again after each reconnect, so the receiver must treat it as the
      * state it is and not as a command to change something.
@@ -249,6 +252,7 @@ object MessageCodec {
     private const val SMART_WAKE_ALARM = 0x46
     private const val HEART_TODAY = 0x47
     private const val HEART_ALL_DAY = 0x48
+    private const val TRY_WAKE_BUZZ = 0x49
     private const val HEALTH_RECORD = 0x50
     private const val HEALTH_ACK = 0x51
     private const val POINTER_TARGETS = 0x70
@@ -310,6 +314,7 @@ object MessageCodec {
             is Message.SmartWakeAlarm -> w.u8(SMART_WAKE_ALARM).varint(message.atMs)
             is Message.HeartToday -> w.u8(HEART_TODAY).bytes(message.curve.toCurveBytes())
             is Message.HeartAllDay -> w.u8(HEART_ALL_DAY).bool(message.on)
+            Message.TryWakeBuzz -> w.u8(TRY_WAKE_BUZZ)
             is Message.SleepMode -> w.u8(SLEEP_MODE).bool(message.on)
             is Message.HealthRecord -> {
                 w.u8(HEALTH_RECORD).str(message.id).bool(message.workout).varint(message.startMs).varint(message.endMs)
@@ -370,6 +375,7 @@ object MessageCodec {
             SMART_WAKE_ALARM -> Message.SmartWakeAlarm(r.varint())
             HEART_TODAY -> Message.HeartToday(r.bytes().toCurve())
             HEART_ALL_DAY -> Message.HeartAllDay(r.bool())
+            TRY_WAKE_BUZZ -> Message.TryWakeBuzz
             SLEEP_MODE -> Message.SleepMode(r.bool())
             HEALTH_RECORD -> Message.HealthRecord(
                 id = r.str(),

@@ -74,6 +74,7 @@ getoond is en jonger is dan 10 minuten trilt. Zo gaat er bij een onderbreking ni
 | 0x42 | WatchStatus | H naar T | level, charging |
 | 0x43 | SleepMode | H naar T | on. Staat, geen opdracht: wordt na elke verbinding herhaald |
 | 0x44 | Ringing | beide | on |
+| 0x49 | TryWakeBuzz | T naar H | een wektrilling, om te voelen hoe die is (ontwikkelaarspagina) |
 | 0x50 | HealthRecord | H naar T | id, workout, start, eind, slaapminuten, wakker, wakker-momenten, efficiëntie, licht?, diep?, REM?, stukken (fase, seconden), hartslag gem?, laag?, hoog?, stappen |
 | 0x51 | HealthAck | T naar H | id. Pas als het record veilig op de telefoon staat |
 | 0x70-75 | PointerTargets, PointerSession, PointerMove, PointerScroll, PointerClick, PointerKey | beide | muis en gyro, alleen achter de schakelaar in Tandem |
@@ -97,7 +98,7 @@ toegevoegd en onbekende types genegeerd.
 - De dienst die de verbinding openhoudt heeft geen kaart in de lijst. Hij geeft als tijd 1 op en dan weigert het systeem de melding als te oud (`Ignored enqueue for old` in logcat), terwijl de dienst gewoon foreground blijft. Stopt een latere Wear OS daarmee, dan komt alleen de kaart terug.
 
 ## Slaap en training
-- Zacht wakker worden (standaard uit, `SmartWake`): tijdens een slaapopname trilt het horloge in het halfuur voor de wekker op de telefoon, zodra de pols beweegt, en anders 2 minuten ervoor. Mensen bewegen in lichte slaap meer dan in diepe; meer weet een pols hier niet van. De wekker zelf gaat gewoon af. Nog niet getoetst op echte nachten.
+- Zacht wakker worden (standaard uit, `SmartWake`): tijdens een slaapopname begint het horloge 5 minuten voor de wekker op de telefoon te trillen: elke 30 seconden een trilling van 7 seconden die van zacht naar sterk aanzwelt (`WakePulse`), tot de wekker afgaat of je op het horloge kijkt. De wekker zelf gaat gewoon af. Nog niet getoetst op echte nachten.
 - Health Connect (Android 14 en hoger, de API van het systeem, geen extra bibliotheek): importeren slaat over wat Tandem zelf schreef en wat het zelf al gemeten heeft, zodat niets dubbel telt. Nachten die een andere app ook mat, staan na een import naast elkaar. Wegschrijven staat standaard uit; de id van een record gaat mee, dus twee keer schrijven vervangt. Onze rusthartslag is de laagste van de nacht, wat Fitbit of Google daar zo noemen is een andere meting en dus niet te vergelijken.
 - Op het horloge staat dit los van de rest: een eigen icoon "Tandem Health" uit dezelfde app (`HealthActivity`), zodat er geen tweede koppeling of update voor nodig is. "Health" alleen zou er twee keer staan, naast die van Google.
 - Alles staat op een eigen pagina Gezondheid (`HealthPage` op de telefoon, een eigen onderdeel in de instellingen op de computers). Zonder horloge in de kring staat daar alleen de schakelaar "Ook zonder horloge tonen", per apparaat bewaard. De nachten zelf blijven bewaard als een horloge wordt ontkoppeld.
@@ -260,7 +261,7 @@ adb -s HORLOGE pull /sdcard/Android/data/nl.markmaaktmedia.tandem.watch/files/ra
 
 Logs: `adb logcat -s TandemWatch:I TandemWatchTracking:I TandemHealth:I` op het horloge.
 
-De knop "Pinch test" zit alleen in de debug-build van het horloge.
+De knoppen "Pinch test" en "Wektrilling" zitten alleen in de `fast`- en debug-build van het horloge. De wektrilling kan ook vanaf de telefoon: Over en ontwikkelaar, Ontwikkelaar.
 
 ## Open punten
 1. Accessoire in plaats van circle-lid: akkoord van Mark nodig.

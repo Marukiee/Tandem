@@ -333,6 +333,10 @@ class WatchBridge(
         handler.post { enqueue(Message.FindDevice(on)) }
     }
 
+    fun tryWakeBuzz() {
+        handler.post { enqueue(Message.TryWakeBuzz) }
+    }
+
     // Hooks from the rest of the app
 
     fun onListener(listener: NotificationListenerService?) {
@@ -559,7 +563,7 @@ class WatchBridge(
             is Message.Ping, is Message.Pong, is Message.Unknown -> Unit
             // These only travel from phone to watch.
             is Message.NotificationSnapshot, is Message.Notification, is Message.NotificationRemoved, is Message.AppIcon,
-            is Message.HealthAck, is Message.StepGoal, is Message.SmartWakeAlarm,
+            is Message.HealthAck, is Message.StepGoal, is Message.SmartWakeAlarm, Message.TryWakeBuzz,
             is Message.Call, is Message.MediaPlayers, is Message.MediaArt, is Message.PointerTargets, is Message.DeviceBatteries,
             -> Unit
         }

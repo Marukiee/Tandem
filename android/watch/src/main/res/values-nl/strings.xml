@@ -78,6 +78,7 @@
     <string name="devices">Apparaten</string>
     <string name="battery_row">%1$s, %2$d%%</string>
     <string name="pinch_test">Pinch-test</string>
+    <string name="wake_buzz_test">Wektrilling</string>
     <string name="pinch_count">Pinches: %1$d</string>
     <string name="auto_sleep">Herken slaap vanzelf</string>
     <string name="stage_light">Licht</string>

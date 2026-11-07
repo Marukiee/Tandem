@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.content.pm.ApplicationInfo
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -67,6 +66,7 @@ import nl.markmaaktmedia.tandem.watch.link.WatchUi
 import nl.markmaaktmedia.tandem.watch.protocol.CallStatus
 import nl.markmaaktmedia.tandem.watch.protocol.LinkFailure
 import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
+import nl.markmaaktmedia.tandem.watch.track.GentleWake
 import nl.markmaaktmedia.tandem.watch.track.Tracking
 import nl.markmaaktmedia.tandem.watch.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.watch.ui.theme.TandemWatchTheme
@@ -194,7 +194,7 @@ internal fun PairingWait() {
 @Composable
 internal fun Home(ui: WatchUi) {
     val context = LocalContext.current
-    val debuggable = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+    val testTools = context.resources.getBoolean(R.bool.test_tools)
     val tracking by Tracking.ui.collectAsState()
     val list = rememberTransformingLazyColumnState()
     val spec = rememberTransformationSpec()
@@ -329,7 +329,7 @@ internal fun Home(ui: WatchUi) {
                 }
             }
 
-            if (debuggable) {
+            if (testTools) {
                 item(key = "pinch_test") {
                     FilledTonalButton(
                         onClick = { PointerActivity.open(context, "", presentation = false) },
@@ -337,6 +337,15 @@ internal fun Home(ui: WatchUi) {
                         transformation = SurfaceTransformation(spec),
                         icon = { Icon(painterResource(R.drawable.sym_monitoring), null) },
                         label = { Text(stringResource(R.string.pinch_test)) },
+                    )
+                }
+                item(key = "wake_buzz") {
+                    FilledTonalButton(
+                        onClick = { GentleWake.tryOnce(context) },
+                        modifier = rimRow(spec),
+                        transformation = SurfaceTransformation(spec),
+                        icon = { Icon(painterResource(R.drawable.sym_bedtime), null) },
+                        label = { Text(stringResource(R.string.wake_buzz_test)) },
                     )
                 }
             }

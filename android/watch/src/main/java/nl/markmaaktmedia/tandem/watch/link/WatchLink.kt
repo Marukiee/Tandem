@@ -29,6 +29,7 @@ import nl.markmaaktmedia.tandem.watch.protocol.Message
 import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
 import nl.markmaaktmedia.tandem.watch.protocol.PointerTarget
 import nl.markmaaktmedia.tandem.watch.protocol.Role
+import nl.markmaaktmedia.tandem.watch.track.GentleWake
 import nl.markmaaktmedia.tandem.watch.track.HealthOutbox
 import nl.markmaaktmedia.tandem.watch.track.HeartTracker
 import nl.markmaaktmedia.tandem.watch.track.Tracking
@@ -456,6 +457,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
                 appContext?.let { TrackingStore(it).stepGoal = message.steps }
                 Tracking.publishStepGoal(message.steps)
             }
+            Message.TryWakeBuzz -> appContext?.let { GentleWake.tryOnce(it) }
             is Message.HeartAllDay -> appContext?.let { HeartTracker.setEnabled(it, message.on, tellPhone = false) }
             is Message.Pong -> handler.removeCallbacks(pongTimeout)
             is Message.Ping, is Message.Unknown -> Unit

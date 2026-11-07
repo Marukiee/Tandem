@@ -2,7 +2,6 @@ package nl.markmaaktmedia.tandem.watch.ui
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -97,7 +96,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     private var pulse by mutableIntStateOf(0)
     private var movingUi by mutableStateOf(true)
 
-    // Raw motion for tuning the pinch detector on real wrists. Debug builds only.
+    // Raw motion for tuning the pinch detector on real wrists. Not in a release.
     private var tuningOut: BufferedOutputStream? = null
     private var tuning: RawLogWriter? = null
 
@@ -176,7 +175,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
 
     private fun startTuningLog() {
-        if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0) return
+        if (!resources.getBoolean(R.bool.test_tools)) return
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(Date())
         val out = BufferedOutputStream(FileOutputStream(File(TrackingService.rawDir(this), "pinch-$stamp.tws")), 64 * 1024)
         tuningOut = out

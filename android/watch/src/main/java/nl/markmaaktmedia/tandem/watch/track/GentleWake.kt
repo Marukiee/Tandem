@@ -9,23 +9,29 @@ import android.os.Looper
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.VibratorManager
+import nl.markmaaktmedia.tandem.watch.sleep.WakePulse
 
 /**
- * Three soft pulses, again every minute, until the alarm goes off or someone looks at the watch. An alarm to the system, so do not
- * disturb lets it through, because that is on all night for someone who sleeps.
+ * A long buzz growing from soft to strong, again every half minute, until the alarm goes off or someone looks at the watch. An alarm to
+ * the system, so do not disturb lets it through, because that is on all night for someone who sleeps.
  */
 internal object GentleWake {
-    private const val EVERY_MS = 60_000L
+    private const val EVERY_MS = 30_000L
     private val handler = Handler(Looper.getMainLooper())
     private var running = false
+    private val attributes = VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_ALARM).build()
+    private val effect get() = VibrationEffect.createWaveform(WakePulse.timings, WakePulse.amplitudes, -1)
+
+    /** One buzz, to feel what the morning will be like. */
+    fun tryOnce(context: Context) {
+        context.getSystemService(VibratorManager::class.java).defaultVibrator.vibrate(effect, attributes)
+    }
 
     fun start(context: Context, untilMs: Long) {
         if (running) return
         running = true
         val app = context.applicationContext
         val vibrator = app.getSystemService(VibratorManager::class.java).defaultVibrator
-        val attributes = VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_ALARM).build()
-        val effect = VibrationEffect.createWaveform(longArrayOf(0, 180, 500, 180, 500, 180), intArrayOf(0, 90, 0, 120, 0, 150), -1)
         lateinit var seen: BroadcastReceiver
         val stop = {
             running = false

@@ -48,6 +48,7 @@ android {
 
     buildTypes {
         release {
+            resValue("bool", "test_tools", "false")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
@@ -58,7 +59,9 @@ android {
         create("fast") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
+            resValue("bool", "test_tools", "true")
         }
+        debug { resValue("bool", "test_tools", "true") }
     }
 
     buildFeatures { compose = true }
