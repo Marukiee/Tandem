@@ -70,6 +70,8 @@ pub enum Event {
     RenameWatch { from: DeviceId, name: String },
     /// Another device asks this phone to unpair its watch.
     UnpairWatch { from: DeviceId },
+    /// Another device asks this phone to change what is set for its watch.
+    SetWatchSettings { from: DeviceId, change: crate::proto::WatchSettingsChange },
     /// Another device asks this computer to keep itself awake, or to let it sleep again.
     KeepAwake { from: DeviceId, on: bool },
     /// Another device asks this computer to unlock its screen; the app checks that it offers this and that the device may.

@@ -315,7 +315,18 @@ enum DebugSupport {
         if phone {
             status.sound = .vibrate
             status.lock = false
-            status.watch = TandemWatchStatus(paired: true, online: true, level: 62, charging: false, ringing: false, name: nil)
+            status.watch = TandemWatchStatus(
+                paired: true, online: true, level: 62, charging: false, ringing: false, name: nil, sleeping: false,
+                settings: TandemWatchSettings(mouse: true, sleepQuiet: true, smartWake: true, heartAllDay: true, stepGoal: 8000)
+            )
+        }
+        if kind == "watch" {
+            // The numbers at the top of the page, from the made up week of the health page.
+            let records = debugHealthRecords()
+            EngineModel.shared.healthRecords = records
+            EngineModel.shared.healthInsights = healthInsightsFor(
+                records: records, nowMs: UInt64(Date().timeIntervalSince1970 * 1000), utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60)
+            )
         }
         let device = TandemDevice(
             id: "debug", name: phone ? "Pixel 9" : "Linux Laptop", platform: phone ? .android : .linux, online: kind != "linux-away", route: nil, rttMs: 7, status: status,
@@ -325,14 +336,41 @@ enum DebugSupport {
         let page = kind == "watch"
             ? AnyView(WatchDetail(phone: device))
             : AnyView(DeviceDetail(device: device))
-        let host = NSHostingView(rootView: page.environment(EngineModel.shared).frame(width: 760, height: 640))
-        let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 760, height: 640), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        // The page of the watch is long: all of it in one snapshot.
+        let height: CGFloat = kind == "watch" ? 1180 : 640
+        let host = NSHostingView(rootView: page.environment(EngineModel.shared).frame(width: 760, height: height))
+        let window = NSWindow(contentRect: NSRect(x: 120, y: 40, width: 760, height: height), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
         window.title = "Device page (debug)"
         window.contentView = host
         window.makeKeyAndOrderFront(nil)
     }
 
     private static func showHealthWindow() {
+        let now = UInt64(Date().timeIntervalSince1970 * 1000)
+        let records = debugHealthRecords()
+        // The sums are the core's, on a list that does not touch what this Mac keeps.
+        let page = ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                HealthPageContent(
+                    insights: healthInsightsFor(records: records, nowMs: now, utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60)),
+                    records: records
+                )
+            }
+            .padding(20)
+        }
+        .environment(EngineModel.shared)
+        .frame(width: 620, height: 2600)
+        let host = NSHostingView(rootView: page)
+        let window = NSWindow(contentRect: NSRect(x: 80, y: 40, width: 620, height: 2600), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.title = "Health (debug)"
+        window.contentView = host
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    /// A made up week: five nights and four days, the newest first.
+    private static func debugHealthRecords() -> [TandemHealthRecord] {
         let hour: UInt64 = 3_600_000
         let now = UInt64(Date().timeIntervalSince1970 * 1000)
         let offset = UInt64(TimeZone.current.secondsFromGMT()) * 1000
@@ -369,23 +407,7 @@ enum DebugSupport {
                 ))
             }
         }
-        // The sums are the core's, on a list that does not touch what this Mac keeps.
-        let page = ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                HealthPageContent(
-                    insights: healthInsightsFor(records: records, nowMs: now, utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60)),
-                    records: records
-                )
-            }
-            .padding(20)
-        }
-        .environment(EngineModel.shared)
-        .frame(width: 620, height: 2600)
-        let host = NSHostingView(rootView: page)
-        let window = NSWindow(contentRect: NSRect(x: 80, y: 40, width: 620, height: 2600), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = "Health (debug)"
-        window.contentView = host
-        window.makeKeyAndOrderFront(nil)
+        return records
     }
 
     private static func showSidebarWindow() {
@@ -410,6 +432,7 @@ enum DebugSupport {
             .environment(model)
             .frame(width: 280, height: 560))
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 280, height: 560), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
         window.title = "Sidebar (debug)"
         window.contentView = host
         window.makeKeyAndOrderFront(nil)
@@ -441,6 +464,7 @@ enum DebugSupport {
         host.sceneBridgingOptions = [.toolbars]
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 1100, height: 680),
                               styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
         window.title = "Messages (debug)"
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
@@ -521,6 +545,7 @@ enum DebugSupport {
         share.layout = ["a": PointerShare.Placement(edge: "right", offset: 120)]
         let host = NSHostingView(rootView: ArrangementEditor(share: share, devices: devices).padding(20).frame(width: 640))
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 640, height: 10), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
         window.title = "Arrangement (debug)"
         window.contentView = host
         window.setContentSize(host.fittingSize)

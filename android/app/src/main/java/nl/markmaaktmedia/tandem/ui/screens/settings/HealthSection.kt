@@ -655,7 +655,7 @@ internal fun HealthChoices() {
             )
         }
         PadSlider(
-            2, 3, stringResource(R.string.health_goal), stringResource(R.string.health_goal_sub), goal, 2000..30000, 500,
+            2, 3, stringResource(R.string.health_goal), stringResource(R.string.health_goal_sub), goal, TandemPrefs.STEP_GOAL_MIN..TandemPrefs.STEP_GOAL_MAX, TandemPrefs.STEP_GOAL_STEP,
             { number(it.toLong()) }, TandemIcons.Workout,
         ) { value -> scope.launch { graph.prefs.setStepGoal(value) } }
     }

@@ -16,12 +16,14 @@ import android.os.StatFs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.graph
 import uniffi.tandem_core.TandemBattery
 import uniffi.tandem_core.TandemNetKind
 import uniffi.tandem_core.TandemNetwork
 import uniffi.tandem_core.TandemStatus
+import uniffi.tandem_core.TandemWatchSettings
 import uniffi.tandem_core.TandemWatchStatus
 
 /**
@@ -52,6 +54,10 @@ class StatusReporter(
 
     private var lastNetwork: Pair<Network, List<Boolean>>? = null
 
+    /** What is set for the watch, as last read: a computer shows it and can change it, and sees what came of that here. */
+    @Volatile
+    private var watchSettings: TandemWatchSettings? = null
+
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) = networkChanged()
         override fun onLost(network: Network) = networkChanged()
@@ -73,6 +79,15 @@ class StatusReporter(
     fun start() {
         // The watch only talks to this phone, so the others hear about it from here.
         scope.launch { context.graph.watch.state.collect { schedule(WATCH_DELAY_MS) } }
+        scope.launch {
+            val prefs = context.graph.prefs
+            combine(prefs.watchMouse, prefs.watchSleepQuiet, prefs.smartWake, prefs.heartAllDay, prefs.stepGoal) { mouse, quiet, wake, heart, goal ->
+                TandemWatchSettings(mouse, quiet, wake, heart, goal.coerceAtLeast(0).toUInt())
+            }.collect {
+                watchSettings = it
+                schedule(WATCH_DELAY_MS)
+            }
+        }
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_BATTERY_CHANGED)
             addAction(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
@@ -175,7 +190,7 @@ class StatusReporter(
             soundDnd = FocusMode.canUse(context),
             lock = nl.markmaaktmedia.tandem.live.TandemAccessibilityService.instance != null,
             watch = context.graph.watch.takeIf { it.supported }?.state?.value?.let { watch ->
-                TandemWatchStatus(watch.paired, watch.ready, watch.batteryLevel?.toUByte(), watch.charging, watch.ringing, watch.name)
+                TandemWatchStatus(watch.paired, watch.ready, watch.batteryLevel?.toUByte(), watch.charging, watch.ringing, watch.name, watch.sleeping, watchSettings)
             },
         )
     }

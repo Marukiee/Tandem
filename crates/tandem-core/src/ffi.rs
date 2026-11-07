@@ -300,17 +300,90 @@ pub struct TandemWatchStatus {
     /// What the person called it on the phone. None is the plain name, in the language of this device.
     #[uniffi(default = None)]
     pub name: Option<String>,
+    /// The watch is recording a night now.
+    #[uniffi(default = false)]
+    pub sleeping: bool,
+    /// What is set for the watch on its phone. None from a phone that is older than these.
+    #[uniffi(default = None)]
+    pub settings: Option<TandemWatchSettings>,
+}
+
+/// The choices for a watch that its phone keeps (see `proto::WatchSettings`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, uniffi::Record)]
+pub struct TandemWatchSettings {
+    pub mouse: bool,
+    pub sleep_quiet: bool,
+    pub smart_wake: bool,
+    pub heart_all_day: bool,
+    pub step_goal: u32,
+}
+
+/// What to change of the choices for a watch: what is None stays as it is.
+#[derive(Clone, Debug, Default, PartialEq, Eq, uniffi::Record)]
+pub struct TandemWatchSettingsChange {
+    #[uniffi(default = None)]
+    pub mouse: Option<bool>,
+    #[uniffi(default = None)]
+    pub sleep_quiet: Option<bool>,
+    #[uniffi(default = None)]
+    pub smart_wake: Option<bool>,
+    #[uniffi(default = None)]
+    pub heart_all_day: Option<bool>,
+    #[uniffi(default = None)]
+    pub step_goal: Option<u32>,
 }
 
 impl From<crate::proto::WatchStatus> for TandemWatchStatus {
     fn from(w: crate::proto::WatchStatus) -> Self {
-        TandemWatchStatus { paired: w.paired, online: w.online, level: w.level, charging: w.charging, ringing: w.ringing, name: w.name }
+        TandemWatchStatus {
+            paired: w.paired,
+            online: w.online,
+            level: w.level,
+            charging: w.charging,
+            ringing: w.ringing,
+            name: w.name,
+            sleeping: w.sleeping,
+            settings: w.settings.map(Into::into),
+        }
     }
 }
 
 impl From<TandemWatchStatus> for crate::proto::WatchStatus {
     fn from(w: TandemWatchStatus) -> Self {
-        crate::proto::WatchStatus { paired: w.paired, online: w.online, level: w.level, charging: w.charging, ringing: w.ringing, name: w.name }
+        crate::proto::WatchStatus {
+            paired: w.paired,
+            online: w.online,
+            level: w.level,
+            charging: w.charging,
+            ringing: w.ringing,
+            name: w.name,
+            sleeping: w.sleeping,
+            settings: w.settings.map(Into::into),
+        }
+    }
+}
+
+impl From<crate::proto::WatchSettings> for TandemWatchSettings {
+    fn from(s: crate::proto::WatchSettings) -> Self {
+        TandemWatchSettings { mouse: s.mouse, sleep_quiet: s.sleep_quiet, smart_wake: s.smart_wake, heart_all_day: s.heart_all_day, step_goal: s.step_goal }
+    }
+}
+
+impl From<TandemWatchSettings> for crate::proto::WatchSettings {
+    fn from(s: TandemWatchSettings) -> Self {
+        crate::proto::WatchSettings { mouse: s.mouse, sleep_quiet: s.sleep_quiet, smart_wake: s.smart_wake, heart_all_day: s.heart_all_day, step_goal: s.step_goal }
+    }
+}
+
+impl From<crate::proto::WatchSettingsChange> for TandemWatchSettingsChange {
+    fn from(c: crate::proto::WatchSettingsChange) -> Self {
+        TandemWatchSettingsChange { mouse: c.mouse, sleep_quiet: c.sleep_quiet, smart_wake: c.smart_wake, heart_all_day: c.heart_all_day, step_goal: c.step_goal }
+    }
+}
+
+impl From<TandemWatchSettingsChange> for crate::proto::WatchSettingsChange {
+    fn from(c: TandemWatchSettingsChange) -> Self {
+        crate::proto::WatchSettingsChange { mouse: c.mouse, sleep_quiet: c.sleep_quiet, smart_wake: c.smart_wake, heart_all_day: c.heart_all_day, step_goal: c.step_goal }
     }
 }
 
@@ -1149,6 +1222,7 @@ pub enum TandemEvent {
     RingWatch { from: String, on: bool },
     RenameWatch { from: String, name: String },
     UnpairWatch { from: String },
+    SetWatchSettings { from: String, change: TandemWatchSettingsChange },
     KeepAwake { from: String, on: bool },
     Unlock { from: String },
     Lock { from: String },
@@ -1289,6 +1363,7 @@ impl From<Event> for TandemEvent {
             Event::RingWatch { from, on } => TandemEvent::RingWatch { from: from.to_string(), on },
             Event::RenameWatch { from, name } => TandemEvent::RenameWatch { from: from.to_string(), name },
             Event::UnpairWatch { from } => TandemEvent::UnpairWatch { from: from.to_string() },
+            Event::SetWatchSettings { from, change } => TandemEvent::SetWatchSettings { from: from.to_string(), change: change.into() },
             Event::KeepAwake { from, on } => TandemEvent::KeepAwake { from: from.to_string(), on },
             Event::Unlock { from } => TandemEvent::Unlock { from: from.to_string() },
             Event::Lock { from } => TandemEvent::Lock { from: from.to_string() },
@@ -2007,6 +2082,11 @@ impl TandemEngine {
     /// Asks the phone `target` to unpair its watch. Pairing again is done on the phone.
     pub async fn unpair_watch(&self, target: String) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::UnpairWatch {}).await.map(|_| ())
+    }
+
+    /// Asks the phone `target` to change what is set for its watch. What is None stays as it is.
+    pub async fn set_watch_settings(&self, target: String, change: TandemWatchSettingsChange) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::SetWatchSettings { change: change.into() }).await.map(|_| ())
     }
 
     /// This device plays its sound because of `Ring` (`on`), or stopped: the devices that asked are told.

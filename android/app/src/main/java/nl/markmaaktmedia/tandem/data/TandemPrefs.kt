@@ -372,9 +372,13 @@ class TandemPrefs(private val context: Context) {
         const val DEFAULT_PAD_SCROLL = 100L
         const val DEFAULT_PAD_HOLD_MS = 280L
 
-        /** Where the research on steps and health stops finding much more per step. */
         /** The same limit as the core's, so the name fits a row on every device. */
         const val WATCH_NAME_MAX = 40
+        /** Where the research on steps and health stops finding much more per step. */
         const val DEFAULT_STEP_GOAL = 8000
+        /** The goals that can be picked, here and on a computer, in steps of [STEP_GOAL_STEP]. */
+        const val STEP_GOAL_MIN = 2000
+        const val STEP_GOAL_MAX = 30000
+        const val STEP_GOAL_STEP = 500
     }
 }

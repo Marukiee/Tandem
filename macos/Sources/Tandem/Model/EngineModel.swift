@@ -739,7 +739,7 @@ final class EngineModel {
             FindThisMac.shared.ring(from: from, on: on)
 
         // Only a phone has a watch.
-        case .ringWatch, .renameWatch, .unpairWatch:
+        case .ringWatch, .renameWatch, .unpairWatch, .setWatchSettings:
             break
 
         case let .keepAwake(from, on):
@@ -1248,6 +1248,19 @@ final class EngineModel {
 
     func unpairWatch(_ id: String) {
         Task { try? await engine?.unpairWatch(target: id) }
+    }
+
+    /// Shown at once, so a switch does not jump back while the phone takes it in; its status says what came of it a moment later.
+    func setWatchSettings(_ id: String, _ change: TandemWatchSettingsChange) {
+        if let i = devices.firstIndex(where: { $0.id == id }), var settings = devices[i].status.watch?.settings {
+            if let on = change.mouse { settings.mouse = on }
+            if let on = change.sleepQuiet { settings.sleepQuiet = on }
+            if let on = change.smartWake { settings.smartWake = on }
+            if let on = change.heartAllDay { settings.heartAllDay = on }
+            if let goal = change.stepGoal { settings.stepGoal = goal }
+            devices[i].status.watch?.settings = settings
+        }
+        Task { try? await engine?.setWatchSettings(target: id, change: change) }
     }
 
     // MARK: Devices

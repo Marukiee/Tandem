@@ -77,6 +77,8 @@ pub enum Msg {
     RenameWatch { name: String },
     /// Asks a phone to unpair its watch, from a computer that shows the watch as a device of its own.
     UnpairWatch {},
+    /// Asks a phone to change what is set for its watch. The phone says the result in its status. An older phone does not know it.
+    SetWatchSettings { change: WatchSettingsChange },
     /// Asks the device to record for `side::LISTEN_MS`: this one is about to play the tones of `side::pattern` (see `side.rs`).
     /// `quiet`: the quiet sweeps of a check that nobody asked for. The device then does not ask for its microphone, and does not listen
     /// while it is in use. An older device does not know the field and listens as it always did.
@@ -341,6 +343,48 @@ pub struct WatchStatus {
     /// What the person called it on the phone. None is the plain name, said in the language of each device.
     #[serde(default)]
     pub name: Option<String>,
+    /// The watch is recording a night now.
+    #[serde(default)]
+    pub sleeping: bool,
+    /// What is set for the watch on its phone, which a computer shows and may change (`Msg::SetWatchSettings`). None from a phone that
+    /// is older than these, so a computer says to update it instead of showing them as off.
+    #[serde(default)]
+    pub settings: Option<WatchSettings>,
+}
+
+/// The choices for a watch that its phone keeps and passes on to it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WatchSettings {
+    /// The watch may steer a computer while its mouse screen is open.
+    #[serde(default)]
+    pub mouse: bool,
+    /// The phone goes quiet while the watch records a night.
+    #[serde(default)]
+    pub sleep_quiet: bool,
+    /// The watch buzzes softly, then stronger, in the minutes before the alarm.
+    #[serde(default)]
+    pub smart_wake: bool,
+    /// The watch measures the heart rate all day, not only at night.
+    #[serde(default)]
+    pub heart_all_day: bool,
+    /// Steps a day.
+    #[serde(default)]
+    pub step_goal: u32,
+}
+
+/// What to change of `WatchSettings`: what is None stays as it is, so two computers that each change one thing do not undo the other.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WatchSettingsChange {
+    #[serde(default)]
+    pub mouse: Option<bool>,
+    #[serde(default)]
+    pub sleep_quiet: Option<bool>,
+    #[serde(default)]
+    pub smart_wake: Option<bool>,
+    #[serde(default)]
+    pub heart_all_day: Option<bool>,
+    #[serde(default)]
+    pub step_goal: Option<u32>,
 }
 
 /// How a phone sounds. A number on the wire, so a kind that a newer app adds does not make its whole status unreadable here.
@@ -877,6 +921,30 @@ mod tests {
         assert_eq!(known.watch.as_ref().and_then(|w| w.level), Some(80));
         known.merge(&Status { watch: Some(WatchStatus::default()), ..Default::default() });
         assert_eq!(known.watch.as_ref().map(|w| w.paired), Some(false));
+    }
+
+    #[test]
+    fn a_phone_older_than_the_watch_settings_reads_as_unknown_and_a_change_keeps_what_it_leaves_out() {
+        // What a 0.3.0 phone sends: no settings, which a computer must not show as all off.
+        #[derive(Serialize)]
+        struct Before {
+            paired: bool,
+            online: bool,
+            level: Option<u8>,
+        }
+        let bytes = encode(&Before { paired: true, online: true, level: Some(70) }).unwrap();
+        let old: WatchStatus = ciborium::from_reader(bytes.as_slice()).unwrap();
+        assert_eq!(old.settings, None);
+        assert!(!old.sleeping);
+        let msg = Msg::SetWatchSettings { change: WatchSettingsChange { heart_all_day: Some(false), ..Default::default() } };
+        match decode_msg(&encode(&msg).unwrap()).unwrap() {
+            Msg::SetWatchSettings { change } => {
+                assert_eq!(change.heart_all_day, Some(false));
+                assert_eq!(change.mouse, None);
+                assert_eq!(change.step_goal, None);
+            }
+            other => panic!("wrong message: {other:?}"),
+        }
     }
 
     #[test]

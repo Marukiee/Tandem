@@ -892,7 +892,7 @@ private func clock(fromMidnight minutes: Int) -> String {
     return String(format: "%02d:%02d", inDay / 60, inDay % 60)
 }
 
-private func minutesText(_ minutes: Int) -> String {
+func minutesText(_ minutes: Int) -> String {
     minutes >= 60 ? String(localized: "\(minutes / 60) h \(minutes % 60) m") : String(localized: "\(minutes) m")
 }
 
@@ -901,7 +901,7 @@ private func noonOf(_ midnightMs: UInt64) -> Date {
     Date(timeIntervalSince1970: Double(midnightMs) / 1000 + 12 * 3600)
 }
 
-private func dayName(_ midnightMs: UInt64) -> String {
+func dayName(_ midnightMs: UInt64) -> String {
     noonOf(midnightMs).formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
 }
 

@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.MainActivity
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.calls.CallMonitor
 import nl.markmaaktmedia.tandem.capture.CaptureActivity
@@ -190,6 +191,15 @@ class TandemService : LifecycleService() {
             is TandemEvent.RingWatch -> applicationContext.graph.watch.ringWatch(event.on)
             is TandemEvent.RenameWatch -> applicationContext.graph.watch.rename(event.name)
             is TandemEvent.UnpairWatch -> applicationContext.graph.watch.unpair()
+            // Set as if on this phone, which passes it on to the watch and tells the computers the result in its status.
+            is TandemEvent.SetWatchSettings -> lifecycleScope.launch {
+                val prefs = applicationContext.graph.prefs
+                event.change.mouse?.let { prefs.setWatchMouse(it) }
+                event.change.sleepQuiet?.let { prefs.setWatchSleepQuiet(it) }
+                event.change.smartWake?.let { prefs.setSmartWake(it) }
+                event.change.heartAllDay?.let { prefs.setHeartAllDay(it) }
+                event.change.stepGoal?.let { prefs.setStepGoal(it.toInt().coerceIn(TandemPrefs.STEP_GOAL_MIN, TandemPrefs.STEP_GOAL_MAX)) }
+            }
             is TandemEvent.Ringing -> FindDevices.reported(this, event.from, event.on)
             is TandemEvent.Lock -> nl.markmaaktmedia.tandem.live.TandemAccessibilityService.instance
                 ?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)

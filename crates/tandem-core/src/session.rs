@@ -453,6 +453,7 @@ impl Inner {
             Msg::RingWatch { on } => self.emit(Event::RingWatch { from: id, on }),
             Msg::RenameWatch { name } => self.emit(Event::RenameWatch { from: id, name }),
             Msg::UnpairWatch {} => self.emit(Event::UnpairWatch { from: id }),
+            Msg::SetWatchSettings { change } => self.emit(Event::SetWatchSettings { from: id, change }),
             Msg::SideListen { id: probe, quiet } => self.emit(Event::SideListen { from: id, id: probe, quiet }),
             Msg::SideReady { id: probe } => self.emit(Event::SideReady { from: id, id: probe }),
             Msg::SideMoved => self.emit(Event::SideMoved { from: id }),

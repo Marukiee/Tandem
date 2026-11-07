@@ -19,6 +19,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 | Muziek en volume van de computer bedienen vanaf de telefoon en het horloge | bediening | ja | ja, zonder hoes | ja, zonder hoes |
 | Een seintje naar de telefoon of het horloge vanaf de computer (`Tandem notify "tekst"`) | ontvangt | ja | ja | ja |
 | Het horloge van de telefoon zien (verbonden, batterij), laten rinkelen, hernoemen en ontkoppelen | ja, op een eigen pagina (koppelen ook) | ja, een eigen pagina vanuit de zijbalk, en in het menu | ja, een eigen pagina vanuit de zijbalk, en in het paneel | ja, een eigen pagina vanuit de zijbalk, en in het paneel |
+| Op de pagina van het horloge: of het je slaap opneemt, de laatste nacht, stappen en rusthartslag, en de keuzes muis, stil tijdens je slaap, zacht wekken, hartslag de hele dag en stappendoel. Een computer verandert ze op de telefoon, die ze doorgeeft; een telefoon ouder dan 0.3.1 noemt ze niet en dan vraagt de computer om bij te werken | ja (de keuzes staan op de pagina van het horloge en bij Gezondheid) | ja, gebouwd en met verzonnen gegevens bekeken | ja, gebouwd en met `mock.js` bekeken | ja, gebouwd en met `mock.js` bekeken |
 | Klembordgeschiedenis | ja | ja | ja | ja |
 | Een screenshot staat meteen op het klembord van de andere apparaten (schakelaar in de klembordinstellingen, alleen naar apparaten met klembord aan; bij de ontvanger alleen als klembord, nooit als bestand dat blijft) | ja (MediaStore, map Screenshots) | ja (map uit `com.apple.screencapture`, met Control via het klembord) | ja (map Screenshots, Knipprogramma via het klembord, eenmaal) | ja (map Screenshots in Afbeeldingen, ook vertaald; GNOME via het klembord, eenmaal; nooit gezien) |
 | Quick Share (ontvangen en versturen, tekst en links) | ja | ja | ja | ja |
@@ -78,7 +79,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een echte test:
 
 - **Een horloge op een computer koppelen** kan niet zinvol: het horloge krijgt zijn meldingen, gesprekken en muziek van de telefoon en is daar het hele jaar binnen Bluetooth-bereik, een computer niet. Daarom staat de schakelaar voor wie slaap en trainingen krijgt alleen op de telefoon; de computers tonen ze.
-- **Stappen en hartslag van vandaag op een computer**: alleen de telefoon hoort het horloge overdag. Een computer krijgt een dag als record zodra hij voorbij is, en toont dus de laatste hele dag. Het stappendoel staat op de telefoon en het horloge.
+- **Stappen en hartslag van vandaag op een computer**: alleen de telefoon hoort het horloge overdag. Een computer krijgt een dag als record zodra hij voorbij is, en toont dus de laatste hele dag. Het stappendoel bewaart de telefoon; een computer kan het daar veranderen.
 - **Het geluid van een telefoongesprek op de Mac** kan niet. Getest op 2026-11-04 op een MacBook met M2 Max (macOS 27) en de Xperia 1 VI (LineageOS 24, Android 17).
   Met `IOBluetoothHandsFreeDevice` krijgt de Mac een echte handsfree-verbinding: de telefoon maakt hem zijn actieve headset en meldt signaal, batterij en gesprek. Het
   spraakkanaal (SCO) gaat niet open. Vraagt de telefoon erom, dan weigert macOS het zelf (`SCO/eSCO reject (HOST_REJ_RESOURCES) ... SCO connect-accept declined` in de log
