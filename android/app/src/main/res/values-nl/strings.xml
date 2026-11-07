@@ -572,6 +572,15 @@
     <string name="watch_app_no_release">release %1$s heeft geen horloge-app</string>
     <string name="watch_app_damaged">de download was beschadigd</string>
     <string name="watch_app_other_key">de horloge-app van deze release is met een andere sleutel ondertekend dan deze app</string>
+    <string name="watch_already_paired">%1$s is gekoppeld met deze telefoon</string>
+    <string name="watch_already_paired_body">Koppel opnieuw om hem te vervangen, bijvoorbeeld nadat Tandem opnieuw op het horloge is gezet. Eén horloge tegelijk: deze telefoon houdt één verbinding voor een horloge, dat zijn meldingen, gesprekken en wekker krijgt.</string>
+    <string name="watch_pair_replace">Opnieuw koppelen</string>
+    <string name="watch_name_row">Naam</string>
+    <string name="watch_glance_resting">In rust</string>
+    <plurals name="watch_glance_nights_left">
+        <item quantity="one">Nog %d nacht</item>
+        <item quantity="other">Nog %d nachten</item>
+    </plurals>
     <string name="watch_glance_night">Afgelopen nacht</string>
     <string name="watch_glance_score">Slaapscore %1$d</string>
     <string name="watch_section_wrist">Op je pols</string>

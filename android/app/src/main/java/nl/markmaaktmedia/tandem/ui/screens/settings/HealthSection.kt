@@ -11,11 +11,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -687,38 +689,56 @@ internal fun WatchGlance(onOpen: () -> Unit) {
     val resting = insights?.resting
     val steps = watch.stepsToday.takeIf { watch.paired }
     if (night == null && steps == null && resting == null) return
-    SettingsGroup {
-        GroupedRow(0, 1, onClick = onOpen) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (night != null) {
-                    Glance(
-                        stringResource(R.string.watch_glance_night), duration(night.sleepMinutes.toInt()),
-                        score?.let { stringResource(R.string.watch_glance_score, it.toInt()) } ?: dayName(context, night.endMs.toLong()),
-                        Modifier.weight(1f),
-                    )
-                }
-                if (steps != null) {
-                    Glance(stringResource(R.string.health_steps_title), number(steps), stringResource(R.string.health_today), Modifier.weight(1f))
-                }
-                if (resting != null) {
-                    Glance(
-                        stringResource(R.string.health_resting), stringResource(R.string.health_resting_line, resting.latest.toInt()),
-                        resting.usual?.let { stringResource(R.string.health_usually, it.toInt()) }
-                            ?: pluralStringResource(R.plurals.health_nights_more, resting.nightsNeeded.toInt(), resting.nightsNeeded.toInt()),
-                        Modifier.weight(1f),
-                    )
-                }
-            }
+    // Three tiles of their own, each in its own colour of the theme, so the eye finds each number by its colour as well as its place.
+    val scheme = MaterialTheme.colorScheme
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (night != null) {
+            Glance(
+                TandemIcons.Sleep, stringResource(R.string.watch_glance_night), duration(night.sleepMinutes.toInt()),
+                score?.let { stringResource(R.string.watch_glance_score, it.toInt()) } ?: dayName(context, night.endMs.toLong()),
+                scheme.secondaryContainer, scheme.onSecondaryContainer, onOpen, Modifier.weight(1f),
+            )
+        }
+        if (steps != null) {
+            Glance(
+                TandemIcons.Workout, stringResource(R.string.health_steps_title), number(steps), stringResource(R.string.health_today),
+                scheme.primaryContainer, scheme.onPrimaryContainer, onOpen, Modifier.weight(1f),
+            )
+        }
+        if (resting != null) {
+            Glance(
+                TandemIcons.Heart, stringResource(R.string.watch_glance_resting), stringResource(R.string.health_resting_line, resting.latest.toInt()),
+                resting.usual?.let { stringResource(R.string.health_usually, it.toInt()) }
+                    ?: pluralStringResource(R.plurals.watch_glance_nights_left, resting.nightsNeeded.toInt(), resting.nightsNeeded.toInt()),
+                scheme.tertiaryContainer, scheme.onTertiaryContainer, onOpen, Modifier.weight(1f),
+            )
         }
     }
 }
 
+/** A tile: the icon in a round of its own, the number large, what it is and a short word under it, on two lines when it needs them. */
 @Composable
-private fun Glance(label: String, value: String, caption: String, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
-        Text(caption, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun Glance(
+    icon: androidx.compose.ui.graphics.painter.Painter,
+    label: String,
+    value: String,
+    caption: String,
+    container: Color,
+    content: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier.clip(CardSquircle).background(container).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(Modifier.size(34.dp).clip(CircleShape).background(content.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = content, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = content, maxLines = 1)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = content, maxLines = 2)
+        Text(caption, style = MaterialTheme.typography.bodySmall, color = content.copy(alpha = 0.75f), maxLines = 2)
     }
 }
 

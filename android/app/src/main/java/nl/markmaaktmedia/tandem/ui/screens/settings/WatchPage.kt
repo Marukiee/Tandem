@@ -134,7 +134,7 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
         SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
             ActionRow(
-                0, 4, TandemIcons.Watch, stringResource(R.string.settings_name), state.name ?: stringResource(R.string.settings_cat_watch),
+                0, 4, TandemIcons.Watch, stringResource(R.string.watch_name_row), state.name ?: stringResource(R.string.settings_cat_watch),
                 { renaming = true },
             )
             ActionRow(

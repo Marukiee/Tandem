@@ -356,6 +356,23 @@ class WatchBridge(
         }
     }
 
+    /**
+     * Lets go of the paired watch to pair one again, keeping its name: the same watch with Tandem put on again, or another one in its
+     * place. The pair screen starts looking as soon as none is paired.
+     */
+    fun repair() {
+        handler.post {
+            engine?.unpair()
+            outbound.clear()
+            iconsSent.clear()
+            alerted.clear()
+            endPointer()
+            _state.update { WatchState(name = it.name) }
+            server?.disconnect()
+            updateActive()
+        }
+    }
+
     fun ringWatch(on: Boolean) {
         handler.post { enqueue(Message.FindDevice(on)) }
     }

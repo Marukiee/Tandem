@@ -575,6 +575,15 @@
     <string name="watch_app_no_release">there is no watch app in release %1$s</string>
     <string name="watch_app_damaged">the download was damaged</string>
     <string name="watch_app_other_key">the watch app of this release is signed with another key than this app</string>
+    <string name="watch_already_paired">%1$s is paired with this phone</string>
+    <string name="watch_already_paired_body">Pair again to replace it, for instance after Tandem was put on the watch again. One watch at a time: this phone keeps one link for a watch, which gets its notifications, calls and alarm.</string>
+    <string name="watch_pair_replace">Pair again</string>
+    <string name="watch_name_row">Name</string>
+    <string name="watch_glance_resting">Resting</string>
+    <plurals name="watch_glance_nights_left">
+        <item quantity="one">%d more night</item>
+        <item quantity="other">%d more nights</item>
+    </plurals>
     <string name="watch_glance_night">Last night</string>
     <string name="watch_glance_score">Sleep score %1$d</string>
     <string name="watch_section_wrist">On your wrist</string>

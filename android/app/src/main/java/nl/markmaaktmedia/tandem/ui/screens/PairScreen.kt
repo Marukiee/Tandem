@@ -174,7 +174,7 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, startWithWatch: Boolean
     val bluetooth = rememberPermissionStatus()
     val scope = rememberCoroutineScope()
 
-    var mode by remember { mutableStateOf(if (startWithWatch && !watch.state.value.paired) PairMode.Watch else PairMode.Scan) }
+    var mode by remember { mutableStateOf(if (startWithWatch) PairMode.Watch else PairMode.Scan) }
     var busy by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<PairFailure?>(null) }
     var joined by remember { mutableStateOf<String?>(null) }
@@ -186,7 +186,12 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, startWithWatch: Boolean
     LaunchedEffect(wantsWatch, watchRound) { if (wantsWatch) watch.beginPairing() else watch.cancelPairing() }
     DisposableEffect(Unit) { onDispose { watch.cancelPairing() } }
     val watchName = stringResource(R.string.settings_cat_watch)
-    LaunchedEffect(watchState.paired) { if (watchState.paired && mode == PairMode.Watch) joined = watchName }
+    // Only a pairing made here counts as done: a watch that was paired already when the screen opened is not one.
+    var sawUnpaired by remember { mutableStateOf(!watch.state.value.paired) }
+    LaunchedEffect(watchState.paired) {
+        if (!watchState.paired) sawUnpaired = true
+        if (watchState.paired && sawUnpaired && mode == PairMode.Watch) joined = watchName
+    }
 
     fun join(uri: String) {
         if (busy || joined != null) return
@@ -270,7 +275,8 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, startWithWatch: Boolean
             } else {
                 Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
                     PairModeSwitch(
-                        modes = if (watchState.paired) listOf(PairMode.Scan, PairMode.Show) else PairMode.entries,
+                        // The watch stays, also with one paired: it says so there, with a way to pair again, instead of the choice going.
+                        modes = PairMode.entries,
                         mode = mode,
                         onSelect = { mode = it },
                         modifier = Modifier.fillMaxWidth(),
@@ -313,6 +319,7 @@ fun PairScreen(onBack: () -> Unit, onPaired: () -> Unit, startWithWatch: Boolean
                                     onMatch = watch::confirmPairing,
                                     onDiffers = watch::cancelPairing,
                                     onRetry = { watchRound++ },
+                                    onRepair = watch::repair,
                                 )
                             }
                         }
@@ -624,7 +631,7 @@ private fun ViewfinderCorners(locked: Boolean) {
 
 // ---- A watch -------------------------------------------------------------------
 
-private enum class WatchStep { TooOld, NeedsBluetooth, Looking, Compare, Confirming, Stopped }
+private enum class WatchStep { TooOld, NeedsBluetooth, AlreadyPaired, Looking, Compare, Confirming, Stopped }
 
 /** Coupling a watch, one thing to do at a time. The words on the steps are the ones on the watch's own button. */
 @Composable
@@ -635,6 +642,7 @@ private fun WatchPanel(
     onMatch: () -> Unit,
     onDiffers: () -> Unit,
     onRetry: () -> Unit,
+    onRepair: () -> Unit,
 ) {
     val requests = rememberPermissionRequests(status)
     // Closed before it ever opened is only the moment it takes to start, not something that went wrong.
@@ -644,6 +652,7 @@ private fun WatchPanel(
     val step = when {
         !supported -> WatchStep.TooOld
         !status.bluetooth -> WatchStep.NeedsBluetooth
+        state.paired -> WatchStep.AlreadyPaired
         state.code != null -> if (confirmed) WatchStep.Confirming else WatchStep.Compare
         seenOpen && !state.pairingOpen -> WatchStep.Stopped
         else -> WatchStep.Looking
@@ -701,6 +710,16 @@ private fun WatchPanel(
                 WatchStep.Confirming -> {
                     WatchCode(state.code.orEmpty())
                     WatchProgress(stringResource(R.string.watch_confirm_on_watch))
+                }
+                // One watch at a time: this phone keeps one link for a watch. Pairing again replaces it, as after Tandem was put on
+                // the watch again; the name stays.
+                WatchStep.AlreadyPaired -> {
+                    WatchNote(
+                        TandemIcons.Watch,
+                        stringResource(R.string.watch_already_paired, state.name ?: stringResource(R.string.settings_cat_watch)),
+                        stringResource(R.string.watch_already_paired_body),
+                    )
+                    PrimaryPillButton(stringResource(R.string.watch_pair_replace), onRepair, icon = TandemIcons.Refresh)
                 }
                 WatchStep.Stopped -> {
                     WatchNote(TandemIcons.Watch, stringResource(R.string.watch_pair_stopped), stringResource(R.string.watch_pair_stopped_body))
