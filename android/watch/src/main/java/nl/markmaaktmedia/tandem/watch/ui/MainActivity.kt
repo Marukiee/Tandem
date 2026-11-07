@@ -41,6 +41,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.foundation.pager.HorizontalPager
+import androidx.wear.compose.foundation.pager.rememberPagerState
+import androidx.wear.compose.material3.AnimatedPage
 import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.ButtonDefaults
@@ -49,6 +52,7 @@ import androidx.wear.compose.material3.EdgeButtonSize
 import androidx.wear.compose.material3.FilledIconButton
 import androidx.wear.compose.material3.FilledTonalButton
 import androidx.wear.compose.material3.FilledTonalIconButton
+import androidx.wear.compose.material3.HorizontalPagerScaffold
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.IconButtonDefaults
 import androidx.wear.compose.material3.ListHeader
@@ -66,8 +70,11 @@ import nl.markmaaktmedia.tandem.watch.link.WatchUi
 import nl.markmaaktmedia.tandem.watch.protocol.CallStatus
 import nl.markmaaktmedia.tandem.watch.protocol.LinkFailure
 import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
+import nl.markmaaktmedia.tandem.watch.track.AutoSleep
 import nl.markmaaktmedia.tandem.watch.track.GentleWake
+import nl.markmaaktmedia.tandem.watch.track.HeartTracker
 import nl.markmaaktmedia.tandem.watch.track.Tracking
+import nl.markmaaktmedia.tandem.watch.track.TrackingService
 import nl.markmaaktmedia.tandem.watch.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.watch.ui.theme.TandemWatchTheme
 
@@ -192,34 +199,69 @@ internal fun PairingWait() {
     }
 }
 
+/**
+ * Three pages side by side, with dots at the bottom: what is used, what is set, and the rest. One long list mixed them up, and what
+ * someone opens the app for was under things they set once. Swiping right on the first page leaves the app, as everywhere on the watch.
+ */
 @Composable
 internal fun Home(ui: WatchUi) {
     val context = LocalContext.current
-    val testTools = context.resources.getBoolean(R.bool.test_tools)
-    val tracking by Tracking.ui.collectAsState()
-    val list = rememberTransformingLazyColumnState()
-    val spec = rememberTransformationSpec()
     var missing by remember { mutableStateOf(missingPermissions(context)) }
     val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         missing = missingPermissions(context)
         LinkService.start(context)
     }
     val askAccess = { request.launch(ASKED_PERMISSIONS) }
-
-    // Unpairing is rare, so it waits at the end. A watch that still has to pair has nothing more urgent. Only these failures mean that:
-    // a hiccup on the link recovers by itself, and asking to pair again would throw away a pairing that is fine.
+    // Unpairing is rare, so it waits on the page of settings. A watch that still has to pair has nothing more urgent. Only these failures
+    // mean that: a hiccup on the link recovers by itself, and asking to pair again would throw away a pairing that is fine.
     val mustPair = ui.failure == LinkFailure.NOT_PAIRED || ui.failure == LinkFailure.AUTH_FAILED || ui.failure == LinkFailure.PAIRING_FAILED
     val settled = ui.paired && !mustPair && !ui.pairing
+    val pager = rememberPagerState(pageCount = { PAGES })
+    HorizontalPagerScaffold(pagerState = pager) {
+        HorizontalPager(state = pager) { page ->
+            AnimatedPage(pageIndex = page, pagerState = pager) {
+                when (page) {
+                    0 -> ControlsPage(ui, settled, missing, askAccess)
+                    1 -> SettingsPage(ui, settled, missing.isEmpty(), askAccess)
+                    else -> MorePage(ui)
+                }
+            }
+        }
+    }
+}
+
+private const val PAGES = 3
+
+/** The title of a page, at its top, so it says where one is after a swipe. */
+private fun androidx.wear.compose.foundation.lazy.TransformingLazyColumnScope.pageTitle(
+    title: Int,
+    spec: androidx.wear.compose.material3.lazy.TransformationSpec,
+) {
+    item(key = "title") {
+        ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) {
+            Text(stringResource(title), color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+/** What is used: what plays or records now, the mouse, finding the phone, and the health screens. */
+@Composable
+private fun ControlsPage(ui: WatchUi, settled: Boolean, missing: List<String>, askAccess: () -> Unit) {
+    val context = LocalContext.current
+    val tracking by Tracking.ui.collectAsState()
+    val list = rememberTransformingLazyColumnState()
+    val spec = rememberTransformationSpec()
 
     // The list holds on to the row in its middle, and the link comes up a moment after the screen. Without this, what then appears above
     // that row pushes the top out of sight. Read here, before the new rows are laid out.
     val wasAtTop = !list.canScrollBackward
-    LaunchedEffect(settled, ui.ready, ui.call != null, ui.players.isEmpty(), ui.batteries.size, missing.size, tracking.active) {
+    LaunchedEffect(settled, ui.ready, ui.call != null, ui.players.isEmpty(), missing.size, tracking.active) {
         if (wasAtTop) list.scrollToItem(0)
     }
 
-    val rows: @Composable BoxScope.(PaddingValues) -> Unit = { padding ->
+    ScreenScaffold(scrollState = list) { padding ->
         TransformingLazyColumn(state = list, contentPadding = padding.withRoomAbove(), modifier = Modifier.fillMaxSize()) {
+            pageTitle(R.string.page_controls, spec)
             // Being connected is the normal state, and not worth the top of a small screen. Only what is wrong gets said.
             if (!ui.ready) item(key = "status") { StatusHeader(ui, rimRow(spec), SurfaceTransformation(spec)) }
 
@@ -260,6 +302,7 @@ internal fun Home(ui: WatchUi) {
                 }
             }
 
+            // A watch that has to pair can do nothing else, so it is asked here and not only among the settings.
             if (!settled) {
                 item(key = "pairing") { PairingButton(ui, settled, missing.isEmpty(), rimRow(spec), SurfaceTransformation(spec)) }
             }
@@ -271,61 +314,6 @@ internal fun Home(ui: WatchUi) {
 
             PlayerRules.shown(ui.players, ui.pickedPlayer)?.let { player ->
                 item(key = "media") { NowPlayingButton(player, ui.covers[player.artKey], rimRow(spec), SurfaceTransformation(spec)) }
-            }
-
-            if (ui.ready) {
-                item(key = "steer_header") {
-                    ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.steer)) }
-                }
-                item(key = "mouse_allowed") {
-                    SwitchButton(
-                        checked = ui.pointerEnabled,
-                        onCheckedChange = { WatchLink.setMouseEnabled(it) },
-                        modifier = rimRow(spec),
-                        transformation = SurfaceTransformation(spec),
-                        label = { Text(stringResource(R.string.mouse_allowed)) },
-                    )
-                }
-                if (ui.pointerEnabled) {
-                    item(key = "mouse") { SteerButton(ui, false, rimRow(spec), SurfaceTransformation(spec)) }
-                    item(key = "presentation") { SteerButton(ui, true, rimRow(spec), SurfaceTransformation(spec)) }
-                    item(key = "mouse_speed") {
-                        val speed by PointerPrefs.speed.collectAsState()
-                        FilledTonalButton(
-                            onClick = { PointerPrefs.nextSpeed(context) },
-                            modifier = rimRow(spec),
-                            transformation = SurfaceTransformation(spec),
-                            label = { Text(stringResource(R.string.mouse_speed)) },
-                            secondaryLabel = {
-                                Text(stringResource(when (speed) {
-                                    PointerPrefs.Speed.SLOW -> R.string.mouse_speed_slow
-                                    PointerPrefs.Speed.MEDIUM -> R.string.mouse_speed_medium
-                                    PointerPrefs.Speed.FAST -> R.string.mouse_speed_fast
-                                }))
-                            },
-                        )
-                    }
-                    item(key = "mouse_pinch") {
-                        val pinch by PointerPrefs.pinch.collectAsState()
-                        SwitchButton(
-                            checked = pinch,
-                            onCheckedChange = { PointerPrefs.setPinch(context, it) },
-                            modifier = rimRow(spec),
-                            transformation = SurfaceTransformation(spec),
-                            label = { Text(stringResource(R.string.mouse_pinch)) },
-                            secondaryLabel = { Text(stringResource(R.string.mouse_pinch_sub)) },
-                        )
-                    }
-                }
-                item(key = "find_phone") {
-                    FilledTonalButton(
-                        onClick = { WatchLink.findPhone(!ui.findingPhone) },
-                        modifier = rimRow(spec),
-                        transformation = SurfaceTransformation(spec),
-                        icon = { Icon(painterResource(R.drawable.sym_smartphone), null) },
-                        label = { Text(stringResource(if (ui.findingPhone) R.string.find_phone_stop else R.string.find_phone)) },
-                    )
-                }
             }
 
             if (ui.ringing) {
@@ -340,6 +328,129 @@ internal fun Home(ui: WatchUi) {
                 }
             }
 
+            if (ui.ready) {
+                item(key = "mouse") { SteerButton(ui, false, rimRow(spec), SurfaceTransformation(spec)) }
+                item(key = "presentation") { SteerButton(ui, true, rimRow(spec), SurfaceTransformation(spec)) }
+                item(key = "find_phone") {
+                    FilledTonalButton(
+                        onClick = { WatchLink.findPhone(!ui.findingPhone) },
+                        modifier = rimRow(spec),
+                        transformation = SurfaceTransformation(spec),
+                        icon = { Icon(painterResource(R.drawable.sym_smartphone), null) },
+                        label = { Text(stringResource(if (ui.findingPhone) R.string.find_phone_stop else R.string.find_phone)) },
+                    )
+                }
+            }
+
+            item(key = "health") {
+                FilledTonalButton(
+                    onClick = { context.startActivity(Intent(context, HealthActivity::class.java)) },
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    icon = { Icon(painterResource(R.drawable.sym_favorite), null) },
+                    label = { Text(stringResource(R.string.health)) },
+                )
+            }
+        }
+    }
+}
+
+/** What is set once and then left: the mouse, measuring, and the pairing with the phone. */
+@Composable
+private fun SettingsPage(ui: WatchUi, settled: Boolean, canPair: Boolean, askAccess: () -> Unit) {
+    val context = LocalContext.current
+    val tracking by Tracking.ui.collectAsState()
+    val list = rememberTransformingLazyColumnState()
+    val spec = rememberTransformationSpec()
+    ScreenScaffold(scrollState = list) { padding ->
+        TransformingLazyColumn(state = list, contentPadding = padding.withRoomAbove(), modifier = Modifier.fillMaxSize()) {
+            pageTitle(R.string.page_settings, spec)
+            item(key = "steer_header") {
+                ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.steer)) }
+            }
+            item(key = "mouse_allowed") {
+                // The phone keeps this too, so it can only be changed while it listens.
+                SwitchButton(
+                    checked = ui.pointerEnabled,
+                    onCheckedChange = { WatchLink.setMouseEnabled(it) },
+                    enabled = ui.ready,
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    label = { Text(stringResource(R.string.mouse_allowed)) },
+                )
+            }
+            if (ui.pointerEnabled) {
+                item(key = "mouse_speed") {
+                    val speed by PointerPrefs.speed.collectAsState()
+                    FilledTonalButton(
+                        onClick = { PointerPrefs.nextSpeed(context) },
+                        modifier = rimRow(spec),
+                        transformation = SurfaceTransformation(spec),
+                        label = { Text(stringResource(R.string.mouse_speed)) },
+                        secondaryLabel = {
+                            Text(stringResource(when (speed) {
+                                PointerPrefs.Speed.SLOW -> R.string.mouse_speed_slow
+                                PointerPrefs.Speed.MEDIUM -> R.string.mouse_speed_medium
+                                PointerPrefs.Speed.FAST -> R.string.mouse_speed_fast
+                            }))
+                        },
+                    )
+                }
+                item(key = "mouse_pinch") {
+                    val pinch by PointerPrefs.pinch.collectAsState()
+                    SwitchButton(
+                        checked = pinch,
+                        onCheckedChange = { PointerPrefs.setPinch(context, it) },
+                        modifier = rimRow(spec),
+                        transformation = SurfaceTransformation(spec),
+                        label = { Text(stringResource(R.string.mouse_pinch)) },
+                        secondaryLabel = { Text(stringResource(R.string.mouse_pinch_sub)) },
+                    )
+                }
+            }
+            item(key = "measure_header") {
+                ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.health)) }
+            }
+            item(key = "heart_all_day") {
+                SwitchButton(
+                    checked = tracking.heartAllDay,
+                    onCheckedChange = { on -> HeartTracker.setEnabled(context, on, tellPhone = true) },
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    label = { Text(stringResource(R.string.heart_all_day)) },
+                )
+            }
+            item(key = "auto_sleep") {
+                SwitchButton(
+                    checked = tracking.autoSleep,
+                    onCheckedChange = { on ->
+                        AutoSleep.setEnabled(context, on)
+                        if (on && !TrackingService.canRun(context)) askAccess()
+                    },
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    label = { Text(stringResource(R.string.auto_sleep)) },
+                )
+            }
+            item(key = "phone_header") {
+                ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.phone)) }
+            }
+            item(key = "pairing") { PairingButton(ui, settled, canPair, rimRow(spec), SurfaceTransformation(spec)) }
+        }
+    }
+}
+
+/** The rest: the batteries of the other devices, which version this is, and the buttons for testing. */
+@Composable
+private fun MorePage(ui: WatchUi) {
+    val context = LocalContext.current
+    val testTools = context.resources.getBoolean(R.bool.test_tools)
+    val list = rememberTransformingLazyColumnState()
+    val spec = rememberTransformationSpec()
+    val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty() }
+    ScreenScaffold(scrollState = list) { padding ->
+        TransformingLazyColumn(state = list, contentPadding = padding.withRoomAbove(), modifier = Modifier.fillMaxSize()) {
+            pageTitle(R.string.page_more, spec)
             if (ui.batteries.isNotEmpty()) {
                 item(key = "devices_header") {
                     ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.devices)) }
@@ -355,9 +466,22 @@ internal fun Home(ui: WatchUi) {
                         )
                     }
                 }
+            } else {
+                item(key = "no_devices") {
+                    Text(
+                        stringResource(if (ui.ready) R.string.devices_none else R.string.devices_away),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = rimContent(spec).padding(horizontal = 14.dp, vertical = 2.dp),
+                    )
+                }
             }
 
             if (testTools) {
+                item(key = "test_header") {
+                    ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.test_tools)) }
+                }
                 item(key = "pinch_test") {
                     FilledTonalButton(
                         onClick = { PointerActivity.open(context, "", presentation = false) },
@@ -378,24 +502,17 @@ internal fun Home(ui: WatchUi) {
                 }
             }
 
-            item(key = "health") {
-                FilledTonalButton(
-                    onClick = { context.startActivity(Intent(context, HealthActivity::class.java)) },
-                    modifier = rimRow(spec),
-                    transformation = SurfaceTransformation(spec),
-                    icon = { Icon(painterResource(R.drawable.sym_favorite), null) },
-                    label = { Text(stringResource(R.string.health)) },
+            item(key = "version") {
+                Text(
+                    stringResource(R.string.version_line, version),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = rimContent(spec).padding(top = 8.dp),
                 )
-            }
-
-            // Its own key: with the same one as the button above, the list would follow it down here once the watch connects.
-            if (settled) {
-                item(key = "unpair") { PairingButton(ui, settled, missing.isEmpty(), rimRow(spec), SurfaceTransformation(spec)) }
             }
         }
     }
-
-    ScreenScaffold(scrollState = list, content = rows)
 }
 
 @Composable
@@ -465,6 +582,7 @@ private fun SteerButton(ui: WatchUi, presentation: Boolean, modifier: Modifier, 
     val context = LocalContext.current
     val target = ui.pointerTargets.firstOrNull { it.online && it.allowsInput }
     val why: String? = when {
+        !ui.pointerEnabled -> stringResource(R.string.pointer_off)
         ui.pointerTargets.isEmpty() -> stringResource(R.string.pointer_none)
         target != null -> null
         ui.pointerTargets.any { it.online } ->

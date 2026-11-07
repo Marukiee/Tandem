@@ -78,6 +78,15 @@
     <string name="update_confirm_text">Tap to install version %1$s</string>
     <string name="update_damaged">The update arrived damaged three times</string>
     <string name="update_failed_before">This version would not install before</string>
+    <string name="page_controls">Controls</string>
+    <string name="page_settings">Settings</string>
+    <string name="page_more">More</string>
+    <string name="phone">Phone</string>
+    <string name="devices_none">No other devices yet</string>
+    <string name="devices_away">Your devices show up here once your phone is connected</string>
+    <string name="test_tools">For testing</string>
+    <string name="version_line">Tandem %1$s</string>
+    <string name="pointer_off">Turn on Steer a computer in Settings first</string>
     <string name="channel_music">Music on your phone</string>
     <string name="channel_find">Find this watch</string>
     <string name="devices">Devices</string>

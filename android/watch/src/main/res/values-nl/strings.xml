@@ -78,6 +78,15 @@
     <string name="update_confirm_text">Tik om versie %1$s te installeren</string>
     <string name="update_damaged">De update kwam drie keer beschadigd aan</string>
     <string name="update_failed_before">Deze versie wilde eerder niet installeren</string>
+    <string name="page_controls">Bediening</string>
+    <string name="page_settings">Instellingen</string>
+    <string name="page_more">Meer</string>
+    <string name="phone">Telefoon</string>
+    <string name="devices_none">Nog geen andere apparaten</string>
+    <string name="devices_away">Je apparaten staan hier zodra je telefoon verbonden is</string>
+    <string name="test_tools">Om te testen</string>
+    <string name="version_line">Tandem %1$s</string>
+    <string name="pointer_off">Zet eerst Computer besturen aan bij Instellingen</string>
     <string name="channel_music">Muziek op je telefoon</string>
     <string name="channel_find">Zoek dit horloge</string>
     <string name="devices">Apparaten</string>

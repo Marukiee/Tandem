@@ -89,6 +89,16 @@ getoond is en jonger is dan 10 minuten trilt. Zo gaat er bij een onderbreking ni
 Codering: compact binair formaat, geen CBOR, want de Rust-kern doet hier niet mee en BLE is smal. Velden worden alleen achteraan
 toegevoegd en onbekende types genegeerd.
 
+## De app op het horloge
+Drie pagina's naast elkaar, met stipjes onderaan (`HorizontalPagerScaffold`, zit in Wear Compose):
+- **Bediening:** wat speelt of opneemt, terug naar een gesprek, muis, presentatie, telefoon zoeken en Gezondheid. Wat nog moet
+  (toegang geven, koppelen) staat hier bovenaan, want dan kan er verder niets.
+- **Instellingen:** computer besturen (de telefoon bewaart die ook, dus alleen als hij verbonden is), snelheid en knijpen, hartslag de
+  hele dag, slaap vanzelf herkennen, en koppelen of ontkoppelen.
+- **Meer:** de batterijen van de andere apparaten, de testknoppen in de `fast`- en debug-build, en de versie.
+
+Naar rechts vegen op de eerste pagina sluit de app, zoals overal op het horloge.
+
 ## Bijwerken
 De horloge-app gaat mee met de telefoon-app. Na elke verbinding zegt het horloge zijn versie en het certificaat waarmee het is
 ondertekend (`AppVersion`). Is de telefoon nieuwer en hetzelfde ondertekend, dan haalt `WatchUpdater` de `Tandem-watch.apk` van de
