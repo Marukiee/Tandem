@@ -29,6 +29,9 @@ class WatchCalls(
     private val onChange: (CallMsg?) -> Unit,
 ) {
     private var current: CallMsg? = null
+
+    /** A call is going on, so the link should stay free for it. */
+    val active: Boolean get() = current != null
     private var nextId = 1L
     private var listening = false
 

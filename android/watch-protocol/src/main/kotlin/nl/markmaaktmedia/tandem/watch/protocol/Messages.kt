@@ -225,6 +225,31 @@ sealed interface Message {
     /** Phone to watch: this record is safe on the phone, the watch can let go of it. */
     data class HealthAck(val id: String) : Message
 
+    /**
+     * Watch to phone, after each connect: the version of the app on the watch, and the SHA-256 of the certificate it is signed with.
+     * A phone with a newer app of the same signer brings it up to its own version (see [UpdateOffer]).
+     */
+    data class AppVersion(val code: Long, val name: String, val signer: String) : Message
+
+    /** Phone to watch: a newer app of [size] bytes. The watch says with [UpdateWant] how much of it it already has. */
+    data class UpdateOffer(val code: Long, val name: String, val size: Long, val sha256: ByteArray) : Message {
+        override fun equals(other: Any?) =
+            other is UpdateOffer && code == other.code && name == other.name && size == other.size && sha256.contentEquals(other.sha256)
+        override fun hashCode() = (code.hashCode() * 31 + size.hashCode()) * 31 + sha256.contentHashCode()
+    }
+
+    /** Watch to phone: send the offered app from [offset] on. One part at a time, so the link stays free for everything else. */
+    data class UpdateWant(val code: Long, val offset: Long) : Message
+
+    /** Phone to watch: a part of the offered app, at most [WatchUpdate.PART_BYTES]. */
+    data class UpdatePart(val code: Long, val offset: Long, val bytes: ByteArray) : Message {
+        override fun equals(other: Any?) = other is UpdatePart && code == other.code && offset == other.offset && bytes.contentEquals(other.bytes)
+        override fun hashCode() = (code.hashCode() * 31 + offset.hashCode()) * 31 + bytes.contentHashCode()
+    }
+
+    /** Watch to phone: how the update to [code] stands, one of [WatchUpdate]'s states, with the installer's words when it failed. */
+    data class UpdateState(val code: Long, val state: Int, val detail: String = "") : Message
+
     /** A message from a newer peer. Ignored, never an error. Types up to 0x7F are reserved for pointer input. */
     data class Unknown(val type: Int, val payload: ByteArray) : Message {
         override fun equals(other: Any?) = other is Unknown && type == other.type && payload.contentEquals(other.payload)
@@ -259,6 +284,11 @@ object MessageCodec {
     private const val TRY_WAKE_BUZZ = 0x49
     private const val HEALTH_RECORD = 0x50
     private const val HEALTH_ACK = 0x51
+    private const val APP_VERSION = 0x60
+    private const val UPDATE_OFFER = 0x61
+    private const val UPDATE_WANT = 0x62
+    private const val UPDATE_PART = 0x63
+    private const val UPDATE_STATE = 0x64
     private const val POINTER_TARGETS = 0x70
     private const val POINTER_SESSION = 0x71
     private const val POINTER_MOVE = 0x72
@@ -322,6 +352,11 @@ object MessageCodec {
             is Message.SmartWakeAlarm -> w.u8(SMART_WAKE_ALARM).varint(message.atMs)
             is Message.HeartToday -> w.u8(HEART_TODAY).bytes(message.curve.toCurveBytes())
             is Message.HeartAllDay -> w.u8(HEART_ALL_DAY).bool(message.on)
+            is Message.AppVersion -> w.u8(APP_VERSION).varint(message.code).str(message.name).str(message.signer)
+            is Message.UpdateOffer -> w.u8(UPDATE_OFFER).varint(message.code).str(message.name).varint(message.size).bytes(message.sha256)
+            is Message.UpdateWant -> w.u8(UPDATE_WANT).varint(message.code).varint(message.offset)
+            is Message.UpdatePart -> w.u8(UPDATE_PART).varint(message.code).varint(message.offset).bytes(message.bytes)
+            is Message.UpdateState -> w.u8(UPDATE_STATE).varint(message.code).u8(message.state).str(message.detail)
             Message.TryWakeBuzz -> w.u8(TRY_WAKE_BUZZ)
             is Message.SleepMode -> w.u8(SLEEP_MODE).bool(message.on)
             is Message.HealthRecord -> {
@@ -384,6 +419,11 @@ object MessageCodec {
             SMART_WAKE_ALARM -> Message.SmartWakeAlarm(r.varint())
             HEART_TODAY -> Message.HeartToday(r.bytes().toCurve())
             HEART_ALL_DAY -> Message.HeartAllDay(r.bool())
+            APP_VERSION -> Message.AppVersion(r.varint(), r.str(), r.str())
+            UPDATE_OFFER -> Message.UpdateOffer(r.varint(), r.str(), r.varint(), r.bytes())
+            UPDATE_WANT -> Message.UpdateWant(r.varint(), r.varint())
+            UPDATE_PART -> Message.UpdatePart(r.varint(), r.varint(), r.bytes())
+            UPDATE_STATE -> Message.UpdateState(r.varint(), r.u8(), r.str())
             TRY_WAKE_BUZZ -> Message.TryWakeBuzz
             SLEEP_MODE -> Message.SleepMode(r.bool())
             HEALTH_RECORD -> Message.HealthRecord(

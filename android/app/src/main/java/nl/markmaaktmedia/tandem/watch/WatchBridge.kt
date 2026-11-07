@@ -108,6 +108,14 @@ class WatchBridge(
     private var server: PhoneBleServer? = null
     private var notifications: WatchNotifications? = null
     private val calls = WatchCalls(context, handler) { update -> enqueue(Message.Call(update)) }
+    private val updater = WatchUpdater(context, scope, handler, { enqueue(it) }) { pointer != null || calls.active }
+
+    /** How the app on the watch is kept at the version of this one. */
+    val appUpdate: StateFlow<WatchAppState> = updater.state
+
+    fun retryAppUpdate() {
+        handler.post { updater.retry(_state.value.ready) }
+    }
     private val media = WatchMedia(context, handler, { mediaExcluded }, { cover -> enqueue(cover) }) { publishPlayers() }
     private var computerPlayers: List<MediaPlayer> = emptyList()
     private var stepGoal = TandemPrefs.DEFAULT_STEP_GOAL
@@ -609,10 +617,13 @@ class WatchBridge(
             is Message.HeartAllDay -> scope.launch { prefs.setHeartAllDay(message.on) }
             is Message.SleepMode -> onSleepMode(message.on)
             is Message.HealthRecord -> onHealthRecord(message)
+            is Message.AppVersion -> updater.onVersion(message)
+            is Message.UpdateWant -> updater.onWant(message)
+            is Message.UpdateState -> updater.onState(message)
             is Message.Ping, is Message.Pong, is Message.Unknown -> Unit
             // These only travel from phone to watch.
             is Message.NotificationSnapshot, is Message.Notification, is Message.NotificationRemoved, is Message.AppIcon,
-            is Message.HealthAck, is Message.StepGoal, is Message.SmartWakeAlarm, Message.TryWakeBuzz,
+            is Message.HealthAck, is Message.StepGoal, is Message.SmartWakeAlarm, Message.TryWakeBuzz, is Message.UpdateOffer, is Message.UpdatePart,
             is Message.Call, is Message.MediaPlayers, is Message.MediaArt, is Message.PointerTargets, is Message.DeviceBatteries,
             -> Unit
         }
@@ -653,6 +664,7 @@ class WatchBridge(
         Log.i(TAG, "Link failure: $failure")
         outbound.clear()
         iconsSent.clear()
+        updater.onDisconnected()
         _state.update {
             it.copy(ready = false, code = null, pairingOpen = if (failure == LinkFailure.PAIRING_FAILED) false else it.pairingOpen)
         }
@@ -675,6 +687,7 @@ class WatchBridge(
         iconsSent.clear()
         // The watch cannot say it stopped over a link that is gone.
         endPointer()
+        updater.onDisconnected()
         handler.removeCallbacks(authTimeout)
         _state.update { it.copy(connected = false, ready = false, code = null, ringing = false) }
     }

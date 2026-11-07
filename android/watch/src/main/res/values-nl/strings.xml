@@ -73,6 +73,11 @@
     <string name="find_phone_stop">Stop overgaan</string>
     <string name="watch_ringing">Dit horloge wordt gezocht</string>
     <string name="found_it">Gevonden</string>
+    <string name="channel_update">App-updates</string>
+    <string name="update_confirm_title">Tandem bijwerken</string>
+    <string name="update_confirm_text">Tik om versie %1$s te installeren</string>
+    <string name="update_damaged">De update kwam drie keer beschadigd aan</string>
+    <string name="update_failed_before">Deze versie wilde eerder niet installeren</string>
     <string name="channel_music">Muziek op je telefoon</string>
     <string name="channel_find">Zoek dit horloge</string>
     <string name="devices">Apparaten</string>

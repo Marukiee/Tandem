@@ -73,6 +73,11 @@
     <string name="find_phone_stop">Stop ringing</string>
     <string name="watch_ringing">Looking for this watch</string>
     <string name="found_it">Found it</string>
+    <string name="channel_update">App updates</string>
+    <string name="update_confirm_title">Update Tandem</string>
+    <string name="update_confirm_text">Tap to install version %1$s</string>
+    <string name="update_damaged">The update arrived damaged three times</string>
+    <string name="update_failed_before">This version would not install before</string>
     <string name="channel_music">Music on your phone</string>
     <string name="channel_find">Find this watch</string>
     <string name="devices">Devices</string>

@@ -35,6 +35,7 @@ import nl.markmaaktmedia.tandem.watch.track.HealthOutbox
 import nl.markmaaktmedia.tandem.watch.track.HeartTracker
 import nl.markmaaktmedia.tandem.watch.track.Tracking
 import nl.markmaaktmedia.tandem.watch.track.TrackingStore
+import nl.markmaaktmedia.tandem.watch.update.SelfUpdate
 
 data class WatchUi(
     val paired: Boolean = false,
@@ -431,6 +432,18 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         HeartTracker.sendToday()
         // The phone ends a session when the link drops, so a mouse screen that stayed open has to ask again.
         pointerTarget?.let { engine?.send(Message.PointerSession(it)) }
+        // The version of this app, for a phone that may bring it up to its own.
+        appContext?.let { SelfUpdate.onReady(it) }
+    }
+
+    /** For the update of this app ([SelfUpdate]), from any thread. */
+    fun sendUpdate(message: Message) {
+        handler.post { engine?.send(message) }
+    }
+
+    /** Runs [work] on the thread of the link, where the update keeps its state. */
+    fun post(work: () -> Unit) {
+        handler.post(work)
     }
 
     override fun onMessage(message: Message) {
@@ -476,8 +489,11 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             Message.TryWakeBuzz -> appContext?.let { GentleWake.tryOnce(it) }
             is Message.HeartAllDay -> appContext?.let { HeartTracker.setEnabled(it, message.on, tellPhone = false) }
             is Message.Pong -> handler.removeCallbacks(pongTimeout)
+            is Message.UpdateOffer -> appContext?.let { SelfUpdate.onOffer(it, message) }
+            is Message.UpdatePart -> appContext?.let { SelfUpdate.onPart(it, message) }
             is Message.Ping, is Message.Unknown -> Unit
             // These only travel from watch to phone.
+            is Message.AppVersion, is Message.UpdateWant, is Message.UpdateState,
             is Message.HeartToday, is Message.HealthRecord, Message.SyncRequest, is Message.NotificationAction, is Message.CallAction, is Message.MediaCommand,
             is Message.PointerSession, is Message.PointerMove, is Message.PointerScroll, is Message.PointerClick,
             is Message.PointerKey, is Message.PointerButton, is Message.WatchStatus, is Message.SleepMode, is Message.MouseEnabled,

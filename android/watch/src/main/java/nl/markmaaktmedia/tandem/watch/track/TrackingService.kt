@@ -34,6 +34,7 @@ import nl.markmaaktmedia.tandem.watch.sleep.SmartWake
 import nl.markmaaktmedia.tandem.watch.sleep.WorkoutAnalyzer
 import nl.markmaaktmedia.tandem.watch.sleep.readRawLog
 import nl.markmaaktmedia.tandem.watch.ui.MainActivity
+import nl.markmaaktmedia.tandem.watch.update.SelfUpdate
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -253,11 +254,17 @@ class TrackingService : Service(), SensorEventListener {
         sensors.unregisterListener(this)
         runCatching { output?.close() }
         thread.quitSafely()
+        if (running.get() === this) running = WeakReference(null)
+        // An update of the app waits for a recording to end, because it restarts the app.
+        SelfUpdate.idle(applicationContext)
         super.onDestroy()
     }
 
     companion object {
         private var running = WeakReference<TrackingService>(null)
+
+        /** A night or a workout is being recorded now. */
+        val recording: Boolean get() = running.get() != null
 
         /** Puts something that happened in the recording under way, to look at when a night is judged afterwards. */
         fun note(label: String) {

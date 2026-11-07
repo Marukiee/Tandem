@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- The app updates itself to the version of the phone app, without a tap where Android allows that (see SelfUpdate). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
@@ -93,6 +96,7 @@
         </receiver>
 
         <receiver android:name=".notify.ActionReceiver" android:exported="false" />
+        <receiver android:name=".update.UpdateResultReceiver" android:exported="false" />
         <receiver android:name=".track.NapAnswerReceiver" android:exported="false" />
     </application>
 </manifest>

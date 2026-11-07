@@ -77,12 +77,37 @@ getoond is en jonger is dan 10 minuten trilt. Zo gaat er bij een onderbreking ni
 | 0x49 | TryWakeBuzz | T naar H | een wektrilling, om te voelen hoe die is (ontwikkelaarspagina) |
 | 0x50 | HealthRecord | H naar T | id, workout, start, eind, slaapminuten, wakker, wakker-momenten, efficiëntie, licht?, diep?, REM?, stukken (fase, seconden), hartslag gem?, laag?, hoog?, stappen |
 | 0x51 | HealthAck | T naar H | id. Pas als het record veilig op de telefoon staat |
+| 0x60 | AppVersion | H naar T | versionCode, versienaam, SHA-256 van het certificaat. Na elke verbinding |
+| 0x61 | UpdateOffer | T naar H | versionCode, versienaam, grootte, SHA-256 van het bestand |
+| 0x62 | UpdateWant | H naar T | versionCode, vanaf welke byte. Eén deel tegelijk |
+| 0x63 | UpdatePart | T naar H | versionCode, positie, hooguit 16 KiB |
+| 0x64 | UpdateState | H naar T | versionCode, stand (wacht op einde opname, installeert, tik nodig, mislukt, al bij), tekst van de installer |
 | 0x70-75 | PointerTargets, PointerSession, PointerMove, PointerScroll, PointerClick, PointerKey | beide | muis en gyro, alleen achter de schakelaar in Tandem |
 | 0x76 | MouseEnabled | beide | on. De muis aan of uit, op het horloge of in Tandem op de telefoon gezet |
 | 0x77 | PointerButton | H naar T | knop omlaag of omhoog, om te slepen. De telefoon laat los als de sessie stopt. Alleen als `PointerTargets` achteraan `canHold` zegt |
 
 Codering: compact binair formaat, geen CBOR, want de Rust-kern doet hier niet mee en BLE is smal. Velden worden alleen achteraan
 toegevoegd en onbekende types genegeerd.
+
+## Bijwerken
+De horloge-app gaat mee met de telefoon-app. Na elke verbinding zegt het horloge zijn versie en het certificaat waarmee het is
+ondertekend (`AppVersion`). Is de telefoon nieuwer en hetzelfde ondertekend, dan haalt `WatchUpdater` de `Tandem-watch.apk` van de
+release van precies zijn eigen versie, controleert de SHA-256, de pakketnaam, de versie en het certificaat, en biedt hem aan. Het
+horloge vraagt de delen één voor één (`UpdateWant`, `UpdatePart`), zodat meldingen en gesprekken ertussen door kunnen; tijdens de muis
+en een gesprek wacht de telefoon met het volgende deel. Het horloge bewaart wat binnen is, dus na een onderbreking gaat het verder
+waar het was. 5,4 MB duurt over BLE zo'n vijf tot tien minuten.
+
+`SelfUpdate` controleert het hele bestand en installeert met `PackageInstaller` zonder tik (`UPDATE_PACKAGES_WITHOUT_USER_ACTION`,
+een app die zichzelf bijwerkt). Vraagt Android toch om een tik, dan komt er een melding op het horloge. Tijdens een opname van een
+nacht of training wacht het: een installatie herstart de app. Na de installatie start `BootReceiver` de link weer
+(`MY_PACKAGE_REPLACED`). Wat nooit kan, zoals een andere sleutel, wordt voor die versie niet opnieuw gevraagd; een weggetikte vraag
+wel, bij de volgende verbinding, zonder het bestand opnieuw te sturen. Op de telefoon staat de stand op de pagina van het horloge.
+
+**Eén keer met de hand:** een horloge met de `fast`-build (debug-sleutel) krijgt geen updates, want een release installeert daar niet
+overheen. Overstappen naar de release kan alleen door de app te verwijderen en de release te installeren. Dat wist de koppeling (opnieuw
+koppelen met de code), de toestemmingen voor gezondheid op het horloge, en records die de telefoon nog niet heeft bevestigd. Kijk dus
+eerst of `HealthOutbox` leeg is. Dit pad is gebouwd en het protocol getest, maar nog niet op een echt horloge: de eerste echte test is
+de update van 0.3.1 naar de versie daarna.
 
 ## De muis op het horloge
 

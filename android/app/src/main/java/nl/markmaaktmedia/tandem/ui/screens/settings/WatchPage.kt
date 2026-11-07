@@ -65,6 +65,8 @@ import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.watch.WatchState
+import nl.markmaaktmedia.tandem.watch.WatchAppState
+import nl.markmaaktmedia.tandem.ui.components.NoteRow
 import uniffi.tandem_core.TandemPlatform
 
 /**
@@ -183,6 +185,17 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
             )
         }
 
+        // Says what it is doing, so a watch that restarts by itself during an update is no surprise.
+        val appUpdate by watch.appUpdate.collectAsState()
+        SettingsGroup {
+            // A failure is never the end of it: a tap tries again.
+            if (appUpdate is WatchAppState.Failed) {
+                ActionRow(0, 1, TandemIcons.Update, stringResource(R.string.watch_app_title), watchAppText(appUpdate) + " " + stringResource(R.string.watch_app_retry), watch::retryAppUpdate)
+            } else {
+                NoteRow(0, 1, TandemIcons.Update, stringResource(R.string.watch_app_title), watchAppText(appUpdate))
+            }
+        }
+
         Spacer(Modifier.height(12.dp))
         SettingsGroup {
             ActionRow(0, 1, TandemIcons.Delete, stringResource(R.string.watch_unpair), stringResource(R.string.watch_unpair_sub), watch::unpair, danger = true)
@@ -211,6 +224,19 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
             },
         )
     }
+}
+
+@Composable
+private fun watchAppText(state: WatchAppState): String = when (state) {
+    WatchAppState.Unknown -> stringResource(R.string.watch_app_unknown)
+    is WatchAppState.UpToDate -> stringResource(R.string.watch_app_up_to_date, state.name)
+    is WatchAppState.OtherSigner -> stringResource(R.string.watch_app_other_signer, state.name)
+    is WatchAppState.Fetching -> stringResource(R.string.watch_app_fetching, state.name)
+    is WatchAppState.Sending -> stringResource(R.string.watch_app_sending, state.name, (state.progress * 100).toInt())
+    is WatchAppState.Waiting -> stringResource(R.string.watch_app_waiting, state.name)
+    is WatchAppState.Installing -> stringResource(R.string.watch_app_installing, state.name)
+    is WatchAppState.Confirm -> stringResource(R.string.watch_app_confirm, state.name)
+    is WatchAppState.Failed -> stringResource(R.string.watch_app_failed, state.name, state.reason)
 }
 
 @Composable
