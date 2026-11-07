@@ -92,7 +92,7 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_ARRANGE") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showArrangementWindow() }
         }
-        // `TANDEM_DEBUG_DEVICEPAGE=linux|linux-away|android`: the page of a made up device, for the layout of its buttons.
+        // `TANDEM_DEBUG_DEVICEPAGE=linux|linux-away|android|watch`: the page of a made up device, for the layout of its buttons.
         if let kind = variable("TANDEM_DEBUG_DEVICEPAGE") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showDevicePageWindow(kind) }
         }
@@ -308,18 +308,24 @@ enum DebugSupport {
 
     private static func showDevicePageWindow(_ kind: String) {
         var status = TandemStatus(battery: nil, network: nil, hotspot: nil, dnd: nil, locked: nil, freeStorage: nil, asleep: nil, wakeMac: nil, muted: nil)
-        let phone = kind == "android"
-        // The buttons in the states that look different: a phone on vibrate that cannot be locked yet.
+        // `watch`: the page of the watch of that phone, which is a device of its own.
+        let phone = kind == "android" || kind == "watch"
+        // The buttons in the states that look different: a phone on vibrate that cannot be locked yet, with a watch, which its page
+        // should not show.
         if phone {
             status.sound = .vibrate
             status.lock = false
+            status.watch = TandemWatchStatus(paired: true, online: true, level: 62, charging: false, ringing: false, name: nil)
         }
         let device = TandemDevice(
             id: "debug", name: phone ? "Pixel 9" : "Linux Laptop", platform: phone ? .android : .linux, online: kind != "linux-away", route: nil, rttMs: 7, status: status,
             appVersion: "0.1.76", caps: phone ? ["files", "media.screen", "media.camera"] : ["screen.host"], vouchedByRemoved: false, clipboardEnabled: true,
             autoAccept: true, notificationsEnabled: true, ble: false, features: []
         )
-        let host = NSHostingView(rootView: DeviceDetail(device: device).environment(EngineModel.shared).frame(width: 760, height: 640))
+        let page = kind == "watch"
+            ? AnyView(WatchDetail(phone: device))
+            : AnyView(DeviceDetail(device: device))
+        let host = NSHostingView(rootView: page.environment(EngineModel.shared).frame(width: 760, height: 640))
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 760, height: 640), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Device page (debug)"
         window.contentView = host
@@ -390,13 +396,17 @@ enum DebugSupport {
         }
         // A model of its own, so the made up devices never mix with the ones of the engine.
         let model = EngineModel()
+        // The first phone has a watch, which has a row of its own under it: `TANDEM_DEBUG_SIDEBAR=watch` chooses that row.
+        var withWatch = made("debug-phone", "Pixel 9", .android, online: true, caps: ["sms", "files"])
+        withWatch.status.watch = TandemWatchStatus(paired: true, online: true, level: 62, charging: false, ringing: false, name: nil)
         model.devices = [
-            made("debug-phone", "Pixel 9", .android, online: true, caps: ["sms", "files"]),
+            withWatch,
             made("debug-mac", "MacBook Air", .macOs, online: true, caps: ["files"]),
             made("debug-phone-2", "Xperia", .android, online: false, caps: []),
         ]
         MessagesStore.shared.phone("debug-phone").fillForDebug()
-        let host = NSHostingView(rootView: Sidebar(selection: .constant(.messages("debug-phone")), showPairing: .constant(false))
+        let chosen: SidebarSelection = variable("TANDEM_DEBUG_SIDEBAR") == "watch" ? .watch("debug-phone") : .messages("debug-phone")
+        let host = NSHostingView(rootView: Sidebar(selection: .constant(chosen), showPairing: .constant(false))
             .environment(model)
             .frame(width: 280, height: 560))
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 280, height: 560), styleMask: [.titled, .closable], backing: .buffered, defer: false)
