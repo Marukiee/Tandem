@@ -342,6 +342,13 @@ impl From<HealthInsights> for TandemHealthInsights {
     }
 }
 
+/// The same sums for nights that are not this device's own, so a page can be looked at with a made up week.
+#[uniffi::export]
+pub fn health_insights_for(records: Vec<TandemHealthRecord>, now_ms: u64, utc_offset_minutes: i32) -> TandemHealthInsights {
+    let records: Vec<HealthRecord> = records.into_iter().map(Into::into).collect();
+    insights(&records, now_ms, utc_offset_minutes).into()
+}
+
 #[uniffi::export(async_runtime = "tokio")]
 impl TandemEngine {
     /// What the nights say together: score, resting heart rate, regularity, this week next to the last. `utc_offset_minutes` is what

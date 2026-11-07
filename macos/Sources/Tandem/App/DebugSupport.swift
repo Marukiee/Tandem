@@ -104,6 +104,10 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_TOUR") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { TourWindow.shared.show() }
         }
+        // `TANDEM_DEBUG_HEALTH=1`: the health page with a made up week.
+        if variable("TANDEM_DEBUG_HEALTH") != nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showHealthWindow() }
+        }
         // `TANDEM_DEBUG_SIDEBAR=1`: the sidebar with two made up phones and a computer, the Messages of the first one chosen.
         if variable("TANDEM_DEBUG_SIDEBAR") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showSidebarWindow() }
@@ -318,6 +322,62 @@ enum DebugSupport {
         let host = NSHostingView(rootView: DeviceDetail(device: device).environment(EngineModel.shared).frame(width: 760, height: 640))
         let window = NSWindow(contentRect: NSRect(x: 120, y: 120, width: 760, height: 640), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Device page (debug)"
+        window.contentView = host
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private static func showHealthWindow() {
+        let hour: UInt64 = 3_600_000
+        let now = UInt64(Date().timeIntervalSince1970 * 1000)
+        let offset = UInt64(TimeZone.current.secondsFromGMT()) * 1000
+        let midnight = (now + offset) / (24 * hour) * (24 * hour) - offset
+        func stages() -> [TandemStageRun] {
+            let order: [(TandemSleepStage, UInt32)] = [
+                (.wake, 1200), (.light, 900), (.deep, 3000), (.wake, 400), (.light, 1500), (.deep, 2600), (.rem, 1500), (.light, 3600),
+                (.rem, 1800), (.light, 3000), (.deep, 800), (.rem, 2400), (.light, 2100), (.rem, 2400), (.wake, 200),
+            ]
+            return order.map { TandemStageRun(stage: $0.0, seconds: $0.1) }
+        }
+        var records: [TandemHealthRecord] = []
+        for back in 0..<5 {
+            let day = midnight - UInt64(back) * 24 * hour
+            let late: UInt64 = UInt64(back) * 20 * 60_000
+            let start: UInt64 = day - hour + late
+            let sleep: UInt32 = UInt32(400 + back * 17)
+            let end: UInt64 = start + UInt64(sleep + 20) * 60_000
+            records.append(TandemHealthRecord(
+                id: "night-\(back)", kind: .sleep, startMs: start, endMs: end, sleepMinutes: sleep, awakeMinutes: 20,
+                awakenings: 1, efficiencyPercent: 95, lightMinutes: sleep / 2, deepMinutes: sleep / 4, remMinutes: sleep / 4, stages: stages(),
+                heartRateMean: 58, heartRateLow: UInt32(47 + back % 3), heartRateHigh: 80, steps: 0, activeMinutes: 0, heartCurve: []
+            ))
+            if back > 0 {
+                var curve: [UInt32] = []
+                for slot in 0..<288 {
+                    let wave: Int = (slot / 6) % 30
+                    curve.append(slot % 40 == 39 ? 0 : UInt32(58 + wave))
+                }
+                records.append(TandemHealthRecord(
+                    id: "day-\(back)", kind: .day, startMs: day, endMs: day + 24 * hour, sleepMinutes: 0, awakeMinutes: 0, awakenings: 0, efficiencyPercent: 0,
+                    lightMinutes: nil, deepMinutes: nil, remMinutes: nil, stages: [], heartRateMean: 70, heartRateLow: 58, heartRateHigh: 110,
+                    steps: UInt64(4000 + back * 1700), activeMinutes: UInt32(10 + back * 9), heartCurve: curve
+                ))
+            }
+        }
+        // The sums are the core's, on a list that does not touch what this Mac keeps.
+        let page = ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                HealthPageContent(
+                    insights: healthInsightsFor(records: records, nowMs: now, utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60)),
+                    records: records
+                )
+            }
+            .padding(20)
+        }
+        .environment(EngineModel.shared)
+        .frame(width: 620, height: 2600)
+        let host = NSHostingView(rootView: page)
+        let window = NSWindow(contentRect: NSRect(x: 80, y: 40, width: 620, height: 2600), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "Health (debug)"
         window.contentView = host
         window.makeKeyAndOrderFront(nil)
     }
