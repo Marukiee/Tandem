@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.3.2",
+    "date": "2026-11-08",
+    "en": {
+      "title": "Back where you were",
+      "new": [
+        "One backup with the settings of all your devices, and after a reset a device finds itself in it"
+      ]
+    },
+    "nl": {
+      "title": "Terug waar je was",
+      "new": [
+        "Eén back-up met de instellingen van al je apparaten, en na een reset vindt een apparaat zichzelf erin terug"
+      ]
+    }
+  },
+  {
     "version": "0.3.1",
     "date": "2026-11-07",
     "en": {

@@ -762,58 +762,7 @@ pub fn open_logs(app: AppHandle) -> Reply<()> {
     app.opener().open_path(dir.to_string_lossy(), None::<&str>).map_err(shown)
 }
 
-// ---- Backup, what is new, and what the desktop was asked ---------------------------------------------------------
-
-/// The preferences of this computer into a file the person picks. Not the identity, the circle or the folders that are offered: only
-/// the settings of this window.
-#[tauri::command]
-pub async fn settings_export(app: AppHandle) -> Reply<Option<String>> {
-    let dialog = app.clone();
-    let target = tauri::async_runtime::spawn_blocking(move || {
-        dialog.dialog().file().add_filter("Tandem", &["json"]).set_file_name("tandem-settings.json").blocking_save_file()
-    })
-    .await
-    .map_err(shown)?;
-    let Some(path) = target.and_then(|t| t.into_path().ok()) else { return Ok(None) };
-    let mut value = serde_json::to_value(settings::get(&app)).map_err(shown)?;
-    // What belongs to this machine, not to the person.
-    if let Some(map) = value.as_object_mut() {
-        for key in ["downloadDir", "shareDevice", "shareEdge", "layout", "dismissedUpdate"] {
-            map.remove(key);
-        }
-    }
-    std::fs::write(&path, serde_json::to_string_pretty(&value).map_err(shown)?).map_err(shown)?;
-    Ok(Some(path.to_string_lossy().into_owned()))
-}
-
-/// Settings from a file made by `settings_export`. What is not in the file stays as it is.
-#[tauri::command]
-pub async fn settings_import(app: AppHandle) -> Reply<Value> {
-    let dialog = app.clone();
-    let source = tauri::async_runtime::spawn_blocking(move || dialog.dialog().file().add_filter("Tandem", &["json"]).blocking_pick_file())
-        .await
-        .map_err(shown)?;
-    let Some(path) = source.and_then(|s| s.into_path().ok()) else { return Ok(json!(settings::get(&app))) };
-    let text = std::fs::read_to_string(&path).map_err(shown)?;
-    let incoming: Value = serde_json::from_str(&text).map_err(|_| "that is not a file of Tandem settings".to_string())?;
-    {
-        let state = app.state::<AppState>();
-        let mut current = state.settings.lock().unwrap();
-        let mut merged = serde_json::to_value(&*current).map_err(shown)?;
-        if let (Some(base), Some(new)) = (merged.as_object_mut(), incoming.as_object()) {
-            for (key, value) in new {
-                if base.contains_key(key) && !["downloadDir", "shareDevice", "shareEdge", "layout", "dismissedUpdate"].contains(&key.as_str()) {
-                    base.insert(key.clone(), value.clone());
-                }
-            }
-        }
-        *current = serde_json::from_value(merged).map_err(|_| "that file does not fit these settings".to_string())?;
-    }
-    settings::save(&app);
-    media::refresh(&app);
-    capture::configure(&app);
-    Ok(json!(settings::get(&app)))
-}
+// ---- What is new, and what the desktop was asked (the backup is in `backup.rs`) ---------------------------------------------------------
 
 const CHANGELOG: &str = include_str!("../../../changelog.json");
 

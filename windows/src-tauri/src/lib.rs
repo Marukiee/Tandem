@@ -44,6 +44,7 @@ mod unlock;
 mod lid;
 mod insert;
 mod live;
+mod backup;
 mod logfile;
 mod media;
 mod players;
@@ -277,8 +278,9 @@ pub fn run() {
             commands::show_main,
             commands::resize_panel,
             commands::open_logs,
-            commands::settings_export,
-            commands::settings_import,
+            backup::settings_export,
+            backup::settings_import,
+            backup::settings_restore,
             commands::whats_new,
             commands::access_status,
             commands::portal_forget,

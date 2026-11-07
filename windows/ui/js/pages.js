@@ -1158,10 +1158,10 @@ function GeneralSettings({ s, patch }) {
     <h2>${t("backup")}</h2>
     <div class="card flush">
       <${SettingRow} icon="upload" title=${t("backup_export")} sub=${t("backup_sub")}>
-        <button class="btn small" onClick=${() => call("settings_export").then((path) => path && saved(t("backup_saved"))).catch(failed)}>${t("backup_export_button")}</button>
+        <button class="btn small" onClick=${() => call("settings_export").then((done) => done && saved(done.missing.length ? t("backup_saved_without", done.missing.join(", ")) : t("backup_saved"))).catch(failed)}>${t("backup_export_button")}</button>
       <//>
-      <${SettingRow} icon="refresh" title=${t("backup_import")} sub=${t("backup_import_sub")}>
-        <button class="btn small" onClick=${() => call("settings_import").then((now) => { set({ settings: now }); setLanguage(now.language, state.systemLanguage); saved(t("backup_restored")); }).catch(failed)}>${t("backup_import_button")}</button>
+      <${SettingRow} icon="download" title=${t("backup_import")} sub=${t("backup_import_sub")}>
+        <button class="btn small" onClick=${() => call("settings_import").then((opened) => opened && set({ dialog: { kind: "restore", ...opened } })).catch(failed)}>${t("backup_import_button")}</button>
       <//>
     </div>
   </div>`;

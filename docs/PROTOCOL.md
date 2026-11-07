@@ -194,6 +194,18 @@ zoekt de telefoon op naam tussen zijn gekoppelde apparaten. Het antwoord is `BtS
 volgt als de verbinding vanzelf eindigt. `error` zegt in gewone woorden waarom niet, leeg als het werkt. Een oudere computer slaat
 `BtSpeaker` over; de telefoon wacht vijftien seconden op een antwoord en stuurt het geluid dan zelf. Zie MUSIC_AND_SOUND.md.
 
+### Back-up van alle apparaten
+
+`BackupAsk { id }` vraagt een gekoppeld apparaat om zijn eigen deel van een back-up; het antwoord is `BackupPart { id, settings }`
+met dezelfde `id`. `settings` is JSON die de app zelf maakt: `id`, `name`, `kind` (`android`, `mac` of `desktop`, de app voor Linux en
+Windows), `platform`, `model` (merk en model van een telefoon, het modelnummer van een Mac, de hostnaam van een pc) en `settings`, de
+voorkeuren in de woorden van die app. Nooit de identiteit, de circle of wachtwoorden. Wie de back-up maakt schrijft alles in één
+bestand `{ "app": "Tandem", "format": 3, "devices": [...] }`. Een ouder apparaat slaat `BackupAsk` over, dus de vrager wacht hooguit
+vier seconden en meldt wie er niet in staat. Een gereset apparaat heeft een nieuwe identiteit en dus een nieuwe id: het herkent
+zichzelf in het bestand aan dezelfde id, anders aan hetzelfde model, anders aan dezelfde naam; zijn dat er twee of geen, dan kiest
+de persoon. Alleen hetzelfde `kind` past; de rest staat grijs in de lijst en zegt waarom. Oudere bestanden (format 1 van de telefoon,
+2 van de Mac, en de losse instellingen van de pc) worden gelezen als één apparaat.
+
 ### Mogelijkheden (`Hello.caps`)
 
 Een apparaat zegt in zijn `Hello` wat het kan, als lijst van woorden. Een onbekend woord wordt genegeerd. Wie iets wil

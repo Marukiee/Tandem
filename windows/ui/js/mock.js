@@ -295,8 +295,13 @@ export async function call(command, args) {
     case "focus_info": return { read: new URLSearchParams(location.search).get("focus") !== "none", set: new URLSearchParams(location.search).get("platform") === "linux" };
     case "access_status": return { wayland: new URLSearchParams(location.search).get("platform") === "linux", inputAllowed: true, screenAllowed: false, input: { ok: true, why: "" }, canHost: true };
     case "portal_forget": return null;
-    case "settings_export": return "C:\\Users\\Mark\\tandem-settings.json";
-    case "settings_import": return state.settings;
+    case "settings_export": return { path: "C:\\Users\\Mark\\tandem-backup.json", missing: ["Pixel Watch"] };
+    case "settings_import": return { recognised: 1, devices: [
+      { name: "Xperia 1 VI", platform: "android", model: "Sony XQ-EC54", kind: "android", fits: false },
+      { name: "Desk", platform: "windows", model: "DESK-PC", kind: "desktop", fits: true },
+      { name: "Laptop", platform: "linux", model: "fedora", kind: "desktop", fits: true },
+      { name: "MacBook Pro", platform: "mac", model: "Mac15,7", kind: "mac", fits: false } ] };
+    case "settings_restore": return state.settings;
     case "health_records": return empty ? [] : [
       { id: "night", kind: "sleep", startMs: now - 9 * 3600000, endMs: now - 3600000, sleepMinutes: 441, efficiencyPercent: 92, lightMinutes: 230, deepMinutes: 90, remMinutes: 121, heartRateMean: 57, heartRateLow: 46, heartRateHigh: null, steps: 0,
         stages: [["light", 40], ["deep", 50], ["light", 30], ["rem", 25], ["wake", 3], ["light", 60], ["deep", 40], ["rem", 40], ["light", 100], ["rem", 56]].map(([stage, m]) => ({ stage, seconds: m * 60 })) },
