@@ -229,6 +229,9 @@ sealed interface Message {
         val heartCurve: List<Int> = emptyList(),
     ) : Message
 
+    /** Phone to watch: a computer asks for the mouse; the watch opens it for [targetId] by itself. */
+    data class PointerOpen(val targetId: String) : Message
+
     /** Phone to watch: this record is safe on the phone, the watch can let go of it. */
     data class HealthAck(val id: String) : Message
 
@@ -305,6 +308,7 @@ object MessageCodec {
     // 0x76 was the mouse switch before the button came: a phone of 0.3.0 still sends it with that number.
     private const val MOUSE_ENABLED = 0x76
     private const val POINTER_BUTTON = 0x77
+    private const val POINTER_OPEN = 0x78
 
     fun encode(message: Message): ByteArray {
         val w = ByteWriter()
@@ -347,6 +351,7 @@ object MessageCodec {
             is Message.PointerClick -> w.u8(POINTER_CLICK).u8(message.button).u8(message.count)
             is Message.PointerKey -> w.u8(POINTER_KEY).varint(message.code.toLong()).u8(message.mods)
             is Message.PointerButton -> w.u8(POINTER_BUTTON).u8(message.button).bool(message.down)
+            is Message.PointerOpen -> w.u8(POINTER_OPEN).str(message.targetId)
             is Message.FindDevice -> w.u8(FIND_DEVICE).bool(message.ring)
             is Message.Ringing -> w.u8(RINGING).bool(message.on)
             is Message.DeviceBatteries -> {
@@ -412,6 +417,7 @@ object MessageCodec {
             POINTER_CLICK -> Message.PointerClick(r.u8(), r.u8())
             POINTER_KEY -> Message.PointerKey(r.varint().toInt(), r.u8())
             POINTER_BUTTON -> Message.PointerButton(r.u8(), r.bool())
+            POINTER_OPEN -> Message.PointerOpen(r.str())
             FIND_DEVICE -> Message.FindDevice(r.bool())
             RINGING -> Message.Ringing(r.bool())
             DEVICE_BATTERIES -> Message.DeviceBatteries(

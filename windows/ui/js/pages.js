@@ -453,6 +453,8 @@ export function WatchPage({ device }) {
     <div class="agroups">
       <${ActionGroup} title=${t("watch")}>
         <${WatchButton} device=${device} />
+        <button class="btn" disabled=${!reachable} title=${reachable ? "" : t("watch_away")} onClick=${() => call("start_watch_mouse", { id: device.id }).catch(failed)}>
+          <${Icon} name="pointer" size=${17} />${t("watch_as_mouse")}</button>
         <button class="btn" onClick=${openHealth}><${Icon} name="moon" size=${17} />${t("tab_health")}</button>
         <button class="btn" onClick=${() => set({ selected: device.id, page: "device" })}><${Icon} name="device-mobile" size=${17} />${t("open_device", device.name)}</button>
       <//>

@@ -124,6 +124,10 @@ struct WatchDetail: View {
             }
             .disabled(!reachable)
             .help(reachable ? "" : "The watch is not connected to its phone")
+            // The watch opens its mouse screen by itself, so it need not be touched.
+            GlassActionButton(title: "Use watch as mouse", symbol: "cursorarrow.motionlines") { model.startWatchMouse(phone.id) }
+                .disabled(!reachable)
+                .help(reachable ? "" : "The watch is not connected to its phone")
             GlassActionButton(title: "Sleep and workouts", symbol: "bed.double") { AppScenes.showSettings(.health) }
             GlassActionButton(title: "Open \(phone.name)", symbol: "iphone") { onOpenPhone() }
         }

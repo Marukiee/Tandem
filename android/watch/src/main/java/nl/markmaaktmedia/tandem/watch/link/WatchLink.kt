@@ -489,6 +489,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             Message.TryWakeBuzz -> appContext?.let { GentleWake.tryOnce(it) }
             is Message.HeartAllDay -> appContext?.let { HeartTracker.setEnabled(it, message.on, tellPhone = false) }
             is Message.Pong -> handler.removeCallbacks(pongTimeout)
+            is Message.PointerOpen -> appContext?.let { nl.markmaaktmedia.tandem.watch.ui.PointerActivity.openFromAfar(it, message.targetId) }
             is Message.UpdateOffer -> appContext?.let { SelfUpdate.onOffer(it, message) }
             is Message.UpdatePart -> appContext?.let { SelfUpdate.onPart(it, message) }
             is Message.Ping, is Message.Unknown -> Unit

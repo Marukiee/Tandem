@@ -79,6 +79,8 @@ pub enum Msg {
     UnpairWatch {},
     /// Asks a phone to change what is set for its watch. The phone says the result in its status. An older phone does not know it.
     SetWatchSettings { change: WatchSettingsChange },
+    /// Asks a phone to open the mouse on its watch for the computer that asks, so the watch need not be touched.
+    StartWatchMouse {},
     /// Asks the device to record for `side::LISTEN_MS`: this one is about to play the tones of `side::pattern` (see `side.rs`).
     /// `quiet`: the quiet sweeps of a check that nobody asked for. The device then does not ask for its microphone, and does not listen
     /// while it is in use. An older device does not know the field and listens as it always did.

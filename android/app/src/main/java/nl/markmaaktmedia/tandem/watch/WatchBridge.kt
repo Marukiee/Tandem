@@ -113,6 +113,11 @@ class WatchBridge(
     /** How the app on the watch is kept at the version of this one. */
     val appUpdate: StateFlow<WatchAppState> = updater.state
 
+    /** A computer asked for the watch as its mouse: the watch opens the mouse screen for it by itself. */
+    fun openMouse(computerId: String) {
+        handler.post { enqueue(Message.PointerOpen(computerId)) }
+    }
+
     fun retryAppUpdate() {
         handler.post { updater.retry(_state.value.ready) }
     }
@@ -625,7 +630,7 @@ class WatchBridge(
             is Message.Ping, is Message.Pong, is Message.Unknown -> Unit
             // These only travel from phone to watch.
             is Message.NotificationSnapshot, is Message.Notification, is Message.NotificationRemoved, is Message.AppIcon,
-            is Message.HealthAck, is Message.StepGoal, is Message.SmartWakeAlarm, Message.TryWakeBuzz, is Message.UpdateOffer, is Message.UpdatePart,
+            is Message.HealthAck, is Message.StepGoal, is Message.SmartWakeAlarm, Message.TryWakeBuzz, is Message.UpdateOffer, is Message.UpdatePart, is Message.PointerOpen,
             is Message.Call, is Message.MediaPlayers, is Message.MediaArt, is Message.PointerTargets, is Message.DeviceBatteries,
             -> Unit
         }

@@ -1228,6 +1228,7 @@ pub enum TandemEvent {
     RenameWatch { from: String, name: String },
     UnpairWatch { from: String },
     SetWatchSettings { from: String, change: TandemWatchSettingsChange },
+    StartWatchMouse { from: String },
     KeepAwake { from: String, on: bool },
     Unlock { from: String },
     Lock { from: String },
@@ -1369,6 +1370,7 @@ impl From<Event> for TandemEvent {
             Event::RenameWatch { from, name } => TandemEvent::RenameWatch { from: from.to_string(), name },
             Event::UnpairWatch { from } => TandemEvent::UnpairWatch { from: from.to_string() },
             Event::SetWatchSettings { from, change } => TandemEvent::SetWatchSettings { from: from.to_string(), change: change.into() },
+            Event::StartWatchMouse { from } => TandemEvent::StartWatchMouse { from: from.to_string() },
             Event::KeepAwake { from, on } => TandemEvent::KeepAwake { from: from.to_string(), on },
             Event::Unlock { from } => TandemEvent::Unlock { from: from.to_string() },
             Event::Lock { from } => TandemEvent::Lock { from: from.to_string() },
@@ -2087,6 +2089,11 @@ impl TandemEngine {
     /// Asks the phone `target` to unpair its watch. Pairing again is done on the phone.
     pub async fn unpair_watch(&self, target: String) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::UnpairWatch {}).await.map(|_| ())
+    }
+
+    /// Asks the phone `target` to open the mouse on its watch for this computer.
+    pub async fn start_watch_mouse(&self, target: String) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::StartWatchMouse {}).await.map(|_| ())
     }
 
     /// Asks the phone `target` to change what is set for its watch. What is None stays as it is.

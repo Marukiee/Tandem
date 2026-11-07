@@ -258,6 +258,7 @@ pub fn run() {
             commands::rename_watch,
             commands::unpair_watch,
             commands::set_watch_settings,
+            commands::start_watch_mouse,
             commands::send_paths,
             commands::pick_and_send,
             commands::send_clipboard,

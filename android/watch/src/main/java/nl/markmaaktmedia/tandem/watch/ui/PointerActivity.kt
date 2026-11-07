@@ -188,6 +188,9 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         sensors = getSystemService(SensorManager::class.java)
         PointerPrefs.load(this)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        setShowWhenLocked(true)
+        setTurnScreenOn(true)
+        getSystemService(android.app.NotificationManager::class.java)?.cancel(MOUSE_NOTIFICATION)
         // In a presentation the pointer stays still until a finger asks for it.
         setMoving(!presentation)
         setContent {
@@ -487,6 +490,9 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         /** 200 times a second, the most Android gives without a special permission, and what a knock needs. */
         private const val SAMPLE_US = 5_000
         private const val EXTRA_HID = "hid"
+        private const val MOUSE_CHANNEL = "mouse"
+        /** Its own: see the other numbers in the watch app. */
+        private const val MOUSE_NOTIFICATION = 360
         private const val FLASH_MS = 450
         private const val FLASH_ALPHA = 0.6f
         private const val BUZZ_QUIET_NS = 450_000_000L
@@ -504,6 +510,35 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         /** Straight to a computer over Bluetooth, as its mouse: the computer said its address. The first time its system asks to pair. */
         fun openBluetooth(context: Context, address: String, presentation: Boolean = false) {
             context.startActivity(Intent(context, PointerActivity::class.java).putExtra(EXTRA_HID, address).putExtra(EXTRA_PRESENTATION, presentation))
+        }
+
+        /**
+         * A computer asked for the mouse, so the watch was not touched: a notification that opens the mouse screen at once, also with
+         * the screen off, the way a call does. Over Bluetooth when the computer said its address.
+         */
+        fun openFromAfar(context: Context, targetId: String) {
+            val target = WatchLink.ui.value.pointerTargets.firstOrNull { it.id == targetId }
+            val intent = Intent(context, PointerActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).apply {
+                if (target?.btAddress != null) putExtra(EXTRA_HID, target.btAddress) else putExtra(EXTRA_TARGET, targetId)
+            }
+            val screen = android.app.PendingIntent.getActivity(context, 7, intent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
+            val manager = context.getSystemService(android.app.NotificationManager::class.java)
+            manager.createNotificationChannel(
+                android.app.NotificationChannel(MOUSE_CHANNEL, context.getString(R.string.channel_mouse), android.app.NotificationManager.IMPORTANCE_HIGH),
+            )
+            manager.notify(
+                MOUSE_NOTIFICATION,
+                android.app.Notification.Builder(context, MOUSE_CHANNEL)
+                    .setSmallIcon(R.drawable.ic_stat_tandem)
+                    .setContentTitle(context.getString(R.string.mouse_asked, target?.name.orEmpty()))
+                    .setContentIntent(screen)
+                    .setFullScreenIntent(screen, true)
+                    .setCategory(android.app.Notification.CATEGORY_CALL)
+                    .setAutoCancel(true)
+                    .setTimeoutAfter(30_000)
+                    .setLocalOnly(true)
+                    .build(),
+            )
         }
 
         fun open(context: Context, targetId: String, presentation: Boolean) {

@@ -741,7 +741,7 @@ final class EngineModel {
             FindThisMac.shared.ring(from: from, on: on)
 
         // Only a phone has a watch.
-        case .ringWatch, .renameWatch, .unpairWatch, .setWatchSettings:
+        case .ringWatch, .renameWatch, .unpairWatch, .setWatchSettings, .startWatchMouse:
             break
 
         case let .keepAwake(from, on):
@@ -1246,6 +1246,10 @@ final class EngineModel {
     /// The phone keeps the name and tells everyone; empty is the plain name again.
     func renameWatch(_ id: String, name: String) {
         Task { try? await engine?.renameWatch(target: id, name: name) }
+    }
+
+    func startWatchMouse(_ id: String) {
+        Task { try? await engine?.startWatchMouse(target: id) }
     }
 
     func unpairWatch(_ id: String) {
