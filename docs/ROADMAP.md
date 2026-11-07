@@ -101,6 +101,18 @@ computer nodig heeft op Mac, Linux en Windows tegelijk, wat alleen op telefoon e
 - **Beweegseintje**: een trilling na lang zitten, met uurblokjes op de pagina Gezondheid.
 - **Muziek stopt als je slaapt**: punt 5 hieronder.
 
+### Gevraagd door Mark, 2026-11-07 (avond)
+- **De horlogemuis als muis van de computer zelf (Bluetooth), af te maken.** Werkt als proef (`HidMouse`): koppelen, verbinden, bewegen
+  met de onderarm. Nog: elke computer geeft zijn Bluetooth-adres via de telefoon door, zodat Muis meteen met die computer verbindt; een
+  knop "Horloge als muis" op elke computer die het horloge wekt en het muisscherm opent.
+- **Geluid mag niet vanzelf naar het horloge.** Na het koppelen als muis zag macOS het horloge als headset (HFP) en stuurde het geluid
+  erheen. Het moet een keuze zijn.
+- **Het horloge als luidspreker kiezen, vanaf elk apparaat.** Op de Mac via de Bluetooth-koppeling (handsfree-kwaliteit); uitzoeken wat
+  er op Windows, Linux en de telefoon kan.
+- **Tafelmodus.** De hand op tafel alsof hij een muis vasthoudt, tikken op tafel om te klikken. Links en rechts volgt de onderarm; voor en
+  achter is moeilijk, omdat een horloge schuiven slecht meet. Eerst een opname.
+- **Knijpen en vasthouden kan het horloge niet voelen**; slepen gaat met de vinger op het scherm.
+
 ## Horloge: gekozen functies, uitgewerkt (gekozen door Mark, 2026-11-06), nog te bouwen
 
 Bouwt voort op `claude/horloge-link` (zie `docs/WATCH.md` daar). Het horloge blijft geen lid van de circle: alles naar een computer loopt
