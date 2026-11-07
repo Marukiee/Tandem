@@ -89,6 +89,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Tracking.load(this)
+        PointerPrefs.load(this)
         setContent {
             TandemWatchTheme {
                 AppScaffold(timeText = { TimeText() }) { WatchRoot() }
@@ -288,6 +289,33 @@ internal fun Home(ui: WatchUi) {
                 if (ui.pointerEnabled) {
                     item(key = "mouse") { SteerButton(ui, false, rimRow(spec), SurfaceTransformation(spec)) }
                     item(key = "presentation") { SteerButton(ui, true, rimRow(spec), SurfaceTransformation(spec)) }
+                    item(key = "mouse_speed") {
+                        val speed by PointerPrefs.speed.collectAsState()
+                        FilledTonalButton(
+                            onClick = { PointerPrefs.nextSpeed(context) },
+                            modifier = rimRow(spec),
+                            transformation = SurfaceTransformation(spec),
+                            label = { Text(stringResource(R.string.mouse_speed)) },
+                            secondaryLabel = {
+                                Text(stringResource(when (speed) {
+                                    PointerPrefs.Speed.SLOW -> R.string.mouse_speed_slow
+                                    PointerPrefs.Speed.MEDIUM -> R.string.mouse_speed_medium
+                                    PointerPrefs.Speed.FAST -> R.string.mouse_speed_fast
+                                }))
+                            },
+                        )
+                    }
+                    item(key = "mouse_pinch") {
+                        val pinch by PointerPrefs.pinch.collectAsState()
+                        SwitchButton(
+                            checked = pinch,
+                            onCheckedChange = { PointerPrefs.setPinch(context, it) },
+                            modifier = rimRow(spec),
+                            transformation = SurfaceTransformation(spec),
+                            label = { Text(stringResource(R.string.mouse_pinch)) },
+                            secondaryLabel = { Text(stringResource(R.string.mouse_pinch_sub)) },
+                        )
+                    }
                 }
                 item(key = "find_phone") {
                     FilledTonalButton(

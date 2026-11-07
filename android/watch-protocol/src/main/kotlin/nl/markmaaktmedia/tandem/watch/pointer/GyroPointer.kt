@@ -76,9 +76,9 @@ class GyroPointer(var invertVertical: Boolean = false, var sensitivity: Float = 
         const val MAX_STEP_SECONDS = 0.05f
         const val FAST_SPEED = 1.5f
 
-        /** Around the 1400 of the phone's pointer: slower when aiming, faster when crossing a screen. */
-        const val SLOW_PIXELS_PER_RADIAN = 900f
-        const val FAST_PIXELS_PER_RADIAN = 2800f
+        /** Slower when aiming, faster when crossing a screen. The computer adds some acceleration of its own on top. */
+        const val SLOW_PIXELS_PER_RADIAN = 550f
+        const val FAST_PIXELS_PER_RADIAN = 1600f
     }
 }
 

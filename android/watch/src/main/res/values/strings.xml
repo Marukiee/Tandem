@@ -80,6 +80,12 @@
     <string name="mouse_hint_tap">Tap to click</string>
     <string name="mouse_holding">Dragging, lift to let go</string>
     <string name="pinch_hint">Pinch twice</string>
+    <string name="mouse_speed">Speed</string>
+    <string name="mouse_speed_slow">Slow</string>
+    <string name="mouse_speed_medium">Medium</string>
+    <string name="mouse_speed_fast">Fast</string>
+    <string name="mouse_pinch">Pinch to click</string>
+    <string name="mouse_pinch_sub">Still learning, can click by itself</string>
     <string name="pinch_test">Pinch test</string>
     <string name="wake_buzz_test">Wake-up buzz</string>
     <string name="pinch_count">Pinches: %1$d</string>

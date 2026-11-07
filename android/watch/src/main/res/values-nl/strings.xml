@@ -80,6 +80,12 @@
     <string name="mouse_hint_tap">Tik om te klikken</string>
     <string name="mouse_holding">Slepen, til op om los te laten</string>
     <string name="pinch_hint">Knijp 2x</string>
+    <string name="mouse_speed">Snelheid</string>
+    <string name="mouse_speed_slow">Langzaam</string>
+    <string name="mouse_speed_medium">Gemiddeld</string>
+    <string name="mouse_speed_fast">Snel</string>
+    <string name="mouse_pinch">Knijpen om te klikken</string>
+    <string name="mouse_pinch_sub">Leert nog, kan vanzelf klikken</string>
     <string name="pinch_test">Pinch-test</string>
     <string name="wake_buzz_test">Wektrilling</string>
     <string name="pinch_count">Pinches: %1$d</string>

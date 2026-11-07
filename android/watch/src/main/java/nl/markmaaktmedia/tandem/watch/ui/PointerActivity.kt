@@ -93,6 +93,9 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
      */
     @Volatile private var touching = false
 
+    /** Off unless chosen on the watch, or while testing it. */
+    @Volatile private var listenToPinch = false
+
     /** The left button is down for a drag, from a finger that holds the screen until it is lifted. */
     private var holding by mutableStateOf(false)
 
@@ -112,6 +115,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sensors = getSystemService(SensorManager::class.java)
+        PointerPrefs.load(this)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         // In a presentation the pointer stays still until a finger asks for it.
         setMoving(!presentation)
@@ -129,6 +133,8 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     override fun onResume() {
         super.onResume()
         if (!testing) WatchLink.startPointer(targetId)
+        gyro.sensitivity = PointerPrefs.speed.value.sensitivity
+        listenToPinch = testing || PointerPrefs.pinch.value
         gyro.reset()
         pinch.reset()
         startTuningLog()
@@ -170,7 +176,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                 val y = event.values[1]
                 val z = event.values[2]
                 tuning?.write(RawRecord.Accel(event.timestamp / 1_000_000, unit(x), unit(y), unit(z)))
-                if (pinch.update(event.timestamp, x, y, z) && !holding) {
+                if (listenToPinch && pinch.update(event.timestamp, x, y, z) && !holding) {
                     tuning?.write(RawRecord.Mark(event.timestamp / 1_000_000, "pinch"))
                     runOnUiThread {
                         pinches++
