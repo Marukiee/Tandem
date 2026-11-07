@@ -557,6 +557,8 @@
     <string name="watch_quiet_trigger">Terwijl je horloge je slaap opneemt</string>
     <string name="watch_unpair">Horloge ontkoppelen</string>
     <string name="watch_unpair_sub">Werkt ook als het horloge buiten bereik is</string>
+    <string name="watch_glance_night">Afgelopen nacht</string>
+    <string name="watch_glance_score">Slaapscore %1$d</string>
     <string name="watch_section_wrist">Op je pols</string>
     <string name="watch_row_notifications">Meldingen</string>
     <string name="watch_row_music">Muziek</string>

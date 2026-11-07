@@ -560,6 +560,8 @@
     <string name="watch_quiet_trigger">While your watch records your sleep</string>
     <string name="watch_unpair">Unpair watch</string>
     <string name="watch_unpair_sub">Also works when the watch is out of reach</string>
+    <string name="watch_glance_night">Last night</string>
+    <string name="watch_glance_score">Sleep score %1$d</string>
     <string name="watch_section_wrist">On your wrist</string>
     <string name="watch_row_notifications">Notifications</string>
     <string name="watch_row_music">Music</string>

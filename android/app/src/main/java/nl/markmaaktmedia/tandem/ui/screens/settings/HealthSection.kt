@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import java.text.NumberFormat
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -633,31 +634,91 @@ private fun WorkoutRow(index: Int, total: Int, record: TandemHealthRecord) {
 /** What a person chooses here, below what is measured: it is set once and then looked past. */
 @Composable
 internal fun HealthChoices() {
+    val watch by LocalContext.current.graph.watch.state.collectAsState()
+    if (!watch.paired) return
+    SectionHeader(stringResource(R.string.section_preferences), top = 16.dp, bottom = 0.dp)
+    SettingsGroup { HealthChoiceRows(0, 3, searchTargets = true) }
+}
+
+/**
+ * Waking gently, the heart rate all day and the step goal, as rows from [start] in a group of [total]. On the health page and on the page
+ * of the watch, which are both where someone looks for them. Search only leads to the ones on the health page ([searchTargets]).
+ */
+@Composable
+internal fun HealthChoiceRows(start: Int, total: Int, searchTargets: Boolean = false) {
     val graph = LocalContext.current.graph
     val scope = rememberCoroutineScope()
-    val watch by graph.watch.state.collectAsState()
-    if (!watch.paired) return
     val goal by graph.prefs.stepGoal.collectAsState(initial = TandemPrefs.DEFAULT_STEP_GOAL)
     val smartWake by graph.prefs.smartWake.collectAsState(initial = false)
     val heartAllDay by graph.prefs.heartAllDay.collectAsState(initial = true)
-    SectionHeader(stringResource(R.string.section_preferences), top = 16.dp, bottom = 0.dp)
+    val wake = @Composable {
+        SwitchRow(
+            start, total, TandemIcons.Schedule, stringResource(R.string.health_smart_wake), stringResource(R.string.health_smart_wake_sub), smartWake,
+            { on -> scope.launch { graph.prefs.setSmartWake(on) } },
+        )
+    }
+    val heart = @Composable {
+        SwitchRow(
+            start + 1, total, TandemIcons.Heart, stringResource(R.string.health_heart_all_day), stringResource(R.string.health_heart_all_day_sub), heartAllDay,
+            { on -> scope.launch { graph.prefs.setHeartAllDay(on) } },
+        )
+    }
+    if (searchTargets) SettingsTarget(FocusKeys.HealthSmartWake, start, total, wake) else wake()
+    if (searchTargets) SettingsTarget(FocusKeys.HealthHeartAllDay, start + 1, total, heart) else heart()
+    PadSlider(
+        start + 2, total, stringResource(R.string.health_goal), stringResource(R.string.health_goal_sub), goal,
+        TandemPrefs.STEP_GOAL_MIN..TandemPrefs.STEP_GOAL_MAX, TandemPrefs.STEP_GOAL_STEP, { number(it.toLong()) }, TandemIcons.Workout,
+    ) { value -> scope.launch { graph.prefs.setStepGoal(value) } }
+}
+
+/**
+ * What the watch measured last, as three numbers at the top of the page of the watch: the night, today's steps as the watch counts them,
+ * and the resting heart rate. A tap opens the health page. Nothing while there is nothing to show.
+ */
+@Composable
+internal fun WatchGlance(onOpen: () -> Unit) {
+    val context = LocalContext.current
+    val graph = context.graph
+    val records by graph.host.healthRecords.collectAsState()
+    val watch by graph.watch.state.collectAsState()
+    val insights = rememberHealthInsights()
+    val night = records.latestNight()
+    val score = insights?.latestNight?.takeIf { it.id == night?.id }?.score
+    val resting = insights?.resting
+    val steps = watch.stepsToday.takeIf { watch.paired }
+    if (night == null && steps == null && resting == null) return
     SettingsGroup {
-        SettingsTarget(FocusKeys.HealthSmartWake, 0, 3) {
-            SwitchRow(
-                0, 3, TandemIcons.Schedule, stringResource(R.string.health_smart_wake), stringResource(R.string.health_smart_wake_sub), smartWake,
-                { on -> scope.launch { graph.prefs.setSmartWake(on) } },
-            )
+        GroupedRow(0, 1, onClick = onOpen) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (night != null) {
+                    Glance(
+                        stringResource(R.string.watch_glance_night), duration(night.sleepMinutes.toInt()),
+                        score?.let { stringResource(R.string.watch_glance_score, it.toInt()) } ?: dayName(context, night.endMs.toLong()),
+                        Modifier.weight(1f),
+                    )
+                }
+                if (steps != null) {
+                    Glance(stringResource(R.string.health_steps_title), number(steps), stringResource(R.string.health_today), Modifier.weight(1f))
+                }
+                if (resting != null) {
+                    Glance(
+                        stringResource(R.string.health_resting), stringResource(R.string.health_resting_line, resting.latest.toInt()),
+                        resting.usual?.let { stringResource(R.string.health_usually, it.toInt()) }
+                            ?: pluralStringResource(R.plurals.health_nights_more, resting.nightsNeeded.toInt(), resting.nightsNeeded.toInt()),
+                        Modifier.weight(1f),
+                    )
+                }
+            }
         }
-        SettingsTarget(FocusKeys.HealthHeartAllDay, 1, 3) {
-            SwitchRow(
-                1, 3, TandemIcons.Heart, stringResource(R.string.health_heart_all_day), stringResource(R.string.health_heart_all_day_sub), heartAllDay,
-                { on -> scope.launch { graph.prefs.setHeartAllDay(on) } },
-            )
-        }
-        PadSlider(
-            2, 3, stringResource(R.string.health_goal), stringResource(R.string.health_goal_sub), goal, TandemPrefs.STEP_GOAL_MIN..TandemPrefs.STEP_GOAL_MAX, TandemPrefs.STEP_GOAL_STEP,
-            { number(it.toLong()) }, TandemIcons.Workout,
-        ) { value -> scope.launch { graph.prefs.setStepGoal(value) } }
+    }
+}
+
+@Composable
+private fun Glance(label: String, value: String, caption: String, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface, maxLines = 1)
+        Text(caption, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

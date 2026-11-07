@@ -127,6 +127,8 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
             }
         }
 
+        WatchGlance { onOpen(Route.SettingsPage(SettingsPageId.Health)) }
+
         SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
             ActionRow(
@@ -159,18 +161,24 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
             }
         }
 
+        // The same choices as on the health page and on the computers' page of the watch: this is where someone looks for them too.
+        SectionHeader(stringResource(R.string.settings_cat_health), top = 12.dp, bottom = 0.dp)
+        SettingsGroup {
+            HealthChoiceRows(0, 4)
+            ActionRow(
+                3, 4, TandemIcons.Sleep, stringResource(R.string.health_row_sub), null,
+                onClick = { onOpen(Route.SettingsPage(SettingsPageId.Health)) },
+            )
+        }
+
         SectionHeader(stringResource(R.string.watch_section_wrist), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
             ActionRow(
-                0, 3, TandemIcons.Sleep, stringResource(R.string.settings_cat_health), stringResource(R.string.health_row_sub),
-                onClick = { onOpen(Route.SettingsPage(SettingsPageId.Health)) },
-            )
-            ActionRow(
-                1, 3, TandemIcons.Notifications, stringResource(R.string.watch_row_notifications), stringResource(R.string.watch_row_same_apps),
+                0, 2, TandemIcons.Notifications, stringResource(R.string.watch_row_notifications), stringResource(R.string.watch_row_same_apps),
                 onClick = { onOpen(Route.MirrorApps) },
             )
             ActionRow(
-                2, 3, TandemIcons.Music, stringResource(R.string.watch_row_music), stringResource(R.string.watch_row_same_apps),
+                1, 2, TandemIcons.Music, stringResource(R.string.watch_row_music), stringResource(R.string.watch_row_same_apps),
                 onClick = { onOpen(Route.MediaApps) },
             )
         }
