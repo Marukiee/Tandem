@@ -111,7 +111,7 @@ fun DevicesScreen(
 
     val watch = context.graph.watch
     val watchState by watch.state.collectAsState()
-    val watchName = stringResource(R.string.settings_cat_watch)
+    val watchName = watchState.name ?: stringResource(R.string.settings_cat_watch)
 
     val online = devices.count { it.online } + if (watchState.ready) 1 else 0
     val prefs = context.graph.prefs
@@ -295,7 +295,7 @@ private fun WatchCard(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             DeviceGlyph(TandemPlatform.OTHER, state.ready, pickedIcon = DeviceIconChoice.Watch.key)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(stringResource(R.string.settings_cat_watch), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                Text(state.name ?: stringResource(R.string.settings_cat_watch), style = MaterialTheme.typography.titleMedium, maxLines = 1)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     PresenceDot(state.ready)
                     Text(
@@ -350,7 +350,7 @@ private fun CompactWatchCard(
             ArrivingBattery(state.battery()) { BatteryBadge(it, connected = state.ready) }
         }
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(stringResource(R.string.settings_cat_watch), style = MaterialTheme.typography.titleSmall, maxLines = 1)
+            Text(state.name ?: stringResource(R.string.settings_cat_watch), style = MaterialTheme.typography.titleSmall, maxLines = 1)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 PresenceDot(state.ready)
                 Text(

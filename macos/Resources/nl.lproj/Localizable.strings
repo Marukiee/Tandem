@@ -1463,3 +1463,15 @@
 "Usually %lld" = "Meestal %lld";
 "%@ to %@" = "%1$@ tot %2$@";
 "1 workout this week" = "1 training deze week";
+"Rename watch" = "Horloge hernoemen";
+"Your phone and your other computers show it by this name too." = "Je telefoon en je andere computers tonen hem ook met deze naam.";
+"Unpair %@?" = "%@ ontkoppelen?";
+"Unpair" = "Ontkoppelen";
+"Pairing it again is done on your phone." = "Opnieuw koppelen doe je op je telefoon.";
+"Wear OS · by way of %@" = "Wear OS · via %@";
+"Open %@" = "%@ openen";
+"%@. Your phone and your other computers show it by this name too." = "%@. Je telefoon en je andere computers tonen hem ook met deze naam.";
+"Its phone is not connected" = "De telefoon ervan is niet verbonden";
+"What your watch measured, as far as your phone gives it to this Mac" = "Wat je horloge heeft gemeten, voor zover je telefoon het aan deze Mac geeft";
+"Unpair this watch" = "Dit horloge ontkoppelen";
+"Pairing it again is done on your phone" = "Opnieuw koppelen doe je op je telefoon";

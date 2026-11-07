@@ -7,6 +7,8 @@ enum SidebarSelection: Hashable {
     case files(String)
     /// The text messages of that phone.
     case messages(String)
+    /// The watch of that phone.
+    case watch(String)
     case shared
     case notifications
     case clipboard
@@ -27,7 +29,9 @@ struct Sidebar: View {
     @Namespace private var chosen
 
     private var order: [SidebarSelection] {
-        model.devices.map { .device($0.id) } + [.shared] + phones.map { .messages($0.id) } + [.notifications, .clipboard]
+        model.devices.flatMap { device -> [SidebarSelection] in
+            device.status.watch?.paired == true ? [.device(device.id), .watch(device.id)] : [.device(device.id)]
+        } + [.shared] + phones.map { .messages($0.id) } + [.notifications, .clipboard]
     }
 
     /// The phones whose messages have a row in the second group.
@@ -52,10 +56,10 @@ struct Sidebar: View {
                     } content: {
                         DeviceRow(device: device)
                     }
-                    // The watch only talks to this phone, so its page is the page of the phone. It still is a device of its own to look for.
+                    // The watch only talks to this phone, but it is a device of its own: its page goes by way of the phone.
                     if let watch = device.status.watch, watch.paired {
-                        SidebarButton(selected: false, chosen: chosen) {
-                            selection = .device(device.id)
+                        SidebarButton(selected: selection == .watch(device.id), chosen: chosen) {
+                            selection = .watch(device.id)
                         } content: {
                             WatchRow(watch: watch, online: device.online)
                         }
@@ -241,7 +245,7 @@ private struct WatchRow: View {
                 .frame(width: 38, height: 38)
                 .background(Palette.indigo.opacity(0.14), in: Circle())
             VStack(alignment: .leading, spacing: 2) {
-                Text("Watch").font(.callout.weight(.semibold)).lineLimit(1)
+                Text(verbatim: watch.name ?? String(localized: "Watch")).font(.callout.weight(.semibold)).lineLimit(1)
                 Text(reachable ? "Connected" : "Watch away")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(reachable ? Color.green : Color.secondary)

@@ -175,7 +175,7 @@ class StatusReporter(
             soundDnd = FocusMode.canUse(context),
             lock = nl.markmaaktmedia.tandem.live.TandemAccessibilityService.instance != null,
             watch = context.graph.watch.takeIf { it.supported }?.state?.value?.let { watch ->
-                TandemWatchStatus(watch.paired, watch.ready, watch.batteryLevel?.toUByte(), watch.charging, watch.ringing)
+                TandemWatchStatus(watch.paired, watch.ready, watch.batteryLevel?.toUByte(), watch.charging, watch.ringing, watch.name)
             },
         )
     }

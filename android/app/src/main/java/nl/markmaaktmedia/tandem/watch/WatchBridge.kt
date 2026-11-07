@@ -74,6 +74,8 @@ data class WatchState(
     val charging: Boolean = false,
     val ringing: Boolean = false,
     val sleeping: Boolean = false,
+    /** What the person called it. Null is the plain name. */
+    val name: String? = null,
 )
 
 /**
@@ -174,6 +176,7 @@ class WatchBridge(
             quiet.checkLeftOver()
             updateActive()
         }
+        jobs += scope.launch { prefs.watchName.collect { name -> _state.update { it.copy(name = name) } } }
         jobs += scope.launch { prefs.mirrorAllApps.collect { mirrorAll = it } }
         jobs += scope.launch { prefs.mirrorExcluded.collect { mirrorExcluded = it } }
         jobs += scope.launch { prefs.mirrorApps.collect { mirrorApps = it } }
@@ -314,14 +317,21 @@ class WatchBridge(
     }
 
     /** Works with the watch out of reach too: a lost watch must not keep access to this phone. */
+    /** From this phone or from a computer that shows the watch as a device of its own. */
+    fun rename(name: String) {
+        scope.launch { prefs.setWatchName(name) }
+    }
+
     fun unpair() {
+        // A next watch starts with the plain name.
+        scope.launch { prefs.setWatchName("") }
         handler.post {
             engine?.unpair()
             outbound.clear()
             iconsSent.clear()
             alerted.clear()
             endPointer()
-            _state.update { WatchState() }
+            _state.update { WatchState(name = it.name) }
             handler.postDelayed({
                 server?.disconnect()
                 updateActive()
@@ -537,7 +547,7 @@ class WatchBridge(
             Message.Unpair -> {
                 alerted.clear()
                 endPointer()
-                _state.update { WatchState() }
+                _state.update { WatchState(name = it.name) }
                 server?.disconnect()
                 updateActive()
             }

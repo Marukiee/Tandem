@@ -1,26 +1,27 @@
 // The main window: the devices on the left, a page on the right.
-import { html, render, useEffect } from "../vendor/preact-htm.js";
+import { html, render, useEffect, useState } from "../vendor/preact-htm.js";
 import { call, connect, listenDrops, native } from "./backend.js";
 import { DeviceGlyph } from "./components.js";
 import { Icon } from "./icons.js";
 import { ResizeEdges, Titlebar, framed } from "./chrome.js";
 import { setLanguage, t } from "./i18n.js";
-import { ClipboardPage, DevicePage, FilesPage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
+import { ClipboardPage, DevicePage, WatchPage, watchName, FilesPage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
 import { say, selectedDevice, set, state, useStore } from "./store.js";
 import { MessagesPage, offersMessages } from "./messages.js";
 import { CallDialog, useCallAsk } from "./calls.js";
 import { TourPage, maybeShowTour } from "./tour.js";
 
 /** The update, at the foot of the sidebar: what is out, how far the download is, and what went wrong. */
-// The watch only talks to its phone, so its page is the page of the phone. It still is a device of its own to look for.
+// The watch only talks to its phone, but it is a device of its own: its page goes by way of the phone.
 function watchRow(d) {
   const watch = d.status && d.status.watch;
   if (!watch || !watch.paired) return null;
   const reachable = d.online && watch.online;
-  return html`<div class=${"row" + (reachable ? "" : " dim")} key=${d.id + "-watch"} onClick=${() => set({ selected: d.id, page: "device" })}>
+  const on = state.page === "watch" && state.selected === d.id;
+  return html`<div class=${"row" + (on ? " selected" : "") + (reachable ? "" : " dim")} key=${d.id + "-watch"} onClick=${() => set({ selected: d.id, page: "watch" })}>
     <span style="width:36px;height:36px;display:flex;align-items:center;justify-content:center"><${Icon} name="device-watch" size=${20} /></span>
     <div class="grow">
-      <div class="name ellipsis">${t("watch")}</div>
+      <div class="name ellipsis">${watchName(d)}</div>
       <div class=${"sub" + (reachable ? " ok" : "")}>${reachable ? t("connected") : t("watch_away")}</div>
     </div>
     ${watch.level != null && html`<span class="small muted">${watch.level}%</span>`}
@@ -124,6 +125,23 @@ function Nav() {
   </nav>`;
 }
 
+/** The phone keeps the name and tells everyone. The plain name is no name of its own: it then follows the language of each device. */
+function RenameWatch({ dialog, close }) {
+  const d = state.devices.find((x) => x.id === dialog.id);
+  const [name, setName] = useState(d ? watchName(d) : "");
+  const save = async () => {
+    close();
+    try { await call("rename_watch", { id: dialog.id, name: name.trim() === t("watch") ? "" : name.trim() }); } catch (e) { say(String(e)); }
+  };
+  return html`<div class="scrim" onClick=${(e) => e.target === e.currentTarget && close()}>
+    <div class="dialog"><h2>${t("watch_rename_title")}</h2><p class="muted" style="margin-top:0">${t("watch_name_hint")}</p>
+      <input type="text" style="width:100%" maxlength="40" value=${name} onInput=${(e) => setName(e.target.value)} onKeyDown=${(e) => e.key === "Enter" && save()} />
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn" onClick=${close}>${t("cancel")}</button>
+        <button class="btn accent" onClick=${save}>${t("save")}</button>
+      </div></div></div>`;
+}
+
 function Dialogs() {
   const dialog = state.dialog;
   // Escape closes the dialog, as a click beside it does.
@@ -143,6 +161,16 @@ function Dialogs() {
       </div></div>`;
   }
   if (dialog.kind === "call") return html`<${CallDialog} dialog=${dialog} />`;
+  if (dialog.kind === "rename-watch") return html`<${RenameWatch} dialog=${dialog} close=${close} />`;
+  if (dialog.kind === "unpair-watch") {
+    const d = state.devices.find((x) => x.id === dialog.id);
+    return html`<div class="scrim" onClick=${(e) => e.target === e.currentTarget && close()}>
+      <div class="dialog"><h2>${t("watch_unpair_title", d ? watchName(d) : t("watch"))}</h2><p>${t("watch_unpair_sub")}</p>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn" onClick=${close}>${t("cancel")}</button>
+          <button class="btn accent" onClick=${async () => { close(); try { await call("unpair_watch", { id: dialog.id }); } catch (e) { say(String(e)); } }}>${t("watch_unpair_button")}</button>
+        </div></div></div>`;
+  }
   if (dialog.kind === "remove") {
     const d = state.devices.find((x) => x.id === dialog.id);
     return html`<div class="scrim" onClick=${(e) => e.target === e.currentTarget && close()}>
@@ -166,6 +194,7 @@ function Page() {
   else if (state.page === "settings") body = html`<${SettingsPage} />`;
   else if (state.page === "tour") body = html`<${TourPage} />`;
   else if (state.page === "messages" && selectedDevice()) body = html`<${MessagesPage} device=${selectedDevice()} key=${state.selected} />`;
+  else if (state.page === "watch" && selectedDevice()?.status?.watch?.paired) body = html`<${WatchPage} device=${selectedDevice()} key=${state.selected + "-watch"} />`;
   else if (state.devices.length === 0) body = html`<${Welcome} />`;
   else {
     const device = selectedDevice();

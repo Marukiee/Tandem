@@ -627,7 +627,7 @@ struct DropZone: View {
 
 /// A few actions under the name of what they are for, on a card of the same tint as the ones in the menu bar panel. The buttons in it
 /// draw themselves as rows (see `actionButtonsAsRows`).
-private struct ActionGroup<Content: View>: View {
+struct ActionGroup<Content: View>: View {
     let title: LocalizedStringKey
     @ViewBuilder var content: Content
 

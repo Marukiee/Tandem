@@ -381,6 +381,57 @@ export function DevicePage({ device }) {
   </div>`;
 }
 
+/** The name of a watch: the one the person gave it on the phone, or the plain one in this language. */
+export function watchName(device) {
+  return (device.status && device.status.watch && device.status.watch.name) || t("watch");
+}
+
+/**
+ * The watch of a phone as a device of its own. It only ever talks to that phone, so everything here goes by way of it, and what needs
+ * the phone is grey and says why while the phone is away.
+ */
+export function WatchPage({ device }) {
+  const watch = device.status && device.status.watch;
+  if (!watch || !watch.paired) return null;
+  const reachable = device.online && watch.online;
+  return html`<div class="wrap">
+    <div class="card" style=${reachable ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
+      <div class="head">
+        <span class="glyph" style="width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent)"><${Icon} name="device-watch" size=${34} /></span>
+        <div class="info grow">
+          <div class="title ellipsis">${watchName(device)}</div>
+          <div class="small muted">${t("watch_by_way_of", device.name)}</div>
+          <div class="chips">
+            <${Chip} icon=${reachable ? "check" : "device-watch"}>${reachable ? t("connected") : t("watch_away")}<//>
+            ${reachable && watch.level != null && html`<${Chip} icon="device-watch">${watch.level}%<//>`}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <${WatchButton} device=${device} />
+      <button class="btn" onClick=${() => set({ selected: device.id, page: "device" })}><${Icon} name="device-mobile" size=${17} />${t("open_device", device.name)}</button>
+    </div>
+
+    <h2>${t("settings")}</h2>
+    <div class="card flush">
+      <${SettingRow} icon="pencil" title=${t("watch_name")} sub=${t("watch_name_sub", watchName(device))} why=${device.online ? "" : t("watch_phone_away")}>
+        <button class="btn small" disabled=${!device.online} onClick=${() => set({ dialog: { kind: "rename-watch", id: device.id } })}>${t("rename")}</button>
+      <//>
+      <${SettingRow} icon="moon" title=${t("tab_health")} sub=${t("watch_health_sub")}>
+        <button class="btn small" onClick=${() => set({ page: "settings", settingsWanted: { section: "health", at: Date.now() } })}>${t("open")}</button>
+      <//>
+    </div>
+
+    <div class="card flush" style="margin-top:18px">
+      <${SettingRow} icon="trash" title=${t("watch_unpair")} sub=${t("watch_unpair_sub")} why=${device.online ? "" : t("watch_phone_away")}>
+        <button class="btn danger small" disabled=${!device.online} onClick=${() => set({ dialog: { kind: "unpair-watch", id: device.id } })}>${t("watch_unpair_button")}</button>
+      <//>
+    </div>
+  </div>`;
+}
+
 // ---- Shared, notifications, settings --------------------------------------------------
 
 // ---- Clipboard history ------------------------------------------------------------------

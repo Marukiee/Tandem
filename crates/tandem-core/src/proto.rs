@@ -73,6 +73,10 @@ pub enum Msg {
     Ring { on: bool },
     /// Asks a phone to make the watch paired with it ring, or stop.
     RingWatch { on: bool },
+    /// Asks a phone to call its watch this. Empty gives the watch back its own name. An older phone does not know it and keeps the name.
+    RenameWatch { name: String },
+    /// Asks a phone to unpair its watch, from a computer that shows the watch as a device of its own.
+    UnpairWatch {},
     /// Asks the device to record for `side::LISTEN_MS`: this one is about to play the tones of `side::pattern` (see `side.rs`).
     /// `quiet`: the quiet sweeps of a check that nobody asked for. The device then does not ask for its microphone, and does not listen
     /// while it is in use. An older device does not know the field and listens as it always did.
@@ -334,6 +338,9 @@ pub struct WatchStatus {
     pub charging: bool,
     #[serde(default)]
     pub ringing: bool,
+    /// What the person called it on the phone. None is the plain name, said in the language of each device.
+    #[serde(default)]
+    pub name: Option<String>,
 }
 
 /// How a phone sounds. A number on the wire, so a kind that a newer app adds does not make its whole status unreadable here.

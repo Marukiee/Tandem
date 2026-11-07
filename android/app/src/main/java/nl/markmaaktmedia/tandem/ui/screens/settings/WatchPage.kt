@@ -39,7 +39,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.launch
+import androidx.compose.material3.OutlinedTextField
 import nl.markmaaktmedia.tandem.R
+import nl.markmaaktmedia.tandem.data.TandemPrefs
+import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
+import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
+import nl.markmaaktmedia.tandem.ui.components.TandemDialog
 import nl.markmaaktmedia.tandem.engine.FocusMode
 import nl.markmaaktmedia.tandem.engine.Permissions
 import nl.markmaaktmedia.tandem.graph
@@ -94,6 +99,7 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
     val sleepQuiet by prefs.watchSleepQuiet.collectAsState(initial = true)
 
     var canQuiet by remember { mutableStateOf(FocusMode.canUse(context)) }
+    var renaming by remember { mutableStateOf(false) }
     var hasListener by remember { mutableStateOf(Permissions.notificationAccess(context)) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         canQuiet = FocusMode.canUse(context)
@@ -124,7 +130,11 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
         SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
             ActionRow(
-                0, 3, TandemIcons.Ring,
+                0, 4, TandemIcons.Watch, stringResource(R.string.settings_name), state.name ?: stringResource(R.string.settings_cat_watch),
+                { renaming = true },
+            )
+            ActionRow(
+                1, 4, TandemIcons.Ring,
                 stringResource(if (state.ringing) R.string.watch_find_stop else R.string.watch_find),
                 stringResource(R.string.watch_find_sub),
                 onClick = {
@@ -133,15 +143,15 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
                 },
                 modifier = if (state.ready) Modifier else Modifier.alpha(0.6f),
             )
-            SettingsTarget(FocusKeys.WatchMouse, 1, 3) {
+            SettingsTarget(FocusKeys.WatchMouse, 2, 4) {
                 SwitchRow(
-                    1, 3, TandemIcons.Mouse, stringResource(R.string.watch_mouse), stringResource(R.string.watch_mouse_sub), mouse,
+                    2, 4, TandemIcons.Mouse, stringResource(R.string.watch_mouse), stringResource(R.string.watch_mouse_sub), mouse,
                     { on -> scope.launch { prefs.setWatchMouse(on) } },
                 )
             }
-            SettingsTarget(FocusKeys.WatchQuiet, 2, 3) {
+            SettingsTarget(FocusKeys.WatchQuiet, 3, 4) {
                 SwitchRow(
-                    2, 3, TandemIcons.Sleep, stringResource(R.string.watch_quiet), stringResource(R.string.watch_quiet_sub), sleepQuiet,
+                    3, 4, TandemIcons.Sleep, stringResource(R.string.watch_quiet), stringResource(R.string.watch_quiet_sub), sleepQuiet,
                     { on -> scope.launch { prefs.setWatchSleepQuiet(on) } },
                     blocked = if (canQuiet) null else stringResource(R.string.watch_quiet_blocked),
                     onBlocked = { runCatching { context.startActivity(FocusMode.accessIntent()) } },
@@ -171,6 +181,28 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
         }
         Spacer(Modifier.height(24.dp))
     }
+
+    if (renaming) {
+        val plain = stringResource(R.string.settings_cat_watch)
+        var text by remember { mutableStateOf(state.name ?: plain) }
+        TandemDialog(
+            title = stringResource(R.string.settings_name),
+            onDismiss = { renaming = false },
+            icon = TandemIcons.Watch,
+            body = stringResource(R.string.watch_name_sub),
+            actions = {
+                SecondaryPillButton(stringResource(R.string.action_cancel), { renaming = false })
+                PrimaryPillButton(stringResource(R.string.action_save), {
+                    // The plain name is no name of its own: it then follows the language of each device.
+                    watch.rename(text.trim().takeIf { it != plain }.orEmpty())
+                    renaming = false
+                })
+            },
+            content = {
+                OutlinedTextField(value = text, onValueChange = { text = it.take(TandemPrefs.WATCH_NAME_MAX) }, singleLine = true, shape = MaterialTheme.shapes.large)
+            },
+        )
+    }
 }
 
 @Composable
@@ -182,7 +214,7 @@ private fun WatchHeader(state: WatchState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             DeviceGlyph(TandemPlatform.OTHER, state.ready, size = 68.dp, pickedIcon = DeviceIconChoice.Watch.key)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.settings_cat_watch), style = MaterialTheme.typography.headlineSmall, maxLines = 2)
+                Text(state.name ?: stringResource(R.string.settings_cat_watch), style = MaterialTheme.typography.headlineSmall, maxLines = 2)
                 Text("Wear OS", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             ArrivingBattery(state.battery()) { BatteryRing(it, size = 68.dp, connected = state.ready) }

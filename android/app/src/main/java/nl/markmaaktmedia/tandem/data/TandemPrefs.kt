@@ -80,6 +80,7 @@ class TandemPrefs(private val context: Context) {
         val nudgeMuted = stringSetPreferencesKey("nudge_muted")
         val stepGoal = intPreferencesKey("step_goal")
         val heartAllDay = booleanPreferencesKey("heart_all_day")
+        val watchName = stringPreferencesKey("watch_name")
         val smartWake = booleanPreferencesKey("smart_wake")
         val healthConnectWrite = booleanPreferencesKey("health_connect_write")
         val watchMouse = booleanPreferencesKey("watch_mouse")
@@ -183,6 +184,10 @@ class TandemPrefs(private val context: Context) {
     suspend fun setHealthConnectWrite(value: Boolean) = set(Keys.healthConnectWrite, value)
     val heartAllDay: Flow<Boolean> = data.map { it[Keys.heartAllDay] ?: true }
     suspend fun setHeartAllDay(value: Boolean) = set(Keys.heartAllDay, value)
+
+    /** Empty is the plain name, said in the language of each device. */
+    val watchName: Flow<String?> = data.map { it[Keys.watchName]?.takeIf { name -> name.isNotBlank() } }
+    suspend fun setWatchName(value: String) = set(Keys.watchName, value.trim().take(WATCH_NAME_MAX))
     val stepGoal: Flow<Int> = data.map { it[Keys.stepGoal] ?: DEFAULT_STEP_GOAL }
     suspend fun setStepGoal(value: Int) = set(Keys.stepGoal, value)
 
@@ -368,6 +373,8 @@ class TandemPrefs(private val context: Context) {
         const val DEFAULT_PAD_HOLD_MS = 280L
 
         /** Where the research on steps and health stops finding much more per step. */
+        /** The same limit as the core's, so the name fits a row on every device. */
+        const val WATCH_NAME_MAX = 40
         const val DEFAULT_STEP_GOAL = 8000
     }
 }

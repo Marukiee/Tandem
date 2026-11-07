@@ -286,6 +286,9 @@ pub struct TandemStatus {
     pub watch: Option<TandemWatchStatus>,
 }
 
+/// Long enough for any name a person gives a watch, short enough for a row in a sidebar.
+pub const WATCH_NAME_MAX: usize = 40;
+
 /// The watch paired with a phone, which only that phone talks to.
 #[derive(Clone, Debug, Default, PartialEq, Eq, uniffi::Record)]
 pub struct TandemWatchStatus {
@@ -294,17 +297,20 @@ pub struct TandemWatchStatus {
     pub level: Option<u8>,
     pub charging: bool,
     pub ringing: bool,
+    /// What the person called it on the phone. None is the plain name, in the language of this device.
+    #[uniffi(default = None)]
+    pub name: Option<String>,
 }
 
 impl From<crate::proto::WatchStatus> for TandemWatchStatus {
     fn from(w: crate::proto::WatchStatus) -> Self {
-        TandemWatchStatus { paired: w.paired, online: w.online, level: w.level, charging: w.charging, ringing: w.ringing }
+        TandemWatchStatus { paired: w.paired, online: w.online, level: w.level, charging: w.charging, ringing: w.ringing, name: w.name }
     }
 }
 
 impl From<TandemWatchStatus> for crate::proto::WatchStatus {
     fn from(w: TandemWatchStatus) -> Self {
-        crate::proto::WatchStatus { paired: w.paired, online: w.online, level: w.level, charging: w.charging, ringing: w.ringing }
+        crate::proto::WatchStatus { paired: w.paired, online: w.online, level: w.level, charging: w.charging, ringing: w.ringing, name: w.name }
     }
 }
 
@@ -1141,6 +1147,8 @@ pub enum TandemEvent {
     BatteryAlert { from: String, level: u8, full: bool },
     Ring { from: String, on: bool },
     RingWatch { from: String, on: bool },
+    RenameWatch { from: String, name: String },
+    UnpairWatch { from: String },
     KeepAwake { from: String, on: bool },
     Unlock { from: String },
     Lock { from: String },
@@ -1279,6 +1287,8 @@ impl From<Event> for TandemEvent {
             Event::BatteryAlert { from, level, full } => TandemEvent::BatteryAlert { from: from.to_string(), level, full },
             Event::Ring { from, on } => TandemEvent::Ring { from: from.to_string(), on },
             Event::RingWatch { from, on } => TandemEvent::RingWatch { from: from.to_string(), on },
+            Event::RenameWatch { from, name } => TandemEvent::RenameWatch { from: from.to_string(), name },
+            Event::UnpairWatch { from } => TandemEvent::UnpairWatch { from: from.to_string() },
             Event::KeepAwake { from, on } => TandemEvent::KeepAwake { from: from.to_string(), on },
             Event::Unlock { from } => TandemEvent::Unlock { from: from.to_string() },
             Event::Lock { from } => TandemEvent::Lock { from: from.to_string() },
@@ -1986,6 +1996,17 @@ impl TandemEngine {
     /// Asks the phone `target` to make its watch ring, or stop.
     pub async fn ring_watch(&self, target: String, on: bool) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::RingWatch { on }).await.map(|_| ())
+    }
+
+    /// Asks the phone `target` to call its watch `name`; empty is the plain name again.
+    pub async fn rename_watch(&self, target: String, name: String) -> Result<(), TandemError> {
+        let name: String = name.trim().chars().take(WATCH_NAME_MAX).collect();
+        self.send(vec![target], crate::proto::Msg::RenameWatch { name }).await.map(|_| ())
+    }
+
+    /// Asks the phone `target` to unpair its watch. Pairing again is done on the phone.
+    pub async fn unpair_watch(&self, target: String) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::UnpairWatch {}).await.map(|_| ())
     }
 
     /// This device plays its sound because of `Ring` (`on`), or stopped: the devices that asked are told.

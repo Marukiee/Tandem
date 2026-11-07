@@ -520,6 +520,7 @@
     <string name="presentation_previous">Vorige</string>
     <string name="presentation_pointer">Pointer</string>
     <string name="presentation_pointing">Richten</string>
+    <string name="watch_name_sub">Je computers tonen hem ook met deze naam.</string>
     <string name="settings_cat_watch">Horloge</string>
     <string name="watch_sum_unpaired">Niet gekoppeld</string>
     <string name="watch_sum_battery">Verbonden, %1$d%%</string>

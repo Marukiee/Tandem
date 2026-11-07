@@ -227,6 +227,18 @@ pub async fn ring_watch(state: State<'_, AppState>, id: String, on: bool) -> Rep
     state.engine()?.ring_watch(id, on).await.map_err(shown)
 }
 
+/// The phone keeps the name of its watch and tells everyone; empty is the plain name again.
+#[tauri::command]
+pub async fn rename_watch(state: State<'_, AppState>, id: String, name: String) -> Reply<()> {
+    state.engine()?.rename_watch(id, name).await.map_err(shown)
+}
+
+/// Pairing again is done on the phone.
+#[tauri::command]
+pub async fn unpair_watch(state: State<'_, AppState>, id: String) -> Reply<()> {
+    state.engine()?.unpair_watch(id).await.map_err(shown)
+}
+
 /// The button under the screens: the desktop may ask now for this computer's mouse and keyboard.
 #[tauri::command]
 pub fn capture_start(app: AppHandle) {

@@ -62,7 +62,7 @@ fn status(s: &TandemStatus) -> Value {
         "soundDnd": s.sound_dnd,
         "lock": s.lock,
         "watch": s.watch.as_ref().map(|w| json!({
-            "paired": w.paired, "online": w.online, "level": w.level, "charging": w.charging, "ringing": w.ringing,
+            "paired": w.paired, "online": w.online, "level": w.level, "charging": w.charging, "ringing": w.ringing, "name": w.name,
         })),
     })
 }

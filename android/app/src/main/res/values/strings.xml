@@ -524,6 +524,7 @@
     <string name="presentation_pointer">Pointer</string>
     <string name="presentation_pointing">Aiming</string>
     <string name="settings_cat_watch">Watch</string>
+    <string name="watch_name_sub">Your computers show it by this name too.</string>
     <string name="watch_sum_unpaired">Not paired</string>
     <string name="watch_sum_battery">Connected, %1$d%%</string>
     <string name="watch_needs_android_13">A watch needs Android 13 or newer on this phone</string>
