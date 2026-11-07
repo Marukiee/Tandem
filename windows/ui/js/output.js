@@ -16,6 +16,8 @@ export function canPlay(device) {
 
 export function OutputButton({ device }) {
   const on = state.output === device.id;
+  // Named as on the Mac: on a phone page "speaker" reads as a speaker of this computer.
+  const phone = device.platform === "android";
   // On Linux it goes through Tandem Speaker, which plays nowhere else; on Windows it keeps playing here too.
   const started = state.platform === "linux" ? "output_started_linux" : "output_started";
   const plays = canPlay(device);
@@ -23,7 +25,7 @@ export function OutputButton({ device }) {
     : call("output_start", { id: device.id }).then(() => say(t(started, device.name))))
     .catch((e) => say(String(e && e.message ? e.message : e)));
   return html`<button class=${"btn" + (on ? " on" : plays || !device.online ? "" : " grey")} disabled=${!device.online && !on} title=${t("output_tip", device.name)} onClick=${press}>
-    <${Icon} name=${on ? "circle-x" : "volume"} size=${17} />${on ? t("output_stop") : t("output_use")}</button>`;
+    <${Icon} name=${on ? "circle-x" : "volume"} size=${17} />${on ? t(phone ? "output_stop_phone" : "output_stop") : t(phone ? "output_use_phone" : "output_use")}</button>`;
 }
 
 listen("mic", (mic) => set({ mic: mic || null }));
