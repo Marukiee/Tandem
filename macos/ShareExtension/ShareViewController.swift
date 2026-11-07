@@ -119,7 +119,7 @@ struct ShareList: Decodable {
     }
 
     let key: String
-    let running: Bool
+    var running: Bool
     let devices: [Device]
 
     static func read() -> ShareList? {
@@ -128,7 +128,10 @@ struct ShareList: Decodable {
         guard let folder = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "X8Y2M32MNQ.\(app)"),
               let data = try? Data(contentsOf: folder.appendingPathComponent("share.json"))
         else { return nil }
-        return try? JSONDecoder().decode(ShareList.self, from: data)
+        guard var list = try? JSONDecoder().decode(ShareList.self, from: data) else { return nil }
+        // After a crash the list still says it runs.
+        if NSRunningApplication.runningApplications(withBundleIdentifier: app).isEmpty { list.running = false }
+        return list
     }
 }
 
