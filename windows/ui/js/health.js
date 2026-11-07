@@ -1,0 +1,354 @@
+// The health page: built like the one on the phone and the Mac, from the same seven days of the core.
+import { html, useState } from "../vendor/preact-htm.js";
+import { Icon } from "./icons.js";
+import { language, t } from "./i18n.js";
+
+const STAGE_COLORS = {
+  deep: "var(--accent)",
+  light: "color-mix(in srgb, var(--accent) 40%, transparent)",
+  rem: "#a06ee0",
+  // The moments people look for, so they stand out. Not a warning colour: being awake for a bit is nothing to worry about.
+  wake: "color-mix(in srgb, var(--text) 70%, transparent)",
+};
+const LANES = ["wake", "rem", "light", "deep"];
+
+const locale = () => (language() === "nl" ? "nl" : "en");
+
+export function healthDuration(minutes) {
+  return minutes >= 60 ? t("health_hm", Math.floor(minutes / 60), minutes % 60) : t("health_m", minutes);
+}
+
+const clockOf = (ms) => new Date(ms).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" });
+/** Minutes from a midnight, negative for the evening before. */
+const clockFromMidnight = (minutes) => {
+  const inDay = ((minutes % 1440) + 1440) % 1440;
+  return `${String(Math.floor(inDay / 60)).padStart(2, "0")}:${String(inDay % 60).padStart(2, "0")}`;
+};
+/** Half a day on, so a change of the clock can not move a day. */
+const dayName = (midnightMs) => new Date(midnightMs + 12 * 3600_000).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" });
+const letter = (midnightMs) => new Date(midnightMs + 12 * 3600_000).toLocaleDateString(locale(), { weekday: "narrow" });
+const number = (value) => Number(value).toLocaleString(locale());
+
+/** The digits large and the units small, so the number is what the eye finds first. */
+function BigNumber({ text }) {
+  const parts = String(text).split(/([0-9.,:]+)/).filter((part) => part !== "");
+  return html`<div class="health-big">${parts.map((part, index) =>
+    /[0-9]/.test(part) ? html`<span key=${index}>${part}</span>` : html`<span key=${index} class="health-unit">${part}</span>`)}</div>`;
+}
+
+/** A card with words behind it, for what a person could really wonder about. The title says that it opens. */
+function Card({ title, more, children }) {
+  const [open, setOpen] = useState(false);
+  return html`<div class="card health-card">
+    ${title && (more
+      ? html`<button class="health-title" aria-expanded=${open} onClick=${() => setOpen(!open)}>
+          ${title}<span class=${"health-chevron" + (open ? " open" : "")}><${Icon} name="chevron-right" size=${14} /></span>
+        </button>`
+      : html`<div class="health-title">${title}</div>`)}
+    ${children}
+    ${open && more && html`<div class="small muted health-more">${more}</div>`}
+  </div>`;
+}
+
+function DayLetters({ week }) {
+  return html`<div class="health-days">${week.map((day, index) =>
+    html`<span key=${day.startMs} class=${index === week.length - 1 ? "today" : ""}>${letter(day.startMs)}</span>`)}</div>`;
+}
+
+/** Seven days as rounded bars. A day without a measurement gets a low grey stripe: not zero, because nothing is known about it. */
+function WeekBars({ values, week, picked, onPick }) {
+  const top = Math.max(1, ...values.filter((v) => v != null)) * 1.08;
+  const width = 196, height = 76, slot = width / values.length, bar = 18;
+  return html`<div class="health-chart">
+    <svg viewBox=${`0 0 ${width} ${height}`} width=${width} height=${height} role="img" onMouseLeave=${() => onPick(null)}>
+      ${values.map((value, index) => {
+        const x = slot * index + (slot - bar) / 2;
+        if (value == null) return html`<rect key=${index} x=${x} y=${height - 5} width=${bar} height="5" rx="2.5" class="health-none" />`;
+        const h = Math.max((value / top) * height, 8);
+        return html`<rect key=${index} class="health-grow" x=${x} y=${height - h} width=${bar} height=${h} rx=${Math.min(bar, h) / 2}
+          fill="var(--accent)" opacity=${picked == null || picked === index ? 1 : 0.3} />`;
+      })}
+      ${values.map((_, index) => html`<rect key=${"hit" + index} x=${slot * index} y="0" width=${slot} height=${height} fill="transparent"
+        onMouseEnter=${() => onPick(index)} />`)}
+    </svg>
+    <${DayLetters} week=${week} />
+  </div>`;
+}
+
+/** Seven days as a line, for what never comes near zero and so would say nothing as bars. */
+function WeekLine({ values, week, usual, picked, onPick }) {
+  const known = values.filter((v) => v != null).concat(usual != null ? [usual] : []);
+  const low = Math.min(...known) - 3, high = Math.max(...known) + 3;
+  const width = 196, height = 76, slot = width / values.length;
+  const x = (index) => slot * index + slot / 2;
+  const y = (value) => 8 + (1 - (value - low) / (high - low)) * (height - 16);
+  const points = values.map((value, index) => (value == null ? null : `${x(index)},${y(value)}`)).filter(Boolean).join(" ");
+  return html`<div class="health-chart">
+    <svg viewBox=${`0 0 ${width} ${height}`} width=${width} height=${height} role="img" onMouseLeave=${() => onPick(null)}>
+      ${usual != null && html`<line x1="0" x2=${width} y1=${y(usual)} y2=${y(usual)} class="health-guide-strong" />`}
+      <polyline points=${points} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      ${values.map((value, index) => value != null && html`<circle key=${index} cx=${x(index)} cy=${y(value)} r=${picked === index ? 5 : 3.5} fill="var(--accent)" />`)}
+      ${values.map((_, index) => html`<rect key=${"hit" + index} x=${slot * index} y="0" width=${slot} height=${height} fill="transparent" onMouseEnter=${() => onPick(index)} />`)}
+    </svg>
+    <${DayLetters} week=${week} />
+  </div>`;
+}
+
+/** From falling asleep to getting up, night by night: whether the nights start and end at the same time. Early at the top. */
+function SleepWindows({ week }) {
+  const beds = week.map((d) => d.bedMinutes).filter((v) => v != null);
+  const wakes = week.map((d) => d.wakeMinutes).filter((v) => v != null);
+  if (!beds.length || !wakes.length) return null;
+  // Whole hours, so the lines fall on times that read easily.
+  const from = Math.floor(Math.min(...beds) / 60) * 60;
+  const until = Math.ceil(Math.max(...wakes) / 60) * 60;
+  const marks = [...new Set([from, from + Math.floor((until - from) / 120) * 60, until])];
+  const width = 420, height = 112, slot = width / week.length, bar = 18, span = Math.max(until - from, 60);
+  const y = (minutes) => ((minutes - from) / span) * height;
+  return html`<div class="health-windows">
+    <div class="health-marks" style=${`height:${height}px`}>${marks.map((mark) => html`<span key=${mark}>${clockFromMidnight(mark)}</span>`)}</div>
+    <div class="health-chart grow-x">
+      <svg viewBox=${`0 0 ${width} ${height}`} preserveAspectRatio="none" width="100%" height=${height} role="img">
+        ${marks.map((mark) => html`<line key=${mark} x1="0" x2=${width} y1=${y(mark)} y2=${y(mark)} class="health-guide" />`)}
+        ${week.map((day, index) => day.bedMinutes != null && day.wakeMinutes != null && html`<rect key=${day.startMs} class="health-grow"
+          x=${slot * index + (slot - bar) / 2} y=${y(day.bedMinutes)} width=${bar} height=${Math.max(y(day.wakeMinutes) - y(day.bedMinutes), bar)} rx=${bar / 2}
+          fill="var(--accent)" />`)}
+      </svg>
+      <${DayLetters} week=${week} />
+    </div>
+  </div>`;
+}
+
+/** A day of heart rate from midnight on. A gap of more than half an hour stays a gap: the watch was off the wrist. */
+function DayHeartLine({ curve }) {
+  const measured = curve.filter((v) => v > 0);
+  if (!measured.length) return null;
+  const low = Math.min(...measured) - 4, high = Math.max(...measured) + 4;
+  const width = 560, height = 96;
+  const x = (index) => (index / (curve.length - 1)) * width;
+  const y = (value) => 6 + (1 - (value - low) / (high - low)) * (height - 12);
+  let path = "", before = -100;
+  curve.forEach((value, index) => {
+    if (value <= 0) return;
+    path += `${index - before > 6 ? "M" : "L"}${x(index).toFixed(1)},${y(value).toFixed(1)} `;
+    before = index;
+  });
+  return html`<div class="health-chart">
+    <svg viewBox=${`0 0 ${width} ${height}`} preserveAspectRatio="none" width="100%" height=${height} role="img">
+      ${[0, 1, 2, 3, 4].map((q) => html`<line key=${q} x1=${(width * q) / 4} x2=${(width * q) / 4} y1="0" y2=${height} class="health-guide" />`)}
+      <path d=${path} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+    </svg>
+    <div class="health-axis">${[0, 6, 12, 18, 24].map((hour) => html`<span key=${hour}>${clockFromMidnight(hour * 60)}</span>`)}</div>
+  </div>`;
+}
+
+/** The night as it went: which stage when, on four lanes with the deepest at the bottom. Pointing says what the model thought then. */
+function SleepTimeline({ r }) {
+  const [pointer, setPointer] = useState(null);
+  const total = r.stages.reduce((sum, run) => sum + run.seconds, 0);
+  if (!total) return null;
+  const width = 480, lane = 30, height = lane * LANES.length, bar = lane * 0.62;
+  let at = 0, before = null;
+  const shapes = [];
+  r.stages.forEach((run, index) => {
+    const x = (at / total) * width, length = Math.max((run.seconds / total) * width, 2);
+    at += run.seconds;
+    const laneIndex = LANES.indexOf(run.stage);
+    if (laneIndex < 0) { before = null; return; }
+    const y = lane * laneIndex + lane / 2;
+    if (before != null && before !== laneIndex) {
+      shapes.push(html`<line key=${"l" + index} x1=${x} x2=${x} y1=${lane * before + lane / 2} y2=${y} class="health-guide-strong" />`);
+    }
+    shapes.push(html`<rect key=${index} x=${x} y=${y - bar / 2} width=${length} height=${bar} rx=${Math.min(bar, length) / 2} fill=${STAGE_COLORS[run.stage]} />`);
+    before = laneIndex;
+  });
+  let heading = t("health_span", clockOf(r.startMs), clockOf(r.endMs));
+  if (pointer != null) {
+    let seconds = pointer * total;
+    const run = r.stages.find((candidate) => (seconds -= candidate.seconds) <= 0);
+    heading = `${clockOf(r.startMs + (r.endMs - r.startMs) * pointer)} · ${run ? t("health_stage_" + run.stage) : t("health_nothing")}`;
+  }
+  const move = (event) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    setPointer(Math.min(Math.max((event.clientX - box.left) / box.width, 0), 1));
+  };
+  return html`<div class="health-timeline">
+    <div class="small muted">${heading}</div>
+    <div class="health-lanes">
+      <div class="health-lane-names">${LANES.map((name) => html`<span key=${name} style=${`height:${lane}px`}>${t("health_stage_" + name)}</span>`)}</div>
+      <svg viewBox=${`0 0 ${width} ${height}`} preserveAspectRatio="none" width="100%" height=${height} role="img" class="health-reveal"
+        onMouseMove=${move} onMouseLeave=${() => setPointer(null)}>
+        ${LANES.map((_, index) => html`<line key=${"g" + index} x1="0" x2=${width} y1=${lane * index + lane / 2} y2=${lane * index + lane / 2} class="health-guide" />`)}
+        ${shapes}
+        ${pointer != null && html`<line x1=${pointer * width} x2=${pointer * width} y1="0" y2=${height} stroke="var(--text)" stroke-width="1.5" vector-effect="non-scaling-stroke" />`}
+      </svg>
+    </div>
+  </div>`;
+}
+
+function Fact({ label, value }) {
+  return html`<div class="health-fact"><span class="small muted">${label}</span><b>${value}</b></div>`;
+}
+
+function NightFacts({ r }) {
+  return html`<div class="health-facts">
+    <${Fact} label=${t("health_stat_asleep")} value=${r.efficiencyPercent + "%"} />
+    <${Fact} label=${t("health_stage_wake")} value=${healthDuration(r.awakeMinutes)} />
+    ${r.heartRateMean != null && html`<${Fact} label=${t("health_stat_heart")} value=${r.heartRateMean} />`}
+    ${r.heartRateLow != null && html`<${Fact} label=${t("health_stat_lowest")} value=${r.heartRateLow} />`}
+  </div>`;
+}
+
+function StageTiles({ r }) {
+  if (r.lightMinutes == null || r.deepMinutes == null || r.remMinutes == null) return null;
+  const tile = (stage, minutes) => html`<div class="health-fact" key=${stage}>
+    <span class="small muted"><i class="health-dot" style=${`background:${STAGE_COLORS[stage]}`}></i>${t("health_stage_" + stage)}</span>
+    <b>${healthDuration(minutes)}</b></div>`;
+  return html`<div class="health-facts">${tile("light", r.lightMinutes)}${tile("deep", r.deepMinutes)}${tile("rem", r.remMinutes)}${tile("wake", r.awakeMinutes)}</div>`;
+}
+
+function ScorePart({ label, value }) {
+  return html`<div class="health-part"><span class="small muted">${label}</span>
+    <div class="health-meter"><div class="health-grow-x" style=${`width:${Math.max(Math.min(value, 100), 3)}%`}></div></div><b>${value}</b></div>`;
+}
+
+function ScoreRing({ score }) {
+  const r = 30, around = 2 * Math.PI * r;
+  return html`<svg width="72" height="72" viewBox="0 0 72 72" class="health-ring">
+    <circle cx="36" cy="36" r=${r} class="health-ring-track" />
+    <circle cx="36" cy="36" r=${r} class="health-ring-fill" stroke-dasharray=${`${(around * Math.min(score, 100)) / 100} ${around}`} />
+    <text x="36" y="42" text-anchor="middle">${score}</text>
+  </svg>`;
+}
+
+/** How many of the nights something needs are already there. A row of dots says "this is coming" better than an empty card. */
+function NightsToGo({ needed, total }) {
+  return html`<div class="health-dots">${Array.from({ length: total }, (_, index) => html`<i key=${index} class=${index < total - needed ? "on" : ""}></i>`)}</div>`;
+}
+
+/** The shape of most of this page: what it is, the number, and the week beside it. Pointing at a day shows it in the same place. */
+function WeekCard({ title, more, number: shown, caption, week, dayNumbers, chart }) {
+  const [picked, setPicked] = useState(null);
+  return html`<${Card} title=${title} more=${more}>
+    <div class="health-row">
+      <div class="grow">
+        <${BigNumber} text=${picked != null ? dayNumbers[picked] ?? "-" : shown} />
+        <div class="small muted">${picked != null ? dayName(week[picked].startMs) : caption}</div>
+      </div>
+      ${chart(picked, setPicked)}
+    </div>
+  <//>`;
+}
+
+function EarlierNight({ r }) {
+  const [open, setOpen] = useState(false);
+  const canOpen = r.stages.length > 0;
+  // A night that starts before midnight belongs to the morning it ends in.
+  const day = new Date(r.endMs).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" });
+  return html`<div class="card health-card">
+    <button class="health-title wide" disabled=${!canOpen} aria-expanded=${open} onClick=${() => setOpen(!open)}>
+      ${day}${canOpen && html`<span class=${"health-chevron" + (open ? " open" : "")}><${Icon} name="chevron-right" size=${14} /></span>`}
+      <span class="grow"></span><span class="small muted">${healthDuration(r.sleepMinutes)}, ${r.efficiencyPercent}%</span>
+    </button>
+    ${open
+      ? html`<${SleepTimeline} r=${r} /><${StageTiles} r=${r} /><${NightFacts} r=${r} />`
+      : canOpen && html`<div class="health-stagebar">${r.stages.map((run, index) => html`<i key=${index} style=${`flex:${run.seconds};background:${STAGE_COLORS[run.stage] || "var(--line)"}`}></i>`)}</div>`}
+  </div>`;
+}
+
+function Workout({ r }) {
+  const day = new Date(r.startMs).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" });
+  return html`<div class="card health-card">
+    <div class="health-title"><${Icon} name="heart" size=${14} /> ${day}</div>
+    <div class="health-facts">
+      <${Fact} label=${t("health_length")} value=${healthDuration(Math.round((r.endMs - r.startMs) / 60000))} />
+      ${r.heartRateMean != null && html`<${Fact} label=${t("health_stat_heart")} value=${r.heartRateMean} />`}
+      ${r.heartRateHigh != null && html`<${Fact} label=${t("health_stat_highest")} value=${r.heartRateHigh} />`}
+      ${r.steps > 0 && html`<${Fact} label=${t("health_steps_title")} value=${number(r.steps)} />`}
+    </div>
+  </div>`;
+}
+
+/** Everything the page shows once there is something to show. The sums are the core's, so this says the same as the phone. */
+export function HealthContent({ i, records }) {
+  const week = i.week || [];
+  const latest = records.find((r) => r.kind === "sleep");
+  const insight = i.latestNight && latest && i.latestNight.id === latest.id ? i.latestNight : null;
+  const earlier = records.filter((r) => (r.kind === "sleep" || r.kind === "workout") && r !== latest).slice(0, 30);
+  // A computer sees whole days: only the phone hears the watch during the day.
+  const lastSteps = week.map((d) => d.steps != null).lastIndexOf(true);
+  const heart = i.latestDayHeart;
+  const now = i.thisWeek, before = i.lastWeek;
+  return html`
+    ${i.alertAboveUsual != null && html`<div class="card tinted health-card" style="--tint:var(--accent-soft)"><div class="health-row"><${Icon} name="heart" size=${20} /><div>${t("health_alert", i.alertAboveUsual)}</div></div></div>`}
+
+    ${latest && html`<h3 class="health-section">${t("health_sleep")}</h3>
+      <${Card}>
+        <div class="health-row">
+          <div class="grow"><${BigNumber} text=${healthDuration(latest.sleepMinutes)} />
+            <div class="small muted">${new Date(latest.endMs).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" })}</div></div>
+          ${insight && html`<${ScoreRing} score=${insight.score} />`}
+        </div>
+        <${NightFacts} r=${latest} />
+      <//>
+      ${latest.stages.length > 0 && html`<${Card} title=${t("health_timeline")} more=${t("health_more_stages")}>
+        <${SleepTimeline} r=${latest} />
+        <${StageTiles} r=${latest} />
+        ${insight && insight.wakeMoments.map((m) => html`<div key=${m.startMs} class="small muted">${t("health_wake_moment", clockOf(m.startMs), healthDuration(m.minutes))}</div>`)}
+      <//>`}
+      ${insight && html`<${Card} title=${t("health_score")} more=${t("health_more_score")}>
+        <${ScorePart} label=${t("health_part_length")} value=${insight.durationScore} />
+        <${ScorePart} label=${t("health_part_calm")} value=${insight.continuityScore} />
+        ${insight.stagesScore != null && html`<${ScorePart} label=${t("health_part_stages")} value=${insight.stagesScore} />`}
+      <//>`}`}
+
+    ${(lastSteps >= 0 || heart || i.naps.length > 0) && html`<h3 class="health-section">${t("health_days")}</h3>`}
+    ${lastSteps >= 0 && html`
+      <${WeekCard} title=${t("health_steps_title")} number=${number(week[lastSteps].steps)} caption=${dayName(week[lastSteps].startMs)}
+        week=${week} dayNumbers=${week.map((d) => (d.steps != null ? number(d.steps) : null))}
+        chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.steps)} week=${week} picked=${picked} onPick=${pick} />`} />
+      <${WeekCard} title=${t("health_active_title")} more=${t("health_more_active")}
+        number=${t("health_minutes", week[lastSteps].activeMinutes ?? 0)}
+        caption=${t("health_active_week", week.reduce((sum, d) => sum + (d.activeMinutes || 0), 0))}
+        week=${week} dayNumbers=${week.map((d) => (d.activeMinutes != null ? t("health_minutes", d.activeMinutes) : null))}
+        chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.activeMinutes)} week=${week} picked=${picked} onPick=${pick} />`} />`}
+    ${heart && html`<${Card} title=${t("health_heart")} more=${t("health_more_heart")}>
+      <div class="health-row"><${BigNumber} text=${t("health_bpm", heart.curve.filter((v) => v > 0).slice(-1)[0] ?? 0)} />
+        <span class="small muted">${t("health_heart_range", dayName(heart.startMs), Math.min(...heart.curve.filter((v) => v > 0)), Math.max(...heart.curve))}</span></div>
+      <${DayHeartLine} curve=${heart.curve} />
+    <//>`}
+    ${i.naps.length > 0 && html`<${Card} title=${t("health_naps")} more=${t("health_more_naps")}>
+      <${BigNumber} text=${healthDuration(i.naps.reduce((sum, n) => sum + n.sleepMinutes, 0))} />
+      ${i.naps.map((n) => html`<div key=${n.startMs}>${new Date(n.startMs).toLocaleString(locale(), { weekday: "short", hour: "2-digit", minute: "2-digit" })}, ${healthDuration(n.sleepMinutes)}</div>`)}
+    <//>`}
+
+    ${i.latestNight && html`<h3 class="health-section">${t("health_week")}</h3>
+      ${now.meanSleepMinutes != null && html`<${WeekCard} title=${t("health_sleep")} number=${healthDuration(now.meanSleepMinutes)}
+        caption=${before.meanSleepMinutes != null ? t("health_mean_night_before", healthDuration(before.meanSleepMinutes)) : t("health_mean_night")}
+        week=${week} dayNumbers=${week.map((d) => (d.sleepMinutes != null ? healthDuration(d.sleepMinutes) : null))}
+        chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.sleepMinutes)} week=${week} picked=${picked} onPick=${pick} />`} />`}
+      ${now.meanScore != null && html`<${WeekCard} title=${t("health_score")} number=${String(now.meanScore)}
+        caption=${before.meanScore != null ? t("health_mean_score_before", before.meanScore) : t("health_mean_score")}
+        week=${week} dayNumbers=${week.map((d) => (d.score != null ? String(d.score) : null))}
+        chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.score)} week=${week} picked=${picked} onPick=${pick} />`} />`}
+      ${i.resting && html`<${WeekCard} title=${t("health_resting")} more=${t("health_more_resting")} number=${t("health_bpm", i.resting.latest)}
+        caption=${i.resting.usual != null ? t("health_usually", i.resting.usual) : t("health_nights_more", i.resting.nightsNeeded)}
+        week=${week} dayNumbers=${week.map((d) => (d.resting != null ? t("health_bpm", d.resting) : null))}
+        chart=${(picked, pick) => html`<div><${WeekLine} values=${week.map((d) => d.resting)} week=${week} usual=${i.resting.usual} picked=${picked} onPick=${pick} />
+          ${i.resting.usual == null && html`<${NightsToGo} needed=${i.resting.nightsNeeded} total=${7} />`}</div>`} />`}
+      <${Card} title=${t("health_regular")} more=${t("health_more_regular")}>
+        ${i.regularity
+          ? html`<div>${t("health_regular_bed", clockFromMidnight(i.regularity.bedtimeMinutes), healthDuration(i.regularity.bedtimeSpreadMinutes))}</div>
+            <div>${t("health_regular_wake", clockFromMidnight(i.regularity.wakeMinutes), healthDuration(i.regularity.wakeSpreadMinutes))}</div>`
+          : html`<div class="small muted">${t("health_nights_more", i.regularityNightsNeeded)}</div><${NightsToGo} needed=${i.regularityNightsNeeded} total=${5} />`}
+        <${SleepWindows} week=${week} />
+      <//>
+      ${now.workouts > 0 && html`<${Card} title=${t("health_workouts")}>
+        <${BigNumber} text=${healthDuration(now.workoutMinutes)} />
+        <div class="small muted">${t(now.workouts === 1 ? "health_workouts_week_one" : "health_workouts_week", now.workouts)}</div>
+      <//>`}`}
+
+    ${earlier.length > 0 && html`<h3 class="health-section">${t("health_earlier")}</h3>
+      ${earlier.map((r) => (r.kind === "workout" ? html`<${Workout} key=${r.id} r=${r} />` : html`<${EarlierNight} key=${r.id} r=${r} />`))}`}
+  `;
+}

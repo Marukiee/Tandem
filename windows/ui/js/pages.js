@@ -6,6 +6,7 @@ import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, 
 import { Icon } from "./icons.js";
 import { FindSoundRow, LastSeen, PlaySoundButton } from "./find.js";
 import { MicButton, OutputButton } from "./output.js";
+import { HealthContent } from "./health.js";
 import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
 
@@ -1147,80 +1148,6 @@ function RemoteSettings({ s, patch }) {
 }
 
 // Looking for a newer Tandem, and what changed in the versions that came out.
-const STAGE_COLORS = { deep: "var(--accent)", light: "color-mix(in srgb, var(--accent) 40%, transparent)", rem: "#a06ee0" };
-
-function healthDuration(minutes) {
-  return minutes >= 60 ? t("health_hm", Math.floor(minutes / 60), minutes % 60) : t("health_m", minutes);
-}
-
-function StageLegend({ stage, text }) {
-  return html`<span style="display:inline-flex;align-items:center;gap:4px">
-    <span style=${`width:8px;height:8px;border-radius:50%;background:${STAGE_COLORS[stage]}`}></span>${text}</span>`;
-}
-
-function HealthRecord({ r }) {
-  // A night that starts before midnight belongs to the morning it ends in.
-  const day = new Date(r.kind === "workout" ? r.startMs : r.endMs).toLocaleDateString(language() === "nl" ? "nl" : "en", { weekday: "short", day: "numeric", month: "short" });
-  const quiet = "font-size:12px;opacity:.7";
-  const known = r.lightMinutes != null && r.deepMinutes != null && r.remMinutes != null;
-  return html`<div style="padding:12px 16px;display:flex;flex-direction:column;gap:6px">
-    <strong>${day}</strong>
-    ${r.kind === "workout"
-      ? html`<div>${healthDuration(Math.round((r.endMs - r.startMs) / 60000))}</div>
-        ${r.heartRateMean != null && r.heartRateHigh != null && html`<div style=${quiet}>${t("health_heart_workout", r.heartRateMean, r.heartRateHigh)}</div>`}
-        ${r.steps > 0 && html`<div style=${quiet}>${t("health_steps", r.steps)}</div>`}`
-      : html`<div>${t("health_asleep", healthDuration(r.sleepMinutes), r.efficiencyPercent)}</div>
-        ${r.stages.length > 0 && html`<div style="display:flex;height:10px;border-radius:5px;overflow:hidden">
-          ${r.stages.map((run) => html`<div style=${`flex:${run.seconds};background:${STAGE_COLORS[run.stage] || "rgba(128,128,128,.25)"}`}></div>`)}
-        </div>`}
-        ${known && html`<div style=${`display:flex;gap:12px;${quiet}`}>
-          <${StageLegend} stage="light" text=${t("health_light", healthDuration(r.lightMinutes))} />
-          <${StageLegend} stage="deep" text=${t("health_deep", healthDuration(r.deepMinutes))} />
-          <${StageLegend} stage="rem" text=${t("health_rem", healthDuration(r.remMinutes))} />
-        </div>`}
-        ${r.heartRateMean != null && r.heartRateLow != null && html`<div style=${quiet}>${t("health_heart_night", r.heartRateMean, r.heartRateLow)}</div>`}`}
-  </div>`;
-}
-
-// What a phone gave this computer from its watch. Which devices get them is a switch on the phone: only that one has a watch.
-// What the nights say together. The sums are the core's, so this says the same as the phone.
-function HealthInsights({ i }) {
-  const quiet = "font-size:12px;opacity:.7";
-  const clock = (minutes) => `${String(Math.floor(minutes / 60) % 24).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-  const row = "padding:12px 16px;display:flex;flex-direction:column;gap:4px";
-  const waiting = (needed) => html`<div style=${quiet}>${t("health_nights_more", needed)}</div>`;
-  const night = i.latestNight;
-  if (!night) return null;
-  const now = i.thisWeek, before = i.lastWeek;
-  return html`
-    ${i.alertAboveUsual != null && html`<div class="card" style="display:flex;gap:12px;align-items:flex-start"><${Icon} name="heart" size=${20} /><div>${t("health_alert", i.alertAboveUsual)}</div></div>`}
-    <div class="card flush"><div style=${row}>
-      <strong>${t("health_score")}</strong>
-      <div style="font-size:28px;font-weight:700">${night.score}</div>
-      <div style=${quiet}>${night.stagesScore != null ? t("health_score_parts", night.durationScore, night.continuityScore, night.stagesScore) : t("health_score_parts_plain", night.durationScore, night.continuityScore)}</div>
-      ${night.wakeMoments.map((m) => html`<div key=${m.startMs} style=${quiet}>${t("health_wake_moment", new Date(m.startMs).toLocaleTimeString(language() === "nl" ? "nl" : "en", { hour: "2-digit", minute: "2-digit" }), healthDuration(m.minutes))}</div>`)}
-    </div></div>
-    <h3>${t("health_trends")}</h3>
-    <div class="card flush">
-      <div style=${row}><strong>${t("health_resting")}</strong>
-        ${!i.resting ? waiting(1) : i.resting.usual != null ? html`<div>${t("health_resting_usual", i.resting.latest, i.resting.usual)}</div>` : html`<div>${t("health_resting_line", i.resting.latest)}</div>${waiting(i.resting.nightsNeeded)}`}
-      </div>
-      <div style=${row}><strong>${t("health_regular")}</strong>
-        ${i.regularity
-          ? html`<div>${t("health_regular_bed", clock(i.regularity.bedtimeMinutes), healthDuration(i.regularity.bedtimeSpreadMinutes))}</div><div>${t("health_regular_wake", clock(i.regularity.wakeMinutes), healthDuration(i.regularity.wakeSpreadMinutes))}</div>`
-          : waiting(i.regularityNightsNeeded)}
-      </div>
-      <div style=${row}><strong>${t("health_week")}</strong>
-        ${now.meanSleepMinutes != null && html`<div>${before.meanSleepMinutes != null ? t("health_week_sleep_before", healthDuration(now.meanSleepMinutes), healthDuration(before.meanSleepMinutes)) : t("health_week_sleep", healthDuration(now.meanSleepMinutes))}</div>`}
-        ${now.meanScore != null && html`<div>${before.meanScore != null ? t("health_week_score_before", now.meanScore, before.meanScore) : t("health_week_score", now.meanScore)}</div>`}
-        ${now.meanResting != null && html`<div>${before.meanResting != null ? t("health_week_resting_before", now.meanResting, before.meanResting) : t("health_week_resting", now.meanResting)}</div>`}
-        ${now.meanSteps != null && html`<div>${before.meanSteps != null ? t("health_week_steps_before", now.meanSteps, before.meanSteps) : t("health_week_steps", now.meanSteps)}</div><div>${t("health_week_active", now.activeMinutes)}</div>`}
-        ${now.workouts > 0 && html`<div>${t("health_week_workouts", now.workouts, healthDuration(now.workoutMinutes))}</div>`}
-        ${now.meanSleepMinutes == null && now.workouts === 0 && now.meanSteps == null && html`<div style=${quiet}>${t("health_week_empty")}</div>`}
-      </div>
-    </div>`;
-}
-
 function healthShown() {
   try { return localStorage.getItem("healthShown") === "1"; } catch { return false; }
 }
@@ -1240,11 +1167,8 @@ function HealthSection() {
   return html`<div style="display:flex;flex-direction:column;gap:12px">
     <h2>${t("tab_health")}</h2>
     ${!hasWatch && html`<div class="card flush"><${SettingRow} icon="moon" title=${t("health_show")} sub=${t("health_show_sub")} on=${shown} onChange=${change} /></div>`}
-    ${(hasWatch || shown) && insights && html`<${HealthInsights} i=${insights} />`}
-    ${(hasWatch || shown) && (records.length === 0
-      ? html`<div class="muted">${t("health_empty")}</div>`
-      : html`<div class="card flush">${records.map((r) => html`<${HealthRecord} key=${r.id} r=${r} />`)}</div>
-        <div class="muted">${t("health_estimate")}</div>`)}
+    ${(hasWatch || shown) && insights && html`<${HealthContent} i=${insights} records=${records} />`}
+    ${(hasWatch || shown) && records.length === 0 && html`<div class="muted">${t("health_empty")}</div>`}
     ${(hasWatch || shown) && records.length > 0 && html`<div class="card flush"><${SettingRow} icon="download" title=${t("health_export")} sub=${t("health_export_sub")}>
       <button onClick=${() => call("health_export", { offset: -new Date().getTimezoneOffset() }).then((path) => path && say(t("health_saved"))).catch((e) => say(String(e)))}>${t("health_export")}</button>
     <//></div>`}

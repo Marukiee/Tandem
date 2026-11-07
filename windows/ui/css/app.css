@@ -557,3 +557,51 @@ select { cursor: default; }
 .chosenbar { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; padding: 8px 10px 8px 16px; border-radius: 999px; background: var(--accent-soft); animation: chosen-in 0.22s ease; }
 .btn.dim { opacity: 0.45; }
 @keyframes chosen-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Health: the same cards as on the phone and the Mac. */
+.health-section { margin: 14px 4px 0; font-size: 14px; color: var(--accent); }
+.health-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+.health-title { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; background: none; border: 0; padding: 0; color: var(--text); font: inherit; font-weight: 600; cursor: default; text-align: left; }
+button.health-title:not(:disabled) { cursor: pointer; }
+.health-title.wide { display: flex; width: 100%; }
+.health-chevron { display: inline-flex; color: var(--text-3); transform: rotate(90deg); transition: transform .25s ease; }
+.health-chevron.open { transform: rotate(-90deg); }
+.health-more { line-height: 1.45; }
+.health-row { display: flex; align-items: center; gap: 16px; }
+.health-big { font-size: 30px; font-weight: 650; line-height: 1.1; white-space: nowrap; }
+.health-unit { font-size: 14px; font-weight: 500; color: var(--text-2); margin: 0 2px; }
+.health-chart { display: flex; flex-direction: column; gap: 6px; }
+.health-chart.grow-x { flex: 1; min-width: 0; }
+.health-days { display: flex; }
+.health-days span { flex: 1; text-align: center; font-size: 11px; color: var(--text-2); line-height: 18px; }
+.health-days span.today { background: var(--hover); border-radius: 9px; margin: 0 auto; max-width: 18px; }
+.health-none { fill: var(--line-strong); }
+.health-guide { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.health-guide-strong { stroke: var(--line-strong); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.health-windows { display: flex; gap: 8px; margin-top: 6px; }
+.health-marks { display: flex; flex-direction: column; justify-content: space-between; width: 40px; font-size: 11px; color: var(--text-2); }
+.health-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-2); }
+.health-lanes { display: flex; gap: 8px; }
+.health-lane-names { display: flex; flex-direction: column; width: 44px; font-size: 11px; color: var(--text-2); }
+.health-lane-names span { display: flex; align-items: center; }
+.health-facts { display: flex; gap: 8px; }
+.health-fact { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.health-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+.health-part { display: grid; grid-template-columns: 64px 1fr 28px; align-items: center; gap: 10px; }
+.health-part b { text-align: right; font-size: 12px; }
+.health-meter { height: 8px; border-radius: 4px; background: var(--hover); overflow: hidden; }
+.health-meter > div { height: 100%; border-radius: 4px; background: var(--accent); }
+.health-ring-track { fill: none; stroke: var(--hover); stroke-width: 8; }
+.health-ring-fill { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 36px 36px; }
+.health-ring text { font-size: 19px; font-weight: 700; fill: var(--text); }
+.health-dots { display: flex; gap: 5px; margin-top: 6px; }
+.health-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+.health-dots i.on { background: var(--accent); }
+.health-stagebar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; }
+.health-grow { transform-box: fill-box; transform-origin: bottom; animation: health-grow .5s cubic-bezier(.2, .9, .3, 1.15) both; }
+.health-grow-x { animation: health-grow-x .5s cubic-bezier(.2, .9, .3, 1.15) both; transform-origin: left; }
+.health-reveal { animation: health-reveal .7s ease-out both; }
+@keyframes health-grow { from { transform: scaleY(0); } }
+@keyframes health-grow-x { from { transform: scaleX(0); } }
+@keyframes health-reveal { from { clip-path: inset(0 100% 0 0); } }
+@media (prefers-reduced-motion: reduce) { .health-grow, .health-grow-x, .health-reveal { animation: none; } }

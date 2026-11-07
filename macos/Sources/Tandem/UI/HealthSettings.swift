@@ -796,7 +796,7 @@ private struct WeekCards: View {
             if now.workouts > 0 {
                 HealthCard(title: "Workouts") {
                     BigNumber(text: minutesText(Int(now.workoutMinutes)))
-                    Text("\(Int(now.workouts)) workouts this week").font(.caption).foregroundStyle(.secondary)
+                    Text(now.workouts == 1 ? "1 workout this week" : "\(Int(now.workouts)) workouts this week").font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
