@@ -265,8 +265,9 @@ object MessageCodec {
     private const val POINTER_SCROLL = 0x73
     private const val POINTER_CLICK = 0x74
     private const val POINTER_KEY = 0x75
-    private const val POINTER_BUTTON = 0x76
+    // 0x76 was the mouse switch before the button came: a phone of 0.3.0 still sends it with that number.
     private const val MOUSE_ENABLED = 0x76
+    private const val POINTER_BUTTON = 0x77
 
     fun encode(message: Message): ByteArray {
         val w = ByteWriter()

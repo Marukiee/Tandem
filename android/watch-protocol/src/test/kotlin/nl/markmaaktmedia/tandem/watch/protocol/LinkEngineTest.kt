@@ -274,11 +274,25 @@ class MessageCodecTest {
         Message.CallAction("1", CallActionKind.HANGUP),
         Message.MediaPlayers(listOf(MediaPlayer("m", "VLC", "Nummer", "Artiest", "Album", true, 10, 20))),
         Message.MediaCommand("m", MediaCommandKind.NEXT),
+        Message.MouseEnabled(true),
+        Message.PointerButton(1, true),
+        Message.PointerTargets(true, listOf(PointerTarget("mac", "MacBook", true, true)), canHold = true),
+        Message.StepGoal(8000),
+        Message.HeartAllDay(false),
+        Message.SmartWakeAlarm(1_700_000_000_000),
     )
 
     @Test
     fun `every message survives a round trip`() {
         samples.forEach { assertEquals(it, MessageCodec.decode(MessageCodec.encode(it))) }
+    }
+
+    @Test
+    fun `no two kinds of message share a number`() {
+        // Two that did made the mouse switch arrive as a press of the mouse button.
+        val numbers = samples.groupBy({ it::class }, { MessageCodec.encode(it)[0] }).mapValues { it.value.toSet() }
+        numbers.values.forEach { assertEquals(1, it.size) }
+        assertEquals(numbers.size, numbers.values.map { it.single() }.toSet().size, numbers.toString())
     }
 
     @Test

@@ -78,7 +78,8 @@ getoond is en jonger is dan 10 minuten trilt. Zo gaat er bij een onderbreking ni
 | 0x50 | HealthRecord | H naar T | id, workout, start, eind, slaapminuten, wakker, wakker-momenten, efficiëntie, licht?, diep?, REM?, stukken (fase, seconden), hartslag gem?, laag?, hoog?, stappen |
 | 0x51 | HealthAck | T naar H | id. Pas als het record veilig op de telefoon staat |
 | 0x70-75 | PointerTargets, PointerSession, PointerMove, PointerScroll, PointerClick, PointerKey | beide | muis en gyro, alleen achter de schakelaar in Tandem |
-| 0x76 | PointerButton | H naar T | knop omlaag of omhoog, om te slepen. De telefoon laat los als de sessie stopt. Alleen als `PointerTargets` achteraan `canHold` zegt |
+| 0x76 | MouseEnabled | beide | on. De muis aan of uit, op het horloge of in Tandem op de telefoon gezet |
+| 0x77 | PointerButton | H naar T | knop omlaag of omhoog, om te slepen. De telefoon laat los als de sessie stopt. Alleen als `PointerTargets` achteraan `canHold` zegt |
 
 Codering: compact binair formaat, geen CBOR, want de Rust-kern doet hier niet mee en BLE is smal. Velden worden alleen achteraan
 toegevoegd en onbekende types genegeerd.
