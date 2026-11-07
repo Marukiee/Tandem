@@ -78,9 +78,19 @@ getoond is en jonger is dan 10 minuten trilt. Zo gaat er bij een onderbreking ni
 | 0x50 | HealthRecord | H naar T | id, workout, start, eind, slaapminuten, wakker, wakker-momenten, efficiëntie, licht?, diep?, REM?, stukken (fase, seconden), hartslag gem?, laag?, hoog?, stappen |
 | 0x51 | HealthAck | T naar H | id. Pas als het record veilig op de telefoon staat |
 | 0x70-75 | PointerTargets, PointerSession, PointerMove, PointerScroll, PointerClick, PointerKey | beide | muis en gyro, alleen achter de schakelaar in Tandem |
+| 0x76 | PointerButton | H naar T | knop omlaag of omhoog, om te slepen. De telefoon laat los als de sessie stopt. Alleen als `PointerTargets` achteraan `canHold` zegt |
 
 Codering: compact binair formaat, geen CBOR, want de Rust-kern doet hier niet mee en BLE is smal. Velden worden alleen achteraan
 toegevoegd en onbekende types genegeerd.
+
+## De muis op het horloge
+
+- Tik: klik. Twee vingers: rechtsklik. Vasthouden (300 ms): de linkerknop gaat omlaag en de arm sleept, optillen laat los. Vegen: pauzeren en weer verder. Tweemaal knijpen klikt ook.
+- Zolang een vinger het scherm raakt en nog niet duidelijk is of het een tik of vasthouden wordt, staat de aanwijzer stil: de andere hand duwt het horloge een beetje, en een klik moet landen waar je mikte.
+- Een telefoon zonder `canHold` (ouder dan 0.3.1) krijgt bij vasthouden de rechtsklik die het altijd was.
+- De arm wordt sterk gladgestreken als hij langzaam beweegt en weinig als hij snel beweegt (`GyroPointer`): een hand trilt altijd een beetje, en dat is wat een langzame aanwijzer als schudden liet zien.
+- De telefoon verdeelt elk stukje beweging van het horloge over de tijd tot het volgende (`PointerPacer`, 120 keer per seconde). Bluetooth brengt de beweging in ongelijke pakketjes, en de versnelling op de computer groeit met de grootte van een stukje: zonder dit werd een gelijkmatige draai een ongelijke snelheid.
+- Beide kanten schrijven na een sessie een regel in de log met hoe gelijkmatig de stukjes kwamen: `adb logcat -s TandemWatch` op het horloge en de telefoon.
 
 ## Regels
 - Gespreksgeluid blijft op de telefoon (zie `AGENTS.md`). Het horloge neemt op, weigert, zet stil en hangt op, en zegt eerlijk

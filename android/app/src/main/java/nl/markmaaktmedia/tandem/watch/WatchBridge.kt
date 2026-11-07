@@ -48,6 +48,8 @@ import nl.markmaaktmedia.tandem.watch.protocol.NotificationMsg
 import nl.markmaaktmedia.tandem.watch.protocol.NotificationRules
 import nl.markmaaktmedia.tandem.watch.protocol.OutboundQueue
 import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
+import nl.markmaaktmedia.tandem.watch.pointer.ArrivalStats
+import nl.markmaaktmedia.tandem.watch.pointer.PointerPacer
 import nl.markmaaktmedia.tandem.watch.protocol.PointerTarget
 import nl.markmaaktmedia.tandem.watch.protocol.Role
 import nl.markmaaktmedia.tandem.watch.protocol.StageRun
@@ -472,7 +474,7 @@ class WatchBridge(
     }
 
     private fun publishTargets() {
-        enqueue(Message.PointerTargets(mouseOn, targets))
+        enqueue(Message.PointerTargets(mouseOn, targets, canHold = true))
     }
 
     private fun publishBatteries() {
@@ -480,6 +482,30 @@ class WatchBridge(
     }
 
     private var pointerId: String? = null
+    private val pacer = PointerPacer()
+    private val arrivals = ArrivalStats()
+    private var pacing = false
+    private val pace = object : Runnable {
+        override fun run() {
+            pacer.tick(SystemClock.uptimeMillis())?.let { pointer?.pointer(it.dx, it.dy) }
+            if (pacer.busy) handler.postDelayed(this, PointerPacer.TICK_MS) else pacing = false
+        }
+    }
+
+    private fun movePointer(dx: Int, dy: Int) {
+        val now = SystemClock.uptimeMillis()
+        arrivals.note(now, kotlin.math.abs(dx) + kotlin.math.abs(dy))
+        pacer.add(now, dx, dy)
+        if (!pacing) {
+            pacing = true
+            handler.postDelayed(pace, PointerPacer.TICK_MS)
+        }
+    }
+
+    /** Before a click or a button: it has to land where the pointer was going. */
+    private fun catchUpPointer() {
+        pacer.drain()?.let { pointer?.pointer(it.dx, it.dy) }
+    }
 
     /** The watch only gets to steer what was offered to it, and only while the person allows that here. */
     private fun startPointer(id: String?) {
@@ -491,6 +517,12 @@ class WatchBridge(
     }
 
     private fun endPointer() {
+        handler.removeCallbacks(pace)
+        pacing = false
+        // One line per session, so how evenly the watch's movement came in can be read afterwards.
+        if (pointer != null) Log.i(TAG, "Watch pointer came in: ${arrivals.summary()}")
+        pacer.reset()
+        arrivals.reset()
         pointer?.release()
         pointer = null
         pointerId = null
@@ -558,9 +590,16 @@ class WatchBridge(
                 if (computer != null) sendToComputer(computer.first, computer.second, message.kind) else media.perform(message.playerId, message.kind)
             }
             is Message.PointerSession -> startPointer(message.targetId)
-            is Message.PointerMove -> pointer?.pointer(message.dx, message.dy)
+            is Message.PointerMove -> if (pointer != null) movePointer(message.dx, message.dy)
             is Message.PointerScroll -> pointer?.scroll(message.dx, message.dy)
-            is Message.PointerClick -> pointer?.click(message.button, message.count)
+            is Message.PointerClick -> {
+                catchUpPointer()
+                pointer?.click(message.button, message.count)
+            }
+            is Message.PointerButton -> {
+                catchUpPointer()
+                pointer?.hold(message.button, message.down)
+            }
             is Message.PointerKey -> pointer?.key(message.code.toShort(), message.mods)
             is Message.FindDevice -> main.post { if (message.ring) FindPhone.start(context) else FindPhone.stop() }
             is Message.Ringing -> _state.update { it.copy(ringing = message.on) }

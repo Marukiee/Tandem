@@ -1,5 +1,7 @@
 package nl.markmaaktmedia.tandem.watch.pointer
 
+import kotlin.math.PI
+import kotlin.math.exp
 import kotlin.math.hypot
 
 data class PointerDelta(val dx: Int, val dy: Int)
@@ -28,8 +30,12 @@ class GyroPointer(var invertVertical: Boolean = false, var sensitivity: Float = 
         // Samples held back by a busy watch must not make the pointer jump.
         val seconds = ((timestampNs - previous) / 1e9f).coerceAtMost(MAX_STEP_SECONDS)
 
-        yaw += (axisOutOfScreen - yaw) * SMOOTHING
-        pitch += (axisAcrossWrist - pitch) * SMOOTHING
+        // Heavy smoothing while aiming, light while crossing the screen: a hand trembles a little all the time, and what a slow
+        // pointer shows of that is shaking, while a fast one has to follow the arm without lag.
+        val cutoff = MIN_CUTOFF_HZ + CUTOFF_PER_RADIAN * hypot(yaw, pitch)
+        val follow = 1f - exp(-seconds * 2f * PI.toFloat() * cutoff)
+        yaw += (axisOutOfScreen - yaw) * follow
+        pitch += (axisAcrossWrist - pitch) * follow
         val speed = hypot(yaw, pitch)
         if (speed < DEAD_ZONE) {
             // Whatever is left over belongs to a movement that has ended.
@@ -64,7 +70,9 @@ class GyroPointer(var invertVertical: Boolean = false, var sensitivity: Float = 
     private companion object {
         /** Radians per second. An arm held still by a person moves a little less than this. */
         const val DEAD_ZONE = 0.04f
-        const val SMOOTHING = 0.35f
+        /** Below the trembling of a hand at rest, which is around 8 to 12 times a second. */
+        const val MIN_CUTOFF_HZ = 3.5f
+        const val CUTOFF_PER_RADIAN = 10f
         const val MAX_STEP_SECONDS = 0.05f
         const val FAST_SPEED = 1.5f
 

@@ -87,6 +87,15 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     /** Only the sensor thread reads these; they change rarely and a sample late does no harm. */
     @Volatile private var moving = true
 
+    /**
+     * A finger of the other hand on the screen pushes the watch a little. Until it is known whether that finger taps or holds, the
+     * pointer stays where it is, so a click lands where it was aimed.
+     */
+    @Volatile private var touching = false
+
+    /** The left button is down for a drag, from a finger that holds the screen until it is lifted. */
+    private var holding by mutableStateOf(false)
+
     private val presentation by lazy { intent.getBooleanExtra(EXTRA_PRESENTATION, false) }
     private val targetId by lazy { intent.getStringExtra(EXTRA_TARGET).orEmpty() }
 
@@ -111,7 +120,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                 AppScaffold(timeText = {}) {
                     val ui by WatchLink.ui.collectAsState()
                     val name = ui.pointerTargets.firstOrNull { it.id == targetId }?.name.orEmpty()
-                    PointerScreen(name, ui.ready)
+                    PointerScreen(name, ui.ready, ui.pointerCanHold)
                 }
             }
         }
@@ -128,6 +137,12 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     }
 
     override fun onPause() {
+        // Never leave a button down on the computer: a watch that goes dark mid-drag lets go here.
+        if (holding) {
+            holding = false
+            if (!testing) WatchLink.holdPointer(BUTTON_LEFT, false)
+        }
+        touching = false
         sensors.unregisterListener(this)
         if (!testing) WatchLink.stopPointer()
         sensorHandler.post { stopTuningLog() }
@@ -147,7 +162,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent) {
         when (event.sensor.type) {
-            Sensor.TYPE_GYROSCOPE -> if (moving) {
+            Sensor.TYPE_GYROSCOPE -> if (moving && !touching) {
                 gyro.update(event.timestamp, event.values[1], event.values[2])?.let { WatchLink.movePointer(it.dx, it.dy) }
             }
             Sensor.TYPE_ACCELEROMETER -> {
@@ -155,7 +170,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                 val y = event.values[1]
                 val z = event.values[2]
                 tuning?.write(RawRecord.Accel(event.timestamp / 1_000_000, unit(x), unit(y), unit(z)))
-                if (pinch.update(event.timestamp, x, y, z)) {
+                if (pinch.update(event.timestamp, x, y, z) && !holding) {
                     tuning?.write(RawRecord.Mark(event.timestamp / 1_000_000, "pinch"))
                     runOnUiThread {
                         pinches++
@@ -188,7 +203,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         tuningOut = null
     }
 
-    /** A pinch, and the two finger tap on the screen for when a hand is free. */
+    /** A tap on the screen, or a double pinch for when the other hand is not free. */
     private fun primary() {
         feedback()
         if (testing) return
@@ -196,20 +211,40 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     }
 
     private fun onGesture(gesture: ScreenGesture) {
+        val canHold = WatchLink.ui.value.pointerCanHold
         when (gesture) {
-            ScreenGesture.TWO_FINGER_TAP -> if (presentation) {
+            ScreenGesture.TAP -> primary()
+            ScreenGesture.TWO_FINGER_TAP -> {
                 feedback()
-                WatchLink.sendKey(KEY_LEFT)
-            } else {
-                primary()
+                if (testing) return
+                if (presentation) WatchLink.sendKey(KEY_LEFT) else WatchLink.clickPointer(BUTTON_RIGHT)
             }
-            ScreenGesture.TAP -> if (presentation) primary() else setMoving(!moving)
-            ScreenGesture.LONG_PRESS -> if (presentation) {
-                setMoving(true)
+            ScreenGesture.HOLD -> when {
+                presentation -> {
+                    setMoving(true)
+                    feedback()
+                }
+                testing -> feedback()
+                // A phone that cannot hold a button still gets the right click a long press always was.
+                !canHold -> {
+                    feedback()
+                    WatchLink.clickPointer(BUTTON_RIGHT)
+                }
+                else -> {
+                    feedback()
+                    gyro.reset()
+                    holding = true
+                    WatchLink.holdPointer(BUTTON_LEFT, true)
+                }
+            }
+            ScreenGesture.HOLD_END -> if (holding) {
+                holding = false
+                WatchLink.holdPointer(BUTTON_LEFT, false)
                 feedback()
-            } else {
+            }
+            ScreenGesture.SLIDE -> if (!presentation) {
                 feedback()
-                WatchLink.clickPointer(BUTTON_RIGHT)
+                setMoving(!moving)
             }
         }
     }
@@ -225,12 +260,12 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     }
 
     @Composable
-    private fun PointerScreen(name: String, ready: Boolean) {
+    private fun PointerScreen(name: String, ready: Boolean, canHold: Boolean) {
         val focus = remember { FocusRequester() }
         val crown = remember { CrownSteps() }
         val scale = remember { Animatable(1f) }
         val turn = remember { Animatable(0f) }
-        val live = testing || (ready && (movingUi || presentation))
+        val live = testing || (ready && (movingUi || presentation || holding))
         val classifier = remember { ScreenGestures() }
         LaunchedEffect(Unit) { focus.requestFocus() }
         LaunchedEffect(pulse) {
@@ -264,11 +299,13 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                                 val now = System.currentTimeMillis()
                                 if (event == null) {
                                     classifier.onTimer(now)?.let(::onGesture)
+                                    touching = classifier.undecided
                                     continue
                                 }
                                 event.changes.forEach { it.consume() }
                                 val touches = event.changes.filter { it.pressed }.map { Touch(it.id.value, it.position.x, it.position.y) }
                                 classifier.onFrame(now, touches)?.let(::onGesture)
+                                touching = classifier.undecided
                                 if (touches.isEmpty()) onFingersGone()
                             }
                         }
@@ -283,11 +320,16 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                         when {
                             !ready -> R.string.phone_not_connected
                             presentation -> R.string.presentation_hint
+                            holding -> R.string.mouse_holding
                             movingUi -> R.string.mouse_moving
                             else -> R.string.mouse_paused
                         },
                     ),
-                    hint = if (testing || (ready && !presentation && movingUi)) stringResource(R.string.mouse_hint) else null,
+                    hint = when {
+                        testing -> stringResource(R.string.pinch_hint)
+                        ready && !presentation && !holding -> stringResource(if (canHold) R.string.mouse_hint else R.string.mouse_hint_tap)
+                        else -> null
+                    },
                     live = live,
                     scale = { scale.value },
                     turn = { turn.value },

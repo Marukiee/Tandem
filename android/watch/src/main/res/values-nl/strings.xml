@@ -64,8 +64,8 @@
     <string name="pointer_no_input">Sta eerst invoer toe op %1$s</string>
     <string name="choose_computer">Welke computer?</string>
     <string name="mouse_moving">Beweeg je arm</string>
-    <string name="mouse_paused">Gepauzeerd, tik om door te gaan</string>
-    <string name="mouse_hint">Pinch 2x om te klikken</string>
+    <string name="mouse_paused">Gepauzeerd, veeg om door te gaan</string>
+    <string name="mouse_hint">Tik om te klikken, houd vast om te slepen</string>
     <string name="presentation_hint">Tik voor volgende, houd vast om te wijzen</string>
     <string name="presentation_next">Volgende dia</string>
     <string name="presentation_previous">Vorige dia</string>
@@ -77,6 +77,9 @@
     <string name="channel_find">Zoek dit horloge</string>
     <string name="devices">Apparaten</string>
     <string name="battery_row">%1$s, %2$d%%</string>
+    <string name="mouse_hint_tap">Tik om te klikken</string>
+    <string name="mouse_holding">Slepen, til op om los te laten</string>
+    <string name="pinch_hint">Knijp 2x</string>
     <string name="pinch_test">Pinch-test</string>
     <string name="wake_buzz_test">Wektrilling</string>
     <string name="pinch_count">Pinches: %1$d</string>

@@ -27,6 +27,7 @@ import nl.markmaaktmedia.tandem.watch.protocol.MediaCommandKind
 import nl.markmaaktmedia.tandem.watch.protocol.MediaPlayer
 import nl.markmaaktmedia.tandem.watch.protocol.Message
 import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
+import nl.markmaaktmedia.tandem.watch.pointer.ArrivalStats
 import nl.markmaaktmedia.tandem.watch.protocol.PointerTarget
 import nl.markmaaktmedia.tandem.watch.protocol.Role
 import nl.markmaaktmedia.tandem.watch.track.GentleWake
@@ -50,6 +51,8 @@ data class WatchUi(
     val pickedPlayer: String? = null,
     val pointerEnabled: Boolean = false,
     val pointerTargets: List<PointerTarget> = emptyList(),
+    /** Whether the phone can hold a button down, for a drag. An older phone cannot. */
+    val pointerCanHold: Boolean = false,
     val batteries: List<DeviceBattery> = emptyList(),
     val findingPhone: Boolean = false,
     val ringing: Boolean = false,
@@ -84,6 +87,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     private var pendingY = 0
     private var pendingScrollX = 0
     private var pendingScrollY = 0
+    private val pointerSends = ArrivalStats()
     private var sleeping = false
     private var outbox: HealthOutbox? = null
     private var status: Message.WatchStatus? = null
@@ -253,6 +257,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     fun startPointer(targetId: String) {
         handler.post {
             pointerTarget = targetId
+            pointerSends.reset()
             clearPointerMovement()
             client?.setFast(true)
             engine?.send(Message.PointerSession(targetId))
@@ -261,6 +266,8 @@ object WatchLink : LinkListener, WatchBleClient.Events {
 
     fun stopPointer() {
         handler.post {
+            // One line per session, so how evenly the link carried it can be read afterwards.
+            if (pointerTarget != null) Log.i(TAG, "Pointer sent: ${pointerSends.summary()}")
             pointerTarget = null
             client?.setFast(false)
             engine?.send(Message.PointerSession(null))
@@ -291,6 +298,14 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         }
     }
 
+    /** A button down or up, for a drag. What moved before it is sent first, so the drag starts where the pointer is. */
+    fun holdPointer(button: Int, down: Boolean) {
+        handler.post {
+            flushPointer(force = true)
+            if (pointerTarget != null) engine?.send(Message.PointerButton(button, down))
+        }
+    }
+
     fun sendKey(code: Int, mods: Int = 0) {
         handler.post { if (pointerTarget != null) engine?.send(Message.PointerKey(code, mods)) }
     }
@@ -300,6 +315,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         if (pointerTarget == null) return
         if (!force && client?.isIdle != true) return
         if (pendingX != 0 || pendingY != 0) {
+            pointerSends.note(SystemClock.uptimeMillis(), kotlin.math.abs(pendingX) + kotlin.math.abs(pendingY))
             link.send(Message.PointerMove(pendingX, pendingY))
             pendingX = 0
             pendingY = 0
@@ -438,7 +454,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
                 showOnSystem()
             }
             is Message.PointerTargets -> _ui.update {
-                it.copy(pointerEnabled = message.enabled, pointerTargets = message.targets)
+                it.copy(pointerEnabled = message.enabled, pointerTargets = message.targets, pointerCanHold = message.canHold)
             }
             is Message.DeviceBatteries -> _ui.update { it.copy(batteries = message.devices) }
             is Message.HealthAck -> {
@@ -464,7 +480,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             // These only travel from watch to phone.
             is Message.HeartToday, is Message.HealthRecord, Message.SyncRequest, is Message.NotificationAction, is Message.CallAction, is Message.MediaCommand,
             is Message.PointerSession, is Message.PointerMove, is Message.PointerScroll, is Message.PointerClick,
-            is Message.PointerKey, is Message.WatchStatus, is Message.SleepMode, is Message.MouseEnabled,
+            is Message.PointerKey, is Message.PointerButton, is Message.WatchStatus, is Message.SleepMode, is Message.MouseEnabled,
             -> Unit
         }
     }

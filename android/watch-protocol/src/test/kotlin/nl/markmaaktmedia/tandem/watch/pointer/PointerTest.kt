@@ -70,6 +70,22 @@ class GyroPointerTest {
     }
 
     @Test
+    fun `a trembling hand hardly moves a slow pointer backwards`() {
+        val pointer = GyroPointer()
+        var forward = 0
+        var backward = 0
+        repeat(400) { step ->
+            val seconds = step * 0.005f
+            // A slow turn with the trembling of a hand on top of it, ten times a second.
+            val turn = -0.1f + 0.25f * sin(2 * PI.toFloat() * 10f * seconds)
+            pointer.update(time, 0f, turn)?.let { if (it.dx > 0) forward += it.dx else backward -= it.dx }
+            time += STEP_NS
+        }
+        // The old fixed smoothing let a twentieth of this go backwards: a pointer that shook while aiming.
+        assertTrue(backward * 20 < forward, "forward $forward, backward $backward")
+    }
+
+    @Test
     fun `a gap in the samples does not make it jump`() {
         val pointer = GyroPointer()
         run(pointer, 0.2f, 0f, 1f)
@@ -102,24 +118,118 @@ class ScreenGesturesTest {
     }
 
     @Test
-    fun `one finger is a tap, and a slide or long touch is not`() {
+    fun `one finger is a tap and a slide is a slide`() {
         val g = ScreenGestures()
         g.onFrame(0, listOf(finger()))
         assertEquals(ScreenGesture.TAP, g.onFrame(100, emptyList()))
         g.onFrame(200, listOf(finger()))
         g.onFrame(250, listOf(finger(x = 180f)))
-        assertNull(g.onFrame(300, emptyList()))
+        assertEquals(ScreenGesture.SLIDE, g.onFrame(300, emptyList()))
     }
 
     @Test
-    fun `a resting finger fires once when the time is up`() {
+    fun `a resting finger holds once and lets go when it is lifted`() {
         val g = ScreenGestures()
         g.onFrame(0, listOf(finger()))
-        assertEquals(500L, g.deadline)
-        assertNull(g.onTimer(499))
-        assertEquals(ScreenGesture.LONG_PRESS, g.onTimer(500))
+        assertEquals(300L, g.deadline)
+        assertNull(g.onTimer(299))
+        assertEquals(ScreenGesture.HOLD, g.onTimer(300))
         assertNull(g.deadline)
-        assertNull(g.onFrame(900, emptyList()))
+        assertNull(g.onTimer(900))
+        assertEquals(ScreenGesture.HOLD_END, g.onFrame(900, emptyList()))
+    }
+
+    @Test
+    fun `a finger that slides while holding keeps holding`() {
+        val g = ScreenGestures()
+        g.onFrame(0, listOf(finger()))
+        g.onTimer(300)
+        assertNull(g.onFrame(400, listOf(finger(x = 260f))))
+        assertEquals(ScreenGesture.HOLD_END, g.onFrame(500, emptyList()))
+    }
+
+    @Test
+    fun `every length of touch does something`() {
+        for (length in listOf(50L, 150L, 299L)) {
+            val g = ScreenGestures()
+            g.onFrame(0, listOf(finger()))
+            assertEquals(ScreenGesture.TAP, g.onFrame(length, emptyList()), "touch of $length ms")
+        }
+        val g = ScreenGestures()
+        g.onFrame(0, listOf(finger()))
+        assertTrue(g.undecided)
+        g.onTimer(300)
+        assertTrue(!g.undecided)
+    }
+}
+
+class PointerPacerTest {
+    @Test
+    fun `bursts come out as small even steps that add up to the same`() {
+        val pacer = PointerPacer()
+        val steps = ArrayList<Int>()
+        var now = 0L
+        var sent = 0
+        repeat(10) { burst ->
+            pacer.add(now, 30, 0)
+            sent += 30
+            val until = now + 30
+            while (now < until) {
+                now += PointerPacer.TICK_MS
+                pacer.tick(now)?.let { steps += it.dx }
+            }
+        }
+        pacer.drain()?.let { steps += it.dx }
+        assertEquals(sent, steps.sum())
+        // Once it has the rhythm of the bursts, no step is much bigger than another.
+        val settled = steps.drop(8).dropLast(2)
+        assertTrue(settled.max() - settled.min() <= 4, "steps $settled")
+        assertTrue(steps.max() < 30, "a burst was not spread: ${steps.max()}")
+    }
+
+    @Test
+    fun `a click gets everything that is left at once`() {
+        val pacer = PointerPacer()
+        pacer.add(0, 40, -20)
+        assertEquals(PointerDelta(40, -20), pacer.drain())
+        assertTrue(!pacer.busy)
+        assertNull(pacer.tick(50))
+    }
+
+    @Test
+    fun `a pause of the arm does not slow down the next movement`() {
+        val pacer = PointerPacer()
+        pacer.add(0, 30, 0)
+        pacer.tick(30)
+        pacer.add(5_000, 30, 0)
+        val first = pacer.tick(5_016)
+        assertTrue((first?.dx ?: 0) >= 10, "first step $first")
+    }
+
+    @Test
+    fun `the stats say how even the bursts came`() {
+        val stats = ArrivalStats()
+        repeat(20) { stats.note(it * 30L, 12) }
+        assertTrue(stats.summary().contains("median 30 ms"), stats.summary())
+    }
+}
+
+class PointerHoldMessageTest {
+    private fun roundTrip(message: Message) = assertEquals(message, MessageCodec.decode(MessageCodec.encode(message)))
+
+    @Test
+    fun `holding and letting go survive the wire`() {
+        roundTrip(Message.PointerButton(0, true))
+        roundTrip(Message.PointerButton(1, false))
+        roundTrip(Message.PointerTargets(true, emptyList(), canHold = true))
+    }
+
+    @Test
+    fun `an older phone that says nothing about holding cannot hold`() {
+        val old = MessageCodec.encode(Message.PointerTargets(true, listOf(PointerTarget("id", "Mac", online = true, allowsInput = true))))
+        // What an older phone sent ends right after the targets.
+        val decoded = MessageCodec.decode(old.copyOf(old.size - 1)) as Message.PointerTargets
+        assertTrue(!decoded.canHold)
     }
 }
 

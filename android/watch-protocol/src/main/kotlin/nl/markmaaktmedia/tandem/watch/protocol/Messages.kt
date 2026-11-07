@@ -145,7 +145,8 @@ sealed interface Message {
      * Phone to watch: the computers this watch may steer. [enabled] is the switch on the phone, off until the
      * user turns it on: steering a computer is more than a watch gets by being paired.
      */
-    data class PointerTargets(val enabled: Boolean, val targets: List<PointerTarget>) : Message
+    /** [canHold]: this phone can hold a button down for a drag. An older one does not say so and cannot. */
+    data class PointerTargets(val enabled: Boolean, val targets: List<PointerTarget>, val canHold: Boolean = false) : Message
 
     /** Watch to phone: steer this computer from now on, or nothing when null. */
     data class PointerSession(val targetId: String?) : Message
@@ -155,6 +156,9 @@ sealed interface Message {
 
     /** A key pressed and let go on the steered computer, as the key codes Tandem's input already uses. */
     data class PointerKey(val code: Int, val mods: Int) : Message
+
+    /** Watch to phone: a button goes down or up, for a drag. The phone lets go of it when the session ends, whatever happened. */
+    data class PointerButton(val button: Int, val down: Boolean) : Message
 
     /** Either side: make the other device ring so it can be found, or stop. A command; [Ringing] is the report. */
     data class FindDevice(val ring: Boolean) : Message
@@ -261,6 +265,7 @@ object MessageCodec {
     private const val POINTER_SCROLL = 0x73
     private const val POINTER_CLICK = 0x74
     private const val POINTER_KEY = 0x75
+    private const val POINTER_BUTTON = 0x76
     private const val MOUSE_ENABLED = 0x76
 
     fun encode(message: Message): ByteArray {
@@ -296,12 +301,14 @@ object MessageCodec {
             is Message.PointerTargets -> {
                 w.u8(POINTER_TARGETS).bool(message.enabled).varint(message.targets.size.toLong())
                 message.targets.forEach { w.bytes(encodeTarget(it)) }
+                w.bool(message.canHold)
             }
             is Message.PointerSession -> w.u8(POINTER_SESSION).optStr(message.targetId)
             is Message.PointerMove -> w.u8(POINTER_MOVE).svarint(message.dx).svarint(message.dy)
             is Message.PointerScroll -> w.u8(POINTER_SCROLL).svarint(message.dx).svarint(message.dy)
             is Message.PointerClick -> w.u8(POINTER_CLICK).u8(message.button).u8(message.count)
             is Message.PointerKey -> w.u8(POINTER_KEY).varint(message.code.toLong()).u8(message.mods)
+            is Message.PointerButton -> w.u8(POINTER_BUTTON).u8(message.button).bool(message.down)
             is Message.FindDevice -> w.u8(FIND_DEVICE).bool(message.ring)
             is Message.Ringing -> w.u8(RINGING).bool(message.on)
             is Message.DeviceBatteries -> {
@@ -355,12 +362,13 @@ object MessageCodec {
             MEDIA_COMMAND -> Message.MediaCommand(r.str(), enumAt<MediaCommandKind>(r.u8()))
             // The player was added later: a phone that has not been updated yet sends nothing here.
             MEDIA_ART -> Message.MediaArt(r.str(), r.bytes(), if (r.remaining > 0) r.str() else "")
-            POINTER_TARGETS -> Message.PointerTargets(r.bool(), r.list { decodeTarget(it.bytes()) })
+            POINTER_TARGETS -> Message.PointerTargets(r.bool(), r.list { decodeTarget(it.bytes()) }, r.remaining > 0 && r.bool())
             POINTER_SESSION -> Message.PointerSession(r.optStr())
             POINTER_MOVE -> Message.PointerMove(r.svarint(), r.svarint())
             POINTER_SCROLL -> Message.PointerScroll(r.svarint(), r.svarint())
             POINTER_CLICK -> Message.PointerClick(r.u8(), r.u8())
             POINTER_KEY -> Message.PointerKey(r.varint().toInt(), r.u8())
+            POINTER_BUTTON -> Message.PointerButton(r.u8(), r.bool())
             FIND_DEVICE -> Message.FindDevice(r.bool())
             RINGING -> Message.Ringing(r.bool())
             DEVICE_BATTERIES -> Message.DeviceBatteries(

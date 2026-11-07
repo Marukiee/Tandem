@@ -4,10 +4,14 @@ import kotlin.math.hypot
 
 data class Touch(val id: Long, val x: Float, val y: Float)
 
-enum class ScreenGesture { TAP, TWO_FINGER_TAP, LONG_PRESS }
+enum class ScreenGesture { TAP, TWO_FINGER_TAP, HOLD, HOLD_END, SLIDE }
 
-/** What a screen this small can tell apart, from raw fingers. No Android in here, so the rules are unit tested. */
-class ScreenGestures(private val slop: Float = 24f, private val tapMs: Long = 350, private val longPressMs: Long = 500) {
+/**
+ * What a screen this small can tell apart, from raw fingers. No Android in here, so the rules are unit tested. A tap and a hold part at
+ * the same moment, so there is no length of touch that does nothing. Once a hold has started, a finger that slides keeps holding: only
+ * lifting it lets go, because that is what a drag is.
+ */
+class ScreenGestures(private val slop: Float = 24f, private val holdMs: Long = 300) {
     private var startMs = -1L
     private var most = 0
     private var moved = false
@@ -16,12 +20,18 @@ class ScreenGestures(private val slop: Float = 24f, private val tapMs: Long = 35
 
     /** When to call [onTimer], if a finger is resting on the screen. */
     val deadline: Long?
-        get() = if (startMs >= 0 && most == 1 && !moved && !fired) startMs + longPressMs else null
+        get() = if (startMs >= 0 && most == 1 && !moved && !fired) startMs + holdMs else null
+
+    /** Whether a finger is on the screen and it is not yet known what for. */
+    val undecided: Boolean get() = startMs >= 0 && !fired && !moved
 
     fun onFrame(nowMs: Long, touches: List<Touch>): ScreenGesture? {
         if (touches.isEmpty()) {
             val result = when {
-                startMs < 0 || moved || fired || nowMs - startMs > tapMs -> null
+                startMs < 0 -> null
+                fired -> ScreenGesture.HOLD_END
+                moved -> if (most == 1) ScreenGesture.SLIDE else null
+                nowMs - startMs > holdMs -> null
                 most >= 2 -> ScreenGesture.TWO_FINGER_TAP
                 else -> ScreenGesture.TAP
             }
@@ -34,9 +44,11 @@ class ScreenGestures(private val slop: Float = 24f, private val tapMs: Long = 35
         }
         if (startMs < 0) startMs = nowMs
         most = maxOf(most, touches.size)
-        for (touch in touches) {
-            val origin = origins.getOrPut(touch.id) { touch.x to touch.y }
-            if (hypot(touch.x - origin.first, touch.y - origin.second) > slop) moved = true
+        if (!fired) {
+            for (touch in touches) {
+                val origin = origins.getOrPut(touch.id) { touch.x to touch.y }
+                if (hypot(touch.x - origin.first, touch.y - origin.second) > slop) moved = true
+            }
         }
         return null
     }
@@ -45,7 +57,7 @@ class ScreenGestures(private val slop: Float = 24f, private val tapMs: Long = 35
         val due = deadline ?: return null
         if (nowMs < due) return null
         fired = true
-        return ScreenGesture.LONG_PRESS
+        return ScreenGesture.HOLD
     }
 }
 
