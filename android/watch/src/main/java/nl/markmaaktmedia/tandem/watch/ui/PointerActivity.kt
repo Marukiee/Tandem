@@ -127,15 +127,30 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
      * The test goes through steps and says each one, with a buzz when the next begins. What the wrist was asked to do is written next
      * to the motion, so a real pinch can be told from what only looks like one: moving the arm, a fist, a tap on the table.
      */
-    private enum class TuningStep(val seconds: Int, val text: Int, val cued: Boolean = false) {
-        STILL(5, R.string.tune_still),
-        PINCH(30, R.string.tune_pinch, cued = true),
-        MOVE(15, R.string.tune_move),
-        PINCH_MOVING(30, R.string.tune_pinch_moving, cued = true),
-        OTHER(20, R.string.tune_other),
-        DONE(0, R.string.tune_done),
-    }
-    private var step by mutableStateOf(TuningStep.STILL)
+    private data class TuningStep(val name: String, val seconds: Int, val text: Int, val cued: Boolean = false)
+
+    /** Pinches in the air: when asked, while moving, and what is no pinch. */
+    private val pinchSteps = listOf(
+        TuningStep("still", 5, R.string.tune_still),
+        TuningStep("pinch", 30, R.string.tune_pinch, cued = true),
+        TuningStep("move", 15, R.string.tune_move),
+        TuningStep("pinch_moving", 30, R.string.tune_pinch_moving, cued = true),
+        TuningStep("other", 20, R.string.tune_other),
+        TuningStep("done", 0, R.string.tune_done),
+    )
+
+    /** The hand on a table as on a mouse: taps when asked, sliding, and taps while sliding. */
+    private val tableSteps = listOf(
+        TuningStep("table_still", 5, R.string.table_still),
+        TuningStep("table_tap", 30, R.string.table_tap, cued = true),
+        TuningStep("table_slide", 20, R.string.table_slide),
+        TuningStep("table_slide_tap", 30, R.string.table_slide_tap, cued = true),
+        TuningStep("done", 0, R.string.tune_done),
+    )
+    private val tableTest by lazy { intent.getBooleanExtra(EXTRA_TABLE, false) }
+    private val steps by lazy { if (tableTest) tableSteps else pinchSteps }
+    private var stepAt by mutableIntStateOf(0)
+    private val step: TuningStep get() = steps[stepAt]
     private var stepLeft by mutableIntStateOf(0)
     /** The screen says "pinch now": each pinch then has a moment it belongs to, which a recording needs to learn from. */
     private var cue by mutableStateOf(false)
@@ -147,7 +162,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                 main.postDelayed(this, 1_000)
                 return
             }
-            beginStep(TuningStep.entries[step.ordinal + 1])
+            beginStep(stepAt + 1)
         }
     }
     private val cueTick = object : Runnable {
@@ -166,13 +181,14 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         sensorHandler.post { tuning?.write(RawRecord.Mark(now, label)) }
     }
 
-    private fun beginStep(next: TuningStep) {
-        step = next
+    private fun beginStep(index: Int) {
+        stepAt = index
+        val next = steps[index]
         stepLeft = next.seconds
         cue = false
         main.removeCallbacks(cueTick)
-        mark("step:${next.name.lowercase()}")
-        if (next == TuningStep.DONE) {
+        mark("step:${next.name}")
+        if (next.name == "done") {
             listenToPinch = false
             sensorHandler.post { stopTuningLog() }
             // Only now: a buzz while it records is a knock in the very sensor it records.
@@ -224,7 +240,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         startTuningLog()
         if (testing) {
             main.removeCallbacks(stepTick)
-            beginStep(TuningStep.STILL)
+            beginStep(0)
         }
         sensors.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)?.let { sensors.registerListener(this, it, SAMPLE_US, sensorHandler) }
         sensors.getDefaultSensor(Sensor.TYPE_GYROSCOPE)?.let { sensors.registerListener(this, it, SAMPLE_US, sensorHandler) }
@@ -439,7 +455,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                 PointerContent(
                     name = name,
                     status = if (testing) {
-                        stringResource(if (cue) R.string.tune_now else step.text)
+                        stringResource(if (cue) (if (tableTest) R.string.table_now else R.string.tune_now) else step.text)
                     } else if (hidAddress != null && hidState != HidMouse.Status.CONNECTED) {
                         when (hidState) {
                             HidMouse.Status.PAIRING -> stringResource(R.string.hid_pairing)
@@ -456,7 +472,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                         },
                     ),
                     hint = when {
-                        testing && step != TuningStep.DONE -> stringResource(R.string.tune_left, stepLeft, pinches)
+                        testing && step.name != "done" -> stringResource(R.string.tune_left, stepLeft, pinches)
                         testing -> stringResource(R.string.pinch_count, pinches)
                         ready && !presentation && !holding -> stringResource(if (canHold) R.string.mouse_hint else R.string.mouse_hint_tap)
                         else -> null
@@ -490,6 +506,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         /** 200 times a second, the most Android gives without a special permission, and what a knock needs. */
         private const val SAMPLE_US = 5_000
         private const val EXTRA_HID = "hid"
+        private const val EXTRA_TABLE = "table"
         private const val MOUSE_CHANNEL = "mouse"
         /** Its own: see the other numbers in the watch app. */
         private const val MOUSE_NOTIFICATION = 360
@@ -539,6 +556,11 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                     .setLocalOnly(true)
                     .build(),
             )
+        }
+
+        /** The guided recording of a hand on a table, for the table mode. */
+        fun openTableTest(context: Context) {
+            context.startActivity(Intent(context, PointerActivity::class.java).putExtra(EXTRA_TARGET, "").putExtra(EXTRA_TABLE, true))
         }
 
         fun open(context: Context, targetId: String, presentation: Boolean) {

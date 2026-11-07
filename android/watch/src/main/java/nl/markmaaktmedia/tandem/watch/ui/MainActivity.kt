@@ -468,6 +468,15 @@ private fun TestPage() {
                     label = { Text(stringResource(R.string.pinch_test)) },
                 )
             }
+            item(key = "table_test") {
+                FilledTonalButton(
+                    onClick = { PointerActivity.openTableTest(context) },
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    icon = { Icon(painterResource(R.drawable.sym_laptop), null) },
+                    label = { Text(stringResource(R.string.table_test)) },
+                )
+            }
             item(key = "hid_test") {
                 FilledTonalButton(
                     onClick = {
