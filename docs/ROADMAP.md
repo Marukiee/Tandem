@@ -84,6 +84,23 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 - **De telefooncamera als bron in OBS** (gebouwd in 0.2.47 als MPEG-TS over UDP in plaats van SRT, nog niet in OBS gezien): Tandem zet het beeld als stream op de eigen computer (`srt://127.0.0.1:...`), in OBS een
   Mediabron met dat adres; een knop "Kopieer OBS-adres". Op Mac, Windows en Linux.
 
+## Horloge: tweede ronde (gekozen door Mark, 2026-11-07), nog te bouwen
+
+Uit een lijst van ideeen koos Mark deze. Zelfde regels als de ronde hieronder: nieuwe berichten achteraan in `Messages.kt`, wat een
+computer nodig heeft op Mac, Linux en Windows tegelijk, wat alleen op telefoon en horloge kan in `docs/PARITY.md`.
+
+- **Eigen klok op het horloge**: timer, stopwatch en een stille wekker op de pols, zodat de klok van Google uit kan.
+- **Telefoon vergeten**: punt 1 hieronder, met de meting die daar staat.
+- **Wekker uitzetten of snoozen vanaf de pols**: als de wekker van de telefoon afgaat. Eerst nakijken of de klok-app van LineageOS
+  zijn melding knoppen geeft die een andere app mag indrukken.
+- **Inlogcode groot op de pols**: een code uit een sms of melding, groot en met een knop om hem op de computer te plakken.
+- **Kaarten en QR-codes**: tickets en klantenkaarten op de telefoon gekozen, op het horloge te tonen zonder verbinding.
+- **Cameraknop**: de telefoon opent de camera als die dicht is en maakt meteen een foto; staat de camera al open, dan alleen de foto.
+  Met een timer die je op het horloge kiest. Eerst nakijken hoe de camera-app van de telefoon zich laat aansturen.
+- **Huidtemperatuur**: per nacht als trend op de pagina Gezondheid, uit de metingen die het horloge al opneemt.
+- **Beweegseintje**: een trilling na lang zitten, met uurblokjes op de pagina Gezondheid.
+- **Muziek stopt als je slaapt**: punt 5 hieronder.
+
 ## Horloge: gekozen functies, uitgewerkt (gekozen door Mark, 2026-11-06), nog te bouwen
 
 Bouwt voort op `claude/horloge-link` (zie `docs/WATCH.md` daar). Het horloge blijft geen lid van de circle: alles naar een computer loopt
