@@ -141,7 +141,8 @@ class PhoneMediaSession(private val context: Context, private val send: (String,
         const val ACTION_MEDIA_CONTROLS = "com.google.android.wearable.action.MEDIA_CONTROLS"
         const val SYSTEM_MEDIA_APP = "com.google.android.wearable.media.sessions"
         const val CHANNEL = "music"
-        const val NOTIFICATION_ID = 300
+        /** Not 300: that is the recording, whose notification the music then replaced, and took away again when it stopped. */
+        const val NOTIFICATION_ID = 350
         const val VOLUME_STEPS = 20
         const val ACTIONS = PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_PLAY_PAUSE or
             PlaybackState.ACTION_SKIP_TO_NEXT or PlaybackState.ACTION_SKIP_TO_PREVIOUS or PlaybackState.ACTION_STOP
