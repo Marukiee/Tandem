@@ -10,12 +10,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -162,20 +156,16 @@ class ShareTargetActivity : ComponentActivity() {
         val nearbyPin = outgoing.lastOrNull { it.state == nl.markmaaktmedia.tandem.quickshare.QuickShareHost.Outgoing.State.Sending }?.pin
         val scope = rememberCoroutineScope()
         var phase by remember { mutableStateOf<SendPhase>(SendPhase.Choosing) }
-        var visible by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) { visible = true }
+        val sheet = nl.markmaaktmedia.tandem.ui.components.rememberPullSheetState()
+        val leave: () -> Unit = { scope.launch { sheet.close() } }
+        // While Quick Share devices are shown, phones nearby are woken and looked for.
+        androidx.compose.runtime.DisposableEffect(nearbyOn) {
+            quick.looking(nearbyOn)
+            onDispose { quick.looking(false) }
+        }
 
-        val scrim by animateFloatAsState(if (visible) 0.5f else 0f, TandemMotion.fadeSpec(), label = "scrim")
-        Box(
-            Modifier.fillMaxSize().background(Color.Black.copy(alpha = scrim))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { if (phase is SendPhase.Choosing) onClose() },
-            contentAlignment = Alignment.BottomCenter,
-        ) {
-            AnimatedVisibility(
-                visible = visible,
-                enter = slideInVertically(TandemMotion.spatial()) { it } + fadeIn(),
-                exit = slideOutVertically(TandemMotion.spatial()) { it } + fadeOut(),
-            ) {
+        nl.markmaaktmedia.tandem.ui.components.PullSheet(sheet, onGone = onClose, dismissable = { phase is SendPhase.Choosing }) {
+            run {
                 SharePickerSheet(
                     devices = devices,
                     phase = phase,
@@ -191,13 +181,11 @@ class ShareTargetActivity : ComponentActivity() {
                             phase = if (reached > 0) SendPhase.Done(reached) else SendPhase.Failed(getString(R.string.share_none_online))
                             if (reached > 0) {
                                 delay(1000)
-                                visible = false
-                                delay(250)
-                                onClose()
+                                sheet.close()
                             }
                         }
                     },
-                    onClose = onClose,
+                    onClose = leave,
                     nearbyOn = nearbyOn,
                     nearbyOnly = nearbyOnly,
                     onEnableNearby = { quick.setEnabled(true) },
@@ -210,9 +198,7 @@ class ShareTargetActivity : ComponentActivity() {
                             phase = result
                             if (result is SendPhase.Done) {
                                 delay(1000)
-                                visible = false
-                                delay(250)
-                                onClose()
+                                sheet.close()
                             }
                         }
                     },

@@ -172,6 +172,13 @@ impl TandemQuickShare {
         }
     }
 
+    /// Asks the network again who is there: call it when the person looks for a device to send to. Cheap to call often.
+    pub fn look_again(&self) {
+        if let Some(service) = self.service.lock().unwrap().as_ref() {
+            service.look_again();
+        }
+    }
+
     pub fn peers(&self) -> Vec<TandemQsPeer> {
         self.service.lock().unwrap().as_ref().map(|s| s.peers().iter().map(TandemQsPeer::from).collect()).unwrap_or_default()
     }

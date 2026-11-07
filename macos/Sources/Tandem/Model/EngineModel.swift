@@ -227,6 +227,7 @@ final class EngineModel {
     func stop() async {
         ScreenHost.shared.shutdown()
         KeepAwake.shared.shutdown()
+        ShareTargets.shared.update(devices, running: false)
         await drives.ejectAll(engine: engine)
         FilesInFinder.shared.stopAll(engine: engine)
         injector.releaseAll()
@@ -438,6 +439,7 @@ final class EngineModel {
         refreshNowPlaying()
         PhoneSpotlight.shared.devicesChanged(devices, engine: engine)
         FilesInFinder.shared.devicesChanged(devices, engine: engine)
+        ShareTargets.shared.update(devices)
     }
 
     /// The first time: Downloads, Documents and Desktop are offered to the other devices, as a phone offers its storage, so "Browse files"
@@ -1389,9 +1391,18 @@ final class EngineModel {
             return
         }
         if url.host == "send" {
-            let files = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.filter { $0.name == "file" }.compactMap(\.value) ?? []
-            let urls = files.map { URL(fileURLWithPath: $0) }.filter { FileManager.default.fileExists(atPath: $0.path) }
-            if !urls.isEmpty { DevicePicker.send(urls) }
+            let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+            let urls = items.filter { $0.name == "file" }.compactMap(\.value).map { URL(fileURLWithPath: $0) }
+                .filter { FileManager.default.fileExists(atPath: $0.path) }
+            guard !urls.isEmpty else { return }
+            // Chosen in the Share sheet: only that sheet knows the key. Anything else is asked, also with one device.
+            let targets = items.filter { $0.name == "to" }.compactMap(\.value)
+            let key = items.first { $0.name == "key" }?.value
+            if !targets.isEmpty, ShareTargets.shared.trusts(key) {
+                send(urls: urls, to: targets)
+            } else {
+                DevicePicker.send(urls)
+            }
             return
         }
         // Any page or app can open such a link, and the device behind it would get this Mac's clipboard and files. So it asks first.

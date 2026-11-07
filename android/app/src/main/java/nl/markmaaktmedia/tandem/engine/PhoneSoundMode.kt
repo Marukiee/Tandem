@@ -30,7 +30,10 @@ object PhoneSoundMode {
         val access = FocusMode.canUse(context)
         runCatching {
             if (mode == TandemSoundMode.DO_NOT_DISTURB) {
-                if (access) notifications.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
+                if (!access) return
+                notifications.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY)
+                // Do Not Disturb is the quietest step, so the ringer is off too: it stayed on vibrate when the step before was Vibrate.
+                audio.ringerMode = AudioManager.RINGER_MODE_SILENT
                 return
             }
             if (access && read(context) == TandemSoundMode.DO_NOT_DISTURB) {

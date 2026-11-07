@@ -8,10 +8,10 @@ use std::net::{IpAddr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use futures_util::future::BoxFuture;
-use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
+use mdns_sd::{RecvTimeoutError, ServiceDaemon, ServiceEvent, ServiceInfo};
 use ring::rand::{SecureRandom, SystemRandom};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::oneshot;
@@ -66,6 +66,7 @@ pub struct QuickShare {
     port: u16,
     tasks: Vec<JoinHandle<()>>,
     registered: String,
+    looker: Arc<Looker>,
 }
 
 fn endpoint_id() -> String {
@@ -99,6 +100,35 @@ fn useful(ip: IpAddr) -> bool {
     }
 }
 
+/// Asks the network again who is there. The search of mdns-sd asks less and less often, after an hour once an hour, and a phone that
+/// only starts to be seen later is then found only when its own announcement is heard (with the screen off a phone may miss those, and
+/// so may the network). So it starts over every few minutes, and at once when the person looks.
+struct Looker {
+    daemon: ServiceDaemon,
+    swap: Mutex<std::sync::mpsc::Sender<mdns_sd::Receiver<ServiceEvent>>>,
+    last: Mutex<Option<Instant>>,
+}
+
+impl Looker {
+    /// Not more than once in ten seconds: a window that asks each time it draws costs nothing then.
+    fn look(&self) {
+        {
+            let mut last = self.last.lock().unwrap();
+            if last.is_some_and(|at| at.elapsed() < LOOK_AGAIN_GAP) {
+                return;
+            }
+            *last = Some(Instant::now());
+        }
+        // The new search gets the devices that are known at once and asks the network again; the reader drops the old one.
+        if let Ok(browse) = self.daemon.browse(SERVICE_TYPE) {
+            let _ = self.swap.lock().unwrap().send(browse);
+        }
+    }
+}
+
+const LOOK_AGAIN_GAP: Duration = Duration::from_secs(10);
+const LOOK_AGAIN_EVERY: Duration = Duration::from_secs(180);
+
 impl QuickShare {
     /// Starts listening and being found, and looking for others.
     pub async fn start(device_name: &str, kind: DeviceKind, sink: Arc<dyn Sink>) -> Result<QuickShare> {
@@ -122,6 +152,8 @@ impl QuickShare {
         let registered = service.get_fullname().to_string();
         daemon.register(service).map_err(|e| Error::Connection(format!("mdns register: {e}")))?;
         let browse = daemon.browse(SERVICE_TYPE).map_err(|e| Error::Connection(format!("mdns browse: {e}")))?;
+        let (swap, swaps) = std::sync::mpsc::channel::<mdns_sd::Receiver<ServiceEvent>>();
+        let looker = Arc::new(Looker { daemon: daemon.clone(), swap: Mutex::new(swap), last: Mutex::new(Some(Instant::now())) });
 
         let inner = Arc::new(Inner {
             sink,
@@ -142,12 +174,36 @@ impl QuickShare {
             }
         }));
 
+        let again = looker.clone();
+        tasks.push(tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(LOOK_AGAIN_EVERY).await;
+                again.look();
+            }
+        }));
+
         // Others who can be found. The receiver is a blocking channel, so it is read on a thread of its own.
         let seen = inner.clone();
         std::thread::Builder::new()
             .name("tandem-quickshare-mdns".into())
             .spawn(move || {
-                while let Ok(event) = browse.recv() {
+                let mut browse = browse;
+                loop {
+                    // A newer search takes the place of the old one, which stops asking once its receiver is gone.
+                    while let Ok(newer) = swaps.try_recv() {
+                        browse = newer;
+                    }
+                    let event = match browse.recv_timeout(Duration::from_millis(500)) {
+                        Ok(event) => event,
+                        Err(RecvTimeoutError::Timeout) => continue,
+                        Err(RecvTimeoutError::Disconnected) => match swaps.recv() {
+                            Ok(newer) => {
+                                browse = newer;
+                                continue;
+                            }
+                            Err(_) => break,
+                        },
+                    };
                     match event {
                         ServiceEvent::ServiceResolved(resolved) => {
                             let fullname = resolved.get_fullname().to_string();
@@ -199,7 +255,12 @@ impl QuickShare {
             }
         }));
 
-        Ok(QuickShare { inner, daemon, port, tasks, registered })
+        Ok(QuickShare { inner, daemon, port, tasks, registered, looker })
+    }
+
+    /// Asks the network again who is there, for when the person looks for a device to send to.
+    pub fn look_again(&self) {
+        self.looker.look();
     }
 
     pub fn port(&self) -> u16 {
@@ -474,5 +535,38 @@ mod network_tests {
         let paths = tokio::time::timeout(Duration::from_secs(10), got_a.recv()).await.unwrap().unwrap();
         assert_eq!(std::fs::read(&paths[0]).unwrap(), b"hello from the sender");
         assert_eq!(tokio::time::timeout(Duration::from_secs(10), done_b.recv()).await.unwrap().unwrap(), Outcome::Sent);
+    }
+
+    /// After a new search the device that was found comes again from what is known, and the search goes on: one that starts later is
+    /// found too. Needs multicast like the test above.
+    #[tokio::test(flavor = "multi_thread")]
+    #[ignore]
+    async fn looking_again_finds_the_known_ones_and_keeps_looking() {
+        fn hears() -> (Arc<Hears>, mpsc::UnboundedReceiver<Peer>) {
+            let (peers, seen) = mpsc::unbounded_channel();
+            let (incoming, _) = mpsc::unbounded_channel();
+            let (received, _) = mpsc::unbounded_channel();
+            let (sent, _) = mpsc::unbounded_channel();
+            (Arc::new(Hears { peers, incoming, received, sent }), seen)
+        }
+        async fn finds(seen: &mut mpsc::UnboundedReceiver<Peer>, name: &str) {
+            tokio::time::timeout(Duration::from_secs(20), async {
+                while seen.recv().await.unwrap().name != name {}
+            })
+            .await
+            .unwrap_or_else(|_| panic!("{name} is found"));
+        }
+        let (sink, mut seen) = hears();
+        let looker = QuickShare::start("Looker", DeviceKind::Laptop, sink).await.unwrap();
+        let (sink, _) = hears();
+        let _first = QuickShare::start("First", DeviceKind::Phone, sink).await.unwrap();
+        finds(&mut seen, "First").await;
+        // Past the gap that keeps it from asking too often.
+        *looker.looker.last.lock().unwrap() = None;
+        looker.look_again();
+        finds(&mut seen, "First").await;
+        let (sink, _) = hears();
+        let _later = QuickShare::start("Later", DeviceKind::Phone, sink).await.unwrap();
+        finds(&mut seen, "Later").await;
     }
 }

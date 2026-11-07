@@ -2,7 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- An extension must be sandboxed. It reads the files it is given and opens a tandem:// address, nothing else. -->
+    <!-- An extension must be sandboxed. It reads the files it is given, the devices the app leaves in their app group (added when
+         the app has that group, scripts/build-macos.sh), and opens a tandem:// address. -->
     <key>com.apple.security.app-sandbox</key>
     <true/>
     <key>com.apple.security.files.user-selected.read-only</key>

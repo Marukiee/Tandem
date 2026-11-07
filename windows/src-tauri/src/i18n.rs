@@ -75,6 +75,8 @@ fn text(lang: &str, key: &str) -> &'static str {
         (_, "drop_on_desktop") => "{0} from {1} is on your desktop",
         ("nl", "send_with") => "Sturen met Tandem",
         (_, "send_with") => "Send with Tandem",
+        ("nl", "send_with_off") => "niet verbonden",
+        (_, "send_with_off") => "not connected",
         ("nl", "send_with_none") => "Er is nu geen apparaat bereikbaar",
         (_, "send_with_none") => "No device can be reached right now",
         ("nl", "send_with_away") => "{0} is nu niet bereikbaar",

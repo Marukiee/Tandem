@@ -1,6 +1,7 @@
 //! "Send with Tandem" in the file manager, as the share menu of a Mac has it: a right click on files offers the devices of the circle.
 //! The file manager runs Tandem again with `--send` (and `--to <device>`); the second start hands its arguments to the running app
-//! (`tauri_plugin_single_instance`), which sends. What each file manager needs is written into the user's own folders of it and kept up
+//! (`tauri_plugin_single_instance`), which sends. Without `--to` it asks which device in a card of its own (`send.html`), also when only
+//! one is there: files never leave without the person choosing where. What each file manager needs is written into the user's own folders of it and kept up
 //! to date with the devices: Files (GNOME) through its Python extensions when `nautilus-python` is there, which lists the devices that
 //! are reachable at that moment, otherwise its scripts menu; Dolphin a service menu, Nemo actions; Windows a shortcut per device in
 //! "Send to". Turned off in the settings, all of it is taken away again.
@@ -9,14 +10,17 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::Duration;
 
+use serde_json::{json, Value};
 use tandem_core::ffi::TandemShareOrigin;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager};
 
 use crate::state::AppState;
 use crate::{commands, events, i18n, settings};
 
 /// The devices the menus were last written for, so nothing is written when nothing changed.
 static WRITTEN: Mutex<Option<String>> = Mutex::new(None);
+/// The files waiting for the person to choose a device in the card.
+static PICK: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
 
 /// The arguments of a start of Tandem: when they ask to send files, they are sent (true).
 pub fn handle_args(app: &AppHandle, args: &[String]) -> bool {
@@ -35,9 +39,79 @@ pub fn handle_args(app: &AppHandle, args: &[String]) -> bool {
     if files.is_empty() {
         return true;
     }
+    let Some(to) = to else {
+        pick(app, files);
+        return true;
+    };
     let app = app.clone();
-    tauri::async_runtime::spawn(async move { send(&app, to, files).await });
+    tauri::async_runtime::spawn(async move { send(&app, Some(to), files).await });
     true
+}
+
+const CARD_WIDTH: f64 = 392.0;
+
+/// Shows the card that asks which device, in the middle of the screen. Files shared again before an answer take the place of the others.
+fn pick(app: &AppHandle, files: Vec<PathBuf>) {
+    *PICK.lock().unwrap() = files;
+    let rows = app.state::<AppState>().data.lock().unwrap().devices.len().max(1);
+    let online = app.state::<AppState>().data.lock().unwrap().devices.iter().filter(|d| d["online"].as_bool() == Some(true)).count();
+    // Head, buttons and room for a reason, plus a row per device and one for all of them.
+    let height = 190.0 + 58.0 * (rows + usize::from(online > 1)) as f64;
+    let _ = app.emit("send_pick", pick_state());
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        if let Some(window) = handle.get_webview_window("send-card") {
+            let _ = window.set_size(LogicalSize::new(CARD_WIDTH, height));
+            let _ = window.set_focus();
+            return;
+        }
+        let _ = tauri::WebviewWindowBuilder::new(&handle, "send-card", tauri::WebviewUrl::App("send.html".into()))
+            .title("Tandem")
+            .inner_size(CARD_WIDTH, height)
+            .decorations(false)
+            .transparent(true)
+            .resizable(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .center()
+            .focused(true)
+            .build();
+    });
+}
+
+/// How many files wait, and the name of the first, for the title of the card.
+fn pick_state() -> Value {
+    let files = PICK.lock().unwrap();
+    json!({
+        "count": files.len(),
+        "name": files.first().and_then(|f| f.file_name()).map(|n| n.to_string_lossy().into_owned()),
+    })
+}
+
+#[tauri::command]
+pub fn send_pick_state() -> Value {
+    pick_state()
+}
+
+/// The answer of the card: the devices to send to, or none to send nothing.
+#[tauri::command]
+pub fn send_pick(app: AppHandle, to: Vec<String>) {
+    let files = std::mem::take(&mut *PICK.lock().unwrap());
+    if let Some(window) = app.get_webview_window("send-card") {
+        let _ = window.close();
+    }
+    if to.is_empty() || files.is_empty() {
+        return;
+    }
+    tauri::async_runtime::spawn(async move {
+        let count = files.len().to_string();
+        let names = to.iter().map(|id| events::device_name(&app, id)).collect::<Vec<_>>().join(", ");
+        let state = app.state::<AppState>();
+        match commands::send_paths_with(&state, to, files, TandemShareOrigin::Files).await {
+            Ok(_) => events::toast(&app, "Tandem", &i18n::t2(&app, "send_with_sent", &count, &names)),
+            Err(error) => events::toast(&app, "Tandem", &error),
+        }
+    });
 }
 
 async fn send(app: &AppHandle, to: Option<String>, files: Vec<PathBuf>) {
@@ -109,14 +183,15 @@ pub fn refresh(app: &AppHandle) {
     }
     let Some(program) = program() else { return };
     let label = i18n::t(app, "send_with");
+    let away = i18n::t(app, "send_with_off");
     let devices: Vec<(String, String)> = devices.into_iter().map(|(id, name, _)| (id, name)).collect();
     std::thread::spawn(move || {
         #[cfg(target_os = "linux")]
-        linux::write(on, &program, &label, &devices);
+        linux::write(on, &program, &label, &away, &devices);
         #[cfg(windows)]
         windows::write(on, &program, &devices);
         #[cfg(not(any(target_os = "linux", windows)))]
-        let _ = (on, program, label, devices);
+        let _ = (on, program, label, away, devices);
     });
 }
 
@@ -154,7 +229,7 @@ mod linux {
             .or_else(|| std::env::var_os("HOME").map(|h| Path::new(&h).join(".local/share")))
     }
 
-    /// Where the extension of Files reads which devices can be sent to now.
+    /// Where the extension of Files reads the devices and which of them can be sent to now.
     fn reachable_file() -> Option<PathBuf> {
         let base = std::env::var_os("XDG_CACHE_HOME")
             .map(PathBuf::from)
@@ -179,7 +254,7 @@ mod linux {
             let _ = std::fs::remove_file(file);
             return;
         }
-        let list: Vec<_> = devices.iter().filter(|(_, _, online)| *online).map(|(id, name, _)| serde_json::json!({ "id": id, "name": name })).collect();
+        let list: Vec<_> = devices.iter().map(|(id, name, online)| serde_json::json!({ "id": id, "name": name, "online": online })).collect();
         put(&file, &serde_json::to_string(&list).unwrap_or_default(), false);
     }
 
@@ -187,7 +262,7 @@ mod linux {
         format!("\"{}\"", program.to_string_lossy().replace('\\', "\\\\").replace('"', "\\\""))
     }
 
-    pub fn write(on: bool, program: &Path, label: &str, devices: &[(String, String)]) {
+    pub fn write(on: bool, program: &Path, label: &str, away: &str, devices: &[(String, String)]) {
         let Some(data) = data_home() else { return };
         let extension = data.join("nautilus-python/extensions/tandem-send.py");
         let script = data.join("nautilus/scripts").join(label);
@@ -218,7 +293,14 @@ mod linux {
         let exe = program.to_string_lossy();
         if nautilus_python() {
             let _ = std::fs::remove_file(&script);
-            put(&extension, &EXTENSION.replace("@PROGRAM@", &exe.replace('\\', "\\\\").replace('"', "\\\"")).replace("@LABEL@", &label.replace('"', "\\\"")), false);
+            put(
+                &extension,
+                &EXTENSION
+                    .replace("@PROGRAM@", &exe.replace('\\', "\\\\").replace('"', "\\\""))
+                    .replace("@LABEL@", &label.replace('"', "\\\""))
+                    .replace("@AWAY@", &away.replace('"', "\\\"")),
+                false,
+            );
         } else {
             let _ = std::fs::remove_file(&extension);
             put(&script, &format!("#!/bin/sh\n# Tandem: send with Tandem\nexec {} --send \"$@\"\n", quoted(program)), true);
@@ -246,16 +328,18 @@ mod linux {
         }
     }
 
-    /// The extension of Files: one entry with the devices that are reachable right now, read from the list Tandem keeps.
+    /// The extension of Files: one entry with every device under it, read from the list Tandem keeps. One that cannot be reached now
+    /// is grey and says so; with no device at all the entry opens the card of Tandem, which says what to do.
     const EXTENSION: &str = r#"# Tandem: send with Tandem. Written by Tandem; it is written again when the devices change.
 import json, os, subprocess
 from gi.repository import GObject, Nautilus
 
 PROGRAM = "@PROGRAM@"
 LABEL = "@LABEL@"
+AWAY = "@AWAY@"
 
 
-def reachable():
+def devices():
     path = os.path.join(os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"), "tandem", "send-targets.json")
     try:
         with open(path) as f:
@@ -270,17 +354,19 @@ class TandemSend(GObject.GObject, Nautilus.MenuProvider):
         paths = [f.get_location().get_path() for f in files if f.get_uri_scheme() == "file" and not f.is_directory()]
         if not paths or not os.path.exists(PROGRAM):
             return []
-        devices = reachable()
         item = Nautilus.MenuItem(name="TandemSend::send", label=LABEL, icon="nl.markmaaktmedia.tandem")
-        if len(devices) > 1:
-            menu = Nautilus.Menu()
-            item.set_submenu(menu)
-            for device in devices:
-                entry = Nautilus.MenuItem(name="TandemSend::" + device["id"], label=device["name"])
-                entry.connect("activate", self.send, paths, device["id"])
-                menu.append_item(entry)
-        else:
-            item.connect("activate", self.send, paths, devices[0]["id"] if devices else None)
+        listed = devices()
+        if not listed:
+            item.connect("activate", self.send, paths, None)
+            return [item]
+        menu = Nautilus.Menu()
+        item.set_submenu(menu)
+        for device in listed:
+            online = device.get("online", True)
+            label = device["name"] if online else device["name"] + " (" + AWAY + ")"
+            entry = Nautilus.MenuItem(name="TandemSend::" + device["id"], label=label, sensitive=online)
+            entry.connect("activate", self.send, paths, device["id"])
+            menu.append_item(entry)
         return [item]
 
     def send(self, _item, paths, device):

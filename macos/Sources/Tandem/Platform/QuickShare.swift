@@ -95,6 +95,11 @@ final class QuickShare {
 
     // MARK: What the person does
 
+    /// The person looks for a device to send to: the network is asked again who is there (cheap to call often).
+    func lookAgain() {
+        service?.lookAgain()
+    }
+
     func accept(_ id: UInt64) {
         guard let index = incoming.firstIndex(where: { $0.id == id }) else { return }
         incoming[index].accepted = true

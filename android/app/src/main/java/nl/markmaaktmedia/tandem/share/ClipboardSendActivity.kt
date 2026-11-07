@@ -5,12 +5,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -102,15 +96,9 @@ class ClipboardSendActivity : ComponentActivity() {
                 val devices by host.devices.collectAsState()
                 val scope = rememberCoroutineScope()
                 var phase by remember { mutableStateOf<SendPhase>(SendPhase.Choosing) }
-                var visible by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) { visible = true }
-                val scrim by animateFloatAsState(if (visible) 0.5f else 0f, TandemMotion.fadeSpec(), label = "scrim")
-                Box(
-                    Modifier.fillMaxSize().background(Color.Black.copy(alpha = scrim))
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { finish() },
-                    contentAlignment = Alignment.BottomCenter,
-                ) {
-                    AnimatedVisibility(visible, enter = slideInVertically(TandemMotion.spatial()) { it } + fadeIn(), exit = slideOutVertically(TandemMotion.spatial()) { it } + fadeOut()) {
+                val sheet = nl.markmaaktmedia.tandem.ui.components.rememberPullSheetState()
+                nl.markmaaktmedia.tandem.ui.components.PullSheet(sheet, onGone = { finish() }, dismissable = { phase is SendPhase.Choosing }) {
+                    run {
                         SharePickerSheet(
                             devices = devices, phase = phase,
                             summary = when (clip) {
@@ -140,10 +128,10 @@ class ClipboardSendActivity : ComponentActivity() {
                                 scope.launch {
                                     val reached = runCatching { host.sendClipboard(targets, clip) }.getOrDefault(0)
                                     phase = if (reached > 0) SendPhase.Done(reached) else SendPhase.Failed(getString(R.string.share_none_online))
-                                    if (reached > 0) { delay(900); finish() }
+                                    if (reached > 0) { delay(900); sheet.close() }
                                 }
                             },
-                            onClose = { finish() },
+                            onClose = { scope.launch { sheet.close() } },
                         )
                     }
                 }
