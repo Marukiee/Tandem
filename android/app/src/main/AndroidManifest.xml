@@ -49,6 +49,8 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- An update of Tandem by Tandem itself goes in without a tap (UpdateRepository asks for that); without this Android asks every time. -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Taking over the Wi-Fi of a computer: a fresh scan and, without the sheet of the system, a suggestion need the first; seeing
