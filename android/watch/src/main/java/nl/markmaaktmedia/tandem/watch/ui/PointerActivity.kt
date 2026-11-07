@@ -112,6 +112,48 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     private var tuningOut: BufferedOutputStream? = null
     private var tuning: RawLogWriter? = null
 
+    /**
+     * The test goes through steps and says each one, with a buzz when the next begins. What the wrist was asked to do is written next
+     * to the motion, so a real pinch can be told from what only looks like one: moving the arm, a fist, a tap on the table.
+     */
+    private enum class TuningStep(val seconds: Int, val text: Int) {
+        STILL(5, R.string.tune_still),
+        PINCH(25, R.string.tune_pinch),
+        MOVE(15, R.string.tune_move),
+        PINCH_MOVING(25, R.string.tune_pinch_moving),
+        OTHER(20, R.string.tune_other),
+        DONE(0, R.string.tune_done),
+    }
+    private var step by mutableStateOf(TuningStep.STILL)
+    private var stepLeft by mutableIntStateOf(0)
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private val stepTick = object : Runnable {
+        override fun run() {
+            stepLeft--
+            if (stepLeft > 0) {
+                main.postDelayed(this, 1_000)
+                return
+            }
+            beginStep(TuningStep.entries[step.ordinal + 1])
+        }
+    }
+
+    private fun beginStep(next: TuningStep) {
+        step = next
+        stepLeft = next.seconds
+        val label = "step:${next.name.lowercase()}"
+        sensorHandler.post { tuning?.write(RawRecord.Mark(System.currentTimeMillis(), label)) }
+        val vibrator = getSystemService(android.os.Vibrator::class.java)
+        if (next == TuningStep.DONE) {
+            listenToPinch = false
+            vibrator?.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 120, 120, 120), -1))
+            sensorHandler.post { stopTuningLog() }
+            return
+        }
+        if (next != TuningStep.STILL) vibrator?.vibrate(android.os.VibrationEffect.createOneShot(250, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        main.postDelayed(stepTick, 1_000)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sensors = getSystemService(SensorManager::class.java)
@@ -138,6 +180,10 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         gyro.reset()
         pinch.reset()
         startTuningLog()
+        if (testing) {
+            main.removeCallbacks(stepTick)
+            beginStep(TuningStep.STILL)
+        }
         sensors.getDefaultSensor(Sensor.TYPE_GYROSCOPE)?.let { sensors.registerListener(this, it, SAMPLE_US, sensorHandler) }
         sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { sensors.registerListener(this, it, SAMPLE_US, sensorHandler) }
     }
@@ -150,6 +196,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         }
         touching = false
         sensors.unregisterListener(this)
+        main.removeCallbacks(stepTick)
         if (!testing) WatchLink.stopPointer()
         sensorHandler.post { stopTuningLog() }
         super.onPause()
@@ -321,7 +368,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                 PointerContent(
                     name = name,
                     status = if (testing) {
-                        stringResource(R.string.pinch_count, pinches)
+                        stringResource(step.text)
                     } else stringResource(
                         when {
                             !ready -> R.string.phone_not_connected
@@ -332,7 +379,8 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                         },
                     ),
                     hint = when {
-                        testing -> stringResource(R.string.pinch_hint)
+                        testing && step != TuningStep.DONE -> stringResource(R.string.tune_left, stepLeft, pinches)
+                        testing -> stringResource(R.string.pinch_count, pinches)
                         ready && !presentation && !holding -> stringResource(if (canHold) R.string.mouse_hint else R.string.mouse_hint_tap)
                         else -> null
                     },
