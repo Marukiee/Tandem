@@ -14,7 +14,8 @@ body.send .send-go { color: var(--muted); opacity: 0; transition: opacity .15s e
 body.send .send-row:hover .send-go { opacity: 1; }
 body.send .send-line { height: 1px; background: var(--line, rgba(0,0,0,.08)); margin: 4px 10px; }
 body.send .send-empty { color: var(--muted); text-align: center; padding: 18px 0; }
-body.send .send-why { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--muted); line-height: 1.4; max-height: 0; opacity: 0; overflow: hidden; transition: max-height .2s ease-out, opacity .2s ease-out; }
-body.send .send-why.shown { max-height: 80px; opacity: 1; }
+/* The reason takes no room until there is one: the gap of the card above it is taken back too. */
+body.send .send-why { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--muted); line-height: 1.4; max-height: 0; margin-top: -14px; opacity: 0; overflow: hidden; transition: max-height .2s ease-out, margin-top .2s ease-out, opacity .2s ease-out; }
+body.send .send-why.shown { max-height: 80px; margin-top: 0; opacity: 1; }
 body.send .send-why svg { flex: none; margin-top: 1px; }
 body.send .send-buttons { justify-content: flex-end; }
