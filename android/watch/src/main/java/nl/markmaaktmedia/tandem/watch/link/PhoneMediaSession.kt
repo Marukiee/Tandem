@@ -12,6 +12,8 @@ import android.media.MediaMetadata
 import android.media.VolumeProvider
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
+import androidx.core.app.NotificationCompat
+import androidx.wear.ongoing.OngoingActivity
 import nl.markmaaktmedia.tandem.watch.R
 import nl.markmaaktmedia.tandem.watch.protocol.MediaCommandKind
 import nl.markmaaktmedia.tandem.watch.protocol.MediaPlayer
@@ -112,29 +114,39 @@ class PhoneMediaSession(private val context: Context, private val send: (String,
     }
 
     /**
-     * The system only looks at a media session that a notification points to: this is what brings the icon on the watch face. The
-     * system shows the music in the list itself, so at the lowest importance this one does not stand there a second time.
+     * The system only looks at a media session that a notification points to: this is what brings the icon on the watch face. As an
+     * ongoing activity Wear OS keeps that notification out of the list, where it stood at the top: the music is on the watch face and in
+     * the player already. Ongoing while paused too, or the notification would come back into the list at each pause.
      */
     private fun post(shown: MediaPlayer, about: Triple<String, String, String>) {
         val now = about to shown.playing
         if (now == postedFor) return
         postedFor = now
-        notifications.notify(
-            NOTIFICATION_ID,
-            Notification.Builder(context, CHANNEL)
-                .setSmallIcon(R.drawable.sym_music_note)
-                .setContentTitle(shown.title.ifBlank { shown.app })
-                .setContentText(shown.artist)
-                .setShowWhen(false)
-                .setLargeIcon(coverImage)
-                .setContentIntent(ownPlayer)
-                .setCategory(Notification.CATEGORY_TRANSPORT)
-                .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .setOngoing(shown.playing)
-                .setLocalOnly(true)
-                .setStyle(Notification.MediaStyle().setMediaSession(session.sessionToken))
-                .build(),
-        )
+        val title = shown.title.ifBlank { shown.app }
+        val notification = Notification.Builder(context, CHANNEL)
+            .setSmallIcon(R.drawable.sym_music_note)
+            .setContentTitle(title)
+            .setContentText(shown.artist)
+            .setShowWhen(false)
+            .setLargeIcon(coverImage)
+            .setContentIntent(ownPlayer)
+            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setOngoing(true)
+            .setLocalOnly(true)
+            .setStyle(Notification.MediaStyle().setMediaSession(session.sessionToken))
+        // The library fills a builder of its own, which knows no media style: what it adds there is only data in the extras, copied onto
+        // this one, so the media session stays where the system looks for it.
+        val ongoing = NotificationCompat.Builder(context, CHANNEL)
+        OngoingActivity.Builder(context, NOTIFICATION_ID, ongoing)
+            .setStaticIcon(R.drawable.sym_music_note)
+            .setTouchIntent(fromWatchFace)
+            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+            .setTitle(title)
+            .build()
+            .apply(context)
+        notification.addExtras(ongoing.extras)
+        notifications.notify(NOTIFICATION_ID, notification.build())
     }
 
     private companion object {

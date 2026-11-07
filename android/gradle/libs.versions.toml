@@ -21,6 +21,7 @@ junit = "4.13.2"
 shizuku = "13.1.5"
 glance = "1.1.1"
 wearCompose = "1.5.6"
+wearOngoing = "1.1.0"
 
 [libraries]
 # Optional at run time: the hotspot falls back to a notification without the Shizuku app.
@@ -63,6 +64,8 @@ junit = { group = "junit", name = "junit", version.ref = "junit" }
 # The watch app. Wear OS has its own Material 3, built for a round screen.
 wear-compose-material3 = { group = "androidx.wear.compose", name = "compose-material3", version.ref = "wearCompose" }
 wear-compose-foundation = { group = "androidx.wear.compose", name = "compose-foundation", version.ref = "wearCompose" }
+# The music of the phone as an ongoing activity: its icon on the watch face, and Wear OS keeps its notification out of the list (Mark agreed).
+wear-ongoing = { group = "androidx.wear", name = "wear-ongoing", version.ref = "wearOngoing" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
