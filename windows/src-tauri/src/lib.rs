@@ -106,7 +106,7 @@ pub fn run() {
     tauri::Builder::default()
         // A second start only brings the first one forward.
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-            // Files sent from the menu of the file manager: sent, without the window coming up.
+            // Files sent from the menu of the file manager: sent, without the window coming up (only the card that asks which device).
             if sendwith::handle_args(app, &args) {
                 return;
             }
@@ -225,6 +225,8 @@ pub fn run() {
             commands::set_sound_mode,
             ask::ask_state,
             ask::ask_answer,
+            sendwith::send_pick_state,
+            sendwith::send_pick,
             quickshare::qs_state,
             quickshare::qs_respond,
             quickshare::qs_dismiss,

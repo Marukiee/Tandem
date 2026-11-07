@@ -356,6 +356,8 @@ export async function call(command, args) {
       ],
       outgoing: [], problem: null,
     };
+    case "send_pick_state": return { count: 1, name: "Holiday photos.zip" };
+    case "send_pick": return null;
     case "ask_state": return [
       { id: 1, title: "Alex's MacBook Pro wants to see your screen", body: "It sees everything on your screen and can use your mouse and keyboard until you stop it. You can stop it in the window of Tandem.", allow: "Allow", always: "Always allow", deny: "Deny", control: true },
     ];
