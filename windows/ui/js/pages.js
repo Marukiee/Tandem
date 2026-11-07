@@ -350,7 +350,6 @@ export function DevicePage({ device }) {
           <${Icon} name="file" size=${17} />${t("insert_scan")}</button>`}
         ${device.platform === "android" && html`<button class="btn" disabled=${!device.online} onClick=${ring}>
           <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>`}
-        ${device.status?.watch?.paired && html`<${WatchButton} device=${device} />`}
         ${device.platform === "android" && html`<${SoundModeButton} device=${device} />`}`}
     </div>
 

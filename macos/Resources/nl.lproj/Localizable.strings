@@ -76,9 +76,7 @@
 "Send clipboard" = "Klembord sturen";
 "Find phone" = "Zoek telefoon";
 "Find watch" = "Zoek horloge";
-"Watch %lld%%" = "Horloge %lld%%";
 "Watch away" = "Horloge weg";
-"The watch is not connected to this phone" = "Het horloge is niet met deze telefoon verbonden";
 "Send" = "Stuur";
 "Send with Tandem" = "Stuur met Tandem";
 "Choose files to send to %@" = "Kies bestanden om naar %@ te sturen";
