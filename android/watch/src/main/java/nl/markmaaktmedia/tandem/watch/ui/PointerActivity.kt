@@ -56,7 +56,8 @@ import nl.markmaaktmedia.tandem.watch.R
 import nl.markmaaktmedia.tandem.watch.link.HidMouse
 import nl.markmaaktmedia.tandem.watch.link.WatchLink
 import nl.markmaaktmedia.tandem.watch.pointer.CrownSteps
-import nl.markmaaktmedia.tandem.watch.pointer.GyroPointer
+import nl.markmaaktmedia.tandem.watch.pointer.ArmPointer
+import nl.markmaaktmedia.tandem.watch.pointer.Pinch
 import nl.markmaaktmedia.tandem.watch.pointer.PinchDetector
 import nl.markmaaktmedia.tandem.watch.pointer.ScreenGesture
 import nl.markmaaktmedia.tandem.watch.pointer.ScreenGestures
@@ -82,7 +83,8 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
     private val sensorThread = HandlerThread("tandem-watch-pointer").apply { start() }
     private val sensorHandler = Handler(sensorThread.looper)
     private lateinit var sensors: SensorManager
-    private val gyro = GyroPointer()
+    /** Follows where the forearm points, whatever way the wrist is turned (see [ArmPointer]). */
+    private val gyro = ArmPointer()
     private val pinch = PinchDetector()
 
     /** Only the sensor thread reads these; they change rarely and a sample late does no harm. */
@@ -218,6 +220,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
             main.removeCallbacks(stepTick)
             beginStep(TuningStep.STILL)
         }
+        sensors.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)?.let { sensors.registerListener(this, it, SAMPLE_US, sensorHandler) }
         sensors.getDefaultSensor(Sensor.TYPE_GYROSCOPE)?.let { sensors.registerListener(this, it, SAMPLE_US, sensorHandler) }
         sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { sensors.registerListener(this, it, SAMPLE_US, sensorHandler) }
     }
@@ -252,20 +255,26 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent) {
         when (event.sensor.type) {
+            Sensor.TYPE_GAME_ROTATION_VECTOR -> if (moving && !touching) {
+                gyro.update(event.values[0], event.values[1], event.values[2], event.values[3])?.let { outMove(it.dx, it.dy) }
+            }
+            // The gyroscope no longer steers: it tells the pinches apart from the arm, and goes into a recording for tuning.
             Sensor.TYPE_GYROSCOPE -> {
                 tuning?.write(RawRecord.Gyro(event.timestamp / 1_000_000, milli(event.values[0]), milli(event.values[1]), milli(event.values[2])))
-                if (moving && !touching) gyro.update(event.timestamp, event.values[1], event.values[2])?.let { outMove(it.dx, it.dy) }
+                pinch.gyro(event.timestamp, event.values[0], event.values[1], event.values[2])
             }
             Sensor.TYPE_ACCELEROMETER -> {
                 val x = event.values[0]
                 val y = event.values[1]
                 val z = event.values[2]
                 tuning?.write(RawRecord.Accel(event.timestamp / 1_000_000, unit(x), unit(y), unit(z)))
-                if (listenToPinch && pinch.update(event.timestamp, x, y, z) && !holding) {
-                    tuning?.write(RawRecord.Mark(event.timestamp / 1_000_000, "pinch"))
+                val heard = if (listenToPinch) pinch.update(event.timestamp, x, y, z) else null
+                if (heard != null && !holding) {
+                    tuning?.write(RawRecord.Mark(event.timestamp / 1_000_000, if (heard == Pinch.DOUBLE) "pinch2" else "pinch"))
                     runOnUiThread {
                         pinches++
-                        primary()
+                        // One pinch is the left button, two in a row the right one, as a tap and a tap with two fingers are.
+                        if (heard == Pinch.DOUBLE) secondary() else primary()
                     }
                 }
             }
@@ -296,22 +305,25 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         tuningOut = null
     }
 
-    /** A tap on the screen, or a double pinch for when the other hand is not free. */
+    /** A tap on the screen, or a pinch for when the other hand is not free. */
     private fun primary() {
         if (testing) return
         feedback()
         if (presentation) outKey(KEY_RIGHT) else outClick(BUTTON_LEFT)
     }
 
+    /** A tap with two fingers, or two pinches in a row: the right button, or back a slide. */
+    private fun secondary() {
+        if (testing) return
+        feedback()
+        if (presentation) outKey(KEY_LEFT) else outClick(BUTTON_RIGHT)
+    }
+
     private fun onGesture(gesture: ScreenGesture) {
         val canHold = WatchLink.ui.value.pointerCanHold
         when (gesture) {
             ScreenGesture.TAP -> if (testing) feedback() else primary()
-            ScreenGesture.TWO_FINGER_TAP -> {
-                feedback()
-                if (testing) return
-                if (presentation) outKey(KEY_LEFT) else outClick(BUTTON_RIGHT)
-            }
+            ScreenGesture.TWO_FINGER_TAP -> if (testing) feedback() else secondary()
             ScreenGesture.HOLD -> when {
                 presentation -> {
                     setMoving(true)

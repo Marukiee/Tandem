@@ -298,6 +298,6 @@ private fun elapsedText(startedAtMs: Long): String {
 }
 
 @Composable
-private fun durationText(minutes: Int): String =
+internal fun durationText(minutes: Int): String =
     if (minutes >= 60) stringResource(R.string.duration_hm, minutes / 60, minutes % 60)
     else stringResource(R.string.duration_m, minutes)

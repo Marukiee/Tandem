@@ -55,7 +55,6 @@
     <string name="tracking_workout">Neemt training op</string>
     <string name="reply">Antwoord</string>
     <string name="hidden_notification">Melding van %1$s</string>
-    <string name="steer">Computer</string>
     <string name="mouse">Muis</string>
     <string name="presentation">Presentatie</string>
     <string name="mouse_allowed">Computer besturen</string>
@@ -80,10 +79,6 @@
     <string name="update_failed_before">Deze versie wilde eerder niet installeren</string>
     <string name="page_controls">Bediening</string>
     <string name="page_settings">Instellingen</string>
-    <string name="page_more">Meer</string>
-    <string name="phone">Telefoon</string>
-    <string name="devices_none">Nog geen andere apparaten</string>
-    <string name="devices_away">Je apparaten staan hier zodra je telefoon verbonden is</string>
     <string name="test_tools">Om te testen</string>
     <string name="version_line">Tandem %1$s</string>
     <string name="pointer_off">Zet eerst Computer besturen aan bij Instellingen</string>
@@ -99,9 +94,11 @@
     <string name="hid_connecting">Verbinden met je computer</string>
     <string name="hid_test">Bluetooth-muistest</string>
     <string name="hid_no_address">Zet eerst het adres van de computer in hid-address.txt</string>
+    <string name="home_steps">%1$s van %2$s stappen</string>
+    <string name="home_heart">%1$d slagen nu</string>
+    <string name="home_slept">%1$s geslapen</string>
     <string name="channel_music">Muziek op je telefoon</string>
     <string name="channel_find">Zoek dit horloge</string>
-    <string name="devices">Apparaten</string>
     <string name="battery_row">%1$s, %2$d%%</string>
     <string name="mouse_hint_tap">Tik om te klikken</string>
     <string name="mouse_holding">Slepen, til op om los te laten</string>
@@ -110,7 +107,7 @@
     <string name="mouse_speed_medium">Gemiddeld</string>
     <string name="mouse_speed_fast">Snel</string>
     <string name="mouse_pinch">Knijpen om te klikken</string>
-    <string name="mouse_pinch_sub">Leert nog, kan vanzelf klikken</string>
+    <string name="mouse_pinch_sub">Eén keer voor links, twee keer voor rechts</string>
     <string name="pinch_test">Pinch-test</string>
     <string name="wake_buzz_test">Wektrilling</string>
     <string name="pinch_count">Pinches: %1$d</string>

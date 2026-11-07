@@ -55,7 +55,6 @@
     <string name="tracking_workout">Recording workout</string>
     <string name="reply">Reply</string>
     <string name="hidden_notification">Notification from %1$s</string>
-    <string name="steer">Computer</string>
     <string name="mouse">Mouse</string>
     <string name="presentation">Presentation</string>
     <string name="mouse_allowed">Steer a computer</string>
@@ -80,10 +79,6 @@
     <string name="update_failed_before">This version would not install before</string>
     <string name="page_controls">Controls</string>
     <string name="page_settings">Settings</string>
-    <string name="page_more">More</string>
-    <string name="phone">Phone</string>
-    <string name="devices_none">No other devices yet</string>
-    <string name="devices_away">Your devices show up here once your phone is connected</string>
     <string name="test_tools">For testing</string>
     <string name="version_line">Tandem %1$s</string>
     <string name="pointer_off">Turn on Steer a computer in Settings first</string>
@@ -99,9 +94,11 @@
     <string name="hid_connecting">Connecting to your computer</string>
     <string name="hid_test">Bluetooth mouse test</string>
     <string name="hid_no_address">Put the address of the computer in hid-address.txt first</string>
+    <string name="home_steps">%1$s of %2$s steps</string>
+    <string name="home_heart">%1$d bpm now</string>
+    <string name="home_slept">slept %1$s</string>
     <string name="channel_music">Music on your phone</string>
     <string name="channel_find">Find this watch</string>
-    <string name="devices">Devices</string>
     <string name="battery_row">%1$s, %2$d%%</string>
     <string name="mouse_hint_tap">Tap to click</string>
     <string name="mouse_holding">Dragging, lift to let go</string>
@@ -110,7 +107,7 @@
     <string name="mouse_speed_medium">Medium</string>
     <string name="mouse_speed_fast">Fast</string>
     <string name="mouse_pinch">Pinch to click</string>
-    <string name="mouse_pinch_sub">Still learning, can click by itself</string>
+    <string name="mouse_pinch_sub">Once for the left button, twice for the right one</string>
     <string name="pinch_test">Pinch test</string>
     <string name="wake_buzz_test">Wake-up buzz</string>
     <string name="pinch_count">Pinches: %1$d</string>

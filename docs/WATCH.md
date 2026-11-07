@@ -90,12 +90,13 @@ Codering: compact binair formaat, geen CBOR, want de Rust-kern doet hier niet me
 toegevoegd en onbekende types genegeerd.
 
 ## De app op het horloge
-Drie pagina's naast elkaar, met stipjes onderaan (`HorizontalPagerScaffold`, zit in Wear Compose):
-- **Bediening:** wat speelt of opneemt, terug naar een gesprek, muis, presentatie, telefoon zoeken en Gezondheid. Wat nog moet
-  (toegang geven, koppelen) staat hier bovenaan, want dan kan er verder niets.
-- **Instellingen:** computer besturen (de telefoon bewaart die ook, dus alleen als hij verbonden is), snelheid en knijpen, hartslag de
-  hele dag, slaap vanzelf herkennen, en koppelen of ontkoppelen.
-- **Meer:** de batterijen van de andere apparaten, de testknoppen in de `fast`- en debug-build, en de versie.
+Pagina's naast elkaar, met stipjes onderaan (`HorizontalPagerScaffold`, zit in Wear Compose):
+- **Begin:** wat aandacht vraagt (verbinding, gevonden, een gesprek, toegang, koppelen, een opname), wat speelt, Vandaag (stappen,
+  hartslag, de laatste nacht; een tik opent Gezondheid) en de batterijen van de andere apparaten.
+- **Bediening:** muis, presentatie en telefoon zoeken.
+- **Instellingen:** de schakelaars direct onder de titel: computer besturen (de telefoon bewaart die ook, dus alleen als hij verbonden
+  is), snelheid en knijpen, hartslag de hele dag, slaap vanzelf herkennen, koppelen, en de versie.
+- **Testen:** alleen in de `fast`- en debug-build: de knijptest, de Bluetooth-muistest en de wektrilling.
 
 Naar rechts vegen op de eerste pagina sluit de app, zoals overal op het horloge.
 
@@ -120,6 +121,16 @@ eerst of `HealthOutbox` leeg is. Dit pad is gebouwd en het protocol getest, maar
 de update van 0.3.1 naar de versie daarna.
 
 ## De muis op het horloge
+De aanwijzer volgt waar de onderarm wijst (`ArmPointer`, uit de game rotation vector): links en rechts is de onderarm die om de
+verticaal draait, op en neer hem optillen, hoe de pols ook gedraaid staat; alleen de pols draaien beweegt niets. Het vasthouden van een
+trillende hand en de snelheid (1024 pixels per achtste slag) komen uit WearMouse (github.com/ginkage/wearmouse, Apache License 2.0). De
+eerdere aanwijzer volgde de assen van het horloge zelf, en ging scheef zodra de pols gedraaid was.
+
+Knijpen (`PinchDetector`): een schok van 2 tot 9 m/s2 boven 16 Hz terwijl de pols langzamer draait dan 2,4 rad/s. Eén keer is de linkerknop,
+twee keer binnen 300 ms de rechter. Afgesteld op een opname van 24 knijpen op het scherm gevraagd, de helft al bewegend: 21 gehoord, niets
+met de hand stil, één keer tijdens bewegen. Een eigen trilling telt een halve seconde niet mee: die zag de oude versie als de volgende
+knijp, en klikte zo vanzelf. Eén pols, twee opnames: een eerste afstelling. Naar rechts vegen sluit het muisscherm.
+
 
 - Tik: klik. Twee vingers: rechtsklik. Vasthouden (300 ms): de linkerknop gaat omlaag en de arm sleept, optillen laat los. Vegen: pauzeren en weer verder. Tweemaal knijpen klikt ook.
 - Zolang een vinger het scherm raakt en nog niet duidelijk is of het een tik of vasthouden wordt, staat de aanwijzer stil: de andere hand duwt het horloge een beetje, en een klik moet landen waar je mikte.

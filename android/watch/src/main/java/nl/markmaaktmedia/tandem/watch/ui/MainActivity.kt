@@ -200,8 +200,9 @@ internal fun PairingWait() {
 }
 
 /**
- * Three pages side by side, with dots at the bottom: what is used, what is set, and the rest. One long list mixed them up, and what
- * someone opens the app for was under things they set once. Swiping right on the first page leaves the app, as everywhere on the watch.
+ * Pages side by side, with dots at the bottom: a home screen with what matters now, then what is used, what is set, and in a test build
+ * the buttons for testing. One long list mixed them up, and what someone opens the app for was under things they set once. Swiping right
+ * on the first page leaves the app, as everywhere on the watch.
  */
 @Composable
 internal fun Home(ui: WatchUi) {
@@ -216,21 +217,22 @@ internal fun Home(ui: WatchUi) {
     // mean that: a hiccup on the link recovers by itself, and asking to pair again would throw away a pairing that is fine.
     val mustPair = ui.failure == LinkFailure.NOT_PAIRED || ui.failure == LinkFailure.AUTH_FAILED || ui.failure == LinkFailure.PAIRING_FAILED
     val settled = ui.paired && !mustPair && !ui.pairing
-    val pager = rememberPagerState(pageCount = { PAGES })
+    // Without test buttons there is nothing more to put on a page of its own.
+    val testTools = context.resources.getBoolean(R.bool.test_tools)
+    val pager = rememberPagerState(pageCount = { if (testTools) 4 else 3 })
     HorizontalPagerScaffold(pagerState = pager) {
         HorizontalPager(state = pager) { page ->
             AnimatedPage(pageIndex = page, pagerState = pager) {
                 when (page) {
-                    0 -> ControlsPage(ui, settled, missing, askAccess)
-                    1 -> SettingsPage(ui, settled, missing.isEmpty(), askAccess)
-                    else -> MorePage(ui)
+                    0 -> HomePage(ui, settled, missing, askAccess)
+                    1 -> ControlsPage(ui)
+                    2 -> SettingsPage(ui, settled, missing.isEmpty(), askAccess)
+                    else -> TestPage()
                 }
             }
         }
     }
 }
-
-private const val PAGES = 3
 
 /** The title of a page, at its top, so it says where one is after a swipe. */
 private fun androidx.wear.compose.foundation.lazy.TransformingLazyColumnScope.pageTitle(
@@ -244,9 +246,9 @@ private fun androidx.wear.compose.foundation.lazy.TransformingLazyColumnScope.pa
     }
 }
 
-/** What is used: what plays or records now, the mouse, finding the phone, and the health screens. */
+/** What matters now, at a glance: what is wrong or going on, what plays, today, and the batteries of the other devices. */
 @Composable
-private fun ControlsPage(ui: WatchUi, settled: Boolean, missing: List<String>, askAccess: () -> Unit) {
+private fun HomePage(ui: WatchUi, settled: Boolean, missing: List<String>, askAccess: () -> Unit) {
     val context = LocalContext.current
     val tracking by Tracking.ui.collectAsState()
     val list = rememberTransformingLazyColumnState()
@@ -255,13 +257,12 @@ private fun ControlsPage(ui: WatchUi, settled: Boolean, missing: List<String>, a
     // The list holds on to the row in its middle, and the link comes up a moment after the screen. Without this, what then appears above
     // that row pushes the top out of sight. Read here, before the new rows are laid out.
     val wasAtTop = !list.canScrollBackward
-    LaunchedEffect(settled, ui.ready, ui.call != null, ui.players.isEmpty(), missing.size, tracking.active) {
+    LaunchedEffect(settled, ui.ready, ui.call != null, ui.players.isEmpty(), missing.size, tracking.active, ui.batteries.size) {
         if (wasAtTop) list.scrollToItem(0)
     }
 
     ScreenScaffold(scrollState = list) { padding ->
         TransformingLazyColumn(state = list, contentPadding = padding.withRoomAbove(), modifier = Modifier.fillMaxSize()) {
-            pageTitle(R.string.page_controls, spec)
             // Being connected is the normal state, and not worth the top of a small screen. Only what is wrong gets said.
             if (!ui.ready) item(key = "status") { StatusHeader(ui, rimRow(spec), SurfaceTransformation(spec)) }
 
@@ -276,6 +277,18 @@ private fun ControlsPage(ui: WatchUi, settled: Boolean, missing: List<String>, a
                             modifier = rimContent(spec).padding(bottom = 4.dp),
                         )
                     }
+                }
+            }
+
+            if (ui.ringing) {
+                item(key = "ringing") {
+                    Button(
+                        onClick = { WatchLink.foundWatch() },
+                        modifier = rimRow(spec),
+                        transformation = SurfaceTransformation(spec),
+                        icon = { Icon(painterResource(R.drawable.sym_check), null) },
+                        label = { Text(stringResource(R.string.found_it)) },
+                    )
                 }
             }
 
@@ -316,58 +329,78 @@ private fun ControlsPage(ui: WatchUi, settled: Boolean, missing: List<String>, a
                 item(key = "media") { NowPlayingButton(player, ui.covers[player.artKey], rimRow(spec), SurfaceTransformation(spec)) }
             }
 
-            if (ui.ringing) {
-                item(key = "ringing") {
-                    Button(
-                        onClick = { WatchLink.foundWatch() },
-                        modifier = rimRow(spec),
-                        transformation = SurfaceTransformation(spec),
-                        icon = { Icon(painterResource(R.drawable.sym_check), null) },
-                        label = { Text(stringResource(R.string.found_it)) },
-                    )
-                }
-            }
-
-            if (ui.ready) {
-                item(key = "mouse") { SteerButton(ui, false, rimRow(spec), SurfaceTransformation(spec)) }
-                item(key = "presentation") { SteerButton(ui, true, rimRow(spec), SurfaceTransformation(spec)) }
-                item(key = "find_phone") {
-                    FilledTonalButton(
-                        onClick = { WatchLink.findPhone(!ui.findingPhone) },
-                        modifier = rimRow(spec),
-                        transformation = SurfaceTransformation(spec),
-                        icon = { Icon(painterResource(R.drawable.sym_smartphone), null) },
-                        label = { Text(stringResource(if (ui.findingPhone) R.string.find_phone_stop else R.string.find_phone)) },
-                    )
-                }
-            }
-
-            item(key = "health") {
+            item(key = "today") {
+                val numbers = java.text.NumberFormat.getIntegerInstance()
+                val details = listOfNotNull(
+                    tracking.heartNow?.let { stringResource(R.string.home_heart, it) },
+                    tracking.lastSleep?.takeIf { it.found }?.let { stringResource(R.string.home_slept, durationText(it.minutes)) },
+                ).joinToString(", ")
                 FilledTonalButton(
                     onClick = { context.startActivity(Intent(context, HealthActivity::class.java)) },
                     modifier = rimRow(spec),
                     transformation = SurfaceTransformation(spec),
                     icon = { Icon(painterResource(R.drawable.sym_favorite), null) },
-                    label = { Text(stringResource(R.string.health)) },
+                    label = { Text(stringResource(R.string.home_steps, numbers.format(tracking.stepsToday), numbers.format(tracking.stepGoal))) },
+                    secondaryLabel = if (details.isEmpty()) null else { { Text(details) } },
+                )
+            }
+
+            if (ui.batteries.isNotEmpty()) {
+                ui.batteries.forEachIndexed { index, device ->
+                    item(key = "battery$index") {
+                        Text(
+                            stringResource(R.string.battery_row, device.name, device.level),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = rimContent(spec).padding(horizontal = 14.dp, vertical = 2.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** What is used: the mouse, a presentation, and finding the phone. */
+@Composable
+private fun ControlsPage(ui: WatchUi) {
+    val list = rememberTransformingLazyColumnState()
+    val spec = rememberTransformationSpec()
+    ScreenScaffold(scrollState = list) { padding ->
+        TransformingLazyColumn(state = list, contentPadding = padding.withRoomAbove(), modifier = Modifier.fillMaxSize()) {
+            pageTitle(R.string.page_controls, spec)
+            item(key = "mouse") { SteerButton(ui, false, rimRow(spec), SurfaceTransformation(spec)) }
+            item(key = "presentation") { SteerButton(ui, true, rimRow(spec), SurfaceTransformation(spec)) }
+            item(key = "find_phone") {
+                // Grey while the phone is away: it can not hear it then. The button says so when pressed.
+                val context = LocalContext.current
+                FilledTonalButton(
+                    onClick = {
+                        if (ui.ready) WatchLink.findPhone(!ui.findingPhone)
+                        else Toast.makeText(context, R.string.phone_not_connected, Toast.LENGTH_SHORT).show()
+                    },
+                    modifier = rimRow(spec).alpha(if (ui.ready) 1f else 0.5f),
+                    transformation = SurfaceTransformation(spec),
+                    icon = { Icon(painterResource(R.drawable.sym_smartphone), null) },
+                    label = { Text(stringResource(if (ui.findingPhone) R.string.find_phone_stop else R.string.find_phone)) },
                 )
             }
         }
     }
 }
 
-/** What is set once and then left: the mouse, measuring, and the pairing with the phone. */
+/** What is set once and then left, straight under the title: the mouse, measuring, the pairing, and which version this is. */
 @Composable
 private fun SettingsPage(ui: WatchUi, settled: Boolean, canPair: Boolean, askAccess: () -> Unit) {
     val context = LocalContext.current
     val tracking by Tracking.ui.collectAsState()
     val list = rememberTransformingLazyColumnState()
     val spec = rememberTransformationSpec()
+    val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty() }
     ScreenScaffold(scrollState = list) { padding ->
         TransformingLazyColumn(state = list, contentPadding = padding.withRoomAbove(), modifier = Modifier.fillMaxSize()) {
             pageTitle(R.string.page_settings, spec)
-            item(key = "steer_header") {
-                ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.steer)) }
-            }
             item(key = "mouse_allowed") {
                 // The phone keeps this too, so it can only be changed while it listens.
                 SwitchButton(
@@ -408,9 +441,6 @@ private fun SettingsPage(ui: WatchUi, settled: Boolean, canPair: Boolean, askAcc
                     )
                 }
             }
-            item(key = "measure_header") {
-                ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.health)) }
-            }
             item(key = "heart_all_day") {
                 SwitchButton(
                     checked = tracking.heartAllDay,
@@ -432,90 +462,7 @@ private fun SettingsPage(ui: WatchUi, settled: Boolean, canPair: Boolean, askAcc
                     label = { Text(stringResource(R.string.auto_sleep)) },
                 )
             }
-            item(key = "phone_header") {
-                ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.phone)) }
-            }
             item(key = "pairing") { PairingButton(ui, settled, canPair, rimRow(spec), SurfaceTransformation(spec)) }
-        }
-    }
-}
-
-/** The rest: the batteries of the other devices, which version this is, and the buttons for testing. */
-@Composable
-private fun MorePage(ui: WatchUi) {
-    val context = LocalContext.current
-    val testTools = context.resources.getBoolean(R.bool.test_tools)
-    val list = rememberTransformingLazyColumnState()
-    val spec = rememberTransformationSpec()
-    val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty() }
-    ScreenScaffold(scrollState = list) { padding ->
-        TransformingLazyColumn(state = list, contentPadding = padding.withRoomAbove(), modifier = Modifier.fillMaxSize()) {
-            pageTitle(R.string.page_more, spec)
-            if (ui.batteries.isNotEmpty()) {
-                item(key = "devices_header") {
-                    ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.devices)) }
-                }
-                ui.batteries.forEachIndexed { index, device ->
-                    item(key = "battery$index") {
-                        Text(
-                            stringResource(R.string.battery_row, device.name, device.level),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                            modifier = rimContent(spec).padding(horizontal = 14.dp, vertical = 2.dp),
-                        )
-                    }
-                }
-            } else {
-                item(key = "no_devices") {
-                    Text(
-                        stringResource(if (ui.ready) R.string.devices_none else R.string.devices_away),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = rimContent(spec).padding(horizontal = 14.dp, vertical = 2.dp),
-                    )
-                }
-            }
-
-            if (testTools) {
-                item(key = "test_header") {
-                    ListHeader(modifier = rimRow(spec), transformation = SurfaceTransformation(spec)) { Text(stringResource(R.string.test_tools)) }
-                }
-                item(key = "pinch_test") {
-                    FilledTonalButton(
-                        onClick = { PointerActivity.open(context, "", presentation = false) },
-                        modifier = rimRow(spec),
-                        transformation = SurfaceTransformation(spec),
-                        icon = { Icon(painterResource(R.drawable.sym_monitoring), null) },
-                        label = { Text(stringResource(R.string.pinch_test)) },
-                    )
-                }
-                item(key = "hid_test") {
-                    FilledTonalButton(
-                        onClick = {
-                            // The address is put there by hand over adb for now; later Tandem on the computer passes it on.
-                            val address = runCatching { java.io.File(context.getExternalFilesDir(null), "hid-address.txt").readText().trim().uppercase() }.getOrNull()
-                            if (address.isNullOrEmpty()) Toast.makeText(context, R.string.hid_no_address, Toast.LENGTH_LONG).show()
-                            else PointerActivity.openBluetooth(context, address)
-                        },
-                        modifier = rimRow(spec),
-                        transformation = SurfaceTransformation(spec),
-                        icon = { Icon(painterResource(R.drawable.sym_bluetooth), null) },
-                        label = { Text(stringResource(R.string.hid_test)) },
-                    )
-                }
-                item(key = "wake_buzz") {
-                    FilledTonalButton(
-                        onClick = { GentleWake.tryOnce(context) },
-                        modifier = rimRow(spec),
-                        transformation = SurfaceTransformation(spec),
-                        icon = { Icon(painterResource(R.drawable.sym_bedtime), null) },
-                        label = { Text(stringResource(R.string.wake_buzz_test)) },
-                    )
-                }
-            }
-
             item(key = "version") {
                 Text(
                     stringResource(R.string.version_line, version),
@@ -523,6 +470,51 @@ private fun MorePage(ui: WatchUi) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     modifier = rimContent(spec).padding(top = 8.dp),
+                )
+            }
+        }
+    }
+}
+
+/** Only in a test build: the buttons for trying things on a real wrist. */
+@Composable
+private fun TestPage() {
+    val context = LocalContext.current
+    val list = rememberTransformingLazyColumnState()
+    val spec = rememberTransformationSpec()
+    ScreenScaffold(scrollState = list) { padding ->
+        TransformingLazyColumn(state = list, contentPadding = padding.withRoomAbove(), modifier = Modifier.fillMaxSize()) {
+            pageTitle(R.string.test_tools, spec)
+            item(key = "pinch_test") {
+                FilledTonalButton(
+                    onClick = { PointerActivity.open(context, "", presentation = false) },
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    icon = { Icon(painterResource(R.drawable.sym_monitoring), null) },
+                    label = { Text(stringResource(R.string.pinch_test)) },
+                )
+            }
+            item(key = "hid_test") {
+                FilledTonalButton(
+                    onClick = {
+                        // The address is put there by hand over adb for now; later Tandem on the computer passes it on.
+                        val address = runCatching { java.io.File(context.getExternalFilesDir(null), "hid-address.txt").readText().trim().uppercase() }.getOrNull()
+                        if (address.isNullOrEmpty()) Toast.makeText(context, R.string.hid_no_address, Toast.LENGTH_LONG).show()
+                        else PointerActivity.openBluetooth(context, address)
+                    },
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    icon = { Icon(painterResource(R.drawable.sym_bluetooth), null) },
+                    label = { Text(stringResource(R.string.hid_test)) },
+                )
+            }
+            item(key = "wake_buzz") {
+                FilledTonalButton(
+                    onClick = { GentleWake.tryOnce(context) },
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    icon = { Icon(painterResource(R.drawable.sym_bedtime), null) },
+                    label = { Text(stringResource(R.string.wake_buzz_test)) },
                 )
             }
         }

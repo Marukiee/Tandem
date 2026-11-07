@@ -247,46 +247,60 @@ class PointerHoldMessageTest {
 class PinchDetectorTest {
     private val gravity = 9.81f
 
-    /** [knocks] are times in ms; each is a sharp bump over 10 ms. Also adds a little sensor noise. */
-    private fun count(ms: Int, knocks: List<Int>, quietUntilMs: Int = 0, arm: (Float) -> Float = { 0f }): Int {
+    /**
+     * [knocks] are times in ms; each is a sharp bump of [strength] over 10 ms, as fingers meeting are. [turn] is how fast the wrist turns,
+     * in rad/s. Adds a little sensor noise. What the detector heard, in order.
+     */
+    private fun hear(
+        ms: Int,
+        knocks: List<Int>,
+        strength: Float = 6f,
+        quietUntilMs: Int = 0,
+        turn: (Float) -> Float = { 0f },
+        arm: (Float) -> Float = { 0f },
+    ): List<Pinch> {
         val detector = PinchDetector()
         detector.quietUntilNs = 1_000_000_000L + quietUntilMs * 1_000_000L
         val random = Random(2)
-        var detected = 0
+        val heard = ArrayList<Pinch>()
         var t = 1_000_000_000L
         for (i in 0 until ms / 5) {
             val now = i * 5
-            val knock = if (knocks.any { now in it until it + 10 }) 6f else 0f
+            val knock = if (knocks.any { now in it until it + 10 }) strength else 0f
             val noise = random.nextFloat() * 0.1f - 0.05f
-            if (detector.update(t, arm(now / 1000f) + knock + noise, noise, gravity + noise)) detected++
+            detector.gyro(t, turn(now / 1000f), 0f, 0f)
+            detector.update(t, arm(now / 1000f) + knock + noise, noise, gravity + noise)?.let { heard += it }
             t += STEP_NS
         }
-        return detected
+        return heard
     }
 
     @Test
-    fun `two knocks are one double pinch`() = assertEquals(1, count(2000, listOf(800, 1050)))
+    fun `one pinch is one pinch`() = assertEquals(listOf(Pinch.SINGLE), hear(2000, listOf(800)))
 
     @Test
-    fun `one knock is nothing`() = assertEquals(0, count(2000, listOf(800)))
+    fun `two quick pinches are a double pinch`() = assertEquals(listOf(Pinch.DOUBLE), hear(2000, listOf(800, 1000)))
 
     @Test
-    fun `two knocks too far apart are nothing`() = assertEquals(0, count(3000, listOf(800, 1800)))
+    fun `two pinches a second apart are two`() = assertEquals(listOf(Pinch.SINGLE, Pinch.SINGLE), hear(3000, listOf(800, 1800)))
 
     @Test
-    fun `shaking is nothing`() = assertEquals(0, count(3000, listOf(800, 950, 1100, 1250, 1400)))
+    fun `a tap on the table is nothing`() = assertEquals(emptyList(), hear(2000, listOf(800), strength = 30f))
 
     @Test
-    fun `what comes while the watch buzzes itself is nothing`() = assertEquals(0, count(2000, listOf(800, 1050), quietUntilMs = 1200))
+    fun `a knock while the wrist turns fast is the arm, not a pinch`() = assertEquals(emptyList(), hear(2000, listOf(800), turn = { 4f }))
+
+    @Test
+    fun `what comes while the watch buzzes itself is nothing`() = assertEquals(emptyList(), hear(2000, listOf(800, 1000), quietUntilMs = 1200))
 
     @Test
     fun `moving the arm is nothing`() {
-        assertEquals(0, count(5000, emptyList()) { 4f * sin(2 * PI.toFloat() * 1.5f * it) })
+        assertEquals(emptyList(), hear(5000, emptyList(), turn = { 1.5f }) { 4f * sin(2 * PI.toFloat() * 1.5f * it) })
     }
 
     @Test
-    fun `a double pinch is still heard while the arm moves`() {
-        assertEquals(1, count(4000, listOf(1500, 1750)) { 4f * sin(2 * PI.toFloat() * 1.5f * it) })
+    fun `a pinch is still heard while the arm moves slowly`() {
+        assertEquals(listOf(Pinch.SINGLE), hear(4000, listOf(1500), turn = { 1f }) { 4f * sin(2 * PI.toFloat() * 1.5f * it) })
     }
 }
 
@@ -314,5 +328,66 @@ class PointerMessagesTest {
     @Test
     fun `a small move stays small`() {
         assertTrue(MessageCodec.encode(Message.PointerMove(-3, 5)).size <= 3)
+    }
+}
+
+class ArmPointerTest {
+    /** The quaternion of a forearm pointing at [yaw] radians around the vertical and lifted by [pitch], with the wrist turned by [roll]. */
+    private fun arm(yaw: Double, pitch: Double, roll: Double = 0.0): FloatArray {
+        // Z (yaw), then Y (minus pitch: lifting x up is a negative turn around y), then X (roll).
+        val cy = kotlin.math.cos(yaw / 2); val sy = kotlin.math.sin(yaw / 2)
+        val cp = kotlin.math.cos(-pitch / 2); val sp = kotlin.math.sin(-pitch / 2)
+        val cr = kotlin.math.cos(roll / 2); val sr = kotlin.math.sin(roll / 2)
+        val w = cr * cp * cy + sr * sp * sy
+        val x = sr * cp * cy - cr * sp * sy
+        val y = cr * sp * cy + sr * cp * sy
+        val z = cr * cp * sy - sr * sp * cy
+        return floatArrayOf(x.toFloat(), y.toFloat(), z.toFloat(), w.toFloat())
+    }
+
+    private fun ArmPointer.feed(q: FloatArray) = update(q[0], q[1], q[2], q[3])
+
+    /** Moves in small steps, as the sensor does, and adds up what comes out. */
+    private fun sweep(pointer: ArmPointer, from: Triple<Double, Double, Double>, to: Triple<Double, Double, Double>, steps: Int = 50): Pair<Int, Int> {
+        var x = 0
+        var y = 0
+        for (i in 0..steps) {
+            val f = i.toDouble() / steps
+            val q = arm(from.first + (to.first - from.first) * f, from.second + (to.second - from.second) * f, from.third + (to.third - from.third) * f)
+            pointer.feed(q)?.let { x += it.dx; y += it.dy }
+        }
+        return x to y
+    }
+
+    @Test
+    fun `turning the forearm to the right moves right and lifting it moves up`() {
+        val (right, _) = sweep(ArmPointer(), Triple(0.0, 0.0, 0.0), Triple(-0.3, 0.0, 0.0))
+        assertTrue(right > 300, "right $right")
+        val (_, up) = sweep(ArmPointer(), Triple(0.0, 0.0, 0.0), Triple(0.0, 0.3, 0.0))
+        assertTrue(up < -300, "up $up")
+    }
+
+    @Test
+    fun `a forearm turned with the wrist rolled over still moves sideways`() {
+        val (x, y) = sweep(ArmPointer(), Triple(0.0, 0.0, 1.2), Triple(-0.3, 0.0, 1.2))
+        assertTrue(x > 300 && abs(y) < x / 10, "x $x y $y")
+    }
+
+    @Test
+    fun `turning only the wrist does not move the pointer`() {
+        val (x, y) = sweep(ArmPointer(), Triple(0.0, 0.0, 0.0), Triple(0.0, 0.0, 1.0))
+        assertEquals(0, x)
+        assertEquals(0, y)
+    }
+
+    @Test
+    fun `a trembling hand stands still`() {
+        val pointer = ArmPointer()
+        var moved = 0
+        for (i in 0..400) {
+            val q = arm(0.004 * kotlin.math.sin(i * 0.7), 0.004 * kotlin.math.cos(i * 0.9))
+            pointer.feed(q)?.let { moved += abs(it.dx) + abs(it.dy) }
+        }
+        assertTrue(moved < 20, "moved $moved")
     }
 }
