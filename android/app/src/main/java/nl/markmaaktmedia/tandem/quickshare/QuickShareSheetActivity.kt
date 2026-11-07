@@ -8,17 +8,15 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -59,14 +57,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
@@ -83,7 +79,7 @@ import uniffi.tandem_core.TandemQsKind
 import uniffi.tandem_core.TandemShareOrigin
 
 /**
- * The Quick Share page that comes up from the tile of the quick settings, as a sheet and not full screen: who you receive as,
+ * The Quick Share page that comes up from the tile of the quick settings, as a sheet that can be pulled up to full screen and down to close: who you receive as,
  * the requests to receive, and (under Send) the devices to send to. It has the layout of the Quick Share of Android, because
  * that is what people know. A long press on the tile opens it too.
  */
@@ -141,9 +137,7 @@ class QuickShareSheetActivity : ComponentActivity() {
         val incoming by quick.incoming.collectAsState()
         val outgoing by quick.outgoing.collectAsState()
         var tab by remember { mutableIntStateOf(0) }
-        var visible by remember { mutableStateOf(false) }
         val scope = rememberCoroutineScope()
-        LaunchedEffect(Unit) { visible = true }
         // A request that comes in is shown at once.
         LaunchedEffect(incoming.size) { if (incoming.isNotEmpty()) tab = 0 }
         // What is to be sent is picked with the pickers Android itself has: the one for photos and videos, which is made for that,
@@ -152,119 +146,124 @@ class QuickShareSheetActivity : ComponentActivity() {
         val documents = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris -> if (uris.isNotEmpty()) send(uris) else pending = null }
         var choosing by remember { mutableStateOf(false) }
         val name = graph.host.myName.ifBlank { "Tandem" }
-        val close: () -> Unit = { scope.launch { visible = false; delay(250); finish() } }
-        val scrim by animateFloatAsState(if (visible) 0.5f else 0f, TandemMotion.fadeSpec(), label = "scrim")
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val sheet = nl.markmaaktmedia.tandem.ui.components.rememberPullSheetState()
+        // While the sheet is open phones nearby are woken and looked for; Android asks once whether Tandem may use Bluetooth for that.
+        val advertise = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) quick.looking(true) }
+        LaunchedEffect(enabled) {
+            if (!enabled) return@LaunchedEffect
+            if (!quick.wake.allowed() && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                advertise.launch(android.Manifest.permission.BLUETOOTH_ADVERTISE)
+            } else {
+                quick.looking(true)
+            }
+        }
+        androidx.compose.runtime.DisposableEffect(Unit) { onDispose { quick.looking(false) } }
 
-        Box(
-            Modifier.fillMaxSize().background(Color.Black.copy(alpha = scrim))
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { close() },
-            contentAlignment = Alignment.BottomCenter,
-        ) {
-            AnimatedVisibility(
-                visible = visible,
-                enter = slideInVertically(TandemMotion.spatial()) { it } + fadeIn(),
-                exit = slideOutVertically(TandemMotion.spatial()) { it } + fadeOut(),
-            ) {
-                Box(
-                    Modifier.fillMaxWidth().heightIn(max = 640.dp)
-                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
-                        .navigationBarsPadding(),
-                ) {
-                    Column(
-                        // No animateContentSize here: the change of tab animates its own size, and two springs on one height made shrinking
-                        // judder while growing looked fine.
-                        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(top = 22.dp, bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Text(stringResource(R.string.quickshare_title), style = MaterialTheme.typography.headlineLarge)
-                        Spacer(Modifier.height(6.dp))
-                        // The page slides to the side the tab is on and fades, so the two feel like neighbours.
-                        androidx.compose.animation.AnimatedContent(
-                            targetState = tab,
-                            transitionSpec = {
-                                val forward = targetState > initialState
-                                ((slideInHorizontally(TandemMotion.spatial()) { if (forward) it / 4 else -it / 4 } + fadeIn(TandemMotion.fadeSpec())) togetherWith
-                                    (slideOutHorizontally(TandemMotion.spatial()) { if (forward) -it / 4 else it / 4 } + fadeOut(TandemMotion.fadeSpec())))
-                                    // The same spring both ways, and nothing cut off while the page that leaves fades: the sheet clips it.
-                                    .using(androidx.compose.animation.SizeTransform(clip = false) { _, _ -> TandemMotion.sizeSpring() })
-                            },
-                            label = "quickShareTab",
-                        ) { current ->
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                if (current == 0) {
-                                    Receive(name, enabled, minutes, incoming, onToggle = { quick.setEnabled(it) })
-                                } else {
-                                    Send(
-                                        name, enabled, devices.filter { it.online }, peers, outgoing,
-                                        onTurnOn = { quick.setEnabled(true) },
-                                        onMine = { pending = Target.Mine(it); choosing = true },
-                                        onNearby = { pending = Target.Nearby(it); choosing = true },
-                                    )
-                                }
-                            }
-                        }
+        nl.markmaaktmedia.tandem.ui.components.PullSheet(
+            sheet,
+            onGone = { finish() },
+            overlay = {
+                // The two ways of the page, in a pill that floats at the bottom. One highlight slides between them, as the pill of the
+                // navigation does, instead of one fading out and the other in.
+                val bounds = remember { androidx.compose.runtime.mutableStateListOf(androidx.compose.ui.geometry.Rect.Zero, androidx.compose.ui.geometry.Rect.Zero) }
+                val target = bounds[tab]
+                val leftAnim = remember { androidx.compose.animation.core.Animatable(0f) }
+                val widthAnim = remember { androidx.compose.animation.core.Animatable(0f) }
+                androidx.compose.runtime.LaunchedEffect(target) {
+                    if (target.width <= 0f) return@LaunchedEffect
+                    // The first place is taken at once: opening the sheet should not grow the highlight out of nothing.
+                    if (widthAnim.value == 0f) {
+                        leftAnim.snapTo(target.left)
+                        widthAnim.snapTo(target.width)
+                    } else {
+                        launch { leftAnim.animateTo(target.left, TandemMotion.spatial()) }
+                        widthAnim.animateTo(target.width, TandemMotion.spatial())
                     }
-                    if (choosing) {
-                        nl.markmaaktmedia.tandem.ui.components.TandemDialog(
-                            title = stringResource(R.string.quickshare_pick_title),
-                            icon = TandemIcons.QuickShare,
-                            body = stringResource(R.string.quickshare_pick_body),
-                            onDismiss = { choosing = false; pending = null },
-                            closeLabel = stringResource(R.string.action_cancel),
-                            actions = {
-                                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    PrimaryPillButton(stringResource(R.string.quickshare_pick_media), {
-                                        choosing = false
-                                        media.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
-                                    }, Modifier.fillMaxWidth())
-                                    SecondaryPillButton(stringResource(R.string.quickshare_pick_files), {
-                                        choosing = false
-                                        documents.launch(arrayOf("*/*"))
-                                    }, Modifier.fillMaxWidth())
-                                }
-                            },
+                }
+                val left = leftAnim.value
+                val width = widthAnim.value
+                Box(
+                    Modifier.align(Alignment.BottomCenter).offset { IntOffset(0, sheet.below.roundToInt()) }
+                        .navigationBarsPadding().padding(bottom = 18.dp)
+                        // The pill of the app's own navigation: no shadow, one step darker than what is under it.
+                        .clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(6.dp),
+                ) {
+                    if (width > 0f) {
+                        Box(
+                            Modifier.matchParentSize().wrapContentWidth(Alignment.Start)
+                                .offset { androidx.compose.ui.unit.IntOffset(left.toInt(), 0) }
+                                .width(with(density) { width.toDp() })
+                                .clip(CircleShape).background(MaterialTheme.colorScheme.primary),
                         )
                     }
-                    // The two ways of the page, in a pill that floats at the bottom. One highlight slides between them, as the pill of the
-                    // navigation does, instead of one fading out and the other in.
-                    val bounds = remember { androidx.compose.runtime.mutableStateListOf(androidx.compose.ui.geometry.Rect.Zero, androidx.compose.ui.geometry.Rect.Zero) }
-                    val density = androidx.compose.ui.platform.LocalDensity.current
-                    val target = bounds[tab]
-                    val leftAnim = remember { androidx.compose.animation.core.Animatable(0f) }
-                    val widthAnim = remember { androidx.compose.animation.core.Animatable(0f) }
-                    androidx.compose.runtime.LaunchedEffect(target) {
-                        if (target.width <= 0f) return@LaunchedEffect
-                        // The first place is taken at once: opening the sheet should not grow the highlight out of nothing.
-                        if (widthAnim.value == 0f) {
-                            leftAnim.snapTo(target.left)
-                            widthAnim.snapTo(target.width)
-                        } else {
-                            launch { leftAnim.animateTo(target.left, TandemMotion.spatial()) }
-                            widthAnim.animateTo(target.width, TandemMotion.spatial())
-                        }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Tab(stringResource(R.string.quickshare_tab_receive), TandemIcons.Download, tab == 0, { bounds[0] = it }) { tab = 0 }
+                        Tab(stringResource(R.string.quickshare_tab_send), TandemIcons.Send, tab == 1, { bounds[1] = it }) { tab = 1 }
                     }
-                    val left = leftAnim.value
-                    val width = widthAnim.value
-                    Box(
-                        Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp)
-                            .shadow(6.dp, CircleShape).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(6.dp),
-                    ) {
-                        if (width > 0f) {
-                            Box(
-                                Modifier.matchParentSize().wrapContentWidth(Alignment.Start)
-                                    .offset { androidx.compose.ui.unit.IntOffset(left.toInt(), 0) }
-                                    .width(with(density) { width.toDp() })
-                                    .clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
+                }
+            },
+        ) {
+            Column(
+                // No animateContentSize here: the change of tab animates its own size, and two springs on one height made shrinking
+                // judder while growing looked fine.
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(top = 10.dp, bottom = 96.dp).navigationBarsPadding(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                // The handle says the sheet can be pulled: up to full height, down to close.
+                Box(
+                    Modifier.align(Alignment.CenterHorizontally).size(width = 36.dp, height = 4.dp).clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(stringResource(R.string.quickshare_title), style = MaterialTheme.typography.headlineLarge)
+                Spacer(Modifier.height(6.dp))
+                // The page slides to the side the tab is on and fades, so the two feel like neighbours.
+                androidx.compose.animation.AnimatedContent(
+                    targetState = tab,
+                    transitionSpec = {
+                        val forward = targetState > initialState
+                        ((slideInHorizontally(TandemMotion.spatial()) { if (forward) it / 4 else -it / 4 } + fadeIn(TandemMotion.fadeSpec())) togetherWith
+                            (slideOutHorizontally(TandemMotion.spatial()) { if (forward) -it / 4 else it / 4 } + fadeOut(TandemMotion.fadeSpec())))
+                            // The same spring both ways, and nothing cut off while the page that leaves fades: the sheet clips it.
+                            .using(androidx.compose.animation.SizeTransform(clip = false) { _, _ -> TandemMotion.sizeSpring() })
+                    },
+                    label = "quickShareTab",
+                ) { current ->
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        if (current == 0) {
+                            Receive(name, enabled, minutes, incoming, onToggle = { quick.setEnabled(it) })
+                        } else {
+                            Send(
+                                name, enabled, devices.filter { it.online }, peers, outgoing,
+                                onTurnOn = { quick.setEnabled(true) },
+                                onMine = { pending = Target.Mine(it); choosing = true },
+                                onNearby = { pending = Target.Nearby(it); choosing = true },
                             )
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Tab(stringResource(R.string.quickshare_tab_receive), TandemIcons.Download, tab == 0, { bounds[0] = it }) { tab = 0 }
-                            Tab(stringResource(R.string.quickshare_tab_send), TandemIcons.Send, tab == 1, { bounds[1] = it }) { tab = 1 }
                         }
                     }
                 }
+            }
+            if (choosing) {
+                nl.markmaaktmedia.tandem.ui.components.TandemDialog(
+                    title = stringResource(R.string.quickshare_pick_title),
+                    icon = TandemIcons.QuickShare,
+                    body = stringResource(R.string.quickshare_pick_body),
+                    onDismiss = { choosing = false; pending = null },
+                    closeLabel = stringResource(R.string.action_cancel),
+                    actions = {
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PrimaryPillButton(stringResource(R.string.quickshare_pick_media), {
+                                choosing = false
+                                media.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
+                            }, Modifier.fillMaxWidth())
+                            SecondaryPillButton(stringResource(R.string.quickshare_pick_files), {
+                                choosing = false
+                                documents.launch(arrayOf("*/*"))
+                            }, Modifier.fillMaxWidth())
+                        }
+                    },
+                )
             }
         }
     }
@@ -278,7 +277,7 @@ class QuickShareSheetActivity : ComponentActivity() {
         onClick: () -> Unit,
     ) {
         val ink by androidx.compose.animation.animateColorAsState(
-            if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface, TandemMotion.colourSpec(), label = "tabInk",
+            if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, TandemMotion.colourSpec(), label = "tabInk",
         )
         // Both always carry their icon, so neither changes width and the highlight slides between two fixed places.
         Row(

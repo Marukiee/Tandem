@@ -6,14 +6,18 @@
       "title": "Quiet means quiet",
       "new": [
         "Do not disturb from a computer turns the phone's ringer off too",
-        "Sharing from Finder or the file manager lets you pick the device"
+        "Sharing from Finder or the file manager lets you pick the device",
+        "Quick Share finds phones more reliably",
+        "Sheets on Android pull up to full screen"
       ]
     },
     "nl": {
       "title": "Stil is stil",
       "new": [
         "Niet storen vanaf een computer zet ook het belgeluid van de telefoon uit",
-        "Delen vanuit Finder of bestandsbeheer laat je het apparaat kiezen"
+        "Delen vanuit Finder of bestandsbeheer laat je het apparaat kiezen",
+        "Quick Share vindt telefoons beter",
+        "Panelen op Android trek je omhoog tot volledig scherm"
       ]
     }
   },
