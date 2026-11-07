@@ -8,6 +8,7 @@ struct WatchDetail: View {
     let phone: TandemDevice
     var onOpenPhone: () -> Void = {}
 
+    @State private var speaker = WatchAudio.shared.chosen
     @State private var renaming = false
     @State private var newName = ""
     @State private var confirmUnpair = false
@@ -140,6 +141,18 @@ struct WatchDetail: View {
                     .buttonStyle(.tandemGlass)
                     .disabled(!phone.online)
                     .help(phone.online ? "" : "Its phone is not connected")
+                }
+                rowDivider
+                // Over Bluetooth straight to this Mac, not by way of the phone: the watch is paired with it as its mouse.
+                SettingRow(symbol: "speaker.wave.2", title: "Use the watch as a speaker", subtitle: "Over Bluetooth, in phone call quality. Only when you choose it here") {
+                    Toggle("", isOn: Binding(
+                        get: { speaker },
+                        set: { on in
+                            if WatchAudio.shared.choose(on) { speaker = on }
+                            else { model.showToast(String(localized: "Connect the watch to this Mac over Bluetooth first")) }
+                        }
+                    ))
+                    .controlSize(.mini)
                 }
                 if let settings {
                     rowDivider

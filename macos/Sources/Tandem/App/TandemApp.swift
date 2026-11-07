@@ -82,6 +82,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             CallPause.shared.start()
             ControlBridge.shared.start()
             BatteryBridge.shared.start()
+            // Keeps the sound where it was when the watch connects as a mouse, unless it is chosen as the speaker.
+            WatchAudio.shared.start()
             Updater.shared.checkIfDue()
             Updater.shared.startPeriodicChecks()
             if ProcessInfo.processInfo.environment["TANDEM_UPDATE_TEST_FROM"] != nil {
