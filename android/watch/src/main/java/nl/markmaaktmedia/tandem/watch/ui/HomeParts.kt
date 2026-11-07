@@ -1,6 +1,7 @@
 package nl.markmaaktmedia.tandem.watch.ui
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
@@ -59,6 +60,8 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
     val context = LocalContext.current
     val image = remember(cover?.key) { cover?.let { runCatching { BitmapFactory.decodeByteArray(it.image, 0, it.image.size) }.getOrNull() } }
     val colours = remember(image) { image?.let(::coverColors) }
+    // The cover shrunk to a few pixels before it is blurred: a blur alone left big letters on a cover readable behind the name.
+    val backdrop = remember(image) { image?.let { Bitmap.createScaledBitmap(it, BACKDROP_PIXELS, BACKDROP_PIXELS, true) } }
     Box(
         rimContent(spec)
             .height(116.dp)
@@ -68,7 +71,7 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
             .clickable { PlayerActivity.open(context) },
         contentAlignment = Alignment.Center,
     ) {
-        image?.let {
+        backdrop?.let {
             Image(it.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize().blur(24.dp))
         }
         // Dark enough to read on any cover, darkest under the buttons.
@@ -153,6 +156,9 @@ private fun Round(@DrawableRes icon: Int, value: String, progress: Float? = null
         if (label != null) Text(value, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
     }
 }
+
+/** Few enough that no letter of a cover survives, enough that its colours still run from one side to the other. */
+private const val BACKDROP_PIXELS = 24
 
 /** 6.4k from 6,452: four characters fit in a round, a whole number does not. */
 private fun shortSteps(steps: Long): String = when {
