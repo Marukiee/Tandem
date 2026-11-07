@@ -195,6 +195,7 @@ extension DevicePicker {
             Notifier.shared.post(id: "quickshare-off", title: String(localized: "Quick Share is off"), body: String(localized: "Turn it on in the menu bar panel or in Settings, then try again."))
             return
         }
+        share.lookAgain()
         let peers = share.peers
         guard !peers.isEmpty else {
             Notifier.shared.post(id: "quickshare-none", title: String(localized: "No devices nearby"), body: String(localized: "On the other device open Quick Share and set it to be seen by everyone."))

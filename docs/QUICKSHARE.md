@@ -20,9 +20,13 @@ geschreven (de licenties van rquickshare en Tandem zijn verschillend).
   `FC 9F 5E` en twee nullen.
 - In de TXT-sleutel `n` staat de endpoint-info in base64: een byte met versie, zichtbaarheid en apparaattype, 16 bytes
   identificatiegegevens (zout en versleutelde metasleutel) en de naam van het apparaat met een lengtebyte erbij.
-- Android adverteert zijn mDNS niet altijd uit zichzelf. Een Bluetooth-advertentie met service-UUID `FE2C` en een bepaald
-  voorvoegsel in de servicedata wekt dat. Voor ontvangen van een telefoon is mDNS genoeg zolang de telefoon naar ons zoekt. Voor
-  versturen naar een telefoon is die Bluetooth-advertentie waarschijnlijk nodig.
+- Android adverteert zijn mDNS niet altijd uit zichzelf, ook niet op "Iedereen". Een Bluetooth-advertentie met service-UUID `FE2C`
+  wekt dat: servicedata `FC 12 8E 01 42` en negen nullen, gevolgd door tien willekeurige bytes (niet verbindbaar, geen naam). Voor
+  ontvangen van een telefoon is mDNS genoeg zolang de telefoon naar ons zoekt. Voor versturen naar een telefoon is die advertentie
+  nodig: zonder was een telefoon die altijd zichtbaar stond soms niet te vinden. Android stuurt hem zolang het Quick Share-paneel of
+  het deelpaneel met Quick Share open is (`QuickShareWake.kt`, hooguit drie minuten). Een Mac kan geen servicedata adverteren.
+- mdns-sd vraagt steeds minder vaak (1, 2, 4 ... seconden, na een uur eens per uur). De kern begint daarom elke drie minuten opnieuw
+  te zoeken, en meteen als iemand een apparaat zoekt (`look_again`, hooguit eens per tien seconden).
 - Er bestaat een QR-code-variant (`https://quickshare.google/qrcode#key=...`) die we niet nodig hebben.
 
 ### Verbinden en versleutelen

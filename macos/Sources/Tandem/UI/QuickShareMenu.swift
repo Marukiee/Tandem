@@ -27,6 +27,7 @@ struct MenuQuickShare: View {
                 if share.enabled {
                     Button {
                         withAnimation(.tandem) { showDevices.toggle() }
+                        if showDevices { share.lookAgain() }
                     } label: {
                         Label(showDevices ? "Done" : "Send", systemImage: showDevices ? "checkmark" : "paperplane.fill")
                             .font(.caption.weight(.semibold))

@@ -174,6 +174,22 @@ class QuickShareHost(
         }
     }
 
+    val wake = QuickShareWake(app)
+
+    /**
+     * The person looks for a device to send to (the Quick Share sheet is open): phones nearby are woken over Bluetooth, and the network
+     * is asked again who is there. Called with false when the sheet goes.
+     */
+    fun looking(on: Boolean) {
+        if (!on) {
+            wake.stop()
+            return
+        }
+        if (!_enabled.value) return
+        wake.start()
+        scope.launch(Dispatchers.IO) { service?.lookAgain() }
+    }
+
     /** Who sends something looks at a phone that is on: with the screen off the Wi-Fi may filter multicast, which costs far less. */
     fun screenChanged(on: Boolean) {
         val held = lock ?: return

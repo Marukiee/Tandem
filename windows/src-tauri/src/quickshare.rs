@@ -395,6 +395,10 @@ pub fn set_enabled(app: &AppHandle, on: bool) {
 
 #[tauri::command]
 pub fn qs_state(app: AppHandle) -> Value {
+    // The window that shows the devices asks for this when it opens: a good moment to ask the network again (at most every ten seconds).
+    if let Some(service) = SERVICE.lock().unwrap().as_ref() {
+        service.look_again();
+    }
     snapshot(&app)
 }
 
