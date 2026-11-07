@@ -11,7 +11,7 @@ sealed interface AutoSleepDecision {
  * Decides from a slow stream of wrist movement when a night starts and ends, so nobody has to press a button in bed. Pure logic, so
  * a whole night can be tested without a watch. The thresholds are a first guess until they have been checked against real nights.
  */
-class SleepAutoDetector {
+class SleepAutoDetector(private val onMinute: ((startMs: Long, moved: Boolean, usable: Boolean) -> Unit)? = null) {
     private var recording = false
     private var worn = true
     private var charging = false
@@ -86,6 +86,7 @@ class SleepAutoDetector {
     private fun closeMinute(startMs: Long): AutoSleepDecision? {
         val moved = minuteMoved || interacted
         val usable = minuteUsable
+        onMinute?.invoke(startMs, moved, usable)
         offWristMinutes = if (worn) 0 else offWristMinutes + 1
         chargingMinutes = if (charging) chargingMinutes + 1 else 0
         minuteMoved = false
@@ -133,7 +134,7 @@ class SleepAutoDetector {
         private const val STOP_CHARGING_MINUTES = 2
         private const val AFTER_MANUAL_STOP_MS = 3 * 60 * MINUTE_MS
 
-        /** Evenings and mornings only: a long sit on a weekday afternoon is not a night. Naps stay a manual start. */
+        /** Evenings and mornings only: a long sit on a weekday afternoon is not a night. The afternoon is for [NapDetector]. */
         fun inWindow(hourOfDay: Int): Boolean = hourOfDay >= 21 || hourOfDay < 11
 
         /** How long until [inWindow] changes. */
