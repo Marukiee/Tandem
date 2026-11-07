@@ -148,7 +148,8 @@ final class ServiceProvider: NSObject {
     }
 }
 
-/// Asks which device to send to, when there is a choice.
+/// Asks which device to send to, also when only one is there: files never leave without the person choosing where. A device that is
+/// not connected is in the list too, grey.
 @MainActor
 enum DevicePicker {
     private static var actions: [BlockAction] = []
@@ -157,30 +158,32 @@ enum DevicePicker {
     static func send(_ urls: [URL]) {
         let model = EngineModel.shared
         let online = model.devices.filter(\.online)
-        switch online.count {
-        case 0:
+        guard !online.isEmpty else {
             Notifier.shared.post(id: "nodevice", title: String(localized: "No device is online"), body: String(localized: "Open Tandem on your phone and try again."))
-        case 1:
-            model.send(urls: urls, to: [online[0].id])
-        default:
-            let menu = NSMenu()
-            actions = []
-            for device in online {
-                let action = BlockAction { model.send(urls: urls, to: [device.id]) }
-                actions.append(action)
-                let item = NSMenuItem(title: device.name, action: #selector(BlockAction.run), keyEquivalent: "")
-                item.target = action
-                item.image = NSImage(systemSymbolName: device.platform.symbol, accessibilityDescription: nil)
-                menu.addItem(item)
-            }
+            return
+        }
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        actions = []
+        for device in model.devices {
+            let action = BlockAction { model.send(urls: urls, to: [device.id]) }
+            actions.append(action)
+            let item = NSMenuItem(title: device.name, action: #selector(BlockAction.run), keyEquivalent: "")
+            item.target = action
+            item.image = NSImage(systemSymbolName: device.platform.symbol, accessibilityDescription: nil)
+            item.isEnabled = device.online
+            if !device.online { item.subtitle = String(localized: "Not connected") }
+            menu.addItem(item)
+        }
+        if online.count > 1 {
             menu.addItem(.separator())
             let all = BlockAction { model.send(urls: urls, to: online.map(\.id)) }
             actions.append(all)
             let allItem = NSMenuItem(title: String(localized: "All devices"), action: #selector(BlockAction.run), keyEquivalent: "")
             allItem.target = all
             menu.addItem(allItem)
-            menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
         }
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
     }
 }
 

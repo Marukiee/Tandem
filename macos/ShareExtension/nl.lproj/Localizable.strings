@@ -1,0 +1,13 @@
+/* The device sheet of "Tandem" in the Share menu. The English text is the key. */
+"Choose a device" = "Kies een apparaat";
+"No devices yet. Pair one in Tandem first." = "Nog geen apparaten. Koppel er eerst een in Tandem.";
+"All devices" = "Alle apparaten";
+"Cancel" = "Annuleer";
+"Send “%@”" = "Stuur “%@”";
+"Send a file" = "Stuur een bestand";
+"Send %lld files" = "Stuur %lld bestanden";
+"Connected" = "Verbonden";
+"Not connected" = "Niet verbonden";
+"Tandem is not running on this Mac. Open it first, then share again." = "Tandem draait niet op deze Mac. Open het eerst en deel daarna opnieuw.";
+"%@ is not connected right now. Open Tandem on it, or bring it closer." = "%@ is nu niet verbonden. Open Tandem erop, of houd hem dichterbij.";
+"Send to %@" = "Stuur naar %@";

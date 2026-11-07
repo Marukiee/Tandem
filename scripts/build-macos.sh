@@ -53,14 +53,27 @@ for lproj in macos/Resources/*.lproj; do
   [ -d "$lproj" ] && cp -R "$lproj" "$APP/Contents/Resources/"
 done
 
-# The Share menu: an app extension, built without an Xcode project. It is signed first, with its own (sandbox) entitlements.
+# The Share menu: an app extension, built without an Xcode project. It is signed first, with its own (sandbox) entitlements. It shows
+# the devices that the app leaves in their app group, which the app only has with the Developer ID and its profile (the camera block
+# below); without the group the extension hands the files over and the app asks which device.
 EXT="$APP/Contents/PlugIns/TandemShare.appex"
-mkdir -p "$EXT/Contents/MacOS"
+mkdir -p "$EXT/Contents/MacOS" "$EXT/Contents/Resources"
 swiftc -O -parse-as-library -module-name TandemShare -application-extension -target arm64-apple-macos26.0 \
-  -framework AppKit -Xlinker -e -Xlinker _NSExtensionMain \
+  -framework AppKit -framework SwiftUI -Xlinker -e -Xlinker _NSExtensionMain \
   -o "$EXT/Contents/MacOS/TandemShare" macos/ShareExtension/ShareViewController.swift
 sed -e "s/@VERSION@/$VERSION/" -e "s/@BUILD@/$BUILD/" -e "s|@BUNDLE_ID@|$BUNDLE_ID|" macos/ShareExtension/Info.plist >"$EXT/Contents/Info.plist"
-./scripts/mac-signing.sh sign "$EXT" macos/Resources/TandemShare.entitlements
+cp -R macos/ShareExtension/nl.lproj "$EXT/Contents/Resources/"
+SHARE_ENTITLEMENTS=macos/Resources/TandemShare.entitlements
+if [ "${TANDEM_SIGN:-}" = developer-id ] && [ -f "${TANDEM_PROFILE:-$HOME/keystores/$([ "$CONFIG" = release ] && echo tandem || echo tandem-dev).provisionprofile}" ]; then
+  SHARE_WORK="$(mktemp -d)"
+  SHARE_ENTITLEMENTS="$SHARE_WORK/share.entitlements"
+  cp macos/Resources/TandemShare.entitlements "$SHARE_ENTITLEMENTS"
+  /usr/libexec/PlistBuddy \
+    -c "Add :com.apple.security.application-groups array" \
+    -c "Add :com.apple.security.application-groups:0 string X8Y2M32MNQ.$BUNDLE_ID" \
+    "$SHARE_ENTITLEMENTS" >/dev/null
+fi
+./scripts/mac-signing.sh sign "$EXT" "$SHARE_ENTITLEMENTS"
 
 # The files of a phone in the Finder sidebar: a File Provider extension, built without an Xcode project like the Share menu. It
 # finds the address of each phone's server in an app group that it shares with the app, and the app only gets that group with
