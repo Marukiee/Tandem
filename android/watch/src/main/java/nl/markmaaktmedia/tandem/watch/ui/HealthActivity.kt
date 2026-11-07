@@ -1,6 +1,8 @@
 package nl.markmaaktmedia.tandem.watch.ui
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -47,6 +49,7 @@ import kotlinx.coroutines.delay
 import nl.markmaaktmedia.tandem.watch.R
 import nl.markmaaktmedia.tandem.watch.link.LinkService
 import nl.markmaaktmedia.tandem.watch.track.AutoSleep
+import nl.markmaaktmedia.tandem.watch.track.HeartTracker
 import nl.markmaaktmedia.tandem.watch.track.LastSleep
 import nl.markmaaktmedia.tandem.watch.track.Tracking
 import nl.markmaaktmedia.tandem.watch.track.TrackingKind
@@ -87,6 +90,11 @@ internal fun HealthScreen() {
         LinkService.start(context)
     }
     val askAccess = { request.launch(ASKED_PERMISSIONS) }
+    var backgroundMissing by remember { mutableStateOf(backgroundHeartMissing(context)) }
+    val requestBackground = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        backgroundMissing = backgroundHeartMissing(context)
+        AutoSleep.refresh()
+    }
 
     val rows: @Composable BoxScope.(PaddingValues) -> Unit = { padding ->
         TransformingLazyColumn(state = list, contentPadding = padding.withRoomAbove(), modifier = Modifier.fillMaxSize()) {
@@ -109,6 +117,38 @@ internal fun HealthScreen() {
                     item(key = "last_night") { LastNight(last, rimContent(spec)) }
                 }
             }
+            if (tracking.heartAllDay && backgroundMissing && missing.isEmpty()) {
+                item(key = "heart_access") {
+                    Button(
+                        onClick = { requestBackground.launch(BACKGROUND_HEART_PERMISSION) },
+                        modifier = rimRow(spec),
+                        transformation = SurfaceTransformation(spec),
+                        label = { Text(stringResource(R.string.heart_allow)) },
+                    )
+                }
+            }
+            tracking.heartNow?.let { now ->
+                item(key = "heart") {
+                    Text(
+                        stringResource(R.string.heart_today, now, tracking.heartLow ?: now, tracking.heartHigh ?: now),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = rimContent(spec).padding(vertical = 4.dp),
+                    )
+                }
+            }
+            tracking.lastNap?.let { nap ->
+                item(key = "nap") {
+                    Text(
+                        stringResource(R.string.last_nap, durationText(nap.minutes)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = rimContent(spec).padding(vertical = 4.dp),
+                    )
+                }
+            }
             item(key = "steps") {
                 Text(
                     stringResource(R.string.steps_of_goal, tracking.stepsToday, tracking.stepGoal, tracking.activeMinutesToday),
@@ -120,6 +160,15 @@ internal fun HealthScreen() {
             }
             if (tracking.active != TrackingKind.WORKOUT) {
                 item(key = "workout") { TrackingButton(TrackingKind.WORKOUT, tracking, askAccess, rimRow(spec), SurfaceTransformation(spec)) }
+            }
+            item(key = "heart_all_day") {
+                SwitchButton(
+                    checked = tracking.heartAllDay,
+                    onCheckedChange = { on -> HeartTracker.setEnabled(context, on, tellPhone = true) },
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    label = { Text(stringResource(R.string.heart_all_day)) },
+                )
             }
             item(key = "auto_sleep") {
                 SwitchButton(
@@ -152,6 +201,12 @@ internal fun HealthScreen() {
         ScreenScaffold(scrollState = list, content = rows)
     }
 }
+
+/** From Android 16 on: asked for apart, because the system only offers it once the heart rate itself is allowed. */
+private const val BACKGROUND_HEART_PERMISSION = "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"
+
+private fun backgroundHeartMissing(context: Context) =
+    Build.VERSION.SDK_INT >= 36 && context.checkSelfPermission(BACKGROUND_HEART_PERMISSION) != PackageManager.PERMISSION_GRANTED
 
 /** How the last night went, on a cookie with the moon. The stages are numbers under each other: as a sentence they fill the screen. */
 @Composable

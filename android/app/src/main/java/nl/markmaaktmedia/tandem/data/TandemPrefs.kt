@@ -79,6 +79,7 @@ class TandemPrefs(private val context: Context) {
         val healthShown = booleanPreferencesKey("health_shown")
         val nudgeMuted = stringSetPreferencesKey("nudge_muted")
         val stepGoal = intPreferencesKey("step_goal")
+        val heartAllDay = booleanPreferencesKey("heart_all_day")
         val smartWake = booleanPreferencesKey("smart_wake")
         val healthConnectWrite = booleanPreferencesKey("health_connect_write")
         val watchMouse = booleanPreferencesKey("watch_mouse")
@@ -180,6 +181,8 @@ class TandemPrefs(private val context: Context) {
     /** Off until asked for: what someone measures only goes to other apps when they say so. */
     val healthConnectWrite: Flow<Boolean> = data.map { it[Keys.healthConnectWrite] ?: false }
     suspend fun setHealthConnectWrite(value: Boolean) = set(Keys.healthConnectWrite, value)
+    val heartAllDay: Flow<Boolean> = data.map { it[Keys.heartAllDay] ?: true }
+    suspend fun setHeartAllDay(value: Boolean) = set(Keys.heartAllDay, value)
     val stepGoal: Flow<Int> = data.map { it[Keys.stepGoal] ?: DEFAULT_STEP_GOAL }
     suspend fun setStepGoal(value: Int) = set(Keys.stepGoal, value)
 

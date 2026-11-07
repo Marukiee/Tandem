@@ -177,6 +177,12 @@ sealed interface Message {
     /** Phone to watch: how many steps a day the person aims for. */
     data class StepGoal(val steps: Int) : Message
 
+    /** Watch to phone: today so far, in the slots of [HealthRecord.heartCurve]. A record only comes when the day is over. */
+    data class HeartToday(val curve: List<Int>) : Message
+
+    /** Either way: the switch for measuring all day was changed. */
+    data class HeartAllDay(val on: Boolean) : Message
+
     /**
      * Watch to phone: the wearer sleeps or not. Sent again after each reconnect, so the receiver must treat it as the
      * state it is and not as a command to change something.
@@ -205,6 +211,8 @@ sealed interface Message {
         /** A whole day of steps rather than a night or a workout. */
         val day: Boolean = false,
         val activeMinutes: Int = 0,
+        /** For a day: the heart rate per five minutes from midnight on, 0 where nothing was measured. */
+        val heartCurve: List<Int> = emptyList(),
     ) : Message
 
     /** Phone to watch: this record is safe on the phone, the watch can let go of it. */
@@ -239,6 +247,8 @@ object MessageCodec {
     private const val RINGING = 0x44
     private const val STEP_GOAL = 0x45
     private const val SMART_WAKE_ALARM = 0x46
+    private const val HEART_TODAY = 0x47
+    private const val HEART_ALL_DAY = 0x48
     private const val HEALTH_RECORD = 0x50
     private const val HEALTH_ACK = 0x51
     private const val POINTER_TARGETS = 0x70
@@ -298,6 +308,8 @@ object MessageCodec {
             is Message.StepGoal -> w.u8(STEP_GOAL).varint(message.steps.toLong())
             is Message.MouseEnabled -> w.u8(MOUSE_ENABLED).bool(message.on)
             is Message.SmartWakeAlarm -> w.u8(SMART_WAKE_ALARM).varint(message.atMs)
+            is Message.HeartToday -> w.u8(HEART_TODAY).bytes(message.curve.toCurveBytes())
+            is Message.HeartAllDay -> w.u8(HEART_ALL_DAY).bool(message.on)
             is Message.SleepMode -> w.u8(SLEEP_MODE).bool(message.on)
             is Message.HealthRecord -> {
                 w.u8(HEALTH_RECORD).str(message.id).bool(message.workout).varint(message.startMs).varint(message.endMs)
@@ -307,7 +319,7 @@ object MessageCodec {
                     .varint(message.stages.size.toLong())
                 message.stages.forEach { w.u8(it.stage).varint(it.seconds.toLong()) }
                 w.optional(message.heartRateMean).optional(message.heartRateLow).optional(message.heartRateHigh).varint(message.steps)
-                    .bool(message.day).varint(message.activeMinutes.toLong())
+                    .bool(message.day).varint(message.activeMinutes.toLong()).bytes(message.heartCurve.toCurveBytes())
             }
             is Message.HealthAck -> w.u8(HEALTH_ACK).str(message.id)
             is Message.Unknown -> w.u8(message.type).raw(message.payload)
@@ -356,6 +368,8 @@ object MessageCodec {
             STEP_GOAL -> Message.StepGoal(r.varint().toInt())
             MOUSE_ENABLED -> Message.MouseEnabled(r.bool())
             SMART_WAKE_ALARM -> Message.SmartWakeAlarm(r.varint())
+            HEART_TODAY -> Message.HeartToday(r.bytes().toCurve())
+            HEART_ALL_DAY -> Message.HeartAllDay(r.bool())
             SLEEP_MODE -> Message.SleepMode(r.bool())
             HEALTH_RECORD -> Message.HealthRecord(
                 id = r.str(),
@@ -376,11 +390,17 @@ object MessageCodec {
                 steps = r.varint(),
                 day = r.remaining > 0 && r.bool(),
                 activeMinutes = if (r.remaining > 0) r.varint().toInt() else 0,
+                heartCurve = if (r.remaining > 0) r.bytes().toCurve() else emptyList(),
             )
             HEALTH_ACK -> Message.HealthAck(r.str())
             else -> Message.Unknown(type, r.rest())
         }
     }
+
+    /** A heart rate fits a byte, and a day of them then fits a message without thinking about it. */
+    private fun List<Int>.toCurveBytes() = ByteArray(size) { this[it].coerceIn(0, 255).toByte() }
+
+    private fun ByteArray.toCurve() = map { it.toInt() and 0xFF }
 
     private fun ByteWriter.optional(value: Int?) = varint(if (value == null) 0 else value + 1L)
 

@@ -10,6 +10,7 @@ import android.hardware.SensorManager
 import nl.markmaaktmedia.tandem.watch.link.WatchLink
 import nl.markmaaktmedia.tandem.watch.protocol.Message
 import nl.markmaaktmedia.tandem.watch.sleep.DailySteps
+import nl.markmaaktmedia.tandem.watch.sleep.DayHeart
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -37,7 +38,9 @@ class StepTracker(private val context: Context) : SensorEventListener {
         store.saveSteps(state)
         Tracking.publishSteps(state.steps, state.activeMinutes)
         WatchLink.reportSteps(state.steps, state.activeMinutes)
-        if (before.day.isNotEmpty() && before.day != today) WatchLink.sendHealth(context, before.toDayRecord())
+        if (before.day.isNotEmpty() && before.day != today) {
+            HeartTracker.forDay(before.day) { heart -> WatchLink.sendHealth(context, before.toDayRecord(heart)) }
+        }
     }
 
     override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
@@ -53,7 +56,7 @@ internal fun DailySteps.todayOrZero(): Long = if (day == LocalDate.now().toStrin
 internal fun DailySteps.activeTodayOrZero(): Int = if (day == LocalDate.now().toString()) activeMinutes else 0
 
 /** A finished day. Its id is the date, so a day that is sent twice is still one day. */
-private fun DailySteps.toDayRecord(): Message.HealthRecord {
+private fun DailySteps.toDayRecord(heart: DayHeart): Message.HealthRecord {
     val start = LocalDate.parse(day).atStartOfDay(ZoneId.systemDefault())
     return Message.HealthRecord(
         id = "day-$day",
@@ -68,11 +71,12 @@ private fun DailySteps.toDayRecord(): Message.HealthRecord {
         deepMinutes = null,
         remMinutes = null,
         stages = emptyList(),
-        heartRateMean = null,
-        heartRateLow = null,
-        heartRateHigh = null,
+        heartRateMean = heart.mean,
+        heartRateLow = heart.low,
+        heartRateHigh = heart.high,
         steps = steps,
         day = true,
         activeMinutes = activeMinutes,
+        heartCurve = if (heart.mean == null) emptyList() else heart.curve(),
     )
 }

@@ -26,6 +26,7 @@ import nl.markmaaktmedia.tandem.watch.sleep.ACCEL_UNITS_PER_G
 import nl.markmaaktmedia.tandem.watch.sleep.RawLogWriter
 import nl.markmaaktmedia.tandem.watch.sleep.MARK_OFF
 import nl.markmaaktmedia.tandem.watch.sleep.MARK_WORN
+import nl.markmaaktmedia.tandem.watch.sleep.NapAnalyzer
 import nl.markmaaktmedia.tandem.watch.sleep.RawRecord
 import nl.markmaaktmedia.tandem.watch.sleep.SleepAnalyzer
 import nl.markmaaktmedia.tandem.watch.sleep.SleepAutoDetector
@@ -62,6 +63,7 @@ class TrackingService : Service(), SensorEventListener {
             if (kind == TrackingKind.SLEEP) followAlarm()
             // At most a minute of data is lost if the battery dies.
             writer?.flush()
+            HeartTracker.flush()
             handler.postDelayed(this, FLUSH_MS)
         }
     }
@@ -154,7 +156,11 @@ class TrackingService : Service(), SensorEventListener {
                 log.write(RawRecord.Accel(time, toUnits(event.values[0]), toUnits(event.values[1]), toUnits(event.values[2])))
                 considerWaking(time, event.values)
             }
-            Sensor.TYPE_HEART_RATE -> log.write(RawRecord.HeartRate(time, event.values[0].toInt(), event.accuracy))
+            Sensor.TYPE_HEART_RATE -> {
+                log.write(RawRecord.HeartRate(time, event.values[0].toInt(), event.accuracy))
+                // Accuracy zero means no contact, so it says nothing about the heart.
+                if (event.accuracy > 0) HeartTracker.add(time, event.values[0].toInt())
+            }
             Sensor.TYPE_STEP_COUNTER -> log.write(RawRecord.Steps(time, event.values[0].toLong()))
             Sensor.TYPE_LOW_LATENCY_OFFBODY_DETECT -> log.write(RawRecord.Mark(time, if (event.values[0] > 0.5f) MARK_WORN else MARK_OFF))
             else -> if (event.sensor.stringType == SKIN_TEMPERATURE_TYPE) {
@@ -207,6 +213,7 @@ class TrackingService : Service(), SensorEventListener {
             runCatching { output?.close() }
             writer = null
             output = null
+            HeartTracker.flush()
             file?.let { analyzeRecording(this, it, finishing, automatic) }
             TrackingStore(this).unfinished = null
             if (finishing == TrackingKind.SLEEP) WatchLink.setSleepMode(false)
@@ -277,6 +284,9 @@ class TrackingService : Service(), SensorEventListener {
         private const val BUFFER_BYTES = 64 * 1024
         private const val RETENTION_MS = 30L * 24 * 60 * 60 * 1000
 
+        /** Where the health pages start calling sleep a night. Under it, it says nothing about how that night was. */
+        private const val MIN_NIGHT_MINUTES = 180
+
         // In the app's external folder because that is the one place a person can pull a night from over USB with a release build.
         // No other app can read it, the same as the private folder.
         fun rawDir(context: Context) = (context.getExternalFilesDir("raw") ?: File(context.filesDir, "raw")).apply { mkdirs() }
@@ -291,6 +301,17 @@ class TrackingService : Service(), SensorEventListener {
                     // Nobody asked for this recording, so when it turned out not to be a night it never happened.
                     if (automatic && summary == null) {
                         target.delete()
+                        return
+                    }
+                    // Started by hand: they said they would sleep, and the night model needs an hour to say anything.
+                    val nap = if (summary != null) summary.takeIf { it.sleepMinutes < MIN_NIGHT_MINUTES } else {
+                        runCatching { target.inputStream().use { NapAnalyzer.analyze(it) } }
+                            .onFailure { Log.w(TAG, "Could not read a nap", it) }
+                            .getOrNull()
+                    }
+                    if (nap != null) {
+                        Tracking.publishNap(store.saveNap(nap.onsetMs, nap.sleepMinutes))
+                        WatchLink.sendHealth(context, nap.toRecord(target.nameWithoutExtension))
                         return
                     }
                     Tracking.publishSleep(store.saveSleep(summary))

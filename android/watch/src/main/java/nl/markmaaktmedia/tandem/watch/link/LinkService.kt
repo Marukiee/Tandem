@@ -16,6 +16,7 @@ import android.os.BatteryManager
 import android.os.IBinder
 import nl.markmaaktmedia.tandem.watch.R
 import nl.markmaaktmedia.tandem.watch.track.AutoSleep
+import nl.markmaaktmedia.tandem.watch.track.HeartTracker
 import nl.markmaaktmedia.tandem.watch.track.StepTracker
 import nl.markmaaktmedia.tandem.watch.ui.MainActivity
 
@@ -61,6 +62,7 @@ class LinkService : Service() {
         }
         WatchLink.start(this)
         if (steps == null) steps = StepTracker(this).also { it.start() }
+        HeartTracker.start(this)
         AutoSleep.start(this)
         if (!watchingBattery) {
             watchingBattery = true
@@ -73,6 +75,7 @@ class LinkService : Service() {
         steps?.stop()
         steps = null
         AutoSleep.stop()
+        HeartTracker.stop()
         if (watchingBattery) unregisterReceiver(batteryReceiver)
         watchingBattery = false
         super.onDestroy()

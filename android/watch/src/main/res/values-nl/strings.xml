@@ -84,4 +84,13 @@
     <string name="stage_deep">Diep</string>
     <string name="stage_rem">REM</string>
     <string name="stage_time" translatable="false">%1$d:%2$02d</string>
+    <string name="channel_naps">Dutjes</string>
+    <string name="nap_question">Heb je geslapen?</string>
+    <string name="nap_question_when">%1$s, %2$d min stil</string>
+    <string name="nap_yes">Ja</string>
+    <string name="nap_no">Nee</string>
+    <string name="last_nap">Dutje: %1$s</string>
+    <string name="heart_all_day">Hartslag de hele dag</string>
+    <string name="heart_allow">De hele dag meten toestaan</string>
+    <string name="heart_today">Nu %1$d, vandaag %2$d tot %3$d</string>
 </resources>

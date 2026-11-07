@@ -84,4 +84,13 @@
     <string name="stage_deep">Deep</string>
     <string name="stage_rem">REM</string>
     <string name="stage_time" translatable="false">%1$d:%2$02d</string>
+    <string name="channel_naps">Naps</string>
+    <string name="nap_question">Did you sleep?</string>
+    <string name="nap_question_when">%1$s, still for %2$d min</string>
+    <string name="nap_yes">Yes</string>
+    <string name="nap_no">No</string>
+    <string name="last_nap">Nap: %1$s</string>
+    <string name="heart_all_day">Heart rate all day</string>
+    <string name="heart_allow">Allow measuring all day</string>
+    <string name="heart_today">%1$d now, %2$d to %3$d today</string>
 </resources>

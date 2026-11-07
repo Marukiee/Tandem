@@ -32,7 +32,7 @@ const BATCH: usize = 50;
 pub enum HealthKind {
     Sleep,
     Workout,
-    /// The steps of one whole day.
+    /// The steps and heart rate of one whole day.
     Day,
     /// From a newer version.
     #[serde(other)]
@@ -95,6 +95,9 @@ pub struct HealthRecord {
     /// Minutes of brisk walking, for a day.
     #[serde(default)]
     pub active_minutes: u32,
+    /// For a day: the heart rate per five minutes from midnight on, 0 where nothing was measured.
+    #[serde(default)]
+    pub heart_curve: Vec<u8>,
     /// When the device that passes it on got it, by that device's clock and never the same twice. How far another device got.
     #[serde(default)]
     pub added_ms: u64,
@@ -326,6 +329,7 @@ mod tests {
             heart_rate_high: None,
             steps: 0,
             active_minutes: 0,
+            heart_curve: Vec::new(),
             added_ms: 0,
             origin: None,
         }

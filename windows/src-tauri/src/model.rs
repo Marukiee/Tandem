@@ -91,6 +91,8 @@ pub fn health_record(r: &tandem_core::ffi::health::TandemHealthRecord) -> Value 
         "heartRateLow": r.heart_rate_low,
         "heartRateHigh": r.heart_rate_high,
         "steps": r.steps,
+        "activeMinutes": r.active_minutes,
+        "heartCurve": r.heart_curve,
     })
 }
 
@@ -104,6 +106,8 @@ pub fn health_insights(i: &tandem_core::ffi::health::TandemHealthInsights) -> Va
             "workouts": w.workouts,
             "workoutMinutes": w.workout_minutes,
             "workoutSteps": w.workout_steps,
+            "naps": w.naps,
+            "napMinutes": w.nap_minutes,
             "meanSteps": w.mean_steps,
             "activeMinutes": w.active_minutes,
         })
@@ -128,6 +132,12 @@ pub fn health_insights(i: &tandem_core::ffi::health::TandemHealthInsights) -> Va
         "alertAboveUsual": i.alert_above_usual,
         "thisWeek": week(&i.this_week),
         "lastWeek": week(&i.last_week),
+        "latestDayHeart": i.latest_day_heart.as_ref().map(|d| json!({
+            "startMs": d.start_ms, "curve": d.curve, "low": d.low, "mean": d.mean, "high": d.high,
+        })),
+        "naps": i.naps.iter().map(|n| json!({
+            "startMs": n.start_ms, "endMs": n.end_ms, "sleepMinutes": n.sleep_minutes, "heartRateMean": n.heart_rate_mean,
+        })).collect::<Vec<_>>(),
     })
 }
 

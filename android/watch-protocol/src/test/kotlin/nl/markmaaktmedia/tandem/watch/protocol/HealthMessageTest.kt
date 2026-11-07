@@ -24,6 +24,28 @@ class HealthMessageTest {
     )
 
     @Test
+    fun aDayCarriesItsHeartRate() {
+        val day = night.copy(id = "day-2026-11-07", day = true, activeMinutes = 34, heartCurve = List(288) { if (it % 2 == 0) 0 else 200 })
+        val back = MessageCodec.decode(MessageCodec.encode(day)) as Message.HealthRecord
+        assertEquals(day, back)
+        assertEquals(200, back.heartCurve[1])
+    }
+
+    @Test
+    fun todaySurvivesTheLink() {
+        val today = Message.HeartToday(List(288) { it % 230 })
+        assertEquals(today, MessageCodec.decode(MessageCodec.encode(today)))
+        assertEquals(Message.HeartAllDay(false), MessageCodec.decode(MessageCodec.encode(Message.HeartAllDay(false))))
+    }
+
+    @Test
+    fun aDayFromAnOlderWatchHasNoHeartRate() {
+        // What an older watch sends stops right after the active minutes.
+        val old = MessageCodec.encode(night.copy(day = true)).dropLast(1).toByteArray()
+        assertEquals(emptyList(), (MessageCodec.decode(old) as Message.HealthRecord).heartCurve)
+    }
+
+    @Test
     fun aNightSurvivesTheLink() {
         assertEquals(night, MessageCodec.decode(MessageCodec.encode(night)))
     }

@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import nl.markmaaktmedia.tandem.watch.sleep.DailySteps
+import nl.markmaaktmedia.tandem.watch.sleep.NapGuess
 import nl.markmaaktmedia.tandem.watch.sleep.SleepSummary
 import nl.markmaaktmedia.tandem.watch.sleep.StageMinutes
 import nl.markmaaktmedia.tandem.watch.sleep.WorkoutSummary
@@ -22,6 +23,8 @@ data class LastSleep(
 
 data class LastWorkout(val minutes: Int, val meanHeartRate: Int)
 
+data class LastNap(val startMs: Long, val minutes: Int)
+
 data class TrackingUi(
     val active: TrackingKind? = null,
     val startedAtMs: Long = 0,
@@ -31,6 +34,13 @@ data class TrackingUi(
     val activeMinutesToday: Int = 0,
     val stepGoal: Int = DEFAULT_STEP_GOAL,
     val autoSleep: Boolean = true,
+    val heartAllDay: Boolean = true,
+    val heartNow: Int? = null,
+    val heartLow: Int? = null,
+    val heartHigh: Int? = null,
+    /** Today per five minutes from midnight on, 0 where nothing was measured. */
+    val heartCurve: List<Int> = emptyList(),
+    val lastNap: LastNap? = null,
 )
 
 /** Where the research on steps and health stops finding much more per step. The person can pick their own on the phone. */
@@ -53,6 +63,8 @@ object Tracking {
                 activeMinutesToday = store.loadSteps().activeTodayOrZero(),
                 stepGoal = store.stepGoal,
                 autoSleep = store.autoSleep,
+                heartAllDay = store.heartAllDay,
+                lastNap = store.loadNap(),
             )
         }
     }
@@ -63,6 +75,10 @@ object Tracking {
     fun publishSteps(steps: Long, activeMinutes: Int) = _ui.update { it.copy(stepsToday = steps, activeMinutesToday = activeMinutes) }
     fun publishStepGoal(steps: Int) = _ui.update { it.copy(stepGoal = steps) }
     fun publishAutoSleep(on: Boolean) = _ui.update { it.copy(autoSleep = on) }
+    fun publishHeartAllDay(on: Boolean) = _ui.update { it.copy(heartAllDay = on) }
+    fun publishNap(nap: LastNap) = _ui.update { it.copy(lastNap = nap) }
+    fun publishHeart(now: Int?, low: Int?, high: Int?, curve: List<Int>) =
+        _ui.update { it.copy(heartNow = now, heartLow = low, heartHigh = high, heartCurve = curve) }
 }
 
 class TrackingStore(context: Context) {
@@ -71,6 +87,47 @@ class TrackingStore(context: Context) {
     var autoSleep: Boolean
         get() = prefs.getBoolean("auto_sleep", true)
         set(value) = prefs.edit().putBoolean("auto_sleep", value).apply()
+
+    var heartAllDay: Boolean
+        get() = prefs.getBoolean("heart_all_day", true)
+        set(value) = prefs.edit().putBoolean("heart_all_day", value).apply()
+
+    /** The mean heart rate of the last night, to judge an afternoon by. Null until there has been a night. */
+    val sleepingHeart: Int?
+        get() = prefs.getInt("sleeping_heart", -1).takeIf { it > 0 }
+
+    /** What the question on the wrist is about, so an answer still counts after the process restarted. */
+    var pendingNap: NapGuess?
+        get() = if (!prefs.contains("nap_guess_start")) null else NapGuess(
+            startMs = prefs.getLong("nap_guess_start", 0),
+            endMs = prefs.getLong("nap_guess_end", 0),
+            sleepMinutes = prefs.getInt("nap_guess_sleep", 0),
+            awakeMinutes = prefs.getInt("nap_guess_awake", 0),
+            meanHeartRate = prefs.getInt("nap_guess_mean", -1).takeIf { it > 0 },
+            lowestHeartRate = prefs.getInt("nap_guess_low", -1).takeIf { it > 0 },
+        )
+        set(value) {
+            val edit = prefs.edit()
+            if (value == null) {
+                listOf("start", "end", "sleep", "awake", "mean", "low").forEach { edit.remove("nap_guess_$it") }
+            } else {
+                edit.putLong("nap_guess_start", value.startMs)
+                    .putLong("nap_guess_end", value.endMs)
+                    .putInt("nap_guess_sleep", value.sleepMinutes)
+                    .putInt("nap_guess_awake", value.awakeMinutes)
+                    .putInt("nap_guess_mean", value.meanHeartRate ?: -1)
+                    .putInt("nap_guess_low", value.lowestHeartRate ?: -1)
+            }
+            edit.apply()
+        }
+
+    fun saveNap(startMs: Long, minutes: Int): LastNap {
+        prefs.edit().putLong("nap_start", startMs).putInt("nap_minutes", minutes).apply()
+        return LastNap(startMs, minutes)
+    }
+
+    fun loadNap(): LastNap? =
+        if (!prefs.contains("nap_start")) null else LastNap(prefs.getLong("nap_start", 0), prefs.getInt("nap_minutes", 0))
 
     /** The file of the recording under way, so a next start knows when one never finished. */
     var unfinished: String?
@@ -116,6 +173,7 @@ class TrackingStore(context: Context) {
             .putInt("sleep_deep", last.stages?.deep ?: -1)
             .putInt("sleep_rem", last.stages?.rem ?: -1)
             .apply()
+        summary?.meanHeartRate?.let { prefs.edit().putInt("sleeping_heart", it).apply() }
         return last
     }
 

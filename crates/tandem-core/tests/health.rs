@@ -71,6 +71,7 @@ fn night(id: &str, start_ms: u64) -> HealthRecord {
         heart_rate_high: None,
         steps: 0,
         active_minutes: 0,
+        heart_curve: Vec::new(),
         added_ms: 0,
         origin: None,
     }

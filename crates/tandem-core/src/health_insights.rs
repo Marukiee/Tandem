@@ -67,6 +67,8 @@ pub struct WeekSummary {
     pub workouts: u32,
     pub workout_minutes: u32,
     pub workout_steps: u64,
+    pub naps: u32,
+    pub nap_minutes: u32,
     /// Over the days the watch counted, which may be fewer than seven.
     pub mean_steps: Option<u32>,
     pub active_minutes: u32,
@@ -76,6 +78,24 @@ pub struct WeekSummary {
 pub struct HealthAlert {
     /// How many beats per minute the last night is above usual.
     pub above_usual: u32,
+}
+
+/// A whole day of heart rate, for a line from midnight to midnight.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DayHeart {
+    pub start_ms: u64,
+    pub curve: Vec<u8>,
+    pub low: Option<u32>,
+    pub mean: Option<u32>,
+    pub high: Option<u32>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NapInsight {
+    pub start_ms: u64,
+    pub end_ms: u64,
+    pub sleep_minutes: u32,
+    pub heart_rate_mean: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -89,6 +109,10 @@ pub struct HealthInsights {
     /// The last seven days, and the seven before that.
     pub this_week: WeekSummary,
     pub last_week: WeekSummary,
+    /// The last whole day with a heart rate. Today is not here: a day becomes a record once it is over.
+    pub latest_day_heart: Option<DayHeart>,
+    /// The last seven days, newest first.
+    pub naps: Vec<NapInsight>,
 }
 
 fn scale(value: f64, zero: f64, full: f64) -> f64 {
@@ -226,6 +250,7 @@ fn week_of(records: &[HealthRecord], from_ms: u64, until_ms: u64) -> WeekSummary
     let nights: Vec<&HealthRecord> = records.iter().filter(|r| is_night(r) && inside(r.end_ms)).collect();
     let workouts: Vec<&HealthRecord> = records.iter().filter(|r| r.kind == HealthKind::Workout && inside(r.start_ms)).collect();
     let days: Vec<&HealthRecord> = records.iter().filter(|r| r.kind == HealthKind::Day && inside(r.end_ms)).collect();
+    let naps: Vec<&HealthRecord> = records.iter().filter(|r| is_nap(r) && inside(r.end_ms)).collect();
     WeekSummary {
         nights: nights.len() as u32,
         mean_sleep_minutes: mean(nights.iter().map(|night| night.sleep_minutes)),
@@ -234,6 +259,8 @@ fn week_of(records: &[HealthRecord], from_ms: u64, until_ms: u64) -> WeekSummary
         workouts: workouts.len() as u32,
         workout_minutes: workouts.iter().map(|w| (w.end_ms.saturating_sub(w.start_ms) / MINUTE_MS) as u32).sum(),
         workout_steps: workouts.iter().map(|w| w.steps).sum(),
+        naps: naps.len() as u32,
+        nap_minutes: naps.iter().map(|n| n.sleep_minutes).sum(),
         mean_steps: mean(days.iter().map(|d| d.steps.min(u64::from(u32::MAX)) as u32)),
         active_minutes: days.iter().map(|d| d.active_minutes).sum(),
     }
@@ -241,6 +268,21 @@ fn week_of(records: &[HealthRecord], from_ms: u64, until_ms: u64) -> WeekSummary
 
 fn is_night(record: &HealthRecord) -> bool {
     record.kind == HealthKind::Sleep && record.sleep_minutes >= MIN_NIGHT_MINUTES
+}
+
+fn is_nap(record: &HealthRecord) -> bool {
+    record.kind == HealthKind::Sleep && record.sleep_minutes > 0 && record.sleep_minutes < MIN_NIGHT_MINUTES
+}
+
+fn latest_day_heart(records: &[HealthRecord]) -> Option<DayHeart> {
+    let day = records.iter().filter(|r| r.kind == HealthKind::Day && r.heart_curve.iter().any(|&v| v > 0)).max_by_key(|r| r.start_ms)?;
+    Some(DayHeart {
+        start_ms: day.start_ms,
+        curve: day.heart_curve.clone(),
+        low: day.heart_rate_low,
+        mean: day.heart_rate_mean,
+        high: day.heart_rate_high,
+    })
 }
 
 /// Year, month and day of a number of days since 1970, by the calendar everyone uses. Howard Hinnant's method.
@@ -269,17 +311,18 @@ pub fn export_csv(records: &[HealthRecord], utc_offset_minutes: i32) -> String {
     let mut sorted: Vec<&HealthRecord> = records.iter().filter(|r| r.kind != HealthKind::Unknown).collect();
     sorted.sort_by_key(|r| r.start_ms);
     let mut out = String::from(
-        "kind,start,end,sleep_minutes,awake_minutes,awakenings,efficiency_percent,light_minutes,deep_minutes,rem_minutes,heart_rate_mean,heart_rate_low,heart_rate_high,steps,active_minutes\n",
+        "kind,start,end,sleep_minutes,awake_minutes,awakenings,efficiency_percent,light_minutes,deep_minutes,rem_minutes,heart_rate_mean,heart_rate_low,heart_rate_high,steps,active_minutes,heart_every_5_minutes\n",
     );
     for r in sorted {
         let kind = match r.kind {
+            HealthKind::Sleep if is_nap(r) => "nap",
             HealthKind::Sleep => "sleep",
             HealthKind::Workout => "workout",
             HealthKind::Day => "day",
             HealthKind::Unknown => continue,
         };
         out.push_str(&format!(
-            "{kind},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
+            "{kind},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}\n",
             local_stamp(r.start_ms, utc_offset_minutes),
             local_stamp(r.end_ms, utc_offset_minutes),
             r.sleep_minutes,
@@ -294,6 +337,8 @@ pub fn export_csv(records: &[HealthRecord], utc_offset_minutes: i32) -> String {
             optional(r.heart_rate_high),
             r.steps,
             r.active_minutes,
+            // One cell, so a table of days stays a table. An empty slot stays empty, because 0 is not a heart rate.
+            r.heart_curve.iter().map(|&v| if v == 0 { String::new() } else { v.to_string() }).collect::<Vec<_>>().join(" "),
         ));
     }
     out
@@ -312,6 +357,19 @@ pub fn insights(records: &[HealthRecord], now_ms: u64, utc_offset_minutes: i32) 
         alert: alert_of(&nights, now_ms),
         this_week: week_of(records, week_ago, now_ms.saturating_add(1)),
         last_week: week_of(records, now_ms.saturating_sub(14 * DAY_MS), week_ago),
+        latest_day_heart: latest_day_heart(records),
+        naps: {
+            let mut naps: Vec<&HealthRecord> = records.iter().filter(|r| is_nap(r) && r.end_ms >= week_ago).collect();
+            naps.sort_by_key(|nap| std::cmp::Reverse(nap.start_ms));
+            naps.into_iter()
+                .map(|nap| NapInsight {
+                    start_ms: nap.start_ms,
+                    end_ms: nap.end_ms,
+                    sleep_minutes: nap.sleep_minutes,
+                    heart_rate_mean: nap.heart_rate_mean,
+                })
+                .collect()
+        },
     }
 }
 
@@ -343,9 +401,66 @@ mod tests {
             heart_rate_high: None,
             steps: 0,
             active_minutes: 0,
+            heart_curve: Vec::new(),
             added_ms: 0,
             origin: None,
         }
+    }
+
+    #[test]
+    fn a_nap_counts_as_a_nap_and_never_as_a_night() {
+        let long_ago = night("old", 14 * 60, 0, 40, Some(50));
+        let nap = night("nap", 14 * 60, 9, 35, Some(55));
+        let bed = night("bed", -60, 10, 480, Some(52));
+        let now = MIDNIGHT + 10 * DAY_MS + 12 * 3_600_000;
+        let found = insights(&[long_ago, nap.clone(), bed], now, 0);
+        assert_eq!(found.naps.len(), 1);
+        assert_eq!(found.naps[0].start_ms, nap.start_ms);
+        assert_eq!(found.naps[0].sleep_minutes, 35);
+        assert_eq!(found.this_week.naps, 1);
+        assert_eq!(found.this_week.nap_minutes, 35);
+        assert_eq!(found.this_week.nights, 1);
+        assert_eq!(found.resting.map(|r| r.latest), Some(52));
+    }
+
+    #[test]
+    fn the_newest_day_with_a_heart_rate_is_the_one_shown() {
+        let mut older = night("day-1", 0, 1, 0, None);
+        older.kind = HealthKind::Day;
+        older.heart_curve = vec![0, 60, 62];
+        older.heart_rate_low = Some(60);
+        older.heart_rate_high = Some(62);
+        let mut newer = night("day-2", 0, 2, 0, None);
+        newer.kind = HealthKind::Day;
+        let found = insights(&[older.clone(), newer], MIDNIGHT + 3 * DAY_MS, 0);
+        let day = found.latest_day_heart.expect("a day");
+        assert_eq!(day.start_ms, older.start_ms);
+        assert_eq!(day.curve, vec![0, 60, 62]);
+        assert_eq!(day.low, Some(60));
+        assert_eq!(day.high, Some(62));
+    }
+
+    #[test]
+    fn without_a_heart_rate_there_is_no_day_to_show() {
+        let mut day = night("day-1", 0, 1, 0, None);
+        day.kind = HealthKind::Day;
+        day.heart_curve = vec![0, 0, 0];
+        assert_eq!(insights(&[day], MIDNIGHT + 3 * DAY_MS, 0).latest_day_heart, None);
+    }
+
+    #[test]
+    fn an_export_keeps_naps_apart_and_a_day_in_one_row() {
+        let nap = night("nap", 14 * 60, 1, 35, None);
+        let mut day = night("day", 0, 2, 0, None);
+        day.kind = HealthKind::Day;
+        day.heart_curve = vec![60, 0, 62];
+        let csv = export_csv(&[nap, day], 0);
+        let lines: Vec<&str> = csv.lines().collect();
+        assert!(lines[0].ends_with(",heart_every_5_minutes"));
+        assert!(lines[1].starts_with("nap,"));
+        assert!(lines[2].starts_with("day,"));
+        assert!(lines[2].ends_with(",60  62"));
+        assert_eq!(lines[2].matches(',').count(), lines[0].matches(',').count());
     }
 
     fn row(nights: usize, low: u32) -> Vec<HealthRecord> {
@@ -523,7 +638,7 @@ mod tests {
         assert!(lines[0].starts_with("kind,start,end,"));
         let (y, m, d) = civil_date((MIDNIGHT / DAY_MS) as i64);
         assert!(lines[1].starts_with(&format!("sleep,{y:04}-{m:02}-{d:02} 01:00,")), "{}", lines[1]);
-        assert_eq!(lines[1].split(',').count(), 15);
+        assert_eq!(lines[1].split(',').count(), 16);
         assert_eq!(lines[1].split(',').nth(7), Some("200"));
         assert_eq!(lines[2].split(',').nth(12), Some(""));
     }

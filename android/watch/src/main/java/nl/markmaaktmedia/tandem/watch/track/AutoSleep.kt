@@ -18,12 +18,14 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import nl.markmaaktmedia.tandem.watch.sleep.AutoSleepDecision
+import nl.markmaaktmedia.tandem.watch.sleep.NapDetector
 import nl.markmaaktmedia.tandem.watch.sleep.SleepAutoDetector
 import java.util.Calendar
 
 /**
  * Starts and stops the recording of a night by itself. Listens to a slow stream of movement that the sensor hub collects while the
- * processor sleeps, and only in the hours a night can start, so the rest of the day costs nothing.
+ * processor sleeps. In the hours a night can start, and all day for someone who measures their heart rate all day: that stream is also
+ * what wakes [HeartTracker], and in the afternoon it can notice a nap.
  */
 object AutoSleep : SensorEventListener {
     private const val TAG = "TandemWatchAutoSleep"
@@ -37,7 +39,9 @@ object AutoSleep : SensorEventListener {
 
     private var context: Context? = null
     private var sensors: SensorManager? = null
-    private var detector = SleepAutoDetector()
+    private val naps = NapDetector()
+    private var detector = SleepAutoDetector(::onMinute)
+    private var lastTickMs = 0L
     private var listening = false
     private var moving = false
     private var worn = true
@@ -128,6 +132,23 @@ object AutoSleep : SensorEventListener {
         }
     }
 
+    /** A setting changed somewhere else. */
+    fun refresh() {
+        handler.post { update() }
+    }
+
+    fun onHeart(timeMs: Long, bpm: Int) {
+        handler.post { naps.onHeart(timeMs, bpm) }
+    }
+
+    /** Asks at the end and not at the start: someone who just woke up is the one who knows. */
+    private fun onMinute(startMs: Long, moved: Boolean, usable: Boolean) {
+        val app = context ?: return
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        naps.setAllowed(TrackingStore(app).heartAllDay && !SleepAutoDetector.inWindow(hour) && Tracking.ui.value.active == null)
+        naps.onMinute(startMs, moved, usable, Tracking.ui.value.stepsToday)?.let { NapQuestion.ask(app, it) }
+    }
+
     fun onStoppedByHand() {
         handler.post {
             detector.onStoppedByHand(System.currentTimeMillis())
@@ -140,16 +161,20 @@ object AutoSleep : SensorEventListener {
 
     private fun update() {
         val app = context ?: return
-        val enabled = TrackingStore(app).autoSleep && TrackingService.canRun(app)
+        val store = TrackingStore(app)
+        val canRun = TrackingService.canRun(app)
+        val enabled = store.autoSleep && canRun
+        val allDay = store.heartAllDay && canRun
         val calendar = Calendar.getInstance()
         val hour = calendar.get(Calendar.HOUR_OF_DAY)
         val inWindow = SleepAutoDetector.inWindow(hour)
-        detector.setAllowed(inWindow)
+        detector.setAllowed(enabled && inWindow)
+        naps.setSleepingHeart(store.sleepingHeart)
         // A night that is being recorded goes on after the window closes.
-        if (enabled && (inWindow || recordingAutomatic)) startListening() else stopListening()
+        if (allDay || (enabled && (inWindow || recordingAutomatic))) startListening() else stopListening()
         updateMovement()
         cancelAlarm()
-        if (enabled) {
+        if (enabled || allDay) {
             val at = SystemClock.elapsedRealtime() + SleepAutoDetector.minutesToWindowChange(hour, calendar.get(Calendar.MINUTE)) * MINUTE_MS
             app.getSystemService(AlarmManager::class.java)
                 .set(AlarmManager.ELAPSED_REALTIME_WAKEUP, at, "tandem:auto-sleep", windowAlarm, handler)
@@ -203,7 +228,7 @@ object AutoSleep : SensorEventListener {
         manager.getDefaultSensor(Sensor.TYPE_LOW_LATENCY_OFFBODY_DETECT, true)
             ?.let { manager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL, handler) }
         listening = true
-        Log.i(TAG, "Listening for a night")
+        Log.i(TAG, "Listening")
     }
 
     private fun stopListening() {
@@ -232,6 +257,11 @@ object AutoSleep : SensorEventListener {
                 updateMovement()
             }
             Sensor.TYPE_ACCELEROMETER -> {
+                val nowMs = SystemClock.elapsedRealtime()
+                if (nowMs - lastTickMs > MINUTE_MS) {
+                    lastTickMs = nowMs
+                    HeartTracker.tick()
+                }
                 val time = clockOffsetMs + event.timestamp / 1_000_000
                 val g = SensorManager.GRAVITY_EARTH
                 detector.onSample(time, event.values[0] / g, event.values[1] / g, event.values[2] / g)?.let(::act)

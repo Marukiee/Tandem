@@ -30,6 +30,7 @@ import nl.markmaaktmedia.tandem.watch.protocol.PlayerRules
 import nl.markmaaktmedia.tandem.watch.protocol.PointerTarget
 import nl.markmaaktmedia.tandem.watch.protocol.Role
 import nl.markmaaktmedia.tandem.watch.track.HealthOutbox
+import nl.markmaaktmedia.tandem.watch.track.HeartTracker
 import nl.markmaaktmedia.tandem.watch.track.Tracking
 import nl.markmaaktmedia.tandem.watch.track.TrackingStore
 
@@ -354,6 +355,14 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     }
 
     /** At most once per batch of the step sensor, so a few times an hour. */
+    fun reportHeart(curve: List<Int>) {
+        handler.post { engine?.send(Message.HeartToday(curve)) }
+    }
+
+    fun sendHeartAllDay(on: Boolean) {
+        handler.post { engine?.send(Message.HeartAllDay(on)) }
+    }
+
     fun reportSteps(steps: Long, activeMinutes: Int) {
         handler.post {
             status?.let { reportStatus(it.copy(stepsToday = steps, activeMinutesToday = activeMinutes)) }
@@ -402,6 +411,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         status?.let { engine?.send(it) }
         engine?.send(Message.SleepMode(sleeping))
         sendNextHealth()
+        HeartTracker.sendToday()
         // The phone ends a session when the link drops, so a mouse screen that stayed open has to ask again.
         pointerTarget?.let { engine?.send(Message.PointerSession(it)) }
     }
@@ -446,10 +456,11 @@ object WatchLink : LinkListener, WatchBleClient.Events {
                 appContext?.let { TrackingStore(it).stepGoal = message.steps }
                 Tracking.publishStepGoal(message.steps)
             }
+            is Message.HeartAllDay -> appContext?.let { HeartTracker.setEnabled(it, message.on, tellPhone = false) }
             is Message.Pong -> handler.removeCallbacks(pongTimeout)
             is Message.Ping, is Message.Unknown -> Unit
             // These only travel from watch to phone.
-            is Message.HealthRecord, Message.SyncRequest, is Message.NotificationAction, is Message.CallAction, is Message.MediaCommand,
+            is Message.HeartToday, is Message.HealthRecord, Message.SyncRequest, is Message.NotificationAction, is Message.CallAction, is Message.MediaCommand,
             is Message.PointerSession, is Message.PointerMove, is Message.PointerScroll, is Message.PointerClick,
             is Message.PointerKey, is Message.WatchStatus, is Message.SleepMode, is Message.MouseEnabled,
             -> Unit

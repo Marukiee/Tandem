@@ -56,6 +56,9 @@ pub struct TandemHealthRecord {
     pub steps: u64,
     #[uniffi(default = 0)]
     pub active_minutes: u32,
+    /// For a day: the heart rate per five minutes from midnight on, 0 where nothing was measured.
+    #[uniffi(default = [])]
+    pub heart_curve: Vec<u32>,
 }
 
 impl From<HealthRecord> for TandemHealthRecord {
@@ -96,6 +99,7 @@ impl From<HealthRecord> for TandemHealthRecord {
             heart_rate_high: r.heart_rate_high,
             steps: r.steps,
             active_minutes: r.active_minutes,
+            heart_curve: r.heart_curve.iter().map(|&v| u32::from(v)).collect(),
         }
     }
 }
@@ -138,6 +142,7 @@ impl From<TandemHealthRecord> for HealthRecord {
             heart_rate_high: r.heart_rate_high,
             steps: r.steps,
             active_minutes: r.active_minutes,
+            heart_curve: r.heart_curve.iter().map(|&v| v.min(255) as u8).collect(),
             added_ms: 0,
             origin: None,
         }
@@ -181,6 +186,8 @@ pub struct TandemRegularity {
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
 pub struct TandemWeekSummary {
+    pub naps: u32,
+    pub nap_minutes: u32,
     pub mean_steps: Option<u32>,
     pub active_minutes: u32,
     pub nights: u32,
@@ -204,6 +211,28 @@ pub struct TandemHealthInsights {
     /// The last seven days, and the seven before that.
     pub this_week: TandemWeekSummary,
     pub last_week: TandemWeekSummary,
+    /// The last whole day with a heart rate.
+    pub latest_day_heart: Option<TandemDayHeart>,
+    /// The naps of the last seven days, newest first.
+    pub naps: Vec<TandemNap>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemDayHeart {
+    pub start_ms: u64,
+    /// Per five minutes from midnight on, 0 where nothing was measured.
+    pub curve: Vec<u32>,
+    pub low: Option<u32>,
+    pub mean: Option<u32>,
+    pub high: Option<u32>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemNap {
+    pub start_ms: u64,
+    pub end_ms: u64,
+    pub sleep_minutes: u32,
+    pub heart_rate_mean: Option<u32>,
 }
 
 impl From<NightInsight> for TandemNightInsight {
@@ -240,6 +269,8 @@ impl From<WeekSummary> for TandemWeekSummary {
     fn from(w: WeekSummary) -> Self {
         Self {
             nights: w.nights,
+            naps: w.naps,
+            nap_minutes: w.nap_minutes,
             mean_sleep_minutes: w.mean_sleep_minutes,
             mean_score: w.mean_score,
             mean_resting: w.mean_resting,
@@ -260,6 +291,18 @@ impl From<HealthInsights> for TandemHealthInsights {
             regularity: i.regularity.map(Into::into),
             regularity_nights_needed: i.regularity_nights_needed,
             alert_above_usual: i.alert.map(|a| a.above_usual),
+            latest_day_heart: i.latest_day_heart.map(|d| TandemDayHeart {
+                start_ms: d.start_ms,
+                curve: d.curve.iter().map(|&v| u32::from(v)).collect(),
+                low: d.low,
+                mean: d.mean,
+                high: d.high,
+            }),
+            naps: i
+                .naps
+                .into_iter()
+                .map(|n| TandemNap { start_ms: n.start_ms, end_ms: n.end_ms, sleep_minutes: n.sleep_minutes, heart_rate_mean: n.heart_rate_mean })
+                .collect(),
             this_week: i.this_week.into(),
             last_week: i.last_week.into(),
         }

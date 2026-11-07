@@ -17,6 +17,7 @@
     <uses-permission android:name="android.permission.BODY_SENSORS" android:maxSdkVersion="35" />
     <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
     <uses-permission android:name="android.permission.health.READ_SKIN_TEMPERATURE" />
+    <uses-permission android:name="android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND" />
 
     <queries>
         <package android:name="com.google.android.wearable.media.sessions" />
@@ -92,5 +93,6 @@
         </receiver>
 
         <receiver android:name=".notify.ActionReceiver" android:exported="false" />
+        <receiver android:name=".track.NapAnswerReceiver" android:exported="false" />
     </application>
 </manifest>

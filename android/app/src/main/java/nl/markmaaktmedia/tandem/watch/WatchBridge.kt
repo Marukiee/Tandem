@@ -69,6 +69,8 @@ data class WatchState(
     val batteryLevel: Int? = null,
     val stepsToday: Long = 0,
     val activeMinutesToday: Int = 0,
+    /** Today per five minutes from midnight on, 0 where nothing was measured. */
+    val heartToday: List<Int> = emptyList(),
     val charging: Boolean = false,
     val ringing: Boolean = false,
     val sleeping: Boolean = false,
@@ -105,6 +107,7 @@ class WatchBridge(
     private val media = WatchMedia(context, handler, { mediaExcluded }, { cover -> enqueue(cover) }) { publishPlayers() }
     private var computerPlayers: List<MediaPlayer> = emptyList()
     private var stepGoal = TandemPrefs.DEFAULT_STEP_GOAL
+    private var heartAllDay = true
     private var smartWake = false
     private val alarmChanged = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -195,6 +198,14 @@ class WatchBridge(
                 handler.post {
                     smartWake = on
                     sendAlarm()
+                }
+            }
+        }
+        jobs += scope.launch {
+            prefs.heartAllDay.collect { on ->
+                handler.post {
+                    heartAllDay = on
+                    enqueue(Message.HeartAllDay(on))
                 }
             }
         }
@@ -389,6 +400,7 @@ class WatchBridge(
         publishBatteries()
         enqueue(Message.Ringing(phoneRinging))
         enqueue(Message.StepGoal(stepGoal))
+        enqueue(Message.HeartAllDay(heartAllDay))
         sendAlarm()
     }
 
@@ -540,6 +552,8 @@ class WatchBridge(
             is Message.Ringing -> _state.update { it.copy(ringing = message.on) }
             is Message.WatchStatus -> _state.update { it.copy(stepsToday = message.stepsToday, activeMinutesToday = message.activeMinutesToday, batteryLevel = message.level, charging = message.charging) }
             is Message.MouseEnabled -> scope.launch { prefs.setWatchMouse(message.on) }
+            is Message.HeartToday -> _state.update { it.copy(heartToday = message.curve) }
+            is Message.HeartAllDay -> scope.launch { prefs.setHeartAllDay(message.on) }
             is Message.SleepMode -> onSleepMode(message.on)
             is Message.HealthRecord -> onHealthRecord(message)
             is Message.Ping, is Message.Pong, is Message.Unknown -> Unit
@@ -680,4 +694,5 @@ private fun Message.HealthRecord.toTandem() = TandemHealthRecord(
     heartRateHigh = heartRateHigh?.toUInt(),
     steps = steps.toULong(),
     activeMinutes = activeMinutes.toUInt(),
+    heartCurve = heartCurve.map { it.toUInt() },
 )
