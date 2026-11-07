@@ -7,6 +7,8 @@
         <receiver android:name="nl.markmaaktmedia.tandem.messages.SmsSelfCheck" android:exported="true" />
         <!-- Debug builds only: turns Tandem's own Focus mode on and off without another device (see FocusSelfCheck). -->
         <receiver android:name="nl.markmaaktmedia.tandem.engine.FocusSelfCheck" android:exported="true" />
+        <!-- Debug builds only: switches the sound mode as another device does (see SoundModeSelfCheck). -->
+        <receiver android:name="nl.markmaaktmedia.tandem.engine.SoundModeSelfCheck" android:exported="true" />
         <!-- Debug builds only: plays a scroll of a trackpad and measures the finger (see ScrollSelfCheck). -->
         <receiver android:name="nl.markmaaktmedia.tandem.live.ScrollSelfCheck" android:exported="true" />
         <!-- Debug builds only: made up batteries for the battery widget, to see its changes (see WidgetSelfCheck). -->

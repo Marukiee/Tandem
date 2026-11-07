@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.3.1",
+    "date": "2026-11-07",
+    "en": {
+      "title": "Quiet means quiet",
+      "new": [
+        "Do not disturb from a computer turns the phone's ringer off too"
+      ]
+    },
+    "nl": {
+      "title": "Stil is stil",
+      "new": [
+        "Niet storen vanaf een computer zet ook het belgeluid van de telefoon uit"
+      ]
+    }
+  },
+  {
     "version": "0.3.0",
     "date": "2026-11-07",
     "en": {
