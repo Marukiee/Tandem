@@ -97,6 +97,12 @@ pub enum Msg {
     SideMoved,
     /// Opens a page of the settings of this device, one it named in its `Feature::page`, so the person can turn on what a feature needs.
     OpenSettings { page: String },
+    /// Asks for this device's settings, for a backup of all devices that the asker writes to one file. The answer is a `BackupPart`
+    /// with the same `id`. A device older than this ignores it, so the asker waits a short while and writes what came.
+    BackupAsk { id: u64 },
+    /// The settings of this device for a backup, as the JSON its app makes of them: what it is (name, platform, model) and its own
+    /// preferences. Never its identity, pairings or passwords.
+    BackupPart { id: u64, settings: String },
     /// The device that looks at this one's screen wants its sound too (`on`), or no longer. The sound goes as `AudioStart` and datagrams;
     /// the sender stops by itself when the screen session ends.
     SoundRequest { on: bool },
@@ -926,6 +932,14 @@ mod tests {
         assert_eq!(known.watch.as_ref().and_then(|w| w.level), Some(80));
         known.merge(&Status { watch: Some(WatchStatus::default()), ..Default::default() });
         assert_eq!(known.watch.as_ref().map(|w| w.paired), Some(false));
+    }
+
+    #[test]
+    fn a_backup_part_keeps_its_settings_whole() {
+        let settings = r#"{"name":"Xperia","platform":"android","settings":{"theme_mode":"DARK"}}"#.to_string();
+        let back = decode_msg(&encode(&Msg::BackupPart { id: 7, settings: settings.clone() }).unwrap()).unwrap();
+        assert!(matches!(back, Msg::BackupPart { id: 7, settings: s } if s == settings));
+        assert!(matches!(decode_msg(&encode(&Msg::BackupAsk { id: 7 }).unwrap()).unwrap(), Msg::BackupAsk { id: 7 }));
     }
 
     #[test]

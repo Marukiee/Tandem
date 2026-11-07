@@ -80,6 +80,7 @@ Deze tabel is voor het laatst nagelopen tegen de code van 0.1.84 (2026-10-16) en
 Wat niet te bouwen is zonder toestel of stuurprogramma, en wat vraagt om een echte test:
 
 - **De horloge-app bijwerken via een computer** kan niet: alleen de telefoon praat met het horloge. De computers werken zichzelf bij zoals altijd.
+- **De back-up en het horloge**: wat de telefoon voor het horloge bewaart (muis aan, stil tijdens je slaap, zacht wakker worden, hartslag de hele dag, stappendoel, naam) zit in het deel van de telefoon. De muissnelheid, knijpen en vanzelf slaap herkennen staan alleen op het horloge en zitten er nog niet in.
 - **Een horloge op een computer koppelen** kan niet zinvol: het horloge krijgt zijn meldingen, gesprekken en muziek van de telefoon en is daar het hele jaar binnen Bluetooth-bereik, een computer niet. Daarom staat de schakelaar voor wie slaap en trainingen krijgt alleen op de telefoon; de computers tonen ze.
 - **Stappen en hartslag van vandaag op een computer**: alleen de telefoon hoort het horloge overdag. Een computer krijgt een dag als record zodra hij voorbij is, en toont dus de laatste hele dag. Het stappendoel bewaart de telefoon; een computer kan het daar veranderen.
 - **Het geluid van een telefoongesprek op de Mac** kan niet. Getest op 2026-11-04 op een MacBook met M2 Max (macOS 27) en de Xperia 1 VI (LineageOS 24, Android 17).

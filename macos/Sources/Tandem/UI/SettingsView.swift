@@ -170,6 +170,7 @@ private struct GeneralSettings: View {
     @LocalState private var folder = DownloadFolder.url
     @LocalState private var folderIsDefault = DownloadFolder.isDefault
     @LocalState private var confirmReset = false
+    @LocalState private var backupChoice: BackupChoice?
     @LocalState private var language = LanguageSetting.current
     @LocalState private var needsRestart = false
 
@@ -318,19 +319,22 @@ private struct GeneralSettings: View {
             }
 
             Section {
-                LabeledContent("Export settings") {
+                LabeledContent("Back up all devices") {
                     Button("Export…") { SettingsBackup.export(model: model) }
                 }
-                LabeledContent("Import settings") {
-                    Button("Import…") {
-                        SettingsBackup.importFile(model: model)
-                        refreshFolder()
-                    }
+                LabeledContent("Restore from a backup") {
+                    Button("Import…") { backupChoice = SettingsBackup.open(model: model) }
                 }
             } header: {
                 Text("Backup")
             } footer: {
-                Text("Only preferences are saved. Your identity, your pairings and the hotspot password stay on this Mac.")
+                Text("One file with the settings of this Mac and your connected devices. After a reset, open it on the device and it finds itself again. Identities, pairings and passwords are never in it.")
+            }
+            .sheet(item: $backupChoice) { choice in
+                RestorePicker(choice: choice) { device in
+                    SettingsBackup.restore(device, model: model)
+                    refreshFolder()
+                }
             }
 
             Section {

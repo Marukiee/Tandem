@@ -1,7 +1,7 @@
 // The main window: the devices on the left, a page on the right.
 import { html, render, useEffect, useState } from "../vendor/preact-htm.js";
 import { call, connect, listenDrops, native } from "./backend.js";
-import { DeviceGlyph } from "./components.js";
+import { DeviceGlyph, platformIcon } from "./components.js";
 import { Icon } from "./icons.js";
 import { ResizeEdges, Titlebar, framed } from "./chrome.js";
 import { setLanguage, t } from "./i18n.js";
@@ -142,6 +142,40 @@ function RenameWatch({ dialog, close }) {
       </div></div></div>`;
 }
 
+// Which device of a backup comes back on this computer. The one it recognised is chosen already; one of another kind stays in the
+// list, grey, and says why when clicked.
+function RestoreDialog({ dialog, close }) {
+  const [picked, setPicked] = useState(dialog.recognised);
+  const [why, setWhy] = useState("");
+  const kindName = (d) => ({ android: t("restore_phone"), macos: "Mac", mac: "Mac", windows: "Windows", linux: "Linux" })[d.platform] || "";
+  const restore = async () => {
+    const device = dialog.devices[picked];
+    close();
+    try {
+      const now = await call("settings_restore", { index: picked });
+      set({ settings: now });
+      setLanguage(now.language, state.systemLanguage);
+      say(t("backup_restored", device.name || t("restore_computer")));
+    } catch (e) { say(String(e)); }
+  };
+  return html`<div class="scrim" onClick=${(e) => e.target === e.currentTarget && close()}>
+    <div class="dialog restore"><h2>${t("restore_title")}</h2>
+      <p class="muted" style="margin-top:0">${dialog.recognised == null ? t("restore_pick") : t("restore_recognised")}</p>
+      <div class="restore-list">${dialog.devices.map((d, i) => html`
+        <button class=${"restore-row" + (d.fits ? "" : " off") + (picked === i ? " picked" : "")}
+          onClick=${() => { if (d.fits) { setPicked(i); setWhy(""); } else setWhy(d.kind === "mac" ? t("restore_not_mac") : t("restore_not_phone")); }}>
+          <span class="restore-dot"><${Icon} name=${platformIcon(d.platform === "mac" ? "macos" : d.platform)} size=${18} /></span>
+          <span class="restore-text"><span class="restore-name">${d.name || t("restore_computer")}</span>
+            <span class="restore-detail">${i === dialog.recognised ? t("restore_this") : [kindName(d), d.model].filter(Boolean).join(" · ")}</span></span>
+          ${d.fits && html`<span class=${"restore-mark" + (picked === i ? " on" : "")}>${picked === i && html`<${Icon} name="check" size=${14} />`}</span>`}
+        </button>`)}</div>
+      <div class=${"restore-why" + (why ? " shown" : "")}><${Icon} name="info-circle" size=${16} /><span>${why}</span></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn" onClick=${close}>${t("cancel")}</button>
+        <button class="btn accent" disabled=${picked == null} onClick=${restore}>${t("restore_button")}</button>
+      </div></div></div>`;
+}
+
 function Dialogs() {
   const dialog = state.dialog;
   // Escape closes the dialog, as a click beside it does.
@@ -161,6 +195,7 @@ function Dialogs() {
       </div></div>`;
   }
   if (dialog.kind === "call") return html`<${CallDialog} dialog=${dialog} />`;
+  if (dialog.kind === "restore") return html`<${RestoreDialog} dialog=${dialog} close=${close} />`;
   if (dialog.kind === "rename-watch") return html`<${RenameWatch} dialog=${dialog} close=${close} />`;
   if (dialog.kind === "unpair-watch") {
     const d = state.devices.find((x) => x.id === dialog.id);

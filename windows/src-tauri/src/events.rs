@@ -117,6 +117,8 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::MediaEnded { peer, role: tandem_core::ffi::TandemMediaRole::Viewer, .. } => crate::screen_sound::view_ended(app, &peer),
         TandemEvent::MediaEnded { peer, role: tandem_core::ffi::TandemMediaRole::Host, .. } => crate::screen_sound::host_ended(app, &peer),
         // Another device shows what this computer is missing and was asked to open the place where it is turned on.
+        TandemEvent::BackupAsked { from, id } => crate::backup::asked(app, from, id),
+        TandemEvent::BackupPart { from, id, settings } => crate::backup::part(from, id, settings),
         TandemEvent::OpenSettings { from, page } => {
             let name = device_name(app, &from);
             if crate::features::turn_on(app, &page) {

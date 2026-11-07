@@ -26,6 +26,9 @@ import nl.markmaaktmedia.tandem.ui.theme.ThemeMode
  */
 private val NotBackedUp = setOf("onboarded", "last_update_check", "dismissed_update", "added_tiles")
 
+/** The settings stored as an Int, which a backup (JSON) cannot tell from a Long. */
+private val IntKeys = setOf("tour_seen", "step_goal")
+
 private val Context.store: DataStore<Preferences> by preferencesDataStore(name = "tandem")
 
 /** Everything a person can change, in one place. */
@@ -233,7 +236,7 @@ class TandemPrefs(private val context: Context) {
      * something that would be wrong on another phone: the identity and pairings live in the
      * engine's own storage and never pass through here.
      */
-    suspend fun exportJson(language: String): String {
+    suspend fun settingsJson(): JSONObject {
         val settings = JSONObject()
         for ((key, value) in data.first().asMap()) {
             if (key.name in NotBackedUp) continue
@@ -242,28 +245,34 @@ class TandemPrefs(private val context: Context) {
                 is Set<*> -> settings.put(key.name, JSONArray(value.map { it.toString() }))
             }
         }
-        return JSONObject().put("app", "tandem").put("format", 1).put("language", language).put("settings", settings).toString(2)
+        return settings
     }
 
-    /** Applies a backup. Returns the language it asks for, or null when the file is not a Tandem backup. */
-    suspend fun importJson(json: String): String? {
-        val root = runCatching { JSONObject(json) }.getOrNull() ?: return null
-        if (root.optString("app") != "tandem" || root.optInt("format") != 1) return null
-        val settings = root.optJSONObject("settings") ?: return null
+    /**
+     * Applies the settings of a backup. A number goes back as the kind of number it is here, or a key read as an Int would fail;
+     * a value of another kind than the one stored now is left out.
+     */
+    suspend fun applySettings(settings: JSONObject) {
         context.store.edit { p ->
+            val current = p.asMap().mapKeys { it.key.name }
             val keys = settings.keys()
             while (keys.hasNext()) {
                 val name = keys.next()
                 if (name in NotBackedUp) continue
+                val now = current[name]
                 when (val value = settings.get(name)) {
-                    is Boolean -> p[booleanPreferencesKey(name)] = value
-                    is String -> p[stringPreferencesKey(name)] = value
-                    is Number -> p[longPreferencesKey(name)] = value.toLong()
-                    is JSONArray -> p[stringSetPreferencesKey(name)] = (0 until value.length()).map { value.getString(it) }.toSet()
+                    is Boolean -> if (now == null || now is Boolean) p[booleanPreferencesKey(name)] = value
+                    is String -> if (now == null || now is String) p[stringPreferencesKey(name)] = value
+                    is Number -> when {
+                        now is Int || (now == null && name in IntKeys) -> p[intPreferencesKey(name)] = value.toInt()
+                        now == null || now is Long -> p[longPreferencesKey(name)] = value.toLong()
+                    }
+                    is JSONArray -> if (now == null || now is Set<*>) {
+                        p[stringSetPreferencesKey(name)] = (0 until value.length()).map { value.getString(it) }.toSet()
+                    }
                 }
             }
         }
-        return root.optString("language").ifBlank { "system" }
     }
 
     /** Whether notifications from this app go to the other devices, whichever mode is on. */

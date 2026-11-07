@@ -1242,6 +1242,10 @@ pub enum TandemEvent {
     SideMoved { from: String },
     /// Another device asks to open this page of the settings here (one of the `page`s of `set_features`).
     OpenSettings { from: String, page: String },
+    /// Another device makes a backup of all devices and asks for the settings of this one: answer with `answer_backup` and this `id`.
+    BackupAsked { from: String, id: u64 },
+    /// The settings of another device for the backup asked with `ask_backup`.
+    BackupPart { from: String, id: u64, settings: String },
     /// The device that looks at this one's screen wants its sound (`on`), or no longer: send it with `send_audio_start` and `send_audio`.
     SoundRequested { from: String, on: bool },
     /// A computer wants this phone as its microphone (`on`), or no longer: send it with `send_audio_start` on stream 10 and `send_audio`.
@@ -1380,6 +1384,8 @@ impl From<Event> for TandemEvent {
             Event::SideHeard { from, id, .. } => TandemEvent::SideHeard { from: from.to_string(), id },
             Event::SideMoved { from } => TandemEvent::SideMoved { from: from.to_string() },
             Event::OpenSettings { from, page } => TandemEvent::OpenSettings { from: from.to_string(), page },
+            Event::BackupAsked { from, id } => TandemEvent::BackupAsked { from: from.to_string(), id },
+            Event::BackupPart { from, id, settings } => TandemEvent::BackupPart { from: from.to_string(), id, settings },
             Event::SoundRequested { from, on } => TandemEvent::SoundRequested { from: from.to_string(), on },
             Event::MicRequested { from, on } => TandemEvent::MicRequested { from: from.to_string(), on },
             Event::BtSpeakerRequested { from, on, name } => TandemEvent::BtSpeakerRequested { from: from.to_string(), on, name },
@@ -2166,6 +2172,17 @@ impl TandemEngine {
     /// Asks a device to open a page of its settings, one it named in its features.
     pub async fn open_settings_on(&self, target: String, page: String) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::OpenSettings { page }).await.map(|_| ())
+    }
+
+    /// Asks these devices for their settings, for a backup of all devices. Each answers with `TandemEvent::BackupPart` and this `id`;
+    /// returns the ones it reached. One older than this does not answer, so wait a few seconds at most.
+    pub async fn ask_backup(&self, targets: Vec<String>, id: u64) -> Result<Vec<String>, TandemError> {
+        self.send(targets, crate::proto::Msg::BackupAsk { id }).await
+    }
+
+    /// The answer to `TandemEvent::BackupAsked`: the settings of this device as JSON (see `proto::Msg::BackupPart`).
+    pub async fn answer_backup(&self, target: String, id: u64, settings: String) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::BackupPart { id, settings }).await.map(|_| ())
     }
 
     /// The answer to `TandemEvent::SideListen`: what this device heard, or `levels` empty when it could not listen.

@@ -397,6 +397,22 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 .scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.38); display: grid; place-items: center; animation: fade 0.15s; z-index: 20; }
 .dialog { width: 460px; max-width: calc(100vw - 40px); max-height: calc(100vh - 40px); overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px; box-shadow: var(--shadow); animation: rise 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
 .dialog h2 { margin: 0 0 6px; font-size: 18px; }
+/* The devices of a backup: the list of the card that asks where files go, with a mark for the one that comes back. */
+.restore-list { display: flex; flex-direction: column; gap: 2px; margin: 0 -10px; }
+.restore-row { display: flex; align-items: center; gap: 12px; padding: 7px 10px; border: 0; border-radius: 14px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background .15s ease-out, opacity .15s ease-out; }
+.restore-row:hover:not(.off) { background: var(--hover, rgba(0,0,0,.06)); }
+.restore-row.picked { background: var(--hover, rgba(0,0,0,.06)); }
+.restore-row.off { opacity: .5; cursor: default; }
+.restore-dot { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex: none; background: var(--accent); color: #fff; }
+.restore-row.off .restore-dot { background: var(--hover, rgba(0,0,0,.08)); color: var(--muted); }
+.restore-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.restore-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.restore-detail { font-size: 12px; color: var(--muted); }
+.restore-mark { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--muted); display: grid; place-items: center; flex: none; transition: background .15s ease-out, border-color .15s ease-out; }
+.restore-mark.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.restore-why { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--muted); line-height: 1.4; max-height: 0; opacity: 0; overflow: hidden; margin-top: 0; transition: max-height .2s ease-out, opacity .2s ease-out, margin-top .2s ease-out; }
+.restore-why.shown { max-height: 80px; opacity: 1; margin-top: 10px; }
+.restore-why svg { flex: none; margin-top: 1px; }
 .qr { background: #fff; border-radius: 12px; padding: 8px; width: 232px; height: 232px; margin: 12px auto; }
 .qr svg { width: 100%; height: 100%; display: block; }
 .typecode { text-align: center; margin: 0 0 12px; }

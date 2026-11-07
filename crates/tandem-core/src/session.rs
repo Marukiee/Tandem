@@ -468,6 +468,8 @@ impl Inner {
                 }
             }
             Msg::OpenSettings { page } => self.emit(Event::OpenSettings { from: id, page }),
+            Msg::BackupAsk { id: ask } => self.emit(Event::BackupAsked { from: id, id: ask }),
+            Msg::BackupPart { id: ask, settings } => self.emit(Event::BackupPart { from: id, id: ask, settings }),
             // The sound of this device is for one that looks at its screen, which the person allowed. Without that, any device of the
             // circle could listen along without anyone being asked. Stopping is always fine.
             Msg::SoundRequest { on } => {

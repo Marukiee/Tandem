@@ -78,6 +78,8 @@ final class EngineModel {
     }
 
     @ObservationIgnored private var engine: TandemEngine?
+    /// The settings other devices sent for a backup this Mac is making, by the id of the ask and then by device.
+    @ObservationIgnored private var backupParts: [UInt64: [String: String]] = [:]
     /// The engine, for the pages that talk to the files of another device.
     var tandem: TandemEngine? { engine }
     /// Phones whose files are open as drives in Finder.
@@ -391,7 +393,7 @@ final class EngineModel {
         return directory
     }
 
-    static func modelIdentifier() -> String? {
+    nonisolated static func modelIdentifier() -> String? {
         var size = 0
         sysctlbyname("hw.model", nil, &size, nil, 0)
         guard size > 0 else { return nil }
@@ -721,6 +723,16 @@ final class EngineModel {
             } else {
                 Notifier.shared.post(id: "open-settings", title: String(localized: "\(name) opened a setting"), body: String(localized: "Turn on Tandem here, then go back to \(name)."))
             }
+
+        case let .backupAsked(from, id):
+            // Another device of the person makes a backup of all devices: it gets this Mac's preferences, never its identity.
+            if let engine {
+                let settings = SettingsBackup.entryJSON(myId: myId)
+                Task { try? await engine.answerBackup(target: from, id: id, settings: settings) }
+            }
+
+        case let .backupPart(from, id, settings):
+            backupParts[id]?[from] = settings
 
         case let .sideMoved(from):
             // A phone was picked up and put down again: when it is a second screen here, or sits next to this screen, its side is found
@@ -1569,6 +1581,25 @@ final class EngineModel {
     }
 
     /// Asks a device to open the page of its settings where a feature it is missing is turned on, and says where to look.
+    /// Asks the connected devices for their settings and waits for them, four seconds at most: one older than this never answers.
+    /// Returns what came, and the names of the devices that are not in it.
+    func collectBackup() async -> (parts: [String], missing: [String]) {
+        let offline = devices.filter { !$0.online }.map(\.name)
+        let online = devices.filter(\.online).map(\.id)
+        guard let engine, !online.isEmpty else { return ([], offline) }
+        let ask = UInt64.random(in: 1...UInt64.max)
+        backupParts[ask] = [:]
+        defer { backupParts[ask] = nil }
+        let reached = Set((try? await engine.askBackup(targets: online, id: ask)) ?? [])
+        for _ in 0..<40 {
+            if (backupParts[ask]?.count ?? 0) >= reached.count { break }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        let parts = backupParts[ask] ?? [:]
+        let silent = devices.filter { $0.online && parts[$0.id] == nil }.map(\.name)
+        return (Array(parts.values), offline + silent)
+    }
+
     func openSettings(on id: String, page: String) {
         guard let engine else { return }
         let name = device(id)?.name ?? String(localized: "that device")

@@ -220,6 +220,10 @@ class TandemService : LifecycleService() {
             }
             is TandemEvent.SideListen -> nl.markmaaktmedia.tandem.live.SideListener.listen(this, event.from, event.id, event.quiet)
             is TandemEvent.OpenSettings -> FeatureReport.open(this, event.page, event.from)
+            // Another device of the person makes a backup of all devices: it gets this phone's settings, never its identity.
+            is TandemEvent.BackupAsked -> lifecycleScope.launch {
+                runCatching { host.engine?.answerBackup(event.from, event.id, host.backupEntry().toString()) }
+            }
             is TandemEvent.SoundRequested -> nl.markmaaktmedia.tandem.audio.ScreenSound.requested(this, event.from, event.on)
             is TandemEvent.MicRequested -> nl.markmaaktmedia.tandem.audio.MicShare.requested(this, event.from, event.on)
             is TandemEvent.BtSpeakerState -> nl.markmaaktmedia.tandem.live.PhoneSound.onState(this, event.from, event.on, event.error)

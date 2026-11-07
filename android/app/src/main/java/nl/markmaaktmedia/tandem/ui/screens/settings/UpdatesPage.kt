@@ -28,6 +28,8 @@ import nl.markmaaktmedia.tandem.ui.components.SettingsGroup
 import nl.markmaaktmedia.tandem.ui.components.SwitchRow
 import nl.markmaaktmedia.tandem.ui.components.TandemConfirmDialog
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
+import nl.markmaaktmedia.tandem.data.Backup
+import nl.markmaaktmedia.tandem.data.BackupDevice
 import nl.markmaaktmedia.tandem.update.UpdateState
 
 /** Updates and backup: the version, checking for a new one, and saving or restoring the settings in a file. */
@@ -43,14 +45,23 @@ internal fun UpdatesPage(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.u
     var pendingLanguage by remember { mutableStateOf<String?>(null) }
     val currentLanguage = appLanguage()
 
+    var restoreFrom by remember { mutableStateOf<Pair<List<BackupDevice>, Int?>?>(null) }
+
+    // The devices are asked while the file is saved: a few seconds at most, for one that never answers.
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
-            val json = prefs.exportJson(currentLanguage)
+            val (parts, missing) = graph.host.collectBackup()
+            val json = Backup.file(graph.host.backupEntry(), parts, java.time.Instant.now().toString())
             val saved = withContext(Dispatchers.IO) {
                 runCatching { context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(json.toByteArray()) } }.isSuccess
             }
-            Toast.makeText(context, if (saved) R.string.backup_saved else R.string.backup_failed, Toast.LENGTH_SHORT).show()
+            val text = when {
+                !saved -> context.getString(R.string.backup_failed)
+                missing.isEmpty() -> context.getString(R.string.backup_saved)
+                else -> context.getString(R.string.backup_saved_without, missing.joinToString(", "))
+            }
+            Toast.makeText(context, text, Toast.LENGTH_LONG).show()
         }
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -59,15 +70,11 @@ internal fun UpdatesPage(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.u
             val text = withContext(Dispatchers.IO) {
                 runCatching { context.contentResolver.openInputStream(uri)!!.use { it.readBytes().decodeToString() } }.getOrNull()
             }
-            val language = text?.let { prefs.importJson(it) }
+            val devices = text?.let { Backup.devices(it) }
             when {
                 text == null -> Toast.makeText(context, R.string.backup_failed, Toast.LENGTH_SHORT).show()
-                language == null -> Toast.makeText(context, R.string.backup_invalid, Toast.LENGTH_SHORT).show()
-                else -> {
-                    prefs.deviceName.first()?.let { name -> runCatching { graph.host.engine?.renameSelf(name) } }
-                    Toast.makeText(context, R.string.backup_restored, Toast.LENGTH_SHORT).show()
-                    if (language != currentLanguage) pendingLanguage = language
-                }
+                devices == null -> Toast.makeText(context, R.string.backup_invalid, Toast.LENGTH_SHORT).show()
+                else -> restoreFrom = devices to Backup.recognise(devices, graph.host.myId, graph.host.backupModel, graph.host.myName)
             }
         }
     }
@@ -107,13 +114,30 @@ internal fun UpdatesPage(onBack: () -> Unit, onOpen: (nl.markmaaktmedia.tandem.u
         SettingsGroup {
             ActionRow(
                 0, 2, TandemIcons.Upload, stringResource(R.string.backup_export), stringResource(R.string.backup_export_sub),
-                { exportLauncher.launch("tandem-settings.json") }, modifier = Modifier.settingsTarget(FocusKeys.BackupExport, 0, 2),
+                { exportLauncher.launch("tandem-backup.json") }, modifier = Modifier.settingsTarget(FocusKeys.BackupExport, 0, 2),
             )
             ActionRow(
                 1, 2, TandemIcons.Download, stringResource(R.string.backup_import), stringResource(R.string.backup_import_sub),
                 { importLauncher.launch(arrayOf("*/*")) }, modifier = Modifier.settingsTarget(FocusKeys.BackupImport, 1, 2),
             )
         }
+    }
+
+    restoreFrom?.let { (devices, recognised) ->
+        RestoreDialog(
+            devices = devices,
+            recognised = recognised,
+            onRestore = { device ->
+                scope.launch {
+                    prefs.applySettings(device.settings)
+                    prefs.deviceName.first()?.let { name -> runCatching { graph.host.engine?.renameSelf(name) } }
+                    Toast.makeText(context, context.getString(R.string.backup_restored, device.name), Toast.LENGTH_SHORT).show()
+                    val language = device.language ?: "system"
+                    if (language != currentLanguage) pendingLanguage = language
+                }
+            },
+            onDismiss = { restoreFrom = null },
+        )
     }
 
     pendingLanguage?.let { language ->

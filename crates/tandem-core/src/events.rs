@@ -89,6 +89,8 @@ pub enum Event {
     SideHeard { from: DeviceId, id: u64, left: f32, right: f32, heard: bool },
     SideMoved { from: DeviceId },
     OpenSettings { from: DeviceId, page: String },
+    BackupAsked { from: DeviceId, id: u64 },
+    BackupPart { from: DeviceId, id: u64, settings: String },
     SoundRequested { from: DeviceId, on: bool },
     MicRequested { from: DeviceId, on: bool },
     BtSpeakerRequested { from: DeviceId, on: bool, name: String },

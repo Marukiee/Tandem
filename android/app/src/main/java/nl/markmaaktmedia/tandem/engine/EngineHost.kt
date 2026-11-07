@@ -180,6 +180,39 @@ class EngineHost(
     val myId: String get() = engine?.id().orEmpty()
     val myName: String get() = engine?.name().orEmpty()
 
+    /** What this phone is, the same on every backup, so a reset phone finds itself again in one. */
+    val backupModel: String get() = "${Build.MANUFACTURER} ${Build.MODEL}".trim()
+
+    /** This phone's part of a backup of all devices: what it is and its settings, never its identity or pairings. */
+    suspend fun backupEntry(): org.json.JSONObject = nl.markmaaktmedia.tandem.data.Backup.entry(
+        myId, myName.ifEmpty { prefs.deviceName.first() ?: defaultName() }, backupModel,
+        nl.markmaaktmedia.tandem.ui.screens.settings.appLanguage(), prefs.settingsJson(),
+    )
+
+    /**
+     * Asks the connected devices for their settings and waits for them, four seconds at most: one older than this never answers.
+     * Returns what came, and the names of the devices that are not in it.
+     */
+    suspend fun collectBackup(): Pair<List<String>, List<String>> {
+        val all = _devices.value
+        val offline = all.filter { !it.online }.map { it.name }
+        val online = all.filter { it.online }
+        val engine = engine
+        if (engine == null || online.isEmpty()) return emptyList<String>() to offline
+        val ask = kotlin.random.Random.nextLong(1, Long.MAX_VALUE).toULong()
+        val parts = java.util.concurrent.ConcurrentHashMap<String, String>()
+        kotlinx.coroutines.coroutineScope {
+            val listening = launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+                events.collect { e -> if (e is TandemEvent.BackupPart && e.id == ask) parts[e.from] = e.settings }
+            }
+            val reached = runCatching { engine.askBackup(online.map { it.id }, ask) }.getOrDefault(emptyList())
+            kotlinx.coroutines.withTimeoutOrNull(4_000) { while (parts.size < reached.size) kotlinx.coroutines.delay(100) }
+            listening.cancel()
+        }
+        val silent = online.filter { !parts.containsKey(it.id) }.map { it.name }
+        return parts.values.toList() to offline + silent
+    }
+
     fun start() {
         if (_state.value == EngineState.Starting || _state.value == EngineState.Running) return
         _state.value = EngineState.Starting
