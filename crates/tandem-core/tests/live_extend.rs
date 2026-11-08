@@ -186,8 +186,10 @@ async fn a_second_screen_carries_its_logical_size_and_sixty_frames_a_second_arri
     // keyframe was needed (before, the first of them was turned away and the chain broke at the start of every session).
     let stats = laptop.engine.media_stats(session).unwrap();
     assert_eq!((stats.lost, stats.discarded, stats.keyframes_requested), (0, 0, 0), "{stats:?}");
-    // Generous for a busy test machine; on an idle one this is a few milliseconds.
-    assert!(p99 < 100_000, "p99 {p99} us");
+    // On an idle machine both are a few milliseconds. The shared runners of GitHub stall now and then for a tenth of a second (p99
+    // 118 ms with p50 5.6 ms on macos-latest, twice on 2026-11-08), so the middle is held tight and the tail only against a real hang.
+    assert!(p50 < 20_000, "p50 {p50} us");
+    assert!(p99 < 250_000, "p99 {p99} us");
 }
 
 fn extend_want(width: u32, height: u32) -> MediaWant {
