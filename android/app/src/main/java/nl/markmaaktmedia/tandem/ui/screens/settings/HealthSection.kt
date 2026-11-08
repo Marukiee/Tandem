@@ -38,7 +38,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
@@ -647,10 +646,9 @@ internal fun HealthChoices() {
     if (!watch.paired) return
     SectionHeader(stringResource(R.string.section_preferences), top = 16.dp, bottom = 0.dp)
     SettingsGroup {
-        SmartWakeRow(0, 4, searchTarget = true)
-        SmartWakeTryRow(1, 4)
-        HeartAllDayRow(2, 4, searchTarget = true)
-        StepGoalRow(3, 4)
+        SmartWakeRow(0, 3, searchTarget = true)
+        HeartAllDayRow(1, 3, searchTarget = true)
+        StepGoalRow(2, 3)
     }
 }
 
@@ -667,22 +665,6 @@ internal fun SmartWakeRow(index: Int, total: Int, searchTarget: Boolean = false)
         )
     }
     if (searchTarget) SettingsTarget(FocusKeys.HealthSmartWake, index, total, row) else row()
-}
-
-/** The morning of waking gently sped up to half a minute on the watch, so it can be felt before a morning depends on it. */
-@Composable
-internal fun SmartWakeTryRow(index: Int, total: Int) {
-    val context = LocalContext.current
-    val watch = context.graph.watch
-    val state by watch.state.collectAsState()
-    ActionRow(
-        index, total, TandemIcons.Vibration, stringResource(R.string.health_smart_wake_try), stringResource(R.string.health_smart_wake_try_sub),
-        onClick = {
-            if (state.ready) watch.tryWakeBuzz()
-            else android.widget.Toast.makeText(context, R.string.watch_not_connected, android.widget.Toast.LENGTH_SHORT).show()
-        },
-        modifier = if (state.ready) Modifier else Modifier.alpha(0.6f),
-    )
 }
 
 /** The heart rate all day, like [SmartWakeRow]. */

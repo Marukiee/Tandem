@@ -642,8 +642,6 @@
     <string name="health_today">Vandaag</string>
     <string name="health_goal">Stappendoel</string>
     <string name="health_goal_sub">Stappen per dag. Je horloge laat het ook zien.</string>
-    <string name="dev_wake_buzz">Wektrilling proberen</string>
-    <string name="dev_wake_buzz_sub">Je horloge trilt een keer, zoals voor je wekker</string>
     <string name="health_timeline">De nacht</string>
     <string name="health_score_title">Slaapscore</string>
     <string name="health_stage_awake">Wakker</string>

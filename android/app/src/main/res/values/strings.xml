@@ -645,8 +645,6 @@
     <string name="health_today">Today</string>
     <string name="health_goal">Step goal</string>
     <string name="health_goal_sub">Steps a day. Your watch shows it too.</string>
-    <string name="dev_wake_buzz">Try the wake-up buzz</string>
-    <string name="dev_wake_buzz_sub">Your watch buzzes once, the way it does before your alarm</string>
     <string name="health_timeline">The night</string>
     <string name="health_score_title">Sleep score</string>
     <string name="health_stage_awake">Awake</string>

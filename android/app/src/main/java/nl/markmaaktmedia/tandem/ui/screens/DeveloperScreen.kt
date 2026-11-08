@@ -83,7 +83,7 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
             SectionHeader(stringResource(R.string.settings_cat_watch))
             SettingsGroup {
                 ActionRow(
-                    0, 1, TandemIcons.Schedule, stringResource(R.string.dev_wake_buzz), stringResource(R.string.dev_wake_buzz_sub),
+                    0, 1, TandemIcons.Vibration, stringResource(R.string.health_smart_wake_try), stringResource(R.string.health_smart_wake_try_sub),
                     {
                         if (watchState.ready) graph.watch.tryWakeBuzz()
                         else Toast.makeText(context, R.string.watch_not_connected, Toast.LENGTH_SHORT).show()
