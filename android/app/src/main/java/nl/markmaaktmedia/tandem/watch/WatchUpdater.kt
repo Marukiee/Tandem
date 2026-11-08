@@ -18,6 +18,7 @@ import nl.markmaaktmedia.tandem.watch.protocol.Message
 import nl.markmaaktmedia.tandem.watch.protocol.WatchUpdate
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import nl.markmaaktmedia.tandem.update.ReleaseFiles
 import org.json.JSONObject
 
 /** How bringing the watch app up to the version of this phone stands, for the page of the watch. */
@@ -159,16 +160,18 @@ class WatchUpdater(
             JSONObject(response.body?.string().orEmpty())
         }
         val assets = release.optJSONArray("assets")
-        fun url(name: String): String? = (0 until (assets?.length() ?: 0)).map { assets!!.getJSONObject(it) }
-            .firstOrNull { it.optString("name") == name }?.optString("browser_download_url")
-        val apkUrl = url(APK_NAME) ?: error(context.getString(R.string.watch_app_no_release, ownName))
-        val shaUrl = url("$APK_NAME.sha256") ?: error(context.getString(R.string.watch_app_no_release, ownName))
+        fun urls(name: String): List<String> = ReleaseFiles.links(
+            (0 until (assets?.length() ?: 0)).map { assets!!.getJSONObject(it) }.firstOrNull { it.optString("name") == name },
+        )
+        val apkUrls = urls(APK_NAME).ifEmpty { error(context.getString(R.string.watch_app_no_release, ownName)) }
+        val shaUrls = urls("$APK_NAME.sha256").ifEmpty { error(context.getString(R.string.watch_app_no_release, ownName)) }
+        val agent = "Tandem/$ownName"
 
-        val bytes = get(apkUrl).use { response ->
-            check(response.isSuccessful) { context.getString(R.string.watch_app_unreachable) }
+        val bytes = (ReleaseFiles.open(client, apkUrls, agent) ?: error(context.getString(R.string.watch_app_unreachable))).use { response ->
             response.body?.bytes() ?: error(context.getString(R.string.watch_app_unreachable))
         }
-        val expected = get(shaUrl).use { it.body?.string().orEmpty() }.trim().split(Regex("\\s+")).firstOrNull()?.lowercase()
+        val expected = (ReleaseFiles.open(client, shaUrls, agent) ?: error(context.getString(R.string.watch_app_unreachable)))
+            .use { it.body?.string().orEmpty() }.trim().split(Regex("\\s+")).firstOrNull()?.lowercase()
         check(expected == WatchUpdate.hex(MessageDigest.getInstance("SHA-256").digest(bytes))) { context.getString(R.string.watch_app_damaged) }
         val partial = File(dir, "$ownCode.part")
         partial.writeBytes(bytes)

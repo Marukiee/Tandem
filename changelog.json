@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.3.3",
+    "date": "2026-11-08",
+    "en": {
+      "title": "Steady",
+      "new": [
+        "Updates, also of the watch, keep going when the downloads of GitHub are down"
+      ]
+    },
+    "nl": {
+      "title": "Rustig aan",
+      "new": [
+        "Updates, ook van het horloge, gaan door als de downloads van GitHub plat liggen"
+      ]
+    }
+  },
+  {
     "version": "0.3.2",
     "date": "2026-11-08",
     "en": {

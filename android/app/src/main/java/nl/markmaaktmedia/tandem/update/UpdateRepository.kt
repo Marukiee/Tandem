@@ -119,21 +119,21 @@ class UpdateRepository(
                 val tag = root.optString("tag_name")
                 val assets = root.optJSONArray("assets")
                 var apk: JSONObject? = null
-                var sha: String? = null
+                var sha: JSONObject? = null
                 for (i in 0 until (assets?.length() ?: 0)) {
                     val asset = assets!!.getJSONObject(i)
                     val name = asset.optString("name")
                     if (name == APK_NAME) apk = asset
-                    if (name == "$APK_NAME.sha256") sha = asset.optString("browser_download_url")
+                    if (name == "$APK_NAME.sha256") sha = asset
                 }
                 ReleaseInfo(
                     tag = tag,
                     versionName = VersionComparator.normalise(tag),
                     title = root.optString("name").ifBlank { tag },
                     changelog = releaseSummary(root.optString("body")),
-                    apkUrl = apk?.optString("browser_download_url"),
+                    apkUrls = ReleaseFiles.links(apk),
                     apkSizeBytes = apk?.optLong("size") ?: 0L,
-                    sha256Url = sha,
+                    sha256Urls = ReleaseFiles.links(sha),
                     htmlUrl = root.optString("html_url").ifBlank { releasesPageUrl },
                     publishedAt = root.optString("published_at"),
                 )
@@ -148,8 +148,8 @@ class UpdateRepository(
     fun showPreview() {
         _state.value = UpdateState.Available(
             ReleaseInfo(
-                tag = PREVIEW_TAG, versionName = "9.9.9", title = "Preview", changelog = "", apkUrl = null,
-                apkSizeBytes = 0, sha256Url = null, htmlUrl = "", publishedAt = "",
+                tag = PREVIEW_TAG, versionName = "9.9.9", title = "Preview", changelog = "", apkUrls = emptyList(),
+                apkSizeBytes = 0, sha256Urls = emptyList(), htmlUrl = "", publishedAt = "",
             ),
         )
     }
@@ -197,7 +197,7 @@ class UpdateRepository(
     }
 
     private suspend fun download(release: ReleaseInfo): File? {
-        val url = release.apkUrl ?: run {
+        if (release.apkUrls.isEmpty()) {
             _state.value = UpdateState.Failed(context.getString(R.string.update_reason_no_apk), release)
             return null
         }
@@ -211,8 +211,8 @@ class UpdateRepository(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val digest = MessageDigest.getInstance("SHA-256")
-                client.newCall(Request.Builder().url(url).header("User-Agent", "Tandem").build()).execute().use { response ->
-                    if (!response.isSuccessful) error(context.getString(R.string.update_reason_status, response.code))
+                val opened = ReleaseFiles.open(client, release.apkUrls, "Tandem") ?: error(context.getString(R.string.update_reason_unreachable))
+                opened.use { response ->
                     val body = response.body ?: error(context.getString(R.string.update_reason_empty))
                     val total = body.contentLength().takeIf { it > 0 } ?: release.apkSizeBytes
                     target.outputStream().use { output ->
@@ -237,11 +237,12 @@ class UpdateRepository(
                         }
                     }
                 }
-                release.sha256Url?.let { shaUrl ->
-                    val expected = client.newCall(Request.Builder().url(shaUrl).build()).execute().use { it.body?.string().orEmpty() }
-                        .trim().split(Regex("\\s+")).firstOrNull()?.lowercase()
+                if (release.sha256Urls.isNotEmpty()) {
+                    // A page of an error is no checksum: only a file that came back counts, else GitHub was not reached.
+                    val expected = (ReleaseFiles.open(client, release.sha256Urls, "Tandem") ?: error(context.getString(R.string.update_reason_unreachable)))
+                        .use { it.body?.string().orEmpty() }.trim().split(Regex("\\s+")).firstOrNull()?.lowercase()
                     val actual = digest.digest().joinToString("") { "%02x".format(it) }
-                    check(expected == null || expected == actual) { context.getString(R.string.update_reason_damaged) }
+                    check(expected == actual) { context.getString(R.string.update_reason_damaged) }
                 }
                 cleanUpOldDownloads(keepFileName = target.name)
                 _state.value = UpdateState.ReadyToInstall(release, target.absolutePath)

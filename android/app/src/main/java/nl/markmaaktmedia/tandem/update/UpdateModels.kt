@@ -6,9 +6,10 @@ data class ReleaseInfo(
     val versionName: String,
     val title: String,
     val changelog: String,
-    val apkUrl: String?,
+    /** Where the app can be had, the API first (see `ReleaseFiles`). */
+    val apkUrls: List<String>,
     val apkSizeBytes: Long,
-    val sha256Url: String?,
+    val sha256Urls: List<String>,
     val htmlUrl: String,
     val publishedAt: String,
 )

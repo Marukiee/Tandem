@@ -22,9 +22,11 @@ final class Updater {
     struct Release: Equatable {
         let version: String
         let notes: String
-        let zipURL: URL
-        let shaURL: URL?
-        let sigURL: URL?
+        /// Where each file can be had: the API of GitHub first, the plain download link second. Either can be down on its own: on
+        /// 2026-11-08 every plain link gave a 504 for a while, while the API handed out the same files.
+        let zipURL: [URL]
+        let shaURL: [URL]
+        let sigURL: [URL]
         let size: Int64
         let page: URL
     }
@@ -137,19 +139,18 @@ final class Updater {
                 return
             }
             let assets = (json["assets"] as? [[String: Any]]) ?? []
-            func asset(_ name: String) -> (URL, Int64)? {
-                guard let entry = assets.first(where: { $0["name"] as? String == name }),
-                      let link = (entry["browser_download_url"] as? String).flatMap(URL.init(string:))
-                else { return nil }
-                return (link, (entry["size"] as? Int64) ?? 0)
+            func asset(_ name: String) -> ([URL], Int64)? {
+                guard let entry = assets.first(where: { $0["name"] as? String == name }) else { return nil }
+                let links = ["url", "browser_download_url"].compactMap { (entry[$0] as? String).flatMap(URL.init(string:)) }
+                return links.isEmpty ? nil : (links, (entry["size"] as? Int64) ?? 0)
             }
             guard let (zip, size) = asset(assetName) else { throw UpdateError.noAsset }
             let found = Release(
                 version: version,
                 notes: Self.summary((json["body"] as? String) ?? ""),
                 zipURL: zip,
-                shaURL: asset(assetName + ".sha256")?.0,
-                sigURL: asset(assetName + ".sig")?.0,
+                shaURL: asset(assetName + ".sha256")?.0 ?? [],
+                sigURL: asset(assetName + ".sig")?.0 ?? [],
                 size: size,
                 page: (json["html_url"] as? String).flatMap(URL.init(string:)) ?? URL(string: "https://github.com/\(owner)/\(repo)/releases")!
             )
@@ -211,24 +212,34 @@ final class Updater {
                 if case .downloading = self?.state { self?.state = .downloading(release, fraction) }
             }
         }
-        try await loader.download(release.zipURL, to: target)
-        return target
+        var failure: Error = UpdateError.unreachable
+        for url in release.zipURL {
+            try? FileManager.default.removeItem(at: target)
+            do {
+                try await loader.download(Self.request(url), to: target)
+                return target
+            } catch {
+                trace("download from \(url.host() ?? "?") failed: \(error.localizedDescription)")
+                failure = error
+            }
+        }
+        throw failure
     }
 
     /// Verifies and unpacks the download. Returns the new app, ready to swap in.
     private func stage(zip: URL, release: Release) async throws -> URL {
         let data = try Data(contentsOf: zip, options: .mappedIfSafe)
 
-        if let shaURL = release.shaURL {
-            let expected = try await text(of: shaURL).split(separator: " ").first.map(String.init)?.lowercased()
+        if !release.shaURL.isEmpty {
+            let expected = try await text(of: release.shaURL).split(separator: " ").first.map(String.init)?.lowercased()
             let actual = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
             guard expected == actual else { throw UpdateError.checksum }
         }
 
         if let key = Bundle.main.object(forInfoDictionaryKey: "TandemUpdatePublicKey") as? String,
            let raw = Data(base64Encoded: key), !key.isEmpty {
-            guard let sigURL = release.sigURL else { throw UpdateError.signature }
-            let signature = Data(base64Encoded: try await text(of: sigURL).trimmingCharacters(in: .whitespacesAndNewlines))
+            guard !release.sigURL.isEmpty else { throw UpdateError.signature }
+            let signature = Data(base64Encoded: try await text(of: release.sigURL).trimmingCharacters(in: .whitespacesAndNewlines))
             guard let signature,
                   let publicKey = try? Curve25519.Signing.PublicKey(rawRepresentation: raw),
                   publicKey.isValidSignature(signature, for: data)
@@ -251,9 +262,26 @@ final class Updater {
         return app
     }
 
-    private func text(of url: URL) async throws -> String {
-        let (data, _) = try await URLSession.shared.data(from: url)
-        return String(decoding: data, as: UTF8.self)
+    /// A small file next to the download (its checksum or signature). GitHub answers now and then with an error page instead (a 504),
+    /// which once read as a damaged download: only a 200 counts, from either place, and both are asked again once before giving up.
+    private func text(of urls: [URL]) async throws -> String {
+        for attempt in 0..<2 {
+            if attempt > 0 { try? await Task.sleep(for: .seconds(2)) }
+            for url in urls {
+                guard let (data, response) = try? await URLSession.shared.data(for: Self.request(url)),
+                      (response as? HTTPURLResponse)?.statusCode == 200
+                else { continue }
+                return String(decoding: data, as: UTF8.self)
+            }
+        }
+        throw UpdateError.unreachable
+    }
+
+    /// A file of a release through the API is asked for as the file itself, not as its description.
+    private static func request(_ url: URL) -> URLRequest {
+        var request = URLRequest(url: url)
+        if url.host() == "api.github.com" { request.setValue("application/octet-stream", forHTTPHeaderField: "Accept") }
+        return request
     }
 
     @discardableResult
@@ -330,13 +358,14 @@ final class Updater {
 }
 
 enum UpdateError: Error {
-    case feed, noAsset, checksum, signature, unpack, identity
+    case feed, noAsset, checksum, signature, unpack, identity, unreachable
 
     var message: String {
         switch self {
         case .feed: String(localized: "Could not read the releases from GitHub")
         case .noAsset: String(localized: "This release has no Mac download")
-        case .checksum: String(localized: "The download is damaged (checksum does not match)")
+        case .checksum: String(localized: "The download was damaged on the way")
+        case .unreachable: String(localized: "GitHub did not answer. Try again in a moment.")
         case .signature: String(localized: "The download is not signed by Tandem, so it was not installed")
         case .unpack: String(localized: "The download could not be unpacked")
         case .identity: String(localized: "The new version is signed by someone else, so it was not installed")
@@ -418,13 +447,13 @@ private final class FileDownloader: NSObject, URLSessionDownloadDelegate, @unche
         self.progress = progress
     }
 
-    func download(_ url: URL, to target: URL) async throws {
+    func download(_ request: URLRequest, to target: URL) async throws {
         self.target = target
         let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
         defer { session.finishTasksAndInvalidate() }
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             self.continuation = continuation
-            session.downloadTask(with: url).resume()
+            session.downloadTask(with: request).resume()
         }
     }
 
