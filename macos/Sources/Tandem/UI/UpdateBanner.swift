@@ -112,25 +112,45 @@ struct UpdateBanner: View {
 
     private func failed(_ message: String) -> some View {
         card(tint: Palette.urgent) {
-            HStack(alignment: .top, spacing: 12) {
-                icon("exclamationmark.triangle.fill", tint: Palette.urgent)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("The update did not work").font(compact ? .callout.weight(.semibold) : .headline)
-                    Text(message).font(.caption).foregroundStyle(.secondary).lineLimit(3)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center, spacing: 12) {
+                    icon("exclamationmark.triangle.fill", tint: Palette.urgent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("The update did not work")
+                            .font(compact ? .callout.weight(.semibold) : .headline)
+                            .lineLimit(1)
+                        Text(message)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 8)
+                    if !compact { retry }
+                    RowActionButton(symbol: "xmark", help: "Dismiss") { updater.state = .idle }
                 }
-                Spacer(minLength: 8)
-                Button("Try again") {
-                    Task {
-                        // The release is forgotten once it failed, so look again, then install what is there.
-                        await updater.check(manual: true)
-                        await updater.install()
+                // In the narrow panel the button gets its own row, as the update itself does, so nothing wraps.
+                if compact {
+                    HStack {
+                        Spacer(minLength: 0)
+                        retry
                     }
                 }
-                .buttonStyle(.tandemGlass)
-                .controlSize(compact ? .small : .regular)
-                RowActionButton(symbol: "xmark", help: "Dismiss") { updater.state = .idle }
             }
         }
+    }
+
+    private var retry: some View {
+        Button("Try again") {
+            Task {
+                // The release is forgotten once it failed, so look again, then install what is there.
+                await updater.check(manual: true)
+                await updater.install()
+            }
+        }
+        .buttonStyle(.tandemGlassProminent)
+        .controlSize(compact ? .small : .regular)
+        .fixedSize()
     }
 
     // MARK: Pieces

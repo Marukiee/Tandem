@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.3.3",
+    "date": "2026-11-08",
+    "en": {
+      "title": "Steady",
+      "new": [
+        "An update on the Mac no longer fails when GitHub is briefly slow"
+      ]
+    },
+    "nl": {
+      "title": "Rustig aan",
+      "new": [
+        "Een update op de Mac mislukt niet meer als GitHub even traag is"
+      ]
+    }
+  },
+  {
     "version": "0.3.2",
     "date": "2026-11-08",
     "en": {

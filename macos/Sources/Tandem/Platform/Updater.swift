@@ -251,9 +251,17 @@ final class Updater {
         return app
     }
 
+    /// A small file next to the download (its checksum or signature). GitHub answers now and then with an error page instead (a 504
+    /// for a few seconds), which once read as a damaged download: only a 200 counts, and it is asked again twice before giving up.
     private func text(of url: URL) async throws -> String {
-        let (data, _) = try await URLSession.shared.data(from: url)
-        return String(decoding: data, as: UTF8.self)
+        for attempt in 0..<3 {
+            if attempt > 0 { try? await Task.sleep(for: .seconds(attempt * 2)) }
+            guard let (data, response) = try? await URLSession.shared.data(from: url),
+                  (response as? HTTPURLResponse)?.statusCode == 200
+            else { continue }
+            return String(decoding: data, as: UTF8.self)
+        }
+        throw UpdateError.unreachable
     }
 
     @discardableResult
@@ -330,13 +338,14 @@ final class Updater {
 }
 
 enum UpdateError: Error {
-    case feed, noAsset, checksum, signature, unpack, identity
+    case feed, noAsset, checksum, signature, unpack, identity, unreachable
 
     var message: String {
         switch self {
         case .feed: String(localized: "Could not read the releases from GitHub")
         case .noAsset: String(localized: "This release has no Mac download")
-        case .checksum: String(localized: "The download is damaged (checksum does not match)")
+        case .checksum: String(localized: "The download was damaged on the way")
+        case .unreachable: String(localized: "GitHub did not answer. Try again in a moment.")
         case .signature: String(localized: "The download is not signed by Tandem, so it was not installed")
         case .unpack: String(localized: "The download could not be unpacked")
         case .identity: String(localized: "The new version is signed by someone else, so it was not installed")
