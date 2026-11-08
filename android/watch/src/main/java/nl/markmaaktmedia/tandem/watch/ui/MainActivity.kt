@@ -387,34 +387,33 @@ private fun SettingsPage(ui: WatchUi, settled: Boolean, canPair: Boolean, askAcc
                     label = { Text(stringResource(R.string.mouse_allowed)) },
                 )
             }
-            if (ui.pointerEnabled) {
-                item(key = "mouse_speed") {
-                    val speed by PointerPrefs.speed.collectAsState()
-                    FilledTonalButton(
-                        onClick = { PointerPrefs.nextSpeed(context) },
-                        modifier = rimRow(spec),
-                        transformation = SurfaceTransformation(spec),
-                        label = { Text(stringResource(R.string.mouse_speed)) },
-                        secondaryLabel = {
-                            Text(stringResource(when (speed) {
-                                PointerPrefs.Speed.SLOW -> R.string.mouse_speed_slow
-                                PointerPrefs.Speed.MEDIUM -> R.string.mouse_speed_medium
-                                PointerPrefs.Speed.FAST -> R.string.mouse_speed_fast
-                            }))
-                        },
-                    )
-                }
-                item(key = "mouse_pinch") {
-                    val pinch by PointerPrefs.pinch.collectAsState()
-                    SwitchButton(
-                        checked = pinch,
-                        onCheckedChange = { PointerPrefs.setPinch(context, it) },
-                        modifier = rimRow(spec),
-                        transformation = SurfaceTransformation(spec),
-                        label = { Text(stringResource(R.string.mouse_pinch)) },
-                        secondaryLabel = { Text(stringResource(R.string.mouse_pinch_sub)) },
-                    )
-                }
+            // How this arm steers and clicks, kept on the watch: hidden while the phone did not allow the mouse, pinching looked gone.
+            item(key = "mouse_speed") {
+                val speed by PointerPrefs.speed.collectAsState()
+                FilledTonalButton(
+                    onClick = { PointerPrefs.nextSpeed(context) },
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    label = { Text(stringResource(R.string.mouse_speed)) },
+                    secondaryLabel = {
+                        Text(stringResource(when (speed) {
+                            PointerPrefs.Speed.SLOW -> R.string.mouse_speed_slow
+                            PointerPrefs.Speed.MEDIUM -> R.string.mouse_speed_medium
+                            PointerPrefs.Speed.FAST -> R.string.mouse_speed_fast
+                        }))
+                    },
+                )
+            }
+            item(key = "mouse_pinch") {
+                val pinch by PointerPrefs.pinch.collectAsState()
+                SwitchButton(
+                    checked = pinch,
+                    onCheckedChange = { PointerPrefs.setPinch(context, it) },
+                    modifier = rimRow(spec),
+                    transformation = SurfaceTransformation(spec),
+                    label = { Text(stringResource(R.string.mouse_pinch)) },
+                    secondaryLabel = { Text(stringResource(R.string.mouse_pinch_sub)) },
+                )
             }
             item(key = "heart_all_day") {
                 SwitchButton(

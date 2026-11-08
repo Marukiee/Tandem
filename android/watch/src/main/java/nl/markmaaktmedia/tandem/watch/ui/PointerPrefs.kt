@@ -11,16 +11,19 @@ object PointerPrefs {
 
     private const val FILE = "pointer"
     private val _speed = MutableStateFlow(Speed.MEDIUM)
-    private val _pinch = MutableStateFlow(false)
+    private val _pinch = MutableStateFlow(true)
     val speed: StateFlow<Speed> = _speed.asStateFlow()
 
-    /** Off until someone turns it on: on a Pixel Watch a double pinch is not told apart well enough yet, and a click nobody meant is worse than none. */
+    /**
+     * On unless someone turns it off: a single pinch is told apart well since the detector learned from recordings on a real wrist, and off
+     * by default it was gone after every new install of the app.
+     */
     val pinch: StateFlow<Boolean> = _pinch.asStateFlow()
 
     fun load(context: Context) {
         val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
         _speed.value = runCatching { Speed.valueOf(prefs.getString("speed", Speed.MEDIUM.name)!!) }.getOrDefault(Speed.MEDIUM)
-        _pinch.value = prefs.getBoolean("pinch", false)
+        _pinch.value = prefs.getBoolean("pinch", true)
     }
 
     fun nextSpeed(context: Context) {

@@ -240,6 +240,9 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         }
         // On a table the watch moves much less than the hand that slides it, so the same slide must go further.
         gyro.sensitivity = PointerPrefs.speed.value.sensitivity * (if (tableMode) TABLE_GAIN else 1f)
+        // A hand slid away over a table tips the forearm down where one in the air lifts it, so the pointer went down for a push up the
+        // table. Turned round, it goes the way a mouse does.
+        gyro.invertVertical = tableMode
         // On a table the taps are how it clicks, whatever is set for pinching in the air.
         listenToPinch = testing || tableMode || PointerPrefs.pinch.value
         gyro.reset()
