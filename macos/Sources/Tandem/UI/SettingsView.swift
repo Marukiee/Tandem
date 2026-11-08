@@ -23,7 +23,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .quickShare: "Quick Share"
         case .access: "Access"
         case .hotspot: "Hotspot"
-        case .health: "Sleep and workouts"
+        case .health: "Health"
         case .updates: "Updates"
         case .about: "About"
         }

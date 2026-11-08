@@ -594,7 +594,7 @@
     <string name="sleep_pause_music">Muziek pauzeren als je in slaap valt</string>
     <string name="sleep_pause_music_sub">Op deze telefoon en op je computers, zodra het horloge merkt dat je slaapt</string>
     <string name="sleep_lock_computers">Computers vergrendelen als je in slaap valt</string>
-    <string name="sleep_lock_computers_sub">Staat uit: er kan iemand anders achter de computer zitten</string>
+    <string name="sleep_lock_computers_sub">Als je horloge merkt dat je slaapt, vergrendelen je computers, net als wanneer je wegloopt</string>
     <string name="sleep_music_channel">Muziek terwijl je sliep</string>
     <string name="sleep_music_title">Er speelde muziek door terwijl je sliep</string>
     <string name="sleep_music_text">Er speelde nog een halfuur of langer muziek nadat je in slaap viel. Voortaan vanzelf uitzetten?</string>
@@ -712,4 +712,15 @@
     <string name="health_compared">Vergeleken met %1$s</string>
     <string name="health_compared_sum">%1$d nachten, gemiddeld %2$s verschil</string>
     <string name="health_compared_line">%1$s: Tandem %2$s, andere app %3$s</string>
+    <string name="watch_settings_sub">Naam, Tandem op je horloge, en ontkoppelen</string>
+    <string name="watch_unpair_title">%1$s ontkoppelen?</string>
+    <string name="watch_unpair_body">Je horloge krijgt dan geen meldingen, muziek en gesprekken meer van deze telefoon. Opnieuw koppelen doe je hier, bij Koppel een apparaat.</string>
+    <string name="watch_unpair_confirm">Ontkoppelen</string>
+    <string name="watch_section_sleep">Terwijl je slaapt</string>
+    <string name="health_open_sub">Slaap, stappen, hartslag en trainingen</string>
+    <string name="health_goal_row">%1$s stappen per dag. Je horloge laat het ook zien.</string>
+    <string name="health_goal_less">Minder stappen</string>
+    <string name="health_goal_more">Meer stappen</string>
+    <string name="health_heart_hint">Schuif over de lijn om een moment te zien. Knijp om in te zoomen.</string>
+    <string name="health_heart_whole_day">Hele dag</string>
 </resources>

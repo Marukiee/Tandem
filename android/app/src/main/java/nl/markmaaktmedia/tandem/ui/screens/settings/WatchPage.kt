@@ -39,12 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.launch
-import androidx.compose.material3.OutlinedTextField
 import nl.markmaaktmedia.tandem.R
-import nl.markmaaktmedia.tandem.data.TandemPrefs
-import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
-import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
-import nl.markmaaktmedia.tandem.ui.components.TandemDialog
 import nl.markmaaktmedia.tandem.engine.FocusMode
 import nl.markmaaktmedia.tandem.engine.Permissions
 import nl.markmaaktmedia.tandem.graph
@@ -65,13 +60,11 @@ import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.watch.WatchState
-import nl.markmaaktmedia.tandem.watch.WatchAppState
-import nl.markmaaktmedia.tandem.ui.components.NoteRow
 import uniffi.tandem_core.TandemPlatform
 
 /**
- * The watch as a device, built like the page of a computer: what it is and how it is doing, then what it can do. Coupling one has its
- * own place, next to the other ways to pair a device.
+ * The watch as a device, built like the page of a computer: what it is and how it is doing, then what it can do, and at the bottom the
+ * way to what is set for it. Coupling one has its own place, next to the other ways to pair a device.
  */
 @Composable
 internal fun WatchPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
@@ -103,7 +96,6 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
     val lockComputers by prefs.sleepLockComputers.collectAsState(initial = false)
 
     var canQuiet by remember { mutableStateOf(FocusMode.canUse(context)) }
-    var renaming by remember { mutableStateOf(false) }
     var hasListener by remember { mutableStateOf(Permissions.notificationAccess(context)) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         canQuiet = FocusMode.canUse(context)
@@ -131,16 +123,13 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
             }
         }
 
-        WatchGlance { onOpen(Route.SettingsPage(SettingsPageId.Health)) }
+        // What the watch measures is what most people open its page for, so the way to all of it is a card of its own near the top.
+        WatchHealthCard { onOpen(Route.SettingsPage(SettingsPageId.Health)) }
 
         SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
             ActionRow(
-                0, 6, TandemIcons.Watch, stringResource(R.string.watch_name_row), state.name ?: stringResource(R.string.settings_cat_watch),
-                { renaming = true },
-            )
-            ActionRow(
-                1, 6, TandemIcons.Ring,
+                0, 3, TandemIcons.Ring,
                 stringResource(if (state.ringing) R.string.watch_find_stop else R.string.watch_find),
                 stringResource(R.string.watch_find_sub),
                 onClick = {
@@ -149,38 +138,34 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
                 },
                 modifier = if (state.ready) Modifier else Modifier.alpha(0.6f),
             )
-            SettingsTarget(FocusKeys.WatchMouse, 2, 6) {
+            SettingsTarget(FocusKeys.WatchMouse, 1, 3) {
                 SwitchRow(
-                    2, 6, TandemIcons.Mouse, stringResource(R.string.watch_mouse), stringResource(R.string.watch_mouse_sub), mouse,
+                    1, 3, TandemIcons.Mouse, stringResource(R.string.watch_mouse), stringResource(R.string.watch_mouse_sub), mouse,
                     { on -> scope.launch { prefs.setWatchMouse(on) } },
                 )
             }
-            SettingsTarget(FocusKeys.WatchQuiet, 3, 6) {
+            HeartAllDayRow(2, 3)
+        }
+
+        SectionHeader(stringResource(R.string.watch_section_sleep), top = 12.dp, bottom = 0.dp)
+        SettingsGroup {
+            SettingsTarget(FocusKeys.WatchQuiet, 0, 4) {
                 SwitchRow(
-                    3, 6, TandemIcons.Sleep, stringResource(R.string.watch_quiet), stringResource(R.string.watch_quiet_sub), sleepQuiet,
+                    0, 4, TandemIcons.Sleep, stringResource(R.string.watch_quiet), stringResource(R.string.watch_quiet_sub), sleepQuiet,
                     { on -> scope.launch { prefs.setWatchSleepQuiet(on) } },
                     blocked = if (canQuiet) null else stringResource(R.string.watch_quiet_blocked),
                     onBlocked = { runCatching { context.startActivity(FocusMode.accessIntent()) } },
                 )
             }
             SwitchRow(
-                4, 6, TandemIcons.Music, stringResource(R.string.sleep_pause_music), stringResource(R.string.sleep_pause_music_sub), pauseMusic,
+                1, 4, TandemIcons.Music, stringResource(R.string.sleep_pause_music), stringResource(R.string.sleep_pause_music_sub), pauseMusic,
                 { on -> scope.launch { prefs.setSleepPauseMusic(on) } },
             )
             SwitchRow(
-                5, 6, TandemIcons.Lock, stringResource(R.string.sleep_lock_computers), stringResource(R.string.sleep_lock_computers_sub), lockComputers,
+                2, 4, TandemIcons.Lock, stringResource(R.string.sleep_lock_computers), stringResource(R.string.sleep_lock_computers_sub), lockComputers,
                 { on -> scope.launch { prefs.setSleepLockComputers(on) } },
             )
-        }
-
-        // The same choices as on the health page and on the computers' page of the watch: this is where someone looks for them too.
-        SectionHeader(stringResource(R.string.settings_cat_health), top = 12.dp, bottom = 0.dp)
-        SettingsGroup {
-            HealthChoiceRows(0, 4)
-            ActionRow(
-                3, 4, TandemIcons.Sleep, stringResource(R.string.health_row_sub), null,
-                onClick = { onOpen(Route.SettingsPage(SettingsPageId.Health)) },
-            )
+            SmartWakeRow(3, 4)
         }
 
         SectionHeader(stringResource(R.string.watch_section_wrist), top = 12.dp, bottom = 0.dp)
@@ -195,58 +180,16 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
             )
         }
 
-        // Says what it is doing, so a watch that restarts by itself during an update is no surprise.
-        val appUpdate by watch.appUpdate.collectAsState()
+        // As on the page of a computer: the name, the app on it and unpairing are set once, if ever, and have a page of their own.
+        SectionHeader(stringResource(R.string.section_preferences), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
-            // A failure is never the end of it: a tap tries again.
-            if (appUpdate is WatchAppState.Failed) {
-                ActionRow(0, 1, TandemIcons.Update, stringResource(R.string.watch_app_title), watchAppText(appUpdate) + " " + stringResource(R.string.watch_app_retry), watch::retryAppUpdate)
-            } else {
-                NoteRow(0, 1, TandemIcons.Update, stringResource(R.string.watch_app_title), watchAppText(appUpdate))
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-        SettingsGroup {
-            ActionRow(0, 1, TandemIcons.Delete, stringResource(R.string.watch_unpair), stringResource(R.string.watch_unpair_sub), watch::unpair, danger = true)
+            ActionRow(
+                0, 1, TandemIcons.Settings, stringResource(R.string.device_settings_title), stringResource(R.string.watch_settings_sub),
+                { onOpen(Route.WatchSettings) },
+            )
         }
         Spacer(Modifier.height(24.dp))
     }
-
-    if (renaming) {
-        val plain = stringResource(R.string.settings_cat_watch)
-        var text by remember { mutableStateOf(state.name ?: plain) }
-        TandemDialog(
-            title = stringResource(R.string.settings_name),
-            onDismiss = { renaming = false },
-            icon = TandemIcons.Watch,
-            body = stringResource(R.string.watch_name_sub),
-            actions = {
-                SecondaryPillButton(stringResource(R.string.action_cancel), { renaming = false })
-                PrimaryPillButton(stringResource(R.string.action_save), {
-                    // The plain name is no name of its own: it then follows the language of each device.
-                    watch.rename(text.trim().takeIf { it != plain }.orEmpty())
-                    renaming = false
-                })
-            },
-            content = {
-                OutlinedTextField(value = text, onValueChange = { text = it.take(TandemPrefs.WATCH_NAME_MAX) }, singleLine = true, shape = MaterialTheme.shapes.large)
-            },
-        )
-    }
-}
-
-@Composable
-private fun watchAppText(state: WatchAppState): String = when (state) {
-    WatchAppState.Unknown -> stringResource(R.string.watch_app_unknown)
-    is WatchAppState.UpToDate -> stringResource(R.string.watch_app_up_to_date, state.name)
-    is WatchAppState.OtherSigner -> stringResource(R.string.watch_app_other_signer, state.name)
-    is WatchAppState.Fetching -> stringResource(R.string.watch_app_fetching, state.name)
-    is WatchAppState.Sending -> stringResource(R.string.watch_app_sending, state.name, (state.progress * 100).toInt())
-    is WatchAppState.Waiting -> stringResource(R.string.watch_app_waiting, state.name)
-    is WatchAppState.Installing -> stringResource(R.string.watch_app_installing, state.name)
-    is WatchAppState.Confirm -> stringResource(R.string.watch_app_confirm, state.name)
-    is WatchAppState.Failed -> stringResource(R.string.watch_app_failed, state.name, state.reason)
 }
 
 @Composable

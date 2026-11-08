@@ -128,7 +128,8 @@ struct WatchDetail: View {
             GlassActionButton(title: "Use watch as mouse", symbol: "cursorarrow.motionlines") { model.startWatchMouse(phone.id) }
                 .disabled(!reachable)
                 .help(reachable ? "" : "The watch is not connected to its phone")
-            GlassActionButton(title: "Sleep and workouts", symbol: "bed.double") { AppScenes.showSettings(.health) }
+            // Called after all of it, as on the phone: the old name named only a part, and the way to the rest was easy to miss.
+            GlassActionButton(title: "Health", symbol: "heart") { AppScenes.showSettings(.health) }
             GlassActionButton(title: "Open \(phone.name)", symbol: "iphone") { onOpenPhone() }
         }
     }
@@ -273,6 +274,6 @@ private struct GlanceTile: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .help("Open sleep and workouts")
+        .help("Open Health")
     }
 }

@@ -4,6 +4,12 @@ import android.text.format.DateUtils
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.layout.padding
+import kotlin.math.roundToInt
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -134,9 +140,10 @@ internal fun WeekBars(
                 }
                 val full = max(value / top * size.height, least) * reveal
                 val reached = goal != null && value >= goal
+                // The picked day full, whether or not it reached the goal: at half strength it stood out from the others only barely.
                 val alpha = when {
                     dimmed -> 0.28f
-                    goal == null || reached -> 1f
+                    selected == index || goal == null || reached -> 1f
                     else -> 0.5f
                 }
                 drawRoundRect(
@@ -292,20 +299,101 @@ private fun clockOf(minutes: Int): String {
 /**
  * A day of heart rate from midnight on, one point per five minutes. A gap of more than half an hour stays a gap: the watch was off the
  * wrist, and a line through it would claim otherwise.
+ *
+ * As the night can be: a finger sliding over it shows the time and the heart rate under it, and two fingers zoom in on a part of the
+ * day and move along it, so one moment can be looked at closely. The scale follows what is in view, so a small change shows when zoomed.
  */
 @Composable
 internal fun DayHeartLine(curve: List<Int>, description: String, modifier: Modifier = Modifier, height: Dp = 96.dp) {
     val scheme = MaterialTheme.colorScheme
     val reveal = rememberReveal()
     val surface = scheme.surfaceContainer
-    val measured = curve.filter { it > 0 }
-    if (measured.isEmpty()) return
+    if (curve.size < 2 || curve.none { it > 0 }) return
+    var finger by remember { mutableStateOf<Float?>(null) }
+    var width by remember { mutableStateOf(1f) }
+    // The part of the day in view: from [from], a share of the day, over 1 / [zoom] of it.
+    var zoom by remember { mutableStateOf(1f) }
+    var from by remember { mutableStateOf(0f) }
+    val last = curve.size - 1
+    val span = 1f / zoom
+
+    fun minuteAt(share: Float) = (share * last * HEART_SLOT_MINUTES).toInt()
+    // The measured point nearest to a share of the day, within a quarter of an hour, or none where the watch was off.
+    fun pointAt(share: Float): Int? {
+        val at = (share * last).roundToInt().coerceIn(0, last)
+        return (0..HEART_NEAR_SLOTS).asSequence()
+            .flatMap { sequenceOf(at - it, at + it) }
+            .firstOrNull { it in 0..last && curve[it] > 0 }
+    }
+
+    val heading = finger?.let { x ->
+        val share = from + (x / width).coerceIn(0f, 1f) * span
+        val point = pointAt(share)
+        if (point != null) "${clockOf(point * HEART_SLOT_MINUTES)} · ${stringResource(R.string.health_resting_line, curve[point])}"
+        else "${clockOf(minuteAt(share))} · ${stringResource(R.string.health_nothing)}"
+    } ?: if (zoom > 1.01f) {
+        stringResource(R.string.health_night_span, clockOf(minuteAt(from)), clockOf(minuteAt(from + span)))
+    } else {
+        stringResource(R.string.health_heart_hint)
+    }
+
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Canvas(Modifier.fillMaxWidth().height(height).semantics { contentDescription = description }) {
-            val low = measured.min() - 4f
-            val high = measured.max() + 4f
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(heading, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
+            if (zoom > 1.01f) {
+                Text(
+                    stringResource(R.string.health_heart_whole_day),
+                    style = MaterialTheme.typography.labelMedium, color = scheme.primary,
+                    modifier = Modifier.clip(CircleShape).clickable {
+                        zoom = 1f
+                        from = 0f
+                    }.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+        }
+        Canvas(
+            Modifier
+                .fillMaxWidth()
+                .height(height)
+                .semantics { contentDescription = description }
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        finger = down.position.x
+                        var pinched = false
+                        do {
+                            val event = awaitPointerEvent()
+                            val pressed = event.changes.filter { it.pressed }
+                            if (pressed.size >= 2) {
+                                // Two fingers: zoom around the point between them, and move along the day as they move.
+                                pinched = true
+                                finger = null
+                                val w = size.width.toFloat()
+                                val centre = event.calculateCentroid(useCurrent = true).x / w
+                                val under = from + centre / zoom
+                                zoom = (zoom * event.calculateZoom()).coerceIn(1f, HEART_MAX_ZOOM)
+                                from = (under - centre / zoom - event.calculatePan().x / w / zoom).coerceIn(0f, 1f - 1f / zoom)
+                                event.changes.forEach { it.consume() }
+                            } else if (pressed.size == 1 && !pinched) {
+                                val change = pressed.first()
+                                finger = change.position.x
+                                // Sideways is this chart's, up and down stays the page's.
+                                val move = change.position - change.previousPosition
+                                if (kotlin.math.abs(move.x) > kotlin.math.abs(move.y)) change.consume()
+                            }
+                        } while (event.changes.any { it.pressed })
+                        finger = null
+                    }
+                },
+        ) {
+            width = size.width
+            val first = (from * last).toInt().coerceIn(0, last)
+            val end = ((from + span) * last).toInt().plus(1).coerceIn(0, last)
+            val inView = (first..end).map { curve[it] }.filter { it > 0 }.ifEmpty { curve.filter { it > 0 } }
+            val low = inView.min() - 4f
+            val high = inView.max() + 4f
             val pad = 6.dp.toPx()
-            fun x(index: Int) = index / (curve.size - 1f) * size.width
+            fun x(index: Int) = (index / last.toFloat() - from) * zoom * size.width
             fun y(value: Int) = pad + (1f - (value - low) / (high - low)) * (size.height - 2 * pad)
             for (quarter in 0..4) {
                 val at = size.width * quarter / 4
@@ -322,20 +410,34 @@ internal fun DayHeartLine(curve: List<Int>, description: String, modifier: Modif
                     lastPoint = index
                 }
                 drawPath(line, scheme.primary, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
-                if (lastPoint >= 0) {
-                    val end = Offset(x(lastPoint), y(curve[lastPoint]))
-                    drawCircle(surface, 6.dp.toPx(), end)
-                    drawCircle(scheme.primary, 4.dp.toPx(), end)
+                val marked = finger?.let { pointAt(from + (it / size.width).coerceIn(0f, 1f) * span) }
+                val dot = marked ?: lastPoint.takeIf { it >= 0 && finger == null }
+                if (dot != null) {
+                    val at = Offset(x(dot), y(curve[dot]))
+                    drawCircle(surface, 6.dp.toPx(), at)
+                    drawCircle(scheme.primary, 4.dp.toPx(), at)
                 }
+            }
+            finger?.let { fx ->
+                val at = fx.coerceIn(0f, size.width)
+                drawLine(scheme.onSurface, Offset(at, 0f), Offset(at, size.height), 1.5.dp.toPx())
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            listOf(0, 6, 12, 18, 24).forEach { hour ->
-                Text(clockOf(hour * 60), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // The whole day in hours, or the times at the edges and quarters of the part in view.
+            (0..4).forEach { quarter ->
+                Text(
+                    clockOf(minuteAt(from + span * quarter / 4)),
+                    style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
 }
+
+private const val HEART_SLOT_MINUTES = 5
+private const val HEART_NEAR_SLOTS = 3
+private const val HEART_MAX_ZOOM = 12f
 
 private const val MAX_HEART_GAP_SLOTS = 6
 

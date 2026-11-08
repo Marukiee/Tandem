@@ -63,6 +63,12 @@ import java.time.format.FormatStyle
 import java.util.TimeZone
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
+import androidx.compose.runtime.mutableIntStateOf
+import nl.markmaaktmedia.tandem.ui.components.ActionRow
+import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
+import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
+import nl.markmaaktmedia.tandem.ui.components.TandemDialog
+import nl.markmaaktmedia.tandem.ui.components.TandemIconButton
 import nl.markmaaktmedia.tandem.data.TandemPrefs
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.GroupedRow
@@ -639,46 +645,118 @@ internal fun HealthChoices() {
     val watch by LocalContext.current.graph.watch.state.collectAsState()
     if (!watch.paired) return
     SectionHeader(stringResource(R.string.section_preferences), top = 16.dp, bottom = 0.dp)
-    SettingsGroup { HealthChoiceRows(0, 3, searchTargets = true) }
+    SettingsGroup {
+        SmartWakeRow(0, 3, searchTarget = true)
+        HeartAllDayRow(1, 3, searchTarget = true)
+        StepGoalRow(2, 3)
+    }
 }
 
-/**
- * Waking gently, the heart rate all day and the step goal, as rows from [start] in a group of [total]. On the health page and on the page
- * of the watch, which are both where someone looks for them. Search only leads to the ones on the health page ([searchTargets]).
- */
+/** Waking gently, at [index] in a group of [total]. On the health page and on the page of the watch; search leads to the one on the health page. */
 @Composable
-internal fun HealthChoiceRows(start: Int, total: Int, searchTargets: Boolean = false) {
+internal fun SmartWakeRow(index: Int, total: Int, searchTarget: Boolean = false) {
     val graph = LocalContext.current.graph
     val scope = rememberCoroutineScope()
-    val goal by graph.prefs.stepGoal.collectAsState(initial = TandemPrefs.DEFAULT_STEP_GOAL)
     val smartWake by graph.prefs.smartWake.collectAsState(initial = false)
-    val heartAllDay by graph.prefs.heartAllDay.collectAsState(initial = true)
-    val wake = @Composable {
+    val row = @Composable {
         SwitchRow(
-            start, total, TandemIcons.Schedule, stringResource(R.string.health_smart_wake), stringResource(R.string.health_smart_wake_sub), smartWake,
+            index, total, TandemIcons.Schedule, stringResource(R.string.health_smart_wake), stringResource(R.string.health_smart_wake_sub), smartWake,
             { on -> scope.launch { graph.prefs.setSmartWake(on) } },
         )
     }
-    val heart = @Composable {
+    if (searchTarget) SettingsTarget(FocusKeys.HealthSmartWake, index, total, row) else row()
+}
+
+/** The heart rate all day, like [SmartWakeRow]. */
+@Composable
+internal fun HeartAllDayRow(index: Int, total: Int, searchTarget: Boolean = false) {
+    val graph = LocalContext.current.graph
+    val scope = rememberCoroutineScope()
+    val heartAllDay by graph.prefs.heartAllDay.collectAsState(initial = true)
+    val row = @Composable {
         SwitchRow(
-            start + 1, total, TandemIcons.Heart, stringResource(R.string.health_heart_all_day), stringResource(R.string.health_heart_all_day_sub), heartAllDay,
+            index, total, TandemIcons.Heart, stringResource(R.string.health_heart_all_day), stringResource(R.string.health_heart_all_day_sub), heartAllDay,
             { on -> scope.launch { graph.prefs.setHeartAllDay(on) } },
         )
     }
-    if (searchTargets) SettingsTarget(FocusKeys.HealthSmartWake, start, total, wake) else wake()
-    if (searchTargets) SettingsTarget(FocusKeys.HealthHeartAllDay, start + 1, total, heart) else heart()
-    PadSlider(
-        start + 2, total, stringResource(R.string.health_goal), stringResource(R.string.health_goal_sub), goal,
-        TandemPrefs.STEP_GOAL_MIN..TandemPrefs.STEP_GOAL_MAX, TandemPrefs.STEP_GOAL_STEP, { number(it.toLong()) }, TandemIcons.Workout,
-    ) { value -> scope.launch { graph.prefs.setStepGoal(value) } }
+    if (searchTarget) SettingsTarget(FocusKeys.HealthHeartAllDay, index, total, row) else row()
 }
 
 /**
- * What the watch measured last, as three numbers at the top of the page of the watch: the night, today's steps as the watch counts them,
- * and the resting heart rate. A tap opens the health page. Nothing while there is nothing to show.
+ * The step goal as a row that opens a small window with a minus and a plus, saved only with Save. It was a slider on the page, which a
+ * thumb scrolling past moved by thousands without meaning to.
  */
 @Composable
-internal fun WatchGlance(onOpen: () -> Unit) {
+private fun StepGoalRow(index: Int, total: Int) {
+    val graph = LocalContext.current.graph
+    val scope = rememberCoroutineScope()
+    val goal by graph.prefs.stepGoal.collectAsState(initial = TandemPrefs.DEFAULT_STEP_GOAL)
+    var editing by remember { mutableStateOf(false) }
+    ActionRow(index, total, TandemIcons.Steps, stringResource(R.string.health_goal), stringResource(R.string.health_goal_row, number(goal.toLong())), { editing = true })
+    if (!editing) return
+    var draft by remember { mutableIntStateOf(goal) }
+    TandemDialog(
+        title = stringResource(R.string.health_goal),
+        onDismiss = { editing = false },
+        icon = TandemIcons.Steps,
+        body = stringResource(R.string.health_goal_sub),
+        actions = {
+            SecondaryPillButton(stringResource(R.string.action_cancel), { editing = false })
+            PrimaryPillButton(stringResource(R.string.action_save), {
+                scope.launch { graph.prefs.setStepGoal(draft) }
+                editing = false
+            })
+        },
+        content = {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                TandemIconButton(
+                    TandemIcons.Remove, stringResource(R.string.health_goal_less),
+                    { draft = (draft - TandemPrefs.STEP_GOAL_STEP).coerceAtLeast(TandemPrefs.STEP_GOAL_MIN) },
+                    background = MaterialTheme.colorScheme.surfaceContainerHighest, size = 52,
+                )
+                Text(number(draft.toLong()), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                TandemIconButton(
+                    TandemIcons.Add, stringResource(R.string.health_goal_more),
+                    { draft = (draft + TandemPrefs.STEP_GOAL_STEP).coerceAtMost(TandemPrefs.STEP_GOAL_MAX) },
+                    background = MaterialTheme.colorScheme.surfaceContainerHighest, size = 52,
+                )
+            }
+        },
+    )
+}
+
+/**
+ * The way to everything the watch measures, on the page of the watch: what it is called, what is in it, and the last numbers as tiles.
+ * It was a row near the bottom called after only a part of it, which was easy to miss.
+ */
+@Composable
+internal fun WatchHealthCard(onOpen: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Column(Modifier.fillMaxWidth().clip(CardSquircle).background(scheme.surfaceContainer)) {
+        Row(
+            Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Box(Modifier.size(44.dp).clip(CircleShape).background(scheme.primaryContainer), contentAlignment = Alignment.Center) {
+                Icon(TandemIcons.Heart, null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(24.dp))
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(R.string.settings_cat_health), style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.health_open_sub), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+            }
+            Icon(TandemIcons.ChevronRight, null, tint = scheme.onSurfaceVariant)
+        }
+        WatchGlance(onOpen, Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp))
+    }
+}
+
+/**
+ * What the watch measured last, as three numbers: the night, today's steps as the watch counts them, and the resting heart rate. A tap
+ * opens the health page. Nothing while there is nothing to show.
+ */
+@Composable
+internal fun WatchGlance(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val graph = context.graph
     val records by graph.host.healthRecords.collectAsState()
@@ -691,7 +769,7 @@ internal fun WatchGlance(onOpen: () -> Unit) {
     if (night == null && steps == null && resting == null) return
     // Three tiles of their own, each in its own colour of the theme, so the eye finds each number by its colour as well as its place.
     val scheme = MaterialTheme.colorScheme
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (night != null) {
             Glance(
                 TandemIcons.Sleep, stringResource(R.string.watch_glance_night), duration(night.sleepMinutes.toInt()),
@@ -701,7 +779,7 @@ internal fun WatchGlance(onOpen: () -> Unit) {
         }
         if (steps != null) {
             Glance(
-                TandemIcons.Workout, stringResource(R.string.health_steps_title), number(steps), stringResource(R.string.health_today),
+                TandemIcons.Steps, stringResource(R.string.health_steps_title), number(steps), stringResource(R.string.health_today),
                 scheme.primaryContainer, scheme.onPrimaryContainer, onOpen, Modifier.weight(1f),
             )
         }

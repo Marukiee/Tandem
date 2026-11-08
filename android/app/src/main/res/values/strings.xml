@@ -597,7 +597,7 @@
     <string name="sleep_pause_music">Pause music when you fall asleep</string>
     <string name="sleep_pause_music_sub">On this phone and on your computers, as soon as the watch notices you sleep</string>
     <string name="sleep_lock_computers">Lock computers when you fall asleep</string>
-    <string name="sleep_lock_computers_sub">Off by itself: someone else may be at the computer</string>
+    <string name="sleep_lock_computers_sub">When your watch notices you are asleep, your computers lock, as when you walk away from them</string>
     <string name="sleep_music_channel">Music while you slept</string>
     <string name="sleep_music_title">Music played on while you slept</string>
     <string name="sleep_music_text">Music played on for half an hour or more after you fell asleep. Stop it by itself from now on?</string>
@@ -715,4 +715,15 @@
     <string name="health_compared">Compared with %1$s</string>
     <string name="health_compared_sum">%1$d nights, on average %2$s apart</string>
     <string name="health_compared_line">%1$s: Tandem %2$s, other app %3$s</string>
+    <string name="watch_settings_sub">Name, Tandem on your watch, and unpairing</string>
+    <string name="watch_unpair_title">Unpair %1$s?</string>
+    <string name="watch_unpair_body">Your watch then gets no more notifications, music or calls from this phone. Pairing it again is done here, under Pair a device.</string>
+    <string name="watch_unpair_confirm">Unpair</string>
+    <string name="watch_section_sleep">While you sleep</string>
+    <string name="health_open_sub">Sleep, steps, heart rate and workouts</string>
+    <string name="health_goal_row">%1$s steps a day. Your watch shows it too.</string>
+    <string name="health_goal_less">Fewer steps</string>
+    <string name="health_goal_more">More steps</string>
+    <string name="health_heart_hint">Slide over the line to see a moment. Pinch to zoom in.</string>
+    <string name="health_heart_whole_day">Whole day</string>
 </resources>

@@ -53,6 +53,8 @@ object TandemIcons {
     val DesktopMac: Painter @Composable get() = painterResource(R.drawable.sym_desktop_mac)
     val Sleep: Painter @Composable get() = painterResource(R.drawable.sym_bedtime)
     val Workout: Painter @Composable get() = painterResource(R.drawable.sym_workout)
+    val Steps: Painter @Composable get() = painterResource(R.drawable.sym_steps)
+    val Remove: Painter @Composable get() = painterResource(R.drawable.sym_remove)
     val Heart: Painter @Composable get() = painterResource(R.drawable.sym_favorite)
     val Schedule: Painter @Composable get() = painterResource(R.drawable.sym_schedule)
     val Calendar: Painter @Composable get() = painterResource(R.drawable.sym_calendar_today)

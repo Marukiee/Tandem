@@ -84,7 +84,7 @@
 "Recording your sleep" = "Neemt je slaap op";
 "Last night" = "Afgelopen nacht";
 "Sleep score %lld" = "Slaapscore %lld";
-"Open sleep and workouts" = "Slaap en trainingen openen";
+"Open Health" = "Gezondheid openen";
 "Use the watch as a mouse" = "Gebruik het horloge als muis";
 "Steers a computer, only while the mouse screen is open on the unlocked watch" = "Bedient een computer, alleen terwijl het muisscherm open is op het ontgrendelde horloge";
 "Quiet while you sleep" = "Stil tijdens je slaap";
@@ -1405,7 +1405,7 @@
 "A link asks to pair. That device will get your clipboard, notifications and files. Only go on if you started this yourself." = "Een link vraagt om te koppelen. Dat apparaat krijgt je klembord, meldingen en bestanden. Ga alleen door als je dit zelf hebt gestart.";
 "Pair" = "Koppelen";
 
-"Sleep and workouts" = "Slaap en trainingen";
+"Health" = "Gezondheid";
 "Sleep stages are an estimate from heart rate and movement, not a sleep lab." = "Slaapfasen zijn een schatting uit hartslag en beweging, geen slaaplab.";
 "%lld h %lld m" = "%lld u %lld m";
 "%lld m" = "%lld m";

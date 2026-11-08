@@ -19,6 +19,9 @@ sealed interface Route {
     /** What is set for one device: sharing, what it may ask, and removing it. */
     data class DeviceSettings(val id: String) : Route
 
+    /** What is set for the watch itself: its name, Tandem on it, and unpairing it. Like [DeviceSettings] for a computer. */
+    data object WatchSettings : Route
+
     /** The screen of a Mac on the phone, with its mouse and keyboard. */
     data class Screen(val id: String) : Route
 
@@ -106,6 +109,7 @@ private fun routeFromKey(key: String): Route? = when {
     key.startsWith("remote:") -> Route.Remote(key.removePrefix("remote:"))
     key.startsWith("presentation:") -> Route.Presentation(key.removePrefix("presentation:"))
     key.startsWith("devsettings:") -> Route.DeviceSettings(key.removePrefix("devsettings:"))
+    key == "watch-settings" -> Route.WatchSettings
     key.startsWith("screen:") -> Route.Screen(key.removePrefix("screen:"))
     key.startsWith("display:") -> Route.Display(key.removePrefix("display:"))
     key.startsWith("terminal:") -> Route.Terminal(key.removePrefix("terminal:"))
