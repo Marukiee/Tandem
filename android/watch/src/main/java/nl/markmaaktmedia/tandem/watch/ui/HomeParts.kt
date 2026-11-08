@@ -34,6 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.foundation.layout.width
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumnItemScope
 import androidx.wear.compose.material3.CircularProgressIndicator
 import androidx.wear.compose.material3.FilledIconButton
@@ -64,6 +69,8 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
     val backdrop = remember(image) { image?.let { Bitmap.createScaledBitmap(it, BACKDROP_PIXELS, BACKDROP_PIXELS, true) } }
     Box(
         rimContent(spec)
+            // Room on both sides: full width it ran into the scroll bar on the right and stood off centre against the empty left.
+            .padding(horizontal = 10.dp)
             .height(116.dp)
             // As round as the screen it is on: a card with corners showed its hard edges against the round glass.
             .clip(RoundedCornerShape(percent = 50))
@@ -130,14 +137,18 @@ internal fun TransformingLazyColumnItemScope.BatteryRow(devices: List<DeviceBatt
                         DeviceBattery.COMPUTER -> R.drawable.sym_laptop
                         else -> R.drawable.sym_smartphone
                     }
-                    Round(icon, "${device.level}%", progress = device.level / 100f, size = 46, label = device.name)
+                    Round(icon, "${device.level}%", progress = device.level / 100f, label = device.name)
                 }
             }
         }
     }
 }
 
-/** A round with an icon and a number in it, and a ring around it when [progress] says how full something is. */
+/**
+ * A round with an icon and a number in it, and a ring around it when [progress] says how full something is. The number is bold with its
+ * unit small behind it, as on the phone, and [label] says under the round whose it is. The percentages of the batteries were thin and grey
+ * under their rings, and the name of the device was not shown at all.
+ */
 @Composable
 private fun Round(@DrawableRes icon: Int, value: String, progress: Float? = null, size: Int = 54, label: String? = null) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -149,12 +160,23 @@ private fun Round(@DrawableRes icon: Int, value: String, progress: Float? = null
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(painterResource(icon), null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
-                if (label == null) Text(value, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(withSmallUnit(value), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, maxLines = 1)
             }
         }
-        // Under a device the number, so its ring stays an icon and the name is not squeezed in.
-        if (label != null) Text(value, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        if (label != null) {
+            Text(
+                label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.width((size + 16).dp),
+            )
+        }
     }
+}
+
+/** The digits as they are and what follows them (a % or a k) smaller, so the number is what the eye finds first. */
+private fun withSmallUnit(value: String) = buildAnnotatedString {
+    val digits = value.takeWhile { it.isDigit() || it == '.' || it == ',' || it == ':' }
+    append(digits)
+    if (digits.length < value.length) withStyle(SpanStyle(fontSize = 0.72.em, fontWeight = FontWeight.SemiBold)) { append(value.drop(digits.length)) }
 }
 
 /** Few enough that no letter of a cover survives, enough that its colours still run from one side to the other. */
