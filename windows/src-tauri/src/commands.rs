@@ -233,10 +233,16 @@ pub async fn rename_watch(state: State<'_, AppState>, id: String, name: String) 
     state.engine()?.rename_watch(id, name).await.map_err(shown)
 }
 
-/// The watch opens its mouse screen for this computer by itself.
+/// The watch opens its mouse screen for this computer by itself, as the table mouse when `table`.
 #[tauri::command]
-pub async fn start_watch_mouse(state: State<'_, AppState>, id: String) -> Reply<()> {
-    state.engine()?.start_watch_mouse(id).await.map_err(shown)
+pub async fn start_watch_mouse(state: State<'_, AppState>, id: String, table: Option<bool>) -> Reply<()> {
+    state.engine()?.start_watch_mouse(id, table.unwrap_or(false)).await.map_err(shown)
+}
+
+/// The watch closes its mouse screen: this computer is done with it.
+#[tauri::command]
+pub async fn stop_watch_mouse(state: State<'_, AppState>, id: String) -> Reply<()> {
+    state.engine()?.stop_watch_mouse(id).await.map_err(shown)
 }
 
 /// Pairing again is done on the phone.

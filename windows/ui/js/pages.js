@@ -230,13 +230,6 @@ function SoundModeButton({ device }) {
 }
 
 /** Finds the watch of a phone. It only talks to that phone, so it goes through there, and it rings or not as that phone says. */
-function WatchButton({ device }) {
-  const watch = device.status.watch;
-  const press = () => call("ring_watch", { id: device.id, on: !watch.ringing }).catch(failed);
-  return html`<button class="btn" disabled=${!device.online || !watch.online} title=${watch.online ? "" : t("watch_away")} onClick=${press}>
-    <${Icon} name=${watch.ringing ? "bell-off" : "device-watch"} size=${17} />${watch.ringing ? t("stop_ringing") : t("find_watch")}</button>`;
-}
-
 /**
  * A group of the buttons of a device page, as the Mac has them: a card with a small heading and a row per button. Side by side when
  * there is room and under each other when there is not; pills as wide as their words wrapped into ragged lines.
@@ -427,7 +420,8 @@ export function WatchPage({ device }) {
     setWanted((before) => ({ ...before, ...patch }));
     call("set_watch_settings", { id: device.id, ...patch }).catch(failed);
   };
-  const openHealth = () => set({ page: "settings", settingsWanted: { section: "health", at: Date.now() } });
+  // Health as a page of its own in the window, with a way back here; in Settings it opened somewhere else entirely.
+  const openHealth = () => set({ page: "health" });
   const toggle = (icon, key, title, sub) => html`<${SettingRow} icon=${icon} title=${t(title)} sub=${t(sub)} why=${why}>
     <${Switch} on=${shown[key]} label=${t(title)} disabled=${!device.online} onChange=${(on) => change({ [key]: on })} />
   <//>`;
@@ -458,14 +452,8 @@ export function WatchPage({ device }) {
       <${WatchGlance} i=${insights} records=${state.health} onOpen=${openHealth} />
     </div>
 
-    <div class="agroups">
-      <${ActionGroup} title=${t("watch")}>
-        <${WatchButton} device=${device} />
-        <button class="btn" disabled=${!reachable} title=${reachable ? "" : t("watch_away")} onClick=${() => call("start_watch_mouse", { id: device.id }).catch(failed)}>
-          <${Icon} name="pointer" size=${17} />${t("watch_as_mouse")}</button>
-        <button class="btn" onClick=${() => set({ selected: device.id, page: "device" })}><${Icon} name="device-mobile" size=${17} />${t("open_device", device.name)}</button>
-      <//>
-    </div>
+    <h2>${t("watch")}</h2>
+    <${WatchActions} device=${device} reachable=${reachable} />
 
     <h2>${t("settings")}</h2>
     <div class="card flush">
@@ -540,6 +528,35 @@ export function StepGoalDialog({ dialog, close }) {
         <button class="btn" onClick=${close}>${t("cancel")}</button>
         <button class="btn accent" onClick=${save}>${t("save")}</button>
       </div></div></div>`;
+}
+
+/**
+ * What the watch can do from here, as tiles that say what they are doing: one that is on says so, and stops with the same tile. The
+ * phone says which computer the watch steers, so this one knows whether that is itself.
+ */
+function WatchActions({ device, reachable }) {
+  const watch = device.status.watch;
+  const away = reachable ? "" : t("watch_away");
+  const mouse = reachable ? watch.mouse : null;
+  const here = mouse && state.self && mouse.target === state.self.id;
+  const inAir = here && !mouse.table, onTable = here && mouse.table;
+  const other = mouse && !here ? ((state.devices.find((d) => d.id === mouse.target) || {}).name || t("watch_other_computer")) : null;
+  const go = (command, args) => call(command, { id: device.id, ...args }).catch(failed);
+  const tile = (icon, title, sub, on, why, press) => html`<button class=${"card watch-tile" + (on ? " on" : "")} disabled=${!!why} title=${why} onClick=${press}>
+    <span class="watch-tile-icon"><${Icon} name=${icon} size=${18} /></span>
+    <span class="grow"><span class="t">${title}</span><span class="s">${sub}</span></span>
+  </button>`;
+  return html`<div class="watch-tiles">
+    ${tile(watch.ringing ? "bell-off" : "device-watch", watch.ringing ? t("stop_ringing") : t("find_watch"),
+      watch.ringing ? t("watch_ringing_now") : t("watch_rings_silent"), watch.ringing, away, () => go("ring_watch", { on: !watch.ringing }))}
+    ${tile("pointer", inAir ? t("watch_mouse_stop") : t("watch_as_mouse"),
+      inAir ? t("watch_mouse_here") : other ? t("watch_mouse_other", other) : t("watch_mouse_how"), inAir, away,
+      () => (inAir ? go("stop_watch_mouse") : go("start_watch_mouse", { table: false })))}
+    ${tile("walk", onTable ? t("watch_table_stop") : t("watch_table"),
+      onTable ? t("watch_table_here") : t("watch_table_how"), onTable, away,
+      () => (onTable ? go("stop_watch_mouse") : go("start_watch_mouse", { table: true })))}
+    ${tile("device-mobile", t("open_device", device.name), t("watch_open_phone"), false, "", () => set({ selected: device.id, page: "device" }))}
+  </div>`;
 }
 
 /** The step goals the phone offers, so both say the same. */
@@ -1347,7 +1364,24 @@ function HealthChoices() {
     </div>`;
 }
 
-function HealthSection() {
+/** Health as a page of the main window, opened from the page of the watch, with a way back to it. */
+export function HealthPage() {
+  return html`<div class="wrap">
+    <div class="card" style="--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))">
+      <div class="head">
+        <button class="iconbtn" title=${t("back_to_watch")} aria-label=${t("back_to_watch")} onClick=${() => set({ page: "watch" })}><${Icon} name="chevron-left" size=${18} /></button>
+        <span class="health-entry-icon"><${Icon} name="heart" size=${20} /></span>
+        <div class="info grow">
+          <div class="title">${t("tab_health")}</div>
+          <div class="small muted">${t("health_open_sub")}</div>
+        </div>
+      </div>
+    </div>
+    <${HealthSection} plain=${true} />
+  </div>`;
+}
+
+function HealthSection({ plain = false } = {}) {
   const [shown, setShown] = useState(healthShown);
   const [insights, setInsights] = useState(null);
   useEffect(() => {
@@ -1360,7 +1394,7 @@ function HealthSection() {
     try { localStorage.setItem("healthShown", on ? "1" : "0"); } catch { /* the choice only lasts until this window closes */ }
   };
   return html`<div style="display:flex;flex-direction:column;gap:12px">
-    <h2>${t("tab_health")}</h2>
+    ${!plain && html`<h2>${t("tab_health")}</h2>`}
     ${!hasWatch && html`<div class="card flush"><${SettingRow} icon="moon" title=${t("health_show")} sub=${t("health_show_sub")} on=${shown} onChange=${change} /></div>`}
     ${(hasWatch || shown) && insights && html`<${HealthContent} i=${insights} records=${records} />`}
     ${(hasWatch || shown) && records.length === 0 && html`<div class="muted">${t("health_empty")}</div>`}

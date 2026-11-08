@@ -340,7 +340,8 @@ internal fun DayHeartLine(curve: List<Int>, description: String, modifier: Modif
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(heading, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
+            // Figures of one width: with the usual ones the time and the rate shifted sideways with every step of a finger.
+            Text(heading, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"), color = scheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
             if (zoom > 1.01f) {
                 Text(
                     stringResource(R.string.health_heart_whole_day),
@@ -483,7 +484,7 @@ internal fun SleepTimeline(record: TandemHealthRecord, modifier: Modifier = Modi
     } ?: stringResource(R.string.health_night_span, time(start), time(end))
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(heading, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant, maxLines = 1)
+        Text(heading, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"), color = scheme.onSurfaceVariant, maxLines = 1)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Column(Modifier.width(44.dp).height(LANE_HEIGHT * Lanes.size)) {
                 Lanes.forEach { lane ->

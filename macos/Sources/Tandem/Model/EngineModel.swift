@@ -753,7 +753,7 @@ final class EngineModel {
             FindThisMac.shared.ring(from: from, on: on)
 
         // Only a phone has a watch.
-        case .ringWatch, .renameWatch, .unpairWatch, .setWatchSettings, .startWatchMouse:
+        case .ringWatch, .renameWatch, .unpairWatch, .setWatchSettings, .startWatchMouse, .stopWatchMouse:
             break
 
         case let .keepAwake(from, on):
@@ -1260,8 +1260,13 @@ final class EngineModel {
         Task { try? await engine?.renameWatch(target: id, name: name) }
     }
 
-    func startWatchMouse(_ id: String) {
-        Task { try? await engine?.startWatchMouse(target: id) }
+    func startWatchMouse(_ id: String, table: Bool = false) {
+        Task { try? await engine?.startWatchMouse(target: id, table: table) }
+    }
+
+    /// The watch closes its mouse screen. Its phone only does this for the computer the watch steers.
+    func stopWatchMouse(_ id: String) {
+        Task { try? await engine?.stopWatchMouse(target: id) }
     }
 
     func unpairWatch(_ id: String) {

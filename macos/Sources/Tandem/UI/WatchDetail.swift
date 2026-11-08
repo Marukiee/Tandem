@@ -8,6 +8,8 @@ struct WatchDetail: View {
     @Environment(EngineModel.self) private var model
     let phone: TandemDevice
     var onOpenPhone: () -> Void = {}
+    /// Opens Health, as a page of the main window; in Settings where there is no main window to open it in.
+    var onOpenHealth: () -> Void = { AppScenes.showSettings(.health) }
 
     @State private var speaker = WatchAudio.shared.chosen
     @State private var showSettings = false
@@ -24,7 +26,7 @@ struct WatchDetail: View {
         ScrollView {
             VStack(spacing: 18) {
                 header
-                WatchHealthCard()
+                WatchHealthCard(onOpen: onOpenHealth)
                 actions
                 choices
                 sleepChoices
@@ -72,23 +74,49 @@ struct WatchDetail: View {
         }
     }
 
+    /// What the watch steers now, as its phone said: this Mac, another computer, or nothing.
+    private var mouse: TandemWatchMouse? { reachable ? watch?.mouse : nil }
+    private var steersThisMac: Bool { mouse?.target == model.myId }
+    private var steeredName: String? {
+        guard let mouse, !steersThisMac else { return nil }
+        return model.device(mouse.target)?.name ?? String(localized: "another computer")
+    }
+
+    /// What the watch can do from here, as tiles that say what they are doing: one that is on says so, and how to stop it.
     private var actions: some View {
-        ActionGroup(title: "Watch") {
-            GlassActionButton(
-                title: watch?.ringing == true ? "Stop ringing" : "Find watch",
-                symbol: watch?.ringing == true ? "bell.slash.fill" : "applewatch.radiowaves.left.and.right",
-                prominent: watch?.ringing == true
-            ) {
-                model.ringWatch(phone.id, on: watch?.ringing != true)
+        let away = reachable ? nil : String(localized: "The watch is not connected to its phone")
+        let ringing = watch?.ringing == true
+        let inAir = steersThisMac && mouse?.table == false
+        let onTable = steersThisMac && mouse?.table == true
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Watch").font(.headline).padding(.horizontal, 4)
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                WatchActionTile(
+                    symbol: ringing ? "bell.slash.fill" : "applewatch.radiowaves.left.and.right",
+                    title: ringing ? "Stop ringing" : "Find watch",
+                    subtitle: ringing ? String(localized: "Ringing now, also on silent") : String(localized: "It rings, even on silent"),
+                    on: ringing, why: away
+                ) { model.ringWatch(phone.id, on: !ringing) }
+                WatchActionTile(
+                    symbol: "cursorarrow.motionlines",
+                    title: inAir ? "Stop using watch as mouse" : "Use watch as mouse",
+                    subtitle: inAir ? String(localized: "Steering this Mac now")
+                        : steeredName.map { String(localized: "Steering \($0) now") } ?? String(localized: "Point with your arm, pinch to click"),
+                    on: inAir, why: away
+                ) { inAir ? model.stopWatchMouse(phone.id) : model.startWatchMouse(phone.id) }
+                WatchActionTile(
+                    symbol: "hand.raised.fingers.spread",
+                    title: onTable ? "Stop the table mouse" : "Table mouse",
+                    subtitle: onTable ? String(localized: "Your hand on the table steers this Mac") : String(localized: "Your hand on the table, a tap clicks"),
+                    on: onTable, why: away
+                ) { onTable ? model.stopWatchMouse(phone.id) : model.startWatchMouse(phone.id, table: true) }
+                WatchActionTile(
+                    symbol: "iphone", title: "Open \(phone.name)", subtitle: String(localized: "Its page, with everything it does"), on: false, why: nil
+                ) { onOpenPhone() }
             }
-            .disabled(!reachable)
-            .help(reachable ? "" : "The watch is not connected to its phone")
-            // The watch opens its mouse screen by itself, so it need not be touched.
-            GlassActionButton(title: "Use watch as mouse", symbol: "cursorarrow.motionlines") { model.startWatchMouse(phone.id) }
-                .disabled(!reachable)
-                .help(reachable ? "" : "The watch is not connected to its phone")
-            GlassActionButton(title: "Open \(phone.name)", symbol: "iphone") { onOpenPhone() }
         }
+        .animation(.tandemFade, value: ringing)
+        .animation(.tandemFade, value: mouse)
     }
 
     /// What the watch does during the day, kept on its phone, which passes it on: the same choices as there, so they can be made from here.
@@ -261,6 +289,7 @@ private struct WatchSettingsSheet: View {
 /// open it too. Only what this Mac was given: a computer sees whole days, so the steps are of the last whole day.
 private struct WatchHealthCard: View {
     @Environment(EngineModel.self) private var model
+    let onOpen: () -> Void
 
     var body: some View {
         let insights = model.healthInsights
@@ -268,7 +297,7 @@ private struct WatchHealthCard: View {
         let stepsDay = insights?.week.last { $0.steps != nil }
         Card(radius: Metrics.card, padding: 6) {
             VStack(spacing: 6) {
-                Button { AppScenes.showSettings(.health) } label: {
+                Button(action: onOpen) {
                     HStack(spacing: 14) {
                         Image(systemName: "heart.fill")
                             .font(.system(size: 18, weight: .semibold))
@@ -294,16 +323,16 @@ private struct WatchHealthCard: View {
                         if let night {
                             let score = insights?.latestNight?.id == night.id ? insights?.latestNight?.score : nil
                             GlanceTile(
-                                symbol: "bed.double", title: "Last night", number: minutesText(Int(night.sleepMinutes)),
+                                onOpen: onOpen, symbol: "bed.double", title: "Last night", number: minutesText(Int(night.sleepMinutes)),
                                 caption: score.map { String(localized: "Sleep score \(Int($0))") } ?? dayName(night.endMs)
                             )
                         }
                         if let day = stepsDay, let steps = day.steps {
-                            GlanceTile(symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(), caption: dayName(day.startMs))
+                            GlanceTile(onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(), caption: dayName(day.startMs))
                         }
                         if let resting = insights?.resting {
                             GlanceTile(
-                                symbol: "heart", title: "Resting heart rate", number: String(localized: "\(Int(resting.latest)) bpm"),
+                                onOpen: onOpen, symbol: "heart", title: "Resting heart rate", number: String(localized: "\(Int(resting.latest)) bpm"),
                                 caption: resting.usual.map { String(localized: "Usually \(Int($0))") } ?? String(localized: "\(Int(resting.nightsNeeded)) more nights to show this")
                             )
                         }
@@ -317,13 +346,14 @@ private struct WatchHealthCard: View {
 
 /// One number of what the watch measured, which opens the page with all of it.
 private struct GlanceTile: View {
+    let onOpen: () -> Void
     let symbol: String
     let title: LocalizedStringKey
     let number: String
     let caption: String
 
     var body: some View {
-        Button { AppScenes.showSettings(.health) } label: {
+        Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 6) {
                 Label(title, systemImage: symbol)
                     .font(.caption.weight(.semibold))
@@ -345,5 +375,46 @@ private struct GlanceTile: View {
         }
         .buttonStyle(.plain)
         .help("Open Health")
+    }
+}
+
+/// One thing the watch can do, as a tile: its icon in a round, what it does, and what it is doing now. On, it takes the colour of the
+/// page, so what is running is seen at a glance and stopped with the same tile.
+private struct WatchActionTile: View {
+    let symbol: String
+    let title: LocalizedStringKey
+    let subtitle: String
+    let on: Bool
+    /// Why it cannot be used now, or nil when it can.
+    let why: String?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(on ? Color.white : Palette.indigo)
+                    .frame(width: 38, height: 38)
+                    .background(on ? Palette.indigo : Palette.indigo.opacity(0.14), in: .circle)
+                    .contentTransition(.symbolEffect(.replace))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.callout.weight(.semibold)).lineLimit(1).contentTransition(.opacity)
+                    Text(verbatim: subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(2).contentTransition(.opacity)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+            .background(
+                on ? Palette.indigo.opacity(0.16) : Color.primary.opacity(0.05),
+                in: .rect(cornerRadius: Metrics.inner(Metrics.card, inset: 6), style: .continuous)
+            )
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .disabled(why != nil)
+        .opacity(why == nil ? 1 : 0.5)
+        .help(why ?? "")
     }
 }

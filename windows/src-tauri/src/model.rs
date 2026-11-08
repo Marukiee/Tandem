@@ -68,6 +68,8 @@ fn status(s: &TandemStatus) -> Value {
             "settings": w.settings.as_ref().map(|s| json!({
                 "mouse": s.mouse, "sleepQuiet": s.sleep_quiet, "smartWake": s.smart_wake, "heartAllDay": s.heart_all_day, "stepGoal": s.step_goal,
             })),
+            // Which computer the watch steers now, while its mouse screen is open.
+            "mouse": w.mouse.as_ref().map(|m| json!({ "target": m.target, "table": m.table })),
         })),
     })
 }

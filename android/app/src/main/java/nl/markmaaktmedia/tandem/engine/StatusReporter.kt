@@ -24,6 +24,7 @@ import uniffi.tandem_core.TandemNetKind
 import uniffi.tandem_core.TandemNetwork
 import uniffi.tandem_core.TandemStatus
 import uniffi.tandem_core.TandemWatchSettings
+import uniffi.tandem_core.TandemWatchMouse
 import uniffi.tandem_core.TandemWatchStatus
 
 /**
@@ -190,7 +191,10 @@ class StatusReporter(
             soundDnd = FocusMode.canUse(context),
             lock = nl.markmaaktmedia.tandem.live.TandemAccessibilityService.instance != null,
             watch = context.graph.watch.takeIf { it.supported }?.state?.value?.let { watch ->
-                TandemWatchStatus(watch.paired, watch.ready, watch.batteryLevel?.toUByte(), watch.charging, watch.ringing, watch.name, watch.sleeping, watchSettings)
+                TandemWatchStatus(
+                    watch.paired, watch.ready, watch.batteryLevel?.toUByte(), watch.charging, watch.ringing, watch.name, watch.sleeping, watchSettings,
+                    watch.mouse?.takeIf { watch.ready }?.let { TandemWatchMouse(it.target, it.table) },
+                )
             },
         )
     }

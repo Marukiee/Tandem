@@ -3,6 +3,16 @@ import TandemCore
 
 /// The nights and workouts of the watch, by way of the phone. Which devices get them is a switch on the phone: only that one has a watch.
 struct HealthSettings: View {
+    var body: some View {
+        ScrollView {
+            HealthSettingsContent()
+                .padding(20)
+        }
+    }
+}
+
+/// What the health page holds, in Settings and as a page of the main window that the page of the watch opens.
+struct HealthSettingsContent: View {
     @Environment(EngineModel.self) private var model
     @AppStorage("showHealth") private var showHealth = false
 
@@ -10,7 +20,6 @@ struct HealthSettings: View {
     private var records: [TandemHealthRecord] { model.healthRecords.filter { $0.kind == .sleep || $0.kind == .workout } }
 
     var body: some View {
-        ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 // Without a watch this is one more page that stays empty, unless someone asked for it.
                 if !hasWatch {
@@ -44,7 +53,42 @@ struct HealthSettings: View {
                     .padding(.top, 8)
                 }
             }
-            .padding(20)
+    }
+}
+
+/// Health as a page of the main window, opened from the page of the watch, with a way back to it. It was only in Settings, so the
+/// card on the page of the watch opened another window.
+struct HealthPage: View {
+    let phone: TandemDevice
+    let onBack: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                Card(radius: Metrics.card, padding: 18, tint: Palette.indigo) {
+                    HStack(spacing: 14) {
+                        Button(action: onBack) {
+                            Image(systemName: "chevron.left").font(.body.weight(.semibold))
+                        }
+                        .buttonStyle(.icon(size: 34))
+                        .help("Back to the watch")
+                        Image(systemName: "heart.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(Palette.indigo)
+                            .frame(width: 44, height: 44)
+                            .background(Palette.indigo.opacity(0.14), in: .circle)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Health").font(.title3.weight(.bold))
+                            Text("Sleep, steps, heart rate and workouts").font(.callout).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                }
+                HealthSettingsContent()
+            }
+            .pagePadding()
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
         }
     }
 }
@@ -497,7 +541,8 @@ private struct DayHeartLine: View {
     var body: some View {
         VStack(spacing: 6) {
             HStack {
-                Text(verbatim: heading).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                // Figures of one width, so the time and the rate do not shift as the pointer moves.
+                Text(verbatim: heading).font(.caption).monospacedDigit().foregroundStyle(.secondary).lineLimit(1)
                 Spacer(minLength: 8)
                 if zoom > 1.01 {
                     Button("Whole day") {
@@ -613,6 +658,7 @@ private struct SleepTimeline: View {
                 let width = geometry.size.width - 52
                 Text(heading(width: width, total: total))
                     .font(.caption)
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

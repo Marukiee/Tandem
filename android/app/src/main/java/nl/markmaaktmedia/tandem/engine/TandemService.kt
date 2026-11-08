@@ -191,7 +191,8 @@ class TandemService : LifecycleService() {
             is TandemEvent.RingWatch -> applicationContext.graph.watch.ringWatch(event.on)
             is TandemEvent.RenameWatch -> applicationContext.graph.watch.rename(event.name)
             is TandemEvent.UnpairWatch -> applicationContext.graph.watch.unpair()
-            is TandemEvent.StartWatchMouse -> applicationContext.graph.watch.openMouse(event.from)
+            is TandemEvent.StartWatchMouse -> applicationContext.graph.watch.openMouse(event.from, event.table)
+            is TandemEvent.StopWatchMouse -> applicationContext.graph.watch.closeMouse(event.from)
             // Set as if on this phone, which passes it on to the watch and tells the computers the result in its status.
             is TandemEvent.SetWatchSettings -> lifecycleScope.launch {
                 val prefs = applicationContext.graph.prefs

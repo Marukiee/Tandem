@@ -269,6 +269,11 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         }
     }
 
+    /** Tells the phone the mouse screen opened for [targetId] or closed, so the computers can show it and offer to stop it. */
+    fun reportMouse(open: Boolean, targetId: String?, table: Boolean) {
+        handler.post { engine?.send(Message.MouseState(open, targetId?.ifEmpty { null }, table)) }
+    }
+
     fun stopPointer() {
         handler.post {
             // One line per session, so how evenly the link carried it can be read afterwards.
@@ -493,7 +498,8 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             Message.TryWakeBuzz -> appContext?.let { GentleWake.tryOnce(it) }
             is Message.HeartAllDay -> appContext?.let { HeartTracker.setEnabled(it, message.on, tellPhone = false) }
             is Message.Pong -> handler.removeCallbacks(pongTimeout)
-            is Message.PointerOpen -> appContext?.let { nl.markmaaktmedia.tandem.watch.ui.PointerActivity.openFromAfar(it, message.targetId) }
+            is Message.PointerOpen -> appContext?.let { nl.markmaaktmedia.tandem.watch.ui.PointerActivity.openFromAfar(it, message.targetId, message.table) }
+            Message.PointerClose -> appContext?.let { nl.markmaaktmedia.tandem.watch.ui.PointerActivity.closeFromAfar(it) }
             is Message.UpdateOffer -> appContext?.let { SelfUpdate.onOffer(it, message) }
             is Message.UpdatePart -> appContext?.let { SelfUpdate.onPart(it, message) }
             is Message.Ping, is Message.Unknown -> Unit
@@ -502,6 +508,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             is Message.HeartToday, is Message.HealthRecord, Message.SyncRequest, is Message.NotificationAction, is Message.CallAction, is Message.MediaCommand,
             is Message.PointerSession, is Message.PointerMove, is Message.PointerScroll, is Message.PointerClick,
             is Message.PointerKey, is Message.PointerButton, is Message.MediaSeek, is Message.WatchStatus, is Message.SleepMode, is Message.MouseEnabled,
+            is Message.MouseState,
             -> Unit
         }
     }

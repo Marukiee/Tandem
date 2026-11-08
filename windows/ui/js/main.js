@@ -5,7 +5,7 @@ import { DeviceGlyph, platformIcon } from "./components.js";
 import { Icon } from "./icons.js";
 import { ResizeEdges, Titlebar, framed } from "./chrome.js";
 import { setLanguage, t } from "./i18n.js";
-import { ClipboardPage, DevicePage, StepGoalDialog, WatchPage, WatchSettingsDialog, watchName, FilesPage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
+import { ClipboardPage, DevicePage, HealthPage, StepGoalDialog, WatchPage, WatchSettingsDialog, watchName, FilesPage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
 import { say, selectedDevice, set, state, useStore } from "./store.js";
 import { MessagesPage, offersMessages } from "./messages.js";
 import { CallDialog, useCallAsk } from "./calls.js";
@@ -17,7 +17,7 @@ function watchRow(d) {
   const watch = d.status && d.status.watch;
   if (!watch || !watch.paired) return null;
   const reachable = d.online && watch.online;
-  const on = state.page === "watch" && state.selected === d.id;
+  const on = (state.page === "watch" || state.page === "health") && state.selected === d.id;
   return html`<div class=${"row" + (on ? " selected" : "") + (reachable ? "" : " dim")} key=${d.id + "-watch"} onClick=${() => set({ selected: d.id, page: "watch" })}>
     <span style="width:36px;height:36px;display:flex;align-items:center;justify-content:center"><${Icon} name="device-watch" size=${20} /></span>
     <div class="grow">
@@ -232,6 +232,7 @@ function Page() {
   else if (state.page === "tour") body = html`<${TourPage} />`;
   else if (state.page === "messages" && selectedDevice()) body = html`<${MessagesPage} device=${selectedDevice()} key=${state.selected} />`;
   else if (state.page === "watch" && selectedDevice()?.status?.watch?.paired) body = html`<${WatchPage} device=${selectedDevice()} key=${state.selected + "-watch"} />`;
+  else if (state.page === "health" && selectedDevice()?.status?.watch?.paired) body = html`<${HealthPage} key=${state.selected + "-health"} />`;
   else if (state.devices.length === 0) body = html`<${Welcome} />`;
   else {
     const device = selectedDevice();

@@ -309,6 +309,16 @@ pub struct TandemWatchStatus {
     /// What is set for the watch on its phone. None from a phone that is older than these.
     #[uniffi(default = None)]
     pub settings: Option<TandemWatchSettings>,
+    /// The computer the watch steers now, while its mouse screen is open.
+    #[uniffi(default = None)]
+    pub mouse: Option<TandemWatchMouse>,
+}
+
+/// Which computer a watch steers, and how (see `proto::WatchMouse`).
+#[derive(Clone, Debug, Default, PartialEq, Eq, uniffi::Record)]
+pub struct TandemWatchMouse {
+    pub target: String,
+    pub table: bool,
 }
 
 /// The choices for a watch that its phone keeps (see `proto::WatchSettings`).
@@ -347,6 +357,7 @@ impl From<crate::proto::WatchStatus> for TandemWatchStatus {
             name: w.name,
             sleeping: w.sleeping,
             settings: w.settings.map(Into::into),
+            mouse: w.mouse.map(|m| TandemWatchMouse { target: m.target, table: m.table }),
         }
     }
 }
@@ -362,6 +373,7 @@ impl From<TandemWatchStatus> for crate::proto::WatchStatus {
             name: w.name,
             sleeping: w.sleeping,
             settings: w.settings.map(Into::into),
+            mouse: w.mouse.map(|m| crate::proto::WatchMouse { target: m.target, table: m.table }),
         }
     }
 }
@@ -1228,7 +1240,8 @@ pub enum TandemEvent {
     RenameWatch { from: String, name: String },
     UnpairWatch { from: String },
     SetWatchSettings { from: String, change: TandemWatchSettingsChange },
-    StartWatchMouse { from: String },
+    StartWatchMouse { from: String, table: bool },
+    StopWatchMouse { from: String },
     KeepAwake { from: String, on: bool },
     Unlock { from: String },
     Lock { from: String },
@@ -1374,7 +1387,8 @@ impl From<Event> for TandemEvent {
             Event::RenameWatch { from, name } => TandemEvent::RenameWatch { from: from.to_string(), name },
             Event::UnpairWatch { from } => TandemEvent::UnpairWatch { from: from.to_string() },
             Event::SetWatchSettings { from, change } => TandemEvent::SetWatchSettings { from: from.to_string(), change: change.into() },
-            Event::StartWatchMouse { from } => TandemEvent::StartWatchMouse { from: from.to_string() },
+            Event::StartWatchMouse { from, table } => TandemEvent::StartWatchMouse { from: from.to_string(), table },
+            Event::StopWatchMouse { from } => TandemEvent::StopWatchMouse { from: from.to_string() },
             Event::KeepAwake { from, on } => TandemEvent::KeepAwake { from: from.to_string(), on },
             Event::Unlock { from } => TandemEvent::Unlock { from: from.to_string() },
             Event::Lock { from } => TandemEvent::Lock { from: from.to_string() },
@@ -2097,9 +2111,14 @@ impl TandemEngine {
         self.send(vec![target], crate::proto::Msg::UnpairWatch {}).await.map(|_| ())
     }
 
-    /// Asks the phone `target` to open the mouse on its watch for this computer.
-    pub async fn start_watch_mouse(&self, target: String) -> Result<(), TandemError> {
-        self.send(vec![target], crate::proto::Msg::StartWatchMouse {}).await.map(|_| ())
+    /// Asks the phone `target` to open the mouse on its watch for this computer, as the table mouse when `table`.
+    pub async fn start_watch_mouse(&self, target: String, table: bool) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::StartWatchMouse { table }).await.map(|_| ())
+    }
+
+    /// Asks the phone `target` to close the mouse on its watch.
+    pub async fn stop_watch_mouse(&self, target: String) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::StopWatchMouse {}).await.map(|_| ())
     }
 
     /// Asks the phone `target` to change what is set for its watch. What is None stays as it is.

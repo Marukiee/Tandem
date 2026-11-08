@@ -9,6 +9,8 @@ enum SidebarSelection: Hashable {
     case messages(String)
     /// The watch of that phone.
     case watch(String)
+    /// Health, opened from the page of the watch of that phone.
+    case health(String)
     case shared
     case notifications
     case clipboard
@@ -58,7 +60,7 @@ struct Sidebar: View {
                     }
                     // The watch only talks to this phone, but it is a device of its own: its page goes by way of the phone.
                     if let watch = device.status.watch, watch.paired {
-                        SidebarButton(selected: selection == .watch(device.id), chosen: chosen) {
+                        SidebarButton(selected: selection == .watch(device.id) || selection == .health(device.id), chosen: chosen) {
                             selection = .watch(device.id)
                         } content: {
                             WatchRow(watch: watch, online: device.online)

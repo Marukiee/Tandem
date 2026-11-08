@@ -79,8 +79,14 @@ pub enum Msg {
     UnpairWatch {},
     /// Asks a phone to change what is set for its watch. The phone says the result in its status. An older phone does not know it.
     SetWatchSettings { change: WatchSettingsChange },
-    /// Asks a phone to open the mouse on its watch for the computer that asks, so the watch need not be touched.
-    StartWatchMouse {},
+    /// Asks a phone to open the mouse on its watch for the computer that asks, so the watch need not be touched. `table`: as the table
+    /// mouse, with the hand on the table. An older phone does not know the field and opens the mouse in the air.
+    StartWatchMouse {
+        #[serde(default)]
+        table: bool,
+    },
+    /// Asks a phone to close the mouse on its watch: the computer that asked for it is done. An older phone does not know it.
+    StopWatchMouse {},
     /// Asks the device to record for `side::LISTEN_MS`: this one is about to play the tones of `side::pattern` (see `side.rs`).
     /// `quiet`: the quiet sweeps of a check that nobody asked for. The device then does not ask for its microphone, and does not listen
     /// while it is in use. An older device does not know the field and listens as it always did.
@@ -361,6 +367,20 @@ pub struct WatchStatus {
     /// is older than these, so a computer says to update it instead of showing them as off.
     #[serde(default)]
     pub settings: Option<WatchSettings>,
+    /// The mouse screen of the watch is open, steering the computer it names. None while it is closed, and from an older phone.
+    #[serde(default)]
+    pub mouse: Option<WatchMouse>,
+}
+
+/// Which computer the watch steers now, and how.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WatchMouse {
+    /// The device id of the computer.
+    #[serde(default)]
+    pub target: String,
+    /// With the hand on a table, instead of in the air.
+    #[serde(default)]
+    pub table: bool,
 }
 
 /// The choices for a watch that its phone keeps and passes on to it.
@@ -932,6 +952,25 @@ mod tests {
         assert_eq!(known.watch.as_ref().and_then(|w| w.level), Some(80));
         known.merge(&Status { watch: Some(WatchStatus::default()), ..Default::default() });
         assert_eq!(known.watch.as_ref().map(|w| w.paired), Some(false));
+    }
+
+    #[test]
+    fn the_mouse_of_a_watch_can_be_asked_for_on_a_table_and_stopped_and_an_older_phone_still_understands() {
+        assert!(matches!(
+            decode_msg(&encode(&Msg::StartWatchMouse { table: true }).unwrap()).unwrap(),
+            Msg::StartWatchMouse { table: true }
+        ));
+        assert!(matches!(decode_msg(&encode(&Msg::StopWatchMouse {}).unwrap()).unwrap(), Msg::StopWatchMouse {}));
+        // What a computer of 0.3.3 sent: no table, which is the mouse in the air.
+        #[derive(Serialize)]
+        enum Before {
+            StartWatchMouse {},
+        }
+        let old = decode_msg(&encode(&Before::StartWatchMouse {}).unwrap()).unwrap();
+        assert!(matches!(old, Msg::StartWatchMouse { table: false }));
+        let status = WatchStatus { paired: true, mouse: Some(WatchMouse { target: "mac".into(), table: true }), ..Default::default() };
+        let back: WatchStatus = ciborium::from_reader(encode(&status).unwrap().as_slice()).unwrap();
+        assert_eq!(back.mouse, status.mouse);
     }
 
     #[test]

@@ -254,6 +254,13 @@ class LinkEngineTest {
 }
 
 class MessageCodecTest {
+    @Test
+    fun `an older phone that asks for the mouse gets it in the air`() {
+        // What a phone of 0.3.3 sent: the open without the table mode behind it.
+        val old = byteArrayOf(0x78) + MessageCodec.encode(Message.PointerOpen("mac")).drop(1).dropLast(1).toByteArray()
+        assertEquals(Message.PointerOpen("mac", table = false), MessageCodec.decode(old))
+    }
+
     private val samples = listOf(
         Message.SyncRequest,
         Message.Ping(7),
@@ -275,6 +282,10 @@ class MessageCodecTest {
         Message.MediaPlayers(listOf(MediaPlayer("m", "VLC", "Nummer", "Artiest", "Album", true, 10, 20))),
         Message.MediaCommand("m", MediaCommandKind.NEXT),
         Message.MouseEnabled(true),
+        Message.PointerOpen("mac", table = true),
+        Message.PointerClose,
+        Message.MouseState(true, "mac", table = true),
+        Message.MouseState(false),
         Message.PointerButton(1, true),
         Message.PointerTargets(true, listOf(PointerTarget("mac", "MacBook", true, true)), canHold = true),
         Message.StepGoal(8000),

@@ -144,6 +144,7 @@ struct MainWindow: View {
             if case let .files(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
             if case let .messages(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
             if case let .watch(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
+            if case let .health(id) = selection, !ids.contains(id) { selection = ids.first.map { .device($0) } }
             chooseDebugPage()
             if selection == nil, let first = ids.first {
                 selection = .device(first)
@@ -233,7 +234,13 @@ struct MainWindow: View {
                 }
             case let .watch(id):
                 if let device = model.device(id), device.status.watch?.paired == true {
-                    WatchDetail(phone: device, onOpenPhone: { selection = .device(id) }).transition(.page)
+                    WatchDetail(phone: device, onOpenPhone: { selection = .device(id) }, onOpenHealth: { selection = .health(id) }).transition(.page)
+                } else {
+                    Color.clear
+                }
+            case let .health(id):
+                if let device = model.device(id) {
+                    HealthPage(phone: device, onBack: { selection = .watch(id) }).transition(.page)
                 } else {
                     Color.clear
                 }

@@ -1516,3 +1516,18 @@
 "More steps" = "Meer stappen";
 "Point at the line to see a moment. Pinch to zoom in." = "Wijs de lijn aan om een moment te zien. Knijp om in te zoomen.";
 "Whole day" = "Hele dag";
+"Back to the watch" = "Terug naar het horloge";
+
+/* The tiles of the watch on its page */
+"Stop using watch as mouse" = "Stoppen met horloge als muis";
+"Steering this Mac now" = "Bestuurt deze Mac nu";
+"Steering %@ now" = "Bestuurt nu %@";
+"another computer" = "een andere computer";
+"Point with your arm, pinch to click" = "Wijs met je arm, knijp om te klikken";
+"Stop the table mouse" = "Tafelmuis stoppen";
+"Table mouse" = "Tafelmuis";
+"Your hand on the table steers this Mac" = "Je hand op tafel bestuurt deze Mac";
+"Your hand on the table, a tap clicks" = "Je hand op tafel, een tik klikt";
+"Its page, with everything it does" = "Zijn pagina, met alles wat hij doet";
+"Ringing now, also on silent" = "Gaat nu af, ook op stil";
+"It rings, even on silent" = "Gaat af, ook op stil";

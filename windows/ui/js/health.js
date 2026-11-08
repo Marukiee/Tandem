@@ -260,7 +260,7 @@ function SleepTimeline({ r }) {
     setPointer(Math.min(Math.max((event.clientX - box.left) / box.width, 0), 1));
   };
   return html`<div class="health-timeline">
-    <div class="small muted">${heading}</div>
+    <div class="small muted" style="font-variant-numeric:tabular-nums">${heading}</div>
     <div class="health-lanes">
       <div class="health-lane-names">${LANES.map((name) => html`<span key=${name} style=${`height:${lane}px`}>${t("health_stage_" + name)}</span>`)}</div>
       <svg viewBox=${`0 0 ${width} ${height}`} preserveAspectRatio="none" width="100%" height=${height} role="img" class="health-reveal"

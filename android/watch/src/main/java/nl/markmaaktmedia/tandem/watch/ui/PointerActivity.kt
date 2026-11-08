@@ -9,6 +9,7 @@ import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
 import android.view.HapticFeedbackConstants
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
@@ -212,6 +213,7 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         setShowWhenLocked(true)
         setTurnScreenOn(true)
         getSystemService(android.app.NotificationManager::class.java)?.cancel(MOUSE_NOTIFICATION)
+        current = java.lang.ref.WeakReference(this)
         // In a presentation the pointer stays still until a finger asks for it.
         setMoving(!presentation)
         setContent {
@@ -238,6 +240,8 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         } else if (!testing) {
             WatchLink.startPointer(targetId)
         }
+        // So the computers can show that it is being steered, and offer to stop it.
+        if (!testing && !presentation) WatchLink.reportMouse(true, targetId, tableMode)
         // On a table the watch moves much less than the hand that slides it, so the same slide must go further.
         gyro.sensitivity = PointerPrefs.speed.value.sensitivity * (if (tableMode) TABLE_GAIN else 1f)
         // A hand slid away over a table tips the forearm down where one in the air lifts it, so the pointer went down for a push up the
@@ -270,11 +274,13 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
         hid?.stop()
         hid = null
         if (!testing && hidAddress == null) WatchLink.stopPointer()
+        if (!testing && !presentation) WatchLink.reportMouse(false, targetId, tableMode)
         sensorHandler.post { stopTuningLog() }
         super.onPause()
     }
 
     override fun onDestroy() {
+        if (current?.get() === this) current = null
         sensorThread.quitSafely()
         super.onDestroy()
     }
@@ -547,10 +553,12 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
          * A computer asked for the mouse, so the watch was not touched: a notification that opens the mouse screen at once, also with
          * the screen off, the way a call does. Over Bluetooth when the computer said its address.
          */
-        fun openFromAfar(context: Context, targetId: String) {
+        fun openFromAfar(context: Context, targetId: String, table: Boolean = false) {
             val target = WatchLink.ui.value.pointerTargets.firstOrNull { it.id == targetId }
             val intent = Intent(context, PointerActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).apply {
-                if (target?.btAddress != null) putExtra(EXTRA_HID, target.btAddress) else putExtra(EXTRA_TARGET, targetId)
+                putExtra(EXTRA_TARGET, targetId)
+                putExtra(EXTRA_TABLE_MODE, table)
+                if (target?.btAddress != null) putExtra(EXTRA_HID, target.btAddress)
             }
             val screen = android.app.PendingIntent.getActivity(context, 7, intent, android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT)
             val manager = context.getSystemService(android.app.NotificationManager::class.java)
@@ -571,6 +579,15 @@ class PointerActivity : ComponentActivity(), SensorEventListener {
                     .build(),
             )
         }
+
+        /** The computer is done with the watch as its mouse: the screen closes, and an ask that was not answered yet goes away. */
+        fun closeFromAfar(context: Context) {
+            context.getSystemService(android.app.NotificationManager::class.java)?.cancel(MOUSE_NOTIFICATION)
+            Handler(Looper.getMainLooper()).post { current?.get()?.finish() }
+        }
+
+        /** The mouse screen that is open now, so a computer can close it. */
+        @Volatile private var current: java.lang.ref.WeakReference<PointerActivity>? = null
 
         /** The guided recording of a hand on a table, for the table mode. */
         fun openTableTest(context: Context) {

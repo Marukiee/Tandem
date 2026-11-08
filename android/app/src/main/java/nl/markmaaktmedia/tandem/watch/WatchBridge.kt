@@ -78,7 +78,12 @@ data class WatchState(
     val sleeping: Boolean = false,
     /** What the person called it. Null is the plain name. */
     val name: String? = null,
+    /** The computer the mouse screen of the watch steers now, as the watch said; null while it is closed. */
+    val mouse: WatchMouseNow? = null,
 )
+
+/** Which computer the watch steers, and whether with the hand on a table. */
+data class WatchMouseNow(val target: String, val table: Boolean)
 
 /**
  * The phone side of the watch link: owns the secure session and everything the watch should see. All work happens on one
@@ -113,9 +118,14 @@ class WatchBridge(
     /** How the app on the watch is kept at the version of this one. */
     val appUpdate: StateFlow<WatchAppState> = updater.state
 
-    /** A computer asked for the watch as its mouse: the watch opens the mouse screen for it by itself. */
-    fun openMouse(computerId: String) {
-        handler.post { enqueue(Message.PointerOpen(computerId)) }
+    /** A computer asked for the watch as its mouse: the watch opens the mouse screen for it by itself, as the table mouse when [table]. */
+    fun openMouse(computerId: String, table: Boolean = false) {
+        handler.post { enqueue(Message.PointerOpen(computerId, table)) }
+    }
+
+    /** A computer is done with the watch as its mouse. Only the one that is steered may close it, so one computer cannot end another's. */
+    fun closeMouse(computerId: String) {
+        handler.post { if (_state.value.mouse?.target == computerId) enqueue(Message.PointerClose) }
     }
 
     fun retryAppUpdate() {
@@ -645,6 +655,7 @@ class WatchBridge(
             is Message.PointerKey -> pointer?.key(message.code.toShort(), message.mods)
             is Message.FindDevice -> main.post { if (message.ring) FindPhone.start(context) else FindPhone.stop() }
             is Message.Ringing -> _state.update { it.copy(ringing = message.on) }
+            is Message.MouseState -> _state.update { it.copy(mouse = if (message.open) WatchMouseNow(message.targetId.orEmpty(), message.table) else null) }
             is Message.WatchStatus -> _state.update { it.copy(stepsToday = message.stepsToday, activeMinutesToday = message.activeMinutesToday, batteryLevel = message.level, charging = message.charging) }
             is Message.MouseEnabled -> scope.launch { prefs.setWatchMouse(message.on) }
             is Message.HeartToday -> _state.update { it.copy(heartToday = message.curve) }
@@ -658,6 +669,7 @@ class WatchBridge(
             // These only travel from phone to watch.
             is Message.NotificationSnapshot, is Message.Notification, is Message.NotificationRemoved, is Message.AppIcon,
             is Message.HealthAck, is Message.StepGoal, is Message.SmartWakeAlarm, Message.TryWakeBuzz, is Message.UpdateOffer, is Message.UpdatePart, is Message.PointerOpen,
+            Message.PointerClose,
             is Message.Call, is Message.MediaPlayers, is Message.MediaArt, is Message.PointerTargets, is Message.DeviceBatteries,
             -> Unit
         }
@@ -765,7 +777,7 @@ class WatchBridge(
         endPointer()
         updater.onDisconnected()
         handler.removeCallbacks(authTimeout)
-        _state.update { it.copy(connected = false, ready = false, code = null, ringing = false) }
+        _state.update { it.copy(connected = false, ready = false, code = null, ringing = false, mouse = null) }
     }
 
     override fun onChunk(chunk: ByteArray) {
