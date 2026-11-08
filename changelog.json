@@ -5,13 +5,25 @@
     "en": {
       "title": "Steady",
       "new": [
-        "Updates, also of the watch, keep going when the downloads of GitHub are down"
+        "Updates, also of the watch, keep going when the downloads of GitHub are down",
+        "The watch page has a Health card at the top and Settings for this device at the bottom, on the phone, the Mac and the desktop",
+        "The step goal is set on the Health page, in a window with a minus and a plus",
+        "Slide over the heart rate of a day to see the time and the rate, and zoom in on a part of the day",
+        "Waking gently is one quiet buzz that rises and falls a few times, and you can feel it from the phone first",
+        "Find watch rings sooner, with short rising chirps at full alarm volume",
+        "Pinching to click is on by default and always in the watch's settings, and the table mouse goes up when you push up"
       ]
     },
     "nl": {
       "title": "Rustig aan",
       "new": [
-        "Updates, ook van het horloge, gaan door als de downloads van GitHub plat liggen"
+        "Updates, ook van het horloge, gaan door als de downloads van GitHub plat liggen",
+        "De horlogepagina heeft bovenaan een kaart Gezondheid en onderaan Instellingen van dit apparaat, op de telefoon, de Mac en de desktop",
+        "Het stappendoel stel je in bij Gezondheid, in een venster met min en plus",
+        "Schuif over de hartslag van een dag om tijd en slagen te zien, en zoom in op een deel van de dag",
+        "Zacht wakker worden is één zachte trilling die een paar keer op en neer gaat, en je kunt hem eerst voelen vanaf de telefoon",
+        "Zoek horloge gaat sneller af, met korte stijgende piepjes op vol alarmvolume",
+        "Knijpen om te klikken staat standaard aan en altijd in de instellingen van het horloge, en de tafelmuis gaat omhoog als je omhoog schuift"
       ]
     }
   },
