@@ -68,9 +68,9 @@
     <string name="presentation_hint">Tap for next, hold to point</string>
     <string name="presentation_next">Next slide</string>
     <string name="presentation_previous">Previous slide</string>
-    <string name="find_phone">Find my phone</string>
-    <string name="find_phone_stop">Stop ringing</string>
-    <string name="watch_ringing">Looking for this watch</string>
+    <string name="find_phone">Play sound on phone</string>
+    <string name="find_phone_stop">Stop sound on phone</string>
+    <string name="watch_ringing">Playing a sound to find this watch</string>
     <string name="found_it">Found it</string>
     <string name="channel_update">App updates</string>
     <string name="update_confirm_title">Update Tandem</string>
@@ -108,7 +108,7 @@
     <string name="table_mouse">Table mouse</string>
     <string name="table_mouse_sub">Hand on the table, tap to click</string>
     <string name="channel_music">Music on your phone</string>
-    <string name="channel_find">Find this watch</string>
+    <string name="channel_find">Play sound</string>
     <string name="battery_row">%1$s, %2$d%%</string>
     <string name="mouse_hint_tap">Tap to click</string>
     <string name="mouse_holding">Dragging, lift to let go</string>

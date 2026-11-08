@@ -136,7 +136,7 @@ Knijpen staat standaard aan, en de schakelaar staat altijd in de instellingen va
 installatie weg, en verborgen zolang de telefoon de muis niet toestond. Op tafel draait op en neer om: een hand die over tafel van je af
 schuift, kantelt de onderarm omlaag, dus de aanwijzer ging omlaag waar een muis omhoog gaat.
 
-Zoek horloge: het bericht gaat in de wachtrij van de telefoon voor de rest, net als een gesprek, want achter hoesjes en de delen van een
+Geluid afspelen op het horloge (eerder Zoek horloge; op elk apparaat heet het nu Geluid afspelen en Geluid stoppen): het bericht gaat in de wachtrij van de telefoon voor de rest, net als een gesprek, want achter hoesjes en de delen van een
 update ging het horloge pas seconden later af. Het geluid zijn drie korte stijgende piepjes van 2 tot 3,6 kHz (`FindTone`), waar een klein
 speakertje het hardst is, op het volle alarmvolume zolang het belt en daarna terug.
 

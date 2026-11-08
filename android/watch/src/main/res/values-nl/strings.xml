@@ -68,9 +68,9 @@
     <string name="presentation_hint">Tik voor volgende, houd vast om te wijzen</string>
     <string name="presentation_next">Volgende dia</string>
     <string name="presentation_previous">Vorige dia</string>
-    <string name="find_phone">Zoek mijn telefoon</string>
-    <string name="find_phone_stop">Stop overgaan</string>
-    <string name="watch_ringing">Dit horloge wordt gezocht</string>
+    <string name="find_phone">Geluid afspelen op telefoon</string>
+    <string name="find_phone_stop">Geluid stoppen op telefoon</string>
+    <string name="watch_ringing">Speelt geluid af om dit horloge te vinden</string>
     <string name="found_it">Gevonden</string>
     <string name="channel_update">App-updates</string>
     <string name="update_confirm_title">Tandem bijwerken</string>
@@ -108,7 +108,7 @@
     <string name="table_mouse">Tafelmuis</string>
     <string name="table_mouse_sub">Hand op tafel, tik om te klikken</string>
     <string name="channel_music">Muziek op je telefoon</string>
-    <string name="channel_find">Zoek dit horloge</string>
+    <string name="channel_find">Geluid afspelen</string>
     <string name="battery_row">%1$s, %2$d%%</string>
     <string name="mouse_hint_tap">Tik om te klikken</string>
     <string name="mouse_holding">Slepen, til op om los te laten</string>
