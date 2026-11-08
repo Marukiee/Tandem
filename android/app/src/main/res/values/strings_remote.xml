@@ -32,7 +32,9 @@
     <string name="sound_mode_sub">Switches between sound, vibrate and do not disturb</string>
     <string name="sound_mode_update">Update Tandem on %1$s to switch its sound from here</string>
     <string name="sound_mode_access">Do not disturb needs access: allow Tandem in the settings of %1$s</string>
-    <string name="lock_row_title">Lock</string>
+    <string name="lock_button">Lock</string>
+    <string name="lock_button_locked">Locked</string>
+    <string name="lock_row_title">Lock the screen</string>
     <string name="lock_row_sub">Locks the screen of that device</string>
     <string name="lock_row_locked">It is locked now</string>
     <string name="lock_why_offline">That device cannot be reached right now</string>

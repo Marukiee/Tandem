@@ -146,20 +146,44 @@ class TandemAccessibilityService : AccessibilityService() {
     fun recents() = performGlobalAction(GLOBAL_ACTION_RECENTS)
 
     /** Adds [text] at the end of the field that has the keyboard. False when there is none to type in. */
+    /**
+     * Types into the field that has the keyboard, where its cursor is, by setting its text and putting the cursor after what was typed.
+     * An empty field reports its hint as its text, which is left out. Enter is the action of the field (search, send, go) when it has
+     * one, else a new line.
+     */
     fun type(text: String): Boolean {
         val field = findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
-        val now = field.text?.toString().orEmpty()
-        val arguments = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, now + text) }
-        return field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+        if (text == "\n" && !field.isMultiLine) {
+            val action = AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER
+            if (field.actionList.contains(action)) return field.performAction(action.id)
+        }
+        val now = if (field.isShowingHintText) "" else field.text?.toString().orEmpty()
+        val start = field.textSelectionStart.takeIf { it in 0..now.length } ?: now.length
+        val end = field.textSelectionEnd.takeIf { it in start..now.length } ?: start
+        return replace(field, now.substring(0, start) + text + now.substring(end), start + text.length)
     }
 
-    /** Takes the last character off the field that has the keyboard. */
+    /** Takes the character before the cursor (or what is selected) off the field that has the keyboard. */
     fun backspace(): Boolean {
         val field = findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: return false
+        if (field.isShowingHintText) return false
         val now = field.text?.toString().orEmpty()
-        if (now.isEmpty()) return false
-        val arguments = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, now.dropLast(1)) }
-        return field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+        val end = field.textSelectionEnd.takeIf { it in 0..now.length } ?: now.length
+        val start = field.textSelectionStart.takeIf { it in 0..end } ?: end
+        if (start == end && start == 0) return false
+        val from = if (start == end) now.offsetByCodePoints(start, -1) else start
+        return replace(field, now.substring(0, from) + now.substring(end), from)
+    }
+
+    private fun replace(field: AccessibilityNodeInfo, text: String, cursor: Int): Boolean {
+        val set = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
+        if (!field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, set)) return false
+        val at = Bundle().apply {
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor)
+            putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor)
+        }
+        field.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, at)
+        return true
     }
 
     companion object {

@@ -32,7 +32,9 @@
     <string name="sound_mode_sub">Wisselt tussen geluid, trillen en niet storen</string>
     <string name="sound_mode_update">Werk Tandem bij op %1$s om het geluid hiervandaan te wisselen</string>
     <string name="sound_mode_access">Niet storen heeft toegang nodig: sta Tandem toe in de instellingen van %1$s</string>
-    <string name="lock_row_title">Vergrendelen</string>
+    <string name="lock_button">Vergrendel</string>
+    <string name="lock_button_locked">Vergrendeld</string>
+    <string name="lock_row_title">Scherm vergrendelen</string>
     <string name="lock_row_sub">Vergrendelt het scherm van dat apparaat</string>
     <string name="lock_row_locked">Hij is nu vergrendeld</string>
     <string name="lock_why_offline">Dat apparaat is nu niet te bereiken</string>

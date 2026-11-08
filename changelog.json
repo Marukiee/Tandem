@@ -3,8 +3,11 @@
     "version": "0.3.4",
     "date": "2026-11-08",
     "en": {
-      "title": "What is on",
+      "title": "Hands on",
       "new": [
+        "A Mac unlocked from the phone stays unlocked while you control it",
+        "The keyboard of a computer types on the phone with the shared mouse, also where the cursor is",
+        "Lock on Android is a clear button next to Keep awake",
         "A computer shows when the watch is its mouse, and stops it or opens the table mouse from the same tile",
         "Health opens as a page of its own on the Mac and the desktop",
         "The player on the watch's home screen stands in the middle, and the batteries show their number in the ring with the device under it",
@@ -13,8 +16,11 @@
       ]
     },
     "nl": {
-      "title": "Wat er aan staat",
+      "title": "Zelf aan de knoppen",
       "new": [
+        "Een Mac die je vanaf de telefoon ontgrendelt blijft open zolang je hem bedient",
+        "Het toetsenbord van een computer typt met de gedeelde muis op de telefoon, ook waar de cursor staat",
+        "Vergrendelen op Android is een duidelijke knop naast Wakker houden",
         "Een computer laat zien wanneer het horloge zijn muis is, en stopt die of opent de tafelmuis met dezelfde tegel",
         "Gezondheid opent op de Mac en de desktop als eigen pagina",
         "De speler op het beginscherm van het horloge staat in het midden, en de batterijen tonen hun getal in de ring met het apparaat eronder",
