@@ -86,84 +86,57 @@ class SmartWake(val alarmMs: Long) {
 }
 
 /**
- * One buzz without a break over the minutes before the alarm, in the shape Mark drew: from nothing up to a soft hill, softer again, then
- * up to its highest and easing off as the alarm takes over. Never to full strength while someone may be waking by themselves: that is
- * only for after the alarm, for someone who still has not moved. Between the points it eases in and out, so nowhere does it jolt. The
- * pulses that went to full strength from the first one woke with a start, which is what this is not for.
+ * One buzz without a break over the minutes before the alarm that rises and falls a few times, calmly, each time a little more. It never
+ * gets strong: it only wakes someone a little, ahead of the alarm, which wakes them the rest of the way. Between its points it eases in
+ * and out, so nowhere does it jolt. The pulses that went to full strength from the first one woke with a start, and so did a swell up to
+ * half the motor, which is what this is not for.
  */
 object WakeSwell {
     /** Short enough that the steps of strength are not felt. */
     const val STEP_MS = 200L
 
-    /** After the alarm, for someone who still has not moved: up to full strength in this time, and held. */
-    const val RISE_AFTER_MS = 2 * 60_000L
-
-    /** And no longer than this after the alarm: a watch on a nightstand should not buzz all morning. */
-    const val MAX_AFTER_MS = 10 * 60_000L
-
     /** Too soft to feel on most wrists: it begins from nothing. */
     private const val SOFTEST = 6
     private const val STRONGEST = 255
 
-    /** A motor's first part of its range is felt as much more than its share, so the drawing is bent down before it is a strength. */
+    /** A motor's first part of its range is felt as much more than its share, so a strength is bent down before it drives the motor. */
     private const val FEEL = 1.5
 
-    /** The highest it goes before the alarm: about half of what the motor can, so the second hill is not the strongest. */
-    private const val BEFORE_ALARM = 0.62
+    /**
+     * Four slow waves, each a little higher than the one before and never above two fifths of the motor's strength; between them it
+     * stays on, softly, so it is one buzz. How far along the window, and how strong, from 0 to 1.
+     */
+    private val POINTS = listOf(
+        0.0 to 0.0,
+        0.125 to 0.16, 0.25 to 0.05,
+        0.375 to 0.24, 0.5 to 0.07,
+        0.625 to 0.32, 0.75 to 0.09,
+        0.875 to 0.40, 1.0 to 0.2,
+    )
 
-    /** The drawing: how far along the window, and how strong, from 0 to 1 of its highest. */
-    private val POINTS = listOf(0.0 to 0.0, 0.06 to 0.0, 0.31 to 0.44, 0.5 to 0.15, 0.83 to 1.0, 1.0 to 0.38)
-
-    /** How strong at [share] of the window, from 0 to 1 of the motor, eased between the points of the drawing. */
+    /** How strong at [share] of the window, from 0 to 1 of the motor, eased between the points. */
     fun strength(share: Double): Double {
         val at = share.coerceIn(0.0, 1.0)
         val after = POINTS.indexOfFirst { it.first >= at }.coerceAtLeast(1)
         val (x0, y0) = POINTS[after - 1]
         val (x1, y1) = POINTS[after]
-        return BEFORE_ALARM * ease(y0, y1, if (x1 > x0) (at - x0) / (x1 - x0) else 1.0)
+        val u = if (x1 > x0) (at - x0) / (x1 - x0) else 1.0
+        return y0 + (y1 - y0) * (1 - kotlin.math.cos(Math.PI * u.coerceIn(0.0, 1.0))) / 2
     }
-
-    /** How strong [msAfter] the alarm, for someone who has not moved: from where the drawing ended, eased up to full and held there. */
-    fun strengthAfter(msAfter: Long): Double = ease(strength(1.0), 1.0, msAfter.toDouble() / RISE_AFTER_MS)
 
     /** The motor's strength for a strength from 0 to 1: 1 to 255, never 0, which would be a break. */
     fun amplitude(strength: Double): Int =
         Math.round(SOFTEST + (STRONGEST - SOFTEST) * Math.pow(strength.coerceIn(0.0, 1.0), FEEL)).toInt().coerceIn(1, STRONGEST)
 
     /**
-     * The rest of a window of [windowMs] from [fromMs] into it, and then [afterMs] past the alarm, as the timings and strengths of one
-     * waveform: one buzz, so there is no seam at the alarm. A window that began before the watch got to it picks up where it is by then.
+     * The rest of a window of [windowMs] from [fromMs] into it, as the timings and strengths of one waveform: one buzz, without seams. A
+     * window that began before the watch got to it picks up where it is by then.
      */
-    fun waveform(fromMs: Long, windowMs: Long, afterMs: Long = 0): Pair<LongArray, IntArray> {
+    fun waveform(fromMs: Long, windowMs: Long): Pair<LongArray, IntArray> {
         val start = fromMs.coerceIn(0, windowMs)
-        val before = ((windowMs - start) / STEP_MS).toInt()
-        val steps = (before + (afterMs / STEP_MS).toInt()).coerceAtLeast(1)
+        val steps = ((windowMs - start) / STEP_MS).toInt().coerceAtLeast(1)
         val timings = LongArray(steps) { STEP_MS }
-        val amplitudes = IntArray(steps) { step ->
-            val at = start + step * STEP_MS + STEP_MS / 2
-            amplitude(if (at < windowMs) strength(at.toDouble() / windowMs) else strengthAfter(at - windowMs))
-        }
+        val amplitudes = IntArray(steps) { step -> amplitude(strength((start + step * STEP_MS + STEP_MS / 2).toDouble() / windowMs)) }
         return timings to amplitudes
-    }
-
-    private fun ease(from: Double, to: Double, share: Double): Double =
-        from + (to - from) * (1 - kotlin.math.cos(Math.PI * share.coerceIn(0.0, 1.0))) / 2
-}
-
-/**
- * Says whether the wrist moved after the alarm went off: someone who reaches for the phone is awake, and the watch need not go on. Before
- * the alarm a sleeper turning over is no sign of anything.
- */
-class AwakeAfterAlarm(private val alarmMs: Long) {
-    private val motion = WristMotion()
-
-    var awake = false
-        private set
-
-    /** A sample of the accelerometer in g. True from the first moment it moved after the alarm. */
-    fun add(timeMs: Long, x: Float, y: Float, z: Float): Boolean {
-        if (awake || timeMs < alarmMs) return awake
-        if (motion.add(timeMs, x, y, z)) awake = true
-        return awake
     }
 }

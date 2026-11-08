@@ -13,10 +13,9 @@ import nl.markmaaktmedia.tandem.watch.sleep.SmartWake
 import nl.markmaaktmedia.tandem.watch.sleep.WakeSwell
 
 /**
- * One buzz without a break from a few minutes before the alarm, swelling and easing as [WakeSwell] draws it. It ends when someone looks
- * at the watch, moves after the alarm, or the recording of the night ends; only someone who still lies still after the alarm gets it
- * stronger, up to full, for at most [WakeSwell.MAX_AFTER_MS]. An alarm to the system, so do not disturb lets it through, because that is
- * on all night for someone who sleeps.
+ * One buzz without a break from a few minutes before the alarm until it goes off, rising and falling softly as [WakeSwell] draws it. It
+ * ends at the alarm, when someone looks at the watch, or when the recording of the night ends. An alarm to the system, so do not disturb
+ * lets it through, because that is on all night for someone who sleeps.
  */
 internal object GentleWake {
     /** The minutes before the alarm in half a minute, to feel what a morning will be like. */
@@ -27,8 +26,8 @@ internal object GentleWake {
 
     val running: Boolean get() = stopNow != null
 
-    private fun effect(fromMs: Long, windowMs: Long, afterMs: Long = 0): VibrationEffect {
-        val (timings, amplitudes) = WakeSwell.waveform(fromMs, windowMs, afterMs)
+    private fun effect(fromMs: Long, windowMs: Long): VibrationEffect {
+        val (timings, amplitudes) = WakeSwell.waveform(fromMs, windowMs)
         return VibrationEffect.createWaveform(timings, amplitudes, -1)
     }
 
@@ -58,15 +57,15 @@ internal object GentleWake {
             }
         }
         val now = System.currentTimeMillis()
-        if (now >= untilMs + WakeSwell.MAX_AFTER_MS) return
+        if (now >= untilMs) return
         stopNow = stop
         app.registerReceiver(seen, IntentFilter(Intent.ACTION_SCREEN_ON))
-        // One waveform for the rest of the window and the time after the alarm: pieces one after the other left a small break at each seam.
-        vibrator.vibrate(effect(now - (untilMs - SmartWake.WINDOW_MS), SmartWake.WINDOW_MS, WakeSwell.MAX_AFTER_MS), attributes)
-        handler.postDelayed({ stop() }, untilMs + WakeSwell.MAX_AFTER_MS - now)
+        // One waveform for the rest of the window: pieces one after the other left a small break at each seam.
+        vibrator.vibrate(effect(now - (untilMs - SmartWake.WINDOW_MS), SmartWake.WINDOW_MS), attributes)
+        handler.postDelayed({ stop() }, untilMs - now)
     }
 
-    /** Someone moved after the alarm, or the night was ended: they are awake. From any thread. */
+    /** The night was ended, so whoever slept it is awake. From any thread. */
     fun awake() {
         handler.post { stopNow?.invoke() }
     }

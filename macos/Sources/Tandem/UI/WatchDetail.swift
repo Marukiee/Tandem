@@ -147,7 +147,7 @@ struct WatchDetail: View {
                         rowDivider
                         toggle(
                             symbol: "alarm", title: "Wake me gently",
-                            subtitle: "Five minutes before your alarm your watch starts one long, quiet buzz that swells slowly. Only if you still lie still after the alarm does it grow stronger",
+                            subtitle: "Five minutes before your alarm your watch starts one long, quiet buzz that rises and falls a few times, a little more each time. It never gets strong: your alarm wakes you the rest of the way",
                             on: settings.smartWake
                         ) { TandemWatchSettingsChange(smartWake: $0) }
                     }

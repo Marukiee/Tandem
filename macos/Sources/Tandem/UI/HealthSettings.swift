@@ -65,7 +65,7 @@ private struct HealthChoicesCard: View {
                 SectionTitle("Preferences")
                 Card(radius: Metrics.card, padding: 6) {
                     VStack(spacing: 0) {
-                        SettingRow(symbol: "alarm", title: "Wake me gently", subtitle: "Five minutes before your alarm your watch starts one long, quiet buzz that swells slowly. Only if you still lie still after the alarm does it grow stronger") {
+                        SettingRow(symbol: "alarm", title: "Wake me gently", subtitle: "Five minutes before your alarm your watch starts one long, quiet buzz that rises and falls a few times, a little more each time. It never gets strong: your alarm wakes you the rest of the way") {
                             Toggle("", isOn: Binding(get: { settings.smartWake }, set: { model.setWatchSettings(phone.id, TandemWatchSettingsChange(smartWake: $0)) }))
                                 .controlSize(.mini)
                                 .disabled(why != nil)
