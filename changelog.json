@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.3.4",
+    "date": "2026-11-08",
+    "en": {
+      "title": "What is on",
+      "new": [
+        "A computer shows when the watch is its mouse, and stops it or opens the table mouse from the same tile",
+        "Health opens as a page of its own on the Mac and the desktop",
+        "The player on the watch's home screen stands in the middle, and the batteries show their number in the ring with the device under it",
+        "The time and the heart rate over a chart no longer shift as they change",
+        "Feel waking gently moved to the developer options"
+      ]
+    },
+    "nl": {
+      "title": "Wat er aan staat",
+      "new": [
+        "Een computer laat zien wanneer het horloge zijn muis is, en stopt die of opent de tafelmuis met dezelfde tegel",
+        "Gezondheid opent op de Mac en de desktop als eigen pagina",
+        "De speler op het beginscherm van het horloge staat in het midden, en de batterijen tonen hun getal in de ring met het apparaat eronder",
+        "De tijd en de hartslag boven een grafiek verspringen niet meer als ze veranderen",
+        "Zacht wakker worden voelen staat nu bij de ontwikkelaarsopties"
+      ]
+    }
+  },
+  {
     "version": "0.3.3",
     "date": "2026-11-08",
     "en": {
