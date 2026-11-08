@@ -130,6 +130,13 @@ Knijpen (`PinchDetector`): een schok van 2 tot 9 m/s2 boven 16 Hz terwijl de pol
 twee keer binnen 300 ms de rechter. Afgesteld op een opname van 24 knijpen op het scherm gevraagd, de helft al bewegend: 21 gehoord, niets
 met de hand stil, één keer tijdens bewegen. Een eigen trilling telt een halve seconde niet mee: die zag de oude versie als de volgende
 knijp, en klikte zo vanzelf. Eén pols, twee opnames: een eerste afstelling. Naar rechts vegen sluit het muisscherm.
+Knijpen staat standaard aan, en de schakelaar staat altijd in de instellingen van het horloge: standaard uit was hij na elke nieuwe
+installatie weg, en verborgen zolang de telefoon de muis niet toestond. Op tafel draait op en neer om: een hand die over tafel van je af
+schuift, kantelt de onderarm omlaag, dus de aanwijzer ging omlaag waar een muis omhoog gaat.
+
+Zoek horloge: het bericht gaat in de wachtrij van de telefoon voor de rest, net als een gesprek, want achter hoesjes en de delen van een
+update ging het horloge pas seconden later af. Het geluid zijn drie korte stijgende piepjes van 2 tot 3,6 kHz (`FindTone`), waar een klein
+speakertje het hardst is, op het volle alarmvolume zolang het belt en daarna terug.
 
 
 - Tik: klik. Twee vingers: rechtsklik. Vasthouden (300 ms): de linkerknop gaat omlaag en de arm sleept, optillen laat los. Vegen: pauzeren en weer verder. Tweemaal knijpen klikt ook.

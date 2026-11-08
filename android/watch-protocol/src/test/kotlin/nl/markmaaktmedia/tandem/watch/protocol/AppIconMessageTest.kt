@@ -31,6 +31,17 @@ class AppIconMessageTest {
     }
 
     @Test
+    fun findingTheWatchOvertakesTheRest() {
+        val queue = OutboundQueue()
+        queue.offer(icon("com.example.chat"))
+        queue.offer(Message.UpdatePart(302, 0, ByteArray(16)))
+        queue.offer(Message.FindDevice(true))
+        queue.offer(Message.FindDevice(false))
+        assertEquals(Message.FindDevice(false), queue.poll())
+        assertTrue(queue.poll() is Message.AppIcon)
+    }
+
+    @Test
     fun aCallOvertakesAnIcon() {
         val queue = OutboundQueue()
         queue.offer(icon("com.example.chat"))

@@ -68,6 +68,12 @@ class OutboundQueue(private val capacity: Int = 64) {
                 urgent.addLast(message)
             }
             is Message.CallAction -> urgent.addLast(message)
+            is Message.FindDevice -> {
+                // Someone is looking for the watch now: behind covers and the parts of an update it rang only seconds later.
+                // Only the latest ring or stop means anything.
+                urgent.removeAll { it is Message.FindDevice }
+                urgent.addLast(message)
+            }
             is Message.MediaArt -> {
                 // Skipping through an album: only the cover of where it ended up is worth the airtime. Other players keep theirs.
                 normal.removeAll { it is Message.MediaArt && it.playerId == message.playerId }
