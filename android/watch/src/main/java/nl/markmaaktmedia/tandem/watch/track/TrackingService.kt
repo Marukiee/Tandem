@@ -23,6 +23,7 @@ import android.util.Log
 import nl.markmaaktmedia.tandem.watch.R
 import nl.markmaaktmedia.tandem.watch.link.WatchLink
 import nl.markmaaktmedia.tandem.watch.sleep.ACCEL_UNITS_PER_G
+import nl.markmaaktmedia.tandem.watch.sleep.AwakeAfterAlarm
 import nl.markmaaktmedia.tandem.watch.sleep.RawLogWriter
 import nl.markmaaktmedia.tandem.watch.sleep.MARK_OFF
 import nl.markmaaktmedia.tandem.watch.sleep.MARK_WORN
@@ -126,6 +127,9 @@ class TrackingService : Service(), SensorEventListener {
     }
 
     private var smartWake: SmartWake? = null
+
+    /** From the start of waking gently: whether the wrist moved after the alarm. On the sensor thread, like the samples it reads. */
+    private var awakeAfterAlarm: AwakeAfterAlarm? = null
     private var shortBatches = false
 
     private fun register(requested: TrackingKind, batchUs: Int = if (requested == TrackingKind.SLEEP) SLEEP_BATCH_US else WORKOUT_BATCH_US) {
@@ -156,6 +160,13 @@ class TrackingService : Service(), SensorEventListener {
             Sensor.TYPE_ACCELEROMETER -> {
                 log.write(RawRecord.Accel(time, toUnits(event.values[0]), toUnits(event.values[1]), toUnits(event.values[2])))
                 considerWaking(time)
+                awakeAfterAlarm?.let { awake ->
+                    val g = SensorManager.GRAVITY_EARTH
+                    if (awake.add(time, event.values[0] / g, event.values[1] / g, event.values[2] / g)) {
+                        awakeAfterAlarm = null
+                        GentleWake.awake()
+                    }
+                }
             }
             Sensor.TYPE_HEART_RATE -> {
                 log.write(RawRecord.HeartRate(time, event.values[0].toInt(), event.accuracy))
@@ -189,7 +200,11 @@ class TrackingService : Service(), SensorEventListener {
             sensors.unregisterListener(this)
             register(TrackingKind.SLEEP, SMART_WAKE_BATCH_US)
         }
-        if (wake.isTime(time)) GentleWake.start(this, wake.alarmMs)
+        if (wake.isTime(time)) {
+            GentleWake.start(this, wake.alarmMs)
+            // Moving after the alarm is waking up: only someone who still lies still gets it stronger.
+            awakeAfterAlarm = AwakeAfterAlarm(wake.alarmMs)
+        }
     }
 
     private fun toUnits(metersPerSecond: Float): Short =
@@ -252,6 +267,8 @@ class TrackingService : Service(), SensorEventListener {
 
     override fun onDestroy() {
         sensors.unregisterListener(this)
+        // The night is over, so whoever slept it is awake.
+        if (GentleWake.running) GentleWake.awake()
         runCatching { output?.close() }
         thread.quitSafely()
         if (running.get() === this) running = WeakReference(null)

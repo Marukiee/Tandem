@@ -695,7 +695,7 @@
         <item quantity="other">%d trainingen deze week</item>
     </plurals>
     <string name="health_smart_wake">Zacht wakker worden</string>
-    <string name="health_smart_wake_sub">Vijf minuten voor je wekker begint je horloge te trillen, in lange trillingen die van zacht naar sterk gaan. Werkt tijdens een slaapopname. Je wekker gaat gewoon af.</string>
+    <string name="health_smart_wake_sub">Vijf minuten voor je wekker begint je horloge aan één lange, zachte trilling die langzaam aanzwelt en weer zachter wordt. Alleen als je na je wekker nog stil ligt, wordt hij sterker. Werkt tijdens een slaapopname. Je wekker gaat gewoon af.</string>
     <string name="health_your_data">Je gegevens</string>
     <string name="health_export">Exporteren</string>
     <string name="health_export_sub">Al je nachten, trainingen en stappen als tabel voor een spreadsheet.</string>
@@ -723,4 +723,6 @@
     <string name="health_goal_more">Meer stappen</string>
     <string name="health_heart_hint">Schuif over de lijn om een moment te zien. Knijp om in te zoomen.</string>
     <string name="health_heart_whole_day">Hele dag</string>
+    <string name="health_smart_wake_try">Zacht wakker worden voelen</string>
+    <string name="health_smart_wake_try_sub">De vijf minuten versneld tot een halve minuut, op je horloge</string>
 </resources>

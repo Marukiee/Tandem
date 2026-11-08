@@ -698,7 +698,7 @@
         <item quantity="other">%d workouts this week</item>
     </plurals>
     <string name="health_smart_wake">Wake me gently</string>
-    <string name="health_smart_wake_sub">Five minutes before your alarm your watch starts buzzing, in long pulses that grow from soft to strong. Works during a sleep recording. Your alarm still goes off.</string>
+    <string name="health_smart_wake_sub">Five minutes before your alarm your watch starts one long, quiet buzz that swells slowly and eases off again. Only if you still lie still after your alarm does it grow stronger. Works during a sleep recording. Your alarm still goes off.</string>
     <string name="health_your_data">Your data</string>
     <string name="health_export">Export</string>
     <string name="health_export_sub">All your nights, workouts and steps as a table for a spreadsheet.</string>
@@ -726,4 +726,6 @@
     <string name="health_goal_more">More steps</string>
     <string name="health_heart_hint">Slide over the line to see a moment. Pinch to zoom in.</string>
     <string name="health_heart_whole_day">Whole day</string>
+    <string name="health_smart_wake_try">Feel waking gently</string>
+    <string name="health_smart_wake_try_sub">The five minutes sped up to half a minute, on your watch</string>
 </resources>

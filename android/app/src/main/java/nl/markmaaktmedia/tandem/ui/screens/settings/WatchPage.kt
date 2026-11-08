@@ -149,23 +149,24 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
 
         SectionHeader(stringResource(R.string.watch_section_sleep), top = 12.dp, bottom = 0.dp)
         SettingsGroup {
-            SettingsTarget(FocusKeys.WatchQuiet, 0, 4) {
+            SettingsTarget(FocusKeys.WatchQuiet, 0, 5) {
                 SwitchRow(
-                    0, 4, TandemIcons.Sleep, stringResource(R.string.watch_quiet), stringResource(R.string.watch_quiet_sub), sleepQuiet,
+                    0, 5, TandemIcons.Sleep, stringResource(R.string.watch_quiet), stringResource(R.string.watch_quiet_sub), sleepQuiet,
                     { on -> scope.launch { prefs.setWatchSleepQuiet(on) } },
                     blocked = if (canQuiet) null else stringResource(R.string.watch_quiet_blocked),
                     onBlocked = { runCatching { context.startActivity(FocusMode.accessIntent()) } },
                 )
             }
             SwitchRow(
-                1, 4, TandemIcons.Music, stringResource(R.string.sleep_pause_music), stringResource(R.string.sleep_pause_music_sub), pauseMusic,
+                1, 5, TandemIcons.Music, stringResource(R.string.sleep_pause_music), stringResource(R.string.sleep_pause_music_sub), pauseMusic,
                 { on -> scope.launch { prefs.setSleepPauseMusic(on) } },
             )
             SwitchRow(
-                2, 4, TandemIcons.Lock, stringResource(R.string.sleep_lock_computers), stringResource(R.string.sleep_lock_computers_sub), lockComputers,
+                2, 5, TandemIcons.Lock, stringResource(R.string.sleep_lock_computers), stringResource(R.string.sleep_lock_computers_sub), lockComputers,
                 { on -> scope.launch { prefs.setSleepLockComputers(on) } },
             )
-            SmartWakeRow(3, 4)
+            SmartWakeRow(3, 5)
+            SmartWakeTryRow(4, 5)
         }
 
         SectionHeader(stringResource(R.string.watch_section_wrist), top = 12.dp, bottom = 0.dp)
