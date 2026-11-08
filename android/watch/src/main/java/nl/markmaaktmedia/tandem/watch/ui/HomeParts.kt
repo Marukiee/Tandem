@@ -69,8 +69,8 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
     val backdrop = remember(image) { image?.let { Bitmap.createScaledBitmap(it, BACKDROP_PIXELS, BACKDROP_PIXELS, true) } }
     Box(
         rimContent(spec)
-            // Room on both sides: full width it ran into the scroll bar on the right and stood off centre against the empty left.
-            .padding(horizontal = 10.dp)
+            // A little room on both sides, so it does not run into the scroll bar on the right.
+            .padding(horizontal = 4.dp)
             .height(116.dp)
             // As round as the screen it is on: a card with corners showed its hard edges against the round glass.
             .clip(RoundedCornerShape(percent = 50))
@@ -84,7 +84,8 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
         // Dark enough to read on any cover, darkest under the buttons.
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.35f), Color.Black.copy(alpha = 0.7f)))))
         Column(
-            Modifier.fillMaxSize().padding(horizontal = 26.dp, vertical = 8.dp),
+            // Room inside for the whole button group: with more, the next button was squeezed to half and the group stood off centre.
+            Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly,
         ) {
@@ -103,7 +104,7 @@ internal fun TransformingLazyColumnItemScope.PlayerCard(player: MediaPlayer, cov
                 }
             }
             // The same joined buttons as the player itself, the middle one in the colour of the cover.
-            TransportGroup(player, colours?.accent ?: MaterialTheme.colorScheme.primary, colours?.onAccent ?: MaterialTheme.colorScheme.onPrimary)
+            TransportGroup(player, colours?.accent ?: MaterialTheme.colorScheme.primary, colours?.onAccent ?: MaterialTheme.colorScheme.onPrimary, TransportSize.COMPACT)
         }
     }
 }

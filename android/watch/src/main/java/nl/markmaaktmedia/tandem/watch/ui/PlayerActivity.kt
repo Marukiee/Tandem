@@ -544,77 +544,84 @@ private fun WaveRing(player: MediaPlayer, time: LongState, accent: Color, scrub:
     }
 }
 
-private val TRANSPORT_HEIGHT = 46.dp
-private val TRANSPORT_OUTER = TRANSPORT_HEIGHT / 2
-private val TRANSPORT_SIDE = 40.dp
+/** How big the button group is: the whole player has room for it full size, the card on the home screen for a smaller one. */
+internal enum class TransportSize(val height: Dp, val side: Dp, val play: Dp, val icon: Dp) {
+    FULL(46.dp, 40.dp, 52.dp, 24.dp),
+
+    /** It has to fit whole in the card: full size the next button was squeezed to half and the group stood off centre. */
+    COMPACT(40.dp, 34.dp, 46.dp, 22.dp),
+    ;
+
+    val outer: Dp get() = height / 2
+}
 
 /**
  * Previous, play and next as one Material 3 Expressive button group: joined, round on the outside, with small corners where they
  * meet. A pressed button swells and rounds its inner corners; its neighbours make room.
  */
 @Composable
-internal fun TransportGroup(player: MediaPlayer, accent: Color, onAccent: Color) {
+internal fun TransportGroup(player: MediaPlayer, accent: Color, onAccent: Color, size: TransportSize = TransportSize.FULL) {
     val haptics = LocalHapticFeedback.current
     val press = { kind: MediaCommandKind ->
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         WatchLink.sendMediaCommand(player.id, kind)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
-        GroupButton(painterResource(R.drawable.sym_skip_previous), stringResource(R.string.previous), start = true) { press(MediaCommandKind.PREVIOUS) }
-        PlayButton(player.playing, accent, onAccent) { press(MediaCommandKind.PLAY_PAUSE) }
-        GroupButton(painterResource(R.drawable.sym_skip_next), stringResource(R.string.next), start = false) { press(MediaCommandKind.NEXT) }
+        GroupButton(painterResource(R.drawable.sym_skip_previous), stringResource(R.string.previous), start = true, size) { press(MediaCommandKind.PREVIOUS) }
+        PlayButton(player.playing, accent, onAccent, size) { press(MediaCommandKind.PLAY_PAUSE) }
+        GroupButton(painterResource(R.drawable.sym_skip_next), stringResource(R.string.next), start = false, size) { press(MediaCommandKind.NEXT) }
     }
 }
 
 @Composable
-private fun GroupButton(icon: Painter, label: String, start: Boolean, onClick: () -> Unit) {
+private fun GroupButton(icon: Painter, label: String, start: Boolean, size: TransportSize, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
-    val inner by animateDpAsState(if (pressed) TRANSPORT_OUTER else 8.dp, TandemMotion.pressSpec(), label = "inner")
-    val grow by animateDpAsState(if (pressed) TRANSPORT_SIDE + 6.dp else TRANSPORT_SIDE, TandemMotion.pressSpec(), label = "grow")
+    val inner by animateDpAsState(if (pressed) size.outer else 8.dp, TandemMotion.pressSpec(), label = "inner")
+    val grow by animateDpAsState(if (pressed) size.side + 6.dp else size.side, TandemMotion.pressSpec(), label = "grow")
     val shape = if (start) {
-        RoundedCornerShape(TRANSPORT_OUTER, inner, inner, TRANSPORT_OUTER)
+        RoundedCornerShape(size.outer, inner, inner, size.outer)
     } else {
-        RoundedCornerShape(inner, TRANSPORT_OUTER, TRANSPORT_OUTER, inner)
+        RoundedCornerShape(inner, size.outer, size.outer, inner)
     }
     Box(
         Modifier
-            .size(grow, TRANSPORT_HEIGHT)
+            .size(grow, size.height)
             .clip(shape)
             .background(PlayerSurface)
             .clickable(source, null, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, label, tint = Color.White, modifier = Modifier.size(24.dp))
+        Icon(icon, label, tint = Color.White, modifier = Modifier.size(size.icon))
     }
 }
 
 /** Play is a pill and pause a squircle: the button morphs between the two, the way Material 3 Expressive buttons do. */
 @Composable
-private fun PlayButton(playing: Boolean, accent: Color, onAccent: Color, onClick: () -> Unit) {
+private fun PlayButton(playing: Boolean, accent: Color, onAccent: Color, size: TransportSize, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val corner by animateDpAsState(
         when {
-            pressed -> TRANSPORT_OUTER
+            pressed -> size.outer
             playing -> 11.dp
-            else -> TRANSPORT_OUTER
+            else -> size.outer
         },
         TandemMotion.pressSpec(),
         label = "playCorner",
     )
     val width by animateDpAsState(
         when {
-            pressed -> 64.dp
-            playing -> 58.dp
-            else -> 52.dp
+            pressed -> size.play + 12.dp
+            playing -> size.play + 6.dp
+            else -> size.play
         },
         TandemMotion.pressSpec(),
         label = "playWidth",
     )
     Box(
         Modifier
-            .size(width, TRANSPORT_HEIGHT)
+            .size(width, size.height)
             .clip(RoundedCornerShape(corner))
             .background(accent)
             .clickable(source, null, role = Role.Button, onClick = onClick),
@@ -632,7 +639,7 @@ private fun PlayButton(playing: Boolean, accent: Color, onAccent: Color, onClick
                 painterResource(if (now) R.drawable.sym_pause else R.drawable.sym_play_arrow),
                 stringResource(if (now) R.string.pause else R.string.play),
                 tint = onAccent,
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier.size(size.icon + 2.dp),
             )
         }
     }
