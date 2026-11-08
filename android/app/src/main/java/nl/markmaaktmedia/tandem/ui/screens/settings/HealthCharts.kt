@@ -317,7 +317,8 @@ internal fun DayHeartLine(curve: List<Int>, description: String, modifier: Modif
     val last = curve.size - 1
     val span = 1f / zoom
 
-    fun minuteAt(share: Float) = (share * last * HEART_SLOT_MINUTES).toInt()
+    // A time on the axis, on a round five minutes and the whole day 0:00 to 0:00, so the labels read 6:00 and not 5:58.
+    fun minuteAt(share: Float) = (share * DAY_MINUTES / HEART_SLOT_MINUTES).roundToInt() * HEART_SLOT_MINUTES
     // The measured point nearest to a share of the day, within a quarter of an hour, or none where the watch was off.
     fun pointAt(share: Float): Int? {
         val at = (share * last).roundToInt().coerceIn(0, last)
@@ -436,6 +437,7 @@ internal fun DayHeartLine(curve: List<Int>, description: String, modifier: Modif
 }
 
 private const val HEART_SLOT_MINUTES = 5
+private const val DAY_MINUTES = 24 * 60
 private const val HEART_NEAR_SLOTS = 3
 private const val HEART_MAX_ZOOM = 12f
 
