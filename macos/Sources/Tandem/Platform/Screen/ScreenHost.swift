@@ -857,6 +857,11 @@ final class ScreenHostSession: @unchecked Sendable {
     private var refused = 0
     /// A second screen for the viewer, made for this session and gone with it.
     private var virtualDisplay: VirtualDisplay?
+    /// The Screen Sharing connection this Mac was unlocked through, kept open (without its pictures) until the session ends. Screen
+    /// Sharing locks a Mac again as soon as the connection it was unlocked in closes (`ScreensharingAgent` sends `SACLockScreenImmediate`,
+    /// seen in the log of loginwindow on 2026-11-08): closed on the switch to the sharper capture, the person was locked out within a
+    /// second of logging in.
+    private var unlockedThrough: ScreenSharingSource?
     let startedAt = Date()
 
     /// The pictures come from Screen Sharing, because this Mac is locked.
@@ -939,6 +944,12 @@ final class ScreenHostSession: @unchecked Sendable {
         }
         running.onFrame = nil
         await target.stop()
+        // Only now, with the session over: Screen Sharing then locks this Mac again, as it was when the session found it.
+        let kept = lock.withLock { () -> ScreenSharingSource? in
+            defer { unlockedThrough = nil }
+            return unlockedThrough
+        }
+        await kept?.stop()
         running.invalidate()
         // The display of software goes when nothing holds it: the screen the viewer used is gone from this Mac, and its windows with it.
         let virtual = lock.withLock { () -> VirtualDisplay? in
@@ -1043,7 +1054,20 @@ final class ScreenHostSession: @unchecked Sendable {
     /// not change, the picture stays as it was.
     func restart(size wanted: (width: Int, height: Int)? = nil, screenSharing: Bool? = nil, reshape: (@MainActor () async -> Bool)? = nil, announce: (Shape) throws -> Void) async throws {
         let (oldCapture, oldEncoder, rate, rateBitrate) = lock.withLock { (capturer, encoder, fps, bitrate) }
-        await oldCapture.stop()
+        let toCapture = screenSharing == false
+        if let sharing = oldCapture as? ScreenSharingSource, toCapture, !ScreenLock.isLocked {
+            // Unlocked through it: it stays open, quiet, until the session ends (see `unlockedThrough`).
+            sharing.onFrame = nil
+            sharing.onStopped = nil
+            await sharing.setFrameRate(1)
+            let earlier = lock.withLock { () -> ScreenSharingSource? in
+                defer { unlockedThrough = sharing }
+                return unlockedThrough
+            }
+            await earlier?.stop()
+        } else {
+            await oldCapture.stop()
+        }
         let reshaped = await reshape?() ?? true
 
         // A second screen stays the one that was made for the viewer; only the main display follows the changes of the system.

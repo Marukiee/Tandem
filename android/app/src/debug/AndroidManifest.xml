@@ -13,5 +13,7 @@
         <receiver android:name="nl.markmaaktmedia.tandem.live.ScrollSelfCheck" android:exported="true" />
         <!-- Debug builds only: made up batteries for the battery widget, to see its changes (see WidgetSelfCheck). -->
         <receiver android:name="nl.markmaaktmedia.tandem.widget.WidgetSelfCheck" android:exported="true" />
+        <!-- Debug builds only: types as the keyboard of a computer does with the shared mouse (see TypeSelfCheck). -->
+        <receiver android:name="nl.markmaaktmedia.tandem.live.TypeSelfCheck" android:exported="true" />
     </application>
 </manifest>

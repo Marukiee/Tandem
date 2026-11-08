@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.3.4",
+    "date": "2026-11-08",
+    "en": {
+      "title": "Hands on",
+      "new": [
+        "A Mac unlocked from the phone stays unlocked while you control it",
+        "The keyboard of a computer types on the phone with the shared mouse, also where the cursor is",
+        "Lock on Android is a clear button next to Keep awake"
+      ]
+    },
+    "nl": {
+      "title": "Zelf aan de knoppen",
+      "new": [
+        "Een Mac die je vanaf de telefoon ontgrendelt blijft open zolang je hem bedient",
+        "Het toetsenbord van een computer typt met de gedeelde muis op de telefoon, ook waar de cursor staat",
+        "Vergrendelen op Android is een duidelijke knop naast Wakker houden"
+      ]
+    }
+  },
+  {
     "version": "0.3.3",
     "date": "2026-11-08",
     "en": {
