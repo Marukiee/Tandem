@@ -21,6 +21,8 @@ use crate::settings;
 
 const RELEASES: &str = "https://api.github.com/repos/Marukiee/Tandem/releases?per_page=10";
 const DOWNLOADS: &str = "https://github.com/Marukiee/Tandem/releases/download/";
+/// The same files through the API, asked for with `Accept: application/octet-stream`.
+const API_ASSETS: &str = "https://api.github.com/repos/Marukiee/Tandem/releases/assets/";
 /// The file of a release that is the program, by system.
 fn installer_name() -> &'static str {
     if cfg!(windows) { "Tandem-Windows-x64-setup.exe" } else { "Tandem-Linux-x64.AppImage" }
@@ -50,9 +52,11 @@ pub struct Release {
     pub notes: String,
     pub page: String,
     pub size: u64,
-    installer: String,
-    hash_url: Option<String>,
-    signature_url: Option<String>,
+    /// Where each file can be had: the API of GitHub first, the plain download link second. Either can be down on its own: on
+    /// 2026-11-08 every plain link gave a 504 for a while, while the API handed out the same files.
+    installer: Vec<String>,
+    hash_url: Vec<String>,
+    signature_url: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -184,9 +188,17 @@ pub fn parse_release(json: &str) -> Result<Release, String> {
     let find = |name: &str| assets.iter().find(|a| a["name"] == name);
     let name = installer_name();
     let installer = find(name).ok_or("that release has no download for this system")?;
-    let url = |asset: Option<&Value>| asset.and_then(|a| a["browser_download_url"].as_str()).map(str::to_string);
-    let installer_url = url(Some(installer)).ok_or("the download has no address")?;
-    if !is_release_download(&installer_url) {
+    // Only addresses of Tandem's own releases, the API one first.
+    let urls = |asset: Option<&Value>| -> Vec<String> {
+        ["url", "browser_download_url"]
+            .iter()
+            .filter_map(|key| asset.and_then(|a| a[*key].as_str()))
+            .filter(|u| is_release_download(u))
+            .map(str::to_string)
+            .collect()
+    };
+    let installer_url = urls(Some(installer));
+    if installer_url.is_empty() {
         return Err("the download is not on the Tandem releases page".into());
     }
     Ok(Release {
@@ -195,14 +207,31 @@ pub fn parse_release(json: &str) -> Result<Release, String> {
         page: root["html_url"].as_str().unwrap_or("https://github.com/Marukiee/Tandem/releases/latest").to_string(),
         size: installer["size"].as_u64().unwrap_or(0),
         installer: installer_url,
-        hash_url: url(find(&format!("{name}.sha256"))).filter(|u| is_release_download(u)),
-        signature_url: url(find(&format!("{name}.sig"))).filter(|u| is_release_download(u)),
+        hash_url: urls(find(&format!("{name}.sha256"))),
+        signature_url: urls(find(&format!("{name}.sig"))),
     })
 }
 
 /// Only files from the releases of Tandem itself are downloaded and run.
 pub fn is_release_download(url: &str) -> bool {
-    url.starts_with(DOWNLOADS)
+    url.starts_with(DOWNLOADS) || url.starts_with(API_ASSETS)
+}
+
+/// The arguments for curl to fetch one of these: through the API a file is asked for as the file itself, not as its description.
+fn source(url: &str) -> Vec<&str> {
+    if url.starts_with(API_ASSETS) { vec!["--header", "Accept: application/octet-stream", url] } else { vec![url] }
+}
+
+/// The first of the places that gives the file, or why the last one did not.
+fn curl_any(urls: &[String]) -> Result<Vec<u8>, String> {
+    let mut why = "GitHub could not be reached".to_string();
+    for url in urls {
+        match curl(&source(url)) {
+            Ok(bytes) => return Ok(bytes),
+            Err(e) => why = e,
+        }
+    }
+    Err(why)
 }
 
 /// Whether `candidate` is a later version than `current`, read the way a person reads them: 0.1.10 comes after 0.1.9.
@@ -315,21 +344,30 @@ fn fetch_and_check(app: &AppHandle, release: &Release) -> Result<PathBuf, String
     let target = dir.join(format!("Tandem-{}-{}", release.version, installer_name()));
 
     set(app, State::Downloading { release: release.clone(), done: 0 });
-    download(&release.installer, &target, |done| {
-        *STATE.lock().unwrap() = State::Downloading { release: release.clone(), done };
-        let _ = app.emit("update", snapshot());
-    })?;
+    let mut fetched = Err("the download has no address".to_string());
+    for url in &release.installer {
+        fetched = download(url, &target, |done| {
+            *STATE.lock().unwrap() = State::Downloading { release: release.clone(), done };
+            let _ = app.emit("update", snapshot());
+        });
+        if fetched.is_ok() {
+            break;
+        }
+    }
+    fetched?;
 
     let bytes = std::fs::read(&target).map_err(|e| format!("the download cannot be read: {e}"))?;
-    if let Some(url) = &release.hash_url {
-        let expected = parse_hash(&String::from_utf8_lossy(&curl(&[url])?)).ok_or("the checksum of the release is not readable")?;
+    if !release.hash_url.is_empty() {
+        let expected = parse_hash(&String::from_utf8_lossy(&curl_any(&release.hash_url)?)).ok_or("the checksum of the release is not readable")?;
         if expected != sha256_hex(&bytes) {
             return Err("The download is damaged (the checksum does not match)".into());
         }
     }
     // Without a signature the file could be anyone's, so it is not run.
-    let url = release.signature_url.as_ref().ok_or("This release is not signed, so Tandem will not install it by itself. Download it from the releases page.")?;
-    let signature = String::from_utf8_lossy(&curl(&[url])?).to_string();
+    if release.signature_url.is_empty() {
+        return Err("This release is not signed, so Tandem will not install it by itself. Download it from the releases page.".into());
+    }
+    let signature = String::from_utf8_lossy(&curl_any(&release.signature_url)?).to_string();
     if !signed_by_the_update_key(&bytes, &signature) {
         return Err("The download is not signed by Tandem, so it is not installed".into());
     }
@@ -377,7 +415,7 @@ fn download(url: &str, target: &Path, mut progress: impl FnMut(u64)) -> Result<(
     let mut child = curl_command()
         .args(["--max-time", "900", "--output"])
         .arg(target)
-        .arg(url)
+        .args(source(url))
         .stderr(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| format!("curl could not start: {e}"))?;
@@ -455,6 +493,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_file_is_fetched_through_the_api_first_and_only_from_tandem() {
+        let name = installer_name();
+        let feed = format!(
+            r#"{{ "tag_name": "v0.3.3", "assets": [ {{ "name": "{name}", "size": 9, "url": "https://api.github.com/repos/Marukiee/Tandem/releases/assets/7",
+            "browser_download_url": "https://github.com/Marukiee/Tandem/releases/download/v0.3.3/{name}" }},
+            {{ "name": "{name}.sig", "url": "https://api.github.com/repos/someone/else/releases/assets/8",
+            "browser_download_url": "https://github.com/Marukiee/Tandem/releases/download/v0.3.3/{name}.sig" }} ] }}"#
+        );
+        let release = parse_release(&feed).unwrap();
+        assert_eq!(release.installer.len(), 2);
+        assert!(release.installer[0].starts_with(API_ASSETS));
+        assert_eq!(release.signature_url.len(), 1, "an asset of another repository is never fetched");
+        assert_eq!(source(&release.installer[0])[..2], ["--header", "Accept: application/octet-stream"]);
+        assert_eq!(source(&release.installer[1]).len(), 1);
+    }
+
+    #[test]
     fn the_banner_shows_what_is_new_and_not_the_table_or_the_dutch_half() {
         let new = "## Clearer buttons\n\n**New**\n\n- One\n- `Two`\n\n---\n\n## Which file do I need?\n\n| a | b |\n";
         assert_eq!(summary(new), "Clearer buttons\n\nNew\n\n\u{2022} One\n\u{2022} Two");
@@ -485,9 +540,9 @@ mod tests {
         let release = parse_release(&feed()).unwrap();
         assert_eq!(release.version, "0.1.27");
         assert_eq!(release.size, 4_284_281);
-        assert!(release.installer.ends_with(&format!("/{}", installer_name())));
-        assert!(release.hash_url.as_deref().unwrap().ends_with(".sha256"));
-        assert!(release.signature_url.as_deref().unwrap().ends_with(".sig"));
+        assert!(release.installer[0].ends_with(&format!("/{}", installer_name())));
+        assert!(release.hash_url[0].ends_with(".sha256"));
+        assert!(release.signature_url[0].ends_with(".sig"));
         assert!(release.notes.contains("Something new"));
     }
 

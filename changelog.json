@@ -5,13 +5,13 @@
     "en": {
       "title": "Steady",
       "new": [
-        "An update on the Mac no longer fails when GitHub is briefly slow"
+        "Updates, also of the watch, keep going when the downloads of GitHub are down"
       ]
     },
     "nl": {
       "title": "Rustig aan",
       "new": [
-        "Een update op de Mac mislukt niet meer als GitHub even traag is"
+        "Updates, ook van het horloge, gaan door als de downloads van GitHub plat liggen"
       ]
     }
   },
