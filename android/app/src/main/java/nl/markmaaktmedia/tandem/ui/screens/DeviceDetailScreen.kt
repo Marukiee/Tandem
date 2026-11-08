@@ -223,11 +223,17 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                     0, 2, TandemIcons.Upload, stringResource(R.string.row_send_files), stringResource(R.string.send_files_sub), { picker.launch(arrayOf("*/*")) },
                     iconTint = MaterialTheme.colorScheme.onPrimary, iconContainer = MaterialTheme.colorScheme.primary,
                 )
-                ActionRow(
+                // Sent right here, so a button like Lock, not the arrow of a page.
+                nl.markmaaktmedia.tandem.ui.components.ButtonRow(
                     1, 2, TandemIcons.Paste, stringResource(R.string.row_send_clipboard), stringResource(R.string.send_clipboard_sub),
-                    {
+                    button = stringResource(R.string.send_clipboard_button), buttonIcon = TandemIcons.Upload, ready = true, whyNot = null,
+                    onClick = {
                         val clip = host.readClipboard()
-                        if (clip != null) scope.launch { host.sendClipboard(listOf(id), clip) }
+                        if (clip == null) {
+                            android.widget.Toast.makeText(context, R.string.send_clipboard_empty, android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            scope.launch { host.sendClipboard(listOf(id), clip) }
+                        }
                     },
                 )
             }
