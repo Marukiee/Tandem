@@ -1500,3 +1500,18 @@
 "What your watch measured, as far as your phone gives it to this Mac" = "Wat je horloge heeft gemeten, voor zover je telefoon het aan deze Mac geeft";
 "Unpair this watch" = "Dit horloge ontkoppelen";
 "Pairing it again is done on your phone" = "Opnieuw koppelen doe je op je telefoon";
+
+/* The page of the watch, built like the one on the phone, and the choices of the health page */
+"While you sleep" = "Terwijl je slaapt";
+"Settings for this device" = "Instellingen van dit apparaat";
+"Name, Tandem on your watch, and unpairing" = "Naam, Tandem op je horloge, en ontkoppelen";
+"Tandem on your watch" = "Tandem op je horloge";
+"%@ keeps it up to date by itself" = "%@ houdt hem zelf bij";
+"Sleep, steps, heart rate and workouts" = "Slaap, stappen, hartslag en trainingen";
+"Preferences" = "Voorkeuren";
+"Change" = "Wijzigen";
+"%@ steps a day. Your watch shows it too." = "%@ stappen per dag. Je horloge laat het ook zien.";
+"Fewer steps" = "Minder stappen";
+"More steps" = "Meer stappen";
+"Point at the line to see a moment. Pinch to zoom in." = "Wijs de lijn aan om een moment te zien. Knijp om in te zoomen.";
+"Whole day" = "Hele dag";

@@ -5,7 +5,7 @@ import { DeviceGlyph, platformIcon } from "./components.js";
 import { Icon } from "./icons.js";
 import { ResizeEdges, Titlebar, framed } from "./chrome.js";
 import { setLanguage, t } from "./i18n.js";
-import { ClipboardPage, DevicePage, WatchPage, watchName, FilesPage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
+import { ClipboardPage, DevicePage, StepGoalDialog, WatchPage, WatchSettingsDialog, watchName, FilesPage, NotificationsPage, PairPanel, SettingsPage, SharedPage, Welcome, sendPaths } from "./pages.js";
 import { say, selectedDevice, set, state, useStore } from "./store.js";
 import { MessagesPage, offersMessages } from "./messages.js";
 import { CallDialog, useCallAsk } from "./calls.js";
@@ -197,6 +197,8 @@ function Dialogs() {
   if (dialog.kind === "call") return html`<${CallDialog} dialog=${dialog} />`;
   if (dialog.kind === "restore") return html`<${RestoreDialog} dialog=${dialog} close=${close} />`;
   if (dialog.kind === "rename-watch") return html`<${RenameWatch} dialog=${dialog} close=${close} />`;
+  if (dialog.kind === "watch-settings") return html`<${WatchSettingsDialog} dialog=${dialog} close=${close} />`;
+  if (dialog.kind === "step-goal") return html`<${StepGoalDialog} dialog=${dialog} close=${close} />`;
   if (dialog.kind === "unpair-watch") {
     const d = state.devices.find((x) => x.id === dialog.id);
     return html`<div class="scrim" onClick=${(e) => e.target === e.currentTarget && close()}>

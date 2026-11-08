@@ -431,7 +431,8 @@ export function WatchPage({ device }) {
   const toggle = (icon, key, title, sub) => html`<${SettingRow} icon=${icon} title=${t(title)} sub=${t(sub)} why=${why}>
     <${Switch} on=${shown[key]} label=${t(title)} disabled=${!device.online} onChange=${(on) => change({ [key]: on })} />
   <//>`;
-  const goal = shown ? shown.stepGoal : 0;
+  // Built like the page of the watch on the phone: Health near the top, then what it does, and at the bottom one row for what is set
+  // for the watch itself (its name, the app on it and unpairing), as the page of a computer has on the phone.
   return html`<div class="wrap">
     <div class="card" style=${reachable ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
       <div class="head">
@@ -448,47 +449,97 @@ export function WatchPage({ device }) {
       </div>
     </div>
 
-    <${WatchGlance} i=${insights} records=${state.health} onOpen=${openHealth} />
+    <div class="card flush health-entry">
+      <button class="health-entry-head" onClick=${openHealth} title=${t("health_open")}>
+        <span class="health-entry-icon"><${Icon} name="heart" size=${20} /></span>
+        <span class="grow"><span class="t">${t("tab_health")}</span><span class="s">${t("health_open_sub")}</span></span>
+        <${Icon} name="chevron-right" size=${16} />
+      </button>
+      <${WatchGlance} i=${insights} records=${state.health} onOpen=${openHealth} />
+    </div>
 
     <div class="agroups">
       <${ActionGroup} title=${t("watch")}>
         <${WatchButton} device=${device} />
         <button class="btn" disabled=${!reachable} title=${reachable ? "" : t("watch_away")} onClick=${() => call("start_watch_mouse", { id: device.id }).catch(failed)}>
           <${Icon} name="pointer" size=${17} />${t("watch_as_mouse")}</button>
-        <button class="btn" onClick=${openHealth}><${Icon} name="moon" size=${17} />${t("tab_health")}</button>
         <button class="btn" onClick=${() => set({ selected: device.id, page: "device" })}><${Icon} name="device-mobile" size=${17} />${t("open_device", device.name)}</button>
       <//>
     </div>
 
     <h2>${t("settings")}</h2>
     <div class="card flush">
-      <${SettingRow} icon="pencil" title=${t("watch_name")} sub=${t("watch_name_sub", watchName(device))} why=${why}>
-        <button class="btn small" disabled=${!device.online} onClick=${() => set({ dialog: { kind: "rename-watch", id: device.id } })}>${t("rename")}</button>
-      <//>
       ${shown ? html`
         ${toggle("pointer", "mouse", "watch_mouse", "watch_mouse_sub")}
-        ${toggle("moon", "sleepQuiet", "watch_quiet", "watch_quiet_sub")}
-        ${toggle("alarm", "smartWake", "watch_wake", "watch_wake_sub")}
-        ${toggle("heart", "heartAllDay", "watch_heart", "watch_heart_sub")}
-        <${SettingRow} icon="walk" title=${t("watch_goal")} sub=${t("watch_goal_sub")} why=${why}>
-          <div class="goal">
-            <button class="btn small" disabled=${!device.online || goal <= STEP_GOAL_MIN} title=${t("watch_goal_less")} aria-label=${t("watch_goal_less")}
-              onClick=${() => change({ stepGoal: Math.max(STEP_GOAL_MIN, goal - STEP_GOAL_STEP) })}><${Icon} name="minus" size=${14} /></button>
-            <span class="num">${goal.toLocaleString(language() === "nl" ? "nl" : "en")}</span>
-            <button class="btn small" disabled=${!device.online || goal >= STEP_GOAL_MAX} title=${t("watch_goal_more")} aria-label=${t("watch_goal_more")}
-              onClick=${() => change({ stepGoal: Math.min(STEP_GOAL_MAX, goal + STEP_GOAL_STEP) })}><${Icon} name="plus" size=${14} /></button>
-          </div>
-        <//>`
+        ${toggle("heart", "heartAllDay", "watch_heart", "watch_heart_sub")}`
       // A phone with an older Tandem does not say them: a switch that shows off could be wrong, so none is shown.
       : html`<${SettingRow} icon="download" title=${t("watch_more_title")} sub=${t("watch_more_update", device.name)}><span></span><//>`}
     </div>
 
+    ${shown && html`<h2>${t("watch_section_sleep")}</h2>
+    <div class="card flush">
+      ${toggle("moon", "sleepQuiet", "watch_quiet", "watch_quiet_sub")}
+      ${toggle("alarm", "smartWake", "watch_wake", "watch_wake_sub")}
+    </div>`}
+
     <div class="card flush" style="margin-top:18px">
-      <${SettingRow} icon="trash" title=${t("watch_unpair")} sub=${t("watch_unpair_sub")} why=${why}>
-        <button class="btn danger small" disabled=${!device.online} onClick=${() => set({ dialog: { kind: "unpair-watch", id: device.id } })}>${t("watch_unpair_button")}</button>
+      <${SettingRow} icon="settings" title=${t("watch_settings_title")} sub=${t("watch_settings_sub")}>
+        <button class="btn small" onClick=${() => set({ dialog: { kind: "watch-settings", id: device.id } })}>${t("open")}</button>
       <//>
     </div>
   </div>`;
+}
+
+/**
+ * What is set for the watch itself: its name, the Tandem on it, and unpairing it. A window of its own, so unpairing is never one click
+ * away on the page that is used every day.
+ */
+export function WatchSettingsDialog({ dialog, close }) {
+  const device = state.devices.find((x) => x.id === dialog.id);
+  if (!device) return null;
+  const why = device.online ? "" : t("watch_phone_away");
+  return html`<div class="scrim" onClick=${(e) => e.target === e.currentTarget && close()}>
+    <div class="dialog wide"><h2>${watchName(device)}</h2><p class="muted" style="margin-top:0">${t("watch_settings_title")}</p>
+      <div class="card flush">
+        <${SettingRow} icon="pencil" title=${t("watch_name")} sub=${t("watch_name_sub", watchName(device))} why=${why}>
+          <button class="btn small" disabled=${!device.online} onClick=${() => set({ dialog: { kind: "rename-watch", id: device.id } })}>${t("rename")}</button>
+        <//>
+        <${SettingRow} icon="refresh" title=${t("watch_app_title")} sub=${t("watch_app_by_phone", device.name)}><span></span><//>
+      </div>
+      <div class="card flush" style="margin-top:12px">
+        <${SettingRow} icon="trash" title=${t("watch_unpair")} sub=${t("watch_unpair_sub")} why=${why}>
+          <button class="btn danger small" disabled=${!device.online} onClick=${() => set({ dialog: { kind: "unpair-watch", id: device.id } })}>${t("watch_unpair_button")}</button>
+        <//>
+      </div>
+      <div style="text-align:right;margin-top:14px"><button class="btn" onClick=${close}>${t("done")}</button></div>
+    </div></div>`;
+}
+
+/**
+ * The step goal in a small window with a minus and a plus, saved only with Save: on the page itself every click changed it at once.
+ * The goal is kept on the phone that has the watch.
+ */
+export function StepGoalDialog({ dialog, close }) {
+  const device = state.devices.find((x) => x.id === dialog.id);
+  const [goal, setGoal] = useState(dialog.goal);
+  const shownGoal = goal.toLocaleString(language() === "nl" ? "nl" : "en");
+  const save = () => {
+    close();
+    if (device) call("set_watch_settings", { id: device.id, stepGoal: goal }).catch(failed);
+  };
+  return html`<div class="scrim" onClick=${(e) => e.target === e.currentTarget && close()}>
+    <div class="dialog"><h2>${t("watch_goal")}</h2><p class="muted" style="margin-top:0">${t("watch_goal_sub")}</p>
+      <div class="goal big">
+        <button class="btn" disabled=${goal <= STEP_GOAL_MIN} title=${t("watch_goal_less")} aria-label=${t("watch_goal_less")}
+          onClick=${() => setGoal((g) => Math.max(STEP_GOAL_MIN, g - STEP_GOAL_STEP))}><${Icon} name="minus" size=${16} /></button>
+        <span class="num">${shownGoal}</span>
+        <button class="btn" disabled=${goal >= STEP_GOAL_MAX} title=${t("watch_goal_more")} aria-label=${t("watch_goal_more")}
+          onClick=${() => setGoal((g) => Math.min(STEP_GOAL_MAX, g + STEP_GOAL_STEP))}><${Icon} name="plus" size=${16} /></button>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn" onClick=${close}>${t("cancel")}</button>
+        <button class="btn accent" onClick=${save}>${t("save")}</button>
+      </div></div></div>`;
 }
 
 /** The step goals the phone offers, so both say the same. */
@@ -1267,6 +1318,35 @@ function healthShown() {
   try { return localStorage.getItem("healthShown") === "1"; } catch { return false; }
 }
 
+/**
+ * What is set for the watch's measuring, as under the health page on the phone: waking gently, the heart rate all day and the step goal.
+ * Kept on the phone that has the watch, which passes it on.
+ */
+function HealthChoices() {
+  const device = (state.devices || []).find((d) => d.status?.watch?.paired && d.status.watch.settings);
+  const [wanted, setWanted] = useState({});
+  const settings = device && device.status.watch.settings;
+  useEffect(() => setWanted({}), [JSON.stringify(settings)]);
+  if (!device) return null;
+  const shown = { ...settings, ...wanted };
+  const why = device.online ? "" : t("watch_phone_away");
+  const change = (patch) => {
+    setWanted((before) => ({ ...before, ...patch }));
+    call("set_watch_settings", { id: device.id, ...patch }).catch(failed);
+  };
+  const toggle = (icon, key, title, sub) => html`<${SettingRow} icon=${icon} title=${t(title)} sub=${t(sub)} why=${why}>
+    <${Switch} on=${shown[key]} label=${t(title)} disabled=${!device.online} onChange=${(on) => change({ [key]: on })} />
+  <//>`;
+  return html`<h2>${t("health_prefs")}</h2>
+    <div class="card flush">
+      ${toggle("alarm", "smartWake", "watch_wake", "watch_wake_sub")}
+      ${toggle("heart", "heartAllDay", "watch_heart", "watch_heart_sub")}
+      <${SettingRow} icon="walk" title=${t("watch_goal")} sub=${t("watch_goal_row", shown.stepGoal.toLocaleString(language() === "nl" ? "nl" : "en"))} why=${why}>
+        <button class="btn small" disabled=${!device.online} onClick=${() => set({ dialog: { kind: "step-goal", id: device.id, goal: shown.stepGoal } })}>${t("change")}</button>
+      <//>
+    </div>`;
+}
+
 function HealthSection() {
   const [shown, setShown] = useState(healthShown);
   const [insights, setInsights] = useState(null);
@@ -1284,6 +1364,7 @@ function HealthSection() {
     ${!hasWatch && html`<div class="card flush"><${SettingRow} icon="moon" title=${t("health_show")} sub=${t("health_show_sub")} on=${shown} onChange=${change} /></div>`}
     ${(hasWatch || shown) && insights && html`<${HealthContent} i=${insights} records=${records} />`}
     ${(hasWatch || shown) && records.length === 0 && html`<div class="muted">${t("health_empty")}</div>`}
+    <${HealthChoices} />
     ${(hasWatch || shown) && records.length > 0 && html`<div class="card flush"><${SettingRow} icon="download" title=${t("health_export")} sub=${t("health_export_sub")}>
       <button onClick=${() => call("health_export", { offset: -new Date().getTimezoneOffset() }).then((path) => path && say(t("health_saved"))).catch((e) => say(String(e)))}>${t("health_export")}</button>
     <//></div>`}

@@ -143,13 +143,36 @@ function SleepWindows({ week }) {
   </div>`;
 }
 
-/** A day of heart rate from midnight on. A gap of more than half an hour stays a gap: the watch was off the wrist. */
+/**
+ * A day of heart rate from midnight on. A gap of more than half an hour stays a gap: the watch was off the wrist.
+ *
+ * As the night can be: pointing at it shows the time and the heart rate there, a pinch on the touchpad (or Ctrl and the wheel) zooms in
+ * on a part of the day, and dragging or scrolling sideways moves along it. The scale follows what is in view, so a small change shows.
+ */
 function DayHeartLine({ curve }) {
-  const measured = curve.filter((v) => v > 0);
-  if (!measured.length) return null;
+  const [pointer, setPointer] = useState(null);
+  const [view, setView] = useState({ zoom: 1, from: 0 });
+  const [drag, setDrag] = useState(null);
+  const all = curve.filter((v) => v > 0);
+  if (!all.length || curve.length < 2) return null;
+  const last = curve.length - 1;
+  const span = 1 / view.zoom;
+  const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+  // A time on the axis, on a round five minutes and the whole day 0:00 to 0:00, so the labels read 6:00 and not 5:58.
+  const minuteAt = (share) => Math.round((share * 1440) / 5) * 5;
+  // The measured point nearest to a share of the day, within a quarter of an hour, or none where the watch was off.
+  const pointAt = (share) => {
+    const at = clamp(Math.round(share * last), 0, last);
+    for (let d = 0; d <= 3; d++) for (const i of [at - d, at + d]) if (i >= 0 && i <= last && curve[i] > 0) return i;
+    return null;
+  };
+  const first = clamp(Math.floor(view.from * last), 0, last);
+  const end = clamp(Math.floor((view.from + span) * last) + 1, 0, last);
+  const inView = curve.slice(first, end + 1).filter((v) => v > 0);
+  const measured = inView.length ? inView : all;
   const low = Math.min(...measured) - 4, high = Math.max(...measured) + 4;
   const width = 560, height = 96;
-  const x = (index) => (index / (curve.length - 1)) * width;
+  const x = (index) => (index / last - view.from) * view.zoom * width;
   const y = (value) => 6 + (1 - (value - low) / (high - low)) * (height - 12);
   let path = "", before = -100;
   curve.forEach((value, index) => {
@@ -157,12 +180,52 @@ function DayHeartLine({ curve }) {
     path += `${index - before > 6 ? "M" : "L"}${x(index).toFixed(1)},${y(value).toFixed(1)} `;
     before = index;
   });
+  const shareOf = (e) => {
+    const box = e.currentTarget.getBoundingClientRect();
+    return clamp((e.clientX - box.left) / box.width, 0, 1);
+  };
+  const onWheel = (e) => {
+    if (e.ctrlKey) {
+      e.preventDefault();
+      const centre = shareOf(e);
+      setView((v) => {
+        const zoom = clamp(v.zoom * Math.exp(-e.deltaY / 200), 1, 12);
+        return { zoom, from: clamp(v.from + centre / v.zoom - centre / zoom, 0, 1 - 1 / zoom) };
+      });
+    } else if (view.zoom > 1.01 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      e.preventDefault();
+      setView((v) => ({ ...v, from: clamp(v.from + e.deltaX / width / v.zoom, 0, 1 - 1 / v.zoom) }));
+    }
+  };
+  const onDown = (e) => {
+    if (view.zoom <= 1.01) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDrag({ x: e.clientX, from: view.from, width: e.currentTarget.getBoundingClientRect().width });
+  };
+  const onMove = (e) => {
+    setPointer(shareOf(e));
+    if (drag) setView((v) => ({ ...v, from: clamp(drag.from - (e.clientX - drag.x) / drag.width / v.zoom, 0, 1 - 1 / v.zoom) }));
+  };
+  const at = pointer == null ? null : view.from + pointer * span;
+  const point = at == null ? null : pointAt(at);
+  const heading = at != null
+    ? `${clockFromMidnight(point != null ? point * 5 : minuteAt(at))} · ${point != null ? t("health_bpm", curve[point]) : t("health_nothing")}`
+    : view.zoom > 1.01 ? t("health_span", clockFromMidnight(minuteAt(view.from)), clockFromMidnight(minuteAt(view.from + span))) : t("health_heart_hint");
   return html`<div class="health-chart">
-    <svg viewBox=${`0 0 ${width} ${height}`} preserveAspectRatio="none" width="100%" height=${height} role="img">
-      ${[0, 1, 2, 3, 4].map((q) => html`<line key=${q} x1=${(width * q) / 4} x2=${(width * q) / 4} y1="0" y2=${height} class="health-guide" />`)}
-      <path d=${path} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
-    </svg>
-    <div class="health-axis">${[0, 6, 12, 18, 24].map((hour) => html`<span key=${hour}>${clockFromMidnight(hour * 60)}</span>`)}</div>
+    <div class="health-heart-head small muted">
+      <span class="grow">${heading}</span>
+      ${view.zoom > 1.01 && html`<button class="health-link" onClick=${() => setView({ zoom: 1, from: 0 })}>${t("health_whole_day")}</button>`}
+    </div>
+    <div class="health-heart" onWheel=${onWheel} onPointerDown=${onDown} onPointerMove=${onMove} onPointerUp=${() => setDrag(null)}
+      onPointerLeave=${() => { if (!drag) setPointer(null); }}>
+      <svg viewBox=${`0 0 ${width} ${height}`} preserveAspectRatio="none" width="100%" height=${height} role="img" style="overflow:hidden;display:block">
+        ${[0, 1, 2, 3, 4].map((q) => html`<line key=${q} x1=${(width * q) / 4} x2=${(width * q) / 4} y1="0" y2=${height} class="health-guide" />`)}
+        <path d=${path} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+      </svg>
+      ${pointer != null && html`<span class="health-heart-cursor" style=${`left:${pointer * 100}%`}></span>`}
+      ${point != null && html`<span class="health-heart-dot" style=${`left:${(x(point) / width) * 100}%;top:${(y(curve[point]) / height) * 100}%`}></span>`}
+    </div>
+    <div class="health-axis">${[0, 1, 2, 3, 4].map((q) => html`<span key=${q}>${clockFromMidnight(minuteAt(view.from + (span * q) / 4))}</span>`)}</div>
   </div>`;
 }
 

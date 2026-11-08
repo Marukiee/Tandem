@@ -30,6 +30,7 @@ struct HealthSettings: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 4)
                     }
+                    HealthChoicesCard()
                     Card(radius: Metrics.card, padding: 16) {
                         HStack(spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
@@ -46,6 +47,85 @@ struct HealthSettings: View {
             .padding(20)
         }
     }
+}
+
+/// What is set for the watch's measuring, as under the health page on the phone: waking gently, the heart rate all day and the step goal.
+/// Kept on the phone that has the watch, which passes it on. The step goal opens a small window, so it is never changed in passing.
+private struct HealthChoicesCard: View {
+    @Environment(EngineModel.self) private var model
+    @State private var editingGoal = false
+    @State private var draft = 0
+
+    private var phone: TandemDevice? { model.devices.first { $0.status.watch?.paired == true && $0.status.watch?.settings != nil } }
+
+    var body: some View {
+        if let phone, let settings = phone.status.watch?.settings {
+            let why: String? = phone.online ? nil : String(localized: "Its phone is not connected")
+            VStack(alignment: .leading, spacing: 8) {
+                SectionTitle("Preferences")
+                Card(radius: Metrics.card, padding: 6) {
+                    VStack(spacing: 0) {
+                        SettingRow(symbol: "alarm", title: "Wake me gently", subtitle: "Five minutes before your alarm your watch starts buzzing, in long pulses that grow from soft to strong") {
+                            Toggle("", isOn: Binding(get: { settings.smartWake }, set: { model.setWatchSettings(phone.id, TandemWatchSettingsChange(smartWake: $0)) }))
+                                .controlSize(.mini)
+                                .disabled(why != nil)
+                                .help(why ?? "")
+                        }
+                        Divider().opacity(0.4).padding(.horizontal, 14)
+                        SettingRow(symbol: "heart", title: "Heart rate all day", subtitle: "Half a minute in every five while you wear your watch. Off saves battery.") {
+                            Toggle("", isOn: Binding(get: { settings.heartAllDay }, set: { model.setWatchSettings(phone.id, TandemWatchSettingsChange(heartAllDay: $0)) }))
+                                .controlSize(.mini)
+                                .disabled(why != nil)
+                                .help(why ?? "")
+                        }
+                        Divider().opacity(0.4).padding(.horizontal, 14)
+                        SettingRow(symbol: "figure.walk", title: "Step goal", subtitle: "\(Int(settings.stepGoal).formatted()) steps a day. Your watch shows it too.") {
+                            Button("Change") {
+                                draft = Int(settings.stepGoal)
+                                editingGoal = true
+                            }
+                            .buttonStyle(.tandemGlass)
+                            .disabled(why != nil)
+                            .help(why ?? "")
+                            .popover(isPresented: $editingGoal, arrowEdge: .bottom) { goalEditor(phone) }
+                        }
+                    }
+                }
+            }
+            .padding(.top, 8)
+        }
+    }
+
+    private func goalEditor(_ phone: TandemDevice) -> some View {
+        VStack(spacing: 14) {
+            Text("Step goal").font(.headline)
+            HStack(spacing: 16) {
+                Button { draft = max(Self.goals.lowerBound, draft - Self.step) } label: { Image(systemName: "minus") }
+                    .help("Fewer steps")
+                    .disabled(draft <= Self.goals.lowerBound)
+                Text(verbatim: draft.formatted()).font(.title2.weight(.bold)).monospacedDigit().frame(minWidth: 90)
+                Button { draft = min(Self.goals.upperBound, draft + Self.step) } label: { Image(systemName: "plus") }
+                    .help("More steps")
+                    .disabled(draft >= Self.goals.upperBound)
+            }
+            .buttonStyle(.tandemGlass)
+            HStack {
+                Button("Cancel", role: .cancel) { editingGoal = false }
+                Spacer()
+                Button("Save") {
+                    model.setWatchSettings(phone.id, TandemWatchSettingsChange(stepGoal: UInt32(draft)))
+                    editingGoal = false
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(18)
+        .frame(width: 280)
+    }
+
+    /// The goals the phone offers, so both say the same.
+    private static let goals = 2000...30000
+    private static let step = 500
 }
 
 /// What the page shows. The sums are the core's, so this says the same as the phone.
@@ -367,23 +447,83 @@ private struct SleepWindows: View {
 
 /// A day of heart rate from midnight on. A gap of more than half an hour stays a gap: the watch was off the wrist, and a line through it
 /// would claim otherwise.
+///
+/// As the night can be: pointing at it shows the time and the heart rate there, a pinch on the trackpad zooms in on a part of the day and
+/// dragging moves along it, so one moment can be looked at closely. The scale follows what is in view, so a small change shows when zoomed.
 private struct DayHeartLine: View {
     let curve: [UInt32]
     var height: CGFloat = 96
     @State private var reveal: CGFloat = 0
+    @State private var pointer: CGFloat?
+    @State private var width: CGFloat = 1
+    /// The part of the day in view: from [from], a share of the day, over 1 / [zoom] of it.
+    @State private var zoom: CGFloat = 1
+    @State private var from: CGFloat = 0
+    @State private var pinchStart: (zoom: CGFloat, from: CGFloat)?
+    @State private var dragStart: CGFloat?
+
+    private static let maxZoom: CGFloat = 12
+    private var last: Int { max(curve.count - 1, 1) }
+    private var span: CGFloat { 1 / zoom }
+
+    /// A time on the axis, on a round five minutes and the whole day 0:00 to 0:00, so the labels read 6:00 and not 5:58.
+    private func minute(at share: CGFloat) -> Int { Int((share * 1440 / 5).rounded()) * 5 }
+
+    /// The measured point nearest to a share of the day, within a quarter of an hour, or none where the watch was off.
+    private func point(at share: CGFloat) -> Int? {
+        let at = min(max(Int((share * CGFloat(last)).rounded()), 0), last)
+        for distance in 0...3 {
+            for index in [at - distance, at + distance] where index >= 0 && index <= last && curve[index] > 0 { return index }
+        }
+        return nil
+    }
+
+    private func share(of x: CGFloat) -> CGFloat { from + min(max(x / width, 0), 1) * span }
+
+    private var heading: String {
+        if let pointer {
+            let at = share(of: pointer)
+            if let index = point(at: at) {
+                return clock(fromMidnight: index * 5) + " \u{00B7} " + String(localized: "\(Int(curve[index])) bpm")
+            }
+            return clock(fromMidnight: minute(at: at)) + " \u{00B7} " + String(localized: "Nothing measured")
+        }
+        if zoom > 1.01 {
+            return String(localized: "\(clock(fromMidnight: minute(at: from))) to \(clock(fromMidnight: minute(at: from + span)))")
+        }
+        return String(localized: "Point at the line to see a moment. Pinch to zoom in.")
+    }
 
     var body: some View {
-        let measured = curve.filter { $0 > 0 }.map { Double($0) }
         VStack(spacing: 6) {
+            HStack {
+                Text(verbatim: heading).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                Spacer(minLength: 8)
+                if zoom > 1.01 {
+                    Button("Whole day") {
+                        withAnimation(.tandem) {
+                            zoom = 1
+                            from = 0
+                        }
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+                }
+            }
             GeometryReader { geometry in
+                let w = geometry.size.width
+                let first = min(max(Int(from * CGFloat(last)), 0), last)
+                let end = min(max(Int((from + span) * CGFloat(last)) + 1, 0), last)
+                let inView = curve[first...end].filter { $0 > 0 }.map { Double($0) }
+                let measured = inView.isEmpty ? curve.filter { $0 > 0 }.map { Double($0) } : inView
                 let low = (measured.min() ?? 0) - 4
                 let high = (measured.max() ?? 1) + 4
-                let x = { (index: Int) -> CGFloat in CGFloat(index) / CGFloat(max(curve.count - 1, 1)) * geometry.size.width }
+                let x = { (index: Int) -> CGFloat in (CGFloat(index) / CGFloat(last) - from) * zoom * w }
                 let y = { (value: UInt32) -> CGFloat in 6 + (1 - (Double(value) - low) / (high - low)) * (geometry.size.height - 12) }
-                ZStack {
+                ZStack(alignment: .topLeading) {
                     Path { path in
                         for quarter in 0...4 {
-                            let at = geometry.size.width * CGFloat(quarter) / 4
+                            let at = w * CGFloat(quarter) / 4
                             path.move(to: CGPoint(x: at, y: 0))
                             path.addLine(to: CGPoint(x: at, y: geometry.size.height))
                         }
@@ -399,13 +539,56 @@ private struct DayHeartLine: View {
                     }
                     .trim(from: 0, to: reveal)
                     .stroke(Palette.indigo, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                    if let pointer {
+                        Rectangle().fill(Color.primary).frame(width: 1, height: geometry.size.height).offset(x: min(max(pointer, 0), w))
+                        if let index = point(at: share(of: pointer)) {
+                            Circle()
+                                .fill(Palette.indigo)
+                                .frame(width: 8, height: 8)
+                                .overlay(Circle().stroke(Color(nsColor: .windowBackgroundColor), lineWidth: 2))
+                                .position(x: x(index), y: y(curve[index]))
+                        }
+                    }
                 }
+                .clipped()
+                .contentShape(Rectangle())
+                .onContinuousHover { phase in
+                    switch phase {
+                    case .active(let location): pointer = location.x
+                    case .ended: pointer = nil
+                    }
+                }
+                .gesture(
+                    MagnifyGesture()
+                        .onChanged { value in
+                            let start = pinchStart ?? (zoom, from)
+                            pinchStart = start
+                            let centre = value.startLocation.x / w
+                            let under = start.from + centre / start.zoom
+                            let next = min(max(start.zoom * value.magnification, 1), Self.maxZoom)
+                            zoom = next
+                            from = min(max(under - centre / next, 0), 1 - 1 / next)
+                        }
+                        .onEnded { _ in pinchStart = nil }
+                )
+                .simultaneousGesture(
+                    // Dragging moves along a zoomed day; over the whole day there is nowhere to go.
+                    DragGesture(minimumDistance: 4)
+                        .onChanged { value in
+                            guard zoom > 1.01 else { return }
+                            let start = dragStart ?? from
+                            dragStart = start
+                            from = min(max(start - value.translation.width / w / zoom, 0), 1 - 1 / zoom)
+                        }
+                        .onEnded { _ in dragStart = nil }
+                )
             }
             .frame(height: height)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = max($0, 1) }
             HStack {
-                ForEach([0, 6, 12, 18, 24], id: \.self) { hour in
-                    Text(verbatim: clock(fromMidnight: hour * 60)).font(.caption2).foregroundStyle(.secondary)
-                    if hour != 24 { Spacer(minLength: 0) }
+                ForEach(0...4, id: \.self) { quarter in
+                    Text(verbatim: clock(fromMidnight: minute(at: from + span * CGFloat(quarter) / 4))).font(.caption2).foregroundStyle(.secondary)
+                    if quarter != 4 { Spacer(minLength: 0) }
                 }
             }
         }
