@@ -4,6 +4,8 @@
     <string name="find_section">Find</string>
     <string name="find_play">Play sound</string>
     <string name="find_stop_sound">Stop sound</string>
+    <string name="find_button_play">Play</string>
+    <string name="find_button_stop">Stop</string>
     <string name="find_play_sub">It plays a sound until you find it</string>
     <string name="find_playing">%1$s plays a sound</string>
     <string name="find_connected_on">Connected on %1$s</string>

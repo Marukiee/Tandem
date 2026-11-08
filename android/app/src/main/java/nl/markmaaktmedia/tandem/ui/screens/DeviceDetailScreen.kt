@@ -309,9 +309,14 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                         },
                     )
                 } else if (device.online) {
-                    nl.markmaaktmedia.tandem.ui.components.ControlRow(
-                        row++, controlRows, TandemIcons.Ring, stringResource(R.string.tile_find), stringResource(R.string.find_row_sub),
-                        ready = true, onClick = { scope.launch { runCatching { host.engine?.ring(id, true) } } },
+                    // Done right here, so a button, with the same name as on every device.
+                    val ringing by nl.markmaaktmedia.tandem.engine.FindDevices.ringing.collectAsState()
+                    val on = id in ringing
+                    nl.markmaaktmedia.tandem.ui.components.ButtonRow(
+                        row++, controlRows, TandemIcons.Ring, stringResource(R.string.find_play), stringResource(R.string.find_play_sub),
+                        button = stringResource(if (on) R.string.find_button_stop else R.string.find_button_play), buttonIcon = TandemIcons.Ring,
+                        ready = true, whyNot = null,
+                        onClick = { nl.markmaaktmedia.tandem.engine.FindDevices.ring(context, id, !on) },
                     )
                     nl.markmaaktmedia.tandem.ui.components.SoundModeRow(row++, controlRows, device)
                 }
@@ -333,19 +338,16 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         device.status.watch?.takeIf { it.paired }?.let { watch ->
             SectionHeader(stringResource(R.string.settings_cat_watch), top = 12.dp, bottom = 0.dp)
             SettingsGroup {
-                ActionRow(
-                    0, 1, TandemIcons.Ring,
-                    stringResource(if (watch.ringing) R.string.watch_find_stop else R.string.watch_find),
+                nl.markmaaktmedia.tandem.ui.components.ButtonRow(
+                    0, 1, TandemIcons.Ring, stringResource(R.string.find_play),
                     when {
                         !watch.online -> stringResource(R.string.watch_not_connected)
                         watch.level != null -> stringResource(if (watch.charging) R.string.watch_battery_charging else R.string.watch_battery, watch.level!!.toInt())
                         else -> stringResource(R.string.watch_find_sub)
                     },
-                    {
-                        if (device.online && watch.online) scope.launch { runCatching { host.engine?.ringWatch(id, !watch.ringing) } }
-                        else android.widget.Toast.makeText(context, R.string.watch_not_connected, android.widget.Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = if (device.online && watch.online) Modifier else Modifier.alpha(0.6f),
+                    button = stringResource(if (watch.ringing) R.string.find_button_stop else R.string.find_button_play), buttonIcon = TandemIcons.Ring,
+                    ready = device.online && watch.online, whyNot = R.string.watch_not_connected,
+                    onClick = { scope.launch { runCatching { host.engine?.ringWatch(id, !watch.ringing) } } },
                 )
             }
         }

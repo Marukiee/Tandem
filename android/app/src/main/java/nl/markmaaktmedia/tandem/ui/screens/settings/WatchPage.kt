@@ -130,7 +130,7 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
         SettingsGroup {
             ActionRow(
                 0, 3, TandemIcons.Ring,
-                stringResource(if (state.ringing) R.string.watch_find_stop else R.string.watch_find),
+                stringResource(if (state.ringing) R.string.find_stop_sound else R.string.find_play),
                 stringResource(R.string.watch_find_sub),
                 onClick = {
                     if (state.ready) watch.ringWatch(!state.ringing)

@@ -2,8 +2,10 @@
 <resources>
     <!-- Een computer zoeken vanaf zijn pagina: een geluid, en waar hij het laatst was -->
     <string name="find_section">Zoeken</string>
-    <string name="find_play">Speel geluid af</string>
-    <string name="find_stop_sound">Stop geluid</string>
+    <string name="find_play">Geluid afspelen</string>
+    <string name="find_stop_sound">Geluid stoppen</string>
+    <string name="find_button_play">Speel af</string>
+    <string name="find_button_stop">Stop</string>
     <string name="find_play_sub">Hij speelt een geluid tot je hem vindt</string>
     <string name="find_playing">%1$s speelt een geluid af</string>
     <string name="find_connected_on">Verbonden op %1$s</string>

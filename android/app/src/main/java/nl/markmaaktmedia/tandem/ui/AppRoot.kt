@@ -335,7 +335,7 @@ private fun HomeTabs(nav: Nav) {
             label = "tabs",
         ) { tab ->
             when (tab) {
-                0 -> DevicesScreen(onOpenDevice = { nav.push(Route.Device(it)) }, onPair = { nav.push(Route.Pair) }, onOpenWatch = { nav.push(Route.SettingsPage(nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId.Watch)) }, bottomPadding = barSpace, listState = nav.devicesList)
+                0 -> DevicesScreen(onOpenDevice = { nav.push(Route.Device(it)) }, onPair = { nav.push(Route.Pair) }, onOpenWatch = { nav.push(Route.SettingsPage(nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId.Watch)) }, bottomPadding = barSpace, onControl = { nav.push(Route.Screen(it)) }, listState = nav.devicesList)
                 1 -> TransfersScreen(bottomPadding = barSpace, listState = nav.transfersList)
                 else -> SettingsScreen(bottomPadding = barSpace, onOpen = { nav.push(it) }, listState = nav.settingsList)
             }

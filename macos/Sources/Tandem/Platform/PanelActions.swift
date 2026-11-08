@@ -34,7 +34,7 @@ enum PanelAction: String, CaseIterable, Identifiable, Codable {
         case .sendFiles: String(localized: "Send")
         case .sendClipboard: String(localized: "Paste there")
         case .clipboardHistory: String(localized: "Clipboard")
-        case .findPhone: String(localized: "Find phone")
+        case .findPhone: String(localized: "Play sound on phone")
         case .phoneOutput: String(localized: "Speaker")
         }
     }

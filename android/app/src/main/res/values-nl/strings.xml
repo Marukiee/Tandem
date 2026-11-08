@@ -291,10 +291,8 @@
     <string name="send_clipboard_empty">Er is niets gekopieerd om te versturen</string>
     <string name="send_clipboard_sub">Wat je het laatst hebt gekopieerd</string>
     <string name="trackpad_row_sub">Gebruik deze telefoon als trackpad en toetsenbord</string>
-    <string name="find_row_sub">Laat hem overgaan</string>
     <string name="tile_clipboard">Klembord</string>
     <string name="tile_trackpad">Trackpad</string>
-    <string name="tile_find">Zoek</string>
     <string name="dev_section">Ontwikkelaar</string>
     <string name="update_download">Download</string>
     <string name="update_on_version">Je hebt %1$s</string>
@@ -553,8 +551,6 @@
     <string name="watch_searching">Zoekt je horloge</string>
     <string name="watch_battery">Batterij %1$d%%</string>
     <string name="watch_battery_charging">Batterij %1$d%%, laadt op</string>
-    <string name="watch_find">Zoek mijn horloge</string>
-    <string name="watch_find_stop">Stop overgaan</string>
     <string name="watch_find_sub">Gaat ook over als het horloge op stil staat</string>
     <string name="watch_not_connected">Het horloge is niet verbonden</string>
     <string name="watch_needs_listener">Sta toegang tot meldingen toe</string>

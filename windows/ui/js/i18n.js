@@ -512,7 +512,7 @@ const nl = {
   input_wayland: "Heeft een toestemming nodig die deze sessie niet geeft: onder Wayland mag een app de muis niet bewegen of toetsen indrukken. Log in met een X11-sessie (het tandwiel op het inlogscherm).",
   input_no_display: "Er is geen scherm gevonden om de muis en toetsen naartoe te sturen.",
   mac: "Mac", phone: "Telefoon", unknown: "Apparaat", 
-  play_sound: "Speel geluid af", stop_sound: "Stop geluid", plays_sound: "{0} speelt een geluid af",
+  play_sound: "Geluid afspelen", stop_sound: "Geluid stoppen", plays_sound: "{0} speelt een geluid af",
   sound_offline: "{0} is offline en kan nu geen geluid afspelen.", sound_old: "Werk Tandem bij op {0} om er een geluid op af te spelen.",
   last_seen_on: "Laatst gezien {0} op {1}", last_seen_lan: "Laatst gezien {0} op het lokale netwerk", last_seen_tailnet: "Laatst gezien {0} via Tailscale", last_seen: "Laatst gezien {0}",
   find_sound: "Geluid als deze pc gezocht wordt", find_sound_sub: "Speelt hard tot je het stopt, hooguit twee minuten", find_preview: "Laat horen",

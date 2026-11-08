@@ -93,7 +93,7 @@ struct WatchDetail: View {
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                 WatchActionTile(
                     symbol: ringing ? "bell.slash.fill" : "applewatch.radiowaves.left.and.right",
-                    title: ringing ? "Stop ringing" : "Find watch",
+                    title: ringing ? "Stop sound" : "Play sound",
                     subtitle: ringing ? String(localized: "Ringing now, also on silent") : String(localized: "It rings, even on silent"),
                     on: ringing, why: away
                 ) { model.ringWatch(phone.id, on: !ringing) }
