@@ -522,6 +522,13 @@ private struct MenuWatchRow: View {
                     onHover: { hover($0, steering ? "Stop using watch as mouse" : "Use watch as mouse") }
                 ) { steering ? model.stopWatchMouse(phone.id) : model.startWatchMouse(phone.id) }
                 .disabled(!reachable)
+                if let settings = watch?.settings {
+                    RoundIconButton(
+                        symbol: "alarm", tint: settings.smartWake ? Palette.indigo : nil, size: 32,
+                        onHover: { hover($0, "Wake me gently") }
+                    ) { model.setWatchSettings(phone.id, TandemWatchSettingsChange(smartWake: !settings.smartWake)) }
+                    .disabled(!phone.online)
+                }
                 RoundIconButton(symbol: "heart", size: 32, onHover: { hover($0, "Health") }) { AppScenes.showMain(.health(phone.id)) }
                 RoundIconButton(symbol: "applewatch", size: 32, onHover: { hover($0, "Open the watch") }) { AppScenes.showMain(.watch(phone.id)) }
             }

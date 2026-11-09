@@ -26,7 +26,7 @@ struct WatchDetail: View {
         ScrollView {
             VStack(spacing: 18) {
                 header
-                WatchHealthCard(onOpen: onOpenHealth)
+                WatchHealthCard(phone: phone, onOpen: onOpenHealth)
                 actions
                 choices
                 sleepChoices
@@ -294,12 +294,14 @@ private struct WatchSettingsSheet: View {
 /// open it too. Only what this Mac was given: a computer sees whole days, so the steps are of the last whole day.
 private struct WatchHealthCard: View {
     @Environment(EngineModel.self) private var model
+    let phone: TandemDevice
     let onOpen: () -> Void
 
     var body: some View {
         let insights = model.healthInsights
         let night = model.healthRecords.first { $0.kind == .sleep }
         let stepsDay = insights?.week.last { $0.steps != nil }
+        let settings = phone.status.watch?.settings
         Card(radius: Metrics.card, padding: 6) {
             VStack(spacing: 6) {
                 Button(action: onOpen) {
@@ -333,7 +335,10 @@ private struct WatchHealthCard: View {
                             )
                         }
                         if let day = stepsDay, let steps = day.steps {
-                            GlanceTile(onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(), caption: dayName(day.startMs))
+                            GlanceTile(
+                                onOpen: onOpen, symbol: "figure.walk", title: "Steps", number: Int(steps).formatted(), caption: dayName(day.startMs),
+                                share: settings.map { min(1, Double(steps) / Double(max($0.stepGoal, 1))) }
+                            )
                         }
                         if let resting = insights?.resting {
                             GlanceTile(
@@ -344,8 +349,39 @@ private struct WatchHealthCard: View {
                     }
                     .padding([.horizontal, .bottom], 6)
                 }
+                // The one setting that is changed from day to day, as a pill under the numbers like on the phone.
+                if let settings {
+                    HStack {
+                        WakePill(on: settings.smartWake) { model.setWatchSettings(phone.id, TandemWatchSettingsChange(smartWake: !settings.smartWake)) }
+                            .disabled(!phone.online)
+                            .help(phone.online ? "Wake me gently" : "Its phone is not connected")
+                        Spacer()
+                    }
+                    .padding([.horizontal, .bottom], 6)
+                }
             }
         }
+    }
+}
+
+/// A pill that switches waking gently: filled when on, so what is on is seen at a glance.
+private struct WakePill: View {
+    let on: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label("Wake gently", systemImage: on ? "checkmark" : "alarm")
+                .font(.callout.weight(.semibold))
+                .foregroundStyle(on ? Color.white : Color.primary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 9)
+                .background(on ? Palette.indigo : Palette.indigo.opacity(0.14), in: .capsule)
+                .contentShape(.capsule)
+        }
+        .buttonStyle(.plain)
+        .animation(.tandemFade, value: on)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -356,13 +392,30 @@ private struct GlanceTile: View {
     let title: LocalizedStringKey
     let number: String
     let caption: String
+    /// How far toward a goal, as a ring around the icon: a bar under the number made the tile taller than the ones beside it.
+    var share: Double? = nil
 
     var body: some View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 6) {
-                Label(title, systemImage: symbol)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    if let share {
+                        ZStack {
+                            Circle().stroke(Color.primary.opacity(0.1), lineWidth: 2.5)
+                            Circle()
+                                .trim(from: 0, to: share)
+                                .stroke(Palette.indigo, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                            Image(systemName: symbol).font(.system(size: 9, weight: .bold))
+                        }
+                        .frame(width: 20, height: 20)
+                    } else {
+                        Image(systemName: symbol)
+                    }
+                    Text(title)
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
                 Text(verbatim: number)
                     .font(.title2.weight(.bold))
                     .monospacedDigit()
