@@ -131,6 +131,25 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
             }
         }
 
+        // Without a watch, as on an emulator, the Health pages stay empty. Only in builds for testing: the made-up records go into
+        // the real list, which is shared with computers.
+        if (nl.markmaaktmedia.tandem.BuildConfig.DEBUG) {
+            SectionHeader(stringResource(R.string.settings_cat_health))
+            SettingsGroup {
+                ActionRow(
+                    0, 1, TandemIcons.Sleep, stringResource(R.string.dev_health_demo), stringResource(R.string.dev_health_demo_sub),
+                    {
+                        scope.launch {
+                            graph.host.engine?.addHealthRecords(nl.markmaaktmedia.tandem.watch.HealthDemo.records())
+                            graph.prefs.setHealthShown(true)
+                            graph.host.refreshHealth()
+                            Toast.makeText(context, R.string.health_export_done, Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                )
+            }
+        }
+
         SectionHeader(stringResource(R.string.dev_hotspot))
         SettingsGroup {
             val context = LocalContext.current

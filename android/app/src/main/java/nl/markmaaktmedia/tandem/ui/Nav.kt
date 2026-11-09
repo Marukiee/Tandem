@@ -22,6 +22,12 @@ sealed interface Route {
     /** What is set for the watch itself: its name, Tandem on it, and unpairing it. Like [DeviceSettings] for a computer. */
     data object WatchSettings : Route
 
+    /** One part of Health in full: "sleep", "activity" or "heart". The Health page itself shows a glance of each. */
+    data class HealthDetail(val part: String) : Route
+
+    /** What is chosen for Health, who gets it, and its data in and out: apart from the page with what was measured. */
+    data object HealthSettings : Route
+
     /** The screen of a Mac on the phone, with its mouse and keyboard. */
     data class Screen(val id: String) : Route
 
@@ -110,6 +116,8 @@ private fun routeFromKey(key: String): Route? = when {
     key.startsWith("presentation:") -> Route.Presentation(key.removePrefix("presentation:"))
     key.startsWith("devsettings:") -> Route.DeviceSettings(key.removePrefix("devsettings:"))
     key == "watch-settings" -> Route.WatchSettings
+    key.startsWith("health:") -> Route.HealthDetail(key.removePrefix("health:"))
+    key == "health-settings" -> Route.HealthSettings
     key.startsWith("screen:") -> Route.Screen(key.removePrefix("screen:"))
     key.startsWith("display:") -> Route.Display(key.removePrefix("display:"))
     key.startsWith("terminal:") -> Route.Terminal(key.removePrefix("terminal:"))

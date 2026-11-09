@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
@@ -124,7 +125,7 @@ internal fun WeekBars(
         ) {
             val slot = size.width / values.size
             val barWidth = min(slot * 0.74f, 22.dp.toPx())
-            val top = max(values.maxOfOrNull { it ?: 0f } ?: 0f, goal ?: 0f).coerceAtLeast(1f) * 1.08f
+            val top = (values.maxOfOrNull { it ?: 0f } ?: 0f).coerceAtLeast(1f) * 1.08f
             val least = 8.dp.toPx()
             values.forEachIndexed { index, value ->
                 val left = slot * index + (slot - barWidth) / 2
@@ -163,10 +164,8 @@ internal fun WeekBars(
                     drawPath(check, scheme.onPrimary.copy(alpha = alpha), style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
                 }
             }
-            if (goal != null) {
-                val y = size.height - goal / top * size.height
-                drawLine(scheme.primary.copy(alpha = 0.55f), Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
-            }
+            // No line for the goal: across the top of the bars it read as a stray stroke. The caption says how far is left, and a day that
+            // reached it has its check.
         }
         DayLetters(days)
     }
@@ -458,7 +457,9 @@ internal fun SleepTimeline(record: TandemHealthRecord, modifier: Modifier = Modi
     val runs = record.stages
     val total = runs.sumOf { it.seconds.toLong() }.toFloat()
     if (total <= 0f) return
-    val colors = Lanes.associateWith { stageColor(it) }
+    // Opaque, laid over the card: see-through, the lines between the stages showed through the light ones.
+    val card = scheme.surfaceContainer
+    val colors = Lanes.associateWith { stageColor(it).compositeOver(card) }
     val names = mapOf(
         TandemSleepStage.WAKE to stringResource(R.string.health_stage_awake),
         TandemSleepStage.REM to stringResource(R.string.health_stage_rem),
@@ -524,29 +525,34 @@ internal fun SleepTimeline(record: TandemHealthRecord, modifier: Modifier = Modi
                     drawLine(scheme.outlineVariant.copy(alpha = 0.35f), Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
                 }
                 clipRect(right = size.width * reveal) {
-                    var seconds = 0L
-                    var before = -1
-                    runs.forEach { run ->
-                        val index = Lanes.indexOf(run.stage)
-                        val x = seconds / total * size.width
-                        val length = run.seconds.toFloat() / total * size.width
-                        seconds += run.seconds.toLong()
-                        if (index < 0) {
-                            before = -1
-                            return@forEach
+                    // The lines between stages first and the stages over them, so no line runs through a stage.
+                    for (pass in 0..1) {
+                        var seconds = 0L
+                        var before = -1
+                        runs.forEach { run ->
+                            val index = Lanes.indexOf(run.stage)
+                            val x = seconds / total * size.width
+                            val length = run.seconds.toFloat() / total * size.width
+                            seconds += run.seconds.toLong()
+                            if (index < 0) {
+                                before = -1
+                                return@forEach
+                            }
+                            val y = lane * index + lane / 2
+                            if (pass == 0 && before >= 0 && before != index) {
+                                val from = lane * before + lane / 2
+                                drawLine(scheme.outline.copy(alpha = 0.5f), Offset(x, from), Offset(x, y), 1.dp.toPx())
+                            }
+                            if (pass == 1) {
+                                drawRoundRect(
+                                    colors.getValue(run.stage),
+                                    Offset(x, y - bar / 2),
+                                    Size(max(length, 2.dp.toPx()), bar),
+                                    CornerRadius(min(bar, max(length, 2.dp.toPx())) / 2),
+                                )
+                            }
+                            before = index
                         }
-                        val y = lane * index + lane / 2
-                        if (before >= 0 && before != index) {
-                            val from = lane * before + lane / 2
-                            drawLine(scheme.outline.copy(alpha = 0.5f), Offset(x, from), Offset(x, y), 1.dp.toPx())
-                        }
-                        drawRoundRect(
-                            colors.getValue(run.stage),
-                            Offset(x, y - bar / 2),
-                            Size(max(length, 2.dp.toPx()), bar),
-                            CornerRadius(min(bar, max(length, 2.dp.toPx())) / 2),
-                        )
-                        before = index
                     }
                 }
                 finger?.let { x ->

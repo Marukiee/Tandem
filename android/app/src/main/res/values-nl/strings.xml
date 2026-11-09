@@ -607,7 +607,7 @@
     <string name="watch_row_same_apps">Dezelfde apps als op je computers</string>
     <string name="watch_chip_recording">Neemt je slaap op</string>
     <string name="health_share">Slaap en trainingen</string>
-    <string name="health_share_sub">Geeft dit apparaat wat je horloge heeft gemeten. Uit: het vergeet ze weer.</string>
+    <string name="health_share_sub">Geeft dit apparaat de nachten, trainingen en stappen die je horloge heeft gemeten.</string>
     <string name="health_steps">%1$d stappen</string>
     <string name="health_duration_hm">%1$d u %2$d m</string>
     <string name="health_duration_m">%1$d m</string>
@@ -663,6 +663,14 @@
     <string name="health_minutes">%1$d min</string>
     <string name="health_active_week">Vandaag, %1$d van 150 deze week</string>
     <string name="health_heart_today">Hartslag vandaag</string>
+    <string name="dev_health_demo">Gezondheid vullen met verzonnen gegevens</string>
+    <string name="dev_health_demo_sub">Twee weken nachten, stappen en hartslag die nooit gebeurd zijn, om Gezondheid zonder horloge te bekijken.</string>
+    <string name="health_settings_title">Instellingen voor Gezondheid</string>
+    <string name="health_activity_title">Activiteit</string>
+    <string name="health_heart_title">Hart</string>
+    <string name="health_info">Wat dit betekent</string>
+    <string name="health_steps_of_goal">van %1$s stappen</string>
+    <string name="health_active_today">%1$d actieve minuten</string>
     <string name="health_heart_on_day">Hartslag, %1$s</string>
     <string name="health_heart_range">Laagste %1$d, hoogste %2$d</string>
     <string name="health_naps">Dutjes</string>
@@ -677,7 +685,7 @@
     <string name="health_mean_score_before">Gemiddeld, vorige week %1$d</string>
     <string name="health_usually">Meestal %1$d</string>
     <string name="health_heart_all_day">Hartslag de hele dag</string>
-    <string name="health_heart_all_day_sub">Een halve minuut per vijf minuten zolang je je horloge draagt. Uit spaart de accu.</string>
+    <string name="health_heart_all_day_sub">Een halve minuut per vijf minuten zolang je je horloge draagt.</string>
     <string name="health_more_stages">Het grootste deel van een nacht is lichte slaap. Diepe slaap komt vooral vroeg in de nacht, REM vooral tegen de ochtend. Je horloge schat dit uit hartslag en beweging, het is geen slaaplab. Veeg over de grafiek om een moment te zien.</string>
     <string name="health_more_score">Opgebouwd zoals de slaapscore van Google. Hoe lang je sliep telt het zwaarst: 7 tot 9 uur telt helemaal mee. Dan hoe rustig de nacht was: hoe lang inslapen duurde, de korte keren onrust, de tijd wakker en hoe vaak je echt wakker werd. Diepe slaap en REM tellen het minst, omdat een pols die het slechtst kan onderscheiden.</string>
     <string name="health_more_resting">De laagste hartslag van de nacht. Dit zegt het meest naast wat voor jou gewoon is: een verkoudheid of een drankje kan hem een nacht of twee omhoog duwen. Geen diagnose.</string>
@@ -722,7 +730,7 @@
     <string name="health_smart_wake_try">Zacht wakker worden voelen</string>
     <string name="health_smart_wake_try_sub">De vijf minuten versneld tot een halve minuut, op je horloge</string>
     <string name="health_share_title">Delen met je computers</string>
-    <string name="health_share_row_sub">Zijn pagina Gezondheid toont je nachten, trainingen en stappen. Uit: hij vergeet ze weer.</string>
+    <string name="health_share_row_sub">Zijn pagina Gezondheid toont je nachten, trainingen en stappen.</string>
     <string name="health_quality_title">Slaapkwaliteit</string>
     <string name="health_quality_more">De onderdelen die de slaapscore van Google laat zien. Tijd tot vaste slaap loopt tot de eerste tien minuten slaap zonder wakker te worden. Vaste slaap is slaap in stukken van een half uur of langer. Onrust zijn de korte keren onder vijf minuten, onderbrekingen de tijd wakker in keren van vijf minuten of langer, en keer echt wakker hoe vaak dat was. De bereiken zijn die van Tandem voor volwassenen: het kent geen leeftijd of geslacht.</string>
     <string name="health_q_to_sound">Tijd tot vaste slaap</string>

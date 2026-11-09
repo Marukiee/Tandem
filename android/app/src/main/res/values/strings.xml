@@ -610,7 +610,7 @@
     <string name="watch_row_same_apps">The same apps as on your computers</string>
     <string name="watch_chip_recording">Recording your sleep</string>
     <string name="health_share">Sleep and workouts</string>
-    <string name="health_share_sub">Gives this device what your watch measured. Off: it forgets them again.</string>
+    <string name="health_share_sub">Gives this device the nights, workouts and steps your watch measured.</string>
     <string name="health_steps">%1$d steps</string>
     <string name="health_duration_hm">%1$d h %2$d m</string>
     <string name="health_duration_m">%1$d m</string>
@@ -666,6 +666,14 @@
     <string name="health_minutes">%1$d min</string>
     <string name="health_active_week">Today, %1$d of 150 this week</string>
     <string name="health_heart_today">Heart rate today</string>
+    <string name="dev_health_demo">Fill Health with made-up data</string>
+    <string name="dev_health_demo_sub">Two weeks of nights, steps and heart rate that never happened, to see the Health pages without a watch.</string>
+    <string name="health_settings_title">Health settings</string>
+    <string name="health_activity_title">Activity</string>
+    <string name="health_heart_title">Heart</string>
+    <string name="health_info">What this means</string>
+    <string name="health_steps_of_goal">of %1$s steps</string>
+    <string name="health_active_today">%1$d active minutes</string>
     <string name="health_heart_on_day">Heart rate, %1$s</string>
     <string name="health_heart_range">Lowest %1$d, highest %2$d</string>
     <string name="health_naps">Naps</string>
@@ -680,7 +688,7 @@
     <string name="health_mean_score_before">On average, last week %1$d</string>
     <string name="health_usually">Usually %1$d</string>
     <string name="health_heart_all_day">Heart rate all day</string>
-    <string name="health_heart_all_day_sub">Half a minute in every five while you wear your watch. Off saves battery.</string>
+    <string name="health_heart_all_day_sub">Half a minute in every five while you wear your watch.</string>
     <string name="health_more_stages">Most of a night is light sleep. Deep sleep comes mostly early in the night, REM mostly towards morning. Your watch estimates this from heart rate and movement, not a sleep lab. Slide over the chart to see a moment.</string>
     <string name="health_more_score">Built like the Sleep Score of Google. How long you slept counts most: 7 to 9 hours counts in full. Then how calm the night was: how long it took to fall asleep, the brief stirs, the time awake and how often you woke up fully. Deep sleep and REM count least, because a wrist can tell them least well.</string>
     <string name="health_more_resting">The lowest heart rate of the night. It says most next to your own usual: a cold or a drink can push it up for a night or two. Not a diagnosis.</string>
@@ -725,7 +733,7 @@
     <string name="health_smart_wake_try">Feel waking gently</string>
     <string name="health_smart_wake_try_sub">The five minutes sped up to half a minute, on your watch</string>
     <string name="health_share_title">Share with your computers</string>
-    <string name="health_share_row_sub">Its Health page shows your nights, workouts and steps. Off: it forgets them again.</string>
+    <string name="health_share_row_sub">Its Health page shows your nights, workouts and steps.</string>
     <string name="health_quality_title">Sleep quality</string>
     <string name="health_quality_more">The parts the Sleep Score of Google shows. Time to sound sleep runs until the first ten minutes asleep without waking. Sound sleep is asleep in stretches of half an hour or more. Restlessness is the brief stirs under five minutes, interruptions the time awake in wakes of five minutes or more, and full awakenings how many of those there were. Tandem chose the ranges for adults: it knows no age or gender.</string>
     <string name="health_q_to_sound">Time to sound sleep</string>

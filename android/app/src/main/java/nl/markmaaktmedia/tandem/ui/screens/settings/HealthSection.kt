@@ -132,11 +132,11 @@ internal fun HealthAlert(insights: TandemHealthInsights?) {
     }
 }
 
-private fun number(value: Long): String = NumberFormat.getIntegerInstance().format(value)
+internal fun number(value: Long): String = NumberFormat.getIntegerInstance().format(value)
 
 /** The digits large and the units small, so the number is what the eye finds first. */
 @Composable
-private fun BigNumber(text: String, modifier: Modifier = Modifier) {
+internal fun BigNumber(text: String, modifier: Modifier = Modifier) {
     val type = MaterialTheme.typography
     val big = type.headlineLarge.toSpanStyle()
     val small = SpanStyle(fontSize = type.titleSmall.fontSize, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -152,27 +152,36 @@ private fun BigNumber(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** A share of something as a ring, the same way a battery is one: it grows to its value when it comes on screen. */
+/**
+ * A share of something as a ring that grows to its value when it comes on screen. The ends stay apart, with the track after a gap, as
+ * Material 3 draws progress: at 97 a ring that almost closed looked like a mistake.
+ */
 @Composable
-private fun ScoreRing(score: Int, size: Dp) {
+internal fun ScoreRing(score: Int, size: Dp, tint: Color = MaterialTheme.colorScheme.primary, track: Color = MaterialTheme.colorScheme.surfaceContainerHighest) {
     val fill = remember { Animatable(0f) }
     LaunchedEffect(score) { fill.animateTo(score / 100f, TandemMotion.spatial()) }
-    val track = MaterialTheme.colorScheme.surfaceContainerHighest
-    val tint = MaterialTheme.colorScheme.primary
     val numberSize = with(LocalDensity.current) { (size * 0.32f).toSp() }
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(size)) {
             val stroke = size.toPx() * 0.11f
             val inset = stroke / 2
             val arc = Size(this.size.width - stroke, this.size.height - stroke)
-            drawArc(track, 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(stroke))
-            drawArc(tint, -90f, 360f * fill.value, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
+            // The round caps reach past the ends of an arc: the gap counts them, and leaves room on top of that.
+            val radius = arc.width / 2
+            val cap = Math.toDegrees((stroke / 2 / radius).toDouble()).toFloat()
+            val gap = cap * 2 + 10f
+            val sweep = (360f - gap) * fill.value
+            if (sweep > 0.5f) drawArc(tint, -90f, sweep, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
+            val rest = 360f - sweep - gap * (if (sweep > 0.5f) 2 else 1)
+            if (rest > 0.5f) {
+                drawArc(track, -90f + sweep + (if (sweep > 0.5f) gap else gap / 2), rest, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
+            }
         }
         RollingNumber(score, style = MaterialTheme.typography.titleMedium.copy(fontSize = numberSize), fontWeight = FontWeight.Bold)
     }
 }
 
-/** A title that says it can open, and the words behind it. Only for what a person could really wonder about. */
+/** A title that says it can open, and the words behind it: only for a night in the list, which opens where it is. */
 @Composable
 private fun TitleWithMore(title: String, open: Boolean, hasMore: Boolean, modifier: Modifier = Modifier) {
     val turned by animateFloatAsState(if (open) 180f else 0f, TandemMotion.spatial(), label = "healthMore")
@@ -184,31 +193,45 @@ private fun TitleWithMore(title: String, open: Boolean, hasMore: Boolean, modifi
     }
 }
 
+/** A title, and for what a person could wonder about a question mark that opens the words behind it. */
 @Composable
-private fun MoreText(open: Boolean, text: String?) {
-    AnimatedVisibility(
-        open && text != null,
-        enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
-        exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
+private fun CardTitle(title: String, info: String?, modifier: Modifier = Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+        if (info != null) InfoButton(title, info)
+    }
+}
+
+/**
+ * A small question mark that opens what is behind a number in a window. The words unfolded under the card before, behind an arrow that
+ * looked like it would show more of the chart, and made the card jump.
+ */
+@Composable
+internal fun InfoButton(title: String, info: String) {
+    var open by remember { mutableStateOf(false) }
+    val scheme = MaterialTheme.colorScheme
+    Box(
+        Modifier.size(26.dp).clip(CircleShape).background(scheme.secondaryContainer).clickable(onClickLabel = stringResource(R.string.health_info)) { open = true },
+        contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text.orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 12.dp),
+        Icon(TandemIcons.Help, stringResource(R.string.health_info), tint = scheme.onSecondaryContainer, modifier = Modifier.size(16.dp))
+    }
+    if (open) {
+        TandemDialog(
+            title = title,
+            onDismiss = { open = false },
+            icon = TandemIcons.Help,
+            body = info,
+            actions = { PrimaryPillButton(stringResource(R.string.generic_ok), { open = false }) },
         )
     }
 }
 
-/** A card of the page, whose whole surface opens the explanation when it has one. */
+/** A card of a health page. */
 @Composable
-private fun HealthCard(index: Int, total: Int, more: String? = null, content: @Composable ColumnScope.(open: Boolean) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    GroupedRow(index, total, onClick = more?.let { { open = !open } }) {
-        Column(Modifier.fillMaxWidth().padding(20.dp)) {
-            content(open)
-            MoreText(open, more)
-        }
+private fun HealthCard(index: Int, total: Int, content: @Composable ColumnScope.() -> Unit) {
+    GroupedRow(index, total) {
+        Column(Modifier.fillMaxWidth().padding(20.dp)) { content() }
     }
 }
 
@@ -233,10 +256,10 @@ private fun WeekCard(
     val pick = selected
     val shownNumber = if (pick != null) dayNumbers.getOrNull(pick) ?: "-" else number
     val shownCaption = if (pick != null) dayName(context, week[pick].startMs.toLong()) else caption
-    HealthCard(index, total, more) { open ->
+    HealthCard(index, total) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                TitleWithMore(title, open, more != null)
+                CardTitle(title, more)
                 Crossfade(shownNumber, animationSpec = TandemMotion.fadeSpec(), label = "healthNumber") { BigNumber(it) }
                 Crossfade(shownCaption, animationSpec = TandemMotion.fadeSpec(), label = "healthCaption") {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -247,12 +270,15 @@ private fun WeekCard(
     }
 }
 
-private fun dayName(context: android.content.Context, ms: Long): String = DateUtils.formatDateTime(
+internal fun dayName(context: android.content.Context, ms: Long): String = DateUtils.formatDateTime(
     context, ms + DateUtils.DAY_IN_MILLIS / 2,
     DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_ALL or DateUtils.FORMAT_NO_YEAR,
 )
 
-/** The newest night, large: this is what the page gets opened for in the morning. Nothing at all while there is none. */
+/**
+ * The newest night in full: how long and how well, its stages, its parts the way Google's Sleep Score shows them, and its score.
+ * Nothing at all while there is none.
+ */
 @Composable
 internal fun LatestNight(insights: TandemHealthInsights?) {
     val context = LocalContext.current
@@ -268,7 +294,7 @@ internal fun LatestNight(insights: TandemHealthInsights?) {
     val quality = insight?.quality.orEmpty()
     val parts = 1 + (if (hasStages) 1 else 0) + (if (quality.isNotEmpty()) 1 else 0) + (if (insight != null) 1 else 0)
 
-    SectionHeader(stringResource(R.string.health_sleep_title), top = 12.dp, bottom = 0.dp)
+    SectionHeader(stringResource(R.string.watch_glance_night), top = 12.dp, bottom = 0.dp)
     SettingsGroup {
         HealthCard(0, parts) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -287,22 +313,22 @@ internal fun LatestNight(insights: TandemHealthInsights?) {
             NightFacts(night, Modifier.padding(top = 16.dp))
         }
         if (hasStages) {
-            HealthCard(1, parts, more = stringResource(R.string.health_more_stages)) { open ->
-                TitleWithMore(stringResource(R.string.health_timeline), open, hasMore = true, Modifier.padding(bottom = 8.dp))
+            HealthCard(1, parts) {
+                CardTitle(stringResource(R.string.health_timeline), stringResource(R.string.health_more_stages), Modifier.padding(bottom = 8.dp))
                 SleepTimeline(night)
                 StageTiles(night, Modifier.padding(top = 14.dp))
                 insight?.let { WakeMoments(it, Modifier.padding(top = 10.dp)) }
             }
         }
         if (quality.isNotEmpty()) {
-            HealthCard(if (hasStages) 2 else 1, parts, more = stringResource(R.string.health_quality_more)) { open ->
-                TitleWithMore(stringResource(R.string.health_quality_title), open, hasMore = true, Modifier.padding(bottom = 12.dp))
+            HealthCard(if (hasStages) 2 else 1, parts) {
+                CardTitle(stringResource(R.string.health_quality_title), stringResource(R.string.health_quality_more), Modifier.padding(bottom = 12.dp))
                 SleepQuality(quality)
             }
         }
         if (insight != null) {
-            HealthCard(parts - 1, parts, more = stringResource(R.string.health_more_score)) { open ->
-                TitleWithMore(stringResource(R.string.health_score_title), open, hasMore = true, Modifier.padding(bottom = 12.dp))
+            HealthCard(parts - 1, parts) {
+                CardTitle(stringResource(R.string.health_score_title), stringResource(R.string.health_more_score), Modifier.padding(bottom = 12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     ScorePart(stringResource(R.string.health_part_length), insight.durationScore.toInt())
                     ScorePart(stringResource(R.string.health_part_calm), insight.continuityScore.toInt())
@@ -471,11 +497,11 @@ private fun WakeMoments(insight: TandemNightInsight, modifier: Modifier = Modifi
 }
 
 /**
- * Today, as far as a watch can say. Steps come in a few times an hour and only a watch counts them, so today's bar comes from the watch
- * and the days before it from the records.
+ * Steps and active minutes of today next to the week. Steps come in a few times an hour and only a watch counts them, so today's bar
+ * comes from the watch and the days before it from the records.
  */
 @Composable
-internal fun HealthDay(insights: TandemHealthInsights?) {
+internal fun ActivityToday(insights: TandemHealthInsights?) {
     val graph = LocalContext.current.graph
     val watch by graph.watch.state.collectAsState()
     val goal by graph.prefs.stepGoal.collectAsState(initial = TandemPrefs.DEFAULT_STEP_GOAL)
@@ -488,57 +514,62 @@ internal fun HealthDay(insights: TandemHealthInsights?) {
     val active = week.mapIndexed { index, day ->
         if (index == week.lastIndex && watch.paired) watch.activeMinutesToday else day.activeMinutes?.toInt()
     }
-    val hasSteps = watch.paired || steps.any { it != null }
+    if (!watch.paired && steps.none { it != null }) return
+    SectionHeader(stringResource(R.string.health_today), top = 12.dp, bottom = 0.dp)
+    SettingsGroup {
+        val today = steps.last() ?: 0L
+        val left = goal - today
+        WeekCard(
+            0, 2, stringResource(R.string.health_steps_title), number(today),
+            if (left > 0) stringResource(R.string.health_steps_left, number(left)) else stringResource(R.string.health_steps_done),
+            week, steps.map { step -> step?.let(::number) },
+        ) { selected, select ->
+            WeekBars(steps.map { it?.toFloat() }, days, selected, select, stringResource(R.string.health_steps_title), goal = goal.toFloat())
+        }
+        val sum = active.sumOf { it ?: 0 }
+        WeekCard(
+            1, 2, stringResource(R.string.health_active_title), stringResource(R.string.health_minutes, active.last() ?: 0),
+            stringResource(R.string.health_active_week, sum),
+            week, active.map { minutes -> minutes?.let { stringResource(R.string.health_minutes, it) } },
+            more = stringResource(R.string.health_more_active),
+        ) { selected, select ->
+            WeekBars(active.map { it?.toFloat() }, days, selected, select, stringResource(R.string.health_active_title))
+        }
+    }
+}
+
+/** The heart rate of today, to slide over and zoom into; on a computer the last whole day, because only the phone hears the watch during it. */
+@Composable
+internal fun HeartToday(insights: TandemHealthInsights?) {
+    val context = LocalContext.current
+    val watch by context.graph.watch.state.collectAsState()
     val todayHeart = watch.heartToday.takeIf { curve -> curve.any { it > 0 } }
     val lastDay = insights?.latestDayHeart
-    val naps = insights?.naps.orEmpty()
-    val cards = (if (hasSteps) 2 else 0) + (if (todayHeart != null || lastDay != null) 1 else 0) + (if (naps.isNotEmpty()) 1 else 0)
-    if (cards == 0) return
-
-    SectionHeader(stringResource(R.string.health_today), top = 16.dp, bottom = 0.dp)
+    if (todayHeart == null && lastDay == null) return
+    SectionHeader(stringResource(R.string.health_today), top = 12.dp, bottom = 0.dp)
     SettingsGroup {
-        var at = 0
-        if (hasSteps) {
-            val today = steps.last() ?: 0L
-            val left = goal - today
-            WeekCard(
-                at++, cards, stringResource(R.string.health_steps_title), number(today),
-                if (left > 0) stringResource(R.string.health_steps_left, number(left)) else stringResource(R.string.health_steps_done),
-                week, steps.map { step -> step?.let(::number) },
-            ) { selected, select ->
-                WeekBars(
-                    steps.map { it?.toFloat() }, days, selected, select,
-                    stringResource(R.string.health_steps_title), goal = goal.toFloat(),
-                )
-            }
-            val sum = active.sumOf { it ?: 0 }
-            WeekCard(
-                at++, cards, stringResource(R.string.health_active_title), stringResource(R.string.health_minutes, active.last() ?: 0),
-                stringResource(R.string.health_active_week, sum),
-                week, active.map { minutes -> minutes?.let { stringResource(R.string.health_minutes, it) } },
-                more = stringResource(R.string.health_more_active),
-            ) { selected, select ->
-                WeekBars(active.map { it?.toFloat() }, days, selected, select, stringResource(R.string.health_active_title))
-            }
-        }
         if (todayHeart != null) {
-            HeartCard(at++, cards, stringResource(R.string.health_heart_today), todayHeart)
+            HeartCard(0, 1, stringResource(R.string.health_heart_today), todayHeart)
         } else if (lastDay != null) {
-            HeartCard(
-                at++, cards,
-                stringResource(R.string.health_heart_on_day, dayName(LocalContext.current, lastDay.startMs.toLong())),
-                lastDay.curve.map { it.toInt() },
-            )
+            HeartCard(0, 1, stringResource(R.string.health_heart_on_day, dayName(context, lastDay.startMs.toLong())), lastDay.curve.map { it.toInt() })
         }
-        if (naps.isNotEmpty()) NapsCard(at, cards, naps)
     }
+}
+
+/** The naps of the last week, which a night of sleep does not count. */
+@Composable
+internal fun Naps(insights: TandemHealthInsights?) {
+    val naps = insights?.naps.orEmpty()
+    if (naps.isEmpty()) return
+    SectionHeader(stringResource(R.string.health_naps), top = 16.dp, bottom = 0.dp)
+    SettingsGroup { NapsCard(0, 1, naps) }
 }
 
 @Composable
 private fun HeartCard(index: Int, total: Int, title: String, curve: List<Int>) {
     val measured = curve.filter { it > 0 }
-    HealthCard(index, total, more = stringResource(R.string.health_more_heart)) { open ->
-        TitleWithMore(title, open, hasMore = true, Modifier.padding(bottom = 6.dp))
+    HealthCard(index, total) {
+        CardTitle(title, stringResource(R.string.health_more_heart), Modifier.padding(bottom = 6.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BigNumber(stringResource(R.string.health_resting_line, measured.last()))
             Text(
@@ -554,8 +585,8 @@ private fun HeartCard(index: Int, total: Int, title: String, curve: List<Int>) {
 @Composable
 private fun NapsCard(index: Int, total: Int, naps: List<uniffi.tandem_core.TandemNap>) {
     val context = LocalContext.current
-    HealthCard(index, total, more = stringResource(R.string.health_more_naps)) { open ->
-        TitleWithMore(stringResource(R.string.health_naps), open, hasMore = true, Modifier.padding(bottom = 6.dp))
+    HealthCard(index, total) {
+        CardTitle(stringResource(R.string.health_naps), stringResource(R.string.health_more_naps), Modifier.padding(bottom = 6.dp))
         BigNumber(duration(naps.sumOf { it.sleepMinutes.toInt() }))
         Text(
             pluralStringResource(R.plurals.health_naps_week, naps.size, naps.size),
@@ -579,22 +610,21 @@ private fun clock(minutes: UInt): String =
     LocalTime.of((minutes.toInt() / 60) % 24, minutes.toInt() % 60).format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
 
 /**
- * What only shows over more nights. Each card says how far it has come, because an empty page would look broken. The nights this week
- * are next to the week before, because a number alone does not say whether it is going well.
+ * The nights of this week next to the week before, because a number alone does not say whether it is going well, and how regular they
+ * are. Each card says how far it has come, because an empty page would look broken.
  */
 @Composable
-internal fun HealthWeek(insights: TandemHealthInsights?) {
+internal fun SleepWeek(insights: TandemHealthInsights?) {
     if (insights == null || insights.latestNight == null) return
     val week = insights.week
     if (week.isEmpty()) return
     val days = week.map { it.startMs.toLong() }
     val thisWeek = insights.thisWeek
     val before = insights.lastWeek
-    SectionHeader(stringResource(R.string.health_week), top = 16.dp, bottom = 0.dp)
     val sleep = thisWeek.meanSleepMinutes
     val score = thisWeek.meanScore
-    val workouts = thisWeek.workouts.toInt()
-    val total = listOf(sleep != null, score != null, insights.resting != null, true, workouts > 0).count { it }
+    val total = listOf(sleep != null, score != null, true).count { it }
+    SectionHeader(stringResource(R.string.health_week), top = 16.dp, bottom = 0.dp)
     SettingsGroup {
         var at = 0
         if (sleep != null) {
@@ -617,18 +647,34 @@ internal fun HealthWeek(insights: TandemHealthInsights?) {
                 WeekBars(week.map { it.score?.toFloat() }, days, selected, select, stringResource(R.string.health_score_title))
             }
         }
-        if (insights.resting != null) RestingCard(at++, total, insights, days)
-        RegularityCard(at++, total, insights, days)
-        if (workouts > 0) {
-            HealthCard(at, total) {
-                Text(stringResource(R.string.health_workouts), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-                BigNumber(duration(thisWeek.workoutMinutes.toInt()), Modifier.padding(top = 6.dp))
-                Text(
-                    pluralStringResource(R.plurals.health_workouts_week, workouts, workouts),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
+        RegularityCard(at, total, insights, days)
+    }
+}
+
+/** The resting heart rate of the week, against what is usual for this person once there are enough nights. */
+@Composable
+internal fun HeartWeek(insights: TandemHealthInsights?) {
+    if (insights?.resting == null || insights.week.isEmpty()) return
+    SectionHeader(stringResource(R.string.health_week), top = 16.dp, bottom = 0.dp)
+    SettingsGroup { RestingCard(0, 1, insights, insights.week.map { it.startMs.toLong() }) }
+}
+
+/** The workouts of this week. */
+@Composable
+internal fun ActivityWeek(insights: TandemHealthInsights?) {
+    val thisWeek = insights?.thisWeek ?: return
+    val workouts = thisWeek.workouts.toInt()
+    if (workouts == 0) return
+    SectionHeader(stringResource(R.string.health_week), top = 16.dp, bottom = 0.dp)
+    SettingsGroup {
+        HealthCard(0, 1) {
+            Text(stringResource(R.string.health_workouts), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+            BigNumber(duration(thisWeek.workoutMinutes.toInt()), Modifier.padding(top = 6.dp))
+            Text(
+                pluralStringResource(R.plurals.health_workouts_week, workouts, workouts),
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }
@@ -656,8 +702,8 @@ private fun RestingCard(index: Int, total: Int, insights: TandemHealthInsights, 
 private fun RegularityCard(index: Int, total: Int, insights: TandemHealthInsights, days: List<Long>) {
     val regular = insights.regularity
     val week = insights.week
-    HealthCard(index, total, more = stringResource(R.string.health_more_regular)) { open ->
-        TitleWithMore(stringResource(R.string.health_regular), open, hasMore = true, Modifier.padding(bottom = 6.dp))
+    HealthCard(index, total) {
+        CardTitle(stringResource(R.string.health_regular), stringResource(R.string.health_more_regular), Modifier.padding(bottom = 6.dp))
         if (regular != null) {
             Text(
                 stringResource(R.string.health_regular_bed, clock(regular.bedtimeMinutes), duration(regular.bedtimeSpreadMinutes.toInt())),
@@ -680,19 +726,25 @@ private fun RegularityCard(index: Int, total: Int, insights: TandemHealthInsight
     }
 }
 
-/** Everything else on this phone, the newest first. The list that grows, so it belongs at the end of a page. A night opens where it is. */
+/** The earlier nights on this phone, the newest first. The list that grows, so it belongs at the end of a page. A night opens where it is. */
 @Composable
 internal fun EarlierNights() {
     val records by LocalContext.current.graph.host.healthRecords.collectAsState()
     val latest = records.latestNight()
-    val shown = records.filter { (it.kind == TandemHealthKind.SLEEP || it.kind == TandemHealthKind.WORKOUT) && it !== latest }.take(SHOWN)
+    val shown = records.filter { it.kind == TandemHealthKind.SLEEP && it !== latest }.take(SHOWN)
     if (shown.isEmpty()) return
     SectionHeader(stringResource(R.string.health_earlier), top = 16.dp, bottom = 0.dp)
-    SettingsGroup {
-        shown.forEachIndexed { index, record ->
-            if (record.kind == TandemHealthKind.WORKOUT) WorkoutRow(index, shown.size, record) else NightRow(index, shown.size, record)
-        }
-    }
+    SettingsGroup { shown.forEachIndexed { index, record -> NightRow(index, shown.size, record) } }
+}
+
+/** The workouts on this phone, the newest first. */
+@Composable
+internal fun EarlierWorkouts() {
+    val records by LocalContext.current.graph.host.healthRecords.collectAsState()
+    val shown = records.filter { it.kind == TandemHealthKind.WORKOUT }.take(SHOWN)
+    if (shown.isEmpty()) return
+    SectionHeader(stringResource(R.string.health_workouts), top = 16.dp, bottom = 0.dp)
+    SettingsGroup { shown.forEachIndexed { index, record -> WorkoutRow(index, shown.size, record) } }
 }
 
 @Composable
@@ -955,7 +1007,7 @@ private fun Glance(
 }
 
 @Composable
-private fun StageBar(record: TandemHealthRecord, height: Dp) {
+internal fun StageBar(record: TandemHealthRecord, height: Dp) {
     if (record.stages.isEmpty()) return
     Row(Modifier.fillMaxWidth().height(height).clip(PillShape)) {
         record.stages.forEach { run ->

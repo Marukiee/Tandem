@@ -298,6 +298,8 @@ private fun RouteBody(route: Route, nav: Nav) {
         is Route.ClipboardHistory -> nl.markmaaktmedia.tandem.ui.screens.ClipboardHistoryScreen(onBack = { nav.pop() })
         is Route.DeviceSettings -> nl.markmaaktmedia.tandem.ui.screens.DeviceSettingsScreen(route.id, onBack = { nav.pop() })
         Route.WatchSettings -> nl.markmaaktmedia.tandem.ui.screens.settings.WatchSettingsScreen(onBack = { nav.pop() })
+        is Route.HealthDetail -> nl.markmaaktmedia.tandem.ui.screens.settings.HealthDetailScreen(route.part, onBack = { nav.pop() })
+        Route.HealthSettings -> nl.markmaaktmedia.tandem.ui.screens.settings.HealthSettingsScreen(onBack = { nav.pop() }, onOpen = { nav.push(it) })
         Route.Setup -> nl.markmaaktmedia.tandem.ui.screens.SetupScreen(onBack = { nav.pop() }, onOpen = { nav.push(it) })
         Route.Access -> nl.markmaaktmedia.tandem.ui.screens.AccessScreen(onBack = { nav.pop() })
         Route.Features -> nl.markmaaktmedia.tandem.ui.screens.FeaturesScreen(onBack = { nav.pop() })

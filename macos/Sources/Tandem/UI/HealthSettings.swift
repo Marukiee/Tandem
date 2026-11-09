@@ -121,7 +121,7 @@ private struct HealthChoicesCard: View {
                                 .help(why ?? "")
                         }
                         Divider().opacity(0.4).padding(.horizontal, 14)
-                        SettingRow(symbol: "heart", title: "Heart rate all day", subtitle: "Half a minute in every five while you wear your watch. Off saves battery.") {
+                        SettingRow(symbol: "heart", title: "Heart rate all day", subtitle: "Half a minute in every five while you wear your watch.") {
                             Toggle("", isOn: Binding(get: { settings.heartAllDay }, set: { model.setWatchSettings(phone.id, TandemWatchSettingsChange(heartAllDay: $0)) }))
                                 .controlSize(.mini)
                                 .disabled(why != nil)

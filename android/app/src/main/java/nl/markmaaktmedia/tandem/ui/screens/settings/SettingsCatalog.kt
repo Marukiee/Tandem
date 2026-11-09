@@ -165,6 +165,8 @@ internal object SettingsCatalog {
     private val trackpad = Route.SettingsPage(SettingsPageId.Trackpad)
     private val watch = Route.SettingsPage(SettingsPageId.Watch)
     private val health = Route.SettingsPage(SettingsPageId.Health)
+    /** The choices of Health have a page of their own, under the page with what was measured. */
+    private val healthSettings = Route.HealthSettings
     private val quickShare = Route.SettingsPage(SettingsPageId.QuickShare)
     private val tiles = Route.SettingsPage(SettingsPageId.Tiles)
     private val shizuku = Route.SettingsPage(SettingsPageId.Shizuku)
@@ -304,17 +306,17 @@ internal object SettingsCatalog {
         // Health
         SettingsEntry("health", R.string.settings_cat_health, R.string.settings_kw_health, SettingsCategory.Health, health, { TandemIcons.Sleep }),
         SettingsEntry(
-            "health_show", R.string.health_show, R.string.settings_kw_health_show, SettingsCategory.Health, health,
-            { TandemIcons.Sleep }, subtitle = R.string.health_show_sub, focus = FocusKeys.HealthShow,
+            "health_show", R.string.health_show, R.string.settings_kw_health_show, SettingsCategory.Health, healthSettings,
+            { TandemIcons.Sleep }, subtitle = R.string.health_show_sub, focus = FocusKeys.HealthShow, via = health,
         ),
 
         SettingsEntry(
-            "health_smart_wake", R.string.health_smart_wake, R.string.settings_kw_health_smart_wake, SettingsCategory.Health, health,
-            { TandemIcons.Schedule }, subtitle = R.string.health_smart_wake_sub, focus = FocusKeys.HealthSmartWake,
+            "health_smart_wake", R.string.health_smart_wake, R.string.settings_kw_health_smart_wake, SettingsCategory.Health, healthSettings,
+            { TandemIcons.Schedule }, subtitle = R.string.health_smart_wake_sub, focus = FocusKeys.HealthSmartWake, via = health,
         ),
         SettingsEntry(
-            "health_heart_all_day", R.string.health_heart_all_day, R.string.settings_kw_health_heart_all_day, SettingsCategory.Health, health,
-            { TandemIcons.Heart }, subtitle = R.string.health_heart_all_day_sub, focus = FocusKeys.HealthHeartAllDay,
+            "health_heart_all_day", R.string.health_heart_all_day, R.string.settings_kw_health_heart_all_day, SettingsCategory.Health, healthSettings,
+            { TandemIcons.Heart }, subtitle = R.string.health_heart_all_day_sub, focus = FocusKeys.HealthHeartAllDay, via = health,
         ),
 
         // Trackpad

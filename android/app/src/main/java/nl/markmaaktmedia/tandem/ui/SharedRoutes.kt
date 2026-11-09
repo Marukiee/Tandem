@@ -38,6 +38,8 @@ fun routeKey(route: Route): String = when (route) {
     is Route.Terminal -> "terminal:${route.id}"
     is Route.DeviceSettings -> "devsettings:${route.id}"
     Route.WatchSettings -> "watch-settings"
+    is Route.HealthDetail -> "health:${route.part}"
+    Route.HealthSettings -> "health-settings"
     is Route.ClipboardHistory -> "clipboard-history"
     Route.Setup -> "setup"
     Route.Access -> "access"

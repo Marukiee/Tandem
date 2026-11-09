@@ -20,6 +20,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import nl.markmaaktmedia.tandem.ui.components.TandemIconButton
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -40,8 +49,10 @@ import uniffi.tandem_core.TandemHealthKind
 import java.util.TimeZone
 
 /**
- * Sleep and workouts, away from the settings of the watch. Without a watch this page has only the switch that turns it on, because
- * the switch has to be somewhere a person can find it.
+ * Health at a glance: last night large, and a card for sleep, activity and the heart with the numbers that matter most, each opening the
+ * whole of it. It was one long page with everything on it, the choices and the data at the bottom; those now have a page of their own,
+ * behind the gear. Without a watch this page has only the switch that turns it on, because the switch has to be somewhere a person can
+ * find it.
  */
 @Composable
 internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
@@ -51,6 +62,86 @@ internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
     val shown by graph.prefs.healthShown.collectAsState(initial = false)
     val records by graph.host.healthRecords.collectAsState()
     val insights = rememberHealthInsights()
+
+    Column(
+        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
+            Spacer(Modifier.weight(1f))
+            TandemIconButton(TandemIcons.Settings, stringResource(R.string.health_settings_title), { onOpen(Route.HealthSettings) })
+        }
+        Text(stringResource(R.string.settings_cat_health), style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(horizontal = 8.dp))
+        if (!watch.paired && !shown) {
+            SettingsGroup {
+                SwitchRow(
+                    0, 2, TandemIcons.Sleep, stringResource(R.string.health_show), stringResource(R.string.health_show_sub), shown,
+                    { on -> scope.launch { graph.prefs.setHealthShown(on) } },
+                )
+                ActionRow(1, 2, TandemIcons.Watch, stringResource(R.string.watch_pair), null, onClick = { onOpen(Route.PairWatch) })
+            }
+        } else {
+            HealthAlert(insights)
+            HealthHero(insights) { onOpen(Route.HealthDetail("sleep")) }
+            HealthParts(insights) { onOpen(Route.HealthDetail(it)) }
+            if (records.none { it.kind == TandemHealthKind.SLEEP || it.kind == TandemHealthKind.WORKOUT } && !watch.paired) {
+                Text(
+                    stringResource(R.string.health_none),
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+/** One part of Health in full: the nights, the activity or the heart, with the week next to today and the earlier ones under it. */
+@Composable
+internal fun HealthDetailScreen(part: String, onBack: () -> Unit) {
+    val insights = rememberHealthInsights()
+    val title = stringResource(
+        when (part) {
+            "sleep" -> R.string.health_sleep_title
+            "activity" -> R.string.health_activity_title
+            else -> R.string.health_heart_title
+        },
+    )
+    SettingsPageFrame(title, onBack) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            when (part) {
+                "sleep" -> {
+                    LatestNight(insights)
+                    SleepWeek(insights)
+                    Naps(insights)
+                    EarlierNights()
+                }
+                "activity" -> {
+                    ActivityToday(insights)
+                    ActivityWeek(insights)
+                    EarlierWorkouts()
+                }
+                else -> {
+                    HealthAlert(insights)
+                    HeartToday(insights)
+                    HeartWeek(insights)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * What is chosen for Health, which computers get it, and its data in and out of Health Connect. They were at the bottom of the page with
+ * what was measured, where they pushed it further down every time and were hard to find.
+ */
+@Composable
+internal fun HealthSettingsScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
+    val graph = LocalContext.current.graph
+    val scope = rememberCoroutineScope()
+    val watch by graph.watch.state.collectAsState()
+    val shown by graph.prefs.healthShown.collectAsState(initial = false)
     val context = LocalContext.current
 
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
@@ -109,8 +200,8 @@ internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         if (granted.values.any { it }) runImport() else Toast.makeText(context, R.string.health_import_denied, Toast.LENGTH_SHORT).show()
     }
 
-    SettingsPageFrame(stringResource(R.string.settings_cat_health), onBack) {
-        Spacer(Modifier.height(16.dp))
+    SettingsPageFrame(stringResource(R.string.health_settings_title), onBack) {
+        Spacer(Modifier.height(8.dp))
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (!watch.paired) {
                 SettingsGroup {
@@ -123,41 +214,27 @@ internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                     ActionRow(1, 2, TandemIcons.Watch, stringResource(R.string.watch_pair), null, onClick = { onOpen(Route.PairWatch) })
                 }
             }
-            if (watch.paired || shown) {
-                HealthAlert(insights)
-                LatestNight(insights)
-                HealthDay(insights)
-                HealthWeek(insights)
-                EarlierNights()
-                HealthChoices()
-                HealthSharing()
-                SectionHeader(stringResource(R.string.health_your_data), top = 16.dp, bottom = 0.dp)
-                SettingsGroup {
-                    val canImport = HealthConnectImport.available(context)
+            HealthChoices()
+            HealthSharing()
+            SectionHeader(stringResource(R.string.health_your_data), top = 16.dp, bottom = 0.dp)
+            SettingsGroup {
+                val canImport = HealthConnectImport.available(context)
+                ActionRow(
+                    0, if (canImport) 3 else 1, TandemIcons.Download, stringResource(R.string.health_export), stringResource(R.string.health_export_sub),
+                    onClick = { export.launch("tandem-health.csv") },
+                )
+                if (canImport) {
                     ActionRow(
-                        0, if (canImport) 3 else 1, TandemIcons.Download, stringResource(R.string.health_export), stringResource(R.string.health_export_sub),
-                        onClick = { export.launch("tandem-health.csv") },
+                        1, 3, TandemIcons.Heart, stringResource(R.string.health_import), stringResource(R.string.health_import_sub),
+                        onClick = { importAccess.launch(HealthConnectImport.PERMISSIONS) },
                     )
-                    if (canImport) {
-                        ActionRow(
-                            1, 3, TandemIcons.Heart, stringResource(R.string.health_import), stringResource(R.string.health_import_sub),
-                            onClick = { importAccess.launch(HealthConnectImport.PERMISSIONS) },
-                        )
-                        SwitchRow(
-                            2, 3, TandemIcons.Heart, stringResource(R.string.health_write), stringResource(R.string.health_write_sub), writing,
-                            { on -> if (on) writeAccess.launch(HealthConnectImport.WRITE_PERMISSIONS) else scope.launch { graph.prefs.setHealthConnectWrite(false) } },
-                        )
-                    }
-                }
-                HealthCompared(compared)
-                if (records.none { it.kind == TandemHealthKind.SLEEP || it.kind == TandemHealthKind.WORKOUT }) {
-                    Text(
-                        stringResource(R.string.health_none),
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp),
+                    SwitchRow(
+                        2, 3, TandemIcons.Heart, stringResource(R.string.health_write), stringResource(R.string.health_write_sub), writing,
+                        { on -> if (on) writeAccess.launch(HealthConnectImport.WRITE_PERMISSIONS) else scope.launch { graph.prefs.setHealthConnectWrite(false) } },
                     )
                 }
             }
+            HealthCompared(compared)
         }
     }
 }

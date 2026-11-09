@@ -149,7 +149,7 @@ struct WatchDetail: View {
                     rowDivider
                     toggle(
                         symbol: "heart", title: "Heart rate all day",
-                        subtitle: "Half a minute in every five while you wear your watch. Off saves battery.",
+                        subtitle: "Half a minute in every five while you wear your watch.",
                         on: settings.heartAllDay
                     ) { TandemWatchSettingsChange(heartAllDay: $0) }
                 } else {
