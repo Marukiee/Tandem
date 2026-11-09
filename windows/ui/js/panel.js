@@ -48,6 +48,8 @@ function WatchRow({ phone }) {
       onClick=${() => go("ring_watch", { on: !watch.ringing })}><${Icon} name=${watch.ringing ? "bell-off" : "bell-ringing"} size=${16} /></button>
     <button class=${"ib solid" + (steering ? " on" : "")} title=${steering ? t("watch_mouse_stop") : t("watch_as_mouse")} aria-pressed=${!!steering} disabled=${!reachable}
       onClick=${() => (steering ? go("stop_watch_mouse") : go("start_watch_mouse", { table: false }))}><${Icon} name="pointer" size=${16} /></button>
+    ${watch.settings && html`<button class=${"ib solid" + (watch.settings.smartWake ? " on" : "")} title=${t("watch_wake")} aria-pressed=${!!watch.settings.smartWake} disabled=${!phone.online}
+      onClick=${() => go("set_watch_settings", { smartWake: !watch.settings.smartWake })}><${Icon} name="alarm" size=${16} /></button>`}
   </div>`;
 }
 

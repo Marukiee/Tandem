@@ -604,6 +604,14 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .glance:hover { background: var(--hover); }
 .glance .health-big { font-size: 24px; }
 .glance-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+/* Toward the step goal as a ring around the icon, as on the phone: a bar under the number made the tile taller than the others. */
+.glance-ring { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--hover) 0); flex: none; }
+.glance-ring > span { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--card); color: var(--accent); }
+.glance-pills { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 6px 6px; }
+.pill-toggle { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--text); font: inherit; font-weight: 600; cursor: default; transition: background .2s ease, color .2s ease; }
+.pill-toggle:hover:not(:disabled) { filter: brightness(1.05); }
+.pill-toggle.on { background: var(--accent); color: #fff; }
+.pill-toggle:disabled { opacity: .5; }
 .goal { display: flex; align-items: center; gap: 6px; }
 .goal .num { min-width: 56px; text-align: center; font-variant-numeric: tabular-nums; }
 .goal.big { justify-content: center; gap: 18px; margin: 10px 0 4px; }

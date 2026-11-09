@@ -34,21 +34,21 @@ const number = (value) => Number(value).toLocaleString(locale());
  * What the watch measured last, as three numbers on the page of the watch, each opening the health page. A computer sees whole days,
  * so the steps are of the last whole day. Nothing until this computer was given something.
  */
-export function WatchGlance({ i, records, onOpen }) {
+export function WatchGlance({ i, records, onOpen, goal }) {
   const night = (records || []).find((r) => r.kind === "sleep");
   const stepsDay = i ? [...i.week].reverse().find((d) => d.steps != null) : null;
   const resting = i && i.resting;
   if (!night && !stepsDay && !resting) return null;
   const score = night && i && i.latestNight && i.latestNight.id === night.id ? i.latestNight.score : null;
-  const tile = (icon, title, value, caption) => html`<button class="card glance" title=${t("tab_health")} onClick=${onOpen}>
-    <div class="glance-title"><${Icon} name=${icon} size=${15} />${title}</div>
+  const tile = (icon, title, value, caption, share) => html`<button class="card glance" title=${t("tab_health")} onClick=${onOpen}>
+    <div class="glance-title">${share != null ? html`<span class="glance-ring" style=${`--p:${Math.round(share * 100)}`}><span><${Icon} name=${icon} size=${12} /></span></span>` : html`<${Icon} name=${icon} size=${15} />`}${title}</div>
     <${BigNumber} text=${value} />
     <div class="small muted ellipsis">${caption}</div>
   </button>`;
   return html`<div class="glances">
     ${night && tile("moon", t("watch_last_night"), healthDuration(night.sleepMinutes),
       score != null ? t("watch_score", score) : new Date(night.endMs).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }))}
-    ${stepsDay && tile("walk", t("health_steps_title"), number(stepsDay.steps), dayName(stepsDay.startMs))}
+    ${stepsDay && tile("walk", t("health_steps_title"), number(stepsDay.steps), dayName(stepsDay.startMs), goal ? Math.min(1, stepsDay.steps / goal) : null)}
     ${resting && tile("heart", t("health_resting"), t("health_bpm", resting.latest),
       resting.usual != null ? t("health_usually", resting.usual) : t("health_nights_more", resting.nightsNeeded))}
   </div>`;
