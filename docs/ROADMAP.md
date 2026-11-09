@@ -25,6 +25,14 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
 - **Een eigen plek voor gezondheid** (gekozen 2026-11-06): slaap, stappen en trainingen staan nu door de rest heen. Op de telefoon en computers een eigen pagina, op het horloge een tweede icoon uit dezelfde app. Alleen te zien met een gekoppeld horloge, of als het handmatig is aangezet in de instellingen.
   - Moet erin: dutjes, slaapscore (staat hieronder ook), tijdlijn van de nacht, regelmaat van bedtijden, rusthartslag, een seintje als rusthartslag en huidtemperatuur afwijken, hartslag de hele dag, stappendoel en actieve minuten, weekoverzicht, slim wekken, exporteren, en importeren uit Health Connect.
   - Hoeft niet: slaapschuld en bedtijdadvies, "wat helpt jouw slaap", ademoefeningen.
+- **Gezondheid, volgende ronde** (gevraagd 2026-11-09, na de nieuwe indeling met overzicht en een pagina per deel; op alle apparaten):
+  - Een maand- en jaaroverzicht naast de week, voor slaap, stappen, actieve minuten en rusthartslag.
+  - Het verloop van de huidtemperatuur per nacht: het horloge meet die al. Tegenover je eigen gewone waarde, niet als absoluut getal.
+  - HRV. Eerst uitzoeken of het kan: de ruwe PPG is afgeschermd (zie de slaapscore hierboven), dus misschien alleen via Health Services of helemaal niet. Eerlijk zeggen als het niet kan.
+  - Een slaapdoel en een herinnering om naar bed te gaan. **Standaard uit.** Een herinnering die je zelf aanzet, geen advies, dus geen botsing met "bedtijdadvies hoeft niet" hierboven.
+  - Reeksen, zoals het aantal dagen op rij dat je stappendoel is gehaald.
+  - Een pagina per training met hartslagzones (tijd per zone, uit je maximale hartslag).
+  - Een weekoverzicht als melding, bijvoorbeeld op zondagavond, met slaap, stappen en rusthartslag tegenover de week ervoor.
 - **Sport op het horloge** (gekozen 2026-11-05): trainingen met GPS op de Pixel Watch 2, met afstand, tempo en route, en die gegevens
   naar telefoon en computers, net als de slaapgegevens.
 - **Testen zodra de Linux-laptop aan staat: een gesprek op de laptop** (gevraagd 2026-11-04): de laptop als Bluetooth-headset van de Xperia,
