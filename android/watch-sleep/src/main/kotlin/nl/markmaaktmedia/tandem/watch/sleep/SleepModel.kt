@@ -39,28 +39,32 @@ class SleepModel private constructor(
     /** The most likely course of the night: stages last for minutes, and some never follow each other. */
     fun stages(rows: Array<FloatArray>): Array<SleepStage> = decode(logProbabilities(rows))
 
+    /** The same with other weights for reading the night, to hold them against another app's nights (see `AnalyzeCli`). */
+    fun stages(rows: Array<FloatArray>, wakeBoost: Float, transitionWeight: Float): Array<SleepStage> =
+        decode(logProbabilities(rows), wakeBoost, transitionWeight)
+
     /**
      * Taken as learned, the transitions smooth away nearly every short time awake: 64% of the nights ended up without a minute awake,
      * where in truth that is 2%. So they weigh less and awake weighs more, with the numbers measured in training/README.md.
      */
-    internal fun decode(logs: Array<FloatArray>): Array<SleepStage> {
+    internal fun decode(logs: Array<FloatArray>, wakeBoost: Float = WAKE_BOOST, transitionWeight: Float = TRANSITION_WEIGHT): Array<SleepStage> {
         if (logs.isEmpty()) return emptyArray()
         val back = Array(logs.size) { IntArray(STAGES) }
-        var best = FloatArray(STAGES) { weighed(logs[0], it) + prior[it] }
+        var best = FloatArray(STAGES) { weighed(logs[0], it, wakeBoost) + prior[it] }
         for (t in 1 until logs.size) {
             val next = FloatArray(STAGES)
             for (to in 0 until STAGES) {
                 var top = Float.NEGATIVE_INFINITY
                 var from = 0
                 for (c in 0 until STAGES) {
-                    val score = best[c] + transitions[c][to] * TRANSITION_WEIGHT
+                    val score = best[c] + transitions[c][to] * transitionWeight
                     if (score > top) {
                         top = score
                         from = c
                     }
                 }
                 back[t][to] = from
-                next[to] = top + weighed(logs[t], to)
+                next[to] = top + weighed(logs[t], to, wakeBoost)
             }
             best = next
         }
@@ -73,7 +77,7 @@ class SleepModel private constructor(
         return path
     }
 
-    private fun weighed(log: FloatArray, stage: Int): Float = if (stage == SleepStage.WAKE.ordinal) log[stage] + WAKE_BOOST else log[stage]
+    private fun weighed(log: FloatArray, stage: Int, boost: Float): Float = if (stage == SleepStage.WAKE.ordinal) log[stage] + boost else log[stage]
 
     private fun logSoftmax(values: FloatArray): FloatArray {
         val top = values.max()
@@ -173,8 +177,8 @@ class SleepModel private constructor(
     companion object {
         private const val STAGES = 4
         private const val MAGIC = 0x314D5354 // "TSM1"
-        private const val TRANSITION_WEIGHT = 0.4f
-        private const val WAKE_BOOST = 0.6f
+        internal const val TRANSITION_WEIGHT = 0.4f
+        internal const val WAKE_BOOST = 0.6f
 
         /** The weights take a moment to read and a few hundred kilobytes, so nothing keeps them after a night is analysed. */
         fun load(): SleepModel = requireNotNull(SleepModel::class.java.getResourceAsStream("/sleep_model.bin")) { "sleep model missing" }

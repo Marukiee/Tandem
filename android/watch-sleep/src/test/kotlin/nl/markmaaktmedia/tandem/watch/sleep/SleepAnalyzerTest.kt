@@ -119,12 +119,15 @@ class SleepAnalyzerTest {
     }
 
     @Test
-    fun `the time before a recording that started by itself counts as light sleep`() {
+    fun `the time before a recording that started by itself counts as falling asleep`() {
         val summary = assertNotNull(Script().add(100, SleepStage.DEEP).summary(lead = 50))
+        // The night starts where the person lay down, and that time is awake in bed, not sleep.
         assertEquals(T0 - 25 * MIN, summary.onsetMs)
-        assertEquals(125, summary.sleepMinutes)
-        assertEquals(StageMinutes(light = 25, deep = 100, rem = 0), summary.stages)
-        assertEquals(SleepStage.LIGHT, summary.epochs.first().stage)
+        assertEquals(100, summary.sleepMinutes)
+        assertEquals(StageMinutes(light = 0, deep = 100, rem = 0), summary.stages)
+        assertEquals(SleepStage.WAKE, summary.epochs.first().stage)
+        assertEquals(80, summary.efficiencyPercent)
+        assertEquals(0, summary.wakeAfterOnsetMinutes)
         // Together with what came before, a bit under an hour of recording is a night too.
         assertNotNull(Script().add(45, SleepStage.LIGHT).summary(lead = 50))
     }

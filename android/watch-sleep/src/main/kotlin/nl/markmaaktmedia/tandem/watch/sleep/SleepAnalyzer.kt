@@ -86,11 +86,13 @@ object SleepAnalyzer {
 
         val range = first..last
         val onset = night.startMs + first * NightFeatures.EPOCH_MS
-        // A recording that started by itself began after the person lay still. Sleep at that point is nearly always light.
+        // A recording that started by itself began after the person lay still. That time is falling asleep, not sleep: counted as
+        // sleep it made every night 99% asleep with no time to fall asleep at all, where Google's Sleep Score on the same wrist
+        // counted half an hour. So the night starts where the person lay down, and that time is awake, in bed.
         val lead = if (first <= MAX_LEAD_GAP_EPOCHS) night.leadEpochs + first else 0
         val leadFromBefore = if (lead > 0) night.leadEpochs else 0
 
-        val sleepEpochs = range.count { asleep[it] } + leadFromBefore
+        val sleepEpochs = range.count { asleep[it] }
         val total = range.count() + leadFromBefore
         var awakenings = 0
         for (i in first + 1..last) if (!asleep[i] && asleep[i - 1]) awakenings++
@@ -102,7 +104,8 @@ object SleepAnalyzer {
             onsetMs = onset - leadFromBefore * NightFeatures.EPOCH_MS,
             wakeMs = night.startMs + (last + 1) * NightFeatures.EPOCH_MS,
             sleepMinutes = sleepEpochs / EPOCHS_PER_MINUTE,
-            wakeAfterOnsetMinutes = (total - sleepEpochs) / EPOCHS_PER_MINUTE,
+            // Awake once asleep: the time falling asleep is its own part of the night.
+            wakeAfterOnsetMinutes = (range.count() - sleepEpochs) / EPOCHS_PER_MINUTE,
             awakenings = awakenings,
             efficiencyPercent = (100.0 * sleepEpochs / total).roundToInt(),
             restlessnessPercent = (100.0 * range.count { night.moved[it] } / total).roundToInt(),
@@ -110,14 +113,14 @@ object SleepAnalyzer {
             lowestHeartRate = rates.minOrNull(),
             stages = if (hasHeart) {
                 StageMinutes(
-                    light = minutes(SleepStage.LIGHT) + leadFromBefore / EPOCHS_PER_MINUTE,
+                    light = minutes(SleepStage.LIGHT),
                     deep = minutes(SleepStage.DEEP),
                     rem = minutes(SleepStage.REM),
                 )
             } else {
                 null
             },
-            epochs = (0 until leadFromBefore).map { SleepEpoch(onset - (leadFromBefore - it) * NightFeatures.EPOCH_MS, SleepStage.LIGHT, null) } +
+            epochs = (0 until leadFromBefore).map { SleepEpoch(onset - (leadFromBefore - it) * NightFeatures.EPOCH_MS, SleepStage.WAKE, null) } +
                 range.map { SleepEpoch(night.startMs + it * NightFeatures.EPOCH_MS, shown[it], night.heartRates[it]) },
         )
     }

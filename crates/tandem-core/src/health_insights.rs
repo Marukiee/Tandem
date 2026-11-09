@@ -187,12 +187,33 @@ fn stages_score(record: &HealthRecord) -> Option<f64> {
     Some(scale(share, 0.15, 0.40))
 }
 
+/// How calm a night was, from the parts Google's Sleep Score weighs: how long it took to fall asleep, the brief stirs, the time awake
+/// and how often. None without stages: then only the time awake is known. The old score let the first ten minutes awake cost nothing and
+/// saw no stirs at all, so a night Google scored 83 on the same wrist came out at 97.
+fn calm_score(record: &HealthRecord) -> Option<f64> {
+    let quality = quality_of(record);
+    let part = |kind: QualityKind| quality.iter().find(|m| m.kind == kind).map(|m| f64::from(m.value));
+    let settle = 100.0 - scale(part(QualityKind::ToSoundSleep)?, 15.0, 60.0);
+    let restless = 100.0 - scale(part(QualityKind::Restlessness)?, 5.0, 60.0);
+    let interrupted = 100.0 - scale(part(QualityKind::Interruptions)?, 5.0, 60.0);
+    // "Zero is ideal, but fewer than two is considered good for most people."
+    let awakenings = match part(QualityKind::FullAwakenings)? as u32 {
+        0 | 1 => 100.0,
+        2 => 60.0,
+        3 => 30.0,
+        _ => 0.0,
+    };
+    Some((settle * 0.10 + restless * 0.15 + interrupted * 0.10 + awakenings * 0.10) / 0.45)
+}
+
+/// Built like Google's Sleep Score from its parts: how long most, then how calm, then deep sleep and REM, which a wrist tells least well.
+/// Without stages only the length and the time awake count.
 fn score_of(record: &HealthRecord) -> u32 {
     let duration = duration_score(record.sleep_minutes);
-    let continuity = continuity_score(record.awake_minutes);
-    let total = match stages_score(record) {
-        Some(stages) => duration * 0.55 + continuity * 0.30 + stages * 0.15,
-        None => duration * 0.65 + continuity * 0.35,
+    let total = match (calm_score(record), stages_score(record)) {
+        (Some(calm), Some(stages)) => duration * 0.40 + calm * 0.45 + stages * 0.15,
+        (Some(calm), None) => duration * 0.50 + calm * 0.50,
+        _ => duration * 0.65 + continuity_score(record.awake_minutes) * 0.35,
     };
     total.round() as u32
 }
@@ -287,7 +308,7 @@ fn insight_of(record: &HealthRecord) -> NightInsight {
         id: record.id.clone(),
         score: score_of(record),
         duration_score: duration_score(record.sleep_minutes).round() as u32,
-        continuity_score: continuity_score(record.awake_minutes).round() as u32,
+        continuity_score: calm_score(record).unwrap_or_else(|| continuity_score(record.awake_minutes)).round() as u32,
         stages_score: stages_score(record).map(|s| s.round() as u32),
         wake_moments: wake_moments(record),
         quality: quality_of(record),
@@ -730,6 +751,31 @@ mod tests {
         let mut broken = night("n", 0, 0, 480, None);
         broken.awake_minutes = 70;
         assert!(score_of(&broken) < score_of(&night("n", 0, 0, 480, None)));
+    }
+
+    #[test]
+    fn the_night_google_scored_83_scores_about_that_here_too() {
+        use SleepStage::*;
+        // The night as the Sleep Score of Google measured it on the same wrist: 35 minutes to fall asleep, 30 minutes of brief stirs,
+        // 13 minutes awake in two awakenings, about nine hours asleep with plenty of deep sleep and REM. It scored 83.
+        let mut record = night("google", -45, 1, 540, None);
+        let mut stages = vec![run(Wake, 35)];
+        for _ in 0..15 {
+            stages.push(run(Light, 14));
+            stages.push(run(Wake, 2));
+        }
+        stages.extend([run(Deep, 60), run(Wake, 7), run(Rem, 90), run(Wake, 6), run(Light, 100)]);
+        record.stages = stages;
+        record.light_minutes = Some(310);
+        record.deep_minutes = Some(100);
+        record.rem_minutes = Some(130);
+        record.awake_minutes = 43;
+        let score = score_of(&record);
+        assert!((78..=88).contains(&score), "scored {score}");
+        // The same night as the old model saw it, with eight minutes awake and no stirs, still scores high: what is not seen cannot count.
+        let mut seen = record.clone();
+        seen.stages = vec![run(Light, 200), run(Deep, 100), run(Rem, 130), run(Wake, 8), run(Light, 110)];
+        assert!(score_of(&seen) > 90);
     }
 
     #[test]

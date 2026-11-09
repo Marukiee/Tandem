@@ -679,7 +679,7 @@
     <string name="health_heart_all_day">Hartslag de hele dag</string>
     <string name="health_heart_all_day_sub">Een halve minuut per vijf minuten zolang je je horloge draagt. Uit spaart de accu.</string>
     <string name="health_more_stages">Het grootste deel van een nacht is lichte slaap. Diepe slaap komt vooral vroeg in de nacht, REM vooral tegen de ochtend. Je horloge schat dit uit hartslag en beweging, het is geen slaaplab. Veeg over de grafiek om een moment te zien.</string>
-    <string name="health_more_score">Vooral hoe lang je sliep: 7 tot 9 uur telt helemaal mee. Dan hoe rustig de nacht was: de eerste 10 minuten wakker kosten niets. Diepe slaap en REM tellen het minst, omdat een pols die het slechtst kan onderscheiden.</string>
+    <string name="health_more_score">Opgebouwd zoals de slaapscore van Google. Hoe lang je sliep telt het zwaarst: 7 tot 9 uur telt helemaal mee. Dan hoe rustig de nacht was: hoe lang inslapen duurde, de korte keren onrust, de tijd wakker en hoe vaak je echt wakker werd. Diepe slaap en REM tellen het minst, omdat een pols die het slechtst kan onderscheiden.</string>
     <string name="health_more_resting">De laagste hartslag van de nacht. Dit zegt het meest naast wat voor jou gewoon is: een verkoudheid of een drankje kan hem een nacht of twee omhoog duwen. Geen diagnose.</string>
     <string name="health_more_regular">Uit je laatste nachten, hooguit 14. Ongeveer zegt hoe ver een gewone nacht van die tijd af ligt: hoe kleiner, hoe vaster.</string>
     <string name="health_more_active">Een minuut telt als je stevig wandelt, ongeveer 100 stappen per minuut. Het gezondheidsadvies voor volwassenen is 150 minuten per week.</string>
@@ -738,4 +738,6 @@
         <item quantity="one">%d keer</item>
         <item quantity="other">%d keer</item>
     </plurals>
+    <string name="health_compare_export">Nachten van andere apps exporteren</string>
+    <string name="health_compare_export_sub">Hun slaapfases van de afgelopen 30 dagen uit Health Connect als tabel, om je horloge ernaast te leggen</string>
 </resources>

@@ -84,6 +84,33 @@ object HealthConnectImport {
         return Found(nights + workouts + stepDays, compared)
     }
 
+    /** As long as the watch keeps its raw nights, so each night in the table can be analysed again next to it. */
+    private const val COMPARE_DAYS = 30L
+
+    /**
+     * The nights of other apps in Health Connect as a table, one row per stretch of one stage, to hold the watch against them night by
+     * night and set its sleep model by them (`./gradlew :watch-sleep:analyze --args="--compare file.csv ..."`). Nothing of it leaves the
+     * phone unless the person sends the file.
+     */
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    suspend fun otherNightsCsv(context: Context): String {
+        val manager = context.getSystemService(HealthConnectManager::class.java)
+        val until = Instant.now()
+        val from = until.minus(COMPARE_DAYS, ChronoUnit.DAYS)
+        val out = StringBuilder("app,night_start_ms,night_end_ms,start_ms,end_ms,stage\n")
+        all(manager, SleepSessionRecord::class.java, from, until)
+            .filter { it.metadata.dataOrigin.packageName != context.packageName }
+            .forEach { night ->
+                val app = night.metadata.dataOrigin.packageName
+                night.stages.sortedBy { it.startTime }.forEach { stage ->
+                    out.append(app).append(',').append(night.startTime.toEpochMilli()).append(',').append(night.endTime.toEpochMilli()).append(',')
+                        .append(stage.startTime.toEpochMilli()).append(',').append(stage.endTime.toEpochMilli()).append(',')
+                        .append(stageOf(stage.type).name.lowercase()).append('\n')
+                }
+            }
+        return out.toString()
+    }
+
     private fun overlap(a: TandemHealthRecord, b: TandemHealthRecord): Double {
         val shared = minOf(a.endMs, b.endMs).toLong() - maxOf(a.startMs, b.startMs).toLong()
         val shortest = minOf(a.endMs - a.startMs, b.endMs - b.startMs).toLong()

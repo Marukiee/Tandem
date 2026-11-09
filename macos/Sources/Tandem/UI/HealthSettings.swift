@@ -911,7 +911,7 @@ private struct LatestNightCards: View {
         if let insight {
             HealthCard(
                 title: "Sleep score",
-                more: "Mostly how long you slept: 7 to 9 hours counts in full. Then how calm the night was: the first 10 minutes awake cost nothing. Deep sleep and REM count least, because a wrist can tell them least well."
+                more: "Built like the Sleep Score of Google. How long you slept counts most: 7 to 9 hours counts in full. Then how calm the night was: how long it took to fall asleep, the brief stirs, the time awake and how often you woke up fully. Deep sleep and REM count least, because a wrist can tell them least well."
             ) {
                 ScorePart(label: "Length", value: insight.durationScore)
                 ScorePart(label: "Calm", value: insight.continuityScore)

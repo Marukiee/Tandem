@@ -164,6 +164,19 @@ speakertje het hardst is, op het volle alarmvolume zolang het belt en daarna ter
 - De dienst die de verbinding openhoudt heeft geen kaart in de lijst. Hij geeft als tijd 1 op en dan weigert het systeem de melding als te oud (`Ignored enqueue for old` in logcat), terwijl de dienst gewoon foreground blijft. Stopt een latere Wear OS daarmee, dan komt alleen de kaart terug.
 
 ## Slaap en training
+- Inslapen: een opname die vanzelf begon, startte nadat je een tijd stil lag. Die tijd telt nu als inslapen (wakker in bed),
+  niet meer als lichte slaap: zo kwam elke nacht op 99% geslapen zonder inslaaptijd uit, waar Googles slaapscore op dezelfde pols een half
+  uur telde. De nacht begint waar je ging liggen.
+- Slaapscore: opgebouwd zoals die van Google, uit duur (40%), rust (45%: inslaaptijd, onrust, onderbrekingen en keer echt wakker) en diepe
+  slaap met REM (15%). De nacht waarop Google 83 gaf (35 min inslapen, 30 min onrust, 13 min onderbrekingen in 2 keer) komt hier op 83.
+  Wat het horloge niet ziet, telt niet: met 8 minuten wakker zoals het model die nacht zag, blijft het boven de 90. Daarom het afstemmen
+  hieronder.
+- Afstemmen op een andere app (Fitbit of Google op dezelfde pols): op de telefoon Gezondheid, Nachten van andere apps exporteren (de
+  slaapfases van 30 dagen uit Health Connect), de ruwe nachten van het horloge ophalen met
+  `adb pull /sdcard/Android/data/nl.markmaaktmedia.tandem.watch/files/raw/` (het horloge bewaart ze 30 dagen), en dan
+  `./gradlew :watch-sleep:analyze --args="--compare other-apps-nights.csv --boosts 0.6,0.9,1.2,1.5 --transitions 0.2,0.4 raw/sleep-*.tws"`.
+  Per paar gewichten: hoe vaak beide het per 30 seconden eens zijn over wakker of slaap (en kappa), en de delen van de nacht van beide.
+  Deze bestanden zijn echte gegevens en komen nooit in de repo.
 - Slaapkwaliteit (`health_insights::quality_of`): de onderdelen die de slaapscore van Google laat zien, uit de stadia van de nacht, met Googles eigen grenzen waar die er zijn. Tijd tot vaste slaap: van het begin tot de eerste tien minuten slaap zonder wakker te worden (Google: tot het lichaam zich "settles"). Vaste slaap: slaap in stukken van minstens een half uur zonder wakker te worden (Google vraagt ook een rustige hartslag; die zit niet in de stadia). Onrust: keren wakker korter dan vijf minuten, tussen inslapen en de laatste keer wakker. Onderbrekingen: de minuten wakker in keren van vijf minuten of langer; keer echt wakker: hoeveel. De bereiken zijn van Tandem zelf, voor volwassenen, want Tandem kent geen leeftijd of geslacht: tijd tot vaste slaap 0 tot 30 minuten, vaste slaap 2,5 tot 5 uur, onrust 0 tot 25 minuten, onderbrekingen 0 tot 30 minuten, keer echt wakker 0 tot 1 (Google: "fewer than two is considered good").
 - Delen met computers staat standaard uit, per computer. De schakelaars staan nu ook samen op de pagina Gezondheid van de telefoon, en een lege pagina Gezondheid op een computer zegt waar.
 - Zacht wakker worden (standaard uit, `SmartWake`): tijdens een slaapopname begint het horloge 5 minuten voor de wekker op de telefoon aan één trilling zonder pauze (`WakeSwell`) die vier keer rustig op en neer gaat, elke golf een beetje hoger, en nooit boven ongeveer een kwart van wat de motor kan. Het is om je alvast een beetje wakker te maken; de wekker doet de rest. Tussen de punten loopt het zacht in en uit, zodat er nergens een schok in zit. Het stopt bij de wekker, als je op het horloge kijkt of als de opname van de nacht eindigt. De eerste versie trilde elke 30 seconden 7 seconden tot vol vermogen, een tweede zwol aan tot de helft; allebei te hard. Bij de ontwikkelaarsopties van de telefoon laat Zacht wakker worden voelen de vijf minuten in een halve minuut voelen. Nog niet getoetst op echte nachten.
