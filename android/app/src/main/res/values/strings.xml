@@ -703,6 +703,7 @@
         <item quantity="other">%d workouts this week</item>
     </plurals>
     <string name="health_smart_wake">Wake me gently</string>
+    <string name="health_smart_wake_short">Wake gently</string>
     <string name="health_smart_wake_sub">Five minutes before your alarm your watch starts one long, quiet buzz that rises and falls a few times, a little more each time. It never gets strong: your alarm wakes you the rest of the way. Works during a sleep recording.</string>
     <string name="health_your_data">Your data</string>
     <string name="health_export">Export</string>

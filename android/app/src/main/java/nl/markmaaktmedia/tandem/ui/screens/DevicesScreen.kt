@@ -273,7 +273,7 @@ fun DevicesScreen(
                     modifier = Modifier.routeBounds(routeKey(WatchRoute)),
                     onOpen = onOpenWatch,
                     onRing = { watch.ringWatch(!watchState.ringing) },
-                    onHealth = { part -> onOpenRoute(if (part == null) Route.SettingsPage(SettingsPageId.Health) else Route.HealthDetail(part)) },
+                    onHealth = { part -> onOpenRoute(Route.HealthDetail(part)) },
                 )
             }
           }
@@ -293,8 +293,8 @@ private fun WatchCard(
     pinned: Boolean,
     onOpen: () -> Unit,
     onRing: () -> Unit,
-    /** Opens a part of Health, or its overview for null. */
-    onHealth: (String?) -> Unit,
+    /** Opens a part of Health. */
+    onHealth: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val graph = LocalContext.current.graph
@@ -354,14 +354,14 @@ private fun WatchCard(
             }
         }
 
+        // On one line, like the pills on the card of a computer: the tiles above open Health, so the pills are only for doing something.
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (state.ready) {
                 QuickAction(TandemIcons.Ring, stringResource(if (state.ringing) R.string.find_stop_sound else R.string.find_play), onRing)
             }
-            TogglePill(if (smartWake) TandemIcons.Check else TandemIcons.Schedule, stringResource(R.string.health_smart_wake), smartWake) {
+            TogglePill(if (smartWake) TandemIcons.Check else TandemIcons.Schedule, stringResource(R.string.health_smart_wake_short), smartWake) {
                 scope.launch { graph.prefs.setSmartWake(!smartWake) }
             }
-            QuickAction(TandemIcons.Heart, stringResource(R.string.settings_cat_health)) { onHealth(null) }
         }
     }
 }
@@ -386,18 +386,29 @@ private fun Glance(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape).background(scheme.primaryContainer), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+        // Toward a goal as a ring around the icon: a bar under the words made this tile taller than the one beside it, and crowded.
+        Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+            if (share != null) {
+                val track = scheme.surfaceContainerHighest
+                val fill = scheme.primary
+                androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+                    val stroke = 3.dp.toPx()
+                    val arc = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke)
+                    val at = androidx.compose.ui.geometry.Offset(stroke / 2, stroke / 2)
+                    drawArc(track, 0f, 360f, false, at, arc, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+                    drawArc(fill, -90f, 360f * share, false, at, arc, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+                }
+            }
+            Box(
+                Modifier.size(if (share != null) 27.dp else 36.dp).clip(androidx.compose.foundation.shape.CircleShape).background(scheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+            }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1)
             Text(label, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, maxLines = 1)
-            // Toward the goal, so the steps say how far along the day is without another number.
-            if (share != null) {
-                Box(Modifier.padding(top = 2.dp).fillMaxWidth().height(4.dp).clip(PillShape).background(scheme.surfaceContainerHighest)) {
-                    Box(Modifier.fillMaxWidth(share).height(4.dp).clip(PillShape).background(scheme.primary))
-                }
-            }
         }
     }
 }
