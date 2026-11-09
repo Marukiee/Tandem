@@ -1505,8 +1505,8 @@
 /* The page of the watch, built like the one on the phone, and the choices of the health page */
 "While you sleep" = "Terwijl je slaapt";
 "Settings for this device" = "Instellingen van dit apparaat";
-"Name, Tandem on your watch, and unpairing" = "Naam, Tandem op je horloge, en ontkoppelen";
-"Tandem on your watch" = "Tandem op je horloge";
+"Name, watch app, and unpairing" = "Naam, horloge-app, en ontkoppelen";
+"Watch app" = "Horloge-app";
 "%@ keeps it up to date by itself" = "%@ houdt hem zelf bij";
 "Sleep, steps, heart rate and workouts" = "Slaap, stappen, hartslag en trainingen";
 "Preferences" = "Voorkeuren";

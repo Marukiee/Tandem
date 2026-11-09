@@ -130,16 +130,30 @@ class WatchBleClient(
             retryLater()
             return
         }
-        val recent = SystemClock.elapsedRealtime() - lostAt < RECENT_MS
+        val since = SystemClock.elapsedRealtime() - lostAt
         val settings = ScanSettings.Builder()
-            // Quick right after losing the phone, when it is most likely still close. Then easy on the battery.
-            .setScanMode(if (recent) ScanSettings.SCAN_MODE_BALANCED else ScanSettings.SCAN_MODE_LOW_POWER)
+            // Fastest in the first minute after losing the phone: that is mostly Tandem on the phone restarting for an update, and then
+            // it advertises again within seconds, while the slower scans found it only well after. Then quick while it is most likely
+            // still close, then easy on the battery.
+            .setScanMode(
+                when {
+                    since < FAST_MS -> ScanSettings.SCAN_MODE_LOW_LATENCY
+                    since < RECENT_MS -> ScanSettings.SCAN_MODE_BALANCED
+                    else -> ScanSettings.SCAN_MODE_LOW_POWER
+                },
+            )
             .build()
         val filter = ScanFilter.Builder().setServiceUuid(ParcelUuid(GattContract.SERVICE)).build()
         scanning = true
         scanner.startScan(listOf(filter), settings, scanCallback)
         handler.removeCallbacks(scanCycle)
-        handler.postDelayed(scanCycle, if (recent) RECENT_MS else SCAN_CYCLE_MS)
+        // A fresh scan where the mode changes, and otherwise once in a while.
+        val next = when {
+            since < FAST_MS -> FAST_MS - since
+            since < RECENT_MS -> RECENT_MS - since
+            else -> SCAN_CYCLE_MS
+        }
+        handler.postDelayed(scanCycle, next.coerceAtLeast(MIN_SCAN_MS))
     }
 
     private fun stopScan() {
@@ -366,7 +380,10 @@ class WatchBleClient(
     }
 
     private companion object {
-        val BACKOFF_MS = longArrayOf(1_500, 2_000, 4_000, 8_000, 16_000, 30_000)
+        val BACKOFF_MS = longArrayOf(500, 1_500, 3_000, 6_000, 12_000, 30_000)
+        const val FAST_MS = 60_000L
+        /** Android allows a few scan starts per half minute: never restart one sooner than this. */
+        const val MIN_SCAN_MS = 7_000L
         const val CONNECT_TIMEOUT_MS = 20_000L
         const val DISCOVER_DELAY_MS = 300L
         const val BUSY_RETRY_MS = 30L

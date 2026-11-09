@@ -52,13 +52,20 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
     ) { uri ->
         if (uri == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return@rememberLauncherForActivityResult
         scope.launch {
-            val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val rows = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching {
                     val csv = nl.markmaaktmedia.tandem.watch.HealthConnectImport.otherNightsCsv(context)
                     context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(csv.toByteArray()) }
-                }.isSuccess
+                    csv.lines().count { it.isNotBlank() } - 1
+                }.getOrNull()
             }
-            Toast.makeText(context, if (saved) R.string.health_export_done else R.string.health_export_failed, Toast.LENGTH_SHORT).show()
+            // A file with only its heading says nothing: say why, and what to turn on.
+            val message = when {
+                rows == null -> R.string.health_export_failed
+                rows == 0 -> R.string.health_compare_none
+                else -> R.string.health_export_done
+            }
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
     }
     val exportOthersAccess = androidx.activity.compose.rememberLauncherForActivityResult(

@@ -189,7 +189,7 @@ struct WatchDetail: View {
     private var settingsRow: some View {
         Card(radius: Metrics.card, padding: 6) {
             Button { showSettings = true } label: {
-                SettingRow(symbol: "slider.horizontal.3", title: "Settings for this device", subtitle: "Name, Tandem on your watch, and unpairing") {
+                SettingRow(symbol: "slider.horizontal.3", title: "Settings for this device", subtitle: "Name, watch app, and unpairing") {
                     Image(systemName: "chevron.right").foregroundStyle(.secondary)
                 }
                 .contentShape(.rect)
@@ -246,7 +246,7 @@ private struct WatchSettingsSheet: View {
                     }
                     Divider().opacity(0.4).padding(.horizontal, 14)
                     // The phone updates the app on the watch by itself; this Mac does not hear which version it has.
-                    SettingRow(symbol: "arrow.triangle.2.circlepath", title: "Tandem on your watch", subtitle: "\(phone.name) keeps it up to date by itself") {
+                    SettingRow(symbol: "arrow.triangle.2.circlepath", title: "Watch app", subtitle: "\(phone.name) keeps it up to date by itself") {
                         EmptyView()
                     }
                 }

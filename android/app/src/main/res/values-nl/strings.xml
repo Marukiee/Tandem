@@ -565,8 +565,8 @@
     <string name="watch_quiet_trigger">Terwijl je horloge je slaap opneemt</string>
     <string name="watch_unpair">Horloge ontkoppelen</string>
     <string name="watch_unpair_sub">Werkt ook als het horloge buiten bereik is</string>
-    <string name="watch_app_title">Tandem op je horloge</string>
-    <string name="watch_app_unknown">Werkt zichzelf bij vanaf versie 0.3.1. Zet die versie één keer met de hand op je horloge.</string>
+    <string name="watch_app_title">Horloge-app</string>
+    <string name="watch_app_unknown">Toont zijn versie zodra je horloge verbonden is. Hij werkt zichzelf bij samen met Tandem op deze telefoon.</string>
     <string name="watch_app_up_to_date">Versie %1$s, bijgewerkt. Gaat vanzelf mee als Tandem op deze telefoon wordt bijgewerkt.</string>
     <string name="watch_app_other_signer">Versie %1$s, met de hand gezet uit een andere build. Zet er één keer de versie van een release op, daarna werkt hij zichzelf bij.</string>
     <string name="watch_app_fetching">Versie %1$s ophalen voor je horloge</string>
@@ -708,7 +708,7 @@
     <string name="health_compared">Vergeleken met %1$s</string>
     <string name="health_compared_sum">%1$d nachten, gemiddeld %2$s verschil</string>
     <string name="health_compared_line">%1$s: Tandem %2$s, andere app %3$s</string>
-    <string name="watch_settings_sub">Naam, Tandem op je horloge, en ontkoppelen</string>
+    <string name="watch_settings_sub">Naam, horloge-app, en ontkoppelen</string>
     <string name="watch_unpair_title">%1$s ontkoppelen?</string>
     <string name="watch_unpair_body">Je horloge krijgt dan geen meldingen, muziek en gesprekken meer van deze telefoon. Opnieuw koppelen doe je hier, bij Koppel een apparaat.</string>
     <string name="watch_unpair_confirm">Ontkoppelen</string>
@@ -740,4 +740,5 @@
     </plurals>
     <string name="health_compare_export">Nachten van andere apps exporteren</string>
     <string name="health_compare_export_sub">Hun slaapfases van de afgelopen 30 dagen uit Health Connect als tabel, om je horloge ernaast te leggen</string>
+    <string name="health_compare_none">Health Connect heeft geen nachten van andere apps. Laat Fitbit of Google Health in Health Connect slaap wegschrijven, en exporteer dan opnieuw.</string>
 </resources>

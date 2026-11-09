@@ -568,8 +568,8 @@
     <string name="watch_quiet_trigger">While your watch records your sleep</string>
     <string name="watch_unpair">Unpair watch</string>
     <string name="watch_unpair_sub">Also works when the watch is out of reach</string>
-    <string name="watch_app_title">Tandem on your watch</string>
-    <string name="watch_app_unknown">Updates itself from version 0.3.1 on. Put that version on your watch once by hand.</string>
+    <string name="watch_app_title">Watch app</string>
+    <string name="watch_app_unknown">Shows its version once your watch is connected. It updates itself together with Tandem on this phone.</string>
     <string name="watch_app_up_to_date">Version %1$s, up to date. It updates itself together with Tandem on this phone.</string>
     <string name="watch_app_other_signer">Version %1$s, put on by hand from another build. Put the version of a release on it once, then it updates itself.</string>
     <string name="watch_app_fetching">Getting version %1$s for your watch</string>
@@ -711,7 +711,7 @@
     <string name="health_compared">Compared with %1$s</string>
     <string name="health_compared_sum">%1$d nights, on average %2$s apart</string>
     <string name="health_compared_line">%1$s: Tandem %2$s, other app %3$s</string>
-    <string name="watch_settings_sub">Name, Tandem on your watch, and unpairing</string>
+    <string name="watch_settings_sub">Name, watch app, and unpairing</string>
     <string name="watch_unpair_title">Unpair %1$s?</string>
     <string name="watch_unpair_body">Your watch then gets no more notifications, music or calls from this phone. Pairing it again is done here, under Pair a device.</string>
     <string name="watch_unpair_confirm">Unpair</string>
@@ -743,4 +743,5 @@
     </plurals>
     <string name="health_compare_export">Export the nights of other apps</string>
     <string name="health_compare_export_sub">Their sleep stages of the last 30 days from Health Connect as a table, to hold your watch against them</string>
+    <string name="health_compare_none">Health Connect has no nights of other apps. In Health Connect, let Fitbit or Google Health write sleep there, then export again.</string>
 </resources>
