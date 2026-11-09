@@ -1397,7 +1397,7 @@ function HealthSection({ plain = false } = {}) {
     ${!plain && html`<h2>${t("tab_health")}</h2>`}
     ${!hasWatch && html`<div class="card flush"><${SettingRow} icon="moon" title=${t("health_show")} sub=${t("health_show_sub")} on=${shown} onChange=${change} /></div>`}
     ${(hasWatch || shown) && insights && html`<${HealthContent} i=${insights} records=${records} />`}
-    ${(hasWatch || shown) && records.length === 0 && html`<div class="muted">${t("health_empty")}</div>`}
+    ${(hasWatch || shown) && records.length === 0 && html`<div class="muted">${t("health_empty", ((state.devices || []).find((d) => d.status?.watch?.paired) || {}).name || t("your_phone"))}</div>`}
     <${HealthChoices} />
     ${(hasWatch || shown) && records.length > 0 && html`<div class="card flush"><${SettingRow} icon="download" title=${t("health_export")} sub=${t("health_export_sub")}>
       <button onClick=${() => call("health_export", { offset: -new Date().getTimezoneOffset() }).then((path) => path && say(t("health_saved"))).catch((e) => say(String(e)))}>${t("health_export")}</button>

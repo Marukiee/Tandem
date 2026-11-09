@@ -273,6 +273,28 @@ function SleepTimeline({ r }) {
   </div>`;
 }
 
+/**
+ * One part of the quality of a night as Google's Sleep Score shows it: a bar with the range most adults fall in as a dashed box, the night
+ * as a dot, and a word for whether it falls in that range.
+ */
+function QualityRow({ m }) {
+  const names = { toSoundSleep: "health_q_to_sound", soundSleep: "health_q_sound", restlessness: "health_q_restless", interruptions: "health_q_interruptions", fullAwakenings: "health_q_awakenings" };
+  const inRange = m.value >= m.low && m.value <= m.high;
+  const pct = (v) => Math.max(0, Math.min(1, v / Math.max(1, m.max))) * 100;
+  const end = Math.max(pct(m.value), 4);
+  const shown = m.kind === "fullAwakenings" ? t("health_q_moments", m.value) : healthDuration(m.value);
+  const badge = m.value > m.high ? t("health_q_above") : m.value < m.low ? t("health_q_below") : t("health_q_in");
+  return html`<div class=${"quality-row" + (inRange ? " in" : " out")}>
+    <div class="quality-head"><span class="grow">${t(names[m.kind])}<span class="muted"> · ${shown}</span></span><span class="quality-badge">${badge}</span></div>
+    <div class="quality-bar">
+      <span class="quality-track"></span>
+      <span class="quality-fill" style=${`width:${end}%`}></span>
+      <span class="quality-range" style=${`left:${pct(m.low)}%;width:${Math.max(pct(m.high) - pct(m.low), 4)}%`}></span>
+      <span class="quality-dot" style=${`left:${end}%`}></span>
+    </div>
+  </div>`;
+}
+
 function Fact({ label, value }) {
   return html`<div class="health-fact"><span class="small muted">${label}</span><b>${value}</b></div>`;
 }
@@ -382,6 +404,10 @@ export function HealthContent({ i, records }) {
         <${SleepTimeline} r=${latest} />
         <${StageTiles} r=${latest} />
         ${insight && insight.wakeMoments.map((m) => html`<div key=${m.startMs} class="small muted">${t("health_wake_moment", clockOf(m.startMs), healthDuration(m.minutes))}</div>`)}
+      <//>`}
+      ${insight && insight.quality && insight.quality.length > 0 && html`<${Card} title=${t("health_quality")} more=${t("health_quality_more")}>
+        <div class="quality">${insight.quality.map((m) => html`<${QualityRow} key=${m.kind} m=${m} />`)}</div>
+        <div class="quality-legend small muted"><span class="quality-legend-box"></span>${t("health_q_typical")}</div>
       <//>`}
       ${insight && html`<${Card} title=${t("health_score")} more=${t("health_more_score")}>
         <${ScorePart} label=${t("health_part_length")} value=${insight.durationScore} />

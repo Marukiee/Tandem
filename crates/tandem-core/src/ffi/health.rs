@@ -165,6 +165,27 @@ pub struct TandemNightInsight {
     /// None when the stages could not be told apart.
     pub stages_score: Option<u32>,
     pub wake_moments: Vec<TandemWakeMoment>,
+    /// The night as Google's Sleep Score shows its parts (see `health_insights::QualityMeasure`). Empty without stages.
+    pub quality: Vec<TandemQualityMeasure>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, uniffi::Enum)]
+pub enum TandemQualityKind {
+    ToSoundSleep,
+    SoundSleep,
+    Restlessness,
+    Interruptions,
+    FullAwakenings,
+}
+
+/// One part of the quality of a night, with the range most adults fall in and where its bar ends. Minutes, or a count for awakenings.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemQualityMeasure {
+    pub kind: TandemQualityKind,
+    pub value: u32,
+    pub typical_low: u32,
+    pub typical_high: u32,
+    pub scale_max: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -262,6 +283,23 @@ impl From<NightInsight> for TandemNightInsight {
             continuity_score: n.continuity_score,
             stages_score: n.stages_score,
             wake_moments: n.wake_moments.into_iter().map(|m| TandemWakeMoment { start_ms: m.start_ms, minutes: m.minutes }).collect(),
+            quality: n
+                .quality
+                .into_iter()
+                .map(|m| TandemQualityMeasure {
+                    kind: match m.kind {
+                        crate::health_insights::QualityKind::ToSoundSleep => TandemQualityKind::ToSoundSleep,
+                        crate::health_insights::QualityKind::SoundSleep => TandemQualityKind::SoundSleep,
+                        crate::health_insights::QualityKind::Restlessness => TandemQualityKind::Restlessness,
+                        crate::health_insights::QualityKind::Interruptions => TandemQualityKind::Interruptions,
+                        crate::health_insights::QualityKind::FullAwakenings => TandemQualityKind::FullAwakenings,
+                    },
+                    value: m.value,
+                    typical_low: m.typical_low,
+                    typical_high: m.typical_high,
+                    scale_max: m.scale_max,
+                })
+                .collect(),
         }
     }
 }

@@ -635,6 +635,20 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .health-link { border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 12px; font-weight: 600; padding: 2px 6px; border-radius: 999px; cursor: default; }
 .health-link:hover { background: var(--hover); }
 .health-unit { font-size: 14px; font-weight: 500; color: var(--text-2); margin: 0 2px; }
+/* Sleep quality: the night as a dot on a bar, the range most adults fall in as a dashed box, green inside it and amber outside. */
+.quality { display: flex; flex-direction: column; gap: 8px; }
+.quality-row { padding: 10px 12px; border-radius: 16px; background: color-mix(in srgb, var(--text) 4%, transparent); --q: #2e9d4f; }
+.quality-row.out { --q: #e3a008; }
+.quality-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.quality-badge { font-size: 12px; font-weight: 500; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--q) 25%, transparent); white-space: nowrap; }
+.quality-bar { position: relative; height: 20px; }
+.quality-track, .quality-fill { position: absolute; left: 0; top: 4px; height: 12px; border-radius: 6px; }
+.quality-track { right: 0; background: color-mix(in srgb, var(--text) 8%, transparent); }
+.quality-fill { background: var(--q); }
+.quality-range { position: absolute; top: 0; bottom: 0; border: 1px dashed var(--text); border-radius: 10px; box-sizing: border-box; }
+.quality-dot { position: absolute; top: 3px; width: 14px; height: 14px; margin-left: -10px; border-radius: 50%; background: var(--text); box-shadow: 0 0 0 2px var(--card); }
+.quality-legend { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
+.quality-legend-box { width: 18px; height: 10px; border: 1px dashed var(--text-2); border-radius: 5px; box-sizing: border-box; }
 .health-chart { display: flex; flex-direction: column; gap: 6px; }
 .health-chart.grow-x { flex: 1; min-width: 0; }
 .health-days { display: flex; }

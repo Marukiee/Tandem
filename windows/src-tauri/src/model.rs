@@ -127,6 +127,17 @@ pub fn health_insights(i: &tandem_core::ffi::health::TandemHealthInsights) -> Va
             "continuityScore": n.continuity_score,
             "stagesScore": n.stages_score,
             "wakeMoments": n.wake_moments.iter().map(|m| json!({ "startMs": m.start_ms, "minutes": m.minutes })).collect::<Vec<_>>(),
+            // The parts of the quality of the night, as Google's Sleep Score names them.
+            "quality": n.quality.iter().map(|m| json!({
+                "kind": match m.kind {
+                    tandem_core::ffi::health::TandemQualityKind::ToSoundSleep => "toSoundSleep",
+                    tandem_core::ffi::health::TandemQualityKind::SoundSleep => "soundSleep",
+                    tandem_core::ffi::health::TandemQualityKind::Restlessness => "restlessness",
+                    tandem_core::ffi::health::TandemQualityKind::Interruptions => "interruptions",
+                    tandem_core::ffi::health::TandemQualityKind::FullAwakenings => "fullAwakenings",
+                },
+                "value": m.value, "low": m.typical_low, "high": m.typical_high, "max": m.scale_max,
+            })).collect::<Vec<_>>(),
         })),
         "resting": i.resting.as_ref().map(|r| json!({ "latest": r.latest, "usual": r.usual, "nightsNeeded": r.nights_needed })),
         "regularity": i.regularity.as_ref().map(|r| json!({

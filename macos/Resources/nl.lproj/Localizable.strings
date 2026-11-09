@@ -1418,7 +1418,8 @@
 "%lld steps" = "%lld stappen";
 "Show without a watch" = "Ook zonder horloge tonen";
 "This shows by itself once one of your phones has a watch." = "Dit verschijnt vanzelf zodra een van je telefoons een horloge heeft.";
-"Nothing here right now. Your phone decides which devices get them." = "Hier staat nu niets. Je telefoon bepaalt welke apparaten ze krijgen.";
+"Nothing here yet. Turn on this Mac on %@: Tandem, Health, Share with your computers." = "Hier staat nog niets. Zet deze Mac aan op %@: Tandem, Gezondheid, Delen met je computers.";
+"your phone" = "je telefoon";
 "Your resting heart rate has been %lld beats above usual for two nights. That can mean your body is dealing with something, like a cold coming on. This is not a diagnosis." = "Je rusthartslag is al twee nachten %lld slagen hoger dan normaal. Dat kan betekenen dat je lichaam ergens mee bezig is, bijvoorbeeld een opkomende verkoudheid. Dit is geen diagnose.";
 "Latest night" = "Laatste nacht";
 "Sleep score" = "Slaapscore";
@@ -1530,3 +1531,17 @@
 "Its page, with everything it does" = "Zijn pagina, met alles wat hij doet";
 "Ringing now, also on silent" = "Gaat nu af, ook op stil";
 "It rings, even on silent" = "Gaat af, ook op stil";
+
+/* Sleep quality, the parts Google's Sleep Score shows */
+"Sleep quality" = "Slaapkwaliteit";
+"The parts the Sleep Score of Google shows. Time to sound sleep runs until the first ten minutes asleep without waking. Sound sleep is asleep in stretches of half an hour or more. Restlessness is the brief stirs under five minutes, interruptions the time awake in wakes of five minutes or more, and full awakenings how many of those there were. Tandem chose the ranges for adults: it knows no age or gender." = "De onderdelen die de slaapscore van Google laat zien. Tijd tot vaste slaap loopt tot de eerste tien minuten slaap zonder wakker te worden. Vaste slaap is slaap in stukken van een half uur of langer. Onrust zijn de korte keren onder vijf minuten, onderbrekingen de tijd wakker in keren van vijf minuten of langer, en keer echt wakker hoe vaak dat was. De bereiken koos Tandem voor volwassenen: het kent geen leeftijd of geslacht.";
+"Typical range for adults" = "Gebruikelijk bereik voor volwassenen";
+"Time to sound sleep" = "Tijd tot vaste slaap";
+"Sound sleep" = "Vaste slaap";
+"Restlessness" = "Onrust";
+"Interruptions" = "Onderbrekingen";
+"Full awakenings" = "Keer echt wakker";
+"%lld moments" = "%lld keer";
+"Above range" = "Boven bereik";
+"Below range" = "Onder bereik";
+"In range" = "Binnen bereik";

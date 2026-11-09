@@ -63,6 +63,12 @@ import java.time.format.FormatStyle
 import java.util.TimeZone
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
+import uniffi.tandem_core.TandemQualityMeasure
+import uniffi.tandem_core.TandemQualityKind
+import nl.markmaaktmedia.tandem.ui.theme.LocalTandemExtraColors
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.runtime.mutableIntStateOf
 import nl.markmaaktmedia.tandem.ui.components.ActionRow
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
@@ -259,7 +265,8 @@ internal fun LatestNight(insights: TandemHealthInsights?) {
         DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_ALL or DateUtils.FORMAT_NO_YEAR,
     )
     val hasStages = night.stages.isNotEmpty()
-    val parts = 1 + (if (hasStages) 1 else 0) + (if (insight != null) 1 else 0)
+    val quality = insight?.quality.orEmpty()
+    val parts = 1 + (if (hasStages) 1 else 0) + (if (quality.isNotEmpty()) 1 else 0) + (if (insight != null) 1 else 0)
 
     SectionHeader(stringResource(R.string.health_sleep_title), top = 12.dp, bottom = 0.dp)
     SettingsGroup {
@@ -287,6 +294,12 @@ internal fun LatestNight(insights: TandemHealthInsights?) {
                 insight?.let { WakeMoments(it, Modifier.padding(top = 10.dp)) }
             }
         }
+        if (quality.isNotEmpty()) {
+            HealthCard(if (hasStages) 2 else 1, parts, more = stringResource(R.string.health_quality_more)) { open ->
+                TitleWithMore(stringResource(R.string.health_quality_title), open, hasMore = true, Modifier.padding(bottom = 12.dp))
+                SleepQuality(quality)
+            }
+        }
         if (insight != null) {
             HealthCard(parts - 1, parts, more = stringResource(R.string.health_more_score)) { open ->
                 TitleWithMore(stringResource(R.string.health_score_title), open, hasMore = true, Modifier.padding(bottom = 12.dp))
@@ -296,6 +309,100 @@ internal fun LatestNight(insights: TandemHealthInsights?) {
                     insight.stagesScore?.let { ScorePart(stringResource(R.string.health_part_stages), it.toInt()) }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The parts of the quality of a night as Google's Sleep Score shows them: each a bar with the range most adults fall in as a dashed box,
+ * the night as a dot, and a word for whether it falls in that range. Tells at a glance what went well and what did not.
+ */
+@Composable
+private fun SleepQuality(quality: List<TandemQualityMeasure>) {
+    val scheme = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        quality.forEach { QualityRow(it) }
+        Row(
+            Modifier.padding(top = 4.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        ) {
+            Canvas(Modifier.size(width = 18.dp, height = 10.dp)) {
+                drawRoundRect(
+                    scheme.onSurfaceVariant, cornerRadius = CornerRadius(size.height / 2),
+                    style = Stroke(1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx()))),
+                )
+            }
+            Text(stringResource(R.string.health_q_typical), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Amber for a part outside its range: a sign to look at, not an alarm, so not the colour of an error. */
+private val QualityAmber = Color(0xFFE3A008)
+
+@Composable
+private fun QualityRow(measure: TandemQualityMeasure) {
+    val scheme = MaterialTheme.colorScheme
+    val low = measure.typicalLow.toInt()
+    val high = measure.typicalHigh.toInt()
+    val value = measure.value.toInt()
+    val inRange = value in low..high
+    val colour = if (inRange) LocalTandemExtraColors.current.charging else QualityAmber
+    val name = stringResource(
+        when (measure.kind) {
+            TandemQualityKind.TO_SOUND_SLEEP -> R.string.health_q_to_sound
+            TandemQualityKind.SOUND_SLEEP -> R.string.health_q_sound
+            TandemQualityKind.RESTLESSNESS -> R.string.health_q_restless
+            TandemQualityKind.INTERRUPTIONS -> R.string.health_q_interruptions
+            TandemQualityKind.FULL_AWAKENINGS -> R.string.health_q_awakenings
+        },
+    )
+    val shown = if (measure.kind == TandemQualityKind.FULL_AWAKENINGS) pluralStringResource(R.plurals.health_q_moments, value, value) else duration(value)
+    val badge = stringResource(
+        when {
+            value > high -> R.string.health_q_above
+            value < low -> R.string.health_q_below
+            else -> R.string.health_q_in
+        },
+    )
+    val track = scheme.surfaceContainerHighest
+    val ink = scheme.onSurface
+    val ring = scheme.surfaceContainerHigh
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(scheme.surfaceContainerHigh).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                buildAnnotatedString {
+                    append(name)
+                    withStyle(SpanStyle(color = scheme.onSurfaceVariant)) { append(" \u00B7 $shown") }
+                },
+                style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.weight(1f),
+            )
+            Text(
+                badge, style = MaterialTheme.typography.labelMedium, color = ink, maxLines = 1,
+                modifier = Modifier.clip(PillShape).background(colour.copy(alpha = 0.25f)).padding(horizontal = 10.dp, vertical = 4.dp),
+            )
+        }
+        Canvas(Modifier.fillMaxWidth().height(24.dp)) {
+            val bar = 14.dp.toPx()
+            val top = (size.height - bar) / 2
+            val max = measure.scaleMax.toFloat().coerceAtLeast(1f)
+            fun x(at: Int) = (at / max).coerceIn(0f, 1f) * size.width
+            drawRoundRect(track, Offset(0f, top), Size(size.width, bar), CornerRadius(bar / 2))
+            val end = x(value).coerceIn(bar, size.width)
+            drawRoundRect(colour, Offset(0f, top), Size(end, bar), CornerRadius(bar / 2))
+            // The range most adults fall in, as a dashed box a little taller than the bar, like Google's.
+            val left = x(low)
+            val right = x(high).coerceAtLeast(left + bar)
+            drawRoundRect(
+                ink, Offset(left + 1f, 1f), Size(right - left - 2f, size.height - 2f), CornerRadius((size.height - 2f) / 2),
+                style = Stroke(1.2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))),
+            )
+            val dot = Offset((end - bar / 2).coerceIn(bar / 2, size.width - bar / 2), size.height / 2)
+            drawCircle(ring, 10.dp.toPx(), dot)
+            drawCircle(ink, 7.5.dp.toPx(), dot)
         }
     }
 }
@@ -635,6 +742,33 @@ private fun WorkoutRow(index: Int, total: Int, record: TandemHealthRecord) {
                 record.heartRateHigh?.let { Fact(stringResource(R.string.health_stat_highest), "$it", Modifier.weight(1f)) }
                 if (record.steps > 0u) Fact(stringResource(R.string.health_steps_title), number(record.steps.toLong()), Modifier.weight(1f))
             }
+        }
+    }
+}
+
+/**
+ * Which computers get the nights and workouts, all on the health page: the switch of each was only on the settings page of that computer,
+ * where nobody looking at a Mac with an empty health page would think to look. Still off until the person turns it on.
+ */
+@Composable
+internal fun HealthSharing() {
+    val graph = LocalContext.current.graph
+    val devices by graph.host.devices.collectAsState()
+    val computers = devices.filter { "health" in it.caps }
+    if (computers.isEmpty() || !rememberHealthAvailable()) return
+    val engine = graph.host.engine
+    val scope = rememberCoroutineScope()
+    SectionHeader(stringResource(R.string.health_share_title), top = 16.dp, bottom = 0.dp)
+    SettingsGroup {
+        computers.forEachIndexed { index, device ->
+            var allowed by remember(device.id) { mutableStateOf(engine?.healthAllowed(device.id) ?: false) }
+            SwitchRow(
+                index, computers.size, TandemIcons.Laptop, device.name, stringResource(R.string.health_share_row_sub), allowed,
+                { on ->
+                    allowed = on
+                    scope.launch { runCatching { engine?.setHealthAllowed(device.id, on) } }
+                },
+            )
         }
     }
 }

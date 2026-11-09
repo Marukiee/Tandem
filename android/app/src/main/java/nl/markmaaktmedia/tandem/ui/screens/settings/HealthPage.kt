@@ -130,6 +130,7 @@ internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                 HealthWeek(insights)
                 EarlierNights()
                 HealthChoices()
+                HealthSharing()
                 SectionHeader(stringResource(R.string.health_your_data), top = 16.dp, bottom = 0.dp)
                 SettingsGroup {
                     val canImport = HealthConnectImport.available(context)

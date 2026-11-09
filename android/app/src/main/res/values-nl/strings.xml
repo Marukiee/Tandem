@@ -721,4 +721,21 @@
     <string name="health_heart_whole_day">Hele dag</string>
     <string name="health_smart_wake_try">Zacht wakker worden voelen</string>
     <string name="health_smart_wake_try_sub">De vijf minuten versneld tot een halve minuut, op je horloge</string>
+    <string name="health_share_title">Delen met je computers</string>
+    <string name="health_share_row_sub">Zijn pagina Gezondheid toont je nachten, trainingen en stappen. Uit: hij vergeet ze weer.</string>
+    <string name="health_quality_title">Slaapkwaliteit</string>
+    <string name="health_quality_more">De onderdelen die de slaapscore van Google laat zien. Tijd tot vaste slaap loopt tot de eerste tien minuten slaap zonder wakker te worden. Vaste slaap is slaap in stukken van een half uur of langer. Onrust zijn de korte keren onder vijf minuten, onderbrekingen de tijd wakker in keren van vijf minuten of langer, en keer echt wakker hoe vaak dat was. De bereiken zijn die van Tandem voor volwassenen: het kent geen leeftijd of geslacht.</string>
+    <string name="health_q_to_sound">Tijd tot vaste slaap</string>
+    <string name="health_q_sound">Vaste slaap</string>
+    <string name="health_q_restless">Onrust</string>
+    <string name="health_q_interruptions">Onderbrekingen</string>
+    <string name="health_q_awakenings">Keer echt wakker</string>
+    <string name="health_q_in">Binnen bereik</string>
+    <string name="health_q_above">Boven bereik</string>
+    <string name="health_q_below">Onder bereik</string>
+    <string name="health_q_typical">Gebruikelijk bereik voor volwassenen</string>
+    <plurals name="health_q_moments">
+        <item quantity="one">%d keer</item>
+        <item quantity="other">%d keer</item>
+    </plurals>
 </resources>

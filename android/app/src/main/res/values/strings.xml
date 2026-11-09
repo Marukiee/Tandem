@@ -724,4 +724,21 @@
     <string name="health_heart_whole_day">Whole day</string>
     <string name="health_smart_wake_try">Feel waking gently</string>
     <string name="health_smart_wake_try_sub">The five minutes sped up to half a minute, on your watch</string>
+    <string name="health_share_title">Share with your computers</string>
+    <string name="health_share_row_sub">Its Health page shows your nights, workouts and steps. Off: it forgets them again.</string>
+    <string name="health_quality_title">Sleep quality</string>
+    <string name="health_quality_more">The parts the Sleep Score of Google shows. Time to sound sleep runs until the first ten minutes asleep without waking. Sound sleep is asleep in stretches of half an hour or more. Restlessness is the brief stirs under five minutes, interruptions the time awake in wakes of five minutes or more, and full awakenings how many of those there were. Tandem chose the ranges for adults: it knows no age or gender.</string>
+    <string name="health_q_to_sound">Time to sound sleep</string>
+    <string name="health_q_sound">Sound sleep</string>
+    <string name="health_q_restless">Restlessness</string>
+    <string name="health_q_interruptions">Interruptions</string>
+    <string name="health_q_awakenings">Full awakenings</string>
+    <string name="health_q_in">In range</string>
+    <string name="health_q_above">Above range</string>
+    <string name="health_q_below">Below range</string>
+    <string name="health_q_typical">Typical range for adults</string>
+    <plurals name="health_q_moments">
+        <item quantity="one">%d moment</item>
+        <item quantity="other">%d moments</item>
+    </plurals>
 </resources>

@@ -39,6 +39,35 @@ pub struct NightInsight {
     /// None when the stages could not be told apart: the score then rests on the other two.
     pub stages_score: Option<u32>,
     pub wake_moments: Vec<WakeMoment>,
+    /// The night as Google's Sleep Score shows its parts, empty when the stages could not be told apart.
+    pub quality: Vec<QualityMeasure>,
+}
+
+/// What a part of the quality of a night measures.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum QualityKind {
+    /// Minutes from the start of the night until the first steady sleep: ten minutes asleep without waking.
+    ToSoundSleep,
+    /// Minutes asleep in stretches of at least half an hour without waking.
+    SoundSleep,
+    /// Minutes of brief wakes, under five minutes, between falling asleep and the last waking.
+    Restlessness,
+    /// Minutes awake in wakes of five minutes and more, between falling asleep and the last waking.
+    Interruptions,
+    /// How many wakes of five minutes and more.
+    FullAwakenings,
+}
+
+/// One part of the quality of a night, with the range most adults fall in and where a bar of it ends. The ranges are Tandem's own:
+/// Google tailors them to age and gender, which Tandem does not know.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct QualityMeasure {
+    pub kind: QualityKind,
+    /// Minutes, or a count for full awakenings.
+    pub value: u32,
+    pub typical_low: u32,
+    pub typical_high: u32,
+    pub scale_max: u32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -180,6 +209,79 @@ fn wake_moments(record: &HealthRecord) -> Vec<WakeMoment> {
     moments
 }
 
+/// Steady sleep starts with this long asleep without waking, as Google's "time to sound sleep" ends where the body "settles".
+const SETTLED_SECONDS: u32 = 10 * 60;
+/// Asleep this long without waking counts as sound sleep. Google also asks for a calm heart rate, which the stages do not carry.
+const SOUND_STRETCH_SECONDS: u32 = 30 * 60;
+/// Google's line between a brief, often normal stir and a full awakening.
+const FULL_WAKE_SECONDS: u32 = 5 * 60;
+
+/// The parts of the quality of a night from its stages, the way Google's Sleep Score names them, or nothing without stages.
+fn quality_of(record: &HealthRecord) -> Vec<QualityMeasure> {
+    let runs = &record.stages;
+    if runs.is_empty() || runs.iter().all(|run| run.stage == SleepStage::Wake) {
+        return Vec::new();
+    }
+    let asleep = |run: &crate::health::StageRun| run.stage != SleepStage::Wake;
+    // Where the first steady sleep starts: the first stretch of sleep without a wake that lasts long enough.
+    let mut onset = None;
+    let mut at = 0u32;
+    let mut stretch_start = None;
+    let mut stretch_seconds = 0u32;
+    for (index, run) in runs.iter().enumerate() {
+        if asleep(run) {
+            if stretch_start.is_none() {
+                stretch_start = Some((index, at));
+                stretch_seconds = 0;
+            }
+            stretch_seconds += run.seconds;
+            if stretch_seconds >= SETTLED_SECONDS && onset.is_none() {
+                onset = stretch_start;
+            }
+        } else {
+            stretch_start = None;
+        }
+        at += run.seconds;
+    }
+    // Never settled: the whole night counts as falling asleep, from its first sleep on.
+    let (first, onset_seconds) = onset.unwrap_or_else(|| {
+        let index = runs.iter().position(asleep).unwrap_or(0);
+        (index, runs[..index].iter().map(|run| run.seconds).sum())
+    });
+    let last = runs.iter().rposition(asleep).unwrap_or(first);
+    let night = &runs[first..=last];
+    let (mut restless, mut interrupted, mut awakenings, mut sound) = (0u32, 0u32, 0u32, 0u32);
+    let mut stretch = 0u32;
+    for run in night {
+        if asleep(run) {
+            stretch += run.seconds;
+            continue;
+        }
+        if stretch >= SOUND_STRETCH_SECONDS {
+            sound += stretch;
+        }
+        stretch = 0;
+        if run.seconds >= FULL_WAKE_SECONDS {
+            interrupted += run.seconds;
+            awakenings += 1;
+        } else {
+            restless += run.seconds;
+        }
+    }
+    if stretch >= SOUND_STRETCH_SECONDS {
+        sound += stretch;
+    }
+    let minutes = |seconds: u32| (seconds + 30) / 60;
+    vec![
+        QualityMeasure { kind: QualityKind::ToSoundSleep, value: minutes(onset_seconds), typical_low: 0, typical_high: 30, scale_max: 90 },
+        QualityMeasure { kind: QualityKind::SoundSleep, value: minutes(sound), typical_low: 150, typical_high: 300, scale_max: 420 },
+        QualityMeasure { kind: QualityKind::Restlessness, value: minutes(restless), typical_low: 0, typical_high: 25, scale_max: 90 },
+        QualityMeasure { kind: QualityKind::Interruptions, value: minutes(interrupted), typical_low: 0, typical_high: 30, scale_max: 90 },
+        // "Fewer than two is considered good for most people."
+        QualityMeasure { kind: QualityKind::FullAwakenings, value: awakenings, typical_low: 0, typical_high: 1, scale_max: 6 },
+    ]
+}
+
 fn insight_of(record: &HealthRecord) -> NightInsight {
     NightInsight {
         id: record.id.clone(),
@@ -188,6 +290,7 @@ fn insight_of(record: &HealthRecord) -> NightInsight {
         continuity_score: continuity_score(record.awake_minutes).round() as u32,
         stages_score: stages_score(record).map(|s| s.round() as u32),
         wake_moments: wake_moments(record),
+        quality: quality_of(record),
     }
 }
 
@@ -455,6 +558,42 @@ mod tests {
             added_ms: 0,
             origin: None,
         }
+    }
+
+    fn run(stage: SleepStage, minutes: u32) -> StageRun {
+        StageRun { stage, seconds: minutes * 60 }
+    }
+
+    fn value(quality: &[QualityMeasure], kind: QualityKind) -> u32 {
+        quality.iter().find(|m| m.kind == kind).map(|m| m.value).unwrap()
+    }
+
+    #[test]
+    fn the_quality_of_a_night_follows_googles_parts() {
+        use SleepStage::*;
+        let mut record = night("q", -60, 1, 420, None);
+        record.stages = vec![
+            // Falling asleep: awake, a short doze, awake again, then settled.
+            run(Wake, 12), run(Light, 4), run(Wake, 3), run(Light, 20), run(Deep, 40),
+            // A brief stir, then a long stretch.
+            run(Wake, 2), run(Light, 60), run(Rem, 30),
+            // Two full awakenings, the second split by sleep that is too short to be sound.
+            run(Wake, 8), run(Light, 20), run(Wake, 6), run(Deep, 50), run(Rem, 25),
+            // Lying awake in the morning: not an interruption.
+            run(Wake, 15),
+        ];
+        let quality = quality_of(&record);
+        assert_eq!(value(&quality, QualityKind::ToSoundSleep), 19);
+        assert_eq!(value(&quality, QualityKind::Restlessness), 2);
+        assert_eq!(value(&quality, QualityKind::Interruptions), 14);
+        assert_eq!(value(&quality, QualityKind::FullAwakenings), 2);
+        // 60 (light and deep) + 90 (light and REM) + 75 (deep and REM); the 20 minutes between the awakenings are too short.
+        assert_eq!(value(&quality, QualityKind::SoundSleep), 225);
+    }
+
+    #[test]
+    fn a_night_without_stages_has_no_quality() {
+        assert!(quality_of(&night("n", -60, 1, 420, None)).is_empty());
     }
 
     #[test]

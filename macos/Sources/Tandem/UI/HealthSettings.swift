@@ -18,6 +18,10 @@ struct HealthSettingsContent: View {
 
     private var hasWatch: Bool { model.devices.contains { $0.status.watch?.paired == true } }
     private var records: [TandemHealthRecord] { model.healthRecords.filter { $0.kind == .sleep || $0.kind == .workout } }
+    private var emptyText: String {
+        let phone = model.devices.first { $0.status.watch?.paired == true }?.name ?? String(localized: "your phone")
+        return String(localized: "Nothing here yet. Turn on this Mac on \(phone): Tandem, Health, Share with your computers.")
+    }
 
     var body: some View {
             VStack(alignment: .leading, spacing: 8) {
@@ -35,7 +39,8 @@ struct HealthSettingsContent: View {
                         HealthPageContent(insights: insights, records: model.healthRecords)
                     }
                     if records.isEmpty {
-                        Text("Nothing here right now. Your phone decides which devices get them.")
+                        // Off by default on the phone, for privacy: say where to turn it on, so an empty page is not a dead end.
+                        Text(emptyText)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 4)
                     }
@@ -888,6 +893,21 @@ private struct LatestNightCards: View {
                 }
             }
         }
+        if let quality = insight?.quality, !quality.isEmpty {
+            HealthCard(
+                title: "Sleep quality",
+                more: "The parts the Sleep Score of Google shows. Time to sound sleep runs until the first ten minutes asleep without waking. Sound sleep is asleep in stretches of half an hour or more. Restlessness is the brief stirs under five minutes, interruptions the time awake in wakes of five minutes or more, and full awakenings how many of those there were. Tandem chose the ranges for adults: it knows no age or gender."
+            ) {
+                VStack(spacing: 8) {
+                    ForEach(Array(quality.enumerated()), id: \.offset) { _, measure in QualityRow(measure: measure) }
+                }
+                HStack(spacing: 8) {
+                    Capsule().strokeBorder(Color.secondary, style: StrokeStyle(lineWidth: 1, dash: [3, 2])).frame(width: 18, height: 10)
+                    Text("Typical range for adults").font(.caption).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
         if let insight {
             HealthCard(
                 title: "Sleep score",
@@ -898,6 +918,76 @@ private struct LatestNightCards: View {
                 if let stages = insight.stagesScore { ScorePart(label: "Stages", value: stages) }
             }
         }
+    }
+}
+
+/// One part of the quality of a night as Google's Sleep Score shows it: a bar with the range most adults fall in as a dashed box, the
+/// night as a dot, and a word for whether it falls in that range.
+private struct QualityRow: View {
+    let measure: TandemQualityMeasure
+
+    private var inRange: Bool { (measure.typicalLow...measure.typicalHigh).contains(measure.value) }
+    /// Amber outside the range: a sign to look at, not an alarm, so not the colour of an error.
+    private var colour: Color { inRange ? .green : Color(red: 0.89, green: 0.63, blue: 0.03) }
+
+    private var name: LocalizedStringKey {
+        switch measure.kind {
+        case .toSoundSleep: "Time to sound sleep"
+        case .soundSleep: "Sound sleep"
+        case .restlessness: "Restlessness"
+        case .interruptions: "Interruptions"
+        case .fullAwakenings: "Full awakenings"
+        }
+    }
+
+    private var shown: String {
+        measure.kind == .fullAwakenings ? String(localized: "\(Int(measure.value)) moments") : minutesText(Int(measure.value))
+    }
+
+    private var badge: LocalizedStringKey {
+        measure.value > measure.typicalHigh ? "Above range" : measure.value < measure.typicalLow ? "Below range" : "In range"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                (Text(name) + Text(verbatim: " \u{00B7} \(shown)").foregroundStyle(.secondary)).font(.callout)
+                Spacer(minLength: 8)
+                Text(badge)
+                    .font(.caption.weight(.medium))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .background(colour.opacity(0.25), in: .capsule)
+            }
+            GeometryReader { geometry in
+                let width = geometry.size.width
+                let bar: CGFloat = 12
+                let height = geometry.size.height
+                let max = CGFloat(Swift.max(measure.scaleMax, 1))
+                let x = { (at: UInt32) -> CGFloat in Swift.min(Swift.max(CGFloat(at) / max, 0), 1) * width }
+                let end = Swift.min(Swift.max(x(measure.value), bar), width)
+                let left = x(measure.typicalLow)
+                let right = Swift.max(x(measure.typicalHigh), left + bar)
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.primary.opacity(0.08)).frame(width: width, height: bar)
+                    Capsule().fill(colour).frame(width: end, height: bar)
+                    Capsule()
+                        .strokeBorder(Color.primary, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                        .frame(width: right - left, height: height)
+                        .offset(x: left)
+                    Circle()
+                        .fill(Color.primary)
+                        .frame(width: 13, height: 13)
+                        .overlay(Circle().stroke(Color(nsColor: .controlBackgroundColor), lineWidth: 2.5))
+                        .offset(x: Swift.min(Swift.max(end - bar / 2, bar / 2), width - bar / 2) - 6.5)
+                }
+                .frame(height: height)
+            }
+            .frame(height: 20)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color.primary.opacity(0.04), in: .rect(cornerRadius: 16, style: .continuous))
     }
 }
 
