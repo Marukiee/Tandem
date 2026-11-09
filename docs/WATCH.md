@@ -179,8 +179,16 @@ speakertje het hardst is, op het volle alarmvolume zolang het belt en daarna ter
   Deze bestanden zijn echte gegevens en komen nooit in de repo.
   Zonder export (Health Connect had nog geen nachten van Fitbit) laat `--sweep` per nacht zien wat het horloge van elke instelling maakt.
   Op de nacht van 9 november, waarop Google 43 minuten wakker zag in 2 keer echt wakker, zagen de oude gewichten (overgangen 0,4,
-  wakker 0,6) 8 minuten in 1 keer; overgangen 0,25 en wakker 1,4 zien 38 minuten in 2 keer. Dat staat nu in `SleepModel` en
-  `train.py`. Eén nacht is een eerste afstelling: met een export van meer nachten volgt een betere.
+  wakker 0,6) 8 minuten in 1 keer. Getoetst op de 284 labnachten die het netwerk niet zag (`postproc.py` op `dump_k3`):
+
+  | Overgangen, wakker | Kappa | Wakker tegen slaap | Minuten wakker, gemiddeld verschil | Nachten zonder wakker (echt 2%) | 9 nov |
+  | --- | --- | --- | --- | --- | --- |
+  | 0,4 en 0,6 (oud) | 0,557 | 0,616 | -5,3 | 32% | 8 min, 1 keer |
+  | 0,3 en 1,0 (nu) | 0,549 | 0,581 | +0,6 | 16% | 17 min, 2 keer |
+  | 0,25 en 1,4 | 0,536 | 0,531 | +10,1 | 4% | 38 min, 2 keer |
+
+  0,3 en 1,0 staan nu in `SleepModel` en `train.py`: gemiddeld goed in het lab. De gewichten die Googles minuten haalden, zagen in het lab
+  10 minuten te veel: een lab is de waarheid, een ander horloge niet. Met een export van meer nachten volgt een betere vergelijking.
 - Inslapen in de opname zelf: de minuten tussen het begin van een opname en de eerste slaap (als het er hooguit vijftien zijn) tellen ook
   als inslapen, zodat de tijd tot vaste slaap niet op nul uitkomt.
 - Slaapkwaliteit (`health_insights::quality_of`): de onderdelen die de slaapscore van Google laat zien, uit de stadia van de nacht, met Googles eigen grenzen waar die er zijn. Tijd tot vaste slaap: van het begin tot de eerste tien minuten slaap zonder wakker te worden (Google: tot het lichaam zich "settles"). Vaste slaap: slaap in stukken van minstens een half uur zonder wakker te worden (Google vraagt ook een rustige hartslag; die zit niet in de stadia). Onrust: keren wakker korter dan vijf minuten, tussen inslapen en de laatste keer wakker. Onderbrekingen: de minuten wakker in keren van vijf minuten of langer; keer echt wakker: hoeveel. De bereiken zijn van Tandem zelf, voor volwassenen, want Tandem kent geen leeftijd of geslacht: tijd tot vaste slaap 0 tot 30 minuten, vaste slaap 2,5 tot 5 uur, onrust 0 tot 25 minuten, onderbrekingen 0 tot 30 minuten, keer echt wakker 0 tot 1 (Google: "fewer than two is considered good").

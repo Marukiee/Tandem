@@ -56,7 +56,7 @@ def viterbi(logp,T,prior):
     return o
 
 # How a night is read, measured with postproc.py, see README. SleepModel.kt holds the same two numbers.
-TRANSITION_WEIGHT=.25;WAKE_BOOST=1.4
+TRANSITION_WEIGHT=.3;WAKE_BOOST=1.0
 def read_night(logp,T,prior):
     l=logp.copy();l[:,0]+=WAKE_BOOST
     return viterbi(l,T*TRANSITION_WEIGHT,prior)
