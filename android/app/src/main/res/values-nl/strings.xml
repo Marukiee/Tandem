@@ -741,4 +741,6 @@
     <string name="health_compare_export">Nachten van andere apps exporteren</string>
     <string name="health_compare_export_sub">Hun slaapfases van de afgelopen 30 dagen uit Health Connect als tabel, om je horloge ernaast te leggen</string>
     <string name="health_compare_none">Health Connect heeft geen nachten van andere apps. Laat Fitbit of Google Health in Health Connect slaap wegschrijven, en exporteer dan opnieuw.</string>
+    <string name="watch_bluetooth_off">Bluetooth staat uit</string>
+    <string name="watch_bluetooth_off_sub">Je horloge kan geen verbinding maken met deze telefoon. Tik om het aan te zetten.</string>
 </resources>

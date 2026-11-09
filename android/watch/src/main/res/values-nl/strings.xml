@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">Tandem</string>
     <string name="status_setting_up">Even instellen</string>
+    <string name="status_bluetooth_off">Bluetooth staat uit. Zet het aan om je telefoon te bereiken.</string>
     <string name="status_searching">Zoekt je telefoon</string>
     <string name="status_unpaired">Niet gekoppeld</string>
     <string name="pair">Koppel met telefoon</string>

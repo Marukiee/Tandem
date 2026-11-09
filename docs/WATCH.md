@@ -132,6 +132,8 @@ met de hand stil, één keer tijdens bewegen. Een eigen trilling telt een halve 
 knijp, en klikte zo vanzelf. Eén pols, twee opnames: een eerste afstelling. Naar rechts vegen sluit het muisscherm.
 Een computer kan de muis openen (in de lucht of als tafelmuis, `PointerOpen` met `table`) en weer sluiten (`PointerClose`); het horloge meldt met `MouseState` wanneer het muisscherm open en dicht gaat, en voor welke computer, zodat die laat zien dat hij bestuurd wordt. De telefoon sluit het alleen voor de computer die bestuurd wordt.
 
+Bluetooth uit: staat het uit op de telefoon, dan zegt de pagina van het horloge dat (met een knop om het aan te zetten), en zegt een computer "Bluetooth staat uit op" de telefoon in plaats van alleen dat het horloge weg is (`WatchStatus.bluetooth_off`). Staat het uit op het horloge zelf, dan zegt het beginscherm van het horloge dat. Daarvoor bleef alles zoeken, en leek een update de verbinding te breken.
+
 Knijpen staat standaard aan, en de schakelaar staat altijd in de instellingen van het horloge: standaard uit was hij na elke nieuwe
 installatie weg, en verborgen zolang de telefoon de muis niet toestond. Op tafel draait op en neer om: een hand die over tafel van je af
 schuift, kantelt de onderarm omlaag, dus de aanwijzer ging omlaag waar een muis omhoog gaat.

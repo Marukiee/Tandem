@@ -3,6 +3,7 @@
     <string name="app_name">Tandem</string>
     <string name="status_setting_up">Setting up</string>
     <string name="status_searching">Looking for your phone</string>
+    <string name="status_bluetooth_off">Bluetooth is off. Turn it on to reach your phone.</string>
     <string name="status_unpaired">Not paired</string>
     <string name="pair">Pair with phone</string>
     <string name="pair_wait">Start pairing on your phone</string>

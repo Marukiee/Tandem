@@ -54,12 +54,17 @@ struct WatchDetail: View {
                     Text(verbatim: name).font(.title.weight(.bold)).lineLimit(1).contentTransition(.opacity)
                     Text("Wear OS \u{00B7} by way of \(phone.name)").font(.callout).foregroundStyle(.secondary).lineLimit(1)
                     HStack(spacing: 8) {
-                        Chip(
-                            symbol: reachable ? "checkmark.circle.fill" : "applewatch.slash",
-                            text: reachable ? "Connected" : "Watch away",
-                            tint: reachable ? .green : .secondary,
-                            strong: reachable
-                        )
+                        // Without Bluetooth on the phone the watch can never connect: say that, not only that it is away.
+                        if !reachable, phone.online, watch?.bluetoothOff == true {
+                            Chip(symbol: "antenna.radiowaves.left.and.right.slash", text: "Bluetooth off on \(phone.name)", tint: .orange, strong: true)
+                        } else {
+                            Chip(
+                                symbol: reachable ? "checkmark.circle.fill" : "applewatch.slash",
+                                text: reachable ? "Connected" : "Watch away",
+                                tint: reachable ? .green : .secondary,
+                                strong: reachable
+                            )
+                        }
                         if reachable, watch?.sleeping == true {
                             Chip(symbol: "bed.double.fill", text: "Recording your sleep", tint: Palette.indigo)
                         }

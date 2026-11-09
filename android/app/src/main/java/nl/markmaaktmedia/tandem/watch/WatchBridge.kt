@@ -80,6 +80,8 @@ data class WatchState(
     val name: String? = null,
     /** The computer the mouse screen of the watch steers now, as the watch said; null while it is closed. */
     val mouse: WatchMouseNow? = null,
+    /** The Bluetooth of this phone is off, so the watch cannot connect: said, and a way given to turn it on. */
+    val bluetoothOff: Boolean = false,
 )
 
 /** Which computer the watch steers, and whether with the hand on a table. */
@@ -170,8 +172,14 @@ class WatchBridge(
     private val bluetoothReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
-                BluetoothAdapter.STATE_ON -> handler.post { if (active) server?.start() }
-                BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> handler.post { server?.stop() }
+                BluetoothAdapter.STATE_ON -> handler.post {
+                    _state.update { it.copy(bluetoothOff = false) }
+                    if (active) server?.start()
+                }
+                BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> handler.post {
+                    _state.update { it.copy(bluetoothOff = true) }
+                    server?.stop()
+                }
             }
         }
     }
@@ -303,6 +311,7 @@ class WatchBridge(
         if (should == active) return
         active = should
         if (should) {
+            _state.update { it.copy(bluetoothOff = context.getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled == false) }
             server?.start()
             calls.start()
             media.refresh()

@@ -531,6 +531,7 @@ private fun StatusHeader(ui: WatchUi, modifier: Modifier, transformation: androi
     val stopped = ui.failure == LinkFailure.NOT_PAIRED || ui.failure == LinkFailure.AUTH_FAILED ||
         ui.failure == LinkFailure.VERSION_MISMATCH
     val text = when {
+        ui.bluetoothOff -> R.string.status_bluetooth_off
         stopped && !ui.pairing -> R.string.status_unpaired
         ui.connected -> R.string.status_setting_up
         ui.paired || ui.pairing -> R.string.status_searching

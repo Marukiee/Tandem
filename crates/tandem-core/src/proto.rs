@@ -370,6 +370,9 @@ pub struct WatchStatus {
     /// The mouse screen of the watch is open, steering the computer it names. None while it is closed, and from an older phone.
     #[serde(default)]
     pub mouse: Option<WatchMouse>,
+    /// The Bluetooth of the phone is off, so the watch cannot reach it: a computer says that instead of only "away".
+    #[serde(default)]
+    pub bluetooth_off: bool,
 }
 
 /// Which computer the watch steers now, and how.

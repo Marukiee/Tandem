@@ -1,5 +1,8 @@
 package nl.markmaaktmedia.tandem.ui.screens.settings
 
+import android.bluetooth.BluetoothAdapter
+import android.content.Intent
+import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -110,6 +113,23 @@ private fun PairedWatch(state: WatchState, onBack: () -> Unit, onOpen: (Route) -
             TandemIconButton(TandemIcons.Back, stringResource(R.string.action_back), onBack)
         }
         WatchHeader(state)
+        // Without Bluetooth the watch can never connect, and "searching" would go on forever: say it, and offer to turn it on.
+        AnimatedVisibility(
+            state.bluetoothOff,
+            enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
+            exit = shrinkVertically(TandemMotion.sizeSpring()) + fadeOut(TandemMotion.fadeSpec()),
+        ) {
+            SettingsGroup {
+                ActionRow(
+                    0, 1, TandemIcons.Bluetooth, stringResource(R.string.watch_bluetooth_off), stringResource(R.string.watch_bluetooth_off_sub),
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }.onFailure { runCatching { context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+                    },
+                )
+            }
+        }
         AnimatedVisibility(
             !hasListener,
             enter = expandVertically(TandemMotion.sizeSpring()) + fadeIn(TandemMotion.fadeSpec()),
@@ -211,7 +231,7 @@ private fun WatchHeader(state: WatchState) {
                 StatusChip(TandemIcons.Check, stringResource(R.string.status_online), tint = LocalTandemExtraColors.current.online)
                 StatusChip(TandemIcons.Bluetooth, stringResource(R.string.status_bluetooth))
             } else {
-                StatusChip(TandemIcons.Bluetooth, stringResource(R.string.watch_searching))
+                StatusChip(TandemIcons.Bluetooth, stringResource(if (state.bluetoothOff) R.string.watch_bluetooth_off else R.string.watch_searching))
             }
             if (state.sleeping) StatusChip(TandemIcons.Sleep, stringResource(R.string.watch_chip_recording), tint = MaterialTheme.colorScheme.primary)
         }

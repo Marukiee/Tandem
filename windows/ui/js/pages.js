@@ -435,7 +435,9 @@ export function WatchPage({ device }) {
           <div class="title ellipsis">${watchName(device)}</div>
           <div class="small muted">${t("watch_by_way_of", device.name)}</div>
           <div class="chips">
-            <${Chip} icon=${reachable ? "circle-check" : "device-watch"} tone=${reachable ? "ok" : ""}>${reachable ? t("connected") : t("watch_away")}<//>
+            ${!reachable && device.online && watch.bluetoothOff
+              ? html`<${Chip} icon="bluetooth" tone="warn">${t("watch_bt_off", device.name)}<//>`
+              : html`<${Chip} icon=${reachable ? "circle-check" : "device-watch"} tone=${reachable ? "ok" : ""}>${reachable ? t("connected") : t("watch_away")}<//>`}
             ${reachable && watch.sleeping && html`<${Chip} icon="moon" tone="accent">${t("watch_recording")}<//>`}
           </div>
         </div>

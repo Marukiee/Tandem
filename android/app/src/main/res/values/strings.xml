@@ -744,4 +744,6 @@
     <string name="health_compare_export">Export the nights of other apps</string>
     <string name="health_compare_export_sub">Their sleep stages of the last 30 days from Health Connect as a table, to hold your watch against them</string>
     <string name="health_compare_none">Health Connect has no nights of other apps. In Health Connect, let Fitbit or Google Health write sleep there, then export again.</string>
+    <string name="watch_bluetooth_off">Bluetooth is off</string>
+    <string name="watch_bluetooth_off_sub">Your watch cannot connect to this phone. Tap to turn it on.</string>
 </resources>

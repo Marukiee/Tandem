@@ -312,6 +312,9 @@ pub struct TandemWatchStatus {
     /// The computer the watch steers now, while its mouse screen is open.
     #[uniffi(default = None)]
     pub mouse: Option<TandemWatchMouse>,
+    /// The Bluetooth of the phone is off, so the watch cannot reach it.
+    #[uniffi(default = false)]
+    pub bluetooth_off: bool,
 }
 
 /// Which computer a watch steers, and how (see `proto::WatchMouse`).
@@ -358,6 +361,7 @@ impl From<crate::proto::WatchStatus> for TandemWatchStatus {
             sleeping: w.sleeping,
             settings: w.settings.map(Into::into),
             mouse: w.mouse.map(|m| TandemWatchMouse { target: m.target, table: m.table }),
+            bluetooth_off: w.bluetooth_off,
         }
     }
 }
@@ -374,6 +378,7 @@ impl From<TandemWatchStatus> for crate::proto::WatchStatus {
             sleeping: w.sleeping,
             settings: w.settings.map(Into::into),
             mouse: w.mouse.map(|m| crate::proto::WatchMouse { target: m.target, table: m.table }),
+            bluetooth_off: w.bluetooth_off,
         }
     }
 }

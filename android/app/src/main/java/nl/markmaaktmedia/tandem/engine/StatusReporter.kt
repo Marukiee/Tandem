@@ -194,6 +194,7 @@ class StatusReporter(
                 TandemWatchStatus(
                     watch.paired, watch.ready, watch.batteryLevel?.toUByte(), watch.charging, watch.ringing, watch.name, watch.sleeping, watchSettings,
                     watch.mouse?.takeIf { watch.ready }?.let { TandemWatchMouse(it.target, it.table) },
+                    watch.bluetoothOff,
                 )
             },
         )

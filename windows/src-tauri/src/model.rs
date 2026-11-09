@@ -70,6 +70,7 @@ fn status(s: &TandemStatus) -> Value {
             })),
             // Which computer the watch steers now, while its mouse screen is open.
             "mouse": w.mouse.as_ref().map(|m| json!({ "target": m.target, "table": m.table })),
+            "bluetoothOff": w.bluetooth_off,
         })),
     })
 }

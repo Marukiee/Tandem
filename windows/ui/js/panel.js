@@ -37,7 +37,7 @@ function WatchRow({ phone }) {
   const steering = reachable && watch.mouse && state.self && watch.mouse.target === state.self.id;
   const go = (command, args) => call(command, { id: phone.id, ...args }).catch(failed);
   const name = watch.name || t("watch");
-  const sub = !reachable ? t("watch_away") : [t("connected"), watch.level != null ? watch.level + "%" : "", steering ? t("watch_mouse_here") : watch.sleeping ? t("watch_recording") : ""].filter(Boolean).join(" · ");
+  const sub = !reachable ? (phone.online && watch.bluetoothOff ? t("watch_bt_off", phone.name) : t("watch_away")) : [t("connected"), watch.level != null ? watch.level + "%" : "", steering ? t("watch_mouse_here") : watch.sleeping ? t("watch_recording") : ""].filter(Boolean).join(" · ");
   return html`<div class=${"row" + (reachable ? "" : " dim")}>
     <span class="glyph" style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);flex:none"><${Icon} name="device-watch" size=${18} /></span>
     <div class="grow">

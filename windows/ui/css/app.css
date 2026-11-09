@@ -238,6 +238,8 @@ h2 { font: 600 16px var(--font-display); margin: 6px 2px 0; }
 }
 .chip.ok { background: var(--ok-soft); color: var(--ok); font-weight: 600; }
 .chip.accent { background: var(--accent-soft); color: var(--accent); }
+/* Something that stops a device from working, like Bluetooth off on the phone of a watch: amber, not the red of an error. */
+.chip.warn { background: color-mix(in srgb, #e3a008 22%, transparent); color: color-mix(in srgb, #e3a008 70%, var(--text)); font-weight: 600; }
 
 .switch {
   position: relative;

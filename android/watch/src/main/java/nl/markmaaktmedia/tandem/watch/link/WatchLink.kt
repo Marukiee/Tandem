@@ -57,6 +57,8 @@ data class WatchUi(
     val batteries: List<DeviceBattery> = emptyList(),
     val findingPhone: Boolean = false,
     val ringing: Boolean = false,
+    /** The Bluetooth of the watch is off, so it cannot reach its phone at all: said, instead of looking for the phone forever. */
+    val bluetoothOff: Boolean = false,
 )
 
 /** The watch side of the link. Everything runs on one thread; the screens read [ui] and post commands here. */
@@ -120,8 +122,14 @@ object WatchLink : LinkListener, WatchBleClient.Events {
     private val bluetoothReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
-                BluetoothAdapter.STATE_ON -> handler.post { updateClient() }
-                BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> handler.post { client?.stop() }
+                BluetoothAdapter.STATE_ON -> handler.post {
+                    _ui.update { it.copy(bluetoothOff = false) }
+                    updateClient()
+                }
+                BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> handler.post {
+                    _ui.update { it.copy(bluetoothOff = true) }
+                    client?.stop()
+                }
             }
         }
     }
@@ -143,7 +151,8 @@ object WatchLink : LinkListener, WatchBleClient.Events {
                 _ui.update { it.copy(ringing = ringing) }
                 engine?.send(Message.Ringing(ringing))
             }
-            _ui.update { it.copy(paired = link.hasLinkKey) }
+            val adapterOn = app.getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled ?: false
+            _ui.update { it.copy(paired = link.hasLinkKey, bluetoothOff = !adapterOn) }
             app.registerReceiver(bluetoothReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED), Context.RECEIVER_EXPORTED)
             updateClient()
         }

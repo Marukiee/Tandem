@@ -95,6 +95,7 @@ internal fun rememberCategorySummaries(): Map<SettingsCategory, String> {
         SettingsCategory.Setup to stringResource(R.string.settings_sum_permissions, granted.count { it }, granted.size),
         SettingsCategory.Watch to when {
             watchState.ready -> watchState.batteryLevel?.let { stringResource(R.string.watch_sum_battery, it) } ?: stringResource(R.string.watch_connected)
+            watchState.paired && watchState.bluetoothOff -> stringResource(R.string.watch_bluetooth_off)
             watchState.paired -> stringResource(R.string.watch_searching)
             else -> stringResource(R.string.watch_sum_unpaired)
         },

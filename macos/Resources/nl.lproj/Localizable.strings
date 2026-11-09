@@ -1548,3 +1548,6 @@
 
 /* The watch in the menu bar panel */
 "Open the watch" = "Horloge openen";
+
+/* Bluetooth off on the phone of the watch */
+"Bluetooth off on %@" = "Bluetooth staat uit op %@";

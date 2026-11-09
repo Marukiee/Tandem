@@ -490,6 +490,8 @@ private struct MenuWatchRow: View {
                     HStack(spacing: 5) {
                         if let hint {
                             Text(hint).font(.caption.weight(.medium)).foregroundStyle(Palette.indigo).transition(.opacity)
+                        } else if !reachable, phone.online, watch?.bluetoothOff == true {
+                            Text("Bluetooth off on \(phone.name)").font(.caption.weight(.medium)).foregroundStyle(.orange)
                         } else if !reachable {
                             Text("Watch away").font(.caption.weight(.medium)).foregroundStyle(.secondary)
                         } else {

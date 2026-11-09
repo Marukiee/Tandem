@@ -305,7 +305,7 @@ private fun WatchCard(
                         if (state.ready) {
                             listOf(stringResource(R.string.status_online), stringResource(R.string.status_bluetooth)).joinToString(" · ")
                         } else {
-                            stringResource(R.string.watch_searching)
+                            stringResource(if (state.bluetoothOff) R.string.watch_bluetooth_off else R.string.watch_searching)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
