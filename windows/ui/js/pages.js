@@ -6,7 +6,7 @@ import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, 
 import { Icon } from "./icons.js";
 import { FindSoundRow, LastSeen, PlaySoundButton } from "./find.js";
 import { MicButton, OutputButton } from "./output.js";
-import { HealthContent, WatchGlance } from "./health.js";
+import { ActivityDetail, HealthOverview, HeartDetail, SleepDetail, WatchGlance } from "./health.js";
 import { language, setLanguage, t } from "./i18n.js";
 import { say, set, state } from "./store.js";
 
@@ -1366,24 +1366,28 @@ function HealthChoices() {
     </div>`;
 }
 
-/** Health as a page of the main window, opened from the page of the watch, with a way back to it. */
+/** Health as a page of the main window, opened from the page of the watch: the overview, a page per part, and the settings behind the gear. */
 export function HealthPage() {
+  const [part, setPart] = useState(null);
+  const titles = { sleep: "health_sleep", activity: "health_activity_title", heart: "health_heart_title", settings: "health_settings_title" };
+  const back = () => (part ? setPart(null) : set({ page: "watch" }));
   return html`<div class="wrap">
     <div class="card" style="--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))">
       <div class="head">
-        <button class="iconbtn" title=${t("back_to_watch")} aria-label=${t("back_to_watch")} onClick=${() => set({ page: "watch" })}><${Icon} name="chevron-left" size=${18} /></button>
+        <button class="iconbtn" title=${t(part ? "back" : "back_to_watch")} aria-label=${t(part ? "back" : "back_to_watch")} onClick=${back}><${Icon} name="chevron-left" size=${18} /></button>
         <span class="health-entry-icon"><${Icon} name="heart" size=${20} /></span>
         <div class="info grow">
-          <div class="title">${t("tab_health")}</div>
-          <div class="small muted">${t("health_open_sub")}</div>
+          <div class="title">${t(part ? titles[part] : "tab_health")}</div>
+          ${!part && html`<div class="small muted">${t("health_open_sub")}</div>`}
         </div>
+        ${part !== "settings" && html`<button class="iconbtn" title=${t("health_settings_title")} aria-label=${t("health_settings_title")} onClick=${() => setPart("settings")}><${Icon} name="settings" size=${18} /></button>`}
       </div>
     </div>
-    <${HealthSection} plain=${true} />
+    <${HealthSection} plain=${true} part=${part} onOpen=${setPart} />
   </div>`;
 }
 
-function HealthSection({ plain = false } = {}) {
+function HealthSection({ plain = false, part = null, onOpen = () => {} } = {}) {
   const [shown, setShown] = useState(healthShown);
   const [insights, setInsights] = useState(null);
   useEffect(() => {
@@ -1391,17 +1395,25 @@ function HealthSection({ plain = false } = {}) {
   }, [state.health]);
   const hasWatch = (state.devices || []).some((d) => d.status?.watch?.paired);
   const records = (state.health || []).filter((r) => r.kind === "sleep" || r.kind === "workout").slice(0, 60);
+  const goal = ((state.devices || []).find((d) => d.status?.watch?.settings) || {}).status?.watch?.settings?.stepGoal;
+  const visible = hasWatch || shown;
+  // The page opens on the overview with a page per part; the choices and your data are behind the gear, and they are what Settings
+  // shows for Health.
+  const settings = !plain || part === "settings";
   const change = (on) => {
     setShown(on);
     try { localStorage.setItem("healthShown", on ? "1" : "0"); } catch { /* the choice only lasts until this window closes */ }
   };
   return html`<div style="display:flex;flex-direction:column;gap:12px">
     ${!plain && html`<h2>${t("tab_health")}</h2>`}
-    ${!hasWatch && html`<div class="card flush"><${SettingRow} icon="moon" title=${t("health_show")} sub=${t("health_show_sub")} on=${shown} onChange=${change} /></div>`}
-    ${(hasWatch || shown) && insights && html`<${HealthContent} i=${insights} records=${records} />`}
-    ${(hasWatch || shown) && records.length === 0 && html`<div class="muted">${t("health_empty", ((state.devices || []).find((d) => d.status?.watch?.paired) || {}).name || t("your_phone"))}</div>`}
-    <${HealthChoices} />
-    ${(hasWatch || shown) && records.length > 0 && html`<div class="card flush"><${SettingRow} icon="download" title=${t("health_export")} sub=${t("health_export_sub")}>
+    ${!hasWatch && (settings || !shown) && html`<div class="card flush"><${SettingRow} icon="moon" title=${t("health_show")} sub=${t("health_show_sub")} on=${shown} onChange=${change} /></div>`}
+    ${!settings && visible && insights && part == null && html`<${HealthOverview} i=${insights} records=${records} goal=${goal} onOpen=${onOpen} />`}
+    ${!settings && visible && insights && part === "sleep" && html`<${SleepDetail} i=${insights} records=${records} />`}
+    ${!settings && visible && insights && part === "activity" && html`<${ActivityDetail} i=${insights} records=${records} />`}
+    ${!settings && visible && insights && part === "heart" && html`<${HeartDetail} i=${insights} />`}
+    ${!settings && visible && records.length === 0 && html`<div class="muted">${t("health_empty", ((state.devices || []).find((d) => d.status?.watch?.paired) || {}).name || t("your_phone"))}</div>`}
+    ${settings && html`<${HealthChoices} />`}
+    ${settings && visible && records.length > 0 && html`<div class="card flush"><${SettingRow} icon="download" title=${t("health_export")} sub=${t("health_export_sub")}>
       <button onClick=${() => call("health_export", { offset: -new Date().getTimezoneOffset() }).then((path) => path && say(t("health_saved"))).catch((e) => say(String(e)))}>${t("health_export")}</button>
     <//></div>`}
   </div>`;

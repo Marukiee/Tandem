@@ -676,6 +676,31 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .health-ring-fill { fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 36px 36px; }
 .health-ring text { font-size: 19px; font-weight: 700; fill: var(--text); }
 .health-dots { display: flex; gap: 5px; margin-top: 6px; }
+/* The overview of Health: last night large on a tonal card, then a card per part, as on the phone. */
+.health-hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 18px; width: 100%; padding: 22px; border: 0; border-radius: 28px; text-align: left; color: var(--text); font: inherit; cursor: pointer; background: color-mix(in srgb, var(--accent) 22%, var(--card)); }
+.health-hero:hover { background: color-mix(in srgb, var(--accent) 28%, var(--card)); }
+.health-hero-main { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.health-hero-label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.health-hero-icon { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.health-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.health-pill { display: inline-flex; gap: 6px; padding: 6px 12px; border-radius: 999px; background: color-mix(in srgb, var(--card) 65%, transparent); font-size: 12px; color: var(--text-2); }
+.health-pill b { color: var(--text); }
+.health-hero-score { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.health-cookie { position: relative; width: 112px; height: 112px; display: grid; place-items: center; }
+.health-cookie-shape { position: absolute; inset: 0; width: 100%; height: 100%; fill: color-mix(in srgb, var(--card) 60%, transparent); animation: health-roll 1.2s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+.health-cookie .health-ring { position: relative; }
+@keyframes health-roll { from { transform: rotate(-50deg); } to { transform: rotate(0deg); } }
+.health-clover { position: absolute; right: -34px; bottom: -40px; width: 150px; height: 150px; transform: rotate(45deg); fill: color-mix(in srgb, var(--text) 6%, transparent); pointer-events: none; }
+.health-parts { display: flex; flex-direction: column; gap: 12px; }
+.health-part-card { display: flex; flex-direction: column; gap: 12px; width: 100%; padding: 18px; border: 0; border-radius: 24px; text-align: left; color: var(--text); font: inherit; cursor: pointer; }
+.health-part-card.tone-sleep { background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
+.health-part-card.tone-activity { background: color-mix(in srgb, #d0679d 16%, var(--card)); }
+.health-part-card.tone-heart { background: var(--card); }
+.health-part-head { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+.health-part-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: color-mix(in srgb, var(--text) 8%, transparent); }
+.health-part-value { font-size: 26px; font-weight: 700; line-height: 1.15; }
+.health-goal { width: 196px; height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--text) 10%, transparent); overflow: hidden; }
+.health-goal > div { height: 100%; min-width: 12px; border-radius: 6px; background: #d0679d; }
 .health-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
 .health-dots i.on { background: var(--accent); }
 .health-stagebar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; }

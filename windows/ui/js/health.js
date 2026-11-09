@@ -389,19 +389,15 @@ function Workout({ r }) {
 }
 
 /** Everything the page shows once there is something to show. The sums are the core's, so this says the same as the phone. */
-export function HealthContent({ i, records }) {
+/** Sleep as a page of Health: last night large with the night and its quality, naps, the sleep of the week, and earlier nights. */
+export function SleepDetail({ i, records }) {
   const week = i.week || [];
   const latest = records.find((r) => r.kind === "sleep");
   const insight = i.latestNight && latest && i.latestNight.id === latest.id ? i.latestNight : null;
-  const earlier = records.filter((r) => (r.kind === "sleep" || r.kind === "workout") && r !== latest).slice(0, 30);
-  // A computer sees whole days: only the phone hears the watch during the day.
-  const lastSteps = week.map((d) => d.steps != null).lastIndexOf(true);
-  const heart = i.latestDayHeart;
+  const earlier = records.filter((r) => r.kind === "sleep" && r !== latest).slice(0, 30);
   const now = i.thisWeek, before = i.lastWeek;
   return html`
-    ${i.alertAboveUsual != null && html`<div class="card tinted health-card" style="--tint:var(--accent-soft)"><div class="health-row"><${Icon} name="heart" size=${20} /><div>${t("health_alert", i.alertAboveUsual)}</div></div></div>`}
-
-    ${latest && html`<h3 class="health-section">${t("health_sleep")}</h3>
+    ${latest && html`<h3 class="health-section">${t("watch_last_night")}</h3>
       <${Card}>
         <div class="health-row">
           <div class="grow"><${BigNumber} text=${healthDuration(latest.sleepMinutes)} />
@@ -424,27 +420,10 @@ export function HealthContent({ i, records }) {
         <${ScorePart} label=${t("health_part_calm")} value=${insight.continuityScore} />
         ${insight.stagesScore != null && html`<${ScorePart} label=${t("health_part_stages")} value=${insight.stagesScore} />`}
       <//>`}`}
-
-    ${(lastSteps >= 0 || heart || i.naps.length > 0) && html`<h3 class="health-section">${t("health_days")}</h3>`}
-    ${lastSteps >= 0 && html`
-      <${WeekCard} title=${t("health_steps_title")} number=${number(week[lastSteps].steps)} caption=${dayName(week[lastSteps].startMs)}
-        week=${week} dayNumbers=${week.map((d) => (d.steps != null ? number(d.steps) : null))}
-        chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.steps)} week=${week} picked=${picked} onPick=${pick} />`} />
-      <${WeekCard} title=${t("health_active_title")} more=${t("health_more_active")}
-        number=${t("health_minutes", week[lastSteps].activeMinutes ?? 0)}
-        caption=${t("health_active_week", week.reduce((sum, d) => sum + (d.activeMinutes || 0), 0))}
-        week=${week} dayNumbers=${week.map((d) => (d.activeMinutes != null ? t("health_minutes", d.activeMinutes) : null))}
-        chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.activeMinutes)} week=${week} picked=${picked} onPick=${pick} />`} />`}
-    ${heart && html`<${Card} title=${t("health_heart")} more=${t("health_more_heart")}>
-      <div class="health-row"><${BigNumber} text=${t("health_bpm", heart.curve.filter((v) => v > 0).slice(-1)[0] ?? 0)} />
-        <span class="small muted">${t("health_heart_range", dayName(heart.startMs), Math.min(...heart.curve.filter((v) => v > 0)), Math.max(...heart.curve))}</span></div>
-      <${DayHeartLine} curve=${heart.curve} />
-    <//>`}
     ${i.naps.length > 0 && html`<${Card} title=${t("health_naps")} more=${t("health_more_naps")}>
       <${BigNumber} text=${healthDuration(i.naps.reduce((sum, n) => sum + n.sleepMinutes, 0))} />
       ${i.naps.map((n) => html`<div key=${n.startMs}>${new Date(n.startMs).toLocaleString(locale(), { weekday: "short", hour: "2-digit", minute: "2-digit" })}, ${healthDuration(n.sleepMinutes)}</div>`)}
     <//>`}
-
     ${i.latestNight && html`<h3 class="health-section">${t("health_week")}</h3>
       ${now.meanSleepMinutes != null && html`<${WeekCard} title=${t("health_sleep")} number=${healthDuration(now.meanSleepMinutes)}
         caption=${before.meanSleepMinutes != null ? t("health_mean_night_before", healthDuration(before.meanSleepMinutes)) : t("health_mean_night")}
@@ -454,11 +433,6 @@ export function HealthContent({ i, records }) {
         caption=${before.meanScore != null ? t("health_mean_score_before", before.meanScore) : t("health_mean_score")}
         week=${week} dayNumbers=${week.map((d) => (d.score != null ? String(d.score) : null))}
         chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.score)} week=${week} picked=${picked} onPick=${pick} />`} />`}
-      ${i.resting && html`<${WeekCard} title=${t("health_resting")} more=${t("health_more_resting")} number=${t("health_bpm", i.resting.latest)}
-        caption=${i.resting.usual != null ? t("health_usually", i.resting.usual) : t("health_nights_more", i.resting.nightsNeeded)}
-        week=${week} dayNumbers=${week.map((d) => (d.resting != null ? t("health_bpm", d.resting) : null))}
-        chart=${(picked, pick) => html`<div><${WeekLine} values=${week.map((d) => d.resting)} week=${week} usual=${i.resting.usual} picked=${picked} onPick=${pick} />
-          ${i.resting.usual == null && html`<${NightsToGo} needed=${i.resting.nightsNeeded} total=${7} />`}</div>`} />`}
       <${Card} title=${t("health_regular")} more=${t("health_more_regular")}>
         ${i.regularity
           ? html`<div>${t("health_regular_bed", clockFromMidnight(i.regularity.bedtimeMinutes), healthDuration(i.regularity.bedtimeSpreadMinutes))}</div>
@@ -466,12 +440,142 @@ export function HealthContent({ i, records }) {
           : html`<div class="small muted">${t("health_nights_more", i.regularityNightsNeeded)}</div><${NightsToGo} needed=${i.regularityNightsNeeded} total=${5} />`}
         <${SleepWindows} week=${week} />
       <//>
+    `}
+    ${earlier.length > 0 && html`<h3 class="health-section">${t("health_earlier")}</h3>
+      ${earlier.map((r) => html`<${EarlierNight} key=${r.id} r=${r} />`)}`}
+  `;
+}
+
+/** Activity as a page of Health: the steps and active minutes of the week, the workouts, and earlier workouts. */
+export function ActivityDetail({ i, records }) {
+  const week = i.week || [];
+  // A computer sees whole days: only the phone hears the watch during the day.
+  const lastSteps = week.map((d) => d.steps != null).lastIndexOf(true);
+  const earlier = records.filter((r) => r.kind === "workout").slice(0, 30);
+  const now = i.thisWeek;
+  return html`
+    ${(lastSteps >= 0 || now.workouts > 0) && html`<h3 class="health-section">${t("health_week")}</h3>`}
+    ${lastSteps >= 0 && html`
+      <${WeekCard} title=${t("health_steps_title")} number=${number(week[lastSteps].steps)} caption=${dayName(week[lastSteps].startMs)}
+        week=${week} dayNumbers=${week.map((d) => (d.steps != null ? number(d.steps) : null))}
+        chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.steps)} week=${week} picked=${picked} onPick=${pick} />`} />
+      <${WeekCard} title=${t("health_active_title")} more=${t("health_more_active")}
+        number=${t("health_minutes", week[lastSteps].activeMinutes ?? 0)}
+        caption=${t("health_active_week", week.reduce((sum, d) => sum + (d.activeMinutes || 0), 0))}
+        week=${week} dayNumbers=${week.map((d) => (d.activeMinutes != null ? t("health_minutes", d.activeMinutes) : null))}
+        chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.activeMinutes)} week=${week} picked=${picked} onPick=${pick} />`} />`}
       ${now.workouts > 0 && html`<${Card} title=${t("health_workouts")}>
         <${BigNumber} text=${healthDuration(now.workoutMinutes)} />
         <div class="small muted">${t(now.workouts === 1 ? "health_workouts_week_one" : "health_workouts_week", now.workouts)}</div>
-      <//>`}`}
-
+      <//>`}
     ${earlier.length > 0 && html`<h3 class="health-section">${t("health_earlier")}</h3>
-      ${earlier.map((r) => (r.kind === "workout" ? html`<${Workout} key=${r.id} r=${r} />` : html`<${EarlierNight} key=${r.id} r=${r} />`))}`}
+      ${earlier.map((r) => html`<${Workout} key=${r.id} r=${r} />`)}`}
+  `;
+}
+
+/** The heart as a page of Health: a warning when the resting rate is up, the heart rate of the day, and the resting rate of the week. */
+export function HeartDetail({ i }) {
+  const week = i.week || [];
+  const heart = i.latestDayHeart;
+  return html`
+    ${i.alertAboveUsual != null && html`<div class="card tinted health-card" style="--tint:var(--accent-soft)"><div class="health-row"><${Icon} name="heart" size=${20} /><div>${t("health_alert", i.alertAboveUsual)}</div></div></div>`}
+    ${heart && html`<${Card} title=${t("health_heart")} more=${t("health_more_heart")}>
+      <div class="health-row"><${BigNumber} text=${t("health_bpm", heart.curve.filter((v) => v > 0).slice(-1)[0] ?? 0)} />
+        <span class="small muted">${t("health_heart_range", dayName(heart.startMs), Math.min(...heart.curve.filter((v) => v > 0)), Math.max(...heart.curve))}</span></div>
+      <${DayHeartLine} curve=${heart.curve} />
+    <//>`}
+    ${i.resting && html`<h3 class="health-section">${t("health_week")}</h3>`}
+      ${i.resting && html`<${WeekCard} title=${t("health_resting")} more=${t("health_more_resting")} number=${t("health_bpm", i.resting.latest)}
+        caption=${i.resting.usual != null ? t("health_usually", i.resting.usual) : t("health_nights_more", i.resting.nightsNeeded)}
+        week=${week} dayNumbers=${week.map((d) => (d.resting != null ? t("health_bpm", d.resting) : null))}
+        chart=${(picked, pick) => html`<div><${WeekLine} values=${week.map((d) => d.resting)} week=${week} usual=${i.resting.usual} picked=${picked} onPick=${pick} />
+          ${i.resting.usual == null && html`<${NightsToGo} needed=${i.resting.nightsNeeded} total=${7} />`}</div>`} />`}
+  `;
+}
+
+/** A circle with soft waves around its edge, after the shapes of Material You: a few deep lobes make a clover, many shallow ones a cookie. */
+function wavyCircle(size, lobes, depth) {
+  const c = size / 2, points = [];
+  for (let step = 0; step <= 240; step++) {
+    const a = (step / 240) * 2 * Math.PI - Math.PI / 2;
+    const r = c * (1 - depth / 2 + (depth / 2) * Math.cos(lobes * a));
+    points.push(`${(c + r * Math.cos(a)).toFixed(2)},${(c + r * Math.sin(a)).toFixed(2)}`);
+  }
+  return `M${points.join("L")}Z`;
+}
+
+/** The heart rate of a day as a small line, with gaps where the watch was off the wrist. */
+function Sparkline({ curve }) {
+  const measured = curve.filter((v) => v > 0);
+  if (measured.length < 2) return null;
+  const low = Math.min(...measured) - 2, high = Math.max(...measured) + 2;
+  const width = 196, height = 48;
+  let d = "", before = -100;
+  curve.forEach((v, index) => {
+    if (v <= 0) return;
+    const x = (index / (curve.length - 1)) * width, y = (1 - (v - low) / (high - low)) * height;
+    d += `${index - before > 6 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
+    before = index;
+  });
+  return html`<svg viewBox=${`0 0 ${width} ${height}`} width=${width} height=${height} aria-hidden="true">
+    <path d=${d} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>`;
+}
+
+/** A card of a part of Health: its icon in a round, its name, the number large, a short word, and a little picture beside it. */
+function PartCard({ icon, tone, title, value, caption, onClick, children }) {
+  return html`<button class=${"card health-part-card tone-" + tone} onClick=${onClick}>
+    <div class="health-part-head"><span class="health-part-icon"><${Icon} name=${icon} size=${18} /></span><span class="grow">${title}</span><${Icon} name="chevron-right" size=${16} /></div>
+    <div class="health-row"><div class="grow"><div class="health-part-value">${value}</div><div class="small muted">${caption}</div></div>${children}</div>
+  </button>`;
+}
+
+/**
+ * Where Health opens: last night large with its score on a cookie, then a card per part with what matters most of it. Each opens the
+ * whole of that part. Only parts with something in them: a card that says nothing makes the page look broken.
+ */
+export function HealthOverview({ i, records, goal, onOpen }) {
+  const week = i.week || [];
+  const night = records.find((r) => r.kind === "sleep");
+  const insight = night && i.latestNight && i.latestNight.id === night.id ? i.latestNight : null;
+  const lastSteps = week.map((d) => d.steps != null).lastIndexOf(true);
+  const steps = lastSteps >= 0 ? week[lastSteps].steps : null;
+  const heart = i.latestDayHeart;
+  const resting = i.resting;
+  const mean = i.thisWeek ? i.thisWeek.meanSleepMinutes : null;
+  return html`
+    ${night && html`<button class="health-hero" onClick=${() => onOpen("sleep")}>
+      <svg class="health-clover" viewBox="0 0 160 160" aria-hidden="true"><path d=${wavyCircle(160, 4, 0.32)} /></svg>
+      <div class="health-hero-main">
+        <div class="health-hero-label"><span class="health-hero-icon"><${Icon} name="moon" size=${16} /></span>${t("watch_last_night")}</div>
+        <${BigNumber} text=${healthDuration(night.sleepMinutes)} />
+        <div class="small muted">${new Date(night.endMs).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" })}</div>
+        <div class="health-pills">
+          <span class="health-pill">${t("health_stat_asleep")}<b>${night.efficiencyPercent}%</b></span>
+          ${night.awakeMinutes != null && html`<span class="health-pill">${t("health_stage_wake")}<b>${healthDuration(night.awakeMinutes)}</b></span>`}
+          ${night.heartRateLow != null && html`<span class="health-pill">${t("health_stat_lowest")}<b>${t("health_bpm", night.heartRateLow)}</b></span>`}
+        </div>
+      </div>
+      ${insight && html`<div class="health-hero-score">
+        <div class="health-cookie"><svg class="health-cookie-shape" viewBox="0 0 120 120" aria-hidden="true"><path d=${wavyCircle(120, 9, 0.09)} /></svg><${ScoreRing} score=${insight.score} /></div>
+        <span class="small">${t("health_score")}</span>
+      </div>`}
+    </button>`}
+    <div class="health-parts">
+      ${(mean != null || night) && html`<${PartCard} icon="moon" tone="sleep" title=${t("health_sleep")}
+        value=${healthDuration(mean != null ? mean : night.sleepMinutes)} caption=${t(mean != null ? "health_mean_night" : "watch_last_night")}
+        onClick=${() => onOpen("sleep")}>
+        ${week.length > 0 && html`<${WeekBars} values=${week.map((d) => d.sleepMinutes)} week=${week} picked=${null} onPick=${() => {}} />`}
+      <//>`}
+      ${steps != null && html`<${PartCard} icon="walk" tone="activity" title=${t("health_activity_title")} value=${number(steps)}
+        caption=${goal ? t("health_steps_of_goal", number(goal)) : dayName(week[lastSteps].startMs)} onClick=${() => onOpen("activity")}>
+        ${goal && html`<div class="health-goal"><div style=${`width:${Math.min(100, (steps / goal) * 100)}%`}></div></div>`}
+      <//>`}
+      ${(resting || heart) && html`<${PartCard} icon="heart" tone="heart" title=${t("health_heart_title")}
+        value=${resting ? t("health_bpm", resting.latest) : t("health_bpm", heart.curve.filter((v) => v > 0).slice(-1)[0] ?? 0)}
+        caption=${resting ? (resting.usual != null ? t("health_usually", resting.usual) : t("health_nights_more", resting.nightsNeeded)) : t("health_heart")}
+        onClick=${() => onOpen("heart")}>
+        ${heart && html`<${Sparkline} curve=${heart.curve} />`}
+      <//>`}
+    </div>
   `;
 }
