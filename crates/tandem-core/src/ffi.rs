@@ -332,6 +332,9 @@ pub struct TandemWatchSettings {
     pub smart_wake: bool,
     pub heart_all_day: bool,
     pub step_goal: u32,
+    /// How strong waking gently gets at its top, in per cent of the watch's motor. 0 from a phone that does not know it yet.
+    #[uniffi(default = 0)]
+    pub wake_strength: u8,
 }
 
 /// What to change of the choices for a watch: what is None stays as it is.
@@ -347,6 +350,8 @@ pub struct TandemWatchSettingsChange {
     pub heart_all_day: Option<bool>,
     #[uniffi(default = None)]
     pub step_goal: Option<u32>,
+    #[uniffi(default = None)]
+    pub wake_strength: Option<u8>,
 }
 
 impl From<crate::proto::WatchStatus> for TandemWatchStatus {
@@ -385,25 +390,53 @@ impl From<TandemWatchStatus> for crate::proto::WatchStatus {
 
 impl From<crate::proto::WatchSettings> for TandemWatchSettings {
     fn from(s: crate::proto::WatchSettings) -> Self {
-        TandemWatchSettings { mouse: s.mouse, sleep_quiet: s.sleep_quiet, smart_wake: s.smart_wake, heart_all_day: s.heart_all_day, step_goal: s.step_goal }
+        TandemWatchSettings {
+            mouse: s.mouse,
+            sleep_quiet: s.sleep_quiet,
+            smart_wake: s.smart_wake,
+            heart_all_day: s.heart_all_day,
+            step_goal: s.step_goal,
+            wake_strength: s.wake_strength,
+        }
     }
 }
 
 impl From<TandemWatchSettings> for crate::proto::WatchSettings {
     fn from(s: TandemWatchSettings) -> Self {
-        crate::proto::WatchSettings { mouse: s.mouse, sleep_quiet: s.sleep_quiet, smart_wake: s.smart_wake, heart_all_day: s.heart_all_day, step_goal: s.step_goal }
+        crate::proto::WatchSettings {
+            mouse: s.mouse,
+            sleep_quiet: s.sleep_quiet,
+            smart_wake: s.smart_wake,
+            heart_all_day: s.heart_all_day,
+            step_goal: s.step_goal,
+            wake_strength: s.wake_strength,
+        }
     }
 }
 
 impl From<crate::proto::WatchSettingsChange> for TandemWatchSettingsChange {
     fn from(c: crate::proto::WatchSettingsChange) -> Self {
-        TandemWatchSettingsChange { mouse: c.mouse, sleep_quiet: c.sleep_quiet, smart_wake: c.smart_wake, heart_all_day: c.heart_all_day, step_goal: c.step_goal }
+        TandemWatchSettingsChange {
+            mouse: c.mouse,
+            sleep_quiet: c.sleep_quiet,
+            smart_wake: c.smart_wake,
+            heart_all_day: c.heart_all_day,
+            step_goal: c.step_goal,
+            wake_strength: c.wake_strength,
+        }
     }
 }
 
 impl From<TandemWatchSettingsChange> for crate::proto::WatchSettingsChange {
     fn from(c: TandemWatchSettingsChange) -> Self {
-        crate::proto::WatchSettingsChange { mouse: c.mouse, sleep_quiet: c.sleep_quiet, smart_wake: c.smart_wake, heart_all_day: c.heart_all_day, step_goal: c.step_goal }
+        crate::proto::WatchSettingsChange {
+            mouse: c.mouse,
+            sleep_quiet: c.sleep_quiet,
+            smart_wake: c.smart_wake,
+            heart_all_day: c.heart_all_day,
+            step_goal: c.step_goal,
+            wake_strength: c.wake_strength,
+        }
     }
 }
 

@@ -499,7 +499,11 @@ object WatchLink : LinkListener, WatchBleClient.Events {
                 _ui.update { WatchUi() }
                 client?.stop()
             }
-            is Message.SmartWakeAlarm -> appContext?.let { TrackingStore(it).smartWakeAlarmMs = message.atMs }
+            is Message.SmartWakeAlarm -> appContext?.let {
+                val store = TrackingStore(it)
+                store.smartWakeAlarmMs = message.atMs
+                store.smartWakeStrength = message.strength.coerceIn(Message.SmartWakeAlarm.MIN_STRENGTH, Message.SmartWakeAlarm.MAX_STRENGTH)
+            }
             is Message.StepGoal -> {
                 appContext?.let { TrackingStore(it).stepGoal = message.steps }
                 Tracking.publishStepGoal(message.steps)

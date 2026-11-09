@@ -671,6 +671,9 @@
     <string name="dev_health_demo_sub">Two weeks of nights, steps and heart rate that never happened, and a watch until the app restarts, to see Health and the start page without one.</string>
     <string name="health_settings_title">Health settings</string>
     <string name="health_active_that_week">%1$d minutes active that week</string>
+    <string name="health_wake_strength">Strength</string>
+    <string name="health_wake_soft">Soft</string>
+    <string name="health_wake_strong">Strong</string>
     <string name="health_week_before">A week back</string>
     <string name="health_week_after">A week on</string>
     <string name="health_month_before">A month back</string>

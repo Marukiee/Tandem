@@ -138,6 +138,7 @@ class WatchBridge(
     private var stepGoal = TandemPrefs.DEFAULT_STEP_GOAL
     private var heartAllDay = true
     private var smartWake = false
+    private var wakeStrength = Message.SmartWakeAlarm.DEFAULT_STRENGTH
     private val alarmChanged = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             handler.post { sendAlarm() }
@@ -242,6 +243,14 @@ class WatchBridge(
             prefs.smartWake.collect { on ->
                 handler.post {
                     smartWake = on
+                    sendAlarm()
+                }
+            }
+        }
+        jobs += scope.launch {
+            prefs.wakeStrength.collect { strength ->
+                handler.post {
+                    wakeStrength = strength
                     sendAlarm()
                 }
             }
@@ -482,7 +491,7 @@ class WatchBridge(
 
     private fun sendAlarm() {
         val next = context.getSystemService(AlarmManager::class.java).nextAlarmClock?.triggerTime ?: 0L
-        enqueue(Message.SmartWakeAlarm(if (smartWake) next else 0L))
+        enqueue(Message.SmartWakeAlarm(if (smartWake) next else 0L, wakeStrength))
     }
 
     private fun publishPlayers() {

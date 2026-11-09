@@ -75,4 +75,15 @@ class WakeSwellTest {
         assertEquals(window / 2, timings.sum())
         assertEquals(WakeSwell.amplitude(WakeSwell.strength(0.5 + WakeSwell.STEP_MS / 2.0 / window)), rest.first())
     }
+
+    @Test
+    fun `the chosen strength moves the top of the swell, and the default is the swell as drawn`() {
+        val window = SmartWake.WINDOW_MS
+        val drawn = WakeSwell.waveform(0, window).second.max()
+        assertEquals(drawn, WakeSwell.waveform(0, window, WakeSwell.DRAWN_TOP_PERCENT).second.max())
+        val soft = WakeSwell.waveform(0, window, 20).second.max()
+        val strong = WakeSwell.waveform(0, window, 100).second.max()
+        kotlin.test.assertTrue(soft < drawn && drawn < strong, "soft $soft, drawn $drawn, strong $strong")
+        assertEquals(255, strong)
+    }
 }

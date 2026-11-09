@@ -85,6 +85,7 @@ class TandemPrefs(private val context: Context) {
         val heartAllDay = booleanPreferencesKey("heart_all_day")
         val watchName = stringPreferencesKey("watch_name")
         val smartWake = booleanPreferencesKey("smart_wake")
+        val wakeStrength = intPreferencesKey("wake_strength")
         val healthConnectWrite = booleanPreferencesKey("health_connect_write")
         val watchMouse = booleanPreferencesKey("watch_mouse")
         val watchSleepQuiet = booleanPreferencesKey("watch_sleep_quiet")
@@ -196,6 +197,13 @@ class TandemPrefs(private val context: Context) {
     /** Off until asked for: being woken earlier than your alarm is not something to get by surprise. */
     val smartWake: Flow<Boolean> = data.map { it[Keys.smartWake] ?: false }
     suspend fun setSmartWake(value: Boolean) = set(Keys.smartWake, value)
+
+    /** How strong waking gently gets at its top, in per cent of the watch's motor. The watch gets it with the next alarm. */
+    val wakeStrength: Flow<Int> = data.map { it[Keys.wakeStrength] ?: nl.markmaaktmedia.tandem.watch.protocol.Message.SmartWakeAlarm.DEFAULT_STRENGTH }
+    suspend fun setWakeStrength(value: Int) = set(
+        Keys.wakeStrength,
+        value.coerceIn(nl.markmaaktmedia.tandem.watch.protocol.Message.SmartWakeAlarm.MIN_STRENGTH, nl.markmaaktmedia.tandem.watch.protocol.Message.SmartWakeAlarm.MAX_STRENGTH),
+    )
     /** Off until asked for: what someone measures only goes to other apps when they say so. */
     val healthConnectWrite: Flow<Boolean> = data.map { it[Keys.healthConnectWrite] ?: false }
     suspend fun setHealthConnectWrite(value: Boolean) = set(Keys.healthConnectWrite, value)

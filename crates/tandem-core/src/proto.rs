@@ -404,6 +404,9 @@ pub struct WatchSettings {
     /// Steps a day.
     #[serde(default)]
     pub step_goal: u32,
+    /// How strong waking gently gets at its top, in per cent of the watch's motor. 0 from a phone that does not know it yet.
+    #[serde(default)]
+    pub wake_strength: u8,
 }
 
 /// What to change of `WatchSettings`: what is None stays as it is, so two computers that each change one thing do not undo the other.
@@ -419,6 +422,8 @@ pub struct WatchSettingsChange {
     pub heart_all_day: Option<bool>,
     #[serde(default)]
     pub step_goal: Option<u32>,
+    #[serde(default)]
+    pub wake_strength: Option<u8>,
 }
 
 /// How a phone sounds. A number on the wire, so a kind that a newer app adds does not make its whole status unreadable here.

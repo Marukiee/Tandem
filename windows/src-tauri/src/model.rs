@@ -67,6 +67,7 @@ fn status(s: &TandemStatus) -> Value {
             // Null from a phone older than these: the page then shows no switch that could be wrong.
             "settings": w.settings.as_ref().map(|s| json!({
                 "mouse": s.mouse, "sleepQuiet": s.sleep_quiet, "smartWake": s.smart_wake, "heartAllDay": s.heart_all_day, "stepGoal": s.step_goal,
+                "wakeStrength": s.wake_strength,
             })),
             // Which computer the watch steers now, while its mouse screen is open.
             "mouse": w.mouse.as_ref().map(|m| json!({ "target": m.target, "table": m.table })),

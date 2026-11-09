@@ -148,6 +148,11 @@ class TrackingStore(context: Context) {
         get() = prefs.getLong("smart_wake_alarm", 0)
         set(value) = prefs.edit().putLong("smart_wake_alarm", value).apply()
 
+    /** How strong waking gently gets at its top, in per cent of the motor, as chosen on the phone. */
+    var smartWakeStrength: Int
+        get() = prefs.getInt("smart_wake_strength", nl.markmaaktmedia.tandem.watch.protocol.Message.SmartWakeAlarm.DEFAULT_STRENGTH)
+        set(value) = prefs.edit().putInt("smart_wake_strength", value).apply()
+
     var stepGoal: Int
         get() = prefs.getInt("step_goal", DEFAULT_STEP_GOAL)
         set(value) = prefs.edit().putInt("step_goal", value).apply()

@@ -199,6 +199,7 @@ class TandemService : LifecycleService() {
                 event.change.mouse?.let { prefs.setWatchMouse(it) }
                 event.change.sleepQuiet?.let { prefs.setWatchSleepQuiet(it) }
                 event.change.smartWake?.let { prefs.setSmartWake(it) }
+                event.change.wakeStrength?.let { prefs.setWakeStrength(it.toInt()) }
                 event.change.heartAllDay?.let { prefs.setHeartAllDay(it) }
                 event.change.stepGoal?.let { prefs.setStepGoal(it.toInt().coerceIn(TandemPrefs.STEP_GOAL_MIN, TandemPrefs.STEP_GOAL_MAX)) }
             }

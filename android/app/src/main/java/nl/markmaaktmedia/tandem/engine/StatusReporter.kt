@@ -82,9 +82,12 @@ class StatusReporter(
         scope.launch { context.graph.watch.state.collect { schedule(WATCH_DELAY_MS) } }
         scope.launch {
             val prefs = context.graph.prefs
-            combine(prefs.watchMouse, prefs.watchSleepQuiet, prefs.smartWake, prefs.heartAllDay, prefs.stepGoal) { mouse, quiet, wake, heart, goal ->
-                TandemWatchSettings(mouse, quiet, wake, heart, goal.coerceAtLeast(0).toUInt())
-            }.collect {
+            combine(
+                combine(prefs.watchMouse, prefs.watchSleepQuiet, prefs.smartWake, prefs.heartAllDay, prefs.stepGoal) { mouse, quiet, wake, heart, goal ->
+                    TandemWatchSettings(mouse, quiet, wake, heart, goal.coerceAtLeast(0).toUInt())
+                },
+                prefs.wakeStrength,
+            ) { settings, strength -> settings.copy(wakeStrength = strength.coerceIn(0, 255).toUByte()) }.collect {
                 watchSettings = it
                 schedule(WATCH_DELAY_MS)
             }

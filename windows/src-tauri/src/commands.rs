@@ -267,8 +267,9 @@ pub async fn set_watch_settings(
     smart_wake: Option<bool>,
     heart_all_day: Option<bool>,
     step_goal: Option<u32>,
+    wake_strength: Option<u8>,
 ) -> Reply<()> {
-    let change = tandem_core::ffi::TandemWatchSettingsChange { mouse, sleep_quiet, smart_wake, heart_all_day, step_goal };
+    let change = tandem_core::ffi::TandemWatchSettingsChange { mouse, sleep_quiet, smart_wake, heart_all_day, step_goal, wake_strength };
     state.engine()?.set_watch_settings(id, change).await.map_err(shown)
 }
 

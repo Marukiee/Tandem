@@ -156,6 +156,12 @@ private struct HealthChoicesCard: View {
                                 .disabled(why != nil)
                                 .help(why ?? "")
                         }
+                        // The strength only while it is on, and only from a phone that knows it: an older one sends 0.
+                        if settings.smartWake && settings.wakeStrength > 0 {
+                            Divider().opacity(0.4).padding(.horizontal, 14)
+                            WakeStrengthRow(strength: Int(settings.wakeStrength)) { model.setWatchSettings(phone.id, TandemWatchSettingsChange(wakeStrength: UInt8($0))) }
+                                .disabled(why != nil)
+                        }
                         Divider().opacity(0.4).padding(.horizontal, 14)
                         SettingRow(symbol: "heart", title: "Heart rate all day", subtitle: "Half a minute in every five while you wear your watch.") {
                             Toggle("", isOn: Binding(get: { settings.heartAllDay }, set: { model.setWatchSettings(phone.id, TandemWatchSettingsChange(heartAllDay: $0)) }))
@@ -1484,5 +1490,39 @@ private struct CalendarDay: View {
             Text(verbatim: value).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
         }
         .opacity(later ? 0.35 : 1)
+    }
+}
+
+/// How strong waking gently gets at its top, in steps of ten per cent of the watch's motor. Sent when the slider is let go, not on every
+/// step, so the phone and the watch get one change.
+private struct WakeStrengthRow: View {
+    let strength: Int
+    let onChange: (Int) -> Void
+    @State private var moving: Double?
+
+    var body: some View {
+        let shown = moving ?? Double(strength)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Strength")
+                Spacer()
+                Text(verbatim: "\(Int(shown))%").foregroundStyle(Palette.indigo).monospacedDigit()
+            }
+            Slider(
+                value: Binding(get: { shown }, set: { moving = $0 }),
+                in: 10...100, step: 10,
+                label: { EmptyView() },
+                minimumValueLabel: { Text("Soft").font(.caption).foregroundStyle(.secondary) },
+                maximumValueLabel: { Text("Strong").font(.caption).foregroundStyle(.secondary) },
+                onEditingChanged: { editing in
+                    if !editing, let chosen = moving {
+                        onChange(Int(chosen))
+                        moving = nil
+                    }
+                }
+            )
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
     }
 }

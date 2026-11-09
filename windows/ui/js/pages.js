@@ -1360,9 +1360,15 @@ function HealthChoices() {
   const toggle = (icon, key, title, sub) => html`<${SettingRow} icon=${icon} title=${t(title)} sub=${t(sub)} why=${why}>
     <${Switch} on=${shown[key]} label=${t(title)} disabled=${!device.online} onChange=${(on) => change({ [key]: on })} />
   <//>`;
+  // The strength only while waking gently is on, and only from a phone that knows it: an older one sends nothing or 0.
+  const strength = shown.smartWake && shown.wakeStrength > 0;
   return html`<h2>${t("health_prefs")}</h2>
     <div class="card flush">
       ${toggle("alarm", "smartWake", "watch_wake", "watch_wake_sub")}
+      ${strength && html`<${SettingRow} icon="vibrate" title=${t("watch_wake_strength")} sub=${t("watch_wake_strength_sub", shown.wakeStrength)} why=${why}>
+        <input type="range" class="wake-strength" min="10" max="100" step="10" value=${shown.wakeStrength} disabled=${!device.online}
+          aria-label=${t("watch_wake_strength")} onChange=${(e) => change({ wakeStrength: Number(e.currentTarget.value) })} />
+      <//>`}
       ${toggle("heart", "heartAllDay", "watch_heart", "watch_heart_sub")}
       <${SettingRow} icon="walk" title=${t("watch_goal")} sub=${t("watch_goal_row", shown.stepGoal.toLocaleString(language() === "nl" ? "nl" : "en"))} why=${why}>
         <button class="btn small" disabled=${!device.online} onClick=${() => set({ dialog: { kind: "step-goal", id: device.id, goal: shown.stepGoal } })}>${t("change")}</button>

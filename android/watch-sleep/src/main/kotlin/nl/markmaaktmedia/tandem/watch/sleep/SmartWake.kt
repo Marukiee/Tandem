@@ -128,15 +128,20 @@ object WakeSwell {
     fun amplitude(strength: Double): Int =
         Math.round(SOFTEST + (STRONGEST - SOFTEST) * Math.pow(strength.coerceIn(0.0, 1.0), FEEL)).toInt().coerceIn(1, STRONGEST)
 
+    /** The top of the swell as drawn, two fifths of the motor; a person's own choice scales the whole swell to their top instead. */
+    const val DRAWN_TOP_PERCENT = 40
+
     /**
      * The rest of a window of [windowMs] from [fromMs] into it, as the timings and strengths of one waveform: one buzz, without seams. A
-     * window that began before the watch got to it picks up where it is by then.
+     * window that began before the watch got to it picks up where it is by then. [topPercent] is how strong its highest wave is, in per
+     * cent of the motor: the same shape, softer or stronger, as the person chose.
      */
-    fun waveform(fromMs: Long, windowMs: Long): Pair<LongArray, IntArray> {
+    fun waveform(fromMs: Long, windowMs: Long, topPercent: Int = DRAWN_TOP_PERCENT): Pair<LongArray, IntArray> {
         val start = fromMs.coerceIn(0, windowMs)
         val steps = ((windowMs - start) / STEP_MS).toInt().coerceAtLeast(1)
+        val scale = topPercent.coerceIn(1, 100).toDouble() / DRAWN_TOP_PERCENT
         val timings = LongArray(steps) { STEP_MS }
-        val amplitudes = IntArray(steps) { step -> amplitude(strength((start + step * STEP_MS + STEP_MS / 2).toDouble() / windowMs)) }
+        val amplitudes = IntArray(steps) { step -> amplitude(scale * strength((start + step * STEP_MS + STEP_MS / 2).toDouble() / windowMs)) }
         return timings to amplitudes
     }
 }

@@ -668,6 +668,9 @@
     <string name="dev_health_demo_sub">Twee weken nachten, stappen en hartslag die nooit gebeurd zijn, en een horloge tot de app herstart, om Gezondheid en het beginscherm zonder horloge te bekijken.</string>
     <string name="health_settings_title">Instellingen voor Gezondheid</string>
     <string name="health_active_that_week">%1$d minuten actief die week</string>
+    <string name="health_wake_strength">Sterkte</string>
+    <string name="health_wake_soft">Zacht</string>
+    <string name="health_wake_strong">Sterk</string>
     <string name="health_week_before">Een week terug</string>
     <string name="health_week_after">Een week verder</string>
     <string name="health_month_before">Een maand terug</string>

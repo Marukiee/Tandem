@@ -26,8 +26,9 @@ internal object GentleWake {
 
     val running: Boolean get() = stopNow != null
 
-    private fun effect(fromMs: Long, windowMs: Long): VibrationEffect {
-        val (timings, amplitudes) = WakeSwell.waveform(fromMs, windowMs)
+    /** As strong as the person set it on the phone, which passes it on with the next alarm. */
+    private fun effect(context: Context, fromMs: Long, windowMs: Long): VibrationEffect {
+        val (timings, amplitudes) = WakeSwell.waveform(fromMs, windowMs, TrackingStore(context).smartWakeStrength)
         return VibrationEffect.createWaveform(timings, amplitudes, -1)
     }
 
@@ -35,7 +36,7 @@ internal object GentleWake {
     fun tryOnce(context: Context) {
         val vibrator = context.getSystemService(VibratorManager::class.java).defaultVibrator
         vibrator.cancel()
-        vibrator.vibrate(effect(0, TRY_MS), attributes)
+        vibrator.vibrate(effect(context, 0, TRY_MS), attributes)
     }
 
     fun start(context: Context, untilMs: Long) {
@@ -61,7 +62,7 @@ internal object GentleWake {
         stopNow = stop
         app.registerReceiver(seen, IntentFilter(Intent.ACTION_SCREEN_ON))
         // One waveform for the rest of the window: pieces one after the other left a small break at each seam.
-        vibrator.vibrate(effect(now - (untilMs - SmartWake.WINDOW_MS), SmartWake.WINDOW_MS), attributes)
+        vibrator.vibrate(effect(app, now - (untilMs - SmartWake.WINDOW_MS), SmartWake.WINDOW_MS), attributes)
         handler.postDelayed({ stop() }, untilMs - now)
     }
 

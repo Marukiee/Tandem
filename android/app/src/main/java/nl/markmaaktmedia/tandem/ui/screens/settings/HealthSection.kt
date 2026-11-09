@@ -1,5 +1,7 @@
 package nl.markmaaktmedia.tandem.ui.screens.settings
 
+import kotlin.math.roundToInt
+import nl.markmaaktmedia.tandem.watch.protocol.Message
 import android.text.format.DateUtils
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -861,11 +863,16 @@ internal fun HealthSharing() {
 internal fun HealthChoices() {
     val watch by LocalContext.current.graph.watch.state.collectAsState()
     if (!watch.paired) return
+    val smartWake by LocalContext.current.graph.prefs.smartWake.collectAsState(initial = false)
     SectionHeader(stringResource(R.string.section_preferences), top = 16.dp, bottom = 0.dp)
     SettingsGroup {
-        SmartWakeRow(0, 3, searchTarget = true)
-        HeartAllDayRow(1, 3, searchTarget = true)
-        StepGoalRow(2, 3)
+        // The strength only while waking gently is on: a slider for something that is off says nothing.
+        val total = if (smartWake) 4 else 3
+        var at = 0
+        SmartWakeRow(at++, total, searchTarget = true)
+        if (smartWake) WakeStrengthRow(at++, total)
+        HeartAllDayRow(at++, total, searchTarget = true)
+        StepGoalRow(at, total)
     }
 }
 
@@ -882,6 +889,43 @@ internal fun SmartWakeRow(index: Int, total: Int, searchTarget: Boolean = false)
         )
     }
     if (searchTarget) SettingsTarget(FocusKeys.HealthSmartWake, index, total, row) else row()
+}
+
+/**
+ * How strong waking gently gets at its top, in steps of ten per cent of the watch's motor. It changes as the slider moves, and the
+ * watch gets it with the next alarm; the try in the developer options buzzes at it too.
+ */
+@Composable
+private fun WakeStrengthRow(index: Int, total: Int) {
+    val graph = LocalContext.current.graph
+    val scope = rememberCoroutineScope()
+    val saved by graph.prefs.wakeStrength.collectAsState(initial = Message.SmartWakeAlarm.DEFAULT_STRENGTH)
+    var moving by remember { mutableStateOf<Float?>(null) }
+    val shown = moving ?: saved.toFloat()
+    val scheme = MaterialTheme.colorScheme
+    GroupedRow(index, total) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.health_wake_strength), style = MaterialTheme.typography.titleSmall, color = scheme.onSurface, modifier = Modifier.weight(1f))
+                Text("${shown.roundToInt()}%", style = MaterialTheme.typography.titleSmall, color = scheme.primary)
+            }
+            androidx.compose.material3.Slider(
+                value = shown,
+                onValueChange = { moving = it },
+                onValueChangeFinished = {
+                    val chosen = (moving ?: return@Slider).roundToInt()
+                    moving = null
+                    scope.launch { graph.prefs.setWakeStrength(chosen) }
+                },
+                valueRange = Message.SmartWakeAlarm.MIN_STRENGTH.toFloat()..Message.SmartWakeAlarm.MAX_STRENGTH.toFloat(),
+                steps = (Message.SmartWakeAlarm.MAX_STRENGTH - Message.SmartWakeAlarm.MIN_STRENGTH) / 10 - 1,
+            )
+            Row {
+                Text(stringResource(R.string.health_wake_soft), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.health_wake_strong), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            }
+        }
+    }
 }
 
 /** The heart rate all day, like [SmartWakeRow]. */

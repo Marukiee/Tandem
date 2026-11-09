@@ -185,8 +185,17 @@ sealed interface Message {
     /** Watch to phone: the switch for steering a computer was changed on the wrist. */
     data class MouseEnabled(val on: Boolean) : Message
 
-    /** Phone to watch: the next alarm on the phone, 0 when there is none or when the person does not want waking early. */
-    data class SmartWakeAlarm(val atMs: Long) : Message
+    /**
+     * Phone to watch: the next alarm on the phone, 0 when there is none or when the person does not want waking early, and how strong
+     * waking gently may get at its top, in per cent of the motor. A phone from before that left it out, which is the default.
+     */
+    data class SmartWakeAlarm(val atMs: Long, val strength: Int = DEFAULT_STRENGTH) : Message {
+        companion object {
+            const val DEFAULT_STRENGTH = 40
+            const val MIN_STRENGTH = 10
+            const val MAX_STRENGTH = 100
+        }
+    }
 
     /** Phone to watch: how many steps a day the person aims for. */
     data class StepGoal(val steps: Int) : Message
@@ -380,7 +389,7 @@ object MessageCodec {
             is Message.WatchStatus -> w.u8(WATCH_STATUS).u8(message.level).bool(message.charging).varint(message.stepsToday).varint(message.activeMinutesToday.toLong())
             is Message.StepGoal -> w.u8(STEP_GOAL).varint(message.steps.toLong())
             is Message.MouseEnabled -> w.u8(MOUSE_ENABLED).bool(message.on)
-            is Message.SmartWakeAlarm -> w.u8(SMART_WAKE_ALARM).varint(message.atMs)
+            is Message.SmartWakeAlarm -> w.u8(SMART_WAKE_ALARM).varint(message.atMs).u8(message.strength.coerceIn(0, 255))
             is Message.HeartToday -> w.u8(HEART_TODAY).bytes(message.curve.toCurveBytes())
             is Message.HeartAllDay -> w.u8(HEART_ALL_DAY).bool(message.on)
             is Message.AppVersion -> w.u8(APP_VERSION).varint(message.code).str(message.name).str(message.signer)
@@ -451,7 +460,7 @@ object MessageCodec {
             WATCH_STATUS -> Message.WatchStatus(r.u8(), r.bool(), if (r.remaining > 0) r.varint() else 0, if (r.remaining > 0) r.varint().toInt() else 0)
             STEP_GOAL -> Message.StepGoal(r.varint().toInt())
             MOUSE_ENABLED -> Message.MouseEnabled(r.bool())
-            SMART_WAKE_ALARM -> Message.SmartWakeAlarm(r.varint())
+            SMART_WAKE_ALARM -> Message.SmartWakeAlarm(r.varint(), if (r.remaining > 0) r.u8() else Message.SmartWakeAlarm.DEFAULT_STRENGTH)
             HEART_TODAY -> Message.HeartToday(r.bytes().toCurve())
             HEART_ALL_DAY -> Message.HeartAllDay(r.bool())
             APP_VERSION -> Message.AppVersion(r.varint(), r.str(), r.str())

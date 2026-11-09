@@ -611,6 +611,7 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .pill-toggle { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border: 0; border-radius: 999px; background: var(--accent-soft); color: var(--text); font: inherit; font-weight: 600; cursor: default; transition: background .2s ease, color .2s ease; }
 .pill-toggle:hover:not(:disabled) { filter: brightness(1.05); }
 .pill-toggle.on { background: var(--accent); color: #fff; }
+.wake-strength { width: 160px; accent-color: var(--accent); }
 .pill-toggle:disabled { opacity: .5; }
 .goal { display: flex; align-items: center; gap: 6px; }
 .goal .num { min-width: 56px; text-align: center; font-variant-numeric: tabular-nums; }
