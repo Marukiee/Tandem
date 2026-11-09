@@ -36,6 +36,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -205,7 +206,7 @@ private fun TitleWithMore(title: String, open: Boolean, hasMore: Boolean, modifi
 
 /** A title, and for what a person could wonder about a question mark that opens the words behind it. */
 @Composable
-private fun CardTitle(title: String, info: String?, modifier: Modifier = Modifier) {
+internal fun CardTitle(title: String, info: String?, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, modifier = Modifier.weight(1f))
         if (info != null) InfoButton(title, info)
@@ -240,7 +241,7 @@ internal fun InfoButton(title: String, info: String) {
 
 /** A card of a health page. */
 @Composable
-private fun HealthCard(index: Int, total: Int, content: @Composable ColumnScope.() -> Unit) {
+internal fun HealthCard(index: Int, total: Int, content: @Composable ColumnScope.() -> Unit) {
     GroupedRow(index, total) {
         Column(Modifier.fillMaxWidth().padding(20.dp)) { content() }
     }
@@ -516,31 +517,38 @@ internal fun ActivityToday(insights: TandemHealthInsights?) {
     val graph = LocalContext.current.graph
     val watch by graph.watch.state.collectAsState()
     val goal by graph.prefs.stepGoal.collectAsState(initial = TandemPrefs.DEFAULT_STEP_GOAL)
-    val week = insights?.week.orEmpty()
-    if (week.isEmpty()) return
+    if (insights == null) return
+    var offset by rememberSaveable { mutableIntStateOf(0) }
+    val shown = rememberWeek(insights, offset)
+    val week = shown?.week.orEmpty()
+    WeekPager(stringResource(R.string.health_today), offset, { offset = it }, week)
+    if (shown == null || week.isEmpty()) return
     val days = week.map { it.startMs.toLong() }
+    // Today is live from the watch; a week further back has only whole days.
+    val live = shown.now && watch.paired
     val steps = week.mapIndexed { index, day ->
-        if (index == week.lastIndex && watch.paired) watch.stepsToday else day.steps?.toLong()
+        if (index == week.lastIndex && live) watch.stepsToday else day.steps?.toLong()
     }
     val active = week.mapIndexed { index, day ->
-        if (index == week.lastIndex && watch.paired) watch.activeMinutesToday else day.activeMinutes?.toInt()
+        if (index == week.lastIndex && live) watch.activeMinutesToday else day.activeMinutes?.toInt()
     }
-    if (!watch.paired && steps.none { it != null }) return
-    SectionHeader(stringResource(R.string.health_today), top = 12.dp, bottom = 0.dp)
+    if (!live && steps.none { it != null }) return
+    val shownDay = if (shown.now) week.lastIndex else steps.indexOfLast { it != null }.coerceAtLeast(0)
     SettingsGroup {
-        val today = steps.last() ?: 0L
+        val today = steps[shownDay] ?: 0L
         val left = goal - today
         WeekCard(
             0, 2, stringResource(R.string.health_steps_title), number(today),
-            if (left > 0) stringResource(R.string.health_steps_left, number(left)) else stringResource(R.string.health_steps_done),
+            if (!shown.now) dayName(LocalContext.current, week[shownDay].startMs.toLong())
+            else if (left > 0) stringResource(R.string.health_steps_left, number(left)) else stringResource(R.string.health_steps_done),
             week, steps.map { step -> step?.let(::number) },
         ) { selected, select ->
             WeekBars(steps.map { it?.toFloat() }, days, selected, select, stringResource(R.string.health_steps_title), goal = goal.toFloat())
         }
         val sum = active.sumOf { it ?: 0 }
         WeekCard(
-            1, 2, stringResource(R.string.health_active_title), stringResource(R.string.health_minutes, active.last() ?: 0),
-            stringResource(R.string.health_active_week, sum),
+            1, 2, stringResource(R.string.health_active_title), stringResource(R.string.health_minutes, active[shownDay] ?: 0),
+            if (shown.now) stringResource(R.string.health_active_week, sum) else stringResource(R.string.health_active_that_week, sum),
             week, active.map { minutes -> minutes?.let { stringResource(R.string.health_minutes, it) } },
             more = stringResource(R.string.health_more_active),
         ) { selected, select ->
@@ -627,19 +635,22 @@ private fun clock(minutes: UInt): String =
 @Composable
 internal fun SleepWeek(insights: TandemHealthInsights?) {
     if (insights == null || insights.latestNight == null) return
-    val week = insights.week
-    if (week.isEmpty()) return
+    var offset by rememberSaveable { mutableIntStateOf(0) }
+    val shown = rememberWeek(insights, offset)
+    val week = shown?.week.orEmpty()
+    WeekPager(stringResource(R.string.health_week), offset, { offset = it }, week)
+    if (shown == null || week.isEmpty()) return
     val days = week.map { it.startMs.toLong() }
-    val thisWeek = insights.thisWeek
-    val before = insights.lastWeek
-    val sleep = thisWeek.meanSleepMinutes
-    val score = thisWeek.meanScore
-    val total = listOf(sleep != null, score != null, true).count { it }
-    SectionHeader(stringResource(R.string.health_week), top = 16.dp, bottom = 0.dp)
+    val before = shown.before
+    val sleep = shown.summary.meanSleepMinutes
+    val score = shown.summary.meanScore
+    // How regular the nights are is about the last nights, so it belongs to this week only.
+    val total = listOf(sleep != null, score != null, shown.now).count { it }
+    if (total == 0) return
     SettingsGroup {
         var at = 0
         if (sleep != null) {
-            val was = before.meanSleepMinutes
+            val was = before?.meanSleepMinutes
             WeekCard(
                 at++, total, stringResource(R.string.health_sleep_title), duration(sleep.toInt()),
                 if (was != null) stringResource(R.string.health_mean_night_before, duration(was.toInt())) else stringResource(R.string.health_mean_night),
@@ -649,7 +660,7 @@ internal fun SleepWeek(insights: TandemHealthInsights?) {
             }
         }
         if (score != null) {
-            val was = before.meanScore
+            val was = before?.meanScore
             WeekCard(
                 at++, total, stringResource(R.string.health_score_title), "$score",
                 if (was != null) stringResource(R.string.health_mean_score_before, was.toInt()) else stringResource(R.string.health_mean_score),
@@ -658,7 +669,7 @@ internal fun SleepWeek(insights: TandemHealthInsights?) {
                 WeekBars(week.map { it.score?.toFloat() }, days, selected, select, stringResource(R.string.health_score_title))
             }
         }
-        RegularityCard(at, total, insights, days)
+        if (shown.now) RegularityCard(at, total, insights, days)
     }
 }
 
@@ -666,8 +677,11 @@ internal fun SleepWeek(insights: TandemHealthInsights?) {
 @Composable
 internal fun HeartWeek(insights: TandemHealthInsights?) {
     if (insights?.resting == null || insights.week.isEmpty()) return
-    SectionHeader(stringResource(R.string.health_week), top = 16.dp, bottom = 0.dp)
-    SettingsGroup { RestingCard(0, 1, insights, insights.week.map { it.startMs.toLong() }) }
+    var offset by rememberSaveable { mutableIntStateOf(0) }
+    val shown = rememberWeek(insights, offset)
+    WeekPager(stringResource(R.string.health_week), offset, { offset = it }, shown?.week.orEmpty())
+    if (shown == null || shown.week.isEmpty()) return
+    SettingsGroup { RestingCard(0, 1, insights, shown) }
 }
 
 /** The workouts of this week. */
@@ -691,13 +705,19 @@ internal fun ActivityWeek(insights: TandemHealthInsights?) {
 }
 
 @Composable
-private fun RestingCard(index: Int, total: Int, insights: TandemHealthInsights, days: List<Long>) {
+private fun RestingCard(index: Int, total: Int, insights: TandemHealthInsights, shown: ShownWeek) {
     val resting = insights.resting ?: return
-    val week = insights.week
+    val week = shown.week
+    val days = week.map { it.startMs.toLong() }
     val usual = resting.usual
+    // A week further back shows its own mean, not the latest night.
+    val mean = shown.summary.meanResting
     WeekCard(
-        index, total, stringResource(R.string.health_resting), stringResource(R.string.health_resting_line, resting.latest.toInt()),
-        if (usual != null) stringResource(R.string.health_usually, usual.toInt())
+        index, total, stringResource(R.string.health_resting),
+        if (shown.now) stringResource(R.string.health_resting_line, resting.latest.toInt())
+        else mean?.let { stringResource(R.string.health_resting_line, it.toInt()) } ?: "-",
+        if (!shown.now) stringResource(R.string.health_mean_score)
+        else if (usual != null) stringResource(R.string.health_usually, usual.toInt())
         else pluralStringResource(R.plurals.health_nights_more, resting.nightsNeeded.toInt(), resting.nightsNeeded.toInt()),
         week, week.map { day -> day.resting?.let { stringResource(R.string.health_resting_line, it.toInt()) } },
         more = stringResource(R.string.health_more_resting),

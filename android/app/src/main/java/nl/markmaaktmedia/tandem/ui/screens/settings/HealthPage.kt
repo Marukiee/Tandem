@@ -101,6 +101,7 @@ internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
 @Composable
 internal fun HealthDetailScreen(part: String, onBack: () -> Unit) {
     val insights = rememberHealthInsights()
+    val goal by LocalContext.current.graph.prefs.stepGoal.collectAsState(initial = nl.markmaaktmedia.tandem.data.TandemPrefs.DEFAULT_STEP_GOAL)
     val title = stringResource(
         when (part) {
             "sleep" -> R.string.health_sleep_title
@@ -114,18 +115,21 @@ internal fun HealthDetailScreen(part: String, onBack: () -> Unit) {
                 "sleep" -> {
                     LatestNight(insights)
                     SleepWeek(insights)
+                    MonthCalendar(CalendarKind.SLEEP)
                     Naps(insights)
                     EarlierNights()
                 }
                 "activity" -> {
                     ActivityToday(insights)
                     ActivityWeek(insights)
+                    MonthCalendar(CalendarKind.ACTIVITY, goal)
                     EarlierWorkouts()
                 }
                 else -> {
                     HealthAlert(insights)
                     HeartToday(insights)
                     HeartWeek(insights)
+                    MonthCalendar(CalendarKind.HEART)
                 }
             }
         }

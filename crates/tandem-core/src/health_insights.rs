@@ -143,6 +143,16 @@ pub struct WeekDay {
     pub steps: Option<u64>,
     pub active_minutes: Option<u32>,
     pub nap_minutes: u32,
+    /// The mean heart rate of the whole day, from the watch's measuring through the day.
+    pub heart_mean: Option<u32>,
+}
+
+/// Any run of days with what they add up to, for looking back week by week and for a month as a calendar.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct HealthRange {
+    /// The oldest first.
+    pub days: Vec<WeekDay>,
+    pub summary: WeekSummary,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -393,7 +403,7 @@ fn week_of(records: &[HealthRecord], from_ms: u64, until_ms: u64) -> WeekSummary
     let inside = |ms: u64| ms >= from_ms && ms < until_ms;
     let nights: Vec<&HealthRecord> = records.iter().filter(|r| is_night(r) && inside(r.end_ms)).collect();
     let workouts: Vec<&HealthRecord> = records.iter().filter(|r| r.kind == HealthKind::Workout && inside(r.start_ms)).collect();
-    let days: Vec<&HealthRecord> = records.iter().filter(|r| r.kind == HealthKind::Day && inside(r.end_ms)).collect();
+    let days: Vec<&HealthRecord> = records.iter().filter(|r| r.kind == HealthKind::Day && inside(middle_of_day(r))).collect();
     let naps: Vec<&HealthRecord> = records.iter().filter(|r| is_nap(r) && inside(r.end_ms)).collect();
     WeekSummary {
         nights: nights.len() as u32,
@@ -414,16 +424,34 @@ fn local_day(ms: u64, utc_offset_minutes: i32) -> i64 {
     ((ms / MINUTE_MS) as i64 + i64::from(utc_offset_minutes)).div_euclid(1440)
 }
 
+/// The middle of a day record. Its start is the local midnight of when it was recorded; read with the offset of today, a day from before
+/// a change of the clock started an hour early and landed on the day before.
+fn middle_of_day(record: &HealthRecord) -> u64 {
+    record.start_ms.saturating_add(DAY_MS / 2)
+}
+
 fn week_days(records: &[HealthRecord], now_ms: u64, utc_offset_minutes: i32) -> Vec<WeekDay> {
     let today = local_day(now_ms, utc_offset_minutes);
-    (today - 6..=today)
+    days_between(records, today - 6, today, utc_offset_minutes)
+}
+
+/// The `count` days that end with the day of `until_ms`, the oldest first, with their sums.
+pub fn range(records: &[HealthRecord], until_ms: u64, count: u32, utc_offset_minutes: i32) -> HealthRange {
+    let last = local_day(until_ms, utc_offset_minutes);
+    let first = last - i64::from(count.max(1)) + 1;
+    let midnight_ms = |day: i64| (day * 1440 - i64::from(utc_offset_minutes)).max(0) as u64 * MINUTE_MS;
+    HealthRange { days: days_between(records, first, last, utc_offset_minutes), summary: week_of(records, midnight_ms(first), midnight_ms(last + 1)) }
+}
+
+fn days_between(records: &[HealthRecord], first: i64, last: i64, utc_offset_minutes: i32) -> Vec<WeekDay> {
+    (first..=last)
         .map(|day| {
             let midnight_minutes = day * 1440 - i64::from(utc_offset_minutes);
             let from_midnight = |ms: u64| ((ms / MINUTE_MS) as i64 - midnight_minutes) as i32;
             let on_day = |ms: u64| local_day(ms, utc_offset_minutes) == day;
             let night = records.iter().filter(|r| is_night(r) && on_day(r.end_ms)).max_by_key(|r| r.sleep_minutes);
             // A day runs from midnight to midnight, so its end is already the next day.
-            let counted = records.iter().find(|r| r.kind == HealthKind::Day && on_day(r.start_ms));
+            let counted = records.iter().find(|r| r.kind == HealthKind::Day && on_day(middle_of_day(r)));
             WeekDay {
                 start_ms: midnight_minutes.max(0) as u64 * MINUTE_MS,
                 sleep_minutes: night.map(|n| n.sleep_minutes),
@@ -434,6 +462,7 @@ fn week_days(records: &[HealthRecord], now_ms: u64, utc_offset_minutes: i32) -> 
                 steps: counted.map(|d| d.steps),
                 active_minutes: counted.map(|d| d.active_minutes),
                 nap_minutes: records.iter().filter(|r| is_nap(r) && on_day(r.end_ms)).map(|n| n.sleep_minutes).sum(),
+                heart_mean: counted.and_then(|d| d.heart_rate_mean),
             }
         })
         .collect()
@@ -625,6 +654,54 @@ mod tests {
         assert_eq!(week[6].start_ms, MIDNIGHT + 10 * DAY_MS);
         assert_eq!(week[0].start_ms, MIDNIGHT + 4 * DAY_MS);
         assert_eq!(week[6].sleep_minutes, None);
+    }
+
+    /// A whole day of steps, recorded from the local midnight of a clock `offset` minutes ahead of UTC.
+    fn day_record(day: u64, offset: i64, steps: u64, heart_mean: Option<u32>) -> HealthRecord {
+        let start_ms = (MIDNIGHT as i64 + day as i64 * DAY_MS as i64 - offset * MINUTE_MS as i64) as u64;
+        HealthRecord { id: format!("d{day}"), kind: HealthKind::Day, end_ms: start_ms + DAY_MS, steps, heart_rate_mean: heart_mean, ..night("", 0, 0, 0, None) }
+            .with_start(start_ms)
+    }
+
+    impl HealthRecord {
+        fn with_start(mut self, start_ms: u64) -> Self {
+            self.start_ms = start_ms;
+            self
+        }
+    }
+
+    #[test]
+    fn a_range_runs_over_the_end_of_a_month_with_the_oldest_first() {
+        let until = MIDNIGHT + 40 * DAY_MS + 9 * 60 * MINUTE_MS;
+        let found = range(&[day_record(40, 0, 9000, Some(61)), day_record(5, 0, 4000, None)], until, 42, 0);
+        assert_eq!(found.days.len(), 42);
+        assert_eq!(found.days[0].start_ms, MIDNIGHT - DAY_MS);
+        assert_eq!(found.days[41].start_ms, MIDNIGHT + 40 * DAY_MS);
+        assert_eq!(found.days[41].steps, Some(9000));
+        assert_eq!(found.days[41].heart_mean, Some(61));
+        assert_eq!(found.days[6].steps, Some(4000));
+        assert_eq!(found.days[6].heart_mean, None);
+        assert_eq!(found.summary.mean_steps, Some(6500));
+    }
+
+    #[test]
+    fn a_day_from_before_a_change_of_the_clock_stays_on_its_own_day() {
+        // Recorded in summer time, two hours ahead, and read in winter time, one hour ahead: its midnight is now 23:00 of the day before.
+        let until = MIDNIGHT + 20 * DAY_MS + 9 * 60 * MINUTE_MS;
+        let found = range(&[day_record(3, 120, 7000, None)], until, 21, 60);
+        let day = found.days.iter().position(|d| d.steps.is_some()).unwrap();
+        assert_eq!(found.days[day].start_ms, MIDNIGHT + 3 * DAY_MS - 60 * MINUTE_MS);
+        assert_eq!(found.summary.mean_steps, Some(7000));
+    }
+
+    #[test]
+    fn a_week_back_is_a_range_of_seven_days() {
+        let now = MIDNIGHT + 20 * DAY_MS + 9 * 60 * MINUTE_MS;
+        let nights = [night("a", -60, 12, 420, Some(50)), night("b", -60, 13, 480, Some(52)), night("c", -60, 19, 400, Some(55))];
+        let back = range(&nights, now - 7 * DAY_MS, 7, 0);
+        assert_eq!(back.days[6].start_ms, MIDNIGHT + 13 * DAY_MS);
+        assert_eq!(back.summary.nights, 2);
+        assert_eq!(back.summary.mean_sleep_minutes, Some(450));
     }
 
     #[test]

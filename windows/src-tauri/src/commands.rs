@@ -161,6 +161,12 @@ pub fn health_insights(state: State<'_, AppState>, offset: i32) -> Reply<serde_j
     Ok(crate::model::health_insights(&state.engine()?.health_insights(offset)))
 }
 
+/// The `count` days that end with the day of `until` (milliseconds since 1970), with their sums: a week further back, or a month.
+#[tauri::command]
+pub fn health_range(state: State<'_, AppState>, until: u64, count: u32, offset: i32) -> Reply<serde_json::Value> {
+    Ok(crate::model::health_range(&state.engine()?.health_range(until, count, offset)))
+}
+
 /// All nights, workouts and steps as a table a spreadsheet can open. None when the person cancelled.
 #[tauri::command]
 pub async fn health_export(app: AppHandle, state: State<'_, AppState>, offset: i32) -> Reply<Option<String>> {

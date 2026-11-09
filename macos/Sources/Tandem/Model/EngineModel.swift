@@ -44,6 +44,8 @@ final class EngineModel {
     var devices: [TandemDevice] = []
     var healthRecords: [TandemHealthRecord] = []
     var healthInsights: TandemHealthInsights?
+    /// Made up records of the debug health window: with these, a range is summed from them instead of from what this Mac keeps.
+    @ObservationIgnored var debugHealthRecords: [TandemHealthRecord]?
     /// A device that is paired from now on starts as a guest: clipboard and notifications off, files asked about first.
     var guestsByDefault = false
     // What was sent and received outlives the app, so an update (which restarts it) no longer
@@ -418,6 +420,21 @@ final class EngineModel {
         } catch {
             showToast(error.localizedDescription)
         }
+    }
+
+    /// The `count` days that end with the day of `until`, with their sums, from every record this Mac keeps: a week further back, or a
+    /// month for a calendar.
+    func healthRange(until: Date, count: Int) -> TandemHealthRange? {
+        if let records = debugHealthRecords {
+            return healthRangeFor(
+                records: records, untilMs: UInt64(max(0, until.timeIntervalSince1970) * 1000), count: UInt32(max(1, count)),
+                utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60)
+            )
+        }
+        return engine?.healthRange(
+            untilMs: UInt64(max(0, until.timeIntervalSince1970) * 1000), count: UInt32(max(1, count)),
+            utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60)
+        )
     }
 
     func refreshHealth() {

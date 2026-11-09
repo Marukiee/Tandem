@@ -104,22 +104,37 @@ pub fn health_record(r: &tandem_core::ffi::health::TandemHealthRecord) -> Value 
     })
 }
 
+fn week_summary(w: &tandem_core::ffi::health::TandemWeekSummary) -> Value {
+    json!({
+        "nights": w.nights,
+        "meanSleepMinutes": w.mean_sleep_minutes,
+        "meanScore": w.mean_score,
+        "meanResting": w.mean_resting,
+        "workouts": w.workouts,
+        "workoutMinutes": w.workout_minutes,
+        "workoutSteps": w.workout_steps,
+        "naps": w.naps,
+        "napMinutes": w.nap_minutes,
+        "meanSteps": w.mean_steps,
+        "activeMinutes": w.active_minutes,
+    })
+}
+
+fn week_day(d: &tandem_core::ffi::health::TandemWeekDay) -> Value {
+    json!({
+        "startMs": d.start_ms, "sleepMinutes": d.sleep_minutes, "score": d.score, "resting": d.resting,
+        "bedMinutes": d.bed_minutes, "wakeMinutes": d.wake_minutes, "steps": d.steps, "activeMinutes": d.active_minutes,
+        "napMinutes": d.nap_minutes, "heartMean": d.heart_mean,
+    })
+}
+
+/// A run of days with their sums, for a week further back or a month as a calendar.
+pub fn health_range(r: &tandem_core::ffi::health::TandemHealthRange) -> Value {
+    json!({ "days": r.days.iter().map(week_day).collect::<Vec<_>>(), "summary": week_summary(&r.summary) })
+}
+
 pub fn health_insights(i: &tandem_core::ffi::health::TandemHealthInsights) -> Value {
-    let week = |w: &tandem_core::ffi::health::TandemWeekSummary| {
-        json!({
-            "nights": w.nights,
-            "meanSleepMinutes": w.mean_sleep_minutes,
-            "meanScore": w.mean_score,
-            "meanResting": w.mean_resting,
-            "workouts": w.workouts,
-            "workoutMinutes": w.workout_minutes,
-            "workoutSteps": w.workout_steps,
-            "naps": w.naps,
-            "napMinutes": w.nap_minutes,
-            "meanSteps": w.mean_steps,
-            "activeMinutes": w.active_minutes,
-        })
-    };
+    let week = week_summary;
     json!({
         "latestNight": i.latest_night.as_ref().map(|n| json!({
             "id": n.id,
@@ -154,11 +169,7 @@ pub fn health_insights(i: &tandem_core::ffi::health::TandemHealthInsights) -> Va
         "latestDayHeart": i.latest_day_heart.as_ref().map(|d| json!({
             "startMs": d.start_ms, "curve": d.curve, "low": d.low, "mean": d.mean, "high": d.high,
         })),
-        "week": i.week.iter().map(|d| json!({
-            "startMs": d.start_ms, "sleepMinutes": d.sleep_minutes, "score": d.score, "resting": d.resting,
-            "bedMinutes": d.bed_minutes, "wakeMinutes": d.wake_minutes, "steps": d.steps, "activeMinutes": d.active_minutes,
-            "napMinutes": d.nap_minutes,
-        })).collect::<Vec<_>>(),
+        "week": i.week.iter().map(week_day).collect::<Vec<_>>(),
         "naps": i.naps.iter().map(|n| json!({
             "startMs": n.start_ms, "endMs": n.end_ms, "sleepMinutes": n.sleep_minutes, "heartRateMean": n.heart_rate_mean,
         })).collect::<Vec<_>>(),

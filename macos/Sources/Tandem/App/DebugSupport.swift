@@ -349,6 +349,7 @@ enum DebugSupport {
     private static func showHealthWindow() {
         let now = UInt64(Date().timeIntervalSince1970 * 1000)
         let records = debugHealthRecords()
+        EngineModel.shared.debugHealthRecords = records
         // The sums are the core's, on a list that does not touch what this Mac keeps.
         let page = ScrollView {
             // The overview first, then each part as its own page would show it, so one snapshot shows all of Health.

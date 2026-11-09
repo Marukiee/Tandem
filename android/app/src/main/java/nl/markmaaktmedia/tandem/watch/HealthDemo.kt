@@ -9,14 +9,15 @@ import uniffi.tandem_core.TandemSleepStage
 import uniffi.tandem_core.TandemStageRun
 
 /**
- * Two weeks of made-up nights, days and workouts, so the Health pages can be seen and tried on an emulator or a phone without a
+ * Six weeks of made-up nights, days and workouts, so the Health pages can be seen and tried on an emulator or a phone without a
  * watch. Only offered in builds for testing: it writes into the real list of records, which is shared with computers.
  */
 object HealthDemo {
     fun records(zone: ZoneId = ZoneId.systemDefault(), today: LocalDate = LocalDate.now(zone)): List<TandemHealthRecord> {
         val random = Random(7)
         val records = mutableListOf<TandemHealthRecord>()
-        for (back in 13 downTo 0) {
+        // Six weeks, so a week further back and the month before can be seen in the calendar too.
+        for (back in 44 downTo 0) {
             val day = today.minusDays(back.toLong())
             records += night(day, zone, random)
             if (back > 0) records += day(day.minusDays(1), zone, random, whole = true)
@@ -88,7 +89,7 @@ object HealthDemo {
             endMs = (start + 86_400_000L).toULong(),
             sleepMinutes = 0u, awakeMinutes = 0u, awakenings = 0u, efficiencyPercent = 0u,
             lightMinutes = null, deepMinutes = null, remMinutes = null, stages = emptyList(),
-            heartRateMean = null, heartRateLow = null, heartRateHigh = null,
+            heartRateMean = curve.filter { it > 0u }.map { it.toInt() }.average().toInt().toUInt(), heartRateLow = null, heartRateHigh = null,
             steps = ((4_000 + random.nextInt(9_000)) * share).toLong().toULong(),
             activeMinutes = ((10 + random.nextInt(50)) * share).toInt().toUInt(),
             heartCurve = curve,

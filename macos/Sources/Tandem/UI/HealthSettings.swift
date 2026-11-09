@@ -218,6 +218,15 @@ struct HealthPageContent: View {
     let insights: TandemHealthInsights
     let records: [TandemHealthRecord]
     let part: HealthPart
+    @Environment(EngineModel.self) private var model
+    @State private var offset = 0
+
+    /// This week from the insights, or the week `offset` weeks back from the core.
+    private var shown: ShownWeek? {
+        if offset == 0 { return ShownWeek(week: insights.week, summary: insights.thisWeek, before: insights.lastWeek, now: true) }
+        return model.healthRange(until: Date().addingTimeInterval(-Double(offset) * 7 * 86_400), count: 7)
+            .map { ShownWeek(week: $0.days, summary: $0.summary, before: nil, now: false) }
+    }
 
     private var latest: TandemHealthRecord? { records.first { $0.isNight } }
     private var earlier: [TandemHealthRecord] {
@@ -236,8 +245,11 @@ struct HealthPageContent: View {
             }
         }
         if part == .sleep, let night = latest { LatestNightCards(night: night, insight: insights.latestNight?.id == night.id ? insights.latestNight : nil) }
-        DayCards(insights: insights, part: part)
-        WeekCards(insights: insights, part: part)
+        if let shown {
+            DayCards(insights: insights, part: part, shown: shown, offset: $offset)
+            WeekCards(insights: insights, part: part, shown: shown, offset: $offset)
+        }
+        MonthCalendar(part: part)
         if !earlier.isEmpty {
             SectionTitle("Earlier")
             ForEach(earlier, id: \.id) { record in
@@ -1057,12 +1069,14 @@ private struct QualityRow: View {
 private struct DayCards: View {
     let insights: TandemHealthInsights
     let part: HealthPart
+    let shown: ShownWeek
+    @Binding var offset: Int
 
     var body: some View {
-        let week = insights.week
+        let week = shown.week
         let lastSteps = week.lastIndex { $0.steps != nil }
         let lastHeart = insights.latestDayHeart
-        if part == .activity, lastSteps != nil { SectionTitle("This week") }
+        if part == .activity { WeekPager(offset: $offset, week: week) }
         if part == .heart, lastHeart != nil { SectionTitle("Today") }
         if part == .activity, let lastSteps, let steps = week[lastSteps].steps {
             WeekCard(
@@ -1077,7 +1091,9 @@ private struct DayCards: View {
             WeekCard(
                 title: "Active minutes",
                 number: String(localized: "\(Int(week[lastSteps].activeMinutes ?? 0)) min"),
-                caption: String(localized: "\(week.reduce(0) { $0 + Int($1.activeMinutes ?? 0) }) of 150 this week"),
+                caption: shown.now
+                    ? String(localized: "\(week.reduce(0) { $0 + Int($1.activeMinutes ?? 0) }) of 150 this week")
+                    : String(localized: "\(week.reduce(0) { $0 + Int($1.activeMinutes ?? 0) }) minutes active that week"),
                 week: week,
                 dayNumbers: week.map { $0.activeMinutes.map { String(localized: "\(Int($0)) min") } },
                 more: "A minute counts when you walk briskly, about 100 steps a minute. Health advice for adults is 150 minutes a week."
@@ -1118,18 +1134,20 @@ private struct DayCards: View {
 private struct WeekCards: View {
     let insights: TandemHealthInsights
     let part: HealthPart
+    let shown: ShownWeek
+    @Binding var offset: Int
 
     var body: some View {
-        let week = insights.week
-        let now = insights.thisWeek
-        let before = insights.lastWeek
+        let week = shown.week
+        let now = shown.summary
+        let before = shown.before
         if insights.latestNight != nil {
-            if part == .sleep || (part == .heart && insights.resting != nil) { SectionTitle("This week") }
+            if part == .sleep || (part == .heart && insights.resting != nil) { WeekPager(offset: $offset, week: week) }
             if part == .sleep, let sleep = now.meanSleepMinutes {
                 WeekCard(
                     title: "Sleep",
                     number: minutesText(Int(sleep)),
-                    caption: before.meanSleepMinutes.map { String(localized: "A night on average, last week \(minutesText(Int($0)))") } ?? String(localized: "A night on average"),
+                    caption: (before?.meanSleepMinutes).map { String(localized: "A night on average, last week \(minutesText(Int($0)))") } ?? String(localized: "A night on average"),
                     week: week,
                     dayNumbers: week.map { $0.sleepMinutes.map { minutesText(Int($0)) } }
                 ) { picked in
@@ -1140,7 +1158,7 @@ private struct WeekCards: View {
                 WeekCard(
                     title: "Sleep score",
                     number: "\(score)",
-                    caption: before.meanScore.map { String(localized: "On average, last week \(Int($0))") } ?? String(localized: "On average"),
+                    caption: (before?.meanScore).map { String(localized: "On average, last week \(Int($0))") } ?? String(localized: "On average"),
                     week: week,
                     dayNumbers: week.map { $0.score.map { "\($0)" } }
                 ) { picked in
@@ -1150,8 +1168,10 @@ private struct WeekCards: View {
             if part == .heart, let resting = insights.resting {
                 WeekCard(
                     title: "Resting heart rate",
-                    number: String(localized: "\(Int(resting.latest)) bpm"),
-                    caption: resting.usual.map { String(localized: "Usually \(Int($0))") } ?? String(localized: "\(Int(resting.nightsNeeded)) more nights to show this"),
+                    // A week further back shows its own mean, not the latest night.
+                    number: shown.now ? String(localized: "\(Int(resting.latest)) bpm") : now.meanResting.map { String(localized: "\(Int($0)) bpm") } ?? "-",
+                    caption: !shown.now ? String(localized: "On average")
+                        : resting.usual.map { String(localized: "Usually \(Int($0))") } ?? String(localized: "\(Int(resting.nightsNeeded)) more nights to show this"),
                     week: week,
                     dayNumbers: week.map { $0.resting.map { String(localized: "\(Int($0)) bpm") } },
                     more: "The lowest heart rate of the night. It says most next to your own usual: a cold or a drink can push it up for a night or two. Not a diagnosis."
@@ -1162,7 +1182,8 @@ private struct WeekCards: View {
                     }
                 }
             }
-            if part == .sleep {
+            // How regular the nights are is about the last nights, so it belongs to this week only.
+            if part == .sleep && shown.now {
                 HealthCard(
                     title: "Regularity",
                     more: "From your last nights, at most 14. Give or take says how far a usual night is from that time: the smaller, the steadier."
@@ -1317,5 +1338,151 @@ private func stageColor(_ stage: TandemSleepStage) -> Color {
     // The moments people look for, so they stand out. Not a warning colour: being awake for a bit is nothing to worry about.
     case .wake: .primary.mix(with: Color(nsColor: .windowBackgroundColor), by: 0.3)
     case .unknown: .secondary.opacity(0.25)
+    }
+}
+
+// MARK: Looking back
+
+/// The week a page shows: this one, with last week to compare, or one further back without it.
+struct ShownWeek {
+    let week: [TandemWeekDay]
+    let summary: TandemWeekSummary
+    let before: TandemWeekSummary?
+    let now: Bool
+}
+
+private func shortDate(_ day: TandemWeekDay) -> String {
+    noonOf(day.startMs).formatted(.dateTime.day().month(.abbreviated))
+}
+
+/// The heading of a week with a way back and forward, so older weeks are looked at the same way as this one.
+private struct WeekPager: View {
+    @Binding var offset: Int
+    let week: [TandemWeekDay]
+
+    var body: some View {
+        HStack(alignment: .lastTextBaseline, spacing: 4) {
+            if offset == 0 || week.isEmpty {
+                SectionTitle("This week")
+            } else {
+                SectionTitle("\(shortDate(week[0])) to \(shortDate(week[week.count - 1]))")
+            }
+            Spacer()
+            Button { withAnimation(.tandem) { offset += 1 } } label: { Image(systemName: "chevron.left") }
+                .buttonStyle(.icon(size: 28))
+                .help("A week back")
+            Button { withAnimation(.tandem) { offset = max(0, offset - 1) } } label: { Image(systemName: "chevron.right") }
+                .buttonStyle(.icon(size: 28))
+                .help("A week on")
+                .disabled(offset == 0)
+        }
+    }
+}
+
+/// A month as a calendar, a day per box, Monday first: for sleep how long the night was with a ring toward seven hours, for activity the
+/// steps with a ring toward the goal that is filled on a day it was reached, for the heart the mean heart rate of the day.
+private struct MonthCalendar: View {
+    let part: HealthPart
+    @Environment(EngineModel.self) private var model
+    @State private var back = 0
+
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.firstWeekday = 2
+        calendar.locale = .current
+        return calendar
+    }
+
+    private var info: LocalizedStringKey {
+        switch part {
+        case .sleep: "Every night with how long you slept. The ring fills toward seven hours, the start of what most adults need."
+        case .activity: "Every day with your steps. The ring fills toward your step goal; a filled day reached it."
+        default: "Every day with your mean heart rate over the day, from the measuring of your watch."
+        }
+    }
+
+    var body: some View {
+        if part != .settings {
+            let calendar = calendar
+            let thisMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: Date())) ?? Date()
+            let month = calendar.date(byAdding: .month, value: -back, to: thisMonth) ?? thisMonth
+            let length = calendar.range(of: .day, in: .month, for: month)?.count ?? 30
+            let until = calendar.date(byAdding: DateComponents(day: length - 1, hour: 12), to: month) ?? month
+            let days = model.healthRange(until: until, count: length)?.days ?? []
+            // Sunday is 1 for the calendar; Monday comes first here.
+            let lead = (calendar.component(.weekday, from: month) + 5) % 7
+            let names = Array(calendar.veryShortStandaloneWeekdaySymbols.dropFirst()) + [calendar.veryShortStandaloneWeekdaySymbols[0]]
+            let goal = model.devices.compactMap { $0.status.watch?.settings?.stepGoal }.first.map { Int($0) }
+            let today = calendar.startOfDay(for: Date())
+            HealthCard(title: "Calendar", more: info) {
+                HStack(spacing: 4) {
+                    Text(month.formatted(.dateTime.month(.wide).year())).font(.callout.weight(.semibold))
+                    Spacer()
+                    Button { withAnimation(.tandem) { back += 1 } } label: { Image(systemName: "chevron.left") }
+                        .buttonStyle(.icon(size: 28))
+                        .help("A month back")
+                    Button { withAnimation(.tandem) { back = max(0, back - 1) } } label: { Image(systemName: "chevron.right") }
+                        .buttonStyle(.icon(size: 28))
+                        .help("A month on")
+                        .disabled(back == 0)
+                }
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 7), spacing: 8) {
+                    // Ids of their own per kind of cell: shared numbers made the grid drop the first days of the month.
+                    ForEach(Array(names.enumerated()), id: \.offset) { index, name in
+                        Text(verbatim: name).font(.caption2).foregroundStyle(.secondary).id("name\(index)")
+                    }
+                    ForEach((0..<lead).map { "lead\($0)" }, id: \.self) { _ in Color.clear.frame(height: 1) }
+                    ForEach(Array(days.enumerated()).map { (id: "day\($0.offset)", index: $0.offset, day: $0.element) }, id: \.id) { cell in
+                        let index = cell.index
+                        let day = cell.day
+                        let date = calendar.date(byAdding: .day, value: index, to: month) ?? month
+                        CalendarDay(number: index + 1, day: day, part: part, goal: goal, today: date == today, later: date > today)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct CalendarDay: View {
+    let number: Int
+    let day: TandemWeekDay
+    let part: HealthPart
+    let goal: Int?
+    let today: Bool
+    let later: Bool
+
+    var body: some View {
+        let (share, value): (Double?, String) = {
+            switch part {
+            case .sleep:
+                guard let minutes = day.sleepMinutes.map(Int.init) else { return (nil, "") }
+                return (min(1, Double(minutes) / 420), String(format: "%d:%02d", minutes / 60, minutes % 60))
+            case .activity:
+                guard let steps = day.steps.map(Int.init) else { return (nil, "") }
+                let share = goal.map { min(1, Double(steps) / Double(max($0, 1))) }
+                return (share, steps >= 1000 ? (Double(steps) / 1000).formatted(.number.precision(.fractionLength(1))) + "k" : "\(steps)")
+            default:
+                return (nil, day.heartMean.map { String(localized: "\(Int($0)) bpm") } ?? "")
+            }
+        }()
+        let met = (share ?? 0) >= 1
+        VStack(spacing: 2) {
+            ZStack {
+                if met {
+                    Circle().fill(Palette.indigo)
+                } else if let share {
+                    // Toward the goal of the page as a ring, so a month shows at a glance which days got there.
+                    Circle().stroke(Color.secondary.opacity(0.18), lineWidth: 3)
+                    Circle().trim(from: 0, to: share).stroke(Palette.indigo, style: StrokeStyle(lineWidth: 3, lineCap: .round)).rotationEffect(.degrees(-90))
+                }
+                Text(verbatim: "\(number)")
+                    .font(.caption.weight(today || met ? .bold : .regular))
+                    .foregroundStyle(met ? Color.white : today ? Palette.indigo : Color.primary)
+            }
+            .frame(width: 30, height: 30)
+            Text(verbatim: value).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
+        }
+        .opacity(later ? 0.35 : 1)
     }
 }

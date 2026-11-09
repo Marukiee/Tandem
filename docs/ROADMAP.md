@@ -26,7 +26,7 @@ toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze 
   - Moet erin: dutjes, slaapscore (staat hieronder ook), tijdlijn van de nacht, regelmaat van bedtijden, rusthartslag, een seintje als rusthartslag en huidtemperatuur afwijken, hartslag de hele dag, stappendoel en actieve minuten, weekoverzicht, slim wekken, exporteren, en importeren uit Health Connect.
   - Hoeft niet: slaapschuld en bedtijdadvies, "wat helpt jouw slaap", ademoefeningen.
 - **Gezondheid, volgende ronde** (gevraagd 2026-11-09, na de nieuwe indeling met overzicht en een pagina per deel; op alle apparaten):
-  - Een maand- en jaaroverzicht naast de week, voor slaap, stappen, actieve minuten en rusthartslag.
+  - Een maand- en jaaroverzicht naast de week, voor slaap, stappen, actieve minuten en rusthartslag. **Maand gedaan** (2026-11-10): een week terugbladeren en een maandkalender per onderdeel. Een jaaroverzicht nog niet.
   - Het verloop van de huidtemperatuur per nacht: het horloge meet die al. Tegenover je eigen gewone waarde, niet als absoluut getal.
   - HRV. Eerst uitzoeken of het kan: de ruwe PPG is afgeschermd (zie de slaapscore hierboven), dus misschien alleen via Health Services of helemaal niet. Eerlijk zeggen als het niet kan.
   - Een slaapdoel en een herinnering om naar bed te gaan. **Standaard uit.** Een herinnering die je zelf aanzet, geen advies, dus geen botsing met "bedtijdadvies hoeft niet" hierboven.

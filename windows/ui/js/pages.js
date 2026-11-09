@@ -1413,7 +1413,7 @@ function HealthSection({ plain = false, part = null, onOpen = () => {} } = {}) {
     ${!hasWatch && (settings || !shown) && html`<div class="card flush"><${SettingRow} icon="moon" title=${t("health_show")} sub=${t("health_show_sub")} on=${shown} onChange=${change} /></div>`}
     ${!settings && visible && insights && part == null && html`<${HealthOverview} i=${insights} records=${records} goal=${goal} onOpen=${onOpen} />`}
     ${!settings && visible && insights && part === "sleep" && html`<${SleepDetail} i=${insights} records=${records} />`}
-    ${!settings && visible && insights && part === "activity" && html`<${ActivityDetail} i=${insights} records=${records} />`}
+    ${!settings && visible && insights && part === "activity" && html`<${ActivityDetail} i=${insights} records=${records} goal=${goal} />`}
     ${!settings && visible && insights && part === "heart" && html`<${HeartDetail} i=${insights} />`}
     ${!settings && visible && records.length === 0 && html`<div class="muted">${t("health_empty", ((state.devices || []).find((d) => d.status?.watch?.paired) || {}).name || t("your_phone"))}</div>`}
     ${settings && html`<${HealthChoices} />`}

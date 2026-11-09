@@ -254,6 +254,40 @@ pub struct TandemWeekDay {
     pub steps: Option<u64>,
     pub active_minutes: Option<u32>,
     pub nap_minutes: u32,
+    /// The mean heart rate of the whole day.
+    #[uniffi(default = None)]
+    pub heart_mean: Option<u32>,
+}
+
+/// Any run of days with their sums: a week further back, or a month for a calendar.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemHealthRange {
+    /// The oldest first.
+    pub days: Vec<TandemWeekDay>,
+    pub summary: TandemWeekSummary,
+}
+
+impl From<crate::health_insights::WeekDay> for TandemWeekDay {
+    fn from(d: crate::health_insights::WeekDay) -> Self {
+        TandemWeekDay {
+            start_ms: d.start_ms,
+            sleep_minutes: d.sleep_minutes,
+            score: d.score,
+            resting: d.resting,
+            bed_minutes: d.bed_minutes,
+            wake_minutes: d.wake_minutes,
+            steps: d.steps,
+            active_minutes: d.active_minutes,
+            nap_minutes: d.nap_minutes,
+            heart_mean: d.heart_mean,
+        }
+    }
+}
+
+impl From<crate::health_insights::HealthRange> for TandemHealthRange {
+    fn from(r: crate::health_insights::HealthRange) -> Self {
+        TandemHealthRange { days: r.days.into_iter().map(Into::into).collect(), summary: r.summary.into() }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -359,21 +393,7 @@ impl From<HealthInsights> for TandemHealthInsights {
                 .into_iter()
                 .map(|n| TandemNap { start_ms: n.start_ms, end_ms: n.end_ms, sleep_minutes: n.sleep_minutes, heart_rate_mean: n.heart_rate_mean })
                 .collect(),
-            week: i
-                .week
-                .into_iter()
-                .map(|d| TandemWeekDay {
-                    start_ms: d.start_ms,
-                    sleep_minutes: d.sleep_minutes,
-                    score: d.score,
-                    resting: d.resting,
-                    bed_minutes: d.bed_minutes,
-                    wake_minutes: d.wake_minutes,
-                    steps: d.steps,
-                    active_minutes: d.active_minutes,
-                    nap_minutes: d.nap_minutes,
-                })
-                .collect(),
+            week: i.week.into_iter().map(Into::into).collect(),
             this_week: i.this_week.into(),
             last_week: i.last_week.into(),
         }
@@ -387,12 +407,25 @@ pub fn health_insights_for(records: Vec<TandemHealthRecord>, now_ms: u64, utc_of
     insights(&records, now_ms, utc_offset_minutes).into()
 }
 
+/// Any run of days for nights that are not this device's own, like `health_insights_for`.
+#[uniffi::export]
+pub fn health_range_for(records: Vec<TandemHealthRecord>, until_ms: u64, count: u32, utc_offset_minutes: i32) -> TandemHealthRange {
+    let records: Vec<HealthRecord> = records.into_iter().map(Into::into).collect();
+    crate::health_insights::range(&records, until_ms, count, utc_offset_minutes).into()
+}
+
 #[uniffi::export(async_runtime = "tokio")]
 impl TandemEngine {
     /// What the nights say together: score, resting heart rate, regularity, this week next to the last. `utc_offset_minutes` is what
     /// a local clock is ahead of UTC, because only the apps know where they are.
     pub fn health_insights(&self, utc_offset_minutes: i32) -> TandemHealthInsights {
         insights(&self.engine.health_records(), now_ms(), utc_offset_minutes).into()
+    }
+
+    /// The `count` days that end with the day of `until_ms`, with their sums: a week further back, or a month for a calendar. From all
+    /// the records this device keeps, not only the newest.
+    pub fn health_range(&self, until_ms: u64, count: u32, utc_offset_minutes: i32) -> TandemHealthRange {
+        crate::health_insights::range(&self.engine.health_records(), until_ms, count, utc_offset_minutes).into()
     }
 
     /// Everything as a table a spreadsheet can open, in local time.

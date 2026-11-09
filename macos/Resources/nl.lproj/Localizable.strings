@@ -768,6 +768,15 @@
 "Health settings" = "Instellingen voor Gezondheid";
 "of %@ steps" = "van %@ stappen";
 "Wake gently" = "Zacht wekken";
+"Calendar" = "Kalender";
+"A week back" = "Een week terug";
+"A week on" = "Een week verder";
+"A month back" = "Een maand terug";
+"A month on" = "Een maand verder";
+"%lld minutes active that week" = "%lld minuten actief die week";
+"Every night with how long you slept. The ring fills toward seven hours, the start of what most adults need." = "Elke nacht met hoe lang je sliep. De ring vult zich tot zeven uur, het begin van wat de meeste volwassenen nodig hebben.";
+"Every day with your steps. The ring fills toward your step goal; a filled day reached it." = "Elke dag met je stappen. De ring vult zich tot je stappendoel; een gevulde dag haalde het doel.";
+"Every day with your mean heart rate over the day, from the measuring of your watch." = "Elke dag met je gemiddelde hartslag over de dag, uit het meten van je horloge.";
 "Use this Mac's mouse and keyboard on other computers" = "Gebruik de muis en het toetsenbord van deze Mac op andere computers";
 "Move the pointer over the edge of the screen. This Mac needs Accessibility, which Tandem already asks for" = "Beweeg de aanwijzer over de rand van het scherm. Deze Mac heeft Toegankelijkheid nodig, waar Tandem al om vraagt";
 "Not next to this Mac" = "Niet naast deze Mac";

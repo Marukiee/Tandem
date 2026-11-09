@@ -1,5 +1,6 @@
 // The health page: built like the one on the phone and the Mac, from the same seven days of the core.
 import { html, useState, useEffect } from "../vendor/preact-htm.js";
+import { call } from "./backend.js";
 import { Icon } from "./icons.js";
 import { language, t } from "./i18n.js";
 
@@ -392,13 +393,90 @@ function Workout({ r }) {
 }
 
 /** Everything the page shows once there is something to show. The sums are the core's, so this says the same as the phone. */
+
+const DAY_MS = 86400000;
+const WEEK_MS = 7 * DAY_MS;
+const shortDate = (midnightMs) => new Date(midnightMs + 12 * 3600_000).toLocaleDateString(locale(), { day: "numeric", month: "short" });
+
+/** A run of days that ends with the day of `untilMs`, from the core over every record this computer keeps, not only the newest. */
+function useRange(untilMs, count, enabled = true) {
+  const [range, setRange] = useState(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let current = true;
+    call("health_range", { until: Math.round(untilMs), count, offset: -new Date().getTimezoneOffset() })
+      .then((r) => current && setRange(r))
+      .catch(() => current && setRange(null));
+    return () => { current = false; };
+  }, [Math.floor(untilMs / DAY_MS), count, enabled]);
+  return range;
+}
+
+/** The week a page shows: this one from the insights, or one further back from the core. Null while it is on its way. */
+function useWeek(i, offset) {
+  const range = useRange(Date.now() - offset * WEEK_MS, 7, offset > 0);
+  if (offset === 0) return { week: i.week || [], summary: i.thisWeek, before: i.lastWeek, now: true };
+  return range && { week: range.days, summary: range.summary, before: null, now: false };
+}
+
+/** The heading of the week with a way back and forward, so older weeks can be looked at the same way as this one. */
+function WeekPager({ offset, setOffset, week }) {
+  const label = offset === 0 || week.length === 0 ? t("health_week") : t("health_span", shortDate(week[0].startMs), shortDate(week[week.length - 1].startMs));
+  return html`<div class="health-pager">
+    <h3 class="health-section grow">${label}</h3>
+    <button class="iconbtn" title=${t("health_week_before")} aria-label=${t("health_week_before")} onClick=${() => setOffset((o) => o + 1)}><${Icon} name="chevron-left" size=${16} /></button>
+    <button class="iconbtn" title=${t("health_week_after")} aria-label=${t("health_week_after")} disabled=${offset === 0} onClick=${() => setOffset((o) => Math.max(0, o - 1))}><${Icon} name="chevron-right" size=${16} /></button>
+  </div>`;
+}
+
+/**
+ * A month as a calendar, a day per box: for sleep how long the night was, with a ring toward seven hours; for activity the steps, with
+ * a ring toward the goal that is filled on a day it was reached; for the heart the mean heart rate of the day.
+ */
+function MonthCalendar({ kind, goal }) {
+  const [back, setBack] = useState(0);
+  const today = new Date();
+  const month = new Date(today.getFullYear(), today.getMonth() - back, 1);
+  const length = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const range = useRange(new Date(month.getFullYear(), month.getMonth(), length, 12).getTime(), length);
+  // Monday first, as calendars here are; 1 January 2024 was a Monday.
+  const lead = (month.getDay() + 6) % 7;
+  const names = Array.from({ length: 7 }, (_, k) => new Date(2024, 0, 1 + k).toLocaleDateString(locale(), { weekday: "narrow" }));
+  const todayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const cell = (d, n) => {
+    const at = new Date(month.getFullYear(), month.getMonth(), n).getTime();
+    let share = null, value = "";
+    if (kind === "sleep" && d.sleepMinutes != null) { share = Math.min(1, d.sleepMinutes / 420); value = healthDuration(d.sleepMinutes).replace(/\s/g, ""); }
+    if (kind === "activity" && d.steps != null) { share = goal ? Math.min(1, d.steps / goal) : null; value = d.steps >= 1000 ? (d.steps / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 }) + "k" : String(d.steps); }
+    if (kind === "heart" && d.heartMean != null) value = t("health_bpm", d.heartMean);
+    return html`<div key=${n} class=${"health-day" + (at === todayMs ? " today" : "") + (at > todayMs ? " later" : "")}>
+      <span class=${"health-day-n" + (share === 1 ? " met" : share == null ? " plain" : "")} style=${share != null && share < 1 ? `--p:${Math.round(share * 100)}` : ""}><span>${n}</span></span>
+      <span class="health-day-v">${value}</span>
+    </div>`;
+  };
+  return html`<${Card} title=${t("health_calendar")} more=${t("health_more_calendar_" + kind)}>
+    <div class="health-pager">
+      <span class="grow health-month-name">${month.toLocaleDateString(locale(), { month: "long", year: "numeric" })}</span>
+      <button class="iconbtn" title=${t("health_month_before")} aria-label=${t("health_month_before")} onClick=${() => setBack((b) => b + 1)}><${Icon} name="chevron-left" size=${16} /></button>
+      <button class="iconbtn" title=${t("health_month_after")} aria-label=${t("health_month_after")} disabled=${back === 0} onClick=${() => setBack((b) => Math.max(0, b - 1))}><${Icon} name="chevron-right" size=${16} /></button>
+    </div>
+    <div class="health-month">
+      ${names.map((name, k) => html`<span key=${"n" + k} class="health-month-day">${name}</span>`)}
+      ${Array.from({ length: lead }, (_, k) => html`<span key=${"e" + k}></span>`)}
+      ${(range ? range.days : []).map((d, k) => cell(d, k + 1))}
+    </div>
+  <//>`;
+}
+
 /** Sleep as a page of Health: last night large with the night and its quality, naps, the sleep of the week, and earlier nights. */
 export function SleepDetail({ i, records }) {
-  const week = i.week || [];
+  const [offset, setOffset] = useState(0);
+  const paged = useWeek(i, offset);
+  const week = paged ? paged.week : [];
   const latest = records.find(isNight);
   const insight = i.latestNight && latest && i.latestNight.id === latest.id ? i.latestNight : null;
   const earlier = records.filter((r) => isNight(r) && r !== latest).slice(0, 30);
-  const now = i.thisWeek, before = i.lastWeek;
+  const now = paged ? paged.summary : {}, before = paged ? paged.before : null;
   return html`
     ${latest && html`<h3 class="health-section">${t("watch_last_night")}</h3>
       <${Card}>
@@ -427,13 +505,13 @@ export function SleepDetail({ i, records }) {
       <${BigNumber} text=${healthDuration(i.naps.reduce((sum, n) => sum + n.sleepMinutes, 0))} />
       ${i.naps.map((n) => html`<div key=${n.startMs}>${new Date(n.startMs).toLocaleString(locale(), { weekday: "short", hour: "2-digit", minute: "2-digit" })}, ${healthDuration(n.sleepMinutes)}</div>`)}
     <//>`}
-    ${i.latestNight && html`<h3 class="health-section">${t("health_week")}</h3>
+    ${i.latestNight && html`<${WeekPager} offset=${offset} setOffset=${setOffset} week=${week} />
       ${now.meanSleepMinutes != null && html`<${WeekCard} title=${t("health_sleep")} number=${healthDuration(now.meanSleepMinutes)}
-        caption=${before.meanSleepMinutes != null ? t("health_mean_night_before", healthDuration(before.meanSleepMinutes)) : t("health_mean_night")}
+        caption=${before && before.meanSleepMinutes != null ? t("health_mean_night_before", healthDuration(before.meanSleepMinutes)) : t("health_mean_night")}
         week=${week} dayNumbers=${week.map((d) => (d.sleepMinutes != null ? healthDuration(d.sleepMinutes) : null))}
         chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.sleepMinutes)} week=${week} picked=${picked} onPick=${pick} />`} />`}
       ${now.meanScore != null && html`<${WeekCard} title=${t("health_score")} number=${String(now.meanScore)}
-        caption=${before.meanScore != null ? t("health_mean_score_before", before.meanScore) : t("health_mean_score")}
+        caption=${before && before.meanScore != null ? t("health_mean_score_before", before.meanScore) : t("health_mean_score")}
         week=${week} dayNumbers=${week.map((d) => (d.score != null ? String(d.score) : null))}
         chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.score)} week=${week} picked=${picked} onPick=${pick} />`} />`}
       <${Card} title=${t("health_regular")} more=${t("health_more_regular")}>
@@ -444,33 +522,37 @@ export function SleepDetail({ i, records }) {
         <${SleepWindows} week=${week} />
       <//>
     `}
+    <${MonthCalendar} kind="sleep" />
     ${earlier.length > 0 && html`<h3 class="health-section">${t("health_earlier")}</h3>
       ${earlier.map((r) => html`<${EarlierNight} key=${r.id} r=${r} />`)}`}
   `;
 }
 
 /** Activity as a page of Health: the steps and active minutes of the week, the workouts, and earlier workouts. */
-export function ActivityDetail({ i, records }) {
-  const week = i.week || [];
+export function ActivityDetail({ i, records, goal }) {
+  const [offset, setOffset] = useState(0);
+  const paged = useWeek(i, offset);
+  const week = paged ? paged.week : [];
   // A computer sees whole days: only the phone hears the watch during the day.
   const lastSteps = week.map((d) => d.steps != null).lastIndexOf(true);
   const earlier = records.filter((r) => r.kind === "workout").slice(0, 30);
-  const now = i.thisWeek;
+  const now = paged ? paged.summary : { workouts: 0 };
   return html`
-    ${(lastSteps >= 0 || now.workouts > 0) && html`<h3 class="health-section">${t("health_week")}</h3>`}
+    <${WeekPager} offset=${offset} setOffset=${setOffset} week=${week} />
     ${lastSteps >= 0 && html`
       <${WeekCard} title=${t("health_steps_title")} number=${number(week[lastSteps].steps)} caption=${dayName(week[lastSteps].startMs)}
         week=${week} dayNumbers=${week.map((d) => (d.steps != null ? number(d.steps) : null))}
         chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.steps)} week=${week} picked=${picked} onPick=${pick} />`} />
       <${WeekCard} title=${t("health_active_title")} more=${t("health_more_active")}
         number=${t("health_minutes", week[lastSteps].activeMinutes ?? 0)}
-        caption=${t("health_active_week", week.reduce((sum, d) => sum + (d.activeMinutes || 0), 0))}
+        caption=${t(paged && !paged.now ? "health_active_that_week" : "health_active_week", week.reduce((sum, d) => sum + (d.activeMinutes || 0), 0))}
         week=${week} dayNumbers=${week.map((d) => (d.activeMinutes != null ? t("health_minutes", d.activeMinutes) : null))}
         chart=${(picked, pick) => html`<${WeekBars} values=${week.map((d) => d.activeMinutes)} week=${week} picked=${picked} onPick=${pick} />`} />`}
       ${now.workouts > 0 && html`<${Card} title=${t("health_workouts")}>
         <${BigNumber} text=${healthDuration(now.workoutMinutes)} />
         <div class="small muted">${t(now.workouts === 1 ? "health_workouts_week_one" : "health_workouts_week", now.workouts)}</div>
       <//>`}
+    <${MonthCalendar} kind="activity" goal=${goal} />
     ${earlier.length > 0 && html`<h3 class="health-section">${t("health_earlier")}</h3>
       ${earlier.map((r) => html`<${Workout} key=${r.id} r=${r} />`)}`}
   `;
@@ -478,7 +560,10 @@ export function ActivityDetail({ i, records }) {
 
 /** The heart as a page of Health: a warning when the resting rate is up, the heart rate of the day, and the resting rate of the week. */
 export function HeartDetail({ i }) {
-  const week = i.week || [];
+  const [offset, setOffset] = useState(0);
+  const paged = useWeek(i, offset);
+  const week = paged ? paged.week : [];
+  const summary = paged ? paged.summary : {};
   const heart = i.latestDayHeart;
   return html`
     ${i.alertAboveUsual != null && html`<div class="card tinted health-card" style="--tint:var(--accent-soft)"><div class="health-row"><${Icon} name="heart" size=${20} /><div>${t("health_alert", i.alertAboveUsual)}</div></div></div>`}
@@ -487,12 +572,13 @@ export function HeartDetail({ i }) {
         <span class="small muted">${t("health_heart_range", dayName(heart.startMs), Math.min(...heart.curve.filter((v) => v > 0)), Math.max(...heart.curve))}</span></div>
       <${DayHeartLine} curve=${heart.curve} />
     <//>`}
-    ${i.resting && html`<h3 class="health-section">${t("health_week")}</h3>`}
-      ${i.resting && html`<${WeekCard} title=${t("health_resting")} more=${t("health_more_resting")} number=${t("health_bpm", i.resting.latest)}
-        caption=${i.resting.usual != null ? t("health_usually", i.resting.usual) : t("health_nights_more", i.resting.nightsNeeded)}
+    ${i.resting && html`<${WeekPager} offset=${offset} setOffset=${setOffset} week=${week} />`}
+      ${i.resting && html`<${WeekCard} title=${t("health_resting")} more=${t("health_more_resting")} number=${!paged || paged.now ? t("health_bpm", i.resting.latest) : summary.meanResting != null ? t("health_bpm", summary.meanResting) : "-"}
+        caption=${paged && !paged.now ? t("health_mean_score") : i.resting.usual != null ? t("health_usually", i.resting.usual) : t("health_nights_more", i.resting.nightsNeeded)}
         week=${week} dayNumbers=${week.map((d) => (d.resting != null ? t("health_bpm", d.resting) : null))}
         chart=${(picked, pick) => html`<div><${WeekLine} values=${week.map((d) => d.resting)} week=${week} usual=${i.resting.usual} picked=${picked} onPick=${pick} />
           ${i.resting.usual == null && html`<${NightsToGo} needed=${i.resting.nightsNeeded} total=${7} />`}</div>`} />`}
+    <${MonthCalendar} kind="heart" />
   `;
 }
 

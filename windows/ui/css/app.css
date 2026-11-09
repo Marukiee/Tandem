@@ -704,6 +704,23 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .health-bar-slot { flex: 1; display: flex; justify-content: center; align-items: flex-end; height: 100%; }
 .health-bar { width: 18px; border-radius: 9px; background: var(--accent); transition: opacity .2s ease; }
 .health-bar.none { height: 5px; border-radius: 2.5px; background: var(--line-strong); }
+/* A heading with a way back and forward, for weeks and months. */
+.health-pager { display: flex; align-items: center; gap: 4px; }
+.health-pager .health-section { margin: 0; }
+.health-month-name { font-weight: 600; text-transform: capitalize; }
+/* A month as a calendar: seven columns, Monday first, a ring around the day number toward the goal of that page. */
+.health-month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px 4px; }
+.health-month-day { text-align: center; font-size: 11px; color: var(--text-2); }
+.health-day { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.health-day.later { opacity: .35; }
+.health-day-n { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p, 0) * 1%), var(--hover) 0); font-size: 12px; font-variant-numeric: tabular-nums; }
+.health-day-n > span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--card); }
+.health-day-n.met { background: var(--accent); }
+.health-day-n.plain { background: none; }
+.health-day-n.met > span { background: var(--accent); color: var(--card); font-weight: 700; }
+.health-day.today .health-day-n > span { font-weight: 700; color: var(--accent); }
+.health-day.today .health-day-n.met > span { color: var(--card); }
+.health-day-v { font-size: 10px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .health-part-card { display: flex; flex-direction: column; gap: 12px; width: 100%; padding: 18px; border: 0; border-radius: 24px; text-align: left; color: var(--text); font: inherit; cursor: pointer; }
 .health-part-card.tone-sleep { background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
 .health-part-card.tone-activity { background: color-mix(in srgb, #d0679d 16%, var(--card)); }

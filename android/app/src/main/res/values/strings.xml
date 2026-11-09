@@ -670,6 +670,15 @@
     <string name="dev_health_demo">Fill Health with made-up data</string>
     <string name="dev_health_demo_sub">Two weeks of nights, steps and heart rate that never happened, and a watch until the app restarts, to see Health and the start page without one.</string>
     <string name="health_settings_title">Health settings</string>
+    <string name="health_active_that_week">%1$d minutes active that week</string>
+    <string name="health_week_before">A week back</string>
+    <string name="health_week_after">A week on</string>
+    <string name="health_month_before">A month back</string>
+    <string name="health_month_after">A month on</string>
+    <string name="health_calendar">Calendar</string>
+    <string name="health_more_calendar_sleep">Every night with how long you slept. The ring fills toward seven hours, the start of what most adults need.</string>
+    <string name="health_more_calendar_activity">Every day with your steps. The ring fills toward your step goal; a filled day reached it.</string>
+    <string name="health_more_calendar_heart">Every day with your mean heart rate over the day, from the measuring of your watch.</string>
     <string name="health_activity_title">Activity</string>
     <string name="health_heart_title">Heart</string>
     <string name="health_info">What this means</string>

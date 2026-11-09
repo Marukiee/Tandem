@@ -667,6 +667,15 @@
     <string name="dev_health_demo">Gezondheid vullen met verzonnen gegevens</string>
     <string name="dev_health_demo_sub">Twee weken nachten, stappen en hartslag die nooit gebeurd zijn, en een horloge tot de app herstart, om Gezondheid en het beginscherm zonder horloge te bekijken.</string>
     <string name="health_settings_title">Instellingen voor Gezondheid</string>
+    <string name="health_active_that_week">%1$d minuten actief die week</string>
+    <string name="health_week_before">Een week terug</string>
+    <string name="health_week_after">Een week verder</string>
+    <string name="health_month_before">Een maand terug</string>
+    <string name="health_month_after">Een maand verder</string>
+    <string name="health_calendar">Kalender</string>
+    <string name="health_more_calendar_sleep">Elke nacht met hoe lang je sliep. De ring vult zich tot zeven uur, het begin van wat de meeste volwassenen nodig hebben.</string>
+    <string name="health_more_calendar_activity">Elke dag met je stappen. De ring vult zich tot je stappendoel; een gevulde dag haalde het doel.</string>
+    <string name="health_more_calendar_heart">Elke dag met je gemiddelde hartslag over de dag, uit het meten van je horloge.</string>
     <string name="health_activity_title">Activiteit</string>
     <string name="health_heart_title">Hart</string>
     <string name="health_info">Wat dit betekent</string>
