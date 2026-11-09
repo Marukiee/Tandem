@@ -1046,3 +1046,66 @@ async fn focus_is_followed_without_an_echo_and_reaches_a_device_that_comes_later
     .await;
     assert_eq!((origin, on), (mac.engine.id(), true));
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn what_was_copied_while_the_phone_was_away_is_there_when_it_comes_back() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    let (phone_id, mac_id) = (phone.engine.id(), mac.engine.id());
+    wait_until("both online", || online(&mac, phone_id) && online(&phone, mac_id)).await;
+    phone.engine.shutdown().await;
+    wait_until("the mac sees the phone go", || !online(&mac, phone_id)).await;
+
+    // Copied twice on the Mac while the phone sleeps: the last one is the one that counts.
+    mac.engine.clipboard_changed("first, while away", false).await;
+    mac.engine.clipboard_changed("copied while the phone slept", false).await;
+
+    let mut cfg = EngineConfig::new(&phone.data, "Phone");
+    cfg.port = 0;
+    cfg.enable_mdns = false;
+    cfg.loopback = true;
+    let secrets = Arc::new(FileSecretStore::new(Store::new(&phone.data).unwrap()));
+    let files = Arc::new(DesktopFiles { download_dir: phone.downloads.clone() });
+    let again = Engine::start(cfg, secrets, files).await.unwrap();
+    let mut events = again.subscribe();
+    let text = expect(&mut events, "the clipboard the phone missed", |e| match e {
+        Event::Clipboard { text, .. } => Some(text.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(text, "copied while the phone slept");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_copy_on_the_phone_meanwhile_is_not_undone_by_the_one_it_missed() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    pair(&phone, &mac).await;
+    let phone_id = phone.engine.id();
+    wait_until("online", || online(&mac, phone_id)).await;
+    phone.engine.shutdown().await;
+    wait_until("the mac sees the phone go", || !online(&mac, phone_id)).await;
+    mac.engine.clipboard_changed("old, from the mac", false).await;
+    tokio::time::sleep(Duration::from_millis(2_500)).await;
+
+    let mut cfg = EngineConfig::new(&phone.data, "Phone");
+    cfg.port = 0;
+    cfg.enable_mdns = false;
+    cfg.loopback = true;
+    let secrets = Arc::new(FileSecretStore::new(Store::new(&phone.data).unwrap()));
+    let files = Arc::new(DesktopFiles { download_dir: phone.downloads.clone() });
+    let again = Engine::start(cfg, secrets, files).await.unwrap();
+    // The person copied on the phone itself before it reached the Mac again.
+    again.clipboard_changed("newer, on the phone", false).await;
+    let mut events = again.subscribe();
+    let arrived = tokio::time::timeout(Duration::from_secs(6), async {
+        loop {
+            if let Ok(Event::Clipboard { text, .. }) = events.recv().await {
+                return text;
+            }
+        }
+    })
+    .await;
+    assert!(arrived.is_err(), "the older clipboard of the mac replaced the newer one of the phone: {arrived:?}");
+}

@@ -36,11 +36,13 @@ fun FindComputerSection(device: TandemDevice) {
 
     SectionHeader(stringResource(R.string.find_section), top = 12.dp, bottom = 0.dp)
     SettingsGroup {
-        ActionRow(
-            0, 1, TandemIcons.Ring,
-            stringResource(if (on) R.string.find_stop_sound else R.string.find_play),
+        ButtonRow(
+            0, 1, TandemIcons.Ring, stringResource(R.string.find_play),
             lastSeenText(context, device) ?: stringResource(R.string.find_play_sub),
-            {
+            button = stringResource(if (on) R.string.find_button_stop else R.string.find_button_play), buttonIcon = TandemIcons.Ring,
+            // Always pressable: away or too old, the press says so with what may help (Wake).
+            ready = true, whyNot = null,
+            onClick = {
                 when {
                     on -> FindDevices.ring(context, device.id, false)
                     !device.online -> why = WhyNot.Offline
@@ -51,8 +53,6 @@ fun FindComputerSection(device: TandemDevice) {
                     }
                 }
             },
-            iconTint = if (on) scheme.onPrimary else null,
-            iconContainer = if (on) scheme.primary else null,
         )
     }
 

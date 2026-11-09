@@ -202,6 +202,13 @@ impl Inner {
         self.emit(Event::DevicesChanged);
         self.sessions_changed.notify_waiters();
         self.live_peer_up(id, hello.boot_id);
+        // What was copied here while it was away.
+        if let Some(clip) = self.take_missed_clip(&id) {
+            let this = self.clone();
+            tokio::spawn(async move {
+                let _ = this.send_to(&id, Msg::Clipboard(clip)).await;
+            });
+        }
 
         // Bring the other side up to date.
         let status = self.my_status.lock().unwrap().clone();
@@ -420,6 +427,10 @@ impl Inner {
             }
             Msg::Clipboard(clip) => {
                 if !self.settings.read().unwrap().for_device(&id).clipboard {
+                    return;
+                }
+                if crate::engine::clip_is_stale(clip.ts, self.local_clip_ts.load(std::sync::atomic::Ordering::Relaxed)) {
+                    debug!(peer = %id, "a clipboard from before the last copy here is left out");
                     return;
                 }
                 *self.last_remote_clip.lock().unwrap() = Some(crate::engine::hash_text(&clip.text));

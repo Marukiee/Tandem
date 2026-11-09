@@ -339,7 +339,7 @@ export function DevicePage({ device }) {
         <${OutputButton} device=${device} />
         <${MicButton} device=${device} />
         <button class=${"btn" + (ringing ? " on" : "")} disabled=${!device.online} onClick=${ring}>
-          <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_ringing") : t("find_phone")}</button>
+          <${Icon} name=${ringing ? "bell-off" : "bell-ringing"} size=${17} />${ringing ? t("stop_sound") : t("play_sound")}</button>
         <${SoundModeButton} device=${device} />
       <//>`}
       ${isComputer && html`<${ActionGroup} title=${t("group_computer")}>
@@ -547,7 +547,7 @@ function WatchActions({ device, reachable }) {
     <span class="grow"><span class="t">${title}</span><span class="s">${sub}</span></span>
   </button>`;
   return html`<div class="watch-tiles">
-    ${tile(watch.ringing ? "bell-off" : "device-watch", watch.ringing ? t("stop_ringing") : t("find_watch"),
+    ${tile(watch.ringing ? "bell-off" : "device-watch", watch.ringing ? t("stop_sound") : t("play_sound"),
       watch.ringing ? t("watch_ringing_now") : t("watch_rings_silent"), watch.ringing, away, () => go("ring_watch", { on: !watch.ringing }))}
     ${tile("pointer", inAir ? t("watch_mouse_stop") : t("watch_as_mouse"),
       inAir ? t("watch_mouse_here") : other ? t("watch_mouse_other", other) : t("watch_mouse_how"), inAir, away,

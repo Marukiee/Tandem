@@ -290,12 +290,12 @@
     <string name="row_send_files">Send files</string>
     <string name="row_send_clipboard">Send clipboard</string>
     <string name="send_files_sub">Choose files on this phone</string>
+    <string name="send_clipboard_button">Send</string>
+    <string name="send_clipboard_empty">Nothing copied to send</string>
     <string name="send_clipboard_sub">What you copied last</string>
     <string name="trackpad_row_sub">Use this phone as a trackpad and keyboard</string>
-    <string name="find_row_sub">Make it ring</string>
     <string name="tile_clipboard">Clipboard</string>
     <string name="tile_trackpad">Trackpad</string>
-    <string name="tile_find">Find</string>
     <string name="dev_section">Developer</string>
     <string name="update_download">Download</string>
     <string name="update_on_version">You have %1$s</string>
@@ -554,8 +554,6 @@
     <string name="watch_searching">Looking for your watch</string>
     <string name="watch_battery">Battery %1$d%%</string>
     <string name="watch_battery_charging">Battery %1$d%%, charging</string>
-    <string name="watch_find">Find my watch</string>
-    <string name="watch_find_stop">Stop ringing</string>
     <string name="watch_find_sub">Rings even when the watch is on silent</string>
     <string name="watch_not_connected">The watch is not connected</string>
     <string name="watch_needs_listener">Allow notification access</string>

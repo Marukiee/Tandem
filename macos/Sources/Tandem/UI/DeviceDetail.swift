@@ -305,7 +305,7 @@ struct DeviceDetail: View {
                 .disabled(!device.online && !listening)
                 let ringing = model.ringing.contains(device.id)
                 GlassActionButton(
-                    title: ringing ? "Stop ringing" : "Find phone",
+                    title: ringing ? "Stop sound" : "Play sound",
                     symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right",
                     prominent: ringing
                 ) {

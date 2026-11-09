@@ -336,10 +336,10 @@ final class TandemSpotlight {
              ["clipboard", "klembord", "send", "sturen", "versturen", "copy", "kopiëren", "paste", "plakken", "text", "tekst"], "doc.on.clipboard"),
         ]
         if phone {
-            list.append((.ring, String(localized: "Find \(name)"), String(localized: "Rings the phone, even when it is silent"),
+            list.append((.ring, String(localized: "Play sound on \(name)"), String(localized: "Rings the phone, even when it is silent"),
                          ["find", "zoeken", "vinden", "ring", "bellen", "rinkelen", "sound", "geluid", "lost", "kwijt"], "bell.and.waves.left.and.right"))
         } else if device.isComputer, device.caps.contains("ring") {
-            list.append((.ring, String(localized: "Ring \(name)"), String(localized: "Plays a sound on it, to find it"),
+            list.append((.ring, String(localized: "Play sound on \(name)"), String(localized: "Plays a sound on it, to find it"),
                          ["ring", "bellen", "find", "zoeken", "vinden", "sound", "geluid", "play", "afspelen", "lost", "kwijt"], "bell.and.waves.left.and.right"))
         }
         if device.caps.contains("screen.extend.view"), canExtend {

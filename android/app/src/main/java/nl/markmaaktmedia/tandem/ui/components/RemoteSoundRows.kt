@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.annotation.StringRes
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -65,44 +67,62 @@ fun SoundModeRow(index: Int, total: Int, device: TandemDevice) {
  */
 @Composable
 fun LockRow(index: Int, total: Int, device: TandemDevice) {
-    val context = LocalContext.current
-    val host = context.graph.host
+    val host = LocalContext.current.graph.host
     val scope = rememberCoroutineScope()
-    val scheme = MaterialTheme.colorScheme
     val locked = device.status.locked == true
-    val ready = device.online && device.status.lock == true && !locked
-    val whyNot = when {
-        !device.online -> R.string.lock_why_offline
-        device.status.lock == null -> R.string.lock_why_update
-        else -> R.string.lock_why_access
-    }
+    ButtonRow(
+        index, total, TandemIcons.Lock, stringResource(R.string.lock_row_title),
+        stringResource(if (locked) R.string.lock_row_locked else R.string.lock_row_sub),
+        button = stringResource(if (locked) R.string.lock_button_locked else R.string.lock_button),
+        buttonIcon = TandemIcons.Lock,
+        ready = device.online && device.status.lock == true && !locked,
+        // Locked already is not something missing: the button is grey and says so, without a reason to tap for.
+        whyNot = when {
+            locked -> null
+            !device.online -> R.string.lock_why_offline
+            device.status.lock == null -> R.string.lock_why_update
+            else -> R.string.lock_why_access
+        },
+        onClick = { scope.launch { runCatching { host.engine?.lock(device.id) } } },
+    )
+}
+
+/**
+ * A row whose action is done right here, with a button at its end, as a switch row has its switch; a row that opens something has
+ * the arrow of a page instead (`ControlRow`). Grey while it cannot, and a press then says why.
+ */
+@Composable
+fun ButtonRow(
+    index: Int,
+    total: Int,
+    icon: Painter,
+    title: String,
+    subtitle: String,
+    button: String,
+    buttonIcon: Painter?,
+    ready: Boolean,
+    @StringRes whyNot: Int?,
+    onClick: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scheme = MaterialTheme.colorScheme
     GroupedRow(index, total) {
         Row(
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            RowIcon(
-                TandemIcons.Lock,
-                tint = if (ready || locked) scheme.onSecondaryContainer else scheme.onSurfaceVariant.copy(alpha = 0.6f),
-                container = if (ready || locked) scheme.secondaryContainer else scheme.surfaceContainerHighest,
-            )
+            RowIcon(icon)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(stringResource(R.string.lock_row_title), style = MaterialTheme.typography.titleSmall)
-                Text(
-                    stringResource(if (locked) R.string.lock_row_locked else R.string.lock_row_sub),
-                    style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
-                )
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
             }
-            // Pressed while it cannot, it still answers: with why.
             PrimaryPillButton(
-                label = stringResource(if (locked) R.string.lock_button_locked else R.string.lock_button),
-                icon = TandemIcons.Lock,
+                label = button,
+                icon = buttonIcon,
                 enabled = ready,
-                onClick = { scope.launch { runCatching { host.engine?.lock(device.id) } } },
-                container = scheme.primary,
-                content = scheme.onPrimary,
-                modifier = if (ready || locked) Modifier else Modifier.clickable {
+                onClick = onClick,
+                modifier = if (ready || whyNot == null) Modifier else Modifier.clickable {
                     Toast.makeText(context, whyNot, Toast.LENGTH_SHORT).show()
                 },
             )

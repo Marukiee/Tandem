@@ -121,6 +121,11 @@ pub(crate) struct Inner {
     pub battery_said: Mutex<HashMap<DeviceId, Option<crate::battery_alert::BatteryAlert>>>,
     pub settings: RwLock<Settings>,
     pub last_remote_clip: Mutex<Option<u64>>,
+    /// The last clipboard each device with the clipboard on did not get because it was away (a phone asleep, a laptop shut). It goes
+    /// when that device comes back, so what was copied in between is there all the same, unless something newer was copied there.
+    pub missed_clip: Mutex<HashMap<DeviceId, crate::proto::ClipboardMsg>>,
+    /// When the clipboard of this device last changed, in ms: a clipboard that comes in later but was copied before it is left out.
+    pub local_clip_ts: std::sync::atomic::AtomicU64,
     pub poke: Notify,
     pub sessions_changed: Notify,
     pub cancel: CancellationToken,
@@ -214,6 +219,8 @@ impl Engine {
             battery_said: Mutex::new(HashMap::new()),
             settings: RwLock::new(settings),
             last_remote_clip: Mutex::new(None),
+            missed_clip: Mutex::new(HashMap::new()),
+            local_clip_ts: std::sync::atomic::AtomicU64::new(0),
             poke: Notify::new(),
             sessions_changed: Notify::new(),
             cancel: CancellationToken::new(),
@@ -1221,7 +1228,29 @@ impl Inner {
             }
             ids.into_iter().filter(|id| settings.for_device(id).clipboard).collect()
         };
-        self.send_clipboard(&targets, text, is_url).await;
+        let msg = crate::proto::ClipboardMsg { id: rand_u64(), ts: now_ms(), text: text.to_string(), is_url };
+        self.local_clip_ts.store(msg.ts, std::sync::atomic::Ordering::Relaxed);
+        let reached = self.send_many(&targets, Msg::Clipboard(msg.clone())).await;
+        // Who has the clipboard on but did not get this one gets it when it comes back.
+        let away: Vec<DeviceId> = {
+            let circle = self.circle.read().unwrap();
+            let settings = self.settings.read().unwrap();
+            circle.members().into_iter().map(|m| m.id).filter(|id| *id != self.my_id && settings.for_device(id).clipboard && !reached.contains(id)).collect()
+        };
+        let mut missed = self.missed_clip.lock().unwrap();
+        for id in &reached {
+            missed.remove(id);
+        }
+        for id in away {
+            missed.insert(id, msg.clone());
+        }
+    }
+
+    /// A device came back: the clipboard it missed while away, when there is one and it is not old.
+    pub fn take_missed_clip(&self, id: &DeviceId) -> Option<crate::proto::ClipboardMsg> {
+        let clip = self.missed_clip.lock().unwrap().remove(id)?;
+        let fresh = now_ms().saturating_sub(clip.ts) < MISSED_CLIP_KEEP_MS;
+        (fresh && self.settings.read().unwrap().for_device(id).clipboard).then_some(clip)
     }
 
     pub async fn send_clipboard(&self, targets: &[DeviceId], text: &str, is_url: bool) -> Vec<DeviceId> {
@@ -1233,6 +1262,15 @@ impl Inner {
         });
         self.send_many(targets, msg).await
     }
+}
+
+/// How long a clipboard that a device missed is kept for it: by the next day it is no longer what the person is busy with.
+const MISSED_CLIP_KEEP_MS: u64 = 8 * 3600 * 1000;
+
+/// Whether a clipboard that comes in is older than the last copy on this device, with two seconds for clocks that differ a little: a
+/// device that comes back must not undo what was copied here while it was away.
+pub(crate) fn clip_is_stale(incoming_ts: u64, local_ts: u64) -> bool {
+    incoming_ts.saturating_add(2_000) < local_ts
 }
 
 pub(crate) fn hash_text(text: &str) -> u64 {

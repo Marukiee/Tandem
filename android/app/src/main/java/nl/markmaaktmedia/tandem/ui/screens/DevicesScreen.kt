@@ -91,6 +91,8 @@ fun DevicesScreen(
     onPair: () -> Unit,
     onOpenWatch: () -> Unit,
     bottomPadding: androidx.compose.ui.unit.Dp,
+    /** Opens the control of a computer's screen, from the pill on its card. */
+    onControl: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
 ) {
@@ -242,6 +244,7 @@ fun DevicesScreen(
                         modifier = Modifier.routeBounds(routeKey(Route.Device(device.id))),
                         onOpen = { onOpenDevice(device.id) },
                         onSendFiles = { pickerTarget = device.id; picker.launch(arrayOf("*/*")) },
+                        onControl = { onControl(device.id) },
                         onSendClipboard = {
                             val clip = host.readClipboard()
                             if (clip != null) scope.launch { host.sendClipboard(listOf(device.id), clip) }
@@ -322,7 +325,7 @@ private fun WatchCard(
             exit = fadeOut() + shrinkVertically(),
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                QuickAction(TandemIcons.Ring, stringResource(if (state.ringing) R.string.watch_find_stop else R.string.watch_find), onRing)
+                QuickAction(TandemIcons.Ring, stringResource(if (state.ringing) R.string.find_stop_sound else R.string.find_play), onRing)
             }
         }
     }
@@ -372,6 +375,7 @@ fun DeviceCard(
     onSendClipboard: () -> Unit,
     modifier: Modifier = Modifier,
     onWake: () -> Unit = {},
+    onControl: () -> Unit = {},
     pinned: Boolean = false,
 ) {
     // Asleep is only known from what the device said as it went, so it is a guess that it can be woken.
@@ -427,7 +431,21 @@ fun DeviceCard(
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (device.online) QuickAction(TandemIcons.Upload, stringResource(R.string.action_files), onSendFiles)
-                if (device.online || device.ble) QuickAction(TandemIcons.Paste, stringResource(R.string.action_clipboard), onSendClipboard)
+                // A computer: its screen is what is reached for most, so that is the second pill; the clipboard is on its page. Without
+                // the screen of that computer set up, a press says what is missing there.
+                val computer = device.platform == TandemPlatform.MAC_OS || device.platform == TandemPlatform.LINUX || device.platform == TandemPlatform.WINDOWS
+                if (computer && device.online) {
+                    val context = LocalContext.current
+                    val mac = device.platform == TandemPlatform.MAC_OS
+                    QuickAction(TandemIcons.Desktop, stringResource(if (mac) R.string.tile_control_mac else R.string.tile_control_computer)) {
+                        if ("screen.host" in device.caps) onControl()
+                        else android.widget.Toast.makeText(
+                            context, if (mac) R.string.control_sub_setup else R.string.control_sub_unavailable, android.widget.Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                } else if (device.online || device.ble) {
+                    QuickAction(TandemIcons.Paste, stringResource(R.string.action_clipboard), onSendClipboard)
+                }
                 if (canWake) QuickAction(TandemIcons.Power, stringResource(R.string.action_wake), onWake)
             }
         }

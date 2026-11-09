@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.3.5",
+    "date": "2026-11-09",
+    "en": {
+      "title": "Copied is copied",
+      "new": [
+        "What you copy while a device is away is on its clipboard when it comes back",
+        "Send clipboard on Android is a button, like Lock",
+        "Play sound has the same name everywhere, and on Android a button instead of an arrow",
+        "The card of a computer has Control this Mac instead of Clipboard"
+      ]
+    },
+    "nl": {
+      "title": "Gekopieerd is gekopieerd",
+      "new": [
+        "Wat je kopieert terwijl een apparaat weg is, staat op zijn klembord als het terugkomt",
+        "Klembord versturen op Android is een knop, zoals Vergrendelen",
+        "Geluid afspelen heet overal hetzelfde, en is op Android een knop in plaats van een pijltje",
+        "De kaart van een computer heeft Bedien deze Mac in plaats van Klembord"
+      ]
+    }
+  },
+  {
     "version": "0.3.4",
     "date": "2026-11-08",
     "en": {
