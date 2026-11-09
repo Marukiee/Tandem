@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.3.7",
+    "date": "2026-11-09",
+    "en": {
+      "title": "Awake at night",
+      "new": [
+        "The watch sees the time you are awake at night better, checked on nights from a sleep lab, and the first minutes in bed count as falling asleep",
+        "The watch finds the phone sooner after an update",
+        "The row of the watch app has a plain name and no longer speaks of an old version"
+      ]
+    },
+    "nl": {
+      "title": "Wakker in de nacht",
+      "new": [
+        "Het horloge ziet beter wanneer je 's nachts wakker bent, getoetst op nachten uit een slaaplab, en de eerste minuten in bed tellen als inslapen",
+        "Het horloge vindt de telefoon sneller na een update",
+        "De rij van de horloge-app heeft een gewone naam en noemt geen oude versie meer"
+      ]
+    }
+  },
+  {
     "version": "0.3.6",
     "date": "2026-11-09",
     "en": {
