@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.3.8",
+    "date": "2026-11-09",
+    "en": {
+      "title": "Health, part by part",
+      "new": [
+        "Health opens on an overview with last night large, and a page each for sleep, activity and the heart, on the phone, the Mac and the computers",
+        "The choices and your data are behind a gear, and an info sign explains a card",
+        "The watch card on the start page shows last night and your steps, with a pill to wake gently",
+        "Tandem says when Bluetooth is off, so you know why the watch does not connect"
+      ]
+    },
+    "nl": {
+      "title": "Gezondheid, per onderdeel",
+      "new": [
+        "Gezondheid opent op een overzicht met de afgelopen nacht groot, en een pagina voor slaap, activiteit en hart, op de telefoon, de Mac en de computers",
+        "Je keuzes en gegevens staan achter een tandwiel, en een info-teken legt een kaart uit",
+        "Het horlogekaartje op het beginscherm toont de afgelopen nacht en je stappen, met een pil om zacht te wekken",
+        "Tandem zegt het als Bluetooth uitstaat, zodat je weet waarom het horloge geen verbinding maakt"
+      ]
+    }
+  },
+  {
     "version": "0.3.7",
     "date": "2026-11-09",
     "en": {
