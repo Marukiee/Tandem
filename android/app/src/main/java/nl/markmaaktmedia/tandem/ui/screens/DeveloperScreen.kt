@@ -45,6 +45,29 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
     val watchState by graph.watch.state.collectAsState()
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
+    // The nights of other apps as a table, to set the sleep model of the watch by: here and not on the health page, because it is
+    // for setting the model and hardly ever used. First the file, then what Health Connect allows.
+    val exportOthers = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/csv"),
+    ) { uri ->
+        if (uri == null || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return@rememberLauncherForActivityResult
+        scope.launch {
+            val saved = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    val csv = nl.markmaaktmedia.tandem.watch.HealthConnectImport.otherNightsCsv(context)
+                    context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(csv.toByteArray()) }
+                }.isSuccess
+            }
+            Toast.makeText(context, if (saved) R.string.health_export_done else R.string.health_export_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+    val exportOthersAccess = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(),
+    ) { granted ->
+        if (granted.values.any { it }) exportOthers.launch("other-apps-nights.csv")
+        else Toast.makeText(context, R.string.health_import_denied, Toast.LENGTH_SHORT).show()
+    }
+
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -80,16 +103,24 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         // The hotspot counts mobile data per day and per month. These put numbers in it so the lists can be seen and tried,
         // and take them out again.
         if (watchState.paired) {
+            val canCompare = nl.markmaaktmedia.tandem.watch.HealthConnectImport.available(context)
+            val rows = if (canCompare) 2 else 1
             SectionHeader(stringResource(R.string.settings_cat_watch))
             SettingsGroup {
                 ActionRow(
-                    0, 1, TandemIcons.Vibration, stringResource(R.string.health_smart_wake_try), stringResource(R.string.health_smart_wake_try_sub),
+                    0, rows, TandemIcons.Vibration, stringResource(R.string.health_smart_wake_try), stringResource(R.string.health_smart_wake_try_sub),
                     {
                         if (watchState.ready) graph.watch.tryWakeBuzz()
                         else Toast.makeText(context, R.string.watch_not_connected, Toast.LENGTH_SHORT).show()
                     },
                     modifier = if (watchState.ready) Modifier else Modifier.alpha(0.6f),
                 )
+                if (canCompare) {
+                    ActionRow(
+                        1, rows, TandemIcons.Sleep, stringResource(R.string.health_compare_export), stringResource(R.string.health_compare_export_sub),
+                        { exportOthersAccess.launch(nl.markmaaktmedia.tandem.watch.HealthConnectImport.PERMISSIONS) },
+                    )
+                }
             }
         }
 

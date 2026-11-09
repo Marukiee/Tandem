@@ -66,24 +66,6 @@ internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
         }
     }
 
-    // The nights of other apps as a table, to set the sleep model of the watch by: first the file, then what Health Connect allows.
-    val exportOthers = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
-        if (uri == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return@rememberLauncherForActivityResult
-        scope.launch {
-            val saved = withContext(Dispatchers.IO) {
-                runCatching {
-                    val csv = HealthConnectImport.otherNightsCsv(context)
-                    context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(csv.toByteArray()) }
-                }.isSuccess
-            }
-            Toast.makeText(context, if (saved) R.string.health_export_done else R.string.health_export_failed, Toast.LENGTH_SHORT).show()
-        }
-    }
-    val exportOthersAccess = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
-        if (granted.values.any { it }) exportOthers.launch("other-apps-nights.csv")
-        else Toast.makeText(context, R.string.health_import_denied, Toast.LENGTH_SHORT).show()
-    }
-
     var compared by remember { mutableStateOf<List<HealthConnectImport.SameNight>>(emptyList()) }
     val writing by graph.prefs.healthConnectWrite.collectAsState(initial = false)
 
@@ -153,20 +135,16 @@ internal fun HealthPage(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                 SettingsGroup {
                     val canImport = HealthConnectImport.available(context)
                     ActionRow(
-                        0, if (canImport) 4 else 1, TandemIcons.Download, stringResource(R.string.health_export), stringResource(R.string.health_export_sub),
+                        0, if (canImport) 3 else 1, TandemIcons.Download, stringResource(R.string.health_export), stringResource(R.string.health_export_sub),
                         onClick = { export.launch("tandem-health.csv") },
                     )
                     if (canImport) {
                         ActionRow(
-                            1, 4, TandemIcons.Heart, stringResource(R.string.health_import), stringResource(R.string.health_import_sub),
+                            1, 3, TandemIcons.Heart, stringResource(R.string.health_import), stringResource(R.string.health_import_sub),
                             onClick = { importAccess.launch(HealthConnectImport.PERMISSIONS) },
                         )
-                        ActionRow(
-                            2, 4, TandemIcons.Sleep, stringResource(R.string.health_compare_export), stringResource(R.string.health_compare_export_sub),
-                            onClick = { exportOthersAccess.launch(HealthConnectImport.PERMISSIONS) },
-                        )
                         SwitchRow(
-                            3, 4, TandemIcons.Heart, stringResource(R.string.health_write), stringResource(R.string.health_write_sub), writing,
+                            2, 3, TandemIcons.Heart, stringResource(R.string.health_write), stringResource(R.string.health_write_sub), writing,
                             { on -> if (on) writeAccess.launch(HealthConnectImport.WRITE_PERMISSIONS) else scope.launch { graph.prefs.setHealthConnectWrite(false) } },
                         )
                     }

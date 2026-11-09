@@ -171,7 +171,7 @@ speakertje het hardst is, op het volle alarmvolume zolang het belt en daarna ter
   slaap met REM (15%). De nacht waarop Google 83 gaf (35 min inslapen, 30 min onrust, 13 min onderbrekingen in 2 keer) komt hier op 83.
   Wat het horloge niet ziet, telt niet: met 8 minuten wakker zoals het model die nacht zag, blijft het boven de 90. Daarom het afstemmen
   hieronder.
-- Afstemmen op een andere app (Fitbit of Google op dezelfde pols): op de telefoon Gezondheid, Nachten van andere apps exporteren (de
+- Afstemmen op een andere app (Fitbit of Google op dezelfde pols): op de telefoon bij de ontwikkelaarsopties (Over en ontwikkelaar, Ontwikkelaar), Nachten van andere apps exporteren (de
   slaapfases van 30 dagen uit Health Connect), de ruwe nachten van het horloge ophalen met
   `adb pull /sdcard/Android/data/nl.markmaaktmedia.tandem.watch/files/raw/` (het horloge bewaart ze 30 dagen), en dan
   `./gradlew :watch-sleep:analyze --args="--compare other-apps-nights.csv --boosts 0.6,0.9,1.2,1.5 --transitions 0.2,0.4 raw/sleep-*.tws"`.
