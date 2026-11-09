@@ -128,8 +128,16 @@ class SleepAnalyzerTest {
         assertEquals(SleepStage.WAKE, summary.epochs.first().stage)
         assertEquals(80, summary.efficiencyPercent)
         assertEquals(0, summary.wakeAfterOnsetMinutes)
-        // Together with what came before, a bit under an hour of recording is a night too.
-        assertNotNull(Script().add(45, SleepStage.LIGHT).summary(lead = 50))
+        // What came before falls asleep, but it does not make a short stretch of sleep long enough to be a night.
+        assertNull(Script().add(45, SleepStage.LIGHT).summary(lead = 50))
+    }
+
+    @Test
+    fun `sitting still for half an hour in the evening is no night, however long the wrist was still before`() {
+        // As on 9 November: a recording that started by itself after 26 still minutes, then deep and REM by the model at 84 beats.
+        val evening = Script().add(8, SleepStage.WAKE, heart = 84).add(17, SleepStage.DEEP, heart = 84).add(12, SleepStage.WAKE, heart = 84)
+            .add(9, SleepStage.REM, heart = 88).add(1, SleepStage.WAKE, heart = 88)
+        assertNull(evening.summary(lead = 52))
     }
 
     @Test

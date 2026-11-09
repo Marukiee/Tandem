@@ -48,7 +48,10 @@ object SleepAnalyzer {
     private const val MIN_RUN_EPOCHS = 5 * EPOCHS_PER_MINUTE
     /** Awake for up to this long does not split the night. */
     private const val MAX_GAP_EPOCHS = 60 * EPOCHS_PER_MINUTE
-    /** Shorter sleep periods are ignored, so sitting still on the couch does not become the night. */
+    /**
+     * Shorter sleep periods are ignored, so sitting still on the couch does not become the night. The time before a recording does not
+     * count toward it: with it, 37 minutes of sitting still in the evening at 84 beats a minute passed as a night of 24 minutes.
+     */
     private const val MIN_PERIOD_EPOCHS = 60 * EPOCHS_PER_MINUTE
     /** The lead-in only counts when the sleep found in the recording starts about where the recording does. */
     private const val MAX_LEAD_GAP_EPOCHS = 15 * EPOCHS_PER_MINUTE
@@ -79,7 +82,7 @@ object SleepAnalyzer {
         val asleep = BooleanArray(count) { i ->
             stages[i] != SleepStage.WAKE && night.worn[i] && night.motionShare[i] > 0 && !lying[i]
         }
-        val period = mainPeriod(asleep, night.leadEpochs) ?: return null
+        val period = mainPeriod(asleep) ?: return null
         val first = period.first
         val last = period.last
         val shown = Array(count) { if (asleep[it]) stages[it] else SleepStage.WAKE }
@@ -147,7 +150,7 @@ object SleepAnalyzer {
     }
 
     /** Joins sleep separated by short times awake and returns the period with the most sleep. */
-    private fun mainPeriod(asleep: BooleanArray, lead: Int): IntRange? {
+    private fun mainPeriod(asleep: BooleanArray): IntRange? {
         val runs = BooleanArray(asleep.size)
         var runStart = -1
         for (i in 0..asleep.size) {
@@ -166,8 +169,7 @@ object SleepAnalyzer {
 
         fun close() {
             if (currentStart < 0) return
-            val withLead = if (currentStart <= MAX_LEAD_GAP_EPOCHS) lead else 0
-            if (lastOn - currentStart + 1 + withLead >= MIN_PERIOD_EPOCHS && currentSleep > bestSleep) {
+            if (lastOn - currentStart + 1 >= MIN_PERIOD_EPOCHS && currentSleep > bestSleep) {
                 best = currentStart..lastOn
                 bestSleep = currentSleep
             }
