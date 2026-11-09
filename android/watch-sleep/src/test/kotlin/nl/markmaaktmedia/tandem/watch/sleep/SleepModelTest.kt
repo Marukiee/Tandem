@@ -56,7 +56,8 @@ class SleepModelTest {
         for (t in 0 until golden.rows) for (c in 0 until 4) {
             assertTrue(abs(logs[t][c] - golden.logs[t * 4 + c]) < 2e-2f, "epoch $t stage $c: ${logs[t][c]}, training has ${golden.logs[t * 4 + c]}")
         }
-        val path = model.stages(rows)
+        // The golden night was exported with the weights of that time; the reading of a night is compared with the same ones.
+        val path = model.stages(rows, wakeBoost = 0.6f, transitionWeight = 0.4f)
         val differ = path.indices.count { path[it].ordinal != golden.path[it] }
         assertTrue(differ <= golden.rows / 100, "$differ epochs differ")
     }

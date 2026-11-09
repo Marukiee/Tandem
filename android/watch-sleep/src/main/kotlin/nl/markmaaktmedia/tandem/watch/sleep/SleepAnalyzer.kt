@@ -85,15 +85,18 @@ object SleepAnalyzer {
         val shown = Array(count) { if (asleep[it]) stages[it] else SleepStage.WAKE }
 
         val range = first..last
-        val onset = night.startMs + first * NightFeatures.EPOCH_MS
         // A recording that started by itself began after the person lay still. That time is falling asleep, not sleep: counted as
         // sleep it made every night 99% asleep with no time to fall asleep at all, where Google's Sleep Score on the same wrist
         // counted half an hour. So the night starts where the person lay down, and that time is awake, in bed.
         val lead = if (first <= MAX_LEAD_GAP_EPOCHS) night.leadEpochs + first else 0
         val leadFromBefore = if (lead > 0) night.leadEpochs else 0
+        // The minutes between the start of the recording and the first sleep are falling asleep too, when they are few: left out, the
+        // time to fall asleep came out as nothing.
+        val settling = if (first <= MAX_LEAD_GAP_EPOCHS) first else 0
+        val bedtime = night.startMs + (first - settling) * NightFeatures.EPOCH_MS
 
         val sleepEpochs = range.count { asleep[it] }
-        val total = range.count() + leadFromBefore
+        val total = range.count() + leadFromBefore + settling
         var awakenings = 0
         for (i in first + 1..last) if (!asleep[i] && asleep[i - 1]) awakenings++
         val rates = range.filter { asleep[it] }.mapNotNull { night.heartRates[it] }
@@ -101,7 +104,7 @@ object SleepAnalyzer {
         val hasHeart = range.count { asleep[it] } > 0 && rates.size >= MIN_HEART_SHARE * range.count { asleep[it] }
 
         return SleepSummary(
-            onsetMs = onset - leadFromBefore * NightFeatures.EPOCH_MS,
+            onsetMs = bedtime - leadFromBefore * NightFeatures.EPOCH_MS,
             wakeMs = night.startMs + (last + 1) * NightFeatures.EPOCH_MS,
             sleepMinutes = sleepEpochs / EPOCHS_PER_MINUTE,
             // Awake once asleep: the time falling asleep is its own part of the night.
@@ -120,7 +123,8 @@ object SleepAnalyzer {
             } else {
                 null
             },
-            epochs = (0 until leadFromBefore).map { SleepEpoch(onset - (leadFromBefore - it) * NightFeatures.EPOCH_MS, SleepStage.WAKE, null) } +
+            epochs = (0 until leadFromBefore).map { SleepEpoch(bedtime - (leadFromBefore - it) * NightFeatures.EPOCH_MS, SleepStage.WAKE, null) } +
+                (first - settling until first).map { SleepEpoch(night.startMs + it * NightFeatures.EPOCH_MS, SleepStage.WAKE, night.heartRates[it]) } +
                 range.map { SleepEpoch(night.startMs + it * NightFeatures.EPOCH_MS, shown[it], night.heartRates[it]) },
         )
     }

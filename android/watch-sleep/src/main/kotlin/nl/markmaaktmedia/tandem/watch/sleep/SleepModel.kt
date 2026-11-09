@@ -45,7 +45,9 @@ class SleepModel private constructor(
 
     /**
      * Taken as learned, the transitions smooth away nearly every short time awake: 64% of the nights ended up without a minute awake,
-     * where in truth that is 2%. So they weigh less and awake weighs more, with the numbers measured in training/README.md.
+     * where in truth that is 2%. So they weigh less and awake weighs more, with the numbers measured in training/README.md. Held against
+     * Google's Sleep Score on the same wrist (`AnalyzeCli --sweep`), 0.4 and 0.6 still saw 8 minutes awake on a night it saw about 43:
+     * 0.25 and 1.4 see 38, with the same two full awakenings.
      */
     internal fun decode(logs: Array<FloatArray>, wakeBoost: Float = WAKE_BOOST, transitionWeight: Float = TRANSITION_WEIGHT): Array<SleepStage> {
         if (logs.isEmpty()) return emptyArray()
@@ -177,8 +179,8 @@ class SleepModel private constructor(
     companion object {
         private const val STAGES = 4
         private const val MAGIC = 0x314D5354 // "TSM1"
-        internal const val TRANSITION_WEIGHT = 0.4f
-        internal const val WAKE_BOOST = 0.6f
+        internal const val TRANSITION_WEIGHT = 0.25f
+        internal const val WAKE_BOOST = 1.4f
 
         /** The weights take a moment to read and a few hundred kilobytes, so nothing keeps them after a night is analysed. */
         fun load(): SleepModel = requireNotNull(SleepModel::class.java.getResourceAsStream("/sleep_model.bin")) { "sleep model missing" }

@@ -133,6 +133,16 @@ class SleepAnalyzerTest {
     }
 
     @Test
+    fun `a few minutes awake at the start of a recording are falling asleep`() {
+        val summary = assertNotNull(Script().add(10, SleepStage.WAKE).add(100, SleepStage.LIGHT).summary())
+        assertEquals(T0, summary.onsetMs)
+        assertEquals(100, summary.sleepMinutes)
+        assertEquals(SleepStage.WAKE, summary.epochs.first().stage)
+        assertEquals(220, summary.epochs.size)
+        assertEquals(0, summary.wakeAfterOnsetMinutes)
+    }
+
+    @Test
     fun `sleep long after the start owes nothing to the time before the recording`() {
         val summary = assertNotNull(Script().add(60, SleepStage.WAKE).add(100, SleepStage.LIGHT).summary(lead = 50))
         assertEquals(T0 + 60 * MIN, summary.onsetMs)

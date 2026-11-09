@@ -23,6 +23,27 @@ fun main(args: Array<String>) {
         compare(options, readOtherNights(File(compareWith)), model, boosts, transitions)
         return
     }
+    // --sweep: per night what the watch would make of it for each pair of weights, for when another app's nights are only known as
+    // numbers (Google's Sleep Score shows its parts, not its stages).
+    if (options.remove("--sweep")) {
+        val model = modelFrom?.let { path -> File(path).inputStream().use { SleepModel.read(it) } } ?: SleepModel.load()
+        for (path in options) {
+            val night = NightFeatures().also { features -> File(path).inputStream().use { forEachRawRecord(it, features::add) } }.finish() ?: continue
+            println(path)
+            println("  boost  trans  asleep    to sleep  restless  interrupt  awakenings  awake")
+            for (boost in boosts) for (transition in transitions) {
+                val summary = SleepAnalyzer.summarize(night, model.stages(night.rows, boost, transition)) ?: continue
+                val parts = partsOf(summary.epochs.map { it.stage })
+                println(
+                    "  %.2f   %.2f   %2d u %02d   %4d      %4d      %4d       %4d        %4d".format(
+                        java.util.Locale.ROOT, boost, transition, summary.sleepMinutes / 60, summary.sleepMinutes % 60,
+                        parts.toSound, parts.restless, parts.interrupted, parts.awakenings, parts.awake,
+                    ),
+                )
+            }
+        }
+        return
+    }
     if (options.isEmpty()) {
         System.err.println("Gebruik: analyze [--epochs uit.csv] [--model model.bin] <bestand.tws> [meer bestanden]")
         return
