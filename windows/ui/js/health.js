@@ -1,14 +1,15 @@
 // The health page: built like the one on the phone and the Mac, from the same seven days of the core.
-import { html, useState } from "../vendor/preact-htm.js";
+import { html, useState, useEffect } from "../vendor/preact-htm.js";
 import { Icon } from "./icons.js";
 import { language, t } from "./i18n.js";
 
 const STAGE_COLORS = {
   deep: "var(--accent)",
-  light: "color-mix(in srgb, var(--accent) 40%, transparent)",
+  // Mixed with the card, not with transparent: see-through pills showed the lines of the chart running through them.
+  light: "color-mix(in srgb, var(--accent) 40%, var(--card))",
   rem: "#a06ee0",
   // The moments people look for, so they stand out. Not a warning colour: being awake for a bit is nothing to worry about.
-  wake: "color-mix(in srgb, var(--text) 70%, transparent)",
+  wake: "color-mix(in srgb, var(--text) 70%, var(--card))",
 };
 const LANES = ["wake", "rem", "light", "deep"];
 
@@ -63,14 +64,16 @@ function BigNumber({ text }) {
 /** A card with words behind it, for what a person could really wonder about. The title says that it opens. */
 function Card({ title, more, children }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open]);
   return html`<div class="card health-card">
-    ${title && (more
-      ? html`<button class="health-title" aria-expanded=${open} onClick=${() => setOpen(!open)}>
-          ${title}<span class=${"health-chevron" + (open ? " open" : "")}><${Icon} name="chevron-right" size=${14} /></span>
-        </button>`
-      : html`<div class="health-title">${title}</div>`)}
+    ${title && html`<div class="health-title wide"><span class="grow">${title}</span>${more && html`<button class="health-info" title=${t("health_info")} aria-label=${t("health_info")} onClick=${() => setOpen(true)}><${Icon} name="info-circle" size=${18} /></button>`}</div>`}
     ${children}
-    ${open && more && html`<div class="small muted health-more">${more}</div>`}
+    ${open && html`<div class="scrim" onClick=${(e) => e.target === e.currentTarget && setOpen(false)}><div class="dialog"><h2>${title}</h2><p class="health-more">${more}</p><div style="text-align:right;margin-top:14px"><button class="btn" onClick=${() => setOpen(false)}>${t("close")}</button></div></div></div>`}
   </div>`;
 }
 
@@ -236,7 +239,8 @@ function SleepTimeline({ r }) {
   if (!total) return null;
   const width = 480, lane = 30, height = lane * LANES.length, bar = lane * 0.62;
   let at = 0, before = null;
-  const shapes = [];
+  const links = [];
+  const pills = [];
   r.stages.forEach((run, index) => {
     const x = (at / total) * width, length = Math.max((run.seconds / total) * width, 2);
     at += run.seconds;
@@ -244,9 +248,9 @@ function SleepTimeline({ r }) {
     if (laneIndex < 0) { before = null; return; }
     const y = lane * laneIndex + lane / 2;
     if (before != null && before !== laneIndex) {
-      shapes.push(html`<line key=${"l" + index} x1=${x} x2=${x} y1=${lane * before + lane / 2} y2=${y} class="health-guide-strong" />`);
+      links.push(html`<line key=${"l" + index} x1=${x} x2=${x} y1=${lane * before + lane / 2} y2=${y} class="health-guide-strong" />`);
     }
-    shapes.push(html`<rect key=${index} x=${x} y=${y - bar / 2} width=${length} height=${bar} rx=${Math.min(bar, length) / 2} fill=${STAGE_COLORS[run.stage]} />`);
+    pills.push(html`<rect key=${index} x=${x} y=${y - bar / 2} width=${length} height=${bar} rx=${Math.min(bar, length) / 2} fill=${STAGE_COLORS[run.stage]} />`);
     before = laneIndex;
   });
   let heading = t("health_span", clockOf(r.startMs), clockOf(r.endMs));
@@ -266,7 +270,8 @@ function SleepTimeline({ r }) {
       <svg viewBox=${`0 0 ${width} ${height}`} preserveAspectRatio="none" width="100%" height=${height} role="img" class="health-reveal"
         onMouseMove=${move} onMouseLeave=${() => setPointer(null)}>
         ${LANES.map((_, index) => html`<line key=${"g" + index} x1="0" x2=${width} y1=${lane * index + lane / 2} y2=${lane * index + lane / 2} class="health-guide" />`)}
-        ${shapes}
+        ${links}
+        ${pills}
         ${pointer != null && html`<line x1=${pointer * width} x2=${pointer * width} y1="0" y2=${height} stroke="var(--text)" stroke-width="1.5" vector-effect="non-scaling-stroke" />`}
       </svg>
     </div>
@@ -322,10 +327,15 @@ function ScorePart({ label, value }) {
 }
 
 function ScoreRing({ score }) {
-  const r = 30, around = 2 * Math.PI * r;
+  const r = 30, stroke = 8, around = 2 * Math.PI * r;
+  // Round caps reach past the ends of an arc, so the gap counts them and leaves a sliver on top, as on the phone.
+  const gap = stroke + (around * 4) / 360;
+  const usable = around - gap;
+  const fill = (usable * Math.min(Math.max(score, 0), 100)) / 100;
+  const rest = usable - fill - gap;
   return html`<svg width="72" height="72" viewBox="0 0 72 72" class="health-ring">
-    <circle cx="36" cy="36" r=${r} class="health-ring-track" />
-    <circle cx="36" cy="36" r=${r} class="health-ring-fill" stroke-dasharray=${`${(around * Math.min(score, 100)) / 100} ${around}`} />
+    ${rest > 1 && html`<circle cx="36" cy="36" r=${r} class="health-ring-track" stroke-dasharray=${`${rest} ${around}`} stroke-dashoffset=${-(fill + gap)} />`}
+    ${fill > 1 && html`<circle cx="36" cy="36" r=${r} class="health-ring-fill" stroke-dasharray=${`${fill} ${around}`} />`}
     <text x="36" y="42" text-anchor="middle">${score}</text>
   </svg>`;
 }
