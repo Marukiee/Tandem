@@ -40,6 +40,7 @@
     <string name="empty_title">Pair your first device</string>
     <string name="empty_body">Tandem finds your devices on your own network. Nothing goes through a server.</string>
     <string name="action_pair">Pair a device</string>
+    <string name="action_pair_short">Pair</string>
     <string name="action_files">Files</string>
     <string name="action_clipboard">Clipboard</string>
     <string name="status_online">Online</string>
@@ -667,7 +668,7 @@
     <string name="health_active_week">Today, %1$d of 150 this week</string>
     <string name="health_heart_today">Heart rate today</string>
     <string name="dev_health_demo">Fill Health with made-up data</string>
-    <string name="dev_health_demo_sub">Two weeks of nights, steps and heart rate that never happened, to see the Health pages without a watch.</string>
+    <string name="dev_health_demo_sub">Two weeks of nights, steps and heart rate that never happened, and a watch until the app restarts, to see Health and the start page without one.</string>
     <string name="health_settings_title">Health settings</string>
     <string name="health_activity_title">Activity</string>
     <string name="health_heart_title">Heart</string>
@@ -728,7 +729,7 @@
     <string name="health_goal_row">%1$s steps a day. Your watch shows it too.</string>
     <string name="health_goal_less">Fewer steps</string>
     <string name="health_goal_more">More steps</string>
-    <string name="health_heart_hint">Slide over the line to see a moment. Pinch to zoom in.</string>
+    <string name="health_heart_hint">Slide to look closer, pinch to zoom.</string>
     <string name="health_heart_whole_day">Whole day</string>
     <string name="health_smart_wake_try">Feel waking gently</string>
     <string name="health_smart_wake_try_sub">The five minutes sped up to half a minute, on your watch</string>

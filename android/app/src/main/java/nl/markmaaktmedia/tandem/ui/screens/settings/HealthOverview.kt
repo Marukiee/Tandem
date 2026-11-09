@@ -1,6 +1,20 @@
 package nl.markmaaktmedia.tandem.ui.screens.settings
 
 import android.text.format.DateUtils
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -65,9 +79,11 @@ internal fun HealthHero(insights: TandemHealthInsights?, onOpen: () -> Unit) {
         DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_WEEKDAY or DateUtils.FORMAT_ABBREV_ALL or DateUtils.FORMAT_NO_YEAR,
     )
     Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(36.dp)).background(scheme.primaryContainer).bouncyClickable(onClick = onOpen)) {
-        // Two soft rounds in the corner, the playful side of Material You without competing with the numbers.
-        Box(Modifier.size(180.dp).offset(x = 210.dp, y = (-60).dp).clip(CircleShape).background(scheme.onPrimaryContainer.copy(alpha = 0.05f)))
-        Box(Modifier.size(90.dp).offset(x = 300.dp, y = 110.dp).clip(CircleShape).background(scheme.onPrimaryContainer.copy(alpha = 0.04f)))
+        // A clover leaning out of the corner: the playful side of Material You, quiet enough to leave the numbers in front.
+        Box(
+            Modifier.align(Alignment.BottomEnd).offset(x = 34.dp, y = 40.dp).size(150.dp).rotate(45f)
+                .clip(CloverShape).background(scheme.onPrimaryContainer.copy(alpha = 0.06f)),
+        )
         Column(Modifier.fillMaxWidth().padding(22.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -82,7 +98,13 @@ internal fun HealthHero(insights: TandemHealthInsights?, onOpen: () -> Unit) {
                 }
                 if (insight != null) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ScoreRing(insight.score.toInt(), 96.dp, tint = scheme.primary, track = scheme.onPrimaryContainer.copy(alpha = 0.12f))
+                        // The score on a cookie that rolls in once when the page opens, so the number reads as a badge, not a chart.
+                        val spin = remember { Animatable(-50f) }
+                        LaunchedEffect(Unit) { spin.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessVeryLow)) }
+                        Box(Modifier.size(118.dp), contentAlignment = Alignment.Center) {
+                            Box(Modifier.matchParentSize().graphicsLayer { rotationZ = spin.value }.clip(CookieShape).background(scheme.surface.copy(alpha = 0.6f)))
+                            ScoreRing(insight.score.toInt(), 86.dp, tint = scheme.primary, track = scheme.onPrimaryContainer.copy(alpha = 0.12f))
+                        }
                         Text(stringResource(R.string.health_score_title), style = MaterialTheme.typography.labelSmall, color = scheme.onPrimaryContainer)
                     }
                 }
@@ -242,3 +264,29 @@ private fun Sparkline(curve: List<Int>, colour: Color) {
         drawPath(line, colour, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
     }
 }
+
+/**
+ * A circle with soft waves around its edge, after the shapes of Material You: a few deep lobes make a clover, many shallow ones a
+ * cookie. Drawn here because those shapes are not in the version of Material that the app uses.
+ */
+private class WavyCircleShape(private val lobes: Int, private val depth: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val centreX = size.width / 2
+        val centreY = size.height / 2
+        val outer = minOf(centreX, centreY)
+        val path = Path()
+        val steps = 240
+        for (step in 0..steps) {
+            val angle = step * 2 * PI / steps - PI / 2
+            val radius = outer * (1 - depth / 2 + depth / 2 * cos(lobes * angle)).toFloat()
+            val x = centreX + radius * cos(angle).toFloat()
+            val y = centreY + radius * sin(angle).toFloat()
+            if (step == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        }
+        path.close()
+        return Outline.Generic(path)
+    }
+}
+
+private val CookieShape: Shape = WavyCircleShape(lobes = 9, depth = 0.09f)
+private val CloverShape: Shape = WavyCircleShape(lobes = 4, depth = 0.32f)

@@ -197,6 +197,15 @@ class WatchBridge(
         }
     }
 
+    /**
+     * Only in builds for testing: shows a watch that is not there, in memory until the app restarts, so the start page and Health can be
+     * seen on an emulator. Nothing is stored and no key is made: a real pairing stays as it was.
+     */
+    fun showDemoWatch() {
+        if (!nl.markmaaktmedia.tandem.BuildConfig.DEBUG) return
+        _state.update { it.copy(paired = true, name = it.name ?: "Pixel Watch", batteryLevel = it.batteryLevel ?: 76, stepsToday = 3_491, activeMinutesToday = 21) }
+    }
+
     fun start() {
         if (!supported) return
         handler.post {

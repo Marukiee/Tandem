@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -72,19 +73,27 @@ private fun rememberReveal(): Float {
     return reveal.value.coerceIn(0f, 1.1f)
 }
 
-/** The first letter of each day, with today in a circle. Half a day is added so a change of the clock can not move a day. */
+/**
+ * The first letter of each day, with today in a filled circle. Grey on grey could hardly be read on a coloured card, so today takes the
+ * strong colour of the theme. Half a day is added so a change of the clock can not move a day.
+ */
 @Composable
 private fun DayLetters(days: List<Long>, modifier: Modifier = Modifier) {
     val scheme = MaterialTheme.colorScheme
     Row(modifier.fillMaxWidth()) {
         days.forEachIndexed { index, day ->
             val letter = Instant.ofEpochMilli(day + DateUtils.DAY_IN_MILLIS / 2).atZone(ZoneId.systemDefault()).format(BarLabels)
+            val today = index == days.lastIndex
             Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                 Box(
-                    Modifier.size(20.dp).clip(CircleShape).then(if (index == days.lastIndex) Modifier.background(scheme.surfaceContainerHighest) else Modifier),
+                    Modifier.size(20.dp).clip(CircleShape).then(if (today) Modifier.background(scheme.primary) else Modifier),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(letter, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                    Text(
+                        letter, style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center,
+                        color = if (today) scheme.onPrimary else scheme.onSurfaceVariant,
+                        fontWeight = if (today) FontWeight.Bold else null,
+                    )
                 }
             }
         }
@@ -340,7 +349,7 @@ internal fun DayHeartLine(curve: List<Int>, description: String, modifier: Modif
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             // Figures of one width: with the usual ones the time and the rate shifted sideways with every step of a finger.
-            Text(heading, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"), color = scheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
+            Text(heading, style = MaterialTheme.typography.bodySmall.copy(fontFeatureSettings = "tnum"), color = scheme.onSurfaceVariant, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             if (zoom > 1.01f) {
                 Text(
                     stringResource(R.string.health_heart_whole_day),

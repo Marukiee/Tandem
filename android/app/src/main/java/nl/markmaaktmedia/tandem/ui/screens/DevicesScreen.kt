@@ -11,6 +11,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -40,6 +41,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import nl.markmaaktmedia.tandem.ui.screens.settings.latestNight
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.ui.Route
 import nl.markmaaktmedia.tandem.ui.routeBounds
@@ -93,6 +95,8 @@ fun DevicesScreen(
     bottomPadding: androidx.compose.ui.unit.Dp,
     /** Opens the control of a computer's screen, from the pill on its card. */
     onControl: (String) -> Unit = {},
+    /** Opens a page from a card, such as Health from the watch. */
+    onOpenRoute: (Route) -> Unit = {},
     modifier: Modifier = Modifier,
     listState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
 ) {
@@ -161,8 +165,9 @@ fun DevicesScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                // With no device yet the page has its own button in the middle; after that this is the way to the next one.
-                if (ordered.isNotEmpty()) SecondaryPillButton(stringResource(R.string.action_pair), onPair, icon = TandemIcons.Add)
+                // With no device yet the page has its own button in the middle; after that this is the way to the next one. Short, so
+                // the title beside it is not broken in two on a narrow phone.
+                if (ordered.isNotEmpty()) SecondaryPillButton(stringResource(R.string.action_pair_short), onPair, icon = TandemIcons.Add)
             }
         }
 
@@ -268,6 +273,7 @@ fun DevicesScreen(
                     modifier = Modifier.routeBounds(routeKey(WatchRoute)),
                     onOpen = onOpenWatch,
                     onRing = { watch.ringWatch(!watchState.ringing) },
+                    onHealth = { part -> onOpenRoute(if (part == null) Route.SettingsPage(SettingsPageId.Health) else Route.HealthDetail(part)) },
                 )
             }
           }
@@ -277,15 +283,27 @@ fun DevicesScreen(
 
 internal fun WatchState.battery() = batteryLevel?.let { TandemBattery(it.toUByte(), charging, false) }
 
-/** Looks like [DeviceCard]. It has no files or clipboard to send, so its button is the one thing a watch is reached for. */
+/**
+ * Looks like [DeviceCard]. It has no files or clipboard to send; instead it shows the night and the steps of today, which is what a
+ * watch is looked at for, and the switch for waking gently, the one setting that is changed from day to day.
+ */
 @Composable
 private fun WatchCard(
     state: WatchState,
     pinned: Boolean,
     onOpen: () -> Unit,
     onRing: () -> Unit,
+    /** Opens a part of Health, or its overview for null. */
+    onHealth: (String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val graph = LocalContext.current.graph
+    val scope = rememberCoroutineScope()
+    val records by graph.host.healthRecords.collectAsState()
+    val goal by graph.prefs.stepGoal.collectAsState(initial = nl.markmaaktmedia.tandem.data.TandemPrefs.DEFAULT_STEP_GOAL)
+    val smartWake by graph.prefs.smartWake.collectAsState(initial = false)
+    // Only a night that ended today counts as last night: one from days ago on the start page reads as if it were.
+    val night = records.latestNight()?.takeIf { System.currentTimeMillis() - it.endMs.toLong() < 20 * 3_600_000L }
     Column(
         modifier
             .fillMaxWidth()
@@ -319,13 +337,66 @@ private fun WatchCard(
             ArrivingBattery(state.battery()) { BatteryBadge(it, connected = state.ready) }
         }
 
-        AnimatedVisibility(
-            visible = state.ready,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
+        if (night != null || state.stepsToday > 0) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (night != null) {
+                    Glance(
+                        TandemIcons.Sleep, nl.markmaaktmedia.tandem.ui.screens.settings.duration(night.sleepMinutes.toInt()),
+                        stringResource(R.string.watch_glance_night), null, Modifier.weight(1f),
+                    ) { onHealth("sleep") }
+                }
+                if (state.stepsToday > 0) {
+                    Glance(
+                        TandemIcons.Steps, java.text.NumberFormat.getIntegerInstance().format(state.stepsToday),
+                        stringResource(R.string.health_steps_title), (state.stepsToday.toFloat() / goal.coerceAtLeast(1)).coerceIn(0f, 1f), Modifier.weight(1f),
+                    ) { onHealth("activity") }
+                }
+            }
+        }
+
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (state.ready) {
                 QuickAction(TandemIcons.Ring, stringResource(if (state.ringing) R.string.find_stop_sound else R.string.find_play), onRing)
+            }
+            TogglePill(if (smartWake) TandemIcons.Check else TandemIcons.Schedule, stringResource(R.string.health_smart_wake), smartWake) {
+                scope.launch { graph.prefs.setSmartWake(!smartWake) }
+            }
+            QuickAction(TandemIcons.Heart, stringResource(R.string.settings_cat_health)) { onHealth(null) }
+        }
+    }
+}
+
+/** A number of the day on the watch card, in a small tile of its own that opens that part of Health. */
+@Composable
+private fun Glance(
+    icon: androidx.compose.ui.graphics.painter.Painter,
+    value: String,
+    label: String,
+    share: Float?,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+            .background(scheme.surfaceContainerHigh)
+            .bouncyClickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape).background(scheme.primaryContainer), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(label, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant, maxLines = 1)
+            // Toward the goal, so the steps say how far along the day is without another number.
+            if (share != null) {
+                Box(Modifier.padding(top = 2.dp).fillMaxWidth().height(4.dp).clip(PillShape).background(scheme.surfaceContainerHighest)) {
+                    Box(Modifier.fillMaxWidth(share).height(4.dp).clip(PillShape).background(scheme.primary))
+                }
             }
         }
     }
@@ -475,18 +546,36 @@ private fun BatchStrip(peer: String) {
 }
 
 @Composable
-private fun QuickAction(icon: androidx.compose.ui.graphics.painter.Painter, label: String, onClick: () -> Unit) {
+private fun QuickAction(icon: androidx.compose.ui.graphics.painter.Painter, label: String, onClick: () -> Unit) = Pill(icon, label, false, onClick)
+
+/** A pill that switches something: on it takes the strong colour, so it is clear at a glance what is on. */
+@Composable
+private fun TogglePill(icon: androidx.compose.ui.graphics.painter.Painter, label: String, on: Boolean, onClick: () -> Unit) = Pill(icon, label, on, onClick)
+
+@Composable
+private fun Pill(
+    icon: androidx.compose.ui.graphics.painter.Painter,
+    label: String,
+    on: Boolean,
+    onClick: () -> Unit,
+) {
+    val container by androidx.compose.animation.animateColorAsState(
+        if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer, label = "pill",
+    )
+    val content by androidx.compose.animation.animateColorAsState(
+        if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer, label = "pillContent",
+    )
     Row(
         Modifier
             .clip(PillShape)
-            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .background(container)
             .bouncyClickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(icon, null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(18.dp))
-        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
+        Icon(icon, null, tint = content, modifier = Modifier.size(18.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = content)
     }
 }
 

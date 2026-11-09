@@ -143,6 +143,7 @@ fun DeveloperScreen(onBack: () -> Unit, onOpen: (Route) -> Unit) {
                             graph.host.engine?.addHealthRecords(nl.markmaaktmedia.tandem.watch.HealthDemo.records())
                             graph.prefs.setHealthShown(true)
                             graph.host.refreshHealth()
+                            graph.watch.showDemoWatch()
                             Toast.makeText(context, R.string.health_export_done, Toast.LENGTH_SHORT).show()
                         }
                     },

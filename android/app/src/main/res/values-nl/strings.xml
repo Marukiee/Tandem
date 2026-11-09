@@ -37,6 +37,7 @@
     <string name="empty_title">Koppel je eerste apparaat</string>
     <string name="empty_body">Tandem vindt je apparaten op je eigen netwerk. Er gaat niets via een server.</string>
     <string name="action_pair">Apparaat koppelen</string>
+    <string name="action_pair_short">Koppelen</string>
     <string name="action_files">Bestanden</string>
     <string name="action_clipboard">Klembord</string>
     <string name="status_online">Online</string>
@@ -664,7 +665,7 @@
     <string name="health_active_week">Vandaag, %1$d van 150 deze week</string>
     <string name="health_heart_today">Hartslag vandaag</string>
     <string name="dev_health_demo">Gezondheid vullen met verzonnen gegevens</string>
-    <string name="dev_health_demo_sub">Twee weken nachten, stappen en hartslag die nooit gebeurd zijn, om Gezondheid zonder horloge te bekijken.</string>
+    <string name="dev_health_demo_sub">Twee weken nachten, stappen en hartslag die nooit gebeurd zijn, en een horloge tot de app herstart, om Gezondheid en het beginscherm zonder horloge te bekijken.</string>
     <string name="health_settings_title">Instellingen voor Gezondheid</string>
     <string name="health_activity_title">Activiteit</string>
     <string name="health_heart_title">Hart</string>
@@ -725,7 +726,7 @@
     <string name="health_goal_row">%1$s stappen per dag. Je horloge laat het ook zien.</string>
     <string name="health_goal_less">Minder stappen</string>
     <string name="health_goal_more">Meer stappen</string>
-    <string name="health_heart_hint">Schuif over de lijn om een moment te zien. Knijp om in te zoomen.</string>
+    <string name="health_heart_hint">Schuif om te kijken, knijp om te zoomen.</string>
     <string name="health_heart_whole_day">Hele dag</string>
     <string name="health_smart_wake_try">Zacht wakker worden voelen</string>
     <string name="health_smart_wake_try_sub">De vijf minuten versneld tot een halve minuut, op je horloge</string>

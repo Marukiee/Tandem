@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -166,10 +167,11 @@ internal fun ScoreRing(score: Int, size: Dp, tint: Color = MaterialTheme.colorSc
             val stroke = size.toPx() * 0.11f
             val inset = stroke / 2
             val arc = Size(this.size.width - stroke, this.size.height - stroke)
-            // The round caps reach past the ends of an arc: the gap counts them, and leaves room on top of that.
+            // The round caps reach past the ends of an arc: the gap counts them, and leaves a sliver on top of that. More than a
+            // sliver made 99 look far from full.
             val radius = arc.width / 2
             val cap = Math.toDegrees((stroke / 2 / radius).toDouble()).toFloat()
-            val gap = cap * 2 + 10f
+            val gap = cap * 2 + 4f
             val sweep = (360f - gap) * fill.value
             if (sweep > 0.5f) drawArc(tint, -90f, sweep, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
             val rest = 360f - sweep - gap * (if (sweep > 0.5f) 2 else 1)
@@ -196,31 +198,32 @@ private fun TitleWithMore(title: String, open: Boolean, hasMore: Boolean, modifi
 /** A title, and for what a person could wonder about a question mark that opens the words behind it. */
 @Composable
 private fun CardTitle(title: String, info: String?, modifier: Modifier = Modifier) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, modifier = Modifier.weight(1f))
         if (info != null) InfoButton(title, info)
     }
 }
 
 /**
- * A small question mark that opens what is behind a number in a window. The words unfolded under the card before, behind an arrow that
- * looked like it would show more of the chart, and made the card jump.
+ * A quiet info sign in the corner of a card that opens what is behind a number in a window. The words unfolded under the card before,
+ * behind an arrow that looked like it would show more of the chart; a filled round beside the title drew the eye away from the numbers.
+ * The touch target is larger than the sign, and its edge lines the sign up with the edge of the card's content.
  */
 @Composable
 internal fun InfoButton(title: String, info: String) {
     var open by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
     Box(
-        Modifier.size(26.dp).clip(CircleShape).background(scheme.secondaryContainer).clickable(onClickLabel = stringResource(R.string.health_info)) { open = true },
+        Modifier.offset(x = 8.dp).size(36.dp).clip(CircleShape).clickable(onClickLabel = stringResource(R.string.health_info)) { open = true },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(TandemIcons.Help, stringResource(R.string.health_info), tint = scheme.onSecondaryContainer, modifier = Modifier.size(16.dp))
+        Icon(TandemIcons.Info, stringResource(R.string.health_info), tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
     }
     if (open) {
         TandemDialog(
             title = title,
             onDismiss = { open = false },
-            icon = TandemIcons.Help,
+            icon = TandemIcons.Info,
             body = info,
             actions = { PrimaryPillButton(stringResource(R.string.generic_ok), { open = false }) },
         )
