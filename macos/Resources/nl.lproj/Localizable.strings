@@ -762,6 +762,11 @@
 "Low plays closer to live and can stutter on a poor connection. Smooth waits a little longer to stay steady. It applies the next time a device starts." = "Laag speelt dichter bij live af en kan haperen bij een slechte verbinding. Soepel wacht iets langer om stabiel te blijven. Het geldt de volgende keer dat een apparaat begint.";
 "Sound from %@ plays on this Mac" = "Geluid van %@ speelt op deze Mac";
 "Mouse and keyboard across computers" = "Muis en toetsenbord over computers";
+"What this means" = "Wat dit betekent";
+"Activity" = "Activiteit";
+"Heart" = "Hart";
+"Health settings" = "Instellingen voor Gezondheid";
+"of %@ steps" = "van %@ stappen";
 "Use this Mac's mouse and keyboard on other computers" = "Gebruik de muis en het toetsenbord van deze Mac op andere computers";
 "Move the pointer over the edge of the screen. This Mac needs Accessibility, which Tandem already asks for" = "Beweeg de aanwijzer over de rand van het scherm. Deze Mac heeft Toegankelijkheid nodig, waar Tandem al om vraagt";
 "Not next to this Mac" = "Niet naast deze Mac";

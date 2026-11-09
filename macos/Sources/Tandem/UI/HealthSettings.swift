@@ -13,8 +13,16 @@ struct HealthSettings: View {
 
 /// What the health page holds, in Settings and as a page of the main window that the page of the watch opens.
 struct HealthSettingsContent: View {
+    /// On the page of the main window: nil for the overview, or the part that is open. In Settings this is ignored.
+    var part: HealthPart? = nil
+    /// True on the page of the main window, which opens on the overview; Settings shows the choices and your data, as the gear does.
+    var page = false
+    var onOpen: (HealthPart) -> Void = { _ in }
     @Environment(EngineModel.self) private var model
     @AppStorage("showHealth") private var showHealth = false
+
+    private var settings: Bool { !page || part == .settings }
+    private var goal: Int? { model.devices.compactMap { $0.status.watch?.settings?.stepGoal }.first.map { Int($0) } }
 
     private var hasWatch: Bool { model.devices.contains { $0.status.watch?.paired == true } }
     private var records: [TandemHealthRecord] { model.healthRecords.filter { $0.kind == .sleep || $0.kind == .workout } }
@@ -26,7 +34,7 @@ struct HealthSettingsContent: View {
     var body: some View {
             VStack(alignment: .leading, spacing: 8) {
                 // Without a watch this is one more page that stays empty, unless someone asked for it.
-                if !hasWatch {
+                if !hasWatch && (settings || !showHealth) {
                     Card(radius: Metrics.card, padding: 16) {
                         VStack(alignment: .leading, spacing: 4) {
                             Toggle("Show without a watch", isOn: $showHealth)
@@ -34,9 +42,13 @@ struct HealthSettingsContent: View {
                         }
                     }
                 }
-                if hasWatch || showHealth {
+                if (hasWatch || showHealth) && !settings {
                     if let insights = model.healthInsights {
-                        HealthPageContent(insights: insights, records: model.healthRecords)
+                        if let part {
+                            HealthPageContent(insights: insights, records: model.healthRecords, part: part)
+                        } else {
+                            HealthOverview(insights: insights, records: model.healthRecords, goal: goal, onOpen: onOpen)
+                        }
                     }
                     if records.isEmpty {
                         // Off by default on the phone, for privacy: say where to turn it on, so an empty page is not a dead end.
@@ -44,6 +56,8 @@ struct HealthSettingsContent: View {
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 4)
                     }
+                }
+                if settings {
                     HealthChoicesCard()
                     Card(radius: Metrics.card, padding: 16) {
                         HStack(spacing: 12) {
@@ -56,6 +70,8 @@ struct HealthSettingsContent: View {
                         }
                     }
                     .padding(.top, 8)
+                    .opacity(hasWatch || showHealth ? 1 : 0.5)
+                    .disabled(!(hasWatch || showHealth))
                 }
             }
     }
@@ -66,30 +82,50 @@ struct HealthSettingsContent: View {
 struct HealthPage: View {
     let phone: TandemDevice
     let onBack: () -> Void
+    @State private var part: HealthPart?
+
+    private var title: LocalizedStringKey {
+        switch part {
+        case nil: "Health"
+        case .sleep: "Sleep"
+        case .activity: "Activity"
+        case .heart: "Heart"
+        case .settings: "Health settings"
+        }
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 Card(radius: Metrics.card, padding: 18, tint: Palette.indigo) {
                     HStack(spacing: 14) {
-                        Button(action: onBack) {
+                        Button {
+                            if part != nil { withAnimation(.tandem) { part = nil } } else { onBack() }
+                        } label: {
                             Image(systemName: "chevron.left").font(.body.weight(.semibold))
                         }
                         .buttonStyle(.icon(size: 34))
-                        .help("Back to the watch")
+                        .help(part != nil ? "Back" : "Back to the watch")
                         Image(systemName: "heart.fill")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(Palette.indigo)
                             .frame(width: 44, height: 44)
                             .background(Palette.indigo.opacity(0.14), in: .circle)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Health").font(.title3.weight(.bold))
-                            Text("Sleep, steps, heart rate and workouts").font(.callout).foregroundStyle(.secondary)
+                            Text(title).font(.title3.weight(.bold))
+                            if part == nil { Text("Sleep, steps, heart rate and workouts").font(.callout).foregroundStyle(.secondary) }
                         }
                         Spacer()
+                        if part != .settings {
+                            Button { withAnimation(.tandem) { part = .settings } } label: {
+                                Image(systemName: "gearshape").font(.body.weight(.semibold))
+                            }
+                            .buttonStyle(.icon(size: 34))
+                            .help("Health settings")
+                        }
                     }
                 }
-                HealthSettingsContent()
+                HealthSettingsContent(part: part, page: true, onOpen: { opened in withAnimation(.tandem) { part = opened } })
             }
             .pagePadding()
             .frame(maxWidth: 760)
@@ -181,14 +217,16 @@ private struct HealthChoicesCard: View {
 struct HealthPageContent: View {
     let insights: TandemHealthInsights
     let records: [TandemHealthRecord]
+    let part: HealthPart
 
     private var latest: TandemHealthRecord? { records.first { $0.kind == .sleep } }
     private var earlier: [TandemHealthRecord] {
-        records.filter { ($0.kind == .sleep || $0.kind == .workout) && $0.id != latest?.id }.prefix(30).map { $0 }
+        let kind: TandemHealthKind? = part == .sleep ? .sleep : part == .activity ? .workout : nil
+        return records.filter { $0.kind == kind && $0.id != latest?.id }.prefix(30).map { $0 }
     }
 
     var body: some View {
-        if let above = insights.alertAboveUsual {
+        if part == .heart, let above = insights.alertAboveUsual {
             Card(radius: Metrics.card, padding: 16, tint: Palette.indigo) {
                 Label {
                     Text("Your resting heart rate has been \(Int(above)) beats above usual for two nights. That can mean your body is dealing with something, like a cold coming on. This is not a diagnosis.")
@@ -197,9 +235,9 @@ struct HealthPageContent: View {
                 }
             }
         }
-        if let night = latest { LatestNightCards(night: night, insight: insights.latestNight?.id == night.id ? insights.latestNight : nil) }
-        DayCards(insights: insights)
-        WeekCards(insights: insights)
+        if part == .sleep, let night = latest { LatestNightCards(night: night, insight: insights.latestNight?.id == night.id ? insights.latestNight : nil) }
+        DayCards(insights: insights, part: part)
+        WeekCards(insights: insights, part: part)
         if !earlier.isEmpty {
             SectionTitle("Earlier")
             ForEach(earlier, id: \.id) { record in
@@ -225,7 +263,7 @@ private struct SectionTitle: View {
 }
 
 /// The digits large and the units small, so the number is what the eye finds first.
-private struct BigNumber: View {
+struct BigNumber: View {
     let text: String
 
     var body: some View {
@@ -244,7 +282,7 @@ private struct BigNumber: View {
     }
 }
 
-/// A card with words behind it, for what a person could really wonder about. The title says that it opens.
+/// A card with words behind it, for what a person could really wonder about. The info sign opens the words in a popover.
 private struct HealthCard<Content: View>: View {
     var title: LocalizedStringKey?
     var more: LocalizedStringKey?
@@ -254,31 +292,35 @@ private struct HealthCard<Content: View>: View {
     var body: some View {
         Card(radius: Metrics.card, padding: 16) {
             VStack(alignment: .leading, spacing: 10) {
-                if let title, more != nil {
-                    Button {
-                        withAnimation(.tandem) { open.toggle() }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(title).font(.callout.weight(.semibold))
-                            Image(systemName: "chevron.down")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .rotationEffect(.degrees(open ? 180 : 0))
+                if let title {
+                    HStack(spacing: 8) {
+                        Text(title).font(.callout.weight(.semibold))
+                        Spacer(minLength: 8)
+                        if let more {
+                            // A quiet sign in the corner that opens the words in a popover: unfolded under the card they made it jump, and
+                            // the arrow looked as if it would show more of the chart.
+                            Button { open = true } label: {
+                                Image(systemName: "info.circle")
+                                    .font(.body)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 24, height: 24)
+                                    .contentShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .help("What this means")
+                            .accessibilityLabel("What this means")
+                            .popover(isPresented: $open, arrowEdge: .bottom) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(title).font(.headline)
+                                    Text(more).font(.callout).fixedSize(horizontal: false, vertical: true)
+                                }
+                                .padding(16)
+                                .frame(width: 320, alignment: .leading)
+                            }
                         }
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
-                } else if let title {
-                    Text(title).font(.callout.weight(.semibold))
                 }
                 content
-                if open, let more {
-                    Text(more)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .transition(.opacity)
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -319,13 +361,16 @@ private struct DayLetters: View {
     let days: [TandemWeekDay]
 
     var body: some View {
+        let daysCount = days.count
         HStack(spacing: 0) {
             ForEach(Array(days.enumerated()), id: \.offset) { index, day in
+                let isLast = index == daysCount - 1
                 Text(verbatim: noonOf(day.startMs).formatted(.dateTime.weekday(.narrow)))
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isLast ? .white : .secondary)
+                    .fontWeight(isLast ? .bold : .regular)
                     .frame(width: 18, height: 18)
-                    .background(index == days.count - 1 ? Color.secondary.opacity(0.18) : .clear, in: Circle())
+                    .background(isLast ? Palette.indigo : .clear, in: Circle())
                     .frame(maxWidth: .infinity)
             }
         }
@@ -333,7 +378,7 @@ private struct DayLetters: View {
 }
 
 /// Seven days as rounded bars. A day without a measurement gets a low grey stripe: not zero, because nothing is known about it.
-private struct WeekBars: View {
+struct WeekBars: View {
     let values: [Double?]
     let days: [TandemWeekDay]
     @Binding var picked: Int?
@@ -726,8 +771,10 @@ private struct SleepTimeline: View {
             guide.addLine(to: CGPoint(x: size.width, y: lane * CGFloat(index) + lane / 2))
             context.stroke(guide, with: .color(.secondary.opacity(0.16)), lineWidth: 1)
         }
+        // First loop: only the connecting lines, so pills always draw above them.
         var seconds: CGFloat = 0
         var before: Int?
+        var coords: [(x: CGFloat, y: CGFloat, length: CGFloat, stage: TandemSleepStage)] = []
         for run in record.stages {
             let x = seconds / total * size.width
             let length = max(CGFloat(run.seconds) / total * size.width, 2)
@@ -743,9 +790,13 @@ private struct SleepTimeline: View {
                 link.addLine(to: CGPoint(x: x, y: y))
                 context.stroke(link, with: .color(.secondary.opacity(0.4)), lineWidth: 1)
             }
-            let shape = Path(roundedRect: CGRect(x: x, y: y - bar / 2, width: length, height: bar), cornerRadius: min(bar, length) / 2)
-            context.fill(shape, with: .color(stageColor(run.stage)))
+            coords.append((x, y, length, run.stage))
             before = index
+        }
+        // Second loop: only the pills, on top of all lines.
+        for coord in coords {
+            let shape = Path(roundedRect: CGRect(x: coord.x, y: coord.y - bar / 2, width: coord.length, height: bar), cornerRadius: min(bar, coord.length) / 2)
+            context.fill(shape, with: .color(stageColor(coord.stage)))
         }
     }
 }
@@ -802,17 +853,28 @@ private struct NightsToGo: View {
     }
 }
 
-private struct ScoreRing: View {
+struct ScoreRing: View {
     let score: UInt32
     @State private var reveal: CGFloat = 0
 
     var body: some View {
+        // Round caps reach past the ends of an arc, so the gap counts them and leaves a sliver on top, as on the phone.
+        let around = 2 * CGFloat.pi * 34
+        let gap = (8 + around * 4 / 360) / around
+        let fill = (1 - gap) * CGFloat(min(score, 100)) / 100 * reveal
         ZStack {
-            Circle().stroke(Color.secondary.opacity(0.18), lineWidth: 8)
-            Circle()
-                .trim(from: 0, to: CGFloat(min(score, 100)) / 100 * reveal)
-                .stroke(Palette.indigo, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                .rotationEffect(.degrees(-90))
+            if 1 - gap - (fill + gap) > 0.005 {
+                Circle()
+                    .trim(from: fill + gap, to: 1 - gap)
+                    .stroke(Color.secondary.opacity(0.18), style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+            if fill > 0.005 {
+                Circle()
+                    .trim(from: 0, to: fill)
+                    .stroke(Palette.indigo, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
             Text(verbatim: "\(score)").font(.title3.bold()).contentTransition(.numericText(value: Double(score)))
         }
         .frame(width: 68, height: 68)
@@ -994,15 +1056,15 @@ private struct QualityRow: View {
 /// A computer sees whole days: only the phone hears the watch during the day.
 private struct DayCards: View {
     let insights: TandemHealthInsights
+    let part: HealthPart
 
     var body: some View {
         let week = insights.week
         let lastSteps = week.lastIndex { $0.steps != nil }
         let lastHeart = insights.latestDayHeart
-        if lastSteps != nil || lastHeart != nil || !insights.naps.isEmpty {
-            SectionTitle("Days")
-        }
-        if let lastSteps, let steps = week[lastSteps].steps {
+        if part == .activity, lastSteps != nil { SectionTitle("This week") }
+        if part == .heart, lastHeart != nil { SectionTitle("Today") }
+        if part == .activity, let lastSteps, let steps = week[lastSteps].steps {
             WeekCard(
                 title: "Steps",
                 number: Int(steps).formatted(),
@@ -1023,7 +1085,7 @@ private struct DayCards: View {
                 WeekBars(values: week.map { $0.activeMinutes.map { Double($0) } }, days: week, picked: picked)
             }
         }
-        if let lastHeart {
+        if part == .heart, let lastHeart {
             let measured = lastHeart.curve.filter { $0 > 0 }
             HealthCard(
                 title: "Heart rate",
@@ -1038,7 +1100,7 @@ private struct DayCards: View {
                 DayHeartLine(curve: lastHeart.curve)
             }
         }
-        if !insights.naps.isEmpty {
+        if part == .sleep, !insights.naps.isEmpty {
             HealthCard(
                 title: "Naps",
                 more: "If you lie still for 20 minutes during the day, your watch asks whether you slept. Only a yes makes it a nap. You can also start one yourself on your watch."
@@ -1055,14 +1117,15 @@ private struct DayCards: View {
 /// What only shows over more nights. Each card says how far it has come, because an empty page would look broken.
 private struct WeekCards: View {
     let insights: TandemHealthInsights
+    let part: HealthPart
 
     var body: some View {
         let week = insights.week
         let now = insights.thisWeek
         let before = insights.lastWeek
         if insights.latestNight != nil {
-            SectionTitle("This week")
-            if let sleep = now.meanSleepMinutes {
+            if part == .sleep || (part == .heart && insights.resting != nil) { SectionTitle("This week") }
+            if part == .sleep, let sleep = now.meanSleepMinutes {
                 WeekCard(
                     title: "Sleep",
                     number: minutesText(Int(sleep)),
@@ -1073,7 +1136,7 @@ private struct WeekCards: View {
                     WeekBars(values: week.map { $0.sleepMinutes.map { Double($0) } }, days: week, picked: picked)
                 }
             }
-            if let score = now.meanScore {
+            if part == .sleep, let score = now.meanScore {
                 WeekCard(
                     title: "Sleep score",
                     number: "\(score)",
@@ -1084,7 +1147,7 @@ private struct WeekCards: View {
                     WeekBars(values: week.map { $0.score.map { Double($0) } }, days: week, picked: picked)
                 }
             }
-            if let resting = insights.resting {
+            if part == .heart, let resting = insights.resting {
                 WeekCard(
                     title: "Resting heart rate",
                     number: String(localized: "\(Int(resting.latest)) bpm"),
@@ -1099,20 +1162,22 @@ private struct WeekCards: View {
                     }
                 }
             }
-            HealthCard(
-                title: "Regularity",
-                more: "From your last nights, at most 14. Give or take says how far a usual night is from that time: the smaller, the steadier."
-            ) {
-                if let regular = insights.regularity {
-                    Text("To bed around \(clock(minutes: regular.bedtimeMinutes)), give or take \(minutesText(Int(regular.bedtimeSpreadMinutes)))")
-                    Text("Up around \(clock(minutes: regular.wakeMinutes)), give or take \(minutesText(Int(regular.wakeSpreadMinutes)))")
-                } else {
-                    Text("\(Int(insights.regularityNightsNeeded)) more nights to show this").font(.caption).foregroundStyle(.secondary)
-                    NightsToGo(needed: Int(insights.regularityNightsNeeded), total: 5)
+            if part == .sleep {
+                HealthCard(
+                    title: "Regularity",
+                    more: "From your last nights, at most 14. Give or take says how far a usual night is from that time: the smaller, the steadier."
+                ) {
+                    if let regular = insights.regularity {
+                        Text("To bed around \(clock(minutes: regular.bedtimeMinutes)), give or take \(minutesText(Int(regular.bedtimeSpreadMinutes)))")
+                        Text("Up around \(clock(minutes: regular.wakeMinutes)), give or take \(minutesText(Int(regular.wakeSpreadMinutes)))")
+                    } else {
+                        Text("\(Int(insights.regularityNightsNeeded)) more nights to show this").font(.caption).foregroundStyle(.secondary)
+                        NightsToGo(needed: Int(insights.regularityNightsNeeded), total: 5)
+                    }
+                    SleepWindows(days: week)
                 }
-                SleepWindows(days: week)
             }
-            if now.workouts > 0 {
+            if part == .activity, now.workouts > 0 {
                 HealthCard(title: "Workouts") {
                     BigNumber(text: minutesText(Int(now.workoutMinutes)))
                     Text(now.workouts == 1 ? "1 workout this week" : "\(Int(now.workouts)) workouts this week").font(.caption).foregroundStyle(.secondary)
@@ -1246,10 +1311,11 @@ private func stageName(_ stage: TandemSleepStage) -> LocalizedStringResource {
 private func stageColor(_ stage: TandemSleepStage) -> Color {
     switch stage {
     case .deep: Palette.indigo
-    case .light: Palette.indigo.opacity(0.4)
+    // Mixed with the window instead of see-through: see-through pills showed the lines of the chart running through them.
+    case .light: Palette.indigo.mix(with: Color(nsColor: .windowBackgroundColor), by: 0.6)
     case .rem: .purple
     // The moments people look for, so they stand out. Not a warning colour: being awake for a bit is nothing to worry about.
-    case .wake: .primary.opacity(0.7)
+    case .wake: .primary.mix(with: Color(nsColor: .windowBackgroundColor), by: 0.3)
     case .unknown: .secondary.opacity(0.25)
     }
 }

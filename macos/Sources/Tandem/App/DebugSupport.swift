@@ -351,18 +351,21 @@ enum DebugSupport {
         let records = debugHealthRecords()
         // The sums are the core's, on a list that does not touch what this Mac keeps.
         let page = ScrollView {
+            // The overview first, then each part as its own page would show it, so one snapshot shows all of Health.
+            let insights = healthInsightsFor(records: records, nowMs: now, utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60))
             VStack(alignment: .leading, spacing: 8) {
-                HealthPageContent(
-                    insights: healthInsightsFor(records: records, nowMs: now, utcOffsetMinutes: Int32(TimeZone.current.secondsFromGMT() / 60)),
-                    records: records
-                )
+                HealthOverview(insights: insights, records: records, goal: 8000, onOpen: { _ in })
+                ForEach([HealthPart.sleep, .activity, .heart], id: \.self) { part in
+                    Divider().padding(.vertical, 12)
+                    HealthPageContent(insights: insights, records: records, part: part)
+                }
             }
             .padding(20)
         }
         .environment(EngineModel.shared)
-        .frame(width: 620, height: 2600)
+        .frame(width: 620, height: 3600)
         let host = NSHostingView(rootView: page)
-        let window = NSWindow(contentRect: NSRect(x: 80, y: 40, width: 620, height: 2600), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        let window = NSWindow(contentRect: NSRect(x: 80, y: 40, width: 620, height: 3600), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.title = "Health (debug)"
         window.contentView = host
