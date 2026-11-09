@@ -109,7 +109,15 @@ internal fun rememberHealthAvailable(): Boolean {
     return watch.paired || shown
 }
 
-internal fun List<TandemHealthRecord>.latestNight() = firstOrNull { it.kind == TandemHealthKind.SLEEP }
+/**
+ * A night is sleep of at least three hours, as the core counts it; shorter sleep is a nap. The newest sleep of any length made a watch
+ * that lay still on a table for half an hour show as last night.
+ */
+internal fun TandemHealthRecord.isNight() = kind == TandemHealthKind.SLEEP && sleepMinutes >= NIGHT_MINUTES
+
+private const val NIGHT_MINUTES = 180u
+
+internal fun List<TandemHealthRecord>.latestNight() = firstOrNull { it.isNight() }
 
 /** What the nights say together. Asked again when nights come in: the sums are the core's, so every device gets the same answer. */
 @Composable
@@ -734,7 +742,7 @@ private fun RegularityCard(index: Int, total: Int, insights: TandemHealthInsight
 internal fun EarlierNights() {
     val records by LocalContext.current.graph.host.healthRecords.collectAsState()
     val latest = records.latestNight()
-    val shown = records.filter { it.kind == TandemHealthKind.SLEEP && it !== latest }.take(SHOWN)
+    val shown = records.filter { it.isNight() && it !== latest }.take(SHOWN)
     if (shown.isEmpty()) return
     SectionHeader(stringResource(R.string.health_earlier), top = 16.dp, bottom = 0.dp)
     SettingsGroup { shown.forEachIndexed { index, record -> NightRow(index, shown.size, record) } }

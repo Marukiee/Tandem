@@ -1,33 +1,18 @@
 import SwiftUI
 import TandemCore
 
+extension TandemHealthRecord {
+    /// A night is sleep of at least three hours, as the core counts it; shorter sleep is a nap. The newest sleep of any length made a
+    /// watch that lay still for half an hour show as last night.
+    var isNight: Bool { kind == .sleep && sleepMinutes >= 180 }
+}
+
 /// The parts of Health with a page of their own, and the settings behind the gear.
 enum HealthPart: Hashable {
     case sleep, activity, heart, settings
 }
 
-/// A circle with soft waves around its edge, after the shapes of Material You: a few deep lobes make a clover, many shallow ones a
-/// cookie. The same shapes as on the phone, so Health looks like one thing on every device.
-struct WavyCircle: Shape {
-    var lobes: Int
-    var depth: CGFloat
-
-    func path(in rect: CGRect) -> Path {
-        let centre = CGPoint(x: rect.midX, y: rect.midY)
-        let outer = min(rect.width, rect.height) / 2
-        var path = Path()
-        for step in 0...240 {
-            let angle = CGFloat(step) / 240 * 2 * .pi - .pi / 2
-            let radius = outer * (1 - depth / 2 + depth / 2 * cos(CGFloat(lobes) * angle))
-            let point = CGPoint(x: centre.x + radius * cos(angle), y: centre.y + radius * sin(angle))
-            if step == 0 { path.move(to: point) } else { path.addLine(to: point) }
-        }
-        path.closeSubpath()
-        return path
-    }
-}
-
-/// Where Health opens: last night large with its score on a cookie, then a card per part with what matters most of it, each opening the
+/// Where Health opens: last night large with its score, then a card per part with what matters most of it, each opening the
 /// whole of that part. Only the parts with something in them: a card that says nothing makes the page look broken.
 struct HealthOverview: View {
     let insights: TandemHealthInsights
@@ -35,14 +20,17 @@ struct HealthOverview: View {
     let goal: Int?
     let onOpen: (HealthPart) -> Void
 
-    private var night: TandemHealthRecord? { records.first { $0.kind == .sleep } }
+    private var night: TandemHealthRecord? { records.first { $0.isNight } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let night { NightHero(night: night, insight: insights.latestNight?.id == night.id ? insights.latestNight : nil) { onOpen(.sleep) } }
-            sleepCard
-            activityCard
-            heartCard
+            // Side by side when the window is wide, each with its picture under the number.
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12, alignment: .top)], spacing: 12) {
+                sleepCard
+                activityCard
+                heartCard
+            }
         }
     }
 
@@ -101,13 +89,12 @@ struct HealthOverview: View {
     }
 }
 
-/// Last night, large, on a tonal card: how long, the score on a cookie that rolls in once, and the few numbers of the night as pills. A
-/// clover leans out of the corner, the playful side of Material You, quiet enough to leave the numbers in front.
+/// Last night, large, on a tonal card: how long, the score, and the few numbers of the night as pills. The Material shapes of the phone
+/// are left out here: they belong to Android, not to the Mac.
 private struct NightHero: View {
     let night: TandemHealthRecord
     let insight: TandemNightInsight?
     let action: () -> Void
-    @State private var spin: Double = -50
 
     var body: some View {
         Button(action: action) {
@@ -135,32 +122,18 @@ private struct NightHero: View {
                 Spacer(minLength: 8)
                 if let insight {
                     VStack(spacing: 4) {
-                        ZStack {
-                            WavyCircle(lobes: 9, depth: 0.09)
-                                .fill(Color(nsColor: .windowBackgroundColor).opacity(0.6))
-                                .rotationEffect(.degrees(spin))
-                            ScoreRing(score: insight.score)
-                        }
-                        .frame(width: 108, height: 108)
+                        ScoreRing(score: insight.score)
                         Text("Sleep score").font(.caption)
                     }
                 }
             }
             .padding(22)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(alignment: .bottomTrailing) {
-                WavyCircle(lobes: 4, depth: 0.32)
-                    .fill(Color.primary.opacity(0.05))
-                    .frame(width: 150, height: 150)
-                    .rotationEffect(.degrees(45))
-                    .offset(x: 34, y: 40)
-            }
             .background(Palette.indigo.opacity(0.16), in: RoundedRectangle(cornerRadius: 30, style: .continuous))
             .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         }
         .buttonStyle(.plain)
-        .onAppear { withAnimation(.spring(response: 1.2, dampingFraction: 0.55)) { spin = 0 } }
     }
 }
 
@@ -203,14 +176,12 @@ private struct PartCard<Picture: View>: View {
                         Spacer()
                         Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     }
-                    HStack(alignment: .bottom, spacing: 16) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(verbatim: value).font(.system(size: 26, weight: .bold)).lineLimit(1)
-                            Text(verbatim: caption).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                        }
-                        Spacer(minLength: 8)
-                        picture.frame(width: 196)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: value).font(.system(size: 26, weight: .bold)).lineLimit(1)
+                        Text(verbatim: caption).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                     }
+                    Spacer(minLength: 0)
+                    picture.frame(maxWidth: .infinity)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }

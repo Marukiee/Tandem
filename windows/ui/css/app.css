@@ -694,12 +694,16 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .health-pill { display: inline-flex; gap: 6px; padding: 6px 12px; border-radius: 999px; background: color-mix(in srgb, var(--card) 65%, transparent); font-size: 12px; color: var(--text-2); }
 .health-pill b { color: var(--text); }
 .health-hero-score { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.health-cookie { position: relative; width: 112px; height: 112px; display: grid; place-items: center; }
-.health-cookie-shape { position: absolute; inset: 0; width: 100%; height: 100%; fill: color-mix(in srgb, var(--card) 60%, transparent); animation: health-roll 1.2s cubic-bezier(0.2, 0.9, 0.3, 1.2); }
-.health-cookie .health-ring { position: relative; }
-@keyframes health-roll { from { transform: rotate(-50deg); } to { transform: rotate(0deg); } }
-.health-clover { position: absolute; right: -34px; bottom: -40px; width: 150px; height: 150px; transform: rotate(45deg); fill: color-mix(in srgb, var(--text) 6%, transparent); pointer-events: none; }
-.health-parts { display: flex; flex-direction: column; gap: 12px; }
+/* On a wide window the parts sit side by side, each with its picture under the number: with the picture at the far right, the middle of
+   a card was empty. */
+.health-parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.health-part-picture { margin-top: auto; }
+.health-part-picture .health-goal { width: 100%; }
+.health-week-chart { flex: 1 1 196px; max-width: 420px; min-width: 196px; }
+.health-bars { display: flex; align-items: flex-end; height: 76px; }
+.health-bar-slot { flex: 1; display: flex; justify-content: center; align-items: flex-end; height: 100%; }
+.health-bar { width: 18px; border-radius: 9px; background: var(--accent); transition: opacity .2s ease; }
+.health-bar.none { height: 5px; border-radius: 2.5px; background: var(--line-strong); }
 .health-part-card { display: flex; flex-direction: column; gap: 12px; width: 100%; padding: 18px; border: 0; border-radius: 24px; text-align: left; color: var(--text); font: inherit; cursor: pointer; }
 .health-part-card.tone-sleep { background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
 .health-part-card.tone-activity { background: color-mix(in srgb, #d0679d 16%, var(--card)); }
@@ -707,7 +711,7 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .health-part-head { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
 .health-part-icon { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: color-mix(in srgb, var(--text) 8%, transparent); }
 .health-part-value { font-size: 26px; font-weight: 700; line-height: 1.15; }
-.health-goal { width: 196px; height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--text) 10%, transparent); overflow: hidden; }
+.health-goal { width: 100%; height: 12px; border-radius: 6px; background: color-mix(in srgb, var(--text) 10%, transparent); overflow: hidden; }
 .health-goal > div { height: 100%; min-width: 12px; border-radius: 6px; background: #d0679d; }
 .health-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
 .health-dots i.on { background: var(--accent); }

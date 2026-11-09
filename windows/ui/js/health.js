@@ -14,6 +14,11 @@ const STAGE_COLORS = {
 const LANES = ["wake", "rem", "light", "deep"];
 
 const locale = () => (language() === "nl" ? "nl" : "en");
+/**
+ * A night is sleep of at least three hours, as the core counts it; shorter sleep is a nap. The newest sleep of any length made a watch
+ * that lay still for half an hour show as last night.
+ */
+const isNight = (r) => r.kind === "sleep" && r.sleepMinutes >= 180;
 
 export function healthDuration(minutes) {
   return minutes >= 60 ? t("health_hm", Math.floor(minutes / 60), minutes % 60) : t("health_m", minutes);
@@ -35,7 +40,7 @@ const number = (value) => Number(value).toLocaleString(locale());
  * so the steps are of the last whole day. Nothing until this computer was given something.
  */
 export function WatchGlance({ i, records, onOpen, goal }) {
-  const night = (records || []).find((r) => r.kind === "sleep");
+  const night = (records || []).find(isNight);
   const stepsDay = i ? [...i.week].reverse().find((d) => d.steps != null) : null;
   const resting = i && i.resting;
   if (!night && !stepsDay && !resting) return null;
@@ -82,22 +87,20 @@ function DayLetters({ week }) {
     html`<span key=${day.startMs} class=${index === week.length - 1 ? "today" : ""}>${letter(day.startMs)}</span>`)}</div>`;
 }
 
-/** Seven days as rounded bars. A day without a measurement gets a low grey stripe: not zero, because nothing is known about it. */
+/**
+ * Seven days as rounded bars. A day without a measurement gets a low grey stripe: not zero, because nothing is known about it. The days
+ * share the width the chart has and each bar keeps its own width, so the chart fills its room on a wide window without stretched bars.
+ */
 function WeekBars({ values, week, picked, onPick }) {
   const top = Math.max(1, ...values.filter((v) => v != null)) * 1.08;
-  const width = 196, height = 76, slot = width / values.length, bar = 18;
   return html`<div class="health-chart">
-    <svg viewBox=${`0 0 ${width} ${height}`} width=${width} height=${height} role="img" onMouseLeave=${() => onPick(null)}>
-      ${values.map((value, index) => {
-        const x = slot * index + (slot - bar) / 2;
-        if (value == null) return html`<rect key=${index} x=${x} y=${height - 5} width=${bar} height="5" rx="2.5" class="health-none" />`;
-        const h = Math.max((value / top) * height, 8);
-        return html`<rect key=${index} class="health-grow" x=${x} y=${height - h} width=${bar} height=${h} rx=${Math.min(bar, h) / 2}
-          fill="var(--accent)" opacity=${picked == null || picked === index ? 1 : 0.3} />`;
-      })}
-      ${values.map((_, index) => html`<rect key=${"hit" + index} x=${slot * index} y="0" width=${slot} height=${height} fill="transparent"
-        onMouseEnter=${() => onPick(index)} />`)}
-    </svg>
+    <div class="health-bars" role="img" onMouseLeave=${() => onPick(null)}>
+      ${values.map((value, index) => html`<div key=${index} class="health-bar-slot" onMouseEnter=${() => onPick(index)}>
+        ${value == null
+          ? html`<span class="health-bar none"></span>`
+          : html`<span class="health-bar health-grow" style=${`height:${Math.max((value / top) * 100, 10)}%;opacity:${picked == null || picked === index ? 1 : 0.3}`}></span>`}
+      </div>`)}
+    </div>
     <${DayLetters} week=${week} />
   </div>`;
 }
@@ -111,10 +114,10 @@ function WeekLine({ values, week, usual, picked, onPick }) {
   const y = (value) => 8 + (1 - (value - low) / (high - low)) * (height - 16);
   const points = values.map((value, index) => (value == null ? null : `${x(index)},${y(value)}`)).filter(Boolean).join(" ");
   return html`<div class="health-chart">
-    <svg viewBox=${`0 0 ${width} ${height}`} width=${width} height=${height} role="img" onMouseLeave=${() => onPick(null)}>
+    <svg viewBox=${`0 0 ${width} ${height}`} width="100%" height=${height} preserveAspectRatio="none" role="img" onMouseLeave=${() => onPick(null)}>
       ${usual != null && html`<line x1="0" x2=${width} y1=${y(usual)} y2=${y(usual)} class="health-guide-strong" />`}
-      <polyline points=${points} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-      ${values.map((value, index) => value != null && html`<circle key=${index} cx=${x(index)} cy=${y(value)} r=${picked === index ? 5 : 3.5} fill="var(--accent)" />`)}
+      <polyline points=${points} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+      ${values.map((value, index) => value != null && html`<line key=${index} x1=${x(index)} x2=${x(index)} y1=${y(value)} y2=${y(value)} stroke="var(--accent)" stroke-width=${picked === index ? 10 : 7} stroke-linecap="round" vector-effect="non-scaling-stroke" />`)}
       ${values.map((_, index) => html`<rect key=${"hit" + index} x=${slot * index} y="0" width=${slot} height=${height} fill="transparent" onMouseEnter=${() => onPick(index)} />`)}
     </svg>
     <${DayLetters} week=${week} />
@@ -354,7 +357,7 @@ function WeekCard({ title, more, number: shown, caption, week, dayNumbers, chart
         <${BigNumber} text=${picked != null ? dayNumbers[picked] ?? "-" : shown} />
         <div class="small muted">${picked != null ? dayName(week[picked].startMs) : caption}</div>
       </div>
-      ${chart(picked, setPicked)}
+      <div class="health-week-chart">${chart(picked, setPicked)}</div>
     </div>
   <//>`;
 }
@@ -392,9 +395,9 @@ function Workout({ r }) {
 /** Sleep as a page of Health: last night large with the night and its quality, naps, the sleep of the week, and earlier nights. */
 export function SleepDetail({ i, records }) {
   const week = i.week || [];
-  const latest = records.find((r) => r.kind === "sleep");
+  const latest = records.find(isNight);
   const insight = i.latestNight && latest && i.latestNight.id === latest.id ? i.latestNight : null;
-  const earlier = records.filter((r) => r.kind === "sleep" && r !== latest).slice(0, 30);
+  const earlier = records.filter((r) => isNight(r) && r !== latest).slice(0, 30);
   const now = i.thisWeek, before = i.lastWeek;
   return html`
     ${latest && html`<h3 class="health-section">${t("watch_last_night")}</h3>
@@ -493,17 +496,6 @@ export function HeartDetail({ i }) {
   `;
 }
 
-/** A circle with soft waves around its edge, after the shapes of Material You: a few deep lobes make a clover, many shallow ones a cookie. */
-function wavyCircle(size, lobes, depth) {
-  const c = size / 2, points = [];
-  for (let step = 0; step <= 240; step++) {
-    const a = (step / 240) * 2 * Math.PI - Math.PI / 2;
-    const r = c * (1 - depth / 2 + (depth / 2) * Math.cos(lobes * a));
-    points.push(`${(c + r * Math.cos(a)).toFixed(2)},${(c + r * Math.sin(a)).toFixed(2)}`);
-  }
-  return `M${points.join("L")}Z`;
-}
-
 /** The heart rate of a day as a small line, with gaps where the watch was off the wrist. */
 function Sparkline({ curve }) {
   const measured = curve.filter((v) => v > 0);
@@ -517,25 +509,26 @@ function Sparkline({ curve }) {
     d += `${index - before > 6 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
     before = index;
   });
-  return html`<svg viewBox=${`0 0 ${width} ${height}`} width=${width} height=${height} aria-hidden="true">
-    <path d=${d} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>`;
+  return html`<svg viewBox=${`0 0 ${width} ${height}`} width="100%" height=${height} preserveAspectRatio="none" aria-hidden="true">
+    <path d=${d} fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" /></svg>`;
 }
 
 /** A card of a part of Health: its icon in a round, its name, the number large, a short word, and a little picture beside it. */
 function PartCard({ icon, tone, title, value, caption, onClick, children }) {
   return html`<button class=${"card health-part-card tone-" + tone} onClick=${onClick}>
     <div class="health-part-head"><span class="health-part-icon"><${Icon} name=${icon} size=${18} /></span><span class="grow">${title}</span><${Icon} name="chevron-right" size=${16} /></div>
-    <div class="health-row"><div class="grow"><div class="health-part-value">${value}</div><div class="small muted">${caption}</div></div>${children}</div>
+    <div><div class="health-part-value">${value}</div><div class="small muted">${caption}</div></div>
+    <div class="health-part-picture">${children}</div>
   </button>`;
 }
 
 /**
- * Where Health opens: last night large with its score on a cookie, then a card per part with what matters most of it. Each opens the
+ * Where Health opens: last night large with its score, then a card per part with what matters most of it. Each opens the
  * whole of that part. Only parts with something in them: a card that says nothing makes the page look broken.
  */
 export function HealthOverview({ i, records, goal, onOpen }) {
   const week = i.week || [];
-  const night = records.find((r) => r.kind === "sleep");
+  const night = records.find(isNight);
   const insight = night && i.latestNight && i.latestNight.id === night.id ? i.latestNight : null;
   const lastSteps = week.map((d) => d.steps != null).lastIndexOf(true);
   const steps = lastSteps >= 0 ? week[lastSteps].steps : null;
@@ -544,7 +537,6 @@ export function HealthOverview({ i, records, goal, onOpen }) {
   const mean = i.thisWeek ? i.thisWeek.meanSleepMinutes : null;
   return html`
     ${night && html`<button class="health-hero" onClick=${() => onOpen("sleep")}>
-      <svg class="health-clover" viewBox="0 0 160 160" aria-hidden="true"><path d=${wavyCircle(160, 4, 0.32)} /></svg>
       <div class="health-hero-main">
         <div class="health-hero-label"><span class="health-hero-icon"><${Icon} name="moon" size=${16} /></span>${t("watch_last_night")}</div>
         <${BigNumber} text=${healthDuration(night.sleepMinutes)} />
@@ -556,7 +548,7 @@ export function HealthOverview({ i, records, goal, onOpen }) {
         </div>
       </div>
       ${insight && html`<div class="health-hero-score">
-        <div class="health-cookie"><svg class="health-cookie-shape" viewBox="0 0 120 120" aria-hidden="true"><path d=${wavyCircle(120, 9, 0.09)} /></svg><${ScoreRing} score=${insight.score} /></div>
+        <${ScoreRing} score=${insight.score} />
         <span class="small">${t("health_score")}</span>
       </div>`}
     </button>`}

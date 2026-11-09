@@ -299,7 +299,7 @@ private struct WatchHealthCard: View {
 
     var body: some View {
         let insights = model.healthInsights
-        let night = model.healthRecords.first { $0.kind == .sleep }
+        let night = model.healthRecords.first { $0.isNight }
         let stepsDay = insights?.week.last { $0.steps != nil }
         let settings = phone.status.watch?.settings
         Card(radius: Metrics.card, padding: 6) {

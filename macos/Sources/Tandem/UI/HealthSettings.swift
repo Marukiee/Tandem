@@ -219,10 +219,10 @@ struct HealthPageContent: View {
     let records: [TandemHealthRecord]
     let part: HealthPart
 
-    private var latest: TandemHealthRecord? { records.first { $0.kind == .sleep } }
+    private var latest: TandemHealthRecord? { records.first { $0.isNight } }
     private var earlier: [TandemHealthRecord] {
         let kind: TandemHealthKind? = part == .sleep ? .sleep : part == .activity ? .workout : nil
-        return records.filter { $0.kind == kind && $0.id != latest?.id }.prefix(30).map { $0 }
+        return records.filter { $0.kind == kind && (kind != .sleep || $0.isNight) && $0.id != latest?.id }.prefix(30).map { $0 }
     }
 
     var body: some View {
@@ -350,8 +350,8 @@ private struct WeekCard<Chart: View>: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .animation(.tandemFade, value: picked)
-                Spacer(minLength: 8)
-                chart($picked).frame(width: 196)
+                // The chart takes the room beside the number: kept narrow at the far right, the middle of a wide card was empty.
+                chart($picked).frame(minWidth: 196, maxWidth: .infinity)
             }
         }
     }
