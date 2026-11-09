@@ -1545,3 +1545,6 @@
 "Above range" = "Boven bereik";
 "Below range" = "Onder bereik";
 "In range" = "Binnen bereik";
+
+/* The watch in the menu bar panel */
+"Open the watch" = "Horloge openen";

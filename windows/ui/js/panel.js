@@ -27,6 +27,30 @@ function Row({ device }) {
   </div>`;
 }
 
+/**
+ * The watch of a phone, under that phone, as a device of its own: how it is doing, and the sound and the mouse with one press each. A
+ * button that is on says so, and stops with the same press.
+ */
+function WatchRow({ phone }) {
+  const watch = phone.status.watch;
+  const reachable = phone.online && watch.online;
+  const steering = reachable && watch.mouse && state.self && watch.mouse.target === state.self.id;
+  const go = (command, args) => call(command, { id: phone.id, ...args }).catch(failed);
+  const name = watch.name || t("watch");
+  const sub = !reachable ? t("watch_away") : [t("connected"), watch.level != null ? watch.level + "%" : "", steering ? t("watch_mouse_here") : watch.sleeping ? t("watch_recording") : ""].filter(Boolean).join(" · ");
+  return html`<div class=${"row" + (reachable ? "" : " dim")}>
+    <span class="glyph" style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--accent-soft);color:var(--accent);flex:none"><${Icon} name="device-watch" size=${18} /></span>
+    <div class="grow">
+      <div class="name ellipsis">${name}</div>
+      <div class=${"sub" + (reachable ? " ok" : "")}>${sub}</div>
+    </div>
+    <button class=${"ib solid" + (watch.ringing ? " on" : "")} title=${watch.ringing ? t("stop_sound") : t("play_sound")} aria-pressed=${!!watch.ringing} disabled=${!reachable}
+      onClick=${() => go("ring_watch", { on: !watch.ringing })}><${Icon} name=${watch.ringing ? "bell-off" : "bell-ringing"} size=${16} /></button>
+    <button class=${"ib solid" + (steering ? " on" : "")} title=${steering ? t("watch_mouse_stop") : t("watch_as_mouse")} aria-pressed=${!!steering} disabled=${!reachable}
+      onClick=${() => (steering ? go("stop_watch_mouse") : go("start_watch_mouse", { table: false }))}><${Icon} name="pointer" size=${16} /></button>
+  </div>`;
+}
+
 function Panel() {
   useStore();
   const box = useRef(null);
@@ -75,7 +99,7 @@ function Panel() {
       <div class="prog"><i style=${`width:${x.total ? Math.round((x.done / x.total) * 100) : 0}%`}></i></div>
     </div>`)}
 
-    ${state.devices.map((d) => html`<${Row} device=${d} key=${d.id} />`)}
+    ${state.devices.map((d) => html`<${Row} device=${d} key=${d.id} />${d.status && d.status.watch && d.status.watch.paired && html`<${WatchRow} phone=${d} key=${d.id + "-watch"} />`}`)}
 
     ${playing && html`<div class="card"><${PlayerCard} device=${playing.device} player=${playing.player} compact=${true} /></div>`}
 

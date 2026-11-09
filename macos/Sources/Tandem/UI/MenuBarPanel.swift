@@ -47,6 +47,8 @@ struct MenuBarPanel: View {
         return VStack(spacing: 2) {
             ForEach(reachable, id: \.id) { device in
                 MenuDeviceRow(device: device)
+                // The watch of a phone right under it, as the device of its own it is on the other pages.
+                if device.status.watch?.paired == true { MenuWatchRow(phone: device) }
             }
             if model.hotspotStatus != .idle {
                 MenuHotspot()
@@ -295,10 +297,7 @@ private struct MenuDeviceRow: View {
                                 Image(systemName: batterySymbol(battery, online: device.online)).font(.caption2).foregroundStyle(.secondary)
                                 Text("\(battery.level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                             }
-                            if let watch = device.status.watch, watch.paired, watch.online, let level = watch.level {
-                                Image(systemName: "applewatch").font(.caption2).foregroundStyle(.secondary)
-                                Text("\(level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                            }
+                            // The watch has a row of its own under this one, with its battery.
                             if device.online, let rtt = device.rttMs {
                                 // The dot separates it from what comes before; with nothing before it, it stands alone.
                                 let alone = reach == .network && device.status.battery == nil
@@ -421,16 +420,6 @@ private struct MenuDeviceRow: View {
         SideWatch.shared.moved(device.id)
     }
 
-    private func batterySymbol(_ battery: TandemBattery, online: Bool) -> String {
-        if battery.charging && online { return "battery.100percent.bolt" }
-        switch battery.level {
-        case ..<13: return "battery.0percent"
-        case ..<38: return "battery.25percent"
-        case ..<63: return "battery.50percent"
-        case ..<88: return "battery.75percent"
-        default: return "battery.100percent"
-        }
-    }
 
     private func pickFiles() {
         let panel = NSOpenPanel()
@@ -461,6 +450,83 @@ private struct MenuAwayRow: View {
         .padding(.vertical, 5)
         .foregroundStyle(.secondary)
         .opacity(0.75)
+    }
+}
+
+/// The watch of a phone, under that phone: how it is doing, and what it does from here with one press. Its buttons say what is on, as
+/// the tiles on its page do: the sound and the mouse are stopped with the same button.
+private struct MenuWatchRow: View {
+    @Environment(EngineModel.self) private var model
+    let phone: TandemDevice
+    @LocalState private var hint: LocalizedStringKey?
+    @LocalState private var left = 0
+
+    private func hover(_ inside: Bool, _ text: LocalizedStringKey) {
+        left += 1
+        if inside {
+            hint = text
+            return
+        }
+        let mark = left
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            if left == mark { hint = nil }
+        }
+    }
+
+    var body: some View {
+        let watch = phone.status.watch
+        let reachable = phone.online && watch?.online == true
+        let ringing = watch?.ringing == true
+        let steering = reachable && watch?.mouse?.target == model.myId
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                Image(systemName: "applewatch")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(reachable ? Color.green : Color.secondary)
+                    .frame(width: 36, height: 36)
+                    .overlay(Circle().strokeBorder(reachable ? Color.green : Color.secondary.opacity(0.4), lineWidth: 2))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: watch?.name ?? String(localized: "Watch")).font(.callout.weight(.semibold)).lineLimit(1)
+                    HStack(spacing: 5) {
+                        if let hint {
+                            Text(hint).font(.caption.weight(.medium)).foregroundStyle(Palette.indigo).transition(.opacity)
+                        } else if !reachable {
+                            Text("Watch away").font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                        } else {
+                            if let level = watch?.level {
+                                Image(systemName: batterySymbol(TandemBattery(level: level, charging: watch?.charging == true, powerSave: false), online: true))
+                                    .font(.caption2).foregroundStyle(.secondary)
+                                Text("\(level)%").font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            }
+                            if watch?.sleeping == true {
+                                Text("\u{00B7} ").font(.caption).foregroundStyle(.secondary) + Text("Recording your sleep").font(.caption).foregroundStyle(.secondary)
+                            } else if steering {
+                                Text("\u{00B7} ").font(.caption).foregroundStyle(.secondary) + Text("Steering this Mac now").font(.caption).foregroundStyle(Palette.indigo)
+                            }
+                        }
+                    }
+                    .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            HStack(spacing: 6) {
+                RoundIconButton(
+                    symbol: ringing ? "bell.slash.fill" : "bell.and.waves.left.and.right", tint: ringing ? Palette.indigo : nil, size: 32,
+                    onHover: { hover($0, ringing ? "Stop sound" : "Play sound") }
+                ) { model.ringWatch(phone.id, on: !ringing) }
+                .disabled(!reachable)
+                RoundIconButton(
+                    symbol: steering ? "cursorarrow.motionlines.click" : "cursorarrow.motionlines", tint: steering ? Palette.indigo : nil, size: 32,
+                    onHover: { hover($0, steering ? "Stop using watch as mouse" : "Use watch as mouse") }
+                ) { steering ? model.stopWatchMouse(phone.id) : model.startWatchMouse(phone.id) }
+                .disabled(!reachable)
+                RoundIconButton(symbol: "heart", size: 32, onHover: { hover($0, "Health") }) { AppScenes.showMain(.health(phone.id)) }
+                RoundIconButton(symbol: "applewatch", size: 32, onHover: { hover($0, "Open the watch") }) { AppScenes.showMain(.watch(phone.id)) }
+            }
+            .environment(\.iconButtonsFill, true)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
     }
 }
 
@@ -529,5 +595,17 @@ private struct MenuTile: View {
         .onHover { hovering = $0 }
         .animation(.tandemFade, value: hovering)
         .help(action.title)
+    }
+}
+
+/// The battery symbol for a level, with a bolt while it charges. Shared by the rows of the phones and of the watches.
+private func batterySymbol(_ battery: TandemBattery, online: Bool) -> String {
+    if battery.charging && online { return "battery.100percent.bolt" }
+    switch battery.level {
+    case ..<13: return "battery.0percent"
+    case ..<38: return "battery.25percent"
+    case ..<63: return "battery.50percent"
+    case ..<88: return "battery.75percent"
+    default: return "battery.100percent"
     }
 }
