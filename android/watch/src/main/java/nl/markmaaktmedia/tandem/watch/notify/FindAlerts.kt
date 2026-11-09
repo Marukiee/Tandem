@@ -14,6 +14,7 @@ import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
+import java.util.concurrent.Executors
 import nl.markmaaktmedia.tandem.watch.R
 import nl.markmaaktmedia.tandem.watch.sound.FindTone
 
@@ -34,7 +35,14 @@ class FindAlerts(
     private var volumeBefore: Int? = null
     private var gain = START_GAIN
     private var active = false
+    /** Which ringing a track that is being opened belongs to, so one that opens after a stop or a new start is let go. */
+    private var ringing = 0
     private val giveUp = Runnable { stop() }
+
+    init {
+        // Written once, so a ring does not wait for it.
+        audioThread.execute { tone }
+    }
 
     /** Grows to full strength in a few seconds, so a watch still on a wrist does not shriek at once. */
     private val louder = object : Runnable {
@@ -48,6 +56,14 @@ class FindAlerts(
     fun start() {
         if (active) return
         active = true
+        val id = ++ringing
+        // The buzz and the word to the phone first. Opening the speaker can take a while on a watch, and it happened here on the thread
+        // of the link before both: the watch began late and the phone heard late that it rang, while stopping was quick. Now the
+        // speaker opens on a thread of its own and joins in when it is ready.
+        vibrator.vibrate(
+            VibrationEffect.createWaveform(longArrayOf(0, 500, 300), 0),
+            VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM),
+        )
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL, context.getString(R.string.channel_find), NotificationManager.IMPORTANCE_HIGH).apply {
                 enableVibration(false)
@@ -70,14 +86,24 @@ class FindAlerts(
         volumeBefore = audio.getStreamVolume(AudioManager.STREAM_ALARM)
         runCatching { audio.setStreamVolume(AudioManager.STREAM_ALARM, audio.getStreamMaxVolume(AudioManager.STREAM_ALARM), 0) }
         gain = START_GAIN
-        track = chirps()
-        if (track != null) handler.postDelayed(louder, GAIN_EVERY_MS) else ringtone = alarmTone()
-        vibrator.vibrate(
-            VibrationEffect.createWaveform(longArrayOf(0, 500, 300), 0),
-            VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM),
-        )
         handler.postDelayed(giveUp, GIVE_UP_MS)
         onChange(true)
+        audioThread.execute {
+            val opened = chirps()
+            handler.post {
+                if (!active || id != ringing) {
+                    opened?.release()
+                    return@post
+                }
+                if (opened != null) {
+                    track = opened
+                    opened.play()
+                    handler.postDelayed(louder, GAIN_EVERY_MS)
+                } else {
+                    ringtone = alarmTone()
+                }
+            }
+        }
     }
 
     fun stop() {
@@ -99,9 +125,12 @@ class FindAlerts(
         onChange(false)
     }
 
-    /** The chirps, looped from memory: written once, then played again and again until found. Null when the audio will not open. */
+    /**
+     * The chirps, looped from memory: written once, then played again and again until found. Opened ready to play but not playing, off the
+     * thread of the link. Null when the audio will not open.
+     */
     private fun chirps(): AudioTrack? = runCatching {
-        val pcm = FindTone.cycle()
+        val pcm = tone
         AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
@@ -124,7 +153,6 @@ class FindAlerts(
                 write(pcm, 0, pcm.size)
                 setLoopPoints(0, pcm.size, -1)
                 setVolume(START_GAIN)
-                play()
             }
     }.getOrNull()
 
@@ -137,6 +165,9 @@ class FindAlerts(
         }
 
     private companion object {
+        /** One for every ring of this app: a track opens here while the link goes on. */
+        val audioThread = Executors.newSingleThreadExecutor { Thread(it, "find-audio").apply { isDaemon = true } }
+        val tone: ShortArray by lazy { FindTone.cycle() }
         const val CHANNEL = "find"
         const val NOTIFICATION_ID = 400
         const val GIVE_UP_MS = 60_000L
