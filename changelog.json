@@ -1,5 +1,29 @@
 [
   {
+    "version": "0.3.6",
+    "date": "2026-11-09",
+    "en": {
+      "title": "A closer look at sleep",
+      "new": [
+        "Each night shows its sleep quality as Google's Sleep Score does: time to sound sleep, sound sleep, restlessness, interruptions and full awakenings, each against the typical range",
+        "The sleep score is built like Google's, and the time falling asleep no longer counts as sleep",
+        "The watch has a row of its own in the menu bar panel of the Mac and the tray panel of the desktop",
+        "Which computers get your nights is switched on from the Health page of the phone",
+        "The watch app says Play sound on phone, as every device does"
+      ]
+    },
+    "nl": {
+      "title": "Slaap van dichtbij",
+      "new": [
+        "Elke nacht toont zijn slaapkwaliteit zoals de slaapscore van Google: tijd tot vaste slaap, vaste slaap, onrust, onderbrekingen en keer echt wakker, elk naast het gebruikelijke bereik",
+        "De slaapscore is opgebouwd zoals die van Google, en inslapen telt niet meer als slaap",
+        "Het horloge heeft een eigen rij in het menubalkpaneel van de Mac en het paneel van de desktop",
+        "Welke computers je nachten krijgen, zet je aan op de pagina Gezondheid van de telefoon",
+        "De horloge-app zegt Geluid afspelen op telefoon, zoals elk apparaat"
+      ]
+    }
+  },
+  {
     "version": "0.3.5",
     "date": "2026-11-09",
     "en": {
