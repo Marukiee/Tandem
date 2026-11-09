@@ -1,5 +1,25 @@
 [
   {
+    "version": "0.3.9",
+    "date": "2026-11-10",
+    "en": {
+      "title": "Look back",
+      "new": [
+        "Every part of Health can go a week back and forward, and has a calendar of the month: sleep, steps toward your goal and your heart rate per day",
+        "Last night is a sleep of at least three hours, so a short stretch with the watch off no longer shows as your night",
+        "On the Mac and the computers the parts of Health sit side by side on a wide window, without the shapes of Android"
+      ]
+    },
+    "nl": {
+      "title": "Terugkijken",
+      "new": [
+        "Elk deel van Gezondheid kan een week terug en vooruit, en heeft een kalender van de maand: slaap, stappen naar je doel en je hartslag per dag",
+        "Afgelopen nacht is een slaap van minstens drie uur, dus een kort stuk met het horloge af telt niet meer als je nacht",
+        "Op de Mac en de computers staan de delen van Gezondheid naast elkaar bij een breed venster, zonder de vormen van Android"
+      ]
+    }
+  },
+  {
     "version": "0.3.8",
     "date": "2026-11-09",
     "en": {
