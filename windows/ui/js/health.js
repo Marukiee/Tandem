@@ -528,6 +528,36 @@ export function SleepDetail({ i, records }) {
   `;
 }
 
+const hourOf = (h) => `${String(h % 24).padStart(2, "0")}:00`;
+
+/** The hours of a day as bars, from midnight on, so a day shows when it was walked. Pointing at an hour shows it. */
+function HourBars({ values, picked, onPick }) {
+  const top = Math.max(1, ...values) * 1.08;
+  return html`<div class="health-chart">
+    <div class="health-bars hours" role="img" onMouseLeave=${() => onPick(null)}>
+      ${values.map((value, hour) => html`<div key=${hour} class="health-bar-slot" onMouseEnter=${() => onPick(hour)}>
+        ${value > 0
+          ? html`<span class="health-bar health-grow" style=${`height:${Math.max((value / top) * 100, 4)}%;opacity:${picked == null || picked === hour ? 1 : 0.3}`}></span>`
+          : html`<span class="health-bar none"></span>`}
+      </div>`)}
+    </div>
+    <div class="health-hours">${[0, 6, 12, 18, 24].map((hour) => html`<span key=${hour}>${hourOf(hour)}</span>`)}</div>
+  </div>`;
+}
+
+/** A day by the hour: on a computer the last whole day, which is the newest it has, since only the phone hears the watch during one. */
+function DayHoursCard({ day }) {
+  const [picked, setPicked] = useState(null);
+  const total = day.curve.reduce((sum, v) => sum + v, 0);
+  return html`<${Card} title=${t("health_steps_by_hour")} more=${t("health_more_steps_by_hour")}>
+    <div>
+      <${BigNumber} text=${number(picked != null ? day.curve[picked] : total)} />
+      <div class="small muted">${picked != null ? t("health_span", hourOf(picked), hourOf(picked + 1)) : dayName(day.startMs)}</div>
+    </div>
+    <${HourBars} values=${day.curve} picked=${picked} onPick=${setPicked} />
+  <//>`;
+}
+
 /** Activity as a page of Health: the steps and active minutes of the week, the workouts, and earlier workouts. */
 export function ActivityDetail({ i, records, goal }) {
   const [offset, setOffset] = useState(0);
@@ -538,6 +568,7 @@ export function ActivityDetail({ i, records, goal }) {
   const earlier = records.filter((r) => r.kind === "workout").slice(0, 30);
   const now = paged ? paged.summary : { workouts: 0 };
   return html`
+    ${offset === 0 && i.latestDaySteps && html`<${DayHoursCard} day=${i.latestDaySteps} />`}
     <${WeekPager} offset=${offset} setOffset=${setOffset} week=${week} />
     ${lastSteps >= 0 && html`
       <${WeekCard} title=${t("health_steps_title")} number=${number(week[lastSteps].steps)} caption=${dayName(week[lastSteps].startMs)}

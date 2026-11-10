@@ -59,6 +59,9 @@ pub struct TandemHealthRecord {
     /// For a day: the heart rate per five minutes from midnight on, 0 where nothing was measured.
     #[uniffi(default = [])]
     pub heart_curve: Vec<u32>,
+    /// For a day: the steps per hour from midnight on. Empty from a watch from before.
+    #[uniffi(default = [])]
+    pub step_curve: Vec<u32>,
 }
 
 impl From<HealthRecord> for TandemHealthRecord {
@@ -100,6 +103,7 @@ impl From<HealthRecord> for TandemHealthRecord {
             steps: r.steps,
             active_minutes: r.active_minutes,
             heart_curve: r.heart_curve.iter().map(|&v| u32::from(v)).collect(),
+            step_curve: r.step_curve,
         }
     }
 }
@@ -143,6 +147,7 @@ impl From<TandemHealthRecord> for HealthRecord {
             steps: r.steps,
             active_minutes: r.active_minutes,
             heart_curve: r.heart_curve.iter().map(|&v| v.min(255) as u8).collect(),
+            step_curve: r.step_curve,
             added_ms: 0,
             origin: None,
         }
@@ -234,6 +239,8 @@ pub struct TandemHealthInsights {
     pub last_week: TandemWeekSummary,
     /// The last whole day with a heart rate.
     pub latest_day_heart: Option<TandemDayHeart>,
+    /// The last whole day with its steps per hour.
+    pub latest_day_steps: Option<TandemDaySteps>,
     /// The naps of the last seven days, newest first.
     pub naps: Vec<TandemNap>,
     /// Always seven days, the oldest first and today last.
@@ -288,6 +295,13 @@ impl From<crate::health_insights::HealthRange> for TandemHealthRange {
     fn from(r: crate::health_insights::HealthRange) -> Self {
         TandemHealthRange { days: r.days.into_iter().map(Into::into).collect(), summary: r.summary.into() }
     }
+}
+
+/// The steps of a day per hour from midnight.
+#[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
+pub struct TandemDaySteps {
+    pub start_ms: u64,
+    pub curve: Vec<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, uniffi::Record)]
@@ -388,6 +402,7 @@ impl From<HealthInsights> for TandemHealthInsights {
                 mean: d.mean,
                 high: d.high,
             }),
+            latest_day_steps: i.latest_day_steps.map(|d| TandemDaySteps { start_ms: d.start_ms, curve: d.curve }),
             naps: i
                 .naps
                 .into_iter()

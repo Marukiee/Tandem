@@ -536,16 +536,25 @@ internal fun ActivityToday(insights: TandemHealthInsights?) {
     }
     if (!live && steps.none { it != null }) return
     val shownDay = if (shown.now) week.lastIndex else steps.indexOfLast { it != null }.coerceAtLeast(0)
+    val context = LocalContext.current
     SettingsGroup {
         val today = steps[shownDay] ?: 0L
         val left = goal - today
-        WeekCard(
-            0, 2, stringResource(R.string.health_steps_title), number(today),
-            if (!shown.now) dayName(LocalContext.current, week[shownDay].startMs.toLong())
-            else if (left > 0) stringResource(R.string.health_steps_left, number(left)) else stringResource(R.string.health_steps_done),
-            week, steps.map { step -> step?.let(::number) },
-        ) { selected, select ->
-            WeekBars(steps.map { it?.toFloat() }, days, selected, select, stringResource(R.string.health_steps_title), goal = goal.toFloat())
+        val caption = if (!shown.now) dayName(context, week[shownDay].startMs.toLong())
+        else if (left > 0) stringResource(R.string.health_steps_left, number(left)) else stringResource(R.string.health_steps_done)
+        // Today by the hour, in place of the week: live from the watch, or without it the last whole day the core knows. A week
+        // further back keeps its days.
+        val lastDay = insights.latestDaySteps
+        when {
+            shown.now && live && watch.stepsByHour.size == 24 -> StepsByHourCard(0, 2, watch.stepsByHour, today, caption)
+            shown.now && !live && lastDay != null ->
+                StepsByHourCard(0, 2, lastDay.curve.map { it.toInt() }, lastDay.curve.sumOf { it.toLong() }, dayName(context, lastDay.startMs.toLong()))
+            else -> WeekCard(
+                0, 2, stringResource(R.string.health_steps_title), number(today), caption,
+                week, steps.map { step -> step?.let(::number) },
+            ) { selected, select ->
+                WeekBars(steps.map { it?.toFloat() }, days, selected, select, stringResource(R.string.health_steps_title), goal = goal.toFloat())
+            }
         }
         val sum = active.sumOf { it ?: 0 }
         WeekCard(

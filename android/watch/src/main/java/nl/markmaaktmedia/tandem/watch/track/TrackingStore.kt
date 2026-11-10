@@ -141,6 +141,7 @@ class TrackingStore(context: Context) {
         activeMinutes = prefs.getInt("steps_active", 0),
         minute = prefs.getLong("steps_minute", -1),
         stepsInMinute = prefs.getLong("steps_in_minute", 0),
+        hourly = prefs.getString("steps_hourly", "").orEmpty().split(',').mapNotNull { it.toIntOrNull() },
     )
 
     /** The next alarm to wake someone before, 0 for none. Kept here so a night on a watch without its phone still has it. */
@@ -165,6 +166,7 @@ class TrackingStore(context: Context) {
             .putInt("steps_active", state.activeMinutes)
             .putLong("steps_minute", state.minute)
             .putLong("steps_in_minute", state.stepsInMinute)
+            .putString("steps_hourly", state.hourly.joinToString(","))
             .apply()
     }
 

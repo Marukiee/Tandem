@@ -40,9 +40,14 @@ data class DailySteps(
     val activeMinutes: Int = 0,
     val minute: Long = -1,
     val stepsInMinute: Long = 0,
+    /** The steps of this day per hour from midnight, 24 of them once a step has come in. */
+    val hourly: List<Int> = emptyList(),
 ) {
-    /** [atMinute] is when the steps were taken, in minutes on any clock that only goes up. */
-    fun update(today: String, total: Long, atMinute: Long = -1): DailySteps {
+    /**
+     * [atMinute] is when the steps were taken, in minutes on any clock that only goes up; [atHour] is the hour of the day they were taken
+     * in, so a day can be shown hour by hour. A batch that spans an hour goes to the hour it was measured in.
+     */
+    fun update(today: String, total: Long, atMinute: Long = -1, atHour: Int = -1): DailySteps {
         val delta = when {
             lastTotal < 0 -> 0
             total >= lastTotal -> total - lastTotal
@@ -64,11 +69,15 @@ data class DailySteps(
             activeMinutes = (if (sameDay) activeMinutes else 0) + active,
             minute = if (atMinute < 0) minute else atMinute,
             stepsInMinute = if (elapsed <= 0) stepsInMinute + delta else delta,
+            hourly = (if (sameDay && hourly.size == HOURS) hourly else List(HOURS) { 0 }).let { hours ->
+                if (atHour in 0 until HOURS && delta > 0) hours.mapIndexed { hour, count -> if (hour == atHour) count + delta.toInt() else count } else hours
+            },
         )
     }
 
     companion object {
         /** About where walking becomes brisk: research on step rates puts moderate effort at 100 steps a minute. */
         const val ACTIVE_STEPS_PER_MINUTE = 100L
+        const val HOURS = 24
     }
 }

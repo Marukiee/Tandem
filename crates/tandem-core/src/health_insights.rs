@@ -168,6 +168,8 @@ pub struct HealthInsights {
     pub last_week: WeekSummary,
     /// The last whole day with a heart rate. Today is not here: a day becomes a record once it is over.
     pub latest_day_heart: Option<DayHeart>,
+    /// The last whole day with its steps per hour, for a computer, which sees days only once they are over.
+    pub latest_day_steps: Option<DaySteps>,
     /// The last seven days, newest first.
     pub naps: Vec<NapInsight>,
     /// Always seven days, the oldest first and today last.
@@ -476,6 +478,18 @@ fn is_nap(record: &HealthRecord) -> bool {
     record.kind == HealthKind::Sleep && record.sleep_minutes > 0 && record.sleep_minutes < MIN_NIGHT_MINUTES
 }
 
+/// The steps of a day per hour from midnight.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DaySteps {
+    pub start_ms: u64,
+    pub curve: Vec<u32>,
+}
+
+fn latest_day_steps(records: &[HealthRecord]) -> Option<DaySteps> {
+    let day = records.iter().filter(|r| r.kind == HealthKind::Day && r.step_curve.iter().any(|&v| v > 0)).max_by_key(|r| r.start_ms)?;
+    Some(DaySteps { start_ms: day.start_ms, curve: day.step_curve.clone() })
+}
+
 fn latest_day_heart(records: &[HealthRecord]) -> Option<DayHeart> {
     let day = records.iter().filter(|r| r.kind == HealthKind::Day && r.heart_curve.iter().any(|&v| v > 0)).max_by_key(|r| r.start_ms)?;
     Some(DayHeart {
@@ -560,6 +574,7 @@ pub fn insights(records: &[HealthRecord], now_ms: u64, utc_offset_minutes: i32) 
         this_week: week_of(records, week_ago, now_ms.saturating_add(1)),
         last_week: week_of(records, now_ms.saturating_sub(14 * DAY_MS), week_ago),
         latest_day_heart: latest_day_heart(records),
+        latest_day_steps: latest_day_steps(records),
         naps: {
             let mut naps: Vec<&HealthRecord> = records.iter().filter(|r| is_nap(r) && r.end_ms >= week_ago).collect();
             naps.sort_by_key(|nap| std::cmp::Reverse(nap.start_ms));
@@ -605,6 +620,7 @@ mod tests {
             steps: 0,
             active_minutes: 0,
             heart_curve: Vec::new(),
+            step_curve: Vec::new(),
             added_ms: 0,
             origin: None,
         }
@@ -668,6 +684,20 @@ mod tests {
             self.start_ms = start_ms;
             self
         }
+    }
+
+    #[test]
+    fn the_last_whole_day_with_steps_per_hour_is_there_for_a_computer() {
+        let mut older = day_record(2, 0, 5000, None);
+        older.step_curve = vec![0; 24];
+        older.step_curve[9] = 5000;
+        let mut newest = day_record(3, 0, 7000, None);
+        newest.step_curve = vec![300; 24];
+        let without = day_record(4, 0, 4000, None);
+        let found = insights(&[older, newest, without], MIDNIGHT + 5 * DAY_MS, 0).latest_day_steps.expect("a day with hours");
+        assert_eq!(found.curve.len(), 24);
+        assert_eq!(found.curve[0], 300);
+        assert_eq!(found.start_ms, MIDNIGHT + 3 * DAY_MS);
     }
 
     #[test]

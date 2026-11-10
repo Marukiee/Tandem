@@ -674,6 +674,8 @@
     <string name="health_wake_strength">Strength</string>
     <string name="health_wake_soft">Soft</string>
     <string name="health_wake_strong">Strong</string>
+    <string name="health_steps_by_hour">Steps per hour</string>
+    <string name="health_more_steps_by_hour">Your steps for each hour of the day. Tap an hour to see it.</string>
     <string name="health_week_before">A week back</string>
     <string name="health_week_after">A week on</string>
     <string name="health_month_before">A month back</string>

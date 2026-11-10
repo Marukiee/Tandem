@@ -40,9 +40,28 @@ class HealthMessageTest {
 
     @Test
     fun aDayFromAnOlderWatchHasNoHeartRate() {
-        // What an older watch sends stops right after the active minutes.
-        val old = MessageCodec.encode(night.copy(day = true)).dropLast(1).toByteArray()
-        assertEquals(emptyList(), (MessageCodec.decode(old) as Message.HealthRecord).heartCurve)
+        // What an older watch sends stops right after the active minutes: without the heart curve and the steps per hour.
+        val old = MessageCodec.encode(night.copy(day = true)).dropLast(2).toByteArray()
+        val back = MessageCodec.decode(old) as Message.HealthRecord
+        assertEquals(emptyList(), back.heartCurve)
+        assertEquals(emptyList(), back.stepCurve)
+    }
+
+    @Test
+    fun aDayCarriesItsStepsPerHour() {
+        val day = night.copy(id = "day-2026-11-09", day = true, steps = 9_300, stepCurve = List(24) { if (it in 8..20) 700 else 15 })
+        val back = MessageCodec.decode(MessageCodec.encode(day)) as Message.HealthRecord
+        assertEquals(day, back)
+        assertEquals(700, back.stepCurve[12])
+    }
+
+    @Test
+    fun todaysStepsPerHourSurviveTheLink() {
+        val status = Message.WatchStatus(61, charging = false, stepsToday = 3_491, activeMinutesToday = 21, stepsByHour = List(24) { it * 40 })
+        assertEquals(status, MessageCodec.decode(MessageCodec.encode(status)))
+        // A watch from before stops after the active minutes.
+        val old = MessageCodec.encode(status.copy(stepsByHour = emptyList())).dropLast(1).toByteArray()
+        assertEquals(status.copy(stepsByHour = emptyList()), MessageCodec.decode(old))
     }
 
     @Test

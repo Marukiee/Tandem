@@ -671,6 +671,8 @@
     <string name="health_wake_strength">Sterkte</string>
     <string name="health_wake_soft">Zacht</string>
     <string name="health_wake_strong">Sterk</string>
+    <string name="health_steps_by_hour">Stappen per uur</string>
+    <string name="health_more_steps_by_hour">Je stappen voor elk uur van de dag. Tik op een uur om het te zien.</string>
     <string name="health_week_before">Een week terug</string>
     <string name="health_week_after">Een week verder</string>
     <string name="health_month_before">Een maand terug</string>

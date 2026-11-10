@@ -74,4 +74,18 @@ class DailyStepsTest {
         assertEquals(0, state.activeMinutes)
         assertEquals(10, state.steps)
     }
+
+    @Test
+    fun `steps land in the hour they were taken in, and a new day starts at zero`() {
+        var steps = DailySteps().update("2026-11-10", 1_000, atMinute = 0, atHour = 7)
+        steps = steps.update("2026-11-10", 1_400, atMinute = 5, atHour = 7)
+        steps = steps.update("2026-11-10", 2_000, atMinute = 70, atHour = 8)
+        assertEquals(24, steps.hourly.size)
+        assertEquals(400, steps.hourly[7])
+        assertEquals(600, steps.hourly[8])
+        assertEquals(steps.steps.toInt(), steps.hourly.sum())
+        val next = steps.update("2026-11-11", 2_100, atMinute = 900, atHour = 0)
+        assertEquals(100, next.hourly[0])
+        assertEquals(0, next.hourly[8])
+    }
 }

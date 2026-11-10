@@ -1082,6 +1082,7 @@ private struct DayCards: View {
         let week = shown.week
         let lastSteps = week.lastIndex { $0.steps != nil }
         let lastHeart = insights.latestDayHeart
+        if part == .activity, offset == 0, let day = insights.latestDaySteps { DayHoursCard(day: day) }
         if part == .activity { WeekPager(offset: $offset, week: week) }
         if part == .heart, lastHeart != nil { SectionTitle("Today") }
         if part == .activity, let lastSteps, let steps = week[lastSteps].steps {
@@ -1524,5 +1525,75 @@ private struct WakeStrengthRow: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+    }
+}
+
+private func hourText(_ hour: Int) -> String { String(format: "%02d:00", hour % 24) }
+
+/// A day by the hour: on a Mac the last whole day, the newest it has, since only the phone hears the watch during one. Pointing at an
+/// hour shows its steps.
+private struct DayHoursCard: View {
+    let day: TandemDaySteps
+    @State private var picked: Int?
+
+    var body: some View {
+        let values = day.curve.map { Int($0) }
+        let total = values.reduce(0, +)
+        HealthCard(title: "Steps per hour", more: "Your steps for each hour of the day. Point at an hour to see it.") {
+            VStack(alignment: .leading, spacing: 4) {
+                BigNumber(text: (picked.map { values[$0] } ?? total).formatted())
+                Text(picked.map { "\(hourText($0)) to \(hourText($0 + 1))" } ?? dayName(day.startMs))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .animation(.tandemFade, value: picked)
+            HourBars(values: values, picked: $picked)
+        }
+    }
+}
+
+/// The hours of a day as bars from midnight on, with the clock under them instead of days.
+private struct HourBars: View {
+    let values: [Int]
+    @Binding var picked: Int?
+    @State private var reveal: CGFloat = 0
+
+    var body: some View {
+        VStack(spacing: 6) {
+            GeometryReader { geometry in
+                let top = CGFloat(max(values.max() ?? 1, 1)) * 1.08
+                HStack(alignment: .bottom, spacing: 0) {
+                    ForEach(Array(values.enumerated()), id: \.offset) { index, value in
+                        ZStack(alignment: .bottom) {
+                            Color.clear
+                            if value > 0 {
+                                let bar = max(CGFloat(value) / top * geometry.size.height, 4) * reveal
+                                Capsule()
+                                    .fill(Palette.indigo.opacity(picked == nil || picked == index ? 1 : 0.3))
+                                    .frame(width: min(10, geometry.size.width / CGFloat(values.count) * 0.6), height: bar)
+                            } else {
+                                Capsule().fill(Color.secondary.opacity(0.2)).frame(width: 6, height: 4)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                        .onHover { inside in
+                            if inside { picked = index } else if picked == index { picked = nil }
+                        }
+                    }
+                }
+            }
+            .frame(height: 76)
+            HStack(spacing: 0) {
+                ForEach([0, 6, 12, 18, 24], id: \.self) { hour in
+                    Text(verbatim: hourText(hour))
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: hour == 0 ? .leading : hour == 24 ? .trailing : .center)
+                }
+            }
+        }
+        .animation(.tandemFade, value: picked)
+        .onAppear { withAnimation(.tandem) { reveal = 1 } }
     }
 }

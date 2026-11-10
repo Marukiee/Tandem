@@ -705,6 +705,10 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .health-bar-slot { flex: 1; display: flex; justify-content: center; align-items: flex-end; height: 100%; }
 .health-bar { width: 18px; border-radius: 9px; background: var(--accent); transition: opacity .2s ease; }
 .health-bar.none { height: 5px; border-radius: 2.5px; background: var(--line-strong); }
+/* Twenty-four hours in the width of a card: thinner bars, and the hours of the clock under them instead of the days. */
+.health-bars.hours .health-bar { width: 60%; max-width: 14px; border-radius: 7px; }
+.health-bars.hours .health-bar.none { height: 4px; }
+.health-hours { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 /* A heading with a way back and forward, for weeks and months. */
 .health-pager { display: flex; align-items: center; gap: 4px; }
 .health-pager .health-section { margin: 0; }

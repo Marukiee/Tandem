@@ -93,6 +93,11 @@ object HealthDemo {
             steps = ((4_000 + random.nextInt(9_000)) * share).toLong().toULong(),
             activeMinutes = ((10 + random.nextInt(50)) * share).toInt().toUInt(),
             heartCurve = curve,
+            // The steps spread over the waking hours, with walks in the morning, at noon and after work.
+            stepCurve = List(24) { hour -> if (hour < 7 || hour > 22) 0 else (if (hour in listOf(8, 12, 18)) 3 else 1) }.let { weights ->
+                val steps = ((4_000 + random.nextInt(9_000)) * share).toLong()
+                weights.map { w -> (steps * w / weights.sum()).toInt().toUInt() }
+            },
         )
     }
 

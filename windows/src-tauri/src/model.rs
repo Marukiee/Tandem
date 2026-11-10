@@ -170,6 +170,7 @@ pub fn health_insights(i: &tandem_core::ffi::health::TandemHealthInsights) -> Va
         "latestDayHeart": i.latest_day_heart.as_ref().map(|d| json!({
             "startMs": d.start_ms, "curve": d.curve, "low": d.low, "mean": d.mean, "high": d.high,
         })),
+        "latestDaySteps": i.latest_day_steps.as_ref().map(|d| json!({ "startMs": d.start_ms, "curve": d.curve })),
         "week": i.week.iter().map(week_day).collect::<Vec<_>>(),
         "naps": i.naps.iter().map(|n| json!({
             "startMs": n.start_ms, "endMs": n.end_ms, "sleepMinutes": n.sleep_minutes, "heartRateMean": n.heart_rate_mean,

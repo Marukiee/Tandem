@@ -98,6 +98,9 @@ pub struct HealthRecord {
     /// For a day: the heart rate per five minutes from midnight on, 0 where nothing was measured.
     #[serde(default)]
     pub heart_curve: Vec<u8>,
+    /// For a day: the steps per hour from midnight on. Empty from a watch from before.
+    #[serde(default)]
+    pub step_curve: Vec<u32>,
     /// When the device that passes it on got it, by that device's clock and never the same twice. How far another device got.
     #[serde(default)]
     pub added_ms: u64,
@@ -330,6 +333,7 @@ mod tests {
             steps: 0,
             active_minutes: 0,
             heart_curve: Vec::new(),
+            step_curve: Vec::new(),
             added_ms: 0,
             origin: None,
         }

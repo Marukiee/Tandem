@@ -399,9 +399,9 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         handler.post { engine?.send(Message.HeartAllDay(on)) }
     }
 
-    fun reportSteps(steps: Long, activeMinutes: Int) {
+    fun reportSteps(steps: Long, activeMinutes: Int, byHour: List<Int> = emptyList()) {
         handler.post {
-            status?.let { reportStatus(it.copy(stepsToday = steps, activeMinutesToday = activeMinutes)) }
+            status?.let { reportStatus(it.copy(stepsToday = steps, activeMinutesToday = activeMinutes, stepsByHour = byHour)) }
         }
     }
 

@@ -73,6 +73,8 @@ data class WatchState(
     val activeMinutesToday: Int = 0,
     /** Today per five minutes from midnight on, 0 where nothing was measured. */
     val heartToday: List<Int> = emptyList(),
+    /** The steps of today per hour from midnight on. Empty from a watch from before. */
+    val stepsByHour: List<Int> = emptyList(),
     val charging: Boolean = false,
     val ringing: Boolean = false,
     val sleeping: Boolean = false,
@@ -204,7 +206,13 @@ class WatchBridge(
      */
     fun showDemoWatch() {
         if (!nl.markmaaktmedia.tandem.BuildConfig.DEBUG) return
-        _state.update { it.copy(paired = true, name = it.name ?: "Pixel Watch", batteryLevel = it.batteryLevel ?: 76, stepsToday = 3_491, activeMinutesToday = 21) }
+        val byHour = listOf(0, 0, 0, 0, 0, 0, 40, 620, 980, 210, 120, 340, 760, 421)
+        _state.update {
+            it.copy(
+                paired = true, name = it.name ?: "Pixel Watch", batteryLevel = it.batteryLevel ?: 76, stepsToday = byHour.sum().toLong(),
+                activeMinutesToday = 21, stepsByHour = byHour + List(24 - byHour.size) { 0 },
+            )
+        }
     }
 
     fun start() {
@@ -683,7 +691,12 @@ class WatchBridge(
             is Message.FindDevice -> main.post { if (message.ring) FindPhone.start(context) else FindPhone.stop() }
             is Message.Ringing -> _state.update { it.copy(ringing = message.on) }
             is Message.MouseState -> _state.update { it.copy(mouse = if (message.open) WatchMouseNow(message.targetId.orEmpty(), message.table) else null) }
-            is Message.WatchStatus -> _state.update { it.copy(stepsToday = message.stepsToday, activeMinutesToday = message.activeMinutesToday, batteryLevel = message.level, charging = message.charging) }
+            is Message.WatchStatus -> _state.update {
+                it.copy(
+                    stepsToday = message.stepsToday, activeMinutesToday = message.activeMinutesToday, stepsByHour = message.stepsByHour,
+                    batteryLevel = message.level, charging = message.charging,
+                )
+            }
             is Message.MouseEnabled -> scope.launch { prefs.setWatchMouse(message.on) }
             is Message.HeartToday -> _state.update { it.copy(heartToday = message.curve) }
             is Message.HeartAllDay -> scope.launch { prefs.setHeartAllDay(message.on) }
@@ -878,4 +891,5 @@ private fun Message.HealthRecord.toTandem() = TandemHealthRecord(
     steps = steps.toULong(),
     activeMinutes = activeMinutes.toUInt(),
     heartCurve = heartCurve.map { it.toUInt() },
+    stepCurve = stepCurve.map { it.toUInt() },
 )

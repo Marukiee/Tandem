@@ -8,6 +8,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -213,5 +218,69 @@ private fun DayCell(number: Int, day: TandemWeekDay, kind: CalendarKind, goal: I
             )
         }
         Text(value, fontSize = 10.sp, color = scheme.onSurfaceVariant, maxLines = 1)
+    }
+}
+
+private fun hourOf(hour: Int) = "%02d:00".format(hour % 24)
+
+/** The hours of a day as bars from midnight on, so a day shows when it was walked. A tap picks an hour; another tap lets it go. */
+@Composable
+internal fun HourBars(values: List<Int>, selected: Int?, onSelect: (Int?) -> Unit, description: String, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    val current by androidx.compose.runtime.rememberUpdatedState(selected)
+    val select by androidx.compose.runtime.rememberUpdatedState(onSelect)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Canvas(
+            Modifier.fillMaxWidth().height(76.dp)
+                .semantics { contentDescription = description }
+                .pointerInput(values.size) {
+                    detectTapGestures { tap ->
+                        val index = (tap.x / (size.width.toFloat() / values.size)).toInt().coerceIn(0, values.lastIndex)
+                        select(if (current == index) null else index)
+                    }
+                },
+        ) {
+            val slot = size.width / values.size
+            val bar = kotlin.math.min(slot * 0.6f, 10.dp.toPx())
+            val top = (values.maxOrNull() ?: 0).coerceAtLeast(1) * 1.08f
+            values.forEachIndexed { index, value ->
+                val left = slot * index + (slot - bar) / 2
+                if (value <= 0) {
+                    drawRoundRect(scheme.surfaceContainerHighest, Offset(left, size.height - 4.dp.toPx()), Size(bar, 4.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(2.dp.toPx()))
+                    return@forEachIndexed
+                }
+                val full = kotlin.math.max(value / top * size.height, 4.dp.toPx())
+                val alpha = if (selected != null && selected != index) 0.28f else 1f
+                drawRoundRect(scheme.primary.copy(alpha = alpha), Offset(left, size.height - full), Size(bar, full), androidx.compose.ui.geometry.CornerRadius(kotlin.math.min(bar, full) / 2))
+            }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            listOf(0, 6, 12, 18, 24).forEachIndexed { index, hour ->
+                Text(
+                    hourOf(hour), fontSize = 10.sp, color = scheme.onSurfaceVariant,
+                    textAlign = when (index) { 0 -> TextAlign.Start; 4 -> TextAlign.End; else -> TextAlign.Center },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The steps of today by the hour, live from the watch, in place of the week on the page of today: the day as it goes, a tap on an hour
+ * shows its steps. Without the watch the last whole day the core knows, named by its date.
+ */
+@Composable
+internal fun StepsByHourCard(index: Int, total: Int, hours: List<Int>, totalSteps: Long, caption: String) {
+    var picked by androidx.compose.runtime.remember(hours.size) { androidx.compose.runtime.mutableStateOf<Int?>(null) }
+    val scheme = MaterialTheme.colorScheme
+    HealthCard(index, total) {
+        CardTitle(stringResource(R.string.health_steps_title), stringResource(R.string.health_more_steps_by_hour))
+        BigNumber(number(picked?.let { hours[it].toLong() } ?: totalSteps), Modifier.padding(top = 4.dp))
+        Text(
+            picked?.let { stringResource(R.string.health_night_span, hourOf(it), hourOf(it + 1)) } ?: caption,
+            style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant,
+        )
+        HourBars(hours, picked, { picked = it }, stringResource(R.string.health_steps_by_hour), Modifier.padding(top = 12.dp))
     }
 }

@@ -180,7 +180,14 @@ sealed interface Message {
     data class DeviceBatteries(val devices: List<DeviceBattery>) : Message
 
     /** Watch to phone: so Tandem can show this watch next to the other devices. */
-    data class WatchStatus(val level: Int, val charging: Boolean, val stepsToday: Long = 0, val activeMinutesToday: Int = 0) : Message
+    data class WatchStatus(
+        val level: Int,
+        val charging: Boolean,
+        val stepsToday: Long = 0,
+        val activeMinutesToday: Int = 0,
+        /** The steps of today per hour from midnight, so the phone can show the day as it goes. Empty from a watch from before. */
+        val stepsByHour: List<Int> = emptyList(),
+    ) : Message
 
     /** Watch to phone: the switch for steering a computer was changed on the wrist. */
     data class MouseEnabled(val on: Boolean) : Message
@@ -239,6 +246,8 @@ sealed interface Message {
         val activeMinutes: Int = 0,
         /** For a day: the heart rate per five minutes from midnight on, 0 where nothing was measured. */
         val heartCurve: List<Int> = emptyList(),
+        /** For a day: the steps per hour from midnight on. Empty from a watch from before. */
+        val stepCurve: List<Int> = emptyList(),
     ) : Message
 
     /** Phone to watch: a computer asks for the mouse; the watch opens it for [targetId] by itself, as the table mouse when [table]. */
@@ -334,6 +343,9 @@ object MessageCodec {
     private const val POINTER_CLOSE = 0x79
     private const val MOUSE_STATE = 0x7A
 
+    /** A day has 24 hours; anything far longer in a message is not counts but damage. */
+    private const val MAX_COUNTS = 48
+
     fun encode(message: Message): ByteArray {
         val w = ByteWriter()
         when (message) {
@@ -386,7 +398,8 @@ object MessageCodec {
                 w.u8(DEVICE_BATTERIES).varint(message.devices.size.toLong())
                 message.devices.forEach { w.bytes(ByteWriter().str(it.id).str(it.name).u8(it.level).bool(it.charging).u8(it.kind).toByteArray()) }
             }
-            is Message.WatchStatus -> w.u8(WATCH_STATUS).u8(message.level).bool(message.charging).varint(message.stepsToday).varint(message.activeMinutesToday.toLong())
+            is Message.WatchStatus -> w.u8(WATCH_STATUS).u8(message.level).bool(message.charging).varint(message.stepsToday)
+                .varint(message.activeMinutesToday.toLong()).counts(message.stepsByHour)
             is Message.StepGoal -> w.u8(STEP_GOAL).varint(message.steps.toLong())
             is Message.MouseEnabled -> w.u8(MOUSE_ENABLED).bool(message.on)
             is Message.SmartWakeAlarm -> w.u8(SMART_WAKE_ALARM).varint(message.atMs).u8(message.strength.coerceIn(0, 255))
@@ -408,6 +421,7 @@ object MessageCodec {
                 message.stages.forEach { w.u8(it.stage).varint(it.seconds.toLong()) }
                 w.optional(message.heartRateMean).optional(message.heartRateLow).optional(message.heartRateHigh).varint(message.steps)
                     .bool(message.day).varint(message.activeMinutes.toLong()).bytes(message.heartCurve.toCurveBytes())
+                    .counts(message.stepCurve)
             }
             is Message.HealthAck -> w.u8(HEALTH_ACK).str(message.id)
             is Message.Unknown -> w.u8(message.type).raw(message.payload)
@@ -457,7 +471,12 @@ object MessageCodec {
                     DeviceBattery(d.str(), d.str(), d.u8(), d.bool(), if (d.remaining > 0) d.u8() else 0)
                 },
             )
-            WATCH_STATUS -> Message.WatchStatus(r.u8(), r.bool(), if (r.remaining > 0) r.varint() else 0, if (r.remaining > 0) r.varint().toInt() else 0)
+            WATCH_STATUS -> Message.WatchStatus(
+                r.u8(), r.bool(),
+                if (r.remaining > 0) r.varint() else 0,
+                if (r.remaining > 0) r.varint().toInt() else 0,
+                if (r.remaining > 0) r.counts() else emptyList(),
+            )
             STEP_GOAL -> Message.StepGoal(r.varint().toInt())
             MOUSE_ENABLED -> Message.MouseEnabled(r.bool())
             SMART_WAKE_ALARM -> Message.SmartWakeAlarm(r.varint(), if (r.remaining > 0) r.u8() else Message.SmartWakeAlarm.DEFAULT_STRENGTH)
@@ -490,6 +509,7 @@ object MessageCodec {
                 day = r.remaining > 0 && r.bool(),
                 activeMinutes = if (r.remaining > 0) r.varint().toInt() else 0,
                 heartCurve = if (r.remaining > 0) r.bytes().toCurve() else emptyList(),
+                stepCurve = if (r.remaining > 0) r.counts() else emptyList(),
             )
             HEALTH_ACK -> Message.HealthAck(r.str())
             else -> Message.Unknown(type, r.rest())
@@ -500,6 +520,15 @@ object MessageCodec {
     private fun List<Int>.toCurveBytes() = ByteArray(size) { this[it].coerceIn(0, 255).toByte() }
 
     private fun ByteArray.toCurve() = map { it.toInt() and 0xFF }
+
+    /** Counts that do not fit a byte, such as steps in an hour: how many, then each as a varint. */
+    private fun ByteWriter.counts(values: List<Int>): ByteWriter {
+        varint(values.size.toLong())
+        values.forEach { varint(it.coerceAtLeast(0).toLong()) }
+        return this
+    }
+
+    private fun ByteReader.counts(): List<Int> = List(varint().toInt().coerceAtMost(MAX_COUNTS)) { varint().toInt() }
 
     private fun ByteWriter.optional(value: Int?) = varint(if (value == null) 0 else value + 1L)
 

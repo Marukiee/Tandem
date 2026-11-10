@@ -11,6 +11,8 @@ import nl.markmaaktmedia.tandem.watch.link.WatchLink
 import nl.markmaaktmedia.tandem.watch.protocol.Message
 import nl.markmaaktmedia.tandem.watch.sleep.DailySteps
 import nl.markmaaktmedia.tandem.watch.sleep.DayHeart
+import android.os.SystemClock
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -34,10 +36,12 @@ class StepTracker(private val context: Context) : SensorEventListener {
         val before = state
         val today = LocalDate.now().toString()
         // The clock of the event and not the one of now: a batch arrives minutes after the steps were taken.
-        state = state.update(today, event.values[0].toLong(), event.timestamp / NANOS_PER_MINUTE)
+        val takenMs = System.currentTimeMillis() - (SystemClock.elapsedRealtimeNanos() - event.timestamp) / NANOS_PER_MILLI
+        val hour = Instant.ofEpochMilli(takenMs).atZone(ZoneId.systemDefault()).hour
+        state = state.update(today, event.values[0].toLong(), event.timestamp / NANOS_PER_MINUTE, hour)
         store.saveSteps(state)
         Tracking.publishSteps(state.steps, state.activeMinutes)
-        WatchLink.reportSteps(state.steps, state.activeMinutes)
+        WatchLink.reportSteps(state.steps, state.activeMinutes, state.hourly)
         if (before.day.isNotEmpty() && before.day != today) {
             HeartTracker.forDay(before.day) { heart -> WatchLink.sendHealth(context, before.toDayRecord(heart)) }
         }
@@ -48,6 +52,7 @@ class StepTracker(private val context: Context) : SensorEventListener {
     private companion object {
         const val BATCH_US = 5 * 60 * 1_000_000
         const val NANOS_PER_MINUTE = 60_000_000_000L
+        const val NANOS_PER_MILLI = 1_000_000L
     }
 }
 
@@ -78,5 +83,6 @@ private fun DailySteps.toDayRecord(heart: DayHeart): Message.HealthRecord {
         day = true,
         activeMinutes = activeMinutes,
         heartCurve = if (heart.mean == null) emptyList() else heart.curve(),
+        stepCurve = hourly,
     )
 }
