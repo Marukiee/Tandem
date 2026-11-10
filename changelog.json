@@ -6,14 +6,16 @@
       "title": "Hour by hour",
       "new": [
         "Today on the Activity page shows your steps for each hour, from the watch as the day goes",
-        "On the Mac and the computers the last whole day is there hour by hour too"
+        "On the Mac and the computers the last whole day is there hour by hour too",
+        "The hotspot sits under its phone in the menu bar panel, and More is at the edge"
       ]
     },
     "nl": {
       "title": "Uur voor uur",
       "new": [
         "Vandaag bij Activiteit toont je stappen per uur, van het horloge terwijl de dag loopt",
-        "Op de Mac en de computers staat de laatste hele dag ook uur voor uur"
+        "Op de Mac en de computers staat de laatste hele dag ook uur voor uur",
+        "De hotspot staat onder zijn telefoon in het menubalkpaneel, en Meer staat aan de rand"
       ]
     }
   },
