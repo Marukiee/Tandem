@@ -44,17 +44,17 @@ struct MenuBarPanel: View {
         let away = model.devices.filter { !model.reach(of: $0).reachable }
         // No glass container here: the buttons in a row sit close together, and in a container glass that close blends into one
         // blob and drags the icons off centre as soon as one of them swells under the pointer.
+        // The hotspot belongs to the phone it comes from: right under that phone, above its watch. Away, it has no row to sit under.
+        let hotspotFrom = model.hotspotStatus != .idle ? model.hotspotPhone?.id : nil
+        let hotspotUnder = reachable.contains { $0.id == hotspotFrom }
         return VStack(spacing: 2) {
             ForEach(reachable, id: \.id) { device in
                 MenuDeviceRow(device: device)
+                if device.id == hotspotFrom { hotspot }
                 // The watch of a phone right under it, as the device of its own it is on the other pages.
                 if device.status.watch?.paired == true { MenuWatchRow(phone: device) }
             }
-            if model.hotspotStatus != .idle {
-                MenuHotspot()
-                    .padding(.horizontal, 4)
-                    .padding(.bottom, 4)
-            }
+            if model.hotspotStatus != .idle && !hotspotUnder { hotspot }
             if !reachable.isEmpty && !away.isEmpty {
                 Divider().padding(.horizontal, 10).padding(.vertical, 4)
             }
@@ -64,6 +64,12 @@ struct MenuBarPanel: View {
         }
         .padding(4)
         .background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 22, style: .continuous))
+    }
+
+    private var hotspot: some View {
+        MenuHotspot()
+            .padding(.horizontal, 4)
+            .padding(.bottom, 4)
     }
 
     /// Quick Share on a card of its own, with what is being sent from this Mac under it.
@@ -129,6 +135,9 @@ struct MenuBarPanel: View {
             }
             Spacer(minLength: 0)
             KeepAwakeButton()
+            RoundIconButton(symbol: "macwindow", tint: Palette.indigo, size: 30) { openMain(pairing: false) }
+                .help("Open Tandem")
+            // More sits last, at the edge, as a menu of more does everywhere.
             RoundIconMenu(symbol: "ellipsis", size: 30) {
                 Button("Pair a device…") { openMain(pairing: true) }
                 Button("Settings…") {
@@ -140,8 +149,6 @@ struct MenuBarPanel: View {
                     .keyboardShortcut("q")
             }
             .help("More")
-            RoundIconButton(symbol: "macwindow", tint: Palette.indigo, size: 30) { openMain(pairing: false) }
-                .help("Open Tandem")
         }
         // The first control in the panel would take the keyboard focus and a blue ring as soon as the panel opens.
         .focusEffectDisabled()

@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.3.11",
+    "date": "2026-11-10",
+    "en": {
+      "title": "In its place",
+      "new": [
+        "The hotspot sits under its phone in the menu bar panel, and More is at the edge"
+      ]
+    },
+    "nl": {
+      "title": "Op zijn plek",
+      "new": [
+        "De hotspot staat onder zijn telefoon in het menubalkpaneel, en Meer staat aan de rand"
+      ]
+    }
+  },
+  {
     "version": "0.3.10",
     "date": "2026-11-10",
     "en": {
