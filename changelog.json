@@ -1,5 +1,23 @@
 [
   {
+    "version": "0.3.11",
+    "date": "2026-11-10",
+    "en": {
+      "title": "Hour by hour",
+      "new": [
+        "Today on the Activity page shows your steps for each hour, from the watch as the day goes",
+        "On the Mac and the computers the last whole day is there hour by hour too"
+      ]
+    },
+    "nl": {
+      "title": "Uur voor uur",
+      "new": [
+        "Vandaag bij Activiteit toont je stappen per uur, van het horloge terwijl de dag loopt",
+        "Op de Mac en de computers staat de laatste hele dag ook uur voor uur"
+      ]
+    }
+  },
+  {
     "version": "0.3.10",
     "date": "2026-11-10",
     "en": {
