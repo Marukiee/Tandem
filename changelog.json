@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.3.12",
+    "date": "2026-11-11",
+    "en": {
+      "title": "A full ring",
+      "fixed": [
+        "A sleep score of 100 closes the ring, on the phone, the Mac and the computers"
+      ]
+    },
+    "nl": {
+      "title": "Een volle ring",
+      "fixed": [
+        "Een slaapscore van 100 maakt de ring dicht, op de telefoon, de Mac en de computers"
+      ]
+    }
+  },
+  {
     "version": "0.3.11",
     "date": "2026-11-10",
     "en": {
