@@ -182,7 +182,8 @@ internal fun ScoreRing(score: Int, size: Dp, tint: Color = MaterialTheme.colorSc
             // sliver made 99 look far from full.
             val radius = arc.width / 2
             val cap = Math.toDegrees((stroke / 2 / radius).toDouble()).toFloat()
-            val gap = cap * 2 + 4f
+            // A full score is a closed ring: the sliver says how much is missing, and at 100 nothing is.
+            val gap = if (score >= 100) 0f else cap * 2 + 4f
             val sweep = (360f - gap) * fill.value
             if (sweep > 0.5f) drawArc(tint, -90f, sweep, false, Offset(inset, inset), arc, style = Stroke(stroke, cap = StrokeCap.Round))
             val rest = 360f - sweep - gap * (if (sweep > 0.5f) 2 else 1)

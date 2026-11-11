@@ -333,7 +333,8 @@ function ScorePart({ label, value }) {
 function ScoreRing({ score }) {
   const r = 30, stroke = 8, around = 2 * Math.PI * r;
   // Round caps reach past the ends of an arc, so the gap counts them and leaves a sliver on top, as on the phone.
-  const gap = stroke + (around * 4) / 360;
+  // A full score is a closed ring: the sliver says how much is missing, and at 100 nothing is.
+  const gap = score >= 100 ? 0 : stroke + (around * 4) / 360;
   const usable = around - gap;
   const fill = (usable * Math.min(Math.max(score, 0), 100)) / 100;
   const rest = usable - fill - gap;

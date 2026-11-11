@@ -878,7 +878,8 @@ struct ScoreRing: View {
     var body: some View {
         // Round caps reach past the ends of an arc, so the gap counts them and leaves a sliver on top, as on the phone.
         let around = 2 * CGFloat.pi * 34
-        let gap = (8 + around * 4 / 360) / around
+        // A full score is a closed ring: the sliver says how much is missing, and at 100 nothing is.
+        let gap = score >= 100 ? 0 : (8 + around * 4 / 360) / around
         let fill = (1 - gap) * CGFloat(min(score, 100)) / 100 * reveal
         ZStack {
             if 1 - gap - (fill + gap) > 0.005 {
