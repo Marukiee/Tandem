@@ -223,9 +223,52 @@ async fn the_phones_of_a_watch_always_share_them() {
     settle().await;
     assert_eq!(ids(&second.engine), ["after", "before"]);
 
-    // A phone only passes on what it measured itself: the mac hears the first phone's nights from that phone, once it is chosen there.
+    // A phone only passes on what it measured itself: chosen on one phone, the mac hears each phone's nights from that phone.
     second.engine.set_health_allowed(&mac_id, true).await.unwrap();
-    wait_until("the mac hears the new phone", || ids(&mac.engine) == ["after"]).await;
+    wait_until("the mac hears both phones", || ids(&mac.engine) == ["after", "before"]).await;
+    let from: Vec<_> = mac.engine.health_records().into_iter().map(|r| r.origin).collect();
+    assert_eq!(from, [Some(second_id), Some(first.engine.id())]);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_choice_for_a_computer_and_the_nights_stay_when_a_phone_goes() {
+    let first = node_as("Phone", Platform::Android).await;
+    let second = node_as("New phone", Platform::Android).await;
+    let mac = node("Mac").await;
+    pair(&first, &second).await;
+    pair(&first, &mac).await;
+    let (first_id, second_id, mac_id) = (first.engine.id(), second.engine.id(), mac.engine.id());
+    wait_until("the new phone and the mac see each other", || online(&second.engine, mac_id) && online(&mac.engine, second_id)).await;
+
+    // Chosen on the phone with the watch: the new phone makes the same choice.
+    first.engine.add_health_records(vec![night("before", 1000)]).await.unwrap();
+    first.engine.set_health_allowed(&mac_id, true).await.unwrap();
+    wait_until("the new phone chose the mac too", || second.engine.health_allowed(&mac_id)).await;
+    wait_until("the mac has the nights from before", || ids(&mac.engine) == ["before"]).await;
+
+    // The watch moved: the mac hears its new nights without a switch on the new phone.
+    second.engine.add_health_records(vec![night("after", 2000)]).await.unwrap();
+    wait_until("the mac hears the new phone", || ids(&mac.engine) == ["after", "before"]).await;
+
+    // Off on one phone is off on both.
+    second.engine.set_health_allowed(&mac_id, false).await.unwrap();
+    wait_until("the first phone chose it off too", || !first.engine.health_allowed(&mac_id)).await;
+    wait_until("the mac forgot all of it", || ids(&mac.engine).is_empty()).await;
+    second.engine.set_health_allowed(&mac_id, true).await.unwrap();
+    wait_until("the mac has all of it again", || ids(&mac.engine) == ["after", "before"]).await;
+
+    // The old phone leaves the circle: its nights stay, on the new phone as its own and from there on the mac.
+    mac.engine.remove_device(first_id).await.unwrap();
+    wait_until("the new phone keeps them as its own", || {
+        let records = second.engine.health_records();
+        records.len() == 2 && records.iter().all(|r| r.origin.is_none())
+    })
+    .await;
+    wait_until("the mac has them from the new phone", || {
+        let records = mac.engine.health_records();
+        records.len() == 2 && records.iter().all(|r| r.origin == Some(second_id))
+    })
+    .await;
     settle().await;
-    assert_eq!(ids(&mac.engine), ["after"]);
+    assert_eq!(ids(&mac.engine), ["after", "before"]);
 }

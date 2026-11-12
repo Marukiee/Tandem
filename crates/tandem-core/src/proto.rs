@@ -244,6 +244,8 @@ pub enum Msg {
     HealthRecords { records: Vec<crate::health::HealthRecord> },
     /// The person no longer wants this device to have the nights and workouts of the one that says this. See `health`.
     HealthForget {},
+    /// What the person chose on a phone for computers getting the nights and workouts, to another phone. See `health`.
+    HealthChoices { choices: Vec<crate::health::HealthChoice> },
     /// Anything this version does not recognise. Never sent.
     #[serde(skip)]
     Unknown,

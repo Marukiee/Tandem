@@ -333,13 +333,7 @@ impl Engine {
     }
 
     pub fn set_device_settings(&self, id: &DeviceId, settings: DeviceSettings) -> Result<()> {
-        {
-            self.inner.settings.write().unwrap().set_device(id, settings);
-        }
-        let snapshot = self.inner.settings.read().unwrap().clone();
-        self.inner.store.write_cbor("settings.cbor", &snapshot)?;
-        self.inner.emit(Event::DevicesChanged);
-        Ok(())
+        self.inner.set_device_settings(id, settings)
     }
 
     /// Sends files to every listed device that is connected right now.
@@ -647,6 +641,16 @@ pub(crate) fn rand_u64() -> u64 {
 }
 
 impl Inner {
+    pub fn set_device_settings(&self, id: &DeviceId, settings: DeviceSettings) -> Result<()> {
+        {
+            self.settings.write().unwrap().set_device(id, settings);
+        }
+        let snapshot = self.settings.read().unwrap().clone();
+        self.store.write_cbor("settings.cbor", &snapshot)?;
+        self.emit(Event::DevicesChanged);
+        Ok(())
+    }
+
     pub fn emit(&self, event: Event) {
         // No subscribers is fine; the app may not be listening yet.
         let _ = self.events.send(event);
@@ -780,7 +784,7 @@ impl Inner {
             HashSet::new()
         };
         self.find.forget_others(&wanted);
-        self.health_keep_only(&wanted);
+        self.health_keep_only(&wanted, still_in);
         let mut peers = self.peers.lock().unwrap();
         for member in &members {
             if member.id == self.my_id || !wanted.contains(&member.id) {

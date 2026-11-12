@@ -1,12 +1,14 @@
 //! Sleep and workouts measured by a watch. The watch hands them to its phone (`Engine::add_health_records`). The phone keeps them and
 //! passes them on to the devices the person chose, one by one (`DeviceSettings::health`, off until they say so): how someone slept is
 //! not for every Hub or shared computer in a circle. Another phone always gets them: the watch can go from one phone to the other, and
-//! what it measured stays the person's on the phone it is with now.
+//! what it measured stays the person's on the phone it is with now. For the same reason the choice for a computer is one choice for
+//! all the phones (`Msg::HealthChoices`): the newest counts, so a computer keeps getting them when the watch moves.
 //!
 //! Only the device that took a record from the watch passes it on. On every connection a device says how far it got with the records
 //! of the other one (`Msg::HealthHave`) and hears what came after. A device that may not have them any more is told to forget them
 //! (`Msg::HealthForget`), also when it was away at the moment the person switched it off. What came from a device that left the circle
-//! goes as soon as this device hears it: nobody is left to say forget.
+//! goes from a computer as soon as it hears it: nobody is left to say forget. A phone keeps it as its own and passes it on from then on,
+//! so the nights stay the person's when an old phone goes.
 
 use std::collections::HashSet;
 
@@ -23,6 +25,7 @@ use crate::store::{DeviceSettings, Store};
 pub const CAP: &str = "health";
 
 const FILE: &str = "health.cbor";
+const CHOICES: &str = "health_choices.cbor";
 /// A night, a workout and a day of steps for two years. Beyond this the oldest go, so the file cannot keep growing.
 const MAX_RECORDS: usize = 2200;
 /// A night is at most a few kilobytes, so this stays far under what one message may hold, also for a first sync of everything.
@@ -110,14 +113,46 @@ pub struct HealthRecord {
     pub origin: Option<DeviceId>,
 }
 
+/// What the person chose on one of their phones for a device that is not a phone, and when, by the clock of that phone.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HealthChoice {
+    pub device: DeviceId,
+    pub on: bool,
+    pub at_ms: u64,
+}
+
 #[derive(Clone, Default)]
 pub(crate) struct Health {
     records: Vec<HealthRecord>,
+    choices: Vec<HealthChoice>,
 }
 
 impl Health {
     pub(crate) fn load(store: &Store) -> Health {
-        Health { records: store.read_cbor(FILE).ok().flatten().unwrap_or_default() }
+        Health {
+            records: store.read_cbor(FILE).ok().flatten().unwrap_or_default(),
+            choices: store.read_cbor(CHOICES).ok().flatten().unwrap_or_default(),
+        }
+    }
+
+    /// The choice for `device` as this device knows it. A switch turned on before the phones passed their choices on counts as the
+    /// oldest choice there is, so it wins over one never made and loses to any made since.
+    fn choice(&self, device: &DeviceId, on_before: bool) -> HealthChoice {
+        self.choices.iter().find(|c| c.device == *device).copied().unwrap_or(HealthChoice {
+            device: *device,
+            on: on_before,
+            at_ms: u64::from(on_before),
+        })
+    }
+
+    /// Keeps `choice` when it is newer than what this device knows. Returns whether it did.
+    fn take_choice(&mut self, choice: HealthChoice, on_before: bool) -> bool {
+        if choice.at_ms <= self.choice(&choice.device, on_before).at_ms {
+            return false;
+        }
+        self.choices.retain(|c| c.device != choice.device);
+        self.choices.push(choice);
+        true
     }
 
     /// Records from a watch connected to this device. Returns the ones that were new here.
@@ -179,10 +214,26 @@ impl Health {
         self.records.len() != before
     }
 
-    fn keep_only_from(&mut self, wanted: &HashSet<DeviceId>) -> bool {
-        let before = self.records.len();
-        self.records.retain(|r| r.origin.is_none_or(|from| wanted.contains(&from)));
-        self.records.len() != before
+    /// Only what came from `wanted`. With `keep`, what came from another device becomes this device's own instead of going, in the order
+    /// it came, and is returned to be passed on.
+    fn keep_only_from(&mut self, wanted: &HashSet<DeviceId>, keep: bool, now: u64) -> (bool, Vec<HealthRecord>) {
+        let gone = |r: &HealthRecord| r.origin.is_some_and(|from| !wanted.contains(&from));
+        if !keep {
+            let before = self.records.len();
+            self.records.retain(|r| !gone(r));
+            return (self.records.len() != before, Vec::new());
+        }
+        let mut last = self.records.iter().filter(|r| r.origin.is_none()).map(|r| r.added_ms).max().unwrap_or(0);
+        let mut left: Vec<&mut HealthRecord> = self.records.iter_mut().filter(|r| gone(r)).collect();
+        left.sort_by_key(|r| r.added_ms);
+        let mut kept = Vec::new();
+        for record in left {
+            last = now.max(last + 1);
+            record.added_ms = last;
+            record.origin = None;
+            kept.push(record.clone());
+        }
+        (!kept.is_empty(), kept)
     }
 
     fn trim(&mut self) {
@@ -234,18 +285,23 @@ impl Engine {
     }
 
     /// Whether `id` gets the nights and workouts of this device. On: it hears everything now. Off: it is told to forget them. Another
-    /// phone keeps getting them either way.
+    /// phone keeps getting them either way. The other phones hear the choice and make the same one.
     pub async fn set_health_allowed(&self, id: &DeviceId, on: bool) -> Result<()> {
+        let on_before = self.device_settings(id).health;
         self.set_device_settings(id, DeviceSettings { health: on, ..self.device_settings(id) })?;
-        if self.inner.phone_to_phone(id) || !self.inner.health_peers().contains(id) {
+        if self.inner.phone_to_phone(id) {
             return Ok(());
         }
-        if on {
-            let mine = self.inner.health.lock().unwrap().mine_after(0);
-            self.inner.health_send(id, &mine).await;
-        } else {
-            let _ = self.inner.send_to(id, Msg::HealthForget {}).await;
-        }
+        let choice = {
+            let mut health = self.inner.health.lock().unwrap();
+            let at_ms = now_ms().max(health.choice(id, on_before).at_ms + 1);
+            let choice = HealthChoice { device: *id, on, at_ms };
+            health.take_choice(choice, on_before);
+            self.inner.store.write_cbor(CHOICES, &health.choices)?;
+            choice
+        };
+        self.inner.health_tell_phones(&[choice], None).await;
+        self.inner.health_follow(id, on).await;
         Ok(())
     }
 }
@@ -273,8 +329,104 @@ impl Inner {
         self.health_change(|health| health.forget_from(from));
     }
 
-    pub(crate) fn health_keep_only(&self, wanted: &HashSet<DeviceId>) {
-        self.health_change(|health| health.keep_only_from(wanted));
+    /// After the circle changed. `still_in`: this device is still in it, so a phone keeps what came from a device that left.
+    pub(crate) fn health_keep_only(&self, wanted: &HashSet<DeviceId>, still_in: bool) {
+        let keep = still_in && is_phone(self.cfg.platform);
+        let mut kept = Vec::new();
+        self.health_change(|health| {
+            let (changed, now_mine) = health.keep_only_from(wanted, keep, now_ms());
+            kept = now_mine;
+            changed
+        });
+        if kept.is_empty() {
+            return;
+        }
+        // The computers dropped what came from that device just now: they hear it again from here, without waiting for a new connection.
+        let sessions: Vec<_> =
+            self.health_readers().into_iter().filter(|id| wanted.contains(id)).filter_map(|id| self.session_of(&id)).collect();
+        if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+            runtime.spawn(async move {
+                for session in sessions {
+                    for batch in kept.chunks(BATCH) {
+                        if session.tx.send(Msg::HealthRecords { records: batch.to_vec() }).await.is_err() {
+                            break;
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    /// What to tell another phone that just connected: every choice for a computer this device knows.
+    pub(crate) fn health_choices_catch_up(&self, id: DeviceId, caps: &[String]) -> Option<Msg> {
+        if !speaks(caps) || !self.phone_to_phone(&id) {
+            return None;
+        }
+        let settings = self.settings.read().unwrap().clone();
+        let mut choices = self.health.lock().unwrap().choices.clone();
+        for (key, device) in &settings.devices {
+            if let Ok(device_id) = DeviceId::parse(key)
+                && device.health
+                && !choices.iter().any(|c| c.device == device_id)
+            {
+                choices.push(HealthChoice { device: device_id, on: true, at_ms: 1 });
+            }
+        }
+        (!choices.is_empty()).then_some(Msg::HealthChoices { choices })
+    }
+
+    /// Choices another phone heard from the person: the newer ones are made here too, and passed on to the phones that did not hear them.
+    pub(crate) async fn health_choices_heard(&self, from: DeviceId, choices: Vec<HealthChoice>) {
+        if !self.phone_to_phone(&from) {
+            return;
+        }
+        let settings = self.settings.read().unwrap().clone();
+        let taken: Vec<HealthChoice> = {
+            let mut health = self.health.lock().unwrap();
+            let taken: Vec<HealthChoice> = choices
+                .into_iter()
+                .filter(|c| c.device != self.my_id && !self.is_phone_member(&c.device))
+                .filter(|c| health.take_choice(*c, settings.for_device(&c.device).health))
+                .collect();
+            if !taken.is_empty()
+                && let Err(e) = self.store.write_cbor(CHOICES, &health.choices)
+            {
+                tracing::warn!("could not keep the health choices: {e}");
+            }
+            taken
+        };
+        for choice in &taken {
+            let changed = DeviceSettings { health: choice.on, ..settings.for_device(&choice.device) };
+            if let Err(e) = self.set_device_settings(&choice.device, changed) {
+                tracing::warn!("could not keep a health choice: {e}");
+            }
+            self.health_follow(&choice.device, choice.on).await;
+        }
+        if !taken.is_empty() {
+            self.health_tell_phones(&taken, Some(from)).await;
+        }
+    }
+
+    /// Tells the other phones what the person chose, except the one it came from.
+    async fn health_tell_phones(&self, choices: &[HealthChoice], except: Option<DeviceId>) {
+        for id in self.health_peers() {
+            if Some(id) != except && self.phone_to_phone(&id) {
+                let _ = self.send_to(&id, Msg::HealthChoices { choices: choices.to_vec() }).await;
+            }
+        }
+    }
+
+    /// Acts on a choice for `id` when it is connected: on, it hears everything now; off, it forgets what came from here.
+    async fn health_follow(&self, id: &DeviceId, on: bool) {
+        if !self.health_peers().contains(id) {
+            return;
+        }
+        if on {
+            let mine = self.health.lock().unwrap().mine_after(0);
+            self.health_send(id, &mine).await;
+        } else {
+            let _ = self.send_to(id, Msg::HealthForget {}).await;
+        }
     }
 
     fn health_change(&self, change: impl FnOnce(&mut Health) -> bool) {
@@ -315,7 +467,11 @@ impl Inner {
 
     /// This device and `id` are both phones, by what the circle says, so also while `id` is away.
     fn phone_to_phone(&self, id: &DeviceId) -> bool {
-        is_phone(self.cfg.platform) && self.circle.read().unwrap().member(id).is_some_and(|m| is_phone(m.platform))
+        is_phone(self.cfg.platform) && self.is_phone_member(id)
+    }
+
+    fn is_phone_member(&self, id: &DeviceId) -> bool {
+        self.circle.read().unwrap().member(id).is_some_and(|m| is_phone(m.platform))
     }
 }
 
@@ -425,9 +581,35 @@ mod tests {
         health.received(id(1), vec![night("one", 2)]);
         health.received(id(2), vec![night("two", 3)]);
         let wanted = HashSet::from([id(2)]);
-        assert!(health.keep_only_from(&wanted));
-        assert!(!health.keep_only_from(&wanted));
+        assert!(health.keep_only_from(&wanted, false, 200).0);
+        assert!(!health.keep_only_from(&wanted, false, 200).0);
         assert_eq!(health.records.iter().map(|r| r.id.as_str()).collect::<Vec<_>>(), ["mine", "two"]);
+    }
+
+    #[test]
+    fn a_phone_keeps_what_came_from_a_device_that_left_as_its_own() {
+        let mut health = Health::default();
+        health.add_mine(vec![night("mine", 1)], 100);
+        health.received(id(1), vec![HealthRecord { added_ms: 9, ..night("late", 3) }, HealthRecord { added_ms: 5, ..night("early", 2) }]);
+        let (changed, kept) = health.keep_only_from(&HashSet::new(), true, 50);
+        assert!(changed);
+        // In the order they came, after what this device had, so a computer that got further still hears them.
+        assert_eq!(kept.iter().map(|r| (r.id.as_str(), r.added_ms)).collect::<Vec<_>>(), [("early", 101), ("late", 102)]);
+        assert!(health.records.iter().all(|r| r.origin.is_none()));
+        assert_eq!(health.mine_after(100).len(), 2);
+        assert!(!health.keep_only_from(&HashSet::new(), true, 50).0);
+    }
+
+    #[test]
+    fn the_newest_choice_counts() {
+        let mut health = Health::default();
+        let (mac, on, off) = (id(1), true, false);
+        // Switched on before the phones passed choices on: wins over a choice never made, loses to any made since.
+        assert!(!health.take_choice(HealthChoice { device: mac, on, at_ms: 1 }, true));
+        assert!(health.take_choice(HealthChoice { device: mac, on, at_ms: 1 }, false));
+        assert!(health.take_choice(HealthChoice { device: mac, on: off, at_ms: 500 }, true));
+        assert!(!health.take_choice(HealthChoice { device: mac, on, at_ms: 400 }, true));
+        assert_eq!(health.choice(&mac, true), HealthChoice { device: mac, on: off, at_ms: 500 });
     }
 
     #[test]
