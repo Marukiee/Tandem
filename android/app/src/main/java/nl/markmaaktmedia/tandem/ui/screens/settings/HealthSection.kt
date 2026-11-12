@@ -16,6 +16,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -1044,19 +1045,20 @@ internal fun WatchGlance(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val steps = watch.stepsToday.takeIf { watch.paired }
     if (night == null && steps == null && resting == null) return
     // Three tiles of their own, each in its own colour of the theme, so the eye finds each number by its colour as well as its place.
+    // All as tall as the tallest, so a caption on two lines does not make one stick out.
     val scheme = MaterialTheme.colorScheme
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (night != null) {
             Glance(
                 TandemIcons.Sleep, stringResource(R.string.watch_glance_night), duration(night.sleepMinutes.toInt()),
                 score?.let { stringResource(R.string.watch_glance_score, it.toInt()) } ?: dayName(context, night.endMs.toLong()),
-                scheme.secondaryContainer, scheme.onSecondaryContainer, onOpen, Modifier.weight(1f),
+                scheme.secondaryContainer, scheme.onSecondaryContainer, onOpen, Modifier.weight(1f).fillMaxHeight(),
             )
         }
         if (steps != null) {
             Glance(
                 TandemIcons.Steps, stringResource(R.string.health_steps_title), number(steps), stringResource(R.string.health_today),
-                scheme.primaryContainer, scheme.onPrimaryContainer, onOpen, Modifier.weight(1f),
+                scheme.primaryContainer, scheme.onPrimaryContainer, onOpen, Modifier.weight(1f).fillMaxHeight(),
             )
         }
         if (resting != null) {
@@ -1064,7 +1066,7 @@ internal fun WatchGlance(onOpen: () -> Unit, modifier: Modifier = Modifier) {
                 TandemIcons.Heart, stringResource(R.string.watch_glance_resting), stringResource(R.string.health_resting_line, resting.latest.toInt()),
                 resting.usual?.let { stringResource(R.string.health_usually, it.toInt()) }
                     ?: pluralStringResource(R.plurals.watch_glance_nights_left, resting.nightsNeeded.toInt(), resting.nightsNeeded.toInt()),
-                scheme.tertiaryContainer, scheme.onTertiaryContainer, onOpen, Modifier.weight(1f),
+                scheme.tertiaryContainer, scheme.onTertiaryContainer, onOpen, Modifier.weight(1f).fillMaxHeight(),
             )
         }
     }

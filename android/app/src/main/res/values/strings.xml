@@ -607,7 +607,7 @@
     <string name="sleep_music_not_now">Not now</string>
     <string name="sleep_music_never">Do not ask again</string>
     <string name="watch_glance_night">Last night</string>
-    <string name="watch_glance_score">Sleep score %1$d</string>
+    <string name="watch_glance_score">Score %1$d</string>
     <string name="watch_section_wrist">On your wrist</string>
     <string name="watch_row_notifications">Notifications</string>
     <string name="watch_row_music">Music</string>

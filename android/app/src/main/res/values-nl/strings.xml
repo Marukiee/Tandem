@@ -604,7 +604,7 @@
     <string name="sleep_music_not_now">Nu niet</string>
     <string name="sleep_music_never">Niet meer vragen</string>
     <string name="watch_glance_night">Afgelopen nacht</string>
-    <string name="watch_glance_score">Slaapscore %1$d</string>
+    <string name="watch_glance_score">Score %1$d</string>
     <string name="watch_section_wrist">Op je pols</string>
     <string name="watch_row_notifications">Meldingen</string>
     <string name="watch_row_music">Muziek</string>

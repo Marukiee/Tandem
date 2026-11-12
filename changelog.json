@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.3.16",
+    "date": "2026-11-13",
+    "en": {
+      "title": "Even tiles",
+      "fixed": [
+        "The three health tiles of the watch are the same height"
+      ]
+    },
+    "nl": {
+      "title": "Gelijke tegels",
+      "fixed": [
+        "De drie gezondheidstegels van het horloge zijn even hoog"
+      ]
+    }
+  },
+  {
     "version": "0.3.15",
     "date": "2026-11-12",
     "en": {
