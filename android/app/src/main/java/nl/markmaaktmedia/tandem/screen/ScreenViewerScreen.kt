@@ -441,13 +441,8 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
     var rootWidth by remember { mutableStateOf(0f) }
     var rootHeight by remember { mutableStateOf(0f) }
     var panelHeight by remember { mutableStateOf(0f) }
-    // The picture of a phone sits between the bar and the buttons of that phone, so neither covers its status bar or the bottom of an app.
-    val cutout = WindowInsets.displayCutout
-    val pictureTop = if (phone) with(density) { cutout.getTop(density).toDp() } + PHONE_BAR_ROOM else 0.dp
-    val pictureBottom = if (phone) with(density) { cutout.getBottom(density).toDp() } + PHONE_BAR_ROOM else 0.dp
-    val bottomPx = with(density) { pictureBottom.toPx() }
     val reserved by androidx.compose.animation.core.animateFloatAsState(
-        if (keyboard) (panelHeight - bottomPx).coerceAtLeast(0f) else 0f, TandemMotion.spatial(), label = "keyboardRoom",
+        if (keyboard) panelHeight else 0f, TandemMotion.spatial(), label = "keyboardRoom",
     )
     LaunchedEffect(rootWidth, rootHeight, reserved) {
         if (rootWidth > 0f && rootHeight > 0f) {
@@ -459,6 +454,10 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
         Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .onSizeChanged {
+                rootWidth = it.width.toFloat()
+                rootHeight = it.height.toFloat()
+            }
             .focusRequester(focus)
             .focusTarget()
             .onPreviewKeyEvent { if (keyboard) false else hardwareKey(it) },
@@ -470,43 +469,32 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
         val picLeft = if (transform.videoWidth > 0f) transform.left else 0f
         val picTop = if (transform.videoWidth > 0f) transform.top else 0f
 
-        // The picture and the fingers on it, in the room the bars leave.
+        VideoSurface(
+            viewer = viewer,
+            videoWidth = info?.width ?: 0,
+            videoHeight = info?.height ?: 0,
+            modifier = Modifier.layout { measurable, constraints ->
+                val w = picW.roundToInt().coerceAtLeast(1)
+                val h = picH.roundToInt().coerceAtLeast(1)
+                val placeable = measurable.measure(Constraints.fixed(w, h))
+                layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(picLeft.roundToInt(), picTop.roundToInt()) }
+            },
+        )
+        if (tick < 0) Box(Modifier.size(0.dp))
+
+        // The fingers, over the picture.
         Box(
             Modifier
                 .fillMaxSize()
-                .padding(top = pictureTop, bottom = pictureBottom)
-                .onSizeChanged {
-                    rootWidth = it.width.toFloat()
-                    rootHeight = it.height.toFloat()
-                },
-        ) {
-            VideoSurface(
-                viewer = viewer,
-                videoWidth = info?.width ?: 0,
-                videoHeight = info?.height ?: 0,
-                modifier = Modifier.layout { measurable, constraints ->
-                    val w = picW.roundToInt().coerceAtLeast(1)
-                    val h = picH.roundToInt().coerceAtLeast(1)
-                    val placeable = measurable.measure(Constraints.fixed(w, h))
-                    layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(picLeft.roundToInt(), picTop.roundToInt()) }
-                },
-            )
-            if (tick < 0) Box(Modifier.size(0.dp))
-
-            // The fingers, over the picture.
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .then(
-                        if (phone) {
-                            Modifier.fingerTouch(fingers, canTouch = { viewer.canControl }, onRefused = { whyNotNow() })
-                        } else {
-                            // On a second screen a touch is a click and nothing else: it does not bring the bar back.
-                            Modifier.viewerTouch(gestures) { if (!extend) touchBar() }
-                        },
-                    ),
-            )
-        }
+                .then(
+                    if (phone) {
+                        Modifier.fingerTouch(fingers, canTouch = { viewer.canControl }, onTouch = ::touchBar, onRefused = { whyNotNow() })
+                    } else {
+                        // On a second screen a touch is a click and nothing else: it does not bring the bar back.
+                        Modifier.viewerTouch(gestures) { if (!extend) touchBar() }
+                    },
+                ),
+        )
 
         Overlay(
             state = state,
@@ -536,7 +524,7 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
         // The slim bar at the top. It stays: a quiet bar is dimmed, a touch brings it back to full.
         val insets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
         val barAlpha by androidx.compose.animation.core.animateFloatAsState(
-            if (barVisible || phone) 1f else if (extend) 0f else 0.55f, TandemMotion.fadeSpec(), label = "barAlpha",
+            if (barVisible) 1f else if (extend) 0f else 0.55f, TandemMotion.fadeSpec(), label = "barAlpha",
         )
         // Gone for good when it has faded out on a second screen: an invisible bar would still take the touches.
         if (!extend || barVisible || barAlpha > 0.02f) Box(Modifier.align(Alignment.TopCenter).graphicsLayer { alpha = barAlpha }) {
@@ -604,12 +592,14 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
                 enter = fadeIn(TandemMotion.fadeSpec()) + slideInVertically(TandemMotion.spatial()) { it },
                 exit = fadeOut(TandemMotion.fadeSpec()) + slideOutVertically(TandemMotion.spatial()) { it },
             ) {
+                // They float over the picture, which fills the screen, and dim with the bar when it is quiet.
                 PhoneButtons(
                     ready = control,
                     modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.displayCutout))
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    onButton = ::phoneButton,
-                    onRefused = ::tellWhyNot,
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .graphicsLayer { alpha = barAlpha },
+                    onButton = { touchBar(); phoneButton(it) },
+                    onRefused = { touchBar(); tellWhyNot() },
                 )
             }
         }
@@ -648,17 +638,20 @@ private const val BAR_MILLIS = 3500L
 /** How long a reason why something cannot be done stays the only one, so a finger that keeps trying does not stack them. */
 private const val WHY_MILLIS = 2500L
 
-/** The room of a bar of the viewer of a phone: the bar of 48 and 8 on each side. */
-private val PHONE_BAR_ROOM = 64.dp
-
 /**
  * Feeds the fingers on the picture of a phone to [FingerGestures], as they come: a finger there goes down the moment one goes down here.
  * Without [canTouch] a touch does nothing there, and says why.
  */
-private fun Modifier.fingerTouch(fingers: FingerGestures, canTouch: () -> Boolean, onRefused: () -> Unit): Modifier = pointerInput(fingers) {
+private fun Modifier.fingerTouch(
+    fingers: FingerGestures,
+    canTouch: () -> Boolean,
+    onTouch: () -> Unit,
+    onRefused: () -> Unit,
+): Modifier = pointerInput(fingers) {
     awaitEachGesture {
         val first = awaitFirstDown(requireUnconsumed = false)
         first.consume()
+        onTouch()
         if (!canTouch()) {
             onRefused()
             do {

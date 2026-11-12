@@ -375,9 +375,9 @@ die van een computer (`ScreenViewerScreen`), in een stand voor een telefoon (`pl
 - De vinger is een vinger daar (`FingerGestures`): bij aanraken meteen `PointerAbs` en knop 0 omlaag, bij bewegen `PointerAbs` (pas buiten de
   slop), bij loslaten knop 0 omhoog. `RemoteInput` speelt dat als een aanraking die doorgaat, dus tikken, lang drukken, vegen en slepen zijn wat ze
   op het scherm zelf zijn. Een tweede vinger doet niets (een tik met twee vingers zou daar Terug zijn), een aanraking naast het beeld ook niet.
-- Onder het beeld Terug, Startscherm en Recente apps: knop 1, 2 en 3, wat een Mac ook stuurt. Het beeld staat tussen de balk en die knoppen, zodat
-  geen van beide de statusbalk of de onderkant van een app bedekt. Geen schakelaar voor trackpad of aanraken, en het toetsenbord is alleen het
-  tekstveld: de toetsen eronder doen niets op een telefoon.
+- Onder het beeld Terug, Startscherm en Recente apps: knop 1, 2 en 3, wat een Mac ook stuurt. Het beeld vult het scherm met de verhouding van de
+  andere telefoon; de balk en die knoppen zweven erover en worden na een paar stille seconden zachter, een aanraking maakt ze weer vol. Geen
+  schakelaar voor trackpad of aanraken, en het toetsenbord is alleen het tekstveld: de toetsen eronder doen niets op een telefoon.
 - Zolang de telefoon geen bediening geeft (toegankelijkheid uit, of Klikken en typen op Nooit) zijn de knoppen en het toetsenbord grijs, en zegt een
   tik waarom. Gaat toegankelijkheid daar aan, dan werkt het meteen (`MediaUpdate` met `control`).
 - Een druk neemt zijn plek mee: de kern stuurt de laatste `PointerAbs` die als datagram ging nog eens over de stroom, vlak voor de `Button`
