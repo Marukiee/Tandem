@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.3.13",
+    "date": "2026-11-12",
+    "en": {
+      "title": "One under the other",
+      "fixed": [
+        "With four devices or more they stay one under the other on the phone, each with its buttons"
+      ]
+    },
+    "nl": {
+      "title": "Onder elkaar",
+      "fixed": [
+        "Met vier apparaten of meer staan ze op de telefoon gewoon onder elkaar, elk met zijn knoppen"
+      ]
+    }
+  },
+  {
     "version": "0.3.12",
     "date": "2026-11-11",
     "en": {

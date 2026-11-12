@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -141,9 +140,6 @@ fun DevicesScreen(
             },
         )
     }
-    // Up to three devices get a card of their own with buttons; more than that go two by two, smaller, so they fit.
-    val compact = ordered.size > 3
-
     LazyColumn(
         modifier = modifier.fillMaxSize().statusBarsPadding(),
         state = listState,
@@ -198,39 +194,7 @@ fun DevicesScreen(
             }
         }
 
-        if (compact) {
-            items(ordered.chunked(2), key = { row -> row.joinToString("+") { it.id } }) { row ->
-                Row(Modifier.fillMaxWidth().animateItem(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    row.forEach { card ->
-                        SwipeToPin(
-                            item = card,
-                            key = card.id,
-                            pinned = card.id in pinned,
-                            onToggle = togglePin,
-                            shape = CardSquircle,
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            when (card) {
-                                is HomeCard.Device -> CompactDeviceCard(
-                                    device = card.device,
-                                    pinned = card.id in pinned,
-                                    modifier = Modifier.fillMaxWidth().routeBounds(routeKey(Route.Device(card.id))),
-                                    onOpen = { onOpenDevice(card.id) },
-                                )
-                                HomeCard.Watch -> CompactWatchCard(
-                                    state = watchState,
-                                    pinned = card.id in pinned,
-                                    modifier = Modifier.fillMaxWidth().routeBounds(routeKey(WatchRoute)),
-                                    onOpen = onOpenWatch,
-                                )
-                            }
-                        }
-                    }
-                    if (row.size == 1) Spacer(Modifier.weight(1f))
-                }
-            }
-        }
-        if (!compact) items(ordered, key = { it.id }) { card ->
+        items(ordered, key = { it.id }) { card ->
           // The swipe is keyed on the id, so a status update does not reset a swipe that is under way.
           SwipeToPin(
             item = card,
@@ -414,42 +378,6 @@ private fun Glance(
 }
 
 @Composable
-private fun CompactWatchCard(
-    state: WatchState,
-    pinned: Boolean,
-    onOpen: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier
-            .clip(CardSquircle)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .bouncyClickable(onClick = onOpen)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DeviceGlyph(TandemPlatform.OTHER, state.ready, size = 44.dp, pickedIcon = DeviceIconChoice.Watch.key)
-            Spacer(Modifier.weight(1f))
-            if (pinned) Icon(TandemIcons.Pin, stringResource(R.string.device_pinned), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-            ArrivingBattery(state.battery()) { BatteryBadge(it, connected = state.ready) }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(state.name ?: stringResource(R.string.settings_cat_watch), style = MaterialTheme.typography.titleSmall, maxLines = 1)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PresenceDot(state.ready)
-                Text(
-                    stringResource(if (state.ready) R.string.status_online else R.string.status_offline),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun DeviceCard(
     device: TandemDevice,
     onOpen: () -> Unit,
@@ -587,50 +515,5 @@ private fun Pill(
     ) {
         Icon(icon, null, tint = content, modifier = Modifier.size(18.dp))
         Text(label, style = MaterialTheme.typography.labelLarge, color = content)
-    }
-}
-
-
-/** A smaller card for when there are many devices: who, how it is doing, and nothing else. Tap opens, swipe pins. */
-@Composable
-private fun CompactDeviceCard(
-    device: TandemDevice,
-    pinned: Boolean,
-    onOpen: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val asleep = !device.online && device.status.asleep == true
-    Column(
-        modifier
-            .clip(CardSquircle)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .bouncyClickable(onClick = onOpen)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DeviceGlyph(device.platform, device.online, size = 44.dp, deviceId = device.id)
-            Spacer(Modifier.weight(1f))
-            if (pinned) Icon(TandemIcons.Pin, stringResource(R.string.device_pinned), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-            ArrivingBattery(device.status.battery) { BatteryBadge(it, connected = device.online) }
-        }
-        BatchStrip(device.id)
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(device.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PresenceDot(device.online, bluetooth = device.ble)
-                Text(
-                    when {
-                        device.online -> stringResource(R.string.status_online)
-                        device.ble -> stringResource(R.string.status_bluetooth)
-                        asleep -> stringResource(R.string.status_asleep)
-                        else -> stringResource(R.string.status_offline)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (!device.online && device.ble) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
-        }
     }
 }
