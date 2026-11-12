@@ -426,6 +426,7 @@
 "Your phone disconnected, so the sound plays on this Mac until it is back" = "Je telefoon verbrak de verbinding, dus het geluid speelt op deze Mac tot hij terug is";
 
 "You have version %@" = "Je hebt versie %@";
+"You have %@" = "Je hebt %@";
 "Tandem opens again by itself" = "Tandem start vanzelf opnieuw";
 "The update did not work" = "De update is mislukt";
 "Dismiss" = "Sluiten";
