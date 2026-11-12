@@ -217,6 +217,15 @@ sealed interface Message {
     data object TryWakeBuzz : Message
 
     /**
+     * Phone to watch: the phone shows the heart rate now, or no longer. Asked again every half minute while it does: the watch stops
+     * by itself without that, so a phone that went away does not leave the light of the sensor on.
+     */
+    data class HeartLive(val on: Boolean) : Message
+
+    /** Watch to phone: the heart rate now, every few seconds while [HeartLive] is on. 0 when there is none (off the wrist, or stopped). */
+    data class HeartNow(val bpm: Int) : Message
+
+    /**
      * Watch to phone: the wearer sleeps or not. Sent again after each reconnect, so the receiver must treat it as the
      * state it is and not as a command to change something.
      */
@@ -323,6 +332,8 @@ object MessageCodec {
     private const val HEART_TODAY = 0x47
     private const val HEART_ALL_DAY = 0x48
     private const val TRY_WAKE_BUZZ = 0x49
+    private const val HEART_LIVE = 0x4A
+    private const val HEART_NOW = 0x4B
     private const val HEALTH_RECORD = 0x50
     private const val HEALTH_ACK = 0x51
     private const val APP_VERSION = 0x60
@@ -411,6 +422,8 @@ object MessageCodec {
             is Message.UpdatePart -> w.u8(UPDATE_PART).varint(message.code).varint(message.offset).bytes(message.bytes)
             is Message.UpdateState -> w.u8(UPDATE_STATE).varint(message.code).u8(message.state).str(message.detail)
             Message.TryWakeBuzz -> w.u8(TRY_WAKE_BUZZ)
+            is Message.HeartLive -> w.u8(HEART_LIVE).bool(message.on)
+            is Message.HeartNow -> w.u8(HEART_NOW).u8(message.bpm.coerceIn(0, 255))
             is Message.SleepMode -> w.u8(SLEEP_MODE).bool(message.on)
             is Message.HealthRecord -> {
                 w.u8(HEALTH_RECORD).str(message.id).bool(message.workout).varint(message.startMs).varint(message.endMs)
@@ -488,6 +501,8 @@ object MessageCodec {
             UPDATE_PART -> Message.UpdatePart(r.varint(), r.varint(), r.bytes())
             UPDATE_STATE -> Message.UpdateState(r.varint(), r.u8(), r.str())
             TRY_WAKE_BUZZ -> Message.TryWakeBuzz
+            HEART_LIVE -> Message.HeartLive(r.bool())
+            HEART_NOW -> Message.HeartNow(r.u8())
             SLEEP_MODE -> Message.SleepMode(r.bool())
             HEALTH_RECORD -> Message.HealthRecord(
                 id = r.str(),

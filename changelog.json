@@ -3,13 +3,19 @@
     "version": "0.3.16",
     "date": "2026-11-13",
     "en": {
-      "title": "Even tiles",
+      "title": "Your heart rate now",
+      "new": [
+        "The heart rate tile shows your heart rate now, live from the watch"
+      ],
       "fixed": [
         "The three health tiles of the watch are the same height"
       ]
     },
     "nl": {
-      "title": "Gelijke tegels",
+      "title": "Je hartslag nu",
+      "new": [
+        "De hartslagtegel laat je hartslag nu zien, live van het horloge"
+      ],
       "fixed": [
         "De drie gezondheidstegels van het horloge zijn even hoog"
       ]

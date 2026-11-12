@@ -14,6 +14,10 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -1043,7 +1047,24 @@ internal fun WatchGlance(onOpen: () -> Unit, modifier: Modifier = Modifier) {
     val score = insights?.latestNight?.takeIf { it.id == night?.id }?.score
     val resting = insights?.resting
     val steps = watch.stepsToday.takeIf { watch.paired }
-    if (night == null && steps == null && resting == null) return
+    // The heart rate now, while these tiles are on screen and the watch is here. Asked again every half minute: the watch stops by itself.
+    val now = watch.heartNow.takeIf { watch.ready }
+    if (watch.ready) {
+        val lifecycle = LocalLifecycleOwner.current
+        LaunchedEffect(lifecycle) {
+            lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                try {
+                    while (true) {
+                        graph.watch.liveHeart(true)
+                        kotlinx.coroutines.delay(30_000)
+                    }
+                } finally {
+                    graph.watch.liveHeart(false)
+                }
+            }
+        }
+    }
+    if (night == null && steps == null && resting == null && now == null) return
     // Three tiles of their own, each in its own colour of the theme, so the eye finds each number by its colour as well as its place.
     // All as tall as the tallest, so a caption on two lines does not make one stick out.
     val scheme = MaterialTheme.colorScheme
@@ -1061,7 +1082,14 @@ internal fun WatchGlance(onOpen: () -> Unit, modifier: Modifier = Modifier) {
                 scheme.primaryContainer, scheme.onPrimaryContainer, onOpen, Modifier.weight(1f).fillMaxHeight(),
             )
         }
-        if (resting != null) {
+        if (now != null) {
+            // Live: the number now, with the heart beating, and the resting rate under it.
+            Glance(
+                TandemIcons.Heart, stringResource(R.string.watch_glance_now), stringResource(R.string.health_resting_line, now),
+                resting?.let { stringResource(R.string.watch_glance_resting_value, it.latest.toInt()) } ?: stringResource(R.string.watch_glance_live),
+                scheme.tertiaryContainer, scheme.onTertiaryContainer, onOpen, Modifier.weight(1f).fillMaxHeight(), beating = true,
+            )
+        } else if (resting != null) {
             Glance(
                 TandemIcons.Heart, stringResource(R.string.watch_glance_resting), stringResource(R.string.health_resting_line, resting.latest.toInt()),
                 resting.usual?.let { stringResource(R.string.health_usually, it.toInt()) }
@@ -1083,13 +1111,31 @@ private fun Glance(
     content: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    beating: Boolean = false,
 ) {
     Column(
         modifier.clip(CardSquircle).background(container).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        // A live number beats: two quick swells and a rest, about once a second.
+        val beat = if (beating) {
+            val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "heartBeat")
+            pulse.animateFloat(
+                1f, 1f,
+                androidx.compose.animation.core.infiniteRepeatable(
+                    androidx.compose.animation.core.keyframes {
+                        durationMillis = 1000
+                        1.18f at 120
+                        1f at 240
+                        1.12f at 360
+                        1f at 520
+                    },
+                ),
+                label = "heartScale",
+            ).value
+        } else 1f
         Box(Modifier.size(34.dp).clip(CircleShape).background(content.copy(alpha = 0.14f)), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = content, modifier = Modifier.size(20.dp))
+            Icon(icon, null, tint = content, modifier = Modifier.size(20.dp).graphicsLayer { scaleX = beat; scaleY = beat })
         }
         Spacer(Modifier.height(4.dp))
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = content, maxLines = 1)

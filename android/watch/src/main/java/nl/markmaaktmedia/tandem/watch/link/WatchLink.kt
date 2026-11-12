@@ -399,6 +399,11 @@ object WatchLink : LinkListener, WatchBleClient.Events {
         handler.post { engine?.send(Message.HeartAllDay(on)) }
     }
 
+    /** See [nl.markmaaktmedia.tandem.watch.track.LiveHeart]. */
+    fun sendHeartNow(bpm: Int) {
+        handler.post { engine?.send(Message.HeartNow(bpm)) }
+    }
+
     fun reportSteps(steps: Long, activeMinutes: Int, byHour: List<Int> = emptyList()) {
         handler.post {
             status?.let { reportStatus(it.copy(stepsToday = steps, activeMinutesToday = activeMinutes, stepsByHour = byHour)) }
@@ -510,6 +515,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             }
             Message.TryWakeBuzz -> appContext?.let { GentleWake.tryOnce(it) }
             is Message.HeartAllDay -> appContext?.let { HeartTracker.setEnabled(it, message.on, tellPhone = false) }
+            is Message.HeartLive -> appContext?.let { nl.markmaaktmedia.tandem.watch.track.LiveHeart.ask(it, message.on) }
             is Message.Pong -> handler.removeCallbacks(pongTimeout)
             is Message.PointerOpen -> appContext?.let { nl.markmaaktmedia.tandem.watch.ui.PointerActivity.openFromAfar(it, message.targetId, message.table) }
             Message.PointerClose -> appContext?.let { nl.markmaaktmedia.tandem.watch.ui.PointerActivity.closeFromAfar(it) }
@@ -518,7 +524,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
             is Message.Ping, is Message.Unknown -> Unit
             // These only travel from watch to phone.
             is Message.AppVersion, is Message.UpdateWant, is Message.UpdateState,
-            is Message.HeartToday, is Message.HealthRecord, Message.SyncRequest, is Message.NotificationAction, is Message.CallAction, is Message.MediaCommand,
+            is Message.HeartToday, is Message.HeartNow, is Message.HealthRecord, Message.SyncRequest, is Message.NotificationAction, is Message.CallAction, is Message.MediaCommand,
             is Message.PointerSession, is Message.PointerMove, is Message.PointerScroll, is Message.PointerClick,
             is Message.PointerKey, is Message.PointerButton, is Message.MediaSeek, is Message.WatchStatus, is Message.SleepMode, is Message.MouseEnabled,
             is Message.MouseState,
@@ -549,6 +555,7 @@ object WatchLink : LinkListener, WatchBleClient.Events {
 
     override fun onLinkDown() {
         engine?.onTransportDown()
+        nl.markmaaktmedia.tandem.watch.track.LiveHeart.linkDown()
         handler.removeCallbacks(pingLoop)
         handler.removeCallbacks(pongTimeout)
         // The call may have ended while we could not hear about it, and a watch must not ring on forever.

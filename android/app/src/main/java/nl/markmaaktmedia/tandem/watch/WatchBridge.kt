@@ -86,6 +86,8 @@ data class WatchState(
     val mouse: WatchMouseNow? = null,
     /** The Bluetooth of this phone is off, so the watch cannot connect: said, and a way given to turn it on. */
     val bluetoothOff: Boolean = false,
+    /** The heart rate now, while a screen asks for it ([WatchBridge.liveHeart]); null when there is none. */
+    val heartNow: Int? = null,
 )
 
 /**
@@ -417,6 +419,22 @@ class WatchBridge(
         handler.postDelayed(endRest, rest)
         applyServer()
     }
+
+    /**
+     * A screen shows the heart rate now: the watch sends it every few seconds. Asked again every half minute while it does, as the
+     * watch stops by itself; off when it closes.
+     */
+    fun liveHeart(on: Boolean) {
+        handler.post {
+            enqueue(Message.HeartLive(on))
+            if (!on) {
+                handler.removeCallbacks(heartStale)
+                _state.update { it.copy(heartNow = null) }
+            }
+        }
+    }
+
+    private val heartStale = Runnable { _state.update { it.copy(heartNow = null) } }
 
     fun beginPairing() {
         if (!supported) return
@@ -769,6 +787,12 @@ class WatchBridge(
             }
             is Message.MouseEnabled -> scope.launch { prefs.setWatchMouse(message.on) }
             is Message.HeartToday -> _state.update { it.copy(heartToday = message.curve) }
+            is Message.HeartNow -> {
+                _state.update { it.copy(heartNow = message.bpm.takeIf { bpm -> bpm > 0 }) }
+                // A value that stops coming is not the heart rate now any more.
+                handler.removeCallbacks(heartStale)
+                if (message.bpm > 0) handler.postDelayed(heartStale, HEART_STALE_MS)
+            }
             is Message.HeartAllDay -> scope.launch { prefs.setHeartAllDay(message.on) }
             is Message.SleepMode -> onSleepMode(message.on)
             is Message.HealthRecord -> onHealthRecord(message)
@@ -778,7 +802,7 @@ class WatchBridge(
             is Message.Ping, is Message.Pong, is Message.Unknown -> Unit
             // These only travel from phone to watch.
             is Message.NotificationSnapshot, is Message.Notification, is Message.NotificationRemoved, is Message.AppIcon,
-            is Message.HealthAck, is Message.StepGoal, is Message.SmartWakeAlarm, Message.TryWakeBuzz, is Message.UpdateOffer, is Message.UpdatePart, is Message.PointerOpen,
+            is Message.HealthAck, is Message.StepGoal, is Message.SmartWakeAlarm, Message.TryWakeBuzz, is Message.HeartLive, is Message.UpdateOffer, is Message.UpdatePart, is Message.PointerOpen,
             Message.PointerClose,
             is Message.Call, is Message.MediaPlayers, is Message.MediaArt, is Message.PointerTargets, is Message.DeviceBatteries,
             -> Unit
@@ -888,7 +912,7 @@ class WatchBridge(
         endPointer()
         updater.onDisconnected()
         handler.removeCallbacks(authTimeout)
-        _state.update { it.copy(connected = false, ready = false, code = null, ringing = false, mouse = null) }
+        _state.update { it.copy(connected = false, ready = false, code = null, ringing = false, mouse = null, heartNow = null) }
     }
 
     override fun onChunk(chunk: ByteArray) {
@@ -907,6 +931,8 @@ class WatchBridge(
         const val TAG = "TandemWatch"
         const val PAIRING_WINDOW_MS = 2 * 60_000L
         const val AUTH_WINDOW_MS = 30_000L
+        /** The watch sends the heart rate now every two seconds: this long without one, there is none. */
+        const val HEART_STALE_MS = 8_000L
         /** After pairing, how long the other phone may still say it has the watch: its status goes out a moment later. */
         const val JUST_PAIRED_MS = 60_000L
         const val UNPAIR_FLUSH_MS = 500L

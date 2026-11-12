@@ -589,6 +589,9 @@
     <string name="watch_pair_replace">Opnieuw koppelen</string>
     <string name="watch_name_row">Naam</string>
     <string name="watch_glance_resting">In rust</string>
+    <string name="watch_glance_now">Nu</string>
+    <string name="watch_glance_resting_value">In rust %1$d</string>
+    <string name="watch_glance_live">Live van je horloge</string>
     <plurals name="watch_glance_nights_left">
         <item quantity="one">Nog %d nacht</item>
         <item quantity="other">Nog %d nachten</item>
