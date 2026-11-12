@@ -7,9 +7,10 @@ import android.util.Log
 import nl.markmaaktmedia.tandem.graph
 
 /**
- * Debug builds only. Two emulators each sit behind a network of their own and never find each other: this tells one where the other
- * is, through a port the emulator forwards (`adb emu redir add udp:<port>:47820` on the other one). Without extras it lists the devices;
- * with `offer` it writes a pairing link to the log, to give the other one after `scripts/rewrite-pair-uri.py`.
+ * Debug builds only. Pairs two emulators without a camera: with `offer` it writes a pairing link to the log, which the other one opens.
+ * Emulators of one machine share a Wi-Fi network (10.0.2.16, .17, ...) and reach each other over it. One that does not (no Wi-Fi, an
+ * older image) is told where the other is with `id` and `addr`, through a port the other forwards (`adb emu redir add udp:<port>:47820`).
+ * Without extras it lists the devices.
  *
  *     adb shell am broadcast -n nl.markmaaktmedia.tandem.debug/nl.markmaaktmedia.tandem.engine.PeerAddressCheck --ez offer true
  *     adb shell am broadcast -n nl.markmaaktmedia.tandem.debug/nl.markmaaktmedia.tandem.engine.PeerAddressCheck \
