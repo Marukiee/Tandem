@@ -99,6 +99,8 @@ class TandemApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // The process of RestartActivity only opens Tandem again: no second engine, no listeners.
+        if (getProcessName() != packageName) return
         graph = Graph(this)
     }
 }

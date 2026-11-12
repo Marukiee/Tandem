@@ -237,7 +237,7 @@ class ShizukuBridge(private val context: Context) {
             val user = android.os.Process.myUid() / 100_000
             // No --nice-name: a name longer than "app_process" writes over the arguments after it (seen on Android 16).
             val command = arrayOf(
-                "app_process", "-Djava.class.path=${context.applicationInfo.sourceDir}", "/system/bin",
+                "/system/bin/app_process", "-Djava.class.path=${context.applicationInfo.sourceDir}", "/system/bin",
                 ShellStarter::class.java.name, context.packageName, user.toString(),
             )
             // Hidden in Shizuku's API since version 13, and still the one call that goes straight to its server.
@@ -257,6 +257,10 @@ class ShizukuBridge(private val context: Context) {
             shellProcess = null
             Log.w(TAG, "the shell process did not answer: " + runCatching { started.errorStream.bufferedReader().readText().take(400) }.getOrDefault(""))
             return null
+        }
+        // What it writes goes nowhere, but is read all the same: a pipe nobody reads fills up and stops the process.
+        for (stream in listOf(started.inputStream, started.errorStream)) {
+            Thread({ runCatching { stream.copyTo(java.io.OutputStream.nullOutputStream()) } }, "tandem-shell-out").apply { isDaemon = true }.start()
         }
         binder = service
         return service

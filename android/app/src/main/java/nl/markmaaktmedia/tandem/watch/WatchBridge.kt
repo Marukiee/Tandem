@@ -170,6 +170,8 @@ class WatchBridge(
     private var restUntil = 0L
     /** The watch is online with another phone of the circle: this one does not offer itself to it meanwhile. */
     private var withOtherPhone = false
+    /** When the watch last paired with this phone: the other phone may say for a while yet that it has the watch. */
+    private var pairedAt = 0L
     private val endRest = Runnable {
         restUntil = 0L
         applyServer()
@@ -399,7 +401,9 @@ class WatchBridge(
      */
     private fun applyServer() {
         val now = _state.value
-        val resting = withOtherPhone || SystemClock.elapsedRealtime() < restUntil
+        val clock = SystemClock.elapsedRealtime()
+        val elsewhere = withOtherPhone && clock - pairedAt > JUST_PAIRED_MS
+        val resting = elsewhere || clock < restUntil
         if (active && !now.bluetoothOff && (now.pairingOpen || now.ready || !resting)) server?.start() else server?.stop()
     }
 
@@ -701,6 +705,7 @@ class WatchBridge(
     }
 
     override fun onPaired() {
+        pairedAt = SystemClock.elapsedRealtime()
         handler.removeCallbacks(pairingTimeout)
         alerted.clear()
         _state.update { it.copy(paired = true, pairingOpen = false, code = null) }
@@ -902,6 +907,8 @@ class WatchBridge(
         const val TAG = "TandemWatch"
         const val PAIRING_WINDOW_MS = 2 * 60_000L
         const val AUTH_WINDOW_MS = 30_000L
+        /** After pairing, how long the other phone may still say it has the watch: its status goes out a moment later. */
+        const val JUST_PAIRED_MS = 60_000L
         const val UNPAIR_FLUSH_MS = 500L
     }
 }
