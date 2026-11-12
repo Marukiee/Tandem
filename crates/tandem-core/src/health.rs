@@ -1,6 +1,7 @@
 //! Sleep and workouts measured by a watch. The watch hands them to its phone (`Engine::add_health_records`). The phone keeps them and
 //! passes them on to the devices the person chose, one by one (`DeviceSettings::health`, off until they say so): how someone slept is
-//! not for every Hub or shared computer in a circle.
+//! not for every Hub or shared computer in a circle. Another phone always gets them: the watch can go from one phone to the other, and
+//! what it measured stays the person's on the phone it is with now.
 //!
 //! Only the device that took a record from the watch passes it on. On every connection a device says how far it got with the records
 //! of the other one (`Msg::HealthHave`) and hears what came after. A device that may not have them any more is told to forget them
@@ -14,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use crate::engine::{Engine, Inner};
 use crate::error::Result;
 use crate::events::Event;
-use crate::ids::{DeviceId, now_ms};
+use crate::ids::{DeviceId, Platform, now_ms};
 use crate::proto::Msg;
 use crate::store::{DeviceSettings, Store};
 
@@ -227,10 +228,16 @@ impl Engine {
         Ok(())
     }
 
-    /// Whether `id` gets the nights and workouts of this device. On: it hears everything now. Off: it is told to forget them.
+    /// Whether `id` gets the nights and workouts of this device: another phone always, any other device when the person chose it.
+    pub fn health_allowed(&self, id: &DeviceId) -> bool {
+        self.inner.health_allowed(id)
+    }
+
+    /// Whether `id` gets the nights and workouts of this device. On: it hears everything now. Off: it is told to forget them. Another
+    /// phone keeps getting them either way.
     pub async fn set_health_allowed(&self, id: &DeviceId, on: bool) -> Result<()> {
         self.set_device_settings(id, DeviceSettings { health: on, ..self.device_settings(id) })?;
-        if !self.inner.health_peers().contains(id) {
+        if self.inner.phone_to_phone(id) || !self.inner.health_peers().contains(id) {
             return Ok(());
         }
         if on {
@@ -250,7 +257,7 @@ impl Inner {
     }
 
     pub(crate) async fn health_have(&self, from: DeviceId, newest: u64) {
-        if self.settings.read().unwrap().for_device(&from).health {
+        if self.health_allowed(&from) {
             let mine = self.health.lock().unwrap().mine_after(newest);
             self.health_send(&from, &mine).await;
         } else if newest > 0 {
@@ -299,9 +306,22 @@ impl Inner {
     }
 
     fn health_readers(&self) -> Vec<DeviceId> {
-        let settings = self.settings.read().unwrap().clone();
-        self.health_peers().into_iter().filter(|id| settings.for_device(id).health).collect()
+        self.health_peers().into_iter().filter(|id| self.health_allowed(id)).collect()
     }
+
+    pub(crate) fn health_allowed(&self, id: &DeviceId) -> bool {
+        self.settings.read().unwrap().for_device(id).health || self.phone_to_phone(id)
+    }
+
+    /// This device and `id` are both phones, by what the circle says, so also while `id` is away.
+    fn phone_to_phone(&self, id: &DeviceId) -> bool {
+        is_phone(self.cfg.platform) && self.circle.read().unwrap().member(id).is_some_and(|m| is_phone(m.platform))
+    }
+}
+
+/// A device a watch can be with.
+fn is_phone(platform: Platform) -> bool {
+    matches!(platform, Platform::Android | Platform::Ios)
 }
 
 #[cfg(test)]

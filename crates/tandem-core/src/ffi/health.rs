@@ -460,9 +460,9 @@ impl TandemEngine {
         self.runtime.spawn(async move { engine.add_health_records(records).await }).await.map_err(join_error)?.map_err(Into::into)
     }
 
-    /// Whether the device `id` gets the nights and workouts of this one. Off until the person turns it on.
+    /// Whether the device `id` gets the nights and workouts of this one: another phone always, any other device once the person turns it on.
     pub fn health_allowed(&self, id: String) -> bool {
-        DeviceId::parse(&id).map(|id| self.engine.device_settings(&id).health).unwrap_or(false)
+        DeviceId::parse(&id).map(|id| self.engine.health_allowed(&id)).unwrap_or(false)
     }
 
     /// On: `id` hears everything this device has. Off: it is told to forget them, now or when it is next connected.

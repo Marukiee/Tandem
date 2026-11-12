@@ -91,6 +91,7 @@ import nl.markmaaktmedia.tandem.ui.theme.PillShape
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import uniffi.tandem_core.TandemDevice
+import uniffi.tandem_core.TandemPlatform
 import uniffi.tandem_core.TandemHealthInsights
 import uniffi.tandem_core.TandemHealthKind
 import uniffi.tandem_core.TandemHealthRecord
@@ -111,6 +112,9 @@ internal fun rememberHealthAvailable(): Boolean {
     val shown by graph.prefs.healthShown.collectAsState(initial = false)
     return watch.paired || shown
 }
+
+/** A device a watch can be with: it gets the nights and workouts of this phone without a switch, as the core decides. */
+private fun TandemDevice.isPhone() = platform == TandemPlatform.ANDROID || platform == TandemPlatform.IOS
 
 /**
  * A night is sleep of at least three hours, as the core counts it; shorter sleep is a nap. The newest sleep of any length made a watch
@@ -843,13 +847,14 @@ private fun WorkoutRow(index: Int, total: Int, record: TandemHealthRecord) {
 
 /**
  * Which computers get the nights and workouts, all on the health page: the switch of each was only on the settings page of that computer,
- * where nobody looking at a Mac with an empty health page would think to look. Still off until the person turns it on.
+ * where nobody looking at a Mac with an empty health page would think to look. Still off until the person turns it on. Another phone
+ * always gets them (the watch can move to it), so it has no switch here.
  */
 @Composable
 internal fun HealthSharing() {
     val graph = LocalContext.current.graph
     val devices by graph.host.devices.collectAsState()
-    val computers = devices.filter { "health" in it.caps }
+    val computers = devices.filter { "health" in it.caps && !it.isPhone() }
     if (computers.isEmpty() || !rememberHealthAvailable()) return
     val engine = graph.host.engine
     val scope = rememberCoroutineScope()
@@ -1118,12 +1123,12 @@ internal fun duration(minutes: Int): String =
 
 /**
  * Whether [device] gets the nights and workouts: off until the person says so, because how someone slept is not for every computer
- * in a circle. Only shown on a phone that has any to give.
+ * in a circle. Only shown on a phone that has any to give, and not for another phone, which always gets them.
  */
 @Composable
 internal fun HealthDeviceSection(device: TandemDevice) {
     val graph = LocalContext.current.graph
-    if ("health" !in device.caps || !rememberHealthAvailable()) return
+    if ("health" !in device.caps || device.isPhone() || !rememberHealthAvailable()) return
     val engine = graph.host.engine
     val scope = rememberCoroutineScope()
     var allowed by remember(device.id) { mutableStateOf(engine?.healthAllowed(device.id) ?: false) }

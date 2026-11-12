@@ -7,7 +7,7 @@ use std::time::Duration;
 use tandem_core::health::{HealthKind, HealthRecord, SleepStage, StageRun};
 use tandem_core::platform::DesktopFiles;
 use tandem_core::store::{FileSecretStore, Store};
-use tandem_core::{Engine, EngineConfig};
+use tandem_core::{Engine, EngineConfig, Platform};
 
 struct Node {
     engine: Engine,
@@ -17,7 +17,12 @@ struct Node {
 }
 
 async fn start(data: &Path, downloads: &Path, name: &str) -> Engine {
+    start_as(data, downloads, name, Platform::MacOs).await
+}
+
+async fn start_as(data: &Path, downloads: &Path, name: &str, platform: Platform) -> Engine {
     let mut cfg = EngineConfig::new(data, name);
+    cfg.platform = platform;
     cfg.port = 0;
     cfg.enable_mdns = false;
     cfg.loopback = true;
@@ -27,9 +32,13 @@ async fn start(data: &Path, downloads: &Path, name: &str) -> Engine {
 }
 
 async fn node(name: &str) -> Node {
+    node_as(name, Platform::MacOs).await
+}
+
+async fn node_as(name: &str, platform: Platform) -> Node {
     let dir = tempfile::tempdir().unwrap();
     let (data, downloads) = (dir.path().join("data"), dir.path().join("downloads"));
-    let engine = start(&data, &downloads, name).await;
+    let engine = start_as(&data, &downloads, name, platform).await;
     Node { engine, data, downloads, _dir: dir }
 }
 
@@ -189,4 +198,34 @@ async fn a_device_that_was_away_catches_up_or_forgets() {
     mac.engine = start(&mac.data, &mac.downloads, "Mac").await;
     assert_eq!(mac.engine.health_records().len(), 131);
     wait_until("the mac forgot", || mac.engine.health_records().is_empty()).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_phones_of_a_watch_always_share_them() {
+    let first = node_as("Phone", Platform::Android).await;
+    let second = node_as("New phone", Platform::Android).await;
+    let mac = node("Mac").await;
+    pair(&first, &second).await;
+    pair(&first, &mac).await;
+    let (second_id, mac_id) = (second.engine.id(), mac.engine.id());
+    wait_until("the new phone and the mac see each other", || online(&second.engine, mac_id) && online(&mac.engine, second_id)).await;
+    assert!(first.engine.health_allowed(&second_id), "no switch between two phones");
+    assert!(!first.engine.health_allowed(&mac_id), "a computer still only when the person chose it");
+
+    // The watch was with the first phone, then goes to the new one: each keeps what the other measured.
+    first.engine.add_health_records(vec![night("before", 1000)]).await.unwrap();
+    wait_until("the new phone has the nights from before", || ids(&second.engine) == ["before"]).await;
+    second.engine.add_health_records(vec![night("after", 2000)]).await.unwrap();
+    wait_until("the first phone hears the new nights", || ids(&first.engine) == ["after", "before"]).await;
+
+    // Turning it off between two phones changes nothing.
+    first.engine.set_health_allowed(&second_id, false).await.unwrap();
+    settle().await;
+    assert_eq!(ids(&second.engine), ["after", "before"]);
+
+    // A phone only passes on what it measured itself: the mac hears the first phone's nights from that phone, once it is chosen there.
+    second.engine.set_health_allowed(&mac_id, true).await.unwrap();
+    wait_until("the mac hears the new phone", || ids(&mac.engine) == ["after"]).await;
+    settle().await;
+    assert_eq!(ids(&mac.engine), ["after"]);
 }
