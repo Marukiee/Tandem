@@ -9,7 +9,8 @@
       ],
       "fixed": [
         "The battery icon on the phone shows how full it is",
-        "The update card in the menu bar looks like the cards above it"
+        "The update card in the menu bar looks like the cards above it",
+        "A phone uses less battery while a computer is off"
       ]
     },
     "nl": {
@@ -19,7 +20,8 @@
       ],
       "fixed": [
         "Het batterij-icoon op de telefoon laat zien hoe vol hij is",
-        "De updatekaart in de menubalk ziet eruit als de kaarten erboven"
+        "De updatekaart in de menubalk ziet eruit als de kaarten erboven",
+        "Een telefoon gebruikt minder accu als een computer uit staat"
       ]
     }
   },

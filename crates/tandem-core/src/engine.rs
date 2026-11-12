@@ -96,6 +96,8 @@ pub(crate) struct Peer {
     pub hello: Option<Hello>,
     /// When this device was last seen announcing itself on the local network. Such a device is on the same network and needs no Tailscale.
     pub lan_seen: Option<Instant>,
+    /// The network changed: the next try goes to every address, whatever the back-off says about how many.
+    pub hurry: bool,
 }
 
 pub(crate) struct Inner {
@@ -139,6 +141,8 @@ pub(crate) struct Inner {
     pub last_announce_hour: AtomicU64,
     my_addresses: Mutex<Vec<std::net::IpAddr>>,
     said_back: Mutex<Option<Instant>>,
+    /// When the devices that are away were last (or will next be) tried because the network changed (see `hurry`).
+    last_hurry: Mutex<Option<Instant>>,
     pub ble: Mutex<crate::ble::BleHub>,
     pub audio: RwLock<Option<Arc<dyn AudioSink>>>,
     pub ble_msg_id: std::sync::atomic::AtomicU8,
@@ -233,6 +237,7 @@ impl Engine {
             last_announce_hour: AtomicU64::new(discovery::current_hour()),
             my_addresses: Mutex::new(Vec::new()),
             said_back: Mutex::new(None),
+            last_hurry: Mutex::new(None),
             ble: Mutex::new(Default::default()),
             audio: RwLock::new(None),
             ble_msg_id: std::sync::atomic::AtomicU8::new(0),
@@ -800,6 +805,7 @@ impl Inner {
                 status: Status::default(),
                 hello: None,
                 lan_seen: None,
+                hurry: false,
             });
         }
         let gone: Vec<DeviceId> = peers.keys().filter(|id| !wanted.contains(id)).copied().collect();
@@ -879,10 +885,29 @@ impl Inner {
     }
 
     pub fn network_changed(self: &Arc<Self>) {
+        self.hurry(false);
+    }
+
+    /// Has every device that is not connected tried soon, on all its addresses. The first change in a while also gives it a few quick
+    /// tries after that, for a network that is not quite up yet. One that keeps changing (a Wi-Fi that keeps trying, a VPN that
+    /// reconnects, the screen going on) leaves the back-off as it was, so the radio of a phone does not keep trying a computer that is
+    /// off; and a change soon after the last waits for `HURRY_GAP`. `at_once`: now, for a device that just joined.
+    pub(crate) fn hurry(self: &Arc<Self>, at_once: bool) {
+        let now = Instant::now();
+        let (at, quiet_before) = {
+            let mut last = self.last_hurry.lock().unwrap();
+            let quiet_before = at_once || last.is_none_or(|previous| now > previous + QUIET_NETWORK);
+            let at = hurry_at(*last, now, at_once);
+            *last = Some(at);
+            (at, quiet_before)
+        };
         let mut peers = self.peers.lock().unwrap();
-        for peer in peers.values_mut() {
-            peer.next_dial = Instant::now();
-            peer.fail_count = 0;
+        for peer in peers.values_mut().filter(|p| p.session.is_none()) {
+            peer.next_dial = peer.next_dial.min(at);
+            peer.hurry = true;
+            if quiet_before {
+                peer.fail_count = peer.fail_count.min(QUICK_TRIES);
+            }
         }
         drop(peers);
         self.probe_sessions();
@@ -981,7 +1006,8 @@ impl Inner {
     /// tried again at once.
     fn notice_new_addresses(self: &Arc<Self>) {
         let Ok(interfaces) = if_addrs::get_if_addrs() else { return };
-        let mut now: Vec<std::net::IpAddr> = interfaces.iter().filter(|i| !i.is_loopback()).map(|i| i.ip()).collect();
+        // A link-local address comes and goes with every attempt of a Wi-Fi to connect, and reaches no other device.
+        let mut now: Vec<std::net::IpAddr> = interfaces.iter().map(|i| i.ip()).filter(|ip| reaches_others(*ip)).collect();
         now.sort();
         let first = {
             let mut known = self.my_addresses.lock().unwrap();
@@ -1035,7 +1061,9 @@ impl Inner {
                 if peer.session.is_none() && !peer.dialing && now >= peer.next_dial && !peer.addrs.is_empty() {
                     peer.dialing = true;
                     peer.addrs.forget_old(now_ms());
-                    due.push((*id, peer.key, peer.addrs.ordered(), peer.fail_count));
+                    // After a change of network every address, as for a device that never failed.
+                    let fails = if std::mem::take(&mut peer.hurry) { 0 } else { peer.fail_count };
+                    due.push((*id, peer.key, peer.addrs.ordered(), fails));
                 }
             }
         }
@@ -1289,11 +1317,38 @@ fn backoff(failures: u32) -> Duration {
     let millis = match failures {
         0..=8 => ((1u64 << failures.min(5)) * 1000).min(30_000),
         9..=12 => 60_000,
-        _ => 300_000,
+        13..=20 => 300_000,
+        // Away for more than half an hour: a computer that is off, most of the time. It dials this device when it is back.
+        _ => 900_000,
     };
     // A little jitter so two devices retrying together do not keep colliding.
     let jitter = rand_u64() % (millis / 5 + 1);
     Duration::from_millis(millis + jitter)
+}
+
+/// See `Inner::hurry`.
+const HURRY_GAP: Duration = Duration::from_secs(30);
+/// A change of network after this long without one is a move to another network, not one that keeps changing.
+const QUIET_NETWORK: Duration = Duration::from_secs(600);
+/// The failures a move to another network leaves a device at: tries after half a minute and a minute, then the long waits again.
+const QUICK_TRIES: u32 = 6;
+
+/// When to try the devices that are away after a change of network, given when that last happened (or is about to).
+fn hurry_at(last: Option<Instant>, now: Instant, at_once: bool) -> Instant {
+    match last {
+        _ if at_once => now,
+        Some(planned) if now < planned => planned,
+        Some(previous) if now < previous + HURRY_GAP => previous + HURRY_GAP,
+        _ => now,
+    }
+}
+
+/// An address another device could reach this one on: not loopback, not link-local.
+fn reaches_others(ip: std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(v4) => !v4.is_loopback() && !v4.is_link_local(),
+        std::net::IpAddr::V6(v6) => !v6.is_loopback() && !v6.is_unicast_link_local(),
+    }
 }
 
 /// Each address that does not answer costs a few packets of more than a kilobyte. A device that stays away gets the best ones, and all of them
@@ -1314,6 +1369,32 @@ mod tests {
         assert!(backoff(10) >= Duration::from_secs(60));
         assert!(backoff(20) >= Duration::from_secs(300));
         assert!(backoff(20) <= Duration::from_secs(360));
+        assert!(backoff(30) >= Duration::from_secs(900));
+        assert!(backoff(30) <= Duration::from_secs(1080));
+    }
+
+    #[test]
+    fn a_network_that_keeps_changing_tries_the_devices_that_are_away_at_most_twice_a_minute() {
+        let start = Instant::now();
+        let gap = HURRY_GAP;
+        assert_eq!(hurry_at(None, start, false), start);
+        // A second change right after: once the gap is over, not now and not once more for each change in between.
+        assert_eq!(hurry_at(Some(start), start + Duration::from_secs(2), false), start + gap);
+        assert_eq!(hurry_at(Some(start + gap), start + Duration::from_secs(9), false), start + gap);
+        // Long after: at once again.
+        assert_eq!(hurry_at(Some(start), start + gap * 3, false), start + gap * 3);
+        // A device that just joined is tried at once all the same.
+        assert_eq!(hurry_at(Some(start), start + Duration::from_secs(2), true), start + Duration::from_secs(2));
+    }
+
+    #[test]
+    fn a_link_local_address_is_no_change_of_network() {
+        assert!(!reaches_others("fe80::1".parse().unwrap()));
+        assert!(!reaches_others("169.254.10.2".parse().unwrap()));
+        assert!(!reaches_others("127.0.0.1".parse().unwrap()));
+        assert!(reaches_others("192.168.1.20".parse().unwrap()));
+        assert!(reaches_others("100.101.102.103".parse().unwrap()));
+        assert!(reaches_others("2a02:a46a::1".parse().unwrap()));
     }
 
     #[test]

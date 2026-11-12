@@ -300,7 +300,7 @@ impl Inner {
         self.emit(Event::Paired { id: their_id });
         self.emit(Event::CircleChanged);
         self.emit(Event::DevicesChanged);
-        self.network_changed();
+        self.hurry(true);
     }
 
     async fn run_join(
