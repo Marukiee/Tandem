@@ -1,5 +1,21 @@
 [
   {
+    "version": "0.3.15",
+    "date": "2026-11-12",
+    "en": {
+      "title": "Battery as it is",
+      "fixed": [
+        "The battery icon on the phone shows how full it is"
+      ]
+    },
+    "nl": {
+      "title": "Batterij zoals hij is",
+      "fixed": [
+        "Het batterij-icoon op de telefoon laat zien hoe vol hij is"
+      ]
+    }
+  },
+  {
     "version": "0.3.14",
     "date": "2026-11-12",
     "en": {

@@ -46,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -432,6 +433,28 @@ fun ArrivingBattery(battery: TandemBattery?, content: @Composable (TandemBattery
     }
 }
 
+/**
+ * A battery as full as it is: the outline of the battery symbol with what is left filled from the bottom, so a watch at 4% does not look
+ * full. The fill moves when the level changes.
+ */
+@Composable
+private fun BatteryLevelIcon(level: Int, tint: Color, modifier: Modifier = Modifier) {
+    val fill by animateFloatAsState(level.coerceIn(0, 100) / 100f, TandemMotion.spatial(), label = "batteryLevel")
+    Canvas(modifier) {
+        // In the units of the symbol it stands in for: 960 across, the body from 280 to 680 and from 160 to 880.
+        val u = size.minDimension / 960f
+        val stroke = 72f * u
+        drawRoundRect(tint, Offset(400f * u, 80f * u), Size(160f * u, 100f * u), CornerRadius(30f * u))
+        drawRoundRect(
+            tint, Offset(280f * u + stroke / 2, 160f * u + stroke / 2), Size(400f * u - stroke, 720f * u - stroke),
+            CornerRadius(40f * u), style = Stroke(stroke),
+        )
+        val bottom = 880f * u - stroke
+        val height = (bottom - (160f * u + stroke)) * fill
+        drawRect(tint, Offset(280f * u + stroke, bottom - height), Size(400f * u - 2 * stroke, height))
+    }
+}
+
 /** A compact percentage with a bolt while charging, for list rows. */
 @Composable
 fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier, connected: Boolean = true) {
@@ -471,11 +494,11 @@ fun BatteryBadge(battery: TandemBattery, modifier: Modifier = Modifier, connecte
             transitionSpec = { (scaleIn(TandemMotion.bouncy(), initialScale = 0.3f) + fadeIn()) togetherWith (scaleOut(TandemMotion.spatial(), targetScale = 0.3f) + fadeOut()) },
             label = "batteryIcon",
         ) { charging ->
-            Icon(
-                if (charging) TandemIcons.Bolt else TandemIcons.Battery, null,
-                modifier = Modifier.size(15.dp),
-                tint = content,
-            )
+            if (charging) {
+                Icon(TandemIcons.Bolt, null, modifier = Modifier.size(15.dp), tint = content)
+            } else {
+                BatteryLevelIcon(level, content, Modifier.size(15.dp))
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             RollingNumber(level, style = MaterialTheme.typography.labelMedium, color = content)
