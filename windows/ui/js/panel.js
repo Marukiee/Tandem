@@ -2,7 +2,7 @@
 import { html, render, useEffect, useRef } from "../vendor/preact-htm.js";
 import { call, connect, native } from "./backend.js";
 import { BatteryCard, batteryList } from "./batteries.js";
-import { DeviceGlyph, PlayerCard, fmtSize } from "./components.js";
+import { DeviceGlyph, PlayerCard, fmtSize, watchPhoneId } from "./components.js";
 import { Icon } from "./icons.js";
 import { setLanguage, t } from "./i18n.js";
 import { say, set, state, useStore } from "./store.js";
@@ -101,7 +101,7 @@ function Panel() {
       <div class="prog"><i style=${`width:${x.total ? Math.round((x.done / x.total) * 100) : 0}%`}></i></div>
     </div>`)}
 
-    ${state.devices.map((d) => html`<${Row} device=${d} key=${d.id} />${d.status && d.status.watch && d.status.watch.paired && html`<${WatchRow} phone=${d} key=${d.id + "-watch"} />`}`)}
+    ${state.devices.map((d) => html`<${Row} device=${d} key=${d.id} />${d.id === watchPhoneId(state.devices) && html`<${WatchRow} phone=${d} key=${d.id + "-watch"} />`}`)}
 
     ${playing && html`<div class="card"><${PlayerCard} device=${playing.device} player=${playing.player} compact=${true} /></div>`}
 

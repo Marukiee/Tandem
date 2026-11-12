@@ -70,8 +70,13 @@ import nl.markmaaktmedia.tandem.wifi.wifiOfferItem
 import uniffi.tandem_core.TandemBattery
 import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemPlatform
+import uniffi.tandem_core.TandemWatchSettingsChange
+import uniffi.tandem_core.TandemWatchStatus
 
-/** A card on the first page: a device in the circle, or the watch, which only ever talks to this phone and so is not in the circle. */
+/**
+ * A card on the first page: a device in the circle, the watch of this phone (which is not in the circle itself), or the watch of
+ * another phone in the circle, which sits right under that phone.
+ */
 private sealed interface HomeCard {
     val id: String
 
@@ -81,6 +86,10 @@ private sealed interface HomeCard {
 
     data object Watch : HomeCard {
         override val id get() = "watch"
+    }
+
+    data class RemoteWatch(val phone: TandemDevice, val watch: TandemWatchStatus) : HomeCard {
+        override val id get() = "watch@" + phone.id
     }
 }
 
@@ -118,27 +127,42 @@ fun DevicesScreen(
     val watchState by watch.state.collectAsState()
     val watchName = watchState.name ?: stringResource(R.string.settings_cat_watch)
 
-    val online = devices.count { it.online } + if (watchState.ready) 1 else 0
+    // One watch card: a watch that moved to another phone is still "paired" on the phone it left.
+    val watchPick = pickWatch(
+        watchState.paired, watchState.ready,
+        devices.mapNotNull { d -> d.status.watch?.takeIf { it.paired }?.let { WatchHolder(d.id, d.online && it.online) } },
+    )
+    val watchPhone = (watchPick as? WatchPick.Remote)?.let { pick -> devices.firstOrNull { it.id == pick.phone } }
+    val online = devices.count { it.online } + when (watchPick) {
+        WatchPick.Local -> if (watchState.ready) 1 else 0
+        is WatchPick.Remote -> if (watchPhone?.online == true && watchPhone.status.watch?.online == true) 1 else 0
+        WatchPick.None -> 0
+    }
     val prefs = context.graph.prefs
     val pinned by prefs.pinnedDevices.collectAsState(initial = emptySet())
     val togglePin: (HomeCard) -> Unit = { card -> scope.launch { prefs.setPinned(card.id, card.id !in pinned) } }
-    val ordered = androidx.compose.runtime.remember(devices, pinned, watchState.paired, watchState.ready, watchName) {
-        val cards: List<HomeCard> = devices.map { HomeCard.Device(it) } + listOfNotNull(HomeCard.Watch.takeIf { watchState.paired })
-        orderDevices(
+    val ordered = androidx.compose.runtime.remember(devices, pinned, watchPick, watchName) {
+        val cards: List<HomeCard> = devices.map { HomeCard.Device(it) } + listOfNotNull(HomeCard.Watch.takeIf { watchPick == WatchPick.Local })
+        val sorted = orderDevices(
             cards, pinned, id = { it.id },
             name = { card ->
                 when (card) {
                     is HomeCard.Device -> card.device.name
                     HomeCard.Watch -> watchName
+                    is HomeCard.RemoteWatch -> card.watch.name ?: watchName
                 }
             },
             reach = { card ->
                 when (card) {
                     is HomeCard.Device -> card.device.let { if (it.online) 0 else if (it.ble) 1 else if (it.status.asleep == true) 2 else 3 }
                     HomeCard.Watch -> if (watchState.ready) 0 else 3
+                    is HomeCard.RemoteWatch -> 0
                 }
             },
         )
+        // The watch of another phone goes right under that phone, whatever the order.
+        val remote = watchPhone?.let { phone -> phone.status.watch?.let { HomeCard.RemoteWatch(phone, it) } }
+        if (remote == null) sorted else sorted.flatMap { if (it.id == remote.phone.id) listOf(it, remote) else listOf(it) }
     }
     LazyColumn(
         modifier = modifier.fillMaxSize().statusBarsPadding(),
@@ -195,6 +219,20 @@ fun DevicesScreen(
         }
 
         items(ordered, key = { it.id }) { card ->
+          // Under its phone, so it is not pinned on its own.
+          if (card is HomeCard.RemoteWatch) {
+            RemoteWatchCard(
+                phone = card.phone,
+                watch = card.watch,
+                modifier = Modifier.animateItem(),
+                onOpen = { onOpenDevice(card.phone.id) },
+                onRing = { scope.launch { runCatching { host.engine?.ringWatch(card.phone.id, !card.watch.ringing) } } },
+                onSmartWake = { on ->
+                    scope.launch { runCatching { host.engine?.setWatchSettings(card.phone.id, TandemWatchSettingsChange(smartWake = on)) } }
+                },
+            )
+            return@items
+          }
           // The swipe is keyed on the id, so a status update does not reset a swipe that is under way.
           SwipeToPin(
             item = card,
@@ -239,6 +277,7 @@ fun DevicesScreen(
                     onRing = { watch.ringWatch(!watchState.ringing) },
                     onHealth = { part -> onOpenRoute(Route.HealthDetail(part)) },
                 )
+                is HomeCard.RemoteWatch -> Unit
             }
           }
         }
@@ -325,6 +364,68 @@ private fun WatchCard(
             }
             TogglePill(if (smartWake) TandemIcons.Check else TandemIcons.Schedule, stringResource(R.string.health_smart_wake_short), smartWake) {
                 scope.launch { graph.prefs.setSmartWake(!smartWake) }
+            }
+        }
+    }
+}
+
+/**
+ * The watch of another phone in the circle, like [WatchCard] but with only what that phone tells: how it is, its battery, its sound
+ * and waking gently. Tap opens the page of that phone, which has its watch too.
+ */
+@Composable
+private fun RemoteWatchCard(
+    phone: TandemDevice,
+    watch: TandemWatchStatus,
+    onOpen: () -> Unit,
+    onRing: () -> Unit,
+    onSmartWake: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val here = phone.online && watch.online
+    val settings = watch.settings?.takeIf { phone.online }
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(CardSquircle)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .bouncyClickable(onClick = onOpen)
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            DeviceGlyph(TandemPlatform.OTHER, here, pickedIcon = DeviceIconChoice.Watch.key)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(watch.name ?: stringResource(R.string.settings_cat_watch), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    PresenceDot(here)
+                    Text(
+                        when {
+                            here -> listOf(stringResource(R.string.status_online), stringResource(R.string.watch_via, phone.name)).joinToString(" · ")
+                            phone.online && watch.bluetoothOff -> stringResource(R.string.watch_bluetooth_off_on, phone.name)
+                            else -> stringResource(R.string.watch_away_from, phone.name)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            val battery = watch.level?.let { TandemBattery(it, watch.charging, false) }
+            ArrivingBattery(battery) { BatteryBadge(it, connected = here) }
+        }
+        if (here || settings != null) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (here) {
+                    QuickAction(TandemIcons.Ring, stringResource(if (watch.ringing) R.string.find_stop_sound else R.string.find_play), onRing)
+                }
+                if (settings != null) {
+                    TogglePill(
+                        if (settings.smartWake) TandemIcons.Check else TandemIcons.Schedule, stringResource(R.string.health_smart_wake_short),
+                        settings.smartWake,
+                    ) { onSmartWake(!settings.smartWake) }
+                }
             }
         }
     }

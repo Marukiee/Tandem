@@ -52,7 +52,7 @@ struct MenuBarPanel: View {
                 MenuDeviceRow(device: device)
                 if device.id == hotspotFrom { hotspot }
                 // The watch of a phone right under it, as the device of its own it is on the other pages.
-                if device.status.watch?.paired == true { MenuWatchRow(phone: device) }
+                if device.id == model.watchPhoneID { MenuWatchRow(phone: device) }
             }
             if model.hotspotStatus != .idle && !hotspotUnder { hotspot }
             if !reachable.isEmpty && !away.isEmpty {

@@ -14,3 +14,25 @@ fun <T> orderDevices(items: List<T>, pinned: Set<String>, id: (T) -> String, rea
             .thenBy { reach(it) }
             .thenBy { name(it).lowercase() },
     )
+
+/** A phone in the circle that says it has a watch, and whether that watch is with it now (only true while the phone is connected). */
+internal data class WatchHolder(val phone: String, val online: Boolean)
+
+/** The one watch card the first page shows: the watch of this phone, the watch of another phone in the circle, or none. */
+internal sealed interface WatchPick {
+    data object Local : WatchPick
+    data class Remote(val phone: String) : WatchPick
+    data object None : WatchPick
+}
+
+/**
+ * A watch talks to one phone at a time, but the phone it left still says it has one, only not connected. So there is one card for it:
+ * where it is connected now, and else the one of this phone, so its settings stay in reach.
+ */
+internal fun pickWatch(localPaired: Boolean, localReady: Boolean, others: List<WatchHolder>): WatchPick = when {
+    localPaired && localReady -> WatchPick.Local
+    others.any { it.online } -> WatchPick.Remote(others.first { it.online }.phone)
+    localPaired -> WatchPick.Local
+    others.isNotEmpty() -> WatchPick.Remote(others.first().phone)
+    else -> WatchPick.None
+}

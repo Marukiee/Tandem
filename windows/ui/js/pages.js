@@ -2,7 +2,7 @@
 import { html, useEffect, useRef, useState } from "../vendor/preact-htm.js";
 import { call, listen, native } from "./backend.js";
 import { ArrangementEditor } from "./arrange.js";
-import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, fmtSize, platformIcon } from "./components.js";
+import { BatteryRing, Chip, DeviceGlyph, HeadPlayers, Switch, ago, deviceChips, fmtSize, platformIcon, watchPhoneId } from "./components.js";
 import { Icon } from "./icons.js";
 import { FindSoundRow, LastSeen, PlaySoundButton } from "./find.js";
 import { MicButton, OutputButton } from "./output.js";
@@ -1346,7 +1346,7 @@ function healthShown() {
  * Kept on the phone that has the watch, which passes it on.
  */
 function HealthChoices() {
-  const device = (state.devices || []).find((d) => d.status?.watch?.paired && d.status.watch.settings);
+  const device = (state.devices || []).find((d) => d.id === watchPhoneId(state.devices) && d.status.watch.settings);
   const [wanted, setWanted] = useState({});
   const settings = device && device.status.watch.settings;
   useEffect(() => setWanted({}), [JSON.stringify(settings)]);

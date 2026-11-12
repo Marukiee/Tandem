@@ -5,6 +5,16 @@ import { Icon } from "./icons.js";
 import { t } from "./i18n.js";
 import { state } from "./store.js";
 
+/**
+ * The phone whose watch is shown. A watch talks to one phone at a time, but the phone it left still says it has one, only not
+ * connected: so the phone it is with now, else a phone that is connected, else the first that has one.
+ */
+export function watchPhoneId(devices) {
+  const holders = (devices || []).filter((d) => d.status && d.status.watch && d.status.watch.paired);
+  const pick = holders.find((d) => d.online && d.status.watch.online) || holders.find((d) => d.online) || holders[0];
+  return pick ? pick.id : null;
+}
+
 export const platformIcon = (platform) =>
   ({ android: "device-mobile", ios: "device-mobile", macos: "device-laptop", windows: "device-desktop", linux: "device-desktop" })[platform] || "devices";
 

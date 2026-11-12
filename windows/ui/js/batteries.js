@@ -3,7 +3,7 @@
 // program like Tandem can add (see docs/PARITY.md), so the rings live in the panel above the tray icon. On the charger the icon is green, and
 // while a device plays something a soft shape turns behind its icon, as on Android.
 import { html } from "../vendor/preact-htm.js";
-import { platformIcon } from "./components.js";
+import { platformIcon, watchPhoneId } from "./components.js";
 import { Icon } from "./icons.js";
 import { t } from "./i18n.js";
 
@@ -29,7 +29,7 @@ export function batteryList(self, devices, players = {}) {
     .sort((a, b) => Number(a.away) - Number(b.away) || a.name.localeCompare(b.name));
   // A watch only talks to its phone, so a click opens that phone. Its id is its own, because the rings are told apart by it.
   const watches = devices
-    .filter((d) => d.status && d.status.watch && d.status.watch.paired && d.status.watch.level != null)
+    .filter((d) => d.id === watchPhoneId(devices) && d.status.watch.level != null)
     .map((d) => ({ id: d.id + ":watch", device: d.id, name: t("watch"), icon: "device-watch", level: d.status.watch.level, charging: d.status.watch.charging, away: !d.online || !d.status.watch.online }));
   return list.concat(others, watches);
 }

@@ -554,6 +554,9 @@
     <string name="watch_battery_charging">Batterij %1$d%%, laadt op</string>
     <string name="watch_find_sub">Gaat ook over als het horloge op stil staat</string>
     <string name="watch_not_connected">Het horloge is niet verbonden</string>
+    <string name="watch_via">Via %1$s</string>
+    <string name="watch_away_from">Niet bij %1$s</string>
+    <string name="watch_bluetooth_off_on">Bluetooth staat uit op %1$s</string>
     <string name="watch_needs_listener">Sta toegang tot meldingen toe</string>
     <string name="watch_needs_listener_sub">Zonder dat komen er geen meldingen of muziek op het horloge</string>
     <string name="watch_mouse">Gebruik het horloge als muis</string>

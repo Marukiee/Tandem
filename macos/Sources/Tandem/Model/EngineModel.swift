@@ -42,6 +42,14 @@ final class EngineModel {
     static let shared = EngineModel()
 
     var devices: [TandemDevice] = []
+
+    /// The phone whose watch is shown. A watch talks to one phone at a time, but the phone it left still says it has one, only not
+    /// connected: so the phone it is with now, else a phone that is connected, else the first that has one.
+    var watchPhoneID: String? {
+        let holders = devices.filter { $0.status.watch?.paired == true }
+        return (holders.first { $0.online && $0.status.watch?.online == true } ?? holders.first { $0.online } ?? holders.first)?.id
+    }
+
     var healthRecords: [TandemHealthRecord] = []
     var healthInsights: TandemHealthInsights?
     /// Made up records of the debug health window: with these, a range is summed from them instead of from what this Mac keeps.

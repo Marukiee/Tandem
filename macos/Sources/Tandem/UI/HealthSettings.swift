@@ -27,7 +27,7 @@ struct HealthSettingsContent: View {
     private var hasWatch: Bool { model.devices.contains { $0.status.watch?.paired == true } }
     private var records: [TandemHealthRecord] { model.healthRecords.filter { $0.kind == .sleep || $0.kind == .workout } }
     private var emptyText: String {
-        let phone = model.devices.first { $0.status.watch?.paired == true }?.name ?? String(localized: "your phone")
+        let phone = model.devices.first { $0.id == model.watchPhoneID }?.name ?? String(localized: "your phone")
         return String(localized: "Nothing here yet. Turn on this Mac on \(phone): Tandem, Health, Share with your computers.")
     }
 
@@ -141,7 +141,7 @@ private struct HealthChoicesCard: View {
     @State private var editingGoal = false
     @State private var draft = 0
 
-    private var phone: TandemDevice? { model.devices.first { $0.status.watch?.paired == true && $0.status.watch?.settings != nil } }
+    private var phone: TandemDevice? { model.devices.first { $0.id == model.watchPhoneID && $0.status.watch?.settings != nil } }
 
     var body: some View {
         if let phone, let settings = phone.status.watch?.settings {

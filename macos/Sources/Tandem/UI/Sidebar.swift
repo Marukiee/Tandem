@@ -32,7 +32,7 @@ struct Sidebar: View {
 
     private var order: [SidebarSelection] {
         model.devices.flatMap { device -> [SidebarSelection] in
-            device.status.watch?.paired == true ? [.device(device.id), .watch(device.id)] : [.device(device.id)]
+            device.id == model.watchPhoneID ? [.device(device.id), .watch(device.id)] : [.device(device.id)]
         } + [.shared] + phones.map { .messages($0.id) } + [.notifications, .clipboard]
     }
 
@@ -59,7 +59,7 @@ struct Sidebar: View {
                         DeviceRow(device: device)
                     }
                     // The watch only talks to this phone, but it is a device of its own: its page goes by way of the phone.
-                    if let watch = device.status.watch, watch.paired {
+                    if device.id == model.watchPhoneID, let watch = device.status.watch {
                         SidebarButton(selected: selection == .watch(device.id) || selection == .health(device.id), chosen: chosen) {
                             selection = .watch(device.id)
                         } content: {

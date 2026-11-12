@@ -1,5 +1,27 @@
 [
   {
+    "version": "0.3.14",
+    "date": "2026-11-12",
+    "en": {
+      "title": "One watch",
+      "new": [
+        "The watch of your other phone is on this phone too, right under that phone, with its sound and waking gently"
+      ],
+      "fixed": [
+        "A watch that moved to another phone shows once, with the phone it is with now, also on the Mac and the computers"
+      ]
+    },
+    "nl": {
+      "title": "Eén horloge",
+      "new": [
+        "Het horloge van je andere telefoon staat ook op deze telefoon, direct onder die telefoon, met zijn geluid en zacht wakker worden"
+      ],
+      "fixed": [
+        "Een horloge dat naar een andere telefoon ging staat er nog één keer, bij de telefoon waar het nu bij is, ook op de Mac en de computers"
+      ]
+    }
+  },
+  {
     "version": "0.3.13",
     "date": "2026-11-12",
     "en": {

@@ -557,6 +557,9 @@
     <string name="watch_battery_charging">Battery %1$d%%, charging</string>
     <string name="watch_find_sub">Rings even when the watch is on silent</string>
     <string name="watch_not_connected">The watch is not connected</string>
+    <string name="watch_via">Via %1$s</string>
+    <string name="watch_away_from">Not with %1$s</string>
+    <string name="watch_bluetooth_off_on">Bluetooth is off on %1$s</string>
     <string name="watch_needs_listener">Allow notification access</string>
     <string name="watch_needs_listener_sub">Without it no notifications or music reach the watch</string>
     <string name="watch_mouse">Use the watch as a mouse</string>

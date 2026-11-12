@@ -1,7 +1,7 @@
 // The main window: the devices on the left, a page on the right.
 import { html, render, useEffect, useState } from "../vendor/preact-htm.js";
 import { call, connect, listenDrops, native } from "./backend.js";
-import { DeviceGlyph, platformIcon } from "./components.js";
+import { DeviceGlyph, platformIcon, watchPhoneId } from "./components.js";
 import { Icon } from "./icons.js";
 import { ResizeEdges, Titlebar, framed } from "./chrome.js";
 import { setLanguage, t } from "./i18n.js";
@@ -15,7 +15,7 @@ import { TourPage, maybeShowTour } from "./tour.js";
 // The watch only talks to its phone, but it is a device of its own: its page goes by way of the phone.
 function watchRow(d) {
   const watch = d.status && d.status.watch;
-  if (!watch || !watch.paired) return null;
+  if (!watch || !watch.paired || d.id !== watchPhoneId(state.devices)) return null;
   const reachable = d.online && watch.online;
   const on = (state.page === "watch" || state.page === "health") && state.selected === d.id;
   return html`<div class=${"row" + (on ? " selected" : "") + (reachable ? "" : " dim")} key=${d.id + "-watch"} onClick=${() => set({ selected: d.id, page: "watch" })}>
