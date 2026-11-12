@@ -68,4 +68,16 @@
     <string name="screen_locked_body_windows">Een vergrendelde computer laat andere apps niets zien. Ontgrendel %1$s daar en probeer het opnieuw.</string>
     <string name="screen_unavailable_body_mac">Tandem op %1$s kan zijn scherm nog niet tonen. Zet op die Mac Schermopname en Toegankelijkheid aan voor Tandem, in Systeeminstellingen bij Privacy en beveiliging.</string>
     <string name="screen_unavailable_body_linux">Tandem op %1$s kan zijn scherm nog niet tonen. Beantwoord op die computer de vraag van het bureaublad over scherm delen, en probeer het opnieuw.</string>
+    <string name="tile_phone_screen">Scherm zien en bedienen</string>
+    <string name="phone_screen_sub_ready">Het scherm hier, live: tik, veeg en typ erop</string>
+    <string name="phone_screen_sub_view">Kijken kan. Aanraken vraagt toegankelijkheid op die telefoon</string>
+    <string name="phone_screen_sub_unavailable">Tandem op die telefoon kan zijn scherm niet delen</string>
+    <string name="phone_screen_why_unavailable">Tandem op %1$s kan zijn scherm nog niet delen. Werk het daar bij.</string>
+    <string name="offline_phone_screen">De telefoon moet verbonden zijn om zijn scherm te zien</string>
+    <string name="phone_nav_back">Terug</string>
+    <string name="phone_nav_home">Startscherm</string>
+    <string name="phone_nav_recents">Recente apps</string>
+    <string name="phone_touch_why_access">Zet toegankelijkheid voor Tandem aan op %1$s om hem aan te raken</string>
+    <string name="phone_touch_why_policy">%1$s laat je alleen kijken. Sta daar Klikken en typen toe</string>
+    <string name="screen_denied_body_phone">Het werd niet toegestaan op %1$s. Vraag het opnieuw en kies daar Toestaan.</string>
 </resources>

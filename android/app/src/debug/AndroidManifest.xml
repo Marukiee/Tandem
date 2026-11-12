@@ -15,5 +15,7 @@
         <receiver android:name="nl.markmaaktmedia.tandem.widget.WidgetSelfCheck" android:exported="true" />
         <!-- Debug builds only: types as the keyboard of a computer does with the shared mouse (see TypeSelfCheck). -->
         <receiver android:name="nl.markmaaktmedia.tandem.live.TypeSelfCheck" android:exported="true" />
+        <!-- Debug builds only: tells one emulator where another is, which they cannot find themselves (see PeerAddressCheck). -->
+        <receiver android:name="nl.markmaaktmedia.tandem.engine.PeerAddressCheck" android:exported="true" />
     </application>
 </manifest>

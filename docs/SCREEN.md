@@ -366,6 +366,30 @@ a scroll is a swipe in the direction of the content, text goes into the focused 
 Capabilities: `screen.host` (can share its screen), `screen.control` (a Mac that has Accessibility on, so a phone can click),
 `screen.view` (can show another device's screen), `camera.host`, `camera.view`.
 
+## Android als kijker van een andere telefoon
+
+Op de pagina van een andere telefoon staat bij Bediening de rij "Scherm zien en bedienen" (`ControlPhoneRow`). Hij is er altijd: grijs als die
+telefoon weg is of zijn scherm niet kan delen (een tik zegt waarom), en met de knop die toegankelijkheid daar opent als die uit staat. De kijker is
+die van een computer (`ScreenViewerScreen`), in een stand voor een telefoon (`platform == ANDROID`, dus ook na een `MediaOffer` van die telefoon):
+
+- De vinger is een vinger daar (`FingerGestures`): bij aanraken meteen `PointerAbs` en knop 0 omlaag, bij bewegen `PointerAbs` (pas buiten de
+  slop), bij loslaten knop 0 omhoog. `RemoteInput` speelt dat als een aanraking die doorgaat, dus tikken, lang drukken, vegen en slepen zijn wat ze
+  op het scherm zelf zijn. Een tweede vinger doet niets (een tik met twee vingers zou daar Terug zijn), een aanraking naast het beeld ook niet.
+- Onder het beeld Terug, Startscherm en Recente apps: knop 1, 2 en 3, wat een Mac ook stuurt. Het beeld staat tussen de balk en die knoppen, zodat
+  geen van beide de statusbalk of de onderkant van een app bedekt. Geen schakelaar voor trackpad of aanraken, en het toetsenbord is alleen het
+  tekstveld: de toetsen eronder doen niets op een telefoon.
+- Zolang de telefoon geen bediening geeft (toegankelijkheid uit, of Klikken en typen op Nooit) zijn de knoppen en het toetsenbord grijs, en zegt een
+  tik waarom. Gaat toegankelijkheid daar aan, dan werkt het meteen (`MediaUpdate` met `control`).
+- Een druk neemt zijn plek mee: de kern stuurt de laatste `PointerAbs` die als datagram ging nog eens over de stroom, vlak voor de `Button`
+  (`loose_pointer`, `tests/live_touch.rs`). Datagrammen halen de stroom in of raken kwijt; op loopback kwamen alle posities van een veeg voor de
+  druk aan, en dan ging een tik naar de plek waar de vinger eindigde.
+- `RemoteInput` rekent met de echte maat van het scherm, zoals de opname, en niet met de maat van de resources.
+
+Gezien tussen twee emulators (Android 16), gekoppeld over hun gedeelde wifi (10.0.2.16 en 10.0.2.17; `PeerAddressCheck --ez offer true` zet een
+koppellink in de log): beeld, tikken, vegen, lang drukken, typen, Terug, Startscherm en Recente apps, toegankelijkheid aan en uit tijdens het kijken,
+en de grijze rij als de andere telefoon weg is. Letters die sneller binnenkomen dan iemand typt (`adb shell input text`) raken op de andere telefoon
+door elkaar, omdat het veld daar zijn nieuwe tekst nog niet terugmeldt; letter voor letter en woord voor woord gaat het goed.
+
 ## Een tweede scherm (0.1.80)
 
 Een apparaat kan een computer vragen om een scherm van zichzelf te maken en dat als tweede scherm te gebruiken: niet een kijkje op het scherm dat

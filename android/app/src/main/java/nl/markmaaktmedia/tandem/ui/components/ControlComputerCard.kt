@@ -89,6 +89,57 @@ fun ControlComputerRow(index: Int, total: Int, device: TandemDevice, onOpen: () 
     }
 }
 
+/**
+ * Seeing and controlling another phone from this one, as a row of the group "Control" on the page of that phone. Always there: grey while
+ * it cannot work, and a tap says why. Looking works without the accessibility service there; touching needs it, and what turns it on
+ * there is under the row.
+ */
+@Composable
+fun ControlPhoneRow(index: Int, total: Int, device: TandemDevice, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    val scheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
+    val hosts = "screen.host" in device.caps
+    val ready = device.online && hosts
+    val noTouch = device.missing("control")
+    val subtitle = stringResource(
+        when {
+            !device.online -> R.string.control_sub_offline
+            !hosts -> R.string.phone_screen_sub_unavailable
+            noTouch != null -> R.string.phone_screen_sub_view
+            else -> R.string.phone_screen_sub_ready
+        },
+    )
+    val why = when {
+        ready -> null
+        !device.online -> context.getString(R.string.offline_phone_screen)
+        else -> context.getString(R.string.phone_screen_why_unavailable, device.name)
+    }
+    GroupedRow(
+        index, total, modifier = modifier,
+        onClick = if (why == null) onOpen else { { android.widget.Toast.makeText(context, why, android.widget.Toast.LENGTH_SHORT).show() } },
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            RowIcon(
+                TandemIcons.Phone,
+                tint = if (ready) scheme.onSecondaryContainer else scheme.onSurfaceVariant.copy(alpha = 0.6f),
+                container = if (ready) scheme.secondaryContainer else scheme.surfaceContainerHighest,
+            )
+            Column(Modifier.weight(1f).alpha(if (ready) 1f else 0.6f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(R.string.tile_phone_screen), style = MaterialTheme.typography.titleSmall)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+            }
+            if (ready) Icon(TandemIcons.ChevronRight, null, tint = scheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        }
+        if (ready && noTouch != null) {
+            nl.markmaaktmedia.tandem.ui.screens.FeatureFix(device, noTouch, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp))
+        }
+    }
+}
+
 /** One row of the group "Control" on the page of a device: grey and without a chevron while it cannot be used. */
 @Composable
 fun ControlRow(

@@ -29,8 +29,18 @@ class RemoteInput(private val context: Context) {
     private var downY = 0f
     private var downAt = 0L
 
-    private val width get() = context.resources.displayMetrics.widthPixels.toFloat()
-    private val height get() = context.resources.displayMetrics.heightPixels.toFloat()
+    // The whole screen, as the capture has it (`ScreenPipeline.realSize`): the size the resources give can leave out the bars of the system,
+    // and a position on the picture then landed above where it was meant to.
+    private val displays = context.getSystemService(android.hardware.display.DisplayManager::class.java)
+    private val real = android.util.DisplayMetrics()
+    private val width get() = realMetrics().widthPixels.toFloat()
+    private val height get() = realMetrics().heightPixels.toFloat()
+
+    @Suppress("DEPRECATION")
+    private fun realMetrics(): android.util.DisplayMetrics {
+        displays.getDisplay(android.view.Display.DEFAULT_DISPLAY)?.getRealMetrics(real) ?: return context.resources.displayMetrics
+        return real
+    }
 
     private val main = Handler(Looper.getMainLooper())
 

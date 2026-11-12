@@ -68,4 +68,16 @@
     <string name="screen_locked_body_windows">A locked computer shows nothing to other apps. Unlock %1$s there and try again.</string>
     <string name="screen_unavailable_body_mac">Tandem on %1$s cannot show its screen yet. On that Mac, turn on Screen Recording and Accessibility for Tandem, in System Settings under Privacy &amp; Security.</string>
     <string name="screen_unavailable_body_linux">Tandem on %1$s cannot show its screen yet. On that computer, answer the question of the desktop about sharing the screen, and try again.</string>
+    <string name="tile_phone_screen">See and control its screen</string>
+    <string name="phone_screen_sub_ready">Its screen here, live: tap, swipe and type on it</string>
+    <string name="phone_screen_sub_view">You can look. Touching needs accessibility on that phone</string>
+    <string name="phone_screen_sub_unavailable">Tandem on that phone cannot share its screen</string>
+    <string name="phone_screen_why_unavailable">Tandem on %1$s cannot share its screen yet. Update it there.</string>
+    <string name="offline_phone_screen">The phone has to be online to see its screen</string>
+    <string name="phone_nav_back">Back</string>
+    <string name="phone_nav_home">Home</string>
+    <string name="phone_nav_recents">Recent apps</string>
+    <string name="phone_touch_why_access">Turn on accessibility for Tandem on %1$s to touch it</string>
+    <string name="phone_touch_why_policy">%1$s only lets you look. Allow Click and type there</string>
+    <string name="screen_denied_body_phone">It was not allowed on %1$s. Ask again and choose Allow there.</string>
 </resources>

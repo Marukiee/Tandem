@@ -249,8 +249,10 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         val showUnlock = computer && device.online && device.status.unlock == true && device.status.locked == true
         // Lock and unlock are one place: what is locked and can be opened from here offers that instead.
         val showLock = !showUnlock && (computer || device.online)
+        // Another phone: its screen here, to look at and touch. Also there while it is away, grey, so a tap says what it needs.
+        val phone = device.platform == TandemPlatform.ANDROID
         val controlRows = (if (computer) 5 else if (device.online) 2 else 0) + (if (showFiles) 1 else 0) + (if (showDisplay) 1 else 0) +
-            (if (showUnlock || showLock) 1 else 0)
+            (if (showUnlock || showLock) 1 else 0) + (if (phone) 1 else 0)
         if (controlRows > 0) {
             SectionHeader(stringResource(R.string.section_control), top = 12.dp, bottom = 0.dp)
             SettingsGroup {
@@ -269,6 +271,11 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
                             }
                         },
                         iconTint = MaterialTheme.colorScheme.onPrimary, iconContainer = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                if (phone) {
+                    nl.markmaaktmedia.tandem.ui.components.ControlPhoneRow(
+                        row++, controlRows, device, { onScreen(id) }, Modifier.routeBounds(routeKey(Route.Screen(id))),
                     )
                 }
                 if (computer) {

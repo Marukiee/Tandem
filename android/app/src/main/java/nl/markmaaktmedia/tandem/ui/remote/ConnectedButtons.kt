@@ -108,6 +108,12 @@ object GroupTone {
         GroupColors(it.primary, it.onPrimary, it.primary, it.onPrimary)
     }
 
+    /** Grey: it cannot work now. Still pressable, so the press can say why. */
+    @Composable
+    fun unavailable() = MaterialTheme.colorScheme.let {
+        GroupColors(it.surfaceContainerHigh, it.onSurfaceVariant.copy(alpha = 0.38f), it.surfaceContainerHighest, it.onSurfaceVariant.copy(alpha = 0.6f))
+    }
+
     /** A button that is held: the colour says it is down for as long as it is. */
     @Composable
     fun held() = MaterialTheme.colorScheme.let {

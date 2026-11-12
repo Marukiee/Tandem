@@ -494,9 +494,27 @@ impl Engine {
             && let Some(conn) = self.inner.session_of(&viewer.peer) {
                 let counter = viewer.pointer_counter.fetch_add(1, Ordering::Relaxed);
                 if conn.conn.send_datagram(pointer_datagram(session, counter, *x, *y)).is_ok() {
+                    viewer.st.lock().unwrap().loose_pointer = Some((*x, *y));
                     return Ok(());
                 }
             }
+        // A press lands where the pointer is, but a datagram can come after the press or not at all: a finger on the picture of a
+        // phone would then tap where the last one did. The position goes along on the stream, in front of the press. A relative move
+        // makes it stale, and one that went on the stream already is there.
+        let loose = {
+            let mut st = viewer.st.lock().unwrap();
+            match &input {
+                MediaInput::Button { .. } => st.loose_pointer.take(),
+                MediaInput::PointerAbs { .. } | MediaInput::PointerRel { .. } => {
+                    st.loose_pointer = None;
+                    None
+                }
+                _ => None,
+            }
+        };
+        if let Some((x, y)) = loose {
+            self.inner.live_send(viewer.peer, Msg::MediaInput { session, input: MediaInput::PointerAbs { x, y } });
+        }
         self.inner.live_send(viewer.peer, Msg::MediaInput { session, input });
         Ok(())
     }

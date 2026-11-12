@@ -66,11 +66,15 @@ fun KeyboardPanel(
     onText: (String) -> Unit,
     onKey: (Short) -> Unit,
     modifier: Modifier = Modifier,
+    /** The modifiers and the keys under the field. A phone does nothing with them, so for a phone only the field is there. */
+    keys: Boolean = true,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         TypingField(onText, onKey)
-        ModifierKeys(mods, onToggleMod)
-        KeyCluster(onKey)
+        if (keys) {
+            ModifierKeys(mods, onToggleMod)
+            KeyCluster(onKey)
+        }
     }
 }
 

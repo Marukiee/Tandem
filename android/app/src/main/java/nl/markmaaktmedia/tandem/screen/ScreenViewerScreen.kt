@@ -106,6 +106,7 @@ import nl.markmaaktmedia.tandem.ui.remote.GroupTone
 import nl.markmaaktmedia.tandem.ui.remote.GroupButton
 import nl.markmaaktmedia.tandem.graph
 import nl.markmaaktmedia.tandem.ui.components.PillLoader
+import nl.markmaaktmedia.tandem.ui.screens.missing
 import nl.markmaaktmedia.tandem.ui.components.PresenceDot
 import nl.markmaaktmedia.tandem.ui.components.PrimaryPillButton
 import nl.markmaaktmedia.tandem.ui.components.SecondaryPillButton
@@ -146,6 +147,8 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
     val device = devices.firstOrNull { it.id == id }
     val name = device?.name ?: ""
     val online = device?.online == true
+    // Another phone: the finger is a finger there, with its own Back, Home and Recents under the picture.
+    val phone = !extend && device?.platform == uniffi.tandem_core.TandemPlatform.ANDROID
 
     val state by viewer.state.collectAsState()
     val info by viewer.info.collectAsState()
@@ -274,70 +277,107 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
     }
 
     val slop = LocalViewConfiguration.current.touchSlop
-    val gestures = remember(viewer, transform, slop) {
-        ViewerGestures(
-            ViewerConfig(slop = slop),
-            object : ViewerOutput {
-                override fun pointerMove(dx: Float, dy: Float) {
-                    val (x, y) = viewer.pointerMapper.move(dx, dy, transform.scale)
-                    if (x == 0 && y == 0) return
-                    viewer.send(TandemMediaInput.PointerRel(x.toShort(), y.toShort()))
-                    if (transform.pictureWidth > 0f) {
-                        pointerFx = (pointerFx + x * transform.scale / transform.pictureWidth).coerceIn(0f, 1f)
-                        pointerFy = (pointerFy + y * transform.scale / transform.pictureHeight).coerceIn(0f, 1f)
-                        if (transform.zoom > 1.02f) {
-                            transform.keepVisible(pointerFx, pointerFy, margin)
-                            version++
-                        }
+    val output = remember(viewer, transform) {
+        object : ViewerOutput {
+            override fun pointerMove(dx: Float, dy: Float) {
+                val (x, y) = viewer.pointerMapper.move(dx, dy, transform.scale)
+                if (x == 0 && y == 0) return
+                viewer.send(TandemMediaInput.PointerRel(x.toShort(), y.toShort()))
+                if (transform.pictureWidth > 0f) {
+                    pointerFx = (pointerFx + x * transform.scale / transform.pictureWidth).coerceIn(0f, 1f)
+                    pointerFy = (pointerFy + y * transform.scale / transform.pictureHeight).coerceIn(0f, 1f)
+                    if (transform.zoom > 1.02f) {
+                        transform.keepVisible(pointerFx, pointerFy, margin)
+                        version++
                     }
                 }
+            }
 
-                override fun pointerTo(x: Float, y: Float) {
-                    val (fx, fy) = transform.toPicture(x, y)
-                    pointerFx = fx
-                    pointerFy = fy
-                    viewer.send(TandemMediaInput.PointerAbs(fx, fy))
-                }
+            override fun pointerTo(x: Float, y: Float) {
+                val (fx, fy) = transform.toPicture(x, y)
+                pointerFx = fx
+                pointerFy = fy
+                viewer.send(TandemMediaInput.PointerAbs(fx, fy))
+            }
 
-                override fun button(button: Int, down: Boolean, clicks: Int) {
-                    viewer.send(TandemMediaInput.Button(button.toUByte(), down, clicks.toUByte()))
-                }
+            override fun button(button: Int, down: Boolean, clicks: Int) {
+                viewer.send(TandemMediaInput.Button(button.toUByte(), down, clicks.toUByte()))
+            }
 
-                override fun scroll(dx: Float, dy: Float) {
-                    val (x, y) = viewer.pointerMapper.scroll(dx, dy, transform.scale)
-                    if (x != 0 || y != 0) viewer.send(TandemMediaInput.Scroll(x.toShort(), y.toShort()))
-                }
+            override fun scroll(dx: Float, dy: Float) {
+                val (x, y) = viewer.pointerMapper.scroll(dx, dy, transform.scale)
+                if (x != 0 || y != 0) viewer.send(TandemMediaInput.Scroll(x.toShort(), y.toShort()))
+            }
 
-                override fun zoom(factor: Float, focalX: Float, focalY: Float) {
-                    transform.zoomBy(factor, focalX, focalY)
-                    version++
-                }
+            override fun zoom(factor: Float, focalX: Float, focalY: Float) {
+                transform.zoomBy(factor, focalX, focalY)
+                version++
+            }
 
-                override fun pan(dx: Float, dy: Float) {
-                    transform.panBy(dx, dy)
-                    version++
-                }
+            override fun pan(dx: Float, dy: Float) {
+                transform.panBy(dx, dy)
+                version++
+            }
 
-                override fun feedback(kind: ViewerFeedback) {
-                    haptics.performHapticFeedback(
-                        when (kind) {
-                            ViewerFeedback.Click -> HapticFeedbackType.TextHandleMove
-                            ViewerFeedback.LongPress -> HapticFeedbackType.LongPress
-                            ViewerFeedback.DragStart -> HapticFeedbackType.GestureThresholdActivate
-                        },
-                    )
-                }
+            override fun feedback(kind: ViewerFeedback) {
+                haptics.performHapticFeedback(
+                    when (kind) {
+                        ViewerFeedback.Click -> HapticFeedbackType.TextHandleMove
+                        ViewerFeedback.LongPress -> HapticFeedbackType.LongPress
+                        ViewerFeedback.DragStart -> HapticFeedbackType.GestureThresholdActivate
+                    },
+                )
+            }
 
-                override fun dragging(active: Boolean) {
-                    dragging = active
-                }
-            },
-        )
+            override fun dragging(active: Boolean) {
+                dragging = active
+            }
+        }
+    }
+    val gestures = remember(output, slop) { ViewerGestures(ViewerConfig(slop = slop), output) }
+    val fingers = remember(output, slop) {
+        FingerGestures(slop, output) { x, y ->
+            x >= transform.left && x <= transform.left + transform.pictureWidth && y >= transform.top && y <= transform.top + transform.pictureHeight
+        }
     }
     gestures.direct = direct
-    DisposableEffect(gestures) { onDispose { gestures.cancel() } }
+    DisposableEffect(gestures, fingers) {
+        onDispose {
+            gestures.cancel()
+            fingers.cancel()
+        }
+    }
     val streaming = state is ViewerState.Streaming
-    LaunchedEffect(streaming) { if (!streaming) gestures.cancel() }
+    LaunchedEffect(streaming) {
+        if (!streaming) {
+            gestures.cancel()
+            fingers.cancel()
+        }
+    }
+
+    // What cannot be done on the other phone yet is grey, and a tap on it says why: once in a while, not with every finger.
+    val control = info?.control == true
+    var toldAt by remember { mutableLongStateOf(0L) }
+    fun tellWhyNot() {
+        val now = SystemClock.uptimeMillis()
+        if (now - toldAt < WHY_MILLIS) return
+        toldAt = now
+        val why = when {
+            !streaming -> context.getString(R.string.screen_connecting, name)
+            device?.missing("control") != null -> context.getString(R.string.phone_touch_why_access, name)
+            else -> context.getString(R.string.phone_touch_why_policy, name)
+        }
+        android.widget.Toast.makeText(context, why, android.widget.Toast.LENGTH_LONG).show()
+    }
+
+    // The touch handler lives longer than one composition: it asks with what is true now.
+    val whyNotNow by androidx.compose.runtime.rememberUpdatedState<() -> Unit> { tellWhyNot() }
+
+    /** A button of the other phone: Back is 1, Home 2 and Recents 3 of the buttons of a mouse there (see `RemoteInput`). */
+    fun phoneButton(button: Int) {
+        viewer.send(TandemMediaInput.Button(button.toUByte(), true, 1u))
+        viewer.send(TandemMediaInput.Button(button.toUByte(), false, 1u))
+    }
 
     fun typeText(text: String) {
         var armed = mods
@@ -401,8 +441,13 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
     var rootWidth by remember { mutableStateOf(0f) }
     var rootHeight by remember { mutableStateOf(0f) }
     var panelHeight by remember { mutableStateOf(0f) }
+    // The picture of a phone sits between the bar and the buttons of that phone, so neither covers its status bar or the bottom of an app.
+    val cutout = WindowInsets.displayCutout
+    val pictureTop = if (phone) with(density) { cutout.getTop(density).toDp() } + PHONE_BAR_ROOM else 0.dp
+    val pictureBottom = if (phone) with(density) { cutout.getBottom(density).toDp() } + PHONE_BAR_ROOM else 0.dp
+    val bottomPx = with(density) { pictureBottom.toPx() }
     val reserved by androidx.compose.animation.core.animateFloatAsState(
-        if (keyboard) panelHeight else 0f, TandemMotion.spatial(), label = "keyboardRoom",
+        if (keyboard) (panelHeight - bottomPx).coerceAtLeast(0f) else 0f, TandemMotion.spatial(), label = "keyboardRoom",
     )
     LaunchedEffect(rootWidth, rootHeight, reserved) {
         if (rootWidth > 0f && rootHeight > 0f) {
@@ -414,10 +459,6 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
         Modifier
             .fillMaxSize()
             .background(Color.Black)
-            .onSizeChanged {
-                rootWidth = it.width.toFloat()
-                rootHeight = it.height.toFloat()
-            }
             .focusRequester(focus)
             .focusTarget()
             .onPreviewKeyEvent { if (keyboard) false else hardwareKey(it) },
@@ -429,26 +470,43 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
         val picLeft = if (transform.videoWidth > 0f) transform.left else 0f
         val picTop = if (transform.videoWidth > 0f) transform.top else 0f
 
-        VideoSurface(
-            viewer = viewer,
-            videoWidth = info?.width ?: 0,
-            videoHeight = info?.height ?: 0,
-            modifier = Modifier.layout { measurable, constraints ->
-                val w = picW.roundToInt().coerceAtLeast(1)
-                val h = picH.roundToInt().coerceAtLeast(1)
-                val placeable = measurable.measure(Constraints.fixed(w, h))
-                layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(picLeft.roundToInt(), picTop.roundToInt()) }
-            },
-        )
-        if (tick < 0) Box(Modifier.size(0.dp))
-
-        // The fingers, over the picture.
+        // The picture and the fingers on it, in the room the bars leave.
         Box(
             Modifier
                 .fillMaxSize()
-                // On a second screen a touch is a click and nothing else: it does not bring the bar back.
-                .viewerTouch(gestures) { if (!extend) touchBar() },
-        )
+                .padding(top = pictureTop, bottom = pictureBottom)
+                .onSizeChanged {
+                    rootWidth = it.width.toFloat()
+                    rootHeight = it.height.toFloat()
+                },
+        ) {
+            VideoSurface(
+                viewer = viewer,
+                videoWidth = info?.width ?: 0,
+                videoHeight = info?.height ?: 0,
+                modifier = Modifier.layout { measurable, constraints ->
+                    val w = picW.roundToInt().coerceAtLeast(1)
+                    val h = picH.roundToInt().coerceAtLeast(1)
+                    val placeable = measurable.measure(Constraints.fixed(w, h))
+                    layout(constraints.maxWidth, constraints.maxHeight) { placeable.place(picLeft.roundToInt(), picTop.roundToInt()) }
+                },
+            )
+            if (tick < 0) Box(Modifier.size(0.dp))
+
+            // The fingers, over the picture.
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (phone) {
+                            Modifier.fingerTouch(fingers, canTouch = { viewer.canControl }, onRefused = { whyNotNow() })
+                        } else {
+                            // On a second screen a touch is a click and nothing else: it does not bring the bar back.
+                            Modifier.viewerTouch(gestures) { if (!extend) touchBar() }
+                        },
+                    ),
+            )
+        }
 
         Overlay(
             state = state,
@@ -478,7 +536,7 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
         // The slim bar at the top. It stays: a quiet bar is dimmed, a touch brings it back to full.
         val insets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
         val barAlpha by androidx.compose.animation.core.animateFloatAsState(
-            if (barVisible) 1f else if (extend) 0f else 0.55f, TandemMotion.fadeSpec(), label = "barAlpha",
+            if (barVisible || phone) 1f else if (extend) 0f else 0.55f, TandemMotion.fadeSpec(), label = "barAlpha",
         )
         // Gone for good when it has faded out on a second screen: an invisible bar would still take the touches.
         if (!extend || barVisible || barAlpha > 0.02f) Box(Modifier.align(Alignment.TopCenter).graphicsLayer { alpha = barAlpha }) {
@@ -487,10 +545,13 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
                 online = online,
                 state = state,
                 stalled = stalled,
-                control = info?.control == true,
+                control = control,
                 dragging = dragging,
                 keyboardOn = keyboard,
                 direct = direct,
+                showMode = !phone,
+                keyboardReady = !phone || control,
+                onRefused = ::tellWhyNot,
                 zoomed = transform.zoom > 1.01f,
                 statsOpen = showStats,
                 modifier = Modifier.windowInsetsPadding(insets).padding(horizontal = 12.dp, vertical = 8.dp),
@@ -536,6 +597,23 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
             StatsPanel(stats, info)
         }
 
+        if (phone) {
+            AnimatedVisibility(
+                visible = !keyboard,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = fadeIn(TandemMotion.fadeSpec()) + slideInVertically(TandemMotion.spatial()) { it },
+                exit = fadeOut(TandemMotion.fadeSpec()) + slideOutVertically(TandemMotion.spatial()) { it },
+            ) {
+                PhoneButtons(
+                    ready = control,
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.displayCutout))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    onButton = ::phoneButton,
+                    onRefused = ::tellWhyNot,
+                )
+            }
+        }
+
         AnimatedVisibility(
             visible = keyboard,
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -558,6 +636,7 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
                     onToggleMod = { bit -> mods = mods xor bit },
                     onText = ::typeText,
                     onKey = ::pressKey,
+                    keys = !phone,
                 )
             }
         }
@@ -565,6 +644,75 @@ fun ScreenViewerScreen(id: String, onBack: () -> Unit, extend: Boolean = false) 
 }
 
 private const val BAR_MILLIS = 3500L
+
+/** How long a reason why something cannot be done stays the only one, so a finger that keeps trying does not stack them. */
+private const val WHY_MILLIS = 2500L
+
+/** The room of a bar of the viewer of a phone: the bar of 48 and 8 on each side. */
+private val PHONE_BAR_ROOM = 64.dp
+
+/**
+ * Feeds the fingers on the picture of a phone to [FingerGestures], as they come: a finger there goes down the moment one goes down here.
+ * Without [canTouch] a touch does nothing there, and says why.
+ */
+private fun Modifier.fingerTouch(fingers: FingerGestures, canTouch: () -> Boolean, onRefused: () -> Unit): Modifier = pointerInput(fingers) {
+    awaitEachGesture {
+        val first = awaitFirstDown(requireUnconsumed = false)
+        first.consume()
+        if (!canTouch()) {
+            onRefused()
+            do {
+                val event = awaitPointerEvent()
+                event.changes.forEach { it.consume() }
+            } while (event.changes.any { it.pressed })
+            return@awaitEachGesture
+        }
+        try {
+            fingers.onFrame(listOf(Touch(first.id.value, first.position.x, first.position.y)))
+            while (true) {
+                val event = awaitPointerEvent()
+                val down = event.changes.filter { it.pressed }
+                fingers.onFrame(down.map { Touch(it.id.value, it.position.x, it.position.y) })
+                event.changes.forEach { it.consume() }
+                if (down.isEmpty()) break
+            }
+        } finally {
+            // A finger that goes away mid-gesture must not stay down on the other phone.
+            fingers.cancel()
+        }
+    }
+}
+
+/** Back, Home and Recents of the other phone, one group in the same pill and of the same size as the buttons of the bar. */
+@Composable
+private fun PhoneButtons(ready: Boolean, modifier: Modifier, onButton: (Int) -> Unit, onRefused: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val buttons = listOf(
+        Triple(TandemIcons.Back, R.string.phone_nav_back, 1),
+        Triple(TandemIcons.Home, R.string.phone_nav_home, 2),
+        Triple(TandemIcons.Recents, R.string.phone_nav_recents, 3),
+    )
+    Row(
+        modifier
+            .clip(PillShape)
+            .background(scheme.surfaceContainer.copy(alpha = 0.94f))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        buttons.forEachIndexed { index, (icon, label, button) ->
+            val press = rememberPressState()
+            GroupButton(
+                press = press, height = 40.dp, joins = Joins.row(index, buttons.size),
+                colors = if (ready) GroupTone.neutral() else GroupTone.unavailable(),
+                modifier = Modifier.width(48.dp),
+                description = stringResource(label),
+                onUp = { inside -> if (inside) { if (ready) onButton(button) else onRefused() } },
+            ) { tint ->
+                Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
 
 /** Feeds the fingers on this element to the gestures, the way the trackpad of the remote screen does. */
 private fun Modifier.viewerTouch(gestures: ViewerGestures, onTouch: () -> Unit): Modifier = pointerInput(gestures) {
@@ -628,6 +776,9 @@ private fun ControlBar(
     dragging: Boolean,
     keyboardOn: Boolean,
     direct: Boolean,
+    showMode: Boolean,
+    keyboardReady: Boolean,
+    onRefused: () -> Unit,
     zoomed: Boolean,
     statsOpen: Boolean,
     modifier: Modifier,
@@ -685,7 +836,8 @@ private fun ControlBar(
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             val modePress = rememberPressState()
             val keyboardPress = rememberPressState()
-            GroupButton(
+            // A phone is touched where the finger is, always: a switch for it would do nothing, so it is not there.
+            if (showMode) GroupButton(
                 press = modePress, height = 40.dp, joins = Joins.row(0, 2), colors = GroupTone.neutral(),
                 // Round while it is on, like the buttons of the trackpad page: touching directly is the mode that is turned on.
                 round = direct,
@@ -696,12 +848,12 @@ private fun ControlBar(
                 Icon(if (direct) TandemIcons.Touch else TandemIcons.Mouse, null, tint = tint, modifier = Modifier.size(20.dp))
             }
             GroupButton(
-                press = keyboardPress, height = 40.dp, joins = Joins.row(1, 2),
-                colors = if (keyboardOn) GroupTone.selected() else GroupTone.neutral(),
+                press = keyboardPress, height = 40.dp, joins = if (showMode) Joins.row(1, 2) else Joins.row(0, 1),
+                colors = if (!keyboardReady) GroupTone.unavailable() else if (keyboardOn) GroupTone.selected() else GroupTone.neutral(),
                 round = keyboardOn,
                 modifier = Modifier.width(48.dp),
                 description = stringResource(R.string.screen_keyboard),
-                onUp = { inside -> if (inside) onKeyboard() },
+                onUp = { inside -> if (inside) { if (keyboardReady) onKeyboard() else onRefused() } },
             ) { tint ->
                 Icon(TandemIcons.Keyboard, null, tint = tint, modifier = Modifier.size(20.dp))
             }
@@ -802,7 +954,10 @@ private fun Overlay(
             is ViewerState.Ended -> when (state.outcome) {
                 Outcome.StoppedByMac -> null
                 // Not possible now: closing is what comes next, so that is the coloured button.
-                Outcome.Denied -> Message(TandemIcons.Shield, R.string.screen_denied_title, R.string.screen_denied_body)
+                Outcome.Denied -> Message(
+                    TandemIcons.Shield, R.string.screen_denied_title,
+                    if (platform == uniffi.tandem_core.TandemPlatform.ANDROID) R.string.screen_denied_body_phone else R.string.screen_denied_body,
+                )
                 Outcome.Busy -> Message(TandemIcons.Person, R.string.screen_busy_title, R.string.screen_busy_body, closeFirst = true)
                 // What is missing, and what unlocks it, in the words of the system that computer runs.
                 Outcome.Unavailable -> Message(

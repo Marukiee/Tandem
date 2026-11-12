@@ -72,6 +72,8 @@ pub struct ViewerState {
     pub end_reason: Option<MediaEnd>,
     /// The last shape asked of an extra screen, said again after the connection came back in case it was lost on the way.
     pub resize: Option<MediaResize>,
+    /// The last pointer position that went as a datagram and not yet over the stream: a press sends it in front of itself.
+    pub loose_pointer: Option<(f32, f32)>,
 }
 
 pub struct ViewerSession {
@@ -116,6 +118,7 @@ impl ViewerSession {
                 streak: 0,
                 end_reason: None,
                 resize: None,
+                loose_pointer: None,
             }),
             wake: Notify::new(),
             ready: Notify::new(),
@@ -475,7 +478,7 @@ mod quality_tests {
         ViewerState {
             phase: Phase::Active, suspended: None, accept: None, control: false, asm: Assembler::new(now), queue: VecDeque::new(),
             stats: MediaStats::default(), since: Counters::default(), jitter: Jitter { arrival: None, pts: 0, value_us: 0.0 },
-            last_frame: None, last_report: now, poor: false, streak: 0, end_reason: None, resize: None,
+            last_frame: None, last_report: now, poor: false, streak: 0, end_reason: None, resize: None, loose_pointer: None,
         }
     }
 
