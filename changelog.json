@@ -10,7 +10,8 @@
       "fixed": [
         "The battery icon on the phone shows how full it is",
         "The update card in the menu bar looks like the cards above it",
-        "A phone uses less battery while a computer is off"
+        "A phone uses less battery while a computer is off",
+        "A phone no longer keeps trying a watch that is with your other phone"
       ]
     },
     "nl": {
@@ -21,7 +22,8 @@
       "fixed": [
         "Het batterij-icoon op de telefoon laat zien hoe vol hij is",
         "De updatekaart in de menubalk ziet eruit als de kaarten erboven",
-        "Een telefoon gebruikt minder accu als een computer uit staat"
+        "Een telefoon gebruikt minder accu als een computer uit staat",
+        "Een telefoon probeert niet steeds meer een horloge dat bij je andere telefoon is"
       ]
     }
   },

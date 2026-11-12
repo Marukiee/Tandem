@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import nl.markmaaktmedia.tandem.R
@@ -85,6 +87,18 @@ data class WatchState(
     /** The Bluetooth of this phone is off, so the watch cannot connect: said, and a way given to turn it on. */
     val bluetoothOff: Boolean = false,
 )
+
+/**
+ * How long a phone leaves the watch alone after [failures] failed sessions in a row: nothing for the first two, then a minute, five,
+ * a quarter of an hour, and an hour from then on. A watch that came back to this phone pairs again, which always goes ahead.
+ */
+internal fun watchRestAfter(failures: Int): Long = when {
+    failures < 3 -> 0L
+    failures == 3 -> 60_000L
+    failures == 4 -> 5 * 60_000L
+    failures == 5 -> 15 * 60_000L
+    else -> 60 * 60_000L
+}
 
 /** Which computer the watch steers, and whether with the hand on a table. */
 data class WatchMouseNow(val target: String, val table: Boolean)
@@ -149,6 +163,17 @@ class WatchBridge(
     private val quiet = WatchSleepQuiet(context, handler)
     private var running = false
     private var active = false
+
+    /** Sessions with the watch that failed in a row: a watch that holds the key of another phone keeps coming back and failing. */
+    private var failedInARow = 0
+    /** Until when (elapsed realtime) this phone does not offer itself to the watch, after too many failures in a row. */
+    private var restUntil = 0L
+    /** The watch is online with another phone of the circle: this one does not offer itself to it meanwhile. */
+    private var withOtherPhone = false
+    private val endRest = Runnable {
+        restUntil = 0L
+        applyServer()
+    }
     private val jobs = mutableListOf<Job>()
 
     private val alerted = HashSet<String>()
@@ -177,7 +202,7 @@ class WatchBridge(
             when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
                 BluetoothAdapter.STATE_ON -> handler.post {
                     _state.update { it.copy(bluetoothOff = false) }
-                    if (active) server?.start()
+                    applyServer()
                 }
                 BluetoothAdapter.STATE_TURNING_OFF, BluetoothAdapter.STATE_OFF -> handler.post {
                     _state.update { it.copy(bluetoothOff = true) }
@@ -292,6 +317,18 @@ class WatchBridge(
                 }
             }
         }
+        // A watch talks to one phone: online with another one, it holds that phone's key and only fails here.
+        jobs += scope.launch {
+            host.devices
+                .map { devices -> devices.any { it.platform == TandemPlatform.ANDROID && it.online && it.status.watch?.online == true } }
+                .distinctUntilChanged()
+                .collect { other ->
+                    handler.post {
+                        withOtherPhone = other
+                        applyServer()
+                    }
+                }
+        }
         jobs += scope.launch {
             host.devices.collect { devices ->
                 val computers = devices.filter { it.platform != TandemPlatform.ANDROID && "input" in it.caps }.map { device ->
@@ -334,11 +371,14 @@ class WatchBridge(
     /** Bluetooth and the listeners run for a paired watch, or while one may pair. */
     private fun updateActive() {
         val should = running && (_state.value.paired || _state.value.pairingOpen) && Permissions.bluetooth(context)
-        if (should == active) return
+        if (should == active) {
+            if (active) applyServer()
+            return
+        }
         active = should
         if (should) {
             _state.update { it.copy(bluetoothOff = context.getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter?.isEnabled == false) }
-            server?.start()
+            applyServer()
             calls.start()
             media.refresh()
             context.registerReceiver(bluetoothReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED), Context.RECEIVER_EXPORTED)
@@ -351,6 +391,27 @@ class WatchBridge(
             runCatching { context.unregisterReceiver(bluetoothReceiver) }
             runCatching { context.unregisterReceiver(batteryReceiver) }
         }
+    }
+
+    /**
+     * Offers this phone to the watch, or stops: not while it rests after failing too often, nor while the watch is with another phone.
+     * Pairing always goes ahead, and a session that works is never stopped.
+     */
+    private fun applyServer() {
+        val now = _state.value
+        val resting = withOtherPhone || SystemClock.elapsedRealtime() < restUntil
+        if (active && !now.bluetoothOff && (now.pairingOpen || now.ready || !resting)) server?.start() else server?.stop()
+    }
+
+    private fun sessionFailed() {
+        failedInARow++
+        val rest = watchRestAfter(failedInARow)
+        if (rest == 0L || _state.value.pairingOpen) return
+        Log.i(TAG, "The watch failed $failedInARow times in a row, resting ${rest / 1000} s")
+        restUntil = SystemClock.elapsedRealtime() + rest
+        handler.removeCallbacks(endRest)
+        handler.postDelayed(endRest, rest)
+        applyServer()
     }
 
     fun beginPairing() {
@@ -626,6 +687,7 @@ class WatchBridge(
         if (link.isReady || _state.value.pairingOpen) return
         Log.i(TAG, "No valid session in time, dropping the connection")
         server?.disconnect()
+        sessionFailed()
     }
 
     // LinkListener
@@ -647,6 +709,9 @@ class WatchBridge(
 
     override fun onReady() {
         handler.removeCallbacks(authTimeout)
+        handler.removeCallbacks(endRest)
+        failedInARow = 0
+        restUntil = 0L
         _state.update { it.copy(ready = true) }
     }
 
@@ -790,6 +855,7 @@ class WatchBridge(
 
     override fun onFailure(failure: LinkFailure) {
         Log.i(TAG, "Link failure: $failure")
+        if (failure == LinkFailure.AUTH_FAILED || failure == LinkFailure.NOT_PAIRED) sessionFailed()
         outbound.clear()
         iconsSent.clear()
         updater.onDisconnected()
