@@ -49,6 +49,16 @@ class ShizukuBridge(private val context: Context) {
 
     private var registered = false
     private var binder: IBinder? = null
+    /** The process Shizuku runs [ShellStarter] in: held, as Shizuku ends it when nothing holds it any more. */
+    private var shellProcess: java.lang.Process? = null
+
+    /**
+     * Whether Tandem opened Shizuku for the person to start it, in this process. Shizuku hands its connection to an app only at
+     * moments of its own, and on some phones (ColorOS) that does not reach an app that was already running: Tandem then sees it only
+     * once it starts again, which the page offers after this.
+     */
+    private val _openedShizuku = MutableStateFlow(false)
+    val openedShizuku: StateFlow<Boolean> = _openedShizuku.asStateFlow()
 
     private val args: Shizuku.UserServiceArgs by lazy {
         Shizuku.UserServiceArgs(ComponentName(context.packageName, ShellUserService::class.java.name))
@@ -121,7 +131,9 @@ class ShizukuBridge(private val context: Context) {
 
     fun launchShizuku(): Boolean {
         val intent = context.packageManager.getLaunchIntentForPackage(SHIZUKU_PACKAGE) ?: return false
-        return runCatching { context.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
+        val opened = runCatching { context.startActivity(intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
+        if (opened && _state.value == ShizukuState.NotRunning) _openedShizuku.value = true
+        return opened
     }
 
     // ---- Calls -----------------------------------------------------------------
@@ -193,6 +205,8 @@ class ShizukuBridge(private val context: Context) {
 
     private suspend fun connect(): IBinder? {
         binder?.takeIf { it.pingBinder() }?.let { return it }
+        // Its own process first, which only needs Shizuku's server; Shizuku's way of starting a service is there for when that fails.
+        startShell()?.let { return it }
         return withTimeoutOrNull(BIND_TIMEOUT_MS) {
             suspendCancellableCoroutine<IBinder?> { continuation ->
                 val waiting = object : ServiceConnection {
@@ -213,6 +227,39 @@ class ShizukuBridge(private val context: Context) {
                 }
             }
         }
+    }
+
+    /** Has Shizuku run [ShellStarter] as a plain command, and waits for the binder it hands over. */
+    private suspend fun startShell(): IBinder? {
+        val arrived = ShellBinderProvider.expect()
+        val started = try {
+            shellProcess?.destroy()
+            val user = android.os.Process.myUid() / 100_000
+            // No --nice-name: a name longer than "app_process" writes over the arguments after it (seen on Android 16).
+            val command = arrayOf(
+                "app_process", "-Djava.class.path=${context.applicationInfo.sourceDir}", "/system/bin",
+                ShellStarter::class.java.name, context.packageName, user.toString(),
+            )
+            // Hidden in Shizuku's API since version 13, and still the one call that goes straight to its server.
+            val newProcess = Shizuku::class.java.getDeclaredMethod(
+                "newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java,
+            ).apply { isAccessible = true }
+            newProcess.invoke(null, command, null, null) as java.lang.Process
+        } catch (t: Throwable) {
+            Log.w(TAG, "could not start the shell process", t)
+            return null
+        }
+        shellProcess = started
+        val service = withTimeoutOrNull(BIND_TIMEOUT_MS) { arrived.await() }
+        if (service == null) {
+            // Ended first: reading what it said waits for its end.
+            started.destroy()
+            shellProcess = null
+            Log.w(TAG, "the shell process did not answer: " + runCatching { started.errorStream.bufferedReader().readText().take(400) }.getOrDefault(""))
+            return null
+        }
+        binder = service
+        return service
     }
 
     companion object {

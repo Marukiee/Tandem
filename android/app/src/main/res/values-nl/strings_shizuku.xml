@@ -8,6 +8,7 @@
     <string name="shizuku_state_not_installed_sub">Tik om Shizuku te halen</string>
     <string name="shizuku_state_not_running">Geïnstalleerd, draait niet</string>
     <string name="shizuku_state_not_running_sub">Tik om Shizuku te openen en te starten. Het stopt als de telefoon opnieuw opstart</string>
+    <string name="shizuku_state_restart_sub">Shizuku gestart? Tik om Tandem opnieuw te starten, dan ziet hij het</string>
     <string name="shizuku_state_needs_permission">Draait, Tandem heeft nog geen toestemming</string>
     <string name="shizuku_state_needs_permission_sub">Tik om Tandem toestemming te geven</string>
     <string name="shizuku_state_denied">Tandem is geweigerd</string>

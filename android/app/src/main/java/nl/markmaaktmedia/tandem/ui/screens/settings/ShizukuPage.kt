@@ -94,8 +94,14 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
     val clipWatching by nl.markmaaktmedia.tandem.hotspot.ShizukuClipboard.watching.collectAsState()
     val clipProblem by nl.markmaaktmedia.tandem.hotspot.ShizukuClipboard.problem.collectAsState()
     // The next step for Shizuku itself, from its own row and from a use that waits for it.
+    // Opened Shizuku from here and still nothing: started there, it may only reach Tandem once Tandem starts again (see ShizukuBridge).
+    val openedShizuku by shizuku.openedShizuku.collectAsState()
+    val restartFirst = state == ShizukuState.NotRunning && openedShizuku
     val nextStep: () -> Unit = {
-        when (state) {
+        val activity = context.findActivity()
+        if (restartFirst && activity != null) {
+            nl.markmaaktmedia.tandem.RestartActivity.restart(activity, nl.markmaaktmedia.tandem.MainActivity.ACTION_OPEN_SHIZUKU)
+        } else when (state) {
             ShizukuState.NeedsPermission -> shizuku.requestPermission()
             ShizukuState.NotRunning, ShizukuState.Denied, ShizukuState.Ready -> shizuku.launchShizuku()
             ShizukuState.NotInstalled, ShizukuState.TooOld -> context.startActivity(
@@ -117,7 +123,8 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
     SettingsGroup {
         val (title, sub) = when (state) {
             ShizukuState.NotInstalled -> R.string.shizuku_state_not_installed to R.string.shizuku_state_not_installed_sub
-            ShizukuState.NotRunning -> R.string.shizuku_state_not_running to R.string.shizuku_state_not_running_sub
+            ShizukuState.NotRunning ->
+                R.string.shizuku_state_not_running to (if (restartFirst) R.string.shizuku_state_restart_sub else R.string.shizuku_state_not_running_sub)
             ShizukuState.NeedsPermission -> R.string.shizuku_state_needs_permission to R.string.shizuku_state_needs_permission_sub
             ShizukuState.Denied -> R.string.shizuku_state_denied to R.string.shizuku_state_denied_sub
             ShizukuState.TooOld -> R.string.shizuku_state_too_old to R.string.shizuku_state_too_old_sub
@@ -227,4 +234,10 @@ internal fun ColumnScope.ShizukuContent(onOpen: (Route) -> Unit) {
             trailing = if (ready && wifiNamed) done else null,
         )
     }
+}
+
+private tailrec fun android.content.Context.findActivity(): android.app.Activity? = when (this) {
+    is android.app.Activity -> this
+    is android.content.ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

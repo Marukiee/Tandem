@@ -8,6 +8,7 @@
     <string name="shizuku_state_not_installed_sub">Tap to get Shizuku</string>
     <string name="shizuku_state_not_running">Installed, not running</string>
     <string name="shizuku_state_not_running_sub">Tap to open Shizuku and start it. It stops when the phone restarts</string>
+    <string name="shizuku_state_restart_sub">Started Shizuku? Tap to start Tandem again, then it sees it</string>
     <string name="shizuku_state_needs_permission">Running, Tandem is not allowed yet</string>
     <string name="shizuku_state_needs_permission_sub">Tap to allow Tandem</string>
     <string name="shizuku_state_denied">Tandem was refused</string>

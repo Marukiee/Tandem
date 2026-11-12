@@ -7,6 +7,8 @@
 
 # Shizuku starts this by class name in its own process, through the empty constructor.
 -keep class nl.markmaaktmedia.tandem.hotspot.ShellUserService { <init>(); }
+# Started by name with app_process, in a process of its own (see ShellStarter).
+-keep class nl.markmaaktmedia.tandem.hotspot.ShellStarter { public static void main(java.lang.String[]); }
 -keep class rikka.shizuku.** { *; }
 
 # The SSH of the terminal finds its ciphers and key types by their names.

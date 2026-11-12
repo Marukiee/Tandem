@@ -11,7 +11,9 @@
         "The battery icon on the phone shows how full it is",
         "The update card in the menu bar looks like the cards above it",
         "A phone uses less battery while a computer is off",
-        "A phone no longer keeps trying a watch that is with your other phone"
+        "A phone no longer keeps trying a watch that is with your other phone",
+        "Shizuku works on phones where it could not start Tandem's part of it, such as Oppo",
+        "Started Shizuku while Tandem was running? Its page offers to start Tandem again, so it sees it"
       ]
     },
     "nl": {
@@ -23,7 +25,9 @@
         "Het batterij-icoon op de telefoon laat zien hoe vol hij is",
         "De updatekaart in de menubalk ziet eruit als de kaarten erboven",
         "Een telefoon gebruikt minder accu als een computer uit staat",
-        "Een telefoon probeert niet steeds meer een horloge dat bij je andere telefoon is"
+        "Een telefoon probeert niet steeds meer een horloge dat bij je andere telefoon is",
+        "Shizuku werkt op telefoons waar het Tandems deel ervan niet kon starten, zoals Oppo",
+        "Shizuku gestart terwijl Tandem al draaide? De pagina biedt aan Tandem opnieuw te starten, dan ziet hij het"
       ]
     }
   },

@@ -148,6 +148,14 @@ private fun MainNavigation() {
             tourFlag.value = false
         }
     }
+    val shizukuFlag = LocalContext.current.graph.openShizuku
+    val openShizuku by shizukuFlag.collectAsState()
+    LaunchedEffect(openShizuku) {
+        if (openShizuku) {
+            nav.push(Route.SettingsPage(nl.markmaaktmedia.tandem.ui.screens.settings.SettingsPageId.Shizuku))
+            shizukuFlag.value = false
+        }
+    }
     val accessFlag = LocalContext.current.graph.openAccess
     val openAccess by accessFlag.collectAsState()
     LaunchedEffect(openAccess) {

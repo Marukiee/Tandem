@@ -110,6 +110,16 @@
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/share_targets" />
         </activity>
 
+        <!-- Opens Tandem again in a new process, from a process of its own (see RestartActivity). -->
+        <activity
+            android:name=".RestartActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:process=":restart"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
         <!-- Share to Tandem: files, images and text, from any app. -->
         <activity
             android:name=".share.ShareTargetActivity"
@@ -349,6 +359,13 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/clipboard_paths" />
         </provider>
+        <!-- Where the shell service that Shizuku starts hands over its binder (see ShellStarter). Only the shell and root may come here. -->
+        <provider
+            android:name=".hotspot.ShellBinderProvider"
+            android:authorities="${applicationId}.shell"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
         <provider
             android:name="rikka.shizuku.ShizukuProvider"
             android:authorities="${applicationId}.shizuku"
