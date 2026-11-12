@@ -334,8 +334,10 @@ fun DeviceDetailScreen(id: String, onBack: () -> Unit, onRemote: (String) -> Uni
         // A sound to find a computer by, and where it was last seen.
         if (computer) nl.markmaaktmedia.tandem.ui.components.FindComputerSection(device)
 
-        // The watch of that phone, which only talks to that phone.
-        device.status.watch?.takeIf { it.paired }?.let { watch ->
+        // The watch of that phone, which only talks to that phone. Not on the phone it left, which still says it has one.
+        val localWatch by context.graph.watch.state.collectAsState()
+        val watchHere = pickWatch(localWatch.paired, localWatch.ready, watchHolders(devices)) == WatchPick.Remote(id)
+        device.status.watch?.takeIf { it.paired && watchHere }?.let { watch ->
             SectionHeader(stringResource(R.string.settings_cat_watch), top = 12.dp, bottom = 0.dp)
             SettingsGroup {
                 nl.markmaaktmedia.tandem.ui.components.ButtonRow(

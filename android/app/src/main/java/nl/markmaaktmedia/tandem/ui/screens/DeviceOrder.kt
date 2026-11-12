@@ -18,6 +18,10 @@ fun <T> orderDevices(items: List<T>, pinned: Set<String>, id: (T) -> String, rea
 /** A phone in the circle that says it has a watch, and whether that watch is with it now (only true while the phone is connected). */
 internal data class WatchHolder(val phone: String, val online: Boolean)
 
+/** The phones in the circle that say they have a watch. */
+internal fun watchHolders(devices: List<uniffi.tandem_core.TandemDevice>): List<WatchHolder> =
+    devices.mapNotNull { d -> d.status.watch?.takeIf { it.paired }?.let { WatchHolder(d.id, d.online && it.online) } }
+
 /** The one watch card the first page shows: the watch of this phone, the watch of another phone in the circle, or none. */
 internal sealed interface WatchPick {
     data object Local : WatchPick

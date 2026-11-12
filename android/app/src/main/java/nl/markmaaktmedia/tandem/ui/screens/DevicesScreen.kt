@@ -128,10 +128,7 @@ fun DevicesScreen(
     val watchName = watchState.name ?: stringResource(R.string.settings_cat_watch)
 
     // One watch card: a watch that moved to another phone is still "paired" on the phone it left.
-    val watchPick = pickWatch(
-        watchState.paired, watchState.ready,
-        devices.mapNotNull { d -> d.status.watch?.takeIf { it.paired }?.let { WatchHolder(d.id, d.online && it.online) } },
-    )
+    val watchPick = pickWatch(watchState.paired, watchState.ready, watchHolders(devices))
     val watchPhone = (watchPick as? WatchPick.Remote)?.let { pick -> devices.firstOrNull { it.id == pick.phone } }
     val online = devices.count { it.online } + when (watchPick) {
         WatchPick.Local -> if (watchState.ready) 1 else 0
