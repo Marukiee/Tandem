@@ -1449,6 +1449,9 @@
 "Awake at %@, %@" = "Wakker om %@, %@";
 "Over more nights" = "Over meer nachten";
 "Resting heart rate" = "Rusthartslag";
+"Heart rate now" = "Hartslag nu";
+"Resting %lld" = "In rust %lld";
+"Live from your watch" = "Live van je horloge";
 "Regularity" = "Regelmaat";
 "This week" = "Deze week";
 "%lld more nights to show this" = "Nog %lld nachten om dit te tonen";

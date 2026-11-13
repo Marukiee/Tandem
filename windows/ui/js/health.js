@@ -1,6 +1,6 @@
 // The health page: built like the one on the phone and the Mac, from the same seven days of the core.
 import { html, useState, useEffect } from "../vendor/preact-htm.js";
-import { call } from "./backend.js";
+import { call, listen } from "./backend.js";
 import { Icon } from "./icons.js";
 import { language, t } from "./i18n.js";
 
@@ -36,18 +36,53 @@ const dayName = (midnightMs) => new Date(midnightMs + 12 * 3600_000).toLocaleDat
 const letter = (midnightMs) => new Date(midnightMs + 12 * 3600_000).toLocaleDateString(locale(), { weekday: "narrow" });
 const number = (value) => Number(value).toLocaleString(locale());
 
+// The heart rate now of the watch of each phone, while this computer asks for it, with when it came.
+const heartNow = new Map();
+const heartListeners = new Set();
+listen("watch-heart", ({ id, bpm }) => {
+  if (bpm > 0) heartNow.set(id, { bpm, at: Date.now() });
+  else heartNow.delete(id);
+  heartListeners.forEach((tell) => tell());
+});
+
+/** The heart rate of the watch of [phone] now, asked of it every half minute while [live]. Null when there is none. */
+function useHeartNow(phone, live) {
+  const [, redraw] = useState(0);
+  useEffect(() => {
+    if (!phone || !live) return undefined;
+    const tell = () => redraw((n) => n + 1);
+    heartListeners.add(tell);
+    const ask = () => call("watch_heart_live", { id: phone, on: true }).catch(() => {});
+    ask();
+    const asking = setInterval(ask, 30000);
+    // A value that stops coming is not the heart rate now any more.
+    const ageing = setInterval(tell, 3000);
+    return () => {
+      heartListeners.delete(tell);
+      clearInterval(asking);
+      clearInterval(ageing);
+      heartNow.delete(phone);
+      call("watch_heart_live", { id: phone, on: false }).catch(() => {});
+    };
+  }, [phone, live]);
+  const entry = phone && live ? heartNow.get(phone) : null;
+  return entry && Date.now() - entry.at < 8000 ? entry.bpm : null;
+}
+
 /**
  * What the watch measured last, as three numbers on the page of the watch, each opening the health page. A computer sees whole days,
- * so the steps are of the last whole day. Nothing until this computer was given something.
+ * so the steps are of the last whole day. Nothing until this computer was given something. While the watch is with its phone, the heart
+ * rate now takes the place of the resting one, with the resting one under it.
  */
-export function WatchGlance({ i, records, onOpen, goal }) {
+export function WatchGlance({ i, records, onOpen, goal, phone, live }) {
+  const now = useHeartNow(phone, live);
   const night = (records || []).find(isNight);
   const stepsDay = i ? [...i.week].reverse().find((d) => d.steps != null) : null;
   const resting = i && i.resting;
-  if (!night && !stepsDay && !resting) return null;
+  if (!night && !stepsDay && !resting && now == null) return null;
   const score = night && i && i.latestNight && i.latestNight.id === night.id ? i.latestNight.score : null;
-  const tile = (icon, title, value, caption, share) => html`<button class="card glance" title=${t("tab_health")} onClick=${onOpen}>
-    <div class="glance-title">${share != null ? html`<span class="glance-ring" style=${`--p:${Math.round(share * 100)}`}><span><${Icon} name=${icon} size=${12} /></span></span>` : html`<${Icon} name=${icon} size=${15} />`}${title}</div>
+  const tile = (icon, title, value, caption, share, beating) => html`<button class="card glance" title=${t("tab_health")} onClick=${onOpen}>
+    <div class="glance-title">${share != null ? html`<span class="glance-ring" style=${`--p:${Math.round(share * 100)}`}><span><${Icon} name=${icon} size=${12} /></span></span>` : html`<span class=${beating ? "beat" : ""}><${Icon} name=${icon} size=${15} /></span>`}${title}</div>
     <${BigNumber} text=${value} />
     <div class="small muted ellipsis">${caption}</div>
   </button>`;
@@ -55,8 +90,10 @@ export function WatchGlance({ i, records, onOpen, goal }) {
     ${night && tile("moon", t("watch_last_night"), healthDuration(night.sleepMinutes),
       score != null ? t("watch_score", score) : new Date(night.endMs).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }))}
     ${stepsDay && tile("walk", t("health_steps_title"), number(stepsDay.steps), dayName(stepsDay.startMs), goal ? Math.min(1, stepsDay.steps / goal) : null)}
-    ${resting && tile("heart", t("health_resting"), t("health_bpm", resting.latest),
-      resting.usual != null ? t("health_usually", resting.usual) : t("health_nights_more", resting.nightsNeeded))}
+    ${now != null
+      ? tile("heart", t("watch_heart_now"), t("health_bpm", now), resting ? t("watch_resting_value", resting.latest) : t("watch_heart_live"), null, true)
+      : resting && tile("heart", t("health_resting"), t("health_bpm", resting.latest),
+        resting.usual != null ? t("health_usually", resting.usual) : t("health_nights_more", resting.nightsNeeded))}
   </div>`;
 }
 

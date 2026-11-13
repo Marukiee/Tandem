@@ -451,7 +451,7 @@ export function WatchPage({ device }) {
         <span class="grow"><span class="t">${t("tab_health")}</span><span class="s">${t("health_open_sub")}</span></span>
         <${Icon} name="chevron-right" size=${16} />
       </button>
-      <${WatchGlance} i=${insights} records=${state.health} onOpen=${openHealth} goal=${shown && shown.stepGoal} />
+      <${WatchGlance} i=${insights} records=${state.health} onOpen=${openHealth} goal=${shown && shown.stepGoal} phone=${device.id} live=${reachable} />
       ${shown && html`<div class="glance-pills">
         <button class=${"pill-toggle" + (shown.smartWake ? " on" : "")} aria-pressed=${!!shown.smartWake} disabled=${!device.online} title=${why || t("watch_wake")}
           onClick=${() => change({ smartWake: !shown.smartWake })}><${Icon} name=${shown.smartWake ? "check" : "alarm"} size=${16} />${t("watch_wake_short")}</button>

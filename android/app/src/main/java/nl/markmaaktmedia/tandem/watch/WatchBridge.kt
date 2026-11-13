@@ -102,6 +102,9 @@ internal fun watchRestAfter(failures: Int): Long = when {
     else -> 60 * 60_000L
 }
 
+/** This phone's own screen, among the computers that ask for the heart rate now ([WatchBridge.liveHeart]). */
+const val LIVE_HEART_HERE = "here"
+
 /** Which computer the watch steers, and whether with the hand on a table. */
 data class WatchMouseNow(val target: String, val table: Boolean)
 
@@ -421,17 +424,48 @@ class WatchBridge(
     }
 
     /**
-     * A screen shows the heart rate now: the watch sends it every few seconds. Asked again every half minute while it does, as the
-     * watch stops by itself; off when it closes.
+     * [who] shows the heart rate now (this phone's screen, or a computer by its id): the watch sends it every few seconds. Asked again
+     * every half minute while it is shown; one that stops asking counts as gone after [ASK_KEEP_MS]. The watch stops once nobody asks.
      */
-    fun liveHeart(on: Boolean) {
+    fun liveHeart(who: String, on: Boolean) {
         handler.post {
-            enqueue(Message.HeartLive(on))
-            if (!on) {
-                handler.removeCallbacks(heartStale)
-                _state.update { it.copy(heartNow = null) }
+            if (on) {
+                heartAskers[who] = SystemClock.elapsedRealtime() + ASK_KEEP_MS
+                enqueue(Message.HeartLive(true))
+                handler.removeCallbacks(pruneHeartAskers)
+                handler.postDelayed(pruneHeartAskers, ASK_KEEP_MS)
+            } else {
+                heartAskers.remove(who)
+                if (heartAskers.isEmpty()) stopLiveHeart()
             }
         }
+    }
+
+    private val heartAskers = mutableMapOf<String, Long>()
+
+    /** The heart rate now to each computer that asked for it, and only to those. */
+    private fun forwardHeart(bpm: Int) {
+        val computers = heartAskers.keys.filter { it != LIVE_HEART_HERE }
+        val engine = host.engine ?: return
+        if (computers.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            computers.forEach { runCatching { engine.sendWatchHeartNow(it, bpm.coerceIn(0, 255).toUByte()) } }
+        }
+    }
+
+    private val pruneHeartAskers: Runnable = Runnable { pruneAskers() }
+
+    private fun pruneAskers() {
+        val now = SystemClock.elapsedRealtime()
+        heartAskers.entries.removeAll { it.value <= now }
+        if (heartAskers.isEmpty()) stopLiveHeart() else handler.postDelayed(pruneHeartAskers, heartAskers.values.min() - now)
+    }
+
+    private fun stopLiveHeart() {
+        handler.removeCallbacks(pruneHeartAskers)
+        enqueue(Message.HeartLive(false))
+        handler.removeCallbacks(heartStale)
+        _state.update { it.copy(heartNow = null) }
     }
 
     private val heartStale = Runnable { _state.update { it.copy(heartNow = null) } }
@@ -792,6 +826,7 @@ class WatchBridge(
                 // A value that stops coming is not the heart rate now any more.
                 handler.removeCallbacks(heartStale)
                 if (message.bpm > 0) handler.postDelayed(heartStale, HEART_STALE_MS)
+                forwardHeart(message.bpm)
             }
             is Message.HeartAllDay -> scope.launch { prefs.setHeartAllDay(message.on) }
             is Message.SleepMode -> onSleepMode(message.on)
@@ -933,6 +968,8 @@ class WatchBridge(
         const val AUTH_WINDOW_MS = 30_000L
         /** The watch sends the heart rate now every two seconds: this long without one, there is none. */
         const val HEART_STALE_MS = 8_000L
+        /** One that asked for the heart rate now and did not ask again in this time is no longer looking. */
+        const val ASK_KEEP_MS = 45_000L
         /** After pairing, how long the other phone may still say it has the watch: its status goes out a moment later. */
         const val JUST_PAIRED_MS = 60_000L
         const val UNPAIR_FLUSH_MS = 500L

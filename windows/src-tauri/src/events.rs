@@ -316,6 +316,9 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
         TandemEvent::Ringing { from, on } => {
             let _ = app.emit("ringing", json!({ "id": from, "on": on }));
         }
+        TandemEvent::WatchHeartNow { from, bpm } => {
+            let _ = app.emit("watch-heart", json!({ "id": from, "bpm": bpm }));
+        }
         TandemEvent::Wifi { from, msg } => crate::wifi::handle(app, from, msg),
         TandemEvent::Focus { on, .. } => crate::focus::follow(on),
         TandemEvent::MediaCommand { player, action, position_ms, .. } => crate::players::command(app, player, action, position_ms),

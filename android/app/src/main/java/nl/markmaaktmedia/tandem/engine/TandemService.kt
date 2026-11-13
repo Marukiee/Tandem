@@ -189,6 +189,10 @@ class TandemService : LifecycleService() {
 
             is TandemEvent.Ring -> if (event.on) FindPhone.start(this) else FindPhone.stop()
             is TandemEvent.RingWatch -> applicationContext.graph.watch.ringWatch(event.on)
+            // A computer shows the heart rate now: it gets it as long as it asks, and only one the person gave their health to.
+            is TandemEvent.WatchHeartLive ->
+                if (!event.on || host.engine?.healthAllowed(event.from) == true) applicationContext.graph.watch.liveHeart(event.from, event.on)
+            is TandemEvent.WatchHeartNow -> Unit
             is TandemEvent.RenameWatch -> applicationContext.graph.watch.rename(event.name)
             is TandemEvent.UnpairWatch -> applicationContext.graph.watch.unpair()
             is TandemEvent.StartWatchMouse -> applicationContext.graph.watch.openMouse(event.from, event.table)

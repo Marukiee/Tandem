@@ -465,6 +465,8 @@ impl Inner {
                 self.emit(Event::Ring { from: id, on });
             }
             Msg::RingWatch { on } => self.emit(Event::RingWatch { from: id, on }),
+            Msg::WatchHeartLive { on } => self.emit(Event::WatchHeartLive { from: id, on }),
+            Msg::WatchHeartNow { bpm } => self.emit(Event::WatchHeartNow { from: id, bpm }),
             Msg::RenameWatch { name } => self.emit(Event::RenameWatch { from: id, name }),
             Msg::UnpairWatch {} => self.emit(Event::UnpairWatch { from: id }),
             Msg::SetWatchSettings { change } => self.emit(Event::SetWatchSettings { from: id, change }),

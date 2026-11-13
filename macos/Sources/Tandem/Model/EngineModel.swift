@@ -51,6 +51,8 @@ final class EngineModel {
     }
 
     var healthRecords: [TandemHealthRecord] = []
+    /// The heart rate now of the watch of each phone, while this Mac asks for it (`watchHeartLive`), with when it came.
+    var watchHeartNow: [String: HeartNow] = [:]
     var healthInsights: TandemHealthInsights?
     /// Made up records of the debug health window: with these, a range is summed from them instead of from what this Mac keeps.
     @ObservationIgnored var debugHealthRecords: [TandemHealthRecord]?
@@ -509,6 +511,7 @@ final class EngineModel {
                 PhoneMicrophone.shared.phoneGone(id)
                 remoteMedia[id] = nil
                 coversSent[id] = nil
+                watchHeartNow[id] = nil
                 refreshNowPlaying()
                 // The output stays chosen: with the phone gone the sound plays on this Mac, and it moves to the phone
                 // again by itself when the phone is back (below), which is also what happens after the Mac sleeps.
@@ -777,8 +780,11 @@ final class EngineModel {
         case let .ring(from, on):
             FindThisMac.shared.ring(from: from, on: on)
 
+        case let .watchHeartNow(from, bpm):
+            watchHeartNow[from] = bpm > 0 ? HeartNow(bpm: Int(bpm), at: .now) : nil
+
         // Only a phone has a watch.
-        case .ringWatch, .renameWatch, .unpairWatch, .setWatchSettings, .startWatchMouse, .stopWatchMouse:
+        case .ringWatch, .watchHeartLive, .renameWatch, .unpairWatch, .setWatchSettings, .startWatchMouse, .stopWatchMouse:
             break
 
         case let .keepAwake(from, on):
@@ -1280,6 +1286,12 @@ final class EngineModel {
         Task { try? await engine?.ringWatch(target: id, on: on) }
     }
 
+    /// Asks the phone `id` for the heart rate of its watch now, or no longer. Again every half minute while it is shown.
+    func watchHeartLive(_ id: String, on: Bool) {
+        if !on { watchHeartNow[id] = nil }
+        Task { try? await engine?.watchHeartLive(target: id, on: on) }
+    }
+
     /// The phone keeps the name and tells everyone; empty is the plain name again.
     func renameWatch(_ id: String, name: String) {
         Task { try? await engine?.renameWatch(target: id, name: name) }
@@ -1685,4 +1697,13 @@ struct MirroredNotification: Identifiable, Equatable {
     let date: Date
     /// The verification code in it, if there is one, for a button that copies it.
     var code: String? = nil
+}
+
+/// A heart rate the watch measured just now, with when this Mac heard it: one that stops coming is not the heart rate now any more.
+struct HeartNow: Equatable {
+    let bpm: Int
+    let at: Date
+
+    /// The watch sends it every two seconds.
+    func fresh(at now: Date) -> Bool { now.timeIntervalSince(at) < 8 }
 }

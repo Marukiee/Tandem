@@ -257,6 +257,7 @@ pub fn run() {
             commands::set_guests_by_default,
             commands::ring,
             commands::ring_watch,
+            commands::watch_heart_live,
             commands::rename_watch,
             commands::unpair_watch,
             commands::set_watch_settings,

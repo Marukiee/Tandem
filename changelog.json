@@ -5,7 +5,8 @@
     "en": {
       "title": "Your heart rate now",
       "new": [
-        "The heart rate tile shows your heart rate now, live from the watch"
+        "The heart rate tile shows your heart rate now, live from the watch",
+        "Also on the Mac and the computers, while you look at the watch there"
       ],
       "fixed": [
         "The three health tiles of the watch are the same height"
@@ -14,7 +15,8 @@
     "nl": {
       "title": "Je hartslag nu",
       "new": [
-        "De hartslagtegel laat je hartslag nu zien, live van het horloge"
+        "De hartslagtegel laat je hartslag nu zien, live van het horloge",
+        "Ook op de Mac en de computers, zolang je daar naar het horloge kijkt"
       ],
       "fixed": [
         "De drie gezondheidstegels van het horloge zijn even hoog"

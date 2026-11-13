@@ -302,6 +302,9 @@ private struct WatchHealthCard: View {
         let night = model.healthRecords.first { $0.isNight }
         let stepsDay = insights?.week.last { $0.steps != nil }
         let settings = phone.status.watch?.settings
+        // The heart rate now, while this card is on screen and the watch is with its phone: asked again every half minute, as the
+        // phone stops by itself without that.
+        let watchHere = phone.online && phone.status.watch?.online == true
         Card(radius: Metrics.card, padding: 6) {
             VStack(spacing: 6) {
                 Button(action: onOpen) {
@@ -325,7 +328,9 @@ private struct WatchHealthCard: View {
                 }
                 .buttonStyle(.plain)
                 .help("Open Health")
-                if night != nil || stepsDay != nil || insights?.resting != nil {
+                if night != nil || stepsDay != nil || insights?.resting != nil || watchHere {
+                    TimelineView(.periodic(from: .now, by: 2)) { context in
+                    let now = model.watchHeartNow[phone.id].flatMap { watchHere && $0.fresh(at: context.date) ? $0.bpm : nil }
                     HStack(alignment: .top, spacing: 8) {
                         if let night {
                             let score = insights?.latestNight?.id == night.id ? insights?.latestNight?.score : nil
@@ -340,7 +345,14 @@ private struct WatchHealthCard: View {
                                 share: settings.map { min(1, Double(steps) / Double(max($0.stepGoal, 1))) }
                             )
                         }
-                        if let resting = insights?.resting {
+                        if let now {
+                            // Live: the number now, with the heart beating, and the resting rate under it.
+                            GlanceTile(
+                                onOpen: onOpen, symbol: "heart.fill", title: "Heart rate now", number: String(localized: "\(now) bpm"),
+                                caption: insights?.resting.map { String(localized: "Resting \(Int($0.latest))") } ?? String(localized: "Live from your watch"),
+                                beating: true
+                            )
+                        } else if let resting = insights?.resting {
                             GlanceTile(
                                 onOpen: onOpen, symbol: "heart", title: "Resting heart rate", number: String(localized: "\(Int(resting.latest)) bpm"),
                                 caption: resting.usual.map { String(localized: "Usually \(Int($0))") } ?? String(localized: "\(Int(resting.nightsNeeded)) more nights to show this")
@@ -348,6 +360,7 @@ private struct WatchHealthCard: View {
                         }
                     }
                     .padding([.horizontal, .bottom], 6)
+                    }
                 }
                 // The one setting that is changed from day to day, as a pill under the numbers like on the phone.
                 if let settings {
@@ -361,6 +374,14 @@ private struct WatchHealthCard: View {
                 }
             }
         }
+        .task(id: watchHere) {
+            guard watchHere else { return }
+            while !Task.isCancelled {
+                model.watchHeartLive(phone.id, on: true)
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
+        .onDisappear { model.watchHeartLive(phone.id, on: false) }
     }
 }
 
@@ -394,6 +415,8 @@ private struct GlanceTile: View {
     let caption: String
     /// How far toward a goal, as a ring around the icon: a bar under the number made the tile taller than the ones beside it.
     var share: Double? = nil
+    /// A number that is live: its symbol beats.
+    var beating = false
 
     var body: some View {
         Button(action: onOpen) {
@@ -411,6 +434,7 @@ private struct GlanceTile: View {
                         .frame(width: 20, height: 20)
                     } else {
                         Image(systemName: symbol)
+                            .symbolEffect(.pulse, options: .repeating, isActive: beating)
                     }
                     Text(title)
                 }

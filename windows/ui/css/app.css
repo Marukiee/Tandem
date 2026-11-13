@@ -604,6 +604,10 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .glance:hover { background: var(--hover); }
 .glance .health-big { font-size: 24px; }
 .glance-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+/* A live heart rate: two quick swells and a rest, about once a second. */
+.glance-title .beat { display: inline-flex; animation: heartbeat 1s ease-in-out infinite; }
+@keyframes heartbeat { 0%, 52%, 100% { transform: scale(1); } 12% { transform: scale(1.18); } 24% { transform: scale(1); } 36% { transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .glance-title .beat { animation: none; } }
 /* Toward the step goal as a ring around the icon, as on the phone: a bar under the number made the tile taller than the others. */
 .glance-ring { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--hover) 0); flex: none; }
 .glance-ring > span { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--card); color: var(--accent); }

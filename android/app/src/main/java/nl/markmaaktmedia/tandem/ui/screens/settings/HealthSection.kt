@@ -1055,11 +1055,11 @@ internal fun WatchGlance(onOpen: () -> Unit, modifier: Modifier = Modifier) {
             lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
                 try {
                     while (true) {
-                        graph.watch.liveHeart(true)
+                        graph.watch.liveHeart(nl.markmaaktmedia.tandem.watch.LIVE_HEART_HERE, true)
                         kotlinx.coroutines.delay(30_000)
                     }
                 } finally {
-                    graph.watch.liveHeart(false)
+                    graph.watch.liveHeart(nl.markmaaktmedia.tandem.watch.LIVE_HEART_HERE, false)
                 }
             }
         }

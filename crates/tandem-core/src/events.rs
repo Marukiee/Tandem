@@ -66,6 +66,10 @@ pub enum Event {
     Ring { from: DeviceId, on: bool },
     /// Another device asks this phone to make its watch ring, or stop.
     RingWatch { from: DeviceId, on: bool },
+    /// Another device asks this phone for the heart rate of its watch now, or no longer (see `Msg::WatchHeartLive`).
+    WatchHeartLive { from: DeviceId, on: bool },
+    /// The heart rate of the watch of the phone `from` now, which this device asked for. 0: none.
+    WatchHeartNow { from: DeviceId, bpm: u8 },
     /// Another device asks this phone to call its watch this; empty is the plain name again.
     RenameWatch { from: DeviceId, name: String },
     /// Another device asks this phone to unpair its watch.

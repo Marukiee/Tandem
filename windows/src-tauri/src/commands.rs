@@ -233,6 +233,12 @@ pub async fn ring_watch(state: State<'_, AppState>, id: String, on: bool) -> Rep
     state.engine()?.ring_watch(id, on).await.map_err(shown)
 }
 
+/// The heart rate of the watch of phone `id` now, or no longer: again every half minute while the page shows it.
+#[tauri::command]
+pub async fn watch_heart_live(state: State<'_, AppState>, id: String, on: bool) -> Reply<()> {
+    state.engine()?.watch_heart_live(id, on).await.map_err(shown)
+}
+
 /// The phone keeps the name of its watch and tells everyone; empty is the plain name again.
 #[tauri::command]
 pub async fn rename_watch(state: State<'_, AppState>, id: String, name: String) -> Reply<()> {

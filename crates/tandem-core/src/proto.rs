@@ -73,6 +73,13 @@ pub enum Msg {
     Ring { on: bool },
     /// Asks a phone to make the watch paired with it ring, or stop.
     RingWatch { on: bool },
+    /// Asks a phone for the heart rate of its watch now (`WatchHeartNow`), or no longer. Asked again every half minute while it is
+    /// shown: the phone stops by itself without that. Only to the device that asks, and only one that may have the health of the phone.
+    /// An older phone does not know it.
+    WatchHeartLive { on: bool },
+    /// The heart rate of the watch now, from its phone to a device that asked with `WatchHeartLive`, every few seconds. 0: none (off the
+    /// wrist, or it stopped).
+    WatchHeartNow { bpm: u8 },
     /// Asks a phone to call its watch this. Empty gives the watch back its own name. An older phone does not know it and keeps the name.
     RenameWatch { name: String },
     /// Asks a phone to unpair its watch, from a computer that shows the watch as a device of its own.

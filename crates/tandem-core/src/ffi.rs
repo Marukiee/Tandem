@@ -1275,6 +1275,8 @@ pub enum TandemEvent {
     BatteryAlert { from: String, level: u8, full: bool },
     Ring { from: String, on: bool },
     RingWatch { from: String, on: bool },
+    WatchHeartLive { from: String, on: bool },
+    WatchHeartNow { from: String, bpm: u8 },
     RenameWatch { from: String, name: String },
     UnpairWatch { from: String },
     SetWatchSettings { from: String, change: TandemWatchSettingsChange },
@@ -1422,6 +1424,8 @@ impl From<Event> for TandemEvent {
             Event::BatteryAlert { from, level, full } => TandemEvent::BatteryAlert { from: from.to_string(), level, full },
             Event::Ring { from, on } => TandemEvent::Ring { from: from.to_string(), on },
             Event::RingWatch { from, on } => TandemEvent::RingWatch { from: from.to_string(), on },
+            Event::WatchHeartLive { from, on } => TandemEvent::WatchHeartLive { from: from.to_string(), on },
+            Event::WatchHeartNow { from, bpm } => TandemEvent::WatchHeartNow { from: from.to_string(), bpm },
             Event::RenameWatch { from, name } => TandemEvent::RenameWatch { from: from.to_string(), name },
             Event::UnpairWatch { from } => TandemEvent::UnpairWatch { from: from.to_string() },
             Event::SetWatchSettings { from, change } => TandemEvent::SetWatchSettings { from: from.to_string(), change: change.into() },
@@ -2136,6 +2140,16 @@ impl TandemEngine {
     /// Asks the phone `target` to make its watch ring, or stop.
     pub async fn ring_watch(&self, target: String, on: bool) -> Result<(), TandemError> {
         self.send(vec![target], crate::proto::Msg::RingWatch { on }).await.map(|_| ())
+    }
+
+    /// Asks the phone `target` for the heart rate of its watch now, or no longer. Again every half minute while it is shown.
+    pub async fn watch_heart_live(&self, target: String, on: bool) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::WatchHeartLive { on }).await.map(|_| ())
+    }
+
+    /// On a phone: the heart rate of its watch now, to `target`, which asked for it. 0: none.
+    pub async fn send_watch_heart_now(&self, target: String, bpm: u8) -> Result<(), TandemError> {
+        self.send(vec![target], crate::proto::Msg::WatchHeartNow { bpm }).await.map(|_| ())
     }
 
     /// Asks the phone `target` to call its watch `name`; empty is the plain name again.
