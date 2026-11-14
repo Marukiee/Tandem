@@ -41,6 +41,8 @@ final class PointerShare {
         didSet {
             UserDefaults.standard.set(Array(allowed), forKey: Self.allowedKey)
             UserDefaults.standard.removeObject(forKey: Self.allowKey)
+            // A computer that may use this Mac can drop files on its edge, which go to the Finder window in front: asked now, not mid-drag.
+            if allowed.count > oldValue.count { FinderFolder.askAhead() }
             if let controlledBy, !allowed.contains(controlledBy) { endControlled(tell: controlledBy) }
         }
     }
