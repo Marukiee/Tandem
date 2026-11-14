@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import TandemLogic
 import IOKit
 import IOKit.ps
 import IOKit.pwr_mgt
@@ -191,15 +192,10 @@ final class KeepAwake {
         run("/usr/bin/sudo", ["-n", "/usr/bin/pmset", "-a", "disablesleep", disabled ? "1" : "0"])
     }
 
-    /// The rule, checked by visudo before it goes in, and the first switch, with one question for an administrator.
+    /// The rule, checked by visudo before it goes in, and the first switch, with one question for an administrator. The script writes the
+    /// rule as root (see `SudoRule`), so no file of the user is copied into sudoers.
     nonisolated private static func installRule(thenDisable disabled: Bool) -> Bool {
-        let user = NSUserName()
-        guard user.allSatisfy({ $0.isLetter || $0.isNumber || "._-".contains($0) }) else { return false }
-        let line = "\(user) ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1"
-        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("tandem-pmset-\(UUID().uuidString)")
-        guard (try? (line + "\n").write(to: temp, atomically: true, encoding: .utf8)) != nil else { return false }
-        defer { try? FileManager.default.removeItem(at: temp) }
-        let script = "/usr/sbin/visudo -cf '\(temp.path)' && /usr/bin/install -m 0440 -o root -g wheel '\(temp.path)' \(rule) && /usr/bin/pmset -a disablesleep \(disabled ? 1 : 0)"
+        guard let script = SudoRule.script(user: NSUserName(), rule: rule, disabled: disabled) else { return false }
         let prompt = String(localized: "Tandem wants to keep this Mac awake with the lid closed.")
         let apple = "do shell script \"\(script)\" with prompt \"\(prompt.replacingOccurrences(of: "\"", with: ""))\" with administrator privileges"
         return run("/usr/bin/osascript", ["-e", apple])
