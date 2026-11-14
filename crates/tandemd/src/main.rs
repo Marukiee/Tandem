@@ -717,11 +717,12 @@ fn print_event(engine: &Engine, event: &Event) {
         Event::RemovedFromCircle => println!("this device was removed from the circle"),
         Event::Clipboard { from, text, .. } => println!("clipboard from {}: {text}", name_of(from)),
         Event::Notification { from, notification } => println!(
-            "notification from {}: {} | {} | code {}",
+            "notification from {}: {} | {} | code {}{}",
             name_of(from),
             notification.app_name,
             notification.title,
-            if notification.otp.is_some() { "found" } else { "none" }
+            if notification.otp.is_some() { "found" } else { "none" },
+            if notification.code_only { " (code only)" } else { "" }
         ),
         // Keys and clicks, one line each; a pointer that moves would flood the screen, so those only as a dot.
         Event::Input { from, input } => match input {

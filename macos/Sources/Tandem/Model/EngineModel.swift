@@ -624,7 +624,8 @@ final class EngineModel {
                 showToast(String(localized: "Code \(code) copied"))
                 if shown { Notifier.shared.postCodeCopied(code: code, deviceName: deviceName, key: notification.key) }
             }
-            guard shown, !repeated else { return }
+            // A code that came for its own switch only: the notifications of that app are off on the phone.
+            guard shown, !repeated, !notification.codeOnly else { return }
             Notifier.shared.postMirrored(device: from, deviceName: deviceName, notification: notification, code: code)
             remember(notification, from: from, deviceName: deviceName, code: code)
 
