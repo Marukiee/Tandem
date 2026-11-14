@@ -102,6 +102,7 @@
 "Choose files to send to %@" = "Kies bestanden om naar %@ te sturen";
 "Your phone is ringing" = "Je telefoon gaat over";
 "That device is not connected right now" = "Dat apparaat is nu niet verbonden";
+"Nothing in that could be sent" = "Daar zat niets in dat gestuurd kon worden";
 "Drop files here" = "Sleep bestanden hierheen";
 "Let go to send" = "Loslaten om te sturen";
 "Folders are sent as a zip." = "Mappen worden als zip verstuurd.";

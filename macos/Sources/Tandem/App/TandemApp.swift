@@ -98,7 +98,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func application(_ application: NSApplication, open urls: [URL]) {
         Task { @MainActor in
-            for url in urls { EngineModel.shared.handle(url: url) }
+            // Files dropped on the Dock icon (the app says it can take any file, without ever being the one that opens it): asked where to.
+            let files = urls.filter(\.isFileURL)
+            if !files.isEmpty { DevicePicker.send(files) }
+            for url in urls where !url.isFileURL { EngineModel.shared.handle(url: url) }
         }
     }
 
