@@ -58,13 +58,17 @@ class AndroidFiles(private val context: Context) : TandemFiles {
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val resolver = context.contentResolver
-        val target = resolver.insert(collection, values)
-            ?: throw TandemException.Failed("Could not create $name in $folder")
+        val target = resolver.insert(collection, values) ?: run {
+            temp.delete()
+            throw TandemException.Failed("Could not create $name in $folder")
+        }
         try {
             resolver.openOutputStream(target)!!.use { output -> temp.inputStream().use { it.copyTo(output, 256 * 1024) } }
             resolver.update(target, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
         } catch (e: Exception) {
             resolver.delete(target, null, null)
+            // Nothing will fetch this copy again, and it would stay for days.
+            temp.delete()
             throw TandemException.Failed("Could not save $name: ${e.message}")
         }
         temp.delete()

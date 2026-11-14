@@ -16,8 +16,14 @@ class ActionReceiver : BroadcastReceiver() {
         val device = intent.getStringExtra(EXTRA_DEVICE)
         val offer = intent.getLongExtra(EXTRA_OFFER, 0)
         when (intent.action) {
-            ACCEPT -> if (device != null) runCatching { host.engine?.acceptOffer(device, offer.toULong()) }
-            DECLINE -> if (device != null) context.graph.scope.launch { runCatching { host.engine?.declineOffer(device, offer.toULong()) } }
+            ACCEPT -> if (device != null) {
+                TandemService.offerAnswered(context, offer)
+                runCatching { host.engine?.acceptOffer(device, offer.toULong()) }
+            }
+            DECLINE -> if (device != null) {
+                TandemService.offerAnswered(context, offer)
+                context.graph.scope.launch { runCatching { host.engine?.declineOffer(device, offer.toULong()) } }
+            }
             STOP_RING -> FindPhone.stop()
             CANCEL_CAPTURE -> {
                 val request = intent.getLongExtra(EXTRA_OFFER, 0)

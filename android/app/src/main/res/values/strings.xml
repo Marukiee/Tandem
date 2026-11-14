@@ -779,4 +779,6 @@
     <string name="health_compare_none">Health Connect has no nights of other apps. In Health Connect, let Fitbit or Google Health write sleep there, then export again.</string>
     <string name="watch_bluetooth_off">Bluetooth is off</string>
     <string name="watch_bluetooth_off_sub">Your watch cannot connect to this phone. Tap to turn it on.</string>
+    <string name="link_waiting_title">Link from another device</string>
+    <string name="link_waiting_text">%1$s (also on your clipboard)</string>
 </resources>

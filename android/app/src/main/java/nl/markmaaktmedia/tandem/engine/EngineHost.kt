@@ -12,7 +12,10 @@ import android.provider.Settings
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -181,7 +184,11 @@ class EngineHost(
     }
 
     private val _events = MutableSharedFlow<TandemEvent>(extraBufferCapacity = 512)
-    val events: SharedFlow<TandemEvent> = _events.asSharedFlow()
+
+    // Progress comes many times a second and only its newest word matters: on its own flow that keeps the latest, so a slow
+    // collector never fills the room the other events need and makes them drop.
+    private val _progress = MutableSharedFlow<TandemEvent>(extraBufferCapacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val events: Flow<TandemEvent> = merge(_events, _progress)
 
     private val _removed = MutableStateFlow(false)
 
@@ -294,7 +301,12 @@ class EngineHost(
     private inner class Sink : TandemEventSink {
         override fun onEvent(event: TandemEvent) {
             handle(event)
-            _events.tryEmit(event)
+            if (event is TandemEvent.Progress) {
+                _progress.tryEmit(event)
+            } else if (!_events.tryEmit(event)) {
+                // Full means a collector is far behind: wait for room instead of losing the event.
+                scope.launch { _events.emit(event) }
+            }
         }
     }
 
@@ -324,12 +336,7 @@ class EngineHost(
                 // Only a web link opens by itself: another kind could start anything on this phone.
                 val web = Uri.parse(event.text).scheme?.lowercase() in setOf("http", "https")
                 if (event.open && event.isUrl && web) {
-                    runCatching {
-                        context.startActivity(
-                            android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(event.text))
-                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                        )
-                    }
+                    openLink(event.text)
                 } else {
                     applyRemoteClipboard(event.text)
                 }
@@ -345,6 +352,30 @@ class EngineHost(
             }
             else -> Unit
         }
+    }
+
+    /**
+     * Android refuses to start a screen from the background without permission to draw over apps, and says nothing.
+     * So without that permission and with the app out of sight, the link waits in a notification and on the clipboard.
+     */
+    private fun openLink(url: String) {
+        val view = android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(url))
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (context.graph.live.inForeground || Settings.canDrawOverlays(context)) {
+            if (runCatching { context.startActivity(view) }.isSuccess) return
+        }
+        applyRemoteClipboard(url)
+        if (!Channels.canPost(context)) return
+        context.getSystemService(android.app.NotificationManager::class.java).notify(
+            url.hashCode(),
+            androidx.core.app.NotificationCompat.Builder(context, Channels.INCOMING)
+                .setSmallIcon(nl.markmaaktmedia.tandem.R.drawable.ic_stat_tandem)
+                .setContentTitle(context.getString(nl.markmaaktmedia.tandem.R.string.link_waiting_title))
+                .setContentText(context.getString(nl.markmaaktmedia.tandem.R.string.link_waiting_text, url))
+                .setContentIntent(android.app.PendingIntent.getActivity(context, url.hashCode(), view, android.app.PendingIntent.FLAG_IMMUTABLE))
+                .setAutoCancel(true)
+                .build(),
+        )
     }
 
     private fun applyRemoteClipboard(text: String) {
@@ -470,6 +501,10 @@ class EngineHost(
             }.onFailure { Log.w(TAG, "could not open $uri", it) }
         }
         val mime = resolver.getType(uri) ?: "application/octet-stream"
+        // A file shared without a name (a picture from some apps) would arrive without an extension and open with nothing.
+        if (name.substringAfterLast('.', "").isEmpty()) {
+            android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(mime)?.let { name = "$name.$it" }
+        }
         if (outgoingSources.size > 200) outgoingSources.clear()
         outgoingSources["$name|$size"] = source
         return TandemOutgoingFile(source = source, name = name, size = size.toULong(), mime = mime)

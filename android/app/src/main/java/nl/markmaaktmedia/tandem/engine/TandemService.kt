@@ -144,6 +144,8 @@ class TandemService : LifecycleService() {
         graph.media.stop()
         graph.audio.stop(tell = true)
         multicast?.takeIf { it.isHeld }?.release()
+        transferWake?.takeIf { it.isHeld }?.release()
+        transferWifi?.takeIf { it.isHeld }?.release()
         FindPhone.stop()
         nl.markmaaktmedia.tandem.wifi.WifiShare.get(this).stop()
         super.onDestroy()
@@ -297,7 +299,7 @@ class TandemService : LifecycleService() {
             return
         }
         val name = graph.host.device(from)?.name ?: getString(R.string.capture_mac_fallback)
-        val screen = Intent(this, MainActivity::class.java).setAction(if (extend) MainActivity.ACTION_OPEN_DISPLAY else MainActivity.ACTION_OPEN_MIRROR)
+        val screen = MainActivity.internalIntent(this).setAction(if (extend) MainActivity.ACTION_OPEN_DISPLAY else MainActivity.ACTION_OPEN_MIRROR)
             .putExtra(MainActivity.EXTRA_DEVICE, from)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         // The person started it on the computer, so with permission to draw over other apps (which also lets the app open a
@@ -391,9 +393,46 @@ class TandemService : LifecycleService() {
             .build()
     }
 
+    private var transferWake: PowerManager.WakeLock? = null
+    private var transferWifi: WifiManager.WifiLock? = null
+    private var heldSince = 0L
+    private var wifiGuard: kotlinx.coroutines.Job? = null
+
+    /**
+     * With the screen off the CPU and the Wi-Fi sleep, and a large transfer stalls. Held only while one runs, and with a
+     * timeout, so a transfer that never reports its end cannot keep the phone awake.
+     */
+    private fun holdForTransfer(busy: Boolean) {
+        val wake = transferWake ?: getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "tandem:transfer")
+            .apply { setReferenceCounted(false) }.also { transferWake = it }
+        @Suppress("DEPRECATION")
+        val wifi = transferWifi ?: getSystemService(WifiManager::class.java).createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "tandem:transfer")
+            .apply { setReferenceCounted(false) }.also { transferWifi = it }
+        val now = SystemClock.elapsedRealtime()
+        if (busy) {
+            // Renewed while progress keeps coming, so the timeout only ever ends a transfer that went quiet.
+            if (!wake.isHeld || now - heldSince > HOLD_MS / 2) {
+                wake.acquire(HOLD_MS)
+                heldSince = now
+                // The Wi-Fi lock has no timeout of its own: it ends with the wake lock.
+                wifiGuard?.cancel()
+                wifiGuard = lifecycleScope.launch {
+                    delay(HOLD_MS)
+                    if (wifi.isHeld) wifi.release()
+                }
+            }
+            if (!wifi.isHeld) wifi.acquire()
+        } else {
+            wifiGuard?.cancel()
+            if (wake.isHeld) wake.release()
+            if (wifi.isHeld) wifi.release()
+        }
+    }
+
     private fun postProgress() {
         val host = graph.host
         val active = host.transfers.value.filter { it.state == TransferItem.State.Active }
+        holdForTransfer(active.isNotEmpty())
         val manager = getSystemService(NotificationManager::class.java)
         if (active.isEmpty()) {
             manager.cancel(PROGRESS_ID)
@@ -482,12 +521,7 @@ class TandemService : LifecycleService() {
         )
     }
 
-    /** Offers with a question in the notifications, so one that is taken up some other way takes its question away. */
-    private val offerQuestions = mutableSetOf<Long>()
-
-    private fun offerAnswered(offer: ULong) {
-        if (offerQuestions.remove(offer.toLong())) getSystemService(NotificationManager::class.java).cancel(offer.toLong().hashCode())
-    }
+    private fun offerAnswered(offer: ULong) = offerAnswered(this, offer.toLong())
 
     /** [meteredBytes]: the files wait because this phone is on mobile data, and the question says how much it would use. */
     private fun postOffer(deviceName: String, from: String, offer: Long, count: Int, meteredBytes: Long? = null) {
@@ -520,7 +554,16 @@ class TandemService : LifecycleService() {
         private const val NOTIFICATION_ID = 1
         private const val LOOK_AFTER_MOVE_MS = 120_000L
         private const val PROGRESS_ID = 2
+        private const val HOLD_MS = 20 * 60_000L
         private const val OFFER_TIMEOUT_MS = 10 * 60_000L
+
+        /** Offers with a question in the notifications, so one that is taken up some other way takes its question away. */
+        private val offerQuestions: MutableSet<Long> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+        /** The offer has an answer (accepted, declined, or it came in by itself): its Accept and Decline go away with it. */
+        fun offerAnswered(context: Context, offer: Long) {
+            if (offerQuestions.remove(offer)) context.getSystemService(NotificationManager::class.java).cancel(offer.hashCode())
+        }
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(context, Intent(context, TandemService::class.java))
