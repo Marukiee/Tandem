@@ -100,6 +100,7 @@ android {
 
     lint {
         abortOnError = false
+        error += "NewApi"
         checkReleaseBuilds = false
     }
 }

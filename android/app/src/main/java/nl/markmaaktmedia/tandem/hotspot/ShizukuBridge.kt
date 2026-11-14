@@ -260,7 +260,7 @@ class ShizukuBridge(private val context: Context) {
         }
         // What it writes goes nowhere, but is read all the same: a pipe nobody reads fills up and stops the process.
         for (stream in listOf(started.inputStream, started.errorStream)) {
-            Thread({ runCatching { stream.copyTo(java.io.OutputStream.nullOutputStream()) } }, "tandem-shell-out").apply { isDaemon = true }.start()
+            Thread({ runCatching { val buffer = ByteArray(4096); while (stream.read(buffer) >= 0) Unit } }, "tandem-shell-out").apply { isDaemon = true }.start()
         }
         binder = service
         return service
