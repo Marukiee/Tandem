@@ -152,6 +152,8 @@ final class PointerShare {
     /// A drag (a photo, a file, text) that went over with the pointer and has not been let go yet. While the button is down it stays over there,
     /// and it does not go over a second time.
     @ObservationIgnored private var carriedDrag = false
+    /// Reads and sends what a drag carried over the edge. Called off when the pointer comes back with the drag still held.
+    @ObservationIgnored private var carryTask: Task<Void, Never>?
     /// When a device that did not take the pointer was last asked to open the setting it misses.
     @ObservationIgnored private var openedSettingsAt: [String: Date] = [:]
     /// When a device last handed the pointer straight back.
@@ -473,7 +475,8 @@ final class PointerShare {
         Task { @MainActor in SideWatch.shared.pointerWentOver(device) }
         let name = model.device(device)?.name ?? String(localized: "another computer")
         let crossed = Date()
-        Task { @MainActor [weak self] in
+        carryTask?.cancel()
+        carryTask = Task { @MainActor [weak self] in
             try? await engine.sendPointerShare(target: device, msg: .enter(edge: Self.edge(edge), along: Float(along)))
             guard let kind else {
                 // Only once the pointer stayed over there: a device that hands it straight back (see `.leave`) showed the pill for a
@@ -486,6 +489,11 @@ final class PointerShare {
             // After the pointer, so the other computer takes it in first and knows these come from the person at the mouse.
             try? await Task.sleep(for: .milliseconds(250))
             let carried = await DragReading.read(kind)
+            // Back with the button still down: the drag goes on on this Mac, so nothing goes to the other computer as well.
+            guard !Task.isCancelled else {
+                PointerLog.write("the drag came back before it was sent: it goes on here")
+                return
+            }
             switch carried {
             case let .files(urls)?: await EngineModel.shared.send(urls: urls, to: [device], origin: .drag)?.value
             case let .text(text)?: try? await engine.sendPointerShare(target: device, msg: .carry(text: text))
@@ -572,8 +580,11 @@ final class PointerShare {
         CGAssociateMouseAndMouseCursorPosition(1)
         CursorHider.show()
         PointerAwayPill.hide()
-        // Back before what it carried was sent: with the button still down the drag simply goes on here; let go, it is ended.
-        if carrying, NSEvent.pressedMouseButtons & 1 == 0 { endLocalDrag() }
+        // Back before what it carried was sent: with the button still down the drag simply goes on here and is not sent; let go, it is
+        // ended here and sent.
+        if carrying {
+            if NSEvent.pressedMouseButtons & 1 == 0 { endLocalDrag() } else { carryTask?.cancel() }
+        }
         carrying = false
         carriedDrag = false
         heldButtons = []
