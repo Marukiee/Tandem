@@ -64,20 +64,79 @@ pub const RESUME_CAP: &str = "share.resume";
 /// How long a receiver waits for `ShareResumed` before it pulls anyway, as from an older sender.
 const RESUME_WAIT: Duration = Duration::from_secs(15);
 
-/// Short words in `TransferDone::error` that the apps translate, like `cancelled`, `declined` and `expired` (see docs/TRANSFERS.md).
+/// The fixed codes in `TransferDone::error` and in the journal, which the apps translate (R-V13, see docs/TRANSFERS.md). Nothing else
+/// ever goes there: what went wrong in detail goes to the log.
+/// Stopped by a person, on either side.
+pub const REASON_CANCELLED: &str = "cancelled";
+/// The receiver said no (R-B14).
+pub const REASON_DECLINED: &str = "declined";
+/// Nobody said yes in time, it waited too long in the queue (P3), or it stopped halfway too long ago.
+pub const REASON_EXPIRED: &str = "expired";
 /// The sender no longer has the file or the offer.
 pub const REASON_GONE: &str = "gone";
-/// The file changed at the sender since it was offered, so the part that came in no longer fits it.
+/// The file changed at the sender since it was offered, so what would come is not what was sent.
 pub const REASON_CHANGED: &str = "changed";
 /// The receiver has less free space than the files take (P5).
 pub const REASON_NO_SPACE: &str = "no space";
-/// What a sender answers a pull of an offer it does not have. Older receivers show it as it is, so it stays a sentence.
-const NO_LONGER_AVAILABLE: &str = "that offer is no longer available";
+/// The connection dropped and did not come back in time, or kept dropping.
+pub const REASON_CONNECTION_LOST: &str = "connection lost";
+/// What came in did not match what was sent, also after trying again.
+pub const REASON_CHECKSUM: &str = "checksum failed";
+/// The receiver could not write or store the file.
+pub const REASON_NOT_SAVED: &str = "not saved";
+/// Anything else, such as a refusal of a sender in words this version does not know.
+pub const REASON_FAILED: &str = "failed";
+/// Every code, so an app or a test can tell a code from an older sentence.
+pub const REASONS: &[&str] = &[
+    REASON_CANCELLED,
+    REASON_DECLINED,
+    REASON_EXPIRED,
+    REASON_GONE,
+    REASON_CHANGED,
+    REASON_NO_SPACE,
+    REASON_CONNECTION_LOST,
+    REASON_CHECKSUM,
+    REASON_NOT_SAVED,
+    REASON_FAILED,
+];
 
+/// What a sender answers a pull it will not serve. Older receivers show these as they are, so on the wire they stay sentences; a new
+/// receiver turns them into codes (`reason_from_sender`).
+/// An offer it does not have for that receiver.
+const NO_LONGER_AVAILABLE: &str = "that offer is no longer available";
+/// The file cannot be opened any more; the error of the platform follows after a colon.
+const CANNOT_OPEN: &str = "could not open the file";
+/// A queued file that changed before its offer went out (P3).
+const CHANGED_SINCE_SENT: &str = "the file changed since it was sent";
+/// A resume asked for more than the file has: it got shorter.
+const PAST_THE_END: &str = "resume point is past the end";
+
+/// The code for the words a sender refused a pull with. A newer sender may send a code itself.
+fn reason_from_sender(words: &str) -> &'static str {
+    if words == NO_LONGER_AVAILABLE || words.starts_with(CANNOT_OPEN) {
+        REASON_GONE
+    } else if words == CHANGED_SINCE_SENT || words == PAST_THE_END {
+        REASON_CHANGED
+    } else {
+        REASONS.iter().copied().find(|code| *code == words).unwrap_or(REASON_FAILED)
+    }
+}
+
+/// The words a sender refuses a pull of a file with that ended for that receiver with `reason` (P3: changed or gone before it went
+/// out), so a new receiver gets the same code and an older one a sentence.
+fn refusal_for(reason: Option<&str>) -> String {
+    match reason {
+        Some(REASON_CHANGED) => CHANGED_SINCE_SENT.to_string(),
+        Some(REASON_GONE) => format!("{CANNOT_OPEN}: it is no longer there"),
+        _ => NO_LONGER_AVAILABLE.to_string(),
+    }
+}
+
+/// Why a pull of one file did not work: the code it ends with, and what happened, for the log.
 enum PullError {
     /// Worth trying again, probably from where it stopped.
-    Retry(String),
-    Fatal(String),
+    Retry(&'static str, String),
+    Fatal(&'static str, String),
 }
 
 impl Inner {
@@ -252,9 +311,10 @@ impl Inner {
         if reply.accepted {
             return;
         }
-        let reason = reply.reason.filter(|r| !r.trim().is_empty()).unwrap_or_else(|| "declined".to_string());
+        // Only codes reach the apps; a reason in words this version does not know is a no all the same.
+        let reason = reply.reason.filter(|r| REASONS.contains(&r.as_str())).unwrap_or_else(|| REASON_DECLINED.to_string());
         let state = match reason.as_str() {
-            "expired" => ItemState::Expired,
+            REASON_EXPIRED => ItemState::Expired,
             REASON_NO_SPACE => ItemState::Failed,
             _ => ItemState::Declined,
         };
@@ -603,17 +663,22 @@ impl Inner {
         });
         let attempt = async {
         let mut attempts = 0u32;
-        let outcome: std::result::Result<(), String> = loop {
+        let outcome: std::result::Result<(), &'static str> = loop {
             let Some(session) = self.wait_for_session(peer, Duration::from_secs(600)).await else {
-                break Err("the other device did not come back".to_string());
+                info!(%peer, offer, index, "the other device did not come back");
+                break Err(REASON_CONNECTION_LOST);
             };
             match self.pull_item(&session, offer, index, &item, &temp).await {
                 Ok(()) => break Ok(()),
-                Err(PullError::Fatal(reason)) => break Err(reason),
-                Err(PullError::Retry(reason)) => {
+                Err(PullError::Fatal(reason, detail)) => {
+                    info!(%peer, offer, index, reason, "transfer failed: {detail}");
+                    break Err(reason);
+                }
+                Err(PullError::Retry(reason, detail)) => {
                     attempts += 1;
-                    debug!(%peer, offer, index, attempts, "transfer interrupted: {reason}");
+                    debug!(%peer, offer, index, attempts, "transfer interrupted: {detail}");
                     if attempts >= MAX_ATTEMPTS {
+                        info!(%peer, offer, index, reason, "transfer failed after {attempts} tries: {detail}");
                         break Err(reason);
                     }
                     tokio::time::sleep(Duration::from_millis(400 * attempts as u64)).await;
@@ -626,7 +691,7 @@ impl Inner {
         let outcome = tokio::select! {
             biased;
             _ = self.cancel.cancelled() => None,
-            _ = cancel.cancelled() => Some(Err("cancelled".to_string())),
+            _ = cancel.cancelled() => Some(Err(REASON_CANCELLED)),
             outcome = attempt => Some(outcome),
         };
         let Some(outcome) = outcome.filter(|outcome| outcome.is_ok() || !self.cancel.is_cancelled()) else {
@@ -664,8 +729,14 @@ impl Inner {
                         location: Some(location),
                         error: None,
                     },
-                    Ok(Err(e)) => failed(peer, offer, index, &item, format!("could not save the file: {e}")),
-                    Err(e) => failed(peer, offer, index, &item, e.to_string()),
+                    Ok(Err(e)) => {
+                        info!(%peer, offer, index, "could not save the file: {e}");
+                        failed(peer, offer, index, &item, REASON_NOT_SAVED)
+                    }
+                    Err(e) => {
+                        info!(%peer, offer, index, "could not save the file: {e}");
+                        failed(peer, offer, index, &item, REASON_NOT_SAVED)
+                    }
                 }
             }
             Err(reason) => {
@@ -677,7 +748,7 @@ impl Inner {
             if let Some(progress) = record.item_mut(&peer, index) {
                 progress.state = match done.error.as_deref() {
                     None => ItemState::Done,
-                    Some("cancelled") => ItemState::Cancelled,
+                    Some(REASON_CANCELLED) => ItemState::Cancelled,
                     Some(_) => ItemState::Failed,
                 };
                 if progress.state == ItemState::Done {
@@ -764,7 +835,8 @@ impl Inner {
         item: &ShareItem,
         temp: &Path,
     ) -> std::result::Result<(), PullError> {
-        let retry = |e: &dyn std::fmt::Display| PullError::Retry(e.to_string());
+        let retry = |e: &dyn std::fmt::Display| PullError::Retry(REASON_CONNECTION_LOST, e.to_string());
+        let not_saved = |e: &dyn std::fmt::Display| PullError::Fatal(REASON_NOT_SAVED, e.to_string());
 
         let (mut send, mut recv) = session.conn.open_bi().await.map_err(|e| retry(&e))?;
         send.write_all(&[STREAM_FILE]).await.map_err(|e| retry(&e))?;
@@ -777,8 +849,8 @@ impl Inner {
             proto::recv(&mut recv, MAX_SMALL_FRAME).await.map_err(|e| retry(&e))?;
         if !response.ok {
             let error = response.error.unwrap_or_else(|| "the other device refused".into());
-            // A word the apps translate; the sentence stays on the wire for older receivers.
-            return Err(PullError::Fatal(if error == NO_LONGER_AVAILABLE { REASON_GONE.to_string() } else { error }));
+            // A code the apps translate; the sentence stays on the wire for older receivers.
+            return Err(PullError::Fatal(reason_from_sender(&error), error));
         }
         let size = response.size;
         if offset > size {
@@ -792,27 +864,27 @@ impl Inner {
             .truncate(false)
             .open(temp)
             .await
-            .map_err(|e| PullError::Fatal(format!("could not create the file: {e}")))?;
+            .map_err(|e| not_saved(&format!("could not create the file: {e}")))?;
         if offset == 0 {
-            file.set_len(0).await.map_err(|e| PullError::Fatal(e.to_string()))?;
+            file.set_len(0).await.map_err(|e| not_saved(&e))?;
         }
 
         let mut hasher = blake3::Hasher::new();
         let mut buf = vec![0u8; CHUNK];
         if offset > 0 {
-            file.seek(SeekFrom::Start(0)).await.map_err(|e| PullError::Fatal(e.to_string()))?;
+            file.seek(SeekFrom::Start(0)).await.map_err(|e| not_saved(&e))?;
             let mut remaining = offset;
             while remaining > 0 {
                 let want = remaining.min(buf.len() as u64) as usize;
-                let n = file.read(&mut buf[..want]).await.map_err(|e| PullError::Fatal(e.to_string()))?;
+                let n = file.read(&mut buf[..want]).await.map_err(|e| not_saved(&e))?;
                 if n == 0 {
-                    return Err(PullError::Fatal("the partial file is shorter than expected".into()));
+                    return Err(not_saved(&"the partial file is shorter than expected"));
                 }
                 hasher.update(&buf[..n]);
                 remaining -= n as u64;
             }
         }
-        file.seek(SeekFrom::Start(offset)).await.map_err(|e| PullError::Fatal(e.to_string()))?;
+        file.seek(SeekFrom::Start(offset)).await.map_err(|e| not_saved(&e))?;
 
         let mut done = offset;
         let mut last_emit = Instant::now();
@@ -821,9 +893,9 @@ impl Inner {
             let want = (size - done).min(buf.len() as u64) as usize;
             let n = match recv.read(&mut buf[..want]).await.map_err(|e| retry(&e))? {
                 Some(n) => n,
-                None => return Err(PullError::Retry("the stream ended early".into())),
+                None => return Err(retry(&"the stream ended early")),
             };
-            file.write_all(&buf[..n]).await.map_err(|e| PullError::Fatal(format!("could not write: {e}")))?;
+            file.write_all(&buf[..n]).await.map_err(|e| not_saved(&format!("could not write: {e}")))?;
             hasher.update(&buf[..n]);
             done += n as u64;
             if last_emit.elapsed() >= PROGRESS_EVERY {
@@ -833,8 +905,8 @@ impl Inner {
         }
 
         let trailer: FileTrailer = proto::recv(&mut recv, MAX_SMALL_FRAME).await.map_err(|e| retry(&e))?;
-        file.flush().await.map_err(|e| PullError::Fatal(e.to_string()))?;
-        file.sync_all().await.map_err(|e| PullError::Fatal(e.to_string()))?;
+        file.flush().await.map_err(|e| not_saved(&e))?;
+        file.sync_all().await.map_err(|e| not_saved(&e))?;
         drop(file);
 
         let matches = *hasher.finalize().as_bytes() == trailer.blake3;
@@ -843,7 +915,7 @@ impl Inner {
         if !matches {
             // Start over from nothing: a partial that fails its hash cannot be trusted.
             let _ = std::fs::remove_file(temp);
-            return Err(PullError::Retry("checksum did not match".into()));
+            return Err(PullError::Retry(REASON_CHECKSUM, "checksum did not match".into()));
         }
         self.progress(session.peer, offer, index, true, &item.name, size, size);
         Ok(())
@@ -897,9 +969,9 @@ impl Inner {
         let opened = match self.files.open_read(&item.source) {
             Ok(file) => file,
             Err(e) => {
-                let error = format!("could not open the file: {e}");
-                self.served(key, peer, request.index, ItemState::Failed, Some(error.clone()));
-                let reply = FileResponse { ok: false, error: Some(error), size: 0 };
+                info!(%peer, offer = request.offer, index = request.index, "could not open the file: {e}");
+                self.served(key, peer, request.index, ItemState::Failed, Some(REASON_GONE.to_string()));
+                let reply = FileResponse { ok: false, error: Some(format!("{CANNOT_OPEN}: {e}")), size: 0 };
                 proto::send(&mut send, &reply).await?;
                 let _ = send.finish();
                 return Ok(());
@@ -907,7 +979,7 @@ impl Inner {
         };
         let size = opened.metadata()?.len();
         if request.offset > size {
-            let reply = FileResponse { ok: false, error: Some("resume point is past the end".into()), size };
+            let reply = FileResponse { ok: false, error: Some(PAST_THE_END.into()), size };
             proto::send(&mut send, &reply).await?;
             let _ = send.finish();
             return Ok(());
@@ -1004,7 +1076,7 @@ impl Inner {
                     name: name.to_string(),
                     size,
                     location: None,
-                    error: Some("cancelled".into()),
+                    error: Some(REASON_CANCELLED.into()),
                 }));
                 return Err(Error::transfer("cancelled"));
             }
@@ -1029,7 +1101,7 @@ impl Inner {
         let ack: Option<FileAck> = proto::recv(&mut *recv, MAX_SMALL_FRAME).await.ok();
         let _ = send.finish();
         let rejected = ack.is_some_and(|a| !a.ok);
-        let error = rejected.then(|| "the other device rejected the checksum".to_string());
+        let error = rejected.then(|| REASON_CHECKSUM.to_string());
         if !rejected {
             self.progress(peer, request.offer, request.index, false, name, size, size);
         }
@@ -1162,7 +1234,7 @@ fn unfinished(record: &TransferRecord) -> Vec<(u32, RecordItem)> {
         .collect()
 }
 
-fn failed(peer: DeviceId, offer: u64, index: u32, item: &ShareItem, reason: String) -> TransferDone {
+fn failed(peer: DeviceId, offer: u64, index: u32, item: &ShareItem, reason: &str) -> TransferDone {
     TransferDone {
         offer,
         index,
@@ -1171,7 +1243,7 @@ fn failed(peer: DeviceId, offer: u64, index: u32, item: &ShareItem, reason: Stri
         name: item.name.clone(),
         size: item.size,
         location: None,
-        error: Some(reason),
+        error: Some(reason.to_string()),
     }
 }
 
@@ -1208,5 +1280,23 @@ mod clipboard_tests {
         assert_eq!(safe_name(".hidden.png"), "hidden.png");
         assert_eq!(safe_name("  "), "picture.png");
         assert_eq!(safe_name("Screenshot 10.00.png"), "Screenshot 10.00.png");
+    }
+}
+
+#[cfg(test)]
+mod reason_tests {
+    use super::*;
+
+    /// R-V13: what a sender refuses with on the wire becomes a code here, also the sentences of older senders.
+    #[test]
+    fn the_words_of_a_sender_become_a_code() {
+        assert_eq!(reason_from_sender(NO_LONGER_AVAILABLE), REASON_GONE);
+        assert_eq!(reason_from_sender("could not open the file: Permission denied (os error 13)"), REASON_GONE);
+        assert_eq!(reason_from_sender(PAST_THE_END), REASON_CHANGED);
+        assert_eq!(reason_from_sender(&refusal_for(Some(REASON_CHANGED))), REASON_CHANGED);
+        assert_eq!(reason_from_sender(&refusal_for(Some(REASON_GONE))), REASON_GONE);
+        assert_eq!(reason_from_sender(REASON_NO_SPACE), REASON_NO_SPACE);
+        assert_eq!(reason_from_sender("something a future version says"), REASON_FAILED);
+        assert_eq!(reason_from_sender("the other device refused"), REASON_FAILED);
     }
 }
