@@ -153,7 +153,8 @@ class StatusReporter(
                 watch = now.watch.takeIf { it != last.watch },
             )
             last = now
-            host.pushStatus(change)
+            // A message with nothing in it still goes to every device: a broadcast that woke this for nothing says nothing.
+            if (change != EMPTY) host.pushStatus(change)
         }
     }
 
@@ -220,6 +221,8 @@ class StatusReporter(
         }
 
         private const val GB = 1_000_000_000L
+
+        private val EMPTY = TandemStatus(null, null, null, null, null, null, null, null, null)
 
         /** Quickly, because someone may be waiting for a watch to stop ringing, but not for each step of a pairing. */
         private const val WATCH_DELAY_MS = 300L
