@@ -32,6 +32,10 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
 - **R-B32. Android: weiger je een aanbod in de app, dan blijft de melding tot 10 minuten staan** (klein).
   `A/engine/TandemService.kt` (`offerAnswered`) hoort alleen van voortgang en van klaar. Voorstel: ook aanroepen bij weigeren.
+- **R-V13. De redenen van de kern zijn Engelse zinnen, in elke taal** (zeker, klein tot middel). Een overdracht die mislukt toont
+  de tekst van de kern zoals hij is, bijvoorbeeld "The connection dropped" in een Nederlandse app (gezien in de proefversie van de
+  Linux- en Windows-app, 2026-11-14). Alleen "cancelled", "declined" en "expired" zijn vertaald. Voorstel: de kern geeft een vaste
+  code per reden (verbinding weg, controlesom, geen ruimte, bestand weg) en de apps vertalen die.
 - **R-T open:** de proef van R-B1 op de Oppo (het deelverzoek met `adb shell am start` voor en na) is niet gedaan; de telefoon hing
   niet meer aan adb.
 
