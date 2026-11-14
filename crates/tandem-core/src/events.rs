@@ -35,6 +35,9 @@ pub enum Event {
     DevicesChanged,
     /// The nights and workouts on this device changed (see `health`).
     HealthChanged,
+    /// The queue (P3) moved an offer without a file event: it went out to a device that came back, or went back in the queue because
+    /// the connection dropped before anything was pulled. Read `transfers()` again.
+    TransfersChanged,
     Connected { id: DeviceId },
     Disconnected { id: DeviceId },
     /// A device cannot be reached on any address of the local network, it is known by a Tailscale address, and this device has no

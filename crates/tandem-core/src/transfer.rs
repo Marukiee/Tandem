@@ -272,6 +272,7 @@ impl Inner {
                 })
                 .flatten();
             let Some((offer, send, ended)) = claimed else { continue };
+            self.emit(Event::TransfersChanged);
             for (index, item, reason) in ended {
                 self.emit(Event::Finished(TransferDone {
                     offer: offer_id,
@@ -302,6 +303,7 @@ impl Inner {
                         receiver.offered_ms = 0;
                     }
                 });
+                self.emit(Event::TransfersChanged);
             }
         }
     }

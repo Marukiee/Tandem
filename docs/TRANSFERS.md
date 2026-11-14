@@ -273,7 +273,8 @@ Tests: `a_queued_offer_survives_a_restart_and_goes_out_when_the_receiver_comes_b
 ffi `transfers() -> Vec<TandemTransfer>`: `offer`, `incoming`, `origin`, `created_ms`, `updated_ms`, `items` (`name`, `size`, `mime`,
 `source`: uit, voor Opnieuw sturen), `peers` (`device`, `stage: TandemTransferStage`, `offered_ms`, `items`: `state: TandemItemState`,
 `done`, `error`, `location`), `held` en `halfway` (wacht op Verder gaan of Weggooien, zoals `resumable_transfers`). Geen nieuwe
-gebeurtenis: lees opnieuw bij `ShareOffered`, `Finished`, `Connected`, `Disconnected` en hooguit twee keer per seconde bij `Progress`.
+gebeurtenis voor het paneel zelf: lees opnieuw bij `ShareOffered`, `Finished`, `TransfersChanged`, `Disconnected` en hooguit twee keer per
+seconde bij `Progress`.
 
 Voorbeeld: `macos/Sources/Tandem/Model/UnderwayTransfers.swift` en `UI/UnderwaySection.swift`, bovenaan Gedeeld. Een rij per aanbod per
 apparaat, binnenkomend van klembord, slepen en `Capture` niet. Twee groepen met een kopje: **Underway / Onderweg** (uit) en
