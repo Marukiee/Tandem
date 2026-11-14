@@ -134,7 +134,7 @@ class WatchNotifications(private val listener: NotificationListenerService) {
 
     /** Chat apps keep the newest text in MessagingStyle; EXTRA_TEXT often only says "3 new messages". */
     private fun lastMessage(extras: Bundle): String? {
-        val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES, Parcelable::class.java) ?: return null
+        val messages = androidx.core.os.BundleCompat.getParcelableArray(extras, Notification.EXTRA_MESSAGES, Parcelable::class.java) ?: return null
         val last = messages.lastOrNull() as? Bundle ?: return null
         val text = last.getCharSequence("text")?.toString() ?: return null
         val sender = last.getCharSequence("sender")?.toString()
