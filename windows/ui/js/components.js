@@ -222,7 +222,8 @@ export function PlayersCard({ device, players }) {
   const shown = live ? players : last.current;
   const current = shown.find((p) => p.id === chosen) || shown.find((p) => p.playing) || shown[0];
   const shut = (e) => {
-    if (live || e.target !== e.currentTarget || e.propertyName !== "grid-template-rows") return;
+    // Closed by its height when it sits under the head, by its width when it sits beside it.
+    if (live || e.target !== e.currentTarget || !["grid-template-rows", "flex-grow"].includes(e.propertyName)) return;
     last.current = [];
     cleared((n) => n + 1);
   };

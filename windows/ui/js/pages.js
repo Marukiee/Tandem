@@ -398,7 +398,9 @@ export function DevicePage({ device }) {
           <${Icon} name=${webcamOn ? "circle-x" : "video"} size=${17} />${webcamOn ? t("webcam_stop") : t("webcam_use")}</button>`;
 
   return html`<div class="wrap">
-    <div class="card" style=${device.online ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
+    ${/* The head and what plays, side by side where there is room and under each other where there is not. */ null}
+    <div class="headbox"><div class="headrow">
+    <div class="card headcard" style=${device.online ? "--tint:var(--accent-soft);background-image:linear-gradient(var(--accent-soft),var(--accent-soft))" : ""}>
       <div class="head">
         <${DeviceArt} device=${device} />
         <div class="info grow">
@@ -411,6 +413,7 @@ export function DevicePage({ device }) {
     </div>
 
     <${PlayersCard} device=${device} players=${players} />
+    </div></div>
 
     <${Offers} device=${device} />
 
