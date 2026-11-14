@@ -89,6 +89,12 @@ class ShareTargetActivity : ComponentActivity() {
         val picked = intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)?.let { ShareShortcuts.parse(this, it) }
         picked?.let { Log.i(TAG, "shared with a shortcut, picked in the share sheet: ${it.proven}") }
         if (picked?.proven == true) {
+            // Nothing else to show here, but the question about free space (P5) needs a screen to be asked on.
+            setContent {
+                TandemTheme(graph.prefs.appearance.collectAppearance(), applySystemBarStyle = false) {
+                    nl.markmaaktmedia.tandem.ui.components.SpaceQuestion()
+                }
+            }
             directSend(shared, picked.target)
             return
         }
@@ -97,7 +103,10 @@ class ShareTargetActivity : ComponentActivity() {
         setContent {
             val appearance = graph.prefs.appearance.collectAppearance()
             // A shortcut without the secret was not picked in the share sheet: what it names is ticked, and Send is still a tap.
-            TandemTheme(appearance, applySystemBarStyle = false) { ShareScreen(shared, nearbyOnly, picked?.target) { finish() } }
+            TandemTheme(appearance, applySystemBarStyle = false) {
+                ShareScreen(shared, nearbyOnly, picked?.target) { finish() }
+                nl.markmaaktmedia.tandem.ui.components.SpaceQuestion()
+            }
         }
     }
 
@@ -203,7 +212,11 @@ class ShareTargetActivity : ComponentActivity() {
                     onSend = { targets ->
                         ShareSends.start(app, launch, again = true) {
                             val reached = sendShared(app, shared, targets)
-                            if (reached > 0) SendPhase.Done(reached) else SendPhase.Failed(app.getString(R.string.share_none_online))
+                            when {
+                                reached > 0 -> SendPhase.Done(reached)
+                                reached == nl.markmaaktmedia.tandem.engine.EngineHost.SEND_CANCELLED -> SendPhase.Failed(app.getString(R.string.share_not_sent))
+                                else -> SendPhase.Failed(app.getString(R.string.share_none_online))
+                            }
                         }
                     },
                     onClose = leave,
@@ -293,7 +306,8 @@ private suspend fun sendPicked(context: Context, shared: Shared, target: ShareSh
         is ShareShortcuts.Target.Device -> listOf(target.id)
     }
     withTimeoutOrNull(3500) { host.devices.first { list -> list.any { it.id in wanted && it.online } } }
-    return SendPhase.Done(sendShared(context, shared, wanted))
+    val reached = sendShared(context, shared, wanted)
+    return if (reached == nl.markmaaktmedia.tandem.engine.EngineHost.SEND_CANCELLED) SendPhase.Failed(context.getString(R.string.share_not_sent)) else SendPhase.Done(reached)
 }
 
 /**
@@ -306,7 +320,7 @@ private suspend fun sendShared(context: Context, shared: Shared, targets: List<S
     if (online.isEmpty()) return 0
     if (shared.uris.isNotEmpty()) {
         val screenshot = withContext(Dispatchers.IO) { shared.uris.any { looksLikeScreenshot(context, it) } }
-        return host.sendUris(shared.uris, online, if (screenshot) TandemShareOrigin.Screenshot else TandemShareOrigin.Files)
+        return host.sendUris(shared.uris, online, if (screenshot) TandemShareOrigin.Screenshot else TandemShareOrigin.Files, askSpace = true)
     }
     val text = shared.text ?: return 0
     val isUrl = text.startsWith("http://") || text.startsWith("https://")
