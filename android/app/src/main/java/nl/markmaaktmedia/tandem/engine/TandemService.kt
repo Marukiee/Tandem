@@ -60,6 +60,8 @@ class TandemService : LifecycleService() {
         super.onCreate()
         Channels.create(this)
         startForeground(NOTIFICATION_ID, foregroundNotification(emptyList()), ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+        // Transfers do not survive the process, so a progress notification that is still up is left over from a crash.
+        getSystemService(NotificationManager::class.java).cancel(PROGRESS_ID)
 
         // mDNS needs multicast packets, which Wi-Fi drops to save power unless asked. Asking costs power all day long, on a busy network
         // more than anything else Tandem does, so only while a paired device is missing and someone uses the phone or it just got another
@@ -156,6 +158,7 @@ class TandemService : LifecycleService() {
             }
 
             is TandemEvent.Progress -> {
+                if (event.incoming) offerAnswered(event.offer)
                 val now = System.currentTimeMillis()
                 if (now - lastProgressPost > 700) {
                     lastProgressPost = now
@@ -164,6 +167,7 @@ class TandemService : LifecycleService() {
             }
 
             is TandemEvent.Finished -> {
+                if (event.incoming) offerAnswered(event.offer)
                 postProgress()
                 if (event.incoming && (event.offer in clipboardOffers || event.location?.let(ClipboardPictures::waits) == true)) {
                     // A picture or files copied on that device: on this phone's clipboard, not as a file that came in.
@@ -478,6 +482,13 @@ class TandemService : LifecycleService() {
         )
     }
 
+    /** Offers with a question in the notifications, so one that is taken up some other way takes its question away. */
+    private val offerQuestions = mutableSetOf<Long>()
+
+    private fun offerAnswered(offer: ULong) {
+        if (offerQuestions.remove(offer.toLong())) getSystemService(NotificationManager::class.java).cancel(offer.toLong().hashCode())
+    }
+
     /** [meteredBytes]: the files wait because this phone is on mobile data, and the question says how much it would use. */
     private fun postOffer(deviceName: String, from: String, offer: Long, count: Int, meteredBytes: Long? = null) {
         val manager = getSystemService(NotificationManager::class.java)
@@ -487,6 +498,7 @@ class TandemService : LifecycleService() {
                 .putExtra(ActionReceiver.EXTRA_OFFER, offer),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        offerQuestions += offer
         manager.notify(
             offer.hashCode(),
             NotificationCompat.Builder(this, Channels.INCOMING)
@@ -497,6 +509,8 @@ class TandemService : LifecycleService() {
                 }
                 .addAction(0, getString(R.string.action_accept), action(ActionReceiver.ACCEPT))
                 .addAction(0, getString(R.string.action_decline), action(ActionReceiver.DECLINE))
+                // The sender may have given up without a word, and then Accept would do nothing.
+                .setTimeoutAfter(OFFER_TIMEOUT_MS)
                 .setAutoCancel(true)
                 .build(),
         )
@@ -506,6 +520,7 @@ class TandemService : LifecycleService() {
         private const val NOTIFICATION_ID = 1
         private const val LOOK_AFTER_MOVE_MS = 120_000L
         private const val PROGRESS_ID = 2
+        private const val OFFER_TIMEOUT_MS = 10 * 60_000L
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(context, Intent(context, TandemService::class.java))
