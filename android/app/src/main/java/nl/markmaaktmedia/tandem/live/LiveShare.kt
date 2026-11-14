@@ -105,7 +105,7 @@ class LiveShare(
         })
     }
 
-    private val inForeground get() = startedActivities > 0
+    val inForeground get() = startedActivities > 0
 
     // ---- A capture kept for the next time -------------------------------------------------------------------
 

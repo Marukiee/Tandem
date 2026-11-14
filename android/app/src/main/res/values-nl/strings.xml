@@ -776,4 +776,6 @@
     <string name="health_compare_none">Health Connect heeft geen nachten van andere apps. Laat Fitbit of Google Health in Health Connect slaap wegschrijven, en exporteer dan opnieuw.</string>
     <string name="watch_bluetooth_off">Bluetooth staat uit</string>
     <string name="watch_bluetooth_off_sub">Je horloge kan geen verbinding maken met deze telefoon. Tik om het aan te zetten.</string>
+    <string name="link_waiting_title">Link van een ander apparaat</string>
+    <string name="link_waiting_text">%1$s (staat ook op je klembord)</string>
 </resources>
