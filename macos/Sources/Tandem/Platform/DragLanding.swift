@@ -56,6 +56,8 @@ final class DragLanding {
     /// Moves the file to the folder where it was dropped, with a name that is free there.
     static func place(_ source: URL, in folder: URL) -> URL {
         let manager = FileManager.default
+        // Dropped on the folder it was received into: it is there already, and a free name would only rename it after itself.
+        if source.deletingLastPathComponent().resolvingSymlinksInPath().path == folder.resolvingSymlinksInPath().path { return source }
         var target = folder.appendingPathComponent(source.lastPathComponent)
         var n = 2
         while manager.fileExists(atPath: target.path) {
