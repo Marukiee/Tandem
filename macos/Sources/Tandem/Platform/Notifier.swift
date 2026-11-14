@@ -38,7 +38,10 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     private func baseCategories() -> Set<UNNotificationCategory> {
         let reveal = UNNotificationAction(identifier: "reveal", title: String(localized: "Show in Finder"), options: [.foreground])
         let file = UNNotificationCategory(identifier: Self.fileCategory, actions: [reveal], intentIdentifiers: [])
-        return Set([file]).union(dynamicCategories.values)
+        let goOn = UNNotificationAction(identifier: HalfwayTransfers.goOnAction, title: String(localized: "Go on"), options: [])
+        let throwAway = UNNotificationAction(identifier: HalfwayTransfers.throwAwayAction, title: String(localized: "Throw away"), options: [.destructive])
+        let halfway = UNNotificationCategory(identifier: HalfwayTransfers.notificationCategory, actions: [goOn, throwAway], intentIdentifiers: [])
+        return Set([file, halfway]).union(dynamicCategories.values)
     }
 
     func post(
@@ -173,6 +176,10 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             switch response.notification.request.content.categoryIdentifier {
             case Self.fileCategory:
                 if let path = info["path"] { onFileAction?(path) }
+            case HalfwayTransfers.notificationCategory:
+                if let from = info["from"], let offer = info["offer"].flatMap(UInt64.init) {
+                    HalfwayTransfers.shared.answer(from: from, offer: offer, action: action)
+                }
             case FocusShare.notificationCategory:
                 FocusShare.shared.addOrSignIn()
             case SetupTour.notificationCategory:

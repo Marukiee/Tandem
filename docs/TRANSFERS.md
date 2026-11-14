@@ -83,9 +83,14 @@ mee (R-B27).
 Een bestand dat eindigt zonder aan te komen krijgt in `TransferDone::error` een kort woord dat de apps mogen vertalen, zoals nu al
 `cancelled`: `cancelled`, `declined` (de ontvanger zei nee, R-B14), `expired`. De afzender krijgt bij een nee of een verlopen
 aanbod per bestand een `Finished` met `incoming: false`. De reden komt van de ontvanger (`ShareReply::reason`), `declined` als die
-geen reden geeft. Een volgend pakket kan zo ook `no space` sturen (P5) zonder nieuw bericht. Elk bestand krijgt zo'n `Finished`
-een keer: alleen de overgang naar de eindstand geeft er een. De apps tonen `declined` en `expired` nu nog als tekst; ze kunnen ze
-vertalen zoals `cancelled`.
+geen reden geeft. Elk bestand krijgt zo'n `Finished` een keer: alleen de overgang naar de eindstand geeft er een.
+
+Sinds P2 en P5 komen erbij (constanten in `transfer.rs`): `gone` (de afzender heeft het aanbod of het bestand niet meer),
+`changed` (het bestand veranderde bij de afzender sinds het aanbod) en `no space` (de ontvanger heeft te weinig vrije ruimte). Een
+afzender stuurt bij een pull van een aanbod dat hij niet heeft nog steeds de zin `that offer is no longer available`, zodat oudere
+ontvangers iets leesbaars tonen; een nieuwe ontvanger maakt daar `gone` van. Een aanbod dat nog niet opgehaald werd en gestopt wordt
+(door de afzender of de persoon) geeft bij de ontvanger nu ook een `Finished` met `cancelled` per bestand, zodat de app de vraag kan
+weghalen.
 
 ### Besluiten
 
@@ -94,7 +99,7 @@ vertalen zoals `cancelled`.
   herstart pas weer op als de persoon ja zegt (P2). Op Android verloopt de toestemming voor een bestand uit een andere app na een
   herstart, dan antwoordt de afzender `could not open the file`; dat lost P3 op met de kopie in `outgoing/`.
 - **Alles komt in het boek**, ook klembord, foto's en scans (`Capture`) en slepen (`Drag`). Zulke aanbiedingen horen bij een
-  moment: P2 biedt ze niet aan om te hervatten maar gooit ze bij de start weg.
+  moment: P2 biedt ze niet aan om te hervatten maar gooit ze bij de start weg (`settle_after_restart`).
 - **`accept_offer` start alleen een aanbod dat op een ja wacht.** Op een overdracht die halverwege stopte geeft het een fout: die
   gaat alleen verder via P2.
 - **Een herhaald aanbod met hetzelfde nummer** van dezelfde afzender wordt overgeslagen; de nummers zijn willekeurig, dus het is
@@ -102,27 +107,107 @@ vertalen zoals `cancelled`.
 
 ## De pakketten die erop bouwen
 
-De functies hieronder zijn een voorstel voor `ffi.rs`; P1 voegde daar niets toe. `Engine::transfers()` (alleen in Rust) geeft het
+De functies van P3 en verder zijn een voorstel voor `ffi.rs`. `Engine::transfers()` (alleen in Rust) geeft het
 hele boek, het nieuwste eerst.
 
-### P2. Hervatten na een herstart
+### P2. Hervatten na een herstart (gebouwd)
 
-Na de start loopt er niets. De app vraagt bij de start `transfers()` en vindt elke binnenkomende overdracht met bestanden in
-`interrupted`; daar vraagt hij "Verder gaan of weggooien?". Geen nieuwe gebeurtenis nodig.
+Na de start loopt er niets. De regel van Mark: nooit vanzelf verder. De kern meldt de halve overdrachten, de app vraagt "Verder
+gaan of weggooien?", en pas een ja haalt de rest op.
 
-- **Ja**: `resume_transfer(from, offer)` zet `started` en haalt de bestanden op die niet `done` zijn, vanaf de lengte van het
-  deelbestand (`receive_all` slaat `done` al over, `pull_item` begint al bij het deelbestand).
-- **Nee**: `cancel_transfer(from, offer, true)` doet het al: deelbestanden weg, bestanden `cancelled`, en de afzender krijgt
-  `ShareCancel` en sluit die ontvanger. Nog zonder test.
-- **"Dit aanbod opnieuw"**: met het boek heeft een afzender die zelf herstartte het aanbod nog, en het ophalen van de rest is zelf
-  de vraag. Heeft de afzender het niet meer (verlopen, een oude versie die herstartte), dan antwoordt die met
-  `FileResponse { ok: false, error: "that offer is no longer available" }`; dat wordt nu een `failed`. P2 moet dat als eigen
-  geval melden ("de afzender heeft het niet meer") en het deelbestand weggooien. Een apart bericht is alleen nodig als P2 vooraf
-  wil vragen of het er nog is; voorstel: niet doen.
-- Wat bij een moment hoort (`Clipboard`, `Capture`, `Drag`) bij de start zonder vraag weggooien.
+- **Welke**: `Engine::resumable_transfers()` (ffi `resumable_transfers() -> Vec<TandemResumable>`) geeft elke binnenkomende
+  overdracht met `stage: accepted`, minstens een bestand `interrupted`, die niet loopt en niet gestopt is, de nieuwste eerst. Geen
+  gebeurtenis: wat de kern tijdens de start zou melden, kwam aan voor de app luisterde (`ffi.rs` abonneert pas na `Engine::start`).
+  De app vraagt de lijst na de start en bij elke `Connected` (dan kan Verder gaan weer).
+- **Ja**: `resume_transfer(from, offer)`. Een fout als de overdracht er niet op wacht of als de afzender niet verbonden is (de app
+  toont Verder gaan dan grijs en zegt bij gebruik waarom; tien minuten wachten binnen een ja zou de persoon naar niets laten kijken).
+  De kern vraagt de afzender met `ShareResume { id, items }` of hij de bestanden die nog moeten komen nog heeft zoals ze waren. De
+  afzender antwoordt `ShareResumed { id, ok, changed, gone }`: `ok: false` als hij het aanbod voor die ontvanger niet meer heeft
+  (verlopen, gestopt, of uit zijn boek verdwenen), anders per bestand of het veranderd is (andere grootte, of een andere
+  `source_modified_ms` als die bekend was) of niet meer te openen. De afzender zet die bestanden voor die ontvanger op `failed` met
+  de reden en zegt het zijn app met een `Finished`. Daarna haalt de ontvanger de rest op, elk bestand vanaf de lengte van zijn
+  deelbestand (`pull_item` begint daar al; de controlesom leest het stuk dat er is opnieuw). Bestanden in een eindstand worden niet
+  opnieuw opgehaald (`receive_all`).
+- **Oude afzender**: alleen een apparaat met de cap `share.resume` (`transfer::RESUME_CAP`) wordt gevraagd. Een oudere afzender kent
+  het bericht niet; de ontvanger haalt dan meteen op, en antwoordt die afzender `that offer is no longer available`, dan wordt dat
+  `gone`. Komt er binnen 15 seconden geen antwoord, dan ook gewoon ophalen.
+- **De afzender heeft het niet meer**: elk bestand dat nog moest komen eindigt met `Finished` en `gone`, de deelbestanden gaan weg en
+  de overdracht is dicht.
+- **Nee**: `discard_transfer(from, offer)`: deelbestanden weg, elk bestand dat nog moest komen eindigt met `Finished` en
+  `cancelled`, en de afzender krijgt `ShareCancel` en sluit die ontvanger. Is de afzender nu weg, dan hoort hij het niet; zijn kant
+  verloopt na `UNFINISHED_KEPT` (3 dagen), en er haalt intussen niemand meer op.
+- **Van een moment** (`Clipboard`, `Capture`, `Drag`): bij de start zonder vraag gesloten als `cancelled`, deelbestanden weg. De
+  afzender hoort het niet (bij de start is er geen verbinding); zijn kant verloopt na 3 dagen.
 
-Klaar als een kerntest dekt: ja haalt de rest op en het bestand klopt; nee gooit het deelbestand weg en de afzender hoort het;
-de afzender heeft het niet meer en dat komt als eigen melding; een klembordaanbod wordt niet aangeboden.
+Tests: `tests/transfers.rs` (ja haalt de rest op vanaf het deelbestand en het bestand klopt; nee gooit weg en de afzender sluit;
+de afzender heeft het niet meer; een veranderd bestand wordt gemeld en de rest komt) en `journal.rs` (een klembordaanbod wordt niet
+aangeboden).
+
+### P5. Vrije ruimte vooraf (gebouwd)
+
+- **De ontvanger** vergelijkt wat nog moet komen (per bestand dat niet af is: grootte min wat er al is) met de vrije ruimte die
+  zijn eigen app in de status meldt (`Status::free_storage`). Groter: geweigerd, voordat er iets opgehaald wordt. Dat gebeurt als
+  het aanbod binnenkomt (dan wordt niemand iets gevraagd en komt er geen `ShareOffered`), bij een ja (de ruimte kan intussen op
+  zijn) en bij Verder gaan van P2. Elk bestand eindigt met `Finished` en `no space`; de afzender krijgt `ShareReply` met reden
+  `no space` en zet de bestanden op `failed` met een `Finished` per bestand. Een app die geen vrije ruimte meldt krijgt geen controle.
+- **De afzender** vraagt vooraf `short_of_space(targets, files)`: de ontvangers die minder vrije ruimte melden dan de bestanden
+  samen (een grootte van 0 wordt opgezocht zoals bij `send_files`). Niet leeg: vragen "toch sturen?" en pas dan `send_files`.
+
+Test: `an_offer_larger_than_the_free_space_is_refused_up_front` in `tests/transfers.rs`.
+
+### Wat de andere apps moeten doen (P2 en P5)
+
+De Mac is het voorbeeld: `macos/Sources/Tandem/Model/HalfwayTransfers.swift` (de lijst, de antwoorden, de melding),
+`macos/Sources/Tandem/UI/HalfwaySection.swift` (de rijen bovenaan Gedeeld), de redenen in `TransferRow`
+(`macos/Sources/Tandem/UI/Components.swift`) en de vraag voor het sturen in `EngineModel.send(urls:to:)`. Er is geen nieuwe
+`TandemEvent`, dus geen `when`/`match` breekt. Android gebruikt de Kotlin-bindings, de Linux- en Windows-app dezelfde functies van
+`tandem_core::ffi::TandemEngine` in Rust.
+
+**Na de start en bij elke `Connected`**: `resumable_transfers()` opnieuw lezen. Voor elke overdracht die er voor het eerst in staat
+een melding (een keer per start), met twee knoppen. Op de pagina Gedeeld bovenaan, boven de lijst (ook als die leeg is, dan in plaats
+van "Nothing yet"), een rij per overdracht: een rondje met een pauze-icoon, de naam van het eerste bestand dat niet af is (met "en
+nog N"), een regel met hoe ver en van wie, een voortgangsbalk (grijs als de afzender weg is), en de knoppen Weggooien en Verder gaan.
+Verder gaan is grijs zolang de afzender niet verbonden is en zegt bij een klik waarom (een toast), nooit een blijvende waarschuwing.
+Na een antwoord de rij en de melding weg (met een animatie). De bestanden van een weggegooide overdracht krijgen geen eigen rij: de
+app onthoudt welke ze weggooide en slaat hun `Finished` met `cancelled` over. Na Verder gaan komen de gewone `Progress` en `Finished`.
+
+Velden van `TandemResumable`: `from`, `offer`, `origin`, `items` (`index`, `name`, `size`, `done`: de bytes die er zijn, `ended`: kwam
+al heel binnen of eindigde, wordt niet opnieuw opgehaald), `updated_ms` (wanneer het stopte).
+
+**De redenen** op een rij die eindigde (naast `cancelled`, `declined` en `expired`):
+
+| Reden | Binnenkomend | Uitgaand |
+| --- | --- | --- |
+| `gone` | No longer on %@ / Niet meer op %@ | The file is no longer there / Het bestand is er niet meer |
+| `changed` | Changed on %@ since it was sent / Veranderd op %@ sinds het gestuurd werd | Changed since it was sent / Veranderd sinds het gestuurd werd |
+| `no space` | Not enough space on this device / Niet genoeg ruimte op dit apparaat (Mac: "this Mac" / "deze Mac") | Not enough space on %@ / Niet genoeg ruimte op %@ |
+
+`%@` is de naam van het andere apparaat. Android: `AndroidFiles.finished` (`A/engine/AndroidFiles.kt`) laat een uitgaand bestand
+nu alleen los bij `cancelled`, `declined` en `expired`; `gone`, `changed` en `no space` horen in die set, anders blijft de
+toestemming voor het bestand hangen.
+
+**Voor het sturen** (P5): `short_of_space(targets, files)` met dezelfde lijst als `send_files`. Niet leeg: een vraag met de namen,
+"Cancel" en "Send anyway" (prominent); pas bij Send anyway `send_files`.
+
+**Vrije ruimte melden**: de ontvanger weigert alleen als zijn eigen app `free_storage` in de status zet. Mac en Android doen dat
+al. De Linux- en Windows-app nog niet (`windows/src-tauri/src` zet het nergens): die moet de vrije ruimte van de map Downloads
+melden, net als de batterij in `power.rs`, anders weigert hij nooit vooraf en waarschuwt een afzender nooit voor hem.
+
+**Teksten** (Engels / Nederlands):
+
+| Waar | Engels | Nederlands |
+| --- | --- | --- |
+| melding, titel | A transfer from %@ stopped halfway | Een overdracht van %@ stopte halverwege |
+| melding, tekst | %@. Go on or throw away? (naam van het bestand) | %@. Verder gaan of weggooien? |
+| knoppen | Go on / Throw away | Verder gaan / Weggooien |
+| rij, afzender verbonden | Stopped halfway, %1$@ of %2$@ from %3$@. Go on or throw away? | Halverwege gestopt, %1$@ van %2$@ van %3$@. Verder gaan of weggooien? |
+| rij, afzender weg | Stopped halfway. %@ is not connected. | Halverwege gestopt. %@ is niet verbonden. |
+| toast bij grijs Verder gaan | %@ is not connected. Open Tandem there to go on. | %@ is niet verbonden. Open Tandem daar om verder te gaan. |
+| naam van meer bestanden | %1$@ and %2$d more | %1$@ en nog %2$d |
+| zonder naam | the other device | het andere apparaat |
+| vraag voor het sturen, titel | Not enough space on %@ | Niet genoeg ruimte op %@ |
+| vraag voor het sturen, tekst | It has less free space than these files take. If they do not fit, it refuses them. | Daar is minder ruimte vrij dan deze bestanden innemen. Passen ze niet, dan weigert het ze. |
+| knoppen | Cancel / Send anyway | Annuleer / Toch sturen |
 
 ### P3. Wachtrij voor apparaten die weg zijn
 

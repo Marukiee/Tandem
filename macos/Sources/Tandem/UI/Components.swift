@@ -675,6 +675,9 @@ struct TransferRow: View {
                         case "cancelled": Text("Cancelled")
                         case "declined": Text("Declined")
                         case "expired": Text("Expired")
+                        case "gone": item.incoming ? Text("No longer on \(peerName)") : Text("The file is no longer there")
+                        case "changed": item.incoming ? Text("Changed on \(peerName) since it was sent") : Text("Changed since it was sent")
+                        case "no space": item.incoming ? Text("Not enough space on this Mac") : Text("Not enough space on \(peerName)")
                         default: Text(item.error ?? String(localized: "Failed"))
                         }
                     }
