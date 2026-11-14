@@ -582,7 +582,13 @@ fun TransferRow(
                 TransferItem.State.Active -> "${formatBytes(item.done)} / ${formatBytes(item.total)}" +
                     if (item.speed > 1) "  ${formatBytes(item.speed.toLong())}/s" else ""
                 TransferItem.State.Done -> stringResource(if (item.incoming) R.string.transfer_from else R.string.transfer_to, peerName)
-                TransferItem.State.Failed -> if (item.error == "cancelled") stringResource(R.string.transfer_cancelled) else item.error ?: stringResource(R.string.transfer_failed)
+                // The reasons the core gives in its own words, in the words of the person.
+                TransferItem.State.Failed -> when (item.error) {
+                    "cancelled" -> stringResource(R.string.transfer_cancelled)
+                    "declined" -> stringResource(R.string.transfer_declined)
+                    "expired" -> stringResource(R.string.transfer_expired)
+                    else -> item.error ?: stringResource(R.string.transfer_failed)
+                }
             }
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             if (item.state == TransferItem.State.Active) {
