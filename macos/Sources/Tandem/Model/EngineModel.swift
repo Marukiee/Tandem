@@ -270,6 +270,7 @@ final class EngineModel {
         refreshDevices()
         refreshHealth()
         HalfwayTransfers.shared.refresh()
+        UnderwayTransfers.shared.refresh()
         FeatureReport.start()
         LocalNetwork.start()
 
@@ -497,6 +498,9 @@ final class EngineModel {
             refreshHealth()
         case .devicesChanged, .connected, .disconnected, .circleChanged:
             refreshDevices()
+            // A queued offer goes out on a connect without an event of its own (P3).
+            if case .connected = event { UnderwayTransfers.shared.refresh(soon: true) }
+            if case .disconnected = event { UnderwayTransfers.shared.refresh(soon: true) }
             if case let .connected(id) = event {
                 HalfwayTransfers.shared.refresh()
                 CallWindow.shared.phoneReachable(id, true)
@@ -567,6 +571,7 @@ final class EngineModel {
             }
 
         case let .shareOffered(from, offer, origin, items):
+            UnderwayTransfers.shared.refresh()
             // The answer to "Insert from phone" is taken without asking and has its own panel.
             if InsertFromPhone.shared.owns(offer: offer) { break }
             // Files dropped on the edge by the computer that shares its pointer with this one: taken at once, and put where the drop was.
@@ -582,9 +587,11 @@ final class EngineModel {
             }
 
         case let .progress(offer, index, peer, incoming, name, done, total):
+            UnderwayTransfers.shared.refresh(soon: true)
             updateTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, done: done, total: total)
 
         case let .finished(offer, index, peer, incoming, name, size, location, error):
+            UnderwayTransfers.shared.refresh()
             // Taken by a drop on the edge or by the clipboard: those say it themselves, but the row its progress made must still go, or it
             // stood at full forever next to the finished file (seen 2026-11-02 with screenshots from the phone).
             // A transfer that waited for an answer can end without one: the sender stopped it, or it expired.
@@ -1264,7 +1271,12 @@ final class EngineModel {
     private func sendPrepared(engine: TandemEngine, files: [TandemOutgoingFile], to ids: [String], origin: TandemShareOrigin) async {
         do {
             let report = try await engine.sendFiles(targets: ids, files: files, origin: origin)
-            if report.sentTo.isEmpty {
+            UnderwayTransfers.shared.refresh()
+            if !report.queued.isEmpty {
+                // It waits in the queue (P3): no warning that it failed, only where it is.
+                let names = report.queued.compactMap { device($0)?.name }.joined(separator: ", ")
+                showToast(String(localized: "Waits for \(names). It goes as soon as it is back."))
+            } else if report.sentTo.isEmpty {
                 showToast(String(localized: "That device is not connected right now"))
             } else if !report.offline.isEmpty {
                 showToast(String(localized: "\(report.offline.count) device(s) were offline and did not get it"))
