@@ -808,3 +808,23 @@ async fn an_offer_nothing_was_pulled_of_goes_back_in_the_queue_when_the_connecti
     assert_eq!(std::fs::read(done.location.unwrap()).unwrap(), data);
 }
 
+/// P3: a stop right after the queue sent the offer still reaches the receiver, which lets its question go.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn stopping_an_offer_the_queue_just_sent_tells_the_receiver() {
+    let phone = node("Phone").await;
+    let mac = node("Mac").await;
+    ask_first(&mac, &phone);
+    mac_away(&phone, &mac).await;
+    let source = tempfile::tempdir().unwrap();
+    let report = phone.engine.send_files(&[mac.engine.id()], vec![outgoing(source.path(), "late.bin", b"late")], ShareOrigin::Files).await.unwrap();
+    assert_eq!(report.queued, [mac.engine.id()]);
+
+    let mac_again = restart(&mac, "Mac").await;
+    let mut events = mac_again.subscribe();
+    mac_again.add_address(&phone.engine.id(), &format!("127.0.0.1:{}", phone.engine.port())).unwrap();
+    assert_eq!(offered(&mut events).await, report.offer);
+    phone.engine.cancel_transfer(mac.engine.id(), report.offer, false).await;
+    let ended = finished_in(&mut events, "the question goes").await;
+    assert_eq!((ended.offer, ended.error.as_deref()), (report.offer, Some("cancelled")));
+    assert_eq!(stage_of(&phone.engine, report.offer, mac.engine.id()), Some(Stage::Closed));
+}
