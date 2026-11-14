@@ -12,7 +12,7 @@ import { CallDialog, useCallAsk } from "./calls.js";
 import { TourPage, maybeShowTour } from "./tour.js";
 import { dropPaths, markDropTarget } from "./drops.js";
 
-/** The update, at the foot of the sidebar: what is out, how far the download is, and what went wrong. */
+/** The update, in the sidebar above its lower rows: what is out, how far the download is, and what went wrong. */
 // The watch only talks to its phone, but it is a device of its own: its page goes by way of the phone.
 function watchRow(d) {
   const watch = d.status && d.status.watch;
@@ -112,6 +112,10 @@ function Nav() {
     })}
     <div class="row addrow" onClick=${() => set({ dialog: { kind: "pair" } })}><${Icon} name="plus" size=${18} />${t("add_device")}</div>
     <div class="spacer"></div>
+    ${/* Above the lower rows and not under them: here they take their room from the empty middle, and no row moves when one comes or goes. */ null}
+    <${HostingBanner} />
+    <${DisplayBanner} />
+    <${UpdateBanner} />
     <div class=${"row" + (state.page === "shared" ? " selected" : "")} onClick=${() => set({ page: "shared" })}><${Icon} name="files" size=${19} /><span class="grow">${t("shared")}</span></div>
     ${phones.map((d) => html`<div class=${"row" + (state.page === "messages" && state.selected === d.id ? " selected" : "") + (d.online ? "" : " dim")}
       key=${d.id + "-messages"} onClick=${() => set({ selected: d.id, page: "messages" })}>
@@ -120,9 +124,6 @@ function Nav() {
     <div class=${"row" + (state.page === "notifications" ? " selected" : "")} onClick=${() => set({ page: "notifications" })}>
       <${Icon} name="bell" size=${19} /><span class="grow">${t("notifications")}</span>${unread > 0 && html`<span class="badge">${unread > 99 ? "99+" : unread}</span>`}</div>
     <div class=${"row" + (state.page === "settings" ? " selected" : "")} onClick=${() => set({ page: "settings" })}><${Icon} name="settings" size=${19} /><span class="grow">${t("settings")}</span></div>
-    <${HostingBanner} />
-    <${DisplayBanner} />
-    <${UpdateBanner} />
   </nav>`;
 }
 

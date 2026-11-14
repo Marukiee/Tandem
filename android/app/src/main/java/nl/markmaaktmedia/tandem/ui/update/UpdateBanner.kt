@@ -47,13 +47,18 @@ import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
 import nl.markmaaktmedia.tandem.update.ReleaseInfo
 import nl.markmaaktmedia.tandem.update.UpdateState
 
+/** The room above and under the bar. It is part of what comes in and goes out, so whoever lays the pages out can follow its height as it is. */
+val UpdateBannerMargin = 8.dp
+
 /**
  * The bar at the top of the app, on every screen, when a new version is out. The same shape
  * as in MarkMaaktAI: the version and where you are now, one Download button that fetches the
  * APK and hands it to the installer, and a cross that dismisses that version for good.
+ *
+ * [shown] is false where the bar has no place: it then leaves the way it does when it is dismissed.
  */
 @Composable
-fun UpdateBanner(modifier: Modifier = Modifier) {
+fun UpdateBanner(modifier: Modifier = Modifier, shown: Boolean = true) {
     val context = LocalContext.current
     val graph = context.graph
     val updater = graph.updater
@@ -73,12 +78,15 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
     val failed = state as? UpdateState.Failed
     // A failure is shown until it is retried or the app is reopened; a release once dismissed stays hidden.
     // Back from the "install unknown apps" screen with the switch on: carry on where it stopped.
-    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-        scope.launch { updater.resumeAfterPermission() }
-        // An update that finished downloading while the app was out of sight asks its question now.
-        updater.resumeConfirmation()
+    // Only where the bar is shown: the question of an install does not belong over the screen of a computer.
+    if (shown) {
+        androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+            scope.launch { updater.resumeAfterPermission() }
+            // An update that finished downloading while the app was out of sight asks its question now.
+            updater.resumeConfirmation()
+        }
     }
-    val visible = failed != null || (release != null && release.tag != dismissed)
+    val visible = shown && (failed != null || (release != null && release.tag != dismissed))
 
     AnimatedVisibility(
         visible = visible,
@@ -94,7 +102,11 @@ fun UpdateBanner(modifier: Modifier = Modifier) {
                 } else false
             },
         )
-        androidx.compose.material3.SwipeToDismissBox(state = swipe, backgroundContent = {}) {
+        // The margins are inside what grows and shrinks: the height is then one number that starts at nothing, and the shadow has room on the way.
+        androidx.compose.material3.SwipeToDismissBox(
+            state = swipe, backgroundContent = {},
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = UpdateBannerMargin),
+        ) {
         Surface(
             shape = CardSquircle,
             color = MaterialTheme.colorScheme.primaryContainer,

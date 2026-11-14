@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,9 +64,10 @@ import nl.markmaaktmedia.tandem.ui.screens.RemoteScreen
 import nl.markmaaktmedia.tandem.ui.screens.SettingsScreen
 import nl.markmaaktmedia.tandem.ui.screens.TransfersScreen
 import nl.markmaaktmedia.tandem.ui.update.UpdateBanner
+import nl.markmaaktmedia.tandem.ui.update.UpdateBannerMargin
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Constraints
 import kotlinx.coroutines.flow.first
 import nl.markmaaktmedia.tandem.ui.theme.TandemIcons
 import nl.markmaaktmedia.tandem.ui.theme.TandemMotion
@@ -225,49 +225,54 @@ private fun MainNavigation() {
         }
     }
 
-    // The update banner is drawn over the pages, so the pages move down by its height while it is there and nothing
-    // sits under it. It already includes the status bar, which the pages add again themselves, so that part is taken off.
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val statusBar = WindowInsets.statusBars.getTop(density)
-    var bannerPx by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    // The update banner is drawn over the pages, and the pages start lower by the room it takes, so nothing sits under it.
+    // Both come out of one measurement: the pages are where the banner ends in every frame of its way in and out, and
+    // back where they were once it is gone. An animation of its own that followed the banner's size came late, so the
+    // banner slid over the top of the page first, and it kept the last size it saw after the banner had left.
+    val statusBar = WindowInsets.statusBars.getTop(androidx.compose.ui.platform.LocalDensity.current)
+    // Not over the screen of a computer: that is full screen, and a banner would sit on top of someone else's desktop.
     val bannerShown = nav.top !is Route.Screen && nav.top !is Route.Display
-    val below by androidx.compose.animation.core.animateDpAsState(
-        with(density) { if (bannerShown) (bannerPx - statusBar).coerceAtLeast(0).toDp() else 0.dp },
-        TandemMotion.spatial(), label = "bannerSpace",
-    )
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        transition.AnimatedContent(
-            transitionSpec = {
-                // The Material shared axis that system apps use: the new page comes in from a
-                // third of the screen away and fades up, the old one slides a third the other
-                // way and shrinks a little behind it. Going back mirrors it, and the page that
-                // leaves goes all the way out. The same spec is what the back gesture seeks.
-                val forward = isForward(nav, initialState, targetState)
-                val ease = tween<Float>(SharedAxisMillis, easing = Emphasized)
-                val slide = tween<IntOffset>(SharedAxisMillis, easing = Emphasized)
-                if (forward) {
-                    (slideInHorizontally(slide) { it / 3 } + fadeIn(ease)) togetherWith
-                        (slideOutHorizontally(slide) { -it / 3 } + scaleOut(ease, targetScale = 0.92f))
-                } else {
-                    ((slideInHorizontally(slide) { -it / 3 } + fadeIn(ease)) togetherWith
-                        (slideOutHorizontally(tween(SharedAxisMillis, easing = Easing { f -> f * f * f })) { it } +
-                            scaleOut(ease, targetScale = 0.85f)))
-                        // The page going out stays on top of the one coming back.
-                        .apply { targetContentZIndex = -1f }
-                }
-            },
-            // The spring that moves it overshoots, so it can dip below nothing for a moment, and a padding may not be negative.
-            modifier = Modifier.fillMaxSize().padding(top = below.coerceAtLeast(0.dp)),
-        ) { route ->
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
-        }
-        // Over every screen: an update is worth seeing wherever you are in the app.
-        // Not over the screen of a computer: that is full screen, and a banner would sit on top of someone else's desktop.
-        if (bannerShown) {
-            UpdateBanner(
-                Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp)
-                    .onSizeChanged { bannerPx = it.height + with(density) { 8.dp.roundToPx() } + statusBar },
-            )
+    androidx.compose.ui.layout.Layout(
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        content = {
+            transition.AnimatedContent(
+                transitionSpec = {
+                    // The Material shared axis that system apps use: the new page comes in from a
+                    // third of the screen away and fades up, the old one slides a third the other
+                    // way and shrinks a little behind it. Going back mirrors it, and the page that
+                    // leaves goes all the way out. The same spec is what the back gesture seeks.
+                    val forward = isForward(nav, initialState, targetState)
+                    val ease = tween<Float>(SharedAxisMillis, easing = Emphasized)
+                    val slide = tween<IntOffset>(SharedAxisMillis, easing = Emphasized)
+                    if (forward) {
+                        (slideInHorizontally(slide) { it / 3 } + fadeIn(ease)) togetherWith
+                            (slideOutHorizontally(slide) { -it / 3 } + scaleOut(ease, targetScale = 0.92f))
+                    } else {
+                        ((slideInHorizontally(slide) { -it / 3 } + fadeIn(ease)) togetherWith
+                            (slideOutHorizontally(tween(SharedAxisMillis, easing = Easing { f -> f * f * f })) { it } +
+                                scaleOut(ease, targetScale = 0.85f)))
+                            // The page going out stays on top of the one coming back.
+                            .apply { targetContentZIndex = -1f }
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+            ) { route ->
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) { RouteContent(route, nav) }
+            }
+            // Over every screen: an update is worth seeing wherever you are in the app.
+            // In a box of its own: a banner that is hidden is no node at all, and the measuring below counts on two.
+            Box { UpdateBanner(shown = bannerShown) }
+        },
+    ) { (pages, banner), constraints ->
+        val bar = banner.measure(constraints.copy(minWidth = 0, minHeight = 0))
+        // The banner ends in a margin, which the pages do not get on top of their own distance to what is above them.
+        val below = (bar.height - UpdateBannerMargin.roundToPx()).coerceIn(0, constraints.maxHeight)
+        // Shorter and not only lower: what a page holds at its foot, like the bar with the tabs, stays where it is.
+        val page = pages.measure(Constraints.fixed(constraints.maxWidth, constraints.maxHeight - below))
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            page.place(0, below)
+            // Under the status bar, which the pages keep clear themselves.
+            bar.place(0, statusBar)
         }
     }
 }
