@@ -651,6 +651,10 @@ pub struct NotificationMsg {
     pub otp: Option<String>,
     #[serde(default)]
     pub progress: Option<(u32, u32)>,
+    /// Sent for its code only: the receiver copies the code and does not show the notification, because the person turned the
+    /// notifications of that app (or of all apps) off but not the copying of codes.
+    #[serde(default)]
+    pub code_only: bool,
 }
 
 /// Something that can play on a device: an app's media session on the phone, a music app on the Mac.

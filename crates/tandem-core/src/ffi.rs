@@ -990,6 +990,8 @@ pub struct TandemNotification {
     pub otp: Option<String>,
     pub progress_done: Option<u32>,
     pub progress_total: Option<u32>,
+    /// For its code only: copy it, do not show the notification.
+    pub code_only: bool,
 }
 
 impl From<NotificationMsg> for TandemNotification {
@@ -1012,6 +1014,7 @@ impl From<NotificationMsg> for TandemNotification {
             otp: n.otp,
             progress_done: n.progress.map(|p| p.0),
             progress_total: n.progress.map(|p| p.1),
+            code_only: n.code_only,
         }
     }
 }
@@ -1038,6 +1041,7 @@ impl From<TandemNotification> for NotificationMsg {
                 (Some(done), Some(total)) => Some((done, total)),
                 _ => None,
             },
+            code_only: n.code_only,
         }
     }
 }

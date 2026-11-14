@@ -60,6 +60,7 @@ fn notification(name: String, text: String, ts: u64) -> NotificationMsg {
         buttons: Vec::new(),
         otp: None,
         progress: None,
+        code_only: false,
     }
 }
 
