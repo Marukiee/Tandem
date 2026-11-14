@@ -10,7 +10,8 @@
       ],
       "fixed": [
         "The three health tiles of the watch are the same height",
-        "Files no longer look like they are still sending on the card of a device"
+        "Files no longer look like they are still sending on the card of a device",
+        "The filters on Shared scroll to the edge, so the last one is not cut off"
       ]
     },
     "nl": {
@@ -21,7 +22,8 @@
       ],
       "fixed": [
         "De drie gezondheidstegels van het horloge zijn even hoog",
-        "Bestanden lijken niet meer te blijven versturen op de kaart van een apparaat"
+        "Bestanden lijken niet meer te blijven versturen op de kaart van een apparaat",
+        "De filters bij Gedeeld scrollen tot de rand, dus de laatste is niet meer afgekapt"
       ]
     }
   },

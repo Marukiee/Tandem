@@ -81,7 +81,8 @@ data class TransferFilter(
 
 /**
  * The row of filters under the title: each is a pill that opens a short list, coloured while something other than "all" is chosen,
- * and a last one that lets all of them go.
+ * and a last one that lets all of them go. It scrolls out to the edges of the screen ([sidePadding] is the page's own), so a pill at
+ * the end goes on under the edge instead of being cut off where the padding of the page ends.
  */
 @Composable
 fun TransferFilters(
@@ -89,8 +90,12 @@ fun TransferFilters(
     peers: List<Pair<String, String>>,
     onChange: (TransferFilter) -> Unit,
     modifier: Modifier = Modifier,
+    sidePadding: androidx.compose.ui.unit.Dp = 16.dp,
 ) {
-    Row(modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier.bleed(sidePadding).horizontalScroll(rememberScrollState()).padding(horizontal = sidePadding),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
+    ) {
         MenuPill(
             label = stringResource(if (filter.kind == FileKind.All) R.string.filter_type else filter.kind.title),
             icon = TandemIcons.File, active = filter.kind != FileKind.All,
