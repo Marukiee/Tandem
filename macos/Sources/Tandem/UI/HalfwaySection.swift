@@ -57,6 +57,7 @@ struct HalfwayRow: View {
                 ProgressCapsule(fraction: bytes.total == 0 ? 0 : Double(bytes.done) / Double(bytes.total))
                     .frame(height: 5)
                     .saturation(online ? 1 : 0)
+                    .opacity(online ? 1 : 0.4)
             }
 
             Spacer(minLength: 8)

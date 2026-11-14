@@ -166,7 +166,7 @@ De Mac is het voorbeeld: `macos/Sources/Tandem/Model/HalfwayTransfers.swift` (de
 **Na de start en bij elke `Connected`**: `resumable_transfers()` opnieuw lezen. Voor elke overdracht die er voor het eerst in staat
 een melding (een keer per start), met twee knoppen. Op de pagina Gedeeld bovenaan, boven de lijst (ook als die leeg is, dan in plaats
 van "Nothing yet"), een rij per overdracht: een rondje met een pauze-icoon, de naam van het eerste bestand dat niet af is (met "en
-nog N"), een regel met hoe ver en van wie, een voortgangsbalk (grijs als de afzender weg is), en de knoppen Weggooien en Verder gaan.
+nog N"), een regel met hoe ver en van wie, een voortgangsbalk (gedimd als de afzender weg is), en de knoppen Weggooien en Verder gaan.
 Verder gaan is grijs zolang de afzender niet verbonden is en zegt bij een klik waarom (een toast), nooit een blijvende waarschuwing.
 Na een antwoord de rij en de melding weg (met een animatie). De bestanden van een weggegooide overdracht krijgen geen eigen rij: de
 app onthoudt welke ze weggooide en slaat hun `Finished` met `cancelled` over. Na Verder gaan komen de gewone `Progress` en `Finished`.

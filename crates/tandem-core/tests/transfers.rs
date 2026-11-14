@@ -106,7 +106,8 @@ fn random_bytes(len: usize, seed: u8) -> Vec<u8> {
 fn outgoing(dir: &Path, name: &str, data: &[u8]) -> OutgoingFile {
     let path = dir.join(name);
     std::fs::write(&path, data).unwrap();
-    OutgoingFile { source: path.to_string_lossy().into_owned(), name: name.to_string(), size: 0, mime: "application/octet-stream".into() }
+    // With its size, as the apps send it.
+    OutgoingFile { source: path.to_string_lossy().into_owned(), name: name.to_string(), size: data.len() as u64, mime: "application/octet-stream".into() }
 }
 
 async fn offered(events: &mut Receiver<Event>) -> u64 {
@@ -544,8 +545,12 @@ async fn a_file_that_changed_at_the_sender_is_reported_and_the_rest_comes() {
     let source = tempfile::tempdir().unwrap();
     let (offer, _) = a_transfer_left_halfway(&phone, &mac, source.path()).await;
     let second = source.path().join("second.bin");
-    let (mac_again, _phone_again) =
-        both_back_after_a_transfer_halfway(&phone, &mac, offer, || std::fs::write(&second, b"something else").unwrap()).await;
+    // Edited without changing its size: only when it changed tells it apart.
+    let (mac_again, _phone_again) = both_back_after_a_transfer_halfway(&phone, &mac, offer, || {
+        std::thread::sleep(Duration::from_millis(20));
+        std::fs::write(&second, random_bytes(3 * 1024 * 1024, 99)).unwrap()
+    })
+    .await;
 
     let mut events = mac_again.subscribe();
     mac_again.resume_transfer(phone.engine.id(), offer).unwrap();
