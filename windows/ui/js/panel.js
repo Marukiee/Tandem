@@ -5,7 +5,6 @@ import { dropPaths, markDropTarget } from "./drops.js";
 import { BatteryCard, batteryList } from "./batteries.js";
 import { DeviceGlyph, PlayerCard, fmtSize, watchPhoneId } from "./components.js";
 import { Icon } from "./icons.js";
-import { sendChecked } from "./space.js";
 import { setLanguage, t } from "./i18n.js";
 import { say, set, state, useStore } from "./store.js";
 
@@ -13,7 +12,7 @@ const failed = (e) => say(String(e && e.message ? e.message : e));
 
 function Row({ device }) {
   const battery = device.status && device.status.battery;
-  const send = async () => { try { await sendChecked("pick_and_send", { ids: [device.id] }); } catch (e) { failed(e); } };
+  const send = async () => { try { await call("pick_and_send", { ids: [device.id], force: true }); } catch (e) { failed(e); } };
   const clipboard = async () => {
     try { await call("send_clipboard", { ids: [device.id] }); say(t("clipboard_sent")); }
     catch (e) { failed(e === "no-text" ? t("no_text") : e); }

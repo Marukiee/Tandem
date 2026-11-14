@@ -399,14 +399,16 @@ pub async fn send_paths(state: State<'_, AppState>, ids: Vec<String>, paths: Vec
 }
 
 #[tauri::command]
-pub async fn pick_and_send(app: AppHandle, state: State<'_, AppState>, ids: Vec<String>) -> Reply<Value> {
+pub async fn pick_and_send(app: AppHandle, state: State<'_, AppState>, ids: Vec<String>, force: Option<bool>) -> Reply<Value> {
     let picker = app.clone();
     let picked = tauri::async_runtime::spawn_blocking(move || picker.dialog().file().blocking_pick_files())
         .await
         .map_err(shown)?;
     let Some(files) = picked else { return Ok(json!({ "sent": 0, "offline": 0, "folders": 0 })) };
     let paths: Vec<PathBuf> = files.into_iter().filter_map(|f| f.into_path().ok()).collect();
-    let short = short_of_space(&state, &ids, &paths)?;
+    // The tray panel sends with `force`: it hides when the file picker takes the focus, so a question there would never be seen, and
+    // a device that has no room refuses what does not fit by itself.
+    let short = if force == Some(true) { Vec::new() } else { short_of_space(&state, &ids, &paths)? };
     if !short.is_empty() {
         // The page asks, and sends these paths with `send_paths` when the answer is Send anyway.
         let paths: Vec<String> = paths.iter().map(|p| p.to_string_lossy().into_owned()).collect();
