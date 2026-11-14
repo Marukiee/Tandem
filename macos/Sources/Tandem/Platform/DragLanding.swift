@@ -35,14 +35,14 @@ final class DragLanding {
     func finished(offer: UInt64, from device: String, name: String, location: String?, error: String?) -> Bool {
         guard offers[offer]?.device == device else { return false }
         offers[offer]?.done += 1
-        let allIn = offers[offer].map { $0.done >= $0.expected } ?? true
         let from = EngineModel.shared.device(device)?.name ?? "?"
         guard error == nil, let location else {
+            DragCarrier.shared.failed(from: device, arrived: offers[offer]?.done ?? 0)
             EngineModel.shared.showToast(String(localized: "A file from \(from) did not come in"))
             return true
         }
         // It hangs under the pointer first, to be put down with a press where the person wants it (see `DragCarrier`).
-        if DragCarrier.shared.carry(URL(fileURLWithPath: location), name: name, from: device, allIn: allIn) { return true }
+        if DragCarrier.shared.carry(URL(fileURLWithPath: location), name: name, from: device, arrived: offers[offer]?.done ?? 1, expected: offers[offer]?.expected) { return true }
         land(URL(fileURLWithPath: location), name: name, from: device)
         return true
     }
