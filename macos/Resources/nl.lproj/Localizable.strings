@@ -1604,6 +1604,12 @@
 "Not enough space on this Mac" = "Niet genoeg ruimte op deze Mac";
 "Not enough space on %@" = "Niet genoeg ruimte op %@";
 
+/* Why a transfer ended, on its row (R-V13) */
+"The connection with %@ dropped" = "De verbinding met %@ viel weg";
+"It arrived damaged. Send it again." = "Het kwam beschadigd aan. Stuur het opnieuw.";
+"Could not be saved on this Mac" = "Kon niet worden bewaard op deze Mac";
+"Could not be saved on %@" = "Kon niet worden bewaard op %@";
+
 /* Before sending files to a device that reports less free space (P5) */
 "It has less free space than these files take. If they do not fit, it refuses them." = "Daar is minder ruimte vrij dan deze bestanden innemen. Passen ze niet, dan weigert het ze.";
 "Send anyway" = "Toch sturen";
