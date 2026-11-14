@@ -351,9 +351,9 @@ class QuickShareSheetActivity : ComponentActivity() {
                 current == 2 -> {
                     Text(stringResource(R.string.quickshare_received_state), style = MaterialTheme.typography.titleMedium)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                        item.link?.let { link ->
+                        item.link?.let(::webLink)?.let { link ->
                             SecondaryPillButton(stringResource(R.string.quickshare_open_link), {
-                                startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(link)))
+                                startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, link))
                                 quick.dismiss(item.id)
                             })
                         }
