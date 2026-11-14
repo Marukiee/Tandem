@@ -260,6 +260,8 @@ final class EngineModel {
         self.engine = engine
         engine.serveNotify(dataDir: Self.supportDirectory().path)
         Self.offerUsualFolders(engine)
+        // This app shows the queue (P3b), so files sent to a device that is away may wait for it.
+        engine.setQueueOffline(on: true)
         myId = engine.id()
         myName = engine.name()
         // A name chosen in Settings wins over whatever the engine kept.
