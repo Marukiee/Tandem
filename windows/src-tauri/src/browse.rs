@@ -10,7 +10,7 @@ use tandem_core::ffi::TandemFsProgress;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::settings;
-use crate::state::AppState;
+use crate::state::{AppState, Held};
 
 type Reply<T> = Result<T, String>;
 
@@ -80,7 +80,7 @@ struct CopyProgress {
 impl TandemFsProgress for CopyProgress {
     fn progress(&self, done: u64, total: u64) {
         // A few times a second is enough for a bar, and the window is not flooded on a fast network.
-        let mut last = self.last.lock().unwrap();
+        let mut last = self.last.held();
         if done < total && last.is_some_and(|at| at.elapsed() < Duration::from_millis(120)) {
             return;
         }

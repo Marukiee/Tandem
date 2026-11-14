@@ -5,6 +5,10 @@
 //! to date with the devices: Files (GNOME) through its Python extensions when `nautilus-python` is there, which lists the devices that
 //! are reachable at that moment, otherwise its scripts menu; Dolphin a service menu, Nemo actions; Windows a shortcut per device in
 //! "Send to". Turned off in the settings, all of it is taken away again.
+//!
+//! A menu entry for one device carries `--key`, a key of this run of Tandem written into the menus, as the share sheet of the Mac does. A
+//! start with `--to` and without the right key (from another program, or an entry left from an earlier run) asks in the card, with that
+//! device first.
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -14,23 +18,52 @@ use serde_json::{json, Value};
 use tandem_core::ffi::TandemShareOrigin;
 use tauri::{AppHandle, Emitter, LogicalSize, Manager};
 
-use crate::state::AppState;
+use crate::state::{AppState, Held};
 use crate::{commands, events, i18n, settings};
 
 /// The devices the menus were last written for, so nothing is written when nothing changed.
 static WRITTEN: Mutex<Option<String>> = Mutex::new(None);
 /// The files waiting for the person to choose a device in the card.
 static PICK: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+/// The device that was named by a start that could not prove it came from the menu, put first in the card.
+static ASKED: Mutex<Option<String>> = Mutex::new(None);
+
+/// The key of this run, which the menus pass with `--key`. It needs to be unknown outside this run, not to be strong for years:
+/// `RandomState` is seeded from the randomness of the system, which the app has no crate of its own for.
+fn run_key() -> &'static str {
+    static KEY: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    KEY.get_or_init(|| {
+        use std::hash::{BuildHasher, Hasher};
+        let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+        (0..2u64)
+            .map(|n| {
+                let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+                hasher.write_u64(n);
+                hasher.write_u128(nanos);
+                hasher.write_u32(std::process::id());
+                format!("{:016x}", hasher.finish())
+            })
+            .collect()
+    })
+}
+
+/// Whether a start may send without asking: it names a device and carries the key of this run.
+fn trusted(to: Option<&str>, key: Option<&str>) -> bool {
+    to.is_some() && key == Some(run_key())
+}
 
 /// The arguments of a start of Tandem: when they ask to send files, they are sent (true).
 pub fn handle_args(app: &AppHandle, args: &[String]) -> bool {
     let Some(at) = args.iter().position(|a| a == "--send") else { return false };
     let mut to = None;
+    let mut key = None;
     let mut paths = Vec::new();
     let mut rest = args[at + 1..].iter();
     while let Some(arg) = rest.next() {
         if arg == "--to" {
             to = rest.next().cloned();
+        } else if arg == "--key" {
+            key = rest.next().cloned();
         } else if !arg.starts_with("--") {
             paths.push(PathBuf::from(arg));
         }
@@ -39,10 +72,11 @@ pub fn handle_args(app: &AppHandle, args: &[String]) -> bool {
     if files.is_empty() {
         return true;
     }
-    let Some(to) = to else {
-        pick(app, files);
+    if !trusted(to.as_deref(), key.as_deref()) {
+        pick(app, files, to);
         return true;
-    };
+    }
+    let Some(to) = to else { return true };
     let app = app.clone();
     tauri::async_runtime::spawn(async move { send(&app, Some(to), files).await });
     true
@@ -51,10 +85,11 @@ pub fn handle_args(app: &AppHandle, args: &[String]) -> bool {
 const CARD_WIDTH: f64 = 392.0;
 
 /// Shows the card that asks which device, in the middle of the screen. Files shared again before an answer take the place of the others.
-fn pick(app: &AppHandle, files: Vec<PathBuf>) {
-    *PICK.lock().unwrap() = files;
-    let rows = app.state::<AppState>().data.lock().unwrap().devices.len().max(1);
-    let online = app.state::<AppState>().data.lock().unwrap().devices.iter().filter(|d| d["online"].as_bool() == Some(true)).count();
+fn pick(app: &AppHandle, files: Vec<PathBuf>, asked: Option<String>) {
+    *PICK.held() = files;
+    *ASKED.held() = asked;
+    let rows = app.state::<AppState>().data.held().devices.len().max(1);
+    let online = app.state::<AppState>().data.held().devices.iter().filter(|d| d["online"].as_bool() == Some(true)).count();
     // Head, buttons and room for a reason, plus a row per device and one for all of them.
     let height = 190.0 + 58.0 * (rows + usize::from(online > 1)) as f64;
     let _ = app.emit("send_pick", pick_state());
@@ -81,8 +116,9 @@ fn pick(app: &AppHandle, files: Vec<PathBuf>) {
 
 /// How many files wait, and the name of the first, for the title of the card.
 fn pick_state() -> Value {
-    let files = PICK.lock().unwrap();
+    let files = PICK.held();
     json!({
+        "asked": *ASKED.held(),
         "count": files.len(),
         "name": files.first().and_then(|f| f.file_name()).map(|n| n.to_string_lossy().into_owned()),
     })
@@ -96,7 +132,8 @@ pub fn send_pick_state() -> Value {
 /// The answer of the card: the devices to send to, or none to send nothing.
 #[tauri::command]
 pub fn send_pick(app: AppHandle, to: Vec<String>) {
-    let files = std::mem::take(&mut *PICK.lock().unwrap());
+    let files = std::mem::take(&mut *PICK.held());
+    *ASKED.held() = None;
     if let Some(window) = app.get_webview_window("send-card") {
         let _ = window.close();
     }
@@ -142,7 +179,7 @@ async fn send(app: &AppHandle, to: Option<String>, files: Vec<PathBuf>) {
 /// The reachable devices to send to: the one asked for, or all of them when none was named.
 fn online(app: &AppHandle, to: Option<&str>) -> Vec<String> {
     let state = app.state::<AppState>();
-    let data = state.data.lock().unwrap();
+    let data = state.data.held();
     data.devices
         .iter()
         .filter(|d| d["online"].as_bool() == Some(true))
@@ -164,7 +201,7 @@ pub fn refresh(app: &AppHandle) {
     let on = settings::get(app).file_manager_send;
     let devices: Vec<(String, String, bool)> = {
         let state = app.state::<AppState>();
-        let data = state.data.lock().unwrap();
+        let data = state.data.held();
         data.devices
             .iter()
             .filter_map(|d| Some((d["id"].as_str()?.to_string(), d["name"].as_str()?.to_string(), d["online"].as_bool() == Some(true))))
@@ -175,7 +212,7 @@ pub fn refresh(app: &AppHandle) {
     #[cfg(target_os = "linux")]
     linux::reachable(on, &devices);
     {
-        let mut written = WRITTEN.lock().unwrap();
+        let mut written = WRITTEN.held();
         if written.as_deref() == Some(key.as_str()) {
             return;
         }
@@ -187,9 +224,9 @@ pub fn refresh(app: &AppHandle) {
     let devices: Vec<(String, String)> = devices.into_iter().map(|(id, name, _)| (id, name)).collect();
     std::thread::spawn(move || {
         #[cfg(target_os = "linux")]
-        linux::write(on, &program, &label, &away, &devices);
+        linux::write(on, &program, &label, &away, &devices, run_key());
         #[cfg(windows)]
-        windows::write(on, &program, &devices);
+        windows::write(on, &program, &devices, run_key());
         #[cfg(not(any(target_os = "linux", windows)))]
         let _ = (on, program, label, away, devices);
     });
@@ -262,7 +299,7 @@ mod linux {
         format!("\"{}\"", program.to_string_lossy().replace('\\', "\\\\").replace('"', "\\\""))
     }
 
-    pub fn write(on: bool, program: &Path, label: &str, away: &str, devices: &[(String, String)]) {
+    pub fn write(on: bool, program: &Path, label: &str, away: &str, devices: &[(String, String)], key: &str) {
         let Some(data) = data_home() else { return };
         let extension = data.join("nautilus-python/extensions/tandem-send.py");
         let script = data.join("nautilus/scripts").join(label);
@@ -298,7 +335,8 @@ mod linux {
                 &EXTENSION
                     .replace("@PROGRAM@", &exe.replace('\\', "\\\\").replace('"', "\\\""))
                     .replace("@LABEL@", &label.replace('"', "\\\""))
-                    .replace("@AWAY@", &away.replace('"', "\\\"")),
+                    .replace("@AWAY@", &away.replace('"', "\\\""))
+                    .replace("@KEY@", key),
                 false,
             );
         } else {
@@ -315,7 +353,7 @@ mod linux {
             );
             for (n, (id, name)) in devices.iter().enumerate() {
                 text.push_str(&format!(
-                    "\n[Desktop Action device{n}]\nName={}\nIcon=nl.markmaaktmedia.tandem\nExec={} --send --to {id} %F\n",
+                    "\n[Desktop Action device{n}]\nName={}\nIcon=nl.markmaaktmedia.tandem\nExec={} --send --to {id} --key {key} %F\n",
                     super::entry_value(name),
                     quoted(program)
                 ));
@@ -328,7 +366,7 @@ mod linux {
             for (n, (id, name)) in devices.iter().enumerate() {
                 // Nemo also reads `%` in a name as the start of a token, such as %N for the name of the selected file.
                 let text = format!(
-                    "[Nemo Action]\nName={}\nExec={} --send --to {id} %F\nIcon-Name=nl.markmaaktmedia.tandem\nSelection=notnone\nExtensions=nodirs;\n",
+                    "[Nemo Action]\nName={}\nExec={} --send --to {id} --key {key} %F\nIcon-Name=nl.markmaaktmedia.tandem\nSelection=notnone\nExtensions=nodirs;\n",
                     super::entry_value(&format!("{label}: {name}")).replace('%', "%%"),
                     quoted(program)
                 );
@@ -346,6 +384,7 @@ from gi.repository import GObject, Nautilus
 PROGRAM = "@PROGRAM@"
 LABEL = "@LABEL@"
 AWAY = "@AWAY@"
+KEY = "@KEY@"
 
 
 def devices():
@@ -379,7 +418,7 @@ class TandemSend(GObject.GObject, Nautilus.MenuProvider):
         return [item]
 
     def send(self, _item, paths, device):
-        command = [PROGRAM, "--send"] + (["--to", device] if device else []) + paths
+        command = [PROGRAM, "--send"] + (["--to", device, "--key", KEY] if device else []) + paths
         subprocess.Popen(command, start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 "#;
 }
@@ -390,7 +429,7 @@ mod windows {
     use std::path::{Path, PathBuf};
 
     /// A shortcut per device in the "Send to" menu of Explorer, named after the device, made with the shell's own object for shortcuts.
-    pub fn write(on: bool, program: &Path, devices: &[(String, String)]) {
+    pub fn write(on: bool, program: &Path, devices: &[(String, String)], key: &str) {
         let Some(folder) = std::env::var_os("APPDATA").map(|a| PathBuf::from(a).join("Microsoft\\Windows\\SendTo")) else { return };
         if let Ok(entries) = std::fs::read_dir(&folder) {
             for entry in entries.flatten() {
@@ -404,7 +443,7 @@ mod windows {
         }
         for (id, name) in devices.iter().filter(|(id, _)| super::plain_id(id)) {
             let link = folder.join(format!("{} (Tandem).lnk", crate::names::windows_safe(name)));
-            if !shortcut(&link, program, id) {
+            if !shortcut(&link, program, id, key) {
                 log::info!("send with: the shortcut in Send to for {id} could not be made");
             }
         }
@@ -413,16 +452,17 @@ mod windows {
     /// The script never changes: the values reach it as environment variables, so no name can end a string in it and run
     /// something of its own. PowerShell also takes the curly apostrophe macOS puts in "Mark’s MacBook Pro" as a quote.
     const SHORTCUT: &str = "$ErrorActionPreference = 'Stop'; $l = (New-Object -ComObject WScript.Shell).CreateShortcut($env:TANDEM_LINK); \
-        $l.TargetPath = $env:TANDEM_PROGRAM; $l.Arguments = '--send --to ' + $env:TANDEM_DEVICE; \
+        $l.TargetPath = $env:TANDEM_PROGRAM; $l.Arguments = '--send --to ' + $env:TANDEM_DEVICE + ' --key ' + $env:TANDEM_KEY; \
         $l.IconLocation = $env:TANDEM_PROGRAM + ',0'; $l.Save()";
 
-    fn shortcut(link: &Path, program: &Path, id: &str) -> bool {
+    fn shortcut(link: &Path, program: &Path, id: &str, key: &str) -> bool {
         // No window of its own: CREATE_NO_WINDOW.
         std::process::Command::new("powershell")
             .args(["-NoProfile", "-NonInteractive", "-Command", SHORTCUT])
             .env("TANDEM_LINK", link)
             .env("TANDEM_PROGRAM", program)
             .env("TANDEM_DEVICE", id)
+            .env("TANDEM_KEY", key)
             .creation_flags(0x0800_0000)
             .status()
             .is_ok_and(|s| s.success())
@@ -457,7 +497,7 @@ fn entry_value(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{entry_value, plain_id};
+    use super::{entry_value, plain_id, run_key, trusted};
 
     #[test]
     fn a_name_cannot_start_a_line_in_a_desktop_entry() {
@@ -474,5 +514,16 @@ mod tests {
         assert!(!plain_id(""));
         assert!(!plain_id("x; rm -rf ~"));
         assert!(!plain_id("a'b"));
+    }
+
+    #[test]
+    fn only_a_start_with_the_key_of_this_run_sends_without_asking() {
+        let key = run_key();
+        assert_eq!(key.len(), 32);
+        assert_eq!(run_key(), key, "the key stays the same for the whole run");
+        assert!(trusted(Some("dev1"), Some(key)));
+        assert!(!trusted(Some("dev1"), None));
+        assert!(!trusted(Some("dev1"), Some("0123456789abcdef0123456789abcdef")));
+        assert!(!trusted(None, Some(key)), "without a device the card asks anyway");
     }
 }

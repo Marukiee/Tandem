@@ -27,13 +27,15 @@ function Row({ icon, name, detail, on, onPress }) {
 
 function Card() {
   const online = devices.filter((d) => d.online);
+  // A device named by a start that did not come from the menu of this run is asked about, and comes first.
+  const listed = files.asked ? [...devices].sort((a, b) => (b.id === files.asked) - (a.id === files.asked)) : devices;
   const title = files.count === 1 && files.name ? t("send_pick_one", files.name) : t("send_pick_many", files.count);
   return html`<div class="qs-card send-card">
     <div class="send-head"><div class="qs-title send-title">${title}</div><div class="qs-sub">${t("send_pick_choose")}</div></div>
     ${devices.length === 0
       ? html`<div class="send-empty">${t("send_pick_none")}</div>`
       : html`<div class="send-list">
-          ${devices.map((d) => html`<${Row} key=${d.id} icon=${platformIcon(d.platform)} name=${d.name}
+          ${listed.map((d) => html`<${Row} key=${d.id} icon=${platformIcon(d.platform)} name=${d.name}
             detail=${d.online ? t("connected") : t("not_connected")} on=${d.online}
             onPress=${() => { if (d.online) choose([d.id]); else { why = t("send_pick_away", d.name); draw(); } }} />`)}
           ${online.length > 1 && html`<div class="send-line"></div>

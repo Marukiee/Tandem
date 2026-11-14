@@ -17,7 +17,7 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Size, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
-use crate::{i18n, state::AppState};
+use crate::{i18n, state::AppState, state::Held};
 
 /// How long the panel is kept after it was closed, in case it is wanted again. TANDEM_PANEL_KEPT_SECONDS changes it, which
 /// is how a test does not have to wait for minutes.
@@ -93,7 +93,7 @@ static MADE_FROM: std::sync::Mutex<String> = std::sync::Mutex::new(String::new()
 /// ringing a phone. Windows and GNOME have no place for the quick settings of an app, so they are here.
 fn menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let settings = crate::settings::get(app);
-    let devices = app.state::<AppState>().data.lock().unwrap().devices.clone();
+    let devices = app.state::<AppState>().data.held().devices.clone();
     let online = |d: &&serde_json::Value| d["online"].as_bool().unwrap_or(false);
     let has = |d: &serde_json::Value, cap: &str| d["caps"].as_array().is_some_and(|c| c.iter().any(|x| x == cap));
     let name = |d: &serde_json::Value| d["name"].as_str().unwrap_or("?").to_string();
@@ -104,7 +104,7 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let awake = CheckMenuItem::with_id(app, "keep-awake", i18n::t(app, "keep_awake"), crate::keepawake::available(), settings.keep_awake, None::<&str>)?;
     let mouse = CheckMenuItem::with_id(app, "share-mouse", i18n::t(app, "tray_shared_mouse"), !settings.layout.is_empty(), settings.pointer_share, None::<&str>)?;
 
-    let extending = EXTENDING.lock().unwrap().clone();
+    let extending = EXTENDING.held().clone();
     let extend = Submenu::with_id(app, "extend", i18n::t(app, "tray_extend"), true)?;
     let mut any = false;
     for device in devices.iter().filter(online).filter(|d| has(d, "screen.extend.view")) {
@@ -135,17 +135,17 @@ fn menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
 /// Makes the menu again when the devices, the shared mouse or an extra screen changed.
 pub fn rebuild(app: &AppHandle) {
     let settings = crate::settings::get(app);
-    let devices = app.state::<AppState>().data.lock().unwrap().devices.clone();
+    let devices = app.state::<AppState>().data.held().devices.clone();
     let key = format!(
         "{}{}{}{:?}{}",
         settings.pointer_share,
         settings.keep_awake,
         settings.layout.is_empty(),
-        EXTENDING.lock().unwrap(),
+        EXTENDING.held(),
         devices.iter().map(|d| format!("{}{}{}{}", d["id"], d["name"], d["online"], d["caps"])).collect::<String>()
     );
     {
-        let mut made = MADE_FROM.lock().unwrap();
+        let mut made = MADE_FROM.held();
         if *made == key {
             return;
         }
@@ -157,13 +157,13 @@ pub fn rebuild(app: &AppHandle) {
 
 /// Which devices this computer shows an extra screen on now.
 pub fn set_extending(app: &AppHandle, peers: Vec<String>) {
-    *EXTENDING.lock().unwrap() = peers;
+    *EXTENDING.held() = peers;
     rebuild(app);
 }
 
 fn extend(app: &AppHandle, device: &str) {
     let device = device.to_string();
-    if EXTENDING.lock().unwrap().contains(&device) {
+    if EXTENDING.held().contains(&device) {
         crate::live::display_offer_stop(app.clone(), device);
     } else if let Err(error) = crate::live::display_offer(app.clone(), device) {
         log::info!("extending to that device did not start: {error:?}");
@@ -295,7 +295,7 @@ fn toggle_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
 /// Made hidden. It is shown when its content has said how high it wants to be (see [`resize_panel`]), so it opens at the
 /// right size instead of jumping to it.
 fn create_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
-    *app.state::<AppState>().pending_panel.lock().unwrap() = Some(click);
+    *app.state::<AppState>().pending_panel.held() = Some(click);
     let late = app.clone();
     let built = WebviewWindowBuilder::new(app, "panel", WebviewUrl::App("panel.html".into()))
         .title("Tandem")
@@ -323,13 +323,13 @@ fn create_panel(app: &AppHandle, click: PhysicalPosition<f64>) {
         Ok(_) => log::info!("the panel is made"),
         Err(error) => {
             log::warn!("the panel could not be made: {error}");
-            *app.state::<AppState>().pending_panel.lock().unwrap() = None;
+            *app.state::<AppState>().pending_panel.held() = None;
         }
     }
 }
 
 fn show_pending_panel(app: &AppHandle) {
-    let click = app.state::<AppState>().pending_panel.lock().unwrap().take();
+    let click = app.state::<AppState>().pending_panel.held().take();
     if let (Some(click), Some(panel)) = (click, app.get_webview_window("panel")) {
         if !panel.is_visible().unwrap_or(false) {
             place_and_show(app, &panel, click);
@@ -367,13 +367,13 @@ fn insets(window: &WebviewWindow) -> Insets {
 
 fn place_and_show(app: &AppHandle, panel: &WebviewWindow, click: PhysicalPosition<f64>) {
     // Whatever was waiting to open is opening now.
-    *app.state::<AppState>().pending_panel.lock().unwrap() = None;
+    *app.state::<AppState>().pending_panel.held() = None;
     // And it will not be put away while somebody is looking at it.
     PANEL_CLOSED.fetch_add(1, Ordering::SeqCst);
     let scale = panel.scale_factor().unwrap_or(1.0);
     let edge = insets(panel);
     // What is placed is the visible part, from the height its content asked for.
-    let wanted = app.state::<AppState>().panel_height.lock().unwrap().unwrap_or(PANEL_HEIGHT);
+    let wanted = app.state::<AppState>().panel_height.held().unwrap_or(PANEL_HEIGHT);
     let (width, height) = ((PANEL_WIDTH * scale).round() as i32, (wanted.clamp(PANEL_MIN, 720.0) * scale).round() as i32);
     let margin = (10.0 * scale) as i32;
     let (cx, cy) = (click.x as i32, click.y as i32);
@@ -398,7 +398,7 @@ fn place_and_show(app: &AppHandle, panel: &WebviewWindow, click: PhysicalPositio
     }
     let _ = panel.set_size(Size::Physical(PhysicalSize::new(width as u32, height as u32)));
     let _ = panel.set_position(PhysicalPosition::new(x - edge.left, y - edge.top));
-    *app.state::<AppState>().panel_shown.lock().unwrap() = Some(Instant::now());
+    *app.state::<AppState>().panel_shown.held() = Some(Instant::now());
     let shown = panel.show();
     let focused = panel.set_focus();
     log::info!(
@@ -417,7 +417,7 @@ pub fn panel_lost_focus(app: &AppHandle) {
     if PINNED.load(Ordering::SeqCst) {
         return;
     }
-    let shown = *app.state::<AppState>().panel_shown.lock().unwrap();
+    let shown = *app.state::<AppState>().panel_shown.held();
     let settling = shown.map(|t| t.elapsed() < Duration::from_millis(300)).unwrap_or(false);
     log::info!("the panel lost focus{}", if settling { " (still settling, so it stays)" } else { " and closes" });
     if settling {
@@ -458,7 +458,7 @@ fn hide_panel(app: &AppHandle) {
 /// Everything is measured on the visible part of the window. Setting the size of the visible part from the size of the
 /// whole made the window a little bigger at every call, and the content, seeing its window grow, asked again.
 pub fn resize_panel(app: &AppHandle, logical_height: f64) {
-    *app.state::<AppState>().panel_height.lock().unwrap() = Some(logical_height);
+    *app.state::<AppState>().panel_height.held() = Some(logical_height);
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
         let Some(panel) = handle.get_webview_window("panel") else { return };

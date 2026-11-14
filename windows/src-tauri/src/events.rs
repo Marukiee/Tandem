@@ -9,7 +9,7 @@ use tandem_core::ffi::{TandemEvent, TandemNotification, TandemShareItem, TandemS
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
-use crate::{clip, i18n, input, media, model, settings, state::AppState};
+use crate::{clip, i18n, input, media, model, settings, state::AppState, state::Held};
 
 /// A notification on the desktop.
 pub fn toast(app: &AppHandle, title: &str, body: &str) {
@@ -30,7 +30,7 @@ pub fn refresh_devices(app: &AppHandle) {
     let devices = engine.devices();
     let list: Vec<Value> = devices.iter().map(model::device).collect();
     let refusing: Vec<String> = {
-        let mut data = state.data.lock().unwrap();
+        let mut data = state.data.held();
         let refusing = data.devices.iter().filter(|d| d["online"].as_bool() == Some(true) && !takes_pointer(d)).filter_map(|d| d["id"].as_str().map(str::to_string)).collect();
         data.devices = list.clone();
         refusing
@@ -54,7 +54,7 @@ fn takes_pointer(device: &Value) -> bool {
 }
 
 pub fn device(app: &AppHandle, id: &str) -> Option<Value> {
-    app.state::<AppState>().data.lock().unwrap().devices.iter().find(|d| d["id"] == id).cloned()
+    app.state::<AppState>().data.held().devices.iter().find(|d| d["id"] == id).cloned()
 }
 
 pub fn device_name(app: &AppHandle, id: &str) -> String {
@@ -73,7 +73,7 @@ pub fn device_caps(app: &AppHandle, id: &str) -> Vec<String> {
 #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub fn online_phones(app: &AppHandle) -> Vec<String> {
     let state = app.state::<AppState>();
-    let data = state.data.lock().unwrap();
+    let data = state.data.held();
     data.devices.iter().filter(|d| d["online"].as_bool() == Some(true) && d["platform"] == "android").filter_map(|d| d["id"].as_str().map(str::to_string)).collect()
 }
 
@@ -104,7 +104,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             crate::sound::stop(&id);
             crate::output::stop_for(app, &id, None);
             crate::virtual_audio::disconnected(app, &id);
-            let had = app.state::<AppState>().data.lock().unwrap().players.remove(&id).is_some();
+            let had = app.state::<AppState>().data.held().players.remove(&id).is_some();
             refresh_devices(app);
             if had {
                 emit_players(app);
@@ -181,7 +181,7 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
                 // Taken by a drop, an insert or the clipboard, which say it themselves: the row its progress made goes, or it stood at full
                 // forever (seen 2026-11-02 with screenshots from the phone).
                 let id = format!("{offer}-{index}-in");
-                app.state::<AppState>().data.lock().unwrap().transfers.retain(|t| t["id"] != id.as_str());
+                app.state::<AppState>().data.held().transfers.retain(|t| t["id"] != id.as_str());
                 let _ = app.emit("transfer_gone", id);
             } else {
                 finished(app, offer, index, &peer, incoming, &name, size, location, error)
@@ -220,14 +220,14 @@ pub fn handle(app: &AppHandle, event: TandemEvent) {
             let _ = app.emit("notification-removed", json!({ "device": from, "key": key }));
         }
         TandemEvent::MediaPlayers { from, players } => {
-            app.state::<AppState>().data.lock().unwrap().players.insert(from, players);
+            app.state::<AppState>().data.held().players.insert(from, players);
             emit_players(app);
         }
         TandemEvent::MediaArt { key, jpeg, .. } => {
             let uri = format!("data:image/jpeg;base64,{}", base64::engine::general_purpose::STANDARD.encode(jpeg));
             {
                 let state = app.state::<AppState>();
-                let mut data = state.data.lock().unwrap();
+                let mut data = state.data.held();
                 // The newest few covers are all that is on screen.
                 if data.art.len() >= 24 {
                     if let Some(old) = data.art.keys().copied().find(|k| *k != key) {
@@ -341,7 +341,7 @@ fn remote_input(app: &AppHandle, from: &str, event: tandem_core::ffi::TandemInpu
         return;
     }
     static ASKED: std::sync::Mutex<Option<Instant>> = std::sync::Mutex::new(None);
-    let mut asked = ASKED.lock().unwrap();
+    let mut asked = ASKED.held();
     if asked.map(|t| t.elapsed() > Duration::from_secs(120)).unwrap_or(true) {
         *asked = Some(Instant::now());
         // The system not allowing it is another thing than the person not having turned it on, and needs other words.
@@ -357,7 +357,7 @@ fn emit_players(app: &AppHandle) {
 
 pub fn players_json(app: &AppHandle) -> Value {
     let state = app.state::<AppState>();
-    let data = state.data.lock().unwrap();
+    let data = state.data.held();
     let mut out = serde_json::Map::new();
     for (id, list) in &data.players {
         out.insert(id.clone(), Value::Array(list.iter().map(model::player).collect()));
@@ -367,7 +367,7 @@ pub fn players_json(app: &AppHandle) -> Value {
 
 pub fn art_json(app: &AppHandle) -> Value {
     let state = app.state::<AppState>();
-    let data = state.data.lock().unwrap();
+    let data = state.data.held();
     Value::Object(data.art.iter().map(|(k, v)| (k.to_string(), Value::String(v.clone()))).collect())
 }
 
@@ -396,7 +396,7 @@ fn offered(app: &AppHandle, from: &str, offer: u64, origin: TandemShareOrigin, i
         "origin": model::origin(origin),
         "items": model::items(items),
     });
-    app.state::<AppState>().data.lock().unwrap().offers.push(value.clone());
+    app.state::<AppState>().data.held().offers.push(value.clone());
     let _ = app.emit("offer", value);
     let names = items.iter().map(|i| i.name.as_str()).collect::<Vec<_>>().join(", ");
     toast(app, &i18n::t2(app, "wants_to_send", &name, &items.len().to_string()), &names);
@@ -407,7 +407,7 @@ fn progress(app: &AppHandle, offer: u64, index: u32, peer: &str, incoming: bool,
     let id = format!("{offer}-{index}-{}", if incoming { "in" } else { "out" });
     let state = app.state::<AppState>();
     let value = {
-        let mut data = state.data.lock().unwrap();
+        let mut data = state.data.held();
         // A file that has started is no longer an offer.
         let offer_text = offer.to_string();
         data.offers.retain(|o| !(o["from"] == peer && o["offer"] == offer_text));
@@ -433,7 +433,7 @@ fn progress(app: &AppHandle, offer: u64, index: u32, peer: &str, incoming: bool,
     };
     // A file moves many times a second; the bar needs far fewer pictures than that.
     static LAST: std::sync::Mutex<Option<Instant>> = std::sync::Mutex::new(None);
-    let mut last = LAST.lock().unwrap();
+    let mut last = LAST.held();
     if done >= total || last.map(|t| t.elapsed() > Duration::from_millis(120)).unwrap_or(true) {
         *last = Some(Instant::now());
         let _ = app.emit("transfer", value);
@@ -466,7 +466,7 @@ fn finished(
     let id = format!("{offer}-{index}-{}", if incoming { "in" } else { "out" });
     let state = app.state::<AppState>();
     let value = {
-        let mut data = state.data.lock().unwrap();
+        let mut data = state.data.held();
         let existing = data.transfers.iter().position(|t| t["id"] == id);
         let now = chrono_ms();
         let mut item = match existing {
@@ -520,13 +520,13 @@ fn phone_notification(app: &AppHandle, from: &str, n: &TandemNotification) {
         return;
     }
     // The phone sends a code a few times, because it cannot tell a dead link from a live one. The first one counts.
-    if again && app.state::<AppState>().data.lock().unwrap().notifications.iter().any(|old| old["device"] == from && old["key"] == n.key) {
+    if again && app.state::<AppState>().data.held().notifications.iter().any(|old| old["device"] == from && old["key"] == n.key) {
         return;
     }
     let value = model::notification(from, &name, n);
     {
         let state = app.state::<AppState>();
-        let mut data = state.data.lock().unwrap();
+        let mut data = state.data.held();
         data.notifications.retain(|old| !(old["device"] == from && old["key"] == n.key));
         data.notifications.insert(0, value.clone());
         data.notifications.truncate(200);
@@ -543,7 +543,7 @@ fn phone_notification(app: &AppHandle, from: &str, n: &TandemNotification) {
 fn pause_for_call(app: &AppHandle, from: &str, state: tandem_core::ffi::TandemCallState) {
     use tandem_core::ffi::TandemCallState as State;
     static CALLS: std::sync::Mutex<(Vec<String>, Option<Vec<String>>)> = std::sync::Mutex::new((Vec::new(), None));
-    let mut guard = CALLS.lock().unwrap();
+    let mut guard = CALLS.held();
     let (calls, paused) = &mut *guard;
     match state {
         State::Ringing | State::Dialing | State::Active => {
@@ -569,7 +569,7 @@ fn pause_for_call(app: &AppHandle, from: &str, state: tandem_core::ffi::TandemCa
 /// Android still shows the code in the notification). It is copied and announced once.
 fn first_time(code: &str) -> bool {
     static LAST: std::sync::Mutex<Option<(String, std::time::Instant)>> = std::sync::Mutex::new(None);
-    let mut last = LAST.lock().unwrap();
+    let mut last = LAST.held();
     let again = last.as_ref().is_some_and(|(seen, at)| seen == code && at.elapsed() < std::time::Duration::from_secs(120));
     *last = Some((code.to_string(), std::time::Instant::now()));
     !again
