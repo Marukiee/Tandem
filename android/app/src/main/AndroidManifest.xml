@@ -110,6 +110,12 @@
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/share_targets" />
         </activity>
 
+        <!-- The way in for the actions of the app itself (see MainActivity.internalIntent): not exported, so no other app can use it. -->
+        <activity-alias
+            android:name=".InternalEntry"
+            android:targetActivity=".MainActivity"
+            android:exported="false" />
+
         <!-- Opens Tandem again in a new process, from a process of its own (see RestartActivity). -->
         <activity
             android:name=".RestartActivity"

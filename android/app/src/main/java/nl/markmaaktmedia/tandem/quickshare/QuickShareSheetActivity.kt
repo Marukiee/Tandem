@@ -98,7 +98,7 @@ class QuickShareSheetActivity : ComponentActivity() {
         val tile = androidx.core.content.IntentCompat.getParcelableExtra(intent, android.content.Intent.EXTRA_COMPONENT_NAME, android.content.ComponentName::class.java)
         if (tile != null && tile.className != QuickShareTileService::class.java.name) {
             startActivity(
-                android.content.Intent(this, nl.markmaaktmedia.tandem.MainActivity::class.java)
+                nl.markmaaktmedia.tandem.MainActivity.internalIntent(this)
                     .setAction(nl.markmaaktmedia.tandem.MainActivity.ACTION_OPEN_SHARING)
                     .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP),
             )

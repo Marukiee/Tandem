@@ -358,7 +358,7 @@ private fun iconRes(key: String): Int = when (key) {
 
 /** A tap opens the page of that device; this phone's own ring opens the app. */
 private fun openIntent(context: Context, id: String): Intent =
-    Intent(context, MainActivity::class.java).apply {
+    MainActivity.internalIntent(context).apply {
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
         if (id != BatteryWidget.SELF) {
             action = MainActivity.ACTION_OPEN_DEVICE

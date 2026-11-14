@@ -59,7 +59,7 @@ object SetupTour {
         // What got ready in the meantime needs no reminder.
         prefs.setTourLater(waiting.map { it.id }.toSet())
         if (waiting.isEmpty() || !Permissions.notifications(context)) return
-        val open = Intent(context, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN_TOUR)
+        val open = MainActivity.internalIntent(context).setAction(MainActivity.ACTION_OPEN_TOUR)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val tap = PendingIntent.getActivity(context, NOTIFICATION, open, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val text = if (waiting.size == 1) waiting[0].name else context.getString(R.string.tour_remind_text, waiting.size, waiting.joinToString(", ") { it.name })

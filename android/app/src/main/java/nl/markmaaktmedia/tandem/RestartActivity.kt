@@ -15,7 +15,7 @@ class RestartActivity : Activity() {
         super.onCreate(savedInstanceState)
         val old = intent.getIntExtra(EXTRA_PID, -1)
         if (old > 0 && old != Process.myPid()) Process.killProcess(old)
-        val next = Intent(this, MainActivity::class.java)
+        val next = MainActivity.internalIntent(this)
             .setAction(intent.getStringExtra(EXTRA_ACTION))
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
         startActivity(next)

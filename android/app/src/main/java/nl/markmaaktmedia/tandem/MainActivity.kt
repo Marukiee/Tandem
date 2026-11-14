@@ -13,7 +13,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        handleLink(intent)
+        // Only a fresh start reads the intent: after a rotation or a restart of the process it is the old one, and would run again.
+        if (savedInstanceState == null) handleLink(intent)
         setContent {
             val appearance = graph.prefs.appearance.collectAppearance()
             TandemTheme(appearance) { AppRoot() }
@@ -27,6 +28,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleLink(intent: android.content.Intent?) {
         intent?.data?.toString()?.takeIf { it.startsWith("tandem://") }?.let { graph.pairLink.value = it }
+        // The actions below open pages and ask for nothing, but any app could send them to the exported activity. Only
+        // what came through the alias that is not exported (see [internalIntent]) is ours.
+        if (intent?.component?.className != INTERNAL_ENTRY) return
         if (intent?.action == nl.markmaaktmedia.tandem.quickshare.QuickShareTileService.ACTION_OPEN_PAGE) graph.openQuickShare.value = true
         if (intent?.action == ACTION_OPEN_DISPLAY) intent.getStringExtra(EXTRA_DEVICE)?.let { graph.openDisplay.value = it }
         if (intent?.action == ACTION_OPEN_MIRROR) intent.getStringExtra(EXTRA_DEVICE)?.let { graph.openMirror.value = it }
@@ -48,6 +52,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     companion object {
+        private const val INTERNAL_ENTRY = "nl.markmaaktmedia.tandem.InternalEntry"
+
+        /** An intent for the actions below: it goes through an activity alias that other apps cannot start. */
+        fun internalIntent(context: android.content.Context): android.content.Intent =
+            android.content.Intent().setClassName(context.packageName, INTERNAL_ENTRY)
+
         /** From the notification of a computer that asks this phone to be its second screen. */
         const val ACTION_OPEN_DISPLAY = "nl.markmaaktmedia.tandem.OPEN_DISPLAY"
         const val ACTION_OPEN_MIRROR = "nl.markmaaktmedia.tandem.OPEN_MIRROR"
