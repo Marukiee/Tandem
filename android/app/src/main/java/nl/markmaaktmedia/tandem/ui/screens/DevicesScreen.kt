@@ -70,7 +70,6 @@ import nl.markmaaktmedia.tandem.wifi.wifiOfferItem
 import uniffi.tandem_core.TandemBattery
 import uniffi.tandem_core.TandemDevice
 import uniffi.tandem_core.TandemPlatform
-import uniffi.tandem_core.TandemWatchSettingsChange
 import uniffi.tandem_core.TandemWatchStatus
 
 /**
@@ -226,9 +225,6 @@ fun DevicesScreen(
                 modifier = Modifier.animateItem(),
                 onOpen = { onOpenDevice(card.phone.id) },
                 onRing = { scope.launch { runCatching { host.engine?.ringWatch(card.phone.id, !card.watch.ringing) } } },
-                onSmartWake = { on ->
-                    scope.launch { runCatching { host.engine?.setWatchSettings(card.phone.id, TandemWatchSettingsChange(smartWake = on)) } }
-                },
             )
             return@items
           }
@@ -300,10 +296,8 @@ private fun WatchCard(
     modifier: Modifier = Modifier,
 ) {
     val graph = LocalContext.current.graph
-    val scope = rememberCoroutineScope()
     val records by graph.host.healthRecords.collectAsState()
     val goal by graph.prefs.stepGoal.collectAsState(initial = nl.markmaaktmedia.tandem.data.TandemPrefs.DEFAULT_STEP_GOAL)
-    val smartWake by graph.prefs.smartWake.collectAsState(initial = false)
     // Only a night that ended today counts as last night: one from days ago on the start page reads as if it were.
     val night = records.latestNight()?.takeIf { System.currentTimeMillis() - it.endMs.toLong() < 20 * 3_600_000L }
     Column(
@@ -356,13 +350,10 @@ private fun WatchCard(
             }
         }
 
-        // On one line, like the pills on the card of a computer: the tiles above open Health, so the pills are only for doing something.
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (state.ready) {
+        // A pill like the ones on the card of a computer: the tiles above open Health, so the pill is only for doing something.
+        if (state.ready) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 QuickAction(TandemIcons.Ring, stringResource(if (state.ringing) R.string.find_stop_sound else R.string.find_play), onRing)
-            }
-            TogglePill(if (smartWake) TandemIcons.Check else TandemIcons.Schedule, stringResource(R.string.health_smart_wake_short), smartWake) {
-                scope.launch { graph.prefs.setSmartWake(!smartWake) }
             }
         }
     }
@@ -378,11 +369,9 @@ private fun RemoteWatchCard(
     watch: TandemWatchStatus,
     onOpen: () -> Unit,
     onRing: () -> Unit,
-    onSmartWake: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val here = phone.online && watch.online
-    val settings = watch.settings?.takeIf { phone.online }
     Column(
         modifier
             .fillMaxWidth()
@@ -414,17 +403,9 @@ private fun RemoteWatchCard(
             val battery = watch.level?.let { TandemBattery(it, watch.charging, false) }
             ArrivingBattery(battery) { BatteryBadge(it, connected = here) }
         }
-        if (here || settings != null) {
+        if (here) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (here) {
-                    QuickAction(TandemIcons.Ring, stringResource(if (watch.ringing) R.string.find_stop_sound else R.string.find_play), onRing)
-                }
-                if (settings != null) {
-                    TogglePill(
-                        if (settings.smartWake) TandemIcons.Check else TandemIcons.Schedule, stringResource(R.string.health_smart_wake_short),
-                        settings.smartWake,
-                    ) { onSmartWake(!settings.smartWake) }
-                }
+                QuickAction(TandemIcons.Ring, stringResource(if (watch.ringing) R.string.find_stop_sound else R.string.find_play), onRing)
             }
         }
     }
@@ -586,10 +567,6 @@ private fun BatchStrip(peer: String) {
 
 @Composable
 private fun QuickAction(icon: androidx.compose.ui.graphics.painter.Painter, label: String, onClick: () -> Unit) = Pill(icon, label, false, onClick)
-
-/** A pill that switches something: on it takes the strong colour, so it is clear at a glance what is on. */
-@Composable
-private fun TogglePill(icon: androidx.compose.ui.graphics.painter.Painter, label: String, on: Boolean, onClick: () -> Unit) = Pill(icon, label, on, onClick)
 
 @Composable
 private fun Pill(

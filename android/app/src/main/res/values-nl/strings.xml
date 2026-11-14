@@ -723,7 +723,6 @@
         <item quantity="other">%d trainingen deze week</item>
     </plurals>
     <string name="health_smart_wake">Zacht wakker worden</string>
-    <string name="health_smart_wake_short">Zacht wekken</string>
     <string name="health_smart_wake_sub">Vijf minuten voor je wekker begint je horloge aan één lange, zachte trilling die een paar keer rustig op en neer gaat, elke keer een klein beetje meer. Hij wordt nooit hard: je wekker maakt je verder wakker. Werkt tijdens een slaapopname.</string>
     <string name="health_your_data">Je gegevens</string>
     <string name="health_export">Exporteren</string>
