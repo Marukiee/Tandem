@@ -28,6 +28,7 @@ mod engine;
 mod events;
 mod files_host;
 mod find;
+mod halfway;
 mod history;
 #[cfg(feature = "screen-host")]
 mod host;
@@ -270,6 +271,9 @@ pub fn run() {
             commands::stop_watch_mouse,
             commands::send_paths,
             commands::pick_and_send,
+            halfway::halfway_list,
+            halfway::halfway_go_on,
+            halfway::halfway_throw_away,
             commands::send_clipboard,
             commands::accept_offer,
             commands::decline_offer,
