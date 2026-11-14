@@ -698,6 +698,8 @@ struct TransferRow: View {
         .padding(.vertical, 6)
         .animation(.tandem, value: item.state)
         .task(id: item.state == .done ? item.location : nil) { await loadThumbnail() }
+        // A file that is here can be dragged out of the list, into Finder, a mail or any app that takes files (R-D13).
+        .modifier(FileDrag(path: model.canOpen(item) ? model.filePath(item) : nil))
     }
 
     @LocalState private var thumbnail: NSImage?
@@ -917,5 +919,18 @@ struct ToastView: View {
         .padding(.vertical, 11)
         .floatingGlass(in: .capsule)
         .shadow(color: .black.opacity(0.14), radius: 14, y: 6)
+    }
+}
+
+/// Lets a row be dragged as the file at `path`, and only then: a row without a file starts no empty drag.
+struct FileDrag: ViewModifier {
+    let path: String?
+
+    func body(content: Content) -> some View {
+        if let path {
+            content.onDrag { NSItemProvider(contentsOf: URL(fileURLWithPath: path)) ?? NSItemProvider() }
+        } else {
+            content
+        }
     }
 }
