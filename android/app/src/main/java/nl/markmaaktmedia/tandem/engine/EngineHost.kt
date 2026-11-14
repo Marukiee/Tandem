@@ -338,6 +338,7 @@ class EngineHost(
             is TandemEvent.ShareOffered -> batchStarted(event.offer, event.from, true, event.items.size)
             is TandemEvent.Progress -> updateTransfer(event)
             is TandemEvent.Finished -> {
+                if (!event.incoming) AndroidFiles.finished(event.offer, event.index.toInt(), event.peer, event.error)
                 finishTransfer(event)
                 batchProgressed(event.offer, event.incoming)
                 dropIdleBatchesLater(event.peer, IDLE_BATCH_MS)
@@ -419,7 +420,13 @@ class EngineHost(
         // Opening a file of another app can mean fetching it first (a photo only in the cloud): never on the main thread.
         val files = withContext(Dispatchers.IO) { uris.mapNotNull { describe(it, hold) } }
         if (files.isEmpty()) return 0
-        val report = engine.sendFiles(targets, files, origin)
+        val report = try {
+            engine.sendFiles(targets, files, origin)
+        } catch (e: Exception) {
+            if (hold) AndroidFiles.abandoned(files.map { it.source })
+            throw e
+        }
+        if (hold) AndroidFiles.offered(report.offer, files.map { it.source }, report.sentTo)
         report.sentTo.firstOrNull()?.let { batchStarted(report.offer, it, false, files.size * report.sentTo.size) }
         return report.sentTo.size
     }
