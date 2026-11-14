@@ -12,6 +12,10 @@ import androidx.core.app.NotificationManagerCompat
 import nl.markmaaktmedia.tandem.R
 import nl.markmaaktmedia.tandem.graph
 
+/** A link from another device is opened only when it is a web page: a stranger can send any scheme, also `tandem://pair`. */
+internal fun webLink(link: String): android.net.Uri? =
+    android.net.Uri.parse(link).takeIf { it.scheme?.lowercase() in setOf("http", "https") }
+
 /**
  * What Quick Share says outside the app: a card that comes up with Decline and Accept when someone wants to send something,
  * the progress while it comes in, and what arrived. It looks like the card of the Quick Share of Android, because that is what
@@ -99,9 +103,9 @@ class QuickShareNotifications(private val app: Application) {
             .setAutoCancel(true)
             .setTimeoutAfter(30_000)
         // A link opens from the notification.
-        item.link?.let { link ->
+        item.link?.let(::webLink)?.let { link ->
             val open = PendingIntent.getActivity(
-                app, idOf(item.id), Intent(Intent.ACTION_VIEW, android.net.Uri.parse(link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                app, idOf(item.id), Intent(Intent.ACTION_VIEW, link).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
             builder.setContentIntent(open).addAction(0, app.getString(R.string.quickshare_open_link), open)
