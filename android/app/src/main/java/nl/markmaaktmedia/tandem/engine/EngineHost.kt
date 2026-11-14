@@ -107,6 +107,8 @@ class EngineHost(
         if (total < 2) return
         val key = "$offer-${if (incoming) "in" else "out"}"
         _batches.update { it + (key to TransferBatch(key, peer, incoming, total)) }
+        // A set that never starts (refused on the other side) goes after the wait for an answer.
+        dropIdleBatchesLater(peer, STALE_BATCH_MS)
     }
 
     private fun batchProgressed(offer: ULong, incoming: Boolean) {
@@ -120,8 +122,25 @@ class EngineHost(
 
     /** A batch nobody finished (it was cancelled, or the other device went away) does not stay on the screen for ever. */
     fun dropStaleBatches() {
-        val old = System.currentTimeMillis() - 90_000L
+        val old = System.currentTimeMillis() - STALE_BATCH_MS
         _batches.update { map -> map.filterValues { it.updatedAt >= old || transfers.value.any { t -> t.state == TransferItem.State.Active && t.peer == it.peer } } }
+    }
+
+    /**
+     * Looks again at the sets of [peer] after [afterMs]: one with nothing of it running any more and nothing new for that long is over,
+     * also when a file of it never counted as done (skipped, refused or failed on the other side). Before, this was only looked at while
+     * something was running, so the last set stayed on the card of its device ("Sending file 2 of 2", seen 2026-11-14).
+     */
+    private fun dropIdleBatchesLater(peer: String, afterMs: Long) {
+        scope.launch {
+            kotlinx.coroutines.delay(afterMs + 500)
+            val quiet = System.currentTimeMillis() - afterMs
+            _batches.update { map ->
+                map.filterValues { b ->
+                    b.peer != peer || b.updatedAt > quiet || transfers.value.any { t -> t.state == TransferItem.State.Active && t.peer == b.peer }
+                }
+            }
+        }
     }
 
     init {
@@ -318,6 +337,7 @@ class EngineHost(
             is TandemEvent.Finished -> {
                 finishTransfer(event)
                 batchProgressed(event.offer, event.incoming)
+                dropIdleBatchesLater(event.peer, IDLE_BATCH_MS)
             }
             else -> Unit
         }
@@ -496,6 +516,10 @@ class EngineHost(
     val networkMoved = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
 
     companion object {
+        /** A set that waits this long for an answer, with nothing running, is not coming. */
+        private const val STALE_BATCH_MS = 90_000L
+        /** After a file of a set is done, this long with nothing of it running means the set is over. */
+        private const val IDLE_BATCH_MS = 15_000L
         private const val TAG = "EngineHost"
         /** The same as on the Mac: what a copy may send by itself. */
         const val CLIPBOARD_FILES_LIMIT = 50L * 1024 * 1024
