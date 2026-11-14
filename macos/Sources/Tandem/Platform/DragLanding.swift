@@ -8,12 +8,19 @@ import TandemCore
 final class DragLanding {
     static let shared = DragLanding()
 
-    private var offers: [UInt64: String] = [:]
+    private struct Offer {
+        var device: String
+        var expected: Int
+        var done = 0
+    }
 
-    /// An offer arrived with the drag origin. Taken only from a computer that shares its pointer with this one.
-    func take(offer: UInt64, from device: String) -> Bool {
+    private var offers: [UInt64: Offer] = [:]
+
+    /// An offer arrived with the drag origin. Taken only from a computer that shares its pointer with this one. `count` is how many files
+    /// it has, so a drag that is still held can wait for all of them.
+    func take(offer: UInt64, from device: String, count: Int) -> Bool {
         guard PointerShare.shared.isPeer(device), let engine = EngineModel.shared.tandem else { return false }
-        offers[offer] = device
+        offers[offer] = Offer(device: device, expected: count)
         if offers.count > 40 { offers.removeValue(forKey: offers.keys.min() ?? offer) }
         do {
             try engine.acceptOffer(from: device, offer: offer)
@@ -26,14 +33,16 @@ final class DragLanding {
 
     /// A file of such an offer is in. True when it was one of ours and was dealt with here.
     func finished(offer: UInt64, from device: String, name: String, location: String?, error: String?) -> Bool {
-        guard offers[offer] == device else { return false }
+        guard offers[offer]?.device == device else { return false }
+        offers[offer]?.done += 1
+        let allIn = offers[offer].map { $0.done >= $0.expected } ?? true
         let from = EngineModel.shared.device(device)?.name ?? "?"
         guard error == nil, let location else {
             EngineModel.shared.showToast(String(localized: "A file from \(from) did not come in"))
             return true
         }
         // It hangs under the pointer first, to be put down with a press where the person wants it (see `DragCarrier`).
-        if DragCarrier.shared.carry(URL(fileURLWithPath: location), name: name, from: device) { return true }
+        if DragCarrier.shared.carry(URL(fileURLWithPath: location), name: name, from: device, allIn: allIn) { return true }
         land(URL(fileURLWithPath: location), name: name, from: device)
         return true
     }
