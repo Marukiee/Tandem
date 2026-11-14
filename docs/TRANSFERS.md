@@ -264,14 +264,13 @@ altijd uit, ook als hij uit staat. De Mac zet hem aan. Android en Linux/Windows 
   in de roadmap is 7 dagen). Een aanbod dat net eindigde blijft daarna nog `ENDED_KEPT` in het boek. Kopieen in `outgoing/` waar een
   lopend aanbod naar wijst worden niet opgeruimd.
 - Stoppen: `cancel_transfer(peer, offer, false)` werkt ook op een wachtrij-aanbod en geeft dan een `Finished` met `cancelled` per bestand;
-  het andere apparaat hoort er niets van (het kende het niet).
-- Android nog te doen: een bestand van een andere app eerst naar `outgoing/` kopieren, want de toestemming van een content-URI verloopt
-  (anders wordt het na een herstart `gone`). Tot de schil er is, zet Android al in de wachtrij zonder het te tonen, en klopt de toast
-  "offline" niet meer: toon bij een niet-lege `queued` "Waits for %@. It goes as soon as it is back. / Wacht op %@. Het gaat zodra het
-  terug is."
+  het andere apparaat hoort er niets van (het kende het niet). Of het nog in de wachtrij stond wordt in dezelfde wijziging gelezen als de
+  stop, dus een aanbod dat de wachtrij net verstuurde krijgt altijd een `ShareCancel`.
 
 Tests: `a_queued_offer_survives_a_restart_and_goes_out_when_the_receiver_comes_back`,
-`a_queued_file_that_changed_or_went_is_reported_and_not_sent` (ook stoppen) in `tests/transfers.rs`, en
+`a_queued_file_that_changed_or_went_is_reported_and_not_sent` (ook stoppen),
+`an_offer_nothing_was_pulled_of_goes_back_in_the_queue_when_the_connection_drops`,
+`stopping_an_offer_the_queue_just_sent_tells_the_receiver` in `tests/transfers.rs`, en
 `a_queued_offer_expires_after_seven_days_for_that_device_only` in `journal.rs`.
 
 ### P3b. Het paneel Onderweg en Inkomend (gebouwd, Mac)

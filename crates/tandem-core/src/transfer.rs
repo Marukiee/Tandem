@@ -407,9 +407,7 @@ impl Inner {
         if incoming {
             self.stop_incoming(peer, offer);
         } else {
-            let queued =
-                self.journal.read(Key::Out(offer), |record| record.peer(&peer).is_some_and(|p| p.stage == Stage::Queued)).unwrap_or(false);
-            let ended = self.stop_outgoing(peer, offer, ItemState::Cancelled, None);
+            let (ended, queued) = self.stop_outgoing(peer, offer, ItemState::Cancelled, None);
             // Nothing of it ran or went out, so nothing else says it ended; the other device never heard of it either (P3).
             if queued {
                 for (index, item) in ended {
@@ -479,18 +477,22 @@ impl Inner {
         }
     }
 
-    /// Stops serving an outgoing offer to one receiver, and leaves the others running (R-B8). Returns the files that ended now.
-    fn stop_outgoing(&self, peer: DeviceId, offer: u64, state: ItemState, error: Option<String>) -> Vec<(u32, RecordItem)> {
+    /// Stops serving an outgoing offer to one receiver, and leaves the others running (R-B8). Returns the files that ended now, and
+    /// whether it still waited in the queue for that receiver: read in the same change as the stop, so the queue cannot send it in
+    /// between (P3).
+    fn stop_outgoing(&self, peer: DeviceId, offer: u64, state: ItemState, error: Option<String>) -> (Vec<(u32, RecordItem)>, bool) {
         let key = Key::Out(offer);
-        let Some(run) = self.journal.run(key) else { return Vec::new() };
+        let Some(run) = self.journal.run(key) else { return (Vec::new(), false) };
         run.stop_peer(&peer);
         self.journal
             .change(key, |record| {
-                let ended = record.peer_mut(&peer).filter(|p| p.pending()).map(|p| p.close(state, error)).unwrap_or_default();
+                let receiver = record.peer_mut(&peer).filter(|p| p.pending());
+                let queued = receiver.as_ref().is_some_and(|p| p.stage == Stage::Queued);
+                let ended = receiver.map(|p| p.close(state, error)).unwrap_or_default();
                 if record.peers.iter().all(|p| !p.pending()) {
                     run.cancel.cancel();
                 }
-                ended.into_iter().map(|index| (index, record.items[index as usize].clone())).collect()
+                (ended.into_iter().map(|index| (index, record.items[index as usize].clone())).collect(), queued)
             })
             .unwrap_or_default()
     }
@@ -509,7 +511,7 @@ impl Inner {
             REASON_NO_SPACE => ItemState::Failed,
             _ => ItemState::Declined,
         };
-        for (index, item) in self.stop_outgoing(peer, reply.id, state, Some(reason.clone())) {
+        for (index, item) in self.stop_outgoing(peer, reply.id, state, Some(reason.clone())).0 {
             self.emit(Event::Finished(TransferDone {
                 offer: reply.id,
                 index,
