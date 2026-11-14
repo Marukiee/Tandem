@@ -27,13 +27,11 @@ zijn. De redenen "declined" en "expired" die de kern nu geeft zijn in alle vier 
 `docs/TESTLIJST.md` het zegt: R-B10, R-B18, R-B19, R-B21, R-B24, de rest van R-B25 (de interne acties van `MainActivity`), R-B28,
 R-B29, R-B32, R-D11, R-V1, R-V3, R-V4, het Linux-deel van R-V5 (deksel, vergrendeling en slaap komen van logind), en de updatebanner
 die de navigatie verschoof. Los daarvan (PR 13): de knop Zacht wekken is van de horlogekaart af, de schakelaar in de instellingen
-blijft. Het deel van de kern en de Mac (R-V12, P2, P5) loopt nog.
+blijft. Ook samengevoegd (PR 15): R-V12, en P2 en P5 in de kern met de Mac als voorbeeld. De schermen van P2 en P5 voor Android
+en voor Linux en Windows volgen in ronde 3 (b); hun changelogregels komen er dan bij.
 
 Gevonden bij het nakijken van die PR's, nog te doen:
 
-- **R-V12. Het overdrachtsboek schrijft na elk bestand naar schijf** (zeker, klein tot middel). `K/journal.rs` (`change`): een
-  schrijfactie met `fsync` per bestand dat eindigt, aan beide kanten. Bij een aanbod van honderden bestanden is dat merkbaar, vooral
-  op een telefoon. Voorstel: bundelen, hooguit elke halve seconde en altijd aan het eind.
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
 - **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
@@ -41,6 +39,23 @@ Gevonden bij het nakijken van die PR's, nog te doen:
 - **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de
   focus verliest, dus een bestand uit de bestandsbeheerder kan er alleen op als het al open staat. Voorstel: het paneel openen
   terwijl een sleep boven het pictogram hangt.
+- **R-B33. De vrije ruimte van P5 is die van de systeemschijf** (klein). De Mac meldt de ruimte van `/` (`M/Model/EngineModel.swift`,
+  `pushStatus`), Android die van de interne opslag. Staat de downloadmap op een andere schijf, dan weigert de ontvanger te vroeg of
+  te laat. Voorstel: de ruimte van de schijf van de downloadmap melden.
+- **R-B34. `tandemd` met een lange `--data-dir` start stil een tweede engine** (klein, vooral bij testen). Is het pad langer dan 104
+  tekens, dan kan de besturingssocket niet gemaakt worden en zegt `tandemd run` niets; `tandemd send` start daarna een tweede engine
+  met dezelfde identiteit en de verbindingen vallen steeds weg. Voorstel: de fout tonen en stoppen.
+- **R-B35. De maat van een ander scherm wordt niet onthouden** (zeker, gemeld door Mark 2026-11-14). De pagina met de opstelling van
+  de gedeelde muis toont "Size not known yet" voor elk apparaat dat zijn maat in deze run nog niet heeft gezegd, ook als het die
+  eerder wel zei. Mac: `M/Platform/PointerShare.swift` houdt `sizes` alleen in het geheugen (`M/UI/ArrangementEditor.swift:101`
+  toont de tekst). Linux en Windows: `T/arrange.rs` (`SIZES`, `learned`) doet hetzelfde. Gevolg: na een herstart, of zolang een
+  apparaat weg is, staat het scherm er op een gegokte maat en ligt de rand verkeerd. Voorstel: de laatst gehoorde maat per apparaat
+  opslaan bij de opstelling, bij de start inlezen, en weghalen als het apparaat uit de circle gaat.
+- **R-B36. Drie tests van de kern falen af en toe op de Windows-runner** (zeker, kost elke keer een herstart van CI). Gezien op
+  2026-11-14, steeds los van de wijziging: `a_second_screen_that_is_turned_is_resized_within_its_session`,
+  `a_press_carries_its_position_over_the_stream` (`tests/live_touch.rs:118`) en
+  `a_device_that_was_killed_gets_back_in_before_the_old_connection_times_out` (`tests/mesh.rs:629`). Alle drie hangen aan een
+  vaste wachttijd. Voorstel: wachten op de gebeurtenis in plaats van op de klok, of de marges ruimer op Windows.
 - **R-V13. De redenen van de kern zijn Engelse zinnen, in elke taal** (zeker, klein tot middel). Een overdracht die mislukt toont
   de tekst van de kern zoals hij is, bijvoorbeeld "The connection dropped" in een Nederlandse app (gezien in de proefversie van de
   Linux- en Windows-app, 2026-11-14). Alleen "cancelled", "declined" en "expired" zijn vertaald. Voorstel: de kern geeft een vaste
@@ -92,10 +107,11 @@ Rondes:
 - **Ronde 2 (gestart 2026-11-14):** (a) kern en Mac: eerst een gewone overdracht op main controleren, dan R-V12, P2 en P5 met de
   Mac als voorbeeld; (b) Android: R-B19, R-B21, R-B25, R-B28, R-B32, R-V1, R-V3, R-V4; (c) Linux en Windows: R-B10, R-B18, R-B24,
   R-B29, R-D11, R-V5. Los daarvan: de updatebanner die de navigatiebalk verschuift.
-  Stand: (b), (c) en de updatebanner zijn samengevoegd (PR 10, 11 en 12); (a) loopt nog.
-- **Ronde 3 (start vanzelf na ronde 2):** (a) kern en Mac: P3 en P3b, en R-V13 (vaste codes voor redenen); (b) Android en Linux en
+  Stand: alles is samengevoegd (PR 10 tot 15).
+- **Ronde 3 (gestart 2026-11-14):** (a) kern en Mac: P3 en P3b, en R-V13 (vaste codes voor redenen); (b) Android en Linux en
   Windows: de schillen van P2 en P5 naar het voorbeeld van de Mac, zoals `docs/TRANSFERS.md` het beschrijft; (c) Mac: R-B11,
   R-B16, R-B23, R-B26 en het slepen vanaf en naar de Mac (R-D5 tot R-D8, R-D12, R-D13, R-D16, R-D17, R-D18).
+  Erbij gekomen: R-B35 (de maat van een ander scherm onthouden), de Mac in (c), Linux en Windows in (b).
 - **Ronde 4 (start vanzelf na ronde 3):** (a) kern en Mac: P4 en P9, en de kleine kernpunten R-B12, R-B13 en de rest van R-B27;
   (b) Android en Linux en Windows: de schillen van P3 en P3b, en op Android slepen in en uit de app (R-D4 a en b); (c) P6: de
   poort in de kern en een proef van de pagina Circle in `mock.js`, waarna Mark kiest.
