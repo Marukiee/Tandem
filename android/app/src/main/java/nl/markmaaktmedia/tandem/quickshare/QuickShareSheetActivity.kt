@@ -109,7 +109,10 @@ class QuickShareSheetActivity : ComponentActivity() {
         nl.markmaaktmedia.tandem.engine.TandemService.start(this)
         setContent {
             val appearance = graph.prefs.appearance.collectAppearance()
-            TandemTheme(appearance, applySystemBarStyle = false) { Screen() }
+            TandemTheme(appearance, applySystemBarStyle = false) {
+                Screen()
+                nl.markmaaktmedia.tandem.ui.components.SpaceQuestion()
+            }
         }
     }
 
@@ -119,7 +122,7 @@ class QuickShareSheetActivity : ComponentActivity() {
         val graph = graph
         lifecycleScope.launch {
             when (target) {
-                is Target.Mine -> graph.host.sendUris(uris, listOf(target.device.id), TandemShareOrigin.Files)
+                is Target.Mine -> graph.host.sendUris(uris, listOf(target.device.id), TandemShareOrigin.Files, askSpace = true)
                 is Target.Nearby -> graph.quickShare.send(uris, target.peer).onFailure {
                     Toast.makeText(this@QuickShareSheetActivity, it.message ?: it.toString(), Toast.LENGTH_LONG).show()
                 }
