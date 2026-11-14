@@ -192,7 +192,7 @@ class StatusReporter(
                 it != NotificationManager.INTERRUPTION_FILTER_ALL && it != NotificationManager.INTERRUPTION_FILTER_UNKNOWN
             },
             locked = keyguard.isKeyguardLocked,
-            freeStorage = runCatching { StatFs(context.filesDir.absolutePath).availableBytes.toULong() }.getOrNull(),
+            freeStorage = runCatching { roundStorage(StatFs(context.filesDir.absolutePath).availableBytes) }.getOrNull(),
             asleep = null,
             wakeMac = null,
             muted = null,
@@ -210,6 +210,17 @@ class StatusReporter(
     }
 
     companion object {
+        /**
+         * Exact free bytes change with every cached file, so each battery tick sent a status for nothing. A person sees whole
+         * gigabytes, or hundreds of megabytes when it gets tight.
+         */
+        internal fun roundStorage(bytes: Long): ULong {
+            val step = if (bytes < 5L * GB) 100L * 1_000_000 else GB
+            return (bytes / step * step).coerceAtLeast(0).toULong()
+        }
+
+        private const val GB = 1_000_000_000L
+
         /** Quickly, because someone may be waiting for a watch to stop ringing, but not for each step of a pairing. */
         private const val WATCH_DELAY_MS = 300L
 
