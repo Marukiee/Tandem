@@ -115,11 +115,13 @@ fun DevicesScreen(
     val scope = rememberCoroutineScope()
     val wifiOffer = rememberWifiOffer()
 
-    var pickerTarget by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    // Saved, and sent in the scope of the app: a turn of the phone while the file picker is open made the screen again and lost
+    // the device, and one during the send stopped it.
+    var pickerTarget by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf<String?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         val target = pickerTarget
         if (target != null && uris.isNotEmpty()) {
-            scope.launch { host.sendUris(uris, listOf(target), uniffi.tandem_core.TandemShareOrigin.Files) }
+            context.graph.scope.launch { host.sendUris(uris, listOf(target), uniffi.tandem_core.TandemShareOrigin.Files) }
         }
     }
 
