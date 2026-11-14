@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import TandemCore
+import TandemLogic
 import UniformTypeIdentifiers
 
 /// A drop on a device in the window or the menu bar panel (R-D12). Files go as files; a web link or text goes as text, not as a file
@@ -82,11 +83,8 @@ enum DeviceDrop {
         return await withCheckedContinuation { continuation in
             _ = provider.loadFileRepresentation(forTypeIdentifier: type) { url, _ in
                 guard let url, let folder = DragReading.freshFolder() else { return continuation.resume(returning: nil) }
-                var fileName = url.lastPathComponent
-                if let name, !name.isEmpty {
-                    fileName = (name as NSString).pathExtension.isEmpty && !url.pathExtension.isEmpty ? "\(name).\(url.pathExtension)" : name
-                }
-                let target = folder.appendingPathComponent(fileName)
+                // The name comes from the other app: only its last part, so it cannot write outside the folder.
+                let target = folder.appendingPathComponent(SafeName.file(suggested: name, real: url.lastPathComponent))
                 continuation.resume(returning: (try? FileManager.default.copyItem(at: url, to: target)) == nil ? nil : target)
             }
         }
