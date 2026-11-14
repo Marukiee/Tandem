@@ -9,7 +9,13 @@
       ],
       "fixed": [
         "A phone with its screen off is woken far less often by your other devices",
-        "Quick Share no longer keeps the Wi-Fi awake when it starts with the screen off"
+        "Quick Share no longer keeps the Wi-Fi awake when it starts with the screen off",
+        "Another app on the phone can no longer make Tandem send without a tap",
+        "Stopping a transfer to one device no longer stops it for the others",
+        "Sharing many files from Android no longer loses some, and one file can go to two devices at once",
+        "The Control Center buttons on the Mac work",
+        "A file dragged to Linux keeps its name, and Send to on Windows works with every device name",
+        "No crash on Android 12 when a notification is mirrored"
       ]
     },
     "nl": {
@@ -19,7 +25,13 @@
       ],
       "fixed": [
         "Een telefoon met het scherm uit wordt veel minder vaak gewekt door je andere apparaten",
-        "Quick Share houdt de wifi niet meer wakker als het start met het scherm uit"
+        "Quick Share houdt de wifi niet meer wakker als het start met het scherm uit",
+        "Een andere app op de telefoon kan Tandem niet meer laten sturen zonder tik",
+        "Stoppen naar één apparaat stopt het niet meer voor de andere",
+        "Veel bestanden delen vanaf Android verliest er geen meer, en één bestand kan naar twee apparaten tegelijk",
+        "De knoppen in het Controlecentrum van de Mac werken",
+        "Een bestand dat je naar Linux sleept houdt zijn naam, en Sturen naar op Windows werkt met elke apparaatnaam",
+        "Geen crash meer op Android 12 bij een gespiegelde melding"
       ]
     }
   },
