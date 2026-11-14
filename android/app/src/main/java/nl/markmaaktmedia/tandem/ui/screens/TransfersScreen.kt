@@ -57,6 +57,7 @@ fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier, listState:
     val host = context.graph.host
     val transfers by host.transfers.collectAsState()
     val devices by host.devices.collectAsState()
+    val halfway by host.halfway.waiting.collectAsState()
     var filter by remember { mutableStateOf(TransferFilter()) }
     val shown = transfers.filter { filter.matches(it) }
     // The devices that something was sent to or came from, for the list of devices.
@@ -109,6 +110,8 @@ fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier, listState:
                 }
             }
         }
+        // Asked first, above the filters and also when nothing else is on the page: they are what the person has to answer.
+        halfwayRows(halfway, devices)
         if (transfers.isNotEmpty()) {
             item(key = "filters") {
                 TransferFilters(filter, peers, { filter = it }, Modifier.fillMaxWidth().padding(bottom = 4.dp))
@@ -125,7 +128,7 @@ fun TransfersScreen(bottomPadding: Dp, modifier: Modifier = Modifier, listState:
                 }
             }
         }
-        if (transfers.isEmpty()) {
+        if (transfers.isEmpty() && halfway.isEmpty()) {
             item(key = "empty") {
                 Box(Modifier.fillMaxWidth().padding(top = 60.dp)) {
                     EmptyState(

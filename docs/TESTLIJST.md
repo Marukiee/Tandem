@@ -156,3 +156,112 @@ Android en op Linux en Windows is alleen de kern nieuw; hun schermen volgen in r
   Annuleer en Toch sturen. Bij Toch sturen weigert de telefoon en staat er "Niet genoeg ruimte op <telefoon>".
 - [ ] Android, Linux en Windows: een gewone overdracht van en naar de Mac werkt nog, beide kanten op.
 - [ ] Overal: stop een aanbod bij de afzender voordat het is aangenomen: de ontvanger toont het als geannuleerd.
+
+## Ronde 3, 2026-11-14 (PR 17 en 18, changelog 0.3.18; de rest van ronde 3 loopt nog)
+
+Wat veranderde: de Mac onthoudt de maat van je andere schermen, de updater van de Mac weigert wat hij niet kan controleren, een map
+sturen blokkeert het venster niet meer, en Android vraagt nu ook "Verder gaan of weggooien" en waarschuwt bij te weinig ruimte.
+
+### Al gezien
+
+- [x] **R-B35, Mac** (Dev-app met `tandemd`): eerst "Size not known yet"; na een maat van het andere apparaat en een herstart staat
+  de maat er nog.
+- [x] **P2, Android** (Oppo, debug-app, 1,5 GB): geforceerd gestopt bij 410 MB en weer gestart staat de rij er. Verder gaan ging door
+  vanaf 410 MB. Met de afzender weg is de rij grijs en zegt een tik waarom. Weggooien haalde de rij en het halve bestand weg.
+- [x] **P5, Android** (Oppo): een bestand van 100 MB naar een apparaat met 20 MB vrij vraagt eerst. Annuleren stuurt niets, Toch
+  sturen geeft "Niet genoeg ruimte".
+
+### Eerst dit
+
+- [ ] **Mac: de eerstvolgende update installeren via de knop in de app.** De updater weigert nu alles wat hij niet kan controleren
+  (R-B11). De app in `/Applications` heeft de sleutel en een gewone versie, dus een echte release hoort door te gaan, maar het pad
+  zelf is niet gedraaid. Lukt het niet, dan moet de nieuwe versie een keer met de hand geinstalleerd worden.
+
+### Mac
+
+- [ ] Open Instellingen, Muis en toetsenbord nadat een ander apparaat zijn maat eens heeft gezegd, en herstart Tandem terwijl dat
+  apparaat uit staat: het scherm toont nog zijn maat in plaats van "Size not known yet" (R-B35).
+- [ ] Haal een apparaat uit de circle en koppel het weer: tot het iets zegt staat er weer "Size not known yet".
+- [ ] Stuur een grote map naar de telefoon: het venster blijft bewegen tijdens het inpakken, en na afloop staat er geen map
+  `tandem-...` meer in de tijdelijke map (R-B16).
+- [ ] Stuur twee bestanden met dezelfde naam uit verschillende mappen en druk in de lijst op Openen of Tonen: elk opent zijn eigen
+  bestand.
+- [ ] Stuur via het Deel-menu een bestand naar Tandem zonder apparaat te kiezen: het menu noemt eerst het bestand en de map, dan de
+  apparaten (R-B23).
+- [ ] Zet "wakker blijven met de klep dicht" aan op een Mac zonder de regel: een keer het wachtwoord, daarna werkt het.
+  `sudo cat /etc/sudoers.d/tandem-pmset` toont de regel (R-B26).
+
+### Android
+
+- [ ] Stuur een groot bestand van de Mac naar de telefoon, forceer Tandem halverwege dicht (Instellingen, Apps, Tandem, Forceer
+  stop) en open het opnieuw: op het tabblad Gedeeld staat bovenaan een rij "Halverwege gestopt ..." met Weggooien en Verder gaan, en
+  er komt een melding met dezelfde twee knoppen.
+- [ ] Tik Verder gaan met de Mac aan: de rij verdwijnt en het bestand loopt door vanaf waar het was, en komt heel aan.
+- [ ] Doe het nog eens en tik Weggooien: de rij verdwijnt en er komt geen rij "Geannuleerd" bij.
+- [ ] Doe het nog eens met de Mac uit: de rij is grijs en zegt dat de Mac niet verbonden is. Zet de Mac aan: de rij wordt vanzelf
+  weer actief, maar het bestand gaat pas verder als jij op Verder gaan tikt.
+- [ ] Tik de knoppen in de melding zelf, en tik op de melding: de app opent op Gedeeld. Dit is alleen gebouwd, niet geprobeerd.
+- [ ] Kies bij een apparaat een bestand dat groter is dan de vrije ruimte van de ontvanger: "Niet genoeg ruimte op ..." met
+  Annuleren en Toch sturen. Probeer het ook via het deelmenu van Android en via een snelkoppeling naar een apparaat; die twee paden
+  zijn alleen gebouwd.
+
+### Slepen op de Mac (PR 21)
+
+Alleen gebouwd en met tests van de logica gecontroleerd: er was geen tweede computer. Dit kun alleen jij beoordelen.
+
+- [ ] Een foto uit Foto's over de rand naar de andere computer slepen: daar komt het originele bestand met zijn naam aan, geen naamloze png.
+- [ ] Een video of pdf uit Mail of Foto's over de rand slepen: hij gaat mee.
+- [ ] Een plaatje uit Safari over de rand slepen: er komt een plaatje aan, geen webadres als tekst.
+- [ ] Een bestand over de rand slepen en de knop op de andere computer loslaten voor het aankomt: er blijft op de Mac niets hangen en de muis werkt gewoon.
+- [ ] Vanaf Linux of Windows vijf foto's naar de Mac slepen en met de knop vast loslaten in Finder: alle vijf komen waar je losliet, niet een deel op het bureaublad.
+- [ ] Een groot bestand naar de Mac slepen, de knop loslaten en verder werken: na een paar seconden staat het als kaartje naast de aanwijzer, klikken en scrollen werken gewoon, en je kunt het vanaf het kaartje ergens neerzetten.
+- [ ] Met een bestand onder de aanwijzer scrollen: het venster eronder scrolt.
+- [ ] Een weblink uit Safari op een apparaat in het venster of het menubalkpaneel laten vallen: hij komt als link aan, zonder foutmelding.
+- [ ] Een foto uit Foto's op een apparaat in het venster laten vallen: hij wordt gestuurd.
+- [ ] Een bestand op het Tandem-icoon in het Dock laten vallen: er komt een menu met het bestand en de apparaten; dubbelklikken op bestanden opent ze nog steeds in hun eigen app.
+- [ ] Een ontvangen bestand uit de lijst op een apparaatpagina naar Finder slepen: het komt daar terecht.
+- [ ] Een computer toestaan de muis van de Mac te gebruiken (Instellingen › Muis en toetsenbord): macOS vraagt meteen of Tandem Finder mag bedienen, niet midden in een sleep.
+- [ ] Na een tijd slepen het logboek van de aanwijzer bekijken: staan er regels "slow mouse event", dan hapert de muis door Tandem (R-D17).
+
+### Linux en Windows: hervatten, vrije ruimte en de schermmaat (PR 22)
+
+Bekeken in een browser met proefgegevens, in het Engels en Nederlands. Niets draaide op een echte Linux- of Windows-computer.
+
+**Linux**
+- [ ] Start Tandem terwijl een overdracht van je telefoon halverwege stopte (zet de telefoon uit tijdens een groot bestand en herstart Tandem): er komt een melding met Verder gaan en Weggooien en op Gedeeld staat bovenaan een rij. Verder gaan haalt de rest op, Weggooien haalt de rij weg zonder foutmelding.
+- [ ] Zet de telefoon uit en kijk naar de rij: Verder gaan is grijs en een klik zegt dat de telefoon niet verbonden is.
+- [ ] Stuur een bestand dat groter is dan de vrije ruimte op de telefoon: je krijgt de vraag Annuleer / Toch sturen. Annuleer stuurt niets.
+- [ ] Sleep een groot bestand naar de telefoon: geen vraag.
+
+**Windows**
+- [ ] Zelfde als bij Linux, maar de melding heeft geen knoppen: de keuze staat op de pagina Gedeeld.
+- [ ] Controleer dat de telefoon bij een vol Downloads-schijf het bestand weigert met "Niet genoeg ruimte op dit apparaat".
+
+**Beide**
+- [ ] Open Schermen indelen, sluit en start Tandem opnieuw: de formaten van de andere schermen staan er meteen weer.
+
+## Na 0.3.18 (PR 19 en 25, changelog 0.3.19, nog niet uitgebracht)
+
+### Wachtrij, paneel en vaste redenen (PR 19)
+
+De wachtrij en het paneel zijn gezien met de Mac Dev-app en `tandemd`. De wachtrij staat alleen op de Mac aan; Android en Linux en
+Windows houden hun oude gedrag tot hun schermen er zijn.
+
+- [ ] **Mac**: stuur een bestand naar een apparaat dat uit staat. Er hoort "Wacht op ..." te komen, en bovenaan Gedeeld onder Onderweg een rij met een klok.
+- [ ] **Mac**: zet dat apparaat aan. Het bestand hoort vanzelf te gaan en heel aan te komen; de rij gaat weg.
+- [ ] **Mac**: stuur iets naar een apparaat dat uit staat, verander het bestand, zet het apparaat aan. Er hoort "Veranderd sinds het gestuurd werd" te staan en het bestand komt niet aan.
+- [ ] **Mac**: druk op het kruisje van een rij in de wachtrij. De rij gaat weg en er komt later niets aan.
+- [ ] **Mac**: zet automatisch accepteren uit voor een apparaat en stuur vanaf daar iets. Onder Inkomend horen Weigeren en Accepteer te staan, en die horen te werken.
+- [ ] **Mac**: stuur een map naar een apparaat dat uit staat en zet het daarna aan. De zip hoort aan te komen.
+- [ ] **Mac**: stuur iets naar een apparaat dat om een ja vraagt en uit staat, en zet het aan. De rij hoort van "Wacht op ..." naar "Wacht op een ja van ..." te gaan.
+- [ ] **Telefoon en Linux/Windows**: stuur iets naar een apparaat dat uit staat. Er hoort nog steeds te staan dat het offline was en het niet kreeg, en het komt later ook niet aan (de wachtrij staat daar nog uit).
+
+### Windows: het downloadmerk alleen op wat iets kan starten (PR 25)
+
+**Windows**
+- [ ] Stuur een Word- of Excel-bestand vanaf je telefoon naar de pc en open het: het opent normaal, zonder beveiligde weergave.
+- [ ] Stuur een `.exe` of `.bat` vanaf je telefoon: Windows vraagt nog steeds eerst (SmartScreen / "Onbekende uitgever") voordat het start.
+- [ ] Haal hetzelfde Word-bestand op via de pagina Bestanden en door het vanaf de telefoon naar het venster te slepen: ook zonder beveiligde weergave.
+
+**Linux**
+- [ ] Niets nieuws te testen; ontvangen bestanden openen zoals eerst.

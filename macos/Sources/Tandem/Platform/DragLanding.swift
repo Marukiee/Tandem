@@ -8,12 +8,19 @@ import TandemCore
 final class DragLanding {
     static let shared = DragLanding()
 
-    private var offers: [UInt64: String] = [:]
+    private struct Offer {
+        var device: String
+        var expected: Int
+        var done = 0
+    }
 
-    /// An offer arrived with the drag origin. Taken only from a computer that shares its pointer with this one.
-    func take(offer: UInt64, from device: String) -> Bool {
+    private var offers: [UInt64: Offer] = [:]
+
+    /// An offer arrived with the drag origin. Taken only from a computer that shares its pointer with this one. `count` is how many files
+    /// it has, so a drag that is still held can wait for all of them.
+    func take(offer: UInt64, from device: String, count: Int) -> Bool {
         guard PointerShare.shared.isPeer(device), let engine = EngineModel.shared.tandem else { return false }
-        offers[offer] = device
+        offers[offer] = Offer(device: device, expected: count)
         if offers.count > 40 { offers.removeValue(forKey: offers.keys.min() ?? offer) }
         do {
             try engine.acceptOffer(from: device, offer: offer)
@@ -26,14 +33,16 @@ final class DragLanding {
 
     /// A file of such an offer is in. True when it was one of ours and was dealt with here.
     func finished(offer: UInt64, from device: String, name: String, location: String?, error: String?) -> Bool {
-        guard offers[offer] == device else { return false }
+        guard offers[offer]?.device == device else { return false }
+        offers[offer]?.done += 1
         let from = EngineModel.shared.device(device)?.name ?? "?"
         guard error == nil, let location else {
+            DragCarrier.shared.failed(from: device, arrived: offers[offer]?.done ?? 0)
             EngineModel.shared.showToast(String(localized: "A file from \(from) did not come in"))
             return true
         }
         // It hangs under the pointer first, to be put down with a press where the person wants it (see `DragCarrier`).
-        if DragCarrier.shared.carry(URL(fileURLWithPath: location), name: name, from: device) { return true }
+        if DragCarrier.shared.carry(URL(fileURLWithPath: location), name: name, from: device, arrived: offers[offer]?.done ?? 1, expected: offers[offer]?.expected) { return true }
         land(URL(fileURLWithPath: location), name: name, from: device)
         return true
     }
@@ -50,6 +59,8 @@ final class DragLanding {
             EngineModel.shared.showToast(String(localized: "\(name) from \(from) is in \(placed.deletingLastPathComponent().lastPathComponent)"))
             // Said where it is: the file is shown in Finder, so it is easy to find.
             NSWorkspace.shared.activateFileViewerSelecting([placed])
+            // Allowed before Tandem asked ahead: the question comes now, after the drop, so the next one goes to the window in front.
+            if finderInFront { FinderFolder.askAhead() }
         }
     }
 
@@ -79,17 +90,6 @@ final class DragLanding {
     nonisolated private static func dropFolder(finderInFront: Bool) -> URL {
         let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first ?? FileManager.default.homeDirectoryForCurrentUser
         guard finderInFront else { return desktop }
-        let script = NSAppleScript(source: """
-        tell application "Finder"
-            if (count of Finder windows) > 0 then
-                return POSIX path of (target of front Finder window as alias)
-            end if
-        end tell
-        return ""
-        """)
-        var problem: NSDictionary?
-        let text = script?.executeAndReturnError(&problem).stringValue ?? ""
-        if !text.isEmpty, FileManager.default.fileExists(atPath: text) { return URL(fileURLWithPath: text, isDirectory: true) }
-        return desktop
+        return FinderFolder.front() ?? desktop
     }
 }

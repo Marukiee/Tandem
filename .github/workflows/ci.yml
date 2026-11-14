@@ -97,3 +97,7 @@ jobs:
       - name: Build the app
         working-directory: macos
         run: swift build
+
+      - name: Test the logic of the app
+        working-directory: macos
+        run: swift test --filter TandemLogicTests

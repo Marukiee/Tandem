@@ -12,7 +12,7 @@ const failed = (e) => say(String(e && e.message ? e.message : e));
 
 function Row({ device }) {
   const battery = device.status && device.status.battery;
-  const send = async () => { try { await call("pick_and_send", { ids: [device.id] }); } catch (e) { failed(e); } };
+  const send = async () => { try { await call("pick_and_send", { ids: [device.id], force: true }); } catch (e) { failed(e); } };
   const clipboard = async () => {
     try { await call("send_clipboard", { ids: [device.id] }); say(t("clipboard_sent")); }
     catch (e) { failed(e === "no-text" ? t("no_text") : e); }

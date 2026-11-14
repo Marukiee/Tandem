@@ -587,6 +587,9 @@ fun TransferRow(
                     "cancelled" -> stringResource(R.string.transfer_cancelled)
                     "declined" -> stringResource(R.string.transfer_declined)
                     "expired" -> stringResource(R.string.transfer_expired)
+                    "gone" -> if (item.incoming) stringResource(R.string.transfer_gone_in, peerName) else stringResource(R.string.transfer_gone_out)
+                    "changed" -> if (item.incoming) stringResource(R.string.transfer_changed_in, peerName) else stringResource(R.string.transfer_changed_out)
+                    "no space" -> if (item.incoming) stringResource(R.string.transfer_no_space_in) else stringResource(R.string.transfer_no_space_out, peerName)
                     else -> item.error ?: stringResource(R.string.transfer_failed)
                 }
             }

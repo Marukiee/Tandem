@@ -3,6 +3,7 @@
 import { call } from "./backend.js";
 import { t } from "./i18n.js";
 import { say, state } from "./store.js";
+import { sendChecked } from "./space.js";
 
 /**
  * The open folder of the Files page, set by that page: the device, and a way to put the paths in it. Null while no folder of another
@@ -57,7 +58,8 @@ export async function dropPaths(paths, at, pageDrops = true) {
   const device = target.device;
   if (!device.online) { say(t("drop_offline", device.name)); return; }
   try {
-    const result = await call("send_paths", { ids: [device.id], paths });
+    const result = await sendChecked("send_paths", { ids: [device.id], paths });
+    if (!result) return;
     if (result.folders) say(t("folders_skipped"));
     else if (result.sent) say(t("files_offered"));
     if (result.offline) say(t("offline_n", result.offline));

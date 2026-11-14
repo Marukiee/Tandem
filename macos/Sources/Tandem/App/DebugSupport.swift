@@ -92,6 +92,17 @@ enum DebugSupport {
         if variable("TANDEM_DEBUG_ARRANGE") != nil {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showArrangementWindow() }
         }
+        // `TANDEM_DEBUG_HEAR_SIZE=2560x1440`: every device in the circle says its screens are that big, as its `Size` message would.
+        if let text = variable("TANDEM_DEBUG_HEAR_SIZE") {
+            let parts = text.split(separator: "x").compactMap { UInt32($0) }
+            if parts.count == 2 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    for device in EngineModel.shared.devices {
+                        PointerShare.shared.received(.size(width: parts[0], height: parts[1]), from: device.id)
+                    }
+                }
+            }
+        }
         // `TANDEM_DEBUG_DEVICEPAGE=linux|linux-away|android|watch`: the page of a made up device, for the layout of its buttons.
         if let kind = variable("TANDEM_DEBUG_DEVICEPAGE") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { showDevicePageWindow(kind) }
@@ -156,6 +167,34 @@ enum DebugSupport {
                 }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { trySend(30) }
+        }
+        // `TANDEM_DEBUG_SEND_TO=<name>` with `TANDEM_DEBUG_SEND_QUEUED=<path>`: sends that file to the device with that name, connected or not, for
+        // a test of the queue (P3).
+        if let name = variable("TANDEM_DEBUG_SEND_TO"), let path = variable("TANDEM_DEBUG_SEND_QUEUED") {
+            func trySend(_ left: Int) {
+                let model = EngineModel.shared
+                if let device = model.devices.first(where: { $0.name == name }) {
+                    model.send(urls: [URL(fileURLWithPath: path)], to: [device.id])
+                } else if left > 0 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { trySend(left - 1) }
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { trySend(30) }
+        }
+        // `TANDEM_DEBUG_UNDERWAY=stop|accept|decline:<seconds>`: answers the first row of the panel Underway and Incoming (P3b) as its
+        // button would, after that many seconds.
+        if let spec = variable("TANDEM_DEBUG_UNDERWAY") {
+            let parts = spec.split(separator: ":")
+            let delay = parts.count > 1 ? Double(parts[1]) ?? 6 : 6
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                let underway = UnderwayTransfers.shared
+                guard let first = underway.outgoing.first ?? underway.incoming.first else { return }
+                switch parts.first {
+                case "accept": underway.accept(first)
+                case "decline": underway.decline(first)
+                default: underway.stop(first)
+                }
+            }
         }
         // `TANDEM_DEBUG_HALFWAY=goon|throwaway`: answers the first transfer that stopped halfway as its button would, after six seconds.
         if let answer = variable("TANDEM_DEBUG_HALFWAY") {

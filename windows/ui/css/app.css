@@ -443,6 +443,10 @@ input[type="text"]:focus, textarea:focus, select:focus { border-bottom-color: va
 .item .item-actions .iconbtn:not(.on) { opacity: 0.55; }
 .item:hover .item-actions .iconbtn, .item .item-actions .iconbtn:focus-visible { opacity: 1; }
 .item + .item { border-top: 1px solid var(--line); border-radius: 0; }
+.halfway { flex-wrap: wrap; }
+.halfway .grow { min-width: 200px; }
+.halfway-buttons { display: flex; gap: 8px; margin-left: auto; }
+.halfway.away .prog { opacity: 0.4; }
 .prog { height: 4px; border-radius: 2px; background: var(--line-strong); margin-top: 6px; overflow: hidden; }
 .prog > i { display: block; height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.15s linear; }
 .empty { text-align: center; color: var(--text-2); padding: 46px 20px; }
@@ -839,7 +843,8 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .kind.k-sound { background: var(--tone-4); color: var(--on-tone-4); }
 .kind.chosen { background: var(--accent); color: #fff; }
 .item.transfer .dir { display: inline-block; vertical-align: -1px; margin-right: 4px; }
-.reason { flex: none; display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--bad-soft); color: var(--bad); font: 600 12px var(--font); white-space: nowrap; }
+/* A long reason goes to a second line: it is never cut. */
+.reason { flex: none; display: inline-flex; align-items: center; min-height: 24px; max-width: 230px; padding: 3px 10px; border-radius: 12px; background: var(--bad-soft); color: var(--bad); font: 600 12px/1.25 var(--font); }
 .menuwrap { position: relative; flex: none; display: inline-flex; }
 .rowmenu { position: absolute; z-index: 20; top: 36px; right: 0; min-width: 200px; padding: 6px; border-radius: 14px; background: var(--card); border: 1px solid var(--line-strong); box-shadow: var(--shadow);
   display: flex; flex-direction: column; gap: 2px; transform-origin: top right; animation: menu-in 0.32s var(--spring); }
@@ -893,7 +898,8 @@ button.health-title:not(:disabled) { cursor: pointer; }
 .thead { display: flex; align-items: center; gap: 12px; padding: 6px 12px 4px; font: 700 12px var(--font); color: var(--text-3); }
 .thead .hk { width: 34px; flex: none; } .thead .hm { width: 32px; flex: none; }
 .col { flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.col.size { width: 72px; } .col.when { width: 116px; } .col.state { width: 168px; }
+.col.size { width: 72px; } .col.when { width: 116px; } .col.state { width: 200px; white-space: normal; }
+.col.state .reason { max-width: 100%; }
 .item.transfer.selected { background: var(--hover); }
 .card.detail { position: sticky; top: 0; flex: none; width: 240px; min-height: 300px; padding: 14px; display: flex; flex-direction: column; gap: 10px; animation: detail-in 0.32s var(--spring); }
 @keyframes detail-in { from { opacity: 0; transform: translateX(10px); } }

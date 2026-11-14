@@ -42,6 +42,17 @@
     <key>NSMicrophoneUsageDescription</key>
     <string>Tandem listens for a few seconds to the sound another computer plays, to find out on which side of it this Mac stands. It also records Tandem Speaker, to play the sound of this Mac on your phone.</string>
 
+    <!-- Any file can be dropped on the Dock icon to send it. Rank None: Tandem is never the app that opens a file. -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key><string>Any file</string>
+            <key>CFBundleTypeRole</key><string>Viewer</string>
+            <key>LSHandlerRank</key><string>None</string>
+            <key>LSItemContentTypes</key><array><string>public.item</string></array>
+        </dict>
+    </array>
+
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

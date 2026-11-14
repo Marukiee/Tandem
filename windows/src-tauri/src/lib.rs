@@ -28,6 +28,7 @@ mod engine;
 mod events;
 mod files_host;
 mod find;
+mod halfway;
 mod history;
 #[cfg(feature = "screen-host")]
 mod host;
@@ -55,6 +56,7 @@ mod zone;
 mod output;
 mod pointer_ready;
 mod power;
+mod storage;
 mod settings;
 mod side;
 #[cfg(all(target_os = "linux", feature = "screen-host"))]
@@ -131,6 +133,7 @@ pub fn run() {
             let handle = app.handle().clone();
             logfile::init(&handle);
             settings::load(&handle);
+            arrange::restore(&handle);
             // A Wayland desktop remembers what the person allowed through a token, which is kept here.
             #[cfg(target_os = "linux")]
             if let Ok(dir) = handle.path().app_data_dir() {
@@ -144,6 +147,7 @@ pub fn run() {
             media::start(&handle);
             players::start(&handle);
             power::start(handle.clone());
+            storage::start(handle.clone());
             find::start_whereabouts(&handle);
             lid::start(handle.clone());
             keepawake::start(handle.clone());
@@ -267,6 +271,9 @@ pub fn run() {
             commands::stop_watch_mouse,
             commands::send_paths,
             commands::pick_and_send,
+            halfway::halfway_list,
+            halfway::halfway_go_on,
+            halfway::halfway_throw_away,
             commands::send_clipboard,
             commands::accept_offer,
             commands::decline_offer,

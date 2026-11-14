@@ -599,14 +599,7 @@ struct DropZone: View {
         .animation(.tandemSpringy, value: targeted)
         .animation(.tandemFade, value: hovering)
         .onHover { hovering = $0 }
-        .dropDestination(for: URL.self) { urls, _ in
-            guard device.online else {
-                model.showToast(String(localized: "That device is not connected right now"))
-                return false
-            }
-            model.send(urls: urls, to: [device.id])
-            return true
-        } isTargeted: { targeted = $0 }
+        .deviceDrop(device, model: model, targeted: $targeted)
         .opacity(device.online ? 1 : 0.5)
     }
 }

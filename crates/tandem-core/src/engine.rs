@@ -145,6 +145,8 @@ pub(crate) struct Inner {
     said_back: Mutex<Option<Instant>>,
     /// This device is on a network that costs, as its app says (`set_metered`): large files are asked about first.
     pub(crate) metered: AtomicBool,
+    /// Files sent to a device that is away wait for it (P3), as its app says (`set_queue_offline`). Off until an app shows the queue.
+    pub(crate) queue_offline: AtomicBool,
     /// This device is a phone with its screen off, as its app says (`set_quiet`).
     pub(crate) quiet: AtomicBool,
     /// This device or another one became quiet or awake: every heartbeat looks again at its pace (see `Inner::heartbeat`).
@@ -247,6 +249,7 @@ impl Engine {
             my_addresses: Mutex::new(Vec::new()),
             said_back: Mutex::new(None),
             metered: AtomicBool::new(false),
+            queue_offline: AtomicBool::new(false),
             quiet: AtomicBool::new(false),
             beat_changed: Notify::new(),
             last_hurry: Mutex::new(None),
@@ -560,6 +563,12 @@ impl Engine {
     /// The app says whether this device is on a network that costs (mobile data, a hotspot it pays for).
     pub fn set_metered(&self, on: bool) {
         self.inner.metered.store(on, Ordering::Relaxed);
+    }
+
+    /// Lets files sent to a device that is away wait in the queue until it is back, up to 7 days (P3). Off by default: an app turns it
+    /// on once it shows the queue (see docs/TRANSFERS.md). Offers already in the queue go out either way.
+    pub fn set_queue_offline(&self, on: bool) {
+        self.inner.queue_offline.store(on, Ordering::Relaxed);
     }
 
     /// Whether an offer waits for the person because this device is on mobile data and it is large (see `transfer::METERED_ASK_BYTES`).
@@ -1067,6 +1076,7 @@ impl Inner {
             self.notice_tailscale_arriving();
             self.dial_due_peers();
             self.expire_transfers();
+            self.send_queued_to_connected();
             self.sync_pairing_announcement();
             if self.addrs_dirty.swap(false, Ordering::Relaxed) {
                 self.persist_addresses();

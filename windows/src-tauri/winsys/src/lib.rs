@@ -119,6 +119,7 @@ mod x11grab;
 #[cfg(target_os = "linux")]
 mod clipwatch;
 pub mod folderwatch;
+pub mod diskspace;
 /// Linux: a strip at the edge of the screen that catches a drag, to hand it on to the computer there.
 #[cfg(target_os = "linux")]
 pub mod edgecatch;

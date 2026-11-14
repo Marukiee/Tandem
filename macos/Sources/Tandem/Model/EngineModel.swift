@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import Observation
 import TandemCore
+import TandemLogic
 
 struct TransferItem: Identifiable, Equatable {
     enum State { case active, done, failed }
@@ -181,9 +182,9 @@ final class EngineModel {
     @ObservationIgnored private var bleWatch: Task<Void, Never>?
     /// The covers already sent to each phone, by key.
     @ObservationIgnored private var coversSent: [String: Set<UInt64>] = [:]
-    /// Where a sent file came from, by the name it travels under, so a finished
-    /// transfer can be opened later. The core reports no location for outgoing files.
-    @ObservationIgnored private var outgoingSources: [String: String] = [:]
+    /// Where a sent file came from, by offer and number, so a finished transfer can be opened later (the core reports no location for
+    /// outgoing files), and the zips of folders, removed once they are sent.
+    @ObservationIgnored private var outgoing = OutgoingFiles()
 
     var isTransferring: Bool { transfers.contains { $0.state == .active } }
     var onlineCount: Int { devices.filter(\.online).count }
@@ -259,6 +260,8 @@ final class EngineModel {
         self.engine = engine
         engine.serveNotify(dataDir: Self.supportDirectory().path)
         Self.offerUsualFolders(engine)
+        // This app shows the queue (P3b), so files sent to a device that is away may wait for it.
+        engine.setQueueOffline(on: true)
         myId = engine.id()
         myName = engine.name()
         // A name chosen in Settings wins over whatever the engine kept.
@@ -270,6 +273,7 @@ final class EngineModel {
         refreshDevices()
         refreshHealth()
         HalfwayTransfers.shared.refresh()
+        UnderwayTransfers.shared.refresh()
         FeatureReport.start()
         LocalNetwork.start()
 
@@ -459,6 +463,7 @@ final class EngineModel {
         // Every open or hidden view that shows a device is redone when this is set, also when nothing changed.
         let fresh = engine.devices()
         if fresh != devices { devices = fresh }
+        PointerShare.shared.circleChanged(Set(fresh.map(\.id)))
         // A phone that was there and just turned on taking this Mac's mouse (its switch or its tile) has its side measured now. One that
         // only came back is checked as a device that connects.
         for device in devices where Self.takesPointer(device) && refusing.contains(device.id) { SideWatch.shared.pointerAllowed(device.id) }
@@ -495,8 +500,11 @@ final class EngineModel {
         switch event {
         case .healthChanged:
             refreshHealth()
+        case .transfersChanged:
+            UnderwayTransfers.shared.refresh()
         case .devicesChanged, .connected, .disconnected, .circleChanged:
             refreshDevices()
+            if case .disconnected = event { UnderwayTransfers.shared.refresh(soon: true) }
             if case let .connected(id) = event {
                 HalfwayTransfers.shared.refresh()
                 CallWindow.shared.phoneReachable(id, true)
@@ -567,10 +575,11 @@ final class EngineModel {
             }
 
         case let .shareOffered(from, offer, origin, items):
+            UnderwayTransfers.shared.refresh()
             // The answer to "Insert from phone" is taken without asking and has its own panel.
             if InsertFromPhone.shared.owns(offer: offer) { break }
             // Files dropped on the edge by the computer that shares its pointer with this one: taken at once, and put where the drop was.
-            if case .drag = origin, DragLanding.shared.take(offer: offer, from: from) { break }
+            if case .drag = origin, DragLanding.shared.take(offer: offer, from: from, count: items.count) { break }
             // A picture or files copied on a device that shares the clipboard with this Mac: on the pasteboard, without asking.
             if case .clipboard = origin, ClipboardFiles.shared.take(offer: offer, from: from, size: items.reduce(0) { $0 + $1.size }) { break }
             if let device = device(from), !device.autoAccept {
@@ -582,9 +591,11 @@ final class EngineModel {
             }
 
         case let .progress(offer, index, peer, incoming, name, done, total):
+            UnderwayTransfers.shared.refresh(soon: true)
             updateTransfer(offer: offer, index: index, peer: peer, incoming: incoming, name: name, done: done, total: total)
 
         case let .finished(offer, index, peer, incoming, name, size, location, error):
+            UnderwayTransfers.shared.refresh()
             // Taken by a drop on the edge or by the clipboard: those say it themselves, but the row its progress made must still go, or it
             // stood at full forever next to the finished file (seen 2026-11-02 with screenshots from the phone).
             // A transfer that waited for an answer can end without one: the sender stopped it, or it expired.
@@ -1140,6 +1151,7 @@ final class EngineModel {
             transfers.insert(item, at: 0)
         }
         if transfers.count > 60 { transfers.removeLast(transfers.count - 60) }
+        if !incoming { OutgoingFiles.remove(outgoing.finished(offer: offer, index: index, peer: peer, ok: error == nil)) }
 
         if incoming, error == nil, let location, !InsertFromPhone.shared.owns(offer: offer) {
             let from = device(peer)?.name ?? "?"
@@ -1159,7 +1171,7 @@ final class EngineModel {
     /// Where the file of a transfer lives: where it was stored, or for a sent file
     /// where it was sent from.
     func filePath(_ item: TransferItem) -> String? {
-        item.location ?? (item.incoming ? nil : outgoingSources[item.name])
+        item.location ?? (item.incoming ? nil : outgoing.source(transfer: item.id))
     }
 
     /// Whether the file behind a transfer can be found on disk right now.
@@ -1220,15 +1232,19 @@ final class EngineModel {
 
     // MARK: Sending
 
-    func send(urls: [URL], to ids: [String], origin: TandemShareOrigin = .files) {
-        guard let engine, !urls.isEmpty, !ids.isEmpty else { return }
-        Task {
+    /// The task ends once the offer is out (or failed), for a drag that must not end before that.
+    @discardableResult
+    func send(urls: [URL], to ids: [String], origin: TandemShareOrigin = .files) -> Task<Void, Never>? {
+        guard let engine, !urls.isEmpty, !ids.isEmpty else { return nil }
+        return Task {
+            var temporary: [URL] = []
             do {
                 var files: [TandemOutgoingFile] = []
                 for url in urls {
-                    let prepared = try FileKind.prepareForSending(url)
+                    // Zipping a folder takes a while: not on the main thread, where it froze the window.
+                    let prepared = try await Task.detached(priority: .userInitiated) { try FileKind.prepareForSending(url) }.value
+                    if prepared != url { temporary.append(prepared.deletingLastPathComponent()) }
                     let size = (try? prepared.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-                    outgoingSources[prepared.lastPathComponent] = url.path
                     files.append(TandemOutgoingFile(
                         source: prepared.path,
                         name: prepared.lastPathComponent,
@@ -1246,30 +1262,42 @@ final class EngineModel {
                         title: String(localized: "Not enough space on \(names)"),
                         body: String(localized: "It has less free space than these files take. If they do not fit, it refuses them."),
                         answers: [
-                            GlassQuestion.Answer(title: "Cancel") {},
+                            GlassQuestion.Answer(title: "Cancel") { OutgoingFiles.remove(temporary) },
                             GlassQuestion.Answer(title: "Send anyway", prominent: true) { [weak self] in
-                                Task { await self?.sendPrepared(engine: engine, files: files, to: ids, origin: origin) }
+                                Task { await self?.sendPrepared(engine: engine, files: files, sources: urls.map(\.path), temporary: temporary, to: ids, origin: origin) }
                             },
                         ]
                     )
                     return
                 }
-                await sendPrepared(engine: engine, files: files, to: ids, origin: origin)
+                await sendPrepared(engine: engine, files: files, sources: urls.map(\.path), temporary: temporary, to: ids, origin: origin)
             } catch {
+                OutgoingFiles.remove(temporary)
                 showToast(error.localizedDescription)
             }
         }
     }
 
-    private func sendPrepared(engine: TandemEngine, files: [TandemOutgoingFile], to ids: [String], origin: TandemShareOrigin) async {
+    private func sendPrepared(engine: TandemEngine, files: [TandemOutgoingFile], sources: [String], temporary: [URL], to ids: [String], origin: TandemShareOrigin) async {
         do {
             let report = try await engine.sendFiles(targets: ids, files: files, origin: origin)
-            if report.sentTo.isEmpty {
+            // A device in the queue (P3) still needs the zips of folders, so they stay until it has them too.
+            let waiting = report.sentTo + report.queued
+            if waiting.isEmpty { OutgoingFiles.remove(temporary) } else {
+                outgoing.sent(offer: report.offer, sources: sources, temporary: temporary, to: waiting)
+            }
+            UnderwayTransfers.shared.refresh()
+            if !report.queued.isEmpty {
+                // It waits in the queue (P3): no warning that it failed, only where it is.
+                let names = report.queued.compactMap { device($0)?.name }.joined(separator: ", ")
+                showToast(String(localized: "Waits for \(names). It goes as soon as it is back."))
+            } else if report.sentTo.isEmpty {
                 showToast(String(localized: "That device is not connected right now"))
             } else if !report.offline.isEmpty {
                 showToast(String(localized: "\(report.offline.count) device(s) were offline and did not get it"))
             }
         } catch {
+            OutgoingFiles.remove(temporary)
             showToast(error.localizedDescription)
         }
     }

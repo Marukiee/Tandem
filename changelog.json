@@ -1,12 +1,72 @@
 [
   {
+    "version": "0.3.19",
+    "date": "2026-11-14",
+    "en": {
+      "title": "Waiting for a device",
+      "new": [
+        "Mac: files sent to a device that is away wait and go when it is back",
+        "Mac: Shared shows everything that is underway, incoming or waiting"
+      ],
+      "fixed": [
+        "Mac: why a transfer failed is shown in your language",
+        "Windows: documents from your other devices open normally, only programs and scripts get the download mark"
+      ]
+    },
+    "nl": {
+      "title": "Wachten op een apparaat",
+      "new": [
+        "Mac: bestanden voor een apparaat dat weg is wachten en gaan als het terug is",
+        "Mac: Gedeeld toont alles wat onderweg is, binnenkomt of wacht"
+      ],
+      "fixed": [
+        "Mac: waarom een overdracht mislukte staat er in je eigen taal",
+        "Windows: documenten van je andere apparaten openen gewoon, alleen programma's en scripts krijgen het downloadmerk"
+      ]
+    }
+  },
+  {
+    "version": "0.3.18",
+    "date": "2026-11-14",
+    "en": {
+      "title": "Pick up where it stopped",
+      "new": [
+        "Android: a transfer that stopped halfway asks whether to go on or throw it away",
+        "Android asks before sending files to a device that has no room for them",
+        "Linux and Windows: a transfer that stopped halfway asks whether to go on or throw it away, and the app asks before sending to a device without room"
+      ],
+      "fixed": [
+        "Your computers remember how big your other screens are",
+        "Dragging files from and to the Mac over the edge of the screen is more reliable",
+        "Sending a folder from the Mac no longer freezes the window",
+        "The Mac updater refuses a download it cannot check"
+      ]
+    },
+    "nl": {
+      "title": "Verder waar het stopte",
+      "new": [
+        "Android: een overdracht die halverwege stopte vraagt of je verder gaat of hem weggooit",
+        "Android vraagt het voordat je bestanden stuurt naar een apparaat zonder ruimte",
+        "Linux en Windows: een overdracht die halverwege stopte vraagt of je verder gaat of hem weggooit, en de app vraagt het voordat je stuurt naar een apparaat zonder ruimte"
+      ],
+      "fixed": [
+        "Je computers onthouden hoe groot je andere schermen zijn",
+        "Bestanden slepen van en naar de Mac over de rand van het scherm gaat betrouwbaarder",
+        "Een map sturen vanaf de Mac laat het venster niet meer vastlopen",
+        "De updater van de Mac weigert een download die hij niet kan controleren"
+      ]
+    }
+  },
+  {
     "version": "0.3.17",
     "date": "2026-11-14",
     "en": {
       "title": "Quiet in your pocket",
       "new": [
         "On mobile data, files above 50 MB from another device wait until you say yes",
-        "Files on Linux and Windows: download whole folders, open a file, and upload"
+        "Files on Linux and Windows: download whole folders, open a file, and upload",
+        "Mac: a transfer that stopped halfway asks whether to go on or throw it away",
+        "A device refuses files it has no room for, and the Mac asks before sending them"
       ],
       "fixed": [
         "A phone with its screen off is woken far less often by your other devices",
@@ -28,7 +88,9 @@
       "title": "Stil in je zak",
       "new": [
         "Op mobiele data wachten bestanden boven 50 MB van een ander apparaat tot je ja zegt",
-        "Bestanden op Linux en Windows: hele mappen downloaden, een bestand openen en uploaden"
+        "Bestanden op Linux en Windows: hele mappen downloaden, een bestand openen en uploaden",
+        "Mac: een overdracht die halverwege stopte vraagt of je verder gaat of hem weggooit",
+        "Een apparaat weigert bestanden waar het geen ruimte voor heeft, en de Mac vraagt het voor het sturen"
       ],
       "fixed": [
         "Een telefoon met het scherm uit wordt veel minder vaak gewekt door je andere apparaten",

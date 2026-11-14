@@ -27,11 +27,43 @@ pub struct Spot {
 
 static SIZES: LazyLock<Mutex<HashMap<String, (i32, i32)>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
-/// A computer said how big its screen is.
-pub fn learned(device: &str, width: i32, height: i32) {
+/// A computer said how big its screen is. Kept with the settings too: a screen that is not there right now still has the size it had.
+pub fn learned(app: &AppHandle, device: &str, width: i32, height: i32) {
     if width > 0 && height > 0 {
         SIZES.lock().unwrap().insert(device.to_string(), (width, height));
+        let mut changed = false;
+        settings::update_if(app, |s| {
+            changed = remember(&mut s.screen_sizes, device, width, height);
+            changed
+        });
     }
+}
+
+/// At the start: the sizes that were heard in an earlier run.
+pub fn restore(app: &AppHandle) {
+    let mut sizes = SIZES.lock().unwrap();
+    for (device, size) in settings::get(app).screen_sizes {
+        sizes.entry(device).or_insert(size);
+    }
+}
+
+/// The circle was read again: a device that is not in it any more has no size to keep.
+pub fn forget_missing(app: &AppHandle, devices: &[Value]) {
+    let known: Vec<&str> = devices.iter().filter_map(|d| d["id"].as_str()).collect();
+    SIZES.lock().unwrap().retain(|id, _| known.contains(&id.as_str()));
+    settings::update_if(app, |s| prune(&mut s.screen_sizes, &known));
+}
+
+/// Whether the size is new, and then kept.
+fn remember(sizes: &mut HashMap<String, (i32, i32)>, device: &str, width: i32, height: i32) -> bool {
+    sizes.insert(device.to_string(), (width, height)) != Some((width, height))
+}
+
+/// Whether something was taken out.
+fn prune(sizes: &mut HashMap<String, (i32, i32)>, known: &[&str]) -> bool {
+    let before = sizes.len();
+    sizes.retain(|id, _| known.contains(&id.as_str()));
+    sizes.len() != before
 }
 
 pub fn size_of(device: &str) -> Option<(i32, i32)> {
@@ -247,7 +279,7 @@ mod tests {
 
     #[test]
     fn a_spot_without_an_offset_is_in_the_middle_of_its_side() {
-        learned("pc", 1000, 600);
+        SIZES.lock().unwrap().insert("pc".into(), (1000, 600));
         let spot = Spot { device: "pc".into(), edge: "right".into(), offset: None };
         let placement = placement_of(&spot).unwrap();
         let main = own_size();
@@ -255,6 +287,27 @@ mod tests {
         let set = Spot { offset: Some(-50), ..spot };
         assert_eq!(placement_of(&set).unwrap().offset, -50);
         assert!(placement_of(&Spot { device: "pc".into(), edge: "sideways".into(), offset: None }).is_none());
+    }
+
+    #[test]
+    fn a_size_is_kept_until_the_device_leaves_the_circle() {
+        let mut sizes = HashMap::new();
+        assert!(remember(&mut sizes, "mac", 1728, 1117));
+        assert!(!remember(&mut sizes, "mac", 1728, 1117), "the same size is not news");
+        assert!(remember(&mut sizes, "mac", 1512, 982));
+        assert!(remember(&mut sizes, "pc", 1920, 1080));
+        // Written to the settings file and read back, which is what a restart does.
+        let text = serde_json::to_string(&json!({ "screenSizes": sizes })).unwrap();
+        let back: crate::settings::Settings = serde_json::from_str(&text).unwrap();
+        assert_eq!(back.screen_sizes.get("mac"), Some(&(1512, 982)));
+        let mut loaded = back.screen_sizes;
+        assert!(!prune(&mut loaded, &["mac", "pc", "phone"]));
+        assert!(prune(&mut loaded, &["pc"]));
+        assert_eq!(loaded.len(), 1);
+        assert!(loaded.contains_key("pc"));
+        // Settings from before this field still load.
+        let old: crate::settings::Settings = serde_json::from_str("{\"language\":\"nl\"}").unwrap();
+        assert!(old.screen_sizes.is_empty());
     }
 
     #[test]
