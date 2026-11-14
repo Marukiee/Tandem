@@ -631,10 +631,20 @@ function sizeText(n) {
   return v.toFixed(v < 10 ? 1 : 0) + " " + units[i];
 }
 
+/**
+ * The open folder of the Files page, for a drop on the window (drops.js): the device, and a way to put the paths in it. Null while no
+ * folder of another device is open.
+ */
+export const filesFolder = { current: null };
+
 export function FilesPage() {
   const device = state.devices.find((d) => d.id === state.selected);
   const [path, setPath] = useState("/");
   const [entries, setEntries] = useState([]);
+  // The shared folders, for whether the open one may be written to.
+  const [roots, setRoots] = useState([]);
+  // A file of a kind that can start a program, waiting for the person to say it may be opened.
+  const [asking, setAsking] = useState(null);
   const [problem, setProblem] = useState("");
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
@@ -656,6 +666,7 @@ export function FilesPage() {
       let target = next;
       if (target === "/") {
         const roots = await call("fs_roots", { id: device.id });
+        setRoots(roots);
         // With one shared folder there is nothing to choose: look inside it.
         if (roots.length === 1) target = "/" + roots[0].name;
         else { setEntries(roots.map((r) => ({ name: r.name, dir: true, size: 0, modifiedMs: 0, readonly: !r.write }))); setPath("/"); setPicked(new Set()); setLoading(false); return; }
@@ -669,6 +680,34 @@ export function FilesPage() {
 
   const parts = path.split("/").filter(Boolean);
   const join = (name) => (path === "/" ? "" : path) + "/" + name;
+  const root = roots.find((r) => r.name === parts[0]);
+  const writable = !!(root && root.write) && parts.length > 0;
+  const refresh = async () => { try { setEntries(await call("fs_list", { id: device.id, path })); } catch (e) { setProblem(String(e)); } };
+  // Files and folders of this computer into the open folder; a name that is taken there gets a number.
+  const upload = async (paths, picked) => {
+    if (!paths && !picked) return;
+    if (!writable) { say(t("files_readonly", device.name)); return; }
+    setBusy(true);
+    try {
+      const result = picked ? await call("fs_put_pick", { id: device.id, folder: path }) : await call("fs_put", { id: device.id, folder: path, paths });
+      if (result.sent) say(t("uploaded_n", result.sent));
+      await refresh();
+    } catch (e) { failed(e); }
+    setBusy(false); setCopying(null);
+  };
+  useEffect(() => {
+    filesFolder.current = parts.length ? { id: device.id, put: (paths) => upload(paths) } : null;
+    return () => { filesFolder.current = null; };
+  });
+  // Opens a file here. A kind that can start a program comes back with a question first, asked in the card above the list.
+  const openFile = async (entry, confirmed = false) => {
+    setAsking(null); setBusy(true);
+    try {
+      const result = await call("fs_open", { id: device.id, path: join(entry.name), confirmed });
+      if (result.ask) setAsking({ entry, name: result.name });
+    } catch (e) { failed(e); }
+    setBusy(false); setCopying(null);
+  };
   const shown = entries.filter((e) => KINDS[kind](e) && query.toLowerCase().split(/\s+/).filter(Boolean).every((w) => e.name.toLowerCase().includes(w)));
   // A click chooses one row; with shift, everything from the row clicked last to this one, keeping what was chosen before that.
   const pick = (name, event) => {
@@ -698,7 +737,7 @@ export function FilesPage() {
     setBusy(true);
     try {
       const result = await call("fs_get", { id: device.id, paths: chosen.map((e) => join(e.name)), folders: chosen.map((e) => e.dir) });
-      say(t("downloaded_n", result.saved.length) + (result.skippedFolders ? " " + t("folders_skipped") : ""));
+      say(t("downloaded_n", result.files));
       setPicked(new Set());
     } catch (e) { failed(e); }
     setBusy(false); setCopying(null);
@@ -710,6 +749,7 @@ export function FilesPage() {
       <div class="grow"><h1 style="margin:0">${t("files_on", device.name)}</h1></div>
       <button class=${"btn small" + (state.platform === "linux" ? "" : " grey")} disabled=${busy || (!device.online && !inSidebar)} onClick=${toggleSidebar}
         title=${t("sidebar_hint")}><${Icon} name="pin" size=${16} />${inSidebar ? t("sidebar_remove") : t("sidebar_add")}</button>
+      ${writable && html`<button class="btn small" disabled=${busy || !device.online} title=${t("upload_hint")} onClick=${() => upload(null, true)}><${Icon} name="upload" size=${16} />${t("upload")}</button>`}
       ${chosen.length > 0 && html`<button class="btn accent" disabled=${busy} onClick=${download}><${Icon} name="download" size=${17} />${t("download_n", chosen.length)}</button>`}
     </div>
     <div class="small" style="margin:8px 0;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
@@ -722,6 +762,12 @@ export function FilesPage() {
       ${Object.keys(KINDS).map((k) => html`<button class=${"btn small" + (kind === k ? " accent" : "")} onClick=${() => setKind(k)}>${t("kind_" + k)}</button>`)}
     </div>
     ${problem && html`<div class="card"><div class="small" style="color:var(--danger,#d33)">${problem}</div></div>`}
+    ${asking && html`<div class="banner" role="alertdialog">
+      <${Icon} name="alert-triangle" size=${20} />
+      <div class="grow"><div style="font-weight:600">${t("open_risky_title", asking.name)}</div><div class="small muted">${t("open_risky_body", device.name)}</div></div>
+      <button class="btn small" onClick=${() => setAsking(null)}>${t("cancel")}</button>
+      <button class="btn small danger" onClick=${() => openFile(asking.entry, true)}>${t("open")}</button>
+    </div>`}
     ${busy && copying && html`<div class="card flush"><div class="item">
       <${Icon} name="arrow-down" size=${18} />
       <div class="grow">
@@ -740,6 +786,9 @@ export function FilesPage() {
             <div class="ellipsis">${e.name}</div>
             <div class="small muted">${e.dir ? t("folder") : sizeText(e.size)}${e.modifiedMs ? " · " + new Date(e.modifiedMs).toLocaleDateString() : ""}</div>
           </div>
+          ${!e.dir && parts.length > 0 && html`<div class="item-actions">
+            <button class="iconbtn" title=${t("open_here")} disabled=${busy} onClick=${() => openFile(e)}><${Icon} name="external-link" size=${16} /></button>
+          </div>`}
         </div>`)}</div>`}
   </div>`;
 }
