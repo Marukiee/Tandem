@@ -38,6 +38,9 @@ pub struct Settings {
     pub share_edge: String,
     /// The screens that sit next to this one, and where (see `arrange.rs`).
     pub layout: Vec<crate::arrange::Spot>,
+    /// The last size each other computer said its screen has, so the arrangement is right again after a restart and while that
+    /// computer is away (see `arrange.rs`). A device that leaves the circle takes its entry with it.
+    pub screen_sizes: std::collections::HashMap<String, (i32, i32)>,
     /// Quick Share: this PC can be found by other devices on the network and send and receive with them. Off until it is turned on.
     pub quick_share: bool,
     /// Look for a newer Tandem now and then, and say so when there is one.
@@ -133,6 +136,7 @@ impl Default for Settings {
             share_device: String::new(),
             share_edge: String::new(),
             layout: Vec::new(),
+            screen_sizes: std::collections::HashMap::new(),
             quick_share: false,
             system_media: true,
             share_media: true,
@@ -209,6 +213,14 @@ pub fn save(app: &AppHandle) {
 pub fn update(app: &AppHandle, change: impl FnOnce(&mut Settings)) {
     change(&mut app.state::<AppState>().settings.lock().unwrap());
     save(app);
+}
+
+/// Like [`update`], but only keeps the file when `change` says it changed something: for things that are checked often.
+pub fn update_if(app: &AppHandle, change: impl FnOnce(&mut Settings) -> bool) {
+    let changed = change(&mut app.state::<AppState>().settings.lock().unwrap());
+    if changed {
+        save(app);
+    }
 }
 
 pub fn set_dismissed_update(app: &AppHandle, version: &str) {
