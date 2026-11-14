@@ -3,6 +3,379 @@
 Alles wat nog niet af is, op volgorde van aanpak. Begin bovenaan. Een punt is pas af als het op echte
 toestellen is gezien, niet alleen gecompileerd. Zie CLAUDE.md voor de werkwijze en de agentregels.
 
+## Review van de hele code (2026-11-14, op main 26c8f3bd): voorstellen, en wat Mark koos (R-P)
+
+Alleen gelezen, niets gebouwd of gedraaid. Elk punt heeft een vast nummer (R-B bugs en beveiliging, R-D slepen en neerzetten,
+R-V verbeteringen, R-I ideeen, R-T testen, R-P gekozen en bouwplan), zodat een agent ernaar kan verwijzen. Per punt: waar,
+wat er misgaat, hoe je het merkt, voorstel. Zekerheid: **zeker** (de code doet dit, gelezen van begin tot eind), **waarschijnlijk**, **vermoeden** (pas te
+zien op een echt toestel). Binnen elke groep van ernstig naar klein. Een punt gaat eruit zodra het gebouwd en op een echt toestel
+gezien is. Niet meegenomen: de hartslag van de verbindingen met het scherm uit en de vraag bij grote bestanden op mobiele data
+(andere sessie). Niet gelezen: de horloge-app, de extensies van de Mac (camera, geluid, File Provider), de schermkijker en
+encoders, sms, hotspot en Shizuku, Health Connect.
+
+Korte paden: `K/` = `crates/tandem-core/src/`, `M/` = `macos/Sources/Tandem/`, `T/` = `windows/src-tauri/src/`,
+`W/` = `windows/src-tauri/winsys/src/`, `A/` = `android/app/src/main/java/nl/markmaaktmedia/tandem/`.
+
+### R-P. Gekozen door Mark (2026-11-14), en hoe het gebouwd wordt
+
+Mark koos acht functies: de wachtrij, neerzetten met een plaatshouder, de telefoon bij slepen, echte mappen, hervatten na een
+herstart, vertrouwen per apparaat met een pagina Circle, vrije ruimte vooraf, en een paneel Onderweg en Inkomend. Niet nu: de
+plank aan de schermrand (R-I7). Geschrapt: de gedeelde klembordgeschiedenis (R-I10). De bugs (R-B) en de rest zijn nog niet gekozen.
+
+Werkwijze, zodat een lichter model het meeste kan bouwen zonder dat de kwaliteit zakt:
+
+1. **Het contract, door een sterk model**: het bericht in `proto.rs`, de logica en de tests in de kern, de functies in `ffi.rs`,
+   en per pakket een korte lijst "klaar als". Hier zit wat moeilijk is: UniFFI, async, en oude versies die moeten blijven werken.
+2. **De Mac als voorbeeld, door hetzelfde model**: een schil helemaal af, zodat de andere drie iets hebben om na te doen.
+3. **De andere schillen, door een lichter model** (Sonnet, of de lokale AI met `/lokaal`): Android, dan Linux en Windows, een
+   apparaat per taak, met als opdracht "doe na wat de Mac doet" en een test die vanzelf slaagt of faalt (bouwen, de kerntest,
+   `mock.js`).
+4. **Controle door het sterke model**: de diff lezen, zelf bouwen, de lijst "klaar als" nalopen. Daarna pas een echt toestel.
+
+Regels: kernpakketten na elkaar (ze raken allemaal `proto.rs`, `ffi.rs` en `transfer.rs`), schillen mogen naast elkaar. Geen
+pakket zonder test. Een licht model zegt niet zelf dat iets af is. Goed opwarmwerk voor het lichte model, elk een bestand met een
+duidelijke oplossing: R-B4, R-B5, R-B7, R-B8, R-B17, R-B20, R-D1, R-D2. Eerst doen, want de pakketten bouwen erop: R-B8, R-V6, R-V7.
+
+Aansturing (voorstel, 2026-11-14): een eigen sessie per pakket, vers gestart met dit bestand als opdracht, elk in een eigen
+werkmap met een eigen PR. Kernpakketten en ontwerp op Opus, schillen en de opwarmronde op Sonnet. Tegelijk kan alleen wat geen
+bestanden deelt: de opwarmronde in de apps, P1 in de kern, en het ontwerp van P6 in `mock.js`.
+
+Pakketten, in deze volgorde:
+
+- **P1. Een overdrachtsboek in de kern** (sterk model; basis voor P2, P3 en P4). Aanbiedingen, in en uit, bewaard in de datamap:
+  wat, voor wie, hoe ver. Nu staan ze alleen in het geheugen (`K/engine.rs:117`). Klaar als: een kerntest een overdracht
+  halverwege stopt, de engine opnieuw start en het boek de stand teruggeeft.
+- **P2. Hervatten na een herstart** (R-I5). Eis van Mark: nooit vanzelf doorgaan. Na de start meldt de kern per halve overdracht
+  dat hij er is; de app vraagt "Verder gaan of weggooien?". Pas na ja wordt de rest opgehaald; nee gooit het deelbestand weg en
+  zegt het de afzender. Vraagt een bericht "dit aanbod opnieuw", want de afzender moet het bestand nog hebben. Klaar als: de
+  kerntest het ja-pad, het nee-pad en "de afzender heeft het niet meer" dekt.
+- **P3. Wachtrij voor apparaten die weg zijn** (R-I4). `send_files` zet ontvangers die offline zijn in het boek; bij `Connected`
+  gaat het aanbod uit. Te zien bij Gedeeld als "wacht op <apparaat>", met een kruisje. Grenzen: vervalt na 7 dagen; is het bestand
+  weg of veranderd, dan melden en niet sturen. Android: een bestand van een andere app eerst naar `outgoing/` kopieren, want de
+  toestemming verloopt.
+- **P3b. Een paneel Onderweg en Inkomend** (R-I21, gekozen 2026-11-14). Een plek voor alles wat loopt, binnenkomt, op een ja
+  wacht, in de wachtrij staat of mislukt is, met Opnieuw en Stop, en bij een halve overdracht Verder gaan of Weggooien. Leest het
+  overdrachtsboek van P1, dus na P2 en P3. Op alle vier de apps, de Mac eerst als voorbeeld.
+- **P4. Echte mappen** (R-I2). `ShareItem` krijgt een relatief pad (`#[serde(default)]`), de ontvanger maakt de mappen, en een
+  oude versie krijgt de zip zoals nu (nieuwe cap). Elk deel van het pad door de naamcontrole (R-V6). Klaar als: een kerntest met
+  drie lagen, een lege map en een naam die naar buiten wil.
+- **P5. Vrije ruimte vooraf** (R-V9; klein, een goed eerste pakket voor het lichte model). De afzender waarschuwt als het aanbod
+  groter is dan de vrije opslag die de ontvanger meldt. De ontvanger weigert met de reden "geen ruimte" voor het ophalen begint.
+- **P6. Vertrouwen per apparaat en een pagina Circle** (R-I6). Kern: per apparaat een niveau (eigen, beperkt, alleen sturen) en een
+  poort `allowed(peer, action)` in `K/session.rs` voor elke gevoelige gebeurtenis: bestanden wissen, ontgrendelen, vergrendelen,
+  bedienen, wifi-wachtwoord, bellen, meldingen, klembord, herstarten. In de kern, zodat alle vier de apps het vanzelf hebben. Elk
+  apparaat meldt zijn tabel in de status, zodat elk apparaat het hele web kan tekenen. De pagina: de apparaten in een kring met
+  lijnen ertussen, een kleur per soort recht; tik op een apparaat en het komt in het midden, met een spaak naar elk ander apparaat
+  en de schakelaars erop. Wat een ander apparaat toestaat verander je daar ("Open op <apparaat>" bestaat al). Eerst een ontwerp
+  door het sterke model, met een proef in `mock.js`, en Mark kiest.
+- **P7. Neerzetten met een plaatshouder** (R-I1, groot). Mac eerst (`NSFilePromiseProvider`), dan Windows, dan Linux. Alleen op
+  echte computers te beoordelen; niet voor een licht model.
+- **P8. De telefoon doet mee met slepen** (R-I3, R-D4). Stap (a) en (b) zijn afgebakend en geschikt voor het lichte model; stap
+  (c), het kaartje bij de aanwijzer, na P7. Zie ook R-I16.
+
+### R-B. Bugs en beveiliging
+
+Ernstig:
+
+- **R-B1. Android: elke app op de telefoon kan Tandem zonder tik laten sturen** (zeker). `A/share/ShareTargetActivity.kt:81`
+  vertrouwt `EXTRA_SHORTCUT_ID` van elke app (ook "all") en stuurt meteen (`:113`). `A/engine/EngineHost.kt:440` opent daarbij
+  elk adres, ook `file://` naar de eigen map van Tandem (de ssh-sleutel van de telefoon, `A/ssh/SshSession.kt:128`). Tekst die
+  met http begint gaat mee als "openen" (`:142`) en opent vanzelf in de browser van elke computer (`M/Model/EngineModel.swift:553`).
+  Merk je: tabbladen die vanzelf opengaan, of bestanden op je computers die je nooit stuurde. Voorstel: `file` en de eigen
+  providers weigeren, de snelkoppeling alleen volgen als het deelmenu van Android het venster startte, en gedeelde tekst nooit
+  met "openen" sturen zonder tik.
+- **R-B2. Een apparaatnaam breekt "Sturen naar", en kan opdrachten uitvoeren** (zeker dat het breekt, misbruik waarschijnlijk).
+  Windows `T/sendwith.rs:396`: alleen de rechte apostrof wordt verdubbeld, maar PowerShell leest de gekrulde ook als aanhalingsteken,
+  en macOS noemt een Mac standaard "Mark’s MacBook Pro". Het script mislukt dan en er komt voor geen enkel apparaat een
+  snelkoppeling. Linux `T/sendwith.rs:314` en `:323`: de naam gaat rauw in het bestand van Dolphin en Nemo; een naam met een
+  regeleinde krijgt zo een eigen `Exec`. Voorstel: de snelkoppeling in Rust maken (IShellLinkW), en namen een keer schoonmaken in
+  de kern (R-V6).
+- **R-B3. Ontvangen bestanden krijgen geen quarantainemerk** (zeker dat het ontbreekt). Nergens wordt `com.apple.quarantine`
+  (Mac) of `Zone.Identifier` (Windows) gezet. `M/Model/FilesBrowser.swift:244` haalt een bestand van een ander apparaat op en
+  opent het meteen; `T/commands.rs:648` en `T/desktopsearch.rs:638` ook. Een `foto.command` of `.lnk` start zo zonder de vraag
+  van Gatekeeper of SmartScreen. Voorstel: het merk zetten op alles wat binnenkomt, en eerst vragen bij uitvoerbare soorten.
+- **R-B4. Android 12 en 12L: crash bij de eerste melding die gespiegeld wordt** (zeker). `A/mirror/MirrorListener.kt:142`, `:155`,
+  `:201`, `:261` gebruiken `getParcelable(naam, klasse)`, dat pas vanaf Android 13 bestaat; `minSdk` is 31 en lint breekt de bouw
+  niet af (`android/app/build.gradle.kts:102`). Voorstel: `BundleCompat.getParcelable`, en R-V8.
+- **R-B5. Mac: de knoppen in het Controlecentrum doen niets** (zeker). `M/Platform/ControlBridge.swift:50`: `current()` zet de
+  sleutel niet in `control-state.json`, de extensie stuurt dus geen sleutel mee (`macos/ControlExtension/Controls.swift:33`) en
+  `perform` stopt op regel 74. Voorstel: `key: key` meegeven.
+- **R-B6. Android: een bestand naar twee apparaten tegelijk mislukt** (zeker). `A/engine/AndroidFiles.kt:28`: elke lezer krijgt een
+  kopie van dezelfde descriptor, en kopieen delen een leespositie; de `lseek(0)` van de een zet de ander terug. De controlesom
+  klopt niet, het wordt opnieuw geprobeerd en mislukt weer. Voorstel: in de kern op positie lezen (R-V7).
+- **R-B7. Android: meer dan 48 bestanden delen verliest er een paar** (zeker). `A/engine/AndroidFiles.kt:75`: bij 48 wordt een
+  willekeurige descriptor gesloten, ook van een bestand dat nog niet is opgehaald. `release()` wordt nergens aangeroepen, dus de
+  rest blijft voor altijd open. Voorstel: volgorde van binnenkomst, een hogere grens, en sluiten als het laatste apparaat klaar is.
+- **R-B8. Stoppen naar een apparaat stopt het sturen naar alle apparaten** (zeker). `K/transfer.rs:134`: `cancel_transfer` zet het
+  stopteken van het hele aanbod (`on_share_cancel` op regel 146 doet het wel goed). Voorstel: alleen stoppen als er geen
+  ontvangers meer zijn.
+
+Middel:
+
+- **R-B9. Een naam uit de bestandenlijst van een ander apparaat kan buiten de map schrijven** (waarschijnlijk).
+  `M/Model/FilesBrowser.swift:240`, `:254`, `:270` en `T/browse.rs:90` plakken de naam zo aan de doelmap; `K/files.rs` controleert
+  alleen aan de kant die bedient. Vraagt een apparaat in de circle dat liegt. Voorstel: namen met `/`, `\`, `..` of een schijfletter
+  weigeren en na het samenstellen controleren dat het doel in de map ligt.
+- **R-B10. Updater op Linux en Windows: de download staat op een voorspelbare plek** (waarschijnlijk, alleen met een tweede
+  gebruiker op de pc). `T/update.rs:341`: `/tmp/Tandem-update`. De controle gebeurt in het geheugen, daarna wordt het bestand
+  opnieuw van dat pad gekopieerd (`:325`). Voorstel: een eigen map met rechten 0700 en de gecontroleerde bytes zelf wegschrijven.
+- **R-B11. Updater op de Mac** (zeker in de code). `M/Platform/Updater.swift:239`: ontbreekt de sleutel of is hij geen base64, dan
+  wordt de handtekening overgeslagen in plaats van geweigerd. Geen controle dat de uitgepakte versie bij de tag hoort (een oude,
+  getekende build kan als nieuw worden aangeboden). `:102`: `check()` let niet op een lopende download, dus weer actief worden na
+  een minuut start een tweede. `:230` en `:280` draaien op de hoofddraad. Voorstel: dicht falen, versie vergelijken, vroeg stoppen
+  tijdens downloaden, en het uitpakken van de hoofddraad af.
+- **R-B12. Hervatten bij Bestanden kan stil een kapot bestand opleveren** (zeker). `K/files.rs:888`: het plakt verder aan
+  `<naam>.tandem-part` zonder te kijken of de bron nog dezelfde is, en zonder controlesom. Voorstel: grootte en `modified_ms` van
+  de eerste poging bewaren, bij verschil opnieuw beginnen, aan het eind de lengte controleren.
+- **R-B13. Quick Share laat halve bestanden staan en begrenst niets** (zeker). `K/quickshare/transfer.rs:261`: bestanden krijgen
+  meteen hun echte naam en worden bij een fout of annuleren niet weggehaald. `:273`: er wordt niet gekeken of er meer binnenkomt
+  dan aangekondigd. `K/quickshare/service.rs:248`: onbeperkt verbindingen tegelijk, zonder tijdslimiet op de begroeting. Voorstel:
+  als `.part` schrijven en aan het eind hernoemen, stoppen boven de aangekondigde grootte, hooguit 8 tegelijk en 15 seconden.
+- **R-B14. Een geweigerd aanbod: de afzender hoort niets** (zeker). `K/session.rs:443`: geen gebeurtenis. Het bestand blijft op
+  wachten staan tot het na 6 uur stil verdwijnt (`K/engine.rs:1237`). Voorstel: per bestand een `Finished` met "geweigerd", ook
+  als een aanbod verloopt.
+- **R-B15. Android: delen van veel bestanden of bestanden uit de cloud bevriest de app** (zeker dat het op de hoofddraad draait).
+  `A/engine/EngineHost.kt:413` en `:440`: `describe` opent elk bestand op de hoofddraad; bij Google Foto's haalt dat het bestand
+  eerst op. Voorstel: `withContext(Dispatchers.IO)`.
+- **R-B16. Mac: een map sturen bevriest het venster** (zeker). `M/Model/EngineModel.swift:1224` zipt op de hoofddraad
+  (`M/Platform/Files.swift:95`), de tijdelijke zip wordt nooit weggehaald, en `outgoingSources` (`:1226`) is op naam: twee
+  bestanden met dezelfde naam wijzen naar de verkeerde bron. Voorstel: zippen buiten de hoofddraad, opruimen na `Finished`,
+  sleutel op aanbod en nummer.
+- **R-B17. Android: het deelvenster** (`A/share/ShareTargetActivity.kt`). Stuurt dubbel of breekt af bij draaien of vouwen tijdens
+  het wachten (`:113`, waarschijnlijk). Tekst met opmaak wordt geweigerd met "niets om te delen" (`:100`, `getStringExtra`, zeker).
+  Een foto met bijschrift overschrijft het klembord van de computer (`:140`, zeker). `A/ui/screens/DevicesScreen.kt:117`: gekozen
+  bestanden vallen weg als het scherm draait terwijl de kiezer open is (`remember`, zeker). Voorstel: sturen in `graph.scope`,
+  `getCharSequenceExtra`, tekst alleen zonder bestanden, `rememberSaveable`.
+- **R-B18. De pagina Bestanden op Linux en Windows is niet af** (zeker). `T/browse.rs:76`: mappen worden overgeslagen, er is geen
+  upload en een bestand openen kan niet; de Mac kan alles. `T/commands.rs:346`: een map die je sleept of kiest om te sturen
+  wordt stil overgeslagen. Voorstel: overnemen van `FilesBrowser.swift`, met de naamcontrole van R-B9.
+- **R-B19. Android: een link die met "openen" komt kan verdwijnen** (waarschijnlijk). `A/engine/EngineHost.kt:320`: starten vanuit
+  de achtergrond wordt door Android stil geweigerd, en dan staat de link ook niet op het klembord. Voorstel: dan een melding met
+  de link en het klembord vullen.
+- **R-B20. Android: meldingen die blijven hangen**. "Ontvangen 45%" na een crash (`A/engine/TandemService.kt:385`, waarschijnlijk)
+  en Aannemen of Weigeren van een aanbod dat al weg is (`:476`, zeker). Voorstel: wegnemen in `onCreate`, `setTimeoutAfter`.
+- **R-B21. Android: de aanwijzer van de gedeelde muis en de tik lopen onderaan uiteen** (waarschijnlijk). `A/live/PointerIn.kt:61`
+  gebruikt maten zonder de systeembalken, `A/live/RemoteInput.kt:32` de echte. Voorstel: dezelfde `getRealMetrics`.
+
+Klein, of bewust zo en ter overweging:
+
+- **R-B22. Wat elk apparaat in de circle zonder vraag mag** (bewust, ter overweging; zie R-I6). Bestanden lezen, wijzigen en
+  wissen, op Android standaard de hele opslag (`K/files.rs:75`, `:187`). Het wifi-wachtwoord opvragen op Linux en Windows
+  (`T/wifi.rs:247`). Tandem op de Mac herstarten (`M/Platform/FeatureReport.swift:142`). Alle meldingen en inlogcodes krijgen,
+  wat de schakelaar per apparaat ook zegt (`A/mirror/MirrorListener.kt:79`). Bestanden neerzetten met herkomst `Drag` zonder dat
+  de muis er is, alleen op de Mac (`M/Platform/DragLanding.swift:15`, Linux en Windows eisen de gedeelde muis: `T/drag.rs:34`).
+  Met een gestolen of vergeten laptop in de circle is dat veel.
+- **R-B23. `tandem://send` zonder sleutel** (waarschijnlijk). `M/Model/EngineModel.swift:1451`: een webpagina kan een keuzemenu
+  van apparaten laten opkomen voor een pad naar keuze, en het menu toont niet wat er gestuurd wordt (`M/App/TandemApp.swift:160`).
+  Voorstel: zulke links zonder sleutel weigeren, of de bestandsnamen tonen.
+- **R-B24. Linux: tekst van een melding wordt als opmaak gelezen** (waarschijnlijk). `W/notify.rs:81`: tekst uit een sms of van een
+  vreemde via Quick Share gaat rauw naar de meldingsdienst; `a < b` verdwijnt, en een link kan erin. Voorstel: `&<>` vervangen.
+- **R-B25. Android, van buitenaf bereikbaar** (klein). `A/engine/BootReceiver.kt:12` kijkt niet welke actie het is (vermoeden:
+  een andere app kan Tandem laten crashen). `A/MainActivity.kt:28`: interne acties werken voor elke app. Een Quick Share-link van
+  een vreemde opent elk schema (`A/quickshare/QuickShareNotifications.kt:104`), ook `tandem://pair`. Voorstel: actie controleren,
+  interne acties via een alias die niet naar buiten staat, alleen http en https.
+- **R-B26. Mac: de sudo-regel voor wakker blijven** (waarschijnlijk, klein). `M/Platform/KeepAwake.swift:202`: `visudo` controleert
+  een bestand van de gebruiker en `install` kopieert daarna datzelfde pad als root. Voorstel: de regel in het script zelf schrijven.
+- **R-B27. Kern, klein** (zeker). `K/files.rs:880`: de buffer is zo groot als het antwoord zegt, niet als gevraagd (weigeren als
+  `sent > len`). `K/transfer.rs:297`, `:520`: een half bestand blijft drie dagen staan en kan na een herstart nooit afgemaakt
+  worden (bij de start weggooien, of R-I5). `K/transfer.rs:120`: een aanbod dat op een ja wacht verloopt nooit. `K/store.rs:37`:
+  het tijdelijke bestand heeft een vaste naam (vermoeden: twee schrijvers tegelijk).
+- **R-B28. Android, klein**. Mislukt het opslaan, dan blijft de kopie drie dagen staan (`A/engine/AndroidFiles.kt:47`, zeker). Een
+  bestand zonder naam komt zonder extensie aan (`A/engine/EngineHost.kt:442`, zeker). Gebeurtenissen kunnen wegvallen als de app
+  achterloopt (`:182`, vermoeden).
+- **R-B29. Linux en Windows, klein**. `T/sendwith.rs:26`: `--send --to <id>` stuurt zonder vraag voor elk lokaal programma (de Mac
+  eist een sleutel). `T/commands.rs:648`: `open_path` neemt elk pad van elk venster. 428 keer `lock().unwrap()`: een paniek met
+  een slot vast legt daarna alles plat (vermoeden).
+- **R-B30. De gastinstelling is dode code** (zeker). `K/store.rs:131` zegt dat hij niet meer gebruikt wordt, maar `K/engine.rs:327`,
+  `K/ffi.rs:1834`, `M/Model/EngineModel.swift:1352` en `T/commands.rs:207` bestaan nog, zonder knop. De tekst "Gasten en familie"
+  verderop zegt nog dat hij gebouwd is. Voorstel: weghalen en die tekst bijwerken.
+
+### R-D. Slepen en neerzetten
+
+Wat er nu is, per richting:
+
+| Van, naar | Over de rand met de gedeelde muis | In het venster van de app |
+| --- | --- | --- |
+| Mac naar Mac, Linux, Windows | ja: bestand, plaatje, tekst (Mac als hoofd) | laten vallen op een apparaat: ja |
+| Linux of Windows naar Mac | ja, alleen bestanden, alleen als bediende computer | n.v.t. |
+| Linux of Windows naar buiten | alleen als bediende computer, niet met de eigen muis | laten vallen: gaat altijd naar het gekozen apparaat (R-D11) |
+| naar Android | nee: het bestand komt in Downloads met een gewone melding | n.v.t. |
+| vanaf Android | nee | geen drop van een andere app in Tandem |
+| uit Tandem slepen (ontvangen of bestand op afstand) | n.v.t. | nergens |
+
+- **R-D1. Linux: een gesleept bestand heet daarna "naam 2.ext"** (zeker). `T/drag.rs:198` (`place`): het bestand staat al in de
+  downloadmap (`T/engine.rs:68`), en `land` (`T/drag.rs:167`) verplaatst het naar diezelfde map, ziet dat de naam bezet is (door
+  zichzelf) en telt door. Hetzelfde op de Mac als het voorste Finder-venster de downloadmap is (`M/Platform/DragLanding.swift:57`).
+  Voorstel: niets doen als bron en doel dezelfde map zijn.
+- **R-D2. Windows: van een sleep met meer bestanden komt alleen het eerste onder de aanwijzer** (zeker). `T/drag.rs:82` start een
+  systeemsleep per bestand dat binnen is; `W/dragsource.rs:48` weigert een tweede zolang de eerste loopt, de rest gaat naar het
+  bureaublad. Voorstel: wachten tot alle bestanden van het aanbod binnen zijn (het aantal staat in `ShareOffered`).
+- **R-D3. Een groot bestand kun je pas neerzetten als het helemaal binnen is** (zeker, ontwerp). Mac `M/Platform/DragLanding.swift:28`
+  en `DragCarrier.swift:30`, Windows `T/drag.rs:75`, Linux `T/drag.rs:100`. Merk je: je laat los op het andere scherm en er
+  gebeurt niets; seconden later hangt er ineens een icoon onder de aanwijzer of ligt het bestand op het bureaublad. Voorstel
+  (groot, R-I1): bij het oversteken meteen een plaatshouder onder de aanwijzer met voortgang (namen en groottes staan al in het
+  aanbod), en neerzetten met een belofte: Mac `NSFilePromiseProvider`, Windows `CFSTR_FILEDESCRIPTOR` met `FILECONTENTS`, Linux
+  XDS of het kaartje met voortgang.
+- **R-D4. Android doet niet mee** (zeker). Nergens `dragAndDropTarget`, `dragAndDropSource` of `startDragAndDrop`. Een bestand dat
+  met de gedeelde muis naar de telefoon gesleept wordt, wordt wel zonder vraag aangenomen (`A/engine/TandemService.kt:179`) maar
+  komt in Downloads met een gewone melding, los van waar je losliet; `A/live/PointerIn.kt` zet de knop bij binnenkomst op los,
+  dus het loslaten doet niets. Is de muis al terug voor het aanbod verwerkt is, dan komt er toch een vraag. Voorstel in stappen:
+  (a) een drop van een andere app op een apparaatkaart (`dragAndDropTarget` met `requestDragAndDropPermissions`), (b) ontvangen
+  bestanden uit Tandem slepen (`DRAG_FLAG_GLOBAL` met leesrecht), (c) bij de gedeelde muis een kaartje naast de aanwijzer in de
+  overlay, met Openen, Delen en Tonen, en plakken in het veld onder de aanwijzer via de toegankelijkheidsdienst.
+- **R-D5. Mac: slepen uit Foto's, Mail, Berichten, Notities of een browser gaat niet of slecht mee** (waarschijnlijk, te zien op
+  de Mac). `M/Platform/PointerShare.swift:471` (`dragContents`) leest alleen echte bestandsadressen, dan tekst, dan een plaatje.
+  Apps die een bestand beloven vallen erbuiten: een video of pdf gaat niet mee, een foto wordt een nieuwe png zonder naam, datum
+  of origineel. Voorstel: `NSFilePromiseReceiver` lezen en de beloofde bestanden eerst in een eigen map laten zetten.
+- **R-D6. Mac: een plaatje uit een browser gaat als webadres in tekst mee** (zeker in de code). Zelfde functie, regel 476: tekst
+  wordt voor het plaatje geprobeerd. Voorstel: volgorde bestand, belofte, plaatje, tekst; of beide sturen en de ontvanger laten
+  kiezen naar waar het losgelaten wordt.
+- **R-D7. Mac: een bestand dat laat aankomt neemt de aanwijzer over** (zeker in de code). `M/Platform/DragCarrier.swift:99`: het
+  paneeltje ligt tot 30 seconden precies onder de aanwijzer en vangt de volgende klik en het scrollen; een gewone klik zet de
+  bestanden weg en haalt Finder naar voren (`DragLanding.swift:52`). Voorstel: alleen onder de aanwijzer hangen als het bestand
+  binnen 2 seconden na het oversteken binnen is of de knop nog vast is; anders een kaartje naast de aanwijzer zoals op Linux.
+  Scrollen altijd doorlaten.
+- **R-D8. Mac: bestanden die na het begin van de sleep binnenkomen gaan naar het bureaublad** (zeker). `DragCarrier.swift:31`
+  (`!dragging`) en `DragLanding.swift:36`. Merk je: van vijf foto's landen er twee waar je losliet. Voorstel: zie R-D2 of R-D3.
+- **R-D9. Na elke sleep blijft een kopie in Downloads achter** (zeker). Het bestand komt eerst in de downloadmap
+  (`M/Platform/Files.swift:15`, `T/engine.rs:68`) en de systeemsleep kopieert daarna (`DragCarrier.swift:147`, `W/dragsource.rs:174`).
+  Voorstel: bestanden met herkomst `Drag` in een eigen map in de datamap ontvangen (zoals `clipboard`), verplaatsen toestaan, en
+  die map na een dag opruimen.
+- **R-D10. Een map slepen** (zeker). Vanaf Linux en Windows wordt een map stil overgeslagen (`T/edge.rs:79`); met alleen mappen
+  gebeurt er niets. Vanaf de Mac wordt het een zip die een zip blijft (`M/Platform/Files.swift:86`). Voorstel: "Mappen versturen"
+  (staat hieronder al) in de kern bouwen, met relatieve paden per bestand.
+- **R-D11. Linux en Windows: een drop in het venster gaat altijd naar het gekozen apparaat** (zeker). `windows/ui/js/main.js:266`:
+  laat je los op een ander apparaat in de zijbalk, dan gaat het toch naar het geselecteerde; op de pagina Bestanden wordt het
+  gestuurd in plaats van in de open map gezet; is het apparaat offline, dan gebeurt er niets en zegt de app niets. Het trayvenster
+  neemt geen drop. Voorstel: het doel bepalen uit de plek van de drop (`elementFromPoint` met `data-device-id`), een toast bij
+  offline, een drop per rij in het paneel.
+- **R-D12. Mac: een drop in het venster** (`M/UI/DeviceDetail.swift:602`, `MenuBarPanel.swift:405`). Een weblink uit de browser
+  wordt als bestand behandeld en geeft een vreemde fout (zeker). Beloofde bestanden uit Foto's, Mail en Safari worden geweigerd
+  (waarschijnlijk). Het Dock-icoon neemt geen bestanden (geen `CFBundleDocumentTypes`) en het menubalkicoon ook niet. Voorstel:
+  weblinks en tekst als `shareText` sturen, beloften ontvangen, bestandssoorten aanmelden voor het Dock, en het paneel openen als
+  je met een sleep boven het menubalkicoon hangt.
+- **R-D13. Uit Tandem slepen kan nergens** (zeker). Geen `onDrag` of `draggable` op de Mac, niets in het Tauri-venster, niets op
+  Android. Voorstel: ontvangen bestanden in de lijst sleepbaar maken (Mac `.draggable`, Windows met `W/dragsource.rs`, Android
+  zie R-D4), en bestanden op afstand met een belofte (zie R-D3).
+- **R-D14. Windows: de strook aan de rand staat alleen op het hoofdscherm, en is een heel webvenster** (zeker). `T/edge.rs:99`
+  gebruikt `primary_monitor`; hij wordt bij elke binnenkomst van de aanwijzer opnieuw als WebView gemaakt (`:101`). Voorstel:
+  een gewoon Win32-venster in `winsys` met `IDropTarget`, op de rand van het scherm waar de buur zit.
+- **R-D15. Tekst en plaatjes slepen over de rand kan alleen vanaf de Mac** (zeker). Linux leest alleen `text/uri-list`
+  (`W/edgecatch.rs:117`), Windows alleen paden (`T/edge.rs:118`). Voorstel: ook `text/plain` en `image/png` lezen.
+- **R-D16. Mac: de map van het voorste Finder-venster wordt buiten de hoofddraad met AppleScript gevraagd** (waarschijnlijk).
+  `M/Platform/DragLanding.swift:48`, `:77`: `NSAppleScript` hoort op de hoofddraad, en de eerste keer komt midden in een sleep de
+  vraag of Tandem Finder mag bedienen. Voorstel: `NSUserAppleScriptTask` met een tijdslimiet, toestemming vooraf via "Wat werkt".
+- **R-D17. Mac: de muis van de hele Mac hangt aan de hoofddraad van Tandem** (waarschijnlijk, eerst meten). De gebeurtenistap zit
+  op de hoofdlus (`M/Platform/PointerShare.swift:321`) en leest in de callback het sleepklembord en maakt er zo nodig een png van
+  (`:382`, `:477`). Voorstel: de tap op een eigen draad, de inhoud van een sleep een keer lezen bij het oversteken.
+- **R-D18. Mac: mislukt het sturen, dan is de sleep al afgebroken** (zeker, klein). `PointerShare.swift:447`: Escape en loslaten
+  gaan meteen, het sturen volgt 250 ms later (`:431`). Voorstel: pas afbreken als het aanbod verstuurd is, of de wachtrij (R-I4).
+- **R-D19. Klein**: de map `Tandem drag` met gesleepte plaatjes wordt nooit opgeruimd en het plaatje wordt twee keer geschreven
+  (`PointerShare.swift:382`, `:417`, `:478`); de strook op Linux maakt bij elke klik een nieuwe verbinding met de X-server
+  (`T/edge.rs:59`); Linux en Windows als hoofdcomputer kunnen nog niet slepen met hun eigen muis (staat al verderop).
+
+### R-V. Verbeteringen
+
+Accu en data:
+
+- **R-V1. Android stuurt ongeveer elke minuut een statusbericht, ook met het scherm uit** (zeker in de code, kosten waarschijnlijk).
+  `A/engine/StatusReporter.kt:189`: de vrije opslag gaat in exacte bytes mee en is dus bijna altijd anders (`:140`). Voorstel:
+  afronden op 1 GB, of opslag hooguit elk kwartier. Doorgeven aan de sessie die aan zuinigheid werkt.
+- **R-V2. Android: elk ontvangen bestand kost twee keer zijn grootte en wordt twee keer geschreven** (zeker).
+  `A/engine/AndroidFiles.kt:47`: eerst naar de eigen opslag, dan een kopie naar Downloads. Voorstel: de kern rechtstreeks in een
+  wachtend MediaStore-bestand laten schrijven (`openDownload(naam, soort, grootte)` geeft een descriptor terug).
+- **R-V3. Android: een grote overdracht kan stilvallen met het scherm uit** (waarschijnlijk). Er wordt geen wakelock of wifilock
+  vastgehouden tijdens een overdracht (`A/engine/TandemService.kt`). Voorstel: beide, met een tijdslimiet, zolang er iets loopt.
+- **R-V4. Bluetooth de hele dag op de snelle stand** (waarschijnlijk). De telefoon adverteert voor het horloge op `BALANCED`
+  zolang het horloge weg is (`A/watch/PhoneBleServer.kt:150`); de Mac scant met dubbelen aan zolang een telefoon offline is
+  (`M/Platform/BleMessenger.swift:152`). Voorstel: na een minuut `LOW_POWER`; scannen in blokjes en afbouwen.
+- **R-V5. Timers en rondvragen zonder einde** (zeker, klein). Mac: `M/Platform/ControlBridge.swift:34` elke 2 s en
+  `BatteryBridge.swift:27` elke 5 s. Linux: `T/lid.rs:46` elke seconde, `T/unlock.rs:33` elke 2 s. Kern: `K/engine.rs:985` vraagt
+  elke 5 s de netwerkadressen op. Voorstel: op gebeurtenissen (logind `PropertiesChanged`, apparaten veranderd) in plaats van de klok.
+
+Simpeler en beter:
+
+- **R-V6. Namen een keer schoonmaken in de kern.** Apparaatnamen bij hernoemen en koppelen (`K/circle.rs:204`, `:234`): geen
+  stuurtekens, een maximale lengte; dat beschermt elke app en R-B2 in een keer. Bestandsnamen: nu zes eigen versies
+  (`K/transfer.rs:589`, `K/quickshare/transfer.rs:161`, `M/Platform/Files.swift:30`, `T/engine.rs:71`, `T/browse.rs:40`,
+  `T/drag.rs:198`), elk met andere gaten. Een functie voor "veilige naam" en een voor "vrije naam in deze map".
+- **R-V7. In de kern op positie lezen** (`read_at`) bij het bedienen van een bestand (`K/transfer.rs:447`). Lost R-B6 op en maakt
+  het vasthouden van descriptors op Android eenvoudiger.
+- **R-V8. Lint laat de bouw niet falen** (`android/app/build.gradle.kts:102`). Voorstel: `NewApi` als fout, dan was R-B4 gevonden.
+- **R-V9. Vrije ruimte vooraf controleren.** Elk apparaat meldt zijn vrije opslag al in de status; de afzender kan vooraf zeggen
+  dat het niet past in plaats van halverwege te stranden (`K/transfer.rs:77`, `:303`).
+- **R-V10. Dubbele logica naar de kern.** De toestand van een wifi-aanbod staat in `M/Platform/WifiShare.swift` en `T/wifi.rs`;
+  de updater (release lezen, versies vergelijken) in Swift en Rust.
+- **R-V11. Grote bestanden splitsen**: `K/ffi.rs` (3556 regels), `M/Model/EngineModel.swift` (1709), `M/UI/HealthSettings.swift`
+  (1600), `windows/ui/js/pages.js` (1467). Minder botsingen tussen agents.
+
+### R-I. Ideeen voor nieuwe functies
+
+- **R-I1. Neerzetten met een plaatshouder** (groot). Bij het oversteken hangt er meteen iets onder de aanwijzer, met voortgang; je
+  laat los waar je wilt en het bestand komt daar zodra het binnen is. Lost R-D3, R-D7 en R-D8 op.
+- **R-I2. Echte mappen sturen** (middel). Staat al op de lijst; ook de basis voor slepen (R-D10) en de pagina Bestanden (R-B18).
+- **R-I3. De telefoon doet mee met slepen** (middel). R-D4 in drie stappen; past bij tablets, vouwtelefoons en de bureaubladmodus.
+- **R-I4. Wachtrij voor apparaten die weg zijn** (middel). Nu "was offline" en zelf opnieuw sturen; met een wachtrij gaat het
+  vanzelf zodra het apparaat terug is, zichtbaar bij Gedeeld.
+- **R-I5. Hervatten na een herstart** (middel). Het aanbod bewaren, zodat een halve overdracht verder gaat (R-B27).
+- **R-I6. Vertrouwen per apparaat** (middel). Bij het koppelen kiezen: eigen apparaat, of beperkt (geen wissen, geen ontgrendelen,
+  geen bediening, geen wifi-wachtwoord zonder vraag). Antwoord op R-B22.
+- **R-I7. Een plank aan de schermrand** (middel tot groot). Bestanden, tekst of plaatjes parkeren op een plank die op elk apparaat
+  te zien is; erin slepen op het ene, eruit op het andere, ook zonder gedeelde muis en ook met de telefoon. **Hoeft voor nu
+  niet** (Mark, 2026-11-14).
+- **R-I8. Een ontvangen bestand zo uit de melding slepen** (middel). Het logische vervolg op een overdracht; Windows kan
+  `W/dragsource.rs` hergebruiken.
+- **R-I9. Tekst of een link op een apparaat laten vallen** (klein). Wordt klembord of "open daar"; `shareText` bestaat al.
+- **R-I10. Gedeelde klembordgeschiedenis**: geschrapt (2026-11-14). De geschiedenis met vastzetten bestaat al op alle vier de
+  apps (PARITY.md). Nieuw zou alleen zijn dat de lijst en wat is vastgezet op elk apparaat gelijk zijn; dat is de moeite niet.
+- **R-I11. Een map volgen** (groot). Foto's van de telefoon gaan vanzelf naar een map op de computer of de Hub. Dit is in feite
+  wat Syncthing doet (opmerking van Mark, 2026-11-14). Voorstel: niet bouwen; hooguit later alleen "nieuwe foto's van de telefoon
+  naar een computer", in een richting.
+- **R-I12. "Stuur als klembord" in het deelmenu van Android** (klein). Een plaatje komt op het klembord van de Mac in plaats van
+  in Downloads; de herkomst `Clipboard` bestaat al.
+- **R-I13. Gevoelig klembord herkennen** (klein tot middel). Wat uit een wachtwoordmanager komt krijgt een merk mee, en Android
+  toont het dan niet in de voorvertoning. Vraagt een veld in het bericht.
+- **R-I14. Opnieuw proberen en resterende tijd** (klein). Een knop bij een mislukte overdracht, snelheid en tijd bij een lopende.
+- **R-I15. Tegel "Laatst ontvangen" op Android** (klein). Opent het nieuwste bestand of zet het op het klembord.
+
+Uit O+ Connect van Oppo (2026-11-14, alleen gelezen in berichten en een paar ervaringen, niet zelf geprobeerd): het heeft geen
+muis die over de schermrand naar de telefoon gaat. Slepen gaat daar via het venster met het scherm van de telefoon op de computer,
+en via een bestandenlijst van de telefoon. Een tester noemt het slepen met de aanwijzer "soms lastig". Wat eruit te halen is:
+
+- **R-I16. Laten vallen op het telefoonvenster** (middel). Een bestand dat je op het venster met het scherm van de telefoon laat
+  vallen gaat naar de app die daar voor staat (bij Oppo: zo een chat van WhatsApp in). Tandem heeft dat venster al. De telefoon
+  deelt het bestand dan met de app die voor staat (`ACTION_SEND` met dat pakket). Dit is de kortste weg naar "slepen naar de
+  telefoon" en hoort bij P8.
+- **R-I17. Bestanden van de telefoon op soort en recent, met zoeken** (middel). De pagina Bestanden toont nu alleen mappen. Oppo
+  toont foto's, video's, documenten en "recent", en zoekt door de hele opslag. Kan met MediaStore op de telefoon.
+- **R-I18. Uit de bestandenlijst van de telefoon slepen naar de computer** (middel). Is R-D13 voor bestanden op afstand.
+- Niet over te nemen: tot vijf apps van de telefoon als losse vensters op de computer. Dat vraagt rechten die alleen de maker van
+  de telefoon heeft.
+
+Meer ideeen (2026-11-14):
+
+- **R-I19. Sleepdoelen bij de aanwijzer** (middel). Zodra je een bestand begint te slepen verschijnen de apparaten als bolletjes
+  vlak bij de aanwijzer; loslaten op een bolletje stuurt. Werkt zonder gedeelde muis en zonder het venster van Tandem te zoeken.
+- **R-I20. Zwevend plaatje van een schermfoto van de telefoon** (klein tot middel). Een schermfoto komt als klein plaatje in de
+  hoek van de computer, zoals macOS met zijn eigen schermfoto's doet; je sleept het zo een app in, of het verdwijnt vanzelf.
+- **R-I21. Een paneel Onderweg** (klein). Een plek voor alles wat loopt, wacht op een ja, in de wachtrij staat of mislukt is, met
+  Opnieuw en Stop. Hoort bij P2 en P3. **Gekozen door Mark (2026-11-14)**, zie P3b.
+- **R-I22. Sturen tussen twee andere apparaten** (middel). Vanaf de Mac een bestand van de telefoon naar de Linux-pc laten gaan,
+  zonder omweg over de Mac. Bestanden op afstand bestaan al; dit is een opdracht aan het ene apparaat om bij het andere op te halen.
+  Voorbeeld: je zit achter de Mac en wilt een video van je telefoon op de Linux-pc hebben. Nu haal je hem eerst naar de Mac en stuur
+  je hem door: twee keer overdragen en twee keer opslag. Hiermee zegt de Mac tegen de telefoon: stuur dit naar de Linux-pc.
+
+### R-T. Testen op echte toestellen (voorstel, nog niets gedaan)
+
+Niets hiervan is op een toestel gezien. Mark kan de Xperia en de Oppo aan adb leggen en toegang geven tot de Linux-laptop en een
+Windows-pc. Voorstel voor de volgorde, steeds met de dev-app en een eigen datamap:
+
+1. Mac met Linux: R-D1 (naam), R-D5 en R-D6 (slepen uit Foto's, Mail en Safari), R-D7 (een bestand van 1 GB), R-D9.
+2. Mac met Windows: R-B2 (Sturen naar met de naam van de Mac), R-D2 (vijf bestanden), R-D14 (tweede scherm).
+3. Telefoons: R-B1 (met `adb shell am start` een deelverzoek met `EXTRA_SHORTCUT_ID`), R-B6 (een bestand naar Mac en Linux
+   tegelijk), R-B7 (60 foto's), R-B15 (foto's uit de cloud), R-V1 (statusberichten tellen met het scherm uit), R-D4.
+4. Mac alleen: R-B5 (Controlecentrum), R-B16 (een grote map), R-D17 (aanwijzer meten terwijl de app bezig is).
+
 ## Nieuwe functies (gekozen door Mark, 2026-10-29), nog te bouwen, op alle apparaten
 
 - **De muis besturen met je ogen** (gevraagd 2026-11-10): de cursor volgt waar je kijkt, via de gewone camera; knipperen of even stil blijven kijken klikt. macOS heeft het zelf niet: ook in macOS 27 alleen Head Pointer (hoofd) en Dwell, eye tracking is er alleen op iPhone en iPad. Vergeleken (2026-11-10, niet zelf getest; geen enkel project noemt gemeten nauwkeurigheid):
