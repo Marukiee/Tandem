@@ -1,5 +1,33 @@
 [
   {
+    "version": "0.3.18",
+    "date": "2026-11-14",
+    "en": {
+      "title": "Pick up where it stopped",
+      "new": [
+        "Android: a transfer that stopped halfway asks whether to go on or throw it away",
+        "Android asks before sending files to a device that has no room for them"
+      ],
+      "fixed": [
+        "The Mac remembers how big your other screens are",
+        "Sending a folder from the Mac no longer freezes the window",
+        "The Mac updater refuses a download it cannot check"
+      ]
+    },
+    "nl": {
+      "title": "Verder waar het stopte",
+      "new": [
+        "Android: een overdracht die halverwege stopte vraagt of je verder gaat of hem weggooit",
+        "Android vraagt het voordat je bestanden stuurt naar een apparaat zonder ruimte"
+      ],
+      "fixed": [
+        "De Mac onthoudt hoe groot je andere schermen zijn",
+        "Een map sturen vanaf de Mac laat het venster niet meer vastlopen",
+        "De updater van de Mac weigert een download die hij niet kan controleren"
+      ]
+    }
+  },
+  {
     "version": "0.3.17",
     "date": "2026-11-14",
     "en": {

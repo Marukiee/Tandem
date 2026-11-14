@@ -30,6 +30,14 @@ die de navigatie verschoof. Los daarvan (PR 13): de knop Zacht wekken is van de 
 blijft. Ook samengevoegd (PR 15): R-V12, en P2 en P5 in de kern met de Mac als voorbeeld. De schermen van P2 en P5 voor Android
 en voor Linux en Windows volgen in ronde 3 (b); hun changelogregels komen er dan bij.
 
+**Ronde 3, voor een deel samengevoegd (PR 17 en 18, changelog 0.3.18).** PR 17: het Mac-deel van R-B35, en R-B11, R-B16, R-B23 en
+R-B26, met een nieuw doel `TandemLogic` voor logica die zonder AppKit te testen is. PR 18: de schermen van P2 en P5 op Android. Nog
+bezig: P3, P3b en R-V13 (PR 19), P2, P5 en R-B35 op Linux en Windows, en het slepen op de Mac.
+
+**Releases.** `v0.3.16` en `v0.3.17` zijn getagd maar niet uitgekomen: Apple weigert het notariseren van de Mac-app met "A required
+agreement is missing or has expired". Mark moet de nieuwe overeenkomst van het Apple Developer Program accepteren; daarna kan de
+mislukte job van de release-run opnieuw. De laatste release die er staat is `v0.3.15`.
+
 Gevonden bij het nakijken van die PR's, nog te doen:
 
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
