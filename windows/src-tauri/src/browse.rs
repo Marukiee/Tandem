@@ -161,14 +161,14 @@ async fn get_folder(app: &AppHandle, engine: &TandemEngine, id: &str, remote: &s
         for item in engine.fs_list(id.to_string(), remote.clone()).await.map_err(shown)? {
             seen += 1;
             if seen > MAX_ITEMS {
-                return Err(format!("the folder {remote:?} holds more than {MAX_ITEMS} things, so the copy stopped"));
+                return Err(crate::i18n::t2(app, "files_too_many", &remote, &MAX_ITEMS.to_string()));
             }
             let name = listed_name(&item.name)?;
             let target = inside(&local, &name)?;
             let path = format!("{}/{}", remote.trim_end_matches('/'), item.name);
             if item.dir {
                 if depth + 1 > MAX_DEPTH {
-                    return Err(format!("the folder {remote:?} goes deeper than {MAX_DEPTH} levels, so the copy stopped"));
+                    return Err(crate::i18n::t2(app, "files_too_deep", &remote, &MAX_DEPTH.to_string()));
                 }
                 std::fs::create_dir(&target).map_err(shown)?;
                 queue.push_back((path, target, depth + 1));
