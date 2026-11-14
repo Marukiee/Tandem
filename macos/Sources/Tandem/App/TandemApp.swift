@@ -167,6 +167,23 @@ enum DevicePicker {
         let menu = NSMenu()
         menu.autoenablesItems = false
         actions = []
+        // What goes, before where: any web page can open this menu through a `tandem://send` link, with a path of its own choosing.
+        menu.addItem(.sectionHeader(title: urls.count == 1 ? String(localized: "Send this file") : String(localized: "Send these \(urls.count) files")))
+        for url in urls.prefix(4) {
+            let item = NSMenuItem(title: url.lastPathComponent, action: nil, keyEquivalent: "")
+            item.subtitle = (url.deletingLastPathComponent().path as NSString).abbreviatingWithTildeInPath
+            let icon = NSWorkspace.shared.icon(forFile: url.path)
+            icon.size = NSSize(width: 16, height: 16)
+            item.image = icon
+            item.isEnabled = false
+            menu.addItem(item)
+        }
+        if urls.count > 4 {
+            let more = NSMenuItem(title: String(localized: "and \(urls.count - 4) more"), action: nil, keyEquivalent: "")
+            more.isEnabled = false
+            menu.addItem(more)
+        }
+        menu.addItem(.separator())
         for device in model.devices {
             let action = BlockAction { model.send(urls: urls, to: [device.id]) }
             actions.append(action)
