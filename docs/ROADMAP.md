@@ -23,6 +23,12 @@ R-B8, R-B9, R-B14, R-B15, R-B17, R-B20, R-B25 (zonder de interne acties van `Mai
 ook de lijsten "klaar als" voor P2, P3, P3b, P4 en P9). Die punten staan hieronder nog uitgeschreven tot ze op een toestel gezien
 zijn. De redenen "declined" en "expired" die de kern nu geeft zijn in alle vier de apps vertaald.
 
+**Ronde 2, voor een deel samengevoegd (PR 10, 11 en 12).** Ook nog niet op een echt toestel gezien, behalve waar
+`docs/TESTLIJST.md` het zegt: R-B10, R-B18, R-B19, R-B21, R-B24, de rest van R-B25 (de interne acties van `MainActivity`), R-B28,
+R-B29, R-B32, R-D11, R-V1, R-V3, R-V4, het Linux-deel van R-V5 (deksel, vergrendeling en slaap komen van logind), en de updatebanner
+die de navigatie verschoof. Los daarvan (PR 13): de knop Zacht wekken is van de horlogekaart af, de schakelaar in de instellingen
+blijft. Het deel van de kern en de Mac (R-V12, P2, P5) loopt nog.
+
 Gevonden bij het nakijken van die PR's, nog te doen:
 
 - **R-V12. Het overdrachtsboek schrijft na elk bestand naar schijf** (zeker, klein tot middel). `K/journal.rs` (`change`): een
@@ -30,8 +36,11 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   op een telefoon. Voorstel: bundelen, hooguit elke halve seconde en altijd aan het eind.
 - **R-B31. Windows: elk ontvangen bestand krijgt het merk "van internet"** (keuze voor Mark). `T/zone.rs`: ook een Office-bestand
   van je eigen telefoon opent daardoor eerst in beveiligde weergave. Zo laten, of alleen programma's, scripts en snelkoppelingen.
-- **R-B32. Android: weiger je een aanbod in de app, dan blijft de melding tot 10 minuten staan** (klein).
-  `A/engine/TandemService.kt` (`offerAnswered`) hoort alleen van voortgang en van klaar. Voorstel: ook aanroepen bij weigeren.
+- **R-V14. Linux en Windows: `T/pointer_ready.rs` vraagt bij elke tik of het scherm vergrendeld is** (klein). Het leest
+  `lid::locked()` in zijn eigen lus, terwijl `T/lid.rs` dat sinds PR 11 van logind hoort. Voorstel: de stand van `lid.rs` gebruiken.
+- **R-D20. Linux en Windows: het paneel bij het systeemvak is weg zodra je erheen sleept** (klein). Het paneel sluit als het de
+  focus verliest, dus een bestand uit de bestandsbeheerder kan er alleen op als het al open staat. Voorstel: het paneel openen
+  terwijl een sleep boven het pictogram hangt.
 - **R-V13. De redenen van de kern zijn Engelse zinnen, in elke taal** (zeker, klein tot middel). Een overdracht die mislukt toont
   de tekst van de kern zoals hij is, bijvoorbeeld "The connection dropped" in een Nederlandse app (gezien in de proefversie van de
   Linux- en Windows-app, 2026-11-14). Alleen "cancelled", "declined" en "expired" zijn vertaald. Voorstel: de kern geeft een vaste
@@ -83,6 +92,7 @@ Rondes:
 - **Ronde 2 (gestart 2026-11-14):** (a) kern en Mac: eerst een gewone overdracht op main controleren, dan R-V12, P2 en P5 met de
   Mac als voorbeeld; (b) Android: R-B19, R-B21, R-B25, R-B28, R-B32, R-V1, R-V3, R-V4; (c) Linux en Windows: R-B10, R-B18, R-B24,
   R-B29, R-D11, R-V5. Los daarvan: de updatebanner die de navigatiebalk verschuift.
+  Stand: (b), (c) en de updatebanner zijn samengevoegd (PR 10, 11 en 12); (a) loopt nog.
 - **Ronde 3 (start vanzelf na ronde 2):** (a) kern en Mac: P3 en P3b, en R-V13 (vaste codes voor redenen); (b) Android en Linux en
   Windows: de schillen van P2 en P5 naar het voorbeeld van de Mac, zoals `docs/TRANSFERS.md` het beschrijft; (c) Mac: R-B11,
   R-B16, R-B23, R-B26 en het slepen vanaf en naar de Mac (R-D5 tot R-D8, R-D12, R-D13, R-D16, R-D17, R-D18).
