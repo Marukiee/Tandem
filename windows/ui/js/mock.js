@@ -75,6 +75,10 @@ const state = {
     { id: "1-0-in", peer: "phone", name: "IMG_20261003_141201.jpg", incoming: true, state: "done", done: 4200000, total: 4200000, location: "C:\\Users\\Mark\\Downloads\\Tandem\\IMG_20261003_141201.jpg", updatedAt: now - 60000, startedAt: now - 62000 },
     { id: "2-0-out", peer: "phone", name: "Begroting 2027.xlsx", incoming: false, state: "done", done: 88000, total: 88000, updatedAt: now - 3600000, startedAt: now - 3601000 },
     { id: "3-0-in", peer: "mac", name: "Presentatie.pdf", incoming: true, state: "failed", error: "The connection dropped", done: 100, total: 900, updatedAt: now - 86400000, startedAt: now - 86400000 },
+    // The reasons the core gives in its own words, which the page shows in the words of the person.
+    { id: "4-0-out", peer: "phone", name: "Vakantiefilm 2026 definitieve versie.mov", incoming: false, state: "failed", error: "declined", done: 0, total: 2400000000, updatedAt: now - 90000000, startedAt: now - 90000000 },
+    { id: "5-0-out", peer: "mac", name: "Notulen.docx", incoming: false, state: "failed", error: "expired", done: 0, total: 52000, updatedAt: now - 100000000, startedAt: now - 100000000 },
+    { id: "6-0-in", peer: "phone", name: "Scan_0042.pdf", incoming: true, state: "failed", error: "cancelled", done: 300, total: 900, updatedAt: now - 110000000, startedAt: now - 110000000 },
   ],
   offers: empty ? [] : [{ from: "mac", fromName: "MacBook Pro", offer: "7", origin: "files", items: [{ name: "Foto's vakantie.zip", size: 48000000, mime: "application/zip" }] }],
   notifications: empty ? [] : [
