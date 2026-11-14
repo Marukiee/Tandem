@@ -32,14 +32,16 @@ en voor Linux en Windows volgen in ronde 3 (b); hun changelogregels komen er dan
 
 **Ronde 3, voor een deel samengevoegd (PR 17 en 18, changelog 0.3.18).** PR 17: het Mac-deel van R-B35, en R-B11, R-B16, R-B23 en
 R-B26, met een nieuw doel `TandemLogic` voor logica die zonder AppKit te testen is. PR 18: de schermen van P2 en P5 op Android. Nog
-bezig: P3, P3b en R-V13 (PR 19). Daarna ook samengevoegd: PR 21, het slepen op de Mac (R-D5 tot R-D8, R-D12, R-D13 en R-D16; van
+bezig: niets meer van ronde 3. Samengevoegd: PR 19 (R-V13, P3 en P3b in de kern en op de Mac; de wachtrij staat uit tot een app hem
+aanzet met `set_queue_offline`, nu alleen de Mac), PR 25 (R-B31: het merk alleen op wat iets kan starten), PR 21, het slepen op de Mac (R-D5 tot R-D8, R-D12, R-D13 en R-D16; van
 R-D17 loopt het lezen van de sleep nog op de hoofdlus, en R-D18 houdt de sleep niet in leven als het sturen mislukt), en PR 22: P2, P5
 en R-B35 op Linux en Windows. Klein vervolg uit PR 22: een schijf die niet meer te lezen is meldt een heel groot getal als vrije
 ruimte, omdat de kern "onbekend" niet opnieuw kan horen (`T/storage.rs`, `UNKNOWN`); beter is een kern die dat wel kan.
 
 **Releases.** `v0.3.16` en `v0.3.17` zijn getagd maar niet uitgekomen: Apple weigert het notariseren van de Mac-app met "A required
 agreement is missing or has expired". Mark moet de nieuwe overeenkomst van het Apple Developer Program accepteren; daarna kan de
-mislukte job van de release-run opnieuw. De laatste release die er staat is `v0.3.15`.
+mislukte job van de release-run opnieuw. Opgelost op 2026-11-14: Mark accepteerde de overeenkomst en `v0.3.18` is uitgekomen, met
+alles tot en met PR 22.
 
 Gevonden bij het nakijken van die PR's, nog te doen:
 
@@ -133,11 +135,11 @@ Rondes:
   Mac als voorbeeld; (b) Android: R-B19, R-B21, R-B25, R-B28, R-B32, R-V1, R-V3, R-V4; (c) Linux en Windows: R-B10, R-B18, R-B24,
   R-B29, R-D11, R-V5. Los daarvan: de updatebanner die de navigatiebalk verschuift.
   Stand: alles is samengevoegd (PR 10 tot 15).
-- **Ronde 3 (gestart 2026-11-14):** (a) kern en Mac: P3 en P3b, en R-V13 (vaste codes voor redenen); (b) Android en Linux en
+- **Ronde 3 (klaar, PR 17 tot 25):** (a) kern en Mac: P3 en P3b, en R-V13 (vaste codes voor redenen); (b) Android en Linux en
   Windows: de schillen van P2 en P5 naar het voorbeeld van de Mac, zoals `docs/TRANSFERS.md` het beschrijft; (c) Mac: R-B11,
   R-B16, R-B23, R-B26 en het slepen vanaf en naar de Mac (R-D5 tot R-D8, R-D12, R-D13, R-D16, R-D17, R-D18).
   Erbij gekomen: R-B35 (de maat van een ander scherm onthouden), de Mac in (c), Linux en Windows in (b).
-- **Ronde 4 (start vanzelf na ronde 3):** (a) kern en Mac: P4 en P9, en de kleine kernpunten R-B12, R-B13 en de rest van R-B27;
+- **Ronde 4 (gestart 2026-11-14 met (b); (a) en (c) volgen zodra het limiet het toelaat):** (a) kern en Mac: P4 en P9, en de kleine kernpunten R-B12, R-B13 en de rest van R-B27;
   (b) Android en Linux en Windows: de schillen van P3 en P3b, en op Android slepen in en uit de app (R-D4 a en b); (c) P6: de
   poort in de kern en een proef van de pagina Circle in `mock.js`, waarna Mark kiest.
 - **Ronde 5 (wacht op Mark):** P7 en de rest van P8, de schillen van P4 en P9, en de sleeppunten voor Linux en Windows (R-D10,

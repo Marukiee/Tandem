@@ -239,3 +239,29 @@ Bekeken in een browser met proefgegevens, in het Engels en Nederlands. Niets dra
 
 **Beide**
 - [ ] Open Schermen indelen, sluit en start Tandem opnieuw: de formaten van de andere schermen staan er meteen weer.
+
+## Na 0.3.18 (PR 19 en 25, changelog 0.3.19, nog niet uitgebracht)
+
+### Wachtrij, paneel en vaste redenen (PR 19)
+
+De wachtrij en het paneel zijn gezien met de Mac Dev-app en `tandemd`. De wachtrij staat alleen op de Mac aan; Android en Linux en
+Windows houden hun oude gedrag tot hun schermen er zijn.
+
+- [ ] **Mac**: stuur een bestand naar een apparaat dat uit staat. Er hoort "Wacht op ..." te komen, en bovenaan Gedeeld onder Onderweg een rij met een klok.
+- [ ] **Mac**: zet dat apparaat aan. Het bestand hoort vanzelf te gaan en heel aan te komen; de rij gaat weg.
+- [ ] **Mac**: stuur iets naar een apparaat dat uit staat, verander het bestand, zet het apparaat aan. Er hoort "Veranderd sinds het gestuurd werd" te staan en het bestand komt niet aan.
+- [ ] **Mac**: druk op het kruisje van een rij in de wachtrij. De rij gaat weg en er komt later niets aan.
+- [ ] **Mac**: zet automatisch accepteren uit voor een apparaat en stuur vanaf daar iets. Onder Inkomend horen Weigeren en Accepteer te staan, en die horen te werken.
+- [ ] **Mac**: stuur een map naar een apparaat dat uit staat en zet het daarna aan. De zip hoort aan te komen.
+- [ ] **Mac**: stuur iets naar een apparaat dat om een ja vraagt en uit staat, en zet het aan. De rij hoort van "Wacht op ..." naar "Wacht op een ja van ..." te gaan.
+- [ ] **Telefoon en Linux/Windows**: stuur iets naar een apparaat dat uit staat. Er hoort nog steeds te staan dat het offline was en het niet kreeg, en het komt later ook niet aan (de wachtrij staat daar nog uit).
+
+### Windows: het downloadmerk alleen op wat iets kan starten (PR 25)
+
+**Windows**
+- [ ] Stuur een Word- of Excel-bestand vanaf je telefoon naar de pc en open het: het opent normaal, zonder beveiligde weergave.
+- [ ] Stuur een `.exe` of `.bat` vanaf je telefoon: Windows vraagt nog steeds eerst (SmartScreen / "Onbekende uitgever") voordat het start.
+- [ ] Haal hetzelfde Word-bestand op via de pagina Bestanden en door het vanaf de telefoon naar het venster te slepen: ook zonder beveiligde weergave.
+
+**Linux**
+- [ ] Niets nieuws te testen; ontvangen bestanden openen zoals eerst.

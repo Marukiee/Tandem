@@ -1,5 +1,31 @@
 [
   {
+    "version": "0.3.19",
+    "date": "2026-11-14",
+    "en": {
+      "title": "Waiting for a device",
+      "new": [
+        "Mac: files sent to a device that is away wait and go when it is back",
+        "Mac: Shared shows everything that is underway, incoming or waiting"
+      ],
+      "fixed": [
+        "Mac: why a transfer failed is shown in your language",
+        "Windows: documents from your other devices open normally, only programs and scripts get the download mark"
+      ]
+    },
+    "nl": {
+      "title": "Wachten op een apparaat",
+      "new": [
+        "Mac: bestanden voor een apparaat dat weg is wachten en gaan als het terug is",
+        "Mac: Gedeeld toont alles wat onderweg is, binnenkomt of wacht"
+      ],
+      "fixed": [
+        "Mac: waarom een overdracht mislukte staat er in je eigen taal",
+        "Windows: documenten van je andere apparaten openen gewoon, alleen programma's en scripts krijgen het downloadmerk"
+      ]
+    }
+  },
+  {
     "version": "0.3.18",
     "date": "2026-11-14",
     "en": {
