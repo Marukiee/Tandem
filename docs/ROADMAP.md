@@ -36,8 +36,8 @@ Gevonden bij het nakijken van die PR's, nog te doen:
   de tekst van de kern zoals hij is, bijvoorbeeld "The connection dropped" in een Nederlandse app (gezien in de proefversie van de
   Linux- en Windows-app, 2026-11-14). Alleen "cancelled", "declined" en "expired" zijn vertaald. Voorstel: de kern geeft een vaste
   code per reden (verbinding weg, controlesom, geen ruimte, bestand weg) en de apps vertalen die.
-- **R-T open:** de proef van R-B1 op de Oppo (het deelverzoek met `adb shell am start` voor en na) is niet gedaan; de telefoon hing
-  niet meer aan adb.
+- **R-T:** de proef van R-B1 is gedaan op de Oppo (2026-11-14): voor de fix stuurde een deelverzoek van buiten zonder tik, erna
+  niet meer. Wat Mark zelf nog moet zien staat in `docs/TESTLIJST.md`, die bij elke samengevoegde PR wordt bijgewerkt.
 
 ### R-P. Gekozen door Mark (2026-11-14), en hoe het gebouwd wordt
 
